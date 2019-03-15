@@ -1,0 +1,9 @@
+apiVersion: chaos.k8s.io/v1beta1
+kind: DependencyFailureInjection
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: dependencyfailureinjection-sample
+spec:
+  # Add fields here
+  foo: bar
