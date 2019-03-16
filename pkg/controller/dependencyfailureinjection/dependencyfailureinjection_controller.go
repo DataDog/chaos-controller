@@ -67,9 +67,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return err
 	}
-
-	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by DependencyFailureInjection - change this for objects you create
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &chaosv1beta1.DependencyFailureInjection{},
@@ -91,11 +88,9 @@ type ReconcileDependencyFailureInjection struct {
 
 // Reconcile reads that state of the cluster for a DependencyFailureInjection object and makes changes based on the state read
 // and what is in the DependencyFailureInjection.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
-// a Deployment as an example
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=,resources=pods,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=,resources=pods/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=dependencyfailureinjections,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=dependencyfailureinjections/status,verbs=get;update;patch
 func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -112,8 +107,7 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this to be the object type created by your controller
-	// Define the desired Deployment object
+	// Define the desired pod object
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      instance.Name + "-pod",
@@ -132,23 +126,21 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this for the object type created by your controller
-	// Check if the Deployment already exists
+	// Check if the pod already exists
 	found := &corev1.Pod{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating Deployment", "namespace", pod.Namespace, "name", pod.Name)
+		log.Info("Creating chaos pod", "namespace", pod.Namespace, "name", pod.Name)
 		err = r.Create(context.TODO(), pod)
 		return reconcile.Result{}, err
 	} else if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this for the object type created by your controller
 	// Update the found object and write the result back if there are any changes
 	if !reflect.DeepEqual(pod.Spec, found.Spec) {
 		found.Spec = pod.Spec
-		log.Info("Updating Deployment", "namespace", pod.Namespace, "name", pod.Name)
+		log.Info("Updating chaos pod", "namespace", pod.Namespace, "name", pod.Name)
 		err = r.Update(context.TODO(), found)
 		if err != nil {
 			return reconcile.Result{}, err
