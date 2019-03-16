@@ -5,9 +5,9 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - batch
+  - apps
   resources:
-  - jobs
+  - deployments
   verbs:
   - get
   - list
@@ -17,15 +17,15 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - batch
+  - apps
   resources:
-  - jobs/status
+  - deployments/status
   verbs:
   - get
   - update
   - patch
 - apiGroups:
-  - chaos.k8s.io
+  - chaos.datadoghq.com
   resources:
   - dependencyfailureinjections
   verbs:
@@ -37,7 +37,7 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - chaos.k8s.io
+  - chaos.datadoghq.com
   resources:
   - dependencyfailureinjections/status
   verbs:

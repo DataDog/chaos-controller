@@ -4,9 +4,9 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: dependencyfailureinjections.chaos.k8s.io
+  name: dependencyfailureinjections.chaos.datadoghq.com
 spec:
-  group: chaos.k8s.io
+  group: chaos.datadoghq.com
   names:
     kind: DependencyFailureInjection
     plural: dependencyfailureinjections
@@ -27,22 +27,6 @@ spec:
         metadata:
           type: object
         spec:
-          properties:
-            failure:
-              properties:
-                port:
-                  type: string
-                probability:
-                  type: uint
-                server:
-                  type: string
-              required:
-              - server
-              - port
-              - probability
-              type: object
-          required:
-          - failure
           type: object
         status:
           type: object

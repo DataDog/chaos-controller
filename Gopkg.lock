@@ -485,14 +485,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:93615e044aa3dab6749dd75d879a355abcdffcda9de85a2179c4a685bfb05de7"
+  digest = "1:76217162c6976fabeca1969232c94603db09464559ec5983c1a1852de1650514"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "T"
-  revision = "fead79001313d15903fb4605b4a1b781532cd93e"
+  revision = "a2f829d7f35f2ed1c3520c553a6226495455cae0"
 
 [[projects]]
   digest = "1:6164911cb5e94e8d8d5131d646613ff82c14f5a8ce869de2f6d80d9889df8c5a"
@@ -539,7 +539,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:750b39d50dc64eec701940f8745b66e026989726fce5e1de4b5149802b327f1c"
+  digest = "1:1e9229d73b4b77c7ead4b4e59d93bdeb3f6e63044ee8b7e8028c771191ef7546"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -556,7 +556,7 @@
     "internal/semver",
   ]
   pruneopts = "T"
-  revision = "8b67d361bba210f5fbb3c1a0fc121e0847b10b57"
+  revision = "f0bfdbff1f9c986484a9f02fc198b1efcfe76ebe"
 
 [[projects]]
   digest = "1:1469235a5a8e192cfe6a99c4804b883a02f0ff96a693cd1660515a3a3b94d5ac"

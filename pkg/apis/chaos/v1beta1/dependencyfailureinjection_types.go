@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2019 Datadog.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,12 +27,6 @@ import (
 type DependencyFailureInjectionSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	LabelSelector string `json:"label_selector"`
-	Failure       struct {
-		Server      string `json:"server"`
-		Port        string `json:"port"`
-		Probability uint   `json:"probability"`
-	} `json:"failure"`
 }
 
 // DependencyFailureInjectionStatus defines the observed state of DependencyFailureInjection

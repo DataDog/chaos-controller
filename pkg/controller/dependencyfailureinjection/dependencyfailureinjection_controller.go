@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2019 Datadog.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import (
 	"reflect"
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/pkg/apis/chaos/v1beta1"
-	batchv1 "k8s.io/api/batch/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,8 +69,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Uncomment watch a Job created by DependencyFailureInjection - change this for objects you create
-	err = c.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForOwner{
+	// TODO(user): Modify this to be the types you create
+	// Uncomment watch a Deployment created by DependencyFailureInjection - change this for objects you create
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &chaosv1beta1.DependencyFailureInjection{},
 	})
@@ -91,11 +92,13 @@ type ReconcileDependencyFailureInjection struct {
 
 // Reconcile reads that state of the cluster for a DependencyFailureInjection object and makes changes based on the state read
 // and what is in the DependencyFailureInjection.Spec
-// Automatically generate RBAC rules to allow the Controller to read and write Jobs
-// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=batch,resources=jobs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=chaos.k8s.io,resources=dependencyfailureinjections,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=chaos.k8s.io,resources=dependencyfailureinjections/status,verbs=get;update;patch
+// TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
+// a Deployment as an example
+// Automatically generate RBAC rules to allow the Controller to read and write Deployments
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=dependencyfailureinjections,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=dependencyfailureinjections/status,verbs=get;update;patch
 func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the DependencyFailureInjection instance
 	instance := &chaosv1beta1.DependencyFailureInjection{}
@@ -110,18 +113,19 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 		return reconcile.Result{}, err
 	}
 
-	// Define the desired Job object
-	job := &batchv1.Job{
+	// TODO(user): Change this to be the object type created by your controller
+	// Define the desired Deployment object
+	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-job",
+			Name:      instance.Name + "-deployment",
 			Namespace: instance.Namespace,
 		},
-		Spec: batchv1.JobSpec{
+		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"job": instance.Name + "-job"},
+				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
 			},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"job": instance.Name + "-job"}},
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
@@ -133,25 +137,27 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 			},
 		},
 	}
-	if err := controllerutil.SetControllerReference(instance, job, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(instance, deploy, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// Check if the Job already exists
-	found := &batchv1.Job{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: job.Name, Namespace: job.Namespace}, found)
+	// TODO(user): Change this for the object type created by your controller
+	// Check if the Deployment already exists
+	found := &appsv1.Deployment{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating Job", "namespace", job.Namespace, "name", job.Name)
-		err = r.Create(context.TODO(), job)
+		log.Info("Creating Deployment", "namespace", deploy.Namespace, "name", deploy.Name)
+		err = r.Create(context.TODO(), deploy)
 		return reconcile.Result{}, err
 	} else if err != nil {
 		return reconcile.Result{}, err
 	}
 
+	// TODO(user): Change this for the object type created by your controller
 	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(job.Spec, found.Spec) {
-		found.Spec = job.Spec
-		log.Info("Updating Job", "namespace", job.Namespace, "name", job.Name)
+	if !reflect.DeepEqual(deploy.Spec, found.Spec) {
+		found.Spec = deploy.Spec
+		log.Info("Updating Deployment", "namespace", deploy.Namespace, "name", deploy.Name)
 		err = r.Update(context.TODO(), found)
 		if err != nil {
 			return reconcile.Result{}, err

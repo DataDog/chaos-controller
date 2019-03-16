@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2019 Datadog.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ limitations under the License.
 // +k8s:deepcopy-gen=package,register
 // +k8s:conversion-gen=github.com/DataDog/chaos-fi-controller/pkg/apis/chaos
 // +k8s:defaulter-gen=TypeMeta
-// +groupName=chaos.k8s.io
+// +groupName=chaos.datadoghq.com
 package v1beta1
 
 import (
@@ -31,7 +31,7 @@ import (
 
 var (
 	// SchemeGroupVersion is group version used to register these objects
-	SchemeGroupVersion = schema.GroupVersion{Group: "chaos.k8s.io", Version: "v1beta1"}
+	SchemeGroupVersion = schema.GroupVersion{Group: "chaos.datadoghq.com", Version: "v1beta1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion}
