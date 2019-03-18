@@ -1,0 +1,6 @@
+---
+image:
+  name: chaos-fi-controller
+  tag: 0.0.1
+
+team: sre
