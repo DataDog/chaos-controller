@@ -27,7 +27,8 @@ import (
 type DependencyFailureInjectionSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Failure DependencyFailureInjectionSpecFailure `json:"failure"`
+	Failure       DependencyFailureInjectionSpecFailure `json:"failure"`
+	LabelSelector string                                `json:"labelSelector"`
 }
 
 // DependencyFailureInjectionSpecFailure defines the failure spec

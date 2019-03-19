@@ -6,6 +6,7 @@ metadata:
   name: dependencyfailureinjection-sample
 spec:
   failure:
-    server: localhost
+    host: localhost
     port: 1234/tcp
     probability: 50
+  labelSelector: "foo=bar"

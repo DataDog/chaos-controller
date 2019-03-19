@@ -107,43 +107,63 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 		return reconcile.Result{}, err
 	}
 
-	// Define the desired pod object
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-pod",
-			Namespace: instance.Namespace,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:  "nginx",
-					Image: "nginx",
+	// Fetch pods from label selector
+	labelSelector := instance.Spec.LabelSelector
+	listOptions := &client.ListOptions{}
+	err = listOptions.SetLabelSelector(labelSelector)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	pods := &corev1.PodList{}
+	err = r.Client.List(context.TODO(), listOptions, pods)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// For each pod found, start a chaos pod on the same node
+	for _, p := range pods.Items {
+		nodeName := p.Spec.NodeName
+
+		// Define the desired pod object
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      instance.Name + "-pod",
+				Namespace: instance.Namespace,
+			},
+			Spec: corev1.PodSpec{
+				NodeName: nodeName,
+				Containers: []corev1.Container{
+					{
+						Name:  "nginx",
+						Image: "nginx",
+					},
 				},
 			},
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Check if the pod already exists
-	found := &corev1.Pod{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating chaos pod", "namespace", pod.Namespace, "name", pod.Name)
-		err = r.Create(context.TODO(), pod)
-		return reconcile.Result{}, err
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(pod.Spec, found.Spec) {
-		found.Spec = pod.Spec
-		log.Info("Updating chaos pod", "namespace", pod.Namespace, "name", pod.Name)
-		err = r.Update(context.TODO(), found)
-		if err != nil {
+		}
+		if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
 			return reconcile.Result{}, err
+		}
+
+		// Check if the pod already exists
+		found := &corev1.Pod{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+		if err != nil && errors.IsNotFound(err) {
+			log.Info("Creating chaos pod", "namespace", pod.Namespace, "name", pod.Name, "nodename", nodeName)
+			err = r.Create(context.TODO(), pod)
+			return reconcile.Result{}, err
+		} else if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Update the found object and write the result back if there are any changes
+		if !reflect.DeepEqual(pod.Spec, found.Spec) {
+			found.Spec = pod.Spec
+			log.Info("Updating chaos pod", "namespace", pod.Namespace, "name", pod.Name, "nodename", nodeName)
+			err = r.Update(context.TODO(), found)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
 		}
 	}
 	return reconcile.Result{}, nil

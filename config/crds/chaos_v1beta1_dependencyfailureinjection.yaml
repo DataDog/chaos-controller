@@ -44,8 +44,11 @@ spec:
               - port
               - probability
               type: object
+            labelSelector:
+              type: string
           required:
           - failure
+          - labelSelector
           type: object
         status:
           type: object
