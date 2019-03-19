@@ -32,15 +32,15 @@ spec:
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
                 Important: Run "make" to regenerate code after modifying this file'
               properties:
+                host:
+                  type: string
                 port:
                   type: string
                 probability:
                   format: int64
                   type: integer
-                server:
-                  type: string
               required:
-              - server
+              - host
               - port
               - probability
               type: object
