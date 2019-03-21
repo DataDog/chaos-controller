@@ -4,9 +4,11 @@ metadata:
   labels:
     controller-tools.k8s.io: "1.0"
   name: dependencyfailureinjection-sample
+  namespace: sre
 spec:
   failure:
     host: localhost
-    port: 1234/tcp
+    port: "8080"
     probability: 50
-  labelSelector: "foo=bar"
+    protocol: tcp
+  labelSelector: "app=pagerbeauty"
