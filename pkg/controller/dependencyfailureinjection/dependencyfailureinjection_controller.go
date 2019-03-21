@@ -153,7 +153,7 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 	hostPathType := corev1.HostPathType("Directory")
 	for _, p := range pods.Items {
 		// Get ID of first container
-		containerId, err := r.getContainerdId(&p)
+		containerID, err := r.getContainerdID(&p)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -179,7 +179,7 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 							"inject",
 							"network-failure",
 							"--container-id",
-							containerId,
+							containerID,
 							"--host",
 							instance.Spec.Failure.Host,
 							"--port",
@@ -266,7 +266,7 @@ func (r *ReconcileDependencyFailureInjection) cleanFailures(instance *chaosv1bet
 
 	for _, p := range pods.Items {
 		// Get ID of first container
-		containerId, err := r.getContainerdId(&p)
+		containerID, err := r.getContainerdID(&p)
 		if err != nil {
 			return err
 		}
@@ -286,7 +286,7 @@ func (r *ReconcileDependencyFailureInjection) cleanFailures(instance *chaosv1bet
 						Image:           "eu.gcr.io/datadog-staging/chaos-fi:0.0.1",
 						ImagePullPolicy: "Always",
 						Command:         []string{"cmd"},
-						Args:            []string{"clean", "--container-id", containerId},
+						Args:            []string{"clean", "--container-id", containerID},
 						VolumeMounts: []corev1.VolumeMount{
 							corev1.VolumeMount{
 								MountPath: "/run/containerd",
@@ -337,7 +337,7 @@ func (r *ReconcileDependencyFailureInjection) cleanFailures(instance *chaosv1bet
 			return err
 		}
 
-		log.Info("Creating chaos cleanup pod", "namespace", pod.Namespace, "name", pod.Name, "containerid", containerId)
+		log.Info("Creating chaos cleanup pod", "namespace", pod.Namespace, "name", pod.Name, "containerid", containerID)
 		err = r.Create(context.TODO(), pod)
 		if err != nil {
 			return err
@@ -365,19 +365,19 @@ func (r *ReconcileDependencyFailureInjection) getMatchingPods(instance *chaosv1b
 	return pods, nil
 }
 
-// getContainerdId gets the ID of the first container ID found in a Pod.
+// getContainerdID gets the ID of the first container ID found in a Pod.
 // It expects container ids to follow the format "containerd://<ID>".
-func (r *ReconcileDependencyFailureInjection) getContainerdId(pod *corev1.Pod) (string, error) {
+func (r *ReconcileDependencyFailureInjection) getContainerdID(pod *corev1.Pod) (string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
 		return "", fmt.Errorf("Missing container ids for pod '%s'", pod.Name)
 	}
 
-	containerId := strings.Split(pod.Status.ContainerStatuses[0].ContainerID, "containerd://")
-	if len(containerId) != 2 {
+	containerID := strings.Split(pod.Status.ContainerStatuses[0].ContainerID, "containerd://")
+	if len(containerID) != 2 {
 		return "", fmt.Errorf("Unrecognized container ID format '%s', expecting 'containerd://<ID>'", pod.Status.ContainerStatuses[0].ContainerID)
 	}
 
-	return containerId[1], nil
+	return containerID[1], nil
 }
 
 //
