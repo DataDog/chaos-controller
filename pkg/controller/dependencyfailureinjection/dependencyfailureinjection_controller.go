@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/pkg/apis/chaos/v1beta1"
@@ -182,7 +183,7 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 							"--host",
 							instance.Spec.Failure.Host,
 							"--port",
-							instance.Spec.Failure.Port,
+							strconv.Itoa(instance.Spec.Failure.Port),
 							"--protocol",
 							instance.Spec.Failure.Protocol,
 						},

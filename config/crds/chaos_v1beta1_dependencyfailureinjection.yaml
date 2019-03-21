@@ -35,7 +35,8 @@ spec:
                 host:
                   type: string
                 port:
-                  type: string
+                  format: int64
+                  type: integer
                 probability:
                   format: int64
                   type: integer
