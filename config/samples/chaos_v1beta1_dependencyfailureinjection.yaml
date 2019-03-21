@@ -7,8 +7,8 @@ metadata:
   namespace: sre
 spec:
   failure:
-    host: localhost
-    port: "8080"
+    host: chaos-fi-demo.sre.svc.barbet.cluster.local
+    port: 80
     probability: 50
     protocol: tcp
-  labelSelector: "app=pagerbeauty"
+  labelSelector: "app=chaos-fi-demo-curl"
