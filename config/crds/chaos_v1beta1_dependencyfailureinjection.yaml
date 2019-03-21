@@ -39,10 +39,13 @@ spec:
                 probability:
                   format: int64
                   type: integer
+                protocol:
+                  type: string
               required:
               - host
               - port
               - probability
+              - protocol
               type: object
             labelSelector:
               type: string

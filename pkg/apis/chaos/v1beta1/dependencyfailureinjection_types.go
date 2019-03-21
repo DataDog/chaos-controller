@@ -36,6 +36,7 @@ type DependencyFailureInjectionSpecFailure struct {
 	Host        string `json:"host"`
 	Port        string `json:"port"`
 	Probability int    `json:"probability"`
+	Protocol    string `json:"protocol"`
 }
 
 // DependencyFailureInjectionStatus defines the observed state of DependencyFailureInjection
