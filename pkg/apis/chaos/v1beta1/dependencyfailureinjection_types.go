@@ -34,7 +34,7 @@ type DependencyFailureInjectionSpec struct {
 // DependencyFailureInjectionSpecFailure defines the failure spec
 type DependencyFailureInjectionSpecFailure struct {
 	Host        string `json:"host"`
-	Port        string `json:"port"`
+	Port        int    `json:"port"`
 	Probability int    `json:"probability"`
 	Protocol    string `json:"protocol"`
 }
