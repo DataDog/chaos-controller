@@ -39,7 +39,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const cleanupFinalizer = "clean.dfi.finalizer.datadog.com"
+const (
+	cleanupContainerName = "chaos-fi-cleanup"
+	cleanupFinalizer     = "clean.dfi.finalizer.datadog.com"
+)
 
 var log = logf.Log.WithName("controller")
 
@@ -142,11 +145,18 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 				return reconcile.Result{}, nil
 			}
 
-			// check that cleanup pod has finished
-			for _, ownerReference := range instance.ObjectMeta.OwnerReferences {
-				// get pod object and check its status
-				// if not complete, just return nil and wait for the next round
-				// if complete, delete the finalizer so the crd can be garbage collected
+			cleanupPods, err := r.getCleanupPods(instance)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
+			log.Info("Checking status of cleanup pods before deleting DFI", "numCleanupPods", len(cleanupPods), "DependencyFailureInjection", instance.Name)
+
+			for _, cleanupPod := range cleanupPods {
+				if cleanupPod.Status.Phase != corev1.PodSucceeded {
+					log.Info("Cleanup pod has not completed, retrying DFI deletion", "DependencyFailureInjection", instance.Name, "cleanupPod", cleanupPod.Name, "phase", cleanupPod.Status.Phase)
+					return reconcile.Result{}, nil
+				}
 			}
 
 			// remove our finalizer from the list and update it.
@@ -300,7 +310,7 @@ func (r *ReconcileDependencyFailureInjection) cleanFailures(instance *chaosv1bet
 				RestartPolicy: "Never",
 				Containers: []corev1.Container{
 					{
-						Name:            "chaos-fi-cleanup",
+						Name:            cleanupContainerName,
 						Image:           "eu.gcr.io/datadog-staging/chaos-fi:0.0.1",
 						ImagePullPolicy: "Always",
 						Command:         []string{"cmd"},
@@ -380,6 +390,32 @@ func (r *ReconcileDependencyFailureInjection) getMatchingPods(instance *chaosv1b
 		return nil, err
 	}
 
+	return pods, nil
+}
+
+// getCleanupPods returns all cleanup pods created by the DependencyFailureInjection instance.
+func (r *ReconcileDependencyFailureInjection) getCleanupPods(instance *chaosv1beta1.DependencyFailureInjection) ([]corev1.Pod, error) {
+	podsInNs := &corev1.PodList{}
+	listOptions := &client.ListOptions{}
+	listOptions = listOptions.InNamespace(instance.Namespace)
+	err := r.Client.List(context.TODO(), listOptions, podsInNs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter all pods in the same namespace as instance,
+	// only returning those owned by instance and which are cleanup pods
+	pods := make([]corev1.Pod, 0)
+	for _, pod := range podsInNs.Items {
+		for _, ownerReference := range pod.OwnerReferences {
+			if ownerReference.UID != instance.UID {
+				continue
+			}
+			if len(pod.Spec.Containers) > 0 && pod.Spec.Containers[0].Name == cleanupContainerName {
+				pods = append(pods, pod)
+			}
+		}
+	}
 	return pods, nil
 }
 
