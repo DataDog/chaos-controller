@@ -55,6 +55,14 @@ spec:
           - labelSelector
           type: object
         status:
+          properties:
+            finalizing:
+              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                of cluster Important: Run "make" to regenerate code after modifying
+                this file'
+              type: boolean
+          required:
+          - finalizing
           type: object
   version: v1beta1
 status:

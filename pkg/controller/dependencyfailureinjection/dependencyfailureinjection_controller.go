@@ -125,10 +125,28 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 		// The object is being deleted; call the clean finalizer
 		// to remove injected failures
 		if containsString(instance.ObjectMeta.Finalizers, cleanupFinalizer) {
-			if err := r.cleanFailures(instance); err != nil {
-				// if fail to clean injected dependency failures, return with error
-				// so that it can be retried
-				return reconcile.Result{}, err
+			if instance.Status.Finalizing == false {
+				if err := r.cleanFailures(instance); err != nil {
+					// if fail to clean injected dependency failures, return with error
+					// so that it can be retried
+					return reconcile.Result{}, err
+				}
+
+				// set the finalizing flag so we can remove the finalizers once the cleanup pod
+				// has finished its work
+				instance.Status.Finalizing = true
+				if err := r.Update(context.Background(), instance); err != nil {
+					return reconcile.Result{}, err
+				}
+
+				return reconcile.Result{}, nil
+			}
+
+			// check that cleanup pod has finished
+			for _, ownerReference := range instance.ObjectMeta.OwnerReferences {
+				// get pod object and check its status
+				// if not complete, just return nil and wait for the next round
+				// if complete, delete the finalizer so the crd can be garbage collected
 			}
 
 			// remove our finalizer from the list and update it.
