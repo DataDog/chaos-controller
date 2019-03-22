@@ -331,7 +331,7 @@ func (r *ReconcileDependencyFailureInjection) cleanFailures(instance *chaosv1bet
 
 		found := &corev1.Pod{}
 		err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-		if err != nil && errors.IsAlreadyExists(err) {
+		if err != nil && reflect.DeepEqual(pod.Spec, found.Spec) {
 			continue
 		} else if err != nil && !errors.IsNotFound(err) {
 			return err
