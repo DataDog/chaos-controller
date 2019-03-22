@@ -7,6 +7,9 @@ metadata:
     admission.datadoghq.com/mutate-pods: "true"
     admission.datadoghq.com/validate-pods: "true"
     admission.datadoghq.com/validate-services: "true"
+    chart_name: {{ $.Chart.Name }}
+    chart_version: {{ $.Chart.Version }}
+    team: {{ $.Values.team }}
   annotations:
     scheduler.alpha.kubernetes.io/defaultTolerations: |
       [{ "key": "node", "operator": "Equal", "value": "chaos-fi-controller", "effect": "NoSchedule" }]

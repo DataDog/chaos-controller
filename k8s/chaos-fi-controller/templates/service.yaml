@@ -3,10 +3,15 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
+    app: {{ $.Chart.Name }}
+    chart_name: {{ $.Chart.Name }}
+    chart_version: {{ $.Chart.Version }}
+    service: {{ $.Chart.Name }}
+    team: {{ $.Values.team }}
     control-plane: controller-manager
     controller-tools.k8s.io: "1.0"
   name: chaos-fi-controller-controller-manager-service
-  namespace: chaos-fi-controller
+  namespace: {{ $.Release.Namespace }}
 spec:
   ports:
   - port: 443

@@ -4,6 +4,12 @@ kind: ClusterRole
 metadata:
   creationTimestamp: null
   name: chaos-fi-controller-manager-role
+  labels:
+    app: {{ $.Chart.Name }}
+    chart_name: {{ $.Chart.Name }}
+    chart_version: {{ $.Chart.Version }}
+    service: {{ $.Chart.Name }}
+    team: {{ $.Values.team }}
 rules:
 - apiGroups:
   - ""

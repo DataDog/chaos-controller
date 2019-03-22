@@ -4,6 +4,12 @@ kind: ClusterRoleBinding
 metadata:
   creationTimestamp: null
   name: chaos-fi-controller-manager-rolebinding
+  labels:
+    app: {{ $.Chart.Name }}
+    chart_name: {{ $.Chart.Name }}
+    chart_version: {{ $.Chart.Version }}
+    service: {{ $.Chart.Name }}
+    team: {{ $.Values.team }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -11,4 +17,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: chaos-fi-controller
+  namespace: {{ $.Release.Namespace }}
