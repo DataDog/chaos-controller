@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -59,7 +60,11 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileDependencyFailureInjection{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileDependencyFailureInjection{
+		Client:   mgr.GetClient(),
+		scheme:   mgr.GetScheme(),
+		recorder: mgr.GetRecorder("dependencyfailureinjection-controller"),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -91,7 +96,8 @@ var _ reconcile.Reconciler = &ReconcileDependencyFailureInjection{}
 // ReconcileDependencyFailureInjection reconciles a DependencyFailureInjection object
 type ReconcileDependencyFailureInjection struct {
 	client.Client
-	scheme *runtime.Scheme
+	scheme   *runtime.Scheme
+	recorder record.EventRecorder
 }
 
 // Reconcile reads that state of the cluster for a DependencyFailureInjection object and makes changes based on the state read
@@ -101,6 +107,7 @@ type ReconcileDependencyFailureInjection struct {
 // +kubebuilder:rbac:groups=,resources=pods/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=dependencyfailureinjections,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=dependencyfailureinjections/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the DependencyFailureInjection instance
 	instance := &chaosv1beta1.DependencyFailureInjection{}
@@ -262,6 +269,7 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 		err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 		if err != nil && errors.IsNotFound(err) {
 			log.Info("Creating chaos pod", "namespace", pod.Namespace, "name", pod.Name, "nodename", nodeName)
+			r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for dependencyfailureinjection \"%s\"", instance.Name))
 			err = r.Create(context.TODO(), pod)
 			return reconcile.Result{}, err
 		} else if err != nil {
@@ -366,6 +374,7 @@ func (r *ReconcileDependencyFailureInjection) cleanFailures(instance *chaosv1bet
 		}
 
 		log.Info("Creating chaos cleanup pod", "namespace", pod.Namespace, "name", pod.Name, "containerid", containerID)
+		r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for dependencyfailureinjection \"%s\"", instance.Name))
 		err = r.Create(context.TODO(), pod)
 		if err != nil {
 			return err
