@@ -34,14 +34,16 @@ type DependencyFailureInjectionSpec struct {
 // DependencyFailureInjectionSpecFailure defines the failure spec
 type DependencyFailureInjectionSpecFailure struct {
 	Host        string `json:"host"`
-	Port        string `json:"port"`
+	Port        int    `json:"port"`
 	Probability int    `json:"probability"`
+	Protocol    string `json:"protocol"`
 }
 
 // DependencyFailureInjectionStatus defines the observed state of DependencyFailureInjection
 type DependencyFailureInjectionStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Finalizing bool `json:"finalizing"`
 }
 
 // +genclient
