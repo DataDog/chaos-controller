@@ -5,8 +5,13 @@ metadata:
   labels:
     control-plane: controller-manager
     controller-tools.k8s.io: "1.0"
+    app: {{ $.Chart.Name }}
+    chart_name: {{ $.Chart.Name }}
+    chart_version: {{ $.Chart.Version }}
+    service: {{ $.Chart.Name }}
+    team: {{ $.Values.team }}
   name: chaos-fi-controller-controller-manager
-  namespace: chaos-fi-controller
+  namespace: {{ $.Release.Namespace }}
 spec:
   selector:
     matchLabels:
@@ -18,6 +23,11 @@ spec:
       labels:
         control-plane: controller-manager
         controller-tools.k8s.io: "1.0"
+        app: {{ $.Chart.Name }}
+        chart_name: {{ $.Chart.Name }}
+        chart_version: {{ $.Chart.Version }}
+        service: {{ $.Chart.Name }}
+        team: {{ $.Values.team }}
     spec:
       containers:
       - args:
@@ -41,7 +51,7 @@ spec:
               fieldPath: metadata.namespace
         - name: SECRET_NAME
           value: chaos-fi-controller-webhook-server-secret
-        image: eu.gcr.io/datadog-staging/chaos-fi-controller:0.0.1
+        image: "{{ $.Values.global.docker.registry }}/{{ $.Values.image.name }}:{{ $.Values.image.tag }}"
         imagePullPolicy: Always
         name: manager
         ports:

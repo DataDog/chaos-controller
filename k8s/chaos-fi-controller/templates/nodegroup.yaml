@@ -5,11 +5,12 @@ metadata:
   name: chaos-fi-controller
   namespace: chaos-fi-controller
   labels:
-    team: sre
+    chart_name: {{ $.Chart.Name }}
+    team: {{ $.Values.team }}
 spec:
   kubelet:
     labels:
-      team: sre
+      team: {{ $.Values.team }}
   aws:
     group:
     launchConfiguration:
