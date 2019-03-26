@@ -35,14 +35,18 @@ spec:
                 host:
                   type: string
                 port:
-                  type: string
+                  format: int64
+                  type: integer
                 probability:
                   format: int64
                   type: integer
+                protocol:
+                  type: string
               required:
               - host
               - port
               - probability
+              - protocol
               type: object
             labelSelector:
               type: string
@@ -51,6 +55,14 @@ spec:
           - labelSelector
           type: object
         status:
+          properties:
+            finalizing:
+              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                of cluster Important: Run "make" to regenerate code after modifying
+                this file'
+              type: boolean
+          required:
+          - finalizing
           type: object
   version: v1beta1
 status:
