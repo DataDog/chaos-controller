@@ -1,5 +1,0 @@
----
-global:
-  docker:
-    registry: PLACEHOLDER
-    pullPolicy: IfNotPresent
