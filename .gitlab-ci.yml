@@ -1,0 +1,64 @@
+---
+variables:
+  CURRENT_CI_IMAGE: 0.0.1
+  CURRENT_IMAGE: 0.0.1
+
+stages:
+  - ci-image
+  - build
+  - release
+
+# CI image
+.docker-runner: &docker-runner
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker:18.03.1
+  tags:
+    - "runner:docker"
+    - "size:large"
+
+ci-image:
+  <<: *docker-runner
+  stage: ci-image
+  when: manual
+  except: [tags, schedules]
+  script:
+    - docker build --tag 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/chaos-fi-controller:$CURRENT_CI_IMAGE ci
+    - docker push 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/chaos-fi-controller:$CURRENT_CI_IMAGE
+
+# main
+.common: &common
+  tags:
+    - "runner:main"
+    - "size:large"
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/chaos-fi-controller:$CURRENT_CI_IMAGE
+
+build:make:
+  <<: *common
+  stage: build
+  when: always
+  script:
+    - make
+
+.release: &release
+  <<: *docker-runner
+  stage: release
+  when: manual
+  variables:
+    ACCOUNT: PLACEHOLDER
+  script:
+    - docker build --tag $ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/chaos-fi-controller:$CURRENT_IMAGE .
+    - docker push $ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/chaos-fi-controller:$CURRENT_IMAGE
+
+release:build-stable:
+  <<: *release
+  variables:
+    ACCOUNT: 486234852809
+
+release:staging:
+  <<: *release
+  variables:
+    ACCOUNT: 727006795293
+
+release:prod:
+  <<: *release
+  variables:
+    ACCOUNT: 464622532012
