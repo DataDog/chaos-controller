@@ -36,7 +36,7 @@ func TestStorageNetworkFailureInjection(t *testing.T) {
 			Name:      "foo",
 			Namespace: "default",
 		},
-		Spec: DependencyFailureInjectionSpec{
+		Spec: NetworkFailureInjectionSpec{
 			Selector: labels.Set{
 				"foo": "bar",
 			},

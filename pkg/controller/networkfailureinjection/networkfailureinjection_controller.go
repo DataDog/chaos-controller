@@ -141,7 +141,7 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 		if containsString(instance.ObjectMeta.Finalizers, cleanupFinalizer) {
 			if instance.Status.Finalizing == false {
 				if err := r.cleanFailures(instance); err != nil {
-					// if fail to clean injected dependency failures, return with error
+					// if fail to clean injected network failures, return with error
 					// so that it can be retried
 					return reconcile.Result{}, err
 				}
@@ -294,7 +294,7 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 }
 
 // cleanFailures gets called for NetworkFailureInjection objects with the cleanupFinalizer finalizer.
-// A chaos pod will get created that cleans up injected dependency failures.
+// A chaos pod will get created that cleans up injected network failures.
 func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.NetworkFailureInjection) error {
 	isPrivileged := true
 	hostPathType := corev1.HostPathType("Directory")
@@ -387,27 +387,17 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 	return nil
 }
 
-<<<<<<< HEAD:pkg/controller/dependencyfailureinjection/dependencyfailureinjection_controller.go
-// getMatchingPods returns a PodList containing all pods matching the DependencyFailureInjection's label selector and namespace.
-func (r *ReconcileDependencyFailureInjection) getMatchingPods(instance *chaosv1beta1.DependencyFailureInjection) (*corev1.PodList, error) {
+// getMatchingPods returns a PodList containing all pods matching the NetworkFailureInjection's label selector and namespace.
+func (r *ReconcileNetworkFailureInjection) getMatchingPods(instance *chaosv1beta1.NetworkFailureInjection) (*corev1.PodList, error) {
 	// We want to ensure we never run into the possibility of using an empty label selector
 	labelSelector := instance.Spec.Selector
 	if len(labelSelector) < 1 || labelSelector == nil {
-		err := fmt.Errorf("DFI '%s' in namespace '%s' is missing a label selector", instance.Name, instance.Namespace)
+		err := fmt.Errorf("nfi '%s' in namespace '%s' is missing a label selector", instance.Name, instance.Namespace)
 		log.Error(err, "missing label selector", "namespace", instance.Namespace, "name", instance.Name)
-=======
-// getMatchingPods returns a PodList containing all pods matching the NetworkFailureInjection's label selector.
-func (r *ReconcileNetworkFailureInjection) getMatchingPods(instance *chaosv1beta1.NetworkFailureInjection) (*corev1.PodList, error) {
-	// Fetch pods from label selector
-	labelSelector := instance.Spec.LabelSelector
-	listOptions := &client.ListOptions{}
-	err := listOptions.SetLabelSelector(labelSelector)
-	if err != nil {
->>>>>>> be350f8... rename DependencyFailureInjection -> NetworkFailureInjection:pkg/controller/networkfailureinjection/networkfailureinjection_controller.go
 		return nil, err
 	}
 
-	// Filter pods based on the DFI's label selector, and only consider those within the same namespace as the DFI
+	// Filter pods based on the nfi's label selector, and only consider those within the same namespace as the nfi
 	listOptions := &client.ListOptions{
 		LabelSelector: labelSelector.AsSelector(),
 		Namespace:     instance.Namespace,
