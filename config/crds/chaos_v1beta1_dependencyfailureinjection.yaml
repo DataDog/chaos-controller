@@ -48,11 +48,11 @@ spec:
               - probability
               - protocol
               type: object
-            labelSelector:
-              type: string
+            selector:
+              type: object
           required:
           - failure
-          - labelSelector
+          - selector
           type: object
         status:
           properties:

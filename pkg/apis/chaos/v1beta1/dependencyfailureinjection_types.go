@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -27,8 +28,8 @@ import (
 type DependencyFailureInjectionSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Failure       DependencyFailureInjectionSpecFailure `json:"failure"`
-	LabelSelector string                                `json:"labelSelector"`
+	Failure  DependencyFailureInjectionSpecFailure `json:"failure"`
+	Selector labels.Set                            `json:"selector"`
 }
 
 // DependencyFailureInjectionSpecFailure defines the failure spec

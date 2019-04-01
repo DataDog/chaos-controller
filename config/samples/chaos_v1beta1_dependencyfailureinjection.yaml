@@ -11,4 +11,5 @@ spec:
     port: 80
     probability: 50
     protocol: tcp
-  labelSelector: "app=chaos-fi-demo-curl"
+  selector:
+    app: chaos-fi-demo-curl

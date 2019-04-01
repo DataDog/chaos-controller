@@ -20,6 +20,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	labels "k8s.io/apimachinery/pkg/labels"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -28,7 +29,7 @@ func (in *DependencyFailureInjection) DeepCopyInto(out *DependencyFailureInjecti
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
-	out.Spec = in.Spec
+	in.Spec.DeepCopyInto(&out.Spec)
 	out.Status = in.Status
 	return
 }
@@ -88,6 +89,13 @@ func (in *DependencyFailureInjectionList) DeepCopyObject() runtime.Object {
 func (in *DependencyFailureInjectionSpec) DeepCopyInto(out *DependencyFailureInjectionSpec) {
 	*out = *in
 	out.Failure = in.Failure
+	if in.Selector != nil {
+		in, out := &in.Selector, &out.Selector
+		*out = make(labels.Set, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 
