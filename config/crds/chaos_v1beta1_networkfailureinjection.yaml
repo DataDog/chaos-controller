@@ -11,7 +11,7 @@ spec:
     kind: NetworkFailureInjection
     plural: networkfailureinjections
     shortNames:
-      - nfi
+    - nfi
   scope: Namespaced
   validation:
     openAPIV3Schema:

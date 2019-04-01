@@ -52,6 +52,7 @@ type NetworkFailureInjectionStatus struct {
 
 // NetworkFailureInjection is the Schema for the networkfailureinjections API
 // +k8s:openapi-gen=true
+// +kubebuilder:resource:shortName=nfi
 type NetworkFailureInjection struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
