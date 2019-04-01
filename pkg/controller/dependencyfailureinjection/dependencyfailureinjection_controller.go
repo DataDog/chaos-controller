@@ -386,15 +386,11 @@ func (r *ReconcileDependencyFailureInjection) cleanFailures(instance *chaosv1bet
 // getMatchingPods returns a PodList containing all pods matching the DependencyFailureInjection's label selector.
 func (r *ReconcileDependencyFailureInjection) getMatchingPods(instance *chaosv1beta1.DependencyFailureInjection) (*corev1.PodList, error) {
 	// Fetch pods from label selector
-	labelSelector := instance.Spec.LabelSelector
-	listOptions := &client.ListOptions{}
-	err := listOptions.SetLabelSelector(labelSelector)
-	if err != nil {
-		return nil, err
-	}
+	labelSelector := instance.Spec.Selector.AsSelector()
+	listOptions := &client.ListOptions{LabelSelector: labelSelector}
 
 	pods := &corev1.PodList{}
-	err = r.Client.List(context.TODO(), listOptions, pods)
+	err := r.Client.List(context.TODO(), listOptions, pods)
 	if err != nil {
 		return nil, err
 	}

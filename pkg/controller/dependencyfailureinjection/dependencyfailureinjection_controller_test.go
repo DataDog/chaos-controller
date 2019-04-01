@@ -89,7 +89,7 @@ func TestReconcile(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: chaosv1beta1.DependencyFailureInjectionSpec{
-			LabelSelector: "foo=bar",
+			Selector: map[string]string{"foo": "bar"},
 			Failure: chaosv1beta1.DependencyFailureInjectionSpecFailure{
 				Host:        "127.0.0.1",
 				Port:        80,
