@@ -17,10 +17,10 @@ limitations under the License.
 package controller
 
 import (
-	"github.com/DataDog/chaos-fi-controller/pkg/controller/dependencyfailureinjection"
+	"github.com/DataDog/chaos-fi-controller/pkg/controller/networkfailureinjection"
 )
 
 func init() {
 	// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
-	AddToManagerFuncs = append(AddToManagerFuncs, dependencyfailureinjection.Add)
+	AddToManagerFuncs = append(AddToManagerFuncs, networkfailureinjection.Add)
 }
