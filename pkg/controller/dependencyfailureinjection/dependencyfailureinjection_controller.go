@@ -392,10 +392,12 @@ func (r *ReconcileDependencyFailureInjection) getMatchingPods(instance *chaosv1b
 		log.Error(err, "missing label selector", "namespace", instance.Namespace, "name", instance.Name)
 		return nil, err
 	}
-	listOptions := &client.ListOptions{LabelSelector: labelSelector.AsSelector()}
 
-	// In addition to using a label selector, only return pods in the same namespace as the DFI
-	listOptions.InNamespace(instance.Namespace)
+	// Filter pods based on the DFI's label selector, and only consider those within the same namespace as the DFI
+	listOptions := &client.ListOptions{
+		LabelSelector: labelSelector.AsSelector(),
+		Namespace:     instance.Namespace,
+	}
 
 	// Fetch pods from label selector
 	pods := &corev1.PodList{}
