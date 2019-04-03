@@ -394,6 +394,9 @@ func (r *ReconcileDependencyFailureInjection) getMatchingPods(instance *chaosv1b
 	}
 	listOptions := &client.ListOptions{LabelSelector: labelSelector.AsSelector()}
 
+	// In addition to using a label selector, only return pods in the same namespace as the DFI
+	listOptions.InNamespace(instance.Namespace)
+
 	// Fetch pods from label selector
 	pods := &corev1.PodList{}
 	err := r.Client.List(context.TODO(), listOptions, pods)
