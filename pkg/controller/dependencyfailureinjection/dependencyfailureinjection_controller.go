@@ -19,6 +19,7 @@ package dependencyfailureinjection
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -43,6 +44,9 @@ import (
 const (
 	cleanupContainerName = "chaos-fi-cleanup"
 	cleanupFinalizer     = "clean.dfi.finalizer.datadog.com"
+
+	// ChaosFailureInjectionImageVariableName is the name of the chaos failure injection image variable
+	ChaosFailureInjectionImageVariableName = "CHAOS_FI_IMAGE"
 )
 
 var log = logf.Log.WithName("controller")
@@ -207,7 +211,7 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 				Containers: []corev1.Container{
 					{
 						Name:            "chaos-fi-inject",
-						Image:           "eu.gcr.io/datadog-staging/chaos-fi:0.0.1",
+						Image:           os.Getenv(ChaosFailureInjectionImageVariableName),
 						ImagePullPolicy: "Always",
 						Command:         []string{"cmd"},
 						Args: []string{
@@ -319,7 +323,7 @@ func (r *ReconcileDependencyFailureInjection) cleanFailures(instance *chaosv1bet
 				Containers: []corev1.Container{
 					{
 						Name:            cleanupContainerName,
-						Image:           "eu.gcr.io/datadog-staging/chaos-fi:0.0.1",
+						Image:           os.Getenv(ChaosFailureInjectionImageVariableName),
 						ImagePullPolicy: "Always",
 						Command:         []string{"cmd"},
 						Args:            []string{"clean", "--container-id", containerID},
