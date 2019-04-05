@@ -1,7 +1,6 @@
 ---
 variables:
-  CURRENT_CI_IMAGE: 0.0.1
-  CURRENT_IMAGE: 0.0.2
+  CURRENT_CI_IMAGE: 0.0.2
 
 stages:
   - ci-image
@@ -38,27 +37,30 @@ build:make:
   script:
     - make
 
+# release
 .release: &release
-  <<: *docker-runner
+  <<: *common
+  tags:
+    - "runner:docker"
+    - "size:large"
   stage: release
-  when: manual
-  variables:
-    ACCOUNT: PLACEHOLDER
   script:
-    - docker build --tag $ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/chaos-fi-controller:$CURRENT_IMAGE .
-    - docker push $ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/chaos-fi-controller:$CURRENT_IMAGE
+    - env
+    - ./ci/release.sh
 
-release:build-stable:
+release-ref:
   <<: *release
+  when: manual
+  except:
+    - tags
   variables:
-    ACCOUNT: 486234852809
+    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
 
-release:staging:
+release-tag:
   <<: *release
+  when: always
+  only:
+    - tags
+    - master
   variables:
-    ACCOUNT: 727006795293
-
-release:prod:
-  <<: *release
-  variables:
-    ACCOUNT: 464622532012
+    TAG: "${CI_COMMIT_TAG}"
