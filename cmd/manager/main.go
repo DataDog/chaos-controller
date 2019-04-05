@@ -18,10 +18,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/DataDog/chaos-fi-controller/pkg/apis"
 	"github.com/DataDog/chaos-fi-controller/pkg/controller"
+	dfi "github.com/DataDog/chaos-fi-controller/pkg/controller/dependencyfailureinjection"
 	"github.com/DataDog/chaos-fi-controller/pkg/webhook"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -36,6 +38,13 @@ func main() {
 	flag.Parse()
 	logf.SetLogger(logf.ZapLogger(false))
 	log := logf.Log.WithName("entrypoint")
+
+	// Ensure CHAOS_FI_IMAGE variable is set
+	image := os.Getenv(dfi.ChaosFailureInjectionImageVariableName)
+	if image == "" {
+		log.Error(nil, fmt.Sprintf("the %s variable must be set", dfi.ChaosFailureInjectionImageVariableName))
+		os.Exit(1)
+	}
 
 	// Get a config to talk to the apiserver
 	log.Info("setting up client for manager")

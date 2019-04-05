@@ -1,7 +1,7 @@
 ---
 variables:
   CURRENT_CI_IMAGE: 0.0.1
-  CURRENT_IMAGE: 0.0.1
+  CURRENT_IMAGE: 0.0.2
 
 stages:
   - ci-image
