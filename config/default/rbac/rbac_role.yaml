@@ -27,7 +27,7 @@ rules:
 - apiGroups:
   - chaos.datadoghq.com
   resources:
-  - dependencyfailureinjections
+  - networkfailureinjections
   verbs:
   - get
   - list
@@ -39,7 +39,7 @@ rules:
 - apiGroups:
   - chaos.datadoghq.com
   resources:
-  - dependencyfailureinjections/status
+  - networkfailureinjections/status
   verbs:
   - get
   - update

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dependencyfailureinjection
+package networkfailureinjection
 
 import (
 	"testing"
@@ -36,7 +36,7 @@ var c client.Client
 
 var (
 	expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-	dfiKey          = types.NamespacedName{Name: "foo", Namespace: "default"}
+	nfiKey          = types.NamespacedName{Name: "foo", Namespace: "default"}
 	injectPodKey    = types.NamespacedName{Name: "foo-inject-foo-pod-pod", Namespace: "default"}
 	cleanupPodKey   = types.NamespacedName{Name: "foo-cleanup-foo-pod-pod", Namespace: "default"}
 )
@@ -62,7 +62,7 @@ func TestReconcile(t *testing.T) {
 		mgrStopped.Wait()
 	}()
 
-	// Create a pod for the DependencyFailureInjection to target
+	// Create a pod for the NetworkFailureInjection to target
 	targetPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo-pod",
@@ -82,15 +82,15 @@ func TestReconcile(t *testing.T) {
 	g.Expect(err).NotTo(gomega.HaveOccurred())
 	defer c.Delete(context.TODO(), targetPod)
 
-	// Create the DependencyFailureInjection object and expect the Reconcile request and inject pod to be created
-	instance := &chaosv1beta1.DependencyFailureInjection{
+	// Create the NetworkFailureInjection object and expect the Reconcile request and inject pod to be created
+	instance := &chaosv1beta1.NetworkFailureInjection{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
-		Spec: chaosv1beta1.DependencyFailureInjectionSpec{
+		Spec: chaosv1beta1.NetworkFailureInjectionSpec{
 			Selector: map[string]string{"foo": "bar"},
-			Failure: chaosv1beta1.DependencyFailureInjectionSpecFailure{
+			Failure: chaosv1beta1.NetworkFailureInjectionSpecFailure{
 				Host:        "127.0.0.1",
 				Port:        80,
 				Probability: 0,
@@ -113,19 +113,19 @@ func TestReconcile(t *testing.T) {
 		Should(gomega.Succeed())
 	defer c.Delete(context.TODO(), injectPod)
 
-	// Delete the DFI and expect Reconcile to be called for the DFI deletion,
+	// Delete the NFI and expect Reconcile to be called for the NFI deletion,
 	// and expect the cleanup pod to be created
 	g.Expect(c.Delete(context.TODO(), instance)).NotTo(gomega.HaveOccurred())
 	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
-	g.Eventually(func() error { return c.Get(context.TODO(), dfiKey, instance) }, timeout).
+	g.Eventually(func() error { return c.Get(context.TODO(), nfiKey, instance) }, timeout).
 		Should(gomega.Succeed())
 	cleanupPod := &corev1.Pod{}
 	g.Eventually(func() error { return c.Get(context.TODO(), cleanupPodKey, cleanupPod) }, timeout).
 		Should(gomega.Succeed())
 	defer c.Delete(context.TODO(), cleanupPod)
 
-	// Manually delete DFI since GC isn't enabled in the test control plane
+	// Manually delete NFI since GC isn't enabled in the test control plane
 	g.Eventually(func() error { return c.Delete(context.TODO(), instance) }, timeout).
-		Should(gomega.MatchError("DependencyFailureInjection \"foo\" not found"))
+		Should(gomega.MatchError("NetworkFailureInjection \"foo\" not found"))
 
 }
