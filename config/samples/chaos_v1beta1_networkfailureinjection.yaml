@@ -1,9 +1,9 @@
 apiVersion: chaos.datadoghq.com/v1beta1
-kind: DependencyFailureInjection
+kind: NetworkFailureInjection
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: dependencyfailureinjection-sample
+  name: networkfailureinjection-sample
   namespace: sre
 spec:
   failure:

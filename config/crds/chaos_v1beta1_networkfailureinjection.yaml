@@ -4,12 +4,14 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: dependencyfailureinjections.chaos.datadoghq.com
+  name: networkfailureinjections.chaos.datadoghq.com
 spec:
   group: chaos.datadoghq.com
   names:
-    kind: DependencyFailureInjection
-    plural: dependencyfailureinjections
+    kind: NetworkFailureInjection
+    plural: networkfailureinjections
+    shortNames:
+    - nfi
   scope: Namespaced
   validation:
     openAPIV3Schema:

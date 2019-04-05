@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dependencyfailureinjection
+package networkfailureinjection
 
 import (
 	"context"
@@ -43,7 +43,7 @@ import (
 
 const (
 	cleanupContainerName = "chaos-fi-cleanup"
-	cleanupFinalizer     = "clean.dfi.finalizer.datadog.com"
+	cleanupFinalizer     = "clean.nfi.finalizer.datadog.com"
 
 	// ChaosFailureInjectionImageVariableName is the name of the chaos failure injection image variable
 	ChaosFailureInjectionImageVariableName = "CHAOS_FI_IMAGE"
@@ -56,7 +56,7 @@ var log = logf.Log.WithName("controller")
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new DependencyFailureInjection Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
+// Add creates a new NetworkFailureInjection Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -64,29 +64,29 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileDependencyFailureInjection{
+	return &ReconcileNetworkFailureInjection{
 		Client:   mgr.GetClient(),
 		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetRecorder("dependencyfailureinjection-controller"),
+		recorder: mgr.GetRecorder("networkfailureinjection-controller"),
 	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("dependencyfailureinjection-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("networkfailureinjection-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to DependencyFailureInjection
-	err = c.Watch(&source.Kind{Type: &chaosv1beta1.DependencyFailureInjection{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to NetworkFailureInjection
+	err = c.Watch(&source.Kind{Type: &chaosv1beta1.NetworkFailureInjection{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &chaosv1beta1.DependencyFailureInjection{},
+		OwnerType:    &chaosv1beta1.NetworkFailureInjection{},
 	})
 	if err != nil {
 		return err
@@ -95,26 +95,26 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileDependencyFailureInjection{}
+var _ reconcile.Reconciler = &ReconcileNetworkFailureInjection{}
 
-// ReconcileDependencyFailureInjection reconciles a DependencyFailureInjection object
-type ReconcileDependencyFailureInjection struct {
+// ReconcileNetworkFailureInjection reconciles a NetworkFailureInjection object
+type ReconcileNetworkFailureInjection struct {
 	client.Client
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 }
 
-// Reconcile reads that state of the cluster for a DependencyFailureInjection object and makes changes based on the state read
-// and what is in the DependencyFailureInjection.Spec
+// Reconcile reads that state of the cluster for a NetworkFailureInjection object and makes changes based on the state read
+// and what is in the NetworkFailureInjection.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=,resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=,resources=pods/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=dependencyfailureinjections,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=dependencyfailureinjections/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=networkfailureinjections,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=networkfailureinjections/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
-func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// Fetch the DependencyFailureInjection instance
-	instance := &chaosv1beta1.DependencyFailureInjection{}
+func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	// Fetch the NetworkFailureInjection instance
+	instance := &chaosv1beta1.NetworkFailureInjection{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -141,7 +141,7 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 		if containsString(instance.ObjectMeta.Finalizers, cleanupFinalizer) {
 			if instance.Status.Finalizing == false {
 				if err := r.cleanFailures(instance); err != nil {
-					// if fail to clean injected dependency failures, return with error
+					// if fail to clean injected network failures, return with error
 					// so that it can be retried
 					return reconcile.Result{}, err
 				}
@@ -161,11 +161,11 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 				return reconcile.Result{}, err
 			}
 
-			log.Info("Checking status of cleanup pods before deleting DFI", "numCleanupPods", len(cleanupPods), "DependencyFailureInjection", instance.Name)
+			log.Info("Checking status of cleanup pods before deleting NFI", "numCleanupPods", len(cleanupPods), "NetworkFailureInjection", instance.Name)
 
 			for _, cleanupPod := range cleanupPods {
 				if cleanupPod.Status.Phase != corev1.PodSucceeded {
-					log.Info("Cleanup pod has not completed, retrying DFI deletion", "DependencyFailureInjection", instance.Name, "cleanupPod", cleanupPod.Name, "phase", cleanupPod.Status.Phase)
+					log.Info("Cleanup pod has not completed, retrying NFI deletion", "NetworkFailureInjection", instance.Name, "cleanupPod", cleanupPod.Name, "phase", cleanupPod.Status.Phase)
 					return reconcile.Result{}, nil
 				}
 			}
@@ -181,7 +181,7 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 		return reconcile.Result{}, nil
 	}
 
-	// Get pods matching the DependencyFailureInjection's label selector
+	// Get pods matching the NetworkFailureInjection's label selector
 	pods, err := r.getMatchingPods(instance)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -273,7 +273,7 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 		err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 		if err != nil && errors.IsNotFound(err) {
 			log.Info("Creating chaos pod", "namespace", pod.Namespace, "name", pod.Name, "nodename", nodeName)
-			r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for dependencyfailureinjection \"%s\"", instance.Name))
+			r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for networkfailureinjection \"%s\"", instance.Name))
 			err = r.Create(context.TODO(), pod)
 			return reconcile.Result{}, err
 		} else if err != nil {
@@ -293,9 +293,9 @@ func (r *ReconcileDependencyFailureInjection) Reconcile(request reconcile.Reques
 	return reconcile.Result{}, nil
 }
 
-// cleanFailures gets called for DependencyFailureInjection objects with the cleanupFinalizer finalizer.
-// A chaos pod will get created that cleans up injected dependency failures.
-func (r *ReconcileDependencyFailureInjection) cleanFailures(instance *chaosv1beta1.DependencyFailureInjection) error {
+// cleanFailures gets called for NetworkFailureInjection objects with the cleanupFinalizer finalizer.
+// A chaos pod will get created that cleans up injected network failures.
+func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.NetworkFailureInjection) error {
 	isPrivileged := true
 	hostPathType := corev1.HostPathType("Directory")
 
@@ -378,7 +378,7 @@ func (r *ReconcileDependencyFailureInjection) cleanFailures(instance *chaosv1bet
 		}
 
 		log.Info("Creating chaos cleanup pod", "namespace", pod.Namespace, "name", pod.Name, "containerid", containerID)
-		r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for dependencyfailureinjection \"%s\"", instance.Name))
+		r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for networkfailureinjection \"%s\"", instance.Name))
 		err = r.Create(context.TODO(), pod)
 		if err != nil {
 			return err
@@ -387,17 +387,17 @@ func (r *ReconcileDependencyFailureInjection) cleanFailures(instance *chaosv1bet
 	return nil
 }
 
-// getMatchingPods returns a PodList containing all pods matching the DependencyFailureInjection's label selector and namespace.
-func (r *ReconcileDependencyFailureInjection) getMatchingPods(instance *chaosv1beta1.DependencyFailureInjection) (*corev1.PodList, error) {
+// getMatchingPods returns a PodList containing all pods matching the NetworkFailureInjection's label selector and namespace.
+func (r *ReconcileNetworkFailureInjection) getMatchingPods(instance *chaosv1beta1.NetworkFailureInjection) (*corev1.PodList, error) {
 	// We want to ensure we never run into the possibility of using an empty label selector
 	labelSelector := instance.Spec.Selector
 	if len(labelSelector) < 1 || labelSelector == nil {
-		err := fmt.Errorf("DFI '%s' in namespace '%s' is missing a label selector", instance.Name, instance.Namespace)
+		err := fmt.Errorf("nfi '%s' in namespace '%s' is missing a label selector", instance.Name, instance.Namespace)
 		log.Error(err, "missing label selector", "namespace", instance.Namespace, "name", instance.Name)
 		return nil, err
 	}
 
-	// Filter pods based on the DFI's label selector, and only consider those within the same namespace as the DFI
+	// Filter pods based on the nfi's label selector, and only consider those within the same namespace as the nfi
 	listOptions := &client.ListOptions{
 		LabelSelector: labelSelector.AsSelector(),
 		Namespace:     instance.Namespace,
@@ -413,8 +413,8 @@ func (r *ReconcileDependencyFailureInjection) getMatchingPods(instance *chaosv1b
 	return pods, nil
 }
 
-// getCleanupPods returns all cleanup pods created by the DependencyFailureInjection instance.
-func (r *ReconcileDependencyFailureInjection) getCleanupPods(instance *chaosv1beta1.DependencyFailureInjection) ([]corev1.Pod, error) {
+// getCleanupPods returns all cleanup pods created by the NetworkFailureInjection instance.
+func (r *ReconcileNetworkFailureInjection) getCleanupPods(instance *chaosv1beta1.NetworkFailureInjection) ([]corev1.Pod, error) {
 	podsInNs := &corev1.PodList{}
 	listOptions := &client.ListOptions{}
 	listOptions = listOptions.InNamespace(instance.Namespace)
@@ -441,7 +441,7 @@ func (r *ReconcileDependencyFailureInjection) getCleanupPods(instance *chaosv1be
 
 // getContainerdID gets the ID of the first container ID found in a Pod.
 // It expects container ids to follow the format "containerd://<ID>".
-func (r *ReconcileDependencyFailureInjection) getContainerdID(pod *corev1.Pod) (string, error) {
+func (r *ReconcileNetworkFailureInjection) getContainerdID(pod *corev1.Pod) (string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
 		return "", fmt.Errorf("Missing container ids for pod '%s'", pod.Name)
 	}

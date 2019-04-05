@@ -26,17 +26,17 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestStorageDependencyFailureInjection(t *testing.T) {
+func TestStorageNetworkFailureInjection(t *testing.T) {
 	key := types.NamespacedName{
 		Name:      "foo",
 		Namespace: "default",
 	}
-	created := &DependencyFailureInjection{
+	created := &NetworkFailureInjection{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
-		Spec: DependencyFailureInjectionSpec{
+		Spec: NetworkFailureInjectionSpec{
 			Selector: labels.Set{
 				"foo": "bar",
 			},
@@ -45,7 +45,7 @@ func TestStorageDependencyFailureInjection(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	// Test Create
-	fetched := &DependencyFailureInjection{}
+	fetched := &NetworkFailureInjection{}
 	g.Expect(c.Create(context.TODO(), created)).NotTo(gomega.HaveOccurred())
 
 	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())
