@@ -23,8 +23,10 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/pkg/apis/chaos/v1beta1"
+	"github.com/DataDog/chaos-fi-controller/pkg/datadog"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +49,8 @@ const (
 
 	// ChaosFailureInjectionImageVariableName is the name of the chaos failure injection image variable
 	ChaosFailureInjectionImageVariableName = "CHAOS_FI_IMAGE"
+
+	metricPrefix = "chaos.controller.nfi"
 )
 
 var log = logf.Log.WithName("controller")
@@ -113,8 +117,20 @@ type ReconcileNetworkFailureInjection struct {
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=networkfailureinjections/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// Fetch the NetworkFailureInjection instance
 	instance := &chaosv1beta1.NetworkFailureInjection{}
+	datadog.GetInstance().Incr(metricPrefix+".reconcile", nil, 1)
+	tsStart := time.Now()
+	defer func() func() {
+		return func() {
+			tags := []string{}
+			if instance.Name != "" {
+				tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
+			}
+			datadog.GetInstance().Timing(metricPrefix+".reconcile.duration", time.Since(tsStart), tags, 1)
+		}
+	}()()
+
+	// Fetch the NetworkFailureInjection instance
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -175,6 +191,7 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 			if err := r.Update(context.Background(), instance); err != nil {
 				return reconcile.Result{}, err
 			}
+			datadog.GetInstance().Timing(metricPrefix+".cleanup.duration", time.Since(tsStart), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 		}
 
 		// Our finalizer has finished, so the reconciler can do nothing.
@@ -264,18 +281,24 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 			},
 		}
 
+		// Link the NFI resource and the chaos pod for garbage collection
 		if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
 
-		// Check if the pod already exists
+		// Create the injection pod if it does not exist and continue the loop
 		found := &corev1.Pod{}
 		err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 		if err != nil && errors.IsNotFound(err) {
 			log.Info("Creating chaos pod", "namespace", pod.Namespace, "name", pod.Name, "nodename", nodeName)
-			r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for networkfailureinjection \"%s\"", instance.Name))
 			err = r.Create(context.TODO(), pod)
-			return reconcile.Result{}, err
+			if err != nil {
+				r.recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Failure injection pod for networkfailureinjection \"%s\" failed to be created", instance.Name))
+				return reconcile.Result{}, err
+			}
+			r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for networkfailureinjection \"%s\"", instance.Name))
+			datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+			continue
 		} else if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -290,6 +313,10 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 			}
 		}
 	}
+
+	// We reach this line only when every injection pods have been created with success
+	datadog.GetInstance().Timing(metricPrefix+".inject.duration", time.Since(tsStart), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+
 	return reconcile.Result{}, nil
 }
 
@@ -378,11 +405,13 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 		}
 
 		log.Info("Creating chaos cleanup pod", "namespace", pod.Namespace, "name", pod.Name, "containerid", containerID)
-		r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for networkfailureinjection \"%s\"", instance.Name))
 		err = r.Create(context.TODO(), pod)
 		if err != nil {
+			r.recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Cleanup pod for networkfailureinjection \"%s\" failed to be created", instance.Name))
 			return err
 		}
+		r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for networkfailureinjection \"%s\"", instance.Name))
+		datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:cleanup", "target:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 	}
 	return nil
 }
