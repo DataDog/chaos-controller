@@ -24,7 +24,9 @@ import (
 	"github.com/DataDog/chaos-fi-controller/pkg/apis"
 	"github.com/DataDog/chaos-fi-controller/pkg/controller"
 	nfi "github.com/DataDog/chaos-fi-controller/pkg/controller/networkfailureinjection"
+	"github.com/DataDog/chaos-fi-controller/pkg/datadog"
 	"github.com/DataDog/chaos-fi-controller/pkg/webhook"
+	"github.com/DataDog/datadog-go/statsd"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -38,6 +40,14 @@ func main() {
 	flag.Parse()
 	logf.SetLogger(logf.ZapLogger(false))
 	log := logf.Log.WithName("entrypoint")
+
+	// Emit a restart event
+	datadog.GetInstance().Incr("chaos.controller.restart", nil, 1)
+	err := datadog.GetInstance().Event(statsd.NewEvent("chaos-fi-controller has been restarted", "the chaos-fi-controller manager has been restarted"))
+	if err != nil {
+		log.Error(err, "error while sending the restart event")
+		os.Exit(1)
+	}
 
 	// Ensure CHAOS_FI_IMAGE variable is set
 	image := os.Getenv(nfi.ChaosFailureInjectionImageVariableName)
