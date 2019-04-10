@@ -61,6 +61,5 @@ release-tag:
   when: always
   only:
     - tags
-    - master
   variables:
     TAG: "${CI_COMMIT_TAG}"
