@@ -55,11 +55,6 @@ const (
 
 var log = logf.Log.WithName("controller")
 
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
-
 // Add creates a new NetworkFailureInjection Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -303,16 +298,6 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 		} else if err != nil {
 			return reconcile.Result{}, err
 		}
-
-		// Update the found object and write the result back if there are any changes
-		if !reflect.DeepEqual(pod.Spec, found.Spec) {
-			found.Spec = pod.Spec
-			log.Info("Updating chaos pod", "namespace", pod.Namespace, "name", pod.Name, "nodename", nodeName)
-			err = r.Update(context.TODO(), found)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		}
 	}
 
 	// We reach this line only when every injection pods have been created with success
@@ -396,14 +381,18 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 			return err
 		}
 
+		// Check if cleanup pod already exists
 		found := &corev1.Pod{}
 		err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+		// Do nothing if cleanup pod already exists, or else
+		// retry Reconcile if we get an error other than the cleanup pod does not exist
 		if err != nil && reflect.DeepEqual(pod.Spec, found.Spec) {
 			continue
 		} else if err != nil && !errors.IsNotFound(err) {
 			return err
 		}
 
+		// Create the cleanup pod
 		log.Info("Creating chaos cleanup pod", "namespace", pod.Namespace, "name", pod.Name, "containerid", containerID)
 		err = r.Create(context.TODO(), pod)
 		if err != nil {
