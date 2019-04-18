@@ -17,7 +17,7 @@ It'll then automatically run jobs to push the image with the defined tag on ever
 
 ## Re-generating the CRD
 
-When the API package is changed, the CRD (custom resource definition) must be re-generated. To achieve that, just run the `make` command (or `make generate` if you don't want to trigger tests and linters, not recommended).
+When the API package is changed, the CRD (custom resource definition) must be re-generated. To achieve that, just run the `make` command (or `make generate` if you don't want to trigger linters, not recommended).
 
 ## Force deleting the CRD 
 If you need to delete an existing CRD object from a cluster, you will need to remove the finalizer `clean.nfi.finalizer.datadog.com`.
@@ -26,5 +26,51 @@ This can be done by first editing the object, and then deleting it:
 ```bash
 k edit nfi {NAME}
 # remove finalizer
+# Alternatively, you can run k patch nfi/{NAME} -p '{"metadata":{"finalizers":[]}}' --type=merge
 k delete nfi {NAME}
 ```
+
+## Testing
+
+Tests are found under the `/pkg` directory, in `*test.go` files.
+
+### Running tests
+
+The controller tests should be run in `minikube`, since they **will actually create Kubernetes objects**.
+
+The tests use the [test environment][test-env] supplied by [controller-runtime][controller-runtime], but this does not
+currently support the [controller-manager][controller-manager-support]. As such, testing within an actual cluster provides the best means of testing the controller's actual behaviour.
+
+**Note: the test environment does not have garbage collection.**
+
+### Requirements:
+
+* [minikube][minikube] **running as the current context**
+* [Ginkgo](https://github.com/onsi/ginkgo)
+  ```bash
+  go get -u github.com/onsi/ginkgo/ginkgo
+  ```
+* [Gomega](https://github.com/onsi/gomega)
+    ```bash
+  go get -u github.com/onsi/gomega/...
+  ```
+
+### Running tests
+
+You can use the supplied `Makefile` and run
+```bash
+make test
+```
+
+For more detailed output, run
+```bash
+ginkgo -v -coverprofile=cover.out -r ./pkg/... ./cmd/...
+```
+
+### Adding tests
+Please ensure that any added tests handle deletion of created resources, since the [test environment][test-env] does not support garbage collection.
+
+[minikube]: https://kubernetes.io/docs/setup/minikube/
+[test-env]: https://godoc.org/sigs.k8s.io/controller-runtime/pkg/envtest
+[controller-runtime]: https://github.com/kubernetes-sigs/controller-runtime
+[controller-manager-support]: https://github.com/kubernetes-sigs/testing_frameworks/pull/41
