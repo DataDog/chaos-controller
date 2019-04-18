@@ -5,10 +5,13 @@ IMG ?= controller:latest
 all: manager
 
 # Run tests
-# For better test output: ginkgo -v -coverprofile=cover.out -r ./pkg/... ./cmd/...
+# For more detailed test output, use test-ginkgo
 test: generate fmt vet manifests
 	go test ./pkg/... ./cmd/... -coverprofile cover.out -ginkgo.v
 
+test-ginkgo: generate fmt vet manifests
+	ginkgo -v -coverprofile=cover.out -r ./pkg/... ./cmd/...
+	
 # Build manager binary
 manager: generate fmt vet
 	go build -o bin/manager github.com/DataDog/chaos-fi-controller/cmd/manager

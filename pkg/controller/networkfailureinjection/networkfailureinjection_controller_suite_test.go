@@ -23,8 +23,10 @@ import (
 	"sync"
 	"testing"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"github.com/DataDog/chaos-fi-controller/pkg/apis"
-	"github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -34,20 +36,24 @@ import (
 
 var cfg *rest.Config
 
-func TestMain(m *testing.M) {
-	t := &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "crds")},
+func TestMain(t *testing.T) {
+	RegisterFailHandler(Fail)
+
+	// Start the testing environment using the current Kubernetes context.
+	e := &envtest.Environment{
+		CRDDirectoryPaths:  []string{filepath.Join("..", "..", "..", "config", "crds")},
+		UseExistingCluster: true,
 	}
 	apis.AddToScheme(scheme.Scheme)
 
 	var err error
-	if cfg, err = t.Start(); err != nil {
+	defer e.Stop()
+	if cfg, err = e.Start(); err != nil {
 		stdlog.Fatal(err)
+		os.Exit(1)
 	}
 
-	code := m.Run()
-	t.Stop()
-	os.Exit(code)
+	RunSpecs(t, "Controller Suite")
 }
 
 // SetupTestReconcile returns a reconcile.Reconcile implementation that delegates to inner and
@@ -63,13 +69,14 @@ func SetupTestReconcile(inner reconcile.Reconciler) (reconcile.Reconciler, chan 
 }
 
 // StartTestManager adds recFn
-func StartTestManager(mgr manager.Manager, g *gomega.GomegaWithT) (chan struct{}, *sync.WaitGroup) {
+func StartTestManager(mgr manager.Manager) (chan struct{}, *sync.WaitGroup) {
 	stop := make(chan struct{})
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
+		defer GinkgoRecover()
 		defer wg.Done()
-		g.Expect(mgr.Start(stop)).NotTo(gomega.HaveOccurred())
+		Expect(mgr.Start(stop)).NotTo(HaveOccurred())
 	}()
 	return stop, wg
 }

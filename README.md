@@ -57,14 +57,21 @@ currently support the [controller-manager][controller-manager-support]. As such,
 
 ### Running tests
 
-You can use the supplied `Makefile` and run
+The test environment will always do a new install of the `crds`, so before running tests, these need to be deleted:
 ```bash
+k delete crd/networkfailureinjections.chaos.datadoghq.com
+```
+
+You can use the supplied `Makefile`:
+```bash
+# Delete crd
 make test
 ```
 
-For more detailed output, run
+For more detailed output:
 ```bash
-ginkgo -v -coverprofile=cover.out -r ./pkg/... ./cmd/...
+# Delete crd
+make test-ginkgo
 ```
 
 ### Adding tests
