@@ -2,11 +2,12 @@
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
 
-all: test manager
+all: manager
 
 # Run tests
+# For better test output: ginkgo -v -coverprofile=cover.out -r ./pkg/... ./cmd/...
 test: generate fmt vet manifests
-	go test ./pkg/... ./cmd/... -coverprofile cover.out
+	go test ./pkg/... ./cmd/... -coverprofile cover.out -ginkgo.v
 
 # Build manager binary
 manager: generate fmt vet
