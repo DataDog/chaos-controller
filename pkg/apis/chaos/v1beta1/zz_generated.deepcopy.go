@@ -96,6 +96,11 @@ func (in *NetworkFailureInjectionSpec) DeepCopyInto(out *NetworkFailureInjection
 			(*out)[key] = val
 		}
 	}
+	if in.NumPodsToTarget != nil {
+		in, out := &in.NumPodsToTarget, &out.NumPodsToTarget
+		*out = new(int)
+		**out = **in
+	}
 	return
 }
 
