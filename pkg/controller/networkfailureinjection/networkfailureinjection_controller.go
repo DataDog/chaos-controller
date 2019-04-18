@@ -19,6 +19,7 @@ package networkfailureinjection
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"reflect"
 	"strconv"
@@ -193,8 +194,15 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 		return reconcile.Result{}, nil
 	}
 
-	// Get pods matching the NetworkFailureInjection's label selector
-	pods, err := r.getMatchingPods(instance)
+	// Check if the inject pods were already created for the nfi
+	if instance.Status.Injected {
+		return reconcile.Result{}, err
+	}
+
+	// Get pods to inject failures into. If NumPodsToTarget was not specified, this includes all pods
+	// matching the nfi's label selector and namespace.
+	// Otherwise, inject failures into NumPodsToTarget randomly-selected pods matching the nfi's label selector and namespace.
+	pods, err := r.selectPodsForInjection(instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -214,7 +222,7 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 		// Define the desired pod object
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      instance.Name + "-inject-" + p.Name + "-pod",
+				Name:      r.getInjectPodName(instance, &p),
 				Namespace: instance.Namespace,
 			},
 			Spec: corev1.PodSpec{
@@ -286,7 +294,7 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 		found := &corev1.Pod{}
 		err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 		if err != nil && errors.IsNotFound(err) {
-			log.Info("Creating chaos pod", "namespace", pod.Namespace, "name", pod.Name, "nodename", nodeName)
+			log.Info("Creating chaos pod", "NetworkFailureInjection", instance.Name, "namespace", pod.Namespace, "name", pod.Name, "nodename", nodeName)
 			err = r.Create(context.TODO(), pod)
 			if err != nil {
 				r.recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Failure injection pod for networkfailureinjection \"%s\" failed to be created", instance.Name))
@@ -300,10 +308,50 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 		}
 	}
 
+	instance.Status.Injected = true
+	err = r.Update(context.Background(), instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// We reach this line only when every injection pods have been created with success
 	datadog.GetInstance().Timing(metricPrefix+".inject.duration", time.Since(tsStart), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 
 	return reconcile.Result{}, nil
+}
+
+// getPodsToCleanup returns the pods targeted by the nfi, for which an inject pod was created.
+func (r *ReconcileNetworkFailureInjection) getPodsToCleanup(instance *chaosv1beta1.NetworkFailureInjection) (*corev1.PodList, error) {
+	allPods, err := r.getMatchingPods(instance)
+	if err != nil {
+		return nil, err
+	}
+
+	// If NumPodsToTarget was not specified, or is greater than the actual number of matching pods,
+	// return all pods matching the nfi's label selector and namespace
+	if instance.Spec.NumPodsToTarget == nil ||
+		(instance.Spec.NumPodsToTarget != nil && *instance.Spec.NumPodsToTarget >= len(allPods.Items)) {
+		return allPods, nil
+	}
+
+	podsToCleanup := make([]corev1.Pod, 0)
+	for _, pod := range allPods.Items {
+		// Check if an inject pod exists for this pod, which may not be the case when NumPodsToTarget is specified.
+		// If an inject pod is not found, ignore the pod.
+		injectPodKey := types.NamespacedName{Name: r.getInjectPodName(instance, &pod), Namespace: instance.Namespace}
+		injectPod := &corev1.Pod{}
+		err = r.Get(context.TODO(), injectPodKey, injectPod)
+		if errors.IsNotFound(err) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+
+		podsToCleanup = append(podsToCleanup, pod)
+	}
+
+	allPods.Items = podsToCleanup
+	return allPods, nil
 }
 
 // cleanFailures gets called for NetworkFailureInjection objects with the cleanupFinalizer finalizer.
@@ -312,7 +360,7 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 	isPrivileged := true
 	hostPathType := corev1.HostPathType("Directory")
 
-	pods, err := r.getMatchingPods(instance)
+	pods, err := r.getPodsToCleanup(instance)
 	if err != nil {
 		return err
 	}
@@ -392,8 +440,7 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 			return err
 		}
 
-		// Create the cleanup pod
-		log.Info("Creating chaos cleanup pod", "namespace", pod.Namespace, "name", pod.Name, "containerid", containerID)
+		log.Info("Creating chaos cleanup pod", "NetworkFailureInjection", instance.Name, "namespace", pod.Namespace, "name", pod.Name, "containerid", containerID)
 		err = r.Create(context.TODO(), pod)
 		if err != nil {
 			r.recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Cleanup pod for networkfailureinjection \"%s\" failed to be created", instance.Name))
@@ -431,6 +478,41 @@ func (r *ReconcileNetworkFailureInjection) getMatchingPods(instance *chaosv1beta
 	return pods, nil
 }
 
+// selectPodsForInjection will select min(NumPodsToTarget, all matching pods) random pods from the pods matching the nfi.
+func (r *ReconcileNetworkFailureInjection) selectPodsForInjection(instance *chaosv1beta1.NetworkFailureInjection) (*corev1.PodList, error) {
+	allPods, err := r.getMatchingPods(instance)
+
+	// If NumPodsToTarget was not specified, or is greater than the actual number of matching pods,
+	// return all pods matching the nfi's label selector and namespace
+	if instance.Spec.NumPodsToTarget == nil ||
+		(instance.Spec.NumPodsToTarget != nil && *instance.Spec.NumPodsToTarget >= len(allPods.Items)) {
+		return allPods, nil
+	}
+
+	// Otherwise, randomly select NumPodsToTarget pods
+	rand.Seed(time.Now().UnixNano())
+	numPodsToSelect := *instance.Spec.NumPodsToTarget
+	p := make([]corev1.Pod, 0, numPodsToSelect)
+
+	for i := 0; i < numPodsToSelect; i++ {
+		// Select and add a random pod
+		index := rand.Intn(len(allPods.Items))
+		chosenPod := allPods.Items[index]
+		p = append(p, chosenPod)
+
+		log.Info("Selected random pod", "podName", chosenPod.Name, "podNamespace", chosenPod.Namespace, "NetworkFailureInjection", instance.Name, "namespace", instance.Namespace, "numPodsToTarget", instance.Spec.NumPodsToTarget)
+
+		// Remove chosen pod from list of pods from which to select
+		allPods.Items, err = removePodFromSlice(allPods.Items, index)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	allPods.Items = p
+	return allPods, nil
+}
+
 // getCleanupPods returns all cleanup pods created by the NetworkFailureInjection instance.
 func (r *ReconcileNetworkFailureInjection) getCleanupPods(instance *chaosv1beta1.NetworkFailureInjection) ([]corev1.Pod, error) {
 	podsInNs := &corev1.PodList{}
@@ -457,6 +539,11 @@ func (r *ReconcileNetworkFailureInjection) getCleanupPods(instance *chaosv1beta1
 	return pods, nil
 }
 
+// getInjectPodName returns the name of the inject pod to create for the targeted pod.
+func (r *ReconcileNetworkFailureInjection) getInjectPodName(instance *chaosv1beta1.NetworkFailureInjection, pod *corev1.Pod) string {
+	return instance.Name + "-inject-" + pod.Name + "-pod"
+}
+
 // getContainerdID gets the ID of the first container ID found in a Pod.
 // It expects container ids to follow the format "containerd://<ID>".
 func (r *ReconcileNetworkFailureInjection) getContainerdID(pod *corev1.Pod) (string, error) {
@@ -473,7 +560,8 @@ func (r *ReconcileNetworkFailureInjection) getContainerdID(pod *corev1.Pod) (str
 }
 
 //
-// Helper functions to check and remove string from a slice of strings.
+// Helper functions to check and remove string from a slice of strings,
+// and remove a pod from a slice of pods.
 //
 func containsString(slice []string, s string) bool {
 	for _, item := range slice {
@@ -492,4 +580,12 @@ func removeString(slice []string, s string) (result []string) {
 		result = append(result, item)
 	}
 	return
+}
+
+func removePodFromSlice(s []corev1.Pod, index int) ([]corev1.Pod, error) {
+	if index >= len(s) {
+		return nil, fmt.Errorf("Tried to remove pod at index %d, but there are only %d pods", index, len(s))
+	}
+	s[len(s)-1], s[index] = s[index], s[len(s)-1]
+	return s[:len(s)-1], nil
 }
