@@ -2,6 +2,12 @@
 
 This project has been created using [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder). Please follow the documentation to make any changes in this project. Here are the few things you have to know.
 
+## chaos-fi-controller chart
+
+Note that the Helm chart is located in the `k8s-resources` [repo](https://github.com/DataDog/k8s-resources/tree/master/k8s/chaos-fi-controller).
+
+Remember to update the chart with any updates to the CRDs or RBAC rules.
+
 ## Releasing a new version of the controller
 
 You can manually build images on build-stable and staging (and prod when on master) environment from Gitlab. It'll then take the short commit SHA as a tag.
