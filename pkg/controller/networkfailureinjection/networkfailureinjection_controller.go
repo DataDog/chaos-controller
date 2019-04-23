@@ -196,7 +196,7 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 
 	// Check if the inject pods were already created for the nfi
 	if instance.Status.Injected {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, nil
 	}
 
 	// Get pods to inject failures into. If NumPodsToTarget was not specified, this includes all pods
