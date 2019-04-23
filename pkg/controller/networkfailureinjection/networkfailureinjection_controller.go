@@ -194,7 +194,7 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 		return reconcile.Result{}, nil
 	}
 
-	// Check if the inject pods were already created for the nfi
+	// Skip the nfi if inject pods were already created for it
 	if instance.Status.Injected {
 		return reconcile.Result{}, nil
 	}
@@ -208,8 +208,10 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 	}
 
 	// For each pod found, start a chaos pod on the same node
+	podNames := instance.Status.Pods
 	isPrivileged := true
 	hostPathType := corev1.HostPathType("Directory")
+
 	for _, p := range pods.Items {
 		// Get ID of first container
 		containerID, err := r.getContainerdID(&p)
@@ -290,7 +292,7 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 			return reconcile.Result{}, err
 		}
 
-		// Create the injection pod if it does not exist and continue the loop
+		// Create the injection pod if it does not exist
 		found := &corev1.Pod{}
 		err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 		if err != nil && errors.IsNotFound(err) {
@@ -304,6 +306,14 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 			datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 			continue
 		} else if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Add the chosen pod name to the list of pod names (in the Status.Pods) the NFI successfully injected failures into
+		podNames = append(podNames, pod.Name)
+		instance.Status.Pods = podNames
+		err = r.Update(context.Background(), instance)
+		if err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -320,38 +330,30 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 	return reconcile.Result{}, nil
 }
 
-// getPodsToCleanup returns the pods targeted by the nfi, for which an inject pod was created.
-func (r *ReconcileNetworkFailureInjection) getPodsToCleanup(instance *chaosv1beta1.NetworkFailureInjection) (*corev1.PodList, error) {
-	allPods, err := r.getMatchingPods(instance)
-	if err != nil {
-		return nil, err
-	}
+// getPodsToCleanup returns the still-existing pods that were targeted by the nfi, according to the pod names in the Status.Pods
+func (r *ReconcileNetworkFailureInjection) getPodsToCleanup(instance *chaosv1beta1.NetworkFailureInjection) ([]*corev1.Pod, error) {
+	podsToCleanup := make([]*corev1.Pod, 0, len(instance.Status.Pods))
 
-	// If NumPodsToTarget was not specified, or is greater than the actual number of matching pods,
-	// return all pods matching the nfi's label selector and namespace
-	if instance.Spec.NumPodsToTarget == nil ||
-		(instance.Spec.NumPodsToTarget != nil && *instance.Spec.NumPodsToTarget >= len(allPods.Items)) {
-		return allPods, nil
-	}
+	// Check if each pod still exists; skip if it doesn't
+	for _, podName := range instance.Status.Pods {
+		// Get the targeted pods' names from the Status.Pods
+		podKey := types.NamespacedName{Name: podName, Namespace: instance.Namespace}
+		p := &corev1.Pod{}
 
-	podsToCleanup := make([]corev1.Pod, 0)
-	for _, pod := range allPods.Items {
-		// Check if an inject pod exists for this pod, which may not be the case when NumPodsToTarget is specified.
-		// If an inject pod is not found, ignore the pod.
-		injectPodKey := types.NamespacedName{Name: r.getInjectPodName(instance, &pod), Namespace: instance.Namespace}
-		injectPod := &corev1.Pod{}
-		err = r.Get(context.TODO(), injectPodKey, injectPod)
+		// Try to get the pod
+		err := r.Get(context.TODO(), podKey, p)
+		// Skip the pod when it no longer exists
 		if errors.IsNotFound(err) {
+			log.Info("Cleanup: Pod no longer exists", "NetworkFailureInjection", instance.Name, "namespace", instance.Namespace, "podName", podName, "numPodsToTarget", instance.Spec.NumPodsToTarget)
 			continue
 		} else if err != nil {
 			return nil, err
 		}
 
-		podsToCleanup = append(podsToCleanup, pod)
+		podsToCleanup = append(podsToCleanup, p)
 	}
 
-	allPods.Items = podsToCleanup
-	return allPods, nil
+	return podsToCleanup, nil
 }
 
 // cleanFailures gets called for NetworkFailureInjection objects with the cleanupFinalizer finalizer.
@@ -365,9 +367,9 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 		return err
 	}
 
-	for _, p := range pods.Items {
+	for _, p := range pods {
 		// Get ID of first container
-		containerID, err := r.getContainerdID(&p)
+		containerID, err := r.getContainerdID(p)
 		if err != nil {
 			return err
 		}
