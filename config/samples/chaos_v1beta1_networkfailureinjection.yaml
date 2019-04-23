@@ -13,4 +13,4 @@ spec:
     protocol: tcp
   selector:
     app: chaos-fi-demo-curl
-  numPodsToTarget: 1
+  numPodsToTarget: 2

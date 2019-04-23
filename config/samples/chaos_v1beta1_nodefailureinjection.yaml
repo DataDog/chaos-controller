@@ -1,0 +1,10 @@
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: NodeFailureInjection
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: nodefailureinjection-sample
+spec:
+  selector:
+    app: chaos-fi-demo-curl
+  quantity: 3

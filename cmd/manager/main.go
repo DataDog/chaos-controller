@@ -23,8 +23,8 @@ import (
 
 	"github.com/DataDog/chaos-fi-controller/pkg/apis"
 	"github.com/DataDog/chaos-fi-controller/pkg/controller"
-	nfi "github.com/DataDog/chaos-fi-controller/pkg/controller/networkfailureinjection"
 	"github.com/DataDog/chaos-fi-controller/pkg/datadog"
+	"github.com/DataDog/chaos-fi-controller/pkg/helpers"
 	"github.com/DataDog/chaos-fi-controller/pkg/webhook"
 	"github.com/DataDog/datadog-go/statsd"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -50,9 +50,9 @@ func main() {
 	}
 
 	// Ensure CHAOS_FI_IMAGE variable is set
-	image := os.Getenv(nfi.ChaosFailureInjectionImageVariableName)
+	image := os.Getenv(helpers.ChaosFailureInjectionImageVariableName)
 	if image == "" {
-		log.Error(nil, fmt.Sprintf("the %s variable must be set", nfi.ChaosFailureInjectionImageVariableName))
+		log.Error(nil, fmt.Sprintf("the %s variable must be set", helpers.ChaosFailureInjectionImageVariableName))
 		os.Exit(1)
 	}
 
