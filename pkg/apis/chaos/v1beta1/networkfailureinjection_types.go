@@ -44,8 +44,9 @@ type NetworkFailureInjectionSpecFailure struct {
 
 // NetworkFailureInjectionStatus defines the observed state of NetworkFailureInjection
 type NetworkFailureInjectionStatus struct {
-	Finalizing bool `json:"finalizing"`
-	Injected   bool `json:"injected"`
+	Finalizing bool     `json:"finalizing"`
+	Injected   bool     `json:"injected"`
+	Pods       []string `json:"pods,omitempty"`
 }
 
 // +genclient
