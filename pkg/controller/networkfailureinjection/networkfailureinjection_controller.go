@@ -19,6 +19,7 @@ package networkfailureinjection
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"reflect"
@@ -538,7 +539,7 @@ func (r *ReconcileNetworkFailureInjection) selectPodsForInjection(instance *chao
 
 	// Otherwise, randomly select NumPodsToTarget pods
 	rand.Seed(time.Now().UnixNano())
-	numPodsToSelect := min(*instance.Spec.NumPodsToTarget, *instance.Spec.NumPodsToTarget-len(instance.Status.Pods))
+	numPodsToSelect := int(math.Min(float64(*instance.Spec.NumPodsToTarget), float64(*instance.Spec.NumPodsToTarget-len(instance.Status.Pods))))
 
 	for i := 0; i < numPodsToSelect; i++ {
 		// Select and add a random pod
@@ -549,10 +550,8 @@ func (r *ReconcileNetworkFailureInjection) selectPodsForInjection(instance *chao
 		log.Info("Selected random pod", "name", chosenPod.Name, "namespace", chosenPod.Namespace, "networkfailureinjection", instance.Name, "numpodstotarget", instance.Spec.NumPodsToTarget)
 
 		// Remove chosen pod from list of pods from which to select
-		allPods.Items, err = removePodFromSlice(allPods.Items, index)
-		if err != nil {
-			return nil, err
-		}
+		allPods.Items[len(allPods.Items)-1], allPods.Items[index] = allPods.Items[index], allPods.Items[len(allPods.Items)-1]
+		allPods.Items = allPods.Items[:len(allPods.Items)-1]
 	}
 
 	allPods.Items = p
@@ -613,8 +612,7 @@ func (r *ReconcileNetworkFailureInjection) getContainerdID(pod *corev1.Pod) (str
 }
 
 //
-// Helper functions to check and remove string from a slice of strings,
-// remove a pod from a slice of pods, and return the minimum of two ints.
+// Helper functions to check and remove string from a slice of strings.
 //
 func containsString(slice []string, s string) bool {
 	for _, item := range slice {
@@ -633,19 +631,4 @@ func removeString(slice []string, s string) (result []string) {
 		result = append(result, item)
 	}
 	return
-}
-
-func removePodFromSlice(s []corev1.Pod, index int) ([]corev1.Pod, error) {
-	if index >= len(s) {
-		return nil, fmt.Errorf("Tried to remove pod at index %d, but there are only %d pods", index, len(s))
-	}
-	s[len(s)-1], s[index] = s[index], s[len(s)-1]
-	return s[:len(s)-1], nil
-}
-
-func min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
 }
