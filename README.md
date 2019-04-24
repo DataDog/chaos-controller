@@ -1,6 +1,129 @@
-# Chaos Failures Injection controller
+# Chaos Failures Injection Controller
 
-This project has been created using [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder). Please follow the documentation to make any changes in this project. Here are the few things you have to know.
+This project has been created using [kubebuilder][]. Please follow the documentation to make any changes in this project. Here are the few things you have to know.
+
+This repository contains the configuration and code for the `chaos-fi-controller` Kubernetes [controller][what-is-a-controller] and its associated [`CRDs`][crd].
+
+[kubebuilder]: https://github.com/kubernetes-sigs/kubebuilder
+[what-is-a-controller]: https://book.kubebuilder.io/basics/what_is_a_controller.html
+[crd]: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
+
+## What is the chaos-fi-controller
+
+The controller was created to facilitate automation requirements in [chaos-engineering][]. 
+
+The lack of resources available to achieve the different [chaos testing levels][levels] led to the creation of this [rfc][]. The `chaos-fi-controller` is an implementation of the recommended solution.
+
+The `controller` is deployed as a `StatefulSet`. It watches for changes on the supported `CRDs`, as well as their child resources. See the [CRDs section](#crds) for more details on specific behaviour for a particular `CRD`.
+
+The Helm chart is described in the chaos-fi-controller chart [section](#chaos-fi-controller-chart).
+
+[chaos-engineering]: https://github.com/DataDog/chaos-engineering
+[levels]: https://github.com/DataDog/chaos-engineering#chaos-testing-levels
+[rfc]: https://github.com/DataDog/architecture/blob/3e8dd537946fb373599fe09259f146e756ec12fe/rfcs/chaos-engineering-dependencies-failures-injection/rfc.md#recommended-solution
+
+## CRDs
+
+The `CRDs` that the controller works with can be found in the `config/crds` [directory][crds-dir].
+
+Examples `YAML` files for these `CRDs` can be found in the `config/samples` [directory][samples-dir].
+
+Currently, the controller works with the following `CRDs`:
+* [NetworkFailureInjection][nfi-crd]
+  * [Example][nfi-example]
+
+[crds-dir]: https://github.com/DataDog/chaos-fi-controller/tree/master/config/crds
+[samples-dir]: https://github.com/DataDog/chaos-fi-controller/tree/master/config/samples
+[nfi-crd]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/crds/chaos_v1beta1_networkfailureinjection.yaml
+[nfi-example]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/samples/chaos_v1beta1_networkfailureinjection.yaml
+
+
+### NetworkFailureInjections
+
+A `NetworkFailureInjection` provides an automated way of injecting `iptables` [rules][gameday-iptables].
+
+Its behaviour is specified in the `spec`, for example:
+```yaml
+spec:
+  failure:
+    host: my-service.namespace.svc.barbet.cluster.local
+    port: 80
+    probability: 50 # probability is a WIP
+    protocol: tcp
+  selector:
+    app: my-app
+  numPodsToTarget: 1 # optional
+```
+* `host`: can be #TODO:
+* `port`: destination port
+* `selector`: label selectors
+* `numPodsToTarget`: _(Optional)_ how many random pods to target
+
+Here, we specify that we want _outgoing packets to my-service.namespace.svc.barbet.cluster.local on port 80 to be dropped, with a probability (WIP) of 50%_.
+
+#### Creating an nfi
+
+```bash
+# Using the example provided
+k apply -f config/samples/chaos_v1beta1_networkfailureinjection.yaml
+
+# To view nfis with kubectl
+k get networkfailureinjection
+k get nfi
+
+# Describing nfis provides some events about inject/cleanup pods creation
+k describe nfi mynfi
+```
+
+If `numPodsToTarget` is not specified, the controller will target **all pods in the same namespace as the nfi, matching the `spec.selector` label selectors**.
+
+Otherwise, it will select **_numPodsToTarget_ random pods in the same namespace as the nfi, matching the `spec.selector` label selectors**.
+
+For each matching pod, an _inject pod_ is created on the same node, which will create the `iptables` rules in a custom chain. The inject pod's owner reference is set as its creating `nfi`, so that they are garbage collected together. The image for the inject pods is built from the [`chaos-fi` repository][chaos-fi].
+
+After creating an `nfi`, `k get po -n <namespace>` will show any created inject pods for an existing `nfi`.
+
+#### Deleting an nfi
+
+```bash
+k delete nfi mynfi
+```
+
+The `nfi` won't be deleted right away. _Cleanup pods_ get created, one for each pod that had been selected, to flush the custom `iptables` chain. A [`finalizer`][finalizer] called `clean.nfi.finalizer.datadog.com` is used to ensure the `nfi` and its child inject/cleanup pods will only be deleted once all of its cleanup pods run to completion (i.e. have a pod phase of `Succeeded`).
+
+[finalizer]: https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#finalizers
+
+
+We can look at the `nfi`'s `status` for some additional information:
+```bash
+k describe nfi networkfailureinjection-sample
+# or
+k get nfi mynfi -o yaml
+# or to only get the status
+k get nfi mynfi -o json | jq '.status'
+```
+
+Example output:
+```json
+{
+  "finalizing": true,
+  "injected": true,
+  "pods": [
+      "pod1",
+      "pod2"
+  ]
+}
+```
+* `finalizing`: Whether or not delete has been called on this nfi
+* `injected`: Whether or not all inject pods for the selected `pods` (see below) have been successfully created
+* `pods`: A list of the names of selected pods
+
+
+
+*Note: Since the controller only watches `nfis` and their child inject/cleanup pods, any pods created after the `nfi` has selected its pods will not be affected.*
+
+[gameday-iptables]: https://github.com/Datadog/devops/wiki/Game-Days#iptables
+[chaos-fi]: https://github.com/DataDog/chaos-fi
 
 ## chaos-fi-controller chart
 
@@ -30,7 +153,12 @@ If you need to delete an existing CRD object from a cluster, you will need to re
 
 This can be done by first editing the object, and then deleting it:
 ```bash
-k edit nfi {NAME}
-# remove finalizer
-k delete nfi {NAME}
+# remove the clean.nfi.finalizer.datadog.com finalizer
+k edit nfi mynfi
+# or 
+k patch nfi/mynfi -p '{"metadata":{"finalizers":[]}}' --type=merge
+
+
+# delete nfi
+k delete nfi mynfi
 ```
