@@ -31,8 +31,6 @@ spec:
         spec:
           properties:
             failure:
-              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                Important: Run "make" to regenerate code after modifying this file'
               properties:
                 host:
                   type: string
@@ -63,12 +61,13 @@ spec:
         status:
           properties:
             finalizing:
-              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                of cluster Important: Run "make" to regenerate code after modifying
-                this file'
               type: boolean
             injected:
               type: boolean
+            pods:
+              items:
+                type: string
+              type: array
           required:
           - finalizing
           - injected
