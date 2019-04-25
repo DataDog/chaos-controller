@@ -234,10 +234,10 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 					{
 						Name:    "chaos-fi-inject",
 						Image:   os.Getenv(ChaosFailureInjectionImageVariableName),
-						Command: []string{"cmd"},
+						Command: []string{"chaos-fi"},
 						Args: []string{
-							"inject",
 							"network-failure",
+							"inject",
 							"--uid",
 							string(instance.ObjectMeta.UID),
 							"--container-id",
@@ -384,8 +384,8 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 					{
 						Name:    cleanupContainerName,
 						Image:   os.Getenv(ChaosFailureInjectionImageVariableName),
-						Command: []string{"cmd"},
-						Args:    []string{"clean", "--uid", string(instance.ObjectMeta.UID), "--container-id", containerID},
+						Command: []string{"chaos-fi"},
+						Args:    []string{"network-failure", "clean", "--uid", string(instance.ObjectMeta.UID), "--container-id", containerID},
 						VolumeMounts: []corev1.VolumeMount{
 							corev1.VolumeMount{
 								MountPath: "/run/containerd",
