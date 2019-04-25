@@ -44,6 +44,13 @@ A `NetworkFailureInjection` provides an automated way of injecting `iptables` [r
 
 Its behaviour is specified in the `spec`, for example:
 ```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: NetworkFailureInjection
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: networkfailureinjection-sample
+  namespace: mynamespace # this should be the same namespace as the pods you want to target
 spec:
   failure:
     host: my-service.namespace.svc.barbet.cluster.local
@@ -54,12 +61,14 @@ spec:
     app: my-app
   numPodsToTarget: 1 # optional
 ```
-* `host`: can be #TODO:
+* `host`: can be either a FQDN, a single IP or an IP block
 * `port`: destination port
 * `selector`: label selectors
 * `numPodsToTarget`: _(Optional)_ how many random pods to target
 
 Here, we specify that we want _outgoing packets to my-service.namespace.svc.barbet.cluster.local on port 80 to be dropped, with a probability (WIP) of 50%_.
+
+**NOTE: Ensure that you create the nfi in the same namespace as the pods you want to target!**
 
 #### Creating an nfi
 
