@@ -31,8 +31,6 @@ spec:
         spec:
           properties:
             failure:
-              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                Important: Run "make" to regenerate code after modifying this file'
               properties:
                 host:
                   type: string
@@ -50,6 +48,10 @@ spec:
               - probability
               - protocol
               type: object
+            numPodsToTarget:
+              format: int64
+              minimum: 0
+              type: integer
             selector:
               type: object
           required:
@@ -59,12 +61,16 @@ spec:
         status:
           properties:
             finalizing:
-              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                of cluster Important: Run "make" to regenerate code after modifying
-                this file'
               type: boolean
+            injected:
+              type: boolean
+            pods:
+              items:
+                type: string
+              type: array
           required:
           - finalizing
+          - injected
           type: object
   version: v1beta1
 status:
