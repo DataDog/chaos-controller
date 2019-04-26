@@ -203,18 +203,15 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 	// Get pods to inject failures into. If NumPodsToTarget was not specified, this includes all pods
 	// matching the nfi's label selector and namespace.
 	// Otherwise, inject failures into NumPodsToTarget randomly-selected pods matching the nfi's label selector and namespace.
-	pods, err := r.selectPodsForInjection(instance)
+	pods, err := r.SelectPodsForInjection(instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	isPrivileged := true
-	hostPathType := corev1.HostPathType("Directory")
-
 	// For each pod found, start a chaos pod on the same node
 	for _, p := range pods.Items {
 		// Get ID of first container
-		containerID, err := r.getContainerdID(&p)
+		containerID, err := r.GetContainerdID(&p)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -222,69 +219,9 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 		nodeName := p.Spec.NodeName
 
 		// Define the desired pod object
-		pod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      r.getInjectPodName(instance, &p),
-				Namespace: instance.Namespace,
-			},
-			Spec: corev1.PodSpec{
-				NodeName:      nodeName,
-				RestartPolicy: "Never",
-				Containers: []corev1.Container{
-					{
-						Name:    "chaos-fi-inject",
-						Image:   os.Getenv(ChaosFailureInjectionImageVariableName),
-						Command: []string{"chaos-fi"},
-						Args: []string{
-							"network-failure",
-							"inject",
-							"--uid",
-							string(instance.ObjectMeta.UID),
-							"--container-id",
-							containerID,
-							"--host",
-							instance.Spec.Failure.Host,
-							"--port",
-							strconv.Itoa(instance.Spec.Failure.Port),
-							"--protocol",
-							instance.Spec.Failure.Protocol,
-						},
-						VolumeMounts: []corev1.VolumeMount{
-							corev1.VolumeMount{
-								MountPath: "/run/containerd",
-								Name:      "containerd",
-							},
-							corev1.VolumeMount{
-								MountPath: "/mnt/proc",
-								Name:      "proc",
-							},
-						},
-						SecurityContext: &corev1.SecurityContext{
-							Privileged: &isPrivileged,
-						},
-					},
-				},
-				Volumes: []corev1.Volume{
-					corev1.Volume{
-						Name: "containerd",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/run/containerd",
-								Type: &hostPathType,
-							},
-						},
-					},
-					corev1.Volume{
-						Name: "proc",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/proc",
-								Type: &hostPathType,
-							},
-						},
-					},
-				},
-			},
+		pod, err := r.MakePod(instance, &p, containerID, "inject")
+		if err != nil {
+			return reconcile.Result{}, err
 		}
 
 		// Link the NFI resource and the chaos pod for garbage collection
@@ -356,9 +293,6 @@ func (r *ReconcileNetworkFailureInjection) getPodsToCleanup(instance *chaosv1bet
 // cleanFailures gets called for NetworkFailureInjection objects with the cleanupFinalizer finalizer.
 // A chaos pod will get created that cleans up injected network failures.
 func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.NetworkFailureInjection) error {
-	isPrivileged := true
-	hostPathType := corev1.HostPathType("Directory")
-
 	pods, err := r.getPodsToCleanup(instance)
 	if err != nil {
 		return err
@@ -366,62 +300,15 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 
 	for _, p := range pods {
 		// Get ID of first container
-		containerID, err := r.getContainerdID(p)
+		containerID, err := r.GetContainerdID(p)
 		if err != nil {
 			return err
 		}
 
 		// Define the cleanup pod object
-		pod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      instance.Name + "-cleanup-" + p.Name + "-pod",
-				Namespace: instance.Namespace,
-			},
-			Spec: corev1.PodSpec{
-				NodeName:      p.Spec.NodeName,
-				RestartPolicy: "Never",
-				Containers: []corev1.Container{
-					{
-						Name:    cleanupContainerName,
-						Image:   os.Getenv(ChaosFailureInjectionImageVariableName),
-						Command: []string{"chaos-fi"},
-						Args:    []string{"network-failure", "clean", "--uid", string(instance.ObjectMeta.UID), "--container-id", containerID},
-						VolumeMounts: []corev1.VolumeMount{
-							corev1.VolumeMount{
-								MountPath: "/run/containerd",
-								Name:      "containerd",
-							},
-							corev1.VolumeMount{
-								MountPath: "/mnt/proc",
-								Name:      "proc",
-							},
-						},
-						SecurityContext: &corev1.SecurityContext{
-							Privileged: &isPrivileged,
-						},
-					},
-				},
-				Volumes: []corev1.Volume{
-					corev1.Volume{
-						Name: "containerd",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/run/containerd",
-								Type: &hostPathType,
-							},
-						},
-					},
-					corev1.Volume{
-						Name: "proc",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/proc",
-								Type: &hostPathType,
-							},
-						},
-					},
-				},
-			},
+		pod, err := r.MakePod(instance, p, containerID, "cleanup")
+		if err != nil {
+			return err
 		}
 
 		if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
@@ -504,11 +391,11 @@ func (r *ReconcileNetworkFailureInjection) updateStatusPods(instance *chaosv1bet
 	return nil
 }
 
-// selectPodsForInjection will select min(NumPodsToTarget, all matching pods) random pods from the pods matching the nfi.
+// SelectPodsForInjection will select min(NumPodsToTarget, all matching pods) random pods from the pods matching the nfi.
 // Pods will only be selected once per nfi. The chosen pods' names will be reflected in an nfi's status.pods.
-// Subsequent calls to selectPodsForInjection will always return the same pods as the first time selectPodsForInjection
+// Subsequent calls to SelectPodsForInjection will always return the same pods as the first time SelectPodsForInjection
 // was successfully called, to ensure that we never select different pods in case we fail to create an inject pod.
-func (r *ReconcileNetworkFailureInjection) selectPodsForInjection(instance *chaosv1beta1.NetworkFailureInjection) (*corev1.PodList, error) {
+func (r *ReconcileNetworkFailureInjection) SelectPodsForInjection(instance *chaosv1beta1.NetworkFailureInjection) (*corev1.PodList, error) {
 	allPods, err := r.getMatchingPods(instance)
 
 	// If NumPodsToTarget was not specified, or is greater than the actual number of matching pods,
@@ -591,14 +478,9 @@ func (r *ReconcileNetworkFailureInjection) getCleanupPods(instance *chaosv1beta1
 	return pods, nil
 }
 
-// getInjectPodName returns the name of the inject pod to create for the targeted pod.
-func (r *ReconcileNetworkFailureInjection) getInjectPodName(instance *chaosv1beta1.NetworkFailureInjection, pod *corev1.Pod) string {
-	return instance.Name + "-inject-" + pod.Name + "-pod"
-}
-
-// getContainerdID gets the ID of the first container ID found in a Pod.
+// GetContainerdID gets the ID of the first container ID found in a Pod.
 // It expects container ids to follow the format "containerd://<ID>".
-func (r *ReconcileNetworkFailureInjection) getContainerdID(pod *corev1.Pod) (string, error) {
+func (r *ReconcileNetworkFailureInjection) GetContainerdID(pod *corev1.Pod) (string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
 		return "", fmt.Errorf("Missing container ids for pod '%s'", pod.Name)
 	}
@@ -609,6 +491,126 @@ func (r *ReconcileNetworkFailureInjection) getContainerdID(pod *corev1.Pod) (str
 	}
 
 	return containerID[1], nil
+}
+
+// MakePod returns an inject or cleanup pod, depending on the specified type, for the given nfi and target pod.
+func (r *ReconcileNetworkFailureInjection) MakePod(instance *chaosv1beta1.NetworkFailureInjection, p *corev1.Pod, containerID, podType string) (*corev1.Pod, error) {
+	var name string
+	var container corev1.Container
+	isPrivileged := true
+	hostPathType := corev1.HostPathType("Directory")
+
+	switch pType := podType; pType {
+	case "inject":
+		name = instance.Name + "-inject-" + p.Name + "-pod"
+		container = corev1.Container{
+			Name:    "chaos-fi-inject",
+			Image:   os.Getenv(ChaosFailureInjectionImageVariableName),
+			Command: []string{"chaos-fi"},
+			Args: []string{
+				"network-failure",
+				"inject",
+				"--uid",
+				string(instance.ObjectMeta.UID),
+				"--container-id",
+				containerID,
+				"--host",
+				instance.Spec.Failure.Host,
+				"--port",
+				strconv.Itoa(instance.Spec.Failure.Port),
+				"--protocol",
+				instance.Spec.Failure.Protocol,
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				corev1.VolumeMount{
+					MountPath: "/run/containerd",
+					Name:      "containerd",
+				},
+				corev1.VolumeMount{
+					MountPath: "/mnt/proc",
+					Name:      "proc",
+				},
+			},
+			SecurityContext: &corev1.SecurityContext{
+				Privileged: &isPrivileged,
+			},
+		}
+
+	case "cleanup":
+		name = instance.Name + "-cleanup-" + p.Name + "-pod"
+		container = corev1.Container{
+			Name:    "chaos-fi-inject",
+			Image:   os.Getenv(ChaosFailureInjectionImageVariableName),
+			Command: []string{"cmd"},
+			Args: []string{
+				"inject",
+				"network-failure",
+				"--uid",
+				string(instance.ObjectMeta.UID),
+				"--container-id",
+				containerID,
+				"--host",
+				instance.Spec.Failure.Host,
+				"--port",
+				strconv.Itoa(instance.Spec.Failure.Port),
+				"--protocol",
+				instance.Spec.Failure.Protocol,
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				corev1.VolumeMount{
+					MountPath: "/run/containerd",
+					Name:      "containerd",
+				},
+				corev1.VolumeMount{
+					MountPath: "/mnt/proc",
+					Name:      "proc",
+				},
+			},
+			SecurityContext: &corev1.SecurityContext{
+				Privileged: &isPrivileged,
+			},
+		}
+
+	default:
+		return nil, fmt.Errorf("Unsupported pod type %s", pType)
+	}
+
+	// Define the desired pod object
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: instance.Namespace,
+		},
+		Spec: corev1.PodSpec{
+			NodeName:      p.Spec.NodeName,
+			RestartPolicy: "Never",
+			Containers: []corev1.Container{
+				container,
+			},
+			Volumes: []corev1.Volume{
+				corev1.Volume{
+					Name: "containerd",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/run/containerd",
+							Type: &hostPathType,
+						},
+					},
+				},
+				corev1.Volume{
+					Name: "proc",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/proc",
+							Type: &hostPathType,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return pod, nil
 }
 
 //
