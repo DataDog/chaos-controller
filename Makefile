@@ -6,6 +6,7 @@ all: test manager
 
 # Run tests
 test: generate fmt vet manifests
+	# For nicer testing output: ginkgo -v -coverprofile=cover.out -r ./pkg/... ./cmd/...
 	go test ./pkg/... ./cmd/... -coverprofile cover.out -ginkgo.v
 
 # Build manager binary
