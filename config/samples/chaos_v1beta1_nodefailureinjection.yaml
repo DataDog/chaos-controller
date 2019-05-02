@@ -7,4 +7,4 @@ metadata:
 spec:
   selector:
     app: chaos-fi-demo-curl
-  quantity: 3
+  quantity: 3 # number of pods to target (defaults to 1)
