@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -29,9 +28,9 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/pkg/apis/chaos/v1beta1"
 	"github.com/DataDog/chaos-fi-controller/pkg/datadog"
+	"github.com/DataDog/chaos-fi-controller/pkg/helpers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -48,11 +47,7 @@ import (
 const (
 	cleanupContainerName = "chaos-fi-cleanup"
 	cleanupFinalizer     = "clean.nfi.finalizer.datadog.com"
-
-	// ChaosFailureInjectionImageVariableName is the name of the chaos failure injection image variable
-	ChaosFailureInjectionImageVariableName = "CHAOS_FI_IMAGE"
-
-	metricPrefix = "chaos.controller.nfi"
+	metricPrefix         = "chaos.controller.nfi"
 )
 
 var log = logf.Log.WithName("controller")
@@ -208,9 +203,6 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 		return reconcile.Result{}, err
 	}
 
-	isPrivileged := true
-	hostPathType := corev1.HostPathType("Directory")
-
 	// For each pod found, start a chaos pod on the same node
 	for _, p := range pods.Items {
 		// Get ID of first container
@@ -222,70 +214,24 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 		nodeName := p.Spec.NodeName
 
 		// Define the desired pod object
-		pod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      r.getInjectPodName(instance, &p),
-				Namespace: instance.Namespace,
+		pod := helpers.GeneratePod(
+			instance.Name+"-inject-"+p.Name+"-pod",
+			&p,
+			[]string{
+				"network-failure",
+				"inject",
+				"--uid",
+				string(instance.ObjectMeta.UID),
+				"--container-id",
+				containerID,
+				"--host",
+				instance.Spec.Failure.Host,
+				"--port",
+				strconv.Itoa(instance.Spec.Failure.Port),
+				"--protocol",
+				instance.Spec.Failure.Protocol,
 			},
-			Spec: corev1.PodSpec{
-				NodeName:      nodeName,
-				RestartPolicy: "Never",
-				Containers: []corev1.Container{
-					{
-						Name:    "chaos-fi-inject",
-						Image:   os.Getenv(ChaosFailureInjectionImageVariableName),
-						Command: []string{"chaos-fi"},
-						Args: []string{
-							"network-failure",
-							"inject",
-							"--uid",
-							string(instance.ObjectMeta.UID),
-							"--container-id",
-							containerID,
-							"--host",
-							instance.Spec.Failure.Host,
-							"--port",
-							strconv.Itoa(instance.Spec.Failure.Port),
-							"--protocol",
-							instance.Spec.Failure.Protocol,
-						},
-						VolumeMounts: []corev1.VolumeMount{
-							corev1.VolumeMount{
-								MountPath: "/run/containerd",
-								Name:      "containerd",
-							},
-							corev1.VolumeMount{
-								MountPath: "/mnt/proc",
-								Name:      "proc",
-							},
-						},
-						SecurityContext: &corev1.SecurityContext{
-							Privileged: &isPrivileged,
-						},
-					},
-				},
-				Volumes: []corev1.Volume{
-					corev1.Volume{
-						Name: "containerd",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/run/containerd",
-								Type: &hostPathType,
-							},
-						},
-					},
-					corev1.Volume{
-						Name: "proc",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/proc",
-								Type: &hostPathType,
-							},
-						},
-					},
-				},
-			},
-		}
+		)
 
 		// Link the NFI resource and the chaos pod for garbage collection
 		if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
@@ -306,7 +252,7 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 
 			// Send metrics
 			r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for networkfailureinjection \"%s\"", instance.Name))
-			datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+			datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 
 			continue
 		} else if err != nil {
@@ -356,9 +302,6 @@ func (r *ReconcileNetworkFailureInjection) getPodsToCleanup(instance *chaosv1bet
 // cleanFailures gets called for NetworkFailureInjection objects with the cleanupFinalizer finalizer.
 // A chaos pod will get created that cleans up injected network failures.
 func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.NetworkFailureInjection) error {
-	isPrivileged := true
-	hostPathType := corev1.HostPathType("Directory")
-
 	pods, err := r.getPodsToCleanup(instance)
 	if err != nil {
 		return err
@@ -372,57 +315,18 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 		}
 
 		// Define the cleanup pod object
-		pod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      instance.Name + "-cleanup-" + p.Name + "-pod",
-				Namespace: instance.Namespace,
+		pod := helpers.GeneratePod(
+			instance.Name+"-cleanup-"+p.Name+"-pod",
+			p,
+			[]string{
+				"network-failure",
+				"clean",
+				"--uid",
+				string(instance.ObjectMeta.UID),
+				"--container-id",
+				containerID,
 			},
-			Spec: corev1.PodSpec{
-				NodeName:      p.Spec.NodeName,
-				RestartPolicy: "Never",
-				Containers: []corev1.Container{
-					{
-						Name:    cleanupContainerName,
-						Image:   os.Getenv(ChaosFailureInjectionImageVariableName),
-						Command: []string{"chaos-fi"},
-						Args:    []string{"network-failure", "clean", "--uid", string(instance.ObjectMeta.UID), "--container-id", containerID},
-						VolumeMounts: []corev1.VolumeMount{
-							corev1.VolumeMount{
-								MountPath: "/run/containerd",
-								Name:      "containerd",
-							},
-							corev1.VolumeMount{
-								MountPath: "/mnt/proc",
-								Name:      "proc",
-							},
-						},
-						SecurityContext: &corev1.SecurityContext{
-							Privileged: &isPrivileged,
-						},
-					},
-				},
-				Volumes: []corev1.Volume{
-					corev1.Volume{
-						Name: "containerd",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/run/containerd",
-								Type: &hostPathType,
-							},
-						},
-					},
-					corev1.Volume{
-						Name: "proc",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/proc",
-								Type: &hostPathType,
-							},
-						},
-					},
-				},
-			},
-		}
+		)
 
 		if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
 			return err
@@ -446,35 +350,9 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 			return err
 		}
 		r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for networkfailureinjection \"%s\"", instance.Name))
-		datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:cleanup", "target:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+		datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:cleanup", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 	}
 	return nil
-}
-
-// getMatchingPods returns a PodList containing all pods matching the NetworkFailureInjection's label selector and namespace.
-func (r *ReconcileNetworkFailureInjection) getMatchingPods(instance *chaosv1beta1.NetworkFailureInjection) (*corev1.PodList, error) {
-	// We want to ensure we never run into the possibility of using an empty label selector
-	labelSelector := instance.Spec.Selector
-	if len(labelSelector) < 1 || labelSelector == nil {
-		err := fmt.Errorf("nfi \"%s\" in namespace \"%s\" is missing a label selector", instance.Name, instance.Namespace)
-		log.Error(err, "missing label selector", "namespace", instance.Namespace, "networkfailureinjection", instance.Name)
-		return nil, err
-	}
-
-	// Filter pods based on the nfi's label selector, and only consider those within the same namespace as the nfi
-	listOptions := &client.ListOptions{
-		LabelSelector: labelSelector.AsSelector(),
-		Namespace:     instance.Namespace,
-	}
-
-	// Fetch pods from label selector
-	pods := &corev1.PodList{}
-	err := r.Client.List(context.TODO(), listOptions, pods)
-	if err != nil {
-		return nil, err
-	}
-
-	return pods, nil
 }
 
 // updateStatusPods will update the nfi instance's status.pods field, if it was not previously set,
@@ -486,13 +364,11 @@ func (r *ReconcileNetworkFailureInjection) updateStatusPods(instance *chaosv1bet
 	}
 
 	// Get all the pod names
-	p := make([]string, 0, len(pods.Items))
 	for _, pod := range pods.Items {
-		p = append(p, pod.Name)
+		instance.Status.Pods = append(instance.Status.Pods, pod.Name)
 	}
 
 	// Update the instance's status.pods
-	instance.Status.Pods = p
 	err := r.Update(context.Background(), instance)
 	if err != nil {
 		log.Error(err, "failed to update nfi's status.pods", "networkfailureinjection", instance.Name, "namespace", instance.Namespace)
@@ -509,12 +385,11 @@ func (r *ReconcileNetworkFailureInjection) updateStatusPods(instance *chaosv1bet
 // Subsequent calls to selectPodsForInjection will always return the same pods as the first time selectPodsForInjection
 // was successfully called, to ensure that we never select different pods in case we fail to create an inject pod.
 func (r *ReconcileNetworkFailureInjection) selectPodsForInjection(instance *chaosv1beta1.NetworkFailureInjection) (*corev1.PodList, error) {
-	allPods, err := r.getMatchingPods(instance)
+	allPods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.Selector)
 
 	// If NumPodsToTarget was not specified, or is greater than the actual number of matching pods,
 	// return all pods matching the nfi's label selector and namespace
-	if instance.Spec.NumPodsToTarget == nil ||
-		(instance.Spec.NumPodsToTarget != nil && *instance.Spec.NumPodsToTarget >= len(allPods.Items)) {
+	if instance.Spec.NumPodsToTarget == nil || *instance.Spec.NumPodsToTarget >= len(allPods.Items) {
 		// Update status.pods with the names of all pods matching the label selector in the same namespace
 		err := r.updateStatusPods(instance, allPods)
 		if err != nil {
@@ -526,7 +401,7 @@ func (r *ReconcileNetworkFailureInjection) selectPodsForInjection(instance *chao
 
 	// If we had already selected pods for the nfi, only return the already-selected ones to avoid selecting
 	// > NumPodsToTarget pods if creating an inject pod ever fails
-	p := make([]corev1.Pod, 0)
+	p := []corev1.Pod{}
 	if len(instance.Status.Pods) > 0 {
 		for _, pod := range allPods.Items {
 			if containsString(instance.Status.Pods, pod.Name) {
@@ -589,11 +464,6 @@ func (r *ReconcileNetworkFailureInjection) getCleanupPods(instance *chaosv1beta1
 		}
 	}
 	return pods, nil
-}
-
-// getInjectPodName returns the name of the inject pod to create for the targeted pod.
-func (r *ReconcileNetworkFailureInjection) getInjectPodName(instance *chaosv1beta1.NetworkFailureInjection, pod *corev1.Pod) string {
-	return instance.Name + "-inject-" + pod.Name + "-pod"
 }
 
 // getContainerdID gets the ID of the first container ID found in a Pod.
