@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:b7b69625035609d080dc9b2e9c6f486989e48ca428f60725fef1c143553c8916"
+  name = "bou.ke/monkey"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "bdf6dea004c6fd1cdf4b25da8ad45a606c09409a"
+  version = "v1.0.1"
+
+[[projects]]
   digest = "1:b51572934b41ae810c15170970da02e9f5ebbf35d95dfb2fb1f3341198843d8e"
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
@@ -944,6 +952,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "bou.ke/monkey",
     "github.com/DataDog/datadog-go/statsd",
     "github.com/emicklei/go-restful",
     "github.com/onsi/ginkgo",
