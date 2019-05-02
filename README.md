@@ -31,11 +31,15 @@ Examples `YAML` files for these `CRDs` can be found in the `config/samples` [dir
 Currently, the controller works with the following `CRDs`:
 * [NetworkFailureInjection][nfi-crd]
   * [Example][nfi-example]
+* [NodeFailureInjection][nofi-crd]
+  * [Example][nofi-example]
 
 [crds-dir]: https://github.com/DataDog/chaos-fi-controller/tree/master/config/crds
 [samples-dir]: https://github.com/DataDog/chaos-fi-controller/tree/master/config/samples
 [nfi-crd]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/crds/chaos_v1beta1_networkfailureinjection.yaml
 [nfi-example]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/samples/chaos_v1beta1_networkfailureinjection.yaml
+[nofi-crd]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/crds/chaos_v1beta1_nodefailureinjection.yaml
+[nofi-example]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/samples/chaos_v1beta1_nodefailureinjection.yaml
 
 
 ### NetworkFailureInjections
@@ -133,6 +137,14 @@ Example output:
 
 [gameday-iptables]: https://github.com/Datadog/devops/wiki/Game-Days#iptables
 [chaos-fi]: https://github.com/DataDog/chaos-fi
+
+### NodeFailureInjection
+
+This injection basically triggers a kernel panic on the targeted pods' nodes. The only thing to be careful is that it'll make the entire node crash and the pods running on it even if they haven't been targeted by the label selector.
+
+Because it makes the node to crash and because the controller needs to schedule a pod on the node to crash to make it crash, the created injection pods state won't be updated before a few minutes (the time for the Kubelet to be able to recover).
+
+If the failure succeed, the pod should have the `ExitCode:0` status.
 
 ## chaos-fi-controller chart
 
