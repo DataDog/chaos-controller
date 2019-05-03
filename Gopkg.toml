@@ -19,6 +19,9 @@ required = [
 [prune]
   go-tests = true
 
+[[override]]
+name = "github.com/DataDog/datadog-go"
+branch = "master"
 
 # STANZAS BELOW ARE GENERATED AND MAY BE WRITTEN - DO NOT MODIFY BELOW THIS LINE.
 
@@ -35,7 +38,3 @@ required = [
 name = "gopkg.in/fsnotify.v1"
 source = "https://github.com/fsnotify/fsnotify.git"
 version="v1.4.7"
-
-[[override]]
-name = "github.com/DataDog/datadog-go"
-branch = "master"
