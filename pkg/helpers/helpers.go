@@ -128,19 +128,22 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 
 // PickRandomPods returns a shuffled sub-slice with a size of n of the given slice
 func PickRandomPods(n uint, pods []corev1.Pod) []corev1.Pod {
-	// Return the whole slice if the requested size is greater than the size of the slice
-	if int(n) > len(pods) {
-		return pods
-	}
+	// Copy slice to don't modify the given one
+	list := append([]corev1.Pod(nil), pods...)
 
-	// Shuffle the slice and return the first n occurences
+	// Shuffle the slice
 	rand.Seed(time.Now().Unix())
-	for i := len(pods) - 1; i > 0; i-- {
+	for i := len(list) - 1; i > 0; i-- {
 		j := rand.Intn(i)
-		pods[i], pods[j] = pods[j], pods[i]
+		list[i], list[j] = list[j], list[i]
 	}
 
-	return pods[:n]
+	// Return the whole shuffled slice if the requested size is greater than the size of the slice
+	if int(n) > len(list) {
+		return list
+	}
+
+	return list[:n]
 }
 
 // GetOwnedPods returns a list of pods owned by the given object
