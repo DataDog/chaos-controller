@@ -46,7 +46,6 @@ func main() {
 	err := datadog.GetInstance().Event(statsd.NewEvent("chaos-fi-controller has been restarted", "the chaos-fi-controller manager has been restarted"))
 	if err != nil {
 		log.Error(err, "error while sending the restart event")
-		os.Exit(1)
 	}
 
 	// Ensure CHAOS_FI_IMAGE variable is set

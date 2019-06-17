@@ -152,6 +152,22 @@ Note that the Helm chart is located in the `k8s-resources` [repo](https://github
 
 Remember to update the chart with any updates to the CRDs or RBAC rules.
 
+## Testing the controller locally
+
+If you want to test the controller locally (without having to redeploy a new image on a staging cluster), please use the [minikube project](https://kubernetes.io/docs/setup/learning-environment/minikube/) as described below:
+
+* start minikube
+* ensure your docker client is configured to use the minikube docker daemon
+  * `eval $(minikube docker-env)`
+* build the new image of the controller with your local changes
+  * `make docker-build`
+* deploy the controller on the minikube cluster
+  * `make deploy`
+
+If the controller is already deployed, you'll have to remove the running pod for changes to be applied
+
+The controller relies on the [chaos-fi](https://github.com/DataDog/chaos-fi) image to inject failures. Please build it locally as well if you want to injection and cleanup pods created by the controller to succeed.
+
 ## Releasing a new version of the controller
 
 You can manually build images on build-stable and staging (and prod when on master) environment from Gitlab. It'll then take the short commit SHA as a tag.

@@ -45,7 +45,7 @@ spec:
       - command:
         - /manager
         image: controller:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: manager
         env:
           - name: POD_NAMESPACE
@@ -54,6 +54,10 @@ spec:
                 fieldPath: metadata.namespace
           - name: SECRET_NAME
             value: $(WEBHOOK_SECRET_NAME)
+          - name: STATSD_URL
+            value: unix:///dev/null
+          - name: CHAOS_FI_IMAGE
+            value: chaos-fi:latest
         resources:
           limits:
             cpu: 100m
