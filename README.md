@@ -156,9 +156,8 @@ Remember to update the chart with any updates to the CRDs or RBAC rules.
 
 If you want to test the controller locally (without having to redeploy a new image on a staging cluster), please use the [minikube project](https://kubernetes.io/docs/setup/learning-environment/minikube/) as described below:
 
-* start minikube
-* ensure your docker client is configured to use the minikube docker daemon
-  * `eval $(minikube docker-env)`
+* start minikube with containerd engine
+  * `make minikube-start`
 * build the new image of the controller with your local changes
   * `make docker-build`
 * deploy the controller on the minikube cluster

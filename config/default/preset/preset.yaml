@@ -1,0 +1,9 @@
+---
+apiVersion: settings.k8s.io/v1alpha1
+kind: PodPreset
+metadata:
+  name: statsd
+spec:
+  env:
+    - name: STATSD_URL
+      value: "unix:///dev/null"
