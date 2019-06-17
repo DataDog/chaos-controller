@@ -4,13 +4,12 @@ metadata:
   labels:
     controller-tools.k8s.io: "1.0"
   name: networkfailureinjection-sample
-  namespace: sre
 spec:
   failure:
-    host: chaos-fi-demo.sre.svc.barbet.cluster.local
+    host: 10.0.0.0/8
     port: 80
-    probability: 50
+    probability: 100
     protocol: tcp
   selector:
-    app: chaos-fi-demo-curl
-  numPodsToTarget: 2
+    app: demo
+  numPodsToTarget: 1

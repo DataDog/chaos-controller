@@ -46,10 +46,21 @@ endif
 
 # Build the docker image
 docker-build: test
+	eval $(minikube docker-env)
 	docker build . -t ${IMG}
+	minikube ssh -- sudo docker save -o image.tar ${IMG}
+	minikube ssh -- sudo ctr cri load image.tar
 	@echo "updating kustomize image patch file for manager resource"
-	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_image_patch.yaml
+	sed -i'' -e 's@image: .*@image: '"docker.io/library/${IMG}"'@' ./config/default/manager_image_patch.yaml
 
 # Push the docker image
 docker-push:
 	docker push ${IMG}
+
+minikube-start:
+	minikube start \
+		--container-runtime=containerd \
+		--memory=4096 \
+		--cpus=4 \
+		--extra-config=apiserver.runtime-config=settings.k8s.io/v1alpha1=true \
+		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodPreset
