@@ -45,8 +45,8 @@ endif
 	go generate ./pkg/... ./cmd/...
 
 # Build the docker image
-docker-build: test
-	eval $(minikube docker-env)
+docker-build:
+	if [[ -z "${DOCKER_HOST}" ]]; then echo 'Please run eval $$(minikube docker-env) before running this script'; exit 1; fi
 	docker build . -t ${IMG}
 	minikube ssh -- sudo docker save -o image.tar ${IMG}
 	minikube ssh -- sudo ctr cri load image.tar
