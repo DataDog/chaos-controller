@@ -137,6 +137,11 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 		quantity = *instance.Spec.Quantity
 	}
 
+	//Initialize nodeNames
+	if instance.Status.NodeNames == nil {
+		instance.Status.NodeNames = make(map[string]bool)
+	}
+
 	// Update actual injected quantity
 	ownedPods, err := helpers.GetOwnedPods(r.Client, instance)
 	if err != nil {
@@ -180,6 +185,11 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 					r.recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Failure injection pod for nodefailureinjection \"%s\" failed to be created", instance.Name))
 					return reconcile.Result{}, err
 				}
+				if !instance.Status.NodeNames[pod.Spec.NodeName] {
+					instance.Status.NodeNames[pod.Spec.NodeName] = true
+					log.Info("Injected Node Name inserted into Instance Status: ", "name", pod.Spec.NodeName, "valid", instance.Status.NodeNames[pod.Spec.NodeName])
+				}
+
 				r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for nodefailureinjection \"%s\"", instance.Name))
 				datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "target_node:" + p.Spec.NodeName, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 
