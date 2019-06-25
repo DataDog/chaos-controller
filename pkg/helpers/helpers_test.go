@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/DataDog/chaos-fi-controller/pkg/helpers"
+	"github.com/DataDog/chaos-fi-controller/pkg/types"
 )
 
 type fakeClient struct {
@@ -85,21 +86,21 @@ var _ = Describe("Helpers", func() {
 
 	Describe("GeneratePod", func() {
 		It("should be in the same namespace as the given pod", func() {
-			p := GeneratePod("", pod, nil)
+			p := GeneratePod("", pod, nil, types.PodModeInject)
 			Expect(p.Namespace).To(Equal(pod.Namespace))
 		})
 		It("should have the same node as the given pod", func() {
-			p := GeneratePod("", pod, nil)
+			p := GeneratePod("", pod, nil, types.PodModeInject)
 			Expect(p.Spec.NodeName).To(Equal(pod.Spec.NodeName))
 		})
 		It("should pass the given args to the injector container", func() {
 			args := []string{"network-failure", "inject"}
-			p := GeneratePod("", pod, args)
+			p := GeneratePod("", pod, args, types.PodModeInject)
 			Expect(p.Spec.Containers[0].Args).To(Equal(args))
 		})
 		It("should have the given name", func() {
 			name := "foo"
-			p := GeneratePod(name, pod, nil)
+			p := GeneratePod(name, pod, nil, types.PodModeInject)
 			Expect(p.Name).To(Equal(name))
 		})
 		It("should have the container image value defined by the environment variable", func() {
@@ -107,7 +108,7 @@ var _ = Describe("Helpers", func() {
 			monkey.Patch(os.Getenv, func(string) string {
 				return image
 			})
-			p := GeneratePod("", pod, nil)
+			p := GeneratePod("", pod, nil, types.PodModeInject)
 			Expect(p.Spec.Containers[0].Image).To(Equal(image))
 		})
 	})

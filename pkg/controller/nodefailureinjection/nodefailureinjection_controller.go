@@ -24,6 +24,7 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/pkg/apis/chaos/v1beta1"
 	"github.com/DataDog/chaos-fi-controller/pkg/datadog"
 	"github.com/DataDog/chaos-fi-controller/pkg/helpers"
+	chaostypes "github.com/DataDog/chaos-fi-controller/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -164,7 +165,9 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 				"inject",
 				"--uid",
 				string(instance.ObjectMeta.UID),
-			})
+			},
+				chaostypes.PodModeInject,
+			)
 			if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
 				return reconcile.Result{}, err
 			}
