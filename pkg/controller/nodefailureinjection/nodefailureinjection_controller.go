@@ -139,7 +139,7 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 
 	//Initialize nodeNames
 	if instance.Status.NodeNames == nil {
-		instance.Status.NodeNames = make(map[string]bool)
+		instance.Status.NodeNames = make(map[string]struct{})
 	}
 
 	// Update actual injected quantity
@@ -185,9 +185,10 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 					r.recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Failure injection pod for nodefailureinjection \"%s\" failed to be created", instance.Name))
 					return reconcile.Result{}, err
 				}
-				if !instance.Status.NodeNames[pod.Spec.NodeName] {
-					instance.Status.NodeNames[pod.Spec.NodeName] = true
-					log.Info("Injected Node Name inserted into Instance Status: ", "name", pod.Spec.NodeName, "valid", instance.Status.NodeNames[pod.Spec.NodeName])
+				if _, found := instance.Status.NodeNames[pod.Spec.NodeName]; !found {
+					var temp struct{}
+					instance.Status.NodeNames[pod.Spec.NodeName] = temp
+					log.Info("Injected Node Name inserted into Instance Status: ", "name", pod.Spec.NodeName)
 				}
 
 				r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for nodefailureinjection \"%s\"", instance.Name))
