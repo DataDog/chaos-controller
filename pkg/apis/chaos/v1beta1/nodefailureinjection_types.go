@@ -27,14 +27,14 @@ import (
 // NodeFailureInjectionSpec defines the desired state of NodeFailureInjection
 type NodeFailureInjectionSpec struct {
 	Selector labels.Set `json:"selector"`
-	// Number of pods to target, defaults to 1 if not specified
+	// Number of pods to target, defaults to 1 if not specifiedd
 	Quantity *int `json:"quantity,omitempty"`
 }
 
 // NodeFailureInjectionStatus defines the observed state of NodeFailureInjection
 type NodeFailureInjectionStatus struct {
-	Injected  int             `json:"injected"`
-	NodeNames map[string]bool `json:"nodeNames,omitempty"`
+	Injected  int                 `json:"injected"`
+	NodeNames map[string]struct{} `json:"nodeNames,omitempty"`
 }
 
 // +genclient

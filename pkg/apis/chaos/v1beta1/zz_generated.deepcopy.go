@@ -245,7 +245,7 @@ func (in *NodeFailureInjectionStatus) DeepCopyInto(out *NodeFailureInjectionStat
 	*out = *in
 	if in.NodeNames != nil {
 		in, out := &in.NodeNames, &out.NodeNames
-		*out = make(map[string]bool, len(*in))
+		*out = make(map[string]struct{}, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
 		}
