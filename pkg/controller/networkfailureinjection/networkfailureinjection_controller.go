@@ -29,6 +29,7 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/pkg/apis/chaos/v1beta1"
 	"github.com/DataDog/chaos-fi-controller/pkg/datadog"
 	"github.com/DataDog/chaos-fi-controller/pkg/helpers"
+	chaostypes "github.com/DataDog/chaos-fi-controller/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -231,6 +232,7 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 				"--protocol",
 				instance.Spec.Failure.Protocol,
 			},
+			chaostypes.PodModeInject,
 		)
 
 		// Link the NFI resource and the chaos pod for garbage collection
@@ -326,6 +328,7 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 				"--container-id",
 				containerID,
 			},
+			chaostypes.PodModeClean,
 		)
 
 		if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
@@ -444,7 +447,9 @@ func (r *ReconcileNetworkFailureInjection) selectPodsForInjection(instance *chao
 func (r *ReconcileNetworkFailureInjection) getCleanupPods(instance *chaosv1beta1.NetworkFailureInjection) ([]corev1.Pod, error) {
 	podsInNs := &corev1.PodList{}
 	listOptions := &client.ListOptions{}
-	listOptions = listOptions.InNamespace(instance.Namespace)
+	listOptions = listOptions.InNamespace(instance.Namespace).MatchingLabels(map[string]string{
+		chaostypes.PodModeLabel: chaostypes.PodModeClean,
+	})
 	err := r.Client.List(context.TODO(), listOptions, podsInNs)
 	if err != nil {
 		return nil, err
@@ -458,7 +463,7 @@ func (r *ReconcileNetworkFailureInjection) getCleanupPods(instance *chaosv1beta1
 			if ownerReference.UID != instance.UID {
 				continue
 			}
-			if len(pod.Spec.Containers) > 0 && pod.Spec.Containers[0].Name == cleanupContainerName {
+			if len(pod.Spec.Containers) > 0 {
 				pods = append(pods, pod)
 			}
 		}

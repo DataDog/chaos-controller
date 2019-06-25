@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/DataDog/chaos-fi-controller/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -20,7 +21,7 @@ const (
 
 // GeneratePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
-func GeneratePod(name string, pod *corev1.Pod, args []string) *corev1.Pod {
+func GeneratePod(name string, pod *corev1.Pod, args []string, mode types.PodMode) *corev1.Pod {
 	privileged := true
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
@@ -28,13 +29,16 @@ func GeneratePod(name string, pod *corev1.Pod, args []string) *corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: pod.Namespace,
+			Labels: map[string]string{
+				types.PodModeLabel: string(mode),
+			},
 		},
 		Spec: corev1.PodSpec{
 			NodeName:      pod.Spec.NodeName,
 			RestartPolicy: "Never",
 			Containers: []corev1.Container{
 				{
-					Name:            "chaos-fi-inject",
+					Name:            "chaos-fi",
 					Image:           os.Getenv(ChaosFailureInjectionImageVariableName),
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Command:         []string{"chaos-fi"},
