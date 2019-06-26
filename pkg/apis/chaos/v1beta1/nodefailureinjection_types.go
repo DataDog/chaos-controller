@@ -27,7 +27,7 @@ import (
 // NodeFailureInjectionSpec defines the desired state of NodeFailureInjection
 type NodeFailureInjectionSpec struct {
 	Selector labels.Set `json:"selector"`
-	// Number of pods to target, defaults to 1 if not specifiedd
+	// Number of pods to target, defaults to 1 if not specified
 	Quantity *int `json:"quantity,omitempty"`
 }
 

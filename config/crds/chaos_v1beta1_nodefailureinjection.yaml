@@ -31,7 +31,7 @@ spec:
         spec:
           properties:
             quantity:
-              description: Number of pods to target, defaults to 1 if not specifiedd
+              description: Number of pods to target, defaults to 1 if not specified
               format: int64
               type: integer
             selector:
