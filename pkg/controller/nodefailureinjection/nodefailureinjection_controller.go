@@ -186,8 +186,7 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 					return reconcile.Result{}, err
 				}
 				if _, found := instance.Status.NodeNames[pod.Spec.NodeName]; !found {
-					var temp struct{}
-					instance.Status.NodeNames[pod.Spec.NodeName] = temp
+					instance.Status.NodeNames[pod.Spec.NodeName] = struct{}{}
 					log.Info("Injected Node Name inserted into Instance Status: ", "name", pod.Spec.NodeName)
 				}
 
