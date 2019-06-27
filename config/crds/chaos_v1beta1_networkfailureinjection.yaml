@@ -43,7 +43,6 @@ spec:
                 protocol:
                   type: string
               required:
-              - host
               - port
               - probability
               - protocol
