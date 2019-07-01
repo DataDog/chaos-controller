@@ -8,6 +8,14 @@ This repository contains the configuration and code for the `chaos-fi-controller
 [what-is-a-controller]: https://book.kubebuilder.io/basics/what_is_a_controller.html
 [crd]: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
 
+## Table of content
+
+* [What is the chaos-fi-controller](#what-is-the-chaos-fi-controller)
+* Failures
+  * [NetworkFailureInjection](docs/network_failure.md)
+  * [NodeFailureInjection](docs/node_failure.md)
+* [Design](docs/design.md)
+
 ## What is the chaos-fi-controller
 
 The controller was created to facilitate automation requirements in [chaos-engineering][]. 
@@ -40,37 +48,6 @@ Currently, the controller works with the following `CRDs`:
 [nfi-example]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/samples/chaos_v1beta1_networkfailureinjection.yaml
 [nofi-crd]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/crds/chaos_v1beta1_nodefailureinjection.yaml
 [nofi-example]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/samples/chaos_v1beta1_nodefailureinjection.yaml
-
-
-### NetworkFailureInjections
-
-A `NetworkFailureInjection` provides an automated way of injecting `iptables` [rules][gameday-iptables].
-
-Its behaviour is specified in the `spec`, for example:
-```yaml
-apiVersion: chaos.datadoghq.com/v1beta1
-kind: NetworkFailureInjection
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: networkfailureinjection-sample
-  namespace: mynamespace # this should be the same namespace as the pods you want to target
-spec:
-  failure:
-    host: my-service.namespace.svc.barbet.cluster.local
-    port: 80
-    probability: 50 # probability is a WIP
-    protocol: tcp
-  selector:
-    app: my-app
-  numPodsToTarget: 1 # optional
-```
-* `host`: can be either a FQDN, a single IP or an IP block
-* `port`: destination port
-* `selector`: label selectors
-* `numPodsToTarget`: _(Optional)_ how many random pods to target
-
-Here, we specify that we want _outgoing packets to my-service.namespace.svc.barbet.cluster.local on port 80 to be dropped, with a probability (WIP) of 50%_.
 
 **NOTE: Ensure that you create the nfi in the same namespace as the pods you want to target!**
 
@@ -137,14 +114,6 @@ Example output:
 
 [gameday-iptables]: https://github.com/Datadog/devops/wiki/Game-Days#iptables
 [chaos-fi]: https://github.com/DataDog/chaos-fi
-
-### NodeFailureInjection
-
-This injection basically triggers a kernel panic on the targeted pods' nodes. The only thing to be careful is that it'll make the entire node crash and the pods running on it even if they haven't been targeted by the label selector.
-
-Because it makes the node to crash and because the controller needs to schedule a pod on the node to crash to make it crash, the created injection pods state won't be updated before a few minutes (the time for the Kubelet to be able to recover).
-
-If the failure succeed, the pod should have the `ExitCode:0` status.
 
 ## chaos-fi-controller chart
 
