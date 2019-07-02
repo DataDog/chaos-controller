@@ -30,90 +30,11 @@ The Helm chart is described in the chaos-fi-controller chart [section](#chaos-fi
 [levels]: https://github.com/DataDog/chaos-engineering#chaos-testing-levels
 [rfc]: https://github.com/DataDog/architecture/blob/3e8dd537946fb373599fe09259f146e756ec12fe/rfcs/chaos-engineering-dependencies-failures-injection/rfc.md#recommended-solution
 
-## CRDs
+## How to use it?
 
-The `CRDs` that the controller works with can be found in the `config/crds` [directory][crds-dir].
+The controller works with custom Kubernetes resources describing the wanted failures and the pods to target. By creating those resources in the namespace of the pods you want to affect, it'll create pods to inject the needed failures.
 
-Examples `YAML` files for these `CRDs` can be found in the `config/samples` [directory][samples-dir].
-
-Currently, the controller works with the following `CRDs`:
-* [NetworkFailureInjection][nfi-crd]
-  * [Example][nfi-example]
-* [NodeFailureInjection][nofi-crd]
-  * [Example][nofi-example]
-
-[crds-dir]: https://github.com/DataDog/chaos-fi-controller/tree/master/config/crds
-[samples-dir]: https://github.com/DataDog/chaos-fi-controller/tree/master/config/samples
-[nfi-crd]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/crds/chaos_v1beta1_networkfailureinjection.yaml
-[nfi-example]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/samples/chaos_v1beta1_networkfailureinjection.yaml
-[nofi-crd]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/crds/chaos_v1beta1_nodefailureinjection.yaml
-[nofi-example]: https://github.com/DataDog/chaos-fi-controller/blob/master/config/samples/chaos_v1beta1_nodefailureinjection.yaml
-
-**NOTE: Ensure that you create the nfi in the same namespace as the pods you want to target!**
-
-#### Creating an nfi
-
-```bash
-# Using the example provided
-k apply -f config/samples/chaos_v1beta1_networkfailureinjection.yaml
-
-# To view nfis with kubectl
-k get networkfailureinjection
-k get nfi
-
-# Describing nfis provides some events about inject/cleanup pods creation
-k describe nfi mynfi
-```
-
-If `numPodsToTarget` is not specified, the controller will target **all pods in the same namespace as the nfi, matching the `spec.selector` label selectors**.
-
-Otherwise, it will select **_numPodsToTarget_ random pods in the same namespace as the nfi, matching the `spec.selector` label selectors**.
-
-For each matching pod, an _inject pod_ is created on the same node, which will create the `iptables` rules in a custom chain. The inject pod's owner reference is set as its creating `nfi`, so that they are garbage collected together. The image for the inject pods is built from the [`chaos-fi` repository][chaos-fi].
-
-After creating an `nfi`, `k get po -n <namespace>` will show any created inject pods for an existing `nfi`.
-
-#### Deleting an nfi
-
-```bash
-k delete nfi mynfi
-```
-
-The `nfi` won't be deleted right away. _Cleanup pods_ get created, one for each pod that had been selected, to flush the custom `iptables` chain. A [`finalizer`][finalizer] called `clean.nfi.finalizer.datadog.com` is used to ensure the `nfi` and its child inject/cleanup pods will only be deleted once all of its cleanup pods run to completion (i.e. have a pod phase of `Succeeded`).
-
-[finalizer]: https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#finalizers
-
-
-We can look at the `nfi`'s `status` for some additional information:
-```bash
-k describe nfi networkfailureinjection-sample
-# or
-k get nfi mynfi -o yaml
-# or to only get the status
-k get nfi mynfi -o json | jq '.status'
-```
-
-Example output:
-```json
-{
-  "finalizing": true,
-  "injected": true,
-  "pods": [
-      "pod1",
-      "pod2"
-  ]
-}
-```
-* `finalizing`: Whether or not delete has been called on this nfi
-* `injected`: Whether or not all inject pods for the selected `pods` (see below) have been successfully created
-* `pods`: A list of the names of selected pods
-
-
-
-*Note: Since the controller only watches `nfis` and their child inject/cleanup pods, any pods created after the `nfi` has selected its pods will not be affected.*
-
-[gameday-iptables]: https://github.com/Datadog/devops/wiki/Game-Days#iptables
-[chaos-fi]: https://github.com/DataDog/chaos-fi
+Please take a look at the different failures documentations linked in the table of content of this repository for more information about what they are doing and how to use them.
 
 ## chaos-fi-controller chart
 
