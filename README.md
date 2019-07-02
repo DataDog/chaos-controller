@@ -10,7 +10,7 @@ This repository contains the configuration and code for the `chaos-fi-controller
 
 ## Table of content
 
-* [What is the chaos-fi-controller](#what-is-the-chaos-fi-controller)
+* [What is the chaos-fi-controller?](#what-is-the-chaos-fi-controller)
 * Failures
   * [NetworkFailureInjection](docs/network_failure.md)
   * [NodeFailureInjection](docs/node_failure.md)
@@ -20,7 +20,7 @@ This repository contains the configuration and code for the `chaos-fi-controller
 
 ## What is the chaos-fi-controller?
 
-The controller was created to facilitate automation requirements in [chaos-engineering][]. 
+The controller was created to facilitate automation requirements in [chaos-engineering][]. It can also help to deal with network failures during gamedays by abstracting network manipulation, especially when dealing with big deployments.
 
 The lack of resources available to achieve the different [chaos testing levels][levels] led to the creation of this [rfc][]. The `chaos-fi-controller` is an implementation of the recommended solution.
 
