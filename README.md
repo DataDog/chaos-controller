@@ -15,6 +15,7 @@ This repository contains the configuration and code for the `chaos-fi-controller
   * [NetworkFailureInjection](docs/network_failure.md)
   * [NodeFailureInjection](docs/node_failure.md)
 * [Design](docs/design.md)
+* [FAQ](docs/faq.md)
 
 ## What is the chaos-fi-controller
 
@@ -35,12 +36,6 @@ The Helm chart is described in the chaos-fi-controller chart [section](#chaos-fi
 The controller works with custom Kubernetes resources describing the wanted failures and the pods to target. By creating those resources in the namespace of the pods you want to affect, it'll create pods to inject the needed failures.
 
 Please take a look at the different failures documentations linked in the table of content of this repository for more information about what they are doing and how to use them.
-
-## chaos-fi-controller chart
-
-Note that the Helm chart is located in the `k8s-resources` [repo](https://github.com/DataDog/k8s-resources/tree/master/k8s/chaos-fi-controller).
-
-Remember to update the chart with any updates to the CRDs or RBAC rules.
 
 ## Testing the controller locally
 
