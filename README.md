@@ -18,7 +18,7 @@ This repository contains the configuration and code for the `chaos-fi-controller
 * [FAQ](docs/faq.md)
 * [Contributing](#contributing)
 
-## What is the chaos-fi-controller
+## What is the chaos-fi-controller?
 
 The controller was created to facilitate automation requirements in [chaos-engineering][]. 
 
