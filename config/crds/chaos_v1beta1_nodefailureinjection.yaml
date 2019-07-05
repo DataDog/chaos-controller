@@ -44,6 +44,8 @@ spec:
             injected:
               format: int64
               type: integer
+            nodeNames:
+              type: object
           required:
           - injected
           type: object

@@ -33,7 +33,8 @@ type NodeFailureInjectionSpec struct {
 
 // NodeFailureInjectionStatus defines the observed state of NodeFailureInjection
 type NodeFailureInjectionStatus struct {
-	Injected int `json:"injected"`
+	Injected  int                 `json:"injected"`
+	NodeNames map[string]struct{} `json:"nodeNames,omitempty"`
 }
 
 // +genclient
