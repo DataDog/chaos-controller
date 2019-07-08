@@ -6,10 +6,10 @@ metadata:
   name: networkfailureinjection-sample
 spec:
   failure:
-    host: 10.0.0.0/8
-    port: 80
-    probability: 100
-    protocol: tcp
-  selector:
+    host: 10.0.0.0/8 # host to drop packets to (can be either a single IP, a block IP (CIDR), or a hostname; if removed, it'll target all possible IPs)
+    port: 80 # port to drop packets to
+    probability: 100 # probability to drop packets between 0 and 100
+    protocol: tcp # protocol to drop packet to (can be tcp or udp)
+  selector: # label selector to target pods
     app: demo
-  numPodsToTarget: 1
+  numPodsToTarget: 1 # maximum number of pods to target; if not specified, it'll target ALL the pods
