@@ -32,8 +32,10 @@ spec:
           properties:
             failure:
               properties:
-                host:
-                  type: string
+                hosts:
+                  items:
+                    type: string
+                  type: array
                 port:
                   format: int64
                   type: integer

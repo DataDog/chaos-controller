@@ -36,10 +36,10 @@ type NetworkFailureInjectionSpec struct {
 
 // NetworkFailureInjectionSpecFailure defines the failure spec
 type NetworkFailureInjectionSpecFailure struct {
-	Host        string `json:"host,omitempty"`
-	Port        int    `json:"port"`
-	Probability int    `json:"probability"`
-	Protocol    string `json:"protocol"`
+	Hosts       []string `json:"hosts,omitempty"`
+	Port        int      `json:"port"`
+	Probability int      `json:"probability"`
+	Protocol    string   `json:"protocol"`
 }
 
 // NetworkFailureInjectionStatus defines the observed state of NetworkFailureInjection

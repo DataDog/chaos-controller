@@ -91,7 +91,7 @@ func TestReconcile(t *testing.T) {
 		Spec: chaosv1beta1.NetworkFailureInjectionSpec{
 			Selector: map[string]string{"foo": "bar"},
 			Failure: chaosv1beta1.NetworkFailureInjectionSpecFailure{
-				Host:        "127.0.0.1",
+				Hosts:       []string{"127.0.0.1"},
 				Port:        80,
 				Probability: 0,
 				Protocol:    "tcp",
