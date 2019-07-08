@@ -5,6 +5,6 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: nodefailureinjection-sample
 spec:
-  selector:
+  selector: # label selector to target pods
     app: chaos-fi-demo-curl
   quantity: 3 # number of pods to target (defaults to 1)
