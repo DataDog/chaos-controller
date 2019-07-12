@@ -231,6 +231,8 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 				strconv.Itoa(instance.Spec.Failure.Port),
 				"--protocol",
 				instance.Spec.Failure.Protocol,
+				"--probability",
+				strconv.Itoa(instance.Spec.Failure.Probability),
 			},
 			chaostypes.PodModeInject,
 		)
