@@ -181,16 +181,20 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 			found := &corev1.Pod{}
 			err = r.Get(context.Background(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 			if err != nil && errors.IsNotFound(err) {
+				//Add the name of the node the pod lives in to the Status of the instance
+				//If the node name already exists (some other pod in the same node has been created already) skip this pod
+				if _, found := instance.Status.NodeNames[pod.Spec.NodeName]; !found {
+					instance.Status.NodeNames[pod.Spec.NodeName] = struct{}{}
+					log.Info("Injected Node Name inserted into Instance Status: ", "name", pod.Spec.NodeName)
+				} else {
+					continue
+				}
 				log.Info("Creating node failure injection pod", "namespace", pod.Namespace, "name", pod.Name)
 				err = r.Create(context.Background(), pod)
 				if err != nil {
 					log.Error(err, "Failed to create injection pod", "instance", instance.Name)
 					r.recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Failure injection pod for nodefailureinjection \"%s\" failed to be created", instance.Name))
 					return reconcile.Result{}, err
-				}
-				if _, found := instance.Status.NodeNames[pod.Spec.NodeName]; !found {
-					instance.Status.NodeNames[pod.Spec.NodeName] = struct{}{}
-					log.Info("Injected Node Name inserted into Instance Status: ", "name", pod.Spec.NodeName)
 				}
 
 				r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for nodefailureinjection \"%s\"", instance.Name))
