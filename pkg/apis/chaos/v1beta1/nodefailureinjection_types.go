@@ -29,6 +29,7 @@ type NodeFailureInjectionSpec struct {
 	Selector labels.Set `json:"selector"`
 	// Number of pods to target, defaults to 1 if not specified
 	Quantity *int `json:"quantity,omitempty"`
+	Shutdown bool `json:"shutdown,omitempty"`
 }
 
 // NodeFailureInjectionStatus defines the observed state of NodeFailureInjection

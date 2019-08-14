@@ -36,6 +36,8 @@ spec:
               type: integer
             selector:
               type: object
+            shutdown:
+              type: boolean
           required:
           - selector
           type: object

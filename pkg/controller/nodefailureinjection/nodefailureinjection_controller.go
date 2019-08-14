@@ -165,14 +165,16 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 			return reconcile.Result{}, err
 		}
 		for _, p := range helpers.PickRandomPods(uint(quantity), pods.Items) {
-			pod := helpers.GeneratePod(instance.Name+"-"+p.Name, &p, []string{
+			args := []string{
 				"node-failure",
 				"inject",
 				"--uid",
 				string(instance.ObjectMeta.UID),
-			},
-				chaostypes.PodModeInject,
-			)
+			}
+			if instance.Spec.Shutdown {
+				args = append(args, "--shutdown")
+			}
+			pod := helpers.GeneratePod(instance.Name+"-"+p.Name, &p, args, chaostypes.PodModeInject)
 			if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
 				return reconcile.Result{}, err
 			}

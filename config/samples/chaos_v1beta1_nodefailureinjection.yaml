@@ -8,3 +8,4 @@ spec:
   selector: # label selector to target pods
     app: chaos-fi-demo-curl
   quantity: 3 # number of pods to target (defaults to 1)
+  shutdown: true # keep the host down (defaults to false, which means that the host will restart after the node failure)
