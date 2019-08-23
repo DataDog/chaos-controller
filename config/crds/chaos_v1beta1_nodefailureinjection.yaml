@@ -36,18 +36,25 @@ spec:
               type: integer
             selector:
               type: object
+            shutdown:
+              type: boolean
           required:
           - selector
           type: object
         status:
           properties:
             injected:
-              format: int64
-              type: integer
-            nodeNames:
-              type: object
-          required:
-          - injected
+              items:
+                properties:
+                  node:
+                    type: string
+                  pod:
+                    type: string
+                required:
+                - node
+                - pod
+                type: object
+              type: array
           type: object
   version: v1beta1
 status:

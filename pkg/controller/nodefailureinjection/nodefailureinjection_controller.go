@@ -139,25 +139,12 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 	}
 
 	//Initialize nodeNames
-	if instance.Status.NodeNames == nil {
-		instance.Status.NodeNames = make(map[string]struct{})
-	}
-
-	// Update actual injected quantity
-	ownedPods, err := helpers.GetOwnedPods(r.Client, instance)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	if instance.Status.Injected != len(ownedPods.Items) {
-		instance.Status.Injected = len(ownedPods.Items)
-		err = r.Update(context.Background(), instance)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
+	if instance.Status.Injected == nil {
+		instance.Status.Injected = []chaosv1beta1.NodeFailureInjectionStatusInjectedEntry{}
 	}
 
 	// Create as many pods as needed
-	if quantity > instance.Status.Injected {
+	if quantity > len(instance.Status.Injected) {
 		// Get matching pods and generate associated nodes
 		pods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.Selector)
 		if err != nil {
@@ -165,14 +152,16 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 			return reconcile.Result{}, err
 		}
 		for _, p := range helpers.PickRandomPods(uint(quantity), pods.Items) {
-			pod := helpers.GeneratePod(instance.Name+"-"+p.Name, &p, []string{
+			args := []string{
 				"node-failure",
 				"inject",
 				"--uid",
 				string(instance.ObjectMeta.UID),
-			},
-				chaostypes.PodModeInject,
-			)
+			}
+			if instance.Spec.Shutdown {
+				args = append(args, "--shutdown")
+			}
+			pod := helpers.GeneratePod(instance.Name+"-"+p.Name, &p, args, chaostypes.PodModeInject)
 			if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
 				return reconcile.Result{}, err
 			}
@@ -181,14 +170,26 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 			found := &corev1.Pod{}
 			err = r.Get(context.Background(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 			if err != nil && errors.IsNotFound(err) {
-				//Add the name of the node the pod lives in to the Status of the instance
-				//If the node name already exists (some other pod in the same node has been created already) skip this pod
-				if _, found := instance.Status.NodeNames[pod.Spec.NodeName]; !found {
-					instance.Status.NodeNames[pod.Spec.NodeName] = struct{}{}
-					log.Info("Injected Node Name inserted into Instance Status: ", "name", pod.Spec.NodeName)
-				} else {
+				// Ensure the node hasn't been injected before (possibly by another pod running on the same node as the targeted pod)
+				found := false
+				for _, injected := range instance.Status.Injected {
+					if injected.Node == p.Spec.NodeName {
+						found = true
+						break
+					}
+				}
+				if found {
 					continue
 				}
+
+				// Set instance status before creating the pod, otherwise the node name might disappear because of the failure
+				statusInjectedEntry := chaosv1beta1.NodeFailureInjectionStatusInjectedEntry{
+					Node: p.Spec.NodeName,
+					Pod:  p.Name,
+				}
+				instance.Status.Injected = append(instance.Status.Injected, statusInjectedEntry)
+
+				// Create the injection pod
 				log.Info("Creating node failure injection pod", "namespace", pod.Namespace, "name", pod.Name)
 				err = r.Create(context.Background(), pod)
 				if err != nil {
@@ -196,12 +197,10 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 					r.recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Failure injection pod for nodefailureinjection \"%s\" failed to be created", instance.Name))
 					return reconcile.Result{}, err
 				}
-
 				r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for nodefailureinjection \"%s\"", instance.Name))
-				datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "target_node:" + p.Spec.NodeName, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+				datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target_pod:" + statusInjectedEntry.Pod, "target_node:" + statusInjectedEntry.Node, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 
 				// Update the instance
-				instance.Status.Injected++
 				err = r.Update(context.Background(), instance)
 				if err != nil {
 					log.Error(err, "Failed to update instance status", "instance", instance.Name)
