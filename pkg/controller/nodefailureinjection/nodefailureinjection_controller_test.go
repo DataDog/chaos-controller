@@ -115,7 +115,10 @@ func TestReconcile(t *testing.T) {
 	g.Eventually(func() error { return c.Get(context.TODO(), podKey, pod) }, timeout).
 		Should(gomega.Succeed())
 	g.Expect(c.Get(context.TODO(), instanceKey, instance)).NotTo(gomega.HaveOccurred())
-	g.Expect(instance.Status.Injected).To(gomega.Equal(1))
+	g.Expect(instance.Status.Injected[0]).To(gomega.Equal(chaosv1beta1.NodeFailureInjectionStatusInjectedEntry{
+		Node: "foo-node",
+		Pod:  "bar-abcd",
+	}))
 
 	// Delete the pod and expect Reconcile to be called for pod deletion
 	g.Expect(c.Delete(context.TODO(), pod)).NotTo(gomega.HaveOccurred())
@@ -123,7 +126,10 @@ func TestReconcile(t *testing.T) {
 	g.Eventually(func() error { return c.Get(context.TODO(), podKey, pod) }, timeout).
 		Should(gomega.Succeed())
 	g.Expect(c.Get(context.TODO(), instanceKey, instance)).NotTo(gomega.HaveOccurred())
-	g.Expect(instance.Status.Injected).To(gomega.Equal(1))
+	g.Expect(instance.Status.Injected[0]).To(gomega.Equal(chaosv1beta1.NodeFailureInjectionStatusInjectedEntry{
+		Node: "foo-node",
+		Pod:  "bar-abcd",
+	}))
 
 	// Manually delete pod since GC isn't enabled in the test control plane
 	g.Expect(c.Delete(context.TODO(), instance)).To(gomega.BeNil())
