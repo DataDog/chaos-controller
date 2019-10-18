@@ -32,6 +32,9 @@ func GeneratePod(name string, pod *corev1.Pod, args []string, mode types.PodMode
 			Labels: map[string]string{
 				types.PodModeLabel: string(mode),
 			},
+			Annotations: map[string]string{
+				"datadoghq.com/local-dns-cache":"true",
+			},
 		},
 		Spec: corev1.PodSpec{
 			NodeName:      pod.Spec.NodeName,
