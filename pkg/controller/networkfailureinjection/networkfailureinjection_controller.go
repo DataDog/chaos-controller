@@ -215,7 +215,7 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 		nodeName := p.Spec.NodeName
 
 		//If Node Local DNS is configured on this pod, use this instead of specified Host in NFI
-		if p.Spec.DNSConfig && len(p.Spec.DNSConfig.NameServers) => 1{
+		if p.Spec.DNSConfig != nil && len(p.Spec.DNSConfig.Nameservers) >= 1{
 			//Use the first nameserver
 			//TODO?: Test nameservers to check which one to use?
 			instance.Spec.Failure.Host = p.Spec.DNSConfig.Nameservers[0]
