@@ -1,10 +1,10 @@
 package datadog
 
 import (
+	"github.com/DataDog/datadog-go/statsd"
 	"os"
 	"sync"
-
-	"github.com/DataDog/datadog-go/statsd"
+	"time"
 )
 
 var instance *statsd.Client
@@ -21,4 +21,18 @@ func GetInstance() *statsd.Client {
 		}
 	})
 	return instance
+}
+
+// Creates new Event with given parameters
+func NewEvent(title, text, hostname string, tags []string, timestamp time.Time) *statsd.Event {
+	var event *statsd.Event
+	event = &statsd.Event{
+		Title:     title,
+		Text:      text,
+		Hostname:  hostname,
+		Tags:      tags,
+		Timestamp: timestamp,
+	}
+
+	return event
 }

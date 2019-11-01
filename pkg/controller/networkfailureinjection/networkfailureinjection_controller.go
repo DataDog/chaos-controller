@@ -256,6 +256,8 @@ func (r *ReconcileNetworkFailureInjection) Reconcile(request reconcile.Request) 
 
 			// Send metrics
 			r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for networkfailureinjection \"%s\"", instance.Name))
+			newPodEvent := datadog.NewEvent("New Injected NetworkFailureInjection Pod", fmt.Sprintf("Created failure injection pod for networkfailureinjection \"%s\"", instance.Name), instance.Spec.Failure.Host, []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, time.Now())
+			datadog.GetInstance().Event(newPodEvent)
 			datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 
 			continue
