@@ -198,7 +198,7 @@ func (r *ReconcileNodeFailureInjection) Reconcile(request reconcile.Request) (re
 					return reconcile.Result{}, err
 				}
 				r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for nodefailureinjection \"%s\"", instance.Name))
-				newPodEvent := datadog.NewEvent("New Injected NodeFailureInjection Pod", fmt.Sprintf("Created failure injection pod for nodefailureinjection \"%s\"", instance.Name), p.Spec.NodeName, []string{"phase:inject", "target_pod:" + statusInjectedEntry.Pod, "target_node:" + statusInjectedEntry.Node, "name:" + instance.Name, "namespace:" + instance.Namespace}, time.Now())
+				newPodEvent := datadog.NewEvent("New Injected NodeFailureInjection Pod", fmt.Sprintf("Created failure injection pod for nodefailureinjection \"%s\"", instance.Name), statusInjectedEntry.Node, []string{"phase:inject", "target_pod:" + statusInjectedEntry.Pod, "target_node:" + statusInjectedEntry.Node, "name:" + instance.Name, "namespace:" + instance.Namespace}, time.Now())
 				datadog.GetInstance().Event(newPodEvent)
 				datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target_pod:" + statusInjectedEntry.Pod, "target_node:" + statusInjectedEntry.Node, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 
