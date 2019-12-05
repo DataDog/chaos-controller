@@ -357,6 +357,8 @@ func (r *ReconcileNetworkFailureInjection) cleanFailures(instance *chaosv1beta1.
 			return err
 		}
 		r.recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for networkfailureinjection \"%s\"", instance.Name))
+		newPodEvent := datadog.NewEvent("New Cleanup NetworkFailureInjection Pod", fmt.Sprintf("Created cleanup pod for networkfailureinjection \"%s\"", instance.Name), instance.Spec.Failure.Host, []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, time.Now())
+		datadog.GetInstance().Event(newPodEvent)
 		datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:cleanup", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 	}
 	return nil
