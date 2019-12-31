@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/DataDog/chaos-fi-controller/pkg/apis/chaos/v1beta1"
 	. "github.com/DataDog/chaos-fi-controller/pkg/injector"
 )
 
@@ -19,6 +20,7 @@ var _ = Describe("Failure", func() {
 			Injector: Injector{
 				UID: "fake",
 			},
+			Spec: &v1beta1.NodeFailureInjectionSpec{},
 		}
 
 		// os
