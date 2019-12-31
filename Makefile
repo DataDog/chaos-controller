@@ -59,8 +59,10 @@ docker-push:
 
 minikube-start:
 	minikube start \
+		--vm-driver=virtualbox \
 		--container-runtime=containerd \
 		--memory=4096 \
 		--cpus=4 \
 		--extra-config=apiserver.runtime-config=settings.k8s.io/v1alpha1=true \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodPreset
+	minikube ssh -- sudo systemctl start docker
