@@ -47,6 +47,9 @@ func (fc fakeContainer) Extensions(context.Context) (map[string]prototypes.Any, 
 	return nil, nil
 }
 func (fc fakeContainer) Update(context.Context, ...containerd.UpdateContainerOpts) error { return nil }
+func (fc fakeContainer) Checkpoint(context.Context, string, ...containerd.CheckpointOpts) (containerd.Image, error) {
+	return nil, nil
+}
 
 // fakeTask implement the Task interface
 type fakeTask struct{}

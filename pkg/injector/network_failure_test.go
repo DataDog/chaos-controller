@@ -121,7 +121,7 @@ var _ = Describe("Network Failure", func() {
 		})
 
 		// datadog
-		monkey.Patch(datadog.Get, func() *statsd.Client {
+		monkey.Patch(datadog.GetInstance, func() *statsd.Client {
 			return nil
 		})
 	})
