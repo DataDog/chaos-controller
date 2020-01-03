@@ -43,7 +43,7 @@ build:make:
   tags:
     - "runner:docker"
     - "size:large"
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:0.0.3
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2038371-28ef8fc-0.0.4
   stage: release
   script:
     - release.sh
@@ -54,6 +54,7 @@ release-manager-ref:
   except:
     - tags
   variables:
+    TARGET: "manager"
     TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
     DOCKERFILE_PATH: "./cmd/manager/"
 
@@ -63,6 +64,7 @@ release-manager-tag:
   only:
     - tags
   variables:
+    TARGET: "manager"
     TAG: "${CI_COMMIT_TAG}"
     DOCKERFILE_PATH: "./cmd/manager/"
 
@@ -72,6 +74,7 @@ release-injector-ref:
   except:
     - tags
   variables:
+    TARGET: "injector"
     TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
     DOCKERFILE_PATH: "./cmd/injector/"
 
@@ -81,5 +84,6 @@ release-injector-tag:
   only:
     - tags
   variables:
+    TARGET: "injector"
     TAG: "${CI_COMMIT_TAG}"
     DOCKERFILE_PATH: "./cmd/injector/"
