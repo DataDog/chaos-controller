@@ -38,6 +38,10 @@ var _ = Describe("Failure", func() {
 		})
 	})
 
+	AfterEach(func() {
+		monkey.UnpatchAll()
+	})
+
 	Describe("injection", func() {
 		It("should write to the sysrq file", func() {
 			f.Inject()
