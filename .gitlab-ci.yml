@@ -43,7 +43,7 @@ build:make:
   tags:
     - "runner:docker"
     - "size:large"
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2038371-28ef8fc-0.0.4
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2038439-2f46246-0.0.4
   stage: release
   script:
     - release.sh
