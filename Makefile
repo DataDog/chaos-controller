@@ -2,7 +2,7 @@
 # Image URL to use all building/pushing image targets
 IMG ?= chaos-fi-controller:latest
 
-all: test manager
+all: test manager injector
 
 # Run tests
 test: generate fmt vet manifests
@@ -11,6 +11,10 @@ test: generate fmt vet manifests
 # Build manager binary
 manager: generate fmt vet
 	go build -o bin/manager github.com/DataDog/chaos-fi-controller/cmd/manager
+
+# Build injector binary
+injector: generate fmt vet
+	go build -o bin/injector github.com/DataDog/chaos-fi-controller/cmd/injector
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
