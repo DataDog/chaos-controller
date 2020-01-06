@@ -1,16 +1,21 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= chaos-fi-controller:latest
+MANAGER_IMAGE ?= chaos-fi-controller:latest
+INJECTOR_IMAGE ?= chaos-fi:latest
 
-all: test manager
+all: test manager injector
 
 # Run tests
 test: generate fmt vet manifests
-	go test ./pkg/... ./cmd/... -coverprofile cover.out
+	go test ./pkg/... ./cmd/... -coverprofile cover.out -gcflags=-l
 
 # Build manager binary
 manager: generate fmt vet
 	go build -o bin/manager github.com/DataDog/chaos-fi-controller/cmd/manager
+
+# Build injector binary
+injector: generate fmt vet
+	go build -o bin/injector github.com/DataDog/chaos-fi-controller/cmd/injector
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
@@ -47,15 +52,14 @@ endif
 # Build the docker image
 docker-build:
 	if [[ -z "${DOCKER_HOST}" ]]; then echo 'Please run eval $$(minikube docker-env) before running this script'; exit 1; fi
-	docker build . -t ${IMG}
-	minikube ssh -- sudo docker save -o image.tar ${IMG}
-	minikube ssh -- sudo ctr cri load image.tar
+	docker build . -t ${MANAGER_IMAGE} --target manager
+	docker build . -t ${INJECTOR_IMAGE} --target injector
+	minikube ssh -- sudo docker save -o manager.tar ${MANAGER_IMAGE}
+	minikube ssh -- sudo docker save -o injector.tar ${INJECTOR_IMAGE}
+	minikube ssh -- sudo ctr cri load manager.tar
+	minikube ssh -- sudo ctr cri load injector.tar
 	@echo "updating kustomize image patch file for manager resource"
-	sed -i'' -e 's@image: .*@image: '"docker.io/library/${IMG}"'@' ./config/default/manager_image_patch.yaml
-
-# Push the docker image
-docker-push:
-	docker push ${IMG}
+	sed -i'' -e 's@image: .*@image: '"docker.io/library/${MANAGER_IMAGE}"'@' ./config/default/manager_image_patch.yaml
 
 minikube-start:
 	minikube start \

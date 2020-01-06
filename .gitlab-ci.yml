@@ -43,23 +43,47 @@ build:make:
   tags:
     - "runner:docker"
     - "size:large"
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v1780460-1cae6cc-0.0.3
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2038439-2f46246-0.0.4
   stage: release
   script:
     - release.sh
 
-release-ref:
+release-manager-ref:
   <<: *release
   when: manual
   except:
     - tags
   variables:
+    TARGET: "manager"
+    IMAGE: "chaos-fi-controller"
     TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
 
-release-tag:
+release-manager-tag:
   <<: *release
   when: always
   only:
     - tags
   variables:
+    TARGET: "manager"
+    IMAGE: "chaos-fi-controller"
+    TAG: "${CI_COMMIT_TAG}"
+
+release-injector-ref:
+  <<: *release
+  when: manual
+  except:
+    - tags
+  variables:
+    TARGET: "injector"
+    IMAGE: "chaos-fi"
+    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+
+release-injector-tag:
+  <<: *release
+  when: always
+  only:
+    - tags
+  variables:
+    TARGET: "injector"
+    IMAGE: "chaos-fi"
     TAG: "${CI_COMMIT_TAG}"
