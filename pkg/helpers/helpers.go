@@ -44,7 +44,6 @@ func GeneratePod(name string, pod *corev1.Pod, args []string, mode types.PodMode
 					Name:            "chaos-fi",
 					Image:           os.Getenv(ChaosFailureInjectionImageVariableName),
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					Command:         []string{"chaos-fi"},
 					Args:            args,
 					VolumeMounts: []corev1.VolumeMount{
 						corev1.VolumeMount{
