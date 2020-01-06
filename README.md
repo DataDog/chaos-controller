@@ -15,6 +15,7 @@ This repository contains the configuration and code for the `chaos-fi-controller
   * [NetworkFailureInjection](docs/network_failure.md)
   * [NodeFailureInjection](docs/node_failure.md)
 * [Design](docs/design.md)
+* [Metrics](docs/metrics.md)
 * [FAQ](docs/faq.md)
 * [Contributing](#contributing)
 
