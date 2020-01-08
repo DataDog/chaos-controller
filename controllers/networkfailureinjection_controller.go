@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/prometheus/common/log"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -36,7 +35,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/api/v1beta1"
 	"github.com/DataDog/chaos-fi-controller/datadog"
@@ -64,6 +62,7 @@ type NetworkFailureInjectionReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
 
+// Reconcile loop
 func (r *NetworkFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	_ = r.Log.WithValues("networkfailureinjection", req.NamespacedName)
@@ -83,15 +82,8 @@ func (r *NetworkFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Re
 	}()()
 
 	// Fetch the NetworkFailureInjection instance
-	err := r.Get(context.TODO(), req.NamespacedName, instance)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// For additional cleanup logic use finalizers.
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+	if err := r.Get(context.Background(), req.NamespacedName, instance); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// The object is not being deleted, so if it does not have our finalizer,
@@ -100,7 +92,7 @@ func (r *NetworkFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Re
 		if !containsString(instance.ObjectMeta.Finalizers, cleanupFinalizer) {
 			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, cleanupFinalizer)
 			if err := r.Update(context.Background(), instance); err != nil {
-				return reconcile.Result{}, err
+				return ctrl.Result{}, err
 			}
 		}
 	} else {
@@ -111,48 +103,51 @@ func (r *NetworkFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Re
 				if err := r.cleanFailures(instance); err != nil {
 					// if fail to clean injected network failures, return with error
 					// so that it can be retried
-					return reconcile.Result{}, err
+					return ctrl.Result{}, err
 				}
 
 				// set the finalizing flag so we can remove the finalizers once the cleanup pod
 				// has finisheR its work
 				instance.Status.Finalizing = true
 				if err := r.Update(context.Background(), instance); err != nil {
-					return reconcile.Result{}, err
+					return ctrl.Result{}, err
 				}
 
-				return reconcile.Result{}, nil
+				return ctrl.Result{}, nil
 			}
 
 			cleanupPods, err := r.getCleanupPods(instance)
 			if err != nil {
-				return reconcile.Result{}, err
+				return ctrl.Result{}, err
 			}
 
-			log.Info("Checking status of cleanup pods before deleting nfi", "numcleanuppods", len(cleanupPods), "networkfailureinjection", instance.Name, "namespace", instance.Namespace)
+			r.Log.Info("Checking status of cleanup pods before deleting nfi", "numcleanuppods", len(cleanupPods), "networkfailureinjection", instance.Name, "namespace", instance.Namespace)
 
+			// Check if cleanup pods have succeeded, requeue until they have
 			for _, cleanupPod := range cleanupPods {
 				if cleanupPod.Status.Phase != corev1.PodSucceeded {
-					log.Info("Cleanup pod has not completed, retrying nfi deletion", "networkfailureinjection", instance.Name, "namespace", instance.Namespace, "cleanuppod", cleanupPod.Name, "phase", cleanupPod.Status.Phase)
-					return reconcile.Result{}, nil
+					r.Log.Info("Cleanup pod has not completed, retrying nfi deletion", "networkfailureinjection", instance.Name, "namespace", instance.Namespace, "cleanuppod", cleanupPod.Name, "phase", cleanupPod.Status.Phase)
+					return ctrl.Result{
+						Requeue: true,
+					}, nil
 				}
 			}
 
-			// remove our finalizer from the list and update it.
+			// Remove our finalizer from the list and update it.
 			instance.ObjectMeta.Finalizers = removeString(instance.ObjectMeta.Finalizers, cleanupFinalizer)
 			if err := r.Update(context.Background(), instance); err != nil {
-				return reconcile.Result{}, err
+				return ctrl.Result{}, err
 			}
 			datadog.GetInstance().Timing(metricPrefix+".cleanup.duration", time.Since(tsStart), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 		}
 
 		// Our finalizer has finished, so the reconciler can do nothing.
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
 	// Skip the nfi if inject pods were already created for it
 	if instance.Status.Injected {
-		return reconcile.Result{}, nil
+		return ctrl.Result{}, nil
 	}
 
 	// Get pods to inject failures into. If NumPodsToTarget was not specified, this includes all pods
@@ -160,7 +155,7 @@ func (r *NetworkFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Re
 	// Otherwise, inject failures into NumPodsToTarget randomly-selected pods matching the nfi's label selector and namespace.
 	pods, err := r.selectPodsForInjection(instance)
 	if err != nil {
-		return reconcile.Result{}, err
+		return ctrl.Result{}, err
 	}
 
 	// For each pod found, start a chaos pod on the same node
@@ -168,7 +163,7 @@ func (r *NetworkFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Re
 		// Get ID of first container
 		containerID, err := r.getContainerdID(&p)
 		if err != nil {
-			return reconcile.Result{}, err
+			return ctrl.Result{}, err
 		}
 
 		nodeName := p.Spec.NodeName
@@ -198,19 +193,18 @@ func (r *NetworkFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Re
 
 		// Link the NFI resource and the chaos pod for garbage collection
 		if err := controllerutil.SetControllerReference(instance, pod, r.Scheme); err != nil {
-			return reconcile.Result{}, err
+			return ctrl.Result{}, err
 		}
 
 		// Create the injection pod if it does not exist
 		found := &corev1.Pod{}
-		err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+		err = r.Get(context.Background(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 		if err != nil && errors.IsNotFound(err) {
 			// Create the inject pod
-			log.Info("Creating chaos pod", "networkfailureinjection", instance.Name, "namespace", pod.Namespace, "name", pod.Name, "nodename", nodeName)
-			err = r.Create(context.TODO(), pod)
-			if err != nil {
+			r.Log.Info("Creating chaos pod", "networkfailureinjection", instance.Name, "namespace", pod.Namespace, "name", pod.Name, "nodename", nodeName)
+			if err = r.Create(context.Background(), pod); err != nil {
 				r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Failure injection pod for networkfailureinjection \"%s\" failed to be created", instance.Name))
-				return reconcile.Result{}, err
+				return ctrl.Result{}, err
 			}
 
 			// Send metrics
@@ -219,15 +213,14 @@ func (r *NetworkFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Re
 
 			continue
 		} else if err != nil {
-			return reconcile.Result{}, err
+			return ctrl.Result{}, err
 		}
 		// Do nothing if the inject pod already exists
 	}
 
 	instance.Status.Injected = true
-	err = r.Update(context.Background(), instance)
-	if err != nil {
-		return reconcile.Result{}, err
+	if err = r.Update(context.Background(), instance); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	// We reach this line only when every injection pods have been created with success
@@ -247,10 +240,10 @@ func (r *NetworkFailureInjectionReconciler) getPodsToCleanup(instance *chaosv1be
 		p := &corev1.Pod{}
 
 		// Try to get the pod
-		err := r.Get(context.TODO(), podKey, p)
+		err := r.Get(context.Background(), podKey, p)
 		// Skip the pod when it no longer exists
 		if errors.IsNotFound(err) {
-			log.Info("Cleanup: Pod no longer exists", "networkfailureinjection", instance.Name, "namespace", instance.Namespace, "name", podName, "numpodstotarget", instance.Spec.NumPodsToTarget)
+			r.Log.Info("Cleanup: Pod no longer exists", "networkfailureinjection", instance.Name, "namespace", instance.Namespace, "name", podName, "numpodstotarget", instance.Spec.NumPodsToTarget)
 			continue
 		} else if err != nil {
 			return nil, err
@@ -298,7 +291,7 @@ func (r *NetworkFailureInjectionReconciler) cleanFailures(instance *chaosv1beta1
 
 		// Check if cleanup pod already exists
 		found := &corev1.Pod{}
-		err = r.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+		err = r.Get(context.Background(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 		// Do nothing if cleanup pod already exists, or else
 		// retry Reconcile if we get an error other than the cleanup pod does not exist
 		if err != nil && reflect.DeepEqual(pod.Spec, found.Spec) {
@@ -307,8 +300,8 @@ func (r *NetworkFailureInjectionReconciler) cleanFailures(instance *chaosv1beta1
 			return err
 		}
 
-		log.Info("Creating chaos cleanup pod", "networkfailureinjection", instance.Name, "namespace", pod.Namespace, "name", pod.Name, "containerid", containerID)
-		err = r.Create(context.TODO(), pod)
+		r.Log.Info("Creating chaos cleanup pod", "networkfailureinjection", instance.Name, "namespace", pod.Namespace, "name", pod.Name, "containerid", containerID)
+		err = r.Create(context.Background(), pod)
 		if err != nil {
 			r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Cleanup pod for networkfailureinjection \"%s\" failed to be created", instance.Name))
 			return err
@@ -335,11 +328,11 @@ func (r *NetworkFailureInjectionReconciler) updateStatusPods(instance *chaosv1be
 	// Update the instance's status.pods
 	err := r.Update(context.Background(), instance)
 	if err != nil {
-		log.Error(err, "failed to update nfi's status.pods", "networkfailureinjection", instance.Name, "namespace", instance.Namespace)
+		r.Log.Error(err, "failed to update nfi's status.pods", "networkfailureinjection", instance.Name, "namespace", instance.Namespace)
 		return err
 	}
 
-	log.Info("Updated nfi status with pods selected for injection", "networkfailureinjection", instance.Name, "namespace", instance.Namespace, "numpodstotarget", instance.Spec.NumPodsToTarget)
+	r.Log.Info("Updated nfi status with pods selected for injection", "networkfailureinjection", instance.Name, "namespace", instance.Namespace, "numpodstotarget", instance.Spec.NumPodsToTarget)
 
 	return nil
 }
@@ -386,7 +379,7 @@ func (r *NetworkFailureInjectionReconciler) selectPodsForInjection(instance *cha
 		chosenPod := allPods.Items[index]
 		p = append(p, chosenPod)
 
-		log.Info("Selected random pod", "name", chosenPod.Name, "namespace", chosenPod.Namespace, "networkfailureinjection", instance.Name, "numpodstotarget", instance.Spec.NumPodsToTarget)
+		r.Log.Info("Selected random pod", "name", chosenPod.Name, "namespace", chosenPod.Namespace, "networkfailureinjection", instance.Name, "numpodstotarget", instance.Spec.NumPodsToTarget)
 
 		// Remove chosen pod from list of pods from which to select
 		allPods.Items[len(allPods.Items)-1], allPods.Items[index] = allPods.Items[index], allPods.Items[len(allPods.Items)-1]
@@ -413,7 +406,7 @@ func (r *NetworkFailureInjectionReconciler) getCleanupPods(instance *chaosv1beta
 			chaostypes.PodModeLabel: chaostypes.PodModeClean,
 		}),
 	}
-	err := r.Client.List(context.TODO(), podsInNs, listOptions)
+	err := r.Client.List(context.Background(), podsInNs, listOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -471,6 +464,7 @@ func removeString(slice []string, s string) (result []string) {
 	return
 }
 
+// SetupWithManager setups the current reconciler with the given manager
 func (r *NetworkFailureInjectionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.NetworkFailureInjection{}).
