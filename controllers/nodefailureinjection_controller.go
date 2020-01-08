@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/prometheus/common/log"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,7 +29,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/api/v1beta1"
 	"github.com/DataDog/chaos-fi-controller/datadog"
@@ -55,6 +53,7 @@ type NodeFailureInjectionReconciler struct {
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=nodefailureinjections,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=nodefailureinjections/status,verbs=get;update;patch
 
+// Reconcile loop
 func (r *NodeFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	_ = r.Log.WithValues("nodefailureinjection", req.NamespacedName)
@@ -73,15 +72,8 @@ func (r *NodeFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Resul
 	}()()
 
 	// Fetch the NodeFailureInjection instance
-	err := r.Get(context.Background(), req.NamespacedName, instance)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// For additional cleanup logic use finalizers.
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+	if err := r.Get(context.Background(), req.NamespacedName, instance); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// Define the quantity
@@ -100,8 +92,8 @@ func (r *NodeFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Resul
 		// Get matching pods and generate associated nodes
 		pods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.Selector)
 		if err != nil {
-			log.Error(err, "Failed to get pods matching the resource label selector", "instance", instance.Name)
-			return reconcile.Result{}, err
+			r.Log.Error(err, "Failed to get pods matching the resource label selector", "instance", instance.Name)
+			return ctrl.Result{}, err
 		}
 		for _, p := range helpers.PickRandomPods(uint(quantity), pods.Items) {
 			args := []string{
@@ -115,7 +107,7 @@ func (r *NodeFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Resul
 			}
 			pod := helpers.GeneratePod(instance.Name+"-"+p.Name, &p, args, chaostypes.PodModeInject)
 			if err := controllerutil.SetControllerReference(instance, pod, r.Scheme); err != nil {
-				return reconcile.Result{}, err
+				return ctrl.Result{}, err
 			}
 
 			// Check if the pod already exists
@@ -142,24 +134,22 @@ func (r *NodeFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Resul
 				instance.Status.Injected = append(instance.Status.Injected, statusInjectedEntry)
 
 				// Create the injection pod
-				log.Info("Creating node failure injection pod", "namespace", pod.Namespace, "name", pod.Name)
-				err = r.Create(context.Background(), pod)
-				if err != nil {
-					log.Error(err, "Failed to create injection pod", "instance", instance.Name)
+				r.Log.Info("Creating node failure injection pod", "namespace", pod.Namespace, "name", pod.Name)
+				if err = r.Create(context.Background(), pod); err != nil {
+					r.Log.Error(err, "Failed to create injection pod", "instance", instance.Name)
 					r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Failure injection pod for nodefailureinjection \"%s\" failed to be created", instance.Name))
-					return reconcile.Result{}, err
+					return ctrl.Result{}, err
 				}
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for nodefailureinjection \"%s\"", instance.Name))
 				datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target_pod:" + statusInjectedEntry.Pod, "target_node:" + statusInjectedEntry.Node, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 
 				// Update the instance
-				err = r.Update(context.Background(), instance)
-				if err != nil {
-					log.Error(err, "Failed to update instance status", "instance", instance.Name)
-					return reconcile.Result{}, err
+				if err = r.Update(context.Background(), instance); err != nil {
+					r.Log.Error(err, "Failed to update instance status", "instance", instance.Name)
+					return ctrl.Result{}, err
 				}
 			} else if err != nil {
-				return reconcile.Result{}, err
+				return ctrl.Result{}, err
 			}
 		}
 	}
@@ -167,6 +157,7 @@ func (r *NodeFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Resul
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager setups the current reconciler with the given manager
 func (r *NodeFailureInjectionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.NodeFailureInjection{}).
