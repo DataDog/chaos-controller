@@ -25,6 +25,17 @@ func GetInstance() *statsd.Client {
 	return instance
 }
 
+//EventNewPod sends an event to datadog specifying the name of newly created pods
+func EventNewPod(title, text, hostname string, tags []string, timestamp time.Time) {
+	GetInstance().Event(&statsd.Event{
+		Title:     title,
+		Text:      text,
+		Hostname:  hostname,
+		Tags:      tags,
+		Timestamp: timestamp,
+	})
+}
+
 // EventWithTags creates a new event with the given title, text and tags and send it
 func EventWithTags(title, text string, tags []string) {
 	GetInstance().Event(&statsd.Event{
