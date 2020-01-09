@@ -115,8 +115,8 @@ var _ = Describe("Helpers", func() {
 		})
 		It("should have the container image value defined by the environment variable", func() {
 			image := "chaos-fi:latest"
-			monkey.Patch(os.Getenv, func(string) string {
-				return image
+			monkey.Patch(os.LookupEnv, func(string) (string, bool) {
+				return image, true
 			})
 			p := GeneratePod("", pod, nil, types.PodModeInject)
 			Expect(p.Spec.Containers[0].Image).To(Equal(image))

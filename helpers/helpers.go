@@ -3,8 +3,10 @@ package helpers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/DataDog/chaos-fi-controller/types"
@@ -22,6 +24,11 @@ const (
 // GeneratePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
 func GeneratePod(name string, pod *corev1.Pod, args []string, mode types.PodMode) *corev1.Pod {
+	image, ok := os.LookupEnv(ChaosFailureInjectionImageVariableName)
+	if !ok {
+		image = "chaos-fi"
+	}
+
 	privileged := true
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
@@ -42,7 +49,7 @@ func GeneratePod(name string, pod *corev1.Pod, args []string, mode types.PodMode
 			Containers: []corev1.Container{
 				{
 					Name:            "chaos-fi",
-					Image:           os.Getenv(ChaosFailureInjectionImageVariableName),
+					Image:           image,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Args:            args,
 					VolumeMounts: []corev1.VolumeMount{
@@ -171,4 +178,19 @@ func GetOwnedPods(c client.Client, owner metav1.Object) (corev1.PodList, error) 
 	}
 
 	return ownedPods, nil
+}
+
+// GetContainerdID gets the ID of the first container ID found in a Pod.
+// It expects container ids to follow the format "containerd://<ID>".
+func GetContainerdID(pod *corev1.Pod) (string, error) {
+	if len(pod.Status.ContainerStatuses) < 1 {
+		return "", fmt.Errorf("Missing container ids for pod '%s'", pod.Name)
+	}
+
+	containerID := strings.Split(pod.Status.ContainerStatuses[0].ContainerID, "containerd://")
+	if len(containerID) != 2 {
+		return "", fmt.Errorf("Unrecognized container ID format '%s', expecting 'containerd://<ID>'", pod.Status.ContainerStatuses[0].ContainerID)
+	}
+
+	return containerID[1], nil
 }

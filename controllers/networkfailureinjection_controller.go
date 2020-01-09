@@ -22,7 +22,6 @@ import (
 	"math/rand"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -161,7 +160,7 @@ func (r *NetworkFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Re
 	// For each pod found, start a chaos pod on the same node
 	for _, p := range pods.Items {
 		// Get ID of first container
-		containerID, err := r.getContainerdID(&p)
+		containerID, err := helpers.GetContainerdID(&p)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -265,7 +264,7 @@ func (r *NetworkFailureInjectionReconciler) cleanFailures(instance *chaosv1beta1
 
 	for _, p := range pods {
 		// Get ID of first container
-		containerID, err := r.getContainerdID(p)
+		containerID, err := helpers.GetContainerdID(p)
 		if err != nil {
 			return err
 		}
@@ -425,21 +424,6 @@ func (r *NetworkFailureInjectionReconciler) getCleanupPods(instance *chaosv1beta
 		}
 	}
 	return pods, nil
-}
-
-// getContainerdID gets the ID of the first container ID found in a Pod.
-// It expects container ids to follow the format "containerd://<ID>".
-func (r *NetworkFailureInjectionReconciler) getContainerdID(pod *corev1.Pod) (string, error) {
-	if len(pod.Status.ContainerStatuses) < 1 {
-		return "", fmt.Errorf("Missing container ids for pod '%s'", pod.Name)
-	}
-
-	containerID := strings.Split(pod.Status.ContainerStatuses[0].ContainerID, "containerd://")
-	if len(containerID) != 2 {
-		return "", fmt.Errorf("Unrecognized container ID format '%s', expecting 'containerd://<ID>'", pod.Status.ContainerStatuses[0].ContainerID)
-	}
-
-	return containerID[1], nil
 }
 
 //
