@@ -3,7 +3,7 @@ package datadog
 import (
 	"os"
 	"sync"
-
+	"time"
 	"github.com/DataDog/datadog-go/statsd"
 )
 
