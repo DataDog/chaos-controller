@@ -1,20 +1,26 @@
 # Build the manager binary
-FROM golang:1.10.3 as builder
+FROM golang:1.13 as builder
 
-# Copy in the go src
-WORKDIR /go/src/github.com/DataDog/chaos-fi-controller
-COPY pkg/    pkg/
-COPY cmd/    cmd/
-COPY vendor/ vendor/
+WORKDIR /workspace
+
+# Copy sources
+COPY . .
+
+# Cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -a -o manager github.com/DataDog/chaos-fi-controller/cmd/manager
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -a -o injector github.com/DataDog/chaos-fi-controller/cmd/injector
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags="-w -s" -a -o bin/manager main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags="-w -s" -a -o bin/injector ./cli/injector
 
-# Manager image
-FROM scratch as manager
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+FROM gcr.io/distroless/static:nonroot as manager
 WORKDIR /
-COPY --from=builder /go/src/github.com/DataDog/chaos-fi-controller/manager .
+COPY --from=builder /workspace/bin/manager .
+USER nonroot:nonroot
+
 ENTRYPOINT ["/manager"]
 
 # Injector image
@@ -22,5 +28,5 @@ FROM alpine:3.11.2 as injector
 RUN apk update && \
     apk add git gcc musl-dev iptables
 WORKDIR /
-COPY --from=builder /go/src/github.com/DataDog/chaos-fi-controller/injector .
+COPY --from=builder /workspace/bin/injector .
 ENTRYPOINT ["/injector"]

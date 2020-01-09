@@ -14,8 +14,8 @@ If you want to test the controller locally (without having to redeploy a new ima
   * `make minikube-start`
 * build the new image of the controller with your local changes
   * `make docker-build`
-* deploy the controller on the minikube cluster
-  * `make deploy`
+* deploy the CRD and the controller on the minikube cluster
+  * `make install && make deploy`
 
 If the controller is already deployed, you'll have to remove the running pod for changes to be applied
 
