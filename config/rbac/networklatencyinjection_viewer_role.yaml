@@ -1,0 +1,20 @@
+# permissions to do viewer networklatencyinjections.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: networklatencyinjection-viewer-role
+rules:
+- apiGroups:
+  - chaos.datadoghq.com
+  resources:
+  - networklatencyinjections
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - chaos.datadoghq.com
+  resources:
+  - networklatencyinjections/status
+  verbs:
+  - get

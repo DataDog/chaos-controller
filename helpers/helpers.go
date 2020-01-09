@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/DataDog/chaos-fi-controller/types"
+	"github.com/miekg/dns"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -193,4 +195,72 @@ func GetContainerdID(pod *corev1.Pod) (string, error) {
 	}
 
 	return containerID[1], nil
+}
+
+// ResolveHost tries to resolve the given host
+// it tries to resolve it as a CIDR, as a single IP, or as a hostname
+// it returns a list of IP or an error if it fails to resolve the hostname
+func ResolveHost(hosts []string) ([]*net.IPNet, error) {
+	var ips []*net.IPNet
+
+	for _, host := range hosts {
+		// Try to parse the given host as a CIDR
+		_, ipnet, err := net.ParseCIDR(host)
+		if err != nil {
+			// If it fails, try to parse the given host as a single IP
+			ip := net.ParseIP(host)
+			if ip == nil {
+				// If no IP has been parsed, fallback on a hostname
+				// and try to resolve it by using the container resolv.conf file
+				dnsConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+				if err != nil {
+					return nil, fmt.Errorf("can't read resolve.conf file: %w", err)
+				}
+				dnsClient := dns.Client{}
+				dnsMessage := dns.Msg{}
+				dnsMessage.SetQuestion(host+".", dns.TypeA)
+				response, _, err := dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
+				if err != nil {
+					return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
+				}
+
+				// Append all the records returned by the resolver for this hostname
+				for _, answer := range response.Answer {
+					rec := answer.(*dns.A)
+					ips = append(ips, &net.IPNet{
+						IP:   rec.A,
+						Mask: net.CIDRMask(32, 32),
+					})
+				}
+			} else {
+				// ensure the parsed IP is an IPv4
+				// the net.ParseIP function returns an IPv4 with an IPv6 length
+				// the code blow ensures the parsed IP prefix is the default (empty) prefix
+				// of an IPv6 address:
+				// var v4InV6Prefix = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff}
+				var a, b [12]byte
+				copy(a[:], ip[0:12])
+				b[10] = 0xff
+				b[11] = 0xff
+				if a != b {
+					return nil, fmt.Errorf("the given IP (%s) seems to be an IPv6, aborting", host)
+				}
+
+				// use a /32 mask for a single IP
+				ips = append(ips, &net.IPNet{
+					IP:   ip[12:16],
+					Mask: net.CIDRMask(32, 32),
+				})
+			}
+		} else {
+			// use the given CIDR network
+			ips = append(ips, ipnet)
+		}
+
+		if len(ips) == 0 {
+			return nil, fmt.Errorf("failed to resolve the given host: %s", host)
+		}
+	}
+
+	return ips, nil
 }

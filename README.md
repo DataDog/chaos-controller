@@ -13,6 +13,7 @@ This repository contains the configuration and code for the `chaos-fi-controller
 * [What is the chaos-fi-controller?](#what-is-the-chaos-fi-controller)
 * Failures
   * [NetworkFailureInjection](docs/network_failure.md)
+  * [NetworkLatencyInjection](docs/network_latency.md)
   * [NodeFailureInjection](docs/node_failure.md)
 * [Design](docs/design.md)
 * [Metrics](docs/metrics.md)
