@@ -1,11 +1,8 @@
 /*
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -208,6 +205,7 @@ func (r *NetworkFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Re
 
 			// Send metrics
 			r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for networkfailureinjection \"%s\"", instance.Name))
+            datadog.EventWithTags("New Injected NetworkFailureInjection Pod", fmt.Sprintf("Created failure injection pod for networkfailureinjection \"%s\"", instance.Name), instance.Spec.Failure.Host, []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace})
 			datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 
 			continue
@@ -306,6 +304,7 @@ func (r *NetworkFailureInjectionReconciler) cleanFailures(instance *chaosv1beta1
 			return err
 		}
 		r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for networkfailureinjection \"%s\"", instance.Name))
+        datadog.EventWithTags("New Cleanup NetworkFailureInjection Pod", fmt.Sprintf("Created cleanup pod for networkfailureinjection \"%s\"", instance.Name), instance.Spec.Failure.Host, []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace})
 		datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:cleanup", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 	}
 	return nil
