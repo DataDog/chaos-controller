@@ -31,6 +31,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df
 	go.etcd.io/bbolt v1.3.3 // indirect
 	go.uber.org/zap v1.9.1
+	golang.org/x/net v0.0.0-20190923162816-aa69164e4478
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	k8s.io/api v0.0.0-20190918155943-95b840bb6a1f
 	k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655
