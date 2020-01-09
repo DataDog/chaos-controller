@@ -86,6 +86,9 @@ var _ = BeforeSuite(func(done Done) {
 	err = chaosv1beta1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = chaosv1beta1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
 	// +kubebuilder:scaffold:scheme
 
 	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{

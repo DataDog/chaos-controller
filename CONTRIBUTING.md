@@ -17,9 +17,13 @@ If you want to test the controller locally (without having to redeploy a new ima
 * deploy the CRD and the controller on the minikube cluster
   * `make install && make deploy`
 
-If the controller is already deployed, you'll have to remove the running pod for changes to be applied
+If the controller is already deployed, you'll have to remove the running pod for changes to be applied.
 
-The controller relies on the [chaos-fi](https://github.com/DataDog/chaos-fi) image to inject failures. Please build it locally as well if you want to injection and cleanup pods created by the controller to succeed.
+**Known issue: the pod preset injecting the fake Datadog statsd environment variable is created at the end of the apply. The preset may not be applied on the chaos controller pod, making it to panic. If it's the case, you have to remove the pod so it's created again with the pod preset."**
+
+### Minikube ISO
+
+We need some specific kernel modules to be enabled to do some of the injections. Because some of them were not enabled by default in the ISO, we built a custom one following the [official guide](https://minikube.sigs.k8s.io/docs/contributing/iso/) which is stored in the [minikube/iso] directory.
 
 ## Releasing a new version of the controller
 

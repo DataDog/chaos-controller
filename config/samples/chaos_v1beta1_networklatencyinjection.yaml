@@ -1,0 +1,13 @@
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: NetworkLatencyInjection
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: networklatencyinjection-sample
+spec:
+  hosts:
+    - 10.0.0.0/8 # host to drop packets to (can be either a single IP, a block IP (CIDR), or a hostname; if removed, it'll target all possible IPs)
+  delay: 1000 # latency to add in ms
+  selector: # label selector to target pods
+    app: demo
+  count: 1 # maximum number of pods to target; if not specified, it'll target ALL the pods

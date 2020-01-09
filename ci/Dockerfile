@@ -1,4 +1,4 @@
-FROM golang:1.12.1-stretch
+FROM golang:1.13.6-stretch
 
 # kubebuilder
 ARG version=1.0.8
