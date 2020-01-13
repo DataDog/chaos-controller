@@ -1,10 +1,11 @@
 package datadog
 
 import (
+	"fmt"
+	"github.com/DataDog/datadog-go/statsd"
 	"os"
 	"sync"
 	"time"
-	"github.com/DataDog/datadog-go/statsd"
 )
 
 const metricPrefix = "chaos.nfi"
@@ -25,43 +26,49 @@ func GetInstance() *statsd.Client {
 	return instance
 }
 
-//EventNewPod sends an event to datadog specifying the name of newly created pods
-func EventNewPod(title, text, hostname string, tags []string, timestamp time.Time) {
-	GetInstance().Event(&statsd.Event{
-		Title:     title,
-		Text:      text,
-		Hostname:  hostname,
-		Tags:      tags,
-		Timestamp: timestamp,
-	})
-}
-
 // EventWithTags creates a new event with the given title, text and tags and send it
-func EventWithTags(title, text string, tags []string) {
-	GetInstance().Event(&statsd.Event{
+func EventWithTags(title, text, host string, tags []string, timestamp *time.Time) {
+	e := statsd.Event{
 		Title: title,
 		Text:  text,
 		Tags:  tags,
-	})
+	}
+	if len(host) > 0 {
+		e.Hostname = host
+	}
+	if timestamp != nil {
+		e.Timestamp = *timestamp
+	}
+	GetInstance().Event(&e)
+}
+
+//EventNewPod creates a new event specifying the name of a newly created pod
+func EventNewPod(podType, failure, instance, host string, timestamp *time.Time, tags []string) {
+	EventWithTags(fmt.Sprintf("New %s %s Pod", podType, failure), fmt.Sprintf("Created cleanup %s for %s \"%s\"", podType, failure, instance), host,
+		tags,
+		timestamp,
+	)
 }
 
 // EventCleanFailure sends an event to datadog specifying a failure clean fail
 func EventCleanFailure(containerID, uid string) {
-	EventWithTags("network failure clean failed", "please check the cleanup pod logs to have more details",
+	EventWithTags("network failure clean failed", "please check the cleanup pod logs to have more details", "",
 		[]string{
 			"containerID:" + containerID,
 			"UID:" + uid,
 		},
+		nil,
 	)
 }
 
 // EventInjectFailure sends an event to datadog specifying a failure inject fail
 func EventInjectFailure(containerID, uid string) {
-	EventWithTags("network failure injection failed", "please check the inject pod logs to have more details",
+	EventWithTags("network failure injection failed", "please check the inject pod logs to have more details", "",
 		[]string{
 			"containerID:" + containerID,
 			"UID:" + uid,
 		},
+		nil,
 	)
 }
 

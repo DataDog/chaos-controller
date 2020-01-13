@@ -205,7 +205,8 @@ func (r *NetworkFailureInjectionReconciler) Reconcile(req ctrl.Request) (ctrl.Re
 
 			// Send metrics
 			r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created failure injection pod for networkfailureinjection \"%s\"", instance.Name))
-			datadog.EventNewPod("New Injected NetworkFailureInjection Pod", fmt.Sprintf("Created failure injection pod for networkfailureinjection \"%s\"", instance.Name), instance.Spec.Failure.Host, []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, time.Now())
+			var currentTime time.Time = time.Now()
+			datadog.EventNewPod("Injected", "NetworkFailureInjection", instance.Name, instance.Spec.Failure.Host, &currentTime, []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace})
 			datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 
 			continue
@@ -304,7 +305,8 @@ func (r *NetworkFailureInjectionReconciler) cleanFailures(instance *chaosv1beta1
 			return err
 		}
 		r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for networkfailureinjection \"%s\"", instance.Name))
-		datadog.EventNewPod("New Cleanup NetworkFailureInjection Pod", fmt.Sprintf("Created cleanup pod for networkfailureinjection \"%s\"", instance.Name), instance.Spec.Failure.Host, []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, time.Now())
+		var currentTime time.Time = time.Now()
+		datadog.EventNewPod("Cleanup", "NetworkFailureInjection", instance.Name, instance.Spec.Failure.Host, &currentTime, []string{"phase:cleanup", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace})
 		datadog.GetInstance().Incr(metricPrefix+".pods.created", []string{"phase:cleanup", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 	}
 	return nil
