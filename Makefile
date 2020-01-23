@@ -23,7 +23,7 @@ manager: generate fmt vet
 	go build -o bin/manager main.go
 
 # Build injector binary
-injector: fmt
+injector: fmt vet
 	GOOS=linux GOARCH=amd64 go build -o bin/injector ./cli/injector/
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
