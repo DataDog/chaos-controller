@@ -18,12 +18,4 @@ spec:
     spec:
       containers:
       - name: demo
-        image: alpine
-        command: ["sh"]
-        args:
-          - "-c"
-          - "sleep 100000000"
-        securityContext:
-          capabilities:
-            add: ["NET_ADMIN"]
-        #image: k8s.gcr.io/pause:3.1
+        image: k8s.gcr.io/pause:3.1
