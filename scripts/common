@@ -1,0 +1,27 @@
+#!/bin/bash
+
+function usage() {
+  echo "wrong number of parameters: $0 POD_NAME"
+  exit 1
+}
+
+function exec_into_pod() {
+  pod=$1
+  cmd=$2
+  if [[ -z "$pod" ]]; then
+    exit 1
+  fi
+  if [[ -z "$cmd" ]]; then
+    exit 2
+  fi
+
+  # get container id
+  id=$(kubectl get -ojson pod $pod | jq -r '.status.containerStatuses[0].containerID' | sed 's#containerd://##')
+
+  # get pid
+  inspect=$(minikube ssh -- "sudo crictl inspect $id")
+  pid=$(echo "$inspect" | jq -r .info.pid)
+
+  # list iptables
+  minikube ssh -- "sudo nsenter --net=/proc/$pid/ns/net $cmd"
+}

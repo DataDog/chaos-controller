@@ -23,8 +23,8 @@ manager: generate fmt vet
 	go build -o bin/manager main.go
 
 # Build injector binary
-injector: fmt vet
-	go build -o bin/injector ./cli/injector/
+injector: fmt
+	GOOS=linux GOARCH=amd64 go build -o bin/injector ./cli/injector/
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests
@@ -42,6 +42,7 @@ uninstall: manifests
 deploy: manifests
 	cd config/manager && kustomize edit set image controller=${MANAGER_IMAGE}
 	kustomize build config/default | kubectl apply -f -
+	kubectl apply -f config/samples/deployment.yaml
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
@@ -92,6 +93,8 @@ minikube-start:
 		--container-runtime=containerd \
 		--memory=4096 \
 		--cpus=4 \
+		--disk-size=50GB \
 		--extra-config=apiserver.runtime-config=settings.k8s.io/v1alpha1=true \
-		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodPreset
+		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodPreset \
+		--iso-url=file://$(shell pwd)/minikube/iso/minikube.iso
 	minikube ssh -- sudo systemctl start docker
