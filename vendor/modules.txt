@@ -26,11 +26,6 @@ github.com/Microsoft/hcsshim/internal/timeout
 github.com/Microsoft/hcsshim/internal/vmcompute
 github.com/Microsoft/hcsshim/internal/wclayer
 github.com/Microsoft/hcsshim/osversion
-# github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
-github.com/alecthomas/template
-github.com/alecthomas/template/parse
-# github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d
-github.com/alecthomas/units
 # github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
 github.com/beorn7/perks/quantile
 # github.com/containerd/cgroups v0.0.0-20190919134610-bf292b21730f
@@ -223,7 +218,6 @@ github.com/prometheus/client_model/go
 # github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
-github.com/prometheus/common/log
 github.com/prometheus/common/model
 # github.com/prometheus/procfs v0.0.5
 github.com/prometheus/procfs
@@ -237,6 +231,9 @@ github.com/spf13/cobra
 github.com/spf13/pflag
 # github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
 github.com/syndtr/gocapability/capability
+# github.com/vishvananda/netlink v1.0.0
+github.com/vishvananda/netlink
+github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df
 github.com/vishvananda/netns
 # go.opencensus.io v0.22.0
@@ -289,8 +286,6 @@ golang.org/x/sync/semaphore
 # golang.org/x/sys v0.0.0-20191210023423-ac6580df4449
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-golang.org/x/sys/windows/registry
-golang.org/x/sys/windows/svc/eventlog
 # golang.org/x/text v0.3.2
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
@@ -367,8 +362,6 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# gopkg.in/alecthomas/kingpin.v2 v2.2.6
-gopkg.in/alecthomas/kingpin.v2
 # gopkg.in/fsnotify.v1 v1.4.7
 gopkg.in/fsnotify.v1
 # gopkg.in/inf.v0 v0.9.1

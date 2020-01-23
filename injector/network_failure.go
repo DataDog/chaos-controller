@@ -1,19 +1,17 @@
 package injector
 
 import (
-	"errors"
 	"fmt"
-	"net"
 	"strconv"
 	"strings"
 
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
 	"github.com/DataDog/chaos-fi-controller/container"
 	"github.com/DataDog/chaos-fi-controller/datadog"
+	"github.com/DataDog/chaos-fi-controller/helpers"
 	"github.com/DataDog/chaos-fi-controller/logger"
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/coreos/go-iptables/iptables"
-	"github.com/miekg/dns"
 )
 
 const iptablesTable = "filter"
@@ -35,13 +33,21 @@ func (i NetworkFailureInjector) Inject() {
 	c.EnterNetworkNamespace()
 	defer container.ExitNetworkNamespace()
 
-	// Resolve host if needed
-	logger.Instance().Infow("resolving given host", "host", i.Spec.Failure.Host)
-	ips, err := resolveHost(i.Spec.Failure.Host)
+	// Default to 0.0.0.0/0 if no host has been specified
+	hosts := []string{}
+	if i.Spec.Failure.Host == "" {
+		hosts = append(hosts, "0.0.0.0/0")
+	} else {
+		hosts = append(hosts, i.Spec.Failure.Host)
+	}
+
+	// Resolve host
+	logger.Instance().Infow("resolving given host", "host", hosts[0])
+	ips, err := helpers.ResolveHost(hosts)
 	if err != nil {
 		datadog.EventInjectFailure(i.ContainerID, i.UID)
 		datadog.MetricInjected(i.ContainerID, i.UID, false)
-		logger.Instance().Fatalw("unable to resolve host", "error", err, "host", i.Spec.Failure.Host)
+		logger.Instance().Fatalw("unable to resolve host", "error", err, "host", hosts[0])
 	}
 
 	// Inject
@@ -193,72 +199,6 @@ func (i NetworkFailureInjector) getDedicatedChainName() string {
 	shortUID := parts[0] + parts[len(parts)-1]
 
 	return iptablesChaosChainPrefix + shortUID
-}
-
-// resolveHost tries to resolve the given host
-// it tries to resolve it as a CIDR, as a single IP, or as a hostname
-// it returns a list of IP or an error if it fails to resolve the hostname
-func resolveHost(host string) ([]*net.IPNet, error) {
-	var ips []*net.IPNet
-	//No Host Specified
-	if len(host) == 0 {
-		logger.Instance().Infow("host not specified, using 0.0.0.0/0")
-		host = "0.0.0.0/0"
-	}
-	_, ipnet, err := net.ParseCIDR(host)
-	if err != nil {
-		logger.Instance().Infow("not a valid CIDR, trying to resolve it as a single IP", "host", host)
-		ip := net.ParseIP(host)
-		if ip == nil {
-			logger.Instance().Infow("not a valid single IP, trying to resolve it as a hostname", "host", host)
-			dnsConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
-			if err != nil {
-				logger.Instance().Fatalw("unable to read resolv.conf file", "error", err)
-			}
-			dnsClient := dns.Client{}
-			dnsMessage := dns.Msg{}
-			dnsMessage.SetQuestion(host+".", dns.TypeA)
-			response, _, err := dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
-			if err != nil {
-				logger.Instance().Fatalw("error while talking to the resolver", "error", err)
-			}
-			for _, answer := range response.Answer {
-				rec := answer.(*dns.A)
-				ips = append(ips, &net.IPNet{
-					IP:   rec.A,
-					Mask: net.CIDRMask(32, 32),
-				})
-			}
-		} else {
-			// ensure the parsed IP is an IPv4
-			// the net.ParseIP function returns an IPv4 with an IPv6 length
-			// the code blow ensures the parsed IP prefix is the default (empty) prefix
-			// of an IPv6 address:
-			// var v4InV6Prefix = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff}
-			var a, b [12]byte
-			copy(a[:], ip[0:12])
-			b[10] = 0xff
-			b[11] = 0xff
-			if a != b {
-				logger.Instance().Fatalw("given IP seems to be an IPv6 address, aborting")
-			}
-
-			// use a /32 mask for a single IP
-			ips = append(ips, &net.IPNet{
-				IP:   ip[12:16],
-				Mask: net.CIDRMask(32, 32),
-			})
-		}
-	} else {
-		// use the given CIDR network
-		ips = append(ips, ipnet)
-	}
-
-	if len(ips) == 0 {
-		return nil, errors.New("failed to resolve the given host")
-	}
-
-	return ips, nil
 }
 
 // chainExists returns true if the given chain exists, false otherwise

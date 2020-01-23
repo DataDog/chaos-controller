@@ -82,6 +82,15 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "NodeFailureInjection")
 		os.Exit(1)
 	}
+	if err = (&controllers.NetworkLatencyInjectionReconciler{
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("NetworkLatencyInjection"),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("nodelatencyinjection-controller"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "NetworkLatencyInjection")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

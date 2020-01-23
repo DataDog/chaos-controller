@@ -25,9 +25,9 @@ require (
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/opencontainers/runtime-spec v1.0.1
-	github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/spf13/cobra v0.0.5
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2 // indirect
+	github.com/vishvananda/netlink v1.0.0
 	github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df
 	go.etcd.io/bbolt v1.3.3 // indirect
 	go.uber.org/zap v1.9.1
