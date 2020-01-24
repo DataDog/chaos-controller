@@ -1,0 +1,4 @@
+*.swp
+.git/
+vendor/
+minikube/
