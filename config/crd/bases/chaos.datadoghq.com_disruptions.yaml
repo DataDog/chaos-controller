@@ -1,0 +1,108 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.4
+  creationTimestamp: null
+  name: disruptions.chaos.datadoghq.com
+spec:
+  group: chaos.datadoghq.com
+  names:
+    kind: Disruption
+    listKind: DisruptionList
+    plural: disruptions
+    shortNames:
+    - dis
+    singular: disruption
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      description: Disruption is the Schema for the disruptions API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: DisruptionSpec defines the desired state of Disruption
+          properties:
+            count:
+              minimum: 0
+              type: integer
+            networkFailure:
+              description: NetworkFailureSpec represents a network failure injection
+              properties:
+                host:
+                  type: string
+                port:
+                  type: integer
+                probability:
+                  type: integer
+                protocol:
+                  type: string
+              required:
+              - port
+              - probability
+              - protocol
+              type: object
+            networkLatency:
+              description: NetworkLatencySpec represents a network latency injection
+              properties:
+                delay:
+                  type: integer
+                hosts:
+                  items:
+                    type: string
+                  type: array
+              required:
+              - delay
+              - hosts
+              type: object
+            nodeFailure:
+              description: NodeFailureSpec represents a node failure injection
+              properties:
+                shutdown:
+                  type: boolean
+              type: object
+            selector:
+              additionalProperties:
+                type: string
+              description: Set is a map of label:value. It implements Labels.
+              type: object
+          required:
+          - selector
+          type: object
+        status:
+          description: DisruptionStatus defines the observed state of Disruption
+          properties:
+            isFinalizing:
+              type: boolean
+            isInjected:
+              type: boolean
+            targetPods:
+              items:
+                type: string
+              type: array
+          type: object
+      type: object
+  version: v1beta1
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

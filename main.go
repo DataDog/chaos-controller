@@ -64,31 +64,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.NetworkFailureInjectionReconciler{
+	if err = (&controllers.DisruptionReconciler{
 		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("NetworkFailureInjection"),
+		Log:      ctrl.Log.WithName("controllers").WithName("Disruption"),
 		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("networkfailureinjection-controller"),
+		Recorder: mgr.GetEventRecorderFor("disruption-controller"),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "NetworkFailureInjection")
-		os.Exit(1)
-	}
-	if err = (&controllers.NodeFailureInjectionReconciler{
-		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("NodeFailureInjection"),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("nodefailureinjection-controller"),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "NodeFailureInjection")
-		os.Exit(1)
-	}
-	if err = (&controllers.NetworkLatencyInjectionReconciler{
-		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("NetworkLatencyInjection"),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("nodelatencyinjection-controller"),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "NetworkLatencyInjection")
+		setupLog.Error(err, "unable to create controller", "controller", "Disruption")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

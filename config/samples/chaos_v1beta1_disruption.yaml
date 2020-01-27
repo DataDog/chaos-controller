@@ -1,0 +1,17 @@
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: disruption-sample
+spec:
+  selector:
+    app: demo
+  count: 1
+  networkFailure:
+    host: 10.0.0.0/8
+    probability: 100
+    port: 80
+    protocol: tcp
+  networkLatency:
+    delay: 1000
+    hosts:
+      - 10.0.0.0/8

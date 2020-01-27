@@ -1,0 +1,20 @@
+# permissions to do viewer disruptions.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: disruption-viewer-role
+rules:
+- apiGroups:
+  - chaos.datadoghq.com
+  resources:
+  - disruptions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - chaos.datadoghq.com
+  resources:
+  - disruptions/status
+  verbs:
+  - get

@@ -10,4 +10,7 @@ resources:
 - group: chaos
   kind: NetworkLatencyInjection
   version: v1beta1
+- group: chaos
+  kind: Disruption
+  version: v1beta1
 version: "2"

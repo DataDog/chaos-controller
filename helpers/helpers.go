@@ -25,7 +25,7 @@ const (
 
 // GeneratePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
-func GeneratePod(name string, pod *corev1.Pod, args []string, mode types.PodMode) *corev1.Pod {
+func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types.PodMode, kind types.DisruptionKind) *corev1.Pod {
 	image, ok := os.LookupEnv(ChaosFailureInjectionImageVariableName)
 	if !ok {
 		image = "chaos-fi"
@@ -36,10 +36,12 @@ func GeneratePod(name string, pod *corev1.Pod, args []string, mode types.PodMode
 	hostPathFile := corev1.HostPathFile
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: pod.Namespace,
+			GenerateName: fmt.Sprintf("chaos-%s-%s-", instanceName, mode),
+			Namespace:    pod.Namespace,
 			Labels: map[string]string{
-				types.PodModeLabel: string(mode),
+				types.PodModeLabel:        string(mode),
+				types.TargetPodLabel:      pod.Name,
+				types.DisruptionKindLabel: string(kind),
 			},
 			Annotations: map[string]string{
 				"datadoghq.com/local-dns-cache": "true",
@@ -163,11 +165,17 @@ func PickRandomPods(n uint, pods []corev1.Pod) []corev1.Pod {
 }
 
 // GetOwnedPods returns a list of pods owned by the given object
-func GetOwnedPods(c client.Client, owner metav1.Object) (corev1.PodList, error) {
+func GetOwnedPods(c client.Client, owner metav1.Object, selector labels.Set) (corev1.PodList, error) {
+	// Prepare list options
+	options := &client.ListOptions{Namespace: owner.GetNamespace()}
+	if selector != nil {
+		options.LabelSelector = selector.AsSelector()
+	}
+
 	// Get pods
 	pods := corev1.PodList{}
 	ownedPods := corev1.PodList{}
-	err := c.List(context.Background(), &pods, &client.ListOptions{Namespace: owner.GetNamespace()})
+	err := c.List(context.Background(), &pods, options)
 	if err != nil {
 		return ownedPods, err
 	}
@@ -263,4 +271,23 @@ func ResolveHost(hosts []string) ([]*net.IPNet, error) {
 	}
 
 	return ips, nil
+}
+
+func ContainsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func RemoveString(slice []string, s string) (result []string) {
+	for _, item := range slice {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return
 }
