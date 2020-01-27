@@ -13,14 +13,13 @@ If an error occured during the cleanup of the failure (which occurs on removal),
 Once you're sure you want to remove everything related to your failure resource, just edit it and remove the finalizer from the list.
 
 ```
-# example with a NetworkFailureInjection resource
-k edit nfi my-failure
+k edit dis my-disruption
 ```
 
 ```yaml
 [...]
  finalizers:
-  - clean.nfi.finalizer.datadog.com
+  - finalizer.chaos.datadoghq.com
 [...]
 ```
 

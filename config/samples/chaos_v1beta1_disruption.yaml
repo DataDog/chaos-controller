@@ -3,15 +3,17 @@ kind: Disruption
 metadata:
   name: disruption-sample
 spec:
-  selector:
+  selector: # label selector to target pods
     app: demo
-  count: 1
-  networkFailure:
-    host: 10.0.0.0/8
-    probability: 100
-    port: 80
-    protocol: tcp
-  networkLatency:
-    delay: 1000
-    hosts:
+  count: 1 # number of pods to target (if set to 0 or not specified, it'll select all pods)
+  networkFailure: # packet loss and connection drop
+    host: 10.0.0.0/8 # destination host
+    probability: 100 # probability to drop packets
+    port: 80 # port to drop packets on
+    protocol: tcp # protocol to drop packets on (can be tcp or udp)
+  networkLatency: # network latency
+    delay: 1000 # delay in ms
+    hosts: # desination hosts to add latency to
       - 10.0.0.0/8
+  nodeFailure: # node kernel panic
+    shutdown: false # keep the host down or reboot it

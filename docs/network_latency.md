@@ -1,6 +1,6 @@
-# NetworkLatencyInjection ([example](../config/samples/chaos_v1beta1_networklatencyinjection.yaml))
+# Network latency
 
-The `NetworkLatencyInjection` resource provides a way to add latency on pods. It works with the `tc` command to apply the given delay which replaces the related network interface root qdisc by a custom one.
+The `networkLatency` field provides a way to add latency on pods. It works with the `tc` command to apply the given delay which replaces the related network interface root qdisc by a custom one.
 
 ## With no hosts specified
 

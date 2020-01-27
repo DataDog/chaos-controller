@@ -2,15 +2,6 @@ domain: datadoghq.com
 repo: github.com/DataDog/chaos-fi-controller
 resources:
 - group: chaos
-  kind: NetworkFailureInjection
-  version: v1beta1
-- group: chaos
-  kind: NodeFailureInjection
-  version: v1beta1
-- group: chaos
-  kind: NetworkLatencyInjection
-  version: v1beta1
-- group: chaos
   kind: Disruption
   version: v1beta1
 version: "2"
