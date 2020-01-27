@@ -109,9 +109,8 @@ var _ = Describe("Helpers", func() {
 			Expect(p.Spec.Containers[0].Args).To(Equal(args))
 		})
 		It("should have the given name", func() {
-			name := "foo"
-			p := GeneratePod(name, pod, nil, types.PodModeInject, types.DisruptionKindNetworkFailure)
-			Expect(p.Name).To(Equal(name))
+			p := GeneratePod("foo", pod, nil, types.PodModeInject, types.DisruptionKindNetworkFailure)
+			Expect(p.GenerateName).To(Equal("chaos-foo-inject-"))
 		})
 		It("should have the container image value defined by the environment variable", func() {
 			image := "chaos-fi:latest"

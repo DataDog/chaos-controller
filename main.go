@@ -21,6 +21,7 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/api/v1beta1"
 	"github.com/DataDog/chaos-fi-controller/controllers"
+	"github.com/DataDog/datadog-go/statsd"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -64,11 +65,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	// retrieve datadog statsd client if configured
+	url := os.Getenv("STATSD_URL")
+	statsdClient, err := statsd.New(url, statsd.WithTags([]string{"app:chaos-fi-controller"}))
+	if err != nil {
+		ctrl.Log.Error(err, "unable to configure the Datadog statsd client")
+	}
+
 	if err = (&controllers.DisruptionReconciler{
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("Disruption"),
 		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("disruption-controller"),
+		Datadog:  statsdClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Disruption")
 		os.Exit(1)

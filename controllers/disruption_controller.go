@@ -36,9 +36,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/datadog"
 	"github.com/DataDog/chaos-fi-controller/helpers"
 	chaostypes "github.com/DataDog/chaos-fi-controller/types"
+	"github.com/DataDog/datadog-go/statsd"
 )
 
 const (
@@ -51,6 +51,7 @@ type DisruptionReconciler struct {
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+	Datadog  *statsd.Client
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -66,7 +67,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	// reconcile metrics
 	instance := &chaosv1beta1.Disruption{}
-	datadog.GetInstance().Incr("chaos.controller.reconcile", nil, 1)
+	r.Datadog.Incr("chaos.controller.reconcile", nil, 1)
 	tsStart := time.Now()
 	defer func() func() {
 		return func() {
@@ -74,7 +75,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			if instance.Name != "" {
 				tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
 			}
-			datadog.GetInstance().Timing("chaos.controller.reconcile.duration", time.Since(tsStart), tags, 1)
+			r.Datadog.Timing("chaos.controller.reconcile.duration", time.Since(tsStart), tags, 1)
 		}
 	}()()
 
@@ -139,7 +140,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			if err := r.Update(context.Background(), instance); err != nil {
 				return ctrl.Result{}, err
 			}
-			datadog.GetInstance().Timing("chaos.controller.cleanup.duration", time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+			r.Datadog.Timing("chaos.controller.cleanup.duration", time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 		}
 
 		// stop the reconcile loop, the finalizing step has finished and the resource should be garbage collected
@@ -202,7 +203,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-				datadog.GetInstance().Incr("chaos.controller.pods.created", []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+				r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 			}
 		}
 	}
@@ -215,7 +216,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	}
 
 	// we reach this line only when every injection pods have been created with success
-	datadog.GetInstance().Timing("chaos.controller.inject.duration", time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+	r.Datadog.Timing("chaos.controller.inject.duration", time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 
 	return ctrl.Result{}, nil
 }
@@ -296,7 +297,7 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 				return err
 			}
 			r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for disruption \"%s\"", instance.Name))
-			datadog.GetInstance().Incr("chaos.controller.pods.created", []string{"phase:cleanup", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+			r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:cleanup", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
 		}
 	}
 	return nil

@@ -21,13 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"bou.ke/monkey"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/datadog"
-	"github.com/DataDog/datadog-go/statsd"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -145,11 +142,6 @@ var _ = BeforeEach(func() {
 		return
 	}
 	Expect(err).NotTo(HaveOccurred())
-
-	logf.Log.Info("patching datadog instance")
-	monkey.Patch(datadog.GetInstance, func() *statsd.Client {
-		return nil
-	})
 })
 
 var _ = AfterSuite(func() {
