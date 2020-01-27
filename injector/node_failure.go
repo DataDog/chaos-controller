@@ -18,7 +18,7 @@ var nodeFailureEventTags = []string{"failure_kind:node_failure"}
 // NodeFailureInjector describes a node failure injector
 type NodeFailureInjector struct {
 	Injector
-	Spec *v1beta1.NodeFailureInjectionSpec
+	Spec *v1beta1.NodeFailureSpec
 }
 
 // Inject triggers a kernel panic through the sysrq trigger

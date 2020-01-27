@@ -21,7 +21,7 @@ var networkLatencyCleanCmd = &cobra.Command{
 				},
 				ContainerID: containerID,
 			},
-			Spec: &v1beta1.NetworkLatencyInjectionSpec{
+			Spec: &v1beta1.NetworkLatencySpec{
 				Hosts: hosts,
 			},
 		}

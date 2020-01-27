@@ -96,21 +96,21 @@ var _ = Describe("Helpers", func() {
 
 	Describe("GeneratePod", func() {
 		It("should be in the same namespace as the given pod", func() {
-			p := GeneratePod("", pod, nil, types.PodModeInject)
+			p := GeneratePod("", pod, nil, types.PodModeInject, types.DisruptionKindNetworkFailure)
 			Expect(p.Namespace).To(Equal(pod.Namespace))
 		})
 		It("should have the same node as the given pod", func() {
-			p := GeneratePod("", pod, nil, types.PodModeInject)
+			p := GeneratePod("", pod, nil, types.PodModeInject, types.DisruptionKindNetworkFailure)
 			Expect(p.Spec.NodeName).To(Equal(pod.Spec.NodeName))
 		})
 		It("should pass the given args to the injector container", func() {
 			args := []string{"network-failure", "inject"}
-			p := GeneratePod("", pod, args, types.PodModeInject)
+			p := GeneratePod("", pod, args, types.PodModeInject, types.DisruptionKindNetworkFailure)
 			Expect(p.Spec.Containers[0].Args).To(Equal(args))
 		})
 		It("should have the given name", func() {
 			name := "foo"
-			p := GeneratePod(name, pod, nil, types.PodModeInject)
+			p := GeneratePod(name, pod, nil, types.PodModeInject, types.DisruptionKindNetworkFailure)
 			Expect(p.Name).To(Equal(name))
 		})
 		It("should have the container image value defined by the environment variable", func() {
@@ -118,7 +118,7 @@ var _ = Describe("Helpers", func() {
 			monkey.Patch(os.LookupEnv, func(string) (string, bool) {
 				return image, true
 			})
-			p := GeneratePod("", pod, nil, types.PodModeInject)
+			p := GeneratePod("", pod, nil, types.PodModeInject, types.DisruptionKindNetworkFailure)
 			Expect(p.Spec.Containers[0].Image).To(Equal(image))
 		})
 	})
@@ -169,7 +169,7 @@ var _ = Describe("Helpers", func() {
 
 	Describe("GetOwnedPods", func() {
 		It("should return the pod owned by owner", func() {
-			r, err := GetOwnedPods(&c, &owner)
+			r, err := GetOwnedPods(&c, &owner, nil)
 			Expect(err).To(BeNil())
 			Expect(len(r.Items)).To(Equal(1))
 			Expect(r.Items[0]).To(Equal(*pod))

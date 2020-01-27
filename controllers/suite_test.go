@@ -99,18 +99,10 @@ var _ = BeforeSuite(func(done Done) {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&NetworkFailureInjectionReconciler{
+	err = (&DisruptionReconciler{
 		Client:   k8sManager.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("NetworkFailureInjection"),
 		Recorder: k8sManager.GetEventRecorderFor("networkfailureinjection-controller"),
-		Scheme:   scheme.Scheme,
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = (&NodeFailureInjectionReconciler{
-		Client:   k8sManager.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("NodeFailureInjection"),
-		Recorder: k8sManager.GetEventRecorderFor("nodefailureinjection-controller"),
 		Scheme:   scheme.Scheme,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())

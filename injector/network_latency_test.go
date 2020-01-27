@@ -36,7 +36,7 @@ var _ = Describe("Tc", func() {
 	BeforeEach(func() {
 		// Variables
 		nli = NetworkLatencyInjector{
-			Spec: &v1beta1.NetworkLatencyInjectionSpec{
+			Spec: &v1beta1.NetworkLatencySpec{
 				Delay: 1000,
 			},
 		}
