@@ -17,8 +17,12 @@ const (
 	// TargetPodLabel is the label used to identify the pod targeted by a chaos pod
 	TargetPodLabel = "chaos.datadoghq.com/target-pod"
 
-	DisruptionKindLabel          = "chaos.datadoghq.com/disruption-kind"
+	// DisruptionKindLabel is the label used to identify the disruption kind for a chaos pod
+	DisruptionKindLabel = "chaos.datadoghq.com/disruption-kind"
+	// DisruptionKindNetworkFailure is a network failure disruption
 	DisruptionKindNetworkFailure = "network-failure"
+	// DisruptionKindNetworkLatency is a network latency disruption
 	DisruptionKindNetworkLatency = "network-latency"
-	DisruptionKindNodeFailure    = "node-failure"
+	// DisruptionKindNodeFailure is a node failure disruption
+	DisruptionKindNodeFailure = "node-failure"
 )
