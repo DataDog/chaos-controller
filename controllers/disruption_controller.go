@@ -91,9 +91,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		if !helpers.ContainsString(instance.ObjectMeta.Finalizers, finalizer) {
 			r.Log.Info("adding finalizer", "instance", instance.Name, "namespace", instance.Namespace)
 			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, finalizer)
-			if err := r.Update(context.Background(), instance); err != nil {
-				return ctrl.Result{}, err
-			}
+			return ctrl.Result{}, r.Update(context.Background(), instance)
 		}
 	} else {
 		// if being deleted, call the finalizer
@@ -107,12 +105,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				// set the finalizing flag
 				instance.Status.IsFinalizing = true
 				r.Log.Info("updating finalizing flag", "instance", instance.Name, "namespace", instance.Namespace)
-				if err := r.Update(context.Background(), instance); err != nil {
-					return ctrl.Result{}, err
-				}
-
-				// stop the reconcile loop, the next one will take care of checking for finalizer status
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, r.Update(context.Background(), instance)
 			}
 
 			// retrieve cleanup pods to check their states
@@ -136,11 +129,9 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
 			r.Log.Info("removing finalizer", "instance", instance.Name, "namespace", instance.Namespace)
-			instance.ObjectMeta.Finalizers = helpers.RemoveString(instance.ObjectMeta.Finalizers, finalizer)
-			if err := r.Update(context.Background(), instance); err != nil {
-				return ctrl.Result{}, err
-			}
 			r.Datadog.Timing("chaos.controller.cleanup.duration", time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+			instance.ObjectMeta.Finalizers = helpers.RemoveString(instance.ObjectMeta.Finalizers, finalizer)
+			return ctrl.Result{}, r.Update(context.Background(), instance)
 		}
 
 		// stop the reconcile loop, the finalizing step has finished and the resource should be garbage collected
@@ -152,18 +143,36 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	}
 
-	// select pods eligible for an injection
-	pods, err := r.selectPodsForInjection(instance)
-	if err != nil {
-		return ctrl.Result{}, err
+	// select pods eligible for an injection and add them
+	// to the instance status for the next loop
+	if len(instance.Status.TargetPods) == 0 {
+		// select pods
+		r.Log.Info("selecting pods to inject disruption to", "instance", instance.Name, "namespace", instance.Namespace)
+		pods, err := r.selectPodsForInjection(instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// update instance status
+		r.Log.Info("updating instance status with pods selected for injection", "instance", instance.Name, "namespace", instance.Namespace)
+		for _, pod := range pods.Items {
+			instance.Status.TargetPods = append(instance.Status.TargetPods, pod.Name)
+		}
+		return ctrl.Result{}, r.Update(context.Background(), instance)
 	}
 
 	// start injections
-	for _, p := range pods.Items {
+	r.Log.Info("starting pods injection", "instance", instance.Name, "namespace", instance.Namespace)
+	for _, targetPodName := range instance.Status.TargetPods {
+		// retrieve pod resource
+		targetPod := corev1.Pod{}
+		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: targetPodName}, &targetPod); err != nil {
+			return ctrl.Result{}, err
+		}
 		chaosPods := []*corev1.Pod{}
 
 		// get ID of first container
-		containerID, err := helpers.GetContainerdID(&p)
+		containerID, err := helpers.GetContainerdID(&targetPod)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -171,15 +180,15 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// generate injection pods specs
 		if instance.Spec.NetworkFailure != nil {
 			args := instance.Spec.NetworkFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
-			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &p, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkFailure))
+			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkFailure))
 		}
 		if instance.Spec.NetworkLatency != nil {
 			args := instance.Spec.NetworkLatency.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
-			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &p, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkLatency))
+			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkLatency))
 		}
 		if instance.Spec.NodeFailure != nil {
 			args := instance.Spec.NodeFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
-			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &p, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNodeFailure))
+			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNodeFailure))
 		}
 
 		// create injection pods
@@ -203,22 +212,19 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-				r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:inject", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+				r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:inject", "target_pod:" + targetPod.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+			} else {
+				r.Log.Info("an injection pod is already existing for the selected pod", "instance", instance.Name, "namespace", instance.Namespace, "target", targetPod.Name)
 			}
 		}
 	}
 
 	// update resource status injection flag
-	r.Log.Info("updating injection status flag", "instance", instance.Name, "namespace", instance.Namespace)
-	instance.Status.IsInjected = true
-	if err = r.Update(context.Background(), instance); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	// we reach this line only when every injection pods have been created with success
 	r.Datadog.Timing("chaos.controller.inject.duration", time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
-
-	return ctrl.Result{}, nil
+	r.Log.Info("updating injection status flag", "instance", instance.Name, "namespace", instance.Namespace)
+	instance.Status.IsInjected = true
+	return ctrl.Result{}, r.Update(context.Background(), instance)
 }
 
 // getPodsToCleanup returns the still-existing pods that were targeted by the disruption, according to the pod names in the instance status
@@ -303,29 +309,6 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 	return nil
 }
 
-// updateStatusPods will update the instance's status.pods field, if it was not previously set,
-// to show the names of pods selected for injection for that instance.
-func (r *DisruptionReconciler) updateStatusPods(instance *chaosv1beta1.Disruption, pods *corev1.PodList) error {
-	// ignore if we already set the status.pods
-	if len(instance.Status.TargetPods) > 0 {
-		return nil
-	}
-
-	// get all the pod names
-	for _, pod := range pods.Items {
-		instance.Status.TargetPods = append(instance.Status.TargetPods, pod.Name)
-	}
-
-	// update the instance's status
-	r.Log.Info("updating instance status with pods selected for injection", "instance", instance.Name, "namespace", instance.Namespace)
-	if err := r.Update(context.Background(), instance); err != nil {
-		r.Log.Error(err, "failed to update instance status", "disruption", instance.Name, "namespace", instance.Namespace)
-		return err
-	}
-
-	return nil
-}
-
 // selectPodsForInjection will select min(count, all matching pods) random pods from the pods matching the instance label selector
 // target pods will only be selected once per instance
 // the chosen pods names will be reflected in the intance status
@@ -333,28 +316,26 @@ func (r *DisruptionReconciler) updateStatusPods(instance *chaosv1beta1.Disruptio
 func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Disruption) (*corev1.PodList, error) {
 	// get pods matching the instance label selector
 	allPods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.Selector)
+	if err != nil {
+		return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
+	}
 
 	// if count has not been specified or is greater than the actual number of matching pods,
 	// return all pods matching the label selector
-	if instance.Spec.Count == nil || *instance.Spec.Count >= len(allPods.Items) {
-		err := r.updateStatusPods(instance, allPods)
-		if err != nil {
-			return nil, err
-		}
-
+	if instance.Spec.Count == nil || *instance.Spec.Count == 0 || *instance.Spec.Count >= len(allPods.Items) {
 		return allPods, nil
 	}
 
 	// if we had already selected pods for the instance, only return the already-selected ones
-	p := []corev1.Pod{}
+	selectedPods := []corev1.Pod{}
 	if len(instance.Status.TargetPods) > 0 {
 		for _, pod := range allPods.Items {
 			if helpers.ContainsString(instance.Status.TargetPods, pod.Name) {
-				p = append(p, pod)
+				selectedPods = append(selectedPods, pod)
 			}
 		}
-		allPods.Items = p
-		return allPods, nil
+
+		return &corev1.PodList{Items: selectedPods}, nil
 	}
 
 	// otherwise, randomly select pods
@@ -364,7 +345,7 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 		// select and add a random pod
 		index := rand.Intn(len(allPods.Items))
 		chosenPod := allPods.Items[index]
-		p = append(p, chosenPod)
+		selectedPods = append(selectedPods, chosenPod)
 
 		r.Log.Info("Selected random pod", "name", chosenPod.Name, "namespace", chosenPod.Namespace, "disruption", instance.Name, "count", instance.Spec.Count)
 
@@ -373,18 +354,10 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 		allPods.Items = allPods.Items[:len(allPods.Items)-1]
 	}
 
-	allPods.Items = p
-
-	// update the instance status with the names of the randomly chosen pods
-	err = r.updateStatusPods(instance, allPods)
-	if err != nil {
-		return nil, err
-	}
-
-	return allPods, nil
+	return &corev1.PodList{Items: selectedPods}, nil
 }
 
-// getChaosPods returns all cleanup pods created by the Disruption instance.
+// getChaosPods returns all pods created by the given Disruption instance and being in the given mode (injection or cleanup)
 func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode) ([]corev1.Pod, error) {
 	podsInNs := &corev1.PodList{}
 	listOptions := &client.ListOptions{
