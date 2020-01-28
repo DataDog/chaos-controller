@@ -2,8 +2,11 @@
 
 ## Controller
 
-* `chaos.controller.nfi.reconcile` is the count of reconcile loop for network failures
-* `chaos.controller.nfi.reconcile.duration` is the time passed in the reconcile loop for network failures
+* `chaos.controller.reconcile` is the count of reconcile loops
+* `chaos.controller.reconcile.duration` is the time passed in the reconcile loop
+* `chaos.controller.injection.duration` is the time it took to create injection pods since the creation of the disruption resource
+* `chaos.controller.cleanup.duration` is the time it took to create cleanup pods since the deletion of the disruption resource
+* `chaos.controller.pods.created` is the amount of pods created for injection and cleanup phases (can be filtered with the `phase` tag)
 
 ## Injector
 
