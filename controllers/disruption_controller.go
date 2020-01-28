@@ -63,7 +63,7 @@ type DisruptionReconciler struct {
 // Reconcile loop
 func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
-	_ = r.Log.WithValues("networklatencyinjection", req.NamespacedName)
+	_ = r.Log.WithValues("disruption", req.NamespacedName)
 
 	// reconcile metrics
 	instance := &chaosv1beta1.Disruption{}
@@ -114,12 +114,12 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				return ctrl.Result{}, err
 			}
 
-			r.Log.Info("checking status of cleanup pods before deleting nfl", "numcleanuppods", len(cleanupPods), "networklatencyinjection", instance.Name, "namespace", instance.Namespace)
+			r.Log.Info("checking status of cleanup pods before deleting nfl", "numcleanuppods", len(cleanupPods), "instance", instance.Name, "namespace", instance.Namespace)
 
 			// check if cleanup pods have succeeded, requeue until they have
 			for _, cleanupPod := range cleanupPods {
 				if cleanupPod.Status.Phase != corev1.PodSucceeded {
-					r.Log.Info("cleanup pod has not completed, retrying nfi deletion", "networklatencyinjection", instance.Name, "namespace", instance.Namespace, "cleanuppod", cleanupPod.Name, "phase", cleanupPod.Status.Phase)
+					r.Log.Info("cleanup pod has not completed, retrying nfi deletion", "instance", instance.Name, "namespace", instance.Namespace, "cleanuppod", cleanupPod.Name, "phase", cleanupPod.Status.Phase)
 					return ctrl.Result{
 						Requeue: true,
 					}, nil
