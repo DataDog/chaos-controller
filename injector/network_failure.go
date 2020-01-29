@@ -21,7 +21,7 @@ const iptablesChaosChainPrefix = "CHAOS-"
 // NetworkFailureInjector describes a network failure
 type NetworkFailureInjector struct {
 	ContainerInjector
-	Spec *v1beta1.NetworkFailureInjectionSpec
+	Spec *v1beta1.NetworkFailureSpec
 }
 
 // Inject injects the given network failure into the given container
@@ -35,10 +35,10 @@ func (i NetworkFailureInjector) Inject() {
 
 	// Default to 0.0.0.0/0 if no host has been specified
 	hosts := []string{}
-	if i.Spec.Failure.Host == "" {
+	if i.Spec.Host == "" {
 		hosts = append(hosts, "0.0.0.0/0")
 	} else {
-		hosts = append(hosts, i.Spec.Failure.Host)
+		hosts = append(hosts, i.Spec.Host)
 	}
 
 	// Resolve host
@@ -98,9 +98,9 @@ func (i NetworkFailureInjector) Inject() {
 			"table", iptablesTable,
 			"chain", dedicatedChain,
 			"ip", ip.String(),
-			"port", i.Spec.Failure.Port,
-			"protocol", i.Spec.Failure.Protocol,
-			"probability", i.Spec.Failure.Probability,
+			"port", i.Spec.Port,
+			"protocol", i.Spec.Protocol,
+			"probability", i.Spec.Probability,
 			"rule", rule,
 		)
 		err = ipt.AppendUnique(iptablesTable, dedicatedChain, ruleParts...)
@@ -218,19 +218,19 @@ func chainExists(ipt *iptables.IPTables, chain string) bool {
 //GenerateRuleParts generates the iptables rules to apply
 func (i NetworkFailureInjector) GenerateRuleParts(ip string) []string {
 	var ruleParts = []string{
-		"-p", i.Spec.Failure.Protocol,
+		"-p", i.Spec.Protocol,
 		"-d", ip,
 		"--dport",
-		strconv.Itoa(i.Spec.Failure.Port)}
+		strconv.Itoa(i.Spec.Port)}
 
 	//Add modules (if any) here
 	ruleParts = append(ruleParts, "-m")
 	var numModules = 0
 
 	//Probability Module
-	if i.Spec.Failure.Probability != 0 && i.Spec.Failure.Probability != 100 {
+	if i.Spec.Probability != 0 && i.Spec.Probability != 100 {
 		//Probability expected in decimal format
-		var prob = float64(i.Spec.Failure.Probability) / 100.0
+		var prob = float64(i.Spec.Probability) / 100.0
 		ruleParts = append(ruleParts,
 			"statistic", "--mode", "random", "--probability", fmt.Sprintf("%.2f", prob),
 		)

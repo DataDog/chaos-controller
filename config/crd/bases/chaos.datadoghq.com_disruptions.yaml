@@ -6,21 +6,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.4
   creationTimestamp: null
-  name: networklatencyinjections.chaos.datadoghq.com
+  name: disruptions.chaos.datadoghq.com
 spec:
   group: chaos.datadoghq.com
   names:
-    kind: NetworkLatencyInjection
-    listKind: NetworkLatencyInjectionList
-    plural: networklatencyinjections
+    kind: Disruption
+    listKind: DisruptionList
+    plural: disruptions
     shortNames:
-    - nli
-    singular: networklatencyinjection
+    - dis
+    singular: disruption
   scope: Namespaced
   validation:
     openAPIV3Schema:
-      description: NetworkLatencyInjection is the Schema for the networklatencyinjections
-        API
+      description: Disruption is the Schema for the disruptions API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -35,42 +34,65 @@ spec:
         metadata:
           type: object
         spec:
-          description: NetworkLatencyInjectionSpec defines the desired state of NetworkLatencyInjection
+          description: DisruptionSpec defines the desired state of Disruption
           properties:
             count:
+              minimum: 0
               type: integer
-            delay:
-              type: integer
-            hosts:
-              items:
-                type: string
-              type: array
+            networkFailure:
+              description: NetworkFailureSpec represents a network failure injection
+              properties:
+                host:
+                  type: string
+                port:
+                  type: integer
+                probability:
+                  type: integer
+                protocol:
+                  type: string
+              required:
+              - port
+              - probability
+              - protocol
+              type: object
+            networkLatency:
+              description: NetworkLatencySpec represents a network latency injection
+              properties:
+                delay:
+                  type: integer
+                hosts:
+                  items:
+                    type: string
+                  type: array
+              required:
+              - delay
+              - hosts
+              type: object
+            nodeFailure:
+              description: NodeFailureSpec represents a node failure injection
+              properties:
+                shutdown:
+                  type: boolean
+              type: object
             selector:
               additionalProperties:
                 type: string
               description: Set is a map of label:value. It implements Labels.
               type: object
           required:
-          - count
-          - delay
-          - hosts
           - selector
           type: object
         status:
-          description: NetworkLatencyInjectionStatus defines the observed state of
-            NetworkLatencyInjection
+          description: DisruptionStatus defines the observed state of Disruption
           properties:
-            finalizing:
+            isFinalizing:
               type: boolean
-            injected:
+            isInjected:
               type: boolean
-            pods:
+            targetPods:
               items:
                 type: string
               type: array
-          required:
-          - finalizing
-          - injected
           type: object
       type: object
   version: v1beta1

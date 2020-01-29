@@ -21,13 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"bou.ke/monkey"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/datadog"
-	"github.com/DataDog/datadog-go/statsd"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,7 +52,8 @@ var (
 	k8sManager  ctrl.Manager
 	testEnv     *envtest.Environment
 	instanceKey types.NamespacedName
-	targetPod   *corev1.Pod
+	targetPodA  *corev1.Pod
+	targetPodB  *corev1.Pod
 )
 
 func TestAPIs(t *testing.T) {
@@ -89,6 +87,9 @@ var _ = BeforeSuite(func(done Done) {
 	err = chaosv1beta1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = chaosv1beta1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
 	// +kubebuilder:scaffold:scheme
 
 	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{
@@ -96,26 +97,21 @@ var _ = BeforeSuite(func(done Done) {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&NetworkFailureInjectionReconciler{
+	err = (&DisruptionReconciler{
 		Client:   k8sManager.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("NetworkFailureInjection"),
-		Recorder: k8sManager.GetEventRecorderFor("networkfailureinjection-controller"),
+		Log:      ctrl.Log.WithName("controllers").WithName("Disruption"),
+		Recorder: k8sManager.GetEventRecorderFor("disruption-controller"),
 		Scheme:   scheme.Scheme,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&NodeFailureInjectionReconciler{
-		Client:   k8sManager.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("NodeFailureInjection"),
-		Recorder: k8sManager.GetEventRecorderFor("nodefailureinjection-controller"),
-		Scheme:   scheme.Scheme,
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-
+	// start the manager and wait for a few seconds for it
+	// to be ready to deal with watched resources
 	go func() {
 		err = k8sManager.Start(ctrl.SetupSignalHandler())
 		Expect(err).ToNot(HaveOccurred())
 	}()
+	time.Sleep(5 * time.Second)
 
 	k8sClient = k8sManager.GetClient()
 	Expect(k8sClient).ToNot(BeNil())
@@ -125,9 +121,9 @@ var _ = BeforeSuite(func(done Done) {
 
 var _ = BeforeEach(func() {
 	instanceKey = types.NamespacedName{Name: "foo", Namespace: "default"}
-	targetPod = &corev1.Pod{
+	targetPodA = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo-pod",
+			Name:      "foo",
 			Namespace: "default",
 			Labels: map[string]string{
 				"foo": "bar",
@@ -142,19 +138,38 @@ var _ = BeforeEach(func() {
 			},
 		},
 	}
+	targetPodB = &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "bar",
+			Namespace: "default",
+			Labels: map[string]string{
+				"foo": "bar",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				corev1.Container{
+					Image: "bar",
+					Name:  "bar",
+				},
+			},
+		},
+	}
 
 	By("Creating target pod")
-	err := k8sClient.Create(context.Background(), targetPod)
+	err := k8sClient.Create(context.Background(), targetPodA)
 	if apierrors.IsInvalid(err) {
 		logf.Log.Error(err, "failed to create object, got an invalid object error")
 		return
 	}
 	Expect(err).NotTo(HaveOccurred())
 
-	logf.Log.Info("patching datadog instance")
-	monkey.Patch(datadog.GetInstance, func() *statsd.Client {
-		return nil
-	})
+	err = k8sClient.Create(context.Background(), targetPodB)
+	if apierrors.IsInvalid(err) {
+		logf.Log.Error(err, "failed to create object, got an invalid object error")
+		return
+	}
+	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
@@ -164,5 +179,6 @@ var _ = AfterSuite(func() {
 })
 
 var _ = AfterEach(func() {
-	k8sClient.Delete(context.Background(), targetPod)
+	k8sClient.Delete(context.Background(), targetPodA)
+	k8sClient.Delete(context.Background(), targetPodB)
 })

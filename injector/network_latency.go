@@ -39,7 +39,7 @@ func executeTcCommand(args string) error {
 // NetworkLatencyInjector describes a network latency
 type NetworkLatencyInjector struct {
 	ContainerInjector
-	Spec *v1beta1.NetworkLatencyInjectionSpec
+	Spec *v1beta1.NetworkLatencySpec
 }
 
 func (i NetworkLatencyInjector) getInterfacesByIP() (map[string][]*net.IPNet, error) {

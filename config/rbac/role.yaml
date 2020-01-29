@@ -9,7 +9,7 @@ rules:
 - apiGroups:
   - chaos.datadoghq.com
   resources:
-  - networkfailureinjections
+  - disruptions
   verbs:
   - create
   - delete
@@ -21,47 +21,7 @@ rules:
 - apiGroups:
   - chaos.datadoghq.com
   resources:
-  - networkfailureinjections/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - chaos.datadoghq.com
-  resources:
-  - networklatencyinjections
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - chaos.datadoghq.com
-  resources:
-  - networklatencyinjections/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - chaos.datadoghq.com
-  resources:
-  - nodefailureinjections
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - chaos.datadoghq.com
-  resources:
-  - nodefailureinjections/status
+  - disruptions/status
   verbs:
   - get
   - patch

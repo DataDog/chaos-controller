@@ -20,7 +20,7 @@ var _ = Describe("Failure", func() {
 			Injector: Injector{
 				UID: "fake",
 			},
-			Spec: &v1beta1.NodeFailureInjectionSpec{},
+			Spec: &v1beta1.NodeFailureSpec{},
 		}
 
 		// os
