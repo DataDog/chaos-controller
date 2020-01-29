@@ -92,9 +92,13 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return expectChaosPod(chaostypes.PodModeClean, 4) }, timeout).Should(Succeed())
 
 			By("Simulating the completion of the cleanup pod by removing the finalizer")
-			Expect(k8sClient.Get(context.Background(), instanceKey, disruption)).To(BeNil())
-			disruption.ObjectMeta.Finalizers = []string{}
-			Eventually(func() error { return k8sClient.Update(context.Background(), disruption) }, timeout).Should(Succeed())
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
+					return err
+				}
+				disruption.ObjectMeta.Finalizers = []string{}
+				return k8sClient.Update(context.Background(), disruption)
+			}, timeout).Should(Succeed())
 
 			By("Waiting for network failure resource to be deleted")
 			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
