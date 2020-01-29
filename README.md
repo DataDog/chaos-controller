@@ -11,10 +11,10 @@ This repository contains the configuration and code for the `chaos-fi-controller
 ## Table of content
 
 * [What is the chaos-fi-controller?](#what-is-the-chaos-fi-controller)
-* Failures
-  * [NetworkFailureInjection](docs/network_failure.md)
-  * [NetworkLatencyInjection](docs/network_latency.md)
-  * [NodeFailureInjection](docs/node_failure.md)
+* Disruptions
+  * [Network failure](docs/network_failure.md)
+  * [Network latency](docs/network_latency.md)
+  * [Node failure](docs/node_failure.md)
 * [Design](docs/design.md)
 * [Metrics](docs/metrics.md)
 * [FAQ](docs/faq.md)
@@ -22,11 +22,11 @@ This repository contains the configuration and code for the `chaos-fi-controller
 
 ## What is the chaos-fi-controller?
 
-The controller was created to facilitate automation requirements in [chaos-engineering][]. It can also help to deal with network failures during gamedays by abstracting network manipulation, especially when dealing with big deployments.
+The controller was created to facilitate automation requirements in [chaos-engineering][]. It can also help to deal with failures during gamedays by abstracting them, especially when dealing with big deployments or complex network operations.
 
 The lack of resources available to achieve the different [chaos testing levels][levels] led to the creation of this [rfc][]. The `chaos-fi-controller` is an implementation of the recommended solution.
 
-The `controller` is deployed as a `StatefulSet`. It watches for changes on the supported `CRDs`, as well as their child resources. See the [CRDs section](#crds) for more details on specific behaviour for a particular `CRD`.
+The `controller` is deployed as a `Deployment`. It watches for changes on the `Disruption` CRD, as well as their child resources.
 
 The Helm chart is described in the chaos-fi-controller chart [section](#chaos-fi-controller-chart).
 
@@ -36,9 +36,11 @@ The Helm chart is described in the chaos-fi-controller chart [section](#chaos-fi
 
 ## How to use it?
 
-The controller works with custom Kubernetes resources describing the wanted failures and the pods to target. By creating those resources in the namespace of the pods you want to affect, it'll create pods to inject the needed failures.
+The controller works with a custom Kubernetes resource describing the wanted failures and the pods to target. By creating this resource in the namespace of the pods you want to affect, it'll create pods to inject the needed failures.
 
 Please take a look at the different failures documentations linked in the table of content of this repository for more information about what they are doing and how to use them.
+
+You can have [a full example of the disruption resource](config/samples/chaos_v1beta1_disruption.yaml) with comments.
 
 ## Contributing
 

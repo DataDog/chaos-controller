@@ -21,6 +21,7 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/api/v1beta1"
 	"github.com/DataDog/chaos-fi-controller/controllers"
+	"github.com/DataDog/datadog-go/statsd"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -64,31 +65,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.NetworkFailureInjectionReconciler{
-		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("NetworkFailureInjection"),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("networkfailureinjection-controller"),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "NetworkFailureInjection")
-		os.Exit(1)
+	// retrieve datadog statsd client if configured
+	url := os.Getenv("STATSD_URL")
+	statsdClient, err := statsd.New(url, statsd.WithTags([]string{"app:chaos-fi-controller"}))
+	if err != nil {
+		ctrl.Log.Error(err, "unable to configure the Datadog statsd client")
 	}
-	if err = (&controllers.NodeFailureInjectionReconciler{
+
+	if err = (&controllers.DisruptionReconciler{
 		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("NodeFailureInjection"),
+		Log:      ctrl.Log.WithName("controllers").WithName("Disruption"),
 		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("nodefailureinjection-controller"),
+		Recorder: mgr.GetEventRecorderFor("disruption-controller"),
+		Datadog:  statsdClient,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "NodeFailureInjection")
-		os.Exit(1)
-	}
-	if err = (&controllers.NetworkLatencyInjectionReconciler{
-		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("NetworkLatencyInjection"),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("nodelatencyinjection-controller"),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "NetworkLatencyInjection")
+		setupLog.Error(err, "unable to create controller", "controller", "Disruption")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

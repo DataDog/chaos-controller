@@ -25,13 +25,11 @@ var networkFailureInjectCmd = &cobra.Command{
 				},
 				ContainerID: containerID,
 			},
-			Spec: &v1beta1.NetworkFailureInjectionSpec{
-				Failure: v1beta1.NetworkFailureInjectionSpecFailure{
-					Host:        host,
-					Port:        port,
-					Protocol:    protocol,
-					Probability: probability,
-				},
+			Spec: &v1beta1.NetworkFailureSpec{
+				Host:        host,
+				Port:        port,
+				Protocol:    protocol,
+				Probability: probability,
 			},
 		}
 		i.Inject()

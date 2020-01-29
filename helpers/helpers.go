@@ -25,7 +25,7 @@ const (
 
 // GeneratePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
-func GeneratePod(name string, pod *corev1.Pod, args []string, mode types.PodMode) *corev1.Pod {
+func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types.PodMode, kind types.DisruptionKind) *corev1.Pod {
 	image, ok := os.LookupEnv(ChaosFailureInjectionImageVariableName)
 	if !ok {
 		image = "chaos-fi"
@@ -36,10 +36,12 @@ func GeneratePod(name string, pod *corev1.Pod, args []string, mode types.PodMode
 	hostPathFile := corev1.HostPathFile
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: pod.Namespace,
+			GenerateName: fmt.Sprintf("chaos-%s-%s-", instanceName, mode),
+			Namespace:    pod.Namespace,
 			Labels: map[string]string{
-				types.PodModeLabel: string(mode),
+				types.PodModeLabel:        string(mode),
+				types.TargetPodLabel:      pod.Name,
+				types.DisruptionKindLabel: string(kind),
 			},
 			Annotations: map[string]string{
 				"datadoghq.com/local-dns-cache": "true",
@@ -119,20 +121,20 @@ func GeneratePod(name string, pod *corev1.Pod, args []string, mode types.PodMode
 	}
 }
 
-// GetMatchingPods returns a PodList containing all pods matching the NetworkFailureInjection's label selector and namespace.
+// GetMatchingPods returns a pods list containing all pods matching the given label selector and namespace
 func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*corev1.PodList, error) {
-	// We want to ensure we never run into the possibility of using an empty label selector
+	// we want to ensure we never run into the possibility of using an empty label selector
 	if len(selector) < 1 || selector == nil {
 		return nil, errors.New("selector can't be an empty set")
 	}
 
-	// Filter pods based on the nfi's label selector, and only consider those within the same namespace as the nfi
+	// filter pods based on the nfi's label selector, and only consider those within the same namespace as the nfi
 	listOptions := &client.ListOptions{
 		LabelSelector: selector.AsSelector(),
 		Namespace:     namespace,
 	}
 
-	// Fetch pods from label selector
+	// fetch pods from label selector
 	pods := &corev1.PodList{}
 	err := c.List(context.Background(), pods, listOptions)
 	if err != nil {
@@ -144,17 +146,17 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 
 // PickRandomPods returns a shuffled sub-slice with a size of n of the given slice
 func PickRandomPods(n uint, pods []corev1.Pod) []corev1.Pod {
-	// Copy slice to don't modify the given one
+	// copy slice to don't modify the given one
 	list := append([]corev1.Pod(nil), pods...)
 
-	// Shuffle the slice
+	// shuffle the slice
 	rand.Seed(time.Now().Unix())
 	for i := len(list) - 1; i > 0; i-- {
 		j := rand.Intn(i)
 		list[i], list[j] = list[j], list[i]
 	}
 
-	// Return the whole shuffled slice if the requested size is greater than the size of the slice
+	// return the whole shuffled slice if the requested size is greater than the size of the slice
 	if int(n) > len(list) {
 		return list
 	}
@@ -163,16 +165,22 @@ func PickRandomPods(n uint, pods []corev1.Pod) []corev1.Pod {
 }
 
 // GetOwnedPods returns a list of pods owned by the given object
-func GetOwnedPods(c client.Client, owner metav1.Object) (corev1.PodList, error) {
-	// Get pods
+func GetOwnedPods(c client.Client, owner metav1.Object, selector labels.Set) (corev1.PodList, error) {
+	// prepare list options
+	options := &client.ListOptions{Namespace: owner.GetNamespace()}
+	if selector != nil {
+		options.LabelSelector = selector.AsSelector()
+	}
+
+	// get pods
 	pods := corev1.PodList{}
 	ownedPods := corev1.PodList{}
-	err := c.List(context.Background(), &pods, &client.ListOptions{Namespace: owner.GetNamespace()})
+	err := c.List(context.Background(), &pods, options)
 	if err != nil {
 		return ownedPods, err
 	}
 
-	// Check owner reference
+	// check owner reference
 	for _, pod := range pods.Items {
 		if metav1.IsControlledBy(&pod, owner) {
 			ownedPods.Items = append(ownedPods.Items, pod)
@@ -182,8 +190,8 @@ func GetOwnedPods(c client.Client, owner metav1.Object) (corev1.PodList, error) 
 	return ownedPods, nil
 }
 
-// GetContainerdID gets the ID of the first container ID found in a Pod.
-// It expects container ids to follow the format "containerd://<ID>".
+// GetContainerdID gets the ID of the first container ID found in a Pod
+// It expects container ids to follow the format "containerd://<ID>"
 func GetContainerdID(pod *corev1.Pod) (string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
 		return "", fmt.Errorf("Missing container ids for pod '%s'", pod.Name)
@@ -204,13 +212,13 @@ func ResolveHost(hosts []string) ([]*net.IPNet, error) {
 	var ips []*net.IPNet
 
 	for _, host := range hosts {
-		// Try to parse the given host as a CIDR
+		// try to parse the given host as a CIDR
 		_, ipnet, err := net.ParseCIDR(host)
 		if err != nil {
-			// If it fails, try to parse the given host as a single IP
+			// if it fails, try to parse the given host as a single IP
 			ip := net.ParseIP(host)
 			if ip == nil {
-				// If no IP has been parsed, fallback on a hostname
+				// if no IP has been parsed, fallback on a hostname
 				// and try to resolve it by using the container resolv.conf file
 				dnsConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
 				if err != nil {
@@ -224,7 +232,7 @@ func ResolveHost(hosts []string) ([]*net.IPNet, error) {
 					return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
 				}
 
-				// Append all the records returned by the resolver for this hostname
+				// append all the records returned by the resolver for this hostname
 				for _, answer := range response.Answer {
 					rec := answer.(*dns.A)
 					ips = append(ips, &net.IPNet{
@@ -263,4 +271,27 @@ func ResolveHost(hosts []string) ([]*net.IPNet, error) {
 	}
 
 	return ips, nil
+}
+
+// ContainsString returns true if the given slice contains the given string,
+// or returns false otherwise
+func ContainsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+// RemoveString removes the given string from the given slice,
+// returning a new slice
+func RemoveString(slice []string, s string) (result []string) {
+	for _, item := range slice {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return
 }
