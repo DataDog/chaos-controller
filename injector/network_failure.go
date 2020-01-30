@@ -35,10 +35,10 @@ func (i NetworkFailureInjector) Inject() {
 
 	// Default to 0.0.0.0/0 if no host has been specified
 	hosts := []string{}
-	if i.Spec.Host == "" {
+	if len(i.Spec.Hosts) == 0 {
 		hosts = append(hosts, "0.0.0.0/0")
 	} else {
-		hosts = append(hosts, i.Spec.Host)
+		hosts = append(hosts, i.Spec.Hosts...)
 	}
 
 	// Resolve host

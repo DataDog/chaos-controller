@@ -12,7 +12,7 @@ var networkFailureInjectCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		uid, _ := cmd.Flags().GetString("uid")
 		containerID, _ := cmd.Flags().GetString("container-id")
-		host, _ := cmd.Flags().GetString("host")
+		hosts, _ := cmd.Flags().GetStringSlice("hosts")
 		port, _ := cmd.Flags().GetInt("port")
 		protocol, _ := cmd.Flags().GetString("protocol")
 		probability, _ := cmd.Flags().GetInt("probability")
@@ -26,7 +26,7 @@ var networkFailureInjectCmd = &cobra.Command{
 				ContainerID: containerID,
 			},
 			Spec: &v1beta1.NetworkFailureSpec{
-				Host:        host,
+				Hosts:       hosts,
 				Port:        port,
 				Protocol:    protocol,
 				Probability: probability,
@@ -37,7 +37,7 @@ var networkFailureInjectCmd = &cobra.Command{
 }
 
 func init() {
-	networkFailureInjectCmd.Flags().String("host", "0.0.0.0/0", "Hostname or IP address of the host to drop packets from and to")
+	networkFailureInjectCmd.Flags().StringSlice("hosts", []string{}, "Hostname or IP address of the host to drop packets from and to")
 	networkFailureInjectCmd.Flags().Int("port", 0, "Port to drop packets from and to")
 	networkFailureInjectCmd.Flags().String("protocol", "", "Protocol to filter packets on (tcp or udp)")
 	networkFailureInjectCmd.Flags().Int("probability", 100, "Percentage of probability to drop packets (100 is a total drop)")
