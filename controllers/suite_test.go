@@ -179,6 +179,6 @@ var _ = AfterSuite(func() {
 })
 
 var _ = AfterEach(func() {
-	k8sClient.Delete(context.Background(), targetPodA)
-	k8sClient.Delete(context.Background(), targetPodB)
+	_ = k8sClient.Delete(context.Background(), targetPodA)
+	_ = k8sClient.Delete(context.Background(), targetPodB)
 })

@@ -112,7 +112,7 @@ func (i NetworkFailureInjector) Inject() {
 			return
 		}
 
-		datadog.GetInstance().Event(&statsd.Event{
+		_ = datadog.GetInstance().Event(&statsd.Event{
 			Title: "network failure injected",
 			Text:  fmt.Sprintf("the following rule has been injected: %s", rule),
 			Tags: []string{
@@ -179,7 +179,7 @@ func (i NetworkFailureInjector) Clean() {
 		}
 	}
 
-	datadog.GetInstance().Event(&statsd.Event{
+	_ = datadog.GetInstance().Event(&statsd.Event{
 		Title: "network failure cleaned",
 		Text:  "the rules have been cleaned",
 		Tags: []string{

@@ -17,7 +17,7 @@ func init() {
 	rootCmd.AddCommand(nodeFailureCmd)
 	rootCmd.AddCommand(networkLatencyCmd)
 	rootCmd.PersistentFlags().String("uid", "", "UID of the failure resource")
-	cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "uid")
+	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "uid")
 }
 
 func main() {
