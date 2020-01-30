@@ -32,6 +32,7 @@ var _ = Describe("Network Failure", func() {
 			ContainerInjector: ContainerInjector{
 				Injector: Injector{
 					UID: "110e8400-e29b-11d4-a716-446655440000",
+					Log: log,
 				},
 				ContainerID: "fake",
 			},
@@ -53,18 +54,20 @@ var _ = Describe("Network Failure", func() {
 
 		// container
 		var c container.Container
-		monkey.Patch(container.New, func(id string) container.Container {
+		monkey.Patch(container.New, func(id string) (container.Container, error) {
 			return container.Container{
 				ID:               id,
 				PID:              666,
 				NetworkNamespace: netns.NsHandle(-1),
-			}
+			}, nil
 		})
-		monkey.PatchInstanceMethod(reflect.TypeOf(c), "EnterNetworkNamespace", func(container.Container) {
+		monkey.PatchInstanceMethod(reflect.TypeOf(c), "EnterNetworkNamespace", func(container.Container) error {
 			callEnterNetworkNamespace = true
+			return nil
 		})
-		monkey.Patch(container.ExitNetworkNamespace, func() {
+		monkey.Patch(container.ExitNetworkNamespace, func() error {
 			callExitNetworkNamespace = true
+			return nil
 		})
 
 		// iptables
