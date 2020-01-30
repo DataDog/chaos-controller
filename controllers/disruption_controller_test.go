@@ -27,10 +27,12 @@ func expectChaosPod(mode chaostypes.PodMode, count int) error {
 	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetPodLabel, selection.In, []string{"foo", "bar"})
 	podModRequirement, _ := labels.NewRequirement(chaostypes.PodModeLabel, selection.Equals, []string{string(mode)})
 	ls = ls.Add(*targetPodRequirement, *podModRequirement)
-	k8sClient.List(context.Background(), &l, &client.ListOptions{
+	if err := k8sClient.List(context.Background(), &l, &client.ListOptions{
 		Namespace:     "default",
 		LabelSelector: ls,
-	})
+	}); err != nil {
+		return fmt.Errorf("can't list chaos pods: %w", err)
+	}
 	if len(l.Items) != count {
 		return fmt.Errorf("unexpected injection pods count: %d", len(l.Items))
 	}
@@ -72,7 +74,7 @@ var _ = Describe("Disruption Controller", func() {
 	})
 
 	AfterEach(func() {
-		k8sClient.Delete(context.Background(), disruption)
+		_ = k8sClient.Delete(context.Background(), disruption)
 		monkey.UnpatchAll()
 	})
 

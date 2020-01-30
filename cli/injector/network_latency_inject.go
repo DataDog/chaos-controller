@@ -34,5 +34,5 @@ var networkLatencyInjectCmd = &cobra.Command{
 
 func init() {
 	networkLatencyInjectCmd.Flags().Uint("delay", 0, "Delay to add to the given container in ms")
-	networkLatencyInjectCmd.MarkFlagRequired("delay")
+	_ = networkLatencyInjectCmd.MarkFlagRequired("delay")
 }

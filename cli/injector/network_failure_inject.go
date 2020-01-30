@@ -42,6 +42,6 @@ func init() {
 	networkFailureInjectCmd.Flags().String("protocol", "", "Protocol to filter packets on (tcp or udp)")
 	networkFailureInjectCmd.Flags().Int("probability", 100, "Percentage of probability to drop packets (100 is a total drop)")
 
-	networkFailureInjectCmd.MarkFlagRequired("port")
-	networkFailureInjectCmd.MarkFlagRequired("protocol")
+	_ = networkFailureInjectCmd.MarkFlagRequired("port")
+	_ = networkFailureInjectCmd.MarkFlagRequired("protocol")
 }
