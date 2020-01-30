@@ -19,6 +19,7 @@ var _ = Describe("Failure", func() {
 		f = NodeFailureInjector{
 			Injector: Injector{
 				UID: "fake",
+				Log: log,
 			},
 			Spec: &v1beta1.NodeFailureSpec{},
 		}

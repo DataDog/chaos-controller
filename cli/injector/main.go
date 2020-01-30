@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var rootCmd = &cobra.Command{
@@ -11,6 +13,8 @@ var rootCmd = &cobra.Command{
 	Short: "Datadog chaos failures injection application",
 	Run:   nil,
 }
+
+var log *zap.SugaredLogger
 
 func init() {
 	rootCmd.AddCommand(networkFailureCmd)
@@ -21,7 +25,16 @@ func init() {
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
+	// prepare logger
+	zapInstance, err := zap.NewProduction()
+	if err != nil {
+		fmt.Printf("error while creating logger: %v", err)
+		os.Exit(2)
+	}
+	log = zapInstance.Sugar()
+
+	// execute command
+	if err = rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }

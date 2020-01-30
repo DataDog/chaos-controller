@@ -36,6 +36,11 @@ var _ = Describe("Tc", func() {
 	BeforeEach(func() {
 		// Variables
 		nli = NetworkLatencyInjector{
+			ContainerInjector: ContainerInjector{
+				Injector: Injector{
+					Log: log,
+				},
+			},
 			Spec: &v1beta1.NetworkLatencySpec{
 				Delay: 1000,
 			},
@@ -115,13 +120,17 @@ var _ = Describe("Tc", func() {
 		})
 
 		// container
-		monkey.Patch(container.New, func(string) container.Container {
+		monkey.Patch(container.New, func(string) (container.Container, error) {
 			c := container.Container{}
-			monkey.PatchInstanceMethod(reflect.TypeOf(c), "EnterNetworkNamespace", func(container.Container) {})
+			monkey.PatchInstanceMethod(reflect.TypeOf(c), "EnterNetworkNamespace", func(container.Container) error {
+				return nil
+			})
 
-			return c
+			return c, nil
 		})
-		monkey.Patch(container.ExitNetworkNamespace, func() {})
+		monkey.Patch(container.ExitNetworkNamespace, func() error {
+			return nil
+		})
 	})
 
 	AfterEach(func() {
