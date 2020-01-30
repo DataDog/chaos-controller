@@ -1,6 +1,6 @@
 ---
 variables:
-  CURRENT_CI_IMAGE: 0.1.0
+  CURRENT_CI_IMAGE: 0.2.0
   GIT_LFS_SKIP_SMUDGE: "1"
 
 stages:

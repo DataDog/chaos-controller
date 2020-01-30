@@ -15,19 +15,19 @@ endif
 all: test manager injector
 
 # Run tests
-test: generate fmt vet manifests
+test: generate fmt vet lint manifests
 	go test ./... -coverprofile cover.out -gcflags=-l
 
 # Build manager binary
-manager: generate fmt vet
+manager: generate fmt vet lint
 	go build -o bin/manager main.go
 
 # Build injector binary
-injector: fmt vet
+injector: fmt vet lint
 	GOOS=linux GOARCH=amd64 go build -o bin/injector ./cli/injector/
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet manifests
+run: generate fmt vet lint manifests
 	go run ./main.go
 
 # Install CRDs into a cluster
@@ -55,6 +55,10 @@ fmt:
 # Run go vet against code
 vet:
 	go vet ./...
+
+# Run golangci-lint against code
+lint:
+	golangci-lint run
 
 # Generate code
 generate: controller-gen

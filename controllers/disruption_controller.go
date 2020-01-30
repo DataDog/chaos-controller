@@ -67,7 +67,9 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	// reconcile metrics
 	instance := &chaosv1beta1.Disruption{}
-	r.Datadog.Incr("chaos.controller.reconcile", nil, 1)
+	if err := r.Datadog.Incr("chaos.controller.reconcile", nil, 1); err != nil {
+		r.Log.Error(err, "can't send reconcile metric to Datadog")
+	}
 	tsStart := time.Now()
 	defer func() func() {
 		return func() {
@@ -75,7 +77,10 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			if instance.Name != "" {
 				tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
 			}
-			r.Datadog.Timing("chaos.controller.reconcile.duration", time.Since(tsStart), tags, 1)
+			if err := r.Datadog.Timing("chaos.controller.reconcile.duration", time.Since(tsStart), tags, 1); err != nil {
+				r.Log.Error(err, "can't send reconcile duration metric")
+				r.Log.Error(err, "can't send reconcile duration metric")
+			}
 		}
 	}()()
 
@@ -97,7 +102,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// if being deleted, call the finalizer
 		if helpers.ContainsString(instance.ObjectMeta.Finalizers, finalizer) {
 			// if the finalizing stage hasn't been triggered yet, start the cleaning
-			if instance.Status.IsFinalizing == false {
+			if !instance.Status.IsFinalizing {
 				if err := r.cleanFailures(instance); err != nil {
 					return ctrl.Result{}, err
 				}
@@ -129,7 +134,9 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
 			r.Log.Info("removing finalizer", "instance", instance.Name, "namespace", instance.Namespace)
-			r.Datadog.Timing("chaos.controller.cleanup.duration", time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+			if err := r.Datadog.Timing("chaos.controller.cleanup.duration", time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1); err != nil {
+				r.Log.Error(err, "can't send cleanup duration metric")
+			}
 			instance.ObjectMeta.Finalizers = helpers.RemoveString(instance.ObjectMeta.Finalizers, finalizer)
 			return ctrl.Result{}, r.Update(context.Background(), instance)
 		}
@@ -212,7 +219,9 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-				r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:inject", "target_pod:" + targetPod.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+				if err := r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:inject", "target_pod:" + targetPod.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1); err != nil {
+					r.Log.Error(err, "can't send pods created metric")
+				}
 			} else {
 				r.Log.Info("an injection pod is already existing for the selected pod", "instance", instance.Name, "namespace", instance.Namespace, "target", targetPod.Name)
 			}
@@ -221,7 +230,9 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	// update resource status injection flag
 	// we reach this line only when every injection pods have been created with success
-	r.Datadog.Timing("chaos.controller.inject.duration", time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+	if err := r.Datadog.Timing("chaos.controller.inject.duration", time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1); err != nil {
+		r.Log.Error(err, "can't send inject duration metric")
+	}
 	r.Log.Info("updating injection status flag", "instance", instance.Name, "namespace", instance.Namespace)
 	instance.Status.IsInjected = true
 	return ctrl.Result{}, r.Update(context.Background(), instance)
@@ -303,7 +314,9 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 				return err
 			}
 			r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for disruption \"%s\"", instance.Name))
-			r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:cleanup", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1)
+			if err := r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:cleanup", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1); err != nil {
+				r.Log.Error(err, "can't send pods created metric")
+			}
 		}
 	}
 	return nil

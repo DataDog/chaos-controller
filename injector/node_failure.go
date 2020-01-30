@@ -10,10 +10,7 @@ import (
 const (
 	nodeFailureSysrqPath        = "/mnt/sysrq"
 	nodeFailureSysrqTriggerPath = "/mnt/sysrq-trigger"
-	nodeFailureMetricPrefix     = "chaos.nofi"
 )
-
-var nodeFailureEventTags = []string{"failure_kind:node_failure"}
 
 // NodeFailureInjector describes a node failure injector
 type NodeFailureInjector struct {

@@ -27,7 +27,7 @@ func GetInstance() *statsd.Client {
 
 // EventWithTags creates a new event with the given title, text and tags and send it
 func EventWithTags(title, text string, tags []string) {
-	GetInstance().Event(&statsd.Event{
+	_ = GetInstance().Event(&statsd.Event{
 		Title: title,
 		Text:  text,
 		Tags:  tags,
@@ -62,7 +62,7 @@ func metricWithStatus(name, containerID, uid string, succeed bool) {
 		status = "failed"
 	}
 
-	GetInstance().Incr(name, []string{"containerID" + containerID, "UID:" + uid, "status:" + status}, 1)
+	_ = GetInstance().Incr(name, []string{"containerID" + containerID, "UID:" + uid, "status:" + status}, 1)
 }
 
 // MetricInjected increments the injected metric

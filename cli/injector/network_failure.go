@@ -12,5 +12,5 @@ func init() {
 	networkFailureCmd.AddCommand(networkFailureInjectCmd)
 	networkFailureCmd.AddCommand(networkFailureCleanCmd)
 	networkFailureCmd.PersistentFlags().String("container-id", "", "ID of the container to inject/clean")
-	cobra.MarkFlagRequired(networkFailureCmd.PersistentFlags(), "container-id")
+	_ = cobra.MarkFlagRequired(networkFailureCmd.PersistentFlags(), "container-id")
 }
