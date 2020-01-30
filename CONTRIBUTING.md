@@ -6,6 +6,14 @@ Note that the Helm chart is located in the `k8s-resources` [repo](https://github
 
 Remember to update the chart with any updates to the CRDs or RBAC rules.
 
+## Requirements
+
+* [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
+* [docker](https://docs.docker.com/install/)
+* [go](https://golang.org/doc/install)
+* [golangci-lint](https://github.com/golangci/golangci-lint)
+* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+
 ## Testing the controller locally
 
 If you want to test the controller locally (without having to redeploy a new image on a staging cluster), please use the [minikube project](https://kubernetes.io/docs/setup/learning-environment/minikube/) as described below:
@@ -38,6 +46,6 @@ git push --follow-tags origin master
 
 It'll then automatically run jobs to push the image with the defined tag on every environment.
 
-## Re-generating the CRD
+## Re-generating the CRD manifest
 
-When the API package is changed, the CRD (custom resource definition) must be re-generated. To achieve that, just run the `make` command (or `make generate` if you don't want to trigger tests and linters, not recommended).
+When the API package is changed, the CRD (custom resource definition) must be re-generated. To achieve that, just run the `make manifests` command.
