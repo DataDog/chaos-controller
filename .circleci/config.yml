@@ -1,0 +1,43 @@
+version: 2
+
+ci_build_env: &build_ci_env
+  run:
+    name: Build CI Environment
+    command: |
+      cd /usr/local
+      curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz" 
+      tar -zxvf kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz
+      mv kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH} kubebuilder
+      curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v${GOLANGCI_LINT_VERSION}
+      export PATH="/usr/local/kubebuilder/bin:${PATH}"
+      cd $CIRCLE_WORKING_DIRECTORY
+
+templates:
+  job_template: &job_template
+    docker:
+      # TODO: Publicize the chaos controller ci image to the datadog docker registry
+      #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
+      - image: golang:1.13.6-stretch
+    environment:
+      KUBEBUILDER_VERSION: 1.0.8
+      KUBEBUILDER_ARCH: amd64
+      GOLANGCI_LINT_VERSION: 1.23.1
+      GIT_LFS_SKIP_SMUDGE: 1
+    working_directory: /go/src/github.com/DataDog/chaos-fi-controller
+
+jobs:
+  build:
+    <<: *job_template
+    steps:
+      - checkout
+      - *build_ci_env
+      - run:
+          name: Test and Build
+          command: make
+
+
+workflows:
+  version: 2
+  test_and_build:
+    jobs:
+      - build
