@@ -36,7 +36,7 @@ var _ = Describe("Network Failure", func() {
 				ContainerID: "fake",
 			},
 			Spec: &v1beta1.NetworkFailureSpec{
-				Host:        "127.0.0.1/32",
+				Hosts:       []string{"127.0.0.1/32"},
 				Port:        666,
 				Protocol:    "tcp",
 				Probability: 100,
@@ -143,25 +143,26 @@ var _ = Describe("Network Failure", func() {
 
 		Context("using a CIDR block", func() {
 			It("should inject a rule for the given block", func() {
-				f.Spec.Host = "192.168.0.0/24"
+				f.Spec.Hosts = []string{"192.168.0.0/24"}
 				f.Inject()
 				Expect(len(iptablesAppendRules)).To(Equal(2))
 				Expect(iptablesAppendRules[1]).To(Equal("-p tcp -d 192.168.0.0/24 --dport 666 -j DROP"))
 			})
 		})
 
-		Context("using a single IP", func() {
+		Context("using a single IP set", func() {
 			It("should inject a rule for the given IP with a /32 mask", func() {
-				f.Spec.Host = "192.168.0.1"
+				f.Spec.Hosts = []string{"192.168.0.1", "192.168.0.2"}
 				f.Inject()
-				Expect(len(iptablesAppendRules)).To(Equal(2))
+				Expect(len(iptablesAppendRules)).To(Equal(3))
 				Expect(iptablesAppendRules[1]).To(Equal("-p tcp -d 192.168.0.1/32 --dport 666 -j DROP"))
+				Expect(iptablesAppendRules[2]).To(Equal("-p tcp -d 192.168.0.2/32 --dport 666 -j DROP"))
 			})
 		})
 
 		Context("using a hostname", func() {
 			It("should inject a rule per IP resolved by the DNS resolver", func() {
-				f.Spec.Host = "foo.bar.cluster.local"
+				f.Spec.Hosts = []string{"foo.bar.cluster.local"}
 				f.Inject()
 				Expect(len(iptablesAppendRules)).To(Equal(3))
 				Expect(iptablesAppendRules[1]).To(Equal("-p tcp -d 192.168.0.1/32 --dport 666 -j DROP"))
@@ -171,7 +172,7 @@ var _ = Describe("Network Failure", func() {
 
 		Context("host not specified", func() {
 			It("should inject a rule per IP resolved by the DNS resolver", func() {
-				f.Spec.Host = ""
+				f.Spec.Hosts = []string{}
 				f.Inject()
 				Expect(len(iptablesAppendRules)).To(Equal(2))
 				Expect(iptablesAppendRules[1]).To(Equal("-p tcp -d 0.0.0.0/0 --dport 666 -j DROP"))
@@ -181,7 +182,7 @@ var _ = Describe("Network Failure", func() {
 
 	Context("using a probability", func() {
 		It("should inject a rule for the given probability", func() {
-			f.Spec.Host = "192.168.0.0/24"
+			f.Spec.Hosts = []string{"192.168.0.0/24"}
 			f.Spec.Probability = 50
 			f.Inject()
 			Expect(len(iptablesAppendRules)).To(Equal(2))

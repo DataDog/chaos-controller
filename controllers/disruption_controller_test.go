@@ -55,7 +55,7 @@ var _ = Describe("Disruption Controller", func() {
 				Count:    &count,
 				Selector: map[string]string{"foo": "bar"},
 				NetworkFailure: &chaosv1beta1.NetworkFailureSpec{
-					Host:        "127.0.0.1",
+					Hosts:       []string{"127.0.0.1"},
 					Port:        80,
 					Probability: 0,
 					Protocol:    "tcp",
