@@ -20,6 +20,7 @@ var networkLatencyInjectCmd = &cobra.Command{
 			ContainerInjector: injector.ContainerInjector{
 				Injector: injector.Injector{
 					UID: uid,
+					Log: log,
 				},
 				ContainerID: containerID,
 			},

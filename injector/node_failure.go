@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/logger"
 )
 
 const (
@@ -20,7 +19,7 @@ type NodeFailureInjector struct {
 
 // Inject triggers a kernel panic through the sysrq trigger
 func (i NodeFailureInjector) Inject() {
-	logger.Instance().Infow("injecting a node failure by triggering a kernel panic",
+	i.Log.Infow("injecting a node failure by triggering a kernel panic",
 		"sysrq_path", nodeFailureSysrqPath,
 		"sysrq_trigger_path", nodeFailureSysrqTriggerPath,
 	)
@@ -28,22 +27,22 @@ func (i NodeFailureInjector) Inject() {
 	// Ensure sysrq value is set to 1 (to accept the kernel panic trigger)
 	err := write(nodeFailureSysrqPath, 0644, "1")
 	if err != nil {
-		logger.Instance().Fatalw("error while writing to the sysrq file",
+		i.Log.Fatalw("error while writing to the sysrq file",
 			"error", err,
 			"path", nodeFailureSysrqPath,
 		)
 	}
 
 	// Trigger kernel panic
-	logger.Instance().Infow("the injector is about to write to the sysrq trigger file")
-	logger.Instance().Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
+	i.Log.Infow("the injector is about to write to the sysrq trigger file")
+	i.Log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
 	if i.Spec.Shutdown {
 		err = write(nodeFailureSysrqTriggerPath, 0200, "o")
 	} else {
 		err = write(nodeFailureSysrqTriggerPath, 0200, "c")
 	}
 	if err != nil {
-		logger.Instance().Fatalw("error while writing to the sysrq trigger file",
+		i.Log.Fatalw("error while writing to the sysrq trigger file",
 			"error", err,
 			"path", nodeFailureSysrqTriggerPath,
 		)

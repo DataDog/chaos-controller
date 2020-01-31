@@ -131,7 +131,8 @@ var _ = Describe("Container", func() {
 
 	Describe("loading a container", func() {
 		It("should return a container object with parsed PID and ns handler", func() {
-			c := New("fake")
+			c, err := New("fake")
+			Expect(err).To(BeNil())
 			Expect(c.ID).To(Equal("fake"))
 			Expect(c.PID).To(Equal(uint32(666)))
 			Expect(c.NetworkNamespace).To(Equal(fakeContainerNamespace))
@@ -140,14 +141,19 @@ var _ = Describe("Container", func() {
 
 	Describe("entering and exiting the container network namespace", func() {
 		It("should lock thread and set the container network namespace", func() {
-			c := New("fake")
-			c.EnterNetworkNamespace()
+			c, err := New("fake")
+			Expect(err).To(BeNil())
+
+			err = c.EnterNetworkNamespace()
+			Expect(err).To(BeNil())
+
 			Expect(callLockOSThread).To(Equal(true))
 			Expect(callNetnsSetArg).To(Equal(fakeContainerNamespace))
 		})
 
 		It("should unlock thread and set the root network namespace back", func() {
-			ExitNetworkNamespace()
+			err := ExitNetworkNamespace()
+			Expect(err).To(BeNil())
 			Expect(callUnlockOSThread).To(Equal(true))
 			Expect(callNetnsSetArg).To(Equal(fakeRootNamespace))
 		})
