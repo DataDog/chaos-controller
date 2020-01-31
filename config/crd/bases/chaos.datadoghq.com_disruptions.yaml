@@ -42,8 +42,10 @@ spec:
             networkFailure:
               description: NetworkFailureSpec represents a network failure injection
               properties:
-                host:
-                  type: string
+                hosts:
+                  items:
+                    type: string
+                  type: array
                 port:
                   type: integer
                 probability:

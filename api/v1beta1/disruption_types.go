@@ -44,10 +44,10 @@ type DisruptionSpec struct {
 
 // NetworkFailureSpec represents a network failure injection
 type NetworkFailureSpec struct {
-	Host        string `json:"host,omitempty"`
-	Port        int    `json:"port"`
-	Probability int    `json:"probability"`
-	Protocol    string `json:"protocol"`
+	Hosts       []string `json:"hosts,omitempty"`
+	Port        int      `json:"port"`
+	Probability int      `json:"probability"`
+	Protocol    string   `json:"protocol"`
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
@@ -63,15 +63,15 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			string(uid),
 			"--container-id",
 			containerID,
-			"--host",
-			s.Host,
 			"--port",
 			strconv.Itoa(s.Port),
 			"--protocol",
 			s.Protocol,
 			"--probability",
 			strconv.Itoa(s.Probability),
+			"--hosts",
 		}
+		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
 	case chaostypes.PodModeClean:
 		args = []string{
 			"network-failure",
