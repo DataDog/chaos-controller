@@ -1,0 +1,510 @@
+From,Package,License
+bou.ke/monkey,bou.ke/monkey,Unknown
+cloud.google.com/go,cloud.google.com/go/compute/metadata,Apache License 2.0
+github.com/DataDog/datadog-go,github.com/DataDog/datadog-go/statsd,MIT License
+github.com/Microsoft/go-winio,github.com/Microsoft/go-winio,MIT License
+github.com/Microsoft/go-winio,github.com/Microsoft/go-winio/pkg/guid,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/cow,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/hcs,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/hcserror,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/hns,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/interop,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/log,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/logfields,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/longpath,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/mergemaps,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/oc,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/safefile,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/schema1,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/schema2,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/timeout,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/vmcompute,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/wclayer,MIT License
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/osversion,MIT License
+github.com/beorn7/perks,github.com/beorn7/perks/quantile,MIT License
+github.com/containerd/cgroups,github.com/containerd/cgroups/stats/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/services/containers/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/services/content/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/services/diff/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/services/events/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/services/images/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/services/introspection/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/services/leases/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/services/namespaces/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/services/snapshots/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/services/tasks/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/services/version/v1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/types,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/api/types/task,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/archive,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/archive/compression,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/cio,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/containers,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/content,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/content/proxy,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/defaults,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/diff,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/errdefs,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/events,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/events/exchange,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/filters,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/identifiers,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/images,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/images/archive,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/labels,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/leases,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/leases/proxy,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/log,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/mount,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/namespaces,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/oci,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/pkg/dialer,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/platforms,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/plugin,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/reference,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/remotes,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/remotes/docker,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/remotes/docker/schema1,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/rootfs,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/runtime/linux/runctypes,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/runtime/v2/runc/options,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/snapshots,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/snapshots/proxy,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/sys,Apache License 2.0
+github.com/containerd/containerd,github.com/containerd/containerd/version,Apache License 2.0
+github.com/containerd/continuity,github.com/containerd/continuity/fs,Apache License 2.0
+github.com/containerd/continuity,github.com/containerd/continuity/syscallx,Apache License 2.0
+github.com/containerd/continuity,github.com/containerd/continuity/sysx,Apache License 2.0
+github.com/containerd/fifo,github.com/containerd/fifo,Apache License 2.0
+github.com/containerd/ttrpc,github.com/containerd/ttrpc,Apache License 2.0
+github.com/containerd/typeurl,github.com/containerd/typeurl,Apache License 2.0
+github.com/coreos/go-iptables,github.com/coreos/go-iptables/iptables,Apache License 2.0
+github.com/davecgh/go-spew,github.com/davecgh/go-spew/spew,ISC License
+github.com/docker/distribution,github.com/docker/distribution/digestset,Apache License 2.0
+github.com/docker/distribution,github.com/docker/distribution/reference,Apache License 2.0
+github.com/docker/distribution,github.com/docker/distribution/registry/api/errcode,Apache License 2.0
+github.com/docker/go-events,github.com/docker/go-events,Apache License 2.0
+github.com/evanphx/json-patch,github.com/evanphx/json-patch,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/go-logr/logr,github.com/go-logr/logr,Apache License 2.0
+github.com/go-logr/zapr,github.com/go-logr/zapr,Apache License 2.0
+github.com/gogo/googleapis,github.com/gogo/googleapis/google/rpc,Apache License 2.0
+github.com/gogo/protobuf,github.com/gogo/protobuf/gogoproto,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/gogo/protobuf,github.com/gogo/protobuf/proto,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/gogo/protobuf,github.com/gogo/protobuf/protoc-gen-gogo/descriptor,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/gogo/protobuf,github.com/gogo/protobuf/sortkeys,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/gogo/protobuf,github.com/gogo/protobuf/types,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/golang/groupcache,github.com/golang/groupcache/lru,Apache License 2.0
+github.com/golang/protobuf,github.com/golang/protobuf/proto,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/golang/protobuf,github.com/golang/protobuf/ptypes,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/golang/protobuf,github.com/golang/protobuf/ptypes/any,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/golang/protobuf,github.com/golang/protobuf/ptypes/duration,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/golang/protobuf,github.com/golang/protobuf/ptypes/timestamp,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/google/go-cmp,github.com/google/go-cmp/cmp,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/diff,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/flags,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/function,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/value,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/google/gofuzz,github.com/google/gofuzz,Apache License 2.0
+github.com/google/uuid,github.com/google/uuid,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/googleapis/gnostic,github.com/googleapis/gnostic/OpenAPIv2,Apache License 2.0
+github.com/googleapis/gnostic,github.com/googleapis/gnostic/compiler,Apache License 2.0
+github.com/googleapis/gnostic,github.com/googleapis/gnostic/extensions,Apache License 2.0
+github.com/hashicorp/golang-lru,github.com/hashicorp/golang-lru,Mozilla Public License 2.0
+github.com/hashicorp/golang-lru,github.com/hashicorp/golang-lru/simplelru,Mozilla Public License 2.0
+github.com/hpcloud/tail,github.com/hpcloud/tail,MIT License
+github.com/hpcloud/tail,github.com/hpcloud/tail/ratelimiter,MIT License
+github.com/hpcloud/tail,github.com/hpcloud/tail/util,MIT License
+github.com/hpcloud/tail,github.com/hpcloud/tail/watch,MIT License
+github.com/hpcloud/tail,github.com/hpcloud/tail/winfile,MIT License
+github.com/imdario/mergo,github.com/imdario/mergo,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/inconshreveable/mousetrap,github.com/inconshreveable/mousetrap,Apache License 2.0
+github.com/json-iterator/go,github.com/json-iterator/go,MIT License
+github.com/konsorten/go-windows-terminal-sequences,github.com/konsorten/go-windows-terminal-sequences,MIT License
+github.com/matttproud/golang_protobuf_extensions,github.com/matttproud/golang_protobuf_extensions/pbutil,Apache License 2.0
+github.com/miekg/dns,github.com/miekg/dns,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/modern-go/concurrent,github.com/modern-go/concurrent,Apache License 2.0
+github.com/modern-go/reflect2,github.com/modern-go/reflect2,Apache License 2.0
+github.com/onsi/ginkgo,github.com/onsi/ginkgo,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/config,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/internal/codelocation,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/internal/containernode,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/internal/failer,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/internal/leafnodes,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/internal/remote,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/internal/spec,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/internal/spec_iterator,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/internal/specrunner,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/internal/suite,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/internal/testingtproxy,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/internal/writer,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/reporters,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/reporters/stenographer,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/reporters/stenographer/support/go-colorable,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/reporters/stenographer/support/go-isatty,MIT License
+github.com/onsi/ginkgo,github.com/onsi/ginkgo/types,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/format,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/gbytes,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/gexec,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/internal/assertion,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/internal/asyncassertion,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/internal/oraclematcher,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/internal/testingtsupport,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/matchers,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/matchers/support/goraph/bipartitegraph,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/matchers/support/goraph/edge,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/matchers/support/goraph/node,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/matchers/support/goraph/util,MIT License
+github.com/onsi/gomega,github.com/onsi/gomega/types,MIT License
+github.com/opencontainers/go-digest,github.com/opencontainers/go-digest,Apache License 2.0
+github.com/opencontainers/image-spec,github.com/opencontainers/image-spec/identity,Apache License 2.0
+github.com/opencontainers/image-spec,github.com/opencontainers/image-spec/specs-go,Apache License 2.0
+github.com/opencontainers/image-spec,github.com/opencontainers/image-spec/specs-go/v1,Apache License 2.0
+github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/system,Apache License 2.0
+github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/user,Apache License 2.0
+github.com/opencontainers/runtime-spec,github.com/opencontainers/runtime-spec/specs-go,Apache License 2.0
+github.com/pkg/errors,github.com/pkg/errors,"BSD 2-clause ""Simplified"" License"
+github.com/prometheus/client_golang,github.com/prometheus/client_golang/prometheus,Apache License 2.0
+github.com/prometheus/client_golang,github.com/prometheus/client_golang/prometheus/internal,Apache License 2.0
+github.com/prometheus/client_golang,github.com/prometheus/client_golang/prometheus/promhttp,Apache License 2.0
+github.com/prometheus/client_model,github.com/prometheus/client_model/go,Apache License 2.0
+github.com/prometheus/common,github.com/prometheus/common/expfmt,Apache License 2.0
+github.com/prometheus/common,github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg,Apache License 2.0
+github.com/prometheus/common,github.com/prometheus/common/model,Apache License 2.0
+github.com/prometheus/procfs,github.com/prometheus/procfs,Apache License 2.0
+github.com/prometheus/procfs,github.com/prometheus/procfs/internal/fs,Apache License 2.0
+github.com/prometheus/procfs,github.com/prometheus/procfs/internal/util,Apache License 2.0
+github.com/sirupsen/logrus,github.com/sirupsen/logrus,MIT License
+github.com/spf13/cobra,github.com/spf13/cobra,Apache License 2.0
+github.com/spf13/pflag,github.com/spf13/pflag,"BSD 3-clause ""New"" or ""Revised"" License"
+github.com/syndtr/gocapability,github.com/syndtr/gocapability/capability,"BSD 2-clause ""Simplified"" License"
+github.com/vishvananda/netlink,github.com/vishvananda/netlink,Apache License 2.0
+github.com/vishvananda/netlink,github.com/vishvananda/netlink/nl,Apache License 2.0
+github.com/vishvananda/netns,github.com/vishvananda/netns,Apache License 2.0
+go.opencensus.io,go.opencensus.io,Apache License 2.0
+go.opencensus.io,go.opencensus.io/internal,Apache License 2.0
+go.opencensus.io,go.opencensus.io/trace,Apache License 2.0
+go.opencensus.io,go.opencensus.io/trace/internal,Apache License 2.0
+go.opencensus.io,go.opencensus.io/trace/tracestate,Apache License 2.0
+go.uber.org/atomic,go.uber.org/atomic,MIT License
+go.uber.org/multierr,go.uber.org/multierr,MIT License
+go.uber.org/zap,go.uber.org/zap,MIT License
+go.uber.org/zap,go.uber.org/zap/buffer,MIT License
+go.uber.org/zap,go.uber.org/zap/internal/bufferpool,MIT License
+go.uber.org/zap,go.uber.org/zap/internal/color,MIT License
+go.uber.org/zap,go.uber.org/zap/internal/exit,MIT License
+go.uber.org/zap,go.uber.org/zap/zapcore,MIT License
+golang.org/x/crypto,golang.org/x/crypto/ed25519,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/crypto,golang.org/x/crypto/ed25519/internal/edwards25519,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/crypto,golang.org/x/crypto/ssh/terminal,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/bpf,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/context,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/context/ctxhttp,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/html,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/html/atom,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/html/charset,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/http/httpguts,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/http2,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/http2/hpack,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/idna,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/internal/iana,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/internal/socket,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/internal/timeseries,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/ipv4,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/ipv6,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/net,golang.org/x/net/trace,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/oauth2,golang.org/x/oauth2,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/oauth2,golang.org/x/oauth2/google,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/oauth2,golang.org/x/oauth2/internal,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/oauth2,golang.org/x/oauth2/jws,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/oauth2,golang.org/x/oauth2/jwt,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/sync,golang.org/x/sync/errgroup,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/sync,golang.org/x/sync/semaphore,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/sys,golang.org/x/sys/unix,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/sys,golang.org/x/sys/windows,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/encoding,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/encoding/charmap,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/encoding/htmlindex,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/encoding/internal,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/encoding/internal/identifier,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/encoding/japanese,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/encoding/korean,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/encoding/simplifiedchinese,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/encoding/traditionalchinese,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/encoding/unicode,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/internal/language,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/internal/language/compact,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/internal/tag,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/internal/utf8internal,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/language,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/runes,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/secure/bidirule,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/transform,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/unicode/bidi,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/text,golang.org/x/text/unicode/norm,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/time,golang.org/x/time/rate,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/xerrors,golang.org/x/xerrors,"BSD 3-clause ""New"" or ""Revised"" License"
+golang.org/x/xerrors,golang.org/x/xerrors/internal,"BSD 3-clause ""New"" or ""Revised"" License"
+gomodules.xyz/jsonpatch/v2,gomodules.xyz/jsonpatch/v2,Apache License 2.0
+google.golang.org/appengine,google.golang.org/appengine,Apache License 2.0
+google.golang.org/appengine,google.golang.org/appengine/internal,Apache License 2.0
+google.golang.org/appengine,google.golang.org/appengine/internal/app_identity,Apache License 2.0
+google.golang.org/appengine,google.golang.org/appengine/internal/base,Apache License 2.0
+google.golang.org/appengine,google.golang.org/appengine/internal/datastore,Apache License 2.0
+google.golang.org/appengine,google.golang.org/appengine/internal/log,Apache License 2.0
+google.golang.org/appengine,google.golang.org/appengine/internal/modules,Apache License 2.0
+google.golang.org/appengine,google.golang.org/appengine/internal/remote_api,Apache License 2.0
+google.golang.org/appengine,google.golang.org/appengine/internal/urlfetch,Apache License 2.0
+google.golang.org/appengine,google.golang.org/appengine/urlfetch,Apache License 2.0
+google.golang.org/genproto,google.golang.org/genproto/googleapis/rpc/status,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/balancer,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/balancer/base,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/balancer/roundrobin,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/binarylog/grpc_binarylog_v1,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/codes,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/connectivity,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/credentials,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/credentials/internal,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/encoding,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/encoding/proto,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/grpclog,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/health/grpc_health_v1,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/internal,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/internal/backoff,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/internal/balancerload,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/internal/binarylog,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/internal/channelz,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/internal/envconfig,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/internal/grpcrand,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/internal/grpcsync,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/internal/syscall,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/internal/transport,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/keepalive,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/metadata,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/naming,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/peer,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/resolver,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/resolver/dns,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/resolver/passthrough,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/serviceconfig,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/stats,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/status,Apache License 2.0
+google.golang.org/grpc,google.golang.org/grpc/tap,Apache License 2.0
+gopkg.in/fsnotify.v1,gopkg.in/fsnotify.v1,"BSD 3-clause ""New"" or ""Revised"" License"
+gopkg.in/inf.v0,gopkg.in/inf.v0,"BSD 3-clause ""New"" or ""Revised"" License"
+gopkg.in/tomb.v1,gopkg.in/tomb.v1,"BSD 3-clause ""New"" or ""Revised"" License"
+gopkg.in/yaml.v2,gopkg.in/yaml.v2,Apache License 2.0
+k8s.io/api,k8s.io/api/admission/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/admissionregistration/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/admissionregistration/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/apps/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/apps/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/apps/v1beta2,Apache License 2.0
+k8s.io/api,k8s.io/api/auditregistration/v1alpha1,Apache License 2.0
+k8s.io/api,k8s.io/api/authentication/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/authentication/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/authorization/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/authorization/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/autoscaling/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/autoscaling/v2beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/autoscaling/v2beta2,Apache License 2.0
+k8s.io/api,k8s.io/api/batch/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/batch/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/batch/v2alpha1,Apache License 2.0
+k8s.io/api,k8s.io/api/certificates/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/coordination/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/coordination/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/core/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/discovery/v1alpha1,Apache License 2.0
+k8s.io/api,k8s.io/api/events/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/extensions/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/networking/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/networking/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/node/v1alpha1,Apache License 2.0
+k8s.io/api,k8s.io/api/node/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/policy/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/rbac/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/rbac/v1alpha1,Apache License 2.0
+k8s.io/api,k8s.io/api/rbac/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/scheduling/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/scheduling/v1alpha1,Apache License 2.0
+k8s.io/api,k8s.io/api/scheduling/v1beta1,Apache License 2.0
+k8s.io/api,k8s.io/api/settings/v1alpha1,Apache License 2.0
+k8s.io/api,k8s.io/api/storage/v1,Apache License 2.0
+k8s.io/api,k8s.io/api/storage/v1alpha1,Apache License 2.0
+k8s.io/api,k8s.io/api/storage/v1beta1,Apache License 2.0
+k8s.io/apiextensions-apiserver,k8s.io/apiextensions-apiserver/pkg/apis/apiextensions,Apache License 2.0
+k8s.io/apiextensions-apiserver,k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1,Apache License 2.0
+k8s.io/apiextensions-apiserver,k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1,Apache License 2.0
+k8s.io/apiextensions-apiserver,k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset,Apache License 2.0
+k8s.io/apiextensions-apiserver,k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme,Apache License 2.0
+k8s.io/apiextensions-apiserver,k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1,Apache License 2.0
+k8s.io/apiextensions-apiserver,k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/equality,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/errors,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/meta,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/resource,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/internalversion,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/v1,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/v1/unstructured,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/v1beta1,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/conversion,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/conversion/queryparams,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/fields,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/labels,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/runtime,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/runtime/schema,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/runtime/serializer,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/runtime/serializer/json,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/runtime/serializer/protobuf,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/runtime/serializer/recognizer,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/runtime/serializer/streaming,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/runtime/serializer/versioning,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/selection,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/types,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/cache,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/clock,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/diff,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/errors,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/framer,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/intstr,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/json,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/mergepatch,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/naming,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/net,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/runtime,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/sets,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/strategicpatch,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/uuid,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/validation,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/validation/field,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/wait,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/yaml,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/version,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/watch,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/third_party/forked/golang/json,Apache License 2.0
+k8s.io/apimachinery,k8s.io/apimachinery/third_party/forked/golang/reflect,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/discovery,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/dynamic,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/scheme,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/admissionregistration/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/apps/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/apps/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/apps/v1beta2,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/auditregistration/v1alpha1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/authentication/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/authentication/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/authorization/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/authorization/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/autoscaling/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/autoscaling/v2beta2,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/batch/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/batch/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/batch/v2alpha1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/certificates/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/coordination/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/coordination/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/core/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/discovery/v1alpha1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/events/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/extensions/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/networking/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/networking/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/node/v1alpha1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/node/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/policy/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/rbac/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/rbac/v1alpha1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/rbac/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/scheduling/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/scheduling/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/settings/v1alpha1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/storage/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/storage/v1alpha1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/storage/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/pkg/apis/clientauthentication,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/pkg/apis/clientauthentication/v1alpha1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/pkg/apis/clientauthentication/v1beta1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/pkg/version,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/plugin/pkg/client/auth/exec,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/plugin/pkg/client/auth/gcp,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/rest,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/rest/watch,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/restmapper,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/third_party/forked/golang/template,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/auth,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/cache,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/clientcmd,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/clientcmd/api,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/clientcmd/api/latest,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/clientcmd/api/v1,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/leaderelection,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/leaderelection/resourcelock,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/metrics,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/pager,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/record,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/record/util,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/tools/reference,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/transport,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/util/cert,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/util/connrotation,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/util/flowcontrol,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/util/homedir,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/util/jsonpath,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/util/keyutil,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/util/retry,Apache License 2.0
+k8s.io/client-go,k8s.io/client-go/util/workqueue,Apache License 2.0
+k8s.io/klog,k8s.io/klog,Apache License 2.0
+k8s.io/kube-openapi,k8s.io/kube-openapi/pkg/util/proto,Apache License 2.0
+k8s.io/utils,k8s.io/utils/buffer,Apache License 2.0
+k8s.io/utils,k8s.io/utils/integer,Apache License 2.0
+k8s.io/utils,k8s.io/utils/pointer,Apache License 2.0
+k8s.io/utils,k8s.io/utils/trace,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/builder,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/cache,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/cache/internal,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/client,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/client/apiutil,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/client/config,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/controller,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/controller/controllerutil,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/conversion,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/envtest,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/envtest/printer,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/event,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/handler,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/healthz,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/internal/controller,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/internal/controller/metrics,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/internal/log,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/internal/recorder,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/leaderelection,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/log,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/log/zap,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/manager,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/manager/signals,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/metrics,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/predicate,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/reconcile,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/recorder,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/runtime/inject,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/scheme,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/source,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/source/internal,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/admission,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/conversion,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/internal/certwatcher,Apache License 2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics,Apache License 2.0
+sigs.k8s.io/testing_frameworks,sigs.k8s.io/testing_frameworks/integration,Apache License 2.0
+sigs.k8s.io/testing_frameworks,sigs.k8s.io/testing_frameworks/integration/addr,Apache License 2.0
+sigs.k8s.io/testing_frameworks,sigs.k8s.io/testing_frameworks/integration/internal,Apache License 2.0
+sigs.k8s.io/yaml,sigs.k8s.io/yaml,MIT License

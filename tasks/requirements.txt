@@ -1,0 +1,1 @@
+spdx-lookup==0.3.2

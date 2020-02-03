@@ -6,8 +6,6 @@ require (
 	bou.ke/monkey v1.0.2
 	github.com/DataDog/datadog-go v3.3.1+incompatible
 	github.com/Microsoft/hcsshim v0.8.7 // indirect
-	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
-	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/containerd/containerd v1.3.2
 	github.com/containerd/continuity v0.0.0-20200107062522-0ec596719c75 // indirect
 	github.com/containerd/fifo v0.0.0-20191213151349-ff969a566b00 // indirect
@@ -32,7 +30,6 @@ require (
 	go.etcd.io/bbolt v1.3.3 // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/net v0.0.0-20190923162816-aa69164e4478
-	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	k8s.io/api v0.0.0-20190918155943-95b840bb6a1f
 	k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655
 	k8s.io/client-go v0.0.0-20190918160344-1fbdaa4c8d90
