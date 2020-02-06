@@ -1,4 +1,3 @@
-
 # Image URL to use all building/pushing image targets
 MANAGER_IMAGE ?= chaos-fi-controller:latest
 INJECTOR_IMAGE ?= chaos-fi:latest
@@ -42,7 +41,6 @@ uninstall: manifests
 deploy: manifests
 	cd config/manager && kustomize edit set image controller=${MANAGER_IMAGE}
 	kustomize build config/default | kubectl apply -f -
-	kubectl apply -f config/samples/deployment.yaml
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen

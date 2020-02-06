@@ -1,11 +1,5 @@
 # Contributing
 
-## chaos-fi-controller chart
-
-Note that the Helm chart is located in the `k8s-resources` [repo](https://github.com/DataDog/k8s-resources/tree/master/k8s/chaos-fi-controller).
-
-Remember to update the chart with any updates to the CRDs or RBAC rules.
-
 ## Requirements
 
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
@@ -32,19 +26,6 @@ If the controller is already deployed, you'll have to remove the running pod for
 ### Minikube ISO
 
 We need some specific kernel modules to be enabled to do some of the injections. Because some of them were not enabled by default in the ISO, we built a custom one following the [official guide](https://minikube.sigs.k8s.io/docs/contributing/iso/) which is stored in the [minikube/iso] directory.
-
-## Releasing a new version of the controller
-
-You can manually build images on build-stable and staging (and prod when on master) environment from Gitlab. It'll then take the short commit SHA as a tag.
-
-However, to release a proper version of the controller, you have to create a tag from the `master` branch:
-
-```
-git tag -a 1.0.0
-git push --follow-tags origin master
-```
-
-It'll then automatically run jobs to push the image with the defined tag on every environment.
 
 ## Re-generating the CRD manifest
 
