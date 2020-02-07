@@ -6,16 +6,20 @@
 version: 2
 
 templates:
+  # saves go code, modules and tools in the cache
   save_cache: &save_cache
     key: env-{{ .Revision }}
     paths:
       - /go
       - /usr/local/bin/golangci-lint
       - /usr/local/kubebuilder
+  # restores the cache
   restore_cache: &restore_cache
     key: env-{{ .Revision }}
+  # sets the working directory to the project path
   working_directory: &working_directory
     working_directory: /go/src/github.com/DataDog/chaos-fi-controller
+  # runs the standard golang image
   go_job_template: &go_job_template
     <<: *working_directory
     docker:
@@ -27,20 +31,27 @@ templates:
       KUBEBUILDER_ARCH: amd64
       GOLANGCI_LINT_VERSION: 1.23.1
       GIT_LFS_SKIP_SMUDGE: 1
+  # runs the standard python image
   python_job_template: &python_job_template
     <<: *working_directory
     docker:
       - image: python:3.8.1-alpine3.10
-  bash_job_template: &bash_job_template
-    <<: *working_directory
-    docker:
-      - image: bash:5.0
+  # install requirements used for the CI tasks
   install_python_requirements: &install_python_requirements
     run:
       name: Install Python requirements
       command: pip3 install -r tasks/requirements.txt
+  # runs the standard bash image
+  bash_job_template: &bash_job_template
+    <<: *working_directory
+    docker:
+      - image: bash:5.0
 
 jobs:
+  # prepares the CI environment by checking out the code,
+  # installing a bunch of tools and downloading modules dependencies
+  # into the Go home path so we don't have to do it again in other
+  # CI jobs
   prepare-env:
     <<: *go_job_template
     steps:
@@ -62,6 +73,7 @@ jobs:
           name: Cache local dependencies
           command: go mod download
       - save_cache: *save_cache
+  # ensures that Go dependencies are up-to-date
   dependencies:
     <<: *go_job_template
     steps:
@@ -71,26 +83,31 @@ jobs:
           command: |
             go mod tidy
             git diff --exit-code
+  # vets the code
   vet:
     <<: *go_job_template
     steps:
       - restore_cache: *restore_cache
       - run: make vet
+  # formats the code to ensure it complies with Go standards
   fmt:
     <<: *go_job_template
     steps:
       - restore_cache: *restore_cache
       - run: make fmt
+  # runs the golangci-lint linters
   lint:
     <<: *go_job_template
     steps:
       - restore_cache: *restore_cache
       - run: make lint
+  # runs the tests
   test:
     <<: *go_job_template
     steps:
       - restore_cache: *restore_cache
       - run: make test
+  # ensures that the file containing 3rd-party licenses is up-to-date
   3rd-party-licenses:
     <<: *python_job_template
     steps:
@@ -99,6 +116,7 @@ jobs:
       - run:
           name: Ensure 3rd-party licences are up-to-date
           command: python3 tasks/3rdparty.py
+  # ensures that the license header is present on all the needed files
   license-header:
     <<: *bash_job_template
     steps:
