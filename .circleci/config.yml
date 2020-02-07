@@ -9,9 +9,9 @@ templates:
   save_cache: &save_cache
     key: env-{{ .Revision }}
     paths:
-      - /usr/local/kubebuilder
       - /go
       - /usr/local/bin/golangci-lint
+      - /usr/local/kubebuilder
   restore_cache: &restore_cache
     key: env-{{ .Revision }}
   working_directory: &working_directory
@@ -38,8 +38,7 @@ templates:
   install_python_requirements: &install_python_requirements
     run:
       name: Install Python requirements
-      command: |
-        pip3 install -r tasks/requirements.txt
+      command: pip3 install -r tasks/requirements.txt
 
 jobs:
   prepare-env:
@@ -47,16 +46,21 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install Go tools
+          name: Install kubebuilder
           command: |
             cd /usr/local
             curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz"
             tar -zxvf kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz
             mv kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH} kubebuilder
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v${GOLANGCI_LINT_VERSION}
             export PATH="/usr/local/kubebuilder/bin:${PATH}"
-            cd $CIRCLE_WORKING_DIRECTORY
-            go mod download
+      - run:
+          name: Install golangci-lint tool
+          command: |
+            cd /usr/local
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v${GOLANGCI_LINT_VERSION}
+      - run:
+          name: Cache local dependencies
+          command: go mod download
       - save_cache: *save_cache
   dependencies:
     <<: *go_job_template
@@ -94,8 +98,7 @@ jobs:
       - *install_python_requirements
       - run:
           name: Ensure 3rd-party licences are up-to-date
-          command: |
-            python3 tasks/3rdparty.py
+          command: python3 tasks/3rdparty.py
   license-header:
     <<: *bash_job_template
     steps:
