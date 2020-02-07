@@ -6,6 +6,14 @@
 version: 2
 
 templates:
+  save_cache: &save_cache
+    key: env-{{ .Revision }}
+    paths:
+      - /usr/local/kubebuilder
+      - /go
+      - /usr/local/bin/golangci-lint
+  restore_cache: &restore_cache
+    key: env-{{ .Revision }}
   working_directory: &working_directory
     working_directory: /go/src/github.com/DataDog/chaos-fi-controller
   go_job_template: &go_job_template
@@ -27,17 +35,6 @@ templates:
     <<: *working_directory
     docker:
       - image: bash:5.0
-  install_go_tools: &install_go_tools
-    run:
-      name: Install Go tools
-      command: |
-        cd /usr/local
-        curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz"
-        tar -zxvf kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz
-        mv kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH} kubebuilder
-        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v${GOLANGCI_LINT_VERSION}
-        export PATH="/usr/local/kubebuilder/bin:${PATH}"
-        cd $CIRCLE_WORKING_DIRECTORY
   install_python_requirements: &install_python_requirements
     run:
       name: Install Python requirements
@@ -45,23 +42,51 @@ templates:
         pip3 install -r tasks/requirements.txt
 
 jobs:
-  build:
+  prepare-env:
     <<: *go_job_template
     steps:
       - checkout
-      - *install_go_tools
       - run:
-          name: Test and Build
-          command: make
+          name: Install Go tools
+          command: |
+            cd /usr/local
+            curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz"
+            tar -zxvf kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz
+            mv kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH} kubebuilder
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v${GOLANGCI_LINT_VERSION}
+            export PATH="/usr/local/kubebuilder/bin:${PATH}"
+            cd $CIRCLE_WORKING_DIRECTORY
+            go mod download
+      - save_cache: *save_cache
   dependencies:
     <<: *go_job_template
     steps:
-      - checkout
+      - restore_cache: *restore_cache
       - run:
           name: Ensure dependencies are up-to-date
           command: |
             go mod tidy
             git diff --exit-code
+  vet:
+    <<: *go_job_template
+    steps:
+      - restore_cache: *restore_cache
+      - run: make vet
+  fmt:
+    <<: *go_job_template
+    steps:
+      - restore_cache: *restore_cache
+      - run: make fmt
+  lint:
+    <<: *go_job_template
+    steps:
+      - restore_cache: *restore_cache
+      - run: make lint
+  test:
+    <<: *go_job_template
+    steps:
+      - restore_cache: *restore_cache
+      - run: make test
   3rd-party-licenses:
     <<: *python_job_template
     steps:
@@ -83,7 +108,21 @@ workflows:
   version: 2
   test_and_build:
     jobs:
-      - build
-      - dependencies
+      - prepare-env
+      - dependencies:
+          requires:
+            - prepare-env
+      - vet:
+          requires:
+            - prepare-env
+      - fmt:
+          requires:
+            - prepare-env
+      - lint:
+          requires:
+            - prepare-env
+      - test:
+          requires:
+            - prepare-env
       - 3rd-party-licenses
       - license-header
