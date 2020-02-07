@@ -18,6 +18,10 @@ templates:
     <<: *working_directory
     docker:
       - image: python:3.8.1-alpine3.10
+  bash_job_template: &bash_job_template
+    <<: *working_directory
+    docker:
+      - image: bash:5.0
   install_go_tools: &install_go_tools
     run:
       name: Install Go tools
@@ -62,6 +66,13 @@ jobs:
           name: Ensure 3rd-party licences are up-to-date
           command: |
             python3 tasks/3rdparty.py
+  license-header:
+    <<: *bash_job_template
+    steps:
+      - checkout
+      - run:
+          name: Ensure license header is present
+          command: ./tasks/header.sh
 
 workflows:
   version: 2
@@ -70,3 +81,4 @@ workflows:
       - build
       - dependencies
       - 3rd-party-licenses
+      - license-header
