@@ -39,16 +39,20 @@ declare -A EXTS
 EXTS["go"]="//"
 EXTS["yaml"]="#"
 EXTS["yml"]="#"
-EXTS["py"]="#"
 
 # insert header if not already present
+exit_code=0
 for ext in "${!EXTS[@]}"; do
   echo "dealing with $ext files"
   tag=${EXTS[$ext]}
   files=$(get_files_with_extension $ext)
   for file in $files; do
     if ! header_is_present $file $tag; then
+      echo "header is missing in $file"
+      exit_code=1
       insert_header_with_tag $file $tag
     fi
   done
 done
+
+exit $exit_code
