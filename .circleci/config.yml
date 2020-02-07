@@ -1,19 +1,10 @@
 version: 2
 
-ci_build_env: &build_ci_env
-  run:
-    name: Build CI Environment
-    command: |
-      cd /usr/local
-      curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz"
-      tar -zxvf kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz
-      mv kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH} kubebuilder
-      curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v${GOLANGCI_LINT_VERSION}
-      export PATH="/usr/local/kubebuilder/bin:${PATH}"
-      cd $CIRCLE_WORKING_DIRECTORY
-
 templates:
-  job_template: &job_template
+  working_directory: &working_directory
+    working_directory: /go/src/github.com/DataDog/chaos-fi-controller
+  go_job_template: &go_job_template
+    <<: *working_directory
     docker:
       # TODO: Publicize the chaos controller ci image to the datadog docker registry
       #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
@@ -23,19 +14,38 @@ templates:
       KUBEBUILDER_ARCH: amd64
       GOLANGCI_LINT_VERSION: 1.23.1
       GIT_LFS_SKIP_SMUDGE: 1
-    working_directory: /go/src/github.com/DataDog/chaos-fi-controller
+  python_job_template: &python_job_template
+    <<: *working_directory
+    docker:
+      - image: python:3.8.1-alpine3.10
+  install_go_tools: &install_go_tools
+    run:
+      name: Install Go tools
+      command: |
+        cd /usr/local
+        curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz"
+        tar -zxvf kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz
+        mv kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH} kubebuilder
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v${GOLANGCI_LINT_VERSION}
+        export PATH="/usr/local/kubebuilder/bin:${PATH}"
+        cd $CIRCLE_WORKING_DIRECTORY
+  install_python_requirements: &install_python_requirements
+    run:
+      name: Install Python requirements
+      command: |
+        pip3 install -r tasks/requirements.txt
 
 jobs:
   build:
-    <<: *job_template
+    <<: *go_job_template
     steps:
       - checkout
-      - *build_ci_env
+      - *install_go_tools
       - run:
           name: Test and Build
           command: make
   dependencies:
-    <<: *job_template
+    <<: *go_job_template
     steps:
       - checkout
       - run:
@@ -43,6 +53,15 @@ jobs:
           command: |
             go mod tidy
             git diff --exit-code
+  3rd-party-licenses:
+    <<: *python_job_template
+    steps:
+      - checkout
+      - *install_python_requirements
+      - run:
+          name: Ensure 3rd-party licences are up-to-date
+          command: |
+            python3 tasks/3rdparty.py
 
 workflows:
   version: 2
@@ -50,3 +69,4 @@ workflows:
     jobs:
       - build
       - dependencies
+      - 3rd-party-licenses
