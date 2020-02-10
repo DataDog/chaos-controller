@@ -12,7 +12,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/DataDog/chaos-fi-controller/types"
@@ -63,8 +62,8 @@ func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types
 					Args:            args,
 					VolumeMounts: []corev1.VolumeMount{
 						corev1.VolumeMount{
-							MountPath: "/run/containerd",
-							Name:      "containerd",
+							MountPath: "/run",
+							Name:      "run",
 						},
 						corev1.VolumeMount{
 							MountPath: "/mnt/proc",
@@ -86,10 +85,10 @@ func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types
 			},
 			Volumes: []corev1.Volume{
 				corev1.Volume{
-					Name: "containerd",
+					Name: "run",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/run/containerd",
+							Path: "/run",
 							Type: &hostPathDirectory,
 						},
 					},
@@ -193,21 +192,6 @@ func GetOwnedPods(c client.Client, owner metav1.Object, selector labels.Set) (co
 	}
 
 	return ownedPods, nil
-}
-
-// GetContainerdID gets the ID of the first container ID found in a Pod
-// It expects container ids to follow the format "containerd://<ID>"
-func GetContainerdID(pod *corev1.Pod) (string, error) {
-	if len(pod.Status.ContainerStatuses) < 1 {
-		return "", fmt.Errorf("Missing container ids for pod '%s'", pod.Name)
-	}
-
-	containerID := strings.Split(pod.Status.ContainerStatuses[0].ContainerID, "containerd://")
-	if len(containerID) != 2 {
-		return "", fmt.Errorf("Unrecognized container ID format '%s', expecting 'containerd://<ID>'", pod.Status.ContainerStatuses[0].ContainerID)
-	}
-
-	return containerID[1], nil
 }
 
 // ResolveHost tries to resolve the given host
