@@ -11,22 +11,22 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-all: test manager injector
+all: manager injector
 
 # Run tests
-test: generate fmt vet lint manifests
+test: generate manifests
 	go test ./... -coverprofile cover.out -gcflags=-l
 
 # Build manager binary
-manager: generate fmt vet lint
+manager: generate
 	go build -o bin/manager main.go
 
 # Build injector binary
-injector: fmt vet lint
+injector:
 	GOOS=linux GOARCH=amd64 go build -o bin/injector ./cli/injector/
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet lint manifests
+run: generate manifests
 	go run ./main.go
 
 # Install CRDs into a cluster
