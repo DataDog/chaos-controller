@@ -63,18 +63,19 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
 # Build the docker image
-check-docker-env:
-	if [[ -z "${DOCKER_HOST}" ]]; then echo 'Please run eval $$(minikube docker-env) before running this script'; exit 1; fi
-
-docker-build-manager: check-docker-env
+docker-build-manager:
+	mkdir -p out
 	docker build . -t ${MANAGER_IMAGE} --target manager
-	minikube ssh -- sudo docker save -o manager.tar ${MANAGER_IMAGE}
-	minikube ssh -- sudo ctr cri load manager.tar
+	docker save -o out/manager.tar ${MANAGER_IMAGE}
+	scp -i $$(minikube ssh-key) out/manager.tar docker@$$(minikube ip):/tmp
+	minikube ssh -- sudo ctr cri load /tmp/manager.tar
 
-docker-build-injector: check-docker-env
+docker-build-injector:
+	mkdir -p out
 	docker build . -t ${INJECTOR_IMAGE} --target injector
-	minikube ssh -- sudo docker save -o injector.tar ${INJECTOR_IMAGE}
-	minikube ssh -- sudo ctr cri load injector.tar
+	docker save -o out/injector.tar ${INJECTOR_IMAGE}
+	scp -i $$(minikube ssh-key) out/injector.tar docker@$$(minikube ip):/tmp
+	minikube ssh -- sudo ctr cri load /tmp/injector.tar
 
 docker-build: docker-build-manager docker-build-injector
 
@@ -105,4 +106,3 @@ minikube-start:
 		--extra-config=apiserver.runtime-config=settings.k8s.io/v1alpha1=true \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodPreset \
 		--iso-url=file://$(shell pwd)/minikube/iso/minikube.iso
-	minikube ssh -- sudo systemctl start docker
