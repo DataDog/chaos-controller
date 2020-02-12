@@ -14,7 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/helpers"
 	chaostypes "github.com/DataDog/chaos-fi-controller/types"
 	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
@@ -73,7 +72,7 @@ var _ = Describe("Disruption Controller", func() {
 		}
 
 		// patch
-		monkey.Patch(helpers.GetContainerdID, func(pod *corev1.Pod) (string, error) {
+		monkey.Patch(getContainerID, func(pod *corev1.Pod) (string, error) {
 			return "666", nil
 		})
 	})

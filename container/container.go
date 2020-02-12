@@ -6,11 +6,10 @@
 package container
 
 import (
-	"context"
 	"fmt"
 	"runtime"
 
-	"github.com/containerd/containerd"
+	"github.com/DataDog/chaos-fi-controller/containerruntime"
 	"github.com/vishvananda/netns"
 )
 
@@ -24,21 +23,25 @@ type Container struct {
 }
 
 // New creates a new container from the given container ID, retrieving it's main PID and network namespace
-func New(containerID string) (Container, error) {
-	// retrieve container PID
-	pid, err := getPID(containerID)
+func New(runtimeContainerID string) (Container, error) {
+	// retreive containerID based on the container runtime
+	cr, err := containerruntime.New(runtimeContainerID)
+	if err != nil {
+		return Container{}, fmt.Errorf("unsupported container runtime. docker or containerd are supported")
+	}
+	pid, err := cr.GetPID()
 	if err != nil {
 		return Container{}, fmt.Errorf("error while retrieving container PID: %w", err)
 	}
 
 	// retrieve container network namespace
-	ns, err := getNetworkNamespace(containerID)
+	ns, err := getNetworkNamespace(pid)
 	if err != nil {
 		return Container{}, fmt.Errorf("error while retrieving the container network namespace: %w", err)
 	}
 
 	c := Container{
-		ID:               containerID,
+		ID:               cr.GetContainerID(),
 		PID:              pid,
 		NetworkNamespace: ns,
 	}
@@ -46,37 +49,8 @@ func New(containerID string) (Container, error) {
 	return c, nil
 }
 
-// getPID loads the given container and returns its task PID
-func getPID(containerID string) (uint32, error) {
-	// get containerd instance
-	containerdClient, err := containerd.New("/run/containerd/containerd.sock", containerd.WithDefaultNamespace("k8s.io"))
-	if err != nil {
-		return 0, fmt.Errorf("unable to connect to the containerd socket: %w", err)
-	}
-
-	// load container structure
-	container, err := containerdClient.LoadContainer(context.Background(), containerID)
-	if err != nil {
-		return 0, fmt.Errorf("error while loading the given container: %w", err)
-	}
-
-	// retrieve container task (process)
-	task, err := container.Task(context.Background(), nil)
-	if err != nil {
-		return 0, fmt.Errorf("error while loading the given container task: %w", err)
-	}
-
-	return task.Pid(), nil
-}
-
 // getNetworkNamespace gets the given container network namespace file from its task PID
-func getNetworkNamespace(containerID string) (netns.NsHandle, error) {
-	// retrieve container pid
-	pid, err := getPID(containerID)
-	if err != nil {
-		return 0, fmt.Errorf("error while retrieving the given container task pid: %w", err)
-	}
-
+func getNetworkNamespace(pid uint32) (netns.NsHandle, error) {
 	// retrieve container network namespace file
 	ns, err := netns.GetFromPath(fmt.Sprintf("/mnt/proc/%d/ns/net", pid))
 	if err != nil {
