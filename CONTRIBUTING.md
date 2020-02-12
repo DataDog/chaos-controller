@@ -7,11 +7,14 @@
 * [go](https://golang.org/doc/install)
 * [golangci-lint](https://github.com/golangci/golangci-lint)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+* [git-lfs](https://github.com/git-lfs/git-lfs/wiki/Installation)
 
 ## Testing the controller locally
 
 If you want to test the controller locally (without having to redeploy a new image on a staging cluster), please use the [minikube project](https://kubernetes.io/docs/setup/learning-environment/minikube/) as described below:
 
+* get minukube iso stored on git-lfs
+  * `git lfs pull`
 * start minikube with containerd engine
   * `make minikube-start`
 * build the new image of the controller with your local changes
@@ -22,6 +25,13 @@ If you want to test the controller locally (without having to redeploy a new ima
 If the controller is already deployed, you'll have to remove the running pod for changes to be applied.
 
 **Known issue: the pod preset injecting the fake Datadog statsd environment variable is created at the end of the apply. The preset may not be applied on the chaos controller pod, making it to panic. If it's the case, you have to remove the pod so it's created again with the pod preset."**
+
+The [samples](config/samples) contains sample data which can be used to test your changes.
+
+* [deployment.yaml](config/samples/deployment.yaml) contains a simple container which can be used for testing
+* [chaos_v1beta1_disruption.yaml](config/samples/chaos_v1beta1_disruption.yaml) contains a Disrption resource. Feel free to comment out want you don't need.
+
+Both samples can be applied using kubectl: `kubectl apply -f deployment.yaml`.
 
 ### Minikube ISO
 

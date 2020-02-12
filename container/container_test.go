@@ -136,7 +136,7 @@ var _ = Describe("Container", func() {
 
 	Describe("loading a container", func() {
 		It("should return a container object with parsed PID and ns handler", func() {
-			c, err := New("fake")
+			c, err := New("containerd://fake")
 			Expect(err).To(BeNil())
 			Expect(c.ID).To(Equal("fake"))
 			Expect(c.PID).To(Equal(uint32(666)))
@@ -146,7 +146,7 @@ var _ = Describe("Container", func() {
 
 	Describe("entering and exiting the container network namespace", func() {
 		It("should lock thread and set the container network namespace", func() {
-			c, err := New("fake")
+			c, err := New("containerd://fake")
 			Expect(err).To(BeNil())
 
 			err = c.EnterNetworkNamespace()
