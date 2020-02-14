@@ -5,7 +5,10 @@
 
 package injector
 
-import "go.uber.org/zap"
+import (
+	"github.com/DataDog/chaos-fi-controller/container"
+	"go.uber.org/zap"
+)
 
 // Injector represents a generic failure injector
 type Injector struct {
@@ -16,5 +19,5 @@ type Injector struct {
 // ContainerInjector represents an injector for containers
 type ContainerInjector struct {
 	Injector
-	ContainerID string
+	Container container.Container
 }

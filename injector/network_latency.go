@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/container"
 	"github.com/DataDog/chaos-fi-controller/helpers"
 	"github.com/vishvananda/netlink"
 )
@@ -115,18 +114,14 @@ func (i NetworkLatencyInjector) Inject() {
 
 	// enter container network namespace
 	// and defer the exit on return
-	c, err := container.New(i.ContainerID)
+	err := i.Container.EnterNetworkNamespace()
 	if err != nil {
-		i.Log.Fatalw("unable to load the given container", "error", err, "id", i.ContainerID)
-	}
-	err = c.EnterNetworkNamespace()
-	if err != nil {
-		i.Log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.ContainerID)
+		i.Log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.Container.ID())
 	}
 	defer func() {
-		err := container.ExitNetworkNamespace()
+		err := i.Container.ExitNetworkNamespace()
 		if err != nil {
-			i.Log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.ContainerID)
+			i.Log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.Container.ID())
 		}
 	}()
 
@@ -200,18 +195,14 @@ func (i NetworkLatencyInjector) Clean() {
 
 	// enter container network namespace
 	// and defer the exit on return
-	c, err := container.New(i.ContainerID)
+	err := i.Container.EnterNetworkNamespace()
 	if err != nil {
-		i.Log.Fatalw("unable to load the given container", "error", err, "id", i.ContainerID)
-	}
-	err = c.EnterNetworkNamespace()
-	if err != nil {
-		i.Log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.ContainerID)
+		i.Log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.Container.ID())
 	}
 	defer func() {
-		err := container.ExitNetworkNamespace()
+		err := i.Container.ExitNetworkNamespace()
 		if err != nil {
-			i.Log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.ContainerID)
+			i.Log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.Container.ID())
 		}
 	}()
 

@@ -14,32 +14,36 @@ import (
 	"bou.ke/monkey"
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/miekg/dns"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/vishvananda/netns"
 
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/container"
 	"github.com/DataDog/chaos-fi-controller/datadog"
 	. "github.com/DataDog/chaos-fi-controller/injector"
 	"github.com/DataDog/datadog-go/statsd"
 )
 
 var _ = Describe("Network Failure", func() {
+	var c fakeContainer
 	var f NetworkFailureInjector
-	var callEnterNetworkNamespace, callExitNetworkNamespace, iptablesExistsReturnValue bool
+	var iptablesExistsReturnValue bool
 	var iptablesAppendRules, iptablesDeleteRules, iptablesListChainsReturnValue []string
 	var iptablesClearChainName, iptablesDeleteChainName string
 
 	BeforeEach(func() {
 		// tests vars
+		c = fakeContainer{}
+		c.On("EnterNetworkNamespace").Return(nil)
+		c.On("ExitNetworkNamespace").Return(nil)
+
 		f = NetworkFailureInjector{
 			ContainerInjector: ContainerInjector{
 				Injector: Injector{
 					UID: "110e8400-e29b-11d4-a716-446655440000",
 					Log: log,
 				},
-				ContainerID: "fake",
+				Container: &c,
 			},
 			Spec: &v1beta1.NetworkFailureSpec{
 				Hosts:       []string{"127.0.0.1/32"},
@@ -48,32 +52,12 @@ var _ = Describe("Network Failure", func() {
 				Probability: 100,
 			},
 		}
-		callEnterNetworkNamespace = false
-		callExitNetworkNamespace = false
 		iptablesAppendRules = []string{}
 		iptablesDeleteRules = []string{}
 		iptablesClearChainName = ""
 		iptablesDeleteChainName = ""
 		iptablesExistsReturnValue = true
 		iptablesListChainsReturnValue = []string{"CHAOS-110e8400446655440000"}
-
-		// container
-		var c container.Container
-		monkey.Patch(container.New, func(id string) (container.Container, error) {
-			return container.Container{
-				ID:               id,
-				PID:              666,
-				NetworkNamespace: netns.NsHandle(-1),
-			}, nil
-		})
-		monkey.PatchInstanceMethod(reflect.TypeOf(c), "EnterNetworkNamespace", func(container.Container) error {
-			callEnterNetworkNamespace = true
-			return nil
-		})
-		monkey.Patch(container.ExitNetworkNamespace, func() error {
-			callExitNetworkNamespace = true
-			return nil
-		})
 
 		// iptables
 		var ipt *iptables.IPTables
@@ -139,8 +123,8 @@ var _ = Describe("Network Failure", func() {
 	Describe("injection", func() {
 		It("should enter and exit the container network namespace", func() {
 			f.Inject()
-			Expect(callEnterNetworkNamespace).To(Equal(true))
-			Expect(callExitNetworkNamespace).To(Equal(true))
+			Expect(c.AssertCalled(ginkgo.GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+			Expect(c.AssertCalled(ginkgo.GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
 		})
 
 		It("should create a dedicated iptables chain with its jump rule", func() {
@@ -220,8 +204,8 @@ var _ = Describe("Network Failure", func() {
 	Describe("cleaning (normal case)", func() {
 		It("should enter and exit the container network namespace", func() {
 			f.Clean()
-			Expect(callEnterNetworkNamespace).To(Equal(true))
-			Expect(callExitNetworkNamespace).To(Equal(true))
+			Expect(c.AssertCalled(ginkgo.GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+			Expect(c.AssertCalled(ginkgo.GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
 		})
 
 		It("should remove the dedicated chain jump rule", func() {

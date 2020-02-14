@@ -11,12 +11,12 @@ import (
 	"reflect"
 
 	"bou.ke/monkey"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/vishvananda/netlink"
 
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/container"
 	. "github.com/DataDog/chaos-fi-controller/injector"
 )
 
@@ -32,6 +32,7 @@ func (f fakeLink) Type() string {
 }
 
 var _ = Describe("Tc", func() {
+	var c fakeContainer
 	var nli NetworkLatencyInjector
 	var cmds []*exec.Cmd
 	var cmdErr error
@@ -40,11 +41,16 @@ var _ = Describe("Tc", func() {
 
 	BeforeEach(func() {
 		// Variables
+		c = fakeContainer{}
+		c.On("EnterNetworkNamespace").Return(nil)
+		c.On("ExitNetworkNamespace").Return(nil)
+
 		nli = NetworkLatencyInjector{
 			ContainerInjector: ContainerInjector{
 				Injector: Injector{
 					Log: log,
 				},
+				Container: &c,
 			},
 			Spec: &v1beta1.NetworkLatencySpec{
 				Delay: 1000,
@@ -123,19 +129,6 @@ var _ = Describe("Tc", func() {
 
 			return handle, nil
 		})
-
-		// container
-		monkey.Patch(container.New, func(string) (container.Container, error) {
-			c := container.Container{}
-			monkey.PatchInstanceMethod(reflect.TypeOf(c), "EnterNetworkNamespace", func(container.Container) error {
-				return nil
-			})
-
-			return c, nil
-		})
-		monkey.Patch(container.ExitNetworkNamespace, func() error {
-			return nil
-		})
 	})
 
 	AfterEach(func() {
@@ -144,6 +137,11 @@ var _ = Describe("Tc", func() {
 
 	Describe("nli.Inject", func() {
 		Context("with no host specified", func() {
+			It("should enter and exit the container network namespace", func() {
+				nli.Inject()
+				Expect(c.AssertCalled(ginkgo.GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+				Expect(c.AssertCalled(ginkgo.GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
+			})
 			It("should not set or clear the interface qlen", func() {
 				nli.Inject()
 				Expect(netlinkLinkSetTxQLenCallCount).To(Equal(0))
@@ -216,6 +214,11 @@ var _ = Describe("Tc", func() {
 
 	Describe("nli.Clean", func() {
 		Context("with no error from the tc command", func() {
+			It("should enter and exit the container network namespace", func() {
+				nli.Clean()
+				Expect(c.AssertCalled(ginkgo.GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+				Expect(c.AssertCalled(ginkgo.GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
+			})
 			It("should clear the interfaces qdisc", func() {
 				nli.Clean()
 				Expect(len(cmds)).To(Equal(2))

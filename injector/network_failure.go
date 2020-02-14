@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/container"
 	"github.com/DataDog/chaos-fi-controller/datadog"
 	"github.com/DataDog/chaos-fi-controller/helpers"
 	"github.com/DataDog/datadog-go/statsd"
@@ -34,18 +33,14 @@ func (i NetworkFailureInjector) Inject() {
 
 	// enter container network namespace
 	// and defer the exit on return
-	c, err := container.New(i.ContainerID)
+	err := i.Container.EnterNetworkNamespace()
 	if err != nil {
-		i.Log.Fatalw("unable to load the given container", "error", err, "id", i.ContainerID)
-	}
-	err = c.EnterNetworkNamespace()
-	if err != nil {
-		i.Log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.ContainerID)
+		i.Log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.Container.ID())
 	}
 	defer func() {
-		err := container.ExitNetworkNamespace()
+		err := i.Container.ExitNetworkNamespace()
 		if err != nil {
-			i.Log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.ContainerID)
+			i.Log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.Container.ID())
 		}
 	}()
 
@@ -61,8 +56,8 @@ func (i NetworkFailureInjector) Inject() {
 	i.Log.Infow("resolving given host", "host", hosts[0])
 	ips, err := helpers.ResolveHost(hosts)
 	if err != nil {
-		datadog.EventInjectFailure(i.ContainerID, i.UID)
-		datadog.MetricInjected(i.ContainerID, i.UID, false)
+		datadog.EventInjectFailure(i.Container.ID(), i.UID)
+		datadog.MetricInjected(i.Container.ID(), i.UID, false)
 		i.Log.Fatalw("unable to resolve host", "error", err, "host", hosts[0])
 	}
 
@@ -71,8 +66,8 @@ func (i NetworkFailureInjector) Inject() {
 	i.Log.Infow("starting the injection", "chain", dedicatedChain)
 	ipt, err := iptables.New()
 	if err != nil {
-		datadog.EventInjectFailure(i.ContainerID, i.UID)
-		datadog.MetricInjected(i.ContainerID, i.UID, false)
+		datadog.EventInjectFailure(i.Container.ID(), i.UID)
+		datadog.MetricInjected(i.Container.ID(), i.UID, false)
 		i.Log.Fatalw("unable to load iptables driver", "error", err)
 	}
 
@@ -81,8 +76,8 @@ func (i NetworkFailureInjector) Inject() {
 		i.Log.Infow("creating the dedicated iptables chain", "chain", dedicatedChain)
 		err = ipt.NewChain(iptablesTable, dedicatedChain)
 		if err != nil {
-			datadog.EventInjectFailure(i.ContainerID, i.UID)
-			datadog.MetricInjected(i.ContainerID, i.UID, false)
+			datadog.EventInjectFailure(i.Container.ID(), i.UID)
+			datadog.MetricInjected(i.Container.ID(), i.UID, false)
 			i.Log.Fatalw("error while creating the dedicated chain",
 				"error", err,
 				"chain", dedicatedChain,
@@ -95,8 +90,8 @@ func (i NetworkFailureInjector) Inject() {
 	rule := fmt.Sprintf("iptables -t %s %s", iptablesTable, strings.Join(ruleParts, " "))
 	err = ipt.AppendUnique(iptablesTable, iptablesOutputChain, ruleParts...)
 	if err != nil {
-		datadog.EventInjectFailure(i.ContainerID, i.UID)
-		datadog.MetricInjected(i.ContainerID, i.UID, false)
+		datadog.EventInjectFailure(i.Container.ID(), i.UID)
+		datadog.MetricInjected(i.Container.ID(), i.UID, false)
 		i.Log.Fatalw("error while injecting the jump rule", "error", err, "rule", rule)
 	}
 
@@ -121,9 +116,9 @@ func (i NetworkFailureInjector) Inject() {
 		)
 		err = ipt.AppendUnique(iptablesTable, dedicatedChain, ruleParts...)
 		if err != nil {
-			datadog.EventInjectFailure(i.ContainerID, i.UID)
-			datadog.MetricInjected(i.ContainerID, i.UID, false)
-			datadog.MetricRulesInjected(i.ContainerID, i.UID, false)
+			datadog.EventInjectFailure(i.Container.ID(), i.UID)
+			datadog.MetricInjected(i.Container.ID(), i.UID, false)
+			datadog.MetricRulesInjected(i.Container.ID(), i.UID, false)
 			i.Log.Fatalw("error while injecting the drop rule", "error", err, "rule", rule)
 			return
 		}
@@ -132,32 +127,28 @@ func (i NetworkFailureInjector) Inject() {
 			Title: "network failure injected",
 			Text:  fmt.Sprintf("the following rule has been injected: %s", rule),
 			Tags: []string{
-				"containerID:" + i.ContainerID,
+				"containerID:" + i.Container.ID(),
 				"UID:" + i.UID,
 			},
 		})
-		datadog.MetricRulesInjected(i.ContainerID, i.UID, true)
+		datadog.MetricRulesInjected(i.Container.ID(), i.UID, true)
 	}
 
-	datadog.MetricInjected(i.ContainerID, i.UID, true)
+	datadog.MetricInjected(i.Container.ID(), i.UID, true)
 }
 
 // Clean removes all the injected failures in the given container
 func (i NetworkFailureInjector) Clean() {
 	// enter container network namespace
 	// and defer the exit on return
-	c, err := container.New(i.ContainerID)
+	err := i.Container.EnterNetworkNamespace()
 	if err != nil {
-		i.Log.Fatalw("unable to load the given container", "error", err, "id", i.ContainerID)
-	}
-	err = c.EnterNetworkNamespace()
-	if err != nil {
-		i.Log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.ContainerID)
+		i.Log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.Container.ID())
 	}
 	defer func() {
-		err := container.ExitNetworkNamespace()
+		err := i.Container.ExitNetworkNamespace()
 		if err != nil {
-			i.Log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.ContainerID)
+			i.Log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.Container.ID())
 		}
 	}()
 
@@ -165,8 +156,8 @@ func (i NetworkFailureInjector) Clean() {
 	i.Log.Infow("starting the cleaning", "chain", dedicatedChain)
 	ipt, err := iptables.New()
 	if err != nil {
-		datadog.EventCleanFailure(i.ContainerID, i.UID)
-		datadog.MetricCleaned(i.ContainerID, i.UID, false)
+		datadog.EventCleanFailure(i.Container.ID(), i.UID)
+		datadog.MetricCleaned(i.Container.ID(), i.UID, false)
 		i.Log.Fatalw("unable to load iptables driver", "error", err)
 	}
 
@@ -176,16 +167,16 @@ func (i NetworkFailureInjector) Clean() {
 		ruleParts := []string{"-j", dedicatedChain}
 		exists, err := ipt.Exists(iptablesTable, iptablesOutputChain, ruleParts...)
 		if err != nil {
-			datadog.EventCleanFailure(i.ContainerID, i.UID)
-			datadog.MetricCleaned(i.ContainerID, i.UID, false)
+			datadog.EventCleanFailure(i.Container.ID(), i.UID)
+			datadog.MetricCleaned(i.Container.ID(), i.UID, false)
 			i.Log.Fatalw("unable to check if the dedicated chain jump rule exists", "chain", dedicatedChain, "error", err)
 		}
 		if exists {
 			i.Log.Infow("deleting the dedicated chain jump rule", "chain", dedicatedChain)
 			err = ipt.Delete(iptablesTable, iptablesOutputChain, ruleParts...)
 			if err != nil {
-				datadog.EventCleanFailure(i.ContainerID, i.UID)
-				datadog.MetricCleaned(i.ContainerID, i.UID, false)
+				datadog.EventCleanFailure(i.Container.ID(), i.UID)
+				datadog.MetricCleaned(i.Container.ID(), i.UID, false)
 				i.Log.Fatalw("failed to clean dedicated chain jump rule", "chain", dedicatedChain, "error", err)
 			}
 		}
@@ -194,15 +185,15 @@ func (i NetworkFailureInjector) Clean() {
 		i.Log.Infow("clearing the dedicated chain", "chain", dedicatedChain)
 		err = ipt.ClearChain(iptablesTable, dedicatedChain)
 		if err != nil {
-			datadog.EventCleanFailure(i.ContainerID, i.UID)
-			datadog.MetricCleaned(i.ContainerID, i.UID, false)
+			datadog.EventCleanFailure(i.Container.ID(), i.UID)
+			datadog.MetricCleaned(i.Container.ID(), i.UID, false)
 			i.Log.Fatalw("failed to clean dedicated chain", "chain", dedicatedChain, "error", err)
 		}
 		i.Log.Infow("deleting the dedicated chain", "chain", dedicatedChain)
 		err = ipt.DeleteChain(iptablesTable, dedicatedChain)
 		if err != nil {
-			datadog.EventCleanFailure(i.ContainerID, i.UID)
-			datadog.MetricCleaned(i.ContainerID, i.UID, false)
+			datadog.EventCleanFailure(i.Container.ID(), i.UID)
+			datadog.MetricCleaned(i.Container.ID(), i.UID, false)
 			i.Log.Fatalw("failed to delete dedicated chain", "chain", dedicatedChain, "error", err)
 		}
 	}
@@ -211,11 +202,11 @@ func (i NetworkFailureInjector) Clean() {
 		Title: "network failure cleaned",
 		Text:  "the rules have been cleaned",
 		Tags: []string{
-			"containerID:" + i.ContainerID,
+			"containerID:" + i.Container.ID(),
 			"UID:" + i.UID,
 		},
 	})
-	datadog.MetricCleaned(i.ContainerID, i.UID, true)
+	datadog.MetricCleaned(i.Container.ID(), i.UID, true)
 }
 
 // getDedicatedChainName crafts the chaos dedicated chain name
