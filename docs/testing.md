@@ -39,6 +39,10 @@ Applying code changes, requires you to rebuild the images. Re-running `make dock
 
 Delete the manager pod to use the new image `kubectl delete pod -l control-plane=controller-manager`
 
+## Running tests
+
+Run `make test` to run the test suite. This will also generate all the require boilerplate code.
+
 ## Manual verification
 
 With `minikube` and the `controller-manager` running we can start our chaos experiments. We included a sample application which can be used for verification.
