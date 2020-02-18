@@ -5,11 +5,10 @@
 To get started, we need to have the following software installed:
 
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
-* [docker](https://docs.docker.com/install/)
-* [go](https://golang.org/doc/install)
-* [golangci-lint](https://github.com/golangci/golangci-lint)
-* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 * [git-lfs](https://github.com/git-lfs/git-lfs/wiki/Installation)
+* [golangci-lint](https://github.com/golangci/golangci-lint)
+
+This project is based on kubebuilder, please make sure the [listed](https://book.kubebuilder.io/quick-start.html#prerequisites) requirements for kubebuilder are installed as well.
 
 ## Developing locally (minikube)
 
