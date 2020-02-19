@@ -7,223 +7,222 @@ package injector_test
 
 import (
 	"net"
-	"os/exec"
-	"reflect"
+	"time"
 
-	"bou.ke/monkey"
-	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/vishvananda/netlink"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
 	. "github.com/DataDog/chaos-fi-controller/injector"
+	"github.com/DataDog/chaos-fi-controller/network"
 )
 
-type fakeLink struct {
-	attrs *netlink.LinkAttrs
+// tc
+type fakeTc struct {
+	mock.Mock
 }
 
-func (f fakeLink) Attrs() *netlink.LinkAttrs {
-	return f.attrs
+func (f *fakeTc) AddDelay(iface string, parent string, handle uint32, delay time.Duration) error {
+	args := f.Called(iface, parent, handle, delay)
+	return args.Error(0)
 }
-func (f fakeLink) Type() string {
-	return "fake"
+func (f *fakeTc) AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
+	args := f.Called(iface, parent, handle, bands, priomap)
+	return args.Error(0)
+}
+func (f *fakeTc) AddFilterDestIP(iface string, parent string, handle uint32, ip *net.IPNet, flowid string) error {
+	args := f.Called(iface, parent, handle, ip.String(), flowid)
+	return args.Error(0)
+}
+func (f *fakeTc) ClearQdisc(iface string) error {
+	args := f.Called(iface)
+	return args.Error(0)
+}
+
+// netlink
+type fakeNetlinkAdapter struct {
+	mock.Mock
+}
+
+func (f *fakeNetlinkAdapter) LinkList() ([]network.NetlinkLink, error) {
+	args := f.Called()
+	return args.Get(0).([]network.NetlinkLink), args.Error(1)
+}
+func (f *fakeNetlinkAdapter) LinkByIndex(index int) (network.NetlinkLink, error) {
+	args := f.Called(index)
+	return args.Get(0).(network.NetlinkLink), args.Error(1)
+}
+func (f *fakeNetlinkAdapter) LinkByName(name string) (network.NetlinkLink, error) {
+	args := f.Called(name)
+	return args.Get(0).(network.NetlinkLink), args.Error(1)
+}
+func (f *fakeNetlinkAdapter) RoutesForIP(ip *net.IPNet) ([]network.NetlinkRoute, error) {
+	args := f.Called(ip.String())
+	return args.Get(0).([]network.NetlinkRoute), args.Error(1)
+}
+
+type fakeNetlinkLink struct {
+	mock.Mock
+}
+
+func (f *fakeNetlinkLink) Name() string {
+	args := f.Called()
+	return args.String(0)
+}
+func (f *fakeNetlinkLink) SetTxQLen(qlen int) error {
+	args := f.Called(qlen)
+	return args.Error(0)
+}
+func (f *fakeNetlinkLink) TxQLen() int {
+	args := f.Called()
+	return args.Int(0)
+}
+
+type fakeNetlinkRoute struct {
+	mock.Mock
+}
+
+func (f *fakeNetlinkRoute) Link() network.NetlinkLink {
+	args := f.Called()
+	return args.Get(0).(network.NetlinkLink)
 }
 
 var _ = Describe("Tc", func() {
-	var c fakeContainer
-	var nli NetworkLatencyInjector
-	var cmds []*exec.Cmd
-	var cmdErr error
-	var netlinkLinkSetTxQLenCallCount int
-	var links []fakeLink
+	var (
+		c                                    fakeContainer
+		inj                                  Injector
+		config                               NetworkLatencyInjectorConfig
+		spec                                 v1beta1.NetworkLatencySpec
+		tc                                   fakeTc
+		nl                                   fakeNetlinkAdapter
+		nllink1, nllink2                     *fakeNetlinkLink
+		nllink1TxQlenCall, nllink2TxQlenCall *mock.Call
+		nlroute1, nlroute2                   *fakeNetlinkRoute
+	)
 
 	BeforeEach(func() {
-		// Variables
+		// container
 		c = fakeContainer{}
 		c.On("EnterNetworkNamespace").Return(nil)
 		c.On("ExitNetworkNamespace").Return(nil)
 
-		nli = NetworkLatencyInjector{
-			ContainerInjector: ContainerInjector{
-				Injector: Injector{
-					Log: log,
-				},
-				Container: &c,
-			},
-			Spec: &v1beta1.NetworkLatencySpec{
-				Delay: 1000,
-			},
-		}
-		cmds = []*exec.Cmd{}
-		cmdErr = nil
-		netlinkLinkSetTxQLenCallCount = 0
-		links = []fakeLink{
-			{
-				attrs: &netlink.LinkAttrs{
-					Name: "lo",
-				},
-			},
-			{
-				attrs: &netlink.LinkAttrs{
-					Name: "eth0",
-				},
-			},
-		}
-
-		// Patch
-		// exec
-		var execCommandGuard *monkey.PatchGuard
-		// Patch the commands so they are created but never executed
-		execCommandGuard = monkey.Patch(exec.Command, func(name string, arg ...string) *exec.Cmd {
-			execCommandGuard.Unpatch()
-			defer execCommandGuard.Restore()
-
-			// Patch created command instance
-			cmd := exec.Command(name, arg...)
-			monkey.PatchInstanceMethod(reflect.TypeOf(cmd), "Run", func(*exec.Cmd) error {
-				return cmdErr
-			})
-			cmds = append(cmds, cmd)
-
-			return cmd
-		})
+		// tc
+		tc = fakeTc{}
+		tc.On("AddDelay", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddFilterDestIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("ClearQdisc", mock.Anything).Return(nil)
 
 		// netlink
-		monkey.Patch(netlink.LinkList, func() ([]netlink.Link, error) {
-			l := make([]netlink.Link, len(links))
-			for i := range links {
-				l[i] = links[i]
-			}
-			return l, nil
-		})
-		monkey.Patch(netlink.LinkByIndex, func(i int) (netlink.Link, error) {
-			return links[i], nil
-		})
-		monkey.Patch(netlink.LinkByName, func(name string) (netlink.Link, error) {
-			for _, link := range links {
-				if link.Attrs().Name == name {
-					return link, nil
-				}
-			}
+		nllink1 = &fakeNetlinkLink{}
+		nllink1.On("Name").Return("lo")
+		nllink1.On("SetTxQLen", mock.Anything).Return(nil)
+		nllink1TxQlenCall = nllink1.On("TxQLen").Return(0)
+		nllink2 = &fakeNetlinkLink{}
+		nllink2.On("Name").Return("eth0")
+		nllink2.On("SetTxQLen", mock.Anything).Return(nil)
+		nllink2TxQlenCall = nllink2.On("TxQLen").Return(0)
 
-			panic("couldn't retrieve the link into the links list")
-		})
-		monkey.Patch(netlink.LinkSetTxQLen, func(netlink.Link, int) error {
-			netlinkLinkSetTxQLenCallCount++
-			return nil
-		})
-		monkey.Patch(netlink.NewHandle, func(...int) (*netlink.Handle, error) {
-			handle := &netlink.Handle{}
-			monkey.PatchInstanceMethod(reflect.TypeOf(handle), "RouteGet", func(*netlink.Handle, net.IP) ([]netlink.Route, error) {
-				return []netlink.Route{
-					netlink.Route{
-						LinkIndex: 0,
-					},
-					netlink.Route{
-						LinkIndex: 1,
-					},
-				}, nil
-			})
+		nlroute1 = &fakeNetlinkRoute{}
+		nlroute1.On("Link").Return(nllink1)
+		nlroute2 = &fakeNetlinkRoute{}
+		nlroute2.On("Link").Return(nllink2)
 
-			return handle, nil
-		})
+		nl = fakeNetlinkAdapter{}
+		nl.On("LinkList").Return([]network.NetlinkLink{nllink1, nllink2}, nil)
+		nl.On("LinkByIndex", 0).Return(nllink1, nil)
+		nl.On("LinkByIndex", 1).Return(nllink2, nil)
+		nl.On("LinkByName", "lo").Return(nllink1, nil)
+		nl.On("LinkByName", "eth0").Return(nllink2, nil)
+		nl.On("RoutesForIP", mock.Anything).Return([]network.NetlinkRoute{nlroute1, nlroute2}, nil)
+
+		spec = v1beta1.NetworkLatencySpec{
+			Delay: 1000,
+		}
+		config = NetworkLatencyInjectorConfig{
+			TrafficController: &tc,
+			NetlinkAdapter:    &nl,
+		}
 	})
 
-	AfterEach(func() {
-		monkey.UnpatchAll()
+	JustBeforeEach(func() {
+		inj = NewNetworkLatencyInjectorWithConfig("fake", spec, &c, log, config)
 	})
 
-	Describe("nli.Inject", func() {
+	Describe("inj.Inject", func() {
+		JustBeforeEach(func() {
+			inj.Inject()
+		})
+
 		Context("with no host specified", func() {
 			It("should enter and exit the container network namespace", func() {
-				nli.Inject()
-				Expect(c.AssertCalled(ginkgo.GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
-				Expect(c.AssertCalled(ginkgo.GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
+				Expect(c.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+				Expect(c.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
 			})
 			It("should not set or clear the interface qlen", func() {
-				nli.Inject()
-				Expect(netlinkLinkSetTxQLenCallCount).To(Equal(0))
+				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
+				nllink2.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
 			})
-			It("should add delay to the interfaces", func() {
-				nli.Inject()
-				Expect(len(cmds)).To(Equal(2))
-				Expect(cmds[0].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface 1
-				Expect(cmds[0].Args[5]).To(Equal("root"))                  // parent should remain root
-				Expect(cmds[0].Args[8]).To(Equal("1s"))                    // delay in string
-				Expect(cmds[0].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface 2
-				Expect(cmds[1].Args[5]).To(Equal("root"))                  // parent should remain root
-				Expect(cmds[1].Args[8]).To(Equal("1s"))                    // delay in string
+			It("should add delay to the interfaces root qdisc", func() {
+				tc.AssertCalled(GinkgoT(), "AddDelay", "lo", "root", mock.Anything, time.Second)
+				tc.AssertCalled(GinkgoT(), "AddDelay", "eth0", "root", mock.Anything, time.Second)
 			})
 		})
+
 		Context("with multiple hosts specified and interface without qlen", func() {
+			BeforeEach(func() {
+				spec.Hosts = []string{"1.1.1.1", "2.2.2.2"}
+			})
+
 			It("should set and clear the interface qlen", func() {
-				nli.Spec.Hosts = []string{"1.1.1.1", "2.2.2.2"}
-				nli.Inject()
-				Expect(netlinkLinkSetTxQLenCallCount).To(Equal(4))
+				nllink1.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
+				nllink1.AssertCalled(GinkgoT(), "SetTxQLen", 0)
+				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
+				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 0)
 			})
-			It("should add latency to a prio qdisc and filter on the given hosts", func() {
-				nli.Spec.Hosts = []string{"1.1.1.1", "2.2.2.2"}
-				nli.Inject()
-				Expect(len(cmds)).To(Equal(8))
-
-				// first interface
-				// prio qdisc creation
-				Expect(cmds[0].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface
-				Expect(cmds[0].Args[8]).To(Equal("prio"))                  // prio qdisc kind
-				// delay
-				Expect(cmds[1].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface
-				Expect(cmds[1].Args[5]).To(Equal("parent"))                // parent shouldn't be root
-				Expect(cmds[1].Args[7]).To(Equal("netem"))                 // netem qdisc kind
-				Expect(cmds[1].Args[8]).To(Equal("delay"))                 // delay module
-				Expect(cmds[1].Args[9]).To(Equal("1s"))                    // specified delay
-				// filter (one per given host)
-				Expect(cmds[2].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface
-				Expect(cmds[2].Args[15]).To(Equal("1.1.1.1/32"))           // specified host
-				Expect(cmds[3].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface
-				Expect(cmds[3].Args[15]).To(Equal("2.2.2.2/32"))           // specified host
-
-				// second interface
-				// prio qdisc creation
-				Expect(cmds[4].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface
-				Expect(cmds[4].Args[8]).To(Equal("prio"))                  // prio qdisc kind
-				// delay
-				Expect(cmds[5].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface
-				Expect(cmds[5].Args[5]).To(Equal("parent"))                // parent shouldn't be root
-				Expect(cmds[5].Args[7]).To(Equal("netem"))                 // netem qdisc kind
-				Expect(cmds[5].Args[8]).To(Equal("delay"))                 // delay module
-				Expect(cmds[5].Args[9]).To(Equal("1s"))                    // specified delay
-				// filter (one per given host)
-				Expect(cmds[6].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface
-				Expect(cmds[6].Args[15]).To(Equal("1.1.1.1/32"))           // specified host
-				Expect(cmds[7].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface
-				Expect(cmds[7].Args[15]).To(Equal("2.2.2.2/32"))           // specified host
+			It("should create a prio qdisc on both interfaces", func() {
+				tc.AssertCalled(GinkgoT(), "AddPrio", "lo", "root", uint32(1), uint32(4), mock.Anything)
+				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "root", uint32(1), uint32(4), mock.Anything)
+			})
+			It("should add latency on both interfaces prio qdisc", func() {
+				tc.AssertCalled(GinkgoT(), "AddDelay", "lo", "1:4", mock.Anything, time.Second)
+				tc.AssertCalled(GinkgoT(), "AddDelay", "eth0", "1:4", mock.Anything, time.Second)
+			})
+			It("should add a filter to redirect traffic on delayed band", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilterDestIP", "lo", "1:0", mock.Anything, "1.1.1.1/32", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilterDestIP", "lo", "1:0", mock.Anything, "2.2.2.2/32", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilterDestIP", "eth0", "1:0", mock.Anything, "1.1.1.1/32", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilterDestIP", "eth0", "1:0", mock.Anything, "2.2.2.2/32", "1:4")
 			})
 		})
+
 		Context("with multiple hosts specified and interfaces with qlen", func() {
+			BeforeEach(func() {
+				spec.Hosts = []string{"1.1.1.1", "2.2.2.2"}
+				nllink1TxQlenCall.Return(1000)
+				nllink2TxQlenCall.Return(1000)
+			})
 			It("should not set and clear the interface qlen", func() {
-				links[0].attrs.TxQLen = 1000
-				links[1].attrs.TxQLen = 1000
-				nli.Spec.Hosts = []string{"1.1.1.1", "2.2.2.2"}
-				nli.Inject()
-				Expect(netlinkLinkSetTxQLenCallCount).To(Equal(0))
+				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
+				nllink2.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
 			})
 		})
-	})
 
-	Describe("nli.Clean", func() {
-		Context("with no error from the tc command", func() {
-			It("should enter and exit the container network namespace", func() {
-				nli.Clean()
-				Expect(c.AssertCalled(ginkgo.GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
-				Expect(c.AssertCalled(ginkgo.GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
+		Describe("inj.Clean", func() {
+			JustBeforeEach(func() {
+				inj.Clean()
 			})
-			It("should clear the interfaces qdisc", func() {
-				nli.Clean()
-				Expect(len(cmds)).To(Equal(2))
-				Expect(cmds[0].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface
-				Expect(cmds[1].Args[4]).To(Or(Equal("lo"), Equal("eth0"))) // interface
+
+			Context("with no error from the tc command", func() {
+				It("should enter and exit the container network namespace", func() {
+					Expect(c.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+					Expect(c.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
+				})
+				It("should clear the interfaces qdisc", func() {
+					tc.AssertCalled(GinkgoT(), "ClearQdisc", "lo")
+					tc.AssertCalled(GinkgoT(), "ClearQdisc", "eth0")
+				})
 			})
 		})
 	})

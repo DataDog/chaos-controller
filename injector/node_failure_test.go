@@ -9,51 +9,68 @@ import (
 	"os"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
 	. "github.com/DataDog/chaos-fi-controller/injector"
 )
 
 type fakeFileWriter struct {
-	calls []fakeFileWriterCall
+	mock.Mock
 }
 
-type fakeFileWriterCall struct {
-	path string
-	data string
-}
-
-func (fw *fakeFileWriter) Write(path string, _ os.FileMode, data string) error {
-	fw.calls = append(fw.calls, fakeFileWriterCall{path: path, data: data})
-	return nil
+func (fw *fakeFileWriter) Write(path string, mode os.FileMode, data string) error {
+	args := fw.Called(path, mode, data)
+	return args.Error(0)
 }
 
 var _ = Describe("Failure", func() {
-	var f NodeFailureInjector
-	var fw fakeFileWriter
+	var (
+		config NodeFailureInjectorConfig
+		fw     fakeFileWriter
+		inj    Injector
+		spec   v1beta1.NodeFailureSpec
+	)
+
 	BeforeEach(func() {
-		fw = fakeFileWriter{
-			calls: []fakeFileWriterCall{},
-		}
-		f = NodeFailureInjector{
-			Injector: Injector{
-				UID: "fake",
-				Log: log,
-			},
-			Spec:       &v1beta1.NodeFailureSpec{},
+		fw = fakeFileWriter{}
+		fw.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		config = NodeFailureInjectorConfig{
 			FileWriter: &fw,
 		}
+
+		spec = v1beta1.NodeFailureSpec{}
+	})
+
+	JustBeforeEach(func() {
+		inj = NewNodeFailureInjectorWithConfig("fake", spec, log, config)
 	})
 
 	Describe("injection", func() {
-		It("should write to the sysrq file", func() {
-			f.Inject()
-			Expect(len(fw.calls)).To(Equal(2))
-			Expect(fw.calls[0].path).To(Equal("/mnt/sysrq"))
-			Expect(fw.calls[0].data).To(Equal("1"))
-			Expect(fw.calls[1].path).To(Equal("/mnt/sysrq-trigger"))
-			Expect(fw.calls[1].data).To(Equal("c"))
+		JustBeforeEach(func() {
+			inj.Inject()
 		})
+
+		It("should enable the sysrq handler", func() {
+			fw.AssertCalled(GinkgoT(), "Write", "/mnt/sysrq", mock.Anything, "1")
+		})
+
+		Context("with shutdown enabled", func() {
+			BeforeEach(func() {
+				spec.Shutdown = true
+			})
+
+			It("should write into the sysrq trigger file", func() {
+				fw.AssertCalled(GinkgoT(), "Write", "/mnt/sysrq-trigger", mock.Anything, "o")
+			})
+		})
+
+		Context("with shutdown disabled", func() {
+			It("should write into the sysrq trigger file", func() {
+				fw.AssertCalled(GinkgoT(), "Write", "/mnt/sysrq-trigger", mock.Anything, "c")
+			})
+		})
+
 	})
 })

@@ -27,20 +27,14 @@ var networkLatencyInjectCmd = &cobra.Command{
 			log.Fatalw("can't create container object", "error", err)
 		}
 
-		// Prepare injection object
-		i := injector.NetworkLatencyInjector{
-			ContainerInjector: injector.ContainerInjector{
-				Injector: injector.Injector{
-					UID: uid,
-					Log: log,
-				},
-				Container: c,
-			},
-			Spec: &v1beta1.NetworkLatencySpec{
-				Delay: delay,
-				Hosts: hosts,
-			},
+		// prepare spec
+		spec := v1beta1.NetworkLatencySpec{
+			Delay: delay,
+			Hosts: hosts,
 		}
+
+		// inject
+		i := injector.NewNetworkLatencyInjector(uid, spec, c, log)
 		i.Inject()
 	},
 }

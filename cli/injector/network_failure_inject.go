@@ -30,20 +30,15 @@ var networkFailureInjectCmd = &cobra.Command{
 		}
 
 		// prepare injection object
-		i := injector.NetworkFailureInjector{
-			ContainerInjector: injector.ContainerInjector{
-				Injector: injector.Injector{
-					UID: uid,
-					Log: log,
-				},
-				Container: c,
-			},
-			Spec: &v1beta1.NetworkFailureSpec{
-				Hosts:       hosts,
-				Port:        port,
-				Protocol:    protocol,
-				Probability: probability,
-			},
+		spec := v1beta1.NetworkFailureSpec{
+			Hosts:       hosts,
+			Port:        port,
+			Protocol:    protocol,
+			Probability: probability,
+		}
+		i, err := injector.NewNetworkFailureInjector(uid, spec, c, log)
+		if err != nil {
+			log.Fatalw("can't initialize the injector", "error", err)
 		}
 		i.Inject()
 	},

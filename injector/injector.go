@@ -10,14 +10,19 @@ import (
 	"go.uber.org/zap"
 )
 
-// Injector represents a generic failure injector
-type Injector struct {
-	Log *zap.SugaredLogger
-	UID string
+type Injector interface {
+	Inject()
+	Clean()
 }
 
-// ContainerInjector represents an injector for containers
-type ContainerInjector struct {
-	Injector
-	Container container.Container
+// injector represents a generic failure injector
+type injector struct {
+	log *zap.SugaredLogger
+	uid string
+}
+
+// containerInjector represents an injector for containers
+type containerInjector struct {
+	injector
+	container container.Container
 }
