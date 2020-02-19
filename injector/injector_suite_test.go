@@ -6,6 +6,7 @@
 package injector_test
 
 import (
+	"net"
 	"testing"
 
 	"github.com/DataDog/chaos-fi-controller/container"
@@ -38,6 +39,16 @@ func (f *fakeContainer) EnterNetworkNamespace() error {
 func (f *fakeContainer) ExitNetworkNamespace() error {
 	args := f.Called()
 	return args.Error(0)
+}
+
+// fake dns client
+type fakeDNSClient struct {
+	mock.Mock
+}
+
+func (f *fakeDNSClient) Resolve(host string) ([]net.IP, error) {
+	args := f.Called(host)
+	return args.Get(0).([]net.IP), args.Error(1)
 }
 
 var _ = BeforeSuite(func() {

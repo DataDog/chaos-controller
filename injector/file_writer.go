@@ -13,11 +13,11 @@ type FileWriter interface {
 	Write(path string, mode os.FileMode, data string) error
 }
 
-// StandardFileWriter implements the FileWriter interface
-type StandardFileWriter struct{}
+// standardFileWriter implements the FileWriter interface
+type standardFileWriter struct{}
 
 // Write writes the given data to the given file
-func (fw StandardFileWriter) Write(path string, mode os.FileMode, data string) error {
+func (fw standardFileWriter) Write(path string, mode os.FileMode, data string) error {
 	f, err := os.OpenFile(path, os.O_WRONLY, mode)
 	if err != nil {
 		return err

@@ -28,7 +28,7 @@ type NodeFailureInjectorConfig struct {
 
 func NewNodeFailureInjector(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger) Injector {
 	config := NodeFailureInjectorConfig{
-		FileWriter: StandardFileWriter{},
+		FileWriter: standardFileWriter{},
 	}
 
 	return NewNodeFailureInjectorWithConfig(uid, spec, log, config)

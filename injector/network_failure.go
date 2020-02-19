@@ -13,7 +13,7 @@ import (
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
 	"github.com/DataDog/chaos-fi-controller/container"
 	"github.com/DataDog/chaos-fi-controller/datadog"
-	"github.com/DataDog/chaos-fi-controller/helpers"
+	"github.com/DataDog/chaos-fi-controller/network"
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/coreos/go-iptables/iptables"
 	"go.uber.org/zap"
@@ -34,7 +34,8 @@ type IPTables interface {
 }
 
 type NetworkFailureInjectorConfig struct {
-	IPTables IPTables
+	IPTables  IPTables
+	DNSClient network.DNSClient
 }
 
 // networkFailureInjector describes a network failure
@@ -56,6 +57,11 @@ func NewNetworkFailureInjectorWithConfig(uid string, spec v1beta1.NetworkFailure
 			return nil, fmt.Errorf("can't initialize iptables driver: %w", err)
 		}
 		config.IPTables = ipt
+	}
+
+	// dns resolver
+	if config.DNSClient == nil {
+		config.DNSClient = network.NewDNSClient()
 	}
 
 	return networkFailureInjector{
@@ -97,8 +103,8 @@ func (i networkFailureInjector) Inject() {
 	}
 
 	// Resolve host
-	i.log.Infow("resolving given host", "host", hosts[0])
-	ips, err := helpers.ResolveHost(hosts)
+	i.log.Infow("resolving given hosts", "hosts", hosts)
+	ips, err := resolveHosts(i.config.DNSClient, hosts)
 	if err != nil {
 		datadog.EventInjectFailure(i.container.ID(), i.uid)
 		datadog.MetricInjected(i.container.ID(), i.uid, false)
@@ -136,7 +142,8 @@ func (i networkFailureInjector) Inject() {
 	// Append all rules to the dedicated chain
 	for _, ip := range ips {
 		// Ignore IPv6 addresses
-		if len(ip.IP) != 4 {
+		if ip.IP.To4() == nil {
+			i.log.Infow("non-IPv4 detected, skipping", "ip", ip.String())
 			continue
 		}
 

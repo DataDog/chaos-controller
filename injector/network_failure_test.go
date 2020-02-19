@@ -7,11 +7,8 @@ package injector_test
 
 import (
 	"net"
-	"reflect"
-	"time"
 
 	"bou.ke/monkey"
-	"github.com/miekg/dns"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -65,6 +62,7 @@ var _ = Describe("Network Failure", func() {
 	var (
 		config            NetworkFailureInjectorConfig
 		ctn               fakeContainer
+		dns               fakeDNSClient
 		inj               Injector
 		ipt               fakeIPTables
 		iptExistsCall     *mock.Call
@@ -74,11 +72,12 @@ var _ = Describe("Network Failure", func() {
 	)
 
 	BeforeEach(func() {
-		// tests vars
+		// container
 		ctn = fakeContainer{}
 		ctn.On("EnterNetworkNamespace").Return(nil)
 		ctn.On("ExitNetworkNamespace").Return(nil)
 
+		// iptables
 		ipt = fakeIPTables{}
 		iptExistsCall = ipt.On("Exists", mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
 		ipt.On("Delete", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -87,6 +86,13 @@ var _ = Describe("Network Failure", func() {
 		iptListChainsCall = ipt.On("ListChains", mock.Anything).Return([]string{}, nil)
 		ipt.On("AppendUnique", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		ipt.On("NewChain", mock.Anything, mock.Anything).Return(nil)
+
+		// dns client
+		dns = fakeDNSClient{}
+		dns.On("Resolve", mock.Anything).Return([]net.IP{
+			net.ParseIP("192.168.0.1"),
+			net.ParseIP("192.168.0.2"),
+		}, nil)
 
 		uid = "110e8400-e29b-11d4-a716-446655440000"
 
@@ -98,28 +104,9 @@ var _ = Describe("Network Failure", func() {
 		}
 
 		config = NetworkFailureInjectorConfig{
-			IPTables: &ipt,
+			IPTables:  &ipt,
+			DNSClient: &dns,
 		}
-
-		// dns
-		var dnsClient *dns.Client
-		monkey.Patch(dns.ClientConfigFromFile, func(string) (*dns.ClientConfig, error) {
-			return &dns.ClientConfig{
-				Servers: []string{"127.0.0.1"},
-			}, nil
-		})
-		monkey.PatchInstanceMethod(reflect.TypeOf(dnsClient), "Exchange", func(c *dns.Client, m *dns.Msg, address string) (*dns.Msg, time.Duration, error) {
-			return &dns.Msg{
-				Answer: []dns.RR{
-					&dns.A{
-						A: net.IP{byte(192), byte(168), byte(0), byte(1)},
-					},
-					&dns.A{
-						A: net.IP{byte(192), byte(168), byte(0), byte(2)},
-					},
-				},
-			}, time.Second, nil
-		})
 
 		// datadog
 		monkey.Patch(datadog.GetInstance, func() *statsd.Client {

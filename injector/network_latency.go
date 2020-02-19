@@ -12,7 +12,6 @@ import (
 
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
 	"github.com/DataDog/chaos-fi-controller/container"
-	"github.com/DataDog/chaos-fi-controller/helpers"
 	"github.com/DataDog/chaos-fi-controller/network"
 	"go.uber.org/zap"
 )
@@ -29,18 +28,29 @@ type networkLatencyInjector struct {
 type NetworkLatencyInjectorConfig struct {
 	TrafficController network.TrafficController
 	NetlinkAdapter    network.NetlinkAdapter
+	DNSClient         network.DNSClient
 }
 
 func NewNetworkLatencyInjector(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger) Injector {
-	tc := network.NewTrafficController(log)
-	nl := network.NewNetlinkAdapter()
-	return NewNetworkLatencyInjectorWithConfig(uid, spec, ctn, log, NetworkLatencyInjectorConfig{
-		TrafficController: tc,
-		NetlinkAdapter:    nl,
-	})
+	return NewNetworkLatencyInjectorWithConfig(uid, spec, ctn, log, NetworkLatencyInjectorConfig{})
 }
 
 func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, config NetworkLatencyInjectorConfig) Injector {
+	// traffic controller
+	if config.TrafficController == nil {
+		config.TrafficController = network.NewTrafficController(log)
+	}
+
+	// netlink adapter
+	if config.NetlinkAdapter == nil {
+		config.NetlinkAdapter = network.NewNetlinkAdapter()
+	}
+
+	// dns resolver
+	if config.DNSClient == nil {
+		config.DNSClient = network.NewDNSClient()
+	}
+
 	return networkLatencyInjector{
 		containerInjector: containerInjector{
 			injector: injector{
@@ -60,7 +70,7 @@ func (i networkLatencyInjector) getInterfacesByIP() (map[string][]*net.IPNet, er
 	if len(i.spec.Hosts) > 0 {
 		i.log.Info("auto-detecting interfaces to apply latency to...")
 		// resolve hosts
-		ips, err := helpers.ResolveHost(i.spec.Hosts)
+		ips, err := resolveHosts(i.config.DNSClient, i.spec.Hosts)
 		if err != nil {
 			return nil, fmt.Errorf("can't resolve given hosts: %w", err)
 		}
