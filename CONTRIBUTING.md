@@ -11,6 +11,10 @@
 
 ## Testing the controller locally
 
+More extensive documentation about testing can be found in the testing [docs](docs/testing.md)
+
+### Quickstart
+
 If you want to test the controller locally (without having to redeploy a new image on a staging cluster), please use the [minikube project](https://kubernetes.io/docs/setup/learning-environment/minikube/) as described below:
 
 * get minukube iso stored on git-lfs
