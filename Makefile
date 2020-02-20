@@ -1,5 +1,3 @@
-.PHONY: injector
-
 # Image URL to use all building/pushing image targets
 MANAGER_IMAGE ?= chaos-fi-controller:latest
 INJECTOR_IMAGE ?= chaos-fi:latest
