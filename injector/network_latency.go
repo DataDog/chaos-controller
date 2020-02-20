@@ -16,8 +16,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const tcPath = "/sbin/tc"
-
 // networkLatencyInjector describes a network latency
 type networkLatencyInjector struct {
 	containerInjector
