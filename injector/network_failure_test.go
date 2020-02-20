@@ -8,15 +8,12 @@ package injector_test
 import (
 	"net"
 
-	"bou.ke/monkey"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/datadog"
 	. "github.com/DataDog/chaos-fi-controller/injector"
-	"github.com/DataDog/datadog-go/statsd"
 )
 
 type fakeIPTables struct {
@@ -107,21 +104,12 @@ var _ = Describe("Network Failure", func() {
 			IPTables:  &ipt,
 			DNSClient: &dns,
 		}
-
-		// datadog
-		monkey.Patch(datadog.GetInstance, func() *statsd.Client {
-			return nil
-		})
 	})
 
 	JustBeforeEach(func() {
 		var err error
 		inj, err = NewNetworkFailureInjectorWithConfig(uid, spec, &ctn, log, &config)
 		Expect(err).To(BeNil())
-	})
-
-	AfterEach(func() {
-		monkey.UnpatchAll()
 	})
 
 	Describe("injection", func() {

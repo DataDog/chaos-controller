@@ -7,6 +7,7 @@ package injector_test
 
 import (
 	"net"
+	"os"
 	"testing"
 
 	"github.com/DataDog/chaos-fi-controller/container"
@@ -54,6 +55,11 @@ func (f *fakeDNSClient) Resolve(host string) ([]net.IP, error) {
 var _ = BeforeSuite(func() {
 	z, _ := zap.NewDevelopment()
 	log = z.Sugar()
+	os.Setenv("STATSD_URL", "localhost:54321")
+})
+
+var _ = AfterSuite(func() {
+	os.Unsetenv("STATSD_URL")
 })
 
 func TestInjector(t *testing.T) {
