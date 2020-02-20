@@ -8,7 +8,6 @@ package controllers
 import (
 	"fmt"
 
-	"bou.ke/monkey"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,16 +69,10 @@ var _ = Describe("Disruption Controller", func() {
 				},
 			},
 		}
-
-		// patch
-		monkey.Patch(getContainerID, func(pod *corev1.Pod) (string, error) {
-			return "666", nil
-		})
 	})
 
 	AfterEach(func() {
 		_ = k8sClient.Delete(context.Background(), disruption)
-		monkey.UnpatchAll()
 	})
 
 	Context("nominal case", func() {

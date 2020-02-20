@@ -3,7 +3,6 @@ module github.com/DataDog/chaos-fi-controller
 go 1.13
 
 require (
-	bou.ke/monkey v1.0.2
 	github.com/DataDog/datadog-go v3.3.1+incompatible
 	github.com/Microsoft/hcsshim v0.8.7 // indirect
 	github.com/containerd/containerd v1.3.2
