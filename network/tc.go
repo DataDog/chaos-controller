@@ -61,8 +61,9 @@ func (t tc) AddDelay(iface string, parent string, handle uint32, delay time.Dura
 func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
 	priomapStr := ""
 	for _, bit := range priomap {
-		priomapStr = fmt.Sprintf("%s %d", priomapStr, bit)
+		priomapStr += fmt.Sprintf(" %d", bit)
 	}
+	priomapStr = strings.TrimSpace(priomapStr)
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
 	return t.executeTcCommand(buildCmd("qdisc", iface, parent, handle, "prio", params))
 }
@@ -90,7 +91,7 @@ const (
 )
 
 func buildCmd(module string, iface string, parent string, handle uint32, kind string, parameters string) string {
-	cmd := fmt.Sprintf("%sadd dev %s", module, iface)
+	cmd := fmt.Sprintf("%s add dev %s", module, iface)
 
 	// parent
 	if parent == "root" {
@@ -106,6 +107,9 @@ func buildCmd(module string, iface string, parent string, handle uint32, kind st
 
 	// kind
 	cmd += fmt.Sprintf(" %s", kind)
+
+	// parameters
+	cmd += fmt.Sprintf(" %s", parameters)
 
 	return cmd
 }
