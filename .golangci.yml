@@ -9,39 +9,38 @@ run:
     - ".*_test.go"
 linters:
   enable:
-    #    - deadcode
-    #    - errcheck
-    #    - gosimple
-    #    - govet
-    #    - ineffassign
-    #    - staticcheck
-    #    - structcheck
-    #    - typecheck
-    #    - unused
-    #    - varcheck
-    #    - bodyclose
-    #    - depguard
-    #    - dogsled
-    #    - dupl
-    #    - gochecknoinits
-    #    - goconst
-    #    - gocritic
-    #    - godox
-    #    - gofmt
-    #    - goimports
-    #    - golint
-    #    - gomnd
-    #    - goprintffuncname
-    #    - gosec
-    #    - interfacer
-    #    - maligned
-    #    - misspell
-    #    - nakedret
-    #    - prealloc
-    #    - rowserrcheck
-    #    - scopelint
-    #    - stylecheck
-    #    - unconvert
-    #    - unparam
-    #    - whitespace
+    - deadcode
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unused
+    - varcheck
+    - bodyclose
+    - depguard
+    - dogsled
+    - dupl
+    - goconst
+    - godox
+    - gofmt
+    - goimports
+    - golint
+    - gomnd
+    - goprintffuncname
+    - gosec
+    - interfacer
+    - maligned
+    - misspell
+    - nakedret
+    - prealloc
+    - rowserrcheck
+    - scopelint
+    - stylecheck
+    - unconvert
+    - unparam
+    - whitespace
     - wsl
+    - gocritic
