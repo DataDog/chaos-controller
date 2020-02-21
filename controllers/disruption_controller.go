@@ -435,7 +435,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, m
 // getContainerID gets the ID of the first container ID found in a Pod
 func getContainerID(pod *corev1.Pod) (string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
-		return "", fmt.Errorf("Missing container ids for pod '%s'", pod.Name)
+		return "", fmt.Errorf("missing container ids for pod '%s'", pod.Name)
 	}
 
 	return pod.Status.ContainerStatuses[0].ContainerID, nil
