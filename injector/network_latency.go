@@ -23,16 +23,21 @@ type networkLatencyInjector struct {
 	config NetworkLatencyInjectorConfig
 }
 
+// NetworkLatencyInjectorConfig contains needed drivers to create
+// a NetworkLatencyInjector
 type NetworkLatencyInjectorConfig struct {
 	TrafficController network.TrafficController
 	NetlinkAdapter    network.NetlinkAdapter
 	DNSClient         network.DNSClient
 }
 
+// NewNetworkLatencyInjector creates a NetworkLatencyInjector object with the default drivers
 func NewNetworkLatencyInjector(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger) Injector {
 	return NewNetworkLatencyInjectorWithConfig(uid, spec, ctn, log, NetworkLatencyInjectorConfig{})
 }
 
+// NewNetworkLatencyInjectorWithConfig creates a NetworkLatencyInjector object with the given config,
+// missing fields being initialized with the defaults
 func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, config NetworkLatencyInjectorConfig) Injector {
 	// traffic controller
 	if config.TrafficController == nil {

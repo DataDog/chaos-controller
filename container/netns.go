@@ -11,6 +11,8 @@ import (
 	"github.com/vishvananda/netns"
 )
 
+// Netns is an interface being able to interact with a process
+// network namespace
 type Netns interface {
 	Set(ns int) error
 	GetCurrent() (int, error)

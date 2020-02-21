@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Injector is an interface being able to inject or clean disruptions
 type Injector interface {
 	Inject()
 	Clean()

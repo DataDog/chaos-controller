@@ -23,6 +23,7 @@ const iptablesTable = "filter"
 const iptablesOutputChain = "OUTPUT"
 const iptablesChaosChainPrefix = "CHAOS-"
 
+// IPTables is an interface abstracting an iptables driver
 type IPTables interface {
 	Exists(table, chain string, parts ...string) (bool, error)
 	Delete(table, chain string, parts ...string) error
@@ -33,6 +34,8 @@ type IPTables interface {
 	NewChain(table, chain string) error
 }
 
+// NetworkFailureInjectorConfig contains needed drivers
+// for instanciating a NetworkFailureInjector object
 type NetworkFailureInjectorConfig struct {
 	IPTables  IPTables
 	DNSClient network.DNSClient
@@ -45,10 +48,13 @@ type networkFailureInjector struct {
 	spec   v1beta1.NetworkFailureSpec
 }
 
+// NewNetworkFailureInjector creates a NetworkFailureInjector object with default drivers
 func NewNetworkFailureInjector(uid string, spec v1beta1.NetworkFailureSpec, ctn container.Container, log *zap.SugaredLogger) (Injector, error) {
 	return NewNetworkFailureInjectorWithConfig(uid, spec, ctn, log, &NetworkFailureInjectorConfig{})
 }
 
+// NewNetworkFailureInjectorWithConfig creates a NetworkFailureInjector object with the given config,
+// missing field being initialized with the defaults
 func NewNetworkFailureInjectorWithConfig(uid string, spec v1beta1.NetworkFailureSpec, ctn container.Container, log *zap.SugaredLogger, config *NetworkFailureInjectorConfig) (Injector, error) {
 	// iptables driver
 	if config.IPTables == nil {

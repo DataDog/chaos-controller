@@ -12,12 +12,14 @@ import (
 	"github.com/miekg/dns"
 )
 
+// DNSClient is a client being able to resolve the given host
 type DNSClient interface {
 	Resolve(host string) ([]net.IP, error)
 }
 
 type dnsClient struct{}
 
+// NewDNSClient creates a standard DNS client
 func NewDNSClient() DNSClient {
 	return dnsClient{}
 }

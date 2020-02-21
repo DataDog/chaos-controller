@@ -5,6 +5,8 @@
 
 package container
 
+// Runtime is an interface abstracting a container runtime
+// being able to return a container PID from its ID
 type Runtime interface {
 	PID(id string) (uint32, error)
 }

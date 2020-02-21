@@ -11,6 +11,8 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
+// NetlinkAdapter is an interface being able to read
+// the host network interfaces informations
 type NetlinkAdapter interface {
 	LinkList() ([]NetlinkLink, error)
 	LinkByIndex(index int) (NetlinkLink, error)
@@ -20,6 +22,7 @@ type NetlinkAdapter interface {
 
 type netlinkAdapter struct{}
 
+// NewNetlinkAdapter returns a standard netlink adapter
 func NewNetlinkAdapter() NetlinkAdapter {
 	return netlinkAdapter{}
 }
@@ -88,6 +91,7 @@ func (a netlinkAdapter) RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error) {
 	return r, nil
 }
 
+// NetlinkLink is a host interface
 type NetlinkLink interface {
 	Name() string
 	SetTxQLen(qlen int) error
@@ -125,6 +129,7 @@ func newNetlinkLink(link netlink.Link) *netlinkLink {
 	}
 }
 
+// NetlinkRoute is a route attached to a host interface
 type NetlinkRoute interface {
 	Link() NetlinkLink
 }

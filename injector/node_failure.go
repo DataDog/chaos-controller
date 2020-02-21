@@ -22,10 +22,13 @@ type nodeFailureInjector struct {
 	config NodeFailureInjectorConfig
 }
 
+// NodeFailureInjectorConfig contains needed drivers to
+// create a NodeFailureInjector
 type NodeFailureInjectorConfig struct {
 	FileWriter FileWriter
 }
 
+// NewNodeFailureInjector creates a NodeFailureInjector object with the default drivers
 func NewNodeFailureInjector(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger) Injector {
 	config := NodeFailureInjectorConfig{
 		FileWriter: standardFileWriter{},
@@ -34,6 +37,8 @@ func NewNodeFailureInjector(uid string, spec v1beta1.NodeFailureSpec, log *zap.S
 	return NewNodeFailureInjectorWithConfig(uid, spec, log, config)
 }
 
+// NewNodeFailureInjectorWithConfig creates a NodeFailureInjector object with the given config,
+// missing fields being initialized with the defaults
 func NewNodeFailureInjectorWithConfig(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger, config NodeFailureInjectorConfig) Injector {
 	return nodeFailureInjector{
 		injector: injector{
