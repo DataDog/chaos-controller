@@ -44,3 +44,5 @@ linters:
     - gocritic
 issues:
   exclude-use-default: false
+  exclude:
+    - Subprocess launch(ed with variable|ing should be audited)
