@@ -28,7 +28,6 @@ linters:
     - gofmt
     - goimports
     - golint
-    - gomnd
     - goprintffuncname
     - gosec
     - interfacer
@@ -37,7 +36,6 @@ linters:
     - nakedret
     - prealloc
     - rowserrcheck
-    - scopelint
     - stylecheck
     - unconvert
     - unparam
