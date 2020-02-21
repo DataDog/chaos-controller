@@ -42,3 +42,5 @@ linters:
     - whitespace
     - wsl
     - gocritic
+issues:
+  exclude-use-default: false
