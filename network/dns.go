@@ -34,6 +34,7 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	dnsClient := dns.Client{}
 	dnsMessage := dns.Msg{}
 	dnsMessage.SetQuestion(host+".", dns.TypeA)
+
 	response, _, err := dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
 	if err != nil {
 		return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)

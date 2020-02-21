@@ -50,6 +50,7 @@ func NewWithConfig(id string, config Config) (Container, error) {
 	if config.Netns == nil {
 		config.Netns = &netnsDriver{}
 	}
+
 	if config.Runtime == nil {
 		switch {
 		case strings.HasPrefix(id, "containerd://"):

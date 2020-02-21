@@ -40,6 +40,8 @@ func (t tc) executeTcCommand(args string) error {
 	stderr := &bytes.Buffer{}
 	cmd := exec.Command(tcPath, split...)
 	cmd.Stderr = stderr
+
+	// run command
 	err := cmd.Run()
 	if err != nil {
 		err = fmt.Errorf("%w: %s", err, stderr.String())
@@ -63,8 +65,10 @@ func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, pr
 	for _, bit := range priomap {
 		priomapStr += fmt.Sprintf(" %d", bit)
 	}
+
 	priomapStr = strings.TrimSpace(priomapStr)
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
+
 	return t.executeTcCommand(buildCmd("qdisc", iface, parent, handle, "prio", params))
 }
 

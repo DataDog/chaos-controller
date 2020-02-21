@@ -85,11 +85,13 @@ func (i networkLatencyInjector) getInterfacesByIP() (map[string][]*net.IPNet, er
 			// for each route, get the related interface and add it to the association
 			// between interfaces and IPs
 			for _, route := range routes {
-				// store association, initialize the map entry if not present yet
 				i.log.Infof("IP %s belongs to interface %s", ip.String(), route.Link().Name())
+
+				// store association, initialize the map entry if not present yet
 				if _, ok := linkByIP[route.Link().Name()]; !ok {
 					linkByIP[route.Link().Name()] = []*net.IPNet{}
 				}
+
 				linkByIP[route.Link().Name()] = append(linkByIP[route.Link().Name()], ip)
 			}
 		}
@@ -118,11 +120,12 @@ func (i networkLatencyInjector) Inject() {
 	parent := "root"
 
 	// enter container network namespace
-	// and defer the exit on return
 	err := i.container.EnterNetworkNamespace()
 	if err != nil {
 		i.log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.container.ID())
 	}
+
+	// defer the exit on return
 	defer func() {
 		err := i.container.ExitNetworkNamespace()
 		if err != nil {
@@ -131,6 +134,7 @@ func (i networkLatencyInjector) Inject() {
 	}()
 
 	i.log.Info("auto-detecting interfaces to apply latency to...")
+
 	linkByIP, err := i.getInterfacesByIP()
 	if err != nil {
 		i.log.Fatalw("can't get interfaces per IP listing: %w", err)
@@ -138,6 +142,8 @@ func (i networkLatencyInjector) Inject() {
 
 	// for each link/ip association, add latency
 	for linkName, ips := range linkByIP {
+		clearTxQlen := false
+
 		// retrieve link from name
 		link, err := i.config.NetlinkAdapter.LinkByName(linkName)
 		if err != nil {
@@ -146,14 +152,15 @@ func (i networkLatencyInjector) Inject() {
 
 		// if at least one IP has been specified, we need to create a prio qdisc to be able to apply
 		// a filter and a delay only on traffic going to those IP
-		clearTxQlen := false
 		if len(ips) > 0 {
 			// set the tx qlen if not already set as it is required to create a prio qdisc without dropping
 			// all the outgoing traffic
 			// this qlen will be removed once the injection is done if it was not present before
 			if link.TxQLen() == 0 {
 				i.log.Infof("setting tx qlen for interface %s", link.Name())
+
 				clearTxQlen = true
+
 				if err := link.SetTxQLen(1000); err != nil {
 					i.log.Fatalf("can't set tx queue length on interface %s: %w", link.Name(), err)
 				}
@@ -165,6 +172,7 @@ func (i networkLatencyInjector) Inject() {
 			// all the outgoing traffic
 			parent = "1:4"
 			priomap := [16]uint32{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}
+
 			if err := i.config.TrafficController.AddPrio(link.Name(), "root", 1, 4, priomap); err != nil {
 				i.log.Fatalf("can't create a new qdisc for interface %s: %w", link.Name(), err)
 			}
@@ -188,6 +196,7 @@ func (i networkLatencyInjector) Inject() {
 		// reset the interface transmission queue length once filters have been created
 		if clearTxQlen {
 			i.log.Infof("clearing tx qlen for interface %s", link.Name())
+
 			if err := link.SetTxQLen(0); err != nil {
 				i.log.Fatalf("can't clear %s link transmission queue length: %w", link.Name(), err)
 			}
@@ -200,11 +209,12 @@ func (i networkLatencyInjector) Clean() {
 	i.log.Info("cleaning latency")
 
 	// enter container network namespace
-	// and defer the exit on return
 	err := i.container.EnterNetworkNamespace()
 	if err != nil {
 		i.log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.container.ID())
 	}
+
+	// defer the exit on return
 	defer func() {
 		err := i.container.ExitNetworkNamespace()
 		if err != nil {
@@ -218,13 +228,14 @@ func (i networkLatencyInjector) Clean() {
 	}
 
 	for linkName := range linkByIP {
+		i.log.Infof("clearing root qdisc for interface %s", linkName)
+
 		// retrieve link from name
 		link, err := i.config.NetlinkAdapter.LinkByName(linkName)
 		if err != nil {
 			i.log.Fatalf("can't retrieve link %s: %w", linkName, err)
 		}
 
-		i.log.Infof("clearing root qdisc for interface %s", link.Name())
 		if err := i.config.TrafficController.ClearQdisc(link.Name()); err != nil {
 			i.log.Fatalf("can't delete the %s link qdisc: %w", link.Name(), err)
 		}

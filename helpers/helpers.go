@@ -36,6 +36,7 @@ func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types
 	privileged := true
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
+
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("chaos-%s-%s-", instanceName, mode),
@@ -131,13 +132,13 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 	}
 
 	// filter pods based on the nfi's label selector, and only consider those within the same namespace as the nfi
+	pods := &corev1.PodList{}
 	listOptions := &client.ListOptions{
 		LabelSelector: selector.AsSelector(),
 		Namespace:     namespace,
 	}
 
 	// fetch pods from label selector
-	pods := &corev1.PodList{}
 	err := c.List(context.Background(), pods, listOptions)
 	if err != nil {
 		return nil, err
@@ -148,11 +149,12 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 
 // PickRandomPods returns a shuffled sub-slice with a size of n of the given slice
 func PickRandomPods(n uint, pods []corev1.Pod) []corev1.Pod {
+	rand.Seed(time.Now().Unix())
+
 	// copy slice to don't modify the given one
 	list := append([]corev1.Pod(nil), pods...)
 
 	// shuffle the slice
-	rand.Seed(time.Now().Unix())
 	for i := len(list) - 1; i > 0; i-- {
 		j := rand.Intn(i)
 		list[i], list[j] = list[j], list[i]
@@ -177,6 +179,7 @@ func GetOwnedPods(c client.Client, owner metav1.Object, selector labels.Set) (co
 	// get pods
 	pods := corev1.PodList{}
 	ownedPods := corev1.PodList{}
+
 	err := c.List(context.Background(), &pods, options)
 	if err != nil {
 		return ownedPods, err
@@ -200,6 +203,7 @@ func ContainsString(slice []string, s string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -210,7 +214,9 @@ func RemoveString(slice []string, s string) (result []string) {
 		if item == s {
 			continue
 		}
+
 		result = append(result, item)
 	}
+
 	return
 }

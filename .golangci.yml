@@ -1,42 +1,47 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2020 Datadog, Inc.
+
 run:
   skip-files:
     - api/v1beta1/zz_generated.deepcopy.go
     - ".*_test.go"
 linters:
   enable:
-    - deadcode
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - structcheck
-    - typecheck
-    - unused
-    - varcheck
-    - bodyclose
-    - depguard
-    - dogsled
-    - dupl
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - godox
-    - gofmt
-    - goimports
-    - golint
-    - gomnd
-    - goprintffuncname
-    - gosec
-    - interfacer
-    - maligned
-    - misspell
-    - nakedret
-    - prealloc
-    - rowserrcheck
-    - scopelint
-    - stylecheck
-    - unconvert
-    - unparam
-    - whitespace
+    #    - deadcode
+    #    - errcheck
+    #    - gosimple
+    #    - govet
+    #    - ineffassign
+    #    - staticcheck
+    #    - structcheck
+    #    - typecheck
+    #    - unused
+    #    - varcheck
+    #    - bodyclose
+    #    - depguard
+    #    - dogsled
+    #    - dupl
+    #    - gochecknoinits
+    #    - goconst
+    #    - gocritic
+    #    - godox
+    #    - gofmt
+    #    - goimports
+    #    - golint
+    #    - gomnd
+    #    - goprintffuncname
+    #    - gosec
+    #    - interfacer
+    #    - maligned
+    #    - misspell
+    #    - nakedret
+    #    - prealloc
+    #    - rowserrcheck
+    #    - scopelint
+    #    - stylecheck
+    #    - unconvert
+    #    - unparam
+    #    - whitespace
     - wsl

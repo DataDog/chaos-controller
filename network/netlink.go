@@ -25,10 +25,13 @@ func NewNetlinkAdapter() NetlinkAdapter {
 }
 
 func (a netlinkAdapter) LinkList() ([]NetlinkLink, error) {
+	// list links
 	links, err := netlink.LinkList()
 	if err != nil {
 		return nil, err
 	}
+
+	// cast to interface
 	nlinks := []NetlinkLink{}
 	for _, link := range links {
 		nlinks = append(nlinks, newNetlinkLink(link))
@@ -56,6 +59,8 @@ func (a netlinkAdapter) LinkByName(name string) (NetlinkLink, error) {
 }
 
 func (a netlinkAdapter) RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error) {
+	r := []NetlinkRoute{}
+
 	// get the handler
 	handler, err := netlink.NewHandle()
 	if err != nil {
@@ -69,12 +74,12 @@ func (a netlinkAdapter) RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error) {
 	}
 
 	// convert netlink routes to interfaces
-	r := []NetlinkRoute{}
 	for _, route := range routes {
 		link, err := netlink.LinkByIndex(route.LinkIndex)
 		if err != nil {
 			return nil, err
 		}
+
 		r = append(r, netlinkRoute{
 			link: newNetlinkLink(link),
 		})
@@ -105,6 +110,7 @@ func (l *netlinkLink) SetTxQLen(qlen int) error {
 	}
 
 	l.txQLen = qlen
+
 	return netlink.LinkSetTxQLen(link, qlen)
 }
 

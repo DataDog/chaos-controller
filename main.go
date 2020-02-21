@@ -41,15 +41,17 @@ var (
 )
 
 func init() {
-	_ = clientgoscheme.AddToScheme(scheme)
-
-	_ = chaosv1beta1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = chaosv1beta1.AddToScheme(scheme)
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
+	var (
+		metricsAddr          string
+		enableLeaderElection bool
+	)
+
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
@@ -71,8 +73,7 @@ func main() {
 	}
 
 	// retrieve datadog statsd client if configured
-	url := os.Getenv("STATSD_URL")
-	statsdClient, err := statsd.New(url, statsd.WithTags([]string{"app:chaos-fi-controller"}))
+	statsdClient, err := statsd.New(os.Getenv("STATSD_URL"), statsd.WithTags([]string{"app:chaos-fi-controller"}))
 	if err != nil {
 		ctrl.Log.Error(err, "unable to configure the Datadog statsd client")
 	}
@@ -90,6 +91,7 @@ func main() {
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
+
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
