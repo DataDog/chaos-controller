@@ -60,19 +60,19 @@ func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Args:            args,
 					VolumeMounts: []corev1.VolumeMount{
-						corev1.VolumeMount{
+						{
 							MountPath: "/run",
 							Name:      "run",
 						},
-						corev1.VolumeMount{
+						{
 							MountPath: "/mnt/proc",
 							Name:      "proc",
 						},
-						corev1.VolumeMount{
+						{
 							MountPath: "/mnt/sysrq",
 							Name:      "sysrq",
 						},
-						corev1.VolumeMount{
+						{
 							MountPath: "/mnt/sysrq-trigger",
 							Name:      "sysrq-trigger",
 						},
@@ -83,7 +83,7 @@ func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types
 				},
 			},
 			Volumes: []corev1.Volume{
-				corev1.Volume{
+				{
 					Name: "run",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
@@ -92,7 +92,7 @@ func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types
 						},
 					},
 				},
-				corev1.Volume{
+				{
 					Name: "proc",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
@@ -101,7 +101,7 @@ func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types
 						},
 					},
 				},
-				corev1.Volume{
+				{
 					Name: "sysrq",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
@@ -110,7 +110,7 @@ func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types
 						},
 					},
 				},
-				corev1.Volume{
+				{
 					Name: "sysrq-trigger",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
