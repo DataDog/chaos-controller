@@ -45,4 +45,7 @@ linters:
 issues:
   exclude-use-default: false
   exclude:
+    # gosec
     - Subprocess launch(ed with variable|ing should be audited)
+    # stylecheck
+    - at least one file in a package should have a package comment
