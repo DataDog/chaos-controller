@@ -9,7 +9,6 @@ import (
 	"context"
 	"os"
 
-	"bou.ke/monkey"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -19,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/DataDog/chaos-fi-controller/helpers"
 	. "github.com/DataDog/chaos-fi-controller/helpers"
 	"github.com/DataDog/chaos-fi-controller/types"
 )
@@ -65,6 +65,7 @@ var _ = Describe("Helpers", func() {
 	var c fakeClient
 	var owner corev1.Pod
 	var pod *corev1.Pod
+	var image string
 
 	BeforeEach(func() {
 		c = fakeClient{}
@@ -93,10 +94,13 @@ var _ = Describe("Helpers", func() {
 				},
 			},
 		}
+
+		image = "chaos-fi:latest"
+		os.Setenv(helpers.ChaosFailureInjectionImageVariableName, image)
 	})
 
 	AfterEach(func() {
-		monkey.UnpatchAll()
+		os.Unsetenv(helpers.ChaosFailureInjectionImageVariableName)
 	})
 
 	Describe("GeneratePod", func() {
@@ -118,10 +122,6 @@ var _ = Describe("Helpers", func() {
 			Expect(p.GenerateName).To(Equal("chaos-foo-inject-"))
 		})
 		It("should have the container image value defined by the environment variable", func() {
-			image := "chaos-fi:latest"
-			monkey.Patch(os.LookupEnv, func(string) (string, bool) {
-				return image, true
-			})
 			p := GeneratePod("", pod, nil, types.PodModeInject, types.DisruptionKindNetworkFailure)
 			Expect(p.Spec.Containers[0].Image).To(Equal(image))
 		})

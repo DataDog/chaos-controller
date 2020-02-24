@@ -8,62 +8,88 @@ package container
 import (
 	"fmt"
 	"runtime"
-
-	"github.com/DataDog/chaos-fi-controller/containerruntime"
-	"github.com/vishvananda/netns"
+	"strings"
 )
 
-var rootNetworkNamespace netns.NsHandle
-
 // Container describes a container
-type Container struct {
-	ID               string
-	PID              uint32
-	NetworkNamespace netns.NsHandle
+type Container interface {
+	ID() string
+	Runtime() Runtime
+	Netns() Netns
+	EnterNetworkNamespace() error
+	ExitNetworkNamespace() error
 }
 
-// New creates a new container from the given container ID, retrieving it's main PID and network namespace
-func New(runtimeContainerID string) (Container, error) {
-	// retreive containerID based on the container runtime
-	cr, err := containerruntime.New(runtimeContainerID)
-	if err != nil {
-		return Container{}, fmt.Errorf("unsupported container runtime. docker or containerd are supported")
-	}
-	pid, err := cr.GetPID()
-	if err != nil {
-		return Container{}, fmt.Errorf("error while retrieving container PID: %w", err)
-	}
-
-	// retrieve container network namespace
-	ns, err := getNetworkNamespace(pid)
-	if err != nil {
-		return Container{}, fmt.Errorf("error while retrieving the container network namespace: %w", err)
-	}
-
-	c := Container{
-		ID:               cr.GetContainerID(),
-		PID:              pid,
-		NetworkNamespace: ns,
-	}
-
-	return c, nil
+// Config contains needed interfaces
+type Config struct {
+	Runtime Runtime
+	Netns   Netns
 }
 
-// getNetworkNamespace gets the given container network namespace file from its task PID
-func getNetworkNamespace(pid uint32) (netns.NsHandle, error) {
-	// retrieve container network namespace file
-	ns, err := netns.GetFromPath(fmt.Sprintf("/mnt/proc/%d/ns/net", pid))
-	if err != nil {
-		return 0, fmt.Errorf("error while retrieving the given container network namespace: %w", err)
-	}
-
-	return ns, nil
+type container struct {
+	config Config
+	id     string
+	rootns int
 }
 
-// ExitNetworkNamespace returns into the root network namespace
-func ExitNetworkNamespace() error {
+// New creates a new container object with default config
+func New(id string) (Container, error) {
+	return NewWithConfig(id, Config{})
+}
+
+// NewWithConfig creates a new container object with the given config
+// nil fields are defaulted
+func NewWithConfig(id string, config Config) (Container, error) {
+	// parse container id
+	rawID := strings.Split(id, "://")
+	if len(rawID) != 2 {
+		return nil, fmt.Errorf("unrecognized container ID format '%s', expecting 'containerd://<ID>' or 'docker://<ID>'", id)
+	}
+
+	// parse config
+	if config.Netns == nil {
+		config.Netns = &netnsDriver{}
+	}
+	if config.Runtime == nil {
+		switch {
+		case strings.HasPrefix(id, "containerd://"):
+			config.Runtime = &containerdRuntime{}
+		case strings.HasPrefix(id, "docker://"):
+			config.Runtime = &dockerRuntime{}
+		default:
+			return nil, fmt.Errorf("unsupported container runtime. docker or containerd are supported")
+		}
+	}
+
+	// retrieve root ns
+	rootns, err := config.Netns.GetCurrent()
+	if err != nil {
+		return nil, fmt.Errorf("can't get root network namespace: %w", err)
+	}
+
+	return container{
+		id:     rawID[1],
+		rootns: rootns,
+		config: config,
+	}, nil
+}
+
+func (c container) ID() string {
+	return c.id
+}
+
+func (c container) Runtime() Runtime {
+	return c.config.Runtime
+}
+
+func (c container) Netns() Netns {
+	return c.config.Netns
+}
+
+// exitNetworkNamespace returns into the root network namespace
+func (c container) ExitNetworkNamespace() error {
 	// re-enter into the root network namespace
-	err := netns.Set(rootNetworkNamespace)
+	err := c.config.Netns.Set(c.rootns)
 	if err != nil {
 		return fmt.Errorf("error while re-entering the root network namespace: %w", err)
 	}
@@ -75,22 +101,33 @@ func ExitNetworkNamespace() error {
 	return nil
 }
 
-// EnterNetworkNamespace saves the actual namespace and enters the given container network namespace
-func (c Container) EnterNetworkNamespace() error {
+// enterNetworkNamespace saves the actual namespace and enters the given container network namespace
+func (c container) EnterNetworkNamespace() error {
 	// lock actual goroutine on the thread it is running on
 	// to avoid it to be moved to another thread which would cause
 	// the network namespace to change (and leak)
 	runtime.LockOSThread()
 
-	// get the current (root) network namespace to re-enter it later
-	var err error
-	rootNetworkNamespace, err = netns.Get()
+	// get container pid
+	pid, err := c.config.Runtime.PID(c.id)
 	if err != nil {
-		return fmt.Errorf("error while saving the root network namespace: %w", err)
+		return fmt.Errorf("can't get container pid: %w", err)
+	}
+
+	// get container network namespace
+	ns, err := c.config.Netns.GetFromPID(pid)
+	if err != nil {
+		return fmt.Errorf("error while retrieving the given container network namespace: %w", err)
+	}
+
+	// ensure root ns and container ns are not the same
+	// if it's the case, it could leak network injections on the host running the container
+	if ns == c.rootns {
+		return fmt.Errorf("root network namespace seems to be the same as the container network namespace")
 	}
 
 	// enter the container network namespace
-	err = netns.Set(c.NetworkNamespace)
+	err = c.config.Netns.Set(ns)
 	if err != nil {
 		return fmt.Errorf("error while entering the container network namespace: %w", err)
 	}

@@ -6,6 +6,8 @@
 package main
 
 import (
+	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
+	"github.com/DataDog/chaos-fi-controller/container"
 	"github.com/DataDog/chaos-fi-controller/injector"
 	"github.com/spf13/cobra"
 )
@@ -17,14 +19,15 @@ var networkFailureCleanCmd = &cobra.Command{
 		uid, _ := cmd.Flags().GetString("uid")
 		containerID, _ := cmd.Flags().GetString("container-id")
 
-		i := injector.NetworkFailureInjector{
-			ContainerInjector: injector.ContainerInjector{
-				Injector: injector.Injector{
-					UID: uid,
-					Log: log,
-				},
-				ContainerID: containerID,
-			},
+		// prepare container
+		c, err := container.New(containerID)
+		if err != nil {
+			log.Fatalw("can't create container object", "error", err)
+		}
+
+		i, err := injector.NewNetworkFailureInjector(uid, v1beta1.NetworkFailureSpec{}, c, log)
+		if err != nil {
+			log.Fatalw("can't initialize the injector", "error", err)
 		}
 		i.Clean()
 	},

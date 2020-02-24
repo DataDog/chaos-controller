@@ -18,15 +18,13 @@ var nodeFailureInjectCmd = &cobra.Command{
 		uid, _ := cmd.Flags().GetString("uid")
 		shutdown, _ := cmd.Flags().GetBool("shutdown")
 
-		i := injector.NodeFailureInjector{
-			Injector: injector.Injector{
-				UID: uid,
-				Log: log,
-			},
-			Spec: &v1beta1.NodeFailureSpec{
-				Shutdown: shutdown,
-			},
+		// prepare spec
+		spec := v1beta1.NodeFailureSpec{
+			Shutdown: shutdown,
 		}
+
+		// inject
+		i := injector.NewNodeFailureInjector(uid, spec, log)
 		i.Inject()
 	},
 }
