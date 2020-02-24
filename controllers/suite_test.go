@@ -33,6 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -60,6 +61,51 @@ var (
 	targetPodA  *corev1.Pod
 	targetPodB  *corev1.Pod
 )
+
+type fakeK8sClient struct {
+	realClient client.Client
+}
+
+// Get adds a fake container ID to retrieved pods so injection and cleanup can be done
+func (f fakeK8sClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+	// load object
+	err := f.realClient.Get(ctx, key, obj)
+	if err != nil {
+		return err
+	}
+
+	// try to convert given object into a pod
+	if pod, ok := obj.(*corev1.Pod); ok {
+		pod.Status.ContainerStatuses = []corev1.ContainerStatus{
+			{
+				ContainerID: "fakeID",
+			},
+		}
+	}
+
+	return nil
+}
+func (f fakeK8sClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+	return f.realClient.List(ctx, list, opts...)
+}
+func (f fakeK8sClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+	return f.realClient.Create(ctx, obj, opts...)
+}
+func (f fakeK8sClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
+	return f.realClient.Delete(ctx, obj, opts...)
+}
+func (f fakeK8sClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+	return f.realClient.Update(ctx, obj, opts...)
+}
+func (f fakeK8sClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return f.realClient.Patch(ctx, obj, patch, opts...)
+}
+func (f fakeK8sClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+	return f.realClient.DeleteAllOf(ctx, obj, opts...)
+}
+func (f fakeK8sClient) Status() client.StatusWriter {
+	return f.realClient.Status()
+}
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -102,8 +148,12 @@ var _ = BeforeSuite(func(done Done) {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
+	k8sClient = fakeK8sClient{
+		realClient: k8sManager.GetClient(),
+	}
+
 	err = (&DisruptionReconciler{
-		Client:   k8sManager.GetClient(),
+		Client:   k8sClient,
 		Log:      ctrl.Log.WithName("controllers").WithName("Disruption"),
 		Recorder: k8sManager.GetEventRecorderFor("disruption-controller"),
 		Scheme:   scheme.Scheme,
@@ -117,9 +167,6 @@ var _ = BeforeSuite(func(done Done) {
 		Expect(err).ToNot(HaveOccurred())
 	}()
 	time.Sleep(5 * time.Second)
-
-	k8sClient = k8sManager.GetClient()
-	Expect(k8sClient).ToNot(BeNil())
 
 	close(done)
 }, 60)

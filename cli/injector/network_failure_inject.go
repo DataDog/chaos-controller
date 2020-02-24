@@ -7,6 +7,7 @@ package main
 
 import (
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
+	"github.com/DataDog/chaos-fi-controller/container"
 	"github.com/DataDog/chaos-fi-controller/injector"
 	"github.com/spf13/cobra"
 )
@@ -22,21 +23,22 @@ var networkFailureInjectCmd = &cobra.Command{
 		protocol, _ := cmd.Flags().GetString("protocol")
 		probability, _ := cmd.Flags().GetInt("probability")
 
-		// Prepare injection object
-		i := injector.NetworkFailureInjector{
-			ContainerInjector: injector.ContainerInjector{
-				Injector: injector.Injector{
-					UID: uid,
-					Log: log,
-				},
-				ContainerID: containerID,
-			},
-			Spec: &v1beta1.NetworkFailureSpec{
-				Hosts:       hosts,
-				Port:        port,
-				Protocol:    protocol,
-				Probability: probability,
-			},
+		// prepare container
+		c, err := container.New(containerID)
+		if err != nil {
+			log.Fatalw("can't create container object", "error", err)
+		}
+
+		// prepare injection object
+		spec := v1beta1.NetworkFailureSpec{
+			Hosts:       hosts,
+			Port:        port,
+			Protocol:    protocol,
+			Probability: probability,
+		}
+		i, err := injector.NewNetworkFailureInjector(uid, spec, c, log)
+		if err != nil {
+			log.Fatalw("can't initialize the injector", "error", err)
 		}
 		i.Inject()
 	},

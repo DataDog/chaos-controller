@@ -6,9 +6,8 @@
 package injector
 
 import (
-	"os"
-
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
+	"go.uber.org/zap"
 )
 
 const (
@@ -16,53 +15,66 @@ const (
 	nodeFailureSysrqTriggerPath = "/mnt/sysrq-trigger"
 )
 
-// NodeFailureInjector describes a node failure injector
-type NodeFailureInjector struct {
-	Injector
-	Spec *v1beta1.NodeFailureSpec
+// nodeFailureInjector describes a node failure injector
+type nodeFailureInjector struct {
+	injector
+	spec   v1beta1.NodeFailureSpec
+	config NodeFailureInjectorConfig
+}
+
+type NodeFailureInjectorConfig struct {
+	FileWriter FileWriter
+}
+
+func NewNodeFailureInjector(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger) Injector {
+	config := NodeFailureInjectorConfig{
+		FileWriter: standardFileWriter{},
+	}
+
+	return NewNodeFailureInjectorWithConfig(uid, spec, log, config)
+}
+
+func NewNodeFailureInjectorWithConfig(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger, config NodeFailureInjectorConfig) Injector {
+	return nodeFailureInjector{
+		injector: injector{
+			uid: uid,
+			log: log,
+		},
+		spec:   spec,
+		config: config,
+	}
 }
 
 // Inject triggers a kernel panic through the sysrq trigger
-func (i NodeFailureInjector) Inject() {
-	i.Log.Infow("injecting a node failure by triggering a kernel panic",
+func (i nodeFailureInjector) Inject() {
+	i.log.Infow("injecting a node failure by triggering a kernel panic",
 		"sysrq_path", nodeFailureSysrqPath,
 		"sysrq_trigger_path", nodeFailureSysrqTriggerPath,
 	)
 
 	// Ensure sysrq value is set to 1 (to accept the kernel panic trigger)
-	err := write(nodeFailureSysrqPath, 0644, "1")
+	err := i.config.FileWriter.Write(nodeFailureSysrqPath, 0644, "1")
 	if err != nil {
-		i.Log.Fatalw("error while writing to the sysrq file",
+		i.log.Fatalw("error while writing to the sysrq file",
 			"error", err,
 			"path", nodeFailureSysrqPath,
 		)
 	}
 
 	// Trigger kernel panic
-	i.Log.Infow("the injector is about to write to the sysrq trigger file")
-	i.Log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
-	if i.Spec.Shutdown {
-		err = write(nodeFailureSysrqTriggerPath, 0200, "o")
+	i.log.Infow("the injector is about to write to the sysrq trigger file")
+	i.log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
+	if i.spec.Shutdown {
+		err = i.config.FileWriter.Write(nodeFailureSysrqTriggerPath, 0200, "o")
 	} else {
-		err = write(nodeFailureSysrqTriggerPath, 0200, "c")
+		err = i.config.FileWriter.Write(nodeFailureSysrqTriggerPath, 0200, "c")
 	}
 	if err != nil {
-		i.Log.Fatalw("error while writing to the sysrq trigger file",
+		i.log.Fatalw("error while writing to the sysrq trigger file",
 			"error", err,
 			"path", nodeFailureSysrqTriggerPath,
 		)
 	}
 }
 
-// write writes the given data to the given path without creating it if it doesn't exist
-func write(path string, mode os.FileMode, data string) error {
-	f, err := os.OpenFile(path, os.O_WRONLY, mode)
-	if err != nil {
-		return err
-	}
-	_, err = f.WriteString(data)
-	if err != nil {
-		return err
-	}
-	return f.Close()
-}
+func (i nodeFailureInjector) Clean() {}

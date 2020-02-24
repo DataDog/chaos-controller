@@ -7,6 +7,7 @@ package main
 
 import (
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
+	"github.com/DataDog/chaos-fi-controller/container"
 	"github.com/DataDog/chaos-fi-controller/injector"
 	"github.com/spf13/cobra"
 )
@@ -19,18 +20,19 @@ var networkLatencyCleanCmd = &cobra.Command{
 		containerID, _ := cmd.Flags().GetString("container-id")
 		hosts, _ := cmd.Flags().GetStringSlice("hosts")
 
-		i := injector.NetworkLatencyInjector{
-			ContainerInjector: injector.ContainerInjector{
-				Injector: injector.Injector{
-					UID: uid,
-					Log: log,
-				},
-				ContainerID: containerID,
-			},
-			Spec: &v1beta1.NetworkLatencySpec{
-				Hosts: hosts,
-			},
+		// prepare container
+		c, err := container.New(containerID)
+		if err != nil {
+			log.Fatalw("can't create container object", "error", err)
 		}
+
+		// prepare spec
+		spec := v1beta1.NetworkLatencySpec{
+			Hosts: hosts,
+		}
+
+		// clean
+		i := injector.NewNetworkLatencyInjector(uid, spec, c, log)
 		i.Clean()
 	},
 }

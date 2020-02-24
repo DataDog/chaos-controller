@@ -3,7 +3,6 @@ module github.com/DataDog/chaos-fi-controller
 go 1.13
 
 require (
-	bou.ke/monkey v1.0.2
 	github.com/DataDog/datadog-go v3.3.1+incompatible
 	github.com/Microsoft/hcsshim v0.8.7 // indirect
 	github.com/containerd/containerd v1.3.2
@@ -18,7 +17,6 @@ require (
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/gogo/googleapis v1.3.1 // indirect
-	github.com/gogo/protobuf v1.3.0
 	github.com/gorilla/mux v1.7.4 // indirect
 	github.com/miekg/dns v1.1.27
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -26,8 +24,9 @@ require (
 	github.com/onsi/gomega v1.7.0
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect
-	github.com/opencontainers/runtime-spec v1.0.1
+	github.com/opencontainers/runtime-spec v1.0.1 // indirect
 	github.com/spf13/cobra v0.0.5
+	github.com/stretchr/testify v1.4.0
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2 // indirect
 	github.com/vishvananda/netlink v1.0.0
 	github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df

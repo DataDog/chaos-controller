@@ -413,7 +413,6 @@ func getContainerID(pod *corev1.Pod) (string, error) {
 	}
 
 	return pod.Status.ContainerStatuses[0].ContainerID, nil
-
 }
 
 // SetupWithManager setups the current reconciler with the given manager

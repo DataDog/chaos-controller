@@ -7,56 +7,70 @@ package injector_test
 
 import (
 	"os"
-	"reflect"
 
-	"bou.ke/monkey"
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
 	. "github.com/DataDog/chaos-fi-controller/injector"
 )
 
+type fakeFileWriter struct {
+	mock.Mock
+}
+
+func (fw *fakeFileWriter) Write(path string, mode os.FileMode, data string) error {
+	args := fw.Called(path, mode, data)
+	return args.Error(0)
+}
+
 var _ = Describe("Failure", func() {
-	var f NodeFailureInjector
-	var osOpenFilePath, osWriteStringValue []string
+	var (
+		config NodeFailureInjectorConfig
+		fw     fakeFileWriter
+		inj    Injector
+		spec   v1beta1.NodeFailureSpec
+	)
+
 	BeforeEach(func() {
-		f = NodeFailureInjector{
-			Injector: Injector{
-				UID: "fake",
-				Log: log,
-			},
-			Spec: &v1beta1.NodeFailureSpec{},
+		fw = fakeFileWriter{}
+		fw.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		config = NodeFailureInjectorConfig{
+			FileWriter: &fw,
 		}
 
-		// os
-		var file *os.File
-		monkey.Patch(os.OpenFile, func(path string, _ int, _ os.FileMode) (*os.File, error) {
-			osOpenFilePath = append(osOpenFilePath, path)
-			return nil, nil
-		})
-		monkey.PatchInstanceMethod(reflect.TypeOf(file), "WriteString", func(_ *os.File, data string) (int, error) {
-			osWriteStringValue = append(osWriteStringValue, data)
-			return 0, nil
-		})
-		monkey.PatchInstanceMethod(reflect.TypeOf(file), "Close", func(*os.File) error {
-			return nil
-		})
+		spec = v1beta1.NodeFailureSpec{}
 	})
 
-	AfterEach(func() {
-		monkey.UnpatchAll()
+	JustBeforeEach(func() {
+		inj = NewNodeFailureInjectorWithConfig("fake", spec, log, config)
 	})
 
 	Describe("injection", func() {
-		It("should write to the sysrq file", func() {
-			f.Inject()
-			Expect(len(osOpenFilePath)).To(Equal(2))
-			Expect(len(osWriteStringValue)).To(Equal(2))
-			Expect(osOpenFilePath[0]).To(Equal("/mnt/sysrq"))
-			Expect(osWriteStringValue[0]).To(Equal("1"))
-			Expect(osOpenFilePath[1]).To(Equal("/mnt/sysrq-trigger"))
-			Expect(osWriteStringValue[1]).To(Equal("c"))
+		JustBeforeEach(func() {
+			inj.Inject()
 		})
+
+		It("should enable the sysrq handler", func() {
+			fw.AssertCalled(GinkgoT(), "Write", "/mnt/sysrq", mock.Anything, "1")
+		})
+
+		Context("with shutdown enabled", func() {
+			BeforeEach(func() {
+				spec.Shutdown = true
+			})
+
+			It("should write into the sysrq trigger file", func() {
+				fw.AssertCalled(GinkgoT(), "Write", "/mnt/sysrq-trigger", mock.Anything, "o")
+			})
+		})
+
+		Context("with shutdown disabled", func() {
+			It("should write into the sysrq trigger file", func() {
+				fw.AssertCalled(GinkgoT(), "Write", "/mnt/sysrq-trigger", mock.Anything, "c")
+			})
+		})
+
 	})
 })
