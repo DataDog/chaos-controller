@@ -3,7 +3,20 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2020 Datadog, Inc.
 
-version: 2
+version: 2.1
+
+commands:
+  check_changed_files:
+    description: "Ensures at least one file matching the given pattern has been changed"
+    parameters:
+      pattern:
+        type: string
+    steps:
+      - run: |
+          if [ "${CIRCLE_BRANCH}" == "master" ]; then
+            exit 0
+          fi
+          git diff master --name-only | egrep -q '<< parameters.pattern >>'
 
 templates:
   # saves go code, modules and tools in the cache
@@ -46,6 +59,10 @@ templates:
     <<: *working_directory
     docker:
       - image: bash:5.0
+  install_git_alpine: &install_git_alpine
+    run:
+      name: Install git
+      command: apk update && apk add git
 
 jobs:
   # prepares the CI environment by checking out the code,
@@ -108,7 +125,7 @@ jobs:
       - restore_cache: *restore_cache
       - run: make test
   # ensures that the file containing 3rd-party licenses is up-to-date
-  3rd-party-licenses:
+  third-party-licenses:
     <<: *python_job_template
     steps:
       - checkout
@@ -124,6 +141,13 @@ jobs:
       - run:
           name: Ensure license header is present
           command: ./tasks/header.sh
+  changelog:
+    <<: *bash_job_template
+    steps:
+      - checkout
+      - *install_git_alpine
+      - check_changed_files:
+          pattern: ^CHANGELOG.md$
 
 workflows:
   version: 2
@@ -145,5 +169,6 @@ workflows:
       - test:
           requires:
             - prepare-env
-      - 3rd-party-licenses
+      - third-party-licenses
       - license-header
+      - changelog
