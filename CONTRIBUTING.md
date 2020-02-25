@@ -1,19 +1,12 @@
 # Contributing
 
-## Requirements
-
-* [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
-* [docker](https://docs.docker.com/install/)
-* [go](https://golang.org/doc/install)
-* [golangci-lint](https://github.com/golangci/golangci-lint)
-* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-* [git-lfs](https://github.com/git-lfs/git-lfs/wiki/Installation)
-
 ## Testing the controller locally
 
 More extensive documentation about testing can be found in the testing [docs](docs/testing.md)
 
 ### Quickstart
+
+Install the [required](docs/testing.md#requirements) requirements for this project first.
 
 If you want to test the controller locally (without having to redeploy a new image on a staging cluster), please use the [minikube project](https://kubernetes.io/docs/setup/learning-environment/minikube/) as described below:
 
