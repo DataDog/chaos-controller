@@ -12,11 +12,13 @@ commands:
       pattern:
         type: string
     steps:
-      - run: |
-          if [ "${CIRCLE_BRANCH}" == "master" ]; then
-            exit 0
-          fi
-          git diff master --name-only | egrep -q '<< parameters.pattern >>'
+      - run:
+          name: Check changelog file has been updated
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              exit 0
+            fi
+            git diff master --name-only | egrep -q '<< parameters.pattern >>'
 
 templates:
   # saves go code, modules and tools in the cache
