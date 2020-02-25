@@ -69,19 +69,21 @@ type DisruptionReconciler struct {
 func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	_ = r.Log.WithValues("disruption", req.NamespacedName)
+	instance := &chaosv1beta1.Disruption{}
+	tsStart := time.Now()
 
 	// reconcile metrics
-	instance := &chaosv1beta1.Disruption{}
 	if err := r.Datadog.Incr("chaos.controller.reconcile", nil, 1); err != nil {
 		r.Log.Error(err, "can't send reconcile metric to Datadog")
 	}
-	tsStart := time.Now()
+
 	defer func() func() {
 		return func() {
 			tags := []string{}
 			if instance.Name != "" {
 				tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
 			}
+
 			if err := r.Datadog.Timing("chaos.controller.reconcile.duration", time.Since(tsStart), tags, 1); err != nil {
 				r.Log.Error(err, "can't send reconcile duration metric")
 				r.Log.Error(err, "can't send reconcile duration metric")
@@ -91,6 +93,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	// fetch the instance
 	r.Log.Info("fetching disruption instance", "instance", req.Name, "namespace", req.Namespace)
+
 	if err := r.Get(context.Background(), req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -101,6 +104,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		if !helpers.ContainsString(instance.ObjectMeta.Finalizers, finalizer) {
 			r.Log.Info("adding finalizer", "instance", instance.Name, "namespace", instance.Namespace)
 			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, finalizer)
+
 			return ctrl.Result{}, r.Update(context.Background(), instance)
 		}
 	} else {
@@ -160,6 +164,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	if len(instance.Status.TargetPods) == 0 {
 		// select pods
 		r.Log.Info("selecting pods to inject disruption to", "instance", instance.Name, "namespace", instance.Namespace)
+
 		pods, err := r.selectPodsForInjection(instance)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -167,21 +172,25 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 		// update instance status
 		r.Log.Info("updating instance status with pods selected for injection", "instance", instance.Name, "namespace", instance.Namespace)
+
 		for _, pod := range pods.Items {
 			instance.Status.TargetPods = append(instance.Status.TargetPods, pod.Name)
 		}
+
 		return ctrl.Result{}, r.Update(context.Background(), instance)
 	}
 
 	// start injections
 	r.Log.Info("starting pods injection", "instance", instance.Name, "namespace", instance.Namespace)
+
 	for _, targetPodName := range instance.Status.TargetPods {
-		// retrieve pod resource
+		chaosPods := []*corev1.Pod{}
 		targetPod := corev1.Pod{}
+
+		// retrieve pod resource
 		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: targetPodName}, &targetPod); err != nil {
 			return ctrl.Result{}, err
 		}
-		chaosPods := []*corev1.Pod{}
 
 		// get ID of first container
 		containerID, err := getContainerID(&targetPod)
@@ -194,10 +203,12 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			args := instance.Spec.NetworkFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
 			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkFailure))
 		}
+
 		if instance.Spec.NetworkLatency != nil {
 			args := instance.Spec.NetworkLatency.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
 			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkLatency))
 		}
+
 		if instance.Spec.NodeFailure != nil {
 			args := instance.Spec.NodeFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
 			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNodeFailure))
@@ -215,8 +226,10 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			if err != nil {
 				return ctrl.Result{}, err
 			}
+
 			if len(found.Items) == 0 {
 				r.Log.Info("creating chaos pod", "instance", instance.Name, "namespace", instance.Namespace)
+
 				if err = r.Create(context.Background(), chaosPod); err != nil {
 					r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
 					return ctrl.Result{}, err
@@ -224,6 +237,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
+
 				if err := r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:inject", "target_pod:" + targetPod.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1); err != nil {
 					r.Log.Error(err, "can't send pods created metric")
 				}
@@ -238,8 +252,10 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	if err := r.Datadog.Timing("chaos.controller.inject.duration", time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1); err != nil {
 		r.Log.Error(err, "can't send inject duration metric")
 	}
+
 	r.Log.Info("updating injection status flag", "instance", instance.Name, "namespace", instance.Namespace)
 	instance.Status.IsInjected = true
+
 	return ctrl.Result{}, r.Update(context.Background(), instance)
 }
 
@@ -291,6 +307,7 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 			args := instance.Spec.NetworkFailure.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID)
 			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkFailure))
 		}
+
 		if instance.Spec.NetworkLatency != nil {
 			args := instance.Spec.NetworkLatency.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID)
 			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkLatency))
@@ -298,13 +315,14 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 
 		// create cleanup pods
 		for _, chaosPod := range chaosPods {
+			found := &corev1.Pod{}
+
 			// link cleanup pod to instance for garbage collection
 			if err := controllerutil.SetControllerReference(instance, chaosPod, r.Scheme); err != nil {
 				return err
 			}
 
 			// do nothing if cleanup pod already exists
-			found := &corev1.Pod{}
 			err = r.Get(context.Background(), types.NamespacedName{Name: chaosPod.Name, Namespace: chaosPod.Namespace}, found)
 			if err != nil && reflect.DeepEqual(chaosPod.Spec, found.Spec) {
 				continue
@@ -313,17 +331,21 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 			}
 
 			r.Log.Info("creating chaos cleanup chaosPod", "instance", instance.Name, "namespace", chaosPod.Namespace, "name", chaosPod.Name, "containerid", containerID)
+
 			err = r.Create(context.Background(), chaosPod)
 			if err != nil {
 				r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Cleanup pod for disruption \"%s\" failed to be created", instance.Name))
 				return err
 			}
+
 			r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for disruption \"%s\"", instance.Name))
+
 			if err := r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:cleanup", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1); err != nil {
 				r.Log.Error(err, "can't send pods created metric")
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -332,6 +354,10 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 // the chosen pods names will be reflected in the intance status
 // subsequent calls to this function will always return the same pods as the first call
 func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Disruption) (*corev1.PodList, error) {
+	selectedPods := []corev1.Pod{}
+
+	rand.Seed(time.Now().UnixNano())
+
 	// get pods matching the instance label selector
 	allPods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.Selector)
 	if err != nil {
@@ -345,7 +371,6 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 	}
 
 	// if we had already selected pods for the instance, only return the already-selected ones
-	selectedPods := []corev1.Pod{}
 	if len(instance.Status.TargetPods) > 0 {
 		for _, pod := range allPods.Items {
 			if helpers.ContainsString(instance.Status.TargetPods, pod.Name) {
@@ -357,7 +382,6 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 	}
 
 	// otherwise, randomly select pods
-	rand.Seed(time.Now().UnixNano())
 	numPodsToSelect := int(math.Min(float64(*instance.Spec.Count), float64(*instance.Spec.Count-len(instance.Status.TargetPods))))
 	for i := 0; i < numPodsToSelect; i++ {
 		// select and add a random pod
@@ -377,6 +401,7 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 
 // getChaosPods returns all pods created by the given Disruption instance and being in the given mode (injection or cleanup)
 func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode) ([]corev1.Pod, error) {
+	pods := make([]corev1.Pod, 0)
 	podsInNs := &corev1.PodList{}
 	listOptions := &client.ListOptions{
 		Namespace: instance.Namespace,
@@ -384,6 +409,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, m
 			chaostypes.PodModeLabel: string(mode),
 		}),
 	}
+
 	err := r.Client.List(context.Background(), podsInNs, listOptions)
 	if err != nil {
 		return nil, err
@@ -391,12 +417,12 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, m
 
 	// filter all pods in the same namespace as instance,
 	// only returning those owned by the given instance
-	pods := make([]corev1.Pod, 0)
 	for _, pod := range podsInNs.Items {
 		for _, ownerReference := range pod.OwnerReferences {
 			if ownerReference.UID != instance.UID {
 				continue
 			}
+
 			if len(pod.Spec.Containers) > 0 {
 				pods = append(pods, pod)
 			}
@@ -409,7 +435,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, m
 // getContainerID gets the ID of the first container ID found in a Pod
 func getContainerID(pod *corev1.Pod) (string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
-		return "", fmt.Errorf("Missing container ids for pod '%s'", pod.Name)
+		return "", fmt.Errorf("missing container ids for pod '%s'", pod.Name)
 	}
 
 	return pod.Status.ContainerStatuses[0].ContainerID, nil

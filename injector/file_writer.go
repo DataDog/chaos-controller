@@ -22,9 +22,11 @@ func (fw standardFileWriter) Write(path string, mode os.FileMode, data string) e
 	if err != nil {
 		return err
 	}
+
 	_, err = f.WriteString(data)
 	if err != nil {
 		return err
 	}
+
 	return f.Close()
 }

@@ -1,0 +1,51 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2020 Datadog, Inc.
+
+run:
+  skip-files:
+    - api/v1beta1/zz_generated.deepcopy.go
+    - ".*_test.go"
+linters:
+  enable:
+    - deadcode
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unused
+    - varcheck
+    - bodyclose
+    - depguard
+    - dogsled
+    - dupl
+    - goconst
+    - godox
+    - gofmt
+    - goimports
+    - golint
+    - goprintffuncname
+    - gosec
+    - interfacer
+    - maligned
+    - misspell
+    - nakedret
+    - prealloc
+    - rowserrcheck
+    - stylecheck
+    - unconvert
+    - unparam
+    - whitespace
+    - wsl
+    - gocritic
+issues:
+  exclude-use-default: false
+  exclude:
+    # gosec
+    - Subprocess launch(ed with variable|ing should be audited)
+    # stylecheck
+    - at least one file in a package should have a package comment

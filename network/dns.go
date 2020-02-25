@@ -12,12 +12,14 @@ import (
 	"github.com/miekg/dns"
 )
 
+// DNSClient is a client being able to resolve the given host
 type DNSClient interface {
 	Resolve(host string) ([]net.IP, error)
 }
 
 type dnsClient struct{}
 
+// NewDNSClient creates a standard DNS client
 func NewDNSClient() DNSClient {
 	return dnsClient{}
 }
@@ -34,6 +36,7 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	dnsClient := dns.Client{}
 	dnsMessage := dns.Msg{}
 	dnsMessage.SetQuestion(host+".", dns.TypeA)
+
 	response, _, err := dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
 	if err != nil {
 		return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)

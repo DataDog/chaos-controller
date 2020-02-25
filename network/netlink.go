@@ -11,6 +11,8 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
+// NetlinkAdapter is an interface being able to read
+// the host network interfaces informations
 type NetlinkAdapter interface {
 	LinkList() ([]NetlinkLink, error)
 	LinkByIndex(index int) (NetlinkLink, error)
@@ -20,15 +22,19 @@ type NetlinkAdapter interface {
 
 type netlinkAdapter struct{}
 
+// NewNetlinkAdapter returns a standard netlink adapter
 func NewNetlinkAdapter() NetlinkAdapter {
 	return netlinkAdapter{}
 }
 
 func (a netlinkAdapter) LinkList() ([]NetlinkLink, error) {
+	// list links
 	links, err := netlink.LinkList()
 	if err != nil {
 		return nil, err
 	}
+
+	// cast to interface
 	nlinks := []NetlinkLink{}
 	for _, link := range links {
 		nlinks = append(nlinks, newNetlinkLink(link))
@@ -56,6 +62,8 @@ func (a netlinkAdapter) LinkByName(name string) (NetlinkLink, error) {
 }
 
 func (a netlinkAdapter) RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error) {
+	r := []NetlinkRoute{}
+
 	// get the handler
 	handler, err := netlink.NewHandle()
 	if err != nil {
@@ -69,12 +77,12 @@ func (a netlinkAdapter) RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error) {
 	}
 
 	// convert netlink routes to interfaces
-	r := []NetlinkRoute{}
 	for _, route := range routes {
 		link, err := netlink.LinkByIndex(route.LinkIndex)
 		if err != nil {
 			return nil, err
 		}
+
 		r = append(r, netlinkRoute{
 			link: newNetlinkLink(link),
 		})
@@ -83,6 +91,7 @@ func (a netlinkAdapter) RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error) {
 	return r, nil
 }
 
+// NetlinkLink is a host interface
 type NetlinkLink interface {
 	Name() string
 	SetTxQLen(qlen int) error
@@ -105,6 +114,7 @@ func (l *netlinkLink) SetTxQLen(qlen int) error {
 	}
 
 	l.txQLen = qlen
+
 	return netlink.LinkSetTxQLen(link, qlen)
 }
 
@@ -119,6 +129,7 @@ func newNetlinkLink(link netlink.Link) *netlinkLink {
 	}
 }
 
+// NetlinkRoute is a route attached to a host interface
 type NetlinkRoute interface {
 	Link() NetlinkLink
 }

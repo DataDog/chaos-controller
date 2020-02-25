@@ -31,6 +31,7 @@ func resolveHosts(client network.DNSClient, hosts []string) ([]*net.IPNet, error
 				if err != nil {
 					return nil, fmt.Errorf("can't resolve the given host with the configured dns resolver: %w", err)
 				}
+
 				for _, resolvedIP := range resolvedIPs {
 					ips = append(ips, &net.IPNet{
 						IP:   resolvedIP,

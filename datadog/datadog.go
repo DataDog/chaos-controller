@@ -27,6 +27,7 @@ func GetInstance() *statsd.Client {
 			panic(err)
 		}
 	})
+
 	return instance
 }
 
