@@ -36,6 +36,7 @@ func main() {
 		fmt.Printf("error while creating logger: %v", err)
 		os.Exit(2)
 	}
+
 	log = zapInstance.Sugar()
 
 	// execute command

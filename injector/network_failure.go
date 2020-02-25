@@ -23,6 +23,7 @@ const iptablesTable = "filter"
 const iptablesOutputChain = "OUTPUT"
 const iptablesChaosChainPrefix = "CHAOS-"
 
+// IPTables is an interface abstracting an iptables driver
 type IPTables interface {
 	Exists(table, chain string, parts ...string) (bool, error)
 	Delete(table, chain string, parts ...string) error
@@ -33,6 +34,8 @@ type IPTables interface {
 	NewChain(table, chain string) error
 }
 
+// NetworkFailureInjectorConfig contains needed drivers
+// for instanciating a NetworkFailureInjector object
 type NetworkFailureInjectorConfig struct {
 	IPTables  IPTables
 	DNSClient network.DNSClient
@@ -45,10 +48,13 @@ type networkFailureInjector struct {
 	spec   v1beta1.NetworkFailureSpec
 }
 
+// NewNetworkFailureInjector creates a NetworkFailureInjector object with default drivers
 func NewNetworkFailureInjector(uid string, spec v1beta1.NetworkFailureSpec, ctn container.Container, log *zap.SugaredLogger) (Injector, error) {
 	return NewNetworkFailureInjectorWithConfig(uid, spec, ctn, log, &NetworkFailureInjectorConfig{})
 }
 
+// NewNetworkFailureInjectorWithConfig creates a NetworkFailureInjector object with the given config,
+// missing field being initialized with the defaults
 func NewNetworkFailureInjectorWithConfig(uid string, spec v1beta1.NetworkFailureSpec, ctn container.Container, log *zap.SugaredLogger, config *NetworkFailureInjectorConfig) (Injector, error) {
 	// iptables driver
 	if config.IPTables == nil {
@@ -56,6 +62,7 @@ func NewNetworkFailureInjectorWithConfig(uid string, spec v1beta1.NetworkFailure
 		if err != nil {
 			return nil, fmt.Errorf("can't initialize iptables driver: %w", err)
 		}
+
 		config.IPTables = ipt
 	}
 
@@ -82,11 +89,12 @@ func (i networkFailureInjector) Inject() {
 	var ruleParts []string
 
 	// enter container network namespace
-	// and defer the exit on return
 	err := i.container.EnterNetworkNamespace()
 	if err != nil {
 		i.log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.container.ID())
 	}
+
+	// defer the exit on return
 	defer func() {
 		err := i.container.ExitNetworkNamespace()
 		if err != nil {
@@ -104,6 +112,7 @@ func (i networkFailureInjector) Inject() {
 
 	// Resolve host
 	i.log.Infow("resolving given hosts", "hosts", hosts)
+
 	ips, err := resolveHosts(i.config.DNSClient, hosts)
 	if err != nil {
 		datadog.EventInjectFailure(i.container.ID(), i.uid)
@@ -118,6 +127,7 @@ func (i networkFailureInjector) Inject() {
 	// Create a new dedicated chain
 	if !i.chainExists(dedicatedChain) {
 		i.log.Infow("creating the dedicated iptables chain", "chain", dedicatedChain)
+
 		err = i.config.IPTables.NewChain(iptablesTable, dedicatedChain)
 		if err != nil {
 			datadog.EventInjectFailure(i.container.ID(), i.uid)
@@ -132,6 +142,7 @@ func (i networkFailureInjector) Inject() {
 	// Add the dedicated chain jump rule
 	ruleParts = []string{"-j", dedicatedChain}
 	rule := fmt.Sprintf("iptables -t %s %s", iptablesTable, strings.Join(ruleParts, " "))
+
 	err = i.config.IPTables.AppendUnique(iptablesTable, iptablesOutputChain, ruleParts...)
 	if err != nil {
 		datadog.EventInjectFailure(i.container.ID(), i.uid)
@@ -159,12 +170,14 @@ func (i networkFailureInjector) Inject() {
 			"probability", i.spec.Probability,
 			"rule", rule,
 		)
+
 		err = i.config.IPTables.AppendUnique(iptablesTable, dedicatedChain, ruleParts...)
 		if err != nil {
 			datadog.EventInjectFailure(i.container.ID(), i.uid)
 			datadog.MetricInjected(i.container.ID(), i.uid, false)
 			datadog.MetricRulesInjected(i.container.ID(), i.uid, false)
 			i.log.Fatalw("error while injecting the drop rule", "error", err, "rule", rule)
+
 			return
 		}
 
@@ -176,6 +189,7 @@ func (i networkFailureInjector) Inject() {
 				"UID:" + i.uid,
 			},
 		})
+
 		datadog.MetricRulesInjected(i.container.ID(), i.uid, true)
 	}
 
@@ -185,11 +199,12 @@ func (i networkFailureInjector) Inject() {
 // Clean removes all the injected failures in the given container
 func (i networkFailureInjector) Clean() {
 	// enter container network namespace
-	// and defer the exit on return
 	err := i.container.EnterNetworkNamespace()
 	if err != nil {
 		i.log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.container.ID())
 	}
+
+	// defer the exit on return
 	defer func() {
 		err := i.container.ExitNetworkNamespace()
 		if err != nil {
@@ -200,18 +215,21 @@ func (i networkFailureInjector) Clean() {
 	dedicatedChain := i.getDedicatedChainName()
 	i.log.Infow("starting the cleaning", "chain", dedicatedChain)
 
-	// Clear, delete the dedicated chain and its jump rule if it exists
+	// clear, delete the dedicated chain and its jump rule if it exists
 	if i.chainExists(dedicatedChain) {
-		// Delete the jump rule if it exists
 		ruleParts := []string{"-j", dedicatedChain}
+
+		// delete the jump rule if it exists
 		exists, err := i.config.IPTables.Exists(iptablesTable, iptablesOutputChain, ruleParts...)
 		if err != nil {
 			datadog.EventCleanFailure(i.container.ID(), i.uid)
 			datadog.MetricCleaned(i.container.ID(), i.uid, false)
 			i.log.Fatalw("unable to check if the dedicated chain jump rule exists", "chain", dedicatedChain, "error", err)
 		}
+
 		if exists {
 			i.log.Infow("deleting the dedicated chain jump rule", "chain", dedicatedChain)
+
 			err = i.config.IPTables.Delete(iptablesTable, iptablesOutputChain, ruleParts...)
 			if err != nil {
 				datadog.EventCleanFailure(i.container.ID(), i.uid)
@@ -220,15 +238,18 @@ func (i networkFailureInjector) Clean() {
 			}
 		}
 
-		// Clear and delete the dedicated chain
+		// clear and delete the dedicated chain
 		i.log.Infow("clearing the dedicated chain", "chain", dedicatedChain)
+
 		err = i.config.IPTables.ClearChain(iptablesTable, dedicatedChain)
 		if err != nil {
 			datadog.EventCleanFailure(i.container.ID(), i.uid)
 			datadog.MetricCleaned(i.container.ID(), i.uid, false)
 			i.log.Fatalw("failed to clean dedicated chain", "chain", dedicatedChain, "error", err)
 		}
+
 		i.log.Infow("deleting the dedicated chain", "chain", dedicatedChain)
+
 		err = i.config.IPTables.DeleteChain(iptablesTable, dedicatedChain)
 		if err != nil {
 			datadog.EventCleanFailure(i.container.ID(), i.uid)
@@ -245,6 +266,7 @@ func (i networkFailureInjector) Clean() {
 			"UID:" + i.uid,
 		},
 	})
+
 	datadog.MetricCleaned(i.container.ID(), i.uid, true)
 }
 
@@ -254,11 +276,12 @@ func (i networkFailureInjector) generateRuleParts(ip string) []string {
 		"-p", i.spec.Protocol,
 		"-d", ip,
 		"--dport",
-		strconv.Itoa(i.spec.Port)}
+		strconv.Itoa(i.spec.Port),
+	}
 
 	//Add modules (if any) here
 	ruleParts = append(ruleParts, "-m")
-	var numModules = 0
+	numModules := 0
 
 	//Probability Module
 	if i.spec.Probability != 0 && i.spec.Probability != 100 {
@@ -275,9 +298,8 @@ func (i networkFailureInjector) generateRuleParts(ip string) []string {
 		ruleParts = ruleParts[:len(ruleParts)-1]
 	}
 
-	ruleParts = append(ruleParts,
-		"-j",
-		"DROP")
+	ruleParts = append(ruleParts, "-j", "DROP")
+
 	return ruleParts
 }
 
@@ -298,10 +320,12 @@ func (i networkFailureInjector) chainExists(chain string) bool {
 	if err != nil {
 		i.log.Fatalw("unable to list iptables chain", "error", err)
 	}
+
 	for _, v := range chains {
 		if v == chain {
 			return true
 		}
 	}
+
 	return false
 }

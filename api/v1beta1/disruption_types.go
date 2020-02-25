@@ -140,8 +140,7 @@ type NodeFailureSpec struct {
 func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID string) []string {
 	args := []string{}
 
-	switch mode {
-	case chaostypes.PodModeInject:
+	if mode == chaostypes.PodModeInject {
 		args = []string{
 			"node-failure",
 			"inject",

@@ -18,6 +18,8 @@ import (
 
 const tcPath = "/sbin/tc"
 
+// TrafficController is an interface being able to interact with the host
+// queueing discipline
 type TrafficController interface {
 	AddDelay(iface string, parent string, handle uint32, delay time.Duration) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
@@ -40,6 +42,8 @@ func (t tc) executeTcCommand(args string) error {
 	stderr := &bytes.Buffer{}
 	cmd := exec.Command(tcPath, split...)
 	cmd.Stderr = stderr
+
+	// run command
 	err := cmd.Run()
 	if err != nil {
 		err = fmt.Errorf("%w: %s", err, stderr.String())
@@ -48,6 +52,8 @@ func (t tc) executeTcCommand(args string) error {
 	return err
 }
 
+// NewTrafficController creates a standard traffic controller using tc
+// and being able to log
 func NewTrafficController(log *zap.SugaredLogger) TrafficController {
 	return tc{
 		log: log,
@@ -63,8 +69,10 @@ func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, pr
 	for _, bit := range priomap {
 		priomapStr += fmt.Sprintf(" %d", bit)
 	}
+
 	priomapStr = strings.TrimSpace(priomapStr)
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
+
 	return t.executeTcCommand(buildCmd("qdisc", iface, parent, handle, "prio", params))
 }
 
@@ -76,19 +84,6 @@ func (t tc) AddFilterDestIP(iface string, parent string, handle uint32, ip *net.
 	params := fmt.Sprintf("match ip dst %s flowid %s", ip.String(), flowid)
 	return t.executeTcCommand(buildCmd("filter", iface, parent, handle, "u32", params))
 }
-
-type Filter struct {
-	Parameters []string
-	Parent     string
-	Prio       uint32
-	Protocol   string
-}
-
-type FilterProtocol string
-
-const (
-	FilterProtocolIP = "ip"
-)
 
 func buildCmd(module string, iface string, parent string, handle uint32, kind string, parameters string) string {
 	cmd := fmt.Sprintf("%s add dev %s", module, iface)
