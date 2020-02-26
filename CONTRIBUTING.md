@@ -10,8 +10,6 @@ Install the [required](docs/testing.md#requirements) requirements for this proje
 
 If you want to test the controller locally (without having to redeploy a new image on a staging cluster), please use the [minikube project](https://kubernetes.io/docs/setup/learning-environment/minikube/) as described below:
 
-* get minukube iso stored on git-lfs
-  * `git lfs pull`
 * start minikube with containerd engine
   * `make minikube-start`
 * build the new image of the controller with your local changes
