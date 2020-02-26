@@ -115,5 +115,5 @@ minikube-start:
 		--disk-size=50GB \
 		--extra-config=apiserver.runtime-config=settings.k8s.io/v1alpha1=true \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodPreset \
-		--iso-url=file://$(shell pwd)/minikube/iso/minikube.iso
+		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube.iso
 

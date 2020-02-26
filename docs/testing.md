@@ -5,17 +5,14 @@
 To get started, we need to have the following software installed:
 
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
-* [git-lfs](https://github.com/git-lfs/git-lfs/wiki/Installation)
 * [golangci-lint](https://github.com/golangci/golangci-lint)
 
 This project is based on kubebuilder, please make sure the [listed](https://book.kubebuilder.io/quick-start.html#prerequisites) requirements for kubebuilder are installed as well.
 
 ## Developing locally (minikube)
 
-For using the chaos-controller on minikube we need our own custom build minikube. For now this is stored in the repo on `lfs`.
+For using the chaos-controller on minikube we need our own custom build ISO image available on s3.
 
-* Pull the minikube iso stored on git-lfs:
-  * `git lfs pull`
 * Start minikube with **containerd** container runtime:
   * `make minikube-start`
 * Build the controller container images locally (_Docker for_) and copy them to minikube:
@@ -24,7 +21,6 @@ For using the chaos-controller on minikube we need our own custom build minikube
   * `make install && make deploy`
 
 ``` sh
-git lfs pull
 make minikube-start
 make docker-build
 make install && make deploy
