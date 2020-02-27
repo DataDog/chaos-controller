@@ -22,7 +22,7 @@ func GetInstance() *statsd.Client {
 	once.Do(func() {
 		var err error
 		url := os.Getenv("STATSD_URL")
-		instance, err = statsd.New(url, statsd.WithTags([]string{"app:chaos-fi-controller"}))
+		instance, err = statsd.New(url, statsd.WithTags([]string{"app:chaos-controller"}))
 		if err != nil {
 			panic(err)
 		}

@@ -24,8 +24,8 @@ import (
 	"flag"
 	"os"
 
-	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/controllers"
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/datadog-go/statsd"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -73,7 +73,7 @@ func main() {
 	}
 
 	// retrieve datadog statsd client if configured
-	statsdClient, err := statsd.New(os.Getenv("STATSD_URL"), statsd.WithTags([]string{"app:chaos-fi-controller"}))
+	statsdClient, err := statsd.New(os.Getenv("STATSD_URL"), statsd.WithTags([]string{"app:chaos-controller"}))
 	if err != nil {
 		ctrl.Log.Error(err, "unable to configure the Datadog statsd client")
 	}

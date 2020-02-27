@@ -44,5 +44,5 @@ spec:
             memory: 20Mi
         env:
         - name: CHAOS_FI_IMAGE
-          value: docker.io/library/chaos-fi:latest
+          value: docker.io/library/chaos-injector:latest
       terminationGracePeriodSeconds: 10

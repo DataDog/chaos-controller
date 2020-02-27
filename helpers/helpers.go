@@ -13,7 +13,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/DataDog/chaos-fi-controller/types"
+	"github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -30,7 +30,7 @@ const (
 func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types.PodMode, kind types.DisruptionKind) *corev1.Pod {
 	image, ok := os.LookupEnv(ChaosFailureInjectionImageVariableName)
 	if !ok {
-		image = "chaos-fi"
+		image = "chaos-injector"
 	}
 
 	privileged := true
@@ -55,7 +55,7 @@ func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types
 			RestartPolicy: "Never",
 			Containers: []corev1.Container{
 				{
-					Name:            "chaos-fi",
+					Name:            "chaos-injector",
 					Image:           image,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Args:            args,

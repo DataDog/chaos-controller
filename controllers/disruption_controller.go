@@ -40,9 +40,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/helpers"
-	chaostypes "github.com/DataDog/chaos-fi-controller/types"
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/helpers"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/datadog-go/statsd"
 )
 

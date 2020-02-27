@@ -49,7 +49,7 @@ commands:
 templates:
   # sets the working directory to the project path
   working_directory: &working_directory
-    working_directory: /go/src/github.com/DataDog/chaos-fi-controller
+    working_directory: /go/src/github.com/DataDog/chaos-controller
 
 executors:
   golang:
