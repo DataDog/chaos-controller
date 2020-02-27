@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	. "github.com/DataDog/chaos-fi-controller/injector"
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	. "github.com/DataDog/chaos-controller/injector"
 )
 
 type fakeFileWriter struct {

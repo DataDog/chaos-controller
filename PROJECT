@@ -1,5 +1,5 @@
 domain: datadoghq.com
-repo: github.com/DataDog/chaos-fi-controller
+repo: github.com/DataDog/chaos-controller
 resources:
 - group: chaos
   kind: Disruption

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/DataDog/chaos-fi-controller/network"
+	"github.com/DataDog/chaos-controller/network"
 )
 
 // resolveHosts tries to resolve the given host

@@ -10,9 +10,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/container"
-	"github.com/DataDog/chaos-fi-controller/network"
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/network"
 	"go.uber.org/zap"
 )
 

@@ -18,9 +18,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/DataDog/chaos-fi-controller/helpers"
-	. "github.com/DataDog/chaos-fi-controller/helpers"
-	"github.com/DataDog/chaos-fi-controller/types"
+	"github.com/DataDog/chaos-controller/helpers"
+	. "github.com/DataDog/chaos-controller/helpers"
+	"github.com/DataDog/chaos-controller/types"
 )
 
 type fakeClient struct {
@@ -95,7 +95,7 @@ var _ = Describe("Helpers", func() {
 			},
 		}
 
-		image = "chaos-fi:latest"
+		image = "chaos-injector:latest"
 		os.Setenv(helpers.ChaosFailureInjectionImageVariableName, image)
 	})
 

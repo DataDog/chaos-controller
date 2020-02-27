@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/DataDog/chaos-fi-controller/container"
+	. "github.com/DataDog/chaos-controller/container"
 )
 
 // fake netns driver

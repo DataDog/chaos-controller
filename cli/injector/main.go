@@ -14,7 +14,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "chaos-fi",
+	Use:   "chaos-injector",
 	Short: "Datadog chaos failures injection application",
 	Run:   nil,
 }
