@@ -95,7 +95,7 @@ var _ = Describe("Helpers", func() {
 			},
 		}
 
-		image = "chaos-fi:latest"
+		image = "chaos-injector:latest"
 		os.Setenv(helpers.ChaosFailureInjectionImageVariableName, image)
 	})
 
