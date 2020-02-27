@@ -6,6 +6,32 @@
 version: 2.1
 
 commands:
+  go_save_cache:
+    description: "Save $GOHOME directory into the cache for the actual revision"
+    steps:
+      - save_cache:
+          key: env-{{ .Revision }}
+          paths:
+            - /go
+            - /usr/local/bin/golangci-lint
+            - /usr/local/kubebuilder
+  go_restore_cache:
+    description: "Restore golang cache"
+    steps:
+      - restore_cache:
+          key: env-{{ .Revision }}
+  python_install_requirements:
+    description: "Install requirements in requirements.txt using pip"
+    steps:
+      - run:
+          name: Install Python requirements
+          command: pip3 install -r tasks/requirements.txt
+  alpine_install_git:
+    description: "Install git using alpine apk"
+    steps:
+      - run:
+          name: Install git
+          command: apk update && apk add git
   check_changed_files:
     description: "Ensures at least one file matching the given pattern has been changed"
     parameters:
@@ -21,21 +47,12 @@ commands:
             git diff master --name-only | egrep -q '<< parameters.pattern >>'
 
 templates:
-  # saves go code, modules and tools in the cache
-  save_cache: &save_cache
-    key: env-{{ .Revision }}
-    paths:
-      - /go
-      - /usr/local/bin/golangci-lint
-      - /usr/local/kubebuilder
-  # restores the cache
-  restore_cache: &restore_cache
-    key: env-{{ .Revision }}
   # sets the working directory to the project path
   working_directory: &working_directory
     working_directory: /go/src/github.com/DataDog/chaos-fi-controller
-  # runs the standard golang image
-  go_job_template: &go_job_template
+
+executors:
+  golang:
     <<: *working_directory
     docker:
       # TODO: Publicize the chaos controller ci image to the datadog docker registry
@@ -45,25 +62,14 @@ templates:
       KUBEBUILDER_VERSION: 1.0.8
       KUBEBUILDER_ARCH: amd64
       GOLANGCI_LINT_VERSION: 1.23.1
-  # runs the standard python image
-  python_job_template: &python_job_template
+  python:
     <<: *working_directory
     docker:
       - image: python:3.8.1-alpine3.10
-  # install requirements used for the CI tasks
-  install_python_requirements: &install_python_requirements
-    run:
-      name: Install Python requirements
-      command: pip3 install -r tasks/requirements.txt
-  # runs the standard bash image
-  bash_job_template: &bash_job_template
+  bash:
     <<: *working_directory
     docker:
       - image: bash:5.0
-  install_git_alpine: &install_git_alpine
-    run:
-      name: Install git
-      command: apk update && apk add git
 
 jobs:
   # prepares the CI environment by checking out the code,
@@ -71,7 +77,7 @@ jobs:
   # into the Go home path so we don't have to do it again in other
   # CI jobs
   prepare-env:
-    <<: *go_job_template
+    executor: golang
     steps:
       - checkout
       - run:
@@ -90,12 +96,12 @@ jobs:
       - run:
           name: Cache local dependencies
           command: go mod download
-      - save_cache: *save_cache
+      - go_save_cache
   # ensures that Go dependencies are up-to-date
   dependencies:
-    <<: *go_job_template
+    executor: golang
     steps:
-      - restore_cache: *restore_cache
+      - go_restore_cache
       - run:
           name: Ensure dependencies are up-to-date
           command: |
@@ -103,50 +109,50 @@ jobs:
             git diff --exit-code
   # vets the code
   vet:
-    <<: *go_job_template
+    executor: golang
     steps:
-      - restore_cache: *restore_cache
+      - go_restore_cache
       - run: make vet
   # formats the code to ensure it complies with Go standards
   fmt:
-    <<: *go_job_template
+    executor: golang
     steps:
-      - restore_cache: *restore_cache
+      - go_restore_cache
       - run: make fmt
   # runs the golangci-lint linters
   lint:
-    <<: *go_job_template
+    executor: golang
     steps:
-      - restore_cache: *restore_cache
+      - go_restore_cache
       - run: make lint
   # runs the tests
   test:
-    <<: *go_job_template
+    executor: golang
     steps:
-      - restore_cache: *restore_cache
+      - go_restore_cache
       - run: make test
   # ensures that the file containing 3rd-party licenses is up-to-date
   third-party-licenses:
-    <<: *python_job_template
+    executor: python
     steps:
       - checkout
-      - *install_python_requirements
+      - python_install_requirements
       - run:
           name: Ensure 3rd-party licences are up-to-date
           command: python3 tasks/3rdparty.py
   # ensures that the license header is present on all the needed files
   license-header:
-    <<: *bash_job_template
+    executor: bash
     steps:
       - checkout
       - run:
           name: Ensure license header is present
           command: ./tasks/header.sh
   changelog:
-    <<: *bash_job_template
+    executor: bash
     steps:
       - checkout
-      - *install_git_alpine
+      - alpine_install_git
       - check_changed_files:
           pattern: ^CHANGELOG.md$
 
