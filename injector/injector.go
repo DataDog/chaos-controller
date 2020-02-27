@@ -6,7 +6,7 @@
 package injector
 
 import (
-	"github.com/DataDog/chaos-fi-controller/container"
+	"github.com/DataDog/chaos-controller/container"
 	"go.uber.org/zap"
 )
 

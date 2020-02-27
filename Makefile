@@ -1,7 +1,7 @@
 .PHONY: manager injector
 
 # Image URL to use all building/pushing image targets
-MANAGER_IMAGE ?= chaos-fi-controller:latest
+MANAGER_IMAGE ?= chaos-controller:latest
 INJECTOR_IMAGE ?= chaos-fi:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"

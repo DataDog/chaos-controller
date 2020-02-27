@@ -6,9 +6,9 @@
 package main
 
 import (
-	"github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	"github.com/DataDog/chaos-fi-controller/container"
-	"github.com/DataDog/chaos-fi-controller/injector"
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/injector"
 	"github.com/spf13/cobra"
 )
 

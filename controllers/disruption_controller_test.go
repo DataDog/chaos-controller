@@ -12,8 +12,8 @@ import (
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	chaosv1beta1 "github.com/DataDog/chaos-fi-controller/api/v1beta1"
-	chaostypes "github.com/DataDog/chaos-fi-controller/types"
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

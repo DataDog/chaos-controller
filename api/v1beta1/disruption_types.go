@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	chaostypes "github.com/DataDog/chaos-fi-controller/types"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"

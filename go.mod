@@ -1,4 +1,4 @@
-module github.com/DataDog/chaos-fi-controller
+module github.com/DataDog/chaos-controller
 
 go 1.13
 
