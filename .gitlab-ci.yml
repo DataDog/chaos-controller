@@ -48,10 +48,10 @@ build:make:
   tags:
     - "runner:docker"
     - "size:large"
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2220958-d742126-0.0.5
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2223910-e97a88c-1.0.0
   stage: release
   script:
-    - release.sh
+    - release.sh -t=$TARGET -e=$ENVIRONMENT $IMAGE_NAME $IMAGE_TAG
 
 release-manager-ref:
   <<: *release
@@ -59,19 +59,30 @@ release-manager-ref:
   except:
     - tags
   variables:
+    IMAGE_NAME: "chaos-controller"
+    IMAGE_TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
     TARGET: "manager"
-    IMAGE: "chaos-controller"
-    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+    ENVIRONMENT: "staging"
 
-release-manager-tag:
+.release-manager-tag:
   <<: *release
   when: always
   only:
     - tags
   variables:
+    IMAGE_NAME: "chaos-controller"
+    IMAGE_TAG: "${CI_COMMIT_TAG}"
     TARGET: "manager"
-    IMAGE: "chaos-controller"
-    TAG: "${CI_COMMIT_TAG}"
+
+release-manager-tag-staging:
+  extends: .release-manager-tag
+  variables:
+    ENVIRONMENT: "staging"
+
+release-manager-tag-prod:
+  extends: .release-manager-tag
+  variables:
+    ENVIRONMENT: "prod"
 
 release-injector-ref:
   <<: *release
@@ -79,16 +90,27 @@ release-injector-ref:
   except:
     - tags
   variables:
+    IMAGE_NAME: "chaos-injector"
+    IMAGE_TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
     TARGET: "injector"
-    IMAGE: "chaos-injector"
-    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+    ENVIRONMENT: "staging"
 
-release-injector-tag:
+.release-injector-tag:
   <<: *release
   when: always
   only:
     - tags
   variables:
+    IMAGE_NAME: "chaos-injector"
+    IMAGE_TAG: "${CI_COMMIT_TAG}"
     TARGET: "injector"
-    IMAGE: "chaos-injector"
-    TAG: "${CI_COMMIT_TAG}"
+
+release-injector-tag-prod:
+  extends: .release-injector-tag
+  variables:
+    ENVIRONMENT: "staging"
+
+release-injector-tag-prod:
+  extends: .release-injector-tag
+  variables:
+    ENVIRONMENT: "prod"
