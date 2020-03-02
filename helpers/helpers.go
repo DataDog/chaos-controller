@@ -22,7 +22,7 @@ import (
 
 const (
 	// ChaosFailureInjectionImageVariableName is the name of the chaos failure injection image variable
-	ChaosFailureInjectionImageVariableName = "CHAOS_FI_IMAGE"
+	ChaosFailureInjectionImageVariableName = "CHAOS_INJECTOR_IMAGE"
 )
 
 // GeneratePod generates a pod from a generic pod template in the same namespace
