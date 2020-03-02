@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 * Improve visibilty of controller ([#94](https://github.com/DataDog/chaos-controller/pull/94))
+* Add CI jobs to push images publicly on Docker Hub ([#95](https://github.com/DataDog/chaos-controller/pull/95))
 
 ## [2.2.1]
 

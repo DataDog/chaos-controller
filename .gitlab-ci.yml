@@ -6,11 +6,14 @@
 ---
 variables:
   CURRENT_CI_IMAGE: 0.2.0
+  CONTROLLER_IMAGE_NAME: chaos-controller
+  INJECTOR_IMAGE_NAME: chaos-injector
 
 stages:
   - ci-image
   - build
-  - release
+  - release-internal
+  - release-external
 
 # CI image
 .docker-runner: &docker-runner
@@ -49,7 +52,7 @@ build:make:
     - "runner:docker"
     - "size:large"
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2223910-e97a88c-1.0.0
-  stage: release
+  stage: release-internal
   script:
     - release.sh -t=$TARGET -e=$ENVIRONMENT $IMAGE_NAME $IMAGE_TAG
 
@@ -59,7 +62,7 @@ release-manager-ref:
   except:
     - tags
   variables:
-    IMAGE_NAME: "chaos-controller"
+    IMAGE_NAME: "${CONTROLLER_IMAGE_NAME}"
     IMAGE_TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
     TARGET: "manager"
     ENVIRONMENT: "staging"
@@ -70,7 +73,7 @@ release-manager-ref:
   only:
     - tags
   variables:
-    IMAGE_NAME: "chaos-controller"
+    IMAGE_NAME: "${CONTROLLER_IMAGE_NAME}"
     IMAGE_TAG: "${CI_COMMIT_TAG}"
     TARGET: "manager"
 
@@ -90,7 +93,7 @@ release-injector-ref:
   except:
     - tags
   variables:
-    IMAGE_NAME: "chaos-injector"
+    IMAGE_NAME: "${INJECTOR_IMAGE_NAME}"
     IMAGE_TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
     TARGET: "injector"
     ENVIRONMENT: "staging"
@@ -101,7 +104,7 @@ release-injector-ref:
   only:
     - tags
   variables:
-    IMAGE_NAME: "chaos-injector"
+    IMAGE_NAME: "${INJECTOR_IMAGE_NAME}"
     IMAGE_TAG: "${CI_COMMIT_TAG}"
     TARGET: "injector"
 
@@ -114,3 +117,35 @@ release-injector-tag-prod:
   extends: .release-injector-tag
   variables:
     ENVIRONMENT: "prod"
+
+.release-docker-hub: &release-docker-hub
+  stage: release-external
+  tags: [ "runner:docker", "size:large" ]
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:v1912023-8c8dc1c-0.6.1
+  before_script:
+    - echo "Logging into the Docker Hub"
+    - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
+    - aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_pwd --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin docker.io
+  script:
+    - docker pull 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME}:${TAG}
+    - docker tag 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME}:${TAG} datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
+    - docker push datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
+    - docker pull 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME}:${TAG}
+    - docker tag 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME}:${TAG} datadog/${INJECTOR_IMAGE_NAME}:${TAG}
+    - docker push datadog/${INJECTOR_IMAGE_NAME}:${TAG}
+
+release-docker-hub-ref:
+  <<: *release-docker-hub
+  when: manual
+  except:
+    - tags
+  variables:
+    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+
+release-docker-hub-tag:
+  <<: *release-docker-hub
+  when: always
+  only:
+    - tags
+  variables:
+    TAG: "${CI_COMMIT_TAG}"
