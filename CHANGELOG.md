@@ -11,3 +11,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Refine CircleCI configuration by using executors and commands instead of templates
 * Rename the project to chaos-controller
 * Use the new docker-push image format for gitlab pipelines
+* Refine the check for when 3rd-party licenses are missing
