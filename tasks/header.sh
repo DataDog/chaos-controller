@@ -54,10 +54,10 @@ EXTS["yaml"]="#"
 EXTS["yml"]="#"
 
 declare -a exclude_files_array=("
-  api/v1beta1/zz_generated.deepcopy.go
-  config/webhook/manifests.yaml
-  config/rbac/role.yaml
-  config/crd/bases/chaos.datadoghq.com_disruptions.yaml
+  ./api/v1beta1/zz_generated.deepcopy.go
+  ./config/webhook/manifests.yaml
+  ./config/rbac/role.yaml
+  ./config/crd/bases/chaos.datadoghq.com_disruptions.yaml
 ");
 
 # insert header if not already present
