@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"fmt"
+
 	"github.com/DataDog/chaos-controller/metrics/datadog"
 	"github.com/DataDog/chaos-controller/metrics/noop"
 )
@@ -22,6 +24,6 @@ func GetSink(name string) (MetricsSink, error) {
 	case "noop":
 		return noop.New(), nil
 	default:
-		return noop.New(), nil
+		return nil, fmt.Errorf("unsupported metrics sink: %s", name)
 	}
 }
