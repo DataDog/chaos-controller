@@ -12,7 +12,7 @@ import (
 	"github.com/DataDog/datadog-go/statsd"
 )
 
-const metricPrefix = "chaos.nfi"
+const metricPrefix = "chaos.injector."
 
 // DatadogProvider ...
 type DatadogSink struct {
@@ -76,15 +76,15 @@ func (d *DatadogSink) metricWithStatus(name, containerID, uid string, succeed bo
 
 // MetricInjected increments the injected metric
 func (d *DatadogSink) MetricInjected(containerID, uid string, succeed bool) {
-	d.metricWithStatus(metricPrefix+".injected", containerID, uid, succeed)
+	d.metricWithStatus(metricPrefix+"injected", containerID, uid, succeed)
 }
 
 // MetricRulesInjected rules.increments the injected metric
 func (d *DatadogSink) MetricRulesInjected(containerID, uid string, succeed bool) {
-	d.metricWithStatus(metricPrefix+".rules.injected", containerID, uid, succeed)
+	d.metricWithStatus(metricPrefix+"rules.injected", containerID, uid, succeed)
 }
 
 // MetricCleaned increments the cleaned metric
 func (d *DatadogSink) MetricCleaned(containerID, uid string, succeed bool) {
-	d.metricWithStatus(metricPrefix+".cleaned", containerID, uid, succeed)
+	d.metricWithStatus(metricPrefix+"cleaned", containerID, uid, succeed)
 }
