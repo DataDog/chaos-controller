@@ -41,7 +41,7 @@ func main() {
 
 	log = zapInstance.Sugar()
 
-	ms, err := metrics.GetSink("datadog")
+	ms, err = metrics.GetSink("datadog")
 	if err != nil {
 		log.Fatalw("error while creating metric sink", "error", err)
 	}

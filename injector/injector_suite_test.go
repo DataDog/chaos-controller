@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/metrics"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -18,6 +19,7 @@ import (
 )
 
 var log *zap.SugaredLogger
+var ms metrics.MetricsSink
 
 // fake container
 type fakeContainer struct {
@@ -56,6 +58,7 @@ var _ = BeforeSuite(func() {
 	z, _ := zap.NewDevelopment()
 	log = z.Sugar()
 	os.Setenv("STATSD_URL", "localhost:54321")
+	ms, _ = metrics.GetSink("noop")
 })
 
 var _ = AfterSuite(func() {
