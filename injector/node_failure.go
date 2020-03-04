@@ -7,6 +7,7 @@ package injector
 
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
 )
 
@@ -29,21 +30,22 @@ type NodeFailureInjectorConfig struct {
 }
 
 // NewNodeFailureInjector creates a NodeFailureInjector object with the default drivers
-func NewNodeFailureInjector(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger) Injector {
+func NewNodeFailureInjector(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger, metrics metrics.MetricsSink) Injector {
 	config := NodeFailureInjectorConfig{
 		FileWriter: standardFileWriter{},
 	}
 
-	return NewNodeFailureInjectorWithConfig(uid, spec, log, config)
+	return NewNodeFailureInjectorWithConfig(uid, spec, log, metrics, config)
 }
 
 // NewNodeFailureInjectorWithConfig creates a NodeFailureInjector object with the given config,
 // missing fields being initialized with the defaults
-func NewNodeFailureInjectorWithConfig(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger, config NodeFailureInjectorConfig) Injector {
+func NewNodeFailureInjectorWithConfig(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger, metrics metrics.MetricsSink, config NodeFailureInjectorConfig) Injector {
 	return nodeFailureInjector{
 		injector: injector{
-			uid: uid,
-			log: log,
+			uid:     uid,
+			log:     log,
+			metrics: metrics,
 		},
 		spec:   spec,
 		config: config,

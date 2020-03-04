@@ -12,6 +12,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/network"
 	"go.uber.org/zap"
 )
@@ -32,13 +33,13 @@ type NetworkLatencyInjectorConfig struct {
 }
 
 // NewNetworkLatencyInjector creates a NetworkLatencyInjector object with the default drivers
-func NewNetworkLatencyInjector(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger) Injector {
-	return NewNetworkLatencyInjectorWithConfig(uid, spec, ctn, log, NetworkLatencyInjectorConfig{})
+func NewNetworkLatencyInjector(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, metrics metrics.MetricsSink) Injector {
+	return NewNetworkLatencyInjectorWithConfig(uid, spec, ctn, log, metrics, NetworkLatencyInjectorConfig{})
 }
 
 // NewNetworkLatencyInjectorWithConfig creates a NetworkLatencyInjector object with the given config,
 // missing fields being initialized with the defaults
-func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, config NetworkLatencyInjectorConfig) Injector {
+func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, metrics metrics.MetricsSink, config NetworkLatencyInjectorConfig) Injector {
 	// traffic controller
 	if config.TrafficController == nil {
 		config.TrafficController = network.NewTrafficController(log)
@@ -57,8 +58,9 @@ func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatency
 	return networkLatencyInjector{
 		containerInjector: containerInjector{
 			injector: injector{
-				uid: uid,
-				log: log,
+				uid:     uid,
+				log:     log,
+				metrics: metrics,
 			},
 			container: ctn,
 		},

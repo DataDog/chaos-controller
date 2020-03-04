@@ -8,6 +8,7 @@ package main
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/spf13/cobra"
 )
 
@@ -23,8 +24,13 @@ var nodeFailureInjectCmd = &cobra.Command{
 			Shutdown: shutdown,
 		}
 
+		metrics, err := metrics.GetSink("noop")
+		if err != nil {
+			log.Fatalw("error while creating metric sink", "error", err)
+		}
+
 		// inject
-		i := injector.NewNodeFailureInjector(uid, spec, log)
+		i := injector.NewNodeFailureInjector(uid, spec, log, metrics)
 		i.Inject()
 	},
 }
