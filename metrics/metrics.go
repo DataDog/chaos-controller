@@ -11,9 +11,9 @@ type MetricsSink interface {
 	EventWithTags(title, text string, tags []string)
 	EventCleanFailure(containerID, uid string)
 	EventInjectFailure(containerID, uid string)
-	MetricInjected(containerID, uid string, succeed bool)
-	MetricRulesInjected(containerID, uid string, succeed bool)
-	MetricCleaned(containerID, uid string, succeed bool)
+	MetricInjected(containerID, uid string, succeed bool, tags []string)
+	MetricRulesInjected(containerID, uid string, succeed bool, tags []string)
+	MetricCleaned(containerID, uid string, succeed bool, tags []string)
 }
 
 // GetSink returns an initiated sink

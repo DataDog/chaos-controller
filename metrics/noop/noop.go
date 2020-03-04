@@ -28,16 +28,16 @@ func (n *NoopSink) EventInjectFailure(containerID, uid string) {
 }
 
 // MetricInjected increments the injected metric
-func (n *NoopSink) MetricInjected(containerID, uid string, succeed bool) {
+func (n *NoopSink) MetricInjected(containerID, uid string, succeed bool, tags []string) {
 	log.Printf("MetricInjected %v", containerID)
 }
 
 // MetricRulesInjected rules.increments the injected metric
-func (n *NoopSink) MetricRulesInjected(containerID, uid string, succeed bool) {
+func (n *NoopSink) MetricRulesInjected(containerID, uid string, succeed bool, tags []string) {
 	log.Printf("MetricRulesInjected %v", containerID)
 }
 
 // MetricCleaned increments the cleaned metric
-func (n *NoopSink) MetricCleaned(containerID, uid string, succeed bool) {
+func (n *NoopSink) MetricCleaned(containerID, uid string, succeed bool, tags []string) {
 	log.Printf("MetricCleaned %v", containerID)
 }

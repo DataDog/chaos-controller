@@ -63,28 +63,30 @@ func (d *DatadogSink) EventInjectFailure(containerID, uid string) {
 	)
 }
 
-func (d *DatadogSink) metricWithStatus(name, containerID, uid string, succeed bool) {
+func (d *DatadogSink) metricWithStatus(name, containerID, uid string, succeed bool, tags []string) {
 	var status string
 	if succeed {
 		status = "succeed"
 	} else {
 		status = "failed"
 	}
+	t := []string{"containerID:" + containerID, "UID:" + uid, "status:" + status}
+	t = append(t, tags...)
 
-	d.Incr(name, []string{"containerID" + containerID, "UID:" + uid, "status:" + status}, 1)
+	d.Incr(name, t, 1)
 }
 
 // MetricInjected increments the injected metric
-func (d *DatadogSink) MetricInjected(containerID, uid string, succeed bool) {
-	d.metricWithStatus(metricPrefix+"injected", containerID, uid, succeed)
+func (d *DatadogSink) MetricInjected(containerID, uid string, succeed bool, tags []string) {
+	d.metricWithStatus(metricPrefix+"injected", containerID, uid, succeed, tags)
 }
 
 // MetricRulesInjected rules.increments the injected metric
-func (d *DatadogSink) MetricRulesInjected(containerID, uid string, succeed bool) {
-	d.metricWithStatus(metricPrefix+"rules.injected", containerID, uid, succeed)
+func (d *DatadogSink) MetricRulesInjected(containerID, uid string, succeed bool, tags []string) {
+	d.metricWithStatus(metricPrefix+"rules.injected", containerID, uid, succeed, tags)
 }
 
 // MetricCleaned increments the cleaned metric
-func (d *DatadogSink) MetricCleaned(containerID, uid string, succeed bool) {
-	d.metricWithStatus(metricPrefix+"cleaned", containerID, uid, succeed)
+func (d *DatadogSink) MetricCleaned(containerID, uid string, succeed bool, tags []string) {
+	d.metricWithStatus(metricPrefix+"cleaned", containerID, uid, succeed, tags)
 }
