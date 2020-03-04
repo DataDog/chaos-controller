@@ -4,7 +4,7 @@
 
 More extensive documentation about testing can be found in the testing [docs](docs/testing.md)
 
-### Quickstart
+### Quick start
 
 Install the [required](docs/testing.md#requirements) requirements for this project first.
 
@@ -24,7 +24,7 @@ If the controller is already deployed, you'll have to remove the running pod for
 The [samples](config/samples) contains sample data which can be used to test your changes.
 
 * [deployment.yaml](config/samples/deployment.yaml) contains a simple container which can be used for testing
-* [chaos_v1beta1_disruption.yaml](config/samples/chaos_v1beta1_disruption.yaml) contains a Disrption resource. Feel free to comment out want you don't need.
+* [chaos_v1beta1_disruption.yaml](config/samples/chaos_v1beta1_disruption.yaml) contains a Disruption resource. Feel free to comment out want you don't need.
 
 Both samples can be applied using kubectl: `kubectl apply -f deployment.yaml`.
 

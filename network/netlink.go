@@ -12,7 +12,7 @@ import (
 )
 
 // NetlinkAdapter is an interface being able to read
-// the host network interfaces informations
+// the host network interfaces information
 type NetlinkAdapter interface {
 	LinkList() ([]NetlinkLink, error)
 	LinkByIndex(index int) (NetlinkLink, error)

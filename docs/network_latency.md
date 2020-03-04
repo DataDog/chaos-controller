@@ -21,6 +21,7 @@ Please note that to create a `prio` qdisc on a virtual interface (such as a dock
 ## Kernel modules
 
 The injector needs some kernel modules to be enabled to be able to run:
+
 * `sch_netem` for the tc network emulator module
 * `sch_prio` for the tc prio qdisc creation
 
