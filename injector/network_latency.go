@@ -33,13 +33,13 @@ type NetworkLatencyInjectorConfig struct {
 }
 
 // NewNetworkLatencyInjector creates a NetworkLatencyInjector object with the default drivers
-func NewNetworkLatencyInjector(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.MetricsSink) Injector {
+func NewNetworkLatencyInjector(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
 	return NewNetworkLatencyInjectorWithConfig(uid, spec, ctn, log, ms, NetworkLatencyInjectorConfig{})
 }
 
 // NewNetworkLatencyInjectorWithConfig creates a NetworkLatencyInjector object with the given config,
 // missing fields being initialized with the defaults
-func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.MetricsSink, config NetworkLatencyInjectorConfig) Injector {
+func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config NetworkLatencyInjectorConfig) Injector {
 	// traffic controller
 	if config.TrafficController == nil {
 		config.TrafficController = network.NewTrafficController(log)
@@ -225,7 +225,6 @@ func (i networkLatencyInjector) Inject() {
 		},
 	)
 	i.ms.MetricInjected(i.container.ID(), i.uid, true, []string{"kind:network_latency"})
-
 }
 
 // Clean cleans the injected latency
@@ -264,6 +263,7 @@ func (i networkLatencyInjector) Clean() {
 			i.log.Fatalf("can't delete the %s link qdisc: %w", link.Name(), err)
 		}
 	}
+
 	i.ms.EventWithTags(
 		"network latency cleaned",
 		"network latency cleaned",

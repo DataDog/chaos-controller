@@ -7,7 +7,8 @@ import (
 	"github.com/DataDog/chaos-controller/metrics/noop"
 )
 
-type MetricsSink interface {
+// Sink describes a metric sink
+type Sink interface {
 	EventWithTags(title, text string, tags []string)
 	EventCleanFailure(containerID, uid string)
 	EventInjectFailure(containerID, uid string)
@@ -17,7 +18,7 @@ type MetricsSink interface {
 }
 
 // GetSink returns an initiated sink
-func GetSink(name string) (MetricsSink, error) {
+func GetSink(name string) (Sink, error) {
 	switch name {
 	case "datadog":
 		return datadog.New(), nil

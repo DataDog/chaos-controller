@@ -20,7 +20,7 @@ type Injector interface {
 // injector represents a generic failure injector
 type injector struct {
 	log *zap.SugaredLogger
-	ms  metrics.MetricsSink
+	ms  metrics.Sink
 	uid string
 }
 

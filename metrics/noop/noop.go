@@ -4,40 +4,40 @@ import (
 	"log"
 )
 
-// NoopSink ...
-type NoopSink struct{}
+// Sink describes a no-op sink
+type Sink struct{}
 
 // New ...
-func New() *NoopSink {
-	return &NoopSink{}
+func New() *Sink {
+	return &Sink{}
 }
 
 // EventWithTags creates a new event with the given title, text and tags and send it
-func (n *NoopSink) EventWithTags(title, text string, tags []string) {
+func (n *Sink) EventWithTags(title, text string, tags []string) {
 	log.Printf("%v %v %v", title, text, tags)
 }
 
 // EventCleanFailure sends an event to datadog specifying a failure clean fail
-func (n *NoopSink) EventCleanFailure(containerID, uid string) {
+func (n *Sink) EventCleanFailure(containerID, uid string) {
 	log.Printf("EventCleanFailure %v", containerID)
 }
 
 // EventInjectFailure sends an event to datadog specifying a failure inject fail
-func (n *NoopSink) EventInjectFailure(containerID, uid string) {
+func (n *Sink) EventInjectFailure(containerID, uid string) {
 	log.Printf("EventInjectFailure %v", containerID)
 }
 
 // MetricInjected increments the injected metric
-func (n *NoopSink) MetricInjected(containerID, uid string, succeed bool, tags []string) {
+func (n *Sink) MetricInjected(containerID, uid string, succeed bool, tags []string) {
 	log.Printf("MetricInjected %v", containerID)
 }
 
 // MetricRulesInjected rules.increments the injected metric
-func (n *NoopSink) MetricRulesInjected(containerID, uid string, succeed bool, tags []string) {
+func (n *Sink) MetricRulesInjected(containerID, uid string, succeed bool, tags []string) {
 	log.Printf("MetricRulesInjected %v", containerID)
 }
 
 // MetricCleaned increments the cleaned metric
-func (n *NoopSink) MetricCleaned(containerID, uid string, succeed bool, tags []string) {
+func (n *Sink) MetricCleaned(containerID, uid string, succeed bool, tags []string) {
 	log.Printf("MetricCleaned %v", containerID)
 }

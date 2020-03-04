@@ -19,7 +19,7 @@ import (
 )
 
 var log *zap.SugaredLogger
-var ms metrics.MetricsSink
+var ms metrics.Sink
 
 // fake container
 type fakeContainer struct {

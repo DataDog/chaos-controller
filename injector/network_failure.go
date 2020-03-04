@@ -48,13 +48,13 @@ type networkFailureInjector struct {
 }
 
 // NewNetworkFailureInjector creates a NetworkFailureInjector object with default drivers
-func NewNetworkFailureInjector(uid string, spec v1beta1.NetworkFailureSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.MetricsSink) (Injector, error) {
+func NewNetworkFailureInjector(uid string, spec v1beta1.NetworkFailureSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) (Injector, error) {
 	return NewNetworkFailureInjectorWithConfig(uid, spec, ctn, log, ms, &NetworkFailureInjectorConfig{})
 }
 
 // NewNetworkFailureInjectorWithConfig creates a NetworkFailureInjector object with the given config,
 // missing field being initialized with the defaults
-func NewNetworkFailureInjectorWithConfig(uid string, spec v1beta1.NetworkFailureSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.MetricsSink, config *NetworkFailureInjectorConfig) (Injector, error) {
+func NewNetworkFailureInjectorWithConfig(uid string, spec v1beta1.NetworkFailureSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config *NetworkFailureInjectorConfig) (Injector, error) {
 	// iptables driver
 	if config.IPTables == nil {
 		ipt, err := iptables.New()

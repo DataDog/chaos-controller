@@ -21,7 +21,7 @@ var rootCmd = &cobra.Command{
 }
 
 var log *zap.SugaredLogger
-var ms metrics.MetricsSink
+var ms metrics.Sink
 
 func init() {
 	rootCmd.AddCommand(networkFailureCmd)
