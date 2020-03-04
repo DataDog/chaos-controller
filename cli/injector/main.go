@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -20,6 +21,7 @@ var rootCmd = &cobra.Command{
 }
 
 var log *zap.SugaredLogger
+var ms metrics.MetricsSink
 
 func init() {
 	rootCmd.AddCommand(networkFailureCmd)
@@ -38,6 +40,11 @@ func main() {
 	}
 
 	log = zapInstance.Sugar()
+
+	ms, err := metrics.GetSink("datadog")
+	if err != nil {
+		log.Fatalw("error while creating metric sink", "error", err)
+	}
 
 	// execute command
 	if err = rootCmd.Execute(); err != nil {

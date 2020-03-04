@@ -19,9 +19,9 @@ type Injector interface {
 
 // injector represents a generic failure injector
 type injector struct {
-	log     *zap.SugaredLogger
-	metrics metrics.MetricsSink
-	uid     string
+	log *zap.SugaredLogger
+	ms  metrics.MetricsSink
+	uid string
 }
 
 // containerInjector represents an injector for containers

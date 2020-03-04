@@ -9,7 +9,6 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/spf13/cobra"
 )
 
@@ -30,11 +29,6 @@ var networkFailureInjectCmd = &cobra.Command{
 			log.Fatalw("can't create container object", "error", err)
 		}
 
-		metrics, err := metrics.GetSink("noop")
-		if err != nil {
-			log.Fatalw("error while creating metric sink", "error", err)
-		}
-
 		// prepare injection object
 		spec := v1beta1.NetworkFailureSpec{
 			Hosts:       hosts,
@@ -42,7 +36,7 @@ var networkFailureInjectCmd = &cobra.Command{
 			Protocol:    protocol,
 			Probability: probability,
 		}
-		i, err := injector.NewNetworkFailureInjector(uid, spec, c, log, metrics)
+		i, err := injector.NewNetworkFailureInjector(uid, spec, c, log, ms)
 		if err != nil {
 			log.Fatalw("can't initialize the injector", "error", err)
 		}

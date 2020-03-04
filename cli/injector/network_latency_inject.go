@@ -9,7 +9,6 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/spf13/cobra"
 )
 
@@ -28,11 +27,6 @@ var networkLatencyInjectCmd = &cobra.Command{
 			log.Fatalw("can't create container object", "error", err)
 		}
 
-		metrics, err := metrics.GetSink("noop")
-		if err != nil {
-			log.Fatalw("error while creating metric sink", "error", err)
-		}
-
 		// prepare spec
 		spec := v1beta1.NetworkLatencySpec{
 			Delay: delay,
@@ -40,7 +34,7 @@ var networkLatencyInjectCmd = &cobra.Command{
 		}
 
 		// inject
-		i := injector.NewNetworkLatencyInjector(uid, spec, c, log, metrics)
+		i := injector.NewNetworkLatencyInjector(uid, spec, c, log, ms)
 		i.Inject()
 	},
 }
