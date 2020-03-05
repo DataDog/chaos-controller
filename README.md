@@ -33,6 +33,7 @@ Here is [a full example of the disruption resource](config/samples/chaos_v1beta1
 ## How to deploy it on my cluster?
 
 To deploy it on your cluster, two commands are needed:
+
 * `make install` will create the CRD for the `Disruption` kind
 * `make deploy` will apply the needed manifests to create the controller deployment
 

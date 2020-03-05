@@ -19,7 +19,7 @@ spec:
     protocol: tcp # protocol to drop packets on (can be tcp or udp)
   networkLatency: # network latency
     delay: 1000 # delay in ms
-    hosts: # desination hosts to add latency to
+    hosts: # destination hosts to add latency to
       - 10.0.0.0/8
   nodeFailure: # node kernel panic
     shutdown: false # keep the host down or reboot it
