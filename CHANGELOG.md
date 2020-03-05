@@ -13,3 +13,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Rename the project to chaos-controller
 * Use the new docker-push image format for Gitlab pipelines
 * Refine the check for when 3rd-party licenses are missing
+* Add Python 'Invoke' for task management
