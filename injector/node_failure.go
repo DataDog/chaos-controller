@@ -43,9 +43,10 @@ func NewNodeFailureInjector(uid string, spec v1beta1.NodeFailureSpec, log *zap.S
 func NewNodeFailureInjectorWithConfig(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger, ms metrics.Sink, config NodeFailureInjectorConfig) Injector {
 	return nodeFailureInjector{
 		injector: injector{
-			uid: uid,
-			log: log,
-			ms:  ms,
+			uid:  uid,
+			log:  log,
+			ms:   ms,
+			kind: "node_failure",
 		},
 		spec:   spec,
 		config: config,
