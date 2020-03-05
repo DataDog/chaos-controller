@@ -46,3 +46,8 @@ func (n *Sink) MetricRulesInjected(containerID, uid string, succeed bool, tags [
 func (n *Sink) MetricCleaned(containerID, uid string, succeed bool, tags []string) {
 	log.Printf("MetricCleaned %v", containerID)
 }
+
+// MetricIPTablesRulesInjected increment iptables_rules metrics
+func (n *Sink) MetricIPTablesRulesInjected(containerID, uid string, succeed bool, tags []string) {
+	log.Printf("MetricIPTablesRulesInjected %v", containerID)
+}

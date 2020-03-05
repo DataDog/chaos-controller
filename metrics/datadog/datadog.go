@@ -93,3 +93,8 @@ func (d *Sink) MetricRulesInjected(containerID, uid string, succeed bool, tags [
 func (d *Sink) MetricCleaned(containerID, uid string, succeed bool, tags []string) {
 	d.metricWithStatus(metricPrefix+"cleaned", containerID, uid, succeed, tags)
 }
+
+// MetricIPTablesRulesInjected increment iptables_rules metrics
+func (d *Sink) MetricIPTablesRulesInjected(containerID, uid string, succeed bool, tags []string) {
+	d.metricWithStatus(metricPrefix+"iptables_rules.injected", containerID, uid, succeed, tags)
+}

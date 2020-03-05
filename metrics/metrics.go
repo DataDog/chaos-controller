@@ -14,12 +14,13 @@ import (
 
 // Sink describes a metric sink
 type Sink interface {
-	EventWithTags(title, text string, tags []string)
 	EventCleanFailure(containerID, uid string)
 	EventInjectFailure(containerID, uid string)
-	MetricInjected(containerID, uid string, succeed bool, tags []string)
-	MetricRulesInjected(containerID, uid string, succeed bool, tags []string)
+	EventWithTags(title, text string, tags []string)
 	MetricCleaned(containerID, uid string, succeed bool, tags []string)
+	MetricInjected(containerID, uid string, succeed bool, tags []string)
+	MetricIPTablesRulesInjected(containerID, uid string, succeed bool, tags []string)
+	MetricRulesInjected(containerID, uid string, succeed bool, tags []string)
 }
 
 // GetSink returns an initiated sink
