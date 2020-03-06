@@ -14,6 +14,7 @@ import (
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/types"
 	"github.com/coreos/go-iptables/iptables"
 	"go.uber.org/zap"
 )
@@ -76,7 +77,7 @@ func NewNetworkFailureInjectorWithConfig(uid string, spec v1beta1.NetworkFailure
 				uid:  uid,
 				log:  log,
 				ms:   ms,
-				kind: "network_failure",
+				kind: types.DisruptionKindNetworkFailure,
 			},
 			container: ctn,
 		},
@@ -117,7 +118,7 @@ func (i networkFailureInjector) Inject() {
 	ips, err := resolveHosts(i.config.DNSClient, hosts)
 	if err != nil {
 		i.ms.EventInjectFailure(i.container.ID(), i.uid)
-		i.ms.MetricInjected(i.container.ID(), i.uid, false, []string{"kind:" + i.kind})
+		i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{})
 		i.log.Fatalw("unable to resolve host", "error", err, "host", hosts[0])
 	}
 
@@ -132,7 +133,7 @@ func (i networkFailureInjector) Inject() {
 		err = i.config.IPTables.NewChain(iptablesTable, dedicatedChain)
 		if err != nil {
 			i.ms.EventInjectFailure(i.container.ID(), i.uid)
-			i.ms.MetricInjected(i.container.ID(), i.uid, false, []string{"kind:" + i.kind})
+			i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{})
 			i.log.Fatalw("error while creating the dedicated chain",
 				"error", err,
 				"chain", dedicatedChain,
@@ -147,7 +148,7 @@ func (i networkFailureInjector) Inject() {
 	err = i.config.IPTables.AppendUnique(iptablesTable, iptablesOutputChain, ruleParts...)
 	if err != nil {
 		i.ms.EventInjectFailure(i.container.ID(), i.uid)
-		i.ms.MetricInjected(i.container.ID(), i.uid, false, []string{"kind:" + i.kind})
+		i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{})
 		i.log.Fatalw("error while injecting the jump rule", "error", err, "rule", rule)
 	}
 
@@ -175,8 +176,8 @@ func (i networkFailureInjector) Inject() {
 		err = i.config.IPTables.AppendUnique(iptablesTable, dedicatedChain, ruleParts...)
 		if err != nil {
 			i.ms.EventInjectFailure(i.container.ID(), i.uid)
-			i.ms.MetricInjected(i.container.ID(), i.uid, false, []string{"kind:" + i.kind})
-			i.ms.MetricIPTablesRulesInjected(i.container.ID(), i.uid, false, []string{"kind:" + i.kind})
+			i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{})
+			i.ms.MetricIPTablesRulesInjected(i.container.ID(), i.uid, false, i.kind, []string{})
 			i.log.Fatalw("error while injecting the drop rule", "error", err, "rule", rule)
 
 			return
@@ -191,10 +192,10 @@ func (i networkFailureInjector) Inject() {
 			},
 		)
 
-		i.ms.MetricIPTablesRulesInjected(i.container.ID(), i.uid, true, []string{"kind:" + i.kind})
+		i.ms.MetricIPTablesRulesInjected(i.container.ID(), i.uid, true, i.kind, []string{})
 	}
 
-	i.ms.MetricInjected(i.container.ID(), i.uid, true, []string{"kind:" + i.kind})
+	i.ms.MetricInjected(i.container.ID(), i.uid, true, i.kind, []string{})
 }
 
 // Clean removes all the injected failures in the given container
@@ -224,7 +225,7 @@ func (i networkFailureInjector) Clean() {
 		exists, err := i.config.IPTables.Exists(iptablesTable, iptablesOutputChain, ruleParts...)
 		if err != nil {
 			i.ms.EventCleanFailure(i.container.ID(), i.uid)
-			i.ms.MetricCleaned(i.container.ID(), i.uid, false, []string{"kind:" + i.kind})
+			i.ms.MetricCleaned(i.container.ID(), i.uid, false, i.kind, []string{})
 			i.log.Fatalw("unable to check if the dedicated chain jump rule exists", "chain", dedicatedChain, "error", err)
 		}
 
@@ -234,7 +235,7 @@ func (i networkFailureInjector) Clean() {
 			err = i.config.IPTables.Delete(iptablesTable, iptablesOutputChain, ruleParts...)
 			if err != nil {
 				i.ms.EventCleanFailure(i.container.ID(), i.uid)
-				i.ms.MetricCleaned(i.container.ID(), i.uid, false, []string{"kind:" + i.kind})
+				i.ms.MetricCleaned(i.container.ID(), i.uid, false, i.kind, []string{})
 				i.log.Fatalw("failed to clean dedicated chain jump rule", "chain", dedicatedChain, "error", err)
 			}
 		}
@@ -245,7 +246,7 @@ func (i networkFailureInjector) Clean() {
 		err = i.config.IPTables.ClearChain(iptablesTable, dedicatedChain)
 		if err != nil {
 			i.ms.EventCleanFailure(i.container.ID(), i.uid)
-			i.ms.MetricCleaned(i.container.ID(), i.uid, false, []string{"kind:" + i.kind})
+			i.ms.MetricCleaned(i.container.ID(), i.uid, false, i.kind, []string{})
 			i.log.Fatalw("failed to clean dedicated chain", "chain", dedicatedChain, "error", err)
 		}
 
@@ -254,7 +255,7 @@ func (i networkFailureInjector) Clean() {
 		err = i.config.IPTables.DeleteChain(iptablesTable, dedicatedChain)
 		if err != nil {
 			i.ms.EventCleanFailure(i.container.ID(), i.uid)
-			i.ms.MetricCleaned(i.container.ID(), i.uid, false, []string{"kind:" + i.kind})
+			i.ms.MetricCleaned(i.container.ID(), i.uid, false, i.kind, []string{})
 			i.log.Fatalw("failed to delete dedicated chain", "chain", dedicatedChain, "error", err)
 		}
 	}
@@ -267,7 +268,7 @@ func (i networkFailureInjector) Clean() {
 			"UID:" + i.uid,
 		},
 	)
-	i.ms.MetricCleaned(i.container.ID(), i.uid, true, []string{"kind:" + i.kind})
+	i.ms.MetricCleaned(i.container.ID(), i.uid, true, i.kind, []string{})
 }
 
 // generateRuleParts generates the iptables rules to apply

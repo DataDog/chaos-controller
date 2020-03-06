@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/datadog-go/statsd"
 )
 
@@ -65,7 +66,7 @@ func (d *Sink) EventInjectFailure(containerID, uid string) {
 	)
 }
 
-func (d *Sink) metricWithStatus(name, containerID, uid string, succeed bool, tags []string) {
+func (d *Sink) metricWithStatus(name, containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
 	var status string
 	if succeed {
 		status = "succeed"
@@ -73,28 +74,28 @@ func (d *Sink) metricWithStatus(name, containerID, uid string, succeed bool, tag
 		status = "failed"
 	}
 
-	t := []string{"containerID:" + containerID, "UID:" + uid, "status:" + status}
+	t := []string{"containerID:" + containerID, "UID:" + uid, "status:" + status, "kind:" + string(kind)}
 	t = append(t, tags...)
 
 	_ = d.Incr(name, t, 1)
 }
 
 // MetricInjected increments the injected metric
-func (d *Sink) MetricInjected(containerID, uid string, succeed bool, tags []string) {
-	d.metricWithStatus(metricPrefix+"injected", containerID, uid, succeed, tags)
+func (d *Sink) MetricInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
+	d.metricWithStatus(metricPrefix+"injected", containerID, uid, succeed, kind, tags)
 }
 
 // MetricRulesInjected rules.increments the injected metric
-func (d *Sink) MetricRulesInjected(containerID, uid string, succeed bool, tags []string) {
-	d.metricWithStatus(metricPrefix+"rules.injected", containerID, uid, succeed, tags)
+func (d *Sink) MetricRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
+	d.metricWithStatus(metricPrefix+"rules.injected", containerID, uid, succeed, kind, tags)
 }
 
 // MetricCleaned increments the cleaned metric
-func (d *Sink) MetricCleaned(containerID, uid string, succeed bool, tags []string) {
-	d.metricWithStatus(metricPrefix+"cleaned", containerID, uid, succeed, tags)
+func (d *Sink) MetricCleaned(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
+	d.metricWithStatus(metricPrefix+"cleaned", containerID, uid, succeed, kind, tags)
 }
 
 // MetricIPTablesRulesInjected increment iptables_rules metrics
-func (d *Sink) MetricIPTablesRulesInjected(containerID, uid string, succeed bool, tags []string) {
-	d.metricWithStatus(metricPrefix+"iptables_rules.injected", containerID, uid, succeed, tags)
+func (d *Sink) MetricIPTablesRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
+	d.metricWithStatus(metricPrefix+"iptables_rules.injected", containerID, uid, succeed, kind, tags)
 }

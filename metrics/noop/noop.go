@@ -7,6 +7,8 @@ package noop
 
 import (
 	"log"
+
+	"github.com/DataDog/chaos-controller/types"
 )
 
 // Sink describes a no-op sink
@@ -33,21 +35,21 @@ func (n *Sink) EventInjectFailure(containerID, uid string) {
 }
 
 // MetricInjected increments the injected metric
-func (n *Sink) MetricInjected(containerID, uid string, succeed bool, tags []string) {
+func (n *Sink) MetricInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
 	log.Printf("MetricInjected %v", containerID)
 }
 
 // MetricRulesInjected rules.increments the injected metric
-func (n *Sink) MetricRulesInjected(containerID, uid string, succeed bool, tags []string) {
+func (n *Sink) MetricRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
 	log.Printf("MetricRulesInjected %v", containerID)
 }
 
 // MetricCleaned increments the cleaned metric
-func (n *Sink) MetricCleaned(containerID, uid string, succeed bool, tags []string) {
+func (n *Sink) MetricCleaned(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
 	log.Printf("MetricCleaned %v", containerID)
 }
 
 // MetricIPTablesRulesInjected increment iptables_rules metrics
-func (n *Sink) MetricIPTablesRulesInjected(containerID, uid string, succeed bool, tags []string) {
+func (n *Sink) MetricIPTablesRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
 	log.Printf("MetricIPTablesRulesInjected %v", containerID)
 }

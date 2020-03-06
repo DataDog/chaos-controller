@@ -8,6 +8,7 @@ package injector
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
 )
 
@@ -46,7 +47,7 @@ func NewNodeFailureInjectorWithConfig(uid string, spec v1beta1.NodeFailureSpec, 
 			uid:  uid,
 			log:  log,
 			ms:   ms,
-			kind: "node_failure",
+			kind: types.DisruptionKindNodeFailure,
 		},
 		spec:   spec,
 		config: config,

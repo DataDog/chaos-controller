@@ -14,6 +14,7 @@ import (
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
 )
 
@@ -61,7 +62,7 @@ func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatency
 				uid:  uid,
 				log:  log,
 				ms:   ms,
-				kind: "network_latency",
+				kind: types.DisruptionKindNetworkLatency,
 			},
 			container: ctn,
 		},
@@ -155,7 +156,7 @@ func (i networkLatencyInjector) Inject() {
 		// retrieve link from name
 		link, err := i.config.NetlinkAdapter.LinkByName(linkName)
 		if err != nil {
-			i.ms.MetricInjected(i.container.ID(), i.uid, false, []string{"kind:" + i.kind, "link:" + linkName})
+			i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + linkName})
 			i.log.Fatalf("can't retrieve link %s: %w", linkName, err)
 		}
 
@@ -171,7 +172,7 @@ func (i networkLatencyInjector) Inject() {
 				clearTxQlen = true
 
 				if err := link.SetTxQLen(1000); err != nil {
-					i.ms.MetricInjected(i.container.ID(), i.uid, false, []string{"kind:" + i.kind, "link:" + link.Name()})
+					i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + link.Name()})
 					i.log.Fatalf("can't set tx queue length on interface %s: %w", link.Name(), err)
 				}
 			}
@@ -184,14 +185,14 @@ func (i networkLatencyInjector) Inject() {
 			priomap := [16]uint32{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}
 
 			if err := i.config.TrafficController.AddPrio(link.Name(), "root", 1, 4, priomap); err != nil {
-				i.ms.MetricInjected(i.container.ID(), i.uid, false, []string{"kind:" + i.kind, "link:" + link.Name()})
+				i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + link.Name()})
 				i.log.Fatalf("can't create a new qdisc for interface %s: %w", link.Name(), err)
 			}
 		}
 
 		// add delay
 		if err := i.config.TrafficController.AddDelay(link.Name(), parent, 0, delay); err != nil {
-			i.ms.MetricInjected(i.container.ID(), i.uid, false, []string{"kind:" + i.kind, "link:" + link.Name()})
+			i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + link.Name()})
 			i.log.Fatalf("can't add delay to the newly created qdisc for interface %s: %w", link.Name(), err)
 		}
 
@@ -200,7 +201,7 @@ func (i networkLatencyInjector) Inject() {
 		if len(ips) > 0 {
 			for _, ip := range ips {
 				if err := i.config.TrafficController.AddFilterDestIP(link.Name(), "1:0", 0, ip, "1:4"); err != nil {
-					i.ms.MetricInjected(i.container.ID(), i.uid, false, []string{"kind:" + i.kind, "link:" + link.Name()})
+					i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + link.Name()})
 					i.log.Fatalf("can't add a filter to interface %s: %w", link.Name(), err)
 				}
 			}
@@ -211,7 +212,7 @@ func (i networkLatencyInjector) Inject() {
 			i.log.Infof("clearing tx qlen for interface %s", link.Name())
 
 			if err := link.SetTxQLen(0); err != nil {
-				i.ms.MetricInjected(i.container.ID(), i.uid, false, []string{"kind:" + i.kind, "link:" + link.Name()})
+				i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + link.Name()})
 				i.log.Fatalf("can't clear %s link transmission queue length: %w", link.Name(), err)
 			}
 		}
@@ -225,7 +226,7 @@ func (i networkLatencyInjector) Inject() {
 			"UID:" + i.uid,
 		},
 	)
-	i.ms.MetricInjected(i.container.ID(), i.uid, true, []string{"kind:" + i.kind})
+	i.ms.MetricInjected(i.container.ID(), i.uid, true, i.kind, []string{})
 }
 
 // Clean cleans the injected latency

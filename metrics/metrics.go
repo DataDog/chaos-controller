@@ -10,6 +10,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/metrics/datadog"
 	"github.com/DataDog/chaos-controller/metrics/noop"
+	"github.com/DataDog/chaos-controller/types"
 )
 
 // Sink describes a metric sink
@@ -17,10 +18,10 @@ type Sink interface {
 	EventCleanFailure(containerID, uid string)
 	EventInjectFailure(containerID, uid string)
 	EventWithTags(title, text string, tags []string)
-	MetricCleaned(containerID, uid string, succeed bool, tags []string)
-	MetricInjected(containerID, uid string, succeed bool, tags []string)
-	MetricIPTablesRulesInjected(containerID, uid string, succeed bool, tags []string)
-	MetricRulesInjected(containerID, uid string, succeed bool, tags []string)
+	MetricCleaned(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
+	MetricInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
+	MetricIPTablesRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
+	MetricRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
 }
 
 // GetSink returns an initiated sink

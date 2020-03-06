@@ -8,6 +8,7 @@ package injector
 import (
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
 )
 
@@ -22,7 +23,7 @@ type injector struct {
 	log  *zap.SugaredLogger
 	ms   metrics.Sink
 	uid  string
-	kind string
+	kind types.DisruptionKind
 }
 
 // containerInjector represents an injector for containers
