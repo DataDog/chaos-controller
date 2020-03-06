@@ -140,16 +140,17 @@ jobs:
       - alpine_install_git
       - run:
           name: Ensure 3rd-party licenses are up-to-date
-          command: python3 tasks/3rdparty.py
+          command: inv license-check
       - run: git diff --exit-code
   # ensures that the license header is present on all the needed files
   license-header:
-    executor: bash
+    executor: python
     steps:
       - checkout
+      - python_install_requirements
       - run:
           name: Ensure license header is present
-          command: ./tasks/header.sh
+          command: inv header-check
   changelog:
     executor: bash
     steps:
