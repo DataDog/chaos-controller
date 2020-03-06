@@ -22,9 +22,11 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
 	"reflect"
 	"time"
 
@@ -32,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -53,10 +56,11 @@ const (
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
-	Datadog  *statsd.Client
+	Log             logr.Logger
+	Scheme          *runtime.Scheme
+	Recorder        record.EventRecorder
+	Datadog         *statsd.Client
+	PodTemplateSpec corev1.Pod
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -201,17 +205,35 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// generate injection pods specs
 		if instance.Spec.NetworkFailure != nil {
 			args := instance.Spec.NetworkFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
-			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkFailure))
+
+			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkFailure)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			chaosPods = append(chaosPods, chaosPod)
 		}
 
 		if instance.Spec.NetworkLatency != nil {
 			args := instance.Spec.NetworkLatency.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
-			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkLatency))
+
+			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkLatency)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			chaosPods = append(chaosPods, chaosPod)
 		}
 
 		if instance.Spec.NodeFailure != nil {
 			args := instance.Spec.NodeFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
-			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNodeFailure))
+
+			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNodeFailure)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			chaosPods = append(chaosPods, chaosPod)
 		}
 
 		// create injection pods
@@ -222,13 +244,13 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			}
 
 			// check if an injection pod already exists for the given (instance, namespace, disruption kind) tuple
-			found, err := helpers.GetOwnedPods(r.Client, instance, chaosPod.Labels)
+			found, err := r.getOwnedPods(instance, chaosPod.Labels)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 
-			if len(found.Items) == 0 {
-				r.Log.Info("creating chaos pod", "instance", instance.Name, "namespace", instance.Namespace)
+			if len(found) == 0 {
+				r.Log.Info("creating chaos pod", "instance", instance.Name, "namespace", instance.Namespace, "spec", chaosPod)
 
 				if err = r.Create(context.Background(), chaosPod); err != nil {
 					r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
@@ -305,12 +327,24 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 		// generate cleanup pods specs
 		if instance.Spec.NetworkFailure != nil {
 			args := instance.Spec.NetworkFailure.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID)
-			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkFailure))
+
+			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkFailure)
+			if err != nil {
+				return err
+			}
+
+			chaosPods = append(chaosPods, chaosPod)
 		}
 
 		if instance.Spec.NetworkLatency != nil {
 			args := instance.Spec.NetworkLatency.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID)
-			chaosPods = append(chaosPods, helpers.GeneratePod(instance.Name, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkLatency))
+
+			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkLatency)
+			if err != nil {
+				return err
+			}
+
+			chaosPods = append(chaosPods, chaosPod)
 		}
 
 		// create cleanup pods
@@ -399,37 +433,37 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 	return &corev1.PodList{Items: selectedPods}, nil
 }
 
-// getChaosPods returns all pods created by the given Disruption instance and being in the given mode (injection or cleanup)
-func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode) ([]corev1.Pod, error) {
-	pods := make([]corev1.Pod, 0)
-	podsInNs := &corev1.PodList{}
+func (r *DisruptionReconciler) getOwnedPods(instance *chaosv1beta1.Disruption, selector labels.Set) ([]corev1.Pod, error) {
+	ownedPods := make([]corev1.Pod, 0)
+	pods := &corev1.PodList{}
 	listOptions := &client.ListOptions{
-		Namespace: instance.Namespace,
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			chaostypes.PodModeLabel: string(mode),
-		}),
+		Namespace:     instance.Namespace,
+		LabelSelector: labels.SelectorFromSet(selector),
 	}
 
-	err := r.Client.List(context.Background(), podsInNs, listOptions)
+	err := r.Client.List(context.Background(), pods, listOptions)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error listing owned pods: %w", err)
 	}
 
 	// filter all pods in the same namespace as instance,
 	// only returning those owned by the given instance
-	for _, pod := range podsInNs.Items {
-		for _, ownerReference := range pod.OwnerReferences {
-			if ownerReference.UID != instance.UID {
-				continue
-			}
-
-			if len(pod.Spec.Containers) > 0 {
-				pods = append(pods, pod)
-			}
+	for _, pod := range pods.Items {
+		if metav1.IsControlledBy(&pod, instance) {
+			ownedPods = append(ownedPods, pod)
 		}
 	}
 
-	return pods, nil
+	return ownedPods, nil
+}
+
+// getChaosPods returns all pods created by the given Disruption instance and being in the given mode (injection or cleanup)
+func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode) ([]corev1.Pod, error) {
+	selector := map[string]string{
+		chaostypes.PodModeLabel: string(mode),
+	}
+
+	return r.getOwnedPods(instance, selector)
 }
 
 // getContainerID gets the ID of the first container ID found in a Pod
@@ -439,6 +473,44 @@ func getContainerID(pod *corev1.Pod) (string, error) {
 	}
 
 	return pod.Status.ContainerStatuses[0].ContainerID, nil
+}
+
+// generatePod generates a pod from a generic pod template in the same namespace
+// and on the same node as the given pod
+func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, target *corev1.Pod, args []string, mode chaostypes.PodMode, kind chaostypes.DisruptionKind) (*corev1.Pod, error) {
+	pod := corev1.Pod{}
+
+	image, ok := os.LookupEnv("CHAOS_INJECTOR_IMAGE")
+	if !ok {
+		image = "chaos-injector"
+	}
+
+	// copy pod template
+	data, err := json.Marshal(r.PodTemplateSpec)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling chaos pod template: %w", err)
+	}
+
+	err = json.Unmarshal(data, &pod)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling chaos pod template: %w", err)
+	}
+
+	// customize pod template
+	if pod.ObjectMeta.Labels == nil {
+		pod.ObjectMeta.Labels = map[string]string{}
+	}
+
+	pod.ObjectMeta.GenerateName = fmt.Sprintf("chaos-%s-%s-", instance.Name, mode)
+	pod.ObjectMeta.Namespace = target.Namespace
+	pod.ObjectMeta.Labels[chaostypes.PodModeLabel] = string(mode)
+	pod.ObjectMeta.Labels[chaostypes.TargetPodLabel] = target.Name
+	pod.ObjectMeta.Labels[chaostypes.DisruptionKindLabel] = string(kind)
+	pod.Spec.NodeName = target.Spec.NodeName
+	pod.Spec.Containers[0].Image = image
+	pod.Spec.Containers[0].Args = args
+
+	return &pod, nil
 }
 
 // SetupWithManager setups the current reconciler with the given manager

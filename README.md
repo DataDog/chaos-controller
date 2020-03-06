@@ -37,6 +37,20 @@ To deploy it on your cluster, two commands are needed:
 * `make install` will create the CRD for the `Disruption` kind
 * `make deploy` will apply the needed manifests to create the controller deployment
 
+### Chaos pod template
+
+The [manager configmap](config/manager/config.yaml) contains the chaos pod template (`pod-template.json`) used to generate injection and cleanup pods. This template can be customized but you have to keep in mind that some fields are overridden by the controller itself when generating the pod:
+
+* `.Metadata.GenerateName` is filled with a name like `chaos-<instace_name>-<mode>-` so it generates chaos pod names automatically
+* `.Metadata.Namespace` is filled with the same namespace as the targeted pod
+* `.Metadata.Labels`: a bunch of labels are added to existing labels
+	* `chaos.datadoghq.com/pod-mode`: the mode of the pod (`inject` or `cleanup`)
+	* `chaos.datadoghq.com/target-pod`: the pod targeted by the chaos pod
+	* `chaos.datadoghq.com/disruption-kind`: the chaos pod failure kind
+* `.Spec.NodeName` is filled with the same value as the targeted pod node name to fix the chaos pod on the same node as the targeted pod
+* `.Spec.Containers[0].Image` is filled with the chaos injector image
+* `.Spec.Containers[0].Args` is filled with arguments built for the chaos injector image
+
 ## Contributing
 
 Please read the [contributing documentation](CONTRIBUTING.md) for more information.

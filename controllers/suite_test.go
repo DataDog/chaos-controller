@@ -157,6 +157,15 @@ var _ = BeforeSuite(func(done Done) {
 		Log:      ctrl.Log.WithName("controllers").WithName("Disruption"),
 		Recorder: k8sManager.GetEventRecorderFor("disruption-controller"),
 		Scheme:   scheme.Scheme,
+		PodTemplateSpec: corev1.Pod{
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name: "chaos",
+					},
+				},
+			},
+		},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
