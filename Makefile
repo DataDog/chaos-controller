@@ -17,7 +17,7 @@ all: manager injector
 
 # Run tests
 test: generate manifests
-	go test ./... -coverprofile cover.out -gcflags=-l
+	go test ./... -coverprofile cover.out
 
 # Build manager binary
 manager: generate
@@ -80,14 +80,6 @@ docker-build-injector:
 	minikube ssh -- sudo ctr cri load /tmp/injector.tar
 
 docker-build: docker-build-manager docker-build-injector
-
-# TODO: remove me
-# workaround to run tests in a container to avoid mprotect syscall issues
-# with macOS Catalina: https://github.com/agiledragon/gomonkey/issues/10
-# should be removed as soon as we got rid of the monkey patching in the tests
-docker-test:
-	docker build -t controller-ci ci
-	docker run --rm -v $(shell pwd):/workspace -w /workspace controller-ci go test ./... -gcflags=-l
 
 # find or download controller-gen
 # download controller-gen if necessary

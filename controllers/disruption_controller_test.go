@@ -24,20 +24,47 @@ import (
 // expectChaosPod retrieves the list of created chaos pods depending on the
 // given mode (inject or clean) and returns an error if it doesn't
 // equal the given count
-func expectChaosPod(mode chaostypes.PodMode, count int) error {
+func expectChaosPod(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode, count int) error {
 	l := corev1.PodList{}
 	ls := labels.NewSelector()
+
+	// create requirements
 	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetPodLabel, selection.In, []string{"foo", "bar"})
 	podModRequirement, _ := labels.NewRequirement(chaostypes.PodModeLabel, selection.Equals, []string{string(mode)})
+
+	// add requirements to label selector
 	ls = ls.Add(*targetPodRequirement, *podModRequirement)
+
+	// get matching pods
 	if err := k8sClient.List(context.Background(), &l, &client.ListOptions{
 		Namespace:     "default",
 		LabelSelector: ls,
 	}); err != nil {
 		return fmt.Errorf("can't list chaos pods: %w", err)
 	}
+
+	// ensure count is correct
 	if len(l.Items) != count {
 		return fmt.Errorf("unexpected injection pods count: %d", len(l.Items))
+	}
+
+	// ensure generated pods have the needed fields
+	for _, p := range l.Items {
+		if p.GenerateName == "" {
+			return fmt.Errorf("GenerateName field can't be empty")
+		}
+		if p.Namespace != instance.Namespace {
+			return fmt.Errorf("pod namesapce must match instance namespace")
+		}
+		if p.Labels[chaostypes.PodModeLabel] != string(mode) {
+			return fmt.Errorf("pod mode label should be set and match the actual mode")
+		}
+		if len(p.Spec.Containers[0].Args) == 0 {
+			return fmt.Errorf("pod container args must be set")
+		}
+		if p.Spec.Containers[0].Image == "" {
+			return fmt.Errorf("pod container image must be set")
+		}
 	}
 
 	return nil
@@ -81,14 +108,14 @@ var _ = Describe("Disruption Controller", func() {
 			Expect(k8sClient.Create(context.Background(), disruption)).To(BeNil())
 
 			By("Ensuring that the inject pod has been created")
-			Eventually(func() error { return expectChaosPod(chaostypes.PodModeInject, 4) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 4) }, timeout).Should(Succeed())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
 			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
 
 			By("Ensuring that the cleanup pod has been created")
-			Eventually(func() error { return expectChaosPod(chaostypes.PodModeClean, 4) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 4) }, timeout).Should(Succeed())
 
 			By("Simulating the completion of the cleanup pod by removing the finalizer")
 			Eventually(func() error {

@@ -8,12 +8,9 @@ package helpers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/rand"
-	"os"
 	"time"
 
-	"github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -24,105 +21,6 @@ const (
 	// ChaosFailureInjectionImageVariableName is the name of the chaos failure injection image variable
 	ChaosFailureInjectionImageVariableName = "CHAOS_INJECTOR_IMAGE"
 )
-
-// GeneratePod generates a pod from a generic pod template in the same namespace
-// and on the same node as the given pod
-func GeneratePod(instanceName string, pod *corev1.Pod, args []string, mode types.PodMode, kind types.DisruptionKind) *corev1.Pod {
-	image, ok := os.LookupEnv(ChaosFailureInjectionImageVariableName)
-	if !ok {
-		image = "chaos-injector"
-	}
-
-	privileged := true
-	hostPathDirectory := corev1.HostPathDirectory
-	hostPathFile := corev1.HostPathFile
-
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("chaos-%s-%s-", instanceName, mode),
-			Namespace:    pod.Namespace,
-			Labels: map[string]string{
-				types.PodModeLabel:        string(mode),
-				types.TargetPodLabel:      pod.Name,
-				types.DisruptionKindLabel: string(kind),
-			},
-			Annotations: map[string]string{
-				"datadoghq.com/local-dns-cache": "true",
-			},
-		},
-		Spec: corev1.PodSpec{
-			NodeName:      pod.Spec.NodeName,
-			RestartPolicy: "Never",
-			Containers: []corev1.Container{
-				{
-					Name:            "chaos-injector",
-					Image:           image,
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					Args:            args,
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							MountPath: "/run",
-							Name:      "run",
-						},
-						{
-							MountPath: "/mnt/proc",
-							Name:      "proc",
-						},
-						{
-							MountPath: "/mnt/sysrq",
-							Name:      "sysrq",
-						},
-						{
-							MountPath: "/mnt/sysrq-trigger",
-							Name:      "sysrq-trigger",
-						},
-					},
-					SecurityContext: &corev1.SecurityContext{
-						Privileged: &privileged,
-					},
-				},
-			},
-			Volumes: []corev1.Volume{
-				{
-					Name: "run",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/run",
-							Type: &hostPathDirectory,
-						},
-					},
-				},
-				{
-					Name: "proc",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/proc",
-							Type: &hostPathDirectory,
-						},
-					},
-				},
-				{
-					Name: "sysrq",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/proc/sys/kernel/sysrq",
-							Type: &hostPathFile,
-						},
-					},
-				},
-				{
-					Name: "sysrq-trigger",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/proc/sysrq-trigger",
-							Type: &hostPathFile,
-						},
-					},
-				},
-			},
-		},
-	}
-}
 
 // GetMatchingPods returns a pods list containing all pods matching the given label selector and namespace
 func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*corev1.PodList, error) {
