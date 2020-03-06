@@ -8,7 +8,7 @@ kind: ConfigMap
 metadata:
   name: config
 data:
-  pod-template.yaml: |
+  pod-template.json: |
     {
       "apiVersion": "v1",
       "kind": "Pod",
