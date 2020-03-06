@@ -20,7 +20,6 @@ import (
 
 	"github.com/DataDog/chaos-controller/helpers"
 	. "github.com/DataDog/chaos-controller/helpers"
-	"github.com/DataDog/chaos-controller/types"
 )
 
 type fakeClient struct {
@@ -101,30 +100,6 @@ var _ = Describe("Helpers", func() {
 
 	AfterEach(func() {
 		os.Unsetenv(helpers.ChaosFailureInjectionImageVariableName)
-	})
-
-	Describe("GeneratePod", func() {
-		It("should be in the same namespace as the given pod", func() {
-			p := GeneratePod("", pod, nil, types.PodModeInject, types.DisruptionKindNetworkFailure)
-			Expect(p.Namespace).To(Equal(pod.Namespace))
-		})
-		It("should have the same node as the given pod", func() {
-			p := GeneratePod("", pod, nil, types.PodModeInject, types.DisruptionKindNetworkFailure)
-			Expect(p.Spec.NodeName).To(Equal(pod.Spec.NodeName))
-		})
-		It("should pass the given args to the injector container", func() {
-			args := []string{"network-failure", "inject"}
-			p := GeneratePod("", pod, args, types.PodModeInject, types.DisruptionKindNetworkFailure)
-			Expect(p.Spec.Containers[0].Args).To(Equal(args))
-		})
-		It("should have the given name", func() {
-			p := GeneratePod("foo", pod, nil, types.PodModeInject, types.DisruptionKindNetworkFailure)
-			Expect(p.GenerateName).To(Equal("chaos-foo-inject-"))
-		})
-		It("should have the container image value defined by the environment variable", func() {
-			p := GeneratePod("", pod, nil, types.PodModeInject, types.DisruptionKindNetworkFailure)
-			Expect(p.Spec.Containers[0].Image).To(Equal(image))
-		})
 	})
 
 	Describe("GetMatchingPods", func() {

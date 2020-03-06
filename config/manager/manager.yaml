@@ -45,4 +45,14 @@ spec:
         env:
         - name: CHAOS_FI_IMAGE
           value: docker.io/library/chaos-injector:latest
+        volumeMounts:
+          - name: config
+            mountPath: /etc/manager
+      volumes:
+        - name: config
+          configMap:
+            name: config
+            items:
+              - key: pod-template.yaml
+                path: pod-template.yaml
       terminationGracePeriodSeconds: 10

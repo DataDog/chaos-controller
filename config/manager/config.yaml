@@ -1,0 +1,82 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2020 Datadog, Inc.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+data:
+  pod-template.yaml: |
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "generateName": "PLACEHOLDER",
+        "namespace": "PLACEHOLDER",
+        "nodeName": "PLACEHOLDER"
+      },
+      "spec": {
+        "restartPolicy": "Never",
+        "containers": [
+          {
+            "name": "injector",
+            "image": "PLACEHOLDER",
+            "imagePullPolicy": "IfNotPresent",
+            "args": [],
+            "volumeMounts": [
+              {
+                "name": "run",
+                "mountPath": "/run"
+              },
+              {
+                "name": "proc",
+                "mountPath": "/mnt/proc"
+              },
+              {
+                "name": "sysrq",
+                "mountPath": "/mnt/sysrq"
+              },
+              {
+                "name": "sysrq-trigger",
+                "mountPath": "/mnt/sysrq-trigger"
+              }
+            ],
+            "securityContext": {
+              "privileged": true
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "name": "run",
+            "hostPath": {
+              "path": "/run",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "proc",
+            "hostPath": {
+              "path": "/proc",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "sysrq",
+            "hostPath": {
+              "path": "/proc/sys/kernel/sysrq",
+              "type": "File"
+            }
+          },
+          {
+            "name": "sysrq-trigger",
+            "hostPath": {
+              "path": "/proc/sysrq-trigger",
+              "type": "File"
+            }
+          }
+        ]
+      }
+    }
