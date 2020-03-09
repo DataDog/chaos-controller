@@ -97,6 +97,7 @@ def update_header(file: str, header: t.List, header_position: t.Dict):
 
 @task
 def header_check(ctx):
+    """ Update headers for supported files """
     exit_code = 0
     for extension, tag in file_extension_map.items():
         print(f"dealing with {extension} files")
