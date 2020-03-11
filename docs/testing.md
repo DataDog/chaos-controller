@@ -43,16 +43,16 @@ Run `make test` to run the test suite. This will also generate all the require b
 With `minikube` and the `controller-manager` running we can start our chaos experiments. We included a sample application which can be used for verification.
 
 * Start the sample application:
-  * `kubectl apply -f config/samples/deploment.yaml`
+  * `kubectl apply -f config/samples/deployment.yaml`
 * Verify that the app is running:
   * `kubectl get pods -l app=demo`
 
 ### Applying experiments
 
-Verify the contents of the [chaos_v1beta1_disryption.yaml](config/samples/chaos_v1beta1_disryption.yaml). When running on minikube, disable the `nodeFailure` disruption as this will shutdown minikube.
+Verify the contents of the [chaos_v1beta1_disruption.yaml](config/samples/chaos_v1beta1_disruption.yaml). When running on minikube, disable the `nodeFailure` disruption as this will shutdown minikube.
 
 * Applying the disruption(s):
-  * `kubectl apply -f config/samples/chaos_v1beta1_disryption.yaml`
+  * `kubectl apply -f config/samples/chaos_v1beta1_disruption.yaml`
 
 For verification on minikube we created some helper [scripts](scripts/). To use them: `source scripts/common`
 

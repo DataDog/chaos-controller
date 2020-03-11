@@ -34,7 +34,7 @@ var networkLatencyInjectCmd = &cobra.Command{
 		}
 
 		// inject
-		i := injector.NewNetworkLatencyInjector(uid, spec, c, log)
+		i := injector.NewNetworkLatencyInjector(uid, spec, c, log, ms)
 		i.Inject()
 	},
 }

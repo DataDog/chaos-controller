@@ -147,7 +147,7 @@ var _ = Describe("Tc", func() {
 	})
 
 	JustBeforeEach(func() {
-		inj = NewNetworkLatencyInjectorWithConfig("fake", spec, &c, log, config)
+		inj = NewNetworkLatencyInjectorWithConfig("fake", spec, &c, log, ms, config)
 	})
 
 	Describe("inj.Inject", func() {

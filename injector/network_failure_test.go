@@ -108,7 +108,7 @@ var _ = Describe("Network Failure", func() {
 
 	JustBeforeEach(func() {
 		var err error
-		inj, err = NewNetworkFailureInjectorWithConfig(uid, spec, &ctn, log, &config)
+		inj, err = NewNetworkFailureInjectorWithConfig(uid, spec, &ctn, log, ms, &config)
 		Expect(err).To(BeNil())
 	})
 

@@ -44,7 +44,7 @@ var _ = Describe("Failure", func() {
 	})
 
 	JustBeforeEach(func() {
-		inj = NewNodeFailureInjectorWithConfig("fake", spec, log, config)
+		inj = NewNodeFailureInjectorWithConfig("fake", spec, log, ms, config)
 	})
 
 	Describe("injection", func() {

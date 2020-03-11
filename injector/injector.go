@@ -7,6 +7,8 @@ package injector
 
 import (
 	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
 )
 
@@ -18,8 +20,10 @@ type Injector interface {
 
 // injector represents a generic failure injector
 type injector struct {
-	log *zap.SugaredLogger
-	uid string
+	log  *zap.SugaredLogger
+	ms   metrics.Sink
+	uid  string
+	kind types.DisruptionKind
 }
 
 // containerInjector represents an injector for containers
