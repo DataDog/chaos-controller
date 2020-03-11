@@ -24,7 +24,7 @@ var nodeFailureInjectCmd = &cobra.Command{
 		}
 
 		// inject
-		i := injector.NewNodeFailureInjector(uid, spec, log)
+		i := injector.NewNodeFailureInjector(uid, spec, log, ms)
 		i.Inject()
 	},
 }

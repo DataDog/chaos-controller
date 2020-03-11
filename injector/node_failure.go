@@ -7,6 +7,8 @@ package injector
 
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
 )
 
@@ -29,21 +31,23 @@ type NodeFailureInjectorConfig struct {
 }
 
 // NewNodeFailureInjector creates a NodeFailureInjector object with the default drivers
-func NewNodeFailureInjector(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger) Injector {
+func NewNodeFailureInjector(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger, ms metrics.Sink) Injector {
 	config := NodeFailureInjectorConfig{
 		FileWriter: standardFileWriter{},
 	}
 
-	return NewNodeFailureInjectorWithConfig(uid, spec, log, config)
+	return NewNodeFailureInjectorWithConfig(uid, spec, log, ms, config)
 }
 
 // NewNodeFailureInjectorWithConfig creates a NodeFailureInjector object with the given config,
 // missing fields being initialized with the defaults
-func NewNodeFailureInjectorWithConfig(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger, config NodeFailureInjectorConfig) Injector {
+func NewNodeFailureInjectorWithConfig(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger, ms metrics.Sink, config NodeFailureInjectorConfig) Injector {
 	return nodeFailureInjector{
 		injector: injector{
-			uid: uid,
-			log: log,
+			uid:  uid,
+			log:  log,
+			ms:   ms,
+			kind: types.DisruptionKindNodeFailure,
 		},
 		spec:   spec,
 		config: config,
@@ -69,6 +73,14 @@ func (i nodeFailureInjector) Inject() {
 	// Trigger kernel panic
 	i.log.Infow("the injector is about to write to the sysrq trigger file")
 	i.log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
+
+	i.ms.EventWithTags(
+		"node failure injected",
+		"failing node by triggering a kernel panic",
+		[]string{
+			"UID:" + i.uid,
+		},
+	)
 
 	if i.spec.Shutdown {
 		err = i.config.FileWriter.Write(nodeFailureSysrqTriggerPath, 0200, "o")

@@ -15,3 +15,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Refine the check for when 3rd-party licenses are missing
 * Add Python 'Invoke' for task management
 * Use a pod template for generated injection and cleanup pods
+* Add configurable metrics sync
