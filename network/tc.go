@@ -61,7 +61,7 @@ func NewTrafficController(log *zap.SugaredLogger) TrafficController {
 }
 
 func (t tc) AddDelay(iface string, parent string, handle uint32, delay time.Duration) error {
-	return t.executeTcCommand(buildCmd("qdisc", iface, parent, handle, "netem", "delay 1s"))
+	return t.executeTcCommand(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("delay %s", delay)))
 }
 
 func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
