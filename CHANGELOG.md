@@ -17,3 +17,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Use a pod template for generated injection and cleanup pods
 * Add configurable metrics sync
 * Fix delay not being passed to tc command builder
+* Add cmd flag for metrics sink
