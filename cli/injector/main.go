@@ -22,13 +22,17 @@ var rootCmd = &cobra.Command{
 
 var log *zap.SugaredLogger
 var ms metrics.Sink
+var sink string
 
 func init() {
 	rootCmd.AddCommand(networkFailureCmd)
 	rootCmd.AddCommand(nodeFailureCmd)
 	rootCmd.AddCommand(networkLatencyCmd)
+	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().String("uid", "", "UID of the failure resource")
 	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "uid")
+
+	cobra.OnInitialize(initMetricsSink)
 }
 
 func main() {
@@ -41,13 +45,17 @@ func main() {
 
 	log = zapInstance.Sugar()
 
-	ms, err = metrics.GetSink("datadog")
-	if err != nil {
-		log.Fatalw("error while creating metric sink", "error", err)
-	}
-
 	// execute command
 	if err = rootCmd.Execute(); err != nil {
 		os.Exit(1)
+	}
+}
+
+func initMetricsSink() {
+	var err error
+	ms, err = metrics.GetSink(sink)
+
+	if err != nil {
+		log.Fatalw("error while creating metric sink", "error", err)
 	}
 }
