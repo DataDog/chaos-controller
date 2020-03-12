@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 * Fix injection pod failing when resolving a host returning something else than A records ([#90](https://github.com/DataDog/chaos-controller/pull/90))
+* Add NOTICE file ([#89](https://github.com/DataDog/chaos-controller/pull/89))
 
 ## [2.2.0]
 
