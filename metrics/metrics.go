@@ -7,6 +7,7 @@ package metrics
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/DataDog/chaos-controller/metrics/datadog"
 	"github.com/DataDog/chaos-controller/metrics/noop"
@@ -18,9 +19,15 @@ type Sink interface {
 	EventCleanFailure(containerID, uid string)
 	EventInjectFailure(containerID, uid string)
 	EventWithTags(title, text string, tags []string)
+	GetSinkName() string
 	MetricCleaned(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
+	MetricCleanupDuration(duration time.Duration, tags []string)
+	MetricInjectDuration(duration time.Duration, tags []string)
 	MetricInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
 	MetricIPTablesRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
+	MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool)
+	MetricReconcile()
+	MetricReconcileDuration(duration time.Duration, tags []string)
 	MetricRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
 }
 
