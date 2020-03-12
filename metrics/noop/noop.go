@@ -6,15 +6,25 @@
 package noop
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/DataDog/chaos-controller/types"
 )
 
 // Sink describes a no-op sink
-type Sink struct{}
+type Sink struct {
+	sinkName string
+}
 
 // New ...
 func New() *Sink {
-	return &Sink{}
+	return &Sink{sinkName: "noop"}
+}
+
+// GetSinkName returns the name of the sink
+func (n *Sink) GetSinkName() string {
+	return n.sinkName
 }
 
 // EventWithTags creates a new event with the given title, text and tags and send it
@@ -40,4 +50,29 @@ func (n *Sink) MetricCleaned(containerID, uid string, succeed bool, kind types.D
 
 // MetricIPTablesRulesInjected increment iptables_rules metrics
 func (n *Sink) MetricIPTablesRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
+}
+
+// MetricCleanupDuration send timing metric for cleanup duration
+func (n *Sink) MetricCleanupDuration(duration time.Duration, tags []string) {
+	fmt.Println("NOOP: MetricCleanupDuration +1")
+}
+
+// MetricInjectDuration send timing metric for inject duration
+func (n *Sink) MetricInjectDuration(duration time.Duration, tags []string) {
+	fmt.Println("NOOP: MetricInjectDuration +1")
+}
+
+// MetricReconcile increment reconcile metric
+func (n *Sink) MetricReconcile() {
+	fmt.Println("NOOP: MetricReconcile +1")
+}
+
+// MetricReconcileDuration send timing metric for reconcile loop
+func (n *Sink) MetricReconcileDuration(duration time.Duration, tags []string) {
+	fmt.Println("NOOP: MetricReconcileDuration +1")
+}
+
+// MetricPodsCreated increment pods.created metric
+func (n *Sink) MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) {
+	fmt.Println("NOOP: MetricPodsCreated +1")
 }

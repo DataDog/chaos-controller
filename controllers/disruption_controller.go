@@ -45,8 +45,8 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/helpers"
+	"github.com/DataDog/chaos-controller/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"github.com/DataDog/datadog-go/statsd"
 )
 
 const (
@@ -59,7 +59,7 @@ type DisruptionReconciler struct {
 	Log             logr.Logger
 	Scheme          *runtime.Scheme
 	Recorder        record.EventRecorder
-	Datadog         *statsd.Client
+	MetricsSink     metrics.Sink
 	PodTemplateSpec corev1.Pod
 }
 
@@ -77,9 +77,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	tsStart := time.Now()
 
 	// reconcile metrics
-	if err := r.Datadog.Incr("chaos.controller.reconcile", nil, 1); err != nil {
-		r.Log.Error(err, "can't send reconcile metric to Datadog")
-	}
+	r.MetricsSink.MetricReconcile()
 
 	defer func() func() {
 		return func() {
@@ -88,10 +86,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
 			}
 
-			if err := r.Datadog.Timing("chaos.controller.reconcile.duration", time.Since(tsStart), tags, 1); err != nil {
-				r.Log.Error(err, "can't send reconcile duration metric")
-				r.Log.Error(err, "can't send reconcile duration metric")
-			}
+			r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags)
 		}
 	}()()
 
@@ -147,9 +142,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
 			r.Log.Info("removing finalizer", "instance", instance.Name, "namespace", instance.Namespace)
-			if err := r.Datadog.Timing("chaos.controller.cleanup.duration", time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1); err != nil {
-				r.Log.Error(err, "can't send cleanup duration metric")
-			}
+			r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace})
 			instance.ObjectMeta.Finalizers = helpers.RemoveString(instance.ObjectMeta.Finalizers, finalizer)
 			return ctrl.Result{}, r.Update(context.Background(), instance)
 		}
@@ -204,7 +197,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 		// generate injection pods specs
 		if instance.Spec.NetworkFailure != nil {
-			args := instance.Spec.NetworkFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
+			args := instance.Spec.NetworkFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
 
 			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkFailure)
 			if err != nil {
@@ -215,7 +208,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 
 		if instance.Spec.NetworkLatency != nil {
-			args := instance.Spec.NetworkLatency.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
+			args := instance.Spec.NetworkLatency.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
 
 			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkLatency)
 			if err != nil {
@@ -226,7 +219,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 
 		if instance.Spec.NodeFailure != nil {
-			args := instance.Spec.NodeFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID)
+			args := instance.Spec.NodeFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
 
 			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNodeFailure)
 			if err != nil {
@@ -254,15 +247,14 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 				if err = r.Create(context.Background(), chaosPod); err != nil {
 					r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
+					r.MetricsSink.MetricPodsCreated(targetPod.ObjectMeta.Name, instance.Name, instance.Namespace, "inject", false)
+
 					return ctrl.Result{}, err
 				}
 
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-
-				if err := r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:inject", "target_pod:" + targetPod.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1); err != nil {
-					r.Log.Error(err, "can't send pods created metric")
-				}
+				r.MetricsSink.MetricPodsCreated(targetPod.ObjectMeta.Name, instance.Name, instance.Namespace, "inject", true)
 			} else {
 				r.Log.Info("an injection pod is already existing for the selected pod", "instance", instance.Name, "namespace", instance.Namespace, "target", targetPod.Name)
 			}
@@ -271,9 +263,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	// update resource status injection flag
 	// we reach this line only when every injection pods have been created with success
-	if err := r.Datadog.Timing("chaos.controller.inject.duration", time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}, 1); err != nil {
-		r.Log.Error(err, "can't send inject duration metric")
-	}
+	r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace})
 
 	r.Log.Info("updating injection status flag", "instance", instance.Name, "namespace", instance.Namespace)
 	instance.Status.IsInjected = true
@@ -326,7 +316,7 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 
 		// generate cleanup pods specs
 		if instance.Spec.NetworkFailure != nil {
-			args := instance.Spec.NetworkFailure.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID)
+			args := instance.Spec.NetworkFailure.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID, r.MetricsSink.GetSinkName())
 
 			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkFailure)
 			if err != nil {
@@ -337,7 +327,7 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 		}
 
 		if instance.Spec.NetworkLatency != nil {
-			args := instance.Spec.NetworkLatency.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID)
+			args := instance.Spec.NetworkLatency.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID, r.MetricsSink.GetSinkName())
 
 			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkLatency)
 			if err != nil {
@@ -369,14 +359,13 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 			err = r.Create(context.Background(), chaosPod)
 			if err != nil {
 				r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Cleanup pod for disruption \"%s\" failed to be created", instance.Name))
+				r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", false)
+
 				return err
 			}
 
 			r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for disruption \"%s\"", instance.Name))
-
-			if err := r.Datadog.Incr("chaos.controller.pods.created", []string{"phase:cleanup", "target_pod:" + p.ObjectMeta.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}, 1); err != nil {
-				r.Log.Error(err, "can't send pods created metric")
-			}
+			r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", true)
 		}
 	}
 

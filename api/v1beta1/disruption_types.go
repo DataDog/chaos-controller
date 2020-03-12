@@ -56,7 +56,7 @@ type NetworkFailureSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID string) []string {
+func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string {
 	args := []string{}
 
 	switch mode {
@@ -66,6 +66,8 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			"inject",
 			"--uid",
 			string(uid),
+			"--metrics-sink",
+			sink,
 			"--container-id",
 			containerID,
 			"--port",
@@ -83,6 +85,8 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			"clean",
 			"--uid",
 			string(uid),
+			"--metrics-sink",
+			sink,
 			"--container-id",
 			containerID,
 		}
@@ -98,7 +102,7 @@ type NetworkLatencySpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkLatencySpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID string) []string {
+func (s *NetworkLatencySpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string {
 	args := []string{}
 
 	switch mode {
@@ -108,6 +112,8 @@ func (s *NetworkLatencySpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			"inject",
 			"--uid",
 			string(uid),
+			"--metrics-sink",
+			sink,
 			"--container-id",
 			containerID,
 			"--delay",
@@ -121,6 +127,8 @@ func (s *NetworkLatencySpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			"clean",
 			"--uid",
 			string(uid),
+			"--metrics-sink",
+			sink,
 			"--container-id",
 			containerID,
 			"--hosts",
@@ -137,7 +145,7 @@ type NodeFailureSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID string) []string {
+func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string {
 	args := []string{}
 
 	if mode == chaostypes.PodModeInject {
@@ -146,6 +154,8 @@ func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, c
 			"inject",
 			"--uid",
 			string(uid),
+			"--metrics-sink",
+			sink,
 		}
 		if s.Shutdown {
 			args = append(args, "--shutdown")
