@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0]
+
 * Change Chaos injector image variable name for consistency with k8s-resources config
 * Make minikube ISO image public
 * Refine CircleCI configuration by using executors and commands instead of templates
