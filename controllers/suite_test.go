@@ -30,6 +30,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/metrics"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -152,11 +153,15 @@ var _ = BeforeSuite(func(done Done) {
 		realClient: k8sManager.GetClient(),
 	}
 
+	ms, err := metrics.GetSink("noop")
+	Expect(err).ToNot(HaveOccurred())
+
 	err = (&DisruptionReconciler{
-		Client:   k8sClient,
-		Log:      ctrl.Log.WithName("controllers").WithName("Disruption"),
-		Recorder: k8sManager.GetEventRecorderFor("disruption-controller"),
-		Scheme:   scheme.Scheme,
+		Client:      k8sClient,
+		Log:         ctrl.Log.WithName("controllers").WithName("Disruption"),
+		Recorder:    k8sManager.GetEventRecorderFor("disruption-controller"),
+		MetricsSink: ms,
+		Scheme:      scheme.Scheme,
 		PodTemplateSpec: corev1.Pod{
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{

@@ -8,16 +8,21 @@ package datadog
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/datadog-go/statsd"
 )
 
-const metricPrefix = "chaos.injector."
+const (
+	metricPrefixInjector   = "chaos.injector."
+	metricPrefixController = "chaos.controller."
+)
 
 // Sink describes a Datadog sink (statsd)
 type Sink struct {
-	*statsd.Client
+	client   *statsd.Client
+	sinkName string
 }
 
 // New instantiate a new datadog statsd provider
@@ -29,7 +34,12 @@ func New() *Sink {
 		log.Fatal(err)
 	}
 
-	return &Sink{Client: instance}
+	return &Sink{client: instance, sinkName: "datadog"}
+}
+
+// GetSinkName returns the name of the sink
+func (d *Sink) GetSinkName() string {
+	return d.sinkName
 }
 
 // EventWithTags creates a new event with the given title, text and tags and send it
@@ -39,7 +49,7 @@ func (d *Sink) EventWithTags(title, text string, tags []string) {
 		Text:  text,
 		Tags:  tags,
 	}
-	err := d.Event(e)
+	err := d.client.Event(e)
 
 	if err != nil {
 		log.Printf("error sending an event to datadog: %v", err)
@@ -66,7 +76,7 @@ func (d *Sink) EventInjectFailure(containerID, uid string) {
 	)
 }
 
-func (d *Sink) metricWithStatus(name, containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
+func boolToStatus(succeed bool) string {
 	var status string
 	if succeed {
 		status = "succeed"
@@ -74,28 +84,77 @@ func (d *Sink) metricWithStatus(name, containerID, uid string, succeed bool, kin
 		status = "failed"
 	}
 
-	t := []string{"containerID:" + containerID, "UID:" + uid, "status:" + status, "kind:" + string(kind)}
-	t = append(t, tags...)
+	return status
+}
 
-	_ = d.Incr(name, t, 1)
+func (d *Sink) metricWithStatus(name string, tags []string) {
+	_ = d.client.Incr(name, tags, 1)
+}
+
+func (d *Sink) timing(name string, duration time.Duration, tags []string) {
+	_ = d.client.Timing(name, duration, tags, 1)
 }
 
 // MetricInjected increments the injected metric
 func (d *Sink) MetricInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
-	d.metricWithStatus(metricPrefix+"injected", containerID, uid, succeed, kind, tags)
+	status := boolToStatus(succeed)
+	t := []string{"containerID:" + containerID, "UID:" + uid, "status:" + status, "kind:" + string(kind)}
+	t = append(t, tags...)
+
+	d.metricWithStatus(metricPrefixInjector+"injected", t)
 }
 
 // MetricRulesInjected rules.increments the injected metric
 func (d *Sink) MetricRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
-	d.metricWithStatus(metricPrefix+"rules.injected", containerID, uid, succeed, kind, tags)
+	status := boolToStatus(succeed)
+	t := []string{"containerID:" + containerID, "UID:" + uid, "status:" + status, "kind:" + string(kind)}
+	t = append(t, tags...)
+
+	d.metricWithStatus(metricPrefixInjector+"rules.injected", t)
 }
 
 // MetricCleaned increments the cleaned metric
 func (d *Sink) MetricCleaned(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
-	d.metricWithStatus(metricPrefix+"cleaned", containerID, uid, succeed, kind, tags)
+	status := boolToStatus(succeed)
+	t := []string{"containerID:" + containerID, "UID:" + uid, "status:" + status, "kind:" + string(kind)}
+	t = append(t, tags...)
+
+	d.metricWithStatus(metricPrefixInjector+"cleaned", t)
 }
 
 // MetricIPTablesRulesInjected increment iptables_rules metrics
 func (d *Sink) MetricIPTablesRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
-	d.metricWithStatus(metricPrefix+"iptables_rules.injected", containerID, uid, succeed, kind, tags)
+	status := boolToStatus(succeed)
+	t := []string{"containerID:" + containerID, "UID:" + uid, "status:" + status, "kind:" + string(kind)}
+	t = append(t, tags...)
+
+	d.metricWithStatus(metricPrefixInjector+"iptables_rules.injected", t)
+}
+
+// MetricReconcile increment reconcile metric
+func (d *Sink) MetricReconcile() {
+	d.metricWithStatus(metricPrefixController+"reconcile", []string{})
+}
+
+// MetricReconcileDuration send timing metric for reconcile loop
+func (d *Sink) MetricReconcileDuration(duration time.Duration, tags []string) {
+	d.timing(metricPrefixController+"reconcile.duration", duration, tags)
+}
+
+// MetricCleanupDuration send timing metric for cleanup duration
+func (d *Sink) MetricCleanupDuration(duration time.Duration, tags []string) {
+	d.timing(metricPrefixController+"cleanup.duration", duration, tags)
+}
+
+// MetricInjectDuration send timing metric for inject duration
+func (d *Sink) MetricInjectDuration(duration time.Duration, tags []string) {
+	d.timing(metricPrefixController+"inject.duration", duration, tags)
+}
+
+// MetricPodsCreated increment pods.created metric
+func (d *Sink) MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) {
+	status := boolToStatus(succeed)
+	tags := []string{"phase:" + phase, "target_pod:" + targetPod, "name:" + instanceName, "status:" + status, "namespace:" + namespace}
+
+	d.metricWithStatus(metricPrefixController+"pods.created", tags)
 }

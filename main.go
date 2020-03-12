@@ -28,7 +28,7 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
-	"github.com/DataDog/datadog-go/statsd"
+	"github.com/DataDog/chaos-controller/metrics"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -55,12 +55,14 @@ func main() {
 		enableLeaderElection bool
 		podTemplate          string
 		podTemplateSpec      corev1.Pod
+		sink                 string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&podTemplate, "pod-template", "/etc/manager/pod-template.json", "The template file to use to generate injection pods.")
+	flag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(func(o *zap.Options) {
@@ -78,10 +80,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	// retrieve datadog statsd client if configured
-	statsdClient, err := statsd.New(os.Getenv("STATSD_URL"), statsd.WithTags([]string{"app:chaos-controller"}))
+	ms, err := metrics.GetSink(sink)
 	if err != nil {
-		ctrl.Log.Error(err, "unable to configure the Datadog statsd client")
+		ctrl.Log.Error(err, "error while creating metric sink")
 	}
 
 	// load pod template
@@ -105,7 +106,7 @@ func main() {
 		Log:             ctrl.Log.WithName("controllers").WithName("Disruption"),
 		Scheme:          mgr.GetScheme(),
 		Recorder:        mgr.GetEventRecorderFor("disruption-controller"),
-		Datadog:         statsdClient,
+		MetricsSink:     ms,
 		PodTemplateSpec: podTemplateSpec,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Disruption")
