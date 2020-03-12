@@ -20,3 +20,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add configurable metrics sync
 * Fix delay not being passed to tc command builder
 * Add cmd flag for metrics sink
+* Fix typo in gitlab-ci config preventing tag release to be pushed on staging
