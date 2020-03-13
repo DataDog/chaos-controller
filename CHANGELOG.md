@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* Fix injection pod failing when resolving a host returning something else than A records ([#90](https://github.com/DataDog/chaos-controller/pull/90))
+
 ## [2.2.0]
 
 * Change Chaos injector image variable name for consistency with k8s-resources config
