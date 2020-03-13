@@ -389,7 +389,7 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 
 	// if count has not been specified or is greater than the actual number of matching pods,
 	// return all pods matching the label selector
-	if instance.Spec.Count == nil || *instance.Spec.Count == 0 || *instance.Spec.Count >= len(allPods.Items) {
+	if instance.Spec.Count == 0 || instance.Spec.Count >= len(allPods.Items) {
 		return allPods, nil
 	}
 
@@ -405,7 +405,7 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 	}
 
 	// otherwise, randomly select pods
-	numPodsToSelect := int(math.Min(float64(*instance.Spec.Count), float64(*instance.Spec.Count-len(instance.Status.TargetPods))))
+	numPodsToSelect := int(math.Min(float64(instance.Spec.Count), float64(instance.Spec.Count-len(instance.Status.TargetPods))))
 	for i := 0; i < numPodsToSelect; i++ {
 		// select and add a random pod
 		index := rand.Intn(len(allPods.Items))
