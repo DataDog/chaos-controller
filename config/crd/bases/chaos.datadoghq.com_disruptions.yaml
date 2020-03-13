@@ -48,13 +48,10 @@ spec:
                   type: array
                 port:
                   type: integer
-                probability:
-                  type: integer
                 protocol:
                   type: string
               required:
               - port
-              - probability
               - protocol
               type: object
             networkLatency:

@@ -50,6 +50,7 @@ type DisruptionSpec struct {
 // NetworkFailureSpec represents a network failure injection
 type NetworkFailureSpec struct {
 	Hosts       []string `json:"hosts,omitempty"`
+	Port        int      `json:"port"`
 	Probability int      `json:"probability"`
 	Protocol    string   `json:"protocol"`
 }
