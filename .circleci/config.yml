@@ -125,6 +125,19 @@ jobs:
     steps:
       - go_restore_cache
       - run: make lint
+  # check to make sure make manifests was run after a CRD configuration change
+  check-manifests:
+    executor: bash
+    steps:
+      - checkout
+      - alpine_install_git
+      - run:
+          name: Run make manifests
+          command: make manifests
+      - run:
+          name: Check if any different
+          command: git diff --exit-code
+
   # runs the tests
   test:
     executor: golang
@@ -180,5 +193,6 @@ workflows:
           requires:
             - prepare-env
       - third-party-licenses
+      - check-manifests
       - license-header
       - changelog
