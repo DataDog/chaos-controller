@@ -109,3 +109,12 @@ minikube-start:
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodPreset \
 		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube.iso
 
+venv:
+	test -d .venv || python3 -m venv .venv
+	source .venv/bin/activate; pip install -qr tasks/requirements.txt
+
+header-check: venv
+	source .venv/bin/activate; inv header-check
+
+license-check: venv
+	source .venv/bin/activate; inv license-check

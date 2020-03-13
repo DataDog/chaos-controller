@@ -17,6 +17,7 @@ csv_file = 'LICENSE-3rdparty.csv'
 
 @task
 def license_check(ctx):
+    """ Build LICENSE-3rdparty.csv """
     # read deps from go.sum file
     deps = {}
     with open('vendor/modules.txt', 'r') as modules:
