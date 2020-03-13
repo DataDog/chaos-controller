@@ -32,6 +32,12 @@ commands:
       - run:
           name: Install git
           command: apk update && apk add git
+  alpine_install_make:
+    description: "Install make using alpine apk"
+    steps:
+      - run:
+          name: Install make
+          command: apk update && apk add make
   check_changed_files:
     description: "Ensures at least one file matching the given pattern has been changed"
     parameters:
@@ -127,10 +133,9 @@ jobs:
       - run: make lint
   # check to make sure make manifests was run after a CRD configuration change
   check-manifests:
-    executor: bash
+    executor: golang
     steps:
-      - checkout
-      - alpine_install_git
+      - go_restore_cache
       - run:
           name: Run make manifests
           command: make manifests
@@ -186,6 +191,9 @@ workflows:
       - fmt:
           requires:
             - prepare-env
+      - check-manifests:
+          requires:
+            - prepare-env
       - lint:
           requires:
             - prepare-env
@@ -193,6 +201,5 @@ workflows:
           requires:
             - prepare-env
       - third-party-licenses
-      - check-manifests
       - license-header
       - changelog
