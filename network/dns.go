@@ -25,6 +25,8 @@ func NewDNSClient() DNSClient {
 }
 
 func (c dnsClient) Resolve(host string) ([]net.IP, error) {
+	ips := []net.IP{}
+
 	// read resolv conf file to get search domain
 	// and other dns configurations
 	dnsConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
@@ -43,9 +45,15 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	}
 
 	// parse returned records
-	ips := []net.IP{}
 	for _, answer := range response.Answer {
-		ips = append(ips, answer.(*dns.A).A)
+		if ip, ok := answer.(*dns.A); ok {
+			ips = append(ips, ip.A)
+		}
+	}
+
+	// error if no A records can be found
+	if len(ips) == 0 {
+		return nil, fmt.Errorf("no A records were found for the given hostname %s", host)
 	}
 
 	return ips, nil
