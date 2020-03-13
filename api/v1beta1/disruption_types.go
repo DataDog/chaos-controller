@@ -35,15 +35,15 @@ import (
 
 // DisruptionSpec defines the desired state of Disruption
 type DisruptionSpec struct {
-	// +optional
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Minimum=0
-	Count    *int       `json:"count"`    // number of pods to target
+	Count    int        `json:"count"`    // number of pods to target
 	Selector labels.Set `json:"selector"` // label selector
-	// +optional
+	// +kubebuilder:validation:Optional
 	NetworkFailure *NetworkFailureSpec `json:"networkFailure,omitempty"`
-	// +optional
+	// +kubebuilder:validation:Optional
 	NetworkLatency *NetworkLatencySpec `json:"networkLatency,omitempty"`
-	// +optional
+	// +kubebuilder:validation:Optional
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
 }
 
@@ -167,11 +167,11 @@ func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, c
 
 // DisruptionStatus defines the observed state of Disruption
 type DisruptionStatus struct {
-	// +optional
+	// +kubebuilder:validation:Optional
 	IsFinalizing bool `json:"isFinalizing"`
-	// +optional
+	// +kubebuilder:validation:Optional
 	IsInjected bool `json:"isInjected"`
-	// +optional
+	// +kubebuilder:validation:Optional
 	TargetPods []string `json:"targetPods,omitempty"`
 }
 
