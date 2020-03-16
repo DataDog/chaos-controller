@@ -144,7 +144,7 @@ release-docker-hub-ref:
 
 release-docker-hub-tag:
   <<: *release-docker-hub
-  when: always
+  when: manual
   only:
     - tags
   variables:
