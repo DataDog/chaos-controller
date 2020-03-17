@@ -72,17 +72,15 @@ func expectChaosPod(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode, 
 
 var _ = Describe("Disruption Controller", func() {
 	var disruption *chaosv1beta1.Disruption
-	var count int
 
 	BeforeEach(func() {
-		count = 0
 		disruption = &chaosv1beta1.Disruption{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: "default",
 			},
 			Spec: chaosv1beta1.DisruptionSpec{
-				Count:    &count,
+				Count:    0,
 				Selector: map[string]string{"foo": "bar"},
 				NetworkFailure: &chaosv1beta1.NetworkFailureSpec{
 					Hosts:       []string{"127.0.0.1"},

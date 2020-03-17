@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1]
+
+* Set `Disruption` CRD count field optional ([#91](https://github.com/DataDog/chaos-controller/pull/91))
 * Fix injection pod failing when resolving a host returning something else than A records ([#90](https://github.com/DataDog/chaos-controller/pull/90))
 * Add NOTICE file ([#89](https://github.com/DataDog/chaos-controller/pull/89))
 * Document available `Make` commands ([#84](https://github.com/DataDog/chaos-controller/pull/84))

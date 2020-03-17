@@ -65,7 +65,7 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
 # Build the docker image
-docker-build-manager:
+docker-build-manager: generate
 	mkdir -p out
 	docker build . -t ${MANAGER_IMAGE} --target manager
 	docker save -o out/manager.tar ${MANAGER_IMAGE}
