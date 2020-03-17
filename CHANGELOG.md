@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* Improve visibilty of controller ([#94](https://github.com/DataDog/chaos-controller/pull/94))
+
 ## [2.2.1]
 
 * Set `Disruption` CRD count field optional ([#91](https://github.com/DataDog/chaos-controller/pull/91))
