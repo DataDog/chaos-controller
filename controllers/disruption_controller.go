@@ -127,12 +127,12 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				return ctrl.Result{}, err
 			}
 
-			r.Log.Info("checking status of cleanup pods before deleting nfl", "numcleanuppods", len(cleanupPods), "instance", instance.Name, "namespace", instance.Namespace)
+			r.Log.Info("checking status of cleanup pods before deleting failure", "numcleanuppods", len(cleanupPods), "instance", instance.Name, "namespace", instance.Namespace)
 
 			// check if cleanup pods have succeeded, requeue until they have
 			for _, cleanupPod := range cleanupPods {
 				if cleanupPod.Status.Phase != corev1.PodSucceeded {
-					r.Log.Info("cleanup pod has not completed, retrying nfi deletion", "instance", instance.Name, "namespace", instance.Namespace, "cleanuppod", cleanupPod.Name, "phase", cleanupPod.Status.Phase)
+					r.Log.Info("cleanup pod has not completed, retrying failure deletion", "instance", instance.Name, "namespace", instance.Namespace, "cleanuppod", cleanupPod.Name, "phase", cleanupPod.Status.Phase)
 					return ctrl.Result{
 						Requeue: true,
 					}, nil
@@ -178,7 +178,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	}
 
 	// start injections
-	r.Log.Info("starting pods injection", "instance", instance.Name, "namespace", instance.Namespace)
+	r.Log.Info("starting pods injection", "instance", instance.Name, "namespace", instance.Namespace, "targetPods", instance.Status.TargetPods)
 
 	for _, targetPodName := range instance.Status.TargetPods {
 		chaosPods := []*corev1.Pod{}
@@ -243,20 +243,20 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			}
 
 			if len(found) == 0 {
-				r.Log.Info("creating chaos pod", "instance", instance.Name, "namespace", instance.Namespace, "spec", chaosPod)
+				r.Log.Info("creating chaos pod", "instance", instance.Name, "namespace", instance.Namespace, "targetPod", targetPod.Name, "spec", chaosPod)
 
 				if err = r.Create(context.Background(), chaosPod); err != nil {
 					r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
-					r.MetricsSink.MetricPodsCreated(targetPod.ObjectMeta.Name, instance.Name, instance.Namespace, "inject", false)
+					r.MetricsSink.MetricPodsCreated(targetPod.Name, instance.Name, instance.Namespace, "inject", false)
 
 					return ctrl.Result{}, err
 				}
 
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-				r.MetricsSink.MetricPodsCreated(targetPod.ObjectMeta.Name, instance.Name, instance.Namespace, "inject", true)
+				r.MetricsSink.MetricPodsCreated(targetPod.Name, instance.Name, instance.Namespace, "inject", true)
 			} else {
-				r.Log.Info("an injection pod is already existing for the selected pod", "instance", instance.Name, "namespace", instance.Namespace, "target", targetPod.Name)
+				r.Log.Info("an injection pod is already existing for the selected pod", "instance", instance.Name, "namespace", instance.Namespace, "targetPod", targetPod.Name)
 			}
 		}
 	}
