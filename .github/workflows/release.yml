@@ -37,6 +37,7 @@ jobs:
         uses: heinrichreimer/github-changelog-generator-action@v2.1.1
         with:
           issues: false
+          pullRequests: true
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Commit changelog
         run: |
@@ -47,9 +48,9 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: release_changelog_${{ github.ref }}
+          branch: release_changelog_${{ github.sha }}
       - name: Open changelog pull request
         uses: vsoch/pull-request-action@1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PULL_REQUEST_FROM_BRANCH: release_changelog_${{ github.ref }}
+          PULL_REQUEST_FROM_BRANCH: release_changelog_${{ github.sha }}
