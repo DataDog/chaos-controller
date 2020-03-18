@@ -32,19 +32,6 @@ commands:
       - run:
           name: Install git
           command: apk update && apk add git
-  check_changed_files:
-    description: "Ensures at least one file matching the given pattern has been changed"
-    parameters:
-      pattern:
-        type: string
-    steps:
-      - run:
-          name: Check changelog file has been updated
-          command: |
-            if [ "${CIRCLE_BRANCH}" == "master" ]; then
-              exit 0
-            fi
-            git diff master --name-only | egrep -q '<< parameters.pattern >>'
 
 templates:
   # sets the working directory to the project path
@@ -151,13 +138,6 @@ jobs:
       - run:
           name: Ensure license header is present
           command: inv header-check
-  changelog:
-    executor: bash
-    steps:
-      - checkout
-      - alpine_install_git
-      - check_changed_files:
-          pattern: ^CHANGELOG.md$
 
 workflows:
   version: 2
@@ -181,4 +161,3 @@ workflows:
             - prepare-env
       - third-party-licenses
       - license-header
-      - changelog
