@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Improve visibilty of controller ([#94](https://github.com/DataDog/chaos-controller/pull/94))
 * Add CI jobs to push images publicly on Docker Hub ([#95](https://github.com/DataDog/chaos-controller/pull/95))
-* Improve the way we push images to internal registries ([#96](https://github.com/DataDog/chaos-controller/pull/96))
 * Push image to michelada on release ([#97](https://github.com/DataDog/chaos-controller/pull/97))
+* Add goreleaser to auto-release on tag push ([#98](https://github.com/DataDog/chaos-controller/pull/98))
 
 ## [2.2.1]
 
