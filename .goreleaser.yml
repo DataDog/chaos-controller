@@ -1,0 +1,24 @@
+before:
+  hooks:
+    - go mod download
+builds:
+  - id: controller
+    binary: manager
+    goos:
+      - linux
+    goarch:
+      - amd64
+  - id: injector
+    binary: injector
+    goos:
+      - linux
+    goarch:
+      - amd64
+archives:
+  - files:
+    - LICENSE
+    - LICENSE-3rdparty.csv
+    - NOTICE
+    - CHANGELOG.md
+    - README.md
+    - docs/*
