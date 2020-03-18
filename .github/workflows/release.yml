@@ -2,25 +2,48 @@ name: goreleaser
 
 on:
   push:
+    branches:
+      - auto_changelog
     tags:
       - '*'
 
 jobs:
-  goreleaser:
+  #  goreleaser:
+  #    runs-on: ubuntu-latest
+  #    steps:
+  #      - name: Checkout
+  #        uses: actions/checkout@v2
+  #      - name: Unshallow
+  #        run: git fetch --prune --unshallow
+  #      - name: Set up Go
+  #        uses: actions/setup-go@v1
+  #        with:
+  #          go-version: 1.14.x
+  #      - name: Run GoReleaser
+  #        uses: goreleaser/goreleaser-action@v1
+  #        with:
+  #          version: latest
+  #          args: release --rm-dist --skip-sign
+  #        env:
+  #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  changelog:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Unshallow
         run: git fetch --prune --unshallow
-      - name: Set up Go
-        uses: actions/setup-go@v1
+      - name: Generate changelog
+        uses: heinrichreimer/github-changelog-generator-action@v2.1.1
         with:
-          go-version: 1.14.x
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v1
+          issues: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit changelog
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit -m "Update CHANGELOG" -a
+      - name: Push changelog
+        uses: ad-m/github-push-action@master
         with:
-          version: latest
-          args: release --rm-dist --skip-sign
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
