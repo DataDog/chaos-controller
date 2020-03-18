@@ -1,11 +1,12 @@
 # Changelog
 
-## [Unreleased](https://github.com/DataDog/chaos-controller/tree/HEAD)
+## [2.2.1-fake](https://github.com/DataDog/chaos-controller/tree/2.2.1-fake) (2020-03-18)
 
-[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.2.1...HEAD)
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.2.1...2.2.1-fake)
 
 **Merged pull requests:**
 
+- Auto-generate changelog on tag push and open a PR to approve it [\#103](https://github.com/DataDog/chaos-controller/pull/103) ([Devatoria](https://github.com/Devatoria))
 - Add goreleaser GitHub action [\#98](https://github.com/DataDog/chaos-controller/pull/98) ([Devatoria](https://github.com/Devatoria))
 - Review the way we push images from the CI [\#96](https://github.com/DataDog/chaos-controller/pull/96) ([Devatoria](https://github.com/Devatoria))
 - Add CI job to release images on docker hub [\#95](https://github.com/DataDog/chaos-controller/pull/95) ([Devatoria](https://github.com/Devatoria))
