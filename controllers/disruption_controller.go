@@ -389,7 +389,7 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 
 	// if count has not been specified or is greater than the actual number of matching pods,
 	// return all pods matching the label selector
-	if instance.Spec.Count == 0 || instance.Spec.Count >= len(allPods.Items) {
+	if instance.Spec.Count == -1 || instance.Spec.Count >= len(allPods.Items) {
 		return allPods, nil
 	}
 

@@ -24,3 +24,6 @@ dist
 *.swp
 *.swo
 *~
+
+# other
+.venv

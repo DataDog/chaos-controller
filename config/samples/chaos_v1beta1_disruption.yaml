@@ -10,7 +10,7 @@ metadata:
 spec:
   selector: # label selector to target pods
     app: demo
-  count: 1 # number of pods to target (if set to 0 or not specified, it'll select all pods)
+  count: 1 # number of pods to target (-1 == target all the selected pods)
   networkFailure: # packet loss and connection drop
     hosts:
       - 10.0.0.0/8 # destination host
