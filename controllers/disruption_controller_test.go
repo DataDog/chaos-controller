@@ -21,26 +21,44 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 )
 
-// expectChaosPod retrieves the list of created chaos pods depending on the
-// given mode (inject or clean) and returns an error if it doesn't
-// equal the given count
-func expectChaosPod(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode, count int) error {
+// listChaosPods returns all the chaos pods for the given instance and mode
+func listChaosPods(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode) (corev1.PodList, error) {
 	l := corev1.PodList{}
 	ls := labels.NewSelector()
+	instancePods := corev1.PodList{}
 
 	// create requirements
 	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetPodLabel, selection.In, []string{"foo", "bar"})
-	podModRequirement, _ := labels.NewRequirement(chaostypes.PodModeLabel, selection.Equals, []string{string(mode)})
+	podModeRequirement, _ := labels.NewRequirement(chaostypes.PodModeLabel, selection.Equals, []string{string(mode)})
 
 	// add requirements to label selector
-	ls = ls.Add(*targetPodRequirement, *podModRequirement)
+	ls = ls.Add(*targetPodRequirement, *podModeRequirement)
 
 	// get matching pods
 	if err := k8sClient.List(context.Background(), &l, &client.ListOptions{
 		Namespace:     "default",
 		LabelSelector: ls,
 	}); err != nil {
-		return fmt.Errorf("can't list chaos pods: %w", err)
+		return corev1.PodList{}, fmt.Errorf("can't list chaos pods: %w", err)
+	}
+
+	// filter to get only pods owned by the given instance
+	for _, pod := range l.Items {
+		if metav1.IsControlledBy(&pod, instance) {
+			instancePods.Items = append(instancePods.Items, pod)
+		}
+	}
+
+	return instancePods, nil
+}
+
+// expectChaosPod retrieves the list of created chaos pods related to the given and to the
+// given mode (inject or clean) and returns an error if it doesn't
+// equal the given count
+func expectChaosPod(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode, count int) error {
+	l, err := listChaosPods(instance, mode)
+	if err != nil {
+		return err
 	}
 
 	// ensure count is correct
@@ -80,7 +98,6 @@ var _ = Describe("Disruption Controller", func() {
 				Namespace: "default",
 			},
 			Spec: chaosv1beta1.DisruptionSpec{
-				Count:    0,
 				Selector: map[string]string{"foo": "bar"},
 				NetworkFailure: &chaosv1beta1.NetworkFailureSpec{
 					Hosts:       []string{"127.0.0.1"},
@@ -97,14 +114,21 @@ var _ = Describe("Disruption Controller", func() {
 	})
 
 	AfterEach(func() {
+		// delete disruption resource
 		_ = k8sClient.Delete(context.Background(), disruption)
 	})
 
-	Context("nominal case", func() {
-		It("should create the injection and cleanup pods", func() {
-			By("Creating disruption resource")
-			Expect(k8sClient.Create(context.Background(), disruption)).To(BeNil())
+	JustBeforeEach(func() {
+		By("Creating disruption resource")
+		Expect(k8sClient.Create(context.Background(), disruption)).To(BeNil())
+	})
 
+	Context("target all pods", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = -1
+		})
+
+		It("should target all the selected pods", func() {
 			By("Ensuring that the inject pod has been created")
 			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 4) }, timeout).Should(Succeed())
 
@@ -124,7 +148,37 @@ var _ = Describe("Disruption Controller", func() {
 				return k8sClient.Update(context.Background(), disruption)
 			}, timeout).Should(Succeed())
 
-			By("Waiting for network failure resource to be deleted")
+			By("Waiting for disruption resource to be deleted")
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
+		})
+	})
+
+	Context("target one pod only", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = 1
+		})
+
+		It("should target all the selected pods", func() {
+			By("Ensuring that the inject pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 2) }, timeout).Should(Succeed())
+
+			By("Deleting the disruption resource")
+			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
+
+			By("Ensuring that the cleanup pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 2) }, timeout).Should(Succeed())
+
+			By("Simulating the completion of the cleanup pod by removing the finalizer")
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
+					return err
+				}
+				disruption.ObjectMeta.Finalizers = []string{}
+				return k8sClient.Update(context.Background(), disruption)
+			}, timeout).Should(Succeed())
+
+			By("Waiting for disruption resource to be deleted")
 			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
 		})
 	})

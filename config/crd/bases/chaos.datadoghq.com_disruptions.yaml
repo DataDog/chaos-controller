@@ -37,7 +37,6 @@ spec:
           description: DisruptionSpec defines the desired state of Disruption
           properties:
             count:
-              minimum: 0
               type: integer
             networkFailure:
               description: NetworkFailureSpec represents a network failure injection
@@ -82,6 +81,7 @@ spec:
               description: Set is a map of label:value. It implements Labels.
               type: object
           required:
+          - count
           - selector
           type: object
         status:
