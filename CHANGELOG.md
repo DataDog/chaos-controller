@@ -1,11 +1,15 @@
 # Changelog
 
-## [Unreleased](https://github.com/DataDog/chaos-controller/tree/HEAD)
+## [2.3.0](https://github.com/DataDog/chaos-controller/tree/2.3.0) (2020-03-19)
 
-[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.2.1...HEAD)
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.2.1...2.3.0)
 
 **Merged pull requests:**
 
+- Count field is now required and the value to target all pods is -1 [\#106](https://github.com/DataDog/chaos-controller/pull/106) ([Devatoria](https://github.com/Devatoria))
+- Add release documentation [\#105](https://github.com/DataDog/chaos-controller/pull/105) ([Devatoria](https://github.com/Devatoria))
+- Auto-generate changelog on tag push and open a PR to approve it [\#103](https://github.com/DataDog/chaos-controller/pull/103) ([Devatoria](https://github.com/Devatoria))
+- Add missing tag to release pull command [\#99](https://github.com/DataDog/chaos-controller/pull/99) ([Devatoria](https://github.com/Devatoria))
 - Add goreleaser GitHub action [\#98](https://github.com/DataDog/chaos-controller/pull/98) ([Devatoria](https://github.com/Devatoria))
 - Review the way we push images from the CI [\#96](https://github.com/DataDog/chaos-controller/pull/96) ([Devatoria](https://github.com/Devatoria))
 - Add CI job to release images on docker hub [\#95](https://github.com/DataDog/chaos-controller/pull/95) ([Devatoria](https://github.com/Devatoria))
