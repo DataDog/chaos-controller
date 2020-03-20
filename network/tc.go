@@ -25,10 +25,11 @@ type TrafficController interface {
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
 	AddFilterDestIP(iface string, parent string, handle uint32, ip *net.IPNet, flowid string) error
 	ClearQdisc(iface string) error
+	IsQdiscCleared(iface string) (bool, error)
 }
 
 type tcExecuter interface {
-	Run(args ...string) error
+	Run(args ...string) (stdout string, stderr error)
 }
 
 type defaultTcExecuter struct{}
@@ -36,10 +37,12 @@ type defaultTcExecuter struct{}
 // Run executes the given args using the tc command
 // and returns a wrapped error containing both the error returned by the execution and
 // the stderr content
-func (e defaultTcExecuter) Run(args ...string) error {
+func (e defaultTcExecuter) Run(args ...string) (string, error) {
 	// parse args and execute
+	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	cmd := exec.Command(tcPath, args...)
+	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
 	// run command
@@ -48,7 +51,7 @@ func (e defaultTcExecuter) Run(args ...string) error {
 		err = fmt.Errorf("%w: %s", err, stderr.String())
 	}
 
-	return err
+	return stdout.String(), err
 }
 
 type tc struct {
@@ -66,7 +69,9 @@ func NewTrafficController(log *zap.SugaredLogger) TrafficController {
 }
 
 func (t tc) AddDelay(iface string, parent string, handle uint32, delay time.Duration) error {
-	return t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("delay %s", delay))...)
+	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("delay %s", delay))...)
+
+	return err
 }
 
 func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
@@ -77,17 +82,35 @@ func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, pr
 
 	priomapStr = strings.TrimSpace(priomapStr)
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
+	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "prio", params)...)
 
-	return t.executer.Run(buildCmd("qdisc", iface, parent, handle, "prio", params)...)
+	return err
 }
 
 func (t tc) ClearQdisc(iface string) error {
-	return t.executer.Run(strings.Split(fmt.Sprintf("qdisc del dev %s root", iface), " ")...)
+	_, err := t.executer.Run(strings.Split(fmt.Sprintf("qdisc del dev %s root", iface), " ")...)
+
+	return err
 }
 
 func (t tc) AddFilterDestIP(iface string, parent string, handle uint32, ip *net.IPNet, flowid string) error {
 	params := fmt.Sprintf("match ip dst %s flowid %s", ip.String(), flowid)
-	return t.executer.Run(buildCmd("filter", iface, parent, handle, "u32", params)...)
+	_, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "u32", params)...)
+
+	return err
+}
+
+func (t tc) IsQdiscCleared(iface string) (bool, error) {
+	cmd := fmt.Sprintf("qdisc show dev %s", iface)
+
+	// list interface qdiscs
+	out, err := t.executer.Run(strings.Split(cmd, " ")...)
+	if err != nil {
+		return false, fmt.Errorf("error getting %s qdisc info: %w", iface, err)
+	}
+
+	// ensure the root has no qdisc
+	return strings.HasPrefix(out, "qdisc noqueue 0: root refcnt"), nil
 }
 
 func buildCmd(module string, iface string, parent string, handle uint32, kind string, parameters string) []string {
