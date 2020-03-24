@@ -39,6 +39,10 @@ func (f *fakeTc) ClearQdisc(iface string) error {
 	args := f.Called(iface)
 	return args.Error(0)
 }
+func (f *fakeTc) IsQdiscCleared(iface string) (bool, error) {
+	args := f.Called(iface)
+	return args.Bool(0), args.Error(1)
+}
 
 // netlink
 type fakeNetlinkAdapter struct {
@@ -95,6 +99,7 @@ var _ = Describe("Tc", func() {
 		config                               NetworkLatencyInjectorConfig
 		spec                                 v1beta1.NetworkLatencySpec
 		tc                                   fakeTc
+		tcIsQdiscClearedCall                 *mock.Call
 		nl                                   fakeNetlinkAdapter
 		nllink1, nllink2                     *fakeNetlinkLink
 		nllink1TxQlenCall, nllink2TxQlenCall *mock.Call
@@ -113,6 +118,7 @@ var _ = Describe("Tc", func() {
 		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddFilterDestIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("ClearQdisc", mock.Anything).Return(nil)
+		tcIsQdiscClearedCall = tc.On("IsQdiscCleared", mock.Anything).Return(false, nil)
 
 		// netlink
 		nllink1 = &fakeNetlinkLink{}
@@ -214,7 +220,7 @@ var _ = Describe("Tc", func() {
 				inj.Clean()
 			})
 
-			Context("with no error from the tc command", func() {
+			Context("with a non-cleared qdisc", func() {
 				It("should enter and exit the container network namespace", func() {
 					Expect(c.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
 					Expect(c.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
@@ -222,6 +228,20 @@ var _ = Describe("Tc", func() {
 				It("should clear the interfaces qdisc", func() {
 					tc.AssertCalled(GinkgoT(), "ClearQdisc", "lo")
 					tc.AssertCalled(GinkgoT(), "ClearQdisc", "eth0")
+				})
+			})
+
+			Context("with an already cleared qdisc", func() {
+				BeforeEach(func() {
+					tcIsQdiscClearedCall.Return(true, nil)
+				})
+				It("should enter and exit the container network namespace", func() {
+					Expect(c.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+					Expect(c.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
+				})
+				It("should not clear the interfaces qdisc", func() {
+					tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "lo")
+					tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "eth0")
 				})
 			})
 		})
