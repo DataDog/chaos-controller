@@ -382,7 +382,7 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 	rand.Seed(time.Now().UnixNano())
 
 	// get pods matching the instance label selector
-	allPods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.Selector)
+	allPods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
 	}
@@ -422,12 +422,12 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 	return &corev1.PodList{Items: selectedPods}, nil
 }
 
-func (r *DisruptionReconciler) getOwnedPods(instance *chaosv1beta1.Disruption, selector labels.Set) ([]corev1.Pod, error) {
+func (r *DisruptionReconciler) getOwnedPods(instance *chaosv1beta1.Disruption, labelSelector labels.Set) ([]corev1.Pod, error) {
 	ownedPods := make([]corev1.Pod, 0)
 	pods := &corev1.PodList{}
 	listOptions := &client.ListOptions{
 		Namespace:     instance.Namespace,
-		LabelSelector: labels.SelectorFromSet(selector),
+		LabelSelector: labels.SelectorFromSet(labelSelector),
 	}
 
 	err := r.Client.List(context.Background(), pods, listOptions)
@@ -448,11 +448,11 @@ func (r *DisruptionReconciler) getOwnedPods(instance *chaosv1beta1.Disruption, s
 
 // getChaosPods returns all pods created by the given Disruption instance and being in the given mode (injection or cleanup)
 func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode) ([]corev1.Pod, error) {
-	selector := map[string]string{
+	labelSelector := map[string]string{
 		chaostypes.PodModeLabel: string(mode),
 	}
 
-	return r.getOwnedPods(instance, selector)
+	return r.getOwnedPods(instance, labelSelector)
 }
 
 // getContainerID gets the ID of the first container ID found in a Pod

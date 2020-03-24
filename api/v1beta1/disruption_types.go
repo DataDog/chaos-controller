@@ -38,13 +38,20 @@ type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	Count int `json:"count"` // number of pods to target
 	// +kubebuilder:validation:Required
-	Selector labels.Set `json:"selector"` // label selector
+	LabelSelector labels.Set `json:"labelSelector"` // label selector
+	// +kubebuilder:validation:Required
+	SpecSelector *SpecSelector `json:"specSelector"` // sepc selector
 	// +kubebuilder:validation:Optional
 	NetworkFailure *NetworkFailureSpec `json:"networkFailure,omitempty"`
 	// +kubebuilder:validation:Optional
 	NetworkLatency *NetworkLatencySpec `json:"networkLatency,omitempty"`
 	// +kubebuilder:validation:Optional
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
+}
+
+//SpecSelector represents a selector for pod sec
+type SpecSelector struct {
+	AreaZone [] string `json:"azSelector,omitempty"'`
 }
 
 // NetworkFailureSpec represents a network failure injection

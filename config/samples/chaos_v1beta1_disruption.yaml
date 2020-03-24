@@ -8,8 +8,14 @@ kind: Disruption
 metadata:
   name: disruption-sample
 spec:
-  selector: # label selector to target pods
+  generalSelector: # general selector to target pods
     app: demo
+  specSelector: # area zone selector to target pods
+    #The following configs are currently supported:
+    #failure-domain.beta.kubernetes.io/zone
+    #topology.kubernetes.io/zone:
+    azSelector:
+      - us-east-1a
   count: 1 # number of pods to target (-1 == target all the selected pods)
   networkFailure: # packet loss and connection drop
     hosts:

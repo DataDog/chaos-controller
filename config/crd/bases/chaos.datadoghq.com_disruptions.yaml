@@ -38,6 +38,11 @@ spec:
           properties:
             count:
               type: integer
+            labelSelector:
+              additionalProperties:
+                type: string
+              description: Set is a map of label:value. It implements Labels.
+              type: object
             networkFailure:
               description: NetworkFailureSpec represents a network failure injection
               properties:
@@ -75,14 +80,18 @@ spec:
                 shutdown:
                   type: boolean
               type: object
-            selector:
-              additionalProperties:
-                type: string
-              description: Set is a map of label:value. It implements Labels.
+            specSelector:
+              description: SpecSelector represents a selector for pod sec
+              properties:
+                azSelector:
+                  items:
+                    type: string
+                  type: array
               type: object
           required:
           - count
-          - selector
+          - labelSelector
+          - specSelector
           type: object
         status:
           description: DisruptionStatus defines the observed state of Disruption
