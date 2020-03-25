@@ -56,13 +56,22 @@ func NewNodeFailureInjectorWithConfig(uid string, spec v1beta1.NodeFailureSpec, 
 
 // Inject triggers a kernel panic through the sysrq trigger
 func (i nodeFailureInjector) Inject() {
+	var err error
+
+	// handle metrics
+	// those ones might not be sent because of the node crash, it is better
+	// to rely on the controller metrics for this failure injection
+	defer func() {
+		i.handleMetricSinkError(i.ms.MetricInjected("", i.uid, err == nil, i.kind, []string{}))
+	}()
+
 	i.log.Infow("injecting a node failure by triggering a kernel panic",
 		"sysrq_path", nodeFailureSysrqPath,
 		"sysrq_trigger_path", nodeFailureSysrqTriggerPath,
 	)
 
 	// Ensure sysrq value is set to 1 (to accept the kernel panic trigger)
-	err := i.config.FileWriter.Write(nodeFailureSysrqPath, 0644, "1")
+	err = i.config.FileWriter.Write(nodeFailureSysrqPath, 0644, "1")
 	if err != nil {
 		i.log.Fatalw("error while writing to the sysrq file",
 			"error", err,
@@ -73,14 +82,6 @@ func (i nodeFailureInjector) Inject() {
 	// Trigger kernel panic
 	i.log.Infow("the injector is about to write to the sysrq trigger file")
 	i.log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
-
-	i.ms.EventWithTags(
-		"node failure injected",
-		"failing node by triggering a kernel panic",
-		[]string{
-			"UID:" + i.uid,
-		},
-	)
 
 	if i.spec.Shutdown {
 		err = i.config.FileWriter.Write(nodeFailureSysrqTriggerPath, 0200, "o")
