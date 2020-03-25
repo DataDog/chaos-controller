@@ -10,6 +10,7 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -17,30 +18,31 @@ type fakeTcExecuter struct {
 	mock.Mock
 }
 
-func (f *fakeTcExecuter) Run(args ...string) error {
+func (f *fakeTcExecuter) Run(args ...string) (string, error) {
 	a := f.Called(strings.Join(args, " "))
 
-	return a.Error(0)
+	return a.String(0), a.Error(1)
 }
 
 var _ = Describe("Tc", func() {
 	var (
-		tcRunner   tc
-		tcExecuter fakeTcExecuter
-		iface      string
-		parent     string
-		handle     uint32
-		delay      time.Duration
-		bands      uint32
-		priomap    [16]uint32
-		ip         *net.IPNet
-		flowid     string
+		tcRunner          tc
+		tcExecuter        fakeTcExecuter
+		tcExecuterRunCall *mock.Call
+		iface             string
+		parent            string
+		handle            uint32
+		delay             time.Duration
+		bands             uint32
+		priomap           [16]uint32
+		ip                *net.IPNet
+		flowid            string
 	)
 
 	BeforeEach(func() {
 		// fake command executer
 		tcExecuter = fakeTcExecuter{}
-		tcExecuter.On("Run", mock.Anything).Return(nil)
+		tcExecuterRunCall = tcExecuter.On("Run", mock.Anything).Return("", nil)
 
 		// tc runner
 		tcRunner = tc{
@@ -135,6 +137,37 @@ var _ = Describe("Tc", func() {
 		Context("clear qdisc for local interface", func() {
 			It("should execute", func() {
 				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc del dev lo root")
+			})
+		})
+	})
+
+	Describe("IsQdiscCleared", func() {
+		var (
+			cleared bool
+			err     error
+		)
+
+		JustBeforeEach(func() {
+			cleared, err = tcRunner.IsQdiscCleared(iface)
+			Expect(err).To(BeNil())
+			tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc show dev lo")
+		})
+
+		Context("non-cleared qdisc", func() {
+			BeforeEach(func() {
+				tcExecuterRunCall.Return("qdisc prio 1: root refcnt 2 bands 4 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1", nil)
+			})
+			It("should return false", func() {
+				Expect(cleared).To(BeFalse())
+			})
+		})
+
+		Context("already cleared qdisc", func() {
+			BeforeEach(func() {
+				tcExecuterRunCall.Return("qdisc noqueue 0: root refcnt 2", nil)
+			})
+			It("should return false", func() {
+				Expect(cleared).To(BeTrue())
 			})
 		})
 	})
