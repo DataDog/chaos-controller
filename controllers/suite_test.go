@@ -31,6 +31,7 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/metrics"
+	metricstypes "github.com/DataDog/chaos-controller/metrics/types"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -153,7 +154,7 @@ var _ = BeforeSuite(func(done Done) {
 		realClient: k8sManager.GetClient(),
 	}
 
-	ms, err := metrics.GetSink("noop")
+	ms, err := metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&DisruptionReconciler{
