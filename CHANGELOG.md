@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.4.0](https://github.com/DataDog/chaos-controller/tree/2.4.0) (2020-03-25)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.3.0...2.4.0)
+
+**Merged pull requests:**
+
+- Close statsd client connection on injector and controller exit [\#110](https://github.com/DataDog/chaos-controller/pull/110) ([Devatoria](https://github.com/Devatoria))
+- Check qdisc hasn't been cleared before trying to clear it [\#109](https://github.com/DataDog/chaos-controller/pull/109) ([Devatoria](https://github.com/Devatoria))
+- Add tests for the network package [\#108](https://github.com/DataDog/chaos-controller/pull/108) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_0b2bd25290da0f1fa63e31ad511625889c22aa90 [\#107](https://github.com/DataDog/chaos-controller/pull/107) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.3.0](https://github.com/DataDog/chaos-controller/tree/2.3.0) (2020-03-19)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.2.1...2.3.0)
