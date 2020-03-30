@@ -169,13 +169,6 @@ jobs:
       - run:
           name: Ensure license header is present
           command: inv header-check
-  changelog:
-    executor: bash
-    steps:
-      - checkout
-      - alpine_install_git
-      - check_changed_files:
-          pattern: ^CHANGELOG.md$
 
 workflows:
   version: 2
@@ -202,4 +195,3 @@ workflows:
             - prepare-env
       - third-party-licenses
       - license-header
-      - changelog

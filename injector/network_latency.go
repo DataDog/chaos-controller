@@ -123,13 +123,20 @@ func (i networkLatencyInjector) getInterfacesByIP() (map[string][]*net.IPNet, er
 
 // Inject injects network latency according to the current spec
 func (i networkLatencyInjector) Inject() {
+	var err error
+
 	i.log.Info("injecting latency")
+
+	// handle metrics
+	defer func() {
+		i.handleMetricSinkError(i.ms.MetricInjected(i.container.ID(), i.uid, err == nil, i.kind, []string{}))
+	}()
 
 	delay := time.Duration(i.spec.Delay) * time.Millisecond
 	parent := "root"
 
 	// enter container network namespace
-	err := i.container.EnterNetworkNamespace()
+	err = i.container.EnterNetworkNamespace()
 	if err != nil {
 		i.log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.container.ID())
 	}
@@ -156,7 +163,6 @@ func (i networkLatencyInjector) Inject() {
 		// retrieve link from name
 		link, err := i.config.NetlinkAdapter.LinkByName(linkName)
 		if err != nil {
-			i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + linkName})
 			i.log.Fatalf("can't retrieve link %s: %w", linkName, err)
 		}
 
@@ -172,7 +178,6 @@ func (i networkLatencyInjector) Inject() {
 				clearTxQlen = true
 
 				if err := link.SetTxQLen(1000); err != nil {
-					i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + link.Name()})
 					i.log.Fatalf("can't set tx queue length on interface %s: %w", link.Name(), err)
 				}
 			}
@@ -185,14 +190,12 @@ func (i networkLatencyInjector) Inject() {
 			priomap := [16]uint32{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}
 
 			if err := i.config.TrafficController.AddPrio(link.Name(), "root", 1, 4, priomap); err != nil {
-				i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + link.Name()})
 				i.log.Fatalf("can't create a new qdisc for interface %s: %w", link.Name(), err)
 			}
 		}
 
 		// add delay
 		if err := i.config.TrafficController.AddDelay(link.Name(), parent, 0, delay); err != nil {
-			i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + link.Name()})
 			i.log.Fatalf("can't add delay to the newly created qdisc for interface %s: %w", link.Name(), err)
 		}
 
@@ -201,7 +204,6 @@ func (i networkLatencyInjector) Inject() {
 		if len(ips) > 0 {
 			for _, ip := range ips {
 				if err := i.config.TrafficController.AddFilterDestIP(link.Name(), "1:0", 0, ip, "1:4"); err != nil {
-					i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + link.Name()})
 					i.log.Fatalf("can't add a filter to interface %s: %w", link.Name(), err)
 				}
 			}
@@ -212,29 +214,25 @@ func (i networkLatencyInjector) Inject() {
 			i.log.Infof("clearing tx qlen for interface %s", link.Name())
 
 			if err := link.SetTxQLen(0); err != nil {
-				i.ms.MetricInjected(i.container.ID(), i.uid, false, i.kind, []string{"link:" + link.Name()})
 				i.log.Fatalf("can't clear %s link transmission queue length: %w", link.Name(), err)
 			}
 		}
 	}
-
-	i.ms.EventWithTags(
-		"network latency injected",
-		"network latency injected",
-		[]string{
-			"ContainerID:" + i.container.ID(),
-			"UID:" + i.uid,
-		},
-	)
-	i.ms.MetricInjected(i.container.ID(), i.uid, true, i.kind, []string{})
 }
 
 // Clean cleans the injected latency
 func (i networkLatencyInjector) Clean() {
+	var err error
+
 	i.log.Info("cleaning latency")
 
+	// handle metrics
+	defer func() {
+		i.handleMetricSinkError(i.ms.MetricCleaned(i.container.ID(), i.uid, err == nil, i.kind, []string{}))
+	}()
+
 	// enter container network namespace
-	err := i.container.EnterNetworkNamespace()
+	err = i.container.EnterNetworkNamespace()
 	if err != nil {
 		i.log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.container.ID())
 	}
@@ -261,17 +259,19 @@ func (i networkLatencyInjector) Clean() {
 			i.log.Fatalf("can't retrieve link %s: %w", linkName, err)
 		}
 
-		if err := i.config.TrafficController.ClearQdisc(link.Name()); err != nil {
-			i.log.Fatalf("can't delete the %s link qdisc: %w", link.Name(), err)
+		// ensure qdisc isn't cleared before clearing it to avoid any tc error
+		cleared, err := i.config.TrafficController.IsQdiscCleared(link.Name())
+		if err != nil {
+			i.log.Fatalf("can't ensure the %s link qdisc is cleared or not: %w", link.Name(), err)
+		}
+
+		// clear link qdisc if needed
+		if !cleared {
+			if err := i.config.TrafficController.ClearQdisc(link.Name()); err != nil {
+				i.log.Fatalf("can't delete the %s link qdisc: %w", link.Name(), err)
+			}
+		} else {
+			i.log.Infof("%s link qdisc is already cleared, skipping", link.Name())
 		}
 	}
-
-	i.ms.EventWithTags(
-		"network latency cleaned",
-		"network latency cleaned",
-		[]string{
-			"ContainerID:" + i.container.ID(),
-			"UID:" + i.uid,
-		},
-	)
 }

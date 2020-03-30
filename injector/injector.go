@@ -31,3 +31,9 @@ type containerInjector struct {
 	injector
 	container container.Container
 }
+
+func (i injector) handleMetricSinkError(err error) {
+	if err != nil {
+		i.log.Errorw("error sending metric or event", "sink", i.ms.GetSinkName(), "error", err)
+	}
+}

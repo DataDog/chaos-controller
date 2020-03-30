@@ -6,10 +6,13 @@
 ---
 variables:
   CURRENT_CI_IMAGE: 0.2.0
+  CONTROLLER_IMAGE_NAME: chaos-controller
+  INJECTOR_IMAGE_NAME: chaos-injector
 
 stages:
   - ci-image
   - build
+  - pre-release
   - release
 
 # CI image
@@ -42,75 +45,97 @@ build:make:
   script:
     - make
 
-# release
-.release: &release
+# meta-release
+# release image and common stuff
+.meta-release: &meta-release
   <<: *common
   tags:
     - "runner:docker"
     - "size:large"
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2223910-e97a88c-1.0.0
-  stage: release
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2287090-e1d6fd6-1.1.0
+
+# pre-release
+# build the target from the local Dockerfile and push it to
+# AWS staging registry
+.pre-release: &pre-release
+  <<: *meta-release
+  stage: pre-release
   script:
-    - release.sh -t=$TARGET -e=$ENVIRONMENT $IMAGE_NAME $IMAGE_TAG
+    - release.sh --build-from=./Dockerfile --build-target=manager 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
+    - release.sh --build-from=./Dockerfile --build-target=injector 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME} ${TAG}
 
-release-manager-ref:
-  <<: *release
+# pre-release-ref
+# build a reference image tag for controller and injector
+pre-release-ref:
+  <<: *pre-release
   when: manual
   except:
     - tags
   variables:
-    IMAGE_NAME: "chaos-controller"
-    IMAGE_TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    TARGET: "manager"
-    ENVIRONMENT: "staging"
+    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
 
-.release-manager-tag:
-  <<: *release
+# pre-release-tag
+# build a tag image tag for controller and injector
+pre-release-tag:
+  <<: *pre-release
   when: always
   only:
     - tags
   variables:
-    IMAGE_NAME: "chaos-controller"
-    IMAGE_TAG: "${CI_COMMIT_TAG}"
-    TARGET: "manager"
+    TAG: "${CI_COMMIT_TAG}"
 
-release-manager-tag-staging:
-  extends: .release-manager-tag
-  variables:
-    ENVIRONMENT: "staging"
+# release
+.release: &release
+  <<: *meta-release
+  stage: release
+  when: always
+  only:
+    - tags
+  script:
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-staging/${IMAGE} ${CI_COMMIT_TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-prod/${IMAGE} ${CI_COMMIT_TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${CI_COMMIT_TAG}
 
-release-manager-tag-prod:
-  extends: .release-manager-tag
-  variables:
-    ENVIRONMENT: "prod"
-
-release-injector-ref:
+release-controller:
   <<: *release
+  variables:
+    IMAGE: "${CONTROLLER_IMAGE_NAME}"
+    TAG: "${CI_COMMIT_TAG}"
+
+release-injector:
+  <<: *release
+  variables:
+    IMAGE: "${INJECTOR_IMAGE_NAME}"
+    TAG: "${CI_COMMIT_TAG}"
+
+.release-docker-hub: &release-docker-hub
+  stage: release
+  tags: [ "runner:docker", "size:large" ]
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:v1912023-8c8dc1c-0.6.1
+  before_script:
+    - echo "Logging into the Docker Hub"
+    - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
+    - aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_pwd --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin docker.io
+  script:
+    - docker pull 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME}:${TAG}
+    - docker tag 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME}:${TAG} datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
+    - docker push datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
+    - docker pull 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME}:${TAG}
+    - docker tag 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME}:${TAG} datadog/${INJECTOR_IMAGE_NAME}:${TAG}
+    - docker push datadog/${INJECTOR_IMAGE_NAME}:${TAG}
+
+release-docker-hub-ref:
+  <<: *release-docker-hub
   when: manual
   except:
     - tags
   variables:
-    IMAGE_NAME: "chaos-injector"
-    IMAGE_TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    TARGET: "injector"
-    ENVIRONMENT: "staging"
+    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
 
-.release-injector-tag:
-  <<: *release
-  when: always
+release-docker-hub-tag:
+  <<: *release-docker-hub
+  when: manual
   only:
     - tags
   variables:
-    IMAGE_NAME: "chaos-injector"
-    IMAGE_TAG: "${CI_COMMIT_TAG}"
-    TARGET: "injector"
-
-release-injector-tag-staging:
-  extends: .release-injector-tag
-  variables:
-    ENVIRONMENT: "staging"
-
-release-injector-tag-prod:
-  extends: .release-injector-tag
-  variables:
-    ENVIRONMENT: "prod"
+    TAG: "${CI_COMMIT_TAG}"
