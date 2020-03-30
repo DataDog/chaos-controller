@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/metrics/types"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -32,10 +33,27 @@ func init() {
 	rootCmd.PersistentFlags().String("uid", "", "UID of the failure resource")
 	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "uid")
 
+	cobra.OnInitialize(initLogger)
 	cobra.OnInitialize(initMetricsSink)
 }
 
 func main() {
+	// handle metrics sink client close on exit
+	defer func() {
+		log.Infow("closing metrics sink client before exiting", "sink", ms.GetSinkName())
+
+		if err := ms.Close(); err != nil {
+			log.Errorw("error closing metrics sink client", "error", err, "sink", ms.GetSinkName())
+		}
+	}()
+
+	// execute command
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+
+func initLogger() {
 	// prepare logger
 	zapInstance, err := zap.NewProduction()
 	if err != nil {
@@ -44,17 +62,12 @@ func main() {
 	}
 
 	log = zapInstance.Sugar()
-
-	// execute command
-	if err = rootCmd.Execute(); err != nil {
-		os.Exit(1)
-	}
 }
 
 func initMetricsSink() {
 	var err error
-	ms, err = metrics.GetSink(sink)
 
+	ms, err = metrics.GetSink(types.SinkDriver(sink), types.SinkAppInjector)
 	if err != nil {
 		log.Fatalw("error while creating metric sink", "error", err)
 	}

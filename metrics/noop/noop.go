@@ -9,70 +9,85 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/metrics/types"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // Sink describes a no-op sink
 type Sink struct {
-	sinkName string
 }
 
 // New ...
 func New() *Sink {
-	return &Sink{sinkName: "noop"}
+	return &Sink{}
+}
+
+// Close returns nil
+func (n *Sink) Close() error {
+	return nil
 }
 
 // GetSinkName returns the name of the sink
 func (n *Sink) GetSinkName() string {
-	return n.sinkName
+	return string(types.SinkDriverNoop)
+}
+
+// Flush returns nil
+func (n *Sink) Flush() error {
+	return nil
 }
 
 // EventWithTags creates a new event with the given title, text and tags and send it
-func (n *Sink) EventWithTags(title, text string, tags []string) {}
-
-// EventCleanFailure sends an event to datadog specifying a failure clean fail
-func (n *Sink) EventCleanFailure(containerID, uid string) {}
-
-// EventInjectFailure sends an event to datadog specifying a failure inject fail
-func (n *Sink) EventInjectFailure(containerID, uid string) {}
-
-// MetricInjected increments the injected metric
-func (n *Sink) MetricInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
+func (n *Sink) EventWithTags(title, text string, tags []string) error {
+	return nil
 }
 
-// MetricRulesInjected rules.increments the injected metric
-func (n *Sink) MetricRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
+// MetricInjected increments the injected metric
+func (n *Sink) MetricInjected(containerID, uid string, succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
+	return nil
 }
 
 // MetricCleaned increments the cleaned metric
-func (n *Sink) MetricCleaned(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
+func (n *Sink) MetricCleaned(containerID, uid string, succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
+	return nil
 }
 
 // MetricIPTablesRulesInjected increment iptables_rules metrics
-func (n *Sink) MetricIPTablesRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string) {
+func (n *Sink) MetricIPTablesRulesInjected(containerID, uid string, kind chaostypes.DisruptionKind, tags []string) error {
+	return nil
 }
 
 // MetricCleanupDuration send timing metric for cleanup duration
-func (n *Sink) MetricCleanupDuration(duration time.Duration, tags []string) {
+func (n *Sink) MetricCleanupDuration(duration time.Duration, tags []string) error {
 	fmt.Println("NOOP: MetricCleanupDuration +1")
+
+	return nil
 }
 
 // MetricInjectDuration send timing metric for inject duration
-func (n *Sink) MetricInjectDuration(duration time.Duration, tags []string) {
+func (n *Sink) MetricInjectDuration(duration time.Duration, tags []string) error {
 	fmt.Println("NOOP: MetricInjectDuration +1")
+
+	return nil
 }
 
 // MetricReconcile increment reconcile metric
-func (n *Sink) MetricReconcile() {
+func (n *Sink) MetricReconcile() error {
 	fmt.Println("NOOP: MetricReconcile +1")
+
+	return nil
 }
 
 // MetricReconcileDuration send timing metric for reconcile loop
-func (n *Sink) MetricReconcileDuration(duration time.Duration, tags []string) {
+func (n *Sink) MetricReconcileDuration(duration time.Duration, tags []string) error {
 	fmt.Println("NOOP: MetricReconcileDuration +1")
+
+	return nil
 }
 
 // MetricPodsCreated increment pods.created metric
-func (n *Sink) MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) {
+func (n *Sink) MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) error {
 	fmt.Println("NOOP: MetricPodsCreated +1")
+
+	return nil
 }

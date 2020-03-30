@@ -11,34 +11,34 @@ import (
 
 	"github.com/DataDog/chaos-controller/metrics/datadog"
 	"github.com/DataDog/chaos-controller/metrics/noop"
-	"github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/metrics/types"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // Sink describes a metric sink
 type Sink interface {
-	EventCleanFailure(containerID, uid string)
-	EventInjectFailure(containerID, uid string)
-	EventWithTags(title, text string, tags []string)
+	Close() error
+	EventWithTags(title, text string, tags []string) error
+	Flush() error
 	GetSinkName() string
-	MetricCleaned(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
-	MetricCleanupDuration(duration time.Duration, tags []string)
-	MetricInjectDuration(duration time.Duration, tags []string)
-	MetricInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
-	MetricIPTablesRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
-	MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool)
-	MetricReconcile()
-	MetricReconcileDuration(duration time.Duration, tags []string)
-	MetricRulesInjected(containerID, uid string, succeed bool, kind types.DisruptionKind, tags []string)
+	MetricCleaned(containerID, uid string, succeed bool, kind chaostypes.DisruptionKind, tags []string) error
+	MetricCleanupDuration(duration time.Duration, tags []string) error
+	MetricInjectDuration(duration time.Duration, tags []string) error
+	MetricInjected(containerID, uid string, succeed bool, kind chaostypes.DisruptionKind, tags []string) error
+	MetricIPTablesRulesInjected(containerID, uid string, kind chaostypes.DisruptionKind, tags []string) error
+	MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) error
+	MetricReconcile() error
+	MetricReconcileDuration(duration time.Duration, tags []string) error
 }
 
 // GetSink returns an initiated sink
-func GetSink(name string) (Sink, error) {
-	switch name {
-	case "datadog":
-		return datadog.New(), nil
-	case "noop":
+func GetSink(driver types.SinkDriver, app types.SinkApp) (Sink, error) {
+	switch driver {
+	case types.SinkDriverDatadog:
+		return datadog.New(app)
+	case types.SinkDriverNoop:
 		return noop.New(), nil
 	default:
-		return nil, fmt.Errorf("unsupported metrics sink: %s", name)
+		return nil, fmt.Errorf("unsupported metrics sink: %s", driver)
 	}
 }

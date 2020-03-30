@@ -32,6 +32,7 @@ commands:
       - run:
           name: Install git
           command: apk update && apk add git
+
 templates:
   # sets the working directory to the project path
   working_directory: &working_directory
@@ -149,11 +150,7 @@ jobs:
       - run:
           name: Ensure license header is present
           command: inv header-check
-  changelog:
-    executor: bash
-    steps:
-      - checkout
-      - alpine_install_git
+
 workflows:
   version: 2
   test_and_build:
@@ -179,4 +176,3 @@ workflows:
             - prepare-env
       - third-party-licenses
       - license-header
-      - changelog

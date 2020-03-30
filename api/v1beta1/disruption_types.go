@@ -35,9 +35,9 @@ import (
 
 // DisruptionSpec defines the desired state of Disruption
 type DisruptionSpec struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Minimum=0
-	Count    int        `json:"count"`    // number of pods to target
+	// +kubebuilder:validation:Required
+	Count int `json:"count"` // number of pods to target
+	// +kubebuilder:validation:Required
 	Selector labels.Set `json:"selector"` // label selector
 	// +kubebuilder:validation:Optional
 	NetworkFailure *NetworkFailureSpec `json:"networkFailure,omitempty"`
