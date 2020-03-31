@@ -29,6 +29,7 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/metrics/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -80,10 +81,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	ms, err := metrics.GetSink(sink)
+	// metrics sink
+	ms, err := metrics.GetSink(types.SinkDriver(sink), types.SinkAppController)
 	if err != nil {
 		ctrl.Log.Error(err, "error while creating metric sink")
 	}
+
+	// handle metrics sink client close on exit
+	defer func() {
+		ctrl.Log.Info("closing metrics sink client before exiting", "sink", ms.GetSinkName())
+
+		if err := ms.Close(); err != nil {
+			ctrl.Log.Error(err, "error closing metrics sink client", "sink", ms.GetSinkName())
+		}
+	}()
 
 	// load pod template
 	bytes, err := ioutil.ReadFile(podTemplate) //nolint:gosec

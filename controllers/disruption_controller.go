@@ -77,7 +77,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	tsStart := time.Now()
 
 	// reconcile metrics
-	r.MetricsSink.MetricReconcile()
+	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
 
 	defer func() func() {
 		return func() {
@@ -86,7 +86,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
 			}
 
-			r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags)
+			r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
 		}
 	}()()
 
@@ -142,7 +142,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
 			r.Log.Info("removing finalizer", "instance", instance.Name, "namespace", instance.Namespace)
-			r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace})
+			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
 			instance.ObjectMeta.Finalizers = helpers.RemoveString(instance.ObjectMeta.Finalizers, finalizer)
 			return ctrl.Result{}, r.Update(context.Background(), instance)
 		}
@@ -247,14 +247,14 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 				if err = r.Create(context.Background(), chaosPod); err != nil {
 					r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
-					r.MetricsSink.MetricPodsCreated(targetPod.Name, instance.Name, instance.Namespace, "inject", false)
+					r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(targetPod.Name, instance.Name, instance.Namespace, "inject", false))
 
 					return ctrl.Result{}, err
 				}
 
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-				r.MetricsSink.MetricPodsCreated(targetPod.Name, instance.Name, instance.Namespace, "inject", true)
+				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(targetPod.Name, instance.Name, instance.Namespace, "inject", true))
 			} else {
 				r.Log.Info("an injection pod is already existing for the selected pod", "instance", instance.Name, "namespace", instance.Namespace, "targetPod", targetPod.Name)
 			}
@@ -263,7 +263,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	// update resource status injection flag
 	// we reach this line only when every injection pods have been created with success
-	r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace})
+	r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
 
 	r.Log.Info("updating injection status flag", "instance", instance.Name, "namespace", instance.Namespace)
 	instance.Status.IsInjected = true
@@ -359,13 +359,13 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 			err = r.Create(context.Background(), chaosPod)
 			if err != nil {
 				r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Cleanup pod for disruption \"%s\" failed to be created", instance.Name))
-				r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", false)
+				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", false))
 
 				return err
 			}
 
 			r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for disruption \"%s\"", instance.Name))
-			r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", true)
+			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", true))
 		}
 	}
 
@@ -389,7 +389,7 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 
 	// if count has not been specified or is greater than the actual number of matching pods,
 	// return all pods matching the label selector
-	if instance.Spec.Count == 0 || instance.Spec.Count >= len(allPods.Items) {
+	if instance.Spec.Count == -1 || instance.Spec.Count >= len(allPods.Items) {
 		return allPods, nil
 	}
 
@@ -500,6 +500,13 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	pod.Spec.Containers[0].Args = args
 
 	return &pod, nil
+}
+
+// handleMetricSinkError logs the given metric sink error if it is not nil
+func (r *DisruptionReconciler) handleMetricSinkError(err error) {
+	if err != nil {
+		r.Log.Error(err, "error sending a metric")
+	}
 }
 
 // SetupWithManager setups the current reconciler with the given manager

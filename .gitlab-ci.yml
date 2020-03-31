@@ -92,20 +92,22 @@ pre-release-tag:
   only:
     - tags
   script:
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} eu.gcr.io/datadog-staging/${IMAGE} ${CI_COMMIT_TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} eu.gcr.io/datadog-prod/${IMAGE} ${CI_COMMIT_TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${CI_COMMIT_TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} 020998557671.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${CI_COMMIT_TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-staging/${IMAGE} ${CI_COMMIT_TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-prod/${IMAGE} ${CI_COMMIT_TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${CI_COMMIT_TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 020998557671.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${CI_COMMIT_TAG}
 
 release-controller:
   <<: *release
   variables:
     IMAGE: "${CONTROLLER_IMAGE_NAME}"
+    TAG: "${CI_COMMIT_TAG}"
 
 release-injector:
   <<: *release
   variables:
     IMAGE: "${INJECTOR_IMAGE_NAME}"
+    TAG: "${CI_COMMIT_TAG}"
 
 .release-docker-hub: &release-docker-hub
   stage: release
