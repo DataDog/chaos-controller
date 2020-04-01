@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.4.1](https://github.com/DataDog/chaos-controller/tree/2.4.1) (2020-04-01)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.4.0...2.4.1)
+
+**Merged pull requests:**
+
+- Make optional fields nullable [\#113](https://github.com/DataDog/chaos-controller/pull/113) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_78c44f3f80dc281ab9fd79cb93f862dd5f84aa37 [\#112](https://github.com/DataDog/chaos-controller/pull/112) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Add michelada release [\#97](https://github.com/DataDog/chaos-controller/pull/97) ([Azoam](https://github.com/Azoam))
+
 ## [2.4.0](https://github.com/DataDog/chaos-controller/tree/2.4.0) (2020-03-25)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.3.0...2.4.0)
@@ -215,7 +225,6 @@
 
 - Change chaos-fi call due to rework [\#23](https://github.com/DataDog/chaos-controller/pull/23) ([Devatoria](https://github.com/Devatoria))
 - update README about updating helm chart for controller [\#20](https://github.com/DataDog/chaos-controller/pull/20) ([kathy-huang](https://github.com/kathy-huang))
-- add 'numPodsToTarget' field to crd to allow specifying a random numbe… [\#19](https://github.com/DataDog/chaos-controller/pull/19) ([kathy-huang](https://github.com/kathy-huang))
 - Remove injection pod update in each Reconcile call [\#17](https://github.com/DataDog/chaos-controller/pull/17) ([kathy-huang](https://github.com/kathy-huang))
 
 ## [0.0.5](https://github.com/DataDog/chaos-controller/tree/0.0.5) (2019-04-12)
@@ -232,6 +241,7 @@
 
 **Merged pull requests:**
 
+- add 'numPodsToTarget' field to crd to allow specifying a random numbe… [\#19](https://github.com/DataDog/chaos-controller/pull/19) ([kathy-huang](https://github.com/kathy-huang))
 - Pass instance UID to chaos-fi pods [\#15](https://github.com/DataDog/chaos-controller/pull/15) ([Devatoria](https://github.com/Devatoria))
 - Improve CI by using the generic docker-push image [\#14](https://github.com/DataDog/chaos-controller/pull/14) ([Devatoria](https://github.com/Devatoria))
 
