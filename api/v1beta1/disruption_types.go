@@ -39,16 +39,17 @@ type DisruptionSpec struct {
 	Count int `json:"count"` // number of pods to target
 	// +kubebuilder:validation:Required
 	Selector labels.Set `json:"selector"` // label selector
-	// +kubebuilder:validation:Optional
+	// +nullable
 	NetworkFailure *NetworkFailureSpec `json:"networkFailure,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +nullable
 	NetworkLatency *NetworkLatencySpec `json:"networkLatency,omitempty"`
-	// +kubebuilder:validation:Optional
+	// +nullable
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
 }
 
 // NetworkFailureSpec represents a network failure injection
 type NetworkFailureSpec struct {
+	// +nullable
 	Hosts       []string `json:"hosts,omitempty"`
 	Port        int      `json:"port"`
 	Probability int      `json:"probability"`
@@ -97,8 +98,9 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 
 // NetworkLatencySpec represents a network latency injection
 type NetworkLatencySpec struct {
-	Delay uint     `json:"delay"`
-	Hosts []string `json:"hosts"`
+	Delay uint `json:"delay"`
+	// +nullable
+	Hosts []string `json:"hosts,omitempty"`
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
@@ -167,11 +169,9 @@ func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, c
 
 // DisruptionStatus defines the observed state of Disruption
 type DisruptionStatus struct {
-	// +kubebuilder:validation:Optional
-	IsFinalizing bool `json:"isFinalizing"`
-	// +kubebuilder:validation:Optional
-	IsInjected bool `json:"isInjected"`
-	// +kubebuilder:validation:Optional
+	IsFinalizing bool `json:"isFinalizing,omitempty"`
+	IsInjected   bool `json:"isInjected,omitempty"`
+	// +nullable
 	TargetPods []string `json:"targetPods,omitempty"`
 }
 

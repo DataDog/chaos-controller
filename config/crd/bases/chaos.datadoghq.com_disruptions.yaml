@@ -40,10 +40,12 @@ spec:
               type: integer
             networkFailure:
               description: NetworkFailureSpec represents a network failure injection
+              nullable: true
               properties:
                 hosts:
                   items:
                     type: string
+                  nullable: true
                   type: array
                 port:
                   type: integer
@@ -58,19 +60,21 @@ spec:
               type: object
             networkLatency:
               description: NetworkLatencySpec represents a network latency injection
+              nullable: true
               properties:
                 delay:
                   type: integer
                 hosts:
                   items:
                     type: string
+                  nullable: true
                   type: array
               required:
               - delay
-              - hosts
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection
+              nullable: true
               properties:
                 shutdown:
                   type: boolean
@@ -94,6 +98,7 @@ spec:
             targetPods:
               items:
                 type: string
+              nullable: true
               type: array
           type: object
       type: object

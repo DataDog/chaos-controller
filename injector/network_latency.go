@@ -113,7 +113,7 @@ func (i networkLatencyInjector) getInterfacesByIP() (map[string][]*net.IPNet, er
 			i.log.Fatalf("can't list links: %w", err)
 		}
 		for _, link := range links {
-			i.log.Info("adding interface %s", link.Name())
+			i.log.Infof("adding interface %s", link.Name())
 			linkByIP[link.Name()] = []*net.IPNet{}
 		}
 	}
