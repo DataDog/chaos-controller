@@ -66,7 +66,7 @@ def license_check(ctx):
                     if match is None:
                         error = 'error: could not determine license type for package {}'.format(parent)
                     else:
-                        license_type = match.license
+                        license_type = match.license.id
 
             # if the license has already been defined in the CSV, multiple options:
             # - an error occured during recognition but the license has already been specified, we can keep it
