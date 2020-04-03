@@ -7,6 +7,7 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: disruption-sample
+  namespace: default # disruption resource must be in the same namespace as targeted pods
 spec:
   selector: # label selector to target pods
     app: demo
@@ -14,7 +15,7 @@ spec:
   networkFailure: # packet loss and connection drop
     hosts:
       - 10.0.0.0/8 # destination host
-    probability: 100 # probability to drop packets
+    probability: 100 # probability to drop packets (between 0 and 100)
     port: 80 # port to drop packets on
     protocol: tcp # protocol to drop packets on (can be tcp or udp)
   networkLatency: # network latency
