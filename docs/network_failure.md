@@ -5,3 +5,9 @@ The `networkFailure` field provides an automated way of dropping the connection 
 The injector injects iptables rules in a dedicated iptables chain. The chain is created during the injection and has a unique name formed with the `CHAOS-` prefix and with a part of the `Disruption` Kubernetes resource UUID. All iptables injection are done in the `filter` table and during the `OUTPUT` step.
 
 On cleaning, it removes all the injected rules by clearing the dedicated chain and by removing it.
+
+## Allow establishment
+
+The `allowEstablishment` field allows you to drop established connections packets only. It means you can allow the connection to be established between the pod and the impacted service but then drop packets.
+
+It adds the `-m conntrack --ctstate ESTABLISHED` flags to the injected iptables `DROP` rules.

@@ -257,23 +257,22 @@ func (i networkFailureInjector) generateRuleParts(ip string) []string {
 		strconv.Itoa(i.spec.Port),
 	}
 
-	//Add modules (if any) here
-	ruleParts = append(ruleParts, "-m")
-	numModules := 0
-
-	//Probability Module
+	// Probability Module
 	if i.spec.Probability != 0 && i.spec.Probability != 100 {
-		//Probability expected in decimal format
+		// Probability expected in decimal format
 		var prob = float64(i.spec.Probability) / 100.0
-		ruleParts = append(ruleParts,
-			"statistic", "--mode", "random", "--probability", fmt.Sprintf("%.2f", prob),
+		ruleParts = append(
+			ruleParts,
+			"-m", "statistic", "--mode", "random", "--probability", fmt.Sprintf("%.2f", prob),
 		)
-		numModules++
 	}
 
-	//If no modules were defined, remove the tailing -m
-	if numModules == 0 {
-		ruleParts = ruleParts[:len(ruleParts)-1]
+	// Allow establishment
+	if i.spec.AllowEstablishment {
+		ruleParts = append(
+			ruleParts,
+			"-m", "conntrack", "--ctstate", "ESTABLISHED",
+		)
 	}
 
 	ruleParts = append(ruleParts, "-j", "DROP")
