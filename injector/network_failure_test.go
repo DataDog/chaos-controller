@@ -215,6 +215,20 @@ var _ = Describe("Network Failure", func() {
 				})
 			})
 		})
+
+		Context("using allow establishment", func() {
+			BeforeEach(func() {
+				spec.Hosts = []string{"192.168.0.0/24"}
+				spec.AllowEstablishment = true
+			})
+
+			It("should inject a rule dropping established connection only", func() {
+				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
+				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
+					"-p", "tcp", "-d", "192.168.0.0/24", "--dport", "666", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "DROP",
+				})
+			})
+		})
 	})
 
 	Describe("cleaning", func() {

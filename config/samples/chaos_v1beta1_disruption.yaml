@@ -18,6 +18,7 @@ spec:
     probability: 100 # probability to drop packets (between 0 and 100)
     port: 80 # port to drop packets on
     protocol: tcp # protocol to drop packets on (can be tcp or udp)
+    allowEstablishment: true # allow connection to be established before dropping packets (drops established connections packets only)
   networkLatency: # network latency
     delay: 1000 # delay in ms
     hosts: # destination hosts to add latency to
