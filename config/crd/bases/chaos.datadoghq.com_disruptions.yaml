@@ -42,6 +42,8 @@ spec:
               description: NetworkFailureSpec represents a network failure injection
               nullable: true
               properties:
+                allowEstablishment:
+                  type: boolean
                 hosts:
                   items:
                     type: string
