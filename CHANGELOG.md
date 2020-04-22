@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.5.0](https://github.com/DataDog/chaos-controller/tree/2.5.0) (2020-04-22)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.4.1...2.5.0)
+
+**Merged pull requests:**
+
+- Allow connection establishment before drop in network failure [\#117](https://github.com/DataDog/chaos-controller/pull/117) ([Devatoria](https://github.com/Devatoria))
+- Add some more comments in the disruption example [\#116](https://github.com/DataDog/chaos-controller/pull/116) ([Devatoria](https://github.com/Devatoria))
+- Update 3rd party licenses to show spdx identifier [\#115](https://github.com/DataDog/chaos-controller/pull/115) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_e2a5b625599466a40a09665b59090a26d9d8c0c1 [\#114](https://github.com/DataDog/chaos-controller/pull/114) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.4.1](https://github.com/DataDog/chaos-controller/tree/2.4.1) (2020-04-01)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.4.0...2.4.1)
@@ -225,6 +236,7 @@
 
 - Change chaos-fi call due to rework [\#23](https://github.com/DataDog/chaos-controller/pull/23) ([Devatoria](https://github.com/Devatoria))
 - update README about updating helm chart for controller [\#20](https://github.com/DataDog/chaos-controller/pull/20) ([kathy-huang](https://github.com/kathy-huang))
+- add 'numPodsToTarget' field to crd to allow specifying a random numbe… [\#19](https://github.com/DataDog/chaos-controller/pull/19) ([kathy-huang](https://github.com/kathy-huang))
 - Remove injection pod update in each Reconcile call [\#17](https://github.com/DataDog/chaos-controller/pull/17) ([kathy-huang](https://github.com/kathy-huang))
 
 ## [0.0.5](https://github.com/DataDog/chaos-controller/tree/0.0.5) (2019-04-12)
@@ -241,7 +253,6 @@
 
 **Merged pull requests:**
 
-- add 'numPodsToTarget' field to crd to allow specifying a random numbe… [\#19](https://github.com/DataDog/chaos-controller/pull/19) ([kathy-huang](https://github.com/kathy-huang))
 - Pass instance UID to chaos-fi pods [\#15](https://github.com/DataDog/chaos-controller/pull/15) ([Devatoria](https://github.com/Devatoria))
 - Improve CI by using the generic docker-push image [\#14](https://github.com/DataDog/chaos-controller/pull/14) ([Devatoria](https://github.com/Devatoria))
 
