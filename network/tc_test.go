@@ -36,6 +36,7 @@ var _ = Describe("Tc", func() {
 		bands             uint32
 		priomap           [16]uint32
 		ip                *net.IPNet
+		port              int
 		flowid            string
 	)
 
@@ -60,6 +61,7 @@ var _ = Describe("Tc", func() {
 			IP:   net.IPv4(127, 0, 0, 1),
 			Mask: net.CIDRMask(32, 32),
 		}
+		port = 80
 		flowid = "1:2"
 	})
 
@@ -117,14 +119,25 @@ var _ = Describe("Tc", func() {
 		})
 	})
 
-	Describe("AddFilterDestIP", func() {
+	Describe("AddFilter", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddFilterDestIP(iface, parent, handle, ip, flowid)
+			tcRunner.AddFilter(iface, parent, handle, ip, 0, flowid)
 		})
 
 		Context("add a filter on local IP with flowid 1:4", func() {
 			It("should execute", func() {
 				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 127.0.0.1/32 flowid 1:2")
+			})
+		})
+	})
+
+	Describe("AddFilter", func() {
+		JustBeforeEach(func() {
+			tcRunner.AddFilter(iface, parent, handle, ip, port, flowid)
+		})
+		Context("add a filter on local IP and port 80 with flowid 1:4", func() {
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 127.0.0.1/32 match ip dport 80 flowid 1:2")
 			})
 		})
 	})
