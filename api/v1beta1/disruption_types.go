@@ -106,7 +106,7 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 type NetworkLatencySpec struct {
 	Delay uint `json:"delay"`
 	// +nullable
-	Port  int      `json:"port",omitempty`
+	Port  int      `json:"port,omitempty"`
 	Hosts []string `json:"hosts,omitempty"`
 }
 
