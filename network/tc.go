@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 
 	"go.uber.org/zap"
 )
@@ -97,10 +97,10 @@ func (t tc) ClearQdisc(iface string) error {
 func (t tc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error {
 	params := fmt.Sprintf("match ip dst %s ", ip.String())
 	if port != 0 {
-		params = params + fmt.Sprintf("match ip dport %s ", strconv.Itoa(port))
+		params += fmt.Sprintf("match ip dport %s ", strconv.Itoa(port))
 	}
-	
-	params = params + fmt.Sprintf("flowid %s", flowid)
+
+	params += fmt.Sprintf("flowid %s", flowid)
 	_, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "u32", params)...)
 
 	return err

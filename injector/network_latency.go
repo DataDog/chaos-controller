@@ -202,6 +202,7 @@ func (i networkLatencyInjector) Inject() {
 		// if only some hosts/ports are targeted, redirect the traffic to the extra band created earlier
 		// where the delay is applied
 		port := i.spec.Port
+		
 		if len(ips) > 0 {
 			for _, ip := range ips {
 				if err := i.config.TrafficController.AddFilter(link.Name(), "1:0", 0, ip, port, "1:4"); err != nil {
