@@ -137,7 +137,7 @@ var _ = Describe("Tc", func() {
 		})
 		Context("add a filter on local IP and port 80 with flowid 1:4", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 127.0.0.1/32 match ip dport 80 flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 127.0.0.1/32 match ip dport 80 0xffff flowid 1:2")
 			})
 		})
 	})
