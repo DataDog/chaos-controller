@@ -21,11 +21,11 @@ test: generate manifests
 
 # Build manager binary
 manager: generate
-	go build -o bin/manager main.go
+	GOOS=linux GOARCH=amd64 go build -o bin/manager/manager main.go
 
 # Build injector binary
 injector:
-	GOOS=linux GOARCH=amd64 go build -o bin/injector ./cli/injector/
+	GOOS=linux GOARCH=amd64 go build -o bin/injector/injector ./cli/injector/
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate manifests
@@ -65,16 +65,16 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
 # Build the docker image
-docker-build-manager: generate
+docker-build-manager: manager
 	mkdir -p out
-	docker build . -t ${MANAGER_IMAGE} --target manager
+	docker build -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
 	docker save -o out/manager.tar ${MANAGER_IMAGE}
 	scp -i $$(minikube ssh-key) out/manager.tar docker@$$(minikube ip):/tmp
 	minikube ssh -- sudo ctr cri load /tmp/manager.tar
 
-docker-build-injector:
+docker-build-injector: injector
 	mkdir -p out
-	docker build . -t ${INJECTOR_IMAGE} --target injector
+	docker build -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
 	docker save -o out/injector.tar ${INJECTOR_IMAGE}
 	scp -i $$(minikube ssh-key) out/injector.tar docker@$$(minikube ip):/tmp
 	minikube ssh -- sudo ctr cri load /tmp/injector.tar
