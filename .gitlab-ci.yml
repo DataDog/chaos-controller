@@ -5,7 +5,7 @@
 
 ---
 variables:
-  CURRENT_CI_IMAGE: 0.2.0
+  CURRENT_CI_IMAGE: 0.3.0
   CONTROLLER_IMAGE_NAME: chaos-controller
   INJECTOR_IMAGE_NAME: chaos-injector
 
@@ -44,6 +44,10 @@ build:make:
   when: always
   script:
     - make
+  artifacts:
+    paths:
+      - bin/injector/injector
+      - bin/manager/manager
 
 # meta-release
 # release image and common stuff
@@ -52,7 +56,7 @@ build:make:
   tags:
     - "runner:docker"
     - "size:large"
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2287090-e1d6fd6-1.1.0
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2441564-948d16b-1.2.0
 
 # pre-release
 # build the target from the local Dockerfile and push it to
@@ -61,8 +65,10 @@ build:make:
   <<: *meta-release
   stage: pre-release
   script:
-    - release.sh --build-from=./Dockerfile --build-target=manager 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
-    - release.sh --build-from=./Dockerfile --build-target=injector 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME} ${TAG}
+    - release.sh --build-from=./bin/manager/Dockerfile --build-context=./bin/manager/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
+    - release.sh --build-from=./bin/injector/Dockerfile --build-context=./bin/injector/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME} ${TAG}
+  dependencies:
+    - build:make
 
 # pre-release-ref
 # build a reference image tag for controller and injector
