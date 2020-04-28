@@ -19,8 +19,6 @@ If you want to test the controller locally (without having to redeploy a new ima
 
 If the controller is already deployed, you'll have to remove the running pod for changes to be applied.
 
-**Known issue: the pod preset injecting the fake Datadog statsd environment variable is created at the end of the apply. The preset may not be applied on the chaos controller pod, making it to panic. If it's the case, you have to remove the pod so it's created again with the pod preset."**
-
 The [samples](config/samples) contains sample data which can be used to test your changes.
 
 * [deployment.yaml](config/samples/deployment.yaml) contains a simple container which can be used for testing
