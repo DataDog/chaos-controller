@@ -65,6 +65,7 @@ spec:
               nullable: true
               properties:
                 delay:
+                  maximum: 59999
                   type: integer
                 hosts:
                   items:
