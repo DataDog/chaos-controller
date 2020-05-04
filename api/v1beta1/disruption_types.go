@@ -131,6 +131,7 @@ func (s *NetworkLatencySpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			"--hosts",
 		}
 		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
+		
 		if s.Port != 0 {
 			args = append(args, "--port", strconv.Itoa(s.Port))
 		}
