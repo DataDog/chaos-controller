@@ -23,6 +23,8 @@ const tcPath = "/sbin/tc"
 // queueing discipline
 type TrafficController interface {
 	AddDelay(iface string, parent string, handle uint32, delay time.Duration) error
+	AddDrop(iface string, parent string, handle uint32, porbability int) error
+	AddCorrupt(iface string, parent string, handle uint32, corrupt int) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
 	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error
 	ClearQdisc(iface string) error
@@ -71,6 +73,18 @@ func NewTrafficController(log *zap.SugaredLogger) TrafficController {
 
 func (t tc) AddDelay(iface string, parent string, handle uint32, delay time.Duration) error {
 	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("delay %s", delay))...)
+
+	return err
+}
+
+func (t tc) AddDrop(iface string, parent string, handle uint32, probability int) error {
+	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("loss %s", probability))...)
+
+	return err
+}
+
+func (t tc) AddCorrupt(iface string, parent string, handle uint32, corrupt int) error{
+	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("corrupt %s", corrupt))...)
 
 	return err
 }

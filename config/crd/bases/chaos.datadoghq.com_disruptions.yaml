@@ -44,6 +44,10 @@ spec:
               properties:
                 allowEstablishment:
                   type: boolean
+                corrupt:
+                  type: integer
+                drop:
+                  type: integer
                 hosts:
                   items:
                     type: string
@@ -51,13 +55,12 @@ spec:
                   type: array
                 port:
                   type: integer
-                probability:
-                  type: integer
                 protocol:
                   type: string
               required:
+              - corrupt
+              - drop
               - port
-              - probability
               - protocol
               type: object
             networkLatency:
@@ -76,7 +79,6 @@ spec:
                   type: integer
               required:
               - delay
-              - port
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection

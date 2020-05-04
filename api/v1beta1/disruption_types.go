@@ -52,7 +52,8 @@ type NetworkFailureSpec struct {
 	// +nullable
 	Hosts              []string `json:"hosts,omitempty"`
 	Port               int      `json:"port"`
-	Probability        int      `json:"probability"`
+	Drop               int      `json:"drop"`
+	Corrupt            int      `json:"corrupt"`
 	Protocol           string   `json:"protocol"`
 	AllowEstablishment bool     `json:"allowEstablishment,omitempty"`
 }
@@ -74,10 +75,13 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			containerID,
 			"--port",
 			strconv.Itoa(s.Port),
+			"--corrupt",
+			strconv.Itoa(s.Corrupt),
+			"--drop",
+			strconv.Itoa(s.Drop),
 			"--protocol",
 			s.Protocol,
-			"--probability",
-			strconv.Itoa(s.Probability),
+			strconv.Itoa(s.Drop),
 			"--hosts",
 		}
 		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)

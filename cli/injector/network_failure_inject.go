@@ -21,7 +21,8 @@ var networkFailureInjectCmd = &cobra.Command{
 		hosts, _ := cmd.Flags().GetStringSlice("hosts")
 		port, _ := cmd.Flags().GetInt("port")
 		protocol, _ := cmd.Flags().GetString("protocol")
-		probability, _ := cmd.Flags().GetInt("probability")
+		drop, _ := cmd.Flags().GetInt("drop")
+		corrupt, _ := cmd.Flags().GetInt("corrupt")
 		allowEstablishment, _ := cmd.Flags().GetBool("allow-establishment")
 
 		// prepare container
@@ -35,13 +36,11 @@ var networkFailureInjectCmd = &cobra.Command{
 			Hosts:              hosts,
 			Port:               port,
 			Protocol:           protocol,
-			Probability:        probability,
+			Drop:               drop,
+			Corrupt:            corrupt,
 			AllowEstablishment: allowEstablishment,
 		}
-		i, err := injector.NewNetworkFailureInjector(uid, spec, c, log, ms)
-		if err != nil {
-			log.Fatalw("can't initialize the injector", "error", err)
-		}
+		i := injector.NewNetworkFailureInjector(uid, spec, c, log, ms)
 		i.Inject()
 	},
 }
@@ -50,7 +49,8 @@ func init() {
 	networkFailureInjectCmd.Flags().StringSlice("hosts", []string{}, "Hostname or IP address of the host to drop packets from and to")
 	networkFailureInjectCmd.Flags().Int("port", 0, "Port to drop packets from and to")
 	networkFailureInjectCmd.Flags().String("protocol", "", "Protocol to filter packets on (tcp or udp)")
-	networkFailureInjectCmd.Flags().Int("probability", 100, "Percentage of probability to drop packets (100 is a total drop)")
+	networkFailureInjectCmd.Flags().Int("drop", 100, "Percentage to drop packets (100 is a total drop)")
+	networkFailureInjectCmd.Flags().Int("corrupt", 100, "Percentage to corrupt packets (100 is a total corruption)")
 	networkFailureInjectCmd.Flags().Bool("allow-establishment", false, "If true, the packet drops only occur once the connection is established")
 
 	_ = networkFailureInjectCmd.MarkFlagRequired("port")

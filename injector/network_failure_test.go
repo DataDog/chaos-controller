@@ -13,272 +13,256 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/network"
 	. "github.com/DataDog/chaos-controller/injector"
 )
 
-type fakeIPTables struct {
+// tc
+type fakeTc struct {
 	mock.Mock
 }
 
-func (f *fakeIPTables) Exists(table, chain string, parts ...string) (bool, error) {
-	args := f.Called(table, chain, parts)
+func (f* fakeTc) AddCorrupt(iface string, parent string, handle uint32, corrupt int) error{
+	args := f.Called(iface,parent,handle,corrupt)
+	return args.Error(0)
+}
+
+func (f* fakeTc) AddDrop(iface string, parent string, handle uint32, corrupt int) error{
+	args := f.Called(iface,parent,handle,corrupt)
+	return args.Error(0)
+}
+
+func (f *fakeTc) AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
+	args := f.Called(iface, parent, handle, bands, priomap)
+	return args.Error(0)
+}
+func (f *fakeTc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error {
+	args := f.Called(iface, parent, handle, ip.String(), port, flowid)
+	return args.Error(0)
+}
+func (f *fakeTc) ClearQdisc(iface string) error {
+	args := f.Called(iface)
+	return args.Error(0)
+}
+func (f *fakeTc) IsQdiscCleared(iface string) (bool, error) {
+	args := f.Called(iface)
 	return args.Bool(0), args.Error(1)
 }
 
-func (f *fakeIPTables) Delete(table, chain string, parts ...string) error {
-	args := f.Called(table, chain, parts)
+func (f *fakeNetlinkAdapter) LinkList() ([]network.NetlinkLink, error) {
+	args := f.Called()
+	return args.Get(0).([]network.NetlinkLink), args.Error(1)
+}
+func (f *fakeNetlinkAdapter) LinkByIndex(index int) (network.NetlinkLink, error) {
+	args := f.Called(index)
+	return args.Get(0).(network.NetlinkLink), args.Error(1)
+}
+func (f *fakeNetlinkAdapter) LinkByName(name string) (network.NetlinkLink, error) {
+	args := f.Called(name)
+	return args.Get(0).(network.NetlinkLink), args.Error(1)
+}
+func (f *fakeNetlinkAdapter) RoutesForIP(ip *net.IPNet) ([]network.NetlinkRoute, error) {
+	args := f.Called(ip.String())
+	return args.Get(0).([]network.NetlinkRoute), args.Error(1)
+}
+
+type fakeNetlinkLink struct {
+	mock.Mock
+}
+
+func (f *fakeNetlinkLink) Name() string {
+	args := f.Called()
+	return args.String(0)
+}
+func (f *fakeNetlinkLink) SetTxQLen(qlen int) error {
+	args := f.Called(qlen)
 	return args.Error(0)
 }
-
-func (f *fakeIPTables) ClearChain(table, chain string) error {
-	args := f.Called(table, chain)
-	return args.Error(0)
+func (f *fakeNetlinkLink) TxQLen() int {
+	args := f.Called()
+	return args.Int(0)
 }
 
-func (f *fakeIPTables) DeleteChain(table, chain string) error {
-	args := f.Called(table, chain)
-	return args.Error(0)
+type fakeNetlinkRoute struct {
+	mock.Mock
 }
 
-func (f *fakeIPTables) ListChains(table string) ([]string, error) {
-	args := f.Called(table)
-	return args.Get(0).([]string), args.Error(1)
+func (f *fakeNetlinkRoute) Link() network.NetlinkLink {
+	args := f.Called()
+	return args.Get(0).(network.NetlinkLink)
 }
 
-func (f *fakeIPTables) AppendUnique(table, chain string, parts ...string) error {
-	args := f.Called(table, chain, parts)
-	return args.Error(0)
-}
-
-func (f *fakeIPTables) NewChain(table, chain string) error {
-	args := f.Called(table, chain)
-	return args.Error(0)
-}
-
-var _ = Describe("Network Failure", func() {
-	var (
-		config            NetworkFailureInjectorConfig
-		ctn               fakeContainer
-		dns               fakeDNSClient
-		inj               Injector
-		ipt               fakeIPTables
-		iptExistsCall     *mock.Call
-		iptListChainsCall *mock.Call
-		spec              v1beta1.NetworkFailureSpec
-		uid               string
+var _ = Describe("Tc", func() {
+  var (
+		ctn                                    fakeContainer
+		inj                                  Injector
+		config                               NetworkFailureInjectorConfig
+		spec                                 v1beta1.NetworkFailureSpec
+		tc                                   fakeTc
+		tcIsQdiscClearedCall                 *mock.Call
+		nl                                   fakeNetlinkAdapter
+		nllink1, nllink2                     *fakeNetlinkLink
+		nllink1TxQlenCall, nllink2TxQlenCall *mock.Call
+		nlroute1, nlroute2                   *fakeNetlinkRoute
 	)
 
-	BeforeEach(func() {
+  BeforeEach(func() {
 		// container
 		ctn = fakeContainer{}
 		ctn.On("EnterNetworkNamespace").Return(nil)
 		ctn.On("ExitNetworkNamespace").Return(nil)
 
-		// iptables
-		ipt = fakeIPTables{}
-		iptExistsCall = ipt.On("Exists", mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
-		ipt.On("Delete", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		ipt.On("ClearChain", mock.Anything, mock.Anything).Return(nil)
-		ipt.On("DeleteChain", mock.Anything, mock.Anything).Return(nil)
-		iptListChainsCall = ipt.On("ListChains", mock.Anything).Return([]string{}, nil)
-		ipt.On("AppendUnique", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		ipt.On("NewChain", mock.Anything, mock.Anything).Return(nil)
+		// tc
+		tc = fakeTc{}
+		tc.On("AddDelay", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddDrop", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddCorrupt", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("ClearQdisc", mock.Anything).Return(nil)
+		tcIsQdiscClearedCall = tc.On("IsQdiscCleared", mock.Anything).Return(false, nil)
 
-		// dns client
-		dns = fakeDNSClient{}
-		dns.On("Resolve", mock.Anything).Return([]net.IP{
-			net.ParseIP("192.168.0.1"),
-			net.ParseIP("192.168.0.2"),
-		}, nil)
+		// netlink
+		nllink1 = &fakeNetlinkLink{}
+		nllink1.On("Name").Return("lo")
+		nllink1.On("SetTxQLen", mock.Anything).Return(nil)
+		nllink1TxQlenCall = nllink1.On("TxQLen").Return(0)
+		nllink2 = &fakeNetlinkLink{}
+		nllink2.On("Name").Return("eth0")
+		nllink2.On("SetTxQLen", mock.Anything).Return(nil)
+		nllink2TxQlenCall = nllink2.On("TxQLen").Return(0)
 
-		uid = "110e8400-e29b-11d4-a716-446655440000"
+		nlroute1 = &fakeNetlinkRoute{}
+		nlroute1.On("Link").Return(nllink1)
+		nlroute2 = &fakeNetlinkRoute{}
+		nlroute2.On("Link").Return(nllink2)
+
+		nl = fakeNetlinkAdapter{}
+		nl.On("LinkList").Return([]network.NetlinkLink{nllink1, nllink2}, nil)
+		nl.On("LinkByIndex", 0).Return(nllink1, nil)
+		nl.On("LinkByIndex", 1).Return(nllink2, nil)
+		nl.On("LinkByName", "lo").Return(nllink1, nil)
+		nl.On("LinkByName", "eth0").Return(nllink2, nil)
+		nl.On("RoutesForIP", mock.Anything).Return([]network.NetlinkRoute{nlroute1, nlroute2}, nil)
 
 		spec = v1beta1.NetworkFailureSpec{
-			Hosts:       []string{"127.0.0.1/32"},
-			Port:        666,
-			Protocol:    "tcp",
-			Probability: 100,
+			Drop: 5,
+      Corrupt: 1,
 		}
-
-		config = NetworkFailureInjectorConfig{
-			IPTables:  &ipt,
-			DNSClient: &dns,
+		config = NetworkFailureFailureConfig{
+			TrafficController: &tc,
+			NetlinkAdapter:    &nl,
 		}
 	})
 
-	JustBeforeEach(func() {
-		var err error
-		inj, err = NewNetworkFailureInjectorWithConfig(uid, spec, &ctn, log, ms, &config)
-		Expect(err).To(BeNil())
+  JustBeforeEach(func() {
+		inj = NewNetworkFailureInjectorWithConfig("fake", spec, &c, log, ms, config)
 	})
 
-	Describe("injection", func() {
-		JustBeforeEach(func() {
+  Describe("inj.Inject", func() {
+    JustBeforeEach(func() {
 			inj.Inject()
 		})
 
-		It("should enter and exit the container network namespace", func() {
+    It("should enter and exit the container network namespace", func() {
 			ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")
 			ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")
 		})
 
-		Context("when the dedicated chain already exists", func() {
+    Context("with no host specified", func() {
+			It("should enter and exit the container network namespace", func() {
+				Expect(ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+				Expect(ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
+			})
+			It("should not set or clear the interface qlen", func() {
+				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
+				nllink2.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
+			})
+			It("should add corrupt to the interfaces root qdisc", func() {
+				tc.AssertCalled(GinkgoT(), "AddCorrupt", "lo", "root", mock.Anything, 1)
+				tc.AssertCalled(GinkgoT(), "AddCorrupt", "eth0", "root", mock.Anything, 1)
+			})
+      It("should add drop rate to the interfaces root qdisc", func() {
+				tc.AssertCalled(GinkgoT(), "AddDrop", "lo", "root", mock.Anything, 5)
+				tc.AssertCalled(GinkgoT(), "AddDrop", "eth0", "root", mock.Anything, 5)
+			})
+		})
+
+    Context("with multiple hosts specified and interface without qlen", func() {
 			BeforeEach(func() {
-				iptListChainsCall.Return([]string{"CHAOS-110e8400446655440000"}, nil)
+				spec.Hosts = []string{"1.1.1.1", "2.2.2.2"}
+				spec.Port = 80
+        spec.Drop = 5
+        spec.Corrupt = 1
 			})
 
-			It("should not create the chain once again", func() {
-				ipt.AssertNumberOfCalls(GinkgoT(), "NewChain", 0)
+			It("should set and clear the interface qlen", func() {
+				nllink1.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
+				nllink1.AssertCalled(GinkgoT(), "SetTxQLen", 0)
+				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
+				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 0)
+			})
+			It("should create a prio qdisc on both interfaces", func() {
+				tc.AssertCalled(GinkgoT(), "AddPrio", "lo", "root", uint32(1), uint32(4), mock.Anything)
+				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "root", uint32(1), uint32(4), mock.Anything)
+			})
+      It("should add corrupt to the interfaces root qdisc", func() {
+				tc.AssertCalled(GinkgoT(), "AddCorrupt", "lo", "root", mock.Anything, 1)
+				tc.AssertCalled(GinkgoT(), "AddCorrupt", "eth0", "root", mock.Anything, 1)
+			})
+      It("should add drop rate to the interfaces root qdisc", func() {
+				tc.AssertCalled(GinkgoT(), "AddDrop", "lo", "root", mock.Anything, 5)
+				tc.AssertCalled(GinkgoT(), "AddDrop", "eth0", "root", mock.Anything, 5)
+			})
+			It("should add a filter to redirect traffic on delayed band", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "1.1.1.1/32", 80, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "2.2.2.2/32", 80, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "1.1.1.1/32", 80, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "2.2.2.2/32", 80, "1:4")
 			})
 		})
 
-		Context("when the dedicated chain doesn't exist", func() {
-			It("should create the dedicated chain", func() {
-				ipt.AssertCalled(GinkgoT(), "NewChain", "filter", "CHAOS-110e8400446655440000")
-			})
-
-			It("should create the jump rule", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "OUTPUT", []string{
-					"-j", "CHAOS-110e8400446655440000",
-				})
-			})
-		})
-
-		Context("using a CIDR block", func() {
+    Context("with multiple hosts specified and interfaces with qlen", func() {
 			BeforeEach(func() {
-				spec.Hosts = []string{"192.168.0.0/24"}
+				spec.Hosts = []string{"1.1.1.1", "2.2.2.2"}
+				nllink1TxQlenCall.Return(1000)
+				nllink2TxQlenCall.Return(1000)
+			})
+			It("should not set and clear the interface qlen", func() {
+				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
+				nllink2.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
+			})
+		})
+
+    Describe("inj.Clean", func() {
+			JustBeforeEach(func() {
+				inj.Clean()
 			})
 
-			It("should inject a rule for the given block", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.0/24", "--dport", "666", "-j", "DROP",
+			Context("with a non-cleared qdisc", func() {
+				It("should enter and exit the container network namespace", func() {
+					Expect(c.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+					Expect(c.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
+				})
+				It("should clear the interfaces qdisc", func() {
+					tc.AssertCalled(GinkgoT(), "ClearQdisc", "lo")
+					tc.AssertCalled(GinkgoT(), "ClearQdisc", "eth0")
 				})
 			})
-		})
 
-		Context("using a single IP set", func() {
-			BeforeEach(func() {
-				spec.Hosts = []string{"192.168.0.1", "192.168.0.2"}
-			})
-
-			It("should inject a rule for the given IP with a /32 mask", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.1/32", "--dport", "666", "-j", "DROP",
-				})
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.2/32", "--dport", "666", "-j", "DROP",
-				})
-			})
-		})
-
-		Context("using a hostname", func() {
-			BeforeEach(func() {
-				spec.Hosts = []string{"foo.bar.cluster.local"}
-			})
-
-			It("should inject a rule per IP resolved by the DNS resolver", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.1/32", "--dport", "666", "-j", "DROP",
-				})
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.2/32", "--dport", "666", "-j", "DROP",
-				})
-			})
-		})
-
-		Context("host not specified", func() {
-			BeforeEach(func() {
-				spec.Hosts = []string{}
-			})
-
-			It("should inject a rule matching all the hosts", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "0.0.0.0/0", "--dport", "666", "-j", "DROP",
-				})
-			})
-		})
-
-		Context("using a probability", func() {
-			BeforeEach(func() {
-				spec.Hosts = []string{"192.168.0.0/24"}
-				spec.Probability = 50
-			})
-
-			It("should inject a rule for the given probability", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.0/24", "--dport", "666", "-m", "statistic", "--mode", "random", "--probability", "0.50", "-j", "DROP",
-				})
-			})
-		})
-
-		Context("using allow establishment", func() {
-			BeforeEach(func() {
-				spec.Hosts = []string{"192.168.0.0/24"}
-				spec.AllowEstablishment = true
-			})
-
-			It("should inject a rule dropping established connection only", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.0/24", "--dport", "666", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "DROP",
-				})
-			})
-		})
-	})
-
-	Describe("cleaning", func() {
-		JustBeforeEach(func() {
-			inj.Clean()
-		})
-
-		It("should enter and exit the container network namespace", func() {
-			ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")
-			ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")
-		})
-
-		Context("when dedicated chain doesn't exist anymore", func() {
-			It("should not try to remove the jump rule", func() {
-				ipt.AssertNumberOfCalls(GinkgoT(), "Delete", 0)
-			})
-
-			It("should not try to clear nor delete the dedicated chain", func() {
-				ipt.AssertNumberOfCalls(GinkgoT(), "ClearChain", 0)
-				ipt.AssertNumberOfCalls(GinkgoT(), "DeleteChain", 0)
-			})
-		})
-
-		Context("when dedicated chain still exists", func() {
-			BeforeEach(func() {
-				iptListChainsCall.Return([]string{"CHAOS-110e8400446655440000"}, nil)
-			})
-
-			It("should clear and delete the dedicated chain", func() {
-				ipt.AssertCalled(GinkgoT(), "ClearChain", "filter", "CHAOS-110e8400446655440000")
-				ipt.AssertCalled(GinkgoT(), "DeleteChain", "filter", "CHAOS-110e8400446655440000")
-			})
-
-			Context("when the jump rule doesn't exist anymore", func() {
+			Context("with an already cleared qdisc", func() {
 				BeforeEach(func() {
-					iptExistsCall.Return(false, nil)
+					tcIsQdiscClearedCall.Return(true, nil)
 				})
-
-				It("should not try to remove the jump rule", func() {
-					ipt.AssertNumberOfCalls(GinkgoT(), "Delete", 0)
+				It("should enter and exit the container network namespace", func() {
+					Expect(c.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+					Expect(c.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
 				})
-			})
-
-			Context("when the jump rule still exists", func() {
-				It("should not try to remove the jump rule", func() {
-					ipt.AssertCalled(GinkgoT(), "Delete", "filter", "OUTPUT", []string{
-						"-j", "CHAOS-110e8400446655440000",
-					})
+				It("should not clear the interfaces qdisc", func() {
+					tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "lo")
+					tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "eth0")
 				})
 			})
 		})
-	})
+  })
 })

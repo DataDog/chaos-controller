@@ -33,6 +33,8 @@ var _ = Describe("Tc", func() {
 		parent            string
 		handle            uint32
 		delay             time.Duration
+		drop              int
+		corrupt           int
 		bands             uint32
 		priomap           [16]uint32
 		ip                *net.IPNet
@@ -55,6 +57,8 @@ var _ = Describe("Tc", func() {
 		parent = "root"
 		handle = 0
 		delay = time.Second
+		drop = 5
+		corrupt = 1
 		bands = 16
 		priomap = [16]uint32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 		ip = &net.IPNet{
@@ -103,6 +107,90 @@ var _ = Describe("Tc", func() {
 
 			It("should execute", func() {
 				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 30m0s")
+			})
+		})
+	})
+
+	Describe("AddDrop", func() {
+		JustBeforeEach(func() {
+			tcRunner.AddDrop(iface, parent, handle, drop)
+		})
+
+		Context("add 5% drop rate to lo interface to the root parent without any handle", func() {
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem loss 5")
+			})
+		})
+
+		Context("add drop rate with a handle", func() {
+			BeforeEach(func() {
+				handle = 1
+			})
+
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem loss 5")
+			})
+		})
+
+		Context("add drop rate to the a non-root parent", func() {
+			BeforeEach(func() {
+				parent = "1:4"
+			})
+
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem loss 5")
+			})
+		})
+
+		Context("add a 50% drop rate", func() {
+			BeforeEach(func() {
+				drop = 50
+			})
+
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem loss 50")
+			})
+		})
+	})
+
+	Describe("AddCorrupt", func() {
+		JustBeforeEach(func() {
+			tcRunner.AddCorrupt(iface, parent, handle, corrupt)
+		})
+
+		Context("add 1% corruption rate to lo interface to the root parent without any handle", func() {
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem corrupt 1")
+			})
+		})
+
+		Context("add corruption rate with a handle", func() {
+			BeforeEach(func() {
+				handle = 1
+			})
+
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem corrupt 1")
+			})
+		})
+
+		Context("add corruption rate to the a non-root parent", func() {
+			BeforeEach(func() {
+				parent = "1:4"
+			})
+
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem corrupt 1")
+			})
+		})
+
+		Context("add a 50% corruption rate", func() {
+			BeforeEach(func() {
+				corrupt = 50
+			})
+
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem corrupt 50")
 			})
 		})
 	})

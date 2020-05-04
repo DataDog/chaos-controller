@@ -25,10 +25,7 @@ var networkFailureCleanCmd = &cobra.Command{
 			log.Fatalw("can't create container object", "error", err)
 		}
 
-		i, err := injector.NewNetworkFailureInjector(uid, v1beta1.NetworkFailureSpec{}, c, log, ms)
-		if err != nil {
-			log.Fatalw("can't initialize the injector", "error", err)
-		}
+		i := injector.NewNetworkFailureInjector(uid, v1beta1.NetworkFailureSpec{}, c, log, ms)
 		i.Clean()
 	},
 }
