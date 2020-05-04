@@ -127,11 +127,12 @@ func (s *NetworkLatencySpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			containerID,
 			"--delay",
 			strconv.Itoa(int(s.Delay)),
-			"--port",
-			strconv.Itoa(s.Port),
 			"--hosts",
 		}
 		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
+		if strconv.Itoa(s.Port) != 0 {
+			args = append(args, "--port", strconv.Itoa(s.Port))
+		}
 	case chaostypes.PodModeClean:
 		args = []string{
 			"network-latency",
