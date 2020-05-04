@@ -104,6 +104,7 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 
 // NetworkLatencySpec represents a network latency injection
 type NetworkLatencySpec struct {
+	// +kubebuilder:validation:Maximum=59999
 	Delay uint `json:"delay"`
 	// +nullable
 	Port  int      `json:"port,omitempty"`

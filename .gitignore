@@ -5,7 +5,8 @@
 *.dll
 *.so
 *.dylib
-bin
+bin/injector/injector
+bin/manager/manager
 out
 dist
 

@@ -1,7 +1,7 @@
-FROM golang:1.13.6-stretch
+FROM golang:1.14.2-stretch
 
 # kubebuilder
-ARG version=1.0.8
+ARG version=2.3.1
 ARG arch=amd64
 RUN curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${version}/kubebuilder_${version}_linux_${arch}.tar.gz" && \
     tar -zxvf kubebuilder_${version}_linux_${arch}.tar.gz && \
