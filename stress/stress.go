@@ -3,11 +3,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2020 Datadog, Inc.
 
-package container
+package stress
 
-// Runtime is an interface abstracting a container runtime
-// being able to return a container PID from its ID
-type Runtime interface {
-	PID(id string) (uint32, error)
-	CgroupPath(id string) (string, error)
+// Stresser is a component stresser
+type Stresser interface {
+	// Stress function should not be blocking (and should start goroutines by itself if needed)
+	Stress(exit <-chan struct{})
 }

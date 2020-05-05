@@ -41,6 +41,10 @@ data:
               {
                 "name": "sysrq-trigger",
                 "mountPath": "/mnt/sysrq-trigger"
+              },
+              {
+                "name": "cgroup",
+                "mountPath": "/mnt/cgroup"
               }
             ],
             "securityContext": {
@@ -75,6 +79,13 @@ data:
             "hostPath": {
               "path": "/proc/sysrq-trigger",
               "type": "File"
+            }
+          },
+          {
+            "name": "cgroup",
+            "hostPath": {
+              "path": "/sys/fs/cgroup",
+              "type": "Directory"
             }
           }
         ]

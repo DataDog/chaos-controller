@@ -26,3 +26,4 @@ spec:
     port: 80 # port to apply latency  (optional)
   nodeFailure: # node kernel panic or shutdown
     shutdown: true # shutdown the host instead of triggering a stack dump
+  cpuPressure: {} # cpu load generator

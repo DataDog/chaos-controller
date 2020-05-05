@@ -30,4 +30,6 @@ const (
 	DisruptionKindNetworkLatency = "network-latency"
 	// DisruptionKindNodeFailure is a node failure disruption
 	DisruptionKindNodeFailure = "node-failure"
+	// DisruptionKindCPUPressure is a CPU pressure disruption
+	DisruptionKindCPUPressure = "cpu-pressure"
 )

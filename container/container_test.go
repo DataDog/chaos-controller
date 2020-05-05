@@ -8,82 +8,146 @@ package container_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 
 	. "github.com/DataDog/chaos-controller/container"
 )
 
 // fake netns driver
 type fakeNetns struct {
+	mock.Mock
+
 	currentns int
 	fakens    int
 }
 
 func (f *fakeNetns) Set(ns int) error {
 	f.currentns = ns
-	return nil
+	args := f.Called(ns)
+
+	return args.Error(0)
 }
-func (f fakeNetns) GetCurrent() (int, error) {
-	return f.currentns, nil
+func (f *fakeNetns) GetCurrent() (int, error) {
+	args := f.Called()
+
+	return args.Int(0), args.Error(1)
 }
-func (f fakeNetns) GetFromPID(uint32) (int, error) {
-	return f.fakens, nil
+func (f *fakeNetns) GetFromPID(pid uint32) (int, error) {
+	args := f.Called(pid)
+
+	return args.Int(0), args.Error(1)
+}
+
+// fake cgroup
+type fakeCgroup struct {
+	mock.Mock
+}
+
+func (f *fakeCgroup) JoinCPU(path string) error {
+	args := f.Called(path)
+
+	return args.Error(0)
 }
 
 // fake runtime
-type fakeRuntime struct{}
+type fakeRuntime struct {
+	mock.Mock
+}
 
-func (f fakeRuntime) PID(string) (uint32, error) {
-	return 666, nil
+func (f *fakeRuntime) PID(id string) (uint32, error) {
+	args := f.Called(id)
+
+	return args.Get(0).(uint32), args.Error(1)
+}
+
+func (f *fakeRuntime) CgroupPath(id string) (string, error) {
+	args := f.Called(id)
+
+	return args.String(0), args.Error(1)
 }
 
 // tests
 var _ = Describe("Container", func() {
-	var config Config
-	var rootns, containerns int
-	var netns fakeNetns
+	var (
+		config              Config
+		rootns, containerns int
+		netns               *fakeNetns
+		runtime             *fakeRuntime
+		cgroup              *fakeCgroup
+		ctn                 Container
+		netnsGetFromPIDCall *mock.Call
+	)
 
 	BeforeEach(func() {
+		// netns
 		rootns = 1
 		containerns = 2
-		netns = fakeNetns{
+		netns = &fakeNetns{
 			currentns: rootns,
 			fakens:    containerns,
 		}
+		netns.On("Set", mock.Anything).Return(nil)
+		netns.On("GetCurrent").Return(netns.currentns, nil)
+		netnsGetFromPIDCall = netns.On("GetFromPID", mock.Anything).Return(netns.fakens, nil)
+
+		// runtime
+		runtime = &fakeRuntime{}
+		runtime.On("PID", mock.Anything).Return(uint32(666), nil)
+		runtime.On("CgroupPath", mock.Anything).Return("/fake/cgroup/path", nil)
+
+		// cgroup
+		cgroup = &fakeCgroup{}
+		cgroup.On("JoinCPU", mock.Anything).Return(nil)
+
+		// config
 		config = Config{
-			Netns:   &netns,
-			Runtime: fakeRuntime{},
+			Netns:   netns,
+			Runtime: runtime,
+			Cgroup:  cgroup,
 		}
+	})
+
+	JustBeforeEach(func() {
+		var err error
+		ctn, err = NewWithConfig("containerd://fake", config)
+		Expect(err).To(BeNil())
 	})
 
 	Describe("loading a container", func() {
 		It("should return a container object with a parsed ID", func() {
-			c, err := NewWithConfig("containerd://fake", config)
-			Expect(err).To(BeNil())
-			Expect(c.ID()).To(Equal("fake"))
+			Expect(ctn.ID()).To(Equal("fake"))
 		})
 	})
 
 	Describe("entering and exiting the container network namespace", func() {
 		It("should enter the container network namespace and leave it", func() {
-			c, err := NewWithConfig("containerd://fake", config)
-			Expect(err).To(BeNil())
-
-			err = c.EnterNetworkNamespace()
+			err := ctn.EnterNetworkNamespace()
 			Expect(err).To(BeNil())
 			Expect(netns.currentns).To(Equal(containerns))
 
-			err = c.ExitNetworkNamespace()
+			err = ctn.ExitNetworkNamespace()
 			Expect(err).To(BeNil())
 			Expect(netns.currentns).To(Equal(rootns))
 		})
+	})
+
+	Describe("entering the container network namespace with a host network container", func() {
+		BeforeEach(func() {
+			netnsGetFromPIDCall.Return(rootns, nil)
+		})
 
 		It("should not enter the container network namespace if it is the same as the root", func() {
-			netns.fakens = rootns
-			c, err := NewWithConfig("containerd://fake", config)
+			err := ctn.EnterNetworkNamespace()
+			Expect(err).To(Not(BeNil()))
+		})
+	})
+
+	Describe("joining the container CPU cgroup", func() {
+		It("should join the container CPU cgroup using the cgroup path", func() {
+			err := ctn.JoinCPUCgroup()
 			Expect(err).To(BeNil())
 
-			err = c.EnterNetworkNamespace()
-			Expect(err).To(Not(BeNil()))
+			cgroup.AssertCalled(GinkgoT(), "JoinCPU", "/fake/cgroup/path")
 		})
 	})
 })
