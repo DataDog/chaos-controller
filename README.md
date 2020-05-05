@@ -11,6 +11,7 @@ This project has been created using [kubebuilder][https://github.com/kubernetes-
   * [Network failure](docs/network_failure.md)
   * [Network latency](docs/network_latency.md)
   * [Node failure](docs/node_failure.md)
+  * [CPU pressure](docs/cpu_pressure.md)
 * [Design](docs/design.md)
 * [Metrics](docs/metrics.md)
 * [FAQ](docs/faq.md)
