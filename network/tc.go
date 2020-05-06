@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,7 +24,7 @@ const tcPath = "/sbin/tc"
 type TrafficController interface {
 	AddDelay(iface string, parent string, handle uint32, delay time.Duration) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
-	AddFilterDestIP(iface string, parent string, handle uint32, ip *net.IPNet, flowid string) error
+	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error
 	ClearQdisc(iface string) error
 	IsQdiscCleared(iface string) (bool, error)
 }
@@ -93,8 +94,13 @@ func (t tc) ClearQdisc(iface string) error {
 	return err
 }
 
-func (t tc) AddFilterDestIP(iface string, parent string, handle uint32, ip *net.IPNet, flowid string) error {
-	params := fmt.Sprintf("match ip dst %s flowid %s", ip.String(), flowid)
+func (t tc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error {
+	params := fmt.Sprintf("match ip dst %s ", ip.String())
+	if port != 0 {
+		params += fmt.Sprintf("match ip dport %s 0xffff ", strconv.Itoa(port))
+	}
+
+	params += fmt.Sprintf("flowid %s", flowid)
 	_, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "u32", params)...)
 
 	return err
