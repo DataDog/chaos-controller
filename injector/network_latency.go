@@ -199,11 +199,13 @@ func (i networkLatencyInjector) Inject() {
 			i.log.Fatalf("can't add delay to the newly created qdisc for interface %s: %w", link.Name(), err)
 		}
 
-		// if only some hosts are targeted, redirect the traffic to the extra band created earlier
+		// if only some hosts/ports are targeted, redirect the traffic to the extra band created earlier
 		// where the delay is applied
+		port := i.spec.Port
+
 		if len(ips) > 0 {
 			for _, ip := range ips {
-				if err := i.config.TrafficController.AddFilterDestIP(link.Name(), "1:0", 0, ip, "1:4"); err != nil {
+				if err := i.config.TrafficController.AddFilter(link.Name(), "1:0", 0, ip, port, "1:4"); err != nil {
 					i.log.Fatalf("can't add a filter to interface %s: %w", link.Name(), err)
 				}
 			}
