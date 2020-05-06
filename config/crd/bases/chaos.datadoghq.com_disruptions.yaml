@@ -70,10 +70,13 @@ spec:
                 hosts:
                   items:
                     type: string
-                  nullable: true
                   type: array
+                port:
+                  nullable: true
+                  type: integer
               required:
               - delay
+              - port
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection

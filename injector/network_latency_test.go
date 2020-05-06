@@ -31,8 +31,8 @@ func (f *fakeTc) AddPrio(iface string, parent string, handle uint32, bands uint3
 	args := f.Called(iface, parent, handle, bands, priomap)
 	return args.Error(0)
 }
-func (f *fakeTc) AddFilterDestIP(iface string, parent string, handle uint32, ip *net.IPNet, flowid string) error {
-	args := f.Called(iface, parent, handle, ip.String(), flowid)
+func (f *fakeTc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error {
+	args := f.Called(iface, parent, handle, ip.String(), port, flowid)
 	return args.Error(0)
 }
 func (f *fakeTc) ClearQdisc(iface string) error {
@@ -116,7 +116,7 @@ var _ = Describe("Tc", func() {
 		tc = fakeTc{}
 		tc.On("AddDelay", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("AddFilterDestIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("ClearQdisc", mock.Anything).Return(nil)
 		tcIsQdiscClearedCall = tc.On("IsQdiscCleared", mock.Anything).Return(false, nil)
 
@@ -179,6 +179,7 @@ var _ = Describe("Tc", func() {
 		Context("with multiple hosts specified and interface without qlen", func() {
 			BeforeEach(func() {
 				spec.Hosts = []string{"1.1.1.1", "2.2.2.2"}
+				spec.Port = 80
 			})
 
 			It("should set and clear the interface qlen", func() {
@@ -196,10 +197,10 @@ var _ = Describe("Tc", func() {
 				tc.AssertCalled(GinkgoT(), "AddDelay", "eth0", "1:4", mock.Anything, time.Second)
 			})
 			It("should add a filter to redirect traffic on delayed band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilterDestIP", "lo", "1:0", mock.Anything, "1.1.1.1/32", "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilterDestIP", "lo", "1:0", mock.Anything, "2.2.2.2/32", "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilterDestIP", "eth0", "1:0", mock.Anything, "1.1.1.1/32", "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilterDestIP", "eth0", "1:0", mock.Anything, "2.2.2.2/32", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "1.1.1.1/32", 80, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "2.2.2.2/32", 80, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "1.1.1.1/32", 80, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "2.2.2.2/32", 80, "1:4")
 			})
 		})
 
