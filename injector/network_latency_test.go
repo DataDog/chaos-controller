@@ -6,7 +6,6 @@
 package injector_test
 
 import (
-	"net"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -18,83 +17,9 @@ import (
 	"github.com/DataDog/chaos-controller/network"
 )
 
-// tc
-type fakeTc struct {
-	mock.Mock
-}
-
-func (f *fakeTc) AddDelay(iface string, parent string, handle uint32, delay time.Duration) error {
-	args := f.Called(iface, parent, handle, delay)
-	return args.Error(0)
-}
-func (f *fakeTc) AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
-	args := f.Called(iface, parent, handle, bands, priomap)
-	return args.Error(0)
-}
-func (f *fakeTc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error {
-	args := f.Called(iface, parent, handle, ip.String(), port, flowid)
-	return args.Error(0)
-}
-func (f *fakeTc) ClearQdisc(iface string) error {
-	args := f.Called(iface)
-	return args.Error(0)
-}
-func (f *fakeTc) IsQdiscCleared(iface string) (bool, error) {
-	args := f.Called(iface)
-	return args.Bool(0), args.Error(1)
-}
-
-// netlink
-type fakeNetlinkAdapter struct {
-	mock.Mock
-}
-
-func (f *fakeNetlinkAdapter) LinkList() ([]network.NetlinkLink, error) {
-	args := f.Called()
-	return args.Get(0).([]network.NetlinkLink), args.Error(1)
-}
-func (f *fakeNetlinkAdapter) LinkByIndex(index int) (network.NetlinkLink, error) {
-	args := f.Called(index)
-	return args.Get(0).(network.NetlinkLink), args.Error(1)
-}
-func (f *fakeNetlinkAdapter) LinkByName(name string) (network.NetlinkLink, error) {
-	args := f.Called(name)
-	return args.Get(0).(network.NetlinkLink), args.Error(1)
-}
-func (f *fakeNetlinkAdapter) RoutesForIP(ip *net.IPNet) ([]network.NetlinkRoute, error) {
-	args := f.Called(ip.String())
-	return args.Get(0).([]network.NetlinkRoute), args.Error(1)
-}
-
-type fakeNetlinkLink struct {
-	mock.Mock
-}
-
-func (f *fakeNetlinkLink) Name() string {
-	args := f.Called()
-	return args.String(0)
-}
-func (f *fakeNetlinkLink) SetTxQLen(qlen int) error {
-	args := f.Called(qlen)
-	return args.Error(0)
-}
-func (f *fakeNetlinkLink) TxQLen() int {
-	args := f.Called()
-	return args.Int(0)
-}
-
-type fakeNetlinkRoute struct {
-	mock.Mock
-}
-
-func (f *fakeNetlinkRoute) Link() network.NetlinkLink {
-	args := f.Called()
-	return args.Get(0).(network.NetlinkLink)
-}
-
 var _ = Describe("Tc", func() {
 	var (
-		c                                    fakeContainer
+		ctn                                  fakeContainer
 		inj                                  Injector
 		config                               NetworkLatencyInjectorConfig
 		spec                                 v1beta1.NetworkLatencySpec
@@ -108,9 +33,9 @@ var _ = Describe("Tc", func() {
 
 	BeforeEach(func() {
 		// container
-		c = fakeContainer{}
-		c.On("EnterNetworkNamespace").Return(nil)
-		c.On("ExitNetworkNamespace").Return(nil)
+		ctn = fakeContainer{}
+		ctn.On("EnterNetworkNamespace").Return(nil)
+		ctn.On("ExitNetworkNamespace").Return(nil)
 
 		// tc
 		tc = fakeTc{}
@@ -153,7 +78,7 @@ var _ = Describe("Tc", func() {
 	})
 
 	JustBeforeEach(func() {
-		inj = NewNetworkLatencyInjectorWithConfig("fake", spec, &c, log, ms, config)
+		inj = NewNetworkLatencyInjectorWithConfig("fake", spec, &ctn, log, ms, config)
 	})
 
 	Describe("inj.Inject", func() {
@@ -163,8 +88,8 @@ var _ = Describe("Tc", func() {
 
 		Context("with no host specified", func() {
 			It("should enter and exit the container network namespace", func() {
-				Expect(c.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
-				Expect(c.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
+				Expect(ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+				Expect(ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
 			})
 			It("should not set or clear the interface qlen", func() {
 				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
@@ -223,8 +148,8 @@ var _ = Describe("Tc", func() {
 
 			Context("with a non-cleared qdisc", func() {
 				It("should enter and exit the container network namespace", func() {
-					Expect(c.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
-					Expect(c.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
+					Expect(ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+					Expect(ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
 				})
 				It("should clear the interfaces qdisc", func() {
 					tc.AssertCalled(GinkgoT(), "ClearQdisc", "lo")
@@ -237,8 +162,8 @@ var _ = Describe("Tc", func() {
 					tcIsQdiscClearedCall.Return(true, nil)
 				})
 				It("should enter and exit the container network namespace", func() {
-					Expect(c.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
-					Expect(c.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
+					Expect(ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+					Expect(ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
 				})
 				It("should not clear the interfaces qdisc", func() {
 					tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "lo")

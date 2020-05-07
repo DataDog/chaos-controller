@@ -23,7 +23,7 @@ const tcPath = "/sbin/tc"
 // queueing discipline
 type TrafficController interface {
 	AddDelay(iface string, parent string, handle uint32, delay time.Duration) error
-	AddDrop(iface string, parent string, handle uint32, porbability int) error
+	AddDrop(iface string, parent string, handle uint32, drop int) error
 	AddCorrupt(iface string, parent string, handle uint32, corrupt int) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
 	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error
@@ -77,14 +77,14 @@ func (t tc) AddDelay(iface string, parent string, handle uint32, delay time.Dura
 	return err
 }
 
-func (t tc) AddDrop(iface string, parent string, handle uint32, probability int) error {
-	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("loss %s", probability))...)
+func (t tc) AddDrop(iface string, parent string, handle uint32, drop int) error {
+	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("loss %d", drop))...)
 
 	return err
 }
 
 func (t tc) AddCorrupt(iface string, parent string, handle uint32, corrupt int) error{
-	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("corrupt %s", corrupt))...)
+	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("corrupt %d", corrupt))...)
 
 	return err
 }

@@ -202,7 +202,7 @@ func (i networkFailureInjector) Inject() {
 
       if i.spec.Corrupt != 0 {
         // add corruption
-        if err := i.config.TrafficController.AddDrop(link.Name(), parent, 0, corrupt); err != nil {
+        if err := i.config.TrafficController.AddCorrupt(link.Name(), parent, 0, corrupt); err != nil {
     			i.log.Fatalf("can't add corruption to the newly created qdisc for interface %s: %w", link.Name(), err)
     		}
       }
