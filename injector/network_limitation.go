@@ -97,6 +97,8 @@ func (i networkLimitationInjector) Inject() {
 
 	i.log.Info("injecting bandwidth limitation")
 
+	parent := "root"
+
 	// handle metrics
 	defer func() {
 		i.handleMetricSinkError(i.ms.MetricInjected(i.container.ID(), i.uid, err == nil, i.kind, []string{}))
@@ -126,7 +128,7 @@ func (i networkLimitationInjector) Inject() {
 	// for each link/ip association, add bandwidth limitation
 	for linkName, _ := range linkByIP {
 		// retrieve link from name
-		_, err := i.config.NetlinkAdapter.LinkByName(linkName)
+		link, err := i.config.NetlinkAdapter.LinkByName(linkName)
 		if err != nil {
 			i.log.Fatalf("can't retrieve link %s: %w", linkName, err)
 		}
@@ -134,8 +136,13 @@ func (i networkLimitationInjector) Inject() {
 		// currently omitted support for specific IPs, Hosts for bandwidth limit
 		// if we want to support that, probably should factor it out of `network_limitation.go`
 
+		i.log.Info("going to add bandwidth limit of %s bytes per sec now...", i.spec.BytesPerSec)
+
 		// add limitation
-		i.log.Info("Would have added bandwidth limit now!", "bytes_per_sec", i.spec.BytesPerSec)
+		err2 := i.config.TrafficController.AddBandwidthLimit(link.Name(), parent, 0, i.spec.BytesPerSec)
+		if err2 != nil {
+			i.log.Fatalf("can't add bandwidth limit to the newly created qdisc for interface %s: %w", link.Name(), err)
+		}
 	}
 }
 
