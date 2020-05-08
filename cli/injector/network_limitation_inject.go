@@ -6,9 +6,9 @@
 package main
 
 import (
-	// "github.com/DataDog/chaos-controller/api/v1beta1"
-	// "github.com/DataDog/chaos-controller/container"
-	// "github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/injector"
 	"github.com/spf13/cobra"
 )
 
@@ -16,19 +16,28 @@ var networkLimitationInjectCmd = &cobra.Command{
 	Use:   "inject",
 	Short: "Inject an artificial network bandwidth limit on the actual node",
 	Run: func(cmd *cobra.Command, args []string) {
-		// uid, _ := cmd.Flags().GetString("uid")
-		// containerid, _ := cmd.Flags().GetString("container-id")
+		uid, _ := cmd.Flags().GetString("uid")
+		containerID, _ := cmd.Flags().GetString("container-id")
+		bytesPerSec, _ := cmd.Flags().GetUint("bytes-per-sec")
 
-		// // prepare container
-		// ctn, err := container.New(containerid)
-		// if err != nil {
-		// 	log.Fatalw("can't create container object", "error", err)
-		// }
+		// prepare container
+		c, err := container.New(containerID)
+		if err != nil {
+			log.Fatalw("can't create container object", "error", err)
+		}
 
-		// // prepare spec
-		// spec := v1beta1.NetworkLimitationSpec{}
+		// prepare spec
+		spec := v1beta1.NetworkLimitationSpec{
+			BytesPerSec: bytesPerSec,
+		}
 
 		// inject
-		log.Infow("Doing nothing for now!")
+		i := injector.NewNetworkLimitationInjector(uid, spec, c, log, ms)
+		i.Inject()
 	},
+}
+
+func init() {
+	networkLimitationInjectCmd.Flags().Uint("bytes-per-sec", 1000000, "Bytes per second to limit bandwidth to")
+	_ = networkLimitationInjectCmd.MarkFlagRequired("bytes-per-sec")
 }

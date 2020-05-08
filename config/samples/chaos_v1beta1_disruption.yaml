@@ -12,4 +12,5 @@ spec:
   selector: # label selector to target pods
     app: demo
   count: 1 # number of pods to target (-1 == target all the selected pods)
-  networkLimitation: {}
+  networkLimitation:
+    BytesPerSec: 14567

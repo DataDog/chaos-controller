@@ -179,6 +179,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	// start injections
 	r.Log.Info("starting pods injection", "instance", instance.Name, "namespace", instance.Namespace, "targetPods", instance.Status.TargetPods)
+	r.Log.Info("BRANDONTEST")
 
 	for _, targetPodName := range instance.Status.TargetPods {
 		chaosPods := []*corev1.Pod{}
@@ -233,6 +234,20 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			args := instance.Spec.CPUPressure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
 
 			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindCPUPressure)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			chaosPods = append(chaosPods, chaosPod)
+		}
+
+		if instance.Spec.NetworkLimitation != nil {
+
+			r.Log.Info("Determined network limit, proceeding")
+
+			args := instance.Spec.NetworkLimitation.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
+
+			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkLimitation)
 			if err != nil {
 				return ctrl.Result{}, err
 			}

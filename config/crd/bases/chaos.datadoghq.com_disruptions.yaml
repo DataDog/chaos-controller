@@ -42,10 +42,6 @@ spec:
               description: CPUPressureSpec represents a node failure injection
               nullable: true
               type: object
-            networkLimitation:
-              description: NetworkLimitationSpec represents a network bandwidth limitation
-              nullable: true
-              type: object
             networkFailure:
               description: NetworkFailureSpec represents a network failure injection
               nullable: true
@@ -78,13 +74,24 @@ spec:
                 hosts:
                   items:
                     type: string
+                  nullable: true
                   type: array
                 port:
                   nullable: true
                   type: integer
               required:
               - delay
-              - port
+              type: object
+            networkLimitation:
+              description: NetworkLimitationSpec represents a network bandwidth limitation
+                injection
+              nullable: true
+              properties:
+                BytesPerSec:
+                  maximum: 59999
+                  type: integer
+              required:
+              - BytesPerSec
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection
