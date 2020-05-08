@@ -42,6 +42,10 @@ spec:
               description: CPUPressureSpec represents a node failure injection
               nullable: true
               type: object
+            networkLimitation:
+              description: NetworkLimitationSpec represents a network bandwidth limitation
+              nullable: true
+              type: object
             networkFailure:
               description: NetworkFailureSpec represents a network failure injection
               nullable: true

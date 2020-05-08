@@ -10,6 +10,7 @@ This project has been created using [kubebuilder][https://github.com/kubernetes-
 * Disruptions
   * [Network failure](docs/network_failure.md)
   * [Network latency](docs/network_latency.md)
+  * [Network limitation](docs/network_limitation.md)
   * [Node failure](docs/node_failure.md)
   * [CPU pressure](docs/cpu_pressure.md)
 * [Design](docs/design.md)

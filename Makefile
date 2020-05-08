@@ -100,7 +100,8 @@ endif
 
 minikube-start:
 	minikube start \
-		--vm-driver=virtualbox \
+		--vm-driver=hyperkit \
+		--kubernetes-version=1.17.0 \
 		--container-runtime=containerd \
 		--memory=4096 \
 		--cpus=4 \
