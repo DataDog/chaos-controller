@@ -21,11 +21,11 @@ test: generate manifests
 
 # Build manager binary
 manager: generate
-	GOOS=linux GOARCH=amd64 go build -o bin/manager/manager main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/manager/manager main.go
 
 # Build injector binary
 injector:
-	GOOS=linux GOARCH=amd64 go build -o bin/injector/injector ./cli/injector/
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/injector/injector ./cli/injector/
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate manifests
