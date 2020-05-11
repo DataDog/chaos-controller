@@ -15,6 +15,7 @@ var networkLimitationCommand = &cobra.Command{
 
 func init() {
 	networkLimitationCommand.AddCommand(networkLimitationInjectCmd)
+	networkLimitationCommand.AddCommand(networkLimitationCleanCmd)
 	networkLimitationCommand.PersistentFlags().String("container-id", "", "ID of the container to inject")
 	_ = cobra.MarkFlagRequired(networkLimitationCommand.PersistentFlags(), "container-id")
 }
