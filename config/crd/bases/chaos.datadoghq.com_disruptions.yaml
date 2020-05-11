@@ -38,6 +38,10 @@ spec:
           properties:
             count:
               type: integer
+            cpuPressure:
+              description: CPUPressureSpec represents a node failure injection
+              nullable: true
+              type: object
             networkFailure:
               description: NetworkFailureSpec represents a network failure injection
               nullable: true
