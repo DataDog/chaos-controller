@@ -46,6 +46,10 @@ func (f *fakeContainer) ExitNetworkNamespace() error {
 	args := f.Called()
 	return args.Error(0)
 }
+func (f *fakeContainer) JoinCPUCgroup() error {
+	args := f.Called()
+	return args.Error(0)
+}
 
 // fake tc
 type fakeTc struct {
@@ -140,6 +144,15 @@ func (f *fakeNetlinkRoute) Link() network.NetlinkLink {
 func (f *fakeDNSClient) Resolve(host string) ([]net.IP, error) {
 	args := f.Called(host)
 	return args.Get(0).([]net.IP), args.Error(1)
+}
+
+type fakeFileWriter struct {
+	mock.Mock
+}
+
+func (fw *fakeFileWriter) Write(path string, mode os.FileMode, data string) error {
+	args := fw.Called(path, mode, data)
+	return args.Error(0)
 }
 
 var _ = BeforeSuite(func() {

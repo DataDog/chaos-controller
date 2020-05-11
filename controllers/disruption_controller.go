@@ -229,6 +229,17 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			chaosPods = append(chaosPods, chaosPod)
 		}
 
+		if instance.Spec.CPUPressure != nil {
+			args := instance.Spec.CPUPressure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
+
+			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindCPUPressure)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			chaosPods = append(chaosPods, chaosPod)
+		}
+
 		// create injection pods
 		for _, chaosPod := range chaosPods {
 			// link instance resource and injection pod for garbage collection

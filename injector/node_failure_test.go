@@ -15,15 +15,6 @@ import (
 	. "github.com/DataDog/chaos-controller/injector"
 )
 
-type fakeFileWriter struct {
-	mock.Mock
-}
-
-func (fw *fakeFileWriter) Write(path string, mode os.FileMode, data string) error {
-	args := fw.Called(path, mode, data)
-	return args.Error(0)
-}
-
 var _ = Describe("Failure", func() {
 	var (
 		config NodeFailureInjectorConfig

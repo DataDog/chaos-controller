@@ -21,13 +21,8 @@ limitations under the License.
 package v1beta1
 
 import (
-	"strconv"
-	"strings"
-
-	chaostypes "github.com/DataDog/chaos-controller/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -45,6 +40,8 @@ type DisruptionSpec struct {
 	NetworkLatency *NetworkLatencySpec `json:"networkLatency,omitempty"`
 	// +nullable
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
+	// +nullable
+	CPUPressure *CPUPressureSpec `json:"cpuPressure,omitempty"`
 }
 
 // NetworkFailureSpec represents a network failure injection
@@ -179,6 +176,7 @@ func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, c
 	}
 
 	return args
+=======
 }
 
 // DisruptionStatus defines the observed state of Disruption

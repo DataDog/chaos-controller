@@ -195,6 +195,7 @@ func (i networkFailureInjector) Inject() {
 
       if i.spec.Drop != 0 {
         // add drop rate
+        i.log.Info("Adding Drop rate of ",i.spec.Drop)
         if err := i.config.TrafficController.AddDrop(link.Name(), parent, 0, drop); err != nil {
     			i.log.Fatalf("can't add drop rate to the newly created qdisc for interface %s: %w", link.Name(), err)
     		}
@@ -202,6 +203,7 @@ func (i networkFailureInjector) Inject() {
 
       if i.spec.Corrupt != 0 {
         // add corruption
+        i.log.Info("Adding Corruption rate of ",i.spec.Corrupt)
         if err := i.config.TrafficController.AddCorrupt(link.Name(), parent, 0, corrupt); err != nil {
     			i.log.Fatalf("can't add corruption to the newly created qdisc for interface %s: %w", link.Name(), err)
     		}
