@@ -21,11 +21,11 @@ test: generate manifests
 
 # Build manager binary
 manager: generate
-	GOOS=linux GOARCH=amd64 go build -o bin/manager/manager main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/manager/manager main.go
 
 # Build injector binary
 injector:
-	GOOS=linux GOARCH=amd64 go build -o bin/injector/injector ./cli/injector/
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/injector/injector ./cli/injector/
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate manifests
@@ -98,14 +98,17 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
+# fixing kubernetes version at 1.17.0 because of this issue:
+# https://github.com/kubernetes/minikube/issues/7179
+# please remove once Minikube ships with a non-broken (> 1.18.0) version
 minikube-start:
 	minikube start \
 		--vm-driver=virtualbox \
-		--kubernetes-version=1.17.0 \
 		--container-runtime=containerd \
 		--memory=4096 \
 		--cpus=4 \
 		--disk-size=50GB \
+		--kubernetes-version=1.17.0 \
 		--extra-config=apiserver.runtime-config=settings.k8s.io/v1alpha1=true \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodPreset \
 		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube.iso

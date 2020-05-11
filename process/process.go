@@ -7,6 +7,10 @@ package process
 
 import "syscall"
 
+const (
+	maxPriorityValue = -20
+)
+
 // Manager manages the current process
 type Manager interface {
 	Prioritize() error
@@ -22,7 +26,7 @@ func NewManager() Manager {
 // Prioritize set the priority of the current process group to the max value (-20)
 func (p manager) Prioritize() error {
 	pgid := syscall.Getpgrp()
-	if err := syscall.Setpriority(syscall.PRIO_PGRP, pgid, -20); err != nil {
+	if err := syscall.Setpriority(syscall.PRIO_PGRP, pgid, maxPriorityValue); err != nil {
 		return err
 	}
 
