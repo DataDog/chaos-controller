@@ -70,7 +70,7 @@ func NewNetworkLimitationInjectorWithConfig(uid string, spec v1beta1.NetworkLimi
 // Inject injects network bandwidth limitation according to the current spec
 func (i networkLimitationInjector) Inject() {
 
-    i.log.Info("Will inject bandwidth limitation to %s bytes per sec!", i.spec.BytesPerSec)
+    i.log.Info("Will inject bandwidth limitation to bytes per sec: ", i.spec.BytesPerSec)
 
 }
 

@@ -14,7 +14,6 @@ import (
 
 // NetworkLimitationSpec represents a network bandwidth limitation injection
 type NetworkLimitationSpec struct {
-	// +kubebuilder:validation:Maximum=59999
 	BytesPerSec uint `json:"bytesPerSec"`
 }
 

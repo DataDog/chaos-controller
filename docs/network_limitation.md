@@ -1,13 +1,19 @@
 # Network Bandwidth Limitation
 
-The `networkFailure` field provides an automated way of dropping the connection between a pod and a service. Please note that the connection is dropped when outgoing from the pod you targeted. It means you can prevent the targeted pod from querying an API but not from being queried. However, if the call to query to targeted pod is using TCP, the SYN-ACK answer to establish the connection will never be sent and the result will be quite the same.
+The `networkLimitation` field allows you to set an artificial limit on the amount of input/output network bandwidth available to a running container, and see how it performs in a constrained (but not totally unavailable) network environment.
 
-The injector injects iptables rules in a dedicated iptables chain. The chain is created during the injection and has a unique name formed with the `CHAOS-` prefix and with a part of the `Disruption` Kubernetes resource UUID. All iptables injection are done in the `filter` table and during the `OUTPUT` step.
+The injector will use `tc` to create a new `qdisc` that has a more constrained bandwidth limit than the default one, as if running this command (limits are configurable):
+
+```
+tc qdisc add dev eth0 root tbf rate 0.5mbit burst 5kb latency 0ms
+```
 
 On cleaning, it removes all the injected rules by clearing the dedicated chain and by removing it.
 
-## Allow establishment
+## Kernel modules
 
-The `allowEstablishment` field allows you to drop established connections packets only. It means you can allow the connection to be established between the pod and the impacted service but then drop packets.
+The injector needs some kernel modules to be enabled to be able to run:
 
-It adds the `-m conntrack --ctstate ESTABLISHED` flags to the injected iptables `DROP` rules.
+* `sch_tbf` for the tc network rate limiting
+* `sch_netem` for the tc network emulator module
+* `sch_prio` for the tc prio qdisc creation
