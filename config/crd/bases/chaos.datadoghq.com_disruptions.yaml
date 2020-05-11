@@ -59,12 +59,15 @@ spec:
                   type: array
                 port:
                   type: integer
+                probability:
+                  type: integer
                 protocol:
                   type: string
               required:
               - corrupt
               - drop
               - port
+              - probability
               - protocol
               type: object
             networkLatency:
@@ -77,13 +80,13 @@ spec:
                 hosts:
                   items:
                     type: string
+                  nullable: true
                   type: array
                 port:
                   nullable: true
                   type: integer
               required:
               - delay
-              - port
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection

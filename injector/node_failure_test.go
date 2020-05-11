@@ -6,7 +6,6 @@
 package injector_test
 
 import (
-	"os"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/mock"
