@@ -241,9 +241,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 
 		if instance.Spec.NetworkLimitation != nil {
-
-			r.Log.Info("Determined network limit, proceeding")
-
 			args := instance.Spec.NetworkLimitation.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
 
 			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkLimitation)
