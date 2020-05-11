@@ -128,12 +128,12 @@ var _ = Describe("Tc", func() {
 				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "root", uint32(1), uint32(4), mock.Anything)
 			})
       It("should add corrupt to the interfaces root qdisc", func() {
-				tc.AssertCalled(GinkgoT(), "AddCorrupt", "lo", "root", mock.Anything, 1)
-				tc.AssertCalled(GinkgoT(), "AddCorrupt", "eth0", "root", mock.Anything, 1)
+				tc.AssertCalled(GinkgoT(), "AddCorrupt", "lo", "1:4", mock.Anything, 1)
+				tc.AssertCalled(GinkgoT(), "AddCorrupt", "eth0", "1:4", mock.Anything, 1)
 			})
       It("should add drop rate to the interfaces root qdisc", func() {
-				tc.AssertCalled(GinkgoT(), "AddDrop", "lo", "root", mock.Anything, 5)
-				tc.AssertCalled(GinkgoT(), "AddDrop", "eth0", "root", mock.Anything, 5)
+				tc.AssertCalled(GinkgoT(), "AddDrop", "lo", "1:4", mock.Anything, 5)
+				tc.AssertCalled(GinkgoT(), "AddDrop", "eth0", "1:4", mock.Anything, 5)
 			})
 			It("should add a filter to redirect traffic on delayed band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "1.1.1.1/32", 80, "1:4")

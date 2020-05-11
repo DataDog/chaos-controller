@@ -158,6 +158,7 @@ func (i networkFailureInjector) Inject() {
 
   // for each link/ip association, add latency
 	for linkName, ips := range linkByIP {
+    i.log.Info("TEST 1")
     clearTxQlen := false
 
     // retrieve link from name
@@ -191,7 +192,8 @@ func (i networkFailureInjector) Inject() {
 
       if err := i.config.TrafficController.AddPrio(link.Name(), "root", 1, 4, priomap); err != nil {
 				i.log.Fatalf("can't create a new qdisc for interface %s: %w", link.Name(), err)
-			}
+			 }
+      }
 
       if i.spec.Drop != 0 {
         // add drop rate
@@ -231,8 +233,6 @@ func (i networkFailureInjector) Inject() {
   		}
     }
   }
-}
-
 // Clean removes all the injected failures in the given container
 func (i networkFailureInjector) Clean() {
   var err error
