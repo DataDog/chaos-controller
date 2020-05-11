@@ -38,6 +38,6 @@ var networkLimitationInjectCmd = &cobra.Command{
 }
 
 func init() {
-	networkLimitationInjectCmd.Flags().Uint("bytes-per-sec", 1000000, "Bytes per second to limit bandwidth to")
+	networkLimitationInjectCmd.Flags().Uint("bytes-per-sec", 1000000000, "Bytes per second to limit bandwidth to")
 	_ = networkLimitationInjectCmd.MarkFlagRequired("bytes-per-sec")
 }

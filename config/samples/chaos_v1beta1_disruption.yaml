@@ -12,20 +12,18 @@ spec:
   selector: # label selector to target pods
     app: demo
   count: 1 # number of pods to target (-1 == target all the selected pods)
-  networkLimitation:
-    BytesPerSec: 14567
-  # networkFailure: # packet loss and connection drop
-  #   hosts:
-  #     - 10.0.0.0/8 # destination host
-  #   probability: 100 # probability to drop packets (between 0 and 100)
-  #   port: 80 # port to drop packets on
-  #   protocol: tcp # protocol to drop packets on (can be tcp or udp)
-  #   allowEstablishment: true # allow connection to be established before dropping packets (drops established connections packets only)
-  # networkLatency: # network latency
-  #   delay: 1000 # delay in ms
-  #   hosts: # destination hosts to add latency to
-  #     - 10.0.0.0/8
-  #   port: 80 # port to apply latency  (optional)
-  # nodeFailure: # node kernel panic or shutdown
-  #   shutdown: true # shutdown the host instead of triggering a stack dump
-  # cpuPressure: {} # cpu load generator
+  networkFailure: # packet loss and connection drop
+    hosts:
+      - 10.0.0.0/8 # destination host
+    probability: 100 # probability to drop packets (between 0 and 100)
+    port: 80 # port to drop packets on
+    protocol: tcp # protocol to drop packets on (can be tcp or udp)
+    allowEstablishment: true # allow connection to be established before dropping packets (drops established connections packets only)
+  networkLatency: # network latency
+    delay: 1000 # delay in ms
+    hosts: # destination hosts to add latency to
+      - 10.0.0.0/8
+    port: 80 # port to apply latency  (optional)
+  nodeFailure: # node kernel panic or shutdown
+    shutdown: true # shutdown the host instead of triggering a stack dump
+  cpuPressure: {} # cpu load generator

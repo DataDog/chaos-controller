@@ -25,7 +25,6 @@ type TrafficController interface {
 	AddDelay(iface string, parent string, handle uint32, delay time.Duration) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
 	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error
-	AddBandwidthLimit(iface string, parent string, handle uint32, bytesPerSec uint) error
 	ClearQdisc(iface string) error
 	IsQdiscCleared(iface string) (bool, error)
 }
@@ -85,14 +84,6 @@ func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, pr
 	priomapStr = strings.TrimSpace(priomapStr)
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
 	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "prio", params)...)
-
-	return err
-}
-
-func (t tc) AddBandwidthLimit(iface string, parent string, handle uint32, bytesPerSec uint) error {
-	// uses tbf (Token Bucket Filter) to slow an interface down
-	// https://wiki.debian.org/TrafficControl
-	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "tbf", fmt.Sprintf("rate %s", bytesPerSec))...)
 
 	return err
 }

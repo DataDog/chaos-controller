@@ -23,8 +23,4 @@ spec:
     spec:
       containers:
       - name: demo
-        image: nginx
-        securityContext:
-          capabilities:
-            add:
-              - NET_ADMIN
+        image: k8s.gcr.io/pause:3.1

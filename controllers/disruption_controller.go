@@ -179,7 +179,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	// start injections
 	r.Log.Info("starting pods injection", "instance", instance.Name, "namespace", instance.Namespace, "targetPods", instance.Status.TargetPods)
-	r.Log.Info("BRANDONTEST")
 
 	for _, targetPodName := range instance.Status.TargetPods {
 		chaosPods := []*corev1.Pod{}

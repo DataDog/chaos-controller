@@ -83,15 +83,14 @@ spec:
               - delay
               type: object
             networkLimitation:
-              description: NetworkLimitationSpec represents a network bandwidth limitation
-                injection
+              description: NetworkLimitationSpec represents a network bandwidth limitation injection
               nullable: true
               properties:
                 BytesPerSec:
                   maximum: 59999
                   type: integer
               required:
-              - BytesPerSec
+              - bytesPerSec
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection
