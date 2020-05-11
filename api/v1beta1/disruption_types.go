@@ -4,13 +4,10 @@
 // Copyright 2020 Datadog, Inc.
 
 /*
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -42,141 +39,6 @@ type DisruptionSpec struct {
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
 	// +nullable
 	CPUPressure *CPUPressureSpec `json:"cpuPressure,omitempty"`
-}
-
-// NetworkFailureSpec represents a network failure injection
-type NetworkFailureSpec struct {
-	// +nullable
-	Hosts              []string `json:"hosts,omitempty"`
-	Port               int      `json:"port"`
-	Drop               int      `json:"drop"`
-	Corrupt            int      `json:"corrupt"`
-	Protocol           string   `json:"protocol"`
-	AllowEstablishment bool     `json:"allowEstablishment,omitempty"`
-}
-
-// GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string {
-	args := []string{}
-
-	switch mode {
-	case chaostypes.PodModeInject:
-		args = []string{
-			"network-failure",
-			"inject",
-			"--uid",
-			string(uid),
-			"--metrics-sink",
-			sink,
-			"--container-id",
-			containerID,
-			"--port",
-			strconv.Itoa(s.Port),
-			"--corrupt",
-			strconv.Itoa(s.Corrupt),
-			"--drop",
-			strconv.Itoa(s.Drop),
-			"--protocol",
-			s.Protocol,
-			strconv.Itoa(s.Drop),
-			"--hosts",
-		}
-		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
-
-		// allow establishment
-		if s.AllowEstablishment {
-			args = append(args, "--allow-establishment")
-		}
-	case chaostypes.PodModeClean:
-		args = []string{
-			"network-failure",
-			"clean",
-			"--uid",
-			string(uid),
-			"--metrics-sink",
-			sink,
-			"--container-id",
-			containerID,
-		}
-	}
-
-	return args
-}
-
-// NetworkLatencySpec represents a network latency injection
-type NetworkLatencySpec struct {
-	// +kubebuilder:validation:Maximum=59999
-	Delay uint `json:"delay"`
-	// +nullable
-	Port  int      `json:"port,omitempty"`
-	Hosts []string `json:"hosts,omitempty"`
-}
-
-// GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkLatencySpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string {
-	args := []string{}
-
-	switch mode {
-	case chaostypes.PodModeInject:
-		args = []string{
-			"network-latency",
-			"inject",
-			"--uid",
-			string(uid),
-			"--metrics-sink",
-			sink,
-			"--container-id",
-			containerID,
-			"--delay",
-			strconv.Itoa(int(s.Delay)),
-			"--port",
-			strconv.Itoa(s.Port),
-			"--hosts",
-		}
-		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
-	case chaostypes.PodModeClean:
-		args = []string{
-			"network-latency",
-			"clean",
-			"--uid",
-			string(uid),
-			"--metrics-sink",
-			sink,
-			"--container-id",
-			containerID,
-			"--hosts",
-		}
-		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
-	}
-
-	return args
-}
-
-// NodeFailureSpec represents a node failure injection
-type NodeFailureSpec struct {
-	Shutdown bool `json:"shutdown,omitempty"`
-}
-
-// GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string {
-	args := []string{}
-
-	if mode == chaostypes.PodModeInject {
-		args = []string{
-			"node-failure",
-			"inject",
-			"--uid",
-			string(uid),
-			"--metrics-sink",
-			sink,
-		}
-		if s.Shutdown {
-			args = append(args, "--shutdown")
-		}
-	}
-
-	return args
-=======
 }
 
 // DisruptionStatus defines the observed state of Disruption
