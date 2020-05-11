@@ -44,6 +44,10 @@ func (f *fakeContainer) ExitNetworkNamespace() error {
 	args := f.Called()
 	return args.Error(0)
 }
+func (f *fakeContainer) JoinCPUCgroup() error {
+	args := f.Called()
+	return args.Error(0)
+}
 
 // fake dns client
 type fakeDNSClient struct {

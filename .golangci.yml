@@ -47,5 +47,6 @@ issues:
   exclude:
     # gosec
     - Subprocess launch(ed with variable|ing should be audited)
+    - Expect file permissions to be 0600 or less
     # stylecheck
     - at least one file in a package should have a package comment

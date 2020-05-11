@@ -18,12 +18,14 @@ type Container interface {
 	Netns() Netns
 	EnterNetworkNamespace() error
 	ExitNetworkNamespace() error
+	JoinCPUCgroup() error
 }
 
 // Config contains needed interfaces
 type Config struct {
 	Runtime Runtime
 	Netns   Netns
+	Cgroup  Cgroup
 }
 
 type container struct {
@@ -52,14 +54,24 @@ func NewWithConfig(id string, config Config) (Container, error) {
 	}
 
 	if config.Runtime == nil {
+		var err error
+
 		switch {
 		case strings.HasPrefix(id, "containerd://"):
-			config.Runtime = &containerdRuntime{}
+			config.Runtime, err = newContainerdRuntime()
 		case strings.HasPrefix(id, "docker://"):
-			config.Runtime = &dockerRuntime{}
+			config.Runtime, err = newDockerRuntime()
 		default:
-			return nil, fmt.Errorf("unsupported container runtime. docker or containerd are supported")
+			return nil, fmt.Errorf("unsupported container runtime, only docker and containerd are supported")
 		}
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if config.Cgroup == nil {
+		config.Cgroup = newCgroup()
 	}
 
 	// retrieve root ns
@@ -131,6 +143,22 @@ func (c container) EnterNetworkNamespace() error {
 	err = c.config.Netns.Set(ns)
 	if err != nil {
 		return fmt.Errorf("error while entering the container network namespace: %w", err)
+	}
+
+	return nil
+}
+
+// JoinCPUCgroup attaches the current process to the container CPU cgroup
+func (c container) JoinCPUCgroup() error {
+	// retrieve cgroup path from container data
+	path, err := c.config.Runtime.CgroupPath(c.id)
+	if err != nil {
+		return fmt.Errorf("error joining CPU cgroup: %w", err)
+	}
+
+	// join cpu cgroup path
+	if err := c.config.Cgroup.JoinCPU(path); err != nil {
+		return fmt.Errorf("error joining CPU cgroup: %w", err)
 	}
 
 	return nil
