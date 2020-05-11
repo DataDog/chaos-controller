@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.6.1](https://github.com/DataDog/chaos-controller/tree/2.6.1) (2020-05-11)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.6.0...2.6.1)
+
+**Merged pull requests:**
+
+- Disable cgo on build [\#128](https://github.com/DataDog/chaos-controller/pull/128) ([Devatoria](https://github.com/Devatoria))
+- fix kubernetes version at 1.17.0 [\#127](https://github.com/DataDog/chaos-controller/pull/127) ([brandon-dd](https://github.com/brandon-dd))
+- Update container release\_changelog\_a878e718a85f72ea2abf23f351af221fea8c0e41 [\#126](https://github.com/DataDog/chaos-controller/pull/126) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.6.0](https://github.com/DataDog/chaos-controller/tree/2.6.0) (2020-05-11)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.5.0...2.6.0)
@@ -61,6 +71,7 @@
 - Review the way we push images from the CI [\#96](https://github.com/DataDog/chaos-controller/pull/96) ([Devatoria](https://github.com/Devatoria))
 - Add CI job to release images on docker hub [\#95](https://github.com/DataDog/chaos-controller/pull/95) ([Devatoria](https://github.com/Devatoria))
 - add targetPod name to logs [\#94](https://github.com/DataDog/chaos-controller/pull/94) ([jvanbrunschot](https://github.com/jvanbrunschot))
+- Cast DNS records before appending it to avoid a panic [\#90](https://github.com/DataDog/chaos-controller/pull/90) ([Devatoria](https://github.com/Devatoria))
 
 ## [2.2.1](https://github.com/DataDog/chaos-controller/tree/2.2.1) (2020-03-13)
 
@@ -70,7 +81,6 @@
 
 - Release 2.2.1 changelog [\#93](https://github.com/DataDog/chaos-controller/pull/93) ([Devatoria](https://github.com/Devatoria))
 - Set disruption resource count field optional [\#91](https://github.com/DataDog/chaos-controller/pull/91) ([Devatoria](https://github.com/Devatoria))
-- Cast DNS records before appending it to avoid a panic [\#90](https://github.com/DataDog/chaos-controller/pull/90) ([Devatoria](https://github.com/Devatoria))
 - Add NOTICE [\#89](https://github.com/DataDog/chaos-controller/pull/89) ([Devatoria](https://github.com/Devatoria))
 - document available Make commands [\#84](https://github.com/DataDog/chaos-controller/pull/84) ([jvanbrunschot](https://github.com/jvanbrunschot))
 
