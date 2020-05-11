@@ -17,3 +17,7 @@ The injector needs some kernel modules to be enabled to be able to run:
 * `sch_tbf` for the tc network rate limiting
 * `sch_netem` for the tc network emulator module
 * `sch_prio` for the tc prio qdisc creation
+
+## See Also
+
+* [tc rate limiting usage](https://linux.die.net/man/8/tc-tbf)
