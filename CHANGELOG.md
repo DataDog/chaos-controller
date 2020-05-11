@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.6.0](https://github.com/DataDog/chaos-controller/tree/2.6.0) (2020-05-11)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.5.0...2.6.0)
+
+**Merged pull requests:**
+
+- Change code owners to the new core resilience team [\#125](https://github.com/DataDog/chaos-controller/pull/125) ([Devatoria](https://github.com/Devatoria))
+- Add cpu pressure injection [\#124](https://github.com/DataDog/chaos-controller/pull/124) ([Devatoria](https://github.com/Devatoria))
+- api: Add a maximum value for networkLatency.delay [\#123](https://github.com/DataDog/chaos-controller/pull/123) ([dd-adn](https://github.com/dd-adn))
+- Switch to noop metrics sink by default [\#122](https://github.com/DataDog/chaos-controller/pull/122) ([Devatoria](https://github.com/Devatoria))
+- Fix manager bin path in deployment [\#121](https://github.com/DataDog/chaos-controller/pull/121) ([Devatoria](https://github.com/Devatoria))
+- Improve images and build process [\#120](https://github.com/DataDog/chaos-controller/pull/120) ([Devatoria](https://github.com/Devatoria))
+- Add port configuration to network latency [\#119](https://github.com/DataDog/chaos-controller/pull/119) ([Azoam](https://github.com/Azoam))
+- Update container release\_changelog\_df7dfce24de404eb5ba74f91323a58c09dfc9161 [\#118](https://github.com/DataDog/chaos-controller/pull/118) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.5.0](https://github.com/DataDog/chaos-controller/tree/2.5.0) (2020-04-22)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.4.1...2.5.0)
