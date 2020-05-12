@@ -11,7 +11,7 @@ This project is based on kubebuilder, please make sure the [listed](https://book
 
 ## Developing locally (minikube)
 
-For using the chaos-controller on minikube we need our own custom build ISO image available on s3.
+For using the chaos-controller on minikube we need our own custom build ISO image available on s3. To find out more about what changes are in this image and the process to create a new version, see [this document](./minikube_image.md)
 
 * Start minikube with **containerd** container runtime:
   * `make minikube-start`
@@ -25,8 +25,6 @@ make minikube-start
 make docker-build
 make install && make deploy
 ```
-
-_we build our own minikube because our setup requires 2 kernel modules to be enabled: `sch_netem` & `sch_prio`_
 
 ### Applying code changes
 

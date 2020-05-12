@@ -111,7 +111,7 @@ minikube-start:
 		--kubernetes-version=1.17.0 \
 		--extra-config=apiserver.runtime-config=settings.k8s.io/v1alpha1=true \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodPreset \
-		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube.iso
+		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2020-05-13.iso
 
 venv:
 	test -d .venv || python3 -m venv .venv
