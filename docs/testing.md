@@ -26,8 +26,6 @@ make docker-build
 make install && make deploy
 ```
 
-_we build our own minikube because our setup requires 2 kernel modules to be enabled: `sch_netem` & `sch_prio`_
-
 ### Applying code changes
 
 Applying code changes, requires you to rebuild the images. Re-running `make docker-build && make install && make deploy` should make the new images available.
