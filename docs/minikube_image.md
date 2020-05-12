@@ -1,6 +1,6 @@
 # Custom Minikube Image
 
-### Description
+## Description
 
 Some of the available disruptions (like `network_latency` and `network_limitation`) rely on the [`tc` command](http://man7.org/linux/man-pages/man8/tc.8.html) to function, which sets `qdiscs` on network devices in order to enforce extra network latency or bandwidth limitations.
 
@@ -8,7 +8,7 @@ These functions of `tc` rely on certain linux kernel modules being available, na
 
 To work around this, we've created a custom Minikube ISO that contains not only `SCH_TBF` and `SCH_NETEM` (like the standard image) but also `SCH_PRIO` (which allows the latency disruption to work) and uploaded this image to S3. Then, passing in this image as the `--iso-url` parameter in `minikube start` solves the problem.
 
-### Creating the Image
+## Creating the Image
 
 First, clone the Minikube Git repository **and checkout a released version**, not master:
 
@@ -28,8 +28,10 @@ Finally, follow [the instructions](https://minikube.sigs.k8s.io/docs/contrib/bui
 
 To provide an example of build time, I ran `make buildroot-image` and then `IN_DOCKER=1 make out/minikube.iso` on a `c5.9xlarge` Ubuntu EC2 instance (32 vCPU, 72GB RAM) for a modified Minikube 1.9.2, and the whole process took a little over an hour to produce the ISO.
 
-### Uploading the Image
+## Uploading the Image
 
 > Note: Only Datadog employees currently have permissions to upload to the `public-chaos-controller` S3 bucket.
 
 Finally, `aws s3 cp` the new ISO image into the `s3://public-chaos-controller/minikube/` directory, preferably using the `minikube-YYYY-MM-DD.iso` versioning format so as to avoid affecting existing, known-working images.
+
+Then, update the `Makefile` of this repository to use the new image, once you've verified it works.
