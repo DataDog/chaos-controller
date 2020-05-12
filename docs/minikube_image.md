@@ -10,13 +10,13 @@ To work around this, we've created a custom Minikube ISO that contains not only 
 
 ### Creating the Image
 
-First, clone the Minikube Git repository **and checkout a released version, not master**:
+First, clone the Minikube Git repository **and checkout a released version**, not master:
 
 ```bash
 git clone https://github.com/kubernetes/minikube.git && git checkout 93af9c1 # version 1.9.2
 ```
 
-Then, modify this config file so that it includes the line `CONFIG_NET_SCH_PRIO=y` (the other necessary kernel modules are already included as of May 2020):
+Then, modify this config file so that it includes the line `CONFIG_NET_SCH_PRIO=y`:
 
 ```bash
 nano ./deploy/iso/minikube-iso/board/coreos/minikube/linux_defconfig
@@ -24,8 +24,12 @@ nano ./deploy/iso/minikube-iso/board/coreos/minikube/linux_defconfig
 
 Finally, follow [the instructions](https://minikube.sigs.k8s.io/docs/contrib/building/iso/) to build a new ISO.
 
-> Note: The image takes an _extremely long time_ to build in Docker on a normal laptop, upwards of 6 hours, and for me didn't work at all under OSX. It's highly recommended to stand up a fairly large (Ubuntu) EC2 instance, install build requirements, and run `make` with `IN_DOCKER=1` on that instance instead.
+> Note: The image takes an _extremely long time_ to build in Docker on a normal laptop, upwards of 6 hours, and for me didn't work at all under OSX. It's highly recommended to stand up a fairly large EC2 instance, install build requirements, and run `make` with `IN_DOCKER=1` on that instance instead.
 
 To provide an example of build time, I ran `make buildroot-image` and then `IN_DOCKER=1 make out/minikube.iso` on a `c5.9xlarge` Ubuntu EC2 instance (32 vCPU, 72GB RAM) for a modified Minikube 1.9.2, and the whole process took a little over an hour to produce the ISO.
 
 ### Uploading the Image
+
+> Note: Only Datadog employees currently have permissions to upload to the `public-chaos-controller` S3 bucket.
+
+Finally, `aws s3 cp` the new ISO image into the `s3://public-chaos-controller/minikube/` directory, preferably using the `minikube-YYYY-MM-DD.iso` versioning format so as to avoid affecting existing, known-working images.
