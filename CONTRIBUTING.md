@@ -28,7 +28,7 @@ Both samples can be applied using kubectl: `kubectl apply -f deployment.yaml`.
 
 ### Minikube ISO
 
-We need some specific kernel modules to be enabled to do some of the injections. Because some of them were not enabled by default in the ISO, we built a custom one following the [official guide](https://minikube.sigs.k8s.io/docs/contributing/iso/) which is stored in the [minikube/iso] directory.
+See [minikube_image.md](docs/minikube_image.md)
 
 ## Re-generating the CRD manifest
 

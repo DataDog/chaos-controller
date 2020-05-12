@@ -11,7 +11,7 @@ This project is based on kubebuilder, please make sure the [listed](https://book
 
 ## Developing locally (minikube)
 
-For using the chaos-controller on minikube we need our own custom build ISO image available on s3.
+For using the chaos-controller on minikube we need our own custom build ISO image available on s3. To find out more about what changes are in this image and the process to create a new version, see [this document](docs/minikube_image.md)
 
 * Start minikube with **containerd** container runtime:
   * `make minikube-start`
