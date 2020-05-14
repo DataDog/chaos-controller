@@ -35,6 +35,10 @@ func (f *fakeTc) AddFilter(iface string, parent string, handle uint32, ip *net.I
 	args := f.Called(iface, parent, handle, ip.String(), port, flowid)
 	return args.Error(0)
 }
+func (f *fakeTc) AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error {
+	args := f.Called(iface, parent, handle, bytesPerSec)
+	return args.Error(0)
+}
 func (f *fakeTc) ClearQdisc(iface string) error {
 	args := f.Called(iface)
 	return args.Error(0)

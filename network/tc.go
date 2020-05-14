@@ -50,7 +50,7 @@ func (e defaultTcExecuter) Run(args ...string) (string, error) {
 	// run command
 	err := cmd.Run()
 	if err != nil {
-		err = fmt.Errorf("Encountered error (%w) using args (%s): %s", err, args, stderr.String())
+		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
 	}
 
 	return stdout.String(), err
@@ -90,7 +90,6 @@ func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, pr
 }
 
 func (t tc) AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error {
-
 	// `latency` is max length of time a packet can sit in the queue before being sent; 50ms should be plenty
 	// `burst` is the number of bytes that can be sent at unlimited speed before the rate limiting kicks in,
 	// so again we'll be safe by setting `burst` to be the same as `rate` (should be more than enough)

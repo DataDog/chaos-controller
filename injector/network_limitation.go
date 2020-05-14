@@ -69,135 +69,131 @@ func NewNetworkLimitationInjectorWithConfig(uid string, spec v1beta1.NetworkLimi
 	}
 }
 
-func (i networkLimitationInjector) getInterfacesByIP() (map[string][]*net.IPNet, error) {
-    linkByIP := map[string][]*net.IPNet{}
+func (i networkLimitationInjector) getInterfacesByIP() map[string][]*net.IPNet {
+	linkByIP := map[string][]*net.IPNet{}
 
-    // this is just copied from `network_limitation.go`
-    // currently omitted support for specific IPs, Hosts for bandwidth limit
-    // if we want to support that, probably should factor it out of `network_limitation.go`
+	// this is just copied from `network_limitation.go`
+	// currently omitted support for specific IPs, Hosts for bandwidth limit
+	// if we want to support that, probably should factor it out of `network_limitation.go`
 
-    i.log.Info("no hosts specified, all interfaces will be impacted")
+	i.log.Info("no hosts specified, all interfaces will be impacted")
 
-    // prepare links/IP association by pre-creating links
-    links, err := i.config.NetlinkAdapter.LinkList()
-    if err != nil {
-        i.log.Fatalf("can't list links: %w", err)
-    }
-    for _, link := range links {
-        i.log.Infof("adding interface %s", link.Name())
-        linkByIP[link.Name()] = []*net.IPNet{}
-    }
+	// prepare links/IP association by pre-creating links
+	links, err := i.config.NetlinkAdapter.LinkList()
+	if err != nil {
+		i.log.Fatalf("can't list links: %w", err)
+	}
 
-    return linkByIP, nil
+	for _, link := range links {
+		i.log.Infof("adding interface %s", link.Name())
+
+		linkByIP[link.Name()] = []*net.IPNet{}
+	}
+
+	return linkByIP
 }
 
 // Inject injects network bandwidth limitation according to the current spec
 func (i networkLimitationInjector) Inject() {
-    var err error
+	var err error
 
-    i.log.Info("injecting bandwidth limitation")
+	i.log.Info("injecting bandwidth limitation")
 
-    parent := "root"
+	parent := "root"
 
-    // handle metrics
-    defer func() {
-        i.handleMetricSinkError(i.ms.MetricInjected(i.container.ID(), i.uid, err == nil, i.kind, []string{}))
-    }()
+	// handle metrics
+	defer func() {
+		i.handleMetricSinkError(i.ms.MetricInjected(i.container.ID(), i.uid, err == nil, i.kind, []string{}))
+	}()
 
-    // enter container network namespace
-    err = i.container.EnterNetworkNamespace()
-    if err != nil {
-        i.log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.container.ID())
-    }
+	// enter container network namespace
+	err = i.container.EnterNetworkNamespace()
+	if err != nil {
+		i.log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.container.ID())
+	}
 
-    // defer the exit on return
-    defer func() {
-        err := i.container.ExitNetworkNamespace()
-        if err != nil {
-            i.log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.container.ID())
-        }
-    }()
+	// defer the exit on return
+	defer func() {
+		err := i.container.ExitNetworkNamespace()
+		if err != nil {
+			i.log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.container.ID())
+		}
+	}()
 
-    i.log.Info("auto-detecting interfaces to apply bandwidth limitation to...")
+	i.log.Info("auto-detecting interfaces to apply bandwidth limitation to...")
 
-    linkByIP, err := i.getInterfacesByIP()
-    if err != nil {
-        i.log.Fatalw("can't get interfaces per IP listing: %w", err)
-    }
+	linkByIP := i.getInterfacesByIP()
 
-    // for each link/ip association, add bandwidth limitation
-    for linkName, _ := range linkByIP {
-        // retrieve link from name
-        link, err := i.config.NetlinkAdapter.LinkByName(linkName)
-        if err != nil {
-            i.log.Fatalf("can't retrieve link %s: %w", linkName, err)
-        }
+	// for each link/ip association, add bandwidth limitation
+	for linkName := range linkByIP {
+		// retrieve link from name
+		link, err := i.config.NetlinkAdapter.LinkByName(linkName)
+		if err != nil {
+			i.log.Fatalf("can't retrieve link %s: %w", linkName, err)
+		}
 
-        // currently omitted support for specific IPs, Hosts for bandwidth limit
-        // if we want to support that, probably should factor it out of `network_limitation.go`
+		// currently omitted support for specific IPs, Hosts for bandwidth limit
+		// if we want to support that, probably should factor it out of `network_limitation.go`
 
-        i.log.Info("going to add bandwidth limit of %s bytes per sec now...", i.spec.BytesPerSec)
+		i.log.Info("going to add bandwidth limit of %s bytes per sec now...", i.spec.BytesPerSec)
 
-        // add limitation
-        err2 := i.config.TrafficController.AddOutputLimit(link.Name(), parent, 0, i.spec.BytesPerSec)
-        if err2 != nil {
-            i.log.Fatalf("can't add bandwidth limit to the newly created qdisc for interface %s: %w", link.Name(), err2)
-        }
-    }
+		// add limitation
+		err2 := i.config.TrafficController.AddOutputLimit(link.Name(), parent, 0, i.spec.BytesPerSec)
+		if err2 != nil {
+			i.log.Fatalf("can't add bandwidth limit to the newly created qdisc for interface %s: %w", link.Name(), err2)
+		}
+	}
 }
 
 // Clean cleans the injected bandwidth limitation
 func (i networkLimitationInjector) Clean() {
-    var err error
+	var err error
 
-    i.log.Info("cleaning bandwidth limitation")
+	i.log.Info("cleaning bandwidth limitation")
 
-    // handle metrics
-    defer func() {
-        i.handleMetricSinkError(i.ms.MetricCleaned(i.container.ID(), i.uid, err == nil, i.kind, []string{}))
-    }()
+	// handle metrics
+	defer func() {
+		i.handleMetricSinkError(i.ms.MetricCleaned(i.container.ID(), i.uid, err == nil, i.kind, []string{}))
+	}()
 
-    // enter container network namespace
-    err = i.container.EnterNetworkNamespace()
-    if err != nil {
-        i.log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.container.ID())
-    }
+	// enter container network namespace
+	err = i.container.EnterNetworkNamespace()
+	if err != nil {
+		i.log.Fatalw("unable to enter the given container network namespace", "error", err, "id", i.container.ID())
+	}
 
-    // defer the exit on return
-    defer func() {
-        err := i.container.ExitNetworkNamespace()
-        if err != nil {
-            i.log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.container.ID())
-        }
-    }()
+	// defer the exit on return
+	defer func() {
+		err := i.container.ExitNetworkNamespace()
+		if err != nil {
+			i.log.Fatalw("unable to exit the given container network namespace", "error", err, "id", i.container.ID())
+		}
+	}()
 
-    linkByIP, err := i.getInterfacesByIP()
-    if err != nil {
-        i.log.Fatalf("can't get interfaces per IP map: %w", err)
-    }
+	linkByIP := i.getInterfacesByIP()
 
-    for linkName := range linkByIP {
-        i.log.Infof("clearing root qdisc for interface %s", linkName)
+	for linkName := range linkByIP {
+		i.log.Infof("clearing root qdisc for interface %s", linkName)
 
-        // retrieve link from name
-        link, err := i.config.NetlinkAdapter.LinkByName(linkName)
-        if err != nil {
-            i.log.Fatalf("can't retrieve link %s: %w", linkName, err)
-        }
+		// retrieve link from name
+		link, err := i.config.NetlinkAdapter.LinkByName(linkName)
+		if err != nil {
+			i.log.Fatalf("can't retrieve link %s: %w", linkName, err)
+		}
 
-        // ensure qdisc isn't cleared before clearing it to avoid any tc error
-        cleared, err := i.config.TrafficController.IsQdiscCleared(link.Name())
-        if err != nil {
-            i.log.Fatalf("can't ensure the %s link qdisc is cleared or not: %w", link.Name(), err)
-        }
+		// ensure qdisc isn't cleared before clearing it to avoid any tc error
+		cleared, err := i.config.TrafficController.IsQdiscCleared(link.Name())
+		if err != nil {
+			i.log.Fatalf("can't ensure the %s link qdisc is cleared or not: %w", link.Name(), err)
+		}
 
-        // clear link qdisc if needed
-        if !cleared {
-            if err := i.config.TrafficController.ClearQdisc(link.Name()); err != nil {
-                i.log.Fatalf("can't delete the %s link qdisc: %w", link.Name(), err)
-            }
-        } else {
-            i.log.Infof("%s link qdisc is already cleared, skipping", link.Name())
-        }
-    }
+		// clear link qdisc if needed
+		if !cleared {
+			if err := i.config.TrafficController.ClearQdisc(link.Name()); err != nil {
+				i.log.Fatalf("can't delete the %s link qdisc: %w", link.Name(), err)
+			}
+		} else {
+			i.log.Infof("%s link qdisc is already cleared, skipping", link.Name())
+		}
+	}
 }
