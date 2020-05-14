@@ -359,6 +359,17 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 			chaosPods = append(chaosPods, chaosPod)
 		}
 
+		if instance.Spec.NetworkLimitation != nil {
+			args := instance.Spec.NetworkLimitation.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID, r.MetricsSink.GetSinkName())
+
+			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkLimitation)
+			if err != nil {
+				return err
+			}
+
+			chaosPods = append(chaosPods, chaosPod)
+		}
+
 		// create cleanup pods
 		for _, chaosPod := range chaosPods {
 			found := &corev1.Pod{}

@@ -21,7 +21,8 @@ type NetworkLimitationSpec struct {
 func (s *NetworkLimitationSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string {
 	args := []string{}
 
-	if mode == chaostypes.PodModeInject {
+	switch mode {
+	case chaostypes.PodModeInject:
 		args = []string{
 			"network-limitation",
 			"inject",
@@ -33,6 +34,17 @@ func (s *NetworkLimitationSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 			containerID,
 			"--bytes-per-sec",
 			strconv.Itoa(int(s.BytesPerSec)),
+		}
+	case chaostypes.PodModeClean:
+		args = []string{
+			"network-limitation",
+			"clean",
+			"--uid",
+			string(uid),
+			"--metrics-sink",
+			sink,
+			"--container-id",
+			containerID,
 		}
 	}
 

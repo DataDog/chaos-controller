@@ -25,6 +25,7 @@ type TrafficController interface {
 	AddDelay(iface string, parent string, handle uint32, delay time.Duration) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
 	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error
+	AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error
 	ClearQdisc(iface string) error
 	IsQdiscCleared(iface string) (bool, error)
 }
@@ -49,7 +50,7 @@ func (e defaultTcExecuter) Run(args ...string) (string, error) {
 	// run command
 	err := cmd.Run()
 	if err != nil {
-		err = fmt.Errorf("%w: %s", err, stderr.String())
+		err = fmt.Errorf("Encountered error (%w) using args (%s): %s", err, args, stderr.String())
 	}
 
 	return stdout.String(), err
@@ -84,6 +85,21 @@ func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, pr
 	priomapStr = strings.TrimSpace(priomapStr)
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
 	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "prio", params)...)
+
+	return err
+}
+
+func (t tc) AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error {
+
+	// `latency` is max length of time a packet can sit in the queue before being sent; 50ms should be plenty
+	// `burst` is the number of bytes that can be sent at unlimited speed before the rate limiting kicks in,
+	// so again we'll be safe by setting `burst` to be the same as `rate` (should be more than enough)
+	// for more info, see the following:
+	//   - https://unix.stackexchange.com/questions/100785/bucket-size-in-tbf
+	//   - https://linux.die.net/man/8/tc-tbf
+	mycmd := buildCmd("qdisc", iface, parent, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))
+
+	_, err := t.executer.Run(mycmd...)
 
 	return err
 }
