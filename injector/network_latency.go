@@ -30,7 +30,7 @@ func NewNetworkLatencyInjector(uid string, spec v1beta1.NetworkLatencySpec, ctn 
 // NewNetworkLatencyInjectorWithConfig creates a NetworkLatencyInjector object with the given config,
 // missing fields being initialized with the defaults
 func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config NetworkDisruptionConfig) Injector {
-	config.Initialize()
+	config.Initialize(log)
 
 	return networkLatencyInjector{
 		containerInjector: containerInjector{

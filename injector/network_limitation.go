@@ -28,7 +28,7 @@ func NewNetworkLimitationInjector(uid string, spec v1beta1.NetworkLimitationSpec
 // NewNetworkLimitationInjectorWithConfig creates a NetworkLimitationInjector object with the given config,
 // missing fields being initialized with the defaults
 func NewNetworkLimitationInjectorWithConfig(uid string, spec v1beta1.NetworkLimitationSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config NetworkDisruptionConfig) Injector {
-	config.Initialize()
+	config.Initialize(log)
 
 	return networkLimitationInjector{
 		containerInjector: containerInjector{
