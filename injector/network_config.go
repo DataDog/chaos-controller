@@ -54,7 +54,7 @@ func (c NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[st
 		}
 
 		// get the association between IP and interfaces to know
-		// which interfaces we have to inject latency to
+		// which interfaces we have to inject disruption to
 		for _, ip := range ips {
 			// get routes for resolved destination IP
 			routes, err := c.NetlinkAdapter.RoutesForIP(ip)
@@ -93,7 +93,7 @@ func (c NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[st
 }
 
 func (c NetworkDisruptionConfigStruct) addOperation(hosts []string, port int, operation linkOperation) {
-	c.Log.Info("auto-detecting interfaces to apply latency to...")
+	c.Log.Info("auto-detecting interfaces to apply disruption to...")
 
 	parent := "root"
 
@@ -102,7 +102,7 @@ func (c NetworkDisruptionConfigStruct) addOperation(hosts []string, port int, op
 		c.Log.Fatalw("can't get interfaces per IP listing: %w", err)
 	}
 
-	// for each link/ip association, add latency
+	// for each link/ip association, add disruption
 	for linkName, ips := range linkByIP {
 		clearTxQlen := false
 

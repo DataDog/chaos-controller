@@ -47,7 +47,7 @@ func NewNetworkLimitationInjectorWithConfig(uid string, spec v1beta1.NetworkLimi
 func (i networkLimitationInjector) Inject() {
 	var err error
 
-	i.log.Info("injecting bandwidth limitation")
+	i.log.Info("injecting bandwidth limitation: %s", i.spec)
 
 	// handle metrics
 	defer func() {
@@ -77,7 +77,7 @@ func (i networkLimitationInjector) Inject() {
 func (i networkLimitationInjector) Clean() {
 	var err error
 
-	i.log.Info("cleaning latency")
+	i.log.Info("cleaning bandwidth limitation")
 
 	// handle metrics
 	defer func() {

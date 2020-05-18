@@ -7,15 +7,16 @@ package main
 
 import "github.com/spf13/cobra"
 
-var networkLimitationCommand = &cobra.Command{
+var networkLimitationCmd = &cobra.Command{
 	Use:   "network-limitation",
 	Short: "Network limitation subcommands",
 	Run:   nil,
 }
 
 func init() {
-	networkLimitationCommand.AddCommand(networkLimitationInjectCmd)
-	networkLimitationCommand.AddCommand(networkLimitationCleanCmd)
-	networkLimitationCommand.PersistentFlags().String("container-id", "", "ID of the container to inject")
-	_ = cobra.MarkFlagRequired(networkLimitationCommand.PersistentFlags(), "container-id")
+	networkLimitationCmd.AddCommand(networkLimitationInjectCmd)
+	networkLimitationCmd.AddCommand(networkLimitationCleanCmd)
+	networkLimitationCmd.PersistentFlags().String("container-id", "", "ID of the container to inject")
+	networkLimitationCmd.PersistentFlags().StringSlice("hosts", []string{}, "List of hosts (hostname, single IP or IP block) to apply disruption to. If not specified, the disruption applies to all the outgoing traffic")
+	_ = cobra.MarkFlagRequired(networkLimitationCmd.PersistentFlags(), "container-id")
 }
