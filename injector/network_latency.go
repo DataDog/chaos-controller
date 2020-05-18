@@ -73,6 +73,8 @@ func (i networkLatencyInjector) Inject() {
 	delay := time.Duration(i.spec.Delay) * time.Millisecond
 
 	i.config.AddLatency(i.spec.Hosts, i.spec.Port, delay)
+
+	i.log.Info("successfully injected latency of %s millseconds to pod", delay)
 }
 
 // Clean cleans the injected latency
@@ -101,4 +103,6 @@ func (i networkLatencyInjector) Clean() {
 	}()
 
 	i.config.ClearAllQdiscs(i.spec.Hosts)
+
+	i.log.Info("successfully cleared injected network latency")
 }

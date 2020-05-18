@@ -20,15 +20,15 @@ type fakeNetworkConfig struct {
 	mock.Mock
 }
 
-func (f fakeNetworkConfig) AddOutputLimit(hosts []string, port int, bytesPerSec uint) {
+func (f *fakeNetworkConfig) AddOutputLimit(hosts []string, port int, bytesPerSec uint) {
 	f.Called(hosts, port, bytesPerSec)
 	return
 }
-func (f fakeNetworkConfig) AddLatency(hosts []string, port int, delay time.Duration) {
+func (f *fakeNetworkConfig) AddLatency(hosts []string, port int, delay time.Duration) {
 	f.Called(hosts, port, delay)
 	return
 }
-func (f fakeNetworkConfig) ClearAllQdiscs(hosts []string) {
+func (f *fakeNetworkConfig) ClearAllQdiscs(hosts []string) {
 	f.Called(hosts)
 	return
 }
@@ -47,12 +47,15 @@ var _ = Describe("Latency", func() {
 		c.On("EnterNetworkNamespace").Return(nil)
 		c.On("ExitNetworkNamespace").Return(nil)
 
+		// network disruption conf
 		config = fakeNetworkConfig{}
 		config.On("AddLatency", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		config.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		config.On("ClearAllQdiscs", mock.Anything).Return(nil)
 
 		spec = v1beta1.NetworkLatencySpec{
+			Hosts: []string{"testhost"},
+			Port: 22,
 			Delay: 1000,
 		}
 	})
@@ -72,7 +75,8 @@ var _ = Describe("Latency", func() {
 		})
 
 		It("should call AddLatency on its network disruption config", func() {
-			Expect(config.AssertCalled(GinkgoT(), "AddLatency")).To(BeTrue())
+			delay_ms := time.Duration(spec.Delay) * time.Millisecond
+			Expect(config.AssertCalled(GinkgoT(), "AddLatency", spec.Hosts, spec.Port, delay_ms)).To(BeTrue())
 		})
 
 		Describe("inj.Clean", func() {
@@ -86,7 +90,7 @@ var _ = Describe("Latency", func() {
 			})
 
 			It("should call ClearAllQdiscs on its network disruption config", func() {
-				Expect(config.AssertCalled(GinkgoT(), "ClearAllQdiscs")).To(BeTrue())
+				Expect(config.AssertCalled(GinkgoT(), "ClearAllQdiscs", spec.Hosts)).To(BeTrue())
 			})
 		})
 	})

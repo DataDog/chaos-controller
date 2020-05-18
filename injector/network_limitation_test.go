@@ -32,10 +32,12 @@ var _ = Describe("Limitation", func() {
 
 		config = fakeNetworkConfig{}
 		config.On("AddLatency", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		//config.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		config.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		config.On("ClearAllQdiscs", mock.Anything).Return(nil)
 
 		spec = v1beta1.NetworkLimitationSpec{
+			Hosts: []string{"testhost"},
+			Port: 22,
 			BytesPerSec: 12345,
 		}
 	})
@@ -55,7 +57,7 @@ var _ = Describe("Limitation", func() {
 		})
 
 		It("should call AddOutputLimit on its network disruption config", func() {
-			Expect(config.AssertCalled(GinkgoT(), "AddOutputLimit")).To(BeTrue())
+			Expect(config.AssertCalled(GinkgoT(), "AddOutputLimit", spec.Hosts, spec.Port, spec.BytesPerSec)).To(BeTrue())
 		})
 
 		Describe("inj.Clean", func() {
@@ -69,7 +71,7 @@ var _ = Describe("Limitation", func() {
 			})
 
 			It("should call ClearAllQdiscs on its network disruption config", func() {
-				Expect(config.AssertCalled(GinkgoT(), "ClearAllQdiscs")).To(BeTrue())
+				Expect(config.AssertCalled(GinkgoT(), "ClearAllQdiscs", spec.Hosts)).To(BeTrue())
 			})
 		})
 	})

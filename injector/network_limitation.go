@@ -69,6 +69,8 @@ func (i networkLimitationInjector) Inject() {
 	}()
 
 	i.config.AddOutputLimit(i.spec.Hosts, i.spec.Port, i.spec.BytesPerSec)
+
+	i.log.Info("successfully injected output bandwidth limit of %s bytes/sec to pod", i.spec.BytesPerSec)
 }
 
 // Clean cleans the injected bandwidth limitation
@@ -97,4 +99,6 @@ func (i networkLimitationInjector) Clean() {
 	}()
 
 	i.config.ClearAllQdiscs(i.spec.Hosts)
+
+	i.log.Info("successfully cleared injected bandwidth limit")
 }
