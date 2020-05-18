@@ -6,10 +6,9 @@
 package injector
 
 import (
-	"net"
 	"fmt"
+	"net"
 	"time"
-
 
 	"github.com/DataDog/chaos-controller/network"
 	"go.uber.org/zap"
@@ -165,8 +164,6 @@ func (c NetworkDisruptionConfigStruct) addOperation(hosts []string, port int, op
 			}
 		}
 	}
-
-	return
 }
 
 func (c NetworkDisruptionConfigStruct) AddLatency(hosts []string, port int, delay time.Duration) {

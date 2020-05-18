@@ -55,7 +55,7 @@ var _ = Describe("Latency", func() {
 
 		spec = v1beta1.NetworkLatencySpec{
 			Hosts: []string{"testhost"},
-			Port: 22,
+			Port:  22,
 			Delay: 1000,
 		}
 	})

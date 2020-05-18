@@ -30,7 +30,7 @@ var networkLimitationInjectCmd = &cobra.Command{
 		// prepare spec
 		spec := v1beta1.NetworkLimitationSpec{
 			BytesPerSec: bytesPerSec,
-			Hosts: hosts,
+			Hosts:       hosts,
 		}
 
 		// inject

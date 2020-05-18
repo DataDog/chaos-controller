@@ -36,8 +36,8 @@ var _ = Describe("Limitation", func() {
 		config.On("ClearAllQdiscs", mock.Anything).Return(nil)
 
 		spec = v1beta1.NetworkLimitationSpec{
-			Hosts: []string{"testhost"},
-			Port: 22,
+			Hosts:       []string{"testhost"},
+			Port:        22,
 			BytesPerSec: 12345,
 		}
 	})
