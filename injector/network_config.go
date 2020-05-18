@@ -18,14 +18,14 @@ import (
 // based on the 2nd param (parent)
 type linkOperation func(network.NetlinkLink, string) error
 
-// NetworkDisruptionConfig contains needed drivers to create a network disruption using `tc`
-// and provides an interface for using those drivers for new disruptions
+// NetworkDisruptionConfig provides an interface for using the network traffic controller for new disruptions
 type NetworkDisruptionConfig interface {
 	AddLatency(hosts []string, port int, delay time.Duration)
 	AddOutputLimit(hosts []string, port int, bytesPerSec uint)
 	ClearAllQdiscs(hosts []string)
 }
 
+// a NetworkDisruptionConfigStruct contains all needed drivers to create a network disruption using `tc`
 type NetworkDisruptionConfigStruct struct {
 	Log               *zap.SugaredLogger
 	TrafficController network.TrafficController
@@ -33,6 +33,8 @@ type NetworkDisruptionConfigStruct struct {
 	DNSClient         network.DNSClient
 }
 
+// NewNetworkDisruptionConfig creates a new network disruption object using default netlink, dns, etc
+// if any non-default drivers are needed (for example in unit tests), just make a NetworkDisruptionConfigStruct
 func NewNetworkDisruptionConfig(logger *zap.SugaredLogger) NetworkDisruptionConfig {
 	return NetworkDisruptionConfigStruct{
 		Log:               logger,
@@ -166,6 +168,7 @@ func (c NetworkDisruptionConfigStruct) addOperation(hosts []string, port int, op
 	}
 }
 
+// AddLatency adds a network latency disruption using the drivers in the NetworkDisruptionConfigStruct
 func (c NetworkDisruptionConfigStruct) AddLatency(hosts []string, port int, delay time.Duration) {
 	// asdf
 	operation := func(link network.NetlinkLink, parent string) error {
@@ -175,6 +178,7 @@ func (c NetworkDisruptionConfigStruct) AddLatency(hosts []string, port int, dela
 	c.addOperation(hosts, port, operation)
 }
 
+// AddOutputLimit adds a network bandwidth disruption using the drivers in the NetworkDisruptionConfigStruct
 func (c NetworkDisruptionConfigStruct) AddOutputLimit(hosts []string, port int, bytesPerSec uint) {
 	// asdf
 	operation := func(link network.NetlinkLink, parent string) error {
@@ -184,6 +188,7 @@ func (c NetworkDisruptionConfigStruct) AddOutputLimit(hosts []string, port int, 
 	c.addOperation(hosts, port, operation)
 }
 
+// ClearAllQdiscs removes all disruptions by clearing all custom qdiscs created for the given NetworkDisruptionConfigStruct
 func (c NetworkDisruptionConfigStruct) ClearAllQdiscs(hosts []string) {
 	linkByIP, err := c.getInterfacesByIP(hosts)
 	if err != nil {

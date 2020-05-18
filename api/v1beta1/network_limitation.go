@@ -41,6 +41,7 @@ func (s *NetworkLimitationSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 			strconv.Itoa(int(s.BytesPerSec)),
 			"--hosts",
 		}
+
 		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
 
 		if s.Port != 0 {
