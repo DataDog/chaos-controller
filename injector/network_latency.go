@@ -24,14 +24,12 @@ type networkLatencyInjector struct {
 
 // NewNetworkLatencyInjector creates a NetworkLatencyInjector object with the default drivers
 func NewNetworkLatencyInjector(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
-	return NewNetworkLatencyInjectorWithConfig(uid, spec, ctn, log, ms, NetworkDisruptionConfig{})
+	return NewNetworkLatencyInjectorWithConfig(uid, spec, ctn, log, ms, NewNetworkDisruptionConfig(log))
 }
 
 // NewNetworkLatencyInjectorWithConfig creates a NetworkLatencyInjector object with the given config,
 // missing fields being initialized with the defaults
 func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config NetworkDisruptionConfig) Injector {
-	config.Initialize(log)
-
 	return networkLatencyInjector{
 		containerInjector: containerInjector{
 			injector: injector{
@@ -74,7 +72,7 @@ func (i networkLatencyInjector) Inject() {
 
 	delay := time.Duration(i.spec.Delay) * time.Millisecond
 
-	err = i.config.AddDelay(i.spec.Hosts, i.spec.Port, delay)
+	i.config.AddLatency(i.spec.Hosts, i.spec.Port, delay)
 }
 
 // Clean cleans the injected latency
@@ -102,5 +100,5 @@ func (i networkLatencyInjector) Clean() {
 		}
 	}()
 
-	err = i.config.ClearAllQdiscs(i.spec.Hosts)
+	i.config.ClearAllQdiscs(i.spec.Hosts)
 }

@@ -15,36 +15,39 @@ import (
 	"go.uber.org/zap"
 )
 
+// linkOperation represents an operation on a single network interface, possibly a subset of traffic
+// based on the 2nd param (parent)
+type linkOperation func(network.NetlinkLink, string) error
+
 // NetworkDisruptionConfig contains needed drivers to create a network disruption using `tc`
-type NetworkDisruptionConfig struct {
-	log               *zap.SugaredLogger
+// and provides an interface for using those drivers for new disruptions
+type NetworkDisruptionConfig interface {
+	AddLatency(hosts []string, port int, delay time.Duration)
+	AddOutputLimit(hosts []string, port int, bytesPerSec uint)
+	ClearAllQdiscs(hosts []string)
+}
+
+type NetworkDisruptionConfigStruct struct {
+	Log               *zap.SugaredLogger
 	TrafficController network.TrafficController
 	NetlinkAdapter    network.NetlinkAdapter
 	DNSClient         network.DNSClient
 }
 
-func (c NetworkDisruptionConfig) Initialize(logger *zap.SugaredLogger) {
-	//logger
-	c.log = logger
-	// traffic controller
-	if c.TrafficController == nil {
-		c.TrafficController = network.NewTrafficController(logger)
-	}
-	// netlink adapter
-	if c.NetlinkAdapter == nil {
-		c.NetlinkAdapter = network.NewNetlinkAdapter()
-	}
-	// dns resolver
-	if c.DNSClient == nil {
-		c.DNSClient = network.NewDNSClient()
+func NewNetworkDisruptionConfig(logger *zap.SugaredLogger) NetworkDisruptionConfig {
+	return NetworkDisruptionConfigStruct{
+		Log:               logger,
+		TrafficController: network.NewTrafficController(logger),
+		NetlinkAdapter:    network.NewNetlinkAdapter(),
+		DNSClient:         network.NewDNSClient(),
 	}
 }
 
-func (c NetworkDisruptionConfig) getInterfacesByIP(hosts []string) (map[string][]*net.IPNet, error) {
+func (c NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[string][]*net.IPNet, error) {
 	linkByIP := map[string][]*net.IPNet{}
 
 	if len(hosts) > 0 {
-		c.log.Info("auto-detecting interfaces to apply latency to...")
+		c.Log.Info("auto-detecting interfaces to apply disruption to...")
 		// resolve hosts
 		ips, err := resolveHosts(c.DNSClient, hosts)
 		if err != nil {
@@ -63,7 +66,7 @@ func (c NetworkDisruptionConfig) getInterfacesByIP(hosts []string) (map[string][
 			// for each route, get the related interface and add it to the association
 			// between interfaces and IPs
 			for _, route := range routes {
-				c.log.Infof("IP %s belongs to interface %s", ip.String(), route.Link().Name())
+				c.Log.Infof("IP %s belongs to interface %s", ip.String(), route.Link().Name())
 
 				// store association, initialize the map entry if not present yet
 				if _, ok := linkByIP[route.Link().Name()]; !ok {
@@ -74,15 +77,15 @@ func (c NetworkDisruptionConfig) getInterfacesByIP(hosts []string) (map[string][
 			}
 		}
 	} else {
-		c.log.Info("no hosts specified, all interfaces will be impacted")
+		c.Log.Info("no hosts specified, all interfaces will be impacted")
 
 		// prepare links/IP association by pre-creating links
 		links, err := c.NetlinkAdapter.LinkList()
 		if err != nil {
-			c.log.Fatalf("can't list links: %w", err)
+			c.Log.Fatalf("can't list links: %w", err)
 		}
 		for _, link := range links {
-			c.log.Infof("adding interface %s", link.Name())
+			c.Log.Infof("adding interface %s", link.Name())
 			linkByIP[link.Name()] = []*net.IPNet{}
 		}
 	}
@@ -90,14 +93,14 @@ func (c NetworkDisruptionConfig) getInterfacesByIP(hosts []string) (map[string][
 	return linkByIP, nil
 }
 
-func (c NetworkDisruptionConfig) AddDelay(hosts []string, port int, delay time.Duration) error {
-	c.log.Info("auto-detecting interfaces to apply latency to...")
+func (c NetworkDisruptionConfigStruct) addOperation(hosts []string, port int, operation linkOperation) {
+	c.Log.Info("auto-detecting interfaces to apply latency to...")
 
 	parent := "root"
 
 	linkByIP, err := c.getInterfacesByIP(hosts)
 	if err != nil {
-		c.log.Fatalw("can't get interfaces per IP listing: %w", err)
+		c.Log.Fatalw("can't get interfaces per IP listing: %w", err)
 	}
 
 	// for each link/ip association, add latency
@@ -107,7 +110,7 @@ func (c NetworkDisruptionConfig) AddDelay(hosts []string, port int, delay time.D
 		// retrieve link from name
 		link, err := c.NetlinkAdapter.LinkByName(linkName)
 		if err != nil {
-			c.log.Fatalf("can't retrieve link %s: %w", linkName, err)
+			c.Log.Fatalf("can't retrieve link %s: %w", linkName, err)
 		}
 
 		// if at least one IP has been specified, we need to create a prio qdisc to be able to apply
@@ -117,12 +120,12 @@ func (c NetworkDisruptionConfig) AddDelay(hosts []string, port int, delay time.D
 			// all the outgoing traffic
 			// this qlen will be removed once the injection is done if it was not present before
 			if link.TxQLen() == 0 {
-				c.log.Infof("setting tx qlen for interface %s", link.Name())
+				c.Log.Infof("setting tx qlen for interface %s", link.Name())
 
 				clearTxQlen = true
 
 				if err := link.SetTxQLen(1000); err != nil {
-					c.log.Fatalf("can't set tx queue length on interface %s: %w", link.Name(), err)
+					c.Log.Fatalf("can't set tx queue length on interface %s: %w", link.Name(), err)
 				}
 			}
 
@@ -134,13 +137,13 @@ func (c NetworkDisruptionConfig) AddDelay(hosts []string, port int, delay time.D
 			priomap := [16]uint32{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}
 
 			if err := c.TrafficController.AddPrio(link.Name(), "root", 1, 4, priomap); err != nil {
-				c.log.Fatalf("can't create a new qdisc for interface %s: %w", link.Name(), err)
+				c.Log.Fatalf("can't create a new qdisc for interface %s: %w", link.Name(), err)
 			}
 		}
 
 		// add delay
-		if err := c.TrafficController.AddDelay(link.Name(), parent, 0, delay); err != nil {
-			c.log.Fatalf("can't add delay to the newly created qdisc for interface %s: %w", link.Name(), err)
+		if err := operation(link, parent); err != nil {
+			c.Log.Fatalf("could not perform operation on newly created qdisc for interface %s: %w", link.Name(), err)
 		}
 
 		// if only some hosts/ports are targeted, redirect the traffic to the extra band created earlier
@@ -148,58 +151,70 @@ func (c NetworkDisruptionConfig) AddDelay(hosts []string, port int, delay time.D
 		if len(ips) > 0 {
 			for _, ip := range ips {
 				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, ip, port, "1:4"); err != nil {
-					c.log.Fatalf("can't add a filter to interface %s: %w", link.Name(), err)
+					c.Log.Fatalf("can't add a filter to interface %s: %w", link.Name(), err)
 				}
 			}
 		}
 
 		// reset the interface transmission queue length once filters have been created
 		if clearTxQlen {
-			c.log.Infof("clearing tx qlen for interface %s", link.Name())
+			c.Log.Infof("clearing tx qlen for interface %s", link.Name())
 
 			if err := link.SetTxQLen(0); err != nil {
-				c.log.Fatalf("can't clear %s link transmission queue length: %w", link.Name(), err)
+				c.Log.Fatalf("can't clear %s link transmission queue length: %w", link.Name(), err)
 			}
 		}
 	}
 
-	return nil
+	return
 }
 
-func (c NetworkDisruptionConfig) AddOutputLimit(hosts []string, port int, bytesPerSec uint) error {
-	return nil
+func (c NetworkDisruptionConfigStruct) AddLatency(hosts []string, port int, delay time.Duration) {
+	// asdf
+	operation := func(link network.NetlinkLink, parent string) error {
+		return c.TrafficController.AddDelay(link.Name(), parent, 0, delay)
+	}
+
+	c.addOperation(hosts, port, operation)
 }
 
-func (c NetworkDisruptionConfig) ClearAllQdiscs(hosts []string) error {
+func (c NetworkDisruptionConfigStruct) AddOutputLimit(hosts []string, port int, bytesPerSec uint) {
+	// asdf
+	operation := func(link network.NetlinkLink, parent string) error {
+		return c.TrafficController.AddOutputLimit(link.Name(), parent, 0, bytesPerSec)
+	}
+
+	c.addOperation(hosts, port, operation)
+}
+
+func (c NetworkDisruptionConfigStruct) ClearAllQdiscs(hosts []string) {
 	linkByIP, err := c.getInterfacesByIP(hosts)
 	if err != nil {
-		c.log.Fatalf("can't get interfaces per IP map: %w", err)
+		c.Log.Fatalf("can't get interfaces per IP map: %w", err)
 	}
 
 	for linkName := range linkByIP {
-		c.log.Infof("clearing root qdisc for interface %s", linkName)
+		c.Log.Infof("clearing root qdisc for interface %s", linkName)
 
 		// retrieve link from name
 		link, err := c.NetlinkAdapter.LinkByName(linkName)
 		if err != nil {
-			c.log.Fatalf("can't retrieve link %s: %w", linkName, err)
+			c.Log.Fatalf("can't retrieve link %s: %w", linkName, err)
 		}
 
 		// ensure qdisc isn't cleared before clearing it to avoid any tc error
 		cleared, err := c.TrafficController.IsQdiscCleared(link.Name())
 		if err != nil {
-			c.log.Fatalf("can't ensure the %s link qdisc is cleared or not: %w", link.Name(), err)
+			c.Log.Fatalf("can't ensure the %s link qdisc is cleared or not: %w", link.Name(), err)
 		}
 
 		// clear link qdisc if needed
 		if !cleared {
 			if err := c.TrafficController.ClearQdisc(link.Name()); err != nil {
-				c.log.Fatalf("can't delete the %s link qdisc: %w", link.Name(), err)
+				c.Log.Fatalf("can't delete the %s link qdisc: %w", link.Name(), err)
 			}
 		} else {
-			c.log.Infof("%s link qdisc is already cleared, skipping", link.Name())
+			c.Log.Infof("%s link qdisc is already cleared, skipping", link.Name())
 		}
 	}
-
-	return nil
 }

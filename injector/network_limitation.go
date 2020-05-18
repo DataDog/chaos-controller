@@ -22,14 +22,12 @@ type networkLimitationInjector struct {
 
 // NewNetworkLimitationInjector creates a NetworkLimitationInjector object with the default drivers
 func NewNetworkLimitationInjector(uid string, spec v1beta1.NetworkLimitationSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
-	return NewNetworkLimitationInjectorWithConfig(uid, spec, ctn, log, ms, NetworkDisruptionConfig{})
+	return NewNetworkLimitationInjectorWithConfig(uid, spec, ctn, log, ms, NewNetworkDisruptionConfig(log))
 }
 
 // NewNetworkLimitationInjectorWithConfig creates a NetworkLimitationInjector object with the given config,
 // missing fields being initialized with the defaults
 func NewNetworkLimitationInjectorWithConfig(uid string, spec v1beta1.NetworkLimitationSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config NetworkDisruptionConfig) Injector {
-	config.Initialize(log)
-
 	return networkLimitationInjector{
 		containerInjector: containerInjector{
 			injector: injector{
@@ -70,7 +68,7 @@ func (i networkLimitationInjector) Inject() {
 		}
 	}()
 
-	err = i.config.AddOutputLimit(i.spec.Hosts, i.spec.Port, i.spec.BytesPerSec)
+	i.config.AddOutputLimit(i.spec.Hosts, i.spec.Port, i.spec.BytesPerSec)
 }
 
 // Clean cleans the injected bandwidth limitation
@@ -98,5 +96,5 @@ func (i networkLimitationInjector) Clean() {
 		}
 	}()
 
-	err = i.config.ClearAllQdiscs(i.spec.Hosts)
+	i.config.ClearAllQdiscs(i.spec.Hosts)
 }
