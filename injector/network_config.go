@@ -25,7 +25,7 @@ type NetworkDisruptionConfig interface {
 	ClearAllQdiscs(hosts []string)
 }
 
-// a NetworkDisruptionConfigStruct contains all needed drivers to create a network disruption using `tc`
+// NetworkDisruptionConfigStruct contains all needed drivers to create a network disruption using `tc`
 type NetworkDisruptionConfigStruct struct {
 	Log               *zap.SugaredLogger
 	TrafficController network.TrafficController
@@ -188,7 +188,7 @@ func (c NetworkDisruptionConfigStruct) AddOutputLimit(hosts []string, port int, 
 	c.addOperation(hosts, port, operation)
 }
 
-// ClearAllQdiscs removes all disruptions by clearing all custom qdiscs created for the given NetworkDisruptionConfigStruct
+// ClearAllQdiscs removes all disruptions by clearing all custom qdiscs created for the given config struct
 func (c NetworkDisruptionConfigStruct) ClearAllQdiscs(hosts []string) {
 	linkByIP, err := c.getInterfacesByIP(hosts)
 	if err != nil {
