@@ -42,6 +42,8 @@ type DisruptionSpec struct {
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
 	// +nullable
 	CPUPressure *CPUPressureSpec `json:"cpuPressure,omitempty"`
+	// +nullable
+	NetworkLimitation *NetworkLimitationSpec `json:"networkLimitation,omitempty"`
 }
 
 // DisruptionStatus defines the observed state of Disruption

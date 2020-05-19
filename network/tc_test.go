@@ -142,6 +142,17 @@ var _ = Describe("Tc", func() {
 		})
 	})
 
+	Describe("AddOutputLimit", func() {
+		JustBeforeEach(func() {
+			tcRunner.AddOutputLimit(iface, parent, handle, 12345)
+		})
+		Context("add an output limit on root device of 12345 bytes per second", func() {
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root tbf rate 12345 latency 50ms burst 12345")
+			})
+		})
+	})
+
 	Describe("ClearQdisc", func() {
 		JustBeforeEach(func() {
 			tcRunner.ClearQdisc(iface)
