@@ -170,7 +170,7 @@ func (c NetworkDisruptionConfigStruct) addOperation(hosts []string, port int, op
 
 // AddLatency adds a network latency disruption using the drivers in the NetworkDisruptionConfigStruct
 func (c NetworkDisruptionConfigStruct) AddLatency(hosts []string, port int, delay time.Duration) {
-	// asdf
+	// closure which adds latency
 	operation := func(link network.NetlinkLink, parent string) error {
 		return c.TrafficController.AddDelay(link.Name(), parent, 0, delay)
 	}
@@ -180,7 +180,7 @@ func (c NetworkDisruptionConfigStruct) AddLatency(hosts []string, port int, dela
 
 // AddOutputLimit adds a network bandwidth disruption using the drivers in the NetworkDisruptionConfigStruct
 func (c NetworkDisruptionConfigStruct) AddOutputLimit(hosts []string, port int, bytesPerSec uint) {
-	// asdf
+	// closure which adds a bandwidth limit
 	operation := func(link network.NetlinkLink, parent string) error {
 		return c.TrafficController.AddOutputLimit(link.Name(), parent, 0, bytesPerSec)
 	}
