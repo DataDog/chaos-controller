@@ -28,19 +28,6 @@ func (s *NetworkLatencySpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 	args := []string{}
 
 	switch mode {
-	case chaostypes.PodModeClean:
-		args = []string{
-			"network-latency",
-			"clean",
-			"--uid",
-			string(uid),
-			"--metrics-sink",
-			sink,
-			"--container-id",
-			containerID,
-			"--hosts",
-		}
-		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
 	case chaostypes.PodModeInject:
 		args = []string{
 			"network-latency",
@@ -61,6 +48,19 @@ func (s *NetworkLatencySpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 		if s.Port != 0 {
 			args = append(args, "--port", strconv.Itoa(s.Port))
 		}
+	case chaostypes.PodModeClean:
+		args = []string{
+			"network-latency",
+			"clean",
+			"--uid",
+			string(uid),
+			"--metrics-sink",
+			sink,
+			"--container-id",
+			containerID,
+			"--hosts",
+		}
+		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
 	}
 
 	return args

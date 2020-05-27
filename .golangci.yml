@@ -22,7 +22,6 @@ linters:
     - bodyclose
     - depguard
     - dogsled
-    - dupl
     - goconst
     - godox
     - gofmt

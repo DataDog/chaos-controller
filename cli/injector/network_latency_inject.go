@@ -32,7 +32,7 @@ var networkLatencyInjectCmd = &cobra.Command{
 		spec := v1beta1.NetworkLatencySpec{
 			Delay: delay,
 			Hosts: hosts,
-			Port: port,
+			Port:  port,
 		}
 
 		// inject
