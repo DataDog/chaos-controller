@@ -4,7 +4,7 @@
 # Copyright 2020 Datadog, Inc.
 
 # Adds namespace to all resources.
-namespace: default
+namespace: chaos-engineering
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named

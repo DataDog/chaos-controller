@@ -15,6 +15,7 @@ If you want to test the controller locally (without having to redeploy a new ima
 * build the new image of the controller with your local changes
   * `make docker-build`
 * deploy the CRD and the controller on the minikube cluster
+  * `kubectl create ns chaos-engineering`
   * `make install && make deploy`
 
 If the controller is already deployed, you'll have to remove the running pod for changes to be applied.
