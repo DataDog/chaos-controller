@@ -19,6 +19,8 @@ var networkLimitationInjectCmd = &cobra.Command{
 		uid, _ := cmd.Flags().GetString("uid")
 		containerID, _ := cmd.Flags().GetString("container-id")
 		bytesPerSec, _ := cmd.Flags().GetUint("bytes-per-sec")
+		hosts, _ := cmd.Flags().GetStringSlice("hosts")
+		port, _ := cmd.Flags().GetInt("port")
 
 		// prepare container
 		c, err := container.New(containerID)
@@ -29,6 +31,8 @@ var networkLimitationInjectCmd = &cobra.Command{
 		// prepare spec
 		spec := v1beta1.NetworkLimitationSpec{
 			BytesPerSec: bytesPerSec,
+			Hosts:       hosts,
+			Port:        port,
 		}
 
 		// inject
@@ -39,5 +43,6 @@ var networkLimitationInjectCmd = &cobra.Command{
 
 func init() {
 	networkLimitationInjectCmd.Flags().Uint("bytes-per-sec", 1000000000, "Bytes per second to limit bandwidth to")
+	networkLimitationInjectCmd.Flags().Uint("port", 0, "Port to restrict disruption to (0 == all ports)")
 	_ = networkLimitationInjectCmd.MarkFlagRequired("bytes-per-sec")
 }

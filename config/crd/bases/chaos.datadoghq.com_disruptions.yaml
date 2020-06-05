@@ -89,6 +89,14 @@ spec:
               properties:
                 bytesPerSec:
                   type: integer
+                hosts:
+                  items:
+                    type: string
+                  nullable: true
+                  type: array
+                port:
+                  nullable: true
+                  type: integer
               required:
               - bytesPerSec
               type: object

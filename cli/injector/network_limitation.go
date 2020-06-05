@@ -17,5 +17,6 @@ func init() {
 	networkLimitationCmd.AddCommand(networkLimitationInjectCmd)
 	networkLimitationCmd.AddCommand(networkLimitationCleanCmd)
 	networkLimitationCmd.PersistentFlags().String("container-id", "", "ID of the container to inject")
+	networkLimitationCmd.PersistentFlags().StringSlice("hosts", []string{}, "List of hosts (hostname, single IP or IP block) to apply disruption to. If not specified, the disruption applies to all the outgoing traffic")
 	_ = cobra.MarkFlagRequired(networkLimitationCmd.PersistentFlags(), "container-id")
 }
