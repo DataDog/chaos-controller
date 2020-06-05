@@ -7,7 +7,7 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: disruption-sample
-  namespace: default # disruption resource must be in the same namespace as targeted pods
+  namespace: chaos-engineering # disruption resource must be in the same namespace as targeted pods
 spec:
   selector: # label selector to target pods
     app: demo
