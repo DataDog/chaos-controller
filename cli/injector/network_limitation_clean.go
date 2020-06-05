@@ -18,6 +18,7 @@ var networkLimitationCleanCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		uid, _ := cmd.Flags().GetString("uid")
 		containerID, _ := cmd.Flags().GetString("container-id")
+		hosts, _ := cmd.Flags().GetStringSlice("hosts")
 
 		// prepare container
 		c, err := container.New(containerID)
@@ -26,7 +27,9 @@ var networkLimitationCleanCmd = &cobra.Command{
 		}
 
 		// prepare spec
-		spec := v1beta1.NetworkLimitationSpec{}
+		spec := v1beta1.NetworkLimitationSpec{
+			Hosts: hosts,
+		}
 
 		// clean
 		i := injector.NewNetworkLimitationInjector(uid, spec, c, log, ms)

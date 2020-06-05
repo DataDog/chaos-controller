@@ -20,6 +20,7 @@ var networkLatencyInjectCmd = &cobra.Command{
 		containerID, _ := cmd.Flags().GetString("container-id")
 		delay, _ := cmd.Flags().GetUint("delay")
 		hosts, _ := cmd.Flags().GetStringSlice("hosts")
+		port, _ := cmd.Flags().GetInt("port")
 
 		// prepare container
 		c, err := container.New(containerID)
@@ -31,6 +32,7 @@ var networkLatencyInjectCmd = &cobra.Command{
 		spec := v1beta1.NetworkLatencySpec{
 			Delay: delay,
 			Hosts: hosts,
+			Port:  port,
 		}
 
 		// inject
@@ -41,5 +43,6 @@ var networkLatencyInjectCmd = &cobra.Command{
 
 func init() {
 	networkLatencyInjectCmd.Flags().Uint("delay", 0, "Delay to add to the given container in ms")
+	networkLatencyInjectCmd.Flags().Uint("port", 0, "Port to restrict disruption to (0 == all ports)")
 	_ = networkLatencyInjectCmd.MarkFlagRequired("delay")
 }

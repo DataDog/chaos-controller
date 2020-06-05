@@ -27,5 +27,5 @@ spec:
   nodeFailure: # node kernel panic or shutdown
     shutdown: true # shutdown the host instead of triggering a stack dump
   cpuPressure: {} # cpu load generator
-  networkLimitation:
+  networkLimitation: # output bandwidth limit
     bytesPerSec: 100000 # 100kbps, visible but not backbreaking
