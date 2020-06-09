@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.7.0](https://github.com/DataDog/chaos-controller/tree/2.7.0) (2020-06-05)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.6.1...2.7.0)
+
+**Merged pull requests:**
+
+- Create a chaos-engineering namespace for local testing [\#134](https://github.com/DataDog/chaos-controller/pull/134) ([Devatoria](https://github.com/Devatoria))
+- Factor out networking impl in latency and bandwidth limit disruptions [\#133](https://github.com/DataDog/chaos-controller/pull/133) ([brandon-dd](https://github.com/brandon-dd))
+- Adds new network bandwidth limitation disruption [\#132](https://github.com/DataDog/chaos-controller/pull/132) ([brandon-dd](https://github.com/brandon-dd))
+- Update docs with custom minikube ISO information [\#131](https://github.com/DataDog/chaos-controller/pull/131) ([brandon-dd](https://github.com/brandon-dd))
+- Update container release\_changelog\_732fb8265d8073d88598ec47ec4c3bc11bbe9da4 [\#129](https://github.com/DataDog/chaos-controller/pull/129) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.6.1](https://github.com/DataDog/chaos-controller/tree/2.6.1) (2020-05-11)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.6.0...2.6.1)
@@ -21,7 +33,6 @@
 - api: Add a maximum value for networkLatency.delay [\#123](https://github.com/DataDog/chaos-controller/pull/123) ([dd-adn](https://github.com/dd-adn))
 - Switch to noop metrics sink by default [\#122](https://github.com/DataDog/chaos-controller/pull/122) ([Devatoria](https://github.com/Devatoria))
 - Fix manager bin path in deployment [\#121](https://github.com/DataDog/chaos-controller/pull/121) ([Devatoria](https://github.com/Devatoria))
-- Improve images and build process [\#120](https://github.com/DataDog/chaos-controller/pull/120) ([Devatoria](https://github.com/Devatoria))
 - Add port configuration to network latency [\#119](https://github.com/DataDog/chaos-controller/pull/119) ([Azoam](https://github.com/Azoam))
 - Update container release\_changelog\_df7dfce24de404eb5ba74f91323a58c09dfc9161 [\#118](https://github.com/DataDog/chaos-controller/pull/118) ([github-actions[bot]](https://github.com/apps/github-actions))
 
@@ -31,6 +42,7 @@
 
 **Merged pull requests:**
 
+- Improve images and build process [\#120](https://github.com/DataDog/chaos-controller/pull/120) ([Devatoria](https://github.com/Devatoria))
 - Allow connection establishment before drop in network failure [\#117](https://github.com/DataDog/chaos-controller/pull/117) ([Devatoria](https://github.com/Devatoria))
 - Add some more comments in the disruption example [\#116](https://github.com/DataDog/chaos-controller/pull/116) ([Devatoria](https://github.com/Devatoria))
 - Update 3rd party licenses to show spdx identifier [\#115](https://github.com/DataDog/chaos-controller/pull/115) ([Devatoria](https://github.com/Devatoria))
@@ -71,7 +83,6 @@
 - Review the way we push images from the CI [\#96](https://github.com/DataDog/chaos-controller/pull/96) ([Devatoria](https://github.com/Devatoria))
 - Add CI job to release images on docker hub [\#95](https://github.com/DataDog/chaos-controller/pull/95) ([Devatoria](https://github.com/Devatoria))
 - add targetPod name to logs [\#94](https://github.com/DataDog/chaos-controller/pull/94) ([jvanbrunschot](https://github.com/jvanbrunschot))
-- Cast DNS records before appending it to avoid a panic [\#90](https://github.com/DataDog/chaos-controller/pull/90) ([Devatoria](https://github.com/Devatoria))
 
 ## [2.2.1](https://github.com/DataDog/chaos-controller/tree/2.2.1) (2020-03-13)
 
@@ -81,7 +92,9 @@
 
 - Release 2.2.1 changelog [\#93](https://github.com/DataDog/chaos-controller/pull/93) ([Devatoria](https://github.com/Devatoria))
 - Set disruption resource count field optional [\#91](https://github.com/DataDog/chaos-controller/pull/91) ([Devatoria](https://github.com/Devatoria))
+- Cast DNS records before appending it to avoid a panic [\#90](https://github.com/DataDog/chaos-controller/pull/90) ([Devatoria](https://github.com/Devatoria))
 - Add NOTICE [\#89](https://github.com/DataDog/chaos-controller/pull/89) ([Devatoria](https://github.com/Devatoria))
+- add cmd flag for metrics sink [\#86](https://github.com/DataDog/chaos-controller/pull/86) ([jvanbrunschot](https://github.com/jvanbrunschot))
 - document available Make commands [\#84](https://github.com/DataDog/chaos-controller/pull/84) ([jvanbrunschot](https://github.com/jvanbrunschot))
 
 ## [2.2.0](https://github.com/DataDog/chaos-controller/tree/2.2.0) (2020-03-12)
@@ -96,7 +109,6 @@
 
 - Fix gitlab-ci injector tag release on staging [\#88](https://github.com/DataDog/chaos-controller/pull/88) ([Devatoria](https://github.com/Devatoria))
 - Bump CHANGELOG to version 2.2.0 [\#87](https://github.com/DataDog/chaos-controller/pull/87) ([Devatoria](https://github.com/Devatoria))
-- add cmd flag for metrics sink [\#86](https://github.com/DataDog/chaos-controller/pull/86) ([jvanbrunschot](https://github.com/jvanbrunschot))
 - Pass delay to tc command builder [\#85](https://github.com/DataDog/chaos-controller/pull/85) ([Devatoria](https://github.com/Devatoria))
 - Allow to pass a pod template file for generated chaos pods [\#83](https://github.com/DataDog/chaos-controller/pull/83) ([Devatoria](https://github.com/Devatoria))
 - Improve task management [\#82](https://github.com/DataDog/chaos-controller/pull/82) ([jvanbrunschot](https://github.com/jvanbrunschot))
