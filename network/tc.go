@@ -78,13 +78,13 @@ func (t tc) AddDelay(iface string, parent string, handle uint32, delay time.Dura
 }
 
 func (t tc) AddDrop(iface string, parent string, handle uint32, drop int) error {
-	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("loss %d", drop))...)
+	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("loss %s%s", strconv.Itoa(drop),"%"))...)
 
 	return err
 }
 
 func (t tc) AddCorrupt(iface string, parent string, handle uint32, corrupt int) error{
-	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("corrupt %d", corrupt))...)
+	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("corrupt %s%s", strconv.Itoa(corrupt),"%"))...)
 
 	return err
 }

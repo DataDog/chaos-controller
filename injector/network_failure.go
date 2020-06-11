@@ -158,7 +158,6 @@ func (i networkFailureInjector) Inject() {
 
   // for each link/ip association, add latency
 	for linkName, ips := range linkByIP {
-    i.log.Info("TEST 1")
     clearTxQlen := false
 
     // retrieve link from name

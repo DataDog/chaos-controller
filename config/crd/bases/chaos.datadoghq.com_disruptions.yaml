@@ -59,15 +59,12 @@ spec:
                   type: array
                 port:
                   type: integer
-                probability:
-                  type: integer
                 protocol:
                   type: string
               required:
               - corrupt
               - drop
               - port
-              - probability
               - protocol
               type: object
             networkLatency:

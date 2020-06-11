@@ -118,7 +118,7 @@ var _ = Describe("Tc", func() {
 
 		Context("add 5% drop rate to lo interface to the root parent without any handle", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem loss 5")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem loss 5%")
 			})
 		})
 
@@ -128,7 +128,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem loss 5")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem loss 5%")
 			})
 		})
 
@@ -138,7 +138,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem loss 5")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem loss 5%")
 			})
 		})
 
@@ -148,7 +148,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem loss 50")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem loss 50%")
 			})
 		})
 	})
@@ -160,7 +160,7 @@ var _ = Describe("Tc", func() {
 
 		Context("add 1% corruption rate to lo interface to the root parent without any handle", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem corrupt 1")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem corrupt 1%")
 			})
 		})
 
@@ -170,7 +170,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem corrupt 1")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem corrupt 1%")
 			})
 		})
 
@@ -180,7 +180,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem corrupt 1")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem corrupt 1%")
 			})
 		})
 
@@ -190,7 +190,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem corrupt 50")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem corrupt 50%")
 			})
 		})
 	})

@@ -23,4 +23,6 @@ spec:
     spec:
       containers:
       - name: demo
-        image: k8s.gcr.io/pause:3.1
+        image: nginx
+        ports:
+        - containerPort: 8080
