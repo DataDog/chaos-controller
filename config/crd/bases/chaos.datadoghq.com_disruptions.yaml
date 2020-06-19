@@ -85,6 +85,24 @@ spec:
               required:
               - delay
               type: object
+            networkLimitation:
+              description: NetworkLimitationSpec represents a network bandwidth limitation
+                injection
+              nullable: true
+              properties:
+                bytesPerSec:
+                  type: integer
+                hosts:
+                  items:
+                    type: string
+                  nullable: true
+                  type: array
+                port:
+                  nullable: true
+                  type: integer
+              required:
+              - bytesPerSec
+              type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection
               nullable: true

@@ -6,8 +6,6 @@
 package injector_test
 
 import (
-	"time"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -16,37 +14,14 @@ import (
 	. "github.com/DataDog/chaos-controller/injector"
 )
 
-type fakeNetworkConfig struct {
-	mock.Mock
-}
+// fakeNetworkConfig mock implementation is already defined in `network_latency_test.go`
 
-func (f *fakeNetworkConfig) AddOutputLimit(hosts []string, port int, bytesPerSec uint) {
-	f.Called(hosts, port, bytesPerSec)
-	return
-}
-func (f *fakeNetworkConfig) AddDrop(hosts []string, port int, drop int) {
-	f.Called(hosts, port, drop)
-	return
-}
-func (f *fakeNetworkConfig) AddCorrupt(hosts []string, port int, corrupt int) {
-	f.Called(hosts, port, corrupt)
-	return
-}
-func (f *fakeNetworkConfig) AddLatency(hosts []string, port int, delay time.Duration) {
-	f.Called(hosts, port, delay)
-	return
-}
-func (f *fakeNetworkConfig) ClearAllQdiscs(hosts []string) {
-	f.Called(hosts)
-	return
-}
-
-var _ = Describe("Latency", func() {
+var _ = Describe("Limitation", func() {
 	var (
 		ctn      fakeContainer
 		inj    Injector
 		config fakeNetworkConfig
-		spec   v1beta1.NetworkLatencySpec
+		spec   v1beta1.NetworkLimitationSpec
 	)
 
 	BeforeEach(func() {
@@ -55,21 +30,20 @@ var _ = Describe("Latency", func() {
 		ctn.On("EnterNetworkNamespace").Return(nil)
 		ctn.On("ExitNetworkNamespace").Return(nil)
 
-		// network disruption conf
 		config = fakeNetworkConfig{}
 		config.On("AddLatency", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		config.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		config.On("ClearAllQdiscs", mock.Anything).Return(nil)
 
-		spec = v1beta1.NetworkLatencySpec{
-			Hosts: []string{"testhost"},
-			Port:  22,
-			Delay: 1000,
+		spec = v1beta1.NetworkLimitationSpec{
+			Hosts:       []string{"testhost"},
+			Port:        22,
+			BytesPerSec: 12345,
 		}
 	})
 
 	JustBeforeEach(func() {
-		inj = NewNetworkLatencyInjectorWithConfig("fake", spec, &ctn, log, ms, &config)
+		inj = NewNetworkLimitationInjectorWithConfig("fake", spec, &ctn, log, ms, &config)
 	})
 
 	Describe("inj.Inject", func() {
@@ -82,9 +56,8 @@ var _ = Describe("Latency", func() {
 			Expect(ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
 		})
 
-		It("should call AddLatency on its network disruption config", func() {
-			delay_ms := time.Duration(spec.Delay) * time.Millisecond
-			Expect(config.AssertCalled(GinkgoT(), "AddLatency", spec.Hosts, spec.Port, delay_ms)).To(BeTrue())
+		It("should call AddOutputLimit on its network disruption config", func() {
+			Expect(config.AssertCalled(GinkgoT(), "AddOutputLimit", spec.Hosts, spec.Port, spec.BytesPerSec)).To(BeTrue())
 		})
 
 		Describe("inj.Clean", func() {

@@ -7,7 +7,7 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: disruption-sample
-  namespace: default # disruption resource must be in the same namespace as targeted pods
+  namespace: chaos-engineering # disruption resource must be in the same namespace as targeted pods
 spec:
   selector: # label selector to target pods
     app: demo
@@ -19,3 +19,13 @@ spec:
     corrupt: 0
     protocol: tcp # protocol to drop packets on (can be tcp or udp)
     allowEstablishment: false # allow connection to be established before dropping packets (drops established connections packets only)
+  networkLatency: # network latency
+    delay: 1000 # delay in ms
+    hosts: # destination hosts to add latency to
+      - 10.0.0.0/8
+    port: 80 # port to apply latency  (optional)
+  nodeFailure: # node kernel panic or shutdown
+    shutdown: true # shutdown the host instead of triggering a stack dump
+  cpuPressure: {} # cpu load generator
+  networkLimitation: # output bandwidth limit
+    bytesPerSec: 100000 # 100kbps, visible but not backbreaking

@@ -6,8 +6,6 @@
 package injector
 
 import (
-	"time"
-
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/metrics"
@@ -15,28 +13,28 @@ import (
 	"go.uber.org/zap"
 )
 
-// networkLatencyInjector describes a network latency
-type networkLatencyInjector struct {
+// networkLimitationInjector describes a network bandwidth limitation
+type networkLimitationInjector struct {
 	containerInjector
-	spec   v1beta1.NetworkLatencySpec
+	spec   v1beta1.NetworkLimitationSpec
 	config NetworkDisruptionConfig
 }
 
-// NewNetworkLatencyInjector creates a NetworkLatencyInjector object with the default drivers
-func NewNetworkLatencyInjector(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
-	return NewNetworkLatencyInjectorWithConfig(uid, spec, ctn, log, ms, NewNetworkDisruptionConfig(log))
+// NewNetworkLimitationInjector creates a NetworkLimitationInjector object with the default drivers
+func NewNetworkLimitationInjector(uid string, spec v1beta1.NetworkLimitationSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
+	return NewNetworkLimitationInjectorWithConfig(uid, spec, ctn, log, ms, NewNetworkDisruptionConfig(log))
 }
 
-// NewNetworkLatencyInjectorWithConfig creates a NetworkLatencyInjector object with the given config,
+// NewNetworkLimitationInjectorWithConfig creates a NetworkLimitationInjector object with the given config,
 // missing fields being initialized with the defaults
-func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config NetworkDisruptionConfig) Injector {
-	return networkLatencyInjector{
+func NewNetworkLimitationInjectorWithConfig(uid string, spec v1beta1.NetworkLimitationSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config NetworkDisruptionConfig) Injector {
+	return networkLimitationInjector{
 		containerInjector: containerInjector{
 			injector: injector{
 				uid:  uid,
 				log:  log,
 				ms:   ms,
-				kind: types.DisruptionKindNetworkLatency,
+				kind: types.DisruptionKindNetworkLimitation,
 			},
 			container: ctn,
 		},
@@ -45,11 +43,11 @@ func NewNetworkLatencyInjectorWithConfig(uid string, spec v1beta1.NetworkLatency
 	}
 }
 
-// Inject injects network latency according to the current spec
-func (i networkLatencyInjector) Inject() {
+// Inject injects network bandwidth limitation according to the current spec
+func (i networkLimitationInjector) Inject() {
 	var err error
 
-	i.log.Info("injecting latency")
+	i.log.Info("injecting bandwidth limitation: %s", i.spec)
 
 	// handle metrics
 	defer func() {
@@ -70,18 +68,16 @@ func (i networkLatencyInjector) Inject() {
 		}
 	}()
 
-	delay := time.Duration(i.spec.Delay) * time.Millisecond
+	i.config.AddOutputLimit(i.spec.Hosts, i.spec.Port, i.spec.BytesPerSec)
 
-	i.config.AddLatency(i.spec.Hosts, i.spec.Port, delay)
-
-	i.log.Info("successfully injected latency of %s millseconds to pod", delay)
+	i.log.Info("successfully injected output bandwidth limit of %s bytes/sec to pod", i.spec.BytesPerSec)
 }
 
-// Clean cleans the injected latency
-func (i networkLatencyInjector) Clean() {
+// Clean cleans the injected bandwidth limitation
+func (i networkLimitationInjector) Clean() {
 	var err error
 
-	i.log.Info("cleaning latency")
+	i.log.Info("cleaning bandwidth limitation")
 
 	// handle metrics
 	defer func() {
@@ -104,5 +100,5 @@ func (i networkLatencyInjector) Clean() {
 
 	i.config.ClearAllQdiscs(i.spec.Hosts)
 
-	i.log.Info("successfully cleared injected network latency")
+	i.log.Info("successfully cleared injected bandwidth limit")
 }

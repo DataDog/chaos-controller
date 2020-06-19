@@ -12,15 +12,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var networkLatencyInjectCmd = &cobra.Command{
-	Use:   "inject",
-	Short: "Inject network latency in the given container",
+var networkLimitationCleanCmd = &cobra.Command{
+	Use:   "clean",
+	Short: "Cleans up an artificial network bandwidth limitation",
 	Run: func(cmd *cobra.Command, args []string) {
 		uid, _ := cmd.Flags().GetString("uid")
 		containerID, _ := cmd.Flags().GetString("container-id")
-		delay, _ := cmd.Flags().GetUint("delay")
 		hosts, _ := cmd.Flags().GetStringSlice("hosts")
-		port, _ := cmd.Flags().GetInt("port")
 
 		// prepare container
 		c, err := container.New(containerID)
@@ -29,20 +27,12 @@ var networkLatencyInjectCmd = &cobra.Command{
 		}
 
 		// prepare spec
-		spec := v1beta1.NetworkLatencySpec{
-			Delay: delay,
+		spec := v1beta1.NetworkLimitationSpec{
 			Hosts: hosts,
-			Port:  port,
 		}
 
-		// inject
-		i := injector.NewNetworkLatencyInjector(uid, spec, c, log, ms)
-		i.Inject()
+		// clean
+		i := injector.NewNetworkLimitationInjector(uid, spec, c, log, ms)
+		i.Clean()
 	},
-}
-
-func init() {
-	networkLatencyInjectCmd.Flags().Uint("delay", 0, "Delay to add to the given container in ms")
-	networkLatencyInjectCmd.Flags().Uint("port", 0, "Port to restrict disruption to (0 == all ports)")
-	_ = networkLatencyInjectCmd.MarkFlagRequired("delay")
 }
