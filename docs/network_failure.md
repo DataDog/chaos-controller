@@ -1,4 +1,4 @@
-# Network failure
+# Network failure ([example](../config/samples/network_failure.yaml))
 
 The `networkFailure` field provides an automated way of dropping the connection between a pod and a service. Please note that the connection is dropped when outgoing from the pod you targeted. It means you can prevent the targeted pod from querying an API but not from being queried. However, if the call to query to targeted pod is using TCP, the SYN-ACK answer to establish the connection will never be sent and the result will be quite the same.
 

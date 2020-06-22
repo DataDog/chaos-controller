@@ -1,0 +1,16 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2020 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: disruption-sample
+  namespace: chaos-engineering # disruption resource must be in the same namespace as targeted pods
+spec:
+  selector: # label selector to target pods
+    app: demo
+  count: 1 # number of pods to target (-1 == target all the selected pods)
+  nodeFailure: # node kernel panic or shutdown
+    shutdown: true # shutdown the host instead of triggering a stack dump
