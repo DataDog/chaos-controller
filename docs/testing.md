@@ -18,17 +18,17 @@ For using the chaos-controller on minikube we need our own custom build ISO imag
 * Build the controller container images locally (_Docker for_) and copy them to minikube:
   * `make docker-build`
 * Build and deploy the CRD:
-  * `make install && make deploy`
+  * `make install`
 
 ``` sh
 make minikube-start
 make docker-build
-make install && make deploy
+make install
 ```
 
 ### Applying code changes
 
-Applying code changes, requires you to rebuild the images. Re-running `make docker-build && make install && make deploy` should make the new images available.
+Applying code changes, requires you to rebuild the images. Re-running `make docker-build && make install` should make the new images available.
 
 Delete the manager pod to use the new image `kubectl delete pod -l control-plane=controller-manager`
 

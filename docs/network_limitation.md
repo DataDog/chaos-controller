@@ -1,4 +1,4 @@
-# Network Bandwidth Limitation
+# Network Bandwidth Limitation ([example](../config/samples/network_limitation.yaml))
 
 The `networkLimitation` field allows you to set an artificial limit on the amount of input/output network bandwidth available to a running container, and see how it performs in a constrained (but not totally unavailable) network environment.
 

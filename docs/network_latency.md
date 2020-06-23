@@ -1,4 +1,4 @@
-# Network latency
+# Network latency ([example](../config/samples/network_latency.yaml))
 
 The `networkLatency` field provides a way to add latency on pods. It works with the `tc` command to apply the given delay which replaces the related network interface root qdisc by a custom one.
 

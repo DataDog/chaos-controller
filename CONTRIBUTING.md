@@ -16,7 +16,7 @@ If you want to test the controller locally (without having to redeploy a new ima
   * `make docker-build`
 * deploy the CRD and the controller on the minikube cluster
   * `kubectl create ns chaos-engineering`
-  * `make install && make deploy`
+  * `make install`
 
 If the controller is already deployed, you'll have to remove the running pod for changes to be applied.
 
@@ -43,12 +43,11 @@ When the API package is changed, the CRD (custom resource definition) must be re
 
 ### Running, installing & generating
 
-* `make deploy`: deploy the controller in the configured Kubernetes cluster in ~/.kube/config
 * `make generate`: generate boilerplate code.
-* `make install`: install CRDs into a cluster
+* `make install`: install CRDs and controller into a cluster
 * `make manifests`: generate manifests e.g. CRD, RBAC etc.
 * `make run`: run against the configured Kubernetes cluster in ~/.kube/config
-* `make uninstall`: uninstall CRDs from a cluster
+* `make uninstall`: uninstall CRDs and controller from a cluster
 
 ### Building
 
