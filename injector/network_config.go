@@ -22,7 +22,7 @@ type linkOperation func(network.NetlinkLink, string) error
 type NetworkDisruptionConfig interface {
 	AddLatency(hosts []string, port int, delay time.Duration)
 	AddDrop(hosts []string, port int, drop int)
-	AddCorrupt(hosts []string, port int, corrupt int )
+	AddCorrupt(hosts []string, port int, corrupt int)
 	AddOutputLimit(hosts []string, port int, bytesPerSec uint)
 	ClearAllQdiscs(hosts []string)
 }
