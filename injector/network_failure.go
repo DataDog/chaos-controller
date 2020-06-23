@@ -112,5 +112,4 @@ func (i networkFailureInjector) Clean() {
 
 	i.config.ClearAllQdiscs(i.spec.Hosts)
 	i.log.Info("successfully cleared injected network failure")
-
 }
