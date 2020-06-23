@@ -103,6 +103,7 @@ var _ = Describe("Disruption Controller", func() {
 					Hosts:       []string{"127.0.0.1"},
 					Port:        80,
 					Drop:         0,
+					Corrupt:      0,
 					Protocol:    "tcp",
 				},
 				NetworkLatency: &chaosv1beta1.NetworkLatencySpec{
