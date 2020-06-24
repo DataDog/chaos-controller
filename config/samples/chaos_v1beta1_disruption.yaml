@@ -13,6 +13,8 @@ spec:
     app: demo
   count: 1 # number of pods to target (-1 == target all the selected pods)
   networkFailure: # packet loss and connection
+    hosts:
+        - 10.0.0.0/8 # destination host
     corrupt: 0 # probability to corrupt packets (between 0 and 100)
     drop: 0 # probability to drop packets (between 0 and 100)
     port: 8080 # port to drop packets on

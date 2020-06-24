@@ -73,14 +73,14 @@ func (i networkFailureInjector) Inject() {
 
 	if i.spec.Drop != 0 {
 		// add drop rate
-		i.log.Info("Adding Drop rate of ", i.spec.Drop)
+		i.log.Info("Adding drop rate of ", i.spec.Drop)
 		i.config.AddDrop(i.spec.Hosts, i.spec.Port, drop)
 		i.log.Info("successfully injected drop of %s to pod", i.spec.Drop)
 	}
 
 	if i.spec.Corrupt != 0 {
 		// add corruption
-		i.log.Info("Adding Corruption rate of ", i.spec.Corrupt)
+		i.log.Info("Adding corruption rate of ", i.spec.Corrupt)
 		i.config.AddCorrupt(i.spec.Hosts, i.spec.Port, corrupt)
 		i.log.Info("successfully injected corruption of %s to pod", i.spec.Corrupt)
 	}
