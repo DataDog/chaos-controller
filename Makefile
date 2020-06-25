@@ -31,18 +31,16 @@ injector:
 run: generate manifests
 	go run ./main.go
 
-# Install CRDs into a cluster
+# Install CRDs and controller into a cluster
 install: manifests
 	kustomize build config/crd | kubectl apply -f -
-
-# Uninstall CRDs from a cluster
-uninstall: manifests
-	kustomize build config/crd | kubectl delete -f -
-
-# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests
 	cd config/manager && kustomize edit set image controller=${MANAGER_IMAGE}
 	kustomize build config/default | kubectl -n chaos-engineering apply -f -
+
+# Uninstall CRDs and controller from a cluster
+uninstall: manifests
+	kustomize build config/crd | kubectl delete -f -
+	kustomize build config/default | kubectl -n chaos-engineering delete -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen

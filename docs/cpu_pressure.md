@@ -1,4 +1,4 @@
-# CPU pressure
+# CPU pressure ([example](../config/samples/cpu_pressure.yaml))
 
 The `cpuPressure` fields generates CPU load on the targeted pod. The injector pod starts and joins the targeted pod container CPU cgroup. It then starts as many goroutines as available CPU (or specified limit) and starts an infinite loop.
 
