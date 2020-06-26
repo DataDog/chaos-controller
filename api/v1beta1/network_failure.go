@@ -21,7 +21,6 @@ type NetworkFailureSpec struct {
 	Drop               int      `json:"drop"`
 	Corrupt            int      `json:"corrupt"`
 	Protocol           string   `json:"protocol"`
-	AllowEstablishment bool     `json:"allowEstablishment,omitempty"`
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
@@ -51,10 +50,6 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 		}
 		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
 
-		// allow establishment
-		if s.AllowEstablishment {
-			args = append(args, "--allow-establishment")
-		}
 	case chaostypes.PodModeClean:
 		args = []string{
 			"network-failure",
