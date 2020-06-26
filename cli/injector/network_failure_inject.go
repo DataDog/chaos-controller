@@ -32,11 +32,11 @@ var networkFailureInjectCmd = &cobra.Command{
 
 		// prepare injection object
 		spec := v1beta1.NetworkFailureSpec{
-			Hosts:              hosts,
-			Port:               port,
-			Protocol:           protocol,
-			Drop:               drop,
-			Corrupt:            corrupt,
+			Hosts:    hosts,
+			Port:     port,
+			Protocol: protocol,
+			Drop:     drop,
+			Corrupt:  corrupt,
 		}
 		i := injector.NewNetworkFailureInjector(uid, spec, c, log, ms)
 		i.Inject()

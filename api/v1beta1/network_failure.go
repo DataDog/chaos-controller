@@ -16,11 +16,11 @@ import (
 // NetworkFailureSpec represents a network failure injection
 type NetworkFailureSpec struct {
 	// +nullable
-	Hosts              []string `json:"hosts,omitempty"`
-	Port               int      `json:"port"`
-	Drop               int      `json:"drop"`
-	Corrupt            int      `json:"corrupt"`
-	Protocol           string   `json:"protocol"`
+	Hosts    []string `json:"hosts,omitempty"`
+	Port     int      `json:"port"`
+	Drop     int      `json:"drop"`
+	Corrupt  int      `json:"corrupt"`
+	Protocol string   `json:"protocol"`
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
