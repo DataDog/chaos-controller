@@ -60,6 +60,7 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			sink,
 			"--container-id",
 			containerID,
+			"--hosts",
 		}
 	}
 
