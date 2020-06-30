@@ -62,6 +62,7 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			containerID,
 			"--hosts",
 		}
+		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
 	}
 
 	return args

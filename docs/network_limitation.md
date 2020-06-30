@@ -10,6 +10,8 @@ tc qdisc add dev eth0 root tbf rate 0.5mbit burst 5kb latency 0ms
 
 On cleaning, it removes all the injected rules by clearing the dedicated chain and by removing it.
 
+For information regarding tc, which we use to apply these disruption, please take a look at the [network](network.md) docs.
+
 ## Kernel modules
 
 The injector needs some kernel modules to be enabled to be able to run:

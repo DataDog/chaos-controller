@@ -15,6 +15,7 @@ spec:
   networkFailure: # packet loss and connection drop
     hosts:
       - 10.0.0.0/8 # destination host
-    probability: 100 # probability to drop packets (between 0 and 100)
+    drop: 10 # probability to drop packets (between 0 and 100)
+    corrupt: 5 # probability to corrupt packets (between 0 and 100)
     port: 80 # port to drop packets on
     protocol: tcp # protocol to drop packets on (can be tcp or udp)
