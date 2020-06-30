@@ -14,12 +14,6 @@ It finally filters the traffic to the given hosts to redirect it through the 4th
 
 Please note that to create a `prio` qdisc on a virtual interface (such as a docker interface), this interface must have a set queue length (`qlen`), otherwise the traffic will be dropped. Container interfaces don't have any `qlen` set by default. The injector sets up the interface queue length if it's not already the case and clears it right after the disruption has been injected.
 
-## Kernel modules
-
-The injector needs some kernel modules to be enabled to be able to run:
-
-* `sch_netem` for the tc network emulator module
-* `sch_prio` for the tc prio qdisc creation
 
 ## More information
 
