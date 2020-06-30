@@ -17,7 +17,7 @@ function exec_into_pod() {
   fi
 
   # get container id
-  id=$(kubectl get -ojson pod $pod | jq -r '.status.containerStatuses[0].containerID' | sed "s#$runtime://##")
+  id=$(kubectl -n chaos-engineering get -ojson pod $pod | jq -r '.status.containerStatuses[0].containerID' | sed "s#$runtime://##")
   # get pid with containerd
   if [ $runtime = "containerd" ]; then
     inspect=$(minikube ssh -- "sudo crictl inspect $id")

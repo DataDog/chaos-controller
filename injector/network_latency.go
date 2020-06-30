@@ -74,7 +74,7 @@ func (i networkLatencyInjector) Inject() {
 
 	i.config.AddLatency(i.spec.Hosts, i.spec.Port, delay)
 
-	i.log.Info("successfully injected latency of %s millseconds to pod", delay)
+	i.log.Infof("successfully injected latency of %sms to pod", delay)
 }
 
 // Clean cleans the injected latency
