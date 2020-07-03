@@ -39,8 +39,27 @@ spec:
             count:
               type: integer
             cpuPressure:
-              description: CPUPressureSpec represents a node failure injection
+              description: CPUPressureSpec represents a cpu pressure disruption
               nullable: true
+              type: object
+            diskPressure:
+              description: DiskPressureSpec represents a disk pressure disruption
+              nullable: true
+              properties:
+                path:
+                  type: string
+                throttling:
+                  description: DiskPressureThrottlingSpec represents a throttle on
+                    read and write disk operations
+                  properties:
+                    readBytesPerSec:
+                      type: integer
+                    writeBytesPerSec:
+                      type: integer
+                  type: object
+              required:
+              - path
+              - throttling
               type: object
             networkFailure:
               description: NetworkFailureSpec represents a network failure injection

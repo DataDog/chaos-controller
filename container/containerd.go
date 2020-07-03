@@ -56,3 +56,35 @@ func (c containerdRuntime) CgroupPath(id string) (string, error) {
 
 	return spec.Linux.CgroupsPath, nil
 }
+
+func (c containerdRuntime) HostPath(id, path string) (string, error) {
+	var hostPath string
+
+	// load container structure
+	container, err := c.client.LoadContainer(context.Background(), id)
+	if err != nil {
+		return "", fmt.Errorf("error while loading the given container: %w", err)
+	}
+
+	// get container spec
+	spec, err := container.Spec(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("error getting container spec: %w", err)
+	}
+
+	// search for the given mount path
+	for _, mount := range spec.Mounts {
+		if mount.Destination != path {
+			continue
+		}
+
+		hostPath = mount.Source
+	}
+
+	// error if no matching path found
+	if hostPath == "" {
+		return "", fmt.Errorf("no matching mount found for path %s, the given path must be a container mount", path)
+	}
+
+	return hostPath, nil
+}

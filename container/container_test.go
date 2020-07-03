@@ -43,8 +43,20 @@ type fakeCgroup struct {
 	mock.Mock
 }
 
-func (f *fakeCgroup) JoinCPU(path string) error {
-	args := f.Called(path)
+func (f *fakeCgroup) JoinCPU() error {
+	args := f.Called()
+
+	return args.Error(0)
+}
+
+func (f *fakeCgroup) DiskThrottleRead(identifier, bps int) error {
+	args := f.Called(identifier, bps)
+
+	return args.Error(0)
+}
+
+func (f *fakeCgroup) DiskThrottleWrite(identifier, bps int) error {
+	args := f.Called(identifier, bps)
 
 	return args.Error(0)
 }
@@ -62,6 +74,12 @@ func (f *fakeRuntime) PID(id string) (uint32, error) {
 
 func (f *fakeRuntime) CgroupPath(id string) (string, error) {
 	args := f.Called(id)
+
+	return args.String(0), args.Error(1)
+}
+
+func (f *fakeRuntime) HostPath(id, path string) (string, error) {
+	args := f.Called(id, path)
 
 	return args.String(0), args.Error(1)
 }
@@ -139,15 +157,6 @@ var _ = Describe("Container", func() {
 		It("should not enter the container network namespace if it is the same as the root", func() {
 			err := ctn.EnterNetworkNamespace()
 			Expect(err).To(Not(BeNil()))
-		})
-	})
-
-	Describe("joining the container CPU cgroup", func() {
-		It("should join the container CPU cgroup using the cgroup path", func() {
-			err := ctn.JoinCPUCgroup()
-			Expect(err).To(BeNil())
-
-			cgroup.AssertCalled(GinkgoT(), "JoinCPU", "/fake/cgroup/path")
 		})
 	})
 })

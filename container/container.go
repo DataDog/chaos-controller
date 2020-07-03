@@ -16,9 +16,9 @@ type Container interface {
 	ID() string
 	Runtime() Runtime
 	Netns() Netns
+	Cgroup() Cgroup
 	EnterNetworkNamespace() error
 	ExitNetworkNamespace() error
-	JoinCPUCgroup() error
 }
 
 // Config contains needed interfaces
@@ -71,7 +71,13 @@ func NewWithConfig(id string, config Config) (Container, error) {
 	}
 
 	if config.Cgroup == nil {
-		config.Cgroup = newCgroup()
+		// retrieve cgroup path from container data
+		path, err := config.Runtime.CgroupPath(rawID[1])
+		if err != nil {
+			return nil, fmt.Errorf("error joining CPU cgroup: %w", err)
+		}
+
+		config.Cgroup = newCgroup(path)
 	}
 
 	// retrieve root ns
@@ -148,18 +154,7 @@ func (c container) EnterNetworkNamespace() error {
 	return nil
 }
 
-// JoinCPUCgroup attaches the current process to the container CPU cgroup
-func (c container) JoinCPUCgroup() error {
-	// retrieve cgroup path from container data
-	path, err := c.config.Runtime.CgroupPath(c.id)
-	if err != nil {
-		return fmt.Errorf("error joining CPU cgroup: %w", err)
-	}
-
-	// join cpu cgroup path
-	if err := c.config.Cgroup.JoinCPU(path); err != nil {
-		return fmt.Errorf("error joining CPU cgroup: %w", err)
-	}
-
-	return nil
+// Cgroup returns the cgroup driver
+func (c container) Cgroup() Cgroup {
+	return c.config.Cgroup
 }
