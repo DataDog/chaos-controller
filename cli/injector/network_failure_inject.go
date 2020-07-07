@@ -44,7 +44,6 @@ var networkFailureInjectCmd = &cobra.Command{
 }
 
 func init() {
-	networkFailureInjectCmd.Flags().StringSlice("hosts", []string{}, "Hostname or IP address of the host to drop packets from and to")
 	networkFailureInjectCmd.Flags().Int("port", 0, "Port to drop packets from and to")
 	networkFailureInjectCmd.Flags().String("protocol", "", "Protocol to filter packets on (tcp or udp)")
 	networkFailureInjectCmd.Flags().Int("drop", 100, "Percentage to drop packets (100 is a total drop)")
