@@ -251,6 +251,17 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			chaosPods = append(chaosPods, chaosPod)
 		}
 
+		if instance.Spec.DiskPressure != nil {
+			args := instance.Spec.DiskPressure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
+
+			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindDiskPressure)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			chaosPods = append(chaosPods, chaosPod)
+		}
+
 		// create injection pods
 		for _, chaosPod := range chaosPods {
 			// link instance resource and injection pod for garbage collection
@@ -363,6 +374,17 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 			args := instance.Spec.NetworkLimitation.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID, r.MetricsSink.GetSinkName())
 
 			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkLimitation)
+			if err != nil {
+				return err
+			}
+
+			chaosPods = append(chaosPods, chaosPod)
+		}
+
+		if instance.Spec.DiskPressure != nil {
+			args := instance.Spec.DiskPressure.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID, r.MetricsSink.GetSinkName())
+
+			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindDiskPressure)
 			if err != nil {
 				return err
 			}

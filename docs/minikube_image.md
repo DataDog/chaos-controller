@@ -16,7 +16,12 @@ First, clone the Minikube Git repository **and checkout a released version**, no
 git clone https://github.com/kubernetes/minikube.git && git checkout 93af9c1 # version 1.9.2
 ```
 
-Then, modify this config file so that it includes the line `CONFIG_NET_SCH_PRIO=y`:
+Then, modify this config file so that it includes the lines:
+
+```
+CONFIG_NET_SCH_PRIO=y
+CONFIG_BLK_DEV_THROTTLING=y
+```
 
 ```bash
 nano ./deploy/iso/minikube-iso/board/coreos/minikube/linux_defconfig

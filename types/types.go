@@ -34,4 +34,6 @@ const (
 	DisruptionKindCPUPressure = "cpu-pressure"
 	// DisruptionKindNetworkLimitation is a network bandwidth limit disruption
 	DisruptionKindNetworkLimitation = "network-limitation"
+	// DisruptionKindDiskPressure is a disk pressure disruption
+	DisruptionKindDiskPressure = "disk-pressure"
 )

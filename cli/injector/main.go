@@ -31,6 +31,7 @@ func init() {
 	rootCmd.AddCommand(networkLatencyCmd)
 	rootCmd.AddCommand(cpuPressureCmd)
 	rootCmd.AddCommand(networkLimitationCmd)
+	rootCmd.AddCommand(diskPressureCmd)
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().String("uid", "", "UID of the failure resource")
 	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "uid")

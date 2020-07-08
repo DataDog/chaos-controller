@@ -44,9 +44,9 @@ func (f *fakeContainer) ExitNetworkNamespace() error {
 	args := f.Called()
 	return args.Error(0)
 }
-func (f *fakeContainer) JoinCPUCgroup() error {
+func (f *fakeContainer) Cgroup() container.Cgroup {
 	args := f.Called()
-	return args.Error(0)
+	return args.Get(0).(container.Cgroup)
 }
 
 // fake dns client
@@ -57,6 +57,29 @@ type fakeDNSClient struct {
 func (f *fakeDNSClient) Resolve(host string) ([]net.IP, error) {
 	args := f.Called(host)
 	return args.Get(0).([]net.IP), args.Error(1)
+}
+
+// fake cgroup
+type fakeCgroup struct {
+	mock.Mock
+}
+
+func (f *fakeCgroup) JoinCPU() error {
+	args := f.Called()
+
+	return args.Error(0)
+}
+
+func (f *fakeCgroup) DiskThrottleRead(identifier, bps int) error {
+	args := f.Called(identifier, bps)
+
+	return args.Error(0)
+}
+
+func (f *fakeCgroup) DiskThrottleWrite(identifier, bps int) error {
+	args := f.Called(identifier, bps)
+
+	return args.Error(0)
 }
 
 var _ = BeforeSuite(func() {

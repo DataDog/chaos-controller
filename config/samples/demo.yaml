@@ -4,6 +4,33 @@
 # Copyright 2020 Datadog, Inc.
 
 ---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: demo
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: demo
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,3 +51,10 @@ spec:
       containers:
       - name: demo
         image: k8s.gcr.io/pause:3.1
+        volumeMounts:
+        - mountPath: /mnt/data
+          name: data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: demo

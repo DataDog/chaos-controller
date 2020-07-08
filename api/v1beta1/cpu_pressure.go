@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// CPUPressureSpec represents a node failure injection
+// CPUPressureSpec represents a cpu pressure disruption
 type CPUPressureSpec struct {
 }
 
