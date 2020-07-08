@@ -37,6 +37,7 @@ func (f *fakeProcessManager) Prioritize() error {
 var _ = Describe("Failure", func() {
 	var (
 		config       CPUPressureInjectorConfig
+		cgroup       *fakeCgroup
 		ctn          *fakeContainer
 		stresser     *fakeCPUStresser
 		stresserExit chan struct{}
@@ -47,9 +48,13 @@ var _ = Describe("Failure", func() {
 	)
 
 	BeforeEach(func() {
+		// cgroup
+		cgroup = &fakeCgroup{}
+		cgroup.On("JoinCPU").Return(nil)
+
 		// container
 		ctn = &fakeContainer{}
-		ctn.On("JoinCPUCgroup").Return(nil)
+		ctn.On("Cgroup").Return(cgroup)
 
 		// stresser
 		stresser = &fakeCPUStresser{}
@@ -93,7 +98,7 @@ var _ = Describe("Failure", func() {
 		})
 
 		It("should join the container CPU cgroup", func() {
-			ctn.AssertCalled(GinkgoT(), "JoinCPUCgroup")
+			cgroup.AssertCalled(GinkgoT(), "JoinCPU")
 		})
 
 		It("should prioritize the current process", func() {

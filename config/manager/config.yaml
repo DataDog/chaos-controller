@@ -45,6 +45,10 @@ data:
               {
                 "name": "cgroup",
                 "mountPath": "/mnt/cgroup"
+              },
+              {
+                "name": "host",
+                "mountPath": "/mnt/host"
               }
             ],
             "securityContext": {
@@ -85,6 +89,13 @@ data:
             "name": "cgroup",
             "hostPath": {
               "path": "/sys/fs/cgroup",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "host",
+            "hostPath": {
+              "path": "/",
               "type": "Directory"
             }
           }

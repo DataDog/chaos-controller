@@ -48,6 +48,7 @@ When the API package is changed, the CRD (custom resource definition) must be re
 * `make manifests`: generate manifests e.g. CRD, RBAC etc.
 * `make run`: run against the configured Kubernetes cluster in ~/.kube/config
 * `make uninstall`: uninstall CRDs and controller from a cluster
+* `make restart`: restart the controller
 
 ### Building
 

@@ -42,6 +42,9 @@ uninstall: manifests
 	kustomize build config/crd | kubectl delete -f -
 	kustomize build config/default | kubectl -n chaos-engineering delete -f -
 
+restart:
+	kubectl -n chaos-engineering rollout restart deployment chaos-controller-controller-manager
+
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
@@ -109,7 +112,7 @@ minikube-start:
 		--kubernetes-version=1.17.0 \
 		--extra-config=apiserver.runtime-config=settings.k8s.io/v1alpha1=true \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodPreset \
-		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2020-05-13.iso
+		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2020-07-06.iso
 
 venv:
 	test -d .venv || python3 -m venv .venv

@@ -26,6 +26,7 @@ Here is [a full example of the disruption resource](config/samples/complete.yaml
 * [I want to add network latency to my pods](docs/network_latency.md)
 * [I want to restrict my pods bandwidth](docs/network_limitation.md)
 * [I want to put CPU pressure against my pods](docs/cpu_pressure.md)
+* [I want to throttle my disk to simulate slow IO](docs/disk_pressure.md)
 
 ## Installation
 
