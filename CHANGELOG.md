@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.8.0](https://github.com/DataDog/chaos-controller/tree/2.8.0) (2020-07-08)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.7.1...2.8.0)
+
+**Merged pull requests:**
+
+- Update container release\_changelog\_bc5e0460e933309fcbfd63d3cc3403edcef25eec [\#141](https://github.com/DataDog/chaos-controller/pull/141) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Add disk pressure feature [\#139](https://github.com/DataDog/chaos-controller/pull/139) ([Devatoria](https://github.com/Devatoria))
+
 ## [2.7.1](https://github.com/DataDog/chaos-controller/tree/2.7.1) (2020-07-06)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.7.0...2.7.1)
