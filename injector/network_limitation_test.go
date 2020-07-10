@@ -18,7 +18,7 @@ import (
 
 var _ = Describe("Limitation", func() {
 	var (
-		ctn      fakeContainer
+		ctn    fakeContainer
 		inj    Injector
 		config fakeNetworkConfig
 		spec   v1beta1.NetworkLimitationSpec
@@ -31,9 +31,10 @@ var _ = Describe("Limitation", func() {
 		ctn.On("ExitNetworkNamespace").Return(nil)
 
 		config = fakeNetworkConfig{}
-		config.On("AddLatency", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		config.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		config.On("ClearAllQdiscs", mock.Anything).Return(nil)
+		config.On("AddNetem", mock.Anything, mock.Anything, mock.Anything).Return()
+		config.On("AddOutputLimit", mock.Anything).Return()
+		config.On("ApplyOperations").Return(nil)
+		config.On("ClearOperations").Return(nil)
 
 		spec = v1beta1.NetworkLimitationSpec{
 			Hosts:       []string{"testhost"},
@@ -57,7 +58,7 @@ var _ = Describe("Limitation", func() {
 		})
 
 		It("should call AddOutputLimit on its network disruption config", func() {
-			Expect(config.AssertCalled(GinkgoT(), "AddOutputLimit", spec.Hosts, spec.Port, spec.BytesPerSec)).To(BeTrue())
+			Expect(config.AssertCalled(GinkgoT(), "AddOutputLimit", spec.BytesPerSec)).To(BeTrue())
 		})
 
 		Describe("inj.Clean", func() {
@@ -70,8 +71,8 @@ var _ = Describe("Limitation", func() {
 				Expect(ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
 			})
 
-			It("should call ClearAllQdiscs on its network disruption config", func() {
-				Expect(config.AssertCalled(GinkgoT(), "ClearAllQdiscs", spec.Hosts)).To(BeTrue())
+			It("should call ClearOperations on its network disruption config", func() {
+				Expect(config.AssertCalled(GinkgoT(), "ClearOperations")).To(BeTrue())
 			})
 		})
 	})

@@ -22,7 +22,9 @@ type networkFailureInjector struct {
 
 // NewNetworkFailureInjector creates a NetworkFailureInjector object with default drivers
 func NewNetworkFailureInjector(uid string, spec v1beta1.NetworkFailureSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
-	return NewNetworkFailureInjectorWithConfig(uid, spec, ctn, log, ms, NewNetworkDisruptionConfig(log))
+	config := NewNetworkDisruptionConfigWithDefaults(log, spec.Hosts, spec.Port)
+
+	return NewNetworkFailureInjectorWithConfig(uid, spec, ctn, log, ms, config)
 }
 
 // NewNetworkFailureInjectorWithConfig creates a NetworkFailureInjector object with the given config,
@@ -68,22 +70,14 @@ func (i networkFailureInjector) Inject() {
 		}
 	}()
 
-	drop := i.spec.Drop
-	corrupt := i.spec.Corrupt
+	i.log.Infow("adding network disruptions", "drop", i.spec.Drop, "corrupt", i.spec.Corrupt)
+	i.config.AddNetem(0, i.spec.Drop, i.spec.Corrupt)
 
-	if i.spec.Drop != 0 {
-		// add drop rate
-		i.log.Info("Adding drop rate of ", i.spec.Drop)
-		i.config.AddDrop(i.spec.Hosts, i.spec.Port, drop)
-		i.log.Info("successfully injected drop of %s to pod", i.spec.Drop)
+	if err := i.config.ApplyOperations(); err != nil {
+		i.log.Fatalf("error applying tc operations", "error", err)
 	}
 
-	if i.spec.Corrupt != 0 {
-		// add corruption
-		i.log.Info("Adding corruption rate of ", i.spec.Corrupt)
-		i.config.AddCorrupt(i.spec.Hosts, i.spec.Port, corrupt)
-		i.log.Info("successfully injected corruption of %s to pod", i.spec.Corrupt)
-	}
+	i.log.Info("operations applied successfuly")
 }
 
 // Clean removes all the injected failures in the given container
@@ -110,6 +104,9 @@ func (i networkFailureInjector) Clean() {
 		}
 	}()
 
-	i.config.ClearAllQdiscs(i.spec.Hosts)
+	if err := i.config.ClearOperations(); err != nil {
+		i.log.Fatalw("error clearing tc operations", "error", err)
+	}
+
 	i.log.Info("successfully cleared injected network failure")
 }

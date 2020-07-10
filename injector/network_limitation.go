@@ -22,7 +22,9 @@ type networkLimitationInjector struct {
 
 // NewNetworkLimitationInjector creates a NetworkLimitationInjector object with the default drivers
 func NewNetworkLimitationInjector(uid string, spec v1beta1.NetworkLimitationSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
-	return NewNetworkLimitationInjectorWithConfig(uid, spec, ctn, log, ms, NewNetworkDisruptionConfig(log))
+	config := NewNetworkDisruptionConfigWithDefaults(log, spec.Hosts, spec.Port)
+
+	return NewNetworkLimitationInjectorWithConfig(uid, spec, ctn, log, ms, config)
 }
 
 // NewNetworkLimitationInjectorWithConfig creates a NetworkLimitationInjector object with the given config,
@@ -68,7 +70,11 @@ func (i networkLimitationInjector) Inject() {
 		}
 	}()
 
-	i.config.AddOutputLimit(i.spec.Hosts, i.spec.Port, i.spec.BytesPerSec)
+	i.config.AddOutputLimit(i.spec.BytesPerSec)
+
+	if err := i.config.ApplyOperations(); err != nil {
+		i.log.Fatalf("error applying tc operations", "error", err)
+	}
 
 	i.log.Info("successfully injected output bandwidth limit of %s bytes/sec to pod", i.spec.BytesPerSec)
 }
@@ -98,7 +104,9 @@ func (i networkLimitationInjector) Clean() {
 		}
 	}()
 
-	i.config.ClearAllQdiscs(i.spec.Hosts)
+	if err := i.config.ClearOperations(); err != nil {
+		i.log.Fatalw("error clearing tc operations", "error", err)
+	}
 
 	i.log.Info("successfully cleared injected bandwidth limit")
 }

@@ -6,6 +6,7 @@
 package injector_test
 
 import (
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,14 +17,14 @@ import (
 )
 
 var _ = Describe("Failure", func() {
-  var (
-		ctn                                  fakeContainer
-		inj                                  Injector
-		config                               fakeNetworkConfig
-		spec                                 v1beta1.NetworkFailureSpec
+	var (
+		ctn    fakeContainer
+		inj    Injector
+		config fakeNetworkConfig
+		spec   v1beta1.NetworkFailureSpec
 	)
 
-  BeforeEach(func() {
+	BeforeEach(func() {
 		// container
 		ctn = fakeContainer{}
 		ctn.On("EnterNetworkNamespace").Return(nil)
@@ -31,43 +32,38 @@ var _ = Describe("Failure", func() {
 
 		// network disruption conf
 		config = fakeNetworkConfig{}
-		config.On("AddLatency", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		config.On("AddDrop", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		config.On("AddCorrupt", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		config.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		config.On("ClearAllQdiscs", mock.Anything).Return(nil)
+		config.On("AddNetem", mock.Anything, mock.Anything, mock.Anything).Return()
+		config.On("AddOutputLimit", mock.Anything).Return()
+		config.On("ApplyOperations").Return(nil)
+		config.On("ClearOperations").Return(nil)
 
 		spec = v1beta1.NetworkFailureSpec{
-			Hosts: []string{"testhost"},
-			Port:  22,
-			Drop: 5,
-      Corrupt: 1,
+			Hosts:   []string{"testhost"},
+			Port:    22,
+			Drop:    5,
+			Corrupt: 1,
 		}
 	})
 
-  JustBeforeEach(func() {
+	JustBeforeEach(func() {
 		inj = NewNetworkFailureInjectorWithConfig("fake", spec, &ctn, log, ms, &config)
 	})
 
-  Describe("inj.Inject", func() {
-    JustBeforeEach(func() {
+	Describe("inj.Inject", func() {
+		JustBeforeEach(func() {
 			inj.Inject()
 		})
 
-    It("should enter and exit the container network namespace", func() {
+		It("should enter and exit the container network namespace", func() {
 			ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")
 			ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")
 		})
 
-		It("should call AddCorrupt on its network disruption config", func() {
-			Expect(config.AssertCalled(GinkgoT(), "AddCorrupt", spec.Hosts, spec.Port, spec.Corrupt)).To(BeTrue())
+		It("should call AddNetem on its network disruption config", func() {
+			Expect(config.AssertCalled(GinkgoT(), "AddNetem", time.Duration(0), spec.Drop, spec.Corrupt)).To(BeTrue())
 		})
 
-		It("should call AddDrop on its network disruption config", func() {
-			Expect(config.AssertCalled(GinkgoT(), "AddDrop", spec.Hosts, spec.Port, spec.Drop)).To(BeTrue())
-		})
-
-    Describe("inj.Clean", func() {
+		Describe("inj.Clean", func() {
 			JustBeforeEach(func() {
 				inj.Clean()
 			})
@@ -75,9 +71,9 @@ var _ = Describe("Failure", func() {
 				Expect(ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
 				Expect(ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
 			})
-			It("should call ClearAllQdiscs on its network disruption config", func() {
-				Expect(config.AssertCalled(GinkgoT(), "ClearAllQdiscs", spec.Hosts)).To(BeTrue())
+			It("should call ClearOperations on its network disruption config", func() {
+				Expect(config.AssertCalled(GinkgoT(), "ClearOperations")).To(BeTrue())
 			})
 		})
-  })
+	})
 })
