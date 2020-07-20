@@ -107,6 +107,7 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 	return linkByIP, nil
 }
 
+// ApplyOperations applies the added operations
 func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 	c.Log.Info("auto-detecting interfaces to apply disruption to...")
 
@@ -207,7 +208,7 @@ func (c *NetworkDisruptionConfigStruct) AddOutputLimit(bytesPerSec uint) {
 	c.operations = append(c.operations, operation)
 }
 
-// ClearAllQdiscs removes all disruptions by clearing all custom qdiscs created for the given config struct
+// ClearOperations removes all disruptions by clearing all custom qdiscs created for the given config struct
 func (c *NetworkDisruptionConfigStruct) ClearOperations() error {
 	linkByIP, err := c.getInterfacesByIP(c.hosts)
 	if err != nil {

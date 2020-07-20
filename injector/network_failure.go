@@ -77,7 +77,7 @@ func (i networkFailureInjector) Inject() {
 		i.log.Fatalf("error applying tc operations", "error", err)
 	}
 
-	i.log.Info("operations applied successfuly")
+	i.log.Info("operations applied successfully")
 }
 
 // Clean removes all the injected failures in the given container
