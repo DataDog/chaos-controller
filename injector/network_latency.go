@@ -24,7 +24,9 @@ type networkLatencyInjector struct {
 
 // NewNetworkLatencyInjector creates a NetworkLatencyInjector object with the default drivers
 func NewNetworkLatencyInjector(uid string, spec v1beta1.NetworkLatencySpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
-	return NewNetworkLatencyInjectorWithConfig(uid, spec, ctn, log, ms, NewNetworkDisruptionConfig(log))
+	config := NewNetworkDisruptionConfigWithDefaults(log, spec.Hosts, spec.Port)
+
+	return NewNetworkLatencyInjectorWithConfig(uid, spec, ctn, log, ms, config)
 }
 
 // NewNetworkLatencyInjectorWithConfig creates a NetworkLatencyInjector object with the given config,
@@ -71,8 +73,11 @@ func (i networkLatencyInjector) Inject() {
 	}()
 
 	delay := time.Duration(i.spec.Delay) * time.Millisecond
+	i.config.AddNetem(delay, 0, 0)
 
-	i.config.AddLatency(i.spec.Hosts, i.spec.Port, delay)
+	if err := i.config.ApplyOperations(); err != nil {
+		i.log.Fatalf("error applying tc operations", "error", err)
+	}
 
 	i.log.Infof("successfully injected latency of %sms to pod", delay)
 }
@@ -102,7 +107,9 @@ func (i networkLatencyInjector) Clean() {
 		}
 	}()
 
-	i.config.ClearAllQdiscs(i.spec.Hosts)
+	if err := i.config.ClearOperations(); err != nil {
+		i.log.Fatalw("error clearing tc operations", "error", err)
+	}
 
 	i.log.Info("successfully cleared injected network latency")
 }

@@ -33,6 +33,8 @@ var _ = Describe("Tc", func() {
 		parent            string
 		handle            uint32
 		delay             time.Duration
+		drop              int
+		corrupt           int
 		bands             uint32
 		priomap           [16]uint32
 		ip                *net.IPNet
@@ -55,6 +57,8 @@ var _ = Describe("Tc", func() {
 		parent = "root"
 		handle = 0
 		delay = time.Second
+		drop = 5
+		corrupt = 1
 		bands = 16
 		priomap = [16]uint32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 		ip = &net.IPNet{
@@ -65,14 +69,14 @@ var _ = Describe("Tc", func() {
 		flowid = "1:2"
 	})
 
-	Describe("AddDelay", func() {
+	Describe("AddNetem", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddDelay(iface, parent, handle, delay)
+			tcRunner.AddNetem(iface, parent, handle, delay, drop, corrupt)
 		})
 
 		Context("add 1s delay to lo interface to the root parent without any handle", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 1s")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 1s loss 5% corrupt 1%")
 			})
 		})
 
@@ -82,7 +86,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem delay 1s")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem delay 1s loss 5% corrupt 1%")
 			})
 		})
 
@@ -92,7 +96,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem delay 1s")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem delay 1s loss 5% corrupt 1%")
 			})
 		})
 
@@ -102,7 +106,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 30m0s")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 30m0s loss 5% corrupt 1%")
 			})
 		})
 	})
