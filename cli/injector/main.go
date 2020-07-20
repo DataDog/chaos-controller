@@ -31,6 +31,7 @@ func init() {
 	rootCmd.AddCommand(networkLatencyCmd)
 	rootCmd.AddCommand(cpuPressureCmd)
 	rootCmd.AddCommand(networkLimitationCmd)
+	rootCmd.AddCommand(diskPressureCmd)
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().String("uid", "", "UID of the failure resource")
 	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "uid")
@@ -71,6 +72,8 @@ func initMetricsSink() {
 
 	ms, err = metrics.GetSink(types.SinkDriver(sink), types.SinkAppInjector)
 	if err != nil {
-		log.Fatalw("error while creating metric sink", "error", err)
+		log.Errorw("error while creating metric sink, switching to noop sink", "error", err)
+
+		ms, _ = metrics.GetSink(types.SinkDriverNoop, types.SinkAppInjector)
 	}
 }

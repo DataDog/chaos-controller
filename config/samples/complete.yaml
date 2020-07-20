@@ -29,3 +29,8 @@ spec:
   cpuPressure: {} # cpu load generator
   networkLimitation: # output bandwidth limit
     bytesPerSec: 100000 # 100kbps, visible but not backbreaking
+  diskPressure: # disk pressure
+    path: /mnt/data # mount point (in the pod) to apply throttle on
+    throttling:
+      readBytesPerSec: 1024 # read throttling in bytes per sec
+      writeBytesPerSec: 2048 # write throttling in bytes per sec

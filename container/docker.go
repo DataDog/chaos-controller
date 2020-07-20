@@ -8,6 +8,7 @@ package container
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	dockerlib "github.com/docker/docker/client"
 )
@@ -37,10 +38,46 @@ func (d dockerRuntime) PID(id string) (uint32, error) {
 }
 
 func (d dockerRuntime) CgroupPath(id string) (string, error) {
+	// inspect container
 	ci, err := d.client.ContainerInspect(context.Background(), id)
 	if err != nil {
 		return "", fmt.Errorf("error while loading given container: %w", err)
 	}
 
-	return ci.HostConfig.CgroupParent, nil
+	// parse cgroup parent
+	parts := strings.Split(ci.HostConfig.CgroupParent, "-")
+	if len(parts) != 3 {
+		return "", fmt.Errorf("unexpected cgroup format: %s", ci.HostConfig.CgroupParent)
+	}
+
+	// path is like: kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod6c35b3b9_e1cf_491e_a79e_c1e756bc34c7.slice
+	path := fmt.Sprintf("kubepods.slice/%s-%s.slice/%s", parts[0], parts[1], ci.HostConfig.CgroupParent)
+
+	return path, nil
+}
+
+func (d dockerRuntime) HostPath(id, path string) (string, error) {
+	var hostPath string
+
+	// inspect container
+	ci, err := d.client.ContainerInspect(context.Background(), id)
+	if err != nil {
+		return "", fmt.Errorf("error while loading given container: %w", err)
+	}
+
+	// search for the mount in mounts
+	for _, mount := range ci.Mounts {
+		if mount.Destination != path {
+			continue
+		}
+
+		hostPath = mount.Source
+	}
+
+	// error if no matching mount has been found
+	if hostPath == "" {
+		return "", fmt.Errorf("no matching mount found for path %s, the given path must be a container mount", path)
+	}
+
+	return hostPath, nil
 }
