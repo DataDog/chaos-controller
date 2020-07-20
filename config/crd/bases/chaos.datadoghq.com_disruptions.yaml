@@ -65,8 +65,10 @@ spec:
               description: NetworkFailureSpec represents a network failure injection
               nullable: true
               properties:
-                allowEstablishment:
-                  type: boolean
+                corrupt:
+                  type: integer
+                drop:
+                  type: integer
                 hosts:
                   items:
                     type: string
@@ -74,13 +76,12 @@ spec:
                   type: array
                 port:
                   type: integer
-                probability:
-                  type: integer
                 protocol:
                   type: string
               required:
+              - corrupt
+              - drop
               - port
-              - probability
               - protocol
               type: object
             networkLatency:

@@ -16,11 +16,11 @@ import (
 // NetworkFailureSpec represents a network failure injection
 type NetworkFailureSpec struct {
 	// +nullable
-	Hosts              []string `json:"hosts,omitempty"`
-	Port               int      `json:"port"`
-	Probability        int      `json:"probability"`
-	Protocol           string   `json:"protocol"`
-	AllowEstablishment bool     `json:"allowEstablishment,omitempty"`
+	Hosts    []string `json:"hosts,omitempty"`
+	Port     int      `json:"port"`
+	Drop     int      `json:"drop"`
+	Corrupt  int      `json:"corrupt"`
+	Protocol string   `json:"protocol"`
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
@@ -40,18 +40,16 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			containerID,
 			"--port",
 			strconv.Itoa(s.Port),
+			"--corrupt",
+			strconv.Itoa(s.Corrupt),
+			"--drop",
+			strconv.Itoa(s.Drop),
 			"--protocol",
 			s.Protocol,
-			"--probability",
-			strconv.Itoa(s.Probability),
 			"--hosts",
 		}
 		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
 
-		// allow establishment
-		if s.AllowEstablishment {
-			args = append(args, "--allow-establishment")
-		}
 	case chaostypes.PodModeClean:
 		args = []string{
 			"network-failure",
@@ -62,7 +60,9 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			sink,
 			"--container-id",
 			containerID,
+			"--hosts",
 		}
+		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
 	}
 
 	return args

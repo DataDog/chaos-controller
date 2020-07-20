@@ -22,7 +22,7 @@ const tcPath = "/sbin/tc"
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
 type TrafficController interface {
-	AddDelay(iface string, parent string, handle uint32, delay time.Duration) error
+	AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
 	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error
 	AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error
@@ -47,6 +47,8 @@ func (e defaultTcExecuter) Run(args ...string) (string, error) {
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
+	fmt.Printf("running %s\n", cmd.String())
+
 	// run command
 	err := cmd.Run()
 	if err != nil {
@@ -70,8 +72,24 @@ func NewTrafficController(log *zap.SugaredLogger) TrafficController {
 	}
 }
 
-func (t tc) AddDelay(iface string, parent string, handle uint32, delay time.Duration) error {
-	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", fmt.Sprintf("delay %s", delay))...)
+func (t tc) AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int) error {
+	params := ""
+
+	if delay.Milliseconds() != 0 {
+		params = fmt.Sprintf("%s delay %s", params, delay)
+	}
+
+	if drop != 0 {
+		params = fmt.Sprintf("%s loss %d%%", params, drop)
+	}
+
+	if corrupt != 0 {
+		params = fmt.Sprintf("%s corrupt %d%%", params, corrupt)
+	}
+
+	params = strings.TrimPrefix(params, " ")
+
+	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", params)...)
 
 	return err
 }

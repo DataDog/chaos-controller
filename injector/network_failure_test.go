@@ -6,7 +6,7 @@
 package injector_test
 
 import (
-	"net"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,56 +16,12 @@ import (
 	. "github.com/DataDog/chaos-controller/injector"
 )
 
-type fakeIPTables struct {
-	mock.Mock
-}
-
-func (f *fakeIPTables) Exists(table, chain string, parts ...string) (bool, error) {
-	args := f.Called(table, chain, parts)
-	return args.Bool(0), args.Error(1)
-}
-
-func (f *fakeIPTables) Delete(table, chain string, parts ...string) error {
-	args := f.Called(table, chain, parts)
-	return args.Error(0)
-}
-
-func (f *fakeIPTables) ClearChain(table, chain string) error {
-	args := f.Called(table, chain)
-	return args.Error(0)
-}
-
-func (f *fakeIPTables) DeleteChain(table, chain string) error {
-	args := f.Called(table, chain)
-	return args.Error(0)
-}
-
-func (f *fakeIPTables) ListChains(table string) ([]string, error) {
-	args := f.Called(table)
-	return args.Get(0).([]string), args.Error(1)
-}
-
-func (f *fakeIPTables) AppendUnique(table, chain string, parts ...string) error {
-	args := f.Called(table, chain, parts)
-	return args.Error(0)
-}
-
-func (f *fakeIPTables) NewChain(table, chain string) error {
-	args := f.Called(table, chain)
-	return args.Error(0)
-}
-
-var _ = Describe("Network Failure", func() {
+var _ = Describe("Failure", func() {
 	var (
-		config            NetworkFailureInjectorConfig
-		ctn               fakeContainer
-		dns               fakeDNSClient
-		inj               Injector
-		ipt               fakeIPTables
-		iptExistsCall     *mock.Call
-		iptListChainsCall *mock.Call
-		spec              v1beta1.NetworkFailureSpec
-		uid               string
+		ctn    fakeContainer
+		inj    Injector
+		config fakeNetworkConfig
+		spec   v1beta1.NetworkFailureSpec
 	)
 
 	BeforeEach(func() {
@@ -74,45 +30,26 @@ var _ = Describe("Network Failure", func() {
 		ctn.On("EnterNetworkNamespace").Return(nil)
 		ctn.On("ExitNetworkNamespace").Return(nil)
 
-		// iptables
-		ipt = fakeIPTables{}
-		iptExistsCall = ipt.On("Exists", mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
-		ipt.On("Delete", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		ipt.On("ClearChain", mock.Anything, mock.Anything).Return(nil)
-		ipt.On("DeleteChain", mock.Anything, mock.Anything).Return(nil)
-		iptListChainsCall = ipt.On("ListChains", mock.Anything).Return([]string{}, nil)
-		ipt.On("AppendUnique", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		ipt.On("NewChain", mock.Anything, mock.Anything).Return(nil)
-
-		// dns client
-		dns = fakeDNSClient{}
-		dns.On("Resolve", mock.Anything).Return([]net.IP{
-			net.ParseIP("192.168.0.1"),
-			net.ParseIP("192.168.0.2"),
-		}, nil)
-
-		uid = "110e8400-e29b-11d4-a716-446655440000"
+		// network disruption conf
+		config = fakeNetworkConfig{}
+		config.On("AddNetem", mock.Anything, mock.Anything, mock.Anything).Return()
+		config.On("AddOutputLimit", mock.Anything).Return()
+		config.On("ApplyOperations").Return(nil)
+		config.On("ClearOperations").Return(nil)
 
 		spec = v1beta1.NetworkFailureSpec{
-			Hosts:       []string{"127.0.0.1/32"},
-			Port:        666,
-			Protocol:    "tcp",
-			Probability: 100,
-		}
-
-		config = NetworkFailureInjectorConfig{
-			IPTables:  &ipt,
-			DNSClient: &dns,
+			Hosts:   []string{"testhost"},
+			Port:    22,
+			Drop:    5,
+			Corrupt: 1,
 		}
 	})
 
 	JustBeforeEach(func() {
-		var err error
-		inj, err = NewNetworkFailureInjectorWithConfig(uid, spec, &ctn, log, ms, &config)
-		Expect(err).To(BeNil())
+		inj = NewNetworkFailureInjectorWithConfig("fake", spec, &ctn, log, ms, &config)
 	})
 
-	Describe("injection", func() {
+	Describe("inj.Inject", func() {
 		JustBeforeEach(func() {
 			inj.Inject()
 		})
@@ -122,162 +59,20 @@ var _ = Describe("Network Failure", func() {
 			ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")
 		})
 
-		Context("when the dedicated chain already exists", func() {
-			BeforeEach(func() {
-				iptListChainsCall.Return([]string{"CHAOS-110e8400446655440000"}, nil)
-			})
-
-			It("should not create the chain once again", func() {
-				ipt.AssertNumberOfCalls(GinkgoT(), "NewChain", 0)
-			})
+		It("should call AddNetem on its network disruption config", func() {
+			Expect(config.AssertCalled(GinkgoT(), "AddNetem", time.Duration(0), spec.Drop, spec.Corrupt)).To(BeTrue())
 		})
 
-		Context("when the dedicated chain doesn't exist", func() {
-			It("should create the dedicated chain", func() {
-				ipt.AssertCalled(GinkgoT(), "NewChain", "filter", "CHAOS-110e8400446655440000")
+		Describe("inj.Clean", func() {
+			JustBeforeEach(func() {
+				inj.Clean()
 			})
-
-			It("should create the jump rule", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "OUTPUT", []string{
-					"-j", "CHAOS-110e8400446655440000",
-				})
+			It("should enter and exit the container network namespace", func() {
+				Expect(ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
+				Expect(ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
 			})
-		})
-
-		Context("using a CIDR block", func() {
-			BeforeEach(func() {
-				spec.Hosts = []string{"192.168.0.0/24"}
-			})
-
-			It("should inject a rule for the given block", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.0/24", "--dport", "666", "-j", "DROP",
-				})
-			})
-		})
-
-		Context("using a single IP set", func() {
-			BeforeEach(func() {
-				spec.Hosts = []string{"192.168.0.1", "192.168.0.2"}
-			})
-
-			It("should inject a rule for the given IP with a /32 mask", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.1/32", "--dport", "666", "-j", "DROP",
-				})
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.2/32", "--dport", "666", "-j", "DROP",
-				})
-			})
-		})
-
-		Context("using a hostname", func() {
-			BeforeEach(func() {
-				spec.Hosts = []string{"foo.bar.cluster.local"}
-			})
-
-			It("should inject a rule per IP resolved by the DNS resolver", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.1/32", "--dport", "666", "-j", "DROP",
-				})
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.2/32", "--dport", "666", "-j", "DROP",
-				})
-			})
-		})
-
-		Context("host not specified", func() {
-			BeforeEach(func() {
-				spec.Hosts = []string{}
-			})
-
-			It("should inject a rule matching all the hosts", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "0.0.0.0/0", "--dport", "666", "-j", "DROP",
-				})
-			})
-		})
-
-		Context("using a probability", func() {
-			BeforeEach(func() {
-				spec.Hosts = []string{"192.168.0.0/24"}
-				spec.Probability = 50
-			})
-
-			It("should inject a rule for the given probability", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.0/24", "--dport", "666", "-m", "statistic", "--mode", "random", "--probability", "0.50", "-j", "DROP",
-				})
-			})
-		})
-
-		Context("using allow establishment", func() {
-			BeforeEach(func() {
-				spec.Hosts = []string{"192.168.0.0/24"}
-				spec.AllowEstablishment = true
-			})
-
-			It("should inject a rule dropping established connection only", func() {
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", mock.Anything, mock.Anything, mock.Anything)
-				ipt.AssertCalled(GinkgoT(), "AppendUnique", "filter", "CHAOS-110e8400446655440000", []string{
-					"-p", "tcp", "-d", "192.168.0.0/24", "--dport", "666", "-m", "conntrack", "--ctstate", "ESTABLISHED", "-j", "DROP",
-				})
-			})
-		})
-	})
-
-	Describe("cleaning", func() {
-		JustBeforeEach(func() {
-			inj.Clean()
-		})
-
-		It("should enter and exit the container network namespace", func() {
-			ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")
-			ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")
-		})
-
-		Context("when dedicated chain doesn't exist anymore", func() {
-			It("should not try to remove the jump rule", func() {
-				ipt.AssertNumberOfCalls(GinkgoT(), "Delete", 0)
-			})
-
-			It("should not try to clear nor delete the dedicated chain", func() {
-				ipt.AssertNumberOfCalls(GinkgoT(), "ClearChain", 0)
-				ipt.AssertNumberOfCalls(GinkgoT(), "DeleteChain", 0)
-			})
-		})
-
-		Context("when dedicated chain still exists", func() {
-			BeforeEach(func() {
-				iptListChainsCall.Return([]string{"CHAOS-110e8400446655440000"}, nil)
-			})
-
-			It("should clear and delete the dedicated chain", func() {
-				ipt.AssertCalled(GinkgoT(), "ClearChain", "filter", "CHAOS-110e8400446655440000")
-				ipt.AssertCalled(GinkgoT(), "DeleteChain", "filter", "CHAOS-110e8400446655440000")
-			})
-
-			Context("when the jump rule doesn't exist anymore", func() {
-				BeforeEach(func() {
-					iptExistsCall.Return(false, nil)
-				})
-
-				It("should not try to remove the jump rule", func() {
-					ipt.AssertNumberOfCalls(GinkgoT(), "Delete", 0)
-				})
-			})
-
-			Context("when the jump rule still exists", func() {
-				It("should not try to remove the jump rule", func() {
-					ipt.AssertCalled(GinkgoT(), "Delete", "filter", "OUTPUT", []string{
-						"-j", "CHAOS-110e8400446655440000",
-					})
-				})
+			It("should call ClearOperations on its network disruption config", func() {
+				Expect(config.AssertCalled(GinkgoT(), "ClearOperations")).To(BeTrue())
 			})
 		})
 	})
