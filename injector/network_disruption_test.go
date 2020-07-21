@@ -16,12 +16,33 @@ import (
 	. "github.com/DataDog/chaos-controller/injector"
 )
 
+type fakeNetworkConfig struct {
+	mock.Mock
+}
+
+func (f *fakeNetworkConfig) AddNetem(delay time.Duration, drop int, corrupt int) {
+	f.Called(delay, drop, corrupt)
+}
+func (f *fakeNetworkConfig) AddOutputLimit(bytesPerSec uint) {
+	f.Called(bytesPerSec)
+}
+func (f *fakeNetworkConfig) ApplyOperations() error {
+	args := f.Called()
+
+	return args.Error(0)
+}
+func (f *fakeNetworkConfig) ClearOperations() error {
+	args := f.Called()
+
+	return args.Error(0)
+}
+
 var _ = Describe("Failure", func() {
 	var (
 		ctn    fakeContainer
 		inj    Injector
 		config fakeNetworkConfig
-		spec   v1beta1.NetworkFailureSpec
+		spec   v1beta1.NetworkDisruptionSpec
 	)
 
 	BeforeEach(func() {
@@ -37,16 +58,18 @@ var _ = Describe("Failure", func() {
 		config.On("ApplyOperations").Return(nil)
 		config.On("ClearOperations").Return(nil)
 
-		spec = v1beta1.NetworkFailureSpec{
-			Hosts:   []string{"testhost"},
-			Port:    22,
-			Drop:    5,
-			Corrupt: 1,
+		spec = v1beta1.NetworkDisruptionSpec{
+			Hosts:          []string{"testhost"},
+			Port:           22,
+			Drop:           5,
+			Corrupt:        1,
+			Delay:          1000,
+			BandwidthLimit: 10000,
 		}
 	})
 
 	JustBeforeEach(func() {
-		inj = NewNetworkFailureInjectorWithConfig("fake", spec, &ctn, log, ms, &config)
+		inj = NewNetworkDisruptionInjectorWithConfig("fake", spec, &ctn, log, ms, &config)
 	})
 
 	Describe("inj.Inject", func() {
@@ -60,7 +83,11 @@ var _ = Describe("Failure", func() {
 		})
 
 		It("should call AddNetem on its network disruption config", func() {
-			Expect(config.AssertCalled(GinkgoT(), "AddNetem", time.Duration(0), spec.Drop, spec.Corrupt)).To(BeTrue())
+			Expect(config.AssertCalled(GinkgoT(), "AddNetem", time.Second, spec.Drop, spec.Corrupt)).To(BeTrue())
+		})
+
+		It("should call AddOutputLimit on its network disruption config", func() {
+			Expect(config.AssertCalled(GinkgoT(), "AddOutputLimit", uint(spec.BandwidthLimit))).To(BeTrue())
 		})
 
 		Describe("inj.Clean", func() {
