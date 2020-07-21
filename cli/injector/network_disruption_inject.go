@@ -24,6 +24,7 @@ var networkDisruptionInjectCmd = &cobra.Command{
 		drop, _ := cmd.Flags().GetInt("drop")
 		corrupt, _ := cmd.Flags().GetInt("corrupt")
 		delay, _ := cmd.Flags().GetUint("delay")
+		bandwidthLimit, _ := cmd.Flags().GetInt("bandwidth-limit")
 
 		// prepare container
 		c, err := container.New(containerID)
@@ -33,12 +34,13 @@ var networkDisruptionInjectCmd = &cobra.Command{
 
 		// prepare injection object
 		spec := v1beta1.NetworkDisruptionSpec{
-			Hosts:    hosts,
-			Port:     port,
-			Protocol: protocol,
-			Drop:     drop,
-			Corrupt:  corrupt,
-			Delay:    delay,
+			Hosts:          hosts,
+			Port:           port,
+			Protocol:       protocol,
+			Drop:           drop,
+			Corrupt:        corrupt,
+			Delay:          delay,
+			BandwidthLimit: bandwidthLimit,
 		}
 		i := injector.NewNetworkDisruptionInjector(uid, spec, c, log, ms)
 		i.Inject()
@@ -51,6 +53,7 @@ func init() {
 	networkDisruptionInjectCmd.Flags().Int("drop", 100, "Percentage to drop packets (100 is a total drop)")
 	networkDisruptionInjectCmd.Flags().Int("corrupt", 100, "Percentage to corrupt packets (100 is a total corruption)")
 	networkDisruptionInjectCmd.Flags().Uint("delay", 0, "Delay to add to the given container in ms")
+	networkDisruptionInjectCmd.Flags().Int("bandwidth-limit", 0, "Bandwidth limit in bytes")
 
 	_ = networkDisruptionInjectCmd.MarkFlagRequired("port")
 	_ = networkDisruptionInjectCmd.MarkFlagRequired("protocol")

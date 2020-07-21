@@ -16,13 +16,14 @@ import (
 // NetworkDisruptionSpec represents a network disruption injection
 type NetworkDisruptionSpec struct {
 	// +nullable
-	Hosts   []string `json:"hosts,omitempty"`
-	Port    int      `json:"port"`
-	Drop    int      `json:"drop"`
-	Corrupt int      `json:"corrupt"`
+	Hosts    []string `json:"hosts,omitempty"`
+	Port     int      `json:"port"`
+	Protocol string   `json:"protocol"`
+	Drop     int      `json:"drop"`
+	Corrupt  int      `json:"corrupt"`
 	// +kubebuilder:validation:Maximum=59999
-	Delay    uint   `json:"delay"`
-	Protocol string `json:"protocol"`
+	Delay          uint `json:"delay"`
+	BandwidthLimit int  `json:"bandwidthLimit"`
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
@@ -48,6 +49,8 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 			strconv.Itoa(s.Drop),
 			"--delay",
 			strconv.Itoa(int(s.Delay)),
+			"--bandwidth-limit",
+			strconv.Itoa(s.BandwidthLimit),
 			"--protocol",
 			s.Protocol,
 			"--hosts",

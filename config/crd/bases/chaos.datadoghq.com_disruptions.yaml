@@ -65,6 +65,8 @@ spec:
               description: NetworkDisruptionSpec represents a network disruption injection
               nullable: true
               properties:
+                bandwidthLimit:
+                  type: integer
                 corrupt:
                   type: integer
                 delay:
@@ -82,29 +84,12 @@ spec:
                 protocol:
                   type: string
               required:
+              - bandwidthLimit
               - corrupt
               - delay
               - drop
               - port
               - protocol
-              type: object
-            networkLimitation:
-              description: NetworkLimitationSpec represents a network bandwidth limitation
-                injection
-              nullable: true
-              properties:
-                bytesPerSec:
-                  type: integer
-                hosts:
-                  items:
-                    type: string
-                  nullable: true
-                  type: array
-                port:
-                  nullable: true
-                  type: integer
-              required:
-              - bytesPerSec
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection

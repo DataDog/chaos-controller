@@ -50,7 +50,9 @@ spec:
     spec:
       containers:
       - name: demo
-        image: k8s.gcr.io/pause:3.1
+        image: ubuntu:bionic
+        command: ["/bin/bash"]
+        args: ["-c", "while true; do sleep 10000; done"]
         volumeMounts:
         - mountPath: /mnt/data
           name: data

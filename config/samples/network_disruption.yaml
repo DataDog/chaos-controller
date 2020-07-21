@@ -20,3 +20,4 @@ spec:
     drop: 10 # probability to drop packets (between 0 and 100)
     corrupt: 5 # probability to corrupt packets (between 0 and 100)
     delay: 1000 # latency to apply to packets in ms
+    bandwidthLimit: 10000 # bandwidth limit in bytes

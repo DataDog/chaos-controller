@@ -14,9 +14,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// linkOperation represents an operation on a single network interface, possibly a subset of traffic
-// based on the 2nd param (parent)
-type linkOperation func(network.NetlinkLink, string) error
+// linkOperation represents a tc operation on a single network interface combined with the parent to bind to and the handle identifier to use
+type linkOperation func(network.NetlinkLink, string, uint32) error
 
 // NetworkDisruptionConfig provides an interface for using the network traffic controller for new disruptions
 type NetworkDisruptionConfig interface {
@@ -111,11 +110,6 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 	c.Log.Info("auto-detecting interfaces to apply disruption to...")
 
-	parent := "root"
-	if len(c.hosts) > 0 {
-		parent = "1:4"
-	}
-
 	linkByIP, err := c.getInterfacesByIP(c.hosts)
 	if err != nil {
 		return fmt.Errorf("can't get interfaces per IP listing: %w", err)
@@ -123,6 +117,8 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 
 	// for each link/ip association, add disruption
 	for linkName, ips := range linkByIP {
+		// default parent to root
+		parent := "root"
 		clearTxQlen := false
 
 		// retrieve link from name
@@ -156,13 +152,26 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			if err := c.TrafficController.AddPrio(link.Name(), "root", 1, 4, priomap); err != nil {
 				return fmt.Errorf("can't create a new qdisc for interface %s: %w", link.Name(), err)
 			}
+
+			// update parent to bind next operations to
+			parent = "1:4"
+		}
+
+		// set handle identifier
+		handle := uint32(1)
+		if parent != "root" {
+			handle++
 		}
 
 		// add operations
 		for _, operation := range c.operations {
-			if err := operation(link, parent); err != nil {
+			if err := operation(link, parent, handle); err != nil {
 				return fmt.Errorf("could not perform operation on newly created qdisc for interface %s: %w", link.Name(), err)
 			}
+
+			// update parent and handle identifier
+			parent = fmt.Sprintf("%d:", handle)
+			handle++
 		}
 
 		// if only some hosts/ports are targeted, redirect the traffic to the extra band created earlier
@@ -191,8 +200,8 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 // AddNetem adds network disruptions using the drivers in the NetworkDisruptionConfigStruct
 func (c *NetworkDisruptionConfigStruct) AddNetem(delay time.Duration, drop int, corrupt int) {
 	// closure which adds latency
-	operation := func(link network.NetlinkLink, parent string) error {
-		return c.TrafficController.AddNetem(link.Name(), parent, 0, delay, drop, corrupt)
+	operation := func(link network.NetlinkLink, parent string, handle uint32) error {
+		return c.TrafficController.AddNetem(link.Name(), parent, handle, delay, drop, corrupt)
 	}
 
 	c.operations = append(c.operations, operation)
@@ -201,8 +210,8 @@ func (c *NetworkDisruptionConfigStruct) AddNetem(delay time.Duration, drop int, 
 // AddOutputLimit adds a network bandwidth disruption using the drivers in the NetworkDisruptionConfigStruct
 func (c *NetworkDisruptionConfigStruct) AddOutputLimit(bytesPerSec uint) {
 	// closure which adds a bandwidth limit
-	operation := func(link network.NetlinkLink, parent string) error {
-		return c.TrafficController.AddOutputLimit(link.Name(), parent, 0, bytesPerSec)
+	operation := func(link network.NetlinkLink, parent string, handle uint32) error {
+		return c.TrafficController.AddOutputLimit(link.Name(), parent, handle, bytesPerSec)
 	}
 
 	c.operations = append(c.operations, operation)
