@@ -107,6 +107,15 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 }
 
 // ApplyOperations applies the added operations
+// Depending on if hosts have been specified or not, this method will behave in a different way
+// If no host is specified:
+//  - the first operation will be attached to root
+//  - other operations will be chained
+// If at least one host is specified:
+//  - a prio qdisc will be created and attached to root
+//  - first operation will be attached to the last band of the prio qdisc
+//  - other operations will be chained
+//  - a filter will be created to redirect traffic related to the specified host(s) through the last prio band
 func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 	c.Log.Info("auto-detecting interfaces to apply disruption to...")
 
@@ -136,8 +145,10 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			if link.TxQLen() == 0 {
 				c.Log.Infof("setting tx qlen for interface %s", link.Name())
 
+				// set clear flag to true so we can clean up this once qdiscs are created
 				clearTxQlen = true
 
+				// set qlen
 				if err := link.SetTxQLen(1000); err != nil {
 					return fmt.Errorf("can't set tx queue length on interface %s: %w", link.Name(), err)
 				}
@@ -145,19 +156,20 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 
 			// create a new qdisc for the given interface of type prio with 4 bands instead of 3
 			// we keep the default priomap, the extra band will be used to filter traffic going to the specified IP
-			// we only create this qdisc if we want to target traffic going to some hosts only, it avoids to add delay to
-			// all the outgoing traffic
+			// we only create this qdisc if we want to target traffic going to some hosts only, it avoids to add delay to all the traffic for a bit of time
 			priomap := [16]uint32{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}
 
 			if err := c.TrafficController.AddPrio(link.Name(), "root", 1, 4, priomap); err != nil {
 				return fmt.Errorf("can't create a new qdisc for interface %s: %w", link.Name(), err)
 			}
 
-			// update parent to bind next operations to
+			// update parent reference since we created the prio qdisc
+			// this parent points to the last prio band (each band having a separate class)
 			parent = "1:4"
 		}
 
-		// set handle identifier
+		// set handle identifier for the first operation to apply
+		// handle is 1 if no qdisc has been created yet, or 2 otherwise
 		handle := uint32(1)
 		if parent != "root" {
 			handle++
@@ -169,13 +181,14 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 				return fmt.Errorf("could not perform operation on newly created qdisc for interface %s: %w", link.Name(), err)
 			}
 
-			// update parent and handle identifier
+			// update parent reference and handle identifier for the next operation
+			// the next operation parent will be the current handle identifier
+			// the next handle identifier is just an increment of the actual one
 			parent = fmt.Sprintf("%d:", handle)
 			handle++
 		}
 
-		// if only some hosts/ports are targeted, redirect the traffic to the extra band created earlier
-		// where the delay is applied
+		// if only some hosts/ports are targeted, create a filter to redirect the traffic to the extra band created earlier
 		if len(ips) > 0 {
 			for _, ip := range ips {
 				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, ip, c.port, "1:4"); err != nil {
@@ -184,7 +197,7 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			}
 		}
 
-		// reset the interface transmission queue length once filters have been created
+		// reset the interface transmission queue length once filters have been created (only if qlen has been set earlier)
 		if clearTxQlen {
 			c.Log.Infof("clearing tx qlen for interface %s", link.Name())
 
@@ -199,7 +212,7 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 
 // AddNetem adds network disruptions using the drivers in the NetworkDisruptionConfigStruct
 func (c *NetworkDisruptionConfigStruct) AddNetem(delay time.Duration, drop int, corrupt int) {
-	// closure which adds latency
+	// closure which adds netem disruptions
 	operation := func(link network.NetlinkLink, parent string, handle uint32) error {
 		return c.TrafficController.AddNetem(link.Name(), parent, handle, delay, drop, corrupt)
 	}
@@ -217,7 +230,7 @@ func (c *NetworkDisruptionConfigStruct) AddOutputLimit(bytesPerSec uint) {
 	c.operations = append(c.operations, operation)
 }
 
-// ClearOperations removes all disruptions by clearing all custom qdiscs created for the given config struct
+// ClearOperations removes all disruptions by clearing all custom qdiscs created for the given config struct (filters will be deleted as well)
 func (c *NetworkDisruptionConfigStruct) ClearOperations() error {
 	linkByIP, err := c.getInterfacesByIP(c.hosts)
 	if err != nil {
