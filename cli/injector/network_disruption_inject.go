@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var networkFailureInjectCmd = &cobra.Command{
+var networkDisruptionInjectCmd = &cobra.Command{
 	Use:   "inject",
 	Short: "Inject a network failure in the given container",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -23,6 +23,7 @@ var networkFailureInjectCmd = &cobra.Command{
 		protocol, _ := cmd.Flags().GetString("protocol")
 		drop, _ := cmd.Flags().GetInt("drop")
 		corrupt, _ := cmd.Flags().GetInt("corrupt")
+		delay, _ := cmd.Flags().GetUint("delay")
 
 		// prepare container
 		c, err := container.New(containerID)
@@ -31,24 +32,26 @@ var networkFailureInjectCmd = &cobra.Command{
 		}
 
 		// prepare injection object
-		spec := v1beta1.NetworkFailureSpec{
+		spec := v1beta1.NetworkDisruptionSpec{
 			Hosts:    hosts,
 			Port:     port,
 			Protocol: protocol,
 			Drop:     drop,
 			Corrupt:  corrupt,
+			Delay:    delay,
 		}
-		i := injector.NewNetworkFailureInjector(uid, spec, c, log, ms)
+		i := injector.NewNetworkDisruptionInjector(uid, spec, c, log, ms)
 		i.Inject()
 	},
 }
 
 func init() {
-	networkFailureInjectCmd.Flags().Int("port", 0, "Port to drop packets from and to")
-	networkFailureInjectCmd.Flags().String("protocol", "", "Protocol to filter packets on (tcp or udp)")
-	networkFailureInjectCmd.Flags().Int("drop", 100, "Percentage to drop packets (100 is a total drop)")
-	networkFailureInjectCmd.Flags().Int("corrupt", 100, "Percentage to corrupt packets (100 is a total corruption)")
+	networkDisruptionInjectCmd.Flags().Int("port", 0, "Port to drop packets from and to")
+	networkDisruptionInjectCmd.Flags().String("protocol", "", "Protocol to filter packets on (tcp or udp)")
+	networkDisruptionInjectCmd.Flags().Int("drop", 100, "Percentage to drop packets (100 is a total drop)")
+	networkDisruptionInjectCmd.Flags().Int("corrupt", 100, "Percentage to corrupt packets (100 is a total corruption)")
+	networkDisruptionInjectCmd.Flags().Uint("delay", 0, "Delay to add to the given container in ms")
 
-	_ = networkFailureInjectCmd.MarkFlagRequired("port")
-	_ = networkFailureInjectCmd.MarkFlagRequired("protocol")
+	_ = networkDisruptionInjectCmd.MarkFlagRequired("port")
+	_ = networkDisruptionInjectCmd.MarkFlagRequired("protocol")
 }

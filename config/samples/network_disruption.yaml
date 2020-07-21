@@ -12,10 +12,11 @@ spec:
   selector: # label selector to target pods
     app: demo
   count: 1 # number of pods to target (-1 == target all the selected pods)
-  networkFailure: # packet loss and connection drop
+  network: # network disruption settings
     hosts:
       - 10.0.0.0/8 # destination host
-    drop: 10 # probability to drop packets (between 0 and 100)
-    corrupt: 5 # probability to corrupt packets (between 0 and 100)
     port: 80 # port to drop packets on
     protocol: tcp # protocol to drop packets on (can be tcp or udp)
+    drop: 10 # probability to drop packets (between 0 and 100)
+    corrupt: 5 # probability to corrupt packets (between 0 and 100)
+    delay: 1000 # latency to apply to packets in ms

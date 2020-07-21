@@ -32,9 +32,7 @@ type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	Selector labels.Set `json:"selector"` // label selector
 	// +nullable
-	NetworkFailure *NetworkFailureSpec `json:"networkFailure,omitempty"`
-	// +nullable
-	NetworkLatency *NetworkLatencySpec `json:"networkLatency,omitempty"`
+	Network *NetworkDisruptionSpec `json:"network,omitempty"`
 	// +nullable
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
 	// +nullable

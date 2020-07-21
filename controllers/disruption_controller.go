@@ -196,21 +196,10 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 
 		// generate injection pods specs
-		if instance.Spec.NetworkFailure != nil {
-			args := instance.Spec.NetworkFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
+		if instance.Spec.Network != nil {
+			args := instance.Spec.Network.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
 
-			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkFailure)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			chaosPods = append(chaosPods, chaosPod)
-		}
-
-		if instance.Spec.NetworkLatency != nil {
-			args := instance.Spec.NetworkLatency.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
-
-			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkLatency)
+			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkDisruption)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -348,21 +337,10 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 		}
 
 		// generate cleanup pods specs
-		if instance.Spec.NetworkFailure != nil {
-			args := instance.Spec.NetworkFailure.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID, r.MetricsSink.GetSinkName())
+		if instance.Spec.Network != nil {
+			args := instance.Spec.Network.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID, r.MetricsSink.GetSinkName())
 
-			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkFailure)
-			if err != nil {
-				return err
-			}
-
-			chaosPods = append(chaosPods, chaosPod)
-		}
-
-		if instance.Spec.NetworkLatency != nil {
-			args := instance.Spec.NetworkLatency.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID, r.MetricsSink.GetSinkName())
-
-			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkLatency)
+			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkDisruption)
 			if err != nil {
 				return err
 			}

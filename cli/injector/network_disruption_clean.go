@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var networkLatencyCleanCmd = &cobra.Command{
+var networkDisruptionCleanCmd = &cobra.Command{
 	Use:   "clean",
-	Short: "Clean injected network latency",
+	Short: "Clean injected network failures",
 	Run: func(cmd *cobra.Command, args []string) {
 		uid, _ := cmd.Flags().GetString("uid")
 		containerID, _ := cmd.Flags().GetString("container-id")
@@ -26,13 +26,11 @@ var networkLatencyCleanCmd = &cobra.Command{
 			log.Fatalw("can't create container object", "error", err)
 		}
 
-		// prepare spec
-		spec := v1beta1.NetworkLatencySpec{
+		spec := v1beta1.NetworkDisruptionSpec{
 			Hosts: hosts,
 		}
 
-		// clean
-		i := injector.NewNetworkLatencyInjector(uid, spec, c, log, ms)
+		i := injector.NewNetworkDisruptionInjector(uid, spec, c, log, ms)
 		i.Clean()
 	},
 }
