@@ -24,16 +24,12 @@ const (
 
 	// DisruptionKindLabel is the label used to identify the disruption kind for a chaos pod
 	DisruptionKindLabel = "chaos.datadoghq.com/disruption-kind"
-	// DisruptionKindNetworkFailure is a network failure disruption
-	DisruptionKindNetworkFailure = "network-failure"
-	// DisruptionKindNetworkLatency is a network latency disruption
-	DisruptionKindNetworkLatency = "network-latency"
+	// DisruptionKindNetworkDisruption is a network failure disruption
+	DisruptionKindNetworkDisruption = "network-disruption"
 	// DisruptionKindNodeFailure is a node failure disruption
 	DisruptionKindNodeFailure = "node-failure"
 	// DisruptionKindCPUPressure is a CPU pressure disruption
 	DisruptionKindCPUPressure = "cpu-pressure"
-	// DisruptionKindNetworkLimitation is a network bandwidth limit disruption
-	DisruptionKindNetworkLimitation = "network-limitation"
 	// DisruptionKindDiskPressure is a disk pressure disruption
 	DisruptionKindDiskPressure = "disk-pressure"
 )

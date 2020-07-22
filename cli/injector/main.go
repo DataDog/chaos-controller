@@ -26,11 +26,9 @@ var ms metrics.Sink
 var sink string
 
 func init() {
-	rootCmd.AddCommand(networkFailureCmd)
+	rootCmd.AddCommand(networkDisruptionCmd)
 	rootCmd.AddCommand(nodeFailureCmd)
-	rootCmd.AddCommand(networkLatencyCmd)
 	rootCmd.AddCommand(cpuPressureCmd)
-	rootCmd.AddCommand(networkLimitationCmd)
 	rootCmd.AddCommand(diskPressureCmd)
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().String("uid", "", "UID of the failure resource")

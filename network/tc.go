@@ -47,8 +47,6 @@ func (e defaultTcExecuter) Run(args ...string) (string, error) {
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	fmt.Printf("running %s\n", cmd.String())
-
 	// run command
 	err := cmd.Run()
 	if err != nil {

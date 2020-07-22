@@ -13,24 +13,27 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// NetworkFailureSpec represents a network failure injection
-type NetworkFailureSpec struct {
+// NetworkDisruptionSpec represents a network disruption injection
+type NetworkDisruptionSpec struct {
 	// +nullable
 	Hosts    []string `json:"hosts,omitempty"`
 	Port     int      `json:"port"`
+	Protocol string   `json:"protocol"`
 	Drop     int      `json:"drop"`
 	Corrupt  int      `json:"corrupt"`
-	Protocol string   `json:"protocol"`
+	// +kubebuilder:validation:Maximum=59999
+	Delay          uint `json:"delay"`
+	BandwidthLimit int  `json:"bandwidthLimit"`
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string {
+func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string {
 	args := []string{}
 
 	switch mode {
 	case chaostypes.PodModeInject:
 		args = []string{
-			"network-failure",
+			"network-disruption",
 			"inject",
 			"--uid",
 			string(uid),
@@ -44,6 +47,10 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 			strconv.Itoa(s.Corrupt),
 			"--drop",
 			strconv.Itoa(s.Drop),
+			"--delay",
+			strconv.Itoa(int(s.Delay)),
+			"--bandwidth-limit",
+			strconv.Itoa(s.BandwidthLimit),
 			"--protocol",
 			s.Protocol,
 			"--hosts",
@@ -52,7 +59,7 @@ func (s *NetworkFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID
 
 	case chaostypes.PodModeClean:
 		args = []string{
-			"network-failure",
+			"network-disruption",
 			"clean",
 			"--uid",
 			string(uid),

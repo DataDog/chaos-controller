@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var networkLimitationCleanCmd = &cobra.Command{
+var networkDisruptionCleanCmd = &cobra.Command{
 	Use:   "clean",
-	Short: "Cleans up an artificial network bandwidth limitation",
+	Short: "Clean injected network failures",
 	Run: func(cmd *cobra.Command, args []string) {
 		uid, _ := cmd.Flags().GetString("uid")
 		containerID, _ := cmd.Flags().GetString("container-id")
@@ -26,13 +26,11 @@ var networkLimitationCleanCmd = &cobra.Command{
 			log.Fatalw("can't create container object", "error", err)
 		}
 
-		// prepare spec
-		spec := v1beta1.NetworkLimitationSpec{
+		spec := v1beta1.NetworkDisruptionSpec{
 			Hosts: hosts,
 		}
 
-		// clean
-		i := injector.NewNetworkLimitationInjector(uid, spec, c, log, ms)
+		i := injector.NewNetworkDisruptionInjector(uid, spec, c, log, ms)
 		i.Clean()
 	},
 }

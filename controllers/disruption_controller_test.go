@@ -63,7 +63,7 @@ func expectChaosPod(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode, 
 
 	// ensure count is correct
 	if len(l.Items) != count {
-		return fmt.Errorf("unexpected injection pods count: %d", len(l.Items))
+		return fmt.Errorf("unexpected %s pods count: expected %d, found %d", mode, count, len(l.Items))
 	}
 
 	// ensure generated pods have the needed fields
@@ -99,16 +99,22 @@ var _ = Describe("Disruption Controller", func() {
 			},
 			Spec: chaosv1beta1.DisruptionSpec{
 				Selector: map[string]string{"foo": "bar"},
-				NetworkFailure: &chaosv1beta1.NetworkFailureSpec{
-					Hosts:       []string{"127.0.0.1"},
-					Port:        80,
-					Drop:         0,
-					Corrupt:      0,
-					Protocol:    "tcp",
+				NodeFailure: &chaosv1beta1.NodeFailureSpec{
+					Shutdown: false,
 				},
-				NetworkLatency: &chaosv1beta1.NetworkLatencySpec{
-					Delay: 1000,
-					Hosts: []string{"10.0.0.0/8"},
+				Network: &chaosv1beta1.NetworkDisruptionSpec{
+					Hosts:          []string{"127.0.0.1"},
+					Port:           80,
+					Protocol:       "tcp",
+					Drop:           0,
+					Corrupt:        0,
+					Delay:          1000,
+					BandwidthLimit: 10000,
+				},
+				CPUPressure: &chaosv1beta1.CPUPressureSpec{},
+				DiskPressure: &chaosv1beta1.DiskPressureSpec{
+					Path:       "/mnt/foo",
+					Throttling: chaosv1beta1.DiskPressureThrottlingSpec{},
 				},
 			},
 		}
@@ -131,7 +137,7 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the inject pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 4) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 8) }, timeout).Should(Succeed())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
@@ -161,7 +167,7 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the inject pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 2) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 4) }, timeout).Should(Succeed())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())

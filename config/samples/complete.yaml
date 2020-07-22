@@ -12,23 +12,18 @@ spec:
   selector: # label selector to target pods
     app: demo
   count: 1 # number of pods to target (-1 == target all the selected pods)
-  networkFailure: # packet loss and connection
-    hosts:
-        - 10.0.0.0/8 # destination host
-    corrupt: 0 # probability to corrupt packets (between 0 and 100)
-    drop: 0 # probability to drop packets (between 0 and 100)
-    port: 8080 # port to drop packets on
-    protocol: tcp # protocol to drop packets on (can be tcp or udp)
-  networkLatency: # network latency
-    delay: 1000 # delay in ms
-    hosts: # destination hosts to add latency to
-      - 10.0.0.0/8
-    port: 80 # port to apply latency  (optional)
   nodeFailure: # node kernel panic or shutdown
     shutdown: true # shutdown the host instead of triggering a stack dump
+  network: # network disruption settings, all those disruptions are applied to outgoing traffic only
+    hosts:
+      - 10.0.0.0/8 # destination host
+    port: 80 # port to drop packets on
+    protocol: tcp # protocol to drop packets on (can be tcp or udp)
+    drop: 10 # probability to drop packets (between 0 and 100)
+    corrupt: 5 # probability to corrupt packets (between 0 and 100)
+    delay: 1000 # latency to apply to packets in ms
+    bandwidthLimit: 10000 # bandwidth limit in bytes
   cpuPressure: {} # cpu load generator
-  networkLimitation: # output bandwidth limit
-    bytesPerSec: 100000 # 100kbps, visible but not backbreaking
   diskPressure: # disk pressure
     path: /mnt/data # mount point (in the pod) to apply throttle on
     throttling:

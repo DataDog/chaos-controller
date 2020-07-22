@@ -61,11 +61,16 @@ spec:
               - path
               - throttling
               type: object
-            networkFailure:
-              description: NetworkFailureSpec represents a network failure injection
+            network:
+              description: NetworkDisruptionSpec represents a network disruption injection
               nullable: true
               properties:
+                bandwidthLimit:
+                  type: integer
                 corrupt:
+                  type: integer
+                delay:
+                  maximum: 59999
                   type: integer
                 drop:
                   type: integer
@@ -79,46 +84,12 @@ spec:
                 protocol:
                   type: string
               required:
+              - bandwidthLimit
               - corrupt
+              - delay
               - drop
               - port
               - protocol
-              type: object
-            networkLatency:
-              description: NetworkLatencySpec represents a network latency injection
-              nullable: true
-              properties:
-                delay:
-                  maximum: 59999
-                  type: integer
-                hosts:
-                  items:
-                    type: string
-                  nullable: true
-                  type: array
-                port:
-                  nullable: true
-                  type: integer
-              required:
-              - delay
-              type: object
-            networkLimitation:
-              description: NetworkLimitationSpec represents a network bandwidth limitation
-                injection
-              nullable: true
-              properties:
-                bytesPerSec:
-                  type: integer
-                hosts:
-                  items:
-                    type: string
-                  nullable: true
-                  type: array
-                port:
-                  nullable: true
-                  type: integer
-              required:
-              - bytesPerSec
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection

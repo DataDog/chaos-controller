@@ -6,6 +6,8 @@
 package injector
 
 import (
+	"time"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/metrics"
@@ -13,30 +15,30 @@ import (
 	"go.uber.org/zap"
 )
 
-// networkLimitationInjector describes a network bandwidth limitation
-type networkLimitationInjector struct {
+// networkDisruptionInjector describes a network disruption
+type networkDisruptionInjector struct {
 	containerInjector
-	spec   v1beta1.NetworkLimitationSpec
+	spec   v1beta1.NetworkDisruptionSpec
 	config NetworkDisruptionConfig
 }
 
-// NewNetworkLimitationInjector creates a NetworkLimitationInjector object with the default drivers
-func NewNetworkLimitationInjector(uid string, spec v1beta1.NetworkLimitationSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
+// NewNetworkDisruptionInjector creates a NetworkDisruptionInjector object with default drivers
+func NewNetworkDisruptionInjector(uid string, spec v1beta1.NetworkDisruptionSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
 	config := NewNetworkDisruptionConfigWithDefaults(log, spec.Hosts, spec.Port)
 
-	return NewNetworkLimitationInjectorWithConfig(uid, spec, ctn, log, ms, config)
+	return NewNetworkDisruptionInjectorWithConfig(uid, spec, ctn, log, ms, config)
 }
 
-// NewNetworkLimitationInjectorWithConfig creates a NetworkLimitationInjector object with the given config,
-// missing fields being initialized with the defaults
-func NewNetworkLimitationInjectorWithConfig(uid string, spec v1beta1.NetworkLimitationSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config NetworkDisruptionConfig) Injector {
-	return networkLimitationInjector{
+// NewNetworkDisruptionInjectorWithConfig creates a NetworkDisruptionInjector object with the given config,
+// missing field being initialized with the defaults
+func NewNetworkDisruptionInjectorWithConfig(uid string, spec v1beta1.NetworkDisruptionSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config NetworkDisruptionConfig) Injector {
+	return networkDisruptionInjector{
 		containerInjector: containerInjector{
 			injector: injector{
 				uid:  uid,
 				log:  log,
 				ms:   ms,
-				kind: types.DisruptionKindNetworkLimitation,
+				kind: types.DisruptionKindNetworkDisruption,
 			},
 			container: ctn,
 		},
@@ -45,11 +47,11 @@ func NewNetworkLimitationInjectorWithConfig(uid string, spec v1beta1.NetworkLimi
 	}
 }
 
-// Inject injects network bandwidth limitation according to the current spec
-func (i networkLimitationInjector) Inject() {
+// Inject injects the given network disruption into the given container
+func (i networkDisruptionInjector) Inject() {
 	var err error
 
-	i.log.Info("injecting bandwidth limitation: %s", i.spec)
+	i.log.Info("injecting network disruption")
 
 	// handle metrics
 	defer func() {
@@ -70,21 +72,31 @@ func (i networkLimitationInjector) Inject() {
 		}
 	}()
 
-	i.config.AddOutputLimit(i.spec.BytesPerSec)
+	i.log.Infow("adding network disruptions", "drop", i.spec.Drop, "corrupt", i.spec.Corrupt)
+
+	// add netem
+	if i.spec.Delay > 0 || i.spec.Drop > 0 || i.spec.Corrupt > 0 {
+		delay := time.Duration(i.spec.Delay) * time.Millisecond
+		i.config.AddNetem(delay, i.spec.Drop, i.spec.Corrupt)
+	}
+
+	// add tbf
+	if i.spec.BandwidthLimit > 0 {
+		i.config.AddOutputLimit(uint(i.spec.BandwidthLimit))
+	}
 
 	if err := i.config.ApplyOperations(); err != nil {
 		i.log.Fatalf("error applying tc operations", "error", err)
 	}
 
-	i.log.Info("successfully injected output bandwidth limit of %s bytes/sec to pod", i.spec.BytesPerSec)
+	i.log.Info("operations applied successfully")
 }
 
-// Clean cleans the injected bandwidth limitation
-func (i networkLimitationInjector) Clean() {
+// Clean removes all the injected disruption in the given container
+func (i networkDisruptionInjector) Clean() {
 	var err error
 
-	i.log.Info("cleaning bandwidth limitation")
-
+	i.log.Info("cleaning disruptions")
 	// handle metrics
 	defer func() {
 		i.handleMetricSinkError(i.ms.MetricCleaned(i.container.ID(), i.uid, err == nil, i.kind, []string{}))
@@ -108,5 +120,5 @@ func (i networkLimitationInjector) Clean() {
 		i.log.Fatalw("error clearing tc operations", "error", err)
 	}
 
-	i.log.Info("successfully cleared injected bandwidth limit")
+	i.log.Info("successfully cleared injected network disruption")
 }
