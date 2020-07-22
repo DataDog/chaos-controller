@@ -19,8 +19,9 @@ type NetworkDisruptionSpec struct {
 	Hosts []string `json:"hosts,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
-	Port     int    `json:"port,omitempty"`
-	Protocol string `json:"protocol"`
+	Port int `json:"port,omitempty"`
+	// +kubebuilder:validation:Enum=tcp;udp
+	Protocol string `json:"protocol,omitempty"`
 	Drop     int    `json:"drop"`
 	Corrupt  int    `json:"corrupt"`
 	// +kubebuilder:validation:Maximum=59999
@@ -53,12 +54,18 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 			strconv.Itoa(int(s.Delay)),
 			"--bandwidth-limit",
 			strconv.Itoa(s.BandwidthLimit),
-			"--protocol",
-			s.Protocol,
-			"--hosts",
 		}
-		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
 
+		// append protocol
+		if s.Protocol != "" {
+			args = append(args, "--protocol", s.Protocol)
+		}
+
+		// append hosts
+		if len(s.Hosts) > 0 {
+			args = append(args, "--hosts")
+			args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
+		}
 	case chaostypes.PodModeClean:
 		args = []string{
 			"network-disruption",
@@ -69,9 +76,13 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 			sink,
 			"--container-id",
 			containerID,
-			"--hosts",
 		}
-		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
+
+		// append hosts
+		if len(s.Hosts) > 0 {
+			args = append(args, "--hosts")
+			args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
+		}
 	}
 
 	return args

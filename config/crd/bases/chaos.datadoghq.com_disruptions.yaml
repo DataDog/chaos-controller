@@ -84,13 +84,15 @@ spec:
                   minimum: 0
                   type: integer
                 protocol:
+                  enum:
+                  - tcp
+                  - udp
                   type: string
               required:
               - bandwidthLimit
               - corrupt
               - delay
               - drop
-              - protocol
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection

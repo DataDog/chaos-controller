@@ -33,11 +33,12 @@ type NetworkDisruptionConfigStruct struct {
 	DNSClient         network.DNSClient
 	hosts             []string
 	port              int
+	protocol          string
 	operations        []linkOperation
 }
 
 // NewNetworkDisruptionConfig creates a new network disruption object using the given netlink, dns, etc.
-func NewNetworkDisruptionConfig(logger *zap.SugaredLogger, tc network.TrafficController, netlink network.NetlinkAdapter, dns network.DNSClient, hosts []string, port int) NetworkDisruptionConfig {
+func NewNetworkDisruptionConfig(logger *zap.SugaredLogger, tc network.TrafficController, netlink network.NetlinkAdapter, dns network.DNSClient, hosts []string, port int, protocol string) NetworkDisruptionConfig {
 	return &NetworkDisruptionConfigStruct{
 		Log:               logger,
 		TrafficController: tc,
@@ -45,13 +46,14 @@ func NewNetworkDisruptionConfig(logger *zap.SugaredLogger, tc network.TrafficCon
 		DNSClient:         dns,
 		hosts:             hosts,
 		port:              port,
+		protocol:          protocol,
 		operations:        []linkOperation{},
 	}
 }
 
 // NewNetworkDisruptionConfigWithDefaults creates a new network disruption object using default netlink, dns, etc.
-func NewNetworkDisruptionConfigWithDefaults(logger *zap.SugaredLogger, hosts []string, port int) NetworkDisruptionConfig {
-	return NewNetworkDisruptionConfig(logger, network.NewTrafficController(logger), network.NewNetlinkAdapter(), network.NewDNSClient(), hosts, port)
+func NewNetworkDisruptionConfigWithDefaults(logger *zap.SugaredLogger, hosts []string, port int, protocol string) NetworkDisruptionConfig {
+	return NewNetworkDisruptionConfig(logger, network.NewTrafficController(logger), network.NewNetlinkAdapter(), network.NewDNSClient(), hosts, port, protocol)
 }
 
 // getInterfacesByIP returns the interfaces used to reach the given hosts
@@ -136,9 +138,10 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			return fmt.Errorf("can't retrieve link %s: %w", linkName, err)
 		}
 
-		// if at least one IP has been specified, we need to create a prio qdisc to be able to apply
-		// a filter and a delay only on traffic going to those IP
-		if len(ips) > 0 || c.port > 0 {
+		// if at least an IP, a port or a protocol has been specified,
+		// we need to create a prio qdisc to be able to apply a filter
+		// and a delay only on traffic going to those IP
+		if len(ips) > 0 || c.port > 0 || c.protocol != "" {
 			// set the tx qlen if not already set as it is required to create a prio qdisc without dropping
 			// all the outgoing traffic
 			// this qlen will be removed once the injection is done if it was not present before
@@ -188,16 +191,16 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			handle++
 		}
 
-		// if only some hosts are targeted, create one filter per host to redirect the traffic to the extra band created earlier
-		// if only the port is specified, create only one filter for this port
+		// if some hosts are targeted, create one filter per host to redirect the traffic to the extra band created earlier
+		// if only the port or the protocol is specified, create only one filter for this port
 		if len(ips) > 0 {
 			for _, ip := range ips {
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, ip, c.port, "1:4"); err != nil {
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, ip, c.port, c.protocol, "1:4"); err != nil {
 					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 				}
 			}
-		} else if c.port > 0 {
-			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, c.port, "1:4"); err != nil {
+		} else if c.port > 0 || c.protocol != "" {
+			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, c.port, c.protocol, "1:4"); err != nil {
 				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 			}
 		}

@@ -19,12 +19,20 @@ import (
 
 const tcPath = "/sbin/tc"
 
+const (
+	protocolIP  protocolIdentifier = 0
+	protocolTCP protocolIdentifier = 6
+	protocolUDP protocolIdentifier = 17
+)
+
+type protocolIdentifier int
+
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
 type TrafficController interface {
 	AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
-	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error
+	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocl string, flowid string) error
 	AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error
 	ClearQdisc(iface string) error
 	IsQdiscCleared(iface string) (bool, error)
@@ -125,11 +133,12 @@ func (t tc) ClearQdisc(iface string) error {
 	return err
 }
 
-func (t tc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error {
+// AddFilter generates a filter to redirect the traffic matching the given ip, port and protocol to the given flowid
+func (t tc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocol string, flowid string) error {
 	var params string
 
 	// ensure at least an IP or a port has been specified (otherwise the filter doesn't make sense)
-	if ip == nil && port == 0 {
+	if ip == nil && port == 0 && protocol == "" {
 		return fmt.Errorf("wrong filter, at least an IP or a port must be specified")
 	}
 
@@ -141,6 +150,11 @@ func (t tc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet,
 	// match port if specified
 	if port != 0 {
 		params += fmt.Sprintf("match ip dport %s 0xffff ", strconv.Itoa(port))
+	}
+
+	// match protocol if specified
+	if protocol != "" {
+		params += fmt.Sprintf("match ip protocol %d 0xff ", getProtocolIndentifier(protocol))
 	}
 
 	params += fmt.Sprintf("flowid %s", flowid)
@@ -160,6 +174,17 @@ func (t tc) IsQdiscCleared(iface string) (bool, error) {
 
 	// ensure the root has no qdisc
 	return strings.HasPrefix(out, "qdisc noqueue 0: root refcnt"), nil
+}
+
+func getProtocolIndentifier(protocol string) protocolIdentifier {
+	switch protocol {
+	case "tcp":
+		return protocolTCP
+	case "udp":
+		return protocolUDP
+	default:
+		return protocolIP
+	}
 }
 
 func buildCmd(module string, iface string, parent string, handle uint32, kind string, parameters string) []string {

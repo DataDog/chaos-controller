@@ -54,7 +54,4 @@ func init() {
 	networkDisruptionInjectCmd.Flags().Int("corrupt", 100, "Percentage to corrupt packets (100 is a total corruption)")
 	networkDisruptionInjectCmd.Flags().Uint("delay", 0, "Delay to add to the given container in ms")
 	networkDisruptionInjectCmd.Flags().Int("bandwidth-limit", 0, "Bandwidth limit in bytes")
-
-	_ = networkDisruptionInjectCmd.MarkFlagRequired("port")
-	_ = networkDisruptionInjectCmd.MarkFlagRequired("protocol")
 }
