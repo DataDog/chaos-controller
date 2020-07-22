@@ -17,6 +17,6 @@ func init() {
 	networkDisruptionCmd.AddCommand(networkDisruptionInjectCmd)
 	networkDisruptionCmd.AddCommand(networkDisruptionCleanCmd)
 	networkDisruptionCmd.PersistentFlags().String("container-id", "", "ID of the container to inject/clean")
-	networkDisruptionCmd.PersistentFlags().StringSlice("hosts", []string{}, "List of hosts (hostname, single IP or IP block) to apply delay to. If not specified, the delay applies to all the outgoing traffic")
+	networkDisruptionCmd.PersistentFlags().StringSlice("hosts", []string{}, "List of hosts (hostname, single IP or IP block) to apply disruptions to. If not specified, the delay applies to all the outgoing traffic")
 	_ = cobra.MarkFlagRequired(networkDisruptionCmd.PersistentFlags(), "container-id")
 }

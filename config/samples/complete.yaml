@@ -14,7 +14,7 @@ spec:
   count: 1 # number of pods to target (-1 == target all the selected pods)
   nodeFailure: # node kernel panic or shutdown
     shutdown: true # shutdown the host instead of triggering a stack dump
-  network: # network disruption settings
+  network: # network disruption settings, all those disruptions are applied to outgoing traffic only
     hosts:
       - 10.0.0.0/8 # destination host
     port: 80 # port to drop packets on

@@ -75,11 +75,15 @@ func (i networkDisruptionInjector) Inject() {
 	i.log.Infow("adding network disruptions", "drop", i.spec.Drop, "corrupt", i.spec.Corrupt)
 
 	// add netem
-	delay := time.Duration(i.spec.Delay) * time.Millisecond
-	i.config.AddNetem(delay, i.spec.Drop, i.spec.Corrupt)
+	if i.spec.Delay > 0 || i.spec.Drop > 0 || i.spec.Corrupt > 0 {
+		delay := time.Duration(i.spec.Delay) * time.Millisecond
+		i.config.AddNetem(delay, i.spec.Drop, i.spec.Corrupt)
+	}
 
 	// add tbf
-	i.config.AddOutputLimit(uint(i.spec.BandwidthLimit))
+	if i.spec.BandwidthLimit > 0 {
+		i.config.AddOutputLimit(uint(i.spec.BandwidthLimit))
+	}
 
 	if err := i.config.ApplyOperations(); err != nil {
 		i.log.Fatalf("error applying tc operations", "error", err)

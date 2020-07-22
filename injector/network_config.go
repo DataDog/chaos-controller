@@ -156,7 +156,7 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 
 			// create a new qdisc for the given interface of type prio with 4 bands instead of 3
 			// we keep the default priomap, the extra band will be used to filter traffic going to the specified IP
-			// we only create this qdisc if we want to target traffic going to some hosts only, it avoids to add delay to all the traffic for a bit of time
+			// we only create this qdisc if we want to target traffic going to some hosts only, it avoids to apply disruptions to all the traffic for a bit of time
 			priomap := [16]uint32{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}
 
 			if err := c.TrafficController.AddPrio(link.Name(), "root", 1, 4, priomap); err != nil {
