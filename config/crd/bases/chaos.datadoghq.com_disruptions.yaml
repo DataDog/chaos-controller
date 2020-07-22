@@ -66,13 +66,19 @@ spec:
               nullable: true
               properties:
                 bandwidthLimit:
+                  minimum: 0
                   type: integer
                 corrupt:
+                  maximum: 100
+                  minimum: 0
                   type: integer
                 delay:
                   maximum: 59999
+                  minimum: 0
                   type: integer
                 drop:
+                  maximum: 100
+                  minimum: 0
                   type: integer
                 hosts:
                   items:
@@ -88,11 +94,6 @@ spec:
                   - tcp
                   - udp
                   type: string
-              required:
-              - bandwidthLimit
-              - corrupt
-              - delay
-              - drop
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection

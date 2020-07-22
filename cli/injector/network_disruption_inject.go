@@ -32,6 +32,11 @@ var networkDisruptionInjectCmd = &cobra.Command{
 			log.Fatalw("can't create container object", "error", err)
 		}
 
+		// check that at least one disruption has been specified
+		if drop == 0 && corrupt == 0 && delay == 0 && bandwidthLimit == 0 {
+			log.Fatal("at least one disruption must be specified")
+		}
+
 		// prepare injection object
 		spec := v1beta1.NetworkDisruptionSpec{
 			Hosts:          hosts,

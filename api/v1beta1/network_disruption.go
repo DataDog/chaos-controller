@@ -22,11 +22,17 @@ type NetworkDisruptionSpec struct {
 	Port int `json:"port,omitempty"`
 	// +kubebuilder:validation:Enum=tcp;udp
 	Protocol string `json:"protocol,omitempty"`
-	Drop     int    `json:"drop"`
-	Corrupt  int    `json:"corrupt"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
+	Drop int `json:"drop,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
+	Corrupt int `json:"corrupt,omitempty"`
+	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=59999
-	Delay          uint `json:"delay"`
-	BandwidthLimit int  `json:"bandwidthLimit"`
+	Delay uint `json:"delay,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
