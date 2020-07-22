@@ -29,8 +29,13 @@ func (f *fakeTc) AddPrio(iface string, parent string, handle uint32, bands uint3
 	args := f.Called(iface, parent, handle, bands, priomap)
 	return args.Error(0)
 }
-func (f *fakeTc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error {
-	args := f.Called(iface, parent, handle, ip.String(), port, flowid)
+func (f *fakeTc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocol string, flowid string) error {
+	ips := "nil"
+	if ip != nil {
+		ips = ip.String()
+	}
+
+	args := f.Called(iface, parent, handle, ips, port, protocol, flowid)
 	return args.Error(0)
 }
 func (f *fakeTc) AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error {
@@ -105,9 +110,11 @@ var _ = Describe("Tc", func() {
 		nlroute1, nlroute2                   *fakeNetlinkRoute
 		hosts                                []string
 		port                                 int
+		protocol                             string
 		delay                                time.Duration
 		drop                                 int
 		corrupt                              int
+		bandwidthLimit                       uint
 	)
 
 	BeforeEach(func() {
@@ -115,7 +122,7 @@ var _ = Describe("Tc", func() {
 		tc = fakeTc{}
 		tc.On("AddNetem", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("ClearQdisc", mock.Anything).Return(nil)
 		tcIsQdiscClearedCall = tc.On("IsQdiscCleared", mock.Anything).Return(false, nil)
@@ -146,30 +153,40 @@ var _ = Describe("Tc", func() {
 		// netem parameters
 		hosts = []string{}
 		port = 80
+		protocol = "tcp"
 		delay = time.Second
-		drop = 0
-		corrupt = 0
+		drop = 5
+		corrupt = 10
+		bandwidthLimit = 100
 	})
 
 	JustBeforeEach(func() {
-		config = NewNetworkDisruptionConfig(log, &tc, &nl, nil, hosts, port)
+		config = NewNetworkDisruptionConfig(log, &tc, &nl, nil, hosts, port, protocol)
 	})
 
 	Describe("AddNetem", func() {
 		JustBeforeEach(func() {
 			config.AddNetem(delay, drop, corrupt)
+			config.AddOutputLimit(bandwidthLimit)
 			config.ApplyOperations()
 		})
 
-		Context("with no host specified", func() {
+		Context("with no host, port or protocol specified", func() {
+			BeforeEach(func() {
+				port = 0
+				protocol = ""
+			})
+
 			It("should not set or clear the interface qlen", func() {
 				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
 				nllink2.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
 			})
 
-			It("should add delay to the interfaces root qdisc", func() {
-				tc.AssertCalled(GinkgoT(), "AddNetem", "lo", "root", mock.Anything, time.Second, 0, 0)
-				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "root", mock.Anything, time.Second, 0, 0)
+			It("should apply disruptions to the interfaces root qdisc", func() {
+				tc.AssertCalled(GinkgoT(), "AddNetem", "lo", "root", mock.Anything, delay, drop, corrupt)
+				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "root", mock.Anything, delay, drop, corrupt)
+				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "lo", "1:", mock.Anything, bandwidthLimit)
+				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "1:", mock.Anything, bandwidthLimit)
 			})
 		})
 
@@ -191,15 +208,17 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should add a filter to redirect traffic on delayed band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "1.1.1.1/32", 80, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "2.2.2.2/32", 80, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "1.1.1.1/32", 80, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "2.2.2.2/32", 80, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "1.1.1.1/32", port, protocol, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "2.2.2.2/32", port, protocol, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "1.1.1.1/32", port, protocol, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "2.2.2.2/32", port, protocol, "1:4")
 			})
 
 			It("should add delay to the interfaces parent qdisc", func() {
-				tc.AssertCalled(GinkgoT(), "AddNetem", "lo", "1:4", mock.Anything, time.Second, 0, 0)
-				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "1:4", mock.Anything, time.Second, 0, 0)
+				tc.AssertCalled(GinkgoT(), "AddNetem", "lo", "1:4", mock.Anything, delay, drop, corrupt)
+				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "1:4", mock.Anything, delay, drop, corrupt)
+				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "lo", "2:", mock.Anything, bandwidthLimit)
+				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "2:", mock.Anything, bandwidthLimit)
 			})
 		})
 
@@ -238,18 +257,6 @@ var _ = Describe("Tc", func() {
 				tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "lo")
 				tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "eth0")
 			})
-		})
-	})
-
-	Describe("AddOutputLimit", func() {
-		BeforeEach(func() {
-			config.AddOutputLimit(uint(12345))
-			config.ApplyOperations()
-		})
-
-		It("should add network bandwidth limit to the interfaces root qdisc", func() {
-			tc.AssertCalled(GinkgoT(), "AddOutputLimit", "lo", "root", mock.Anything, uint(12345))
-			tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "root", mock.Anything, uint(12345))
 		})
 	})
 })

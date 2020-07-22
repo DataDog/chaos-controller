@@ -19,6 +19,7 @@ import (
 
 const tcPath = "/sbin/tc"
 
+// default protocol identifiers from /etc/protocols
 const (
 	protocolIP  protocolIdentifier = 0
 	protocolTCP protocolIdentifier = 6
@@ -32,7 +33,7 @@ type protocolIdentifier int
 type TrafficController interface {
 	AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
-	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocl string, flowid string) error
+	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocol string, flowid string) error
 	AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error
 	ClearQdisc(iface string) error
 	IsQdiscCleared(iface string) (bool, error)
