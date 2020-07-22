@@ -138,7 +138,7 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 
 		// if at least one IP has been specified, we need to create a prio qdisc to be able to apply
 		// a filter and a delay only on traffic going to those IP
-		if len(ips) > 0 {
+		if len(ips) > 0 || c.port > 0 {
 			// set the tx qlen if not already set as it is required to create a prio qdisc without dropping
 			// all the outgoing traffic
 			// this qlen will be removed once the injection is done if it was not present before
@@ -188,12 +188,17 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			handle++
 		}
 
-		// if only some hosts/ports are targeted, create a filter to redirect the traffic to the extra band created earlier
+		// if only some hosts are targeted, create one filter per host to redirect the traffic to the extra band created earlier
+		// if only the port is specified, create only one filter for this port
 		if len(ips) > 0 {
 			for _, ip := range ips {
 				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, ip, c.port, "1:4"); err != nil {
 					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 				}
+			}
+		} else if c.port > 0 {
+			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, c.port, "1:4"); err != nil {
+				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 			}
 		}
 

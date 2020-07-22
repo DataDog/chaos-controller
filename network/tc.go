@@ -126,7 +126,19 @@ func (t tc) ClearQdisc(iface string) error {
 }
 
 func (t tc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, flowid string) error {
-	params := fmt.Sprintf("match ip dst %s ", ip.String())
+	var params string
+
+	// ensure at least an IP or a port has been specified (otherwise the filter doesn't make sense)
+	if ip == nil && port == 0 {
+		return fmt.Errorf("wrong filter, at least an IP or a port must be specified")
+	}
+
+	// match ip if specified
+	if ip != nil {
+		params += fmt.Sprintf("match ip dst %s ", ip.String())
+	}
+
+	// match port if specified
 	if port != 0 {
 		params += fmt.Sprintf("match ip dport %s 0xffff ", strconv.Itoa(port))
 	}

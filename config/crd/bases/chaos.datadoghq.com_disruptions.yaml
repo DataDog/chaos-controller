@@ -80,6 +80,8 @@ spec:
                   nullable: true
                   type: array
                 port:
+                  maximum: 65535
+                  minimum: 0
                   type: integer
                 protocol:
                   type: string
@@ -88,7 +90,6 @@ spec:
               - corrupt
               - delay
               - drop
-              - port
               - protocol
               type: object
             nodeFailure:

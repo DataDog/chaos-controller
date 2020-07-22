@@ -16,11 +16,13 @@ import (
 // NetworkDisruptionSpec represents a network disruption injection
 type NetworkDisruptionSpec struct {
 	// +nullable
-	Hosts    []string `json:"hosts,omitempty"`
-	Port     int      `json:"port"`
-	Protocol string   `json:"protocol"`
-	Drop     int      `json:"drop"`
-	Corrupt  int      `json:"corrupt"`
+	Hosts []string `json:"hosts,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
+	Port     int    `json:"port,omitempty"`
+	Protocol string `json:"protocol"`
+	Drop     int    `json:"drop"`
+	Corrupt  int    `json:"corrupt"`
 	// +kubebuilder:validation:Maximum=59999
 	Delay          uint `json:"delay"`
 	BandwidthLimit int  `json:"bandwidthLimit"`
