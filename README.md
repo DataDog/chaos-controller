@@ -22,9 +22,10 @@ Please take a look at the different disruptions documentation linked in the tabl
 Here is [a full example of the disruption resource](config/samples/complete.yaml) with comments. You can also have a look at the following use cases:
 
 * [I want to randomly kill one of my node](docs/node_failure.md)
-* [I want to drop the connection between my pods and a service](docs/network_failure.md)
-* [I want to add network latency to my pods](docs/network_latency.md)
-* [I want to restrict my pods bandwidth](docs/network_limitation.md)
+* [I want to drop the connection between my pods and a service](docs/network_disruption.md)
+* [I want to randomly corrupt network packets between my pods and a service](docs/network_disruption.md)
+* [I want to add network latency to my pods](docs/network_disruption.md)
+* [I want to restrict my pods bandwidth](docs/network_disruption.md)
 * [I want to put CPU pressure against my pods](docs/cpu_pressure.md)
 * [I want to throttle my disk to simulate slow IO](docs/disk_pressure.md)
 
