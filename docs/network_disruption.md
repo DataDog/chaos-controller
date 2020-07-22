@@ -56,10 +56,6 @@ eth0
 
 Please note the parent set to `1:4` meaning it is chained to the `prio` qdisc 4th band (once again, each band being managed by a class).
 
-## More information about `tc`
-
-For information regarding `tc`, which we use to apply these disruption, please take a look at the [network](network.md) docs.
-
 ## Kernel modules
 
 The injector needs some kernel modules to be enabled to be able to run:
@@ -67,3 +63,10 @@ The injector needs some kernel modules to be enabled to be able to run:
 * `sch_netem` for the `tc` network emulator module used to apply packets loss, packets corruption and delay
 * `sch_tbf` for the `tc` bandwidth limitation used to apply bandwidth limitation
 * `sch_prio` for the `tc` `prio` qdisc creation used to apply disruptions to some part of the traffic only
+
+## More documentation about `tc`
+
+* [tc](https://linux.die.net/man/8/tc)
+* [tc-prio](https://linux.die.net/man/8/tc-prio)
+* [tc-tbf](https://linux.die.net/man/8/tc-tbf)
+* [tc-netem](https://man7.org/linux/man-pages/man8/tc-netem.8.html)
