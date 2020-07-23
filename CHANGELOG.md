@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.9.0](https://github.com/DataDog/chaos-controller/tree/2.9.0) (2020-07-23)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.8.0...2.9.0)
+
+**Merged pull requests:**
+
+- Merge network disruptions under a common field [\#144](https://github.com/DataDog/chaos-controller/pull/144) ([Devatoria](https://github.com/Devatoria))
+- Enforce injector pods priority and qos to ensure they are not evicted easily [\#143](https://github.com/DataDog/chaos-controller/pull/143) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_28fa800ad7c4dbe7407a658c886d70b08d146d74 [\#142](https://github.com/DataDog/chaos-controller/pull/142) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Rework network fail [\#137](https://github.com/DataDog/chaos-controller/pull/137) ([Azoam](https://github.com/Azoam))
+
 ## [2.8.0](https://github.com/DataDog/chaos-controller/tree/2.8.0) (2020-07-08)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.7.1...2.8.0)
@@ -15,6 +26,7 @@
 
 **Merged pull requests:**
 
+- Network optional fields [\#145](https://github.com/DataDog/chaos-controller/pull/145) ([Devatoria](https://github.com/Devatoria))
 - Do not exit on metrics sink initialization error in the injector [\#140](https://github.com/DataDog/chaos-controller/pull/140) ([Devatoria](https://github.com/Devatoria))
 - Fix local scripts namespace [\#138](https://github.com/DataDog/chaos-controller/pull/138) ([Devatoria](https://github.com/Devatoria))
 - Improve user documentation with use cases [\#136](https://github.com/DataDog/chaos-controller/pull/136) ([Devatoria](https://github.com/Devatoria))
