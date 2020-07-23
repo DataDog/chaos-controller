@@ -39,6 +39,7 @@ var _ = Describe("Tc", func() {
 		priomap           [16]uint32
 		ip                *net.IPNet
 		port              int
+		protocol          string
 		flowid            string
 	)
 
@@ -66,6 +67,7 @@ var _ = Describe("Tc", func() {
 			Mask: net.CIDRMask(32, 32),
 		}
 		port = 80
+		protocol = "tcp"
 		flowid = "1:2"
 	})
 
@@ -125,23 +127,11 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddFilter", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddFilter(iface, parent, handle, ip, 0, flowid)
-		})
-
-		Context("add a filter on local IP with flowid 1:4", func() {
-			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 127.0.0.1/32 flowid 1:2")
-			})
-		})
-	})
-
-	Describe("AddFilter", func() {
-		JustBeforeEach(func() {
-			tcRunner.AddFilter(iface, parent, handle, ip, port, flowid)
+			tcRunner.AddFilter(iface, parent, handle, ip, port, protocol, flowid)
 		})
 		Context("add a filter on local IP and port 80 with flowid 1:4", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 127.0.0.1/32 match ip dport 80 0xffff flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 127.0.0.1/32 match ip dport 80 0xffff match ip protocol 6 0xff flowid 1:2")
 			})
 		})
 	})

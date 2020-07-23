@@ -66,13 +66,19 @@ spec:
               nullable: true
               properties:
                 bandwidthLimit:
+                  minimum: 0
                   type: integer
                 corrupt:
+                  maximum: 100
+                  minimum: 0
                   type: integer
                 delay:
                   maximum: 59999
+                  minimum: 0
                   type: integer
                 drop:
+                  maximum: 100
+                  minimum: 0
                   type: integer
                 hosts:
                   items:
@@ -80,16 +86,14 @@ spec:
                   nullable: true
                   type: array
                 port:
+                  maximum: 65535
+                  minimum: 0
                   type: integer
                 protocol:
+                  enum:
+                  - tcp
+                  - udp
                   type: string
-              required:
-              - bandwidthLimit
-              - corrupt
-              - delay
-              - drop
-              - port
-              - protocol
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection
