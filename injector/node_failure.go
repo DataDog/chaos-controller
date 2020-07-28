@@ -16,8 +16,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const ()
-
 // nodeFailureInjector describes a node failure injector
 type nodeFailureInjector struct {
 	injector

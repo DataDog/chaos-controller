@@ -9,9 +9,11 @@ import (
 	"os"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
 )
 
@@ -41,10 +43,17 @@ var _ = Describe("Failure", func() {
 		}
 
 		spec = v1beta1.NodeFailureSpec{}
+
+		// set mandatory environment variables
+		os.Setenv(env.InjectorMountSysrq, "/mnt/sysrq")
+		os.Setenv(env.InjectorMountSysrqTrigger, "/mnt/sysrq-trigger")
 	})
 
 	JustBeforeEach(func() {
-		inj = NewNodeFailureInjectorWithConfig("fake", spec, log, ms, config)
+		var err error
+		inj, err = NewNodeFailureInjectorWithConfig("fake", spec, log, ms, config)
+
+		Expect(err).To(BeNil())
 	})
 
 	Describe("injection", func() {

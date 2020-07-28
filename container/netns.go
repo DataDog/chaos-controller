@@ -39,5 +39,6 @@ func (d netnsDriver) GetFromPID(pid uint32) (int, error) {
 	}
 
 	ns, err := netns.GetFromPath(fmt.Sprintf("%s%d/ns/net", mountProc, pid))
+
 	return int(ns), err
 }
