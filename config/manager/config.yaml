@@ -26,14 +26,32 @@ data:
             "image": "PLACEHOLDER",
             "imagePullPolicy": "IfNotPresent",
             "args": [],
+            "env": [
+              {
+                "name": "CHAOS_INJECTOR_MOUNT_HOST",
+                "value": "/mnt/host/"
+              },
+              {
+                "name": "CHAOS_INJECTOR_MOUNT_PROC",
+                "value": "/mnt/host/proc/"
+              },
+              {
+                "name": "CHAOS_INJECTOR_MOUNT_SYSRQ",
+                "value": "/mnt/sysrq"
+              },
+              {
+                "name": "CHAOS_INJECTOR_MOUNT_SYSRQ_TRIGGER",
+                "value": "/mnt/sysrq-trigger"
+              },
+              {
+                "name": "CHAOS_INJECTOR_MOUNT_CGROUP",
+                "value": "/mnt/cgroup/"
+              }
+            ],
             "volumeMounts": [
               {
                 "name": "run",
                 "mountPath": "/run"
-              },
-              {
-                "name": "proc",
-                "mountPath": "/mnt/proc"
               },
               {
                 "name": "sysrq",
@@ -45,11 +63,12 @@ data:
               },
               {
                 "name": "cgroup",
-                "mountPath": "/mnt/cgroup"
+                "mountPath": "/mnt/cgroup/"
               },
               {
                 "name": "host",
-                "mountPath": "/mnt/host"
+                "mountPath": "/mnt/host/",
+                "readOnly": true
               }
             ],
             "securityContext": {
