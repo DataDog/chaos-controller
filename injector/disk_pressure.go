@@ -7,10 +7,12 @@ package injector
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/disk"
+	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
@@ -42,7 +44,12 @@ func NewDiskPressureInjectorWithConfig(uid string, spec v1beta1.DiskPressureSpec
 		}
 
 		// get disk informer from host path
-		informer, err := disk.FromPath("/mnt/host/" + hostPath)
+		mountHost, ok := os.LookupEnv(env.InjectorMountHost)
+		if !ok {
+			return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountHost)
+		}
+
+		informer, err := disk.FromPath(mountHost + hostPath)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing disk informer: %w", err)
 		}
