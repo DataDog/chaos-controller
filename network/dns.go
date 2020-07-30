@@ -45,14 +45,18 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	log := zap.NewExample().Sugar()
 	retry := 0
 	response, _, err := dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
+
 	for err != nil && retry < 4 {
 		log.Info(fmt.Sprintf("Failed Resolution of Host %s on attempt %d: Failure: %s...", host, retry+1, err))
 		time.Sleep(5 * time.Second)
+
 		if retry == 3 {
 			log.Info("This was the last retry to resolve...")
+
 			return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
 		}
-		retry += 1
+		retry++
+
 		response, _, err = dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
 	}
 
