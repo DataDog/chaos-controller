@@ -265,6 +265,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
+				r.Recorder.Event(&targetPod, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this pod for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(targetPod.Name, instance.Name, instance.Namespace, "inject", true))
 			} else {
 				r.Log.Info("an injection pod is already existing for the selected pod", "instance", instance.Name, "namespace", instance.Namespace, "targetPod", targetPod.Name)
@@ -370,12 +371,14 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 			err = r.Create(context.Background(), chaosPod)
 			if err != nil {
 				r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Cleanup pod for disruption \"%s\" failed to be created", instance.Name))
+				r.Recorder.Event(p, "Warning", "Undisrupted", fmt.Sprintf("Disruption %s failed to be cleaned up by pod %s", instance.Name, chaosPod.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", false))
 
 				return err
 			}
 
 			r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for disruption \"%s\"", instance.Name))
+			r.Recorder.Event(p, "Normal", "Undisrupted", fmt.Sprintf("Disruption %s has been cleaned up by pod %s", instance.Name, chaosPod.Name))
 			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", true))
 		}
 	}
