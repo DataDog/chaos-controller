@@ -10,10 +10,8 @@ import (
 	"os"
 	"strconv"
 	"syscall"
-)
 
-const (
-	cgroupBasePath = "/mnt/cgroup"
+	"github.com/DataDog/chaos-controller/env"
 )
 
 // Cgroup represents a cgroup manager able to join the given cgroup
@@ -24,13 +22,20 @@ type Cgroup interface {
 }
 
 type cgroup struct {
-	path string
+	path        string
+	cgroupMount string
 }
 
-func newCgroup(path string) Cgroup {
-	return cgroup{
-		path: path,
+func newCgroup(path string) (Cgroup, error) {
+	cgroupMount, ok := os.LookupEnv(env.InjectorMountCgroup)
+	if !ok {
+		return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountCgroup)
 	}
+
+	return cgroup{
+		path:        path,
+		cgroupMount: cgroupMount,
+	}, nil
 }
 
 // writeCgroupFile appends the given data to the given cgroup file path
@@ -60,7 +65,7 @@ func (c cgroup) JoinCPU() error {
 	}
 
 	// write TGID to cgroup procs file
-	path := fmt.Sprintf("%s/cpu/%s/cgroup.procs", cgroupBasePath, c.path)
+	path := fmt.Sprintf("%scpu/%s/cgroup.procs", c.cgroupMount, c.path)
 
 	return c.writeCgroupFile(path, strconv.Itoa(tgid))
 }
@@ -74,14 +79,14 @@ func (c cgroup) diskThrottle(path string, identifier, bps int) error {
 
 // DiskThrottleRead adds a disk throttle on read operations to the given disk identifier
 func (c cgroup) DiskThrottleRead(identifier, bps int) error {
-	path := fmt.Sprintf("%s/blkio/%s/blkio.throttle.read_bps_device", cgroupBasePath, c.path)
+	path := fmt.Sprintf("%sblkio/%s/blkio.throttle.read_bps_device", c.cgroupMount, c.path)
 
 	return c.diskThrottle(path, identifier, bps)
 }
 
 // DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
 func (c cgroup) DiskThrottleWrite(identifier, bps int) error {
-	path := fmt.Sprintf("%s/blkio/%s/blkio.throttle.write_bps_device", cgroupBasePath, c.path)
+	path := fmt.Sprintf("%sblkio/%s/blkio.throttle.write_bps_device", c.cgroupMount, c.path)
 
 	return c.diskThrottle(path, identifier, bps)
 }

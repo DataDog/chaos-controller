@@ -7,7 +7,9 @@ package container
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/DataDog/chaos-controller/env"
 	"github.com/vishvananda/netns"
 )
 
@@ -31,6 +33,12 @@ func (d netnsDriver) GetCurrent() (int, error) {
 }
 
 func (d netnsDriver) GetFromPID(pid uint32) (int, error) {
-	ns, err := netns.GetFromPath(fmt.Sprintf("/mnt/proc/%d/ns/net", pid))
+	mountProc, ok := os.LookupEnv(env.InjectorMountProc)
+	if !ok {
+		return -1, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountProc)
+	}
+
+	ns, err := netns.GetFromPath(fmt.Sprintf("%s%d/ns/net", mountProc, pid))
+
 	return int(ns), err
 }
