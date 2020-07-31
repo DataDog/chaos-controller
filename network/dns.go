@@ -51,23 +51,6 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 		return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
 	}
 
-	// //retry resolution 3 times
-	// retry := 0
-	// response, _, err := dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
-	//
-	// for err != nil && retry < 4 {
-	// 	time.Sleep(5 * time.Second)
-	//
-	// 	if retry == 3 {
-	//
-	// 		return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
-	// 	}
-	// 	retry++
-	//
-	// 	response, _, err = dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
-	// }
-
-	// parse returned records
 	for _, answer := range response.Answer {
 		if ip, ok := answer.(*dns.A); ok {
 			ips = append(ips, ip.A)
