@@ -51,6 +51,7 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 		return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
 	}
 
+	// parse returned records
 	for _, answer := range response.Answer {
 		if ip, ok := answer.(*dns.A); ok {
 			ips = append(ips, ip.A)
