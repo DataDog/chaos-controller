@@ -8,10 +8,9 @@ package network
 import (
 	"fmt"
 	"net"
-	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/miekg/dns"
-	"go.uber.org/zap"
 )
 
 // DNSClient is a client being able to resolve the given host
@@ -41,24 +40,32 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	dnsMessage := dns.Msg{}
 	dnsMessage.SetQuestion(host+".", dns.TypeA)
 
-	//retry resolution 3 times, introducing logs for debugging
-	log := zap.NewExample().Sugar()
-	retry := 0
-	response, _, err := dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
+	response := &dns.Msg{}
 
-	for err != nil && retry < 4 {
-		log.Info(fmt.Sprintf("Failed Resolution of Host %s on attempt %d: Failure: %s...", host, retry+1, err))
-		time.Sleep(5 * time.Second)
-
-		if retry == 3 {
-			log.Info("This was the last retry to resolve...")
-
-			return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
-		}
-		retry++
-
+	err = retry.Do(func() error {
 		response, _, err = dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
+
+		return err
+	}, retry.Attempts(3))
+	if err != nil {
+		return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
 	}
+
+	// //retry resolution 3 times
+	// retry := 0
+	// response, _, err := dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
+	//
+	// for err != nil && retry < 4 {
+	// 	time.Sleep(5 * time.Second)
+	//
+	// 	if retry == 3 {
+	//
+	// 		return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
+	// 	}
+	// 	retry++
+	//
+	// 	response, _, err = dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
+	// }
 
 	// parse returned records
 	for _, answer := range response.Answer {
