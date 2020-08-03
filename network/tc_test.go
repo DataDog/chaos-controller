@@ -14,11 +14,11 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type fakeTcExecuter struct {
+type tcExecuterMock struct {
 	mock.Mock
 }
 
-func (f *fakeTcExecuter) Run(args ...string) (string, error) {
+func (f *tcExecuterMock) Run(args ...string) (string, error) {
 	a := f.Called(strings.Join(args, " "))
 
 	return a.String(0), a.Error(1)
@@ -27,7 +27,7 @@ func (f *fakeTcExecuter) Run(args ...string) (string, error) {
 var _ = Describe("Tc", func() {
 	var (
 		tcRunner          tc
-		tcExecuter        fakeTcExecuter
+		tcExecuter        tcExecuterMock
 		tcExecuterRunCall *mock.Call
 		iface             string
 		parent            string
@@ -45,7 +45,7 @@ var _ = Describe("Tc", func() {
 
 	BeforeEach(func() {
 		// fake command executer
-		tcExecuter = fakeTcExecuter{}
+		tcExecuter = tcExecuterMock{}
 		tcExecuterRunCall = tcExecuter.On("Run", mock.Anything).Return("", nil)
 
 		// tc runner

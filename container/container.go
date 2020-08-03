@@ -77,7 +77,9 @@ func NewWithConfig(id string, config Config) (Container, error) {
 			return nil, fmt.Errorf("error joining CPU cgroup: %w", err)
 		}
 
-		config.Cgroup = newCgroup(path)
+		if config.Cgroup, err = newCgroup(path); err != nil {
+			return nil, fmt.Errorf("error creating default cgroup driver: %w", err)
+		}
 	}
 
 	// retrieve root ns

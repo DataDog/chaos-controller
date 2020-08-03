@@ -9,31 +9,24 @@ import (
 	"os"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
 )
-
-type fakeFileWriter struct {
-	mock.Mock
-}
-
-func (fw *fakeFileWriter) Write(path string, mode os.FileMode, data string) error {
-	args := fw.Called(path, mode, data)
-	return args.Error(0)
-}
 
 var _ = Describe("Failure", func() {
 	var (
 		config NodeFailureInjectorConfig
-		fw     fakeFileWriter
+		fw     FileWriterMock
 		inj    Injector
 		spec   v1beta1.NodeFailureSpec
 	)
 
 	BeforeEach(func() {
-		fw = fakeFileWriter{}
+		fw = FileWriterMock{}
 		fw.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		config = NodeFailureInjectorConfig{
@@ -41,10 +34,17 @@ var _ = Describe("Failure", func() {
 		}
 
 		spec = v1beta1.NodeFailureSpec{}
+
+		// set mandatory environment variables
+		os.Setenv(env.InjectorMountSysrq, "/mnt/sysrq")
+		os.Setenv(env.InjectorMountSysrqTrigger, "/mnt/sysrq-trigger")
 	})
 
 	JustBeforeEach(func() {
-		inj = NewNodeFailureInjectorWithConfig("fake", spec, log, ms, config)
+		var err error
+		inj, err = NewNodeFailureInjectorWithConfig("fake", spec, log, ms, config)
+
+		Expect(err).To(BeNil())
 	})
 
 	Describe("injection", func() {

@@ -6,7 +6,6 @@
 package injector_test
 
 import (
-	"net"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -16,98 +15,15 @@ import (
 	"github.com/DataDog/chaos-controller/network"
 )
 
-// tc
-type fakeTc struct {
-	mock.Mock
-}
-
-func (f *fakeTc) AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int) error {
-	args := f.Called(iface, parent, handle, delay, drop, corrupt)
-	return args.Error(0)
-}
-func (f *fakeTc) AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
-	args := f.Called(iface, parent, handle, bands, priomap)
-	return args.Error(0)
-}
-func (f *fakeTc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocol string, flowid string) error {
-	ips := "nil"
-	if ip != nil {
-		ips = ip.String()
-	}
-
-	args := f.Called(iface, parent, handle, ips, port, protocol, flowid)
-	return args.Error(0)
-}
-func (f *fakeTc) AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error {
-	args := f.Called(iface, parent, handle, bytesPerSec)
-	return args.Error(0)
-}
-func (f *fakeTc) ClearQdisc(iface string) error {
-	args := f.Called(iface)
-	return args.Error(0)
-}
-func (f *fakeTc) IsQdiscCleared(iface string) (bool, error) {
-	args := f.Called(iface)
-	return args.Bool(0), args.Error(1)
-}
-
-// netlink
-type fakeNetlinkAdapter struct {
-	mock.Mock
-}
-
-func (f *fakeNetlinkAdapter) LinkList() ([]network.NetlinkLink, error) {
-	args := f.Called()
-	return args.Get(0).([]network.NetlinkLink), args.Error(1)
-}
-func (f *fakeNetlinkAdapter) LinkByIndex(index int) (network.NetlinkLink, error) {
-	args := f.Called(index)
-	return args.Get(0).(network.NetlinkLink), args.Error(1)
-}
-func (f *fakeNetlinkAdapter) LinkByName(name string) (network.NetlinkLink, error) {
-	args := f.Called(name)
-	return args.Get(0).(network.NetlinkLink), args.Error(1)
-}
-func (f *fakeNetlinkAdapter) RoutesForIP(ip *net.IPNet) ([]network.NetlinkRoute, error) {
-	args := f.Called(ip.String())
-	return args.Get(0).([]network.NetlinkRoute), args.Error(1)
-}
-
-type fakeNetlinkLink struct {
-	mock.Mock
-}
-
-func (f *fakeNetlinkLink) Name() string {
-	args := f.Called()
-	return args.String(0)
-}
-func (f *fakeNetlinkLink) SetTxQLen(qlen int) error {
-	args := f.Called(qlen)
-	return args.Error(0)
-}
-func (f *fakeNetlinkLink) TxQLen() int {
-	args := f.Called()
-	return args.Int(0)
-}
-
-type fakeNetlinkRoute struct {
-	mock.Mock
-}
-
-func (f *fakeNetlinkRoute) Link() network.NetlinkLink {
-	args := f.Called()
-	return args.Get(0).(network.NetlinkLink)
-}
-
 var _ = Describe("Tc", func() {
 	var (
 		config                               NetworkDisruptionConfig
-		tc                                   fakeTc
+		tc                                   network.TcMock
 		tcIsQdiscClearedCall                 *mock.Call
-		nl                                   fakeNetlinkAdapter
-		nllink1, nllink2                     *fakeNetlinkLink
+		nl                                   network.NetlinkAdapterMock
+		nllink1, nllink2                     *network.NetlinkLinkMock
 		nllink1TxQlenCall, nllink2TxQlenCall *mock.Call
-		nlroute1, nlroute2                   *fakeNetlinkRoute
+		nlroute1, nlroute2                   *network.NetlinkRouteMock
 		hosts                                []string
 		port                                 int
 		protocol                             string
@@ -119,7 +35,7 @@ var _ = Describe("Tc", func() {
 
 	BeforeEach(func() {
 		// tc
-		tc = fakeTc{}
+		tc = network.TcMock{}
 		tc.On("AddNetem", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -128,21 +44,21 @@ var _ = Describe("Tc", func() {
 		tcIsQdiscClearedCall = tc.On("IsQdiscCleared", mock.Anything).Return(false, nil)
 
 		// netlink
-		nllink1 = &fakeNetlinkLink{}
+		nllink1 = &network.NetlinkLinkMock{}
 		nllink1.On("Name").Return("lo")
 		nllink1.On("SetTxQLen", mock.Anything).Return(nil)
 		nllink1TxQlenCall = nllink1.On("TxQLen").Return(0)
-		nllink2 = &fakeNetlinkLink{}
+		nllink2 = &network.NetlinkLinkMock{}
 		nllink2.On("Name").Return("eth0")
 		nllink2.On("SetTxQLen", mock.Anything).Return(nil)
 		nllink2TxQlenCall = nllink2.On("TxQLen").Return(0)
 
-		nlroute1 = &fakeNetlinkRoute{}
+		nlroute1 = &network.NetlinkRouteMock{}
 		nlroute1.On("Link").Return(nllink1)
-		nlroute2 = &fakeNetlinkRoute{}
+		nlroute2 = &network.NetlinkRouteMock{}
 		nlroute2.On("Link").Return(nllink2)
 
-		nl = fakeNetlinkAdapter{}
+		nl = network.NetlinkAdapterMock{}
 		nl.On("LinkList").Return([]network.NetlinkLink{nllink1, nllink2}, nil)
 		nl.On("LinkByIndex", 0).Return(nllink1, nil)
 		nl.On("LinkByIndex", 1).Return(nllink2, nil)

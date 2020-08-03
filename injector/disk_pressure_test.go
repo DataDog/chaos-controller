@@ -10,45 +10,33 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/disk"
 	. "github.com/DataDog/chaos-controller/injector"
 )
-
-type fakeDiskInformer struct {
-	mock.Mock
-}
-
-func (f *fakeDiskInformer) Major() int {
-	args := f.Called()
-	return args.Int(0)
-}
-
-func (f *fakeDiskInformer) Source() string {
-	args := f.Called()
-	return args.String(0)
-}
 
 var _ = Describe("Failure", func() {
 	var (
 		config   DiskPressureInjectorConfig
-		cgroup   *fakeCgroup
-		ctn      *fakeContainer
-		informer *fakeDiskInformer
+		cgroup   *container.CgroupMock
+		ctn      *container.ContainerMock
+		informer *disk.InformerMock
 		inj      Injector
 		spec     v1beta1.DiskPressureSpec
 	)
 
 	BeforeEach(func() {
 		// cgroup
-		cgroup = &fakeCgroup{}
+		cgroup = &container.CgroupMock{}
 		cgroup.On("DiskThrottleRead", mock.Anything, mock.Anything).Return(nil)
 		cgroup.On("DiskThrottleWrite", mock.Anything, mock.Anything).Return(nil)
 
 		// container
-		ctn = &fakeContainer{}
+		ctn = &container.ContainerMock{}
 		ctn.On("Cgroup").Return(cgroup)
 
 		// disk informer
-		informer = &fakeDiskInformer{}
+		informer = &disk.InformerMock{}
 		informer.On("Major").Return(8)
 		informer.On("Source").Return("/dev/sda1")
 
