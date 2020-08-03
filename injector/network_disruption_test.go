@@ -13,46 +13,26 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/injector"
 )
 
-type fakeNetworkConfig struct {
-	mock.Mock
-}
-
-func (f *fakeNetworkConfig) AddNetem(delay time.Duration, drop int, corrupt int) {
-	f.Called(delay, drop, corrupt)
-}
-func (f *fakeNetworkConfig) AddOutputLimit(bytesPerSec uint) {
-	f.Called(bytesPerSec)
-}
-func (f *fakeNetworkConfig) ApplyOperations() error {
-	args := f.Called()
-
-	return args.Error(0)
-}
-func (f *fakeNetworkConfig) ClearOperations() error {
-	args := f.Called()
-
-	return args.Error(0)
-}
-
 var _ = Describe("Failure", func() {
 	var (
-		ctn    fakeContainer
+		ctn    container.ContainerMock
 		inj    Injector
-		config fakeNetworkConfig
+		config NetworkConfigMock
 		spec   v1beta1.NetworkDisruptionSpec
 	)
 
 	BeforeEach(func() {
 		// container
-		ctn = fakeContainer{}
+		ctn = container.ContainerMock{}
 		ctn.On("EnterNetworkNamespace").Return(nil)
 		ctn.On("ExitNetworkNamespace").Return(nil)
 
 		// network disruption conf
-		config = fakeNetworkConfig{}
+		config = NetworkConfigMock{}
 		config.On("AddNetem", mock.Anything, mock.Anything, mock.Anything).Return()
 		config.On("AddOutputLimit", mock.Anything).Return()
 		config.On("ApplyOperations").Return(nil)
