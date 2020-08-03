@@ -12,36 +12,20 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/process"
+	"github.com/DataDog/chaos-controller/stress"
 )
-
-type fakeCPUStresser struct {
-	mock.Mock
-}
-
-func (f *fakeCPUStresser) Stress(exit <-chan struct{}) {
-	f.Called()
-	<-exit
-}
-
-type fakeProcessManager struct {
-	mock.Mock
-}
-
-func (f *fakeProcessManager) Prioritize() error {
-	args := f.Called()
-
-	return args.Error(0)
-}
 
 var _ = Describe("Failure", func() {
 	var (
 		config       CPUPressureInjectorConfig
-		cgroup       *fakeCgroup
-		ctn          *fakeContainer
-		stresser     *fakeCPUStresser
+		cgroup       *container.CgroupMock
+		ctn          *container.ContainerMock
+		stresser     *stress.StresserMock
 		stresserExit chan struct{}
-		manager      *fakeProcessManager
+		manager      *process.ManagerMock
 		sigHandler   chan os.Signal
 		inj          Injector
 		spec         v1beta1.CPUPressureSpec
@@ -49,22 +33,22 @@ var _ = Describe("Failure", func() {
 
 	BeforeEach(func() {
 		// cgroup
-		cgroup = &fakeCgroup{}
+		cgroup = &container.CgroupMock{}
 		cgroup.On("JoinCPU").Return(nil)
 
 		// container
-		ctn = &fakeContainer{}
+		ctn = &container.ContainerMock{}
 		ctn.On("Cgroup").Return(cgroup)
 
 		// stresser
-		stresser = &fakeCPUStresser{}
+		stresser = &stress.StresserMock{}
 		stresser.On("Stress", mock.Anything).Return()
 
 		// stresser exit chan, used to sync the stress goroutine with the test
 		stresserExit = make(chan struct{})
 
 		// manager
-		manager = &fakeProcessManager{}
+		manager = &process.ManagerMock{}
 		manager.On("Prioritize").Return(nil)
 
 		// signal handler
