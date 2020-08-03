@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/avast/retry-go"
 	"github.com/miekg/dns"
 )
 
@@ -39,7 +40,13 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	dnsMessage := dns.Msg{}
 	dnsMessage.SetQuestion(host+".", dns.TypeA)
 
-	response, _, err := dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
+	response := &dns.Msg{}
+
+	err = retry.Do(func() error {
+		response, _, err = dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
+
+		return err
+	}, retry.Attempts(3))
 	if err != nil {
 		return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
 	}
