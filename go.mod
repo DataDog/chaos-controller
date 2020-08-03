@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/DataDog/datadog-go v3.5.0+incompatible
 	github.com/Microsoft/hcsshim v0.8.7 // indirect
+	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/containerd/containerd v1.3.2
 	github.com/containerd/continuity v0.0.0-20200107062522-0ec596719c75 // indirect
 	github.com/containerd/fifo v0.0.0-20191213151349-ff969a566b00 // indirect
