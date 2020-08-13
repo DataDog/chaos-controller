@@ -12,8 +12,8 @@ variables:
 stages:
   - ci-image
   - build
-  - pre-release
   - release
+  - release-public
 
 # CI image
 .docker-runner: &docker-runner
@@ -56,67 +56,44 @@ build:make:
   tags:
     - "runner:docker"
     - "size:large"
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2441564-948d16b-1.2.0
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2875076-79d562c-1.4.0
 
-# pre-release
-# build the target from the local Dockerfile and push it to
-# AWS staging registry
-.pre-release: &pre-release
+# release
+# build the target from the local Dockerfile and push it unified registry
+.release: &release
   <<: *meta-release
-  stage: pre-release
+  stage: release
   script:
-    - release.sh --build-from=./bin/manager/Dockerfile --build-context=./bin/manager/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
-    - release.sh --build-from=./bin/injector/Dockerfile --build-context=./bin/injector/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME} ${TAG}
+    - release.sh --build-from=./bin/manager/Dockerfile --build-context=./bin/manager/ registry.ddbuild.io/${CONTROLLER_IMAGE_NAME} ${TAG}
+    - release.sh --build-from=./bin/injector/Dockerfile --build-context=./bin/injector/ registry.ddbuild.io/${INJECTOR_IMAGE_NAME} ${TAG}
   dependencies:
     - build:make
+  before_script:
+    - set -x
+    - ./ci/supplement_docker_headers.sh
 
-# pre-release-ref
+# release-ref
 # build a reference image tag for controller and injector
-pre-release-ref:
-  <<: *pre-release
+release-ref:
+  <<: *release
   when: manual
   except:
     - tags
   variables:
     TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
 
-# pre-release-tag
+# release-tag
 # build a tag image tag for controller and injector
-pre-release-tag:
-  <<: *pre-release
+release-tag:
+  <<: *release
   when: always
   only:
     - tags
   variables:
-    TAG: "${CI_COMMIT_TAG}"
-
-# release
-.release: &release
-  <<: *meta-release
-  stage: release
-  when: always
-  only:
-    - tags
-  script:
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-staging/${IMAGE} ${CI_COMMIT_TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-prod/${IMAGE} ${CI_COMMIT_TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${CI_COMMIT_TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 020998557671.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${CI_COMMIT_TAG}
-
-release-controller:
-  <<: *release
-  variables:
-    IMAGE: "${CONTROLLER_IMAGE_NAME}"
-    TAG: "${CI_COMMIT_TAG}"
-
-release-injector:
-  <<: *release
-  variables:
-    IMAGE: "${INJECTOR_IMAGE_NAME}"
     TAG: "${CI_COMMIT_TAG}"
 
 .release-docker-hub: &release-docker-hub
-  stage: release
+  stage: release-public
   tags: [ "runner:docker", "size:large" ]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:v1912023-8c8dc1c-0.6.1
   before_script:
