@@ -1,11 +1,26 @@
 # Changelog
 
+## [2.10.0](https://github.com/DataDog/chaos-controller/tree/2.10.0) (2020-08-13)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.9.0...2.10.0)
+
+**Merged pull requests:**
+
+- Release images on unified artifact registry [\#152](https://github.com/DataDog/chaos-controller/pull/152) ([Devatoria](https://github.com/Devatoria))
+- Add a small comment on known issue with current disk throttling implementation [\#151](https://github.com/DataDog/chaos-controller/pull/151) ([Devatoria](https://github.com/Devatoria))
+- Move mocks from test packages to re-use them [\#150](https://github.com/DataDog/chaos-controller/pull/150) ([Devatoria](https://github.com/Devatoria))
+- Add retry logic to dns resolution [\#149](https://github.com/DataDog/chaos-controller/pull/149) ([Azoam](https://github.com/Azoam))
+- Record events on targeted pods on injection and cleanup [\#148](https://github.com/DataDog/chaos-controller/pull/148) ([Devatoria](https://github.com/Devatoria))
+- Injector mounts rework [\#147](https://github.com/DataDog/chaos-controller/pull/147) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_93dde7cf2cd52f65ba84620dfa48027b17d33b2f [\#146](https://github.com/DataDog/chaos-controller/pull/146) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.9.0](https://github.com/DataDog/chaos-controller/tree/2.9.0) (2020-07-23)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.8.0...2.9.0)
 
 **Merged pull requests:**
 
+- Network optional fields [\#145](https://github.com/DataDog/chaos-controller/pull/145) ([Devatoria](https://github.com/Devatoria))
 - Merge network disruptions under a common field [\#144](https://github.com/DataDog/chaos-controller/pull/144) ([Devatoria](https://github.com/Devatoria))
 - Enforce injector pods priority and qos to ensure they are not evicted easily [\#143](https://github.com/DataDog/chaos-controller/pull/143) ([Devatoria](https://github.com/Devatoria))
 - Update container release\_changelog\_28fa800ad7c4dbe7407a658c886d70b08d146d74 [\#142](https://github.com/DataDog/chaos-controller/pull/142) ([github-actions[bot]](https://github.com/apps/github-actions))
@@ -26,7 +41,6 @@
 
 **Merged pull requests:**
 
-- Network optional fields [\#145](https://github.com/DataDog/chaos-controller/pull/145) ([Devatoria](https://github.com/Devatoria))
 - Do not exit on metrics sink initialization error in the injector [\#140](https://github.com/DataDog/chaos-controller/pull/140) ([Devatoria](https://github.com/Devatoria))
 - Fix local scripts namespace [\#138](https://github.com/DataDog/chaos-controller/pull/138) ([Devatoria](https://github.com/Devatoria))
 - Improve user documentation with use cases [\#136](https://github.com/DataDog/chaos-controller/pull/136) ([Devatoria](https://github.com/Devatoria))
@@ -112,7 +126,6 @@
 - Auto-generate changelog on tag push and open a PR to approve it [\#103](https://github.com/DataDog/chaos-controller/pull/103) ([Devatoria](https://github.com/Devatoria))
 - Add missing tag to release pull command [\#99](https://github.com/DataDog/chaos-controller/pull/99) ([Devatoria](https://github.com/Devatoria))
 - Add goreleaser GitHub action [\#98](https://github.com/DataDog/chaos-controller/pull/98) ([Devatoria](https://github.com/Devatoria))
-- Review the way we push images from the CI [\#96](https://github.com/DataDog/chaos-controller/pull/96) ([Devatoria](https://github.com/Devatoria))
 - Add CI job to release images on docker hub [\#95](https://github.com/DataDog/chaos-controller/pull/95) ([Devatoria](https://github.com/Devatoria))
 - add targetPod name to logs [\#94](https://github.com/DataDog/chaos-controller/pull/94) ([jvanbrunschot](https://github.com/jvanbrunschot))
 
@@ -138,6 +151,7 @@
 
 **Merged pull requests:**
 
+- Review the way we push images from the CI [\#96](https://github.com/DataDog/chaos-controller/pull/96) ([Devatoria](https://github.com/Devatoria))
 - Fix gitlab-ci injector tag release on staging [\#88](https://github.com/DataDog/chaos-controller/pull/88) ([Devatoria](https://github.com/Devatoria))
 - Bump CHANGELOG to version 2.2.0 [\#87](https://github.com/DataDog/chaos-controller/pull/87) ([Devatoria](https://github.com/Devatoria))
 - add cmd flag for metrics sink [\#86](https://github.com/DataDog/chaos-controller/pull/86) ([jvanbrunschot](https://github.com/jvanbrunschot))
