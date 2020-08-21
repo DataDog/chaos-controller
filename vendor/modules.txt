@@ -24,6 +24,8 @@ github.com/Microsoft/hcsshim/internal/timeout
 github.com/Microsoft/hcsshim/internal/vmcompute
 github.com/Microsoft/hcsshim/internal/wclayer
 github.com/Microsoft/hcsshim/osversion
+# github.com/avast/retry-go v2.6.0+incompatible
+github.com/avast/retry-go
 # github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
 github.com/beorn7/perks/quantile
 # github.com/containerd/cgroups v0.0.0-20190919134610-bf292b21730f
@@ -89,8 +91,6 @@ github.com/containerd/fifo
 github.com/containerd/ttrpc
 # github.com/containerd/typeurl v0.0.0-20190911142611-5eb25027c9fd
 github.com/containerd/typeurl
-# github.com/coreos/go-iptables v0.4.5
-github.com/coreos/go-iptables/iptables
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible

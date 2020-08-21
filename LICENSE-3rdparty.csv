@@ -21,6 +21,7 @@ github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/timeout,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/vmcompute,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/wclayer,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/osversion,MIT
+github.com/avast/retry-go,github.com/avast/retry-go,MIT
 github.com/beorn7/perks,github.com/beorn7/perks/quantile,MIT
 github.com/containerd/cgroups,github.com/containerd/cgroups/stats/v1,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd,Apache-2.0
@@ -79,7 +80,6 @@ github.com/containerd/continuity,github.com/containerd/continuity/sysx,Apache-2.
 github.com/containerd/fifo,github.com/containerd/fifo,Apache-2.0
 github.com/containerd/ttrpc,github.com/containerd/ttrpc,Apache-2.0
 github.com/containerd/typeurl,github.com/containerd/typeurl,Apache-2.0
-github.com/coreos/go-iptables,github.com/coreos/go-iptables/iptables,Apache-2.0
 github.com/davecgh/go-spew,github.com/davecgh/go-spew/spew,ISC
 github.com/docker/distribution,github.com/docker/distribution/digestset,Apache-2.0
 github.com/docker/distribution,github.com/docker/distribution/reference,Apache-2.0
