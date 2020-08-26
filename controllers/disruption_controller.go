@@ -43,6 +43,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/helpers"
 	"github.com/DataDog/chaos-controller/metrics"
@@ -100,12 +101,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// check wether the object is being deleted or not
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// if not being deleted, add a finalizer if not present yet
-		if !helpers.ContainsString(instance.ObjectMeta.Finalizers, finalizer) {
-			r.Log.Info("adding finalizer", "instance", instance.Name, "namespace", instance.Namespace)
-			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, finalizer)
-
-			return ctrl.Result{}, r.Update(context.Background(), instance)
-		}
+		controllerutil.AddFinalizer(instance, finalizer)
 	} else {
 		// if being deleted, call the finalizer
 		if helpers.ContainsString(instance.ObjectMeta.Finalizers, finalizer) {
@@ -184,7 +180,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		chaosPods := []*corev1.Pod{}
 		targetPod := corev1.Pod{}
 
-		// retrieve pod resource
+		// retrieve target pod resource
 		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: targetPodName}, &targetPod); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -196,48 +192,20 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 
 		// generate injection pods specs
-		if instance.Spec.Network != nil {
-			args := instance.Spec.Network.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
-
-			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNetworkDisruption)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			chaosPods = append(chaosPods, chaosPod)
+		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindNetworkDisruption); err != nil {
+			return ctrl.Result{}, err
 		}
 
-		if instance.Spec.NodeFailure != nil {
-			args := instance.Spec.NodeFailure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
-
-			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindNodeFailure)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			chaosPods = append(chaosPods, chaosPod)
+		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindNodeFailure); err != nil {
+			return ctrl.Result{}, err
 		}
 
-		if instance.Spec.CPUPressure != nil {
-			args := instance.Spec.CPUPressure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
-
-			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindCPUPressure)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			chaosPods = append(chaosPods, chaosPod)
+		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindCPUPressure); err != nil {
+			return ctrl.Result{}, err
 		}
 
-		if instance.Spec.DiskPressure != nil {
-			args := instance.Spec.DiskPressure.GenerateArgs(chaostypes.PodModeInject, instance.UID, containerID, r.MetricsSink.GetSinkName())
-
-			chaosPod, err := r.generatePod(instance, &targetPod, args, chaostypes.PodModeInject, chaostypes.DisruptionKindDiskPressure)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			chaosPods = append(chaosPods, chaosPod)
+		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindDiskPressure); err != nil {
+			return ctrl.Result{}, err
 		}
 
 		// create injection pods
@@ -327,26 +295,12 @@ func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) 
 		}
 
 		// generate cleanup pods specs
-		if instance.Spec.Network != nil {
-			args := instance.Spec.Network.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID, r.MetricsSink.GetSinkName())
-
-			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindNetworkDisruption)
-			if err != nil {
-				return err
-			}
-
-			chaosPods = append(chaosPods, chaosPod)
+		if err := r.generateChaosPod(instance, &chaosPods, *p, chaostypes.PodModeClean, containerID, chaostypes.DisruptionKindNetworkDisruption); err != nil {
+			return err
 		}
 
-		if instance.Spec.DiskPressure != nil {
-			args := instance.Spec.DiskPressure.GenerateArgs(chaostypes.PodModeClean, instance.UID, containerID, r.MetricsSink.GetSinkName())
-
-			chaosPod, err := r.generatePod(instance, p, args, chaostypes.PodModeClean, chaostypes.DisruptionKindDiskPressure)
-			if err != nil {
-				return err
-			}
-
-			chaosPods = append(chaosPods, chaosPod)
+		if err := r.generateChaosPod(instance, &chaosPods, *p, chaostypes.PodModeClean, containerID, chaostypes.DisruptionKindDiskPressure); err != nil {
+			return err
 		}
 
 		// create cleanup pods
@@ -480,7 +434,7 @@ func getContainerID(pod *corev1.Pod) (string, error) {
 
 // generatePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
-func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, target *corev1.Pod, args []string, mode chaostypes.PodMode, kind chaostypes.DisruptionKind) (*corev1.Pod, error) {
+func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, target corev1.Pod, args []string, mode chaostypes.PodMode, kind chaostypes.DisruptionKind) (*corev1.Pod, error) {
 	pod := corev1.Pod{}
 
 	image, ok := os.LookupEnv("CHAOS_INJECTOR_IMAGE")
@@ -521,6 +475,42 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 	if err != nil {
 		r.Log.Error(err, "error sending a metric")
 	}
+}
+
+// generateChaosPod generates a chaos pod for the given instance and disruption kind if set
+func (r *DisruptionReconciler) generateChaosPod(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, target corev1.Pod, mode chaostypes.PodMode, containerID string, kind chaostypes.DisruptionKind) error {
+	var generator chaosapi.DisruptionArgsGenerator
+
+	// check for disruption kind
+	switch kind {
+	case chaostypes.DisruptionKindNodeFailure:
+		generator = instance.Spec.NodeFailure
+	case chaostypes.DisruptionKindNetworkDisruption:
+		generator = instance.Spec.Network
+	case chaostypes.DisruptionKindCPUPressure:
+		generator = instance.Spec.CPUPressure
+	case chaostypes.DisruptionKindDiskPressure:
+		generator = instance.Spec.DiskPressure
+	}
+
+	// ensure that the underlying disruption spec is not nil
+	if reflect.ValueOf(generator).IsNil() {
+		return nil
+	}
+
+	// generate args for pod
+	args := generator.GenerateArgs(mode, instance.UID, containerID, r.MetricsSink.GetSinkName())
+
+	// generate pod
+	pod, err := r.generatePod(instance, target, args, mode, kind)
+	if err != nil {
+		return err
+	}
+
+	// append pod to chaos pods
+	*pods = append(*pods, pod)
+
+	return nil
 }
 
 // SetupWithManager setups the current reconciler with the given manager
