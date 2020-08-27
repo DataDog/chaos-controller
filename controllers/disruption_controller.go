@@ -104,7 +104,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		controllerutil.AddFinalizer(instance, finalizer)
 	} else {
 		// if being deleted, call the finalizer
-		if helpers.ContainsString(instance.ObjectMeta.Finalizers, finalizer) {
+		if controllerutil.ContainsFinalizer(instance, finalizer) {
 			// if the finalizing stage hasn't been triggered yet, start the cleaning
 			if !instance.Status.IsFinalizing {
 				if err := r.cleanFailures(instance); err != nil {
@@ -139,7 +139,9 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			// we can remove the finalizer and let the resource being garbage collected
 			r.Log.Info("removing finalizer", "instance", instance.Name, "namespace", instance.Namespace)
 			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
-			instance.ObjectMeta.Finalizers = helpers.RemoveString(instance.ObjectMeta.Finalizers, finalizer)
+
+			controllerutil.RemoveFinalizer(instance, finalizer)
+
 			return ctrl.Result{}, r.Update(context.Background(), instance)
 		}
 
