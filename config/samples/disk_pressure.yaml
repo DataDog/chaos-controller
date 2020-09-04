@@ -15,5 +15,5 @@ spec:
   diskPressure: # disk pressure
     path: /mnt/data # mount point (in the pod) to apply throttle on
     throttling:
-      readBytesPerSec: 1024 # read throttling in bytes per sec
-      writeBytesPerSec: 2048 # write throttling in bytes per sec
+      readBytesPerSec: 1024 # optional, read throttling in bytes per sec
+      writeBytesPerSec: 2048 # optional, write throttling in bytes per sec
