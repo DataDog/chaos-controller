@@ -15,7 +15,15 @@ The `controller` is deployed as a `Deployment`. It watches for changes on the `D
 
 ## Usage
 
-The controller works with a custom Kubernetes resource named `Disruption` describing the wanted failures and the pods to target. By creating this resource in the namespace of the pods you want to affect, it'll create pods to inject the needed failures.
+The controller works with a custom Kubernetes resource named `Disruption` describing the wanted failures and the pods to target. By creating this resource in the namespace of the pods you want to affect, it'll create pods to inject the needed failures. On `Disruption` resource delete, those failures will be cleaned up.
+
+### Pods targeting
+
+The `Disruption` custom resource helps you to target the pods you want to be affected by the failures. This is done by a [label selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/). This selector will find all the pods matching the specified labels in the `Disruption` resource namespace and will affect either all of them or some of them *randomly* depending on the `count` value specified in the resource.
+
+Once applied, you can see the targeted pods by describing the `Disruption` resource.
+
+### Use cases
 
 Please take a look at the different disruptions documentation linked in the table of content for more information about what they can do and how to use them.
 
@@ -28,6 +36,10 @@ Here is [a full example of the disruption resource](config/samples/complete.yaml
 * [I want to restrict my pods bandwidth](docs/network_disruption.md)
 * [I want to put CPU pressure against my pods](docs/cpu_pressure.md)
 * [I want to throttle my disk to simulate slow IO](docs/disk_pressure.md)
+
+## A quick note on immutability
+
+The `Disruption` resource is immutable. Once applied, editing it will have no effect. If you need to change the disruption definition, you need to delete the existing resource and to re-create it.
 
 ## Installation
 

@@ -13,19 +13,19 @@ spec:
     app: demo
   count: 1 # number of pods to target (-1 == target all the selected pods)
   nodeFailure: # node kernel panic or shutdown
-    shutdown: true # shutdown the host instead of triggering a stack dump
+    shutdown: true # optional, shutdown the host instead of triggering a stack dump (defaults to false)
   network: # network disruption settings, all those disruptions are applied to outgoing traffic only
-    hosts:
+    hosts: # optional (targets all hosts if not specified)
       - 10.0.0.0/8 # destination host
-    port: 80 # port to drop packets on
-    protocol: tcp # protocol to drop packets on (can be tcp or udp)
-    drop: 10 # probability to drop packets (between 0 and 100)
-    corrupt: 5 # probability to corrupt packets (between 0 and 100)
-    delay: 1000 # latency to apply to packets in ms
-    bandwidthLimit: 10000 # bandwidth limit in bytes
+    port: 80 # optional, port to drop packets on
+    protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+    drop: 10 # optional, probability to drop packets (between 0 and 100)
+    corrupt: 5 # optional, probability to corrupt packets (between 0 and 100m)
+    delay: 1000 # optional, latency to apply to packets in ms
+    bandwidthLimit: 10000 # optional, bandwidth limit in bytes
   cpuPressure: {} # cpu load generator
   diskPressure: # disk pressure
     path: /mnt/data # mount point (in the pod) to apply throttle on
     throttling:
-      readBytesPerSec: 1024 # read throttling in bytes per sec
-      writeBytesPerSec: 2048 # write throttling in bytes per sec
+      readBytesPerSec: 1024 # optional, read throttling in bytes per sec
+      writeBytesPerSec: 2048 # optional, write throttling in bytes per sec
