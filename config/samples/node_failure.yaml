@@ -13,4 +13,4 @@ spec:
     app: demo
   count: 1 # number of pods to target (-1 == target all the selected pods)
   nodeFailure: # node kernel panic or shutdown
-    shutdown: true # shutdown the host instead of triggering a stack dump
+    shutdown: true # optional, shutdown the host instead of triggering a stack dump (defaults to false)
