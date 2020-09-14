@@ -105,6 +105,7 @@ pre-release-tag:
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 020998557671.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} registry.ddbuild.io/${IMAGE} ${TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 486234852809.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
   before_script:
     - set -x
     - ./ci/supplement_docker_headers.sh
