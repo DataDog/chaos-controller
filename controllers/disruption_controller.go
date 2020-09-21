@@ -165,6 +165,16 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, err
 		}
 
+		// stop here if no pods can be targeted
+		if len(pods.Items) == 0 {
+			r.Log.Info("the given label selector returned no pods", "instance", instance.Name, "selector", instance.Spec.Selector.String())
+			r.Recorder.Event(instance, "Warning", "NoTarget", "The given label selector did not target any pods")
+
+			return ctrl.Result{
+				Requeue: false,
+			}, nil
+		}
+
 		// update instance status
 		r.Log.Info("updating instance status with pods selected for injection", "instance", instance.Name, "namespace", instance.Namespace)
 
