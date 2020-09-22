@@ -24,3 +24,13 @@ k edit dis my-disruption
 ```
 
 It'll instantly delete the resource and garbage collect other related resources.
+
+## The controller fails to watch or list disruptions
+
+If you see the following error in controller logs, it is probably because of a malformed label selector:
+
+```
+Failed to list *v1beta1.Disruption: v1beta1.DisruptionList.ListMeta: v1.ListMeta.TypeMeta: Kind: Items: []v1beta1.Disruption: v1beta1.Disruption.Spec: v1beta1.DisruptionSpec.Selector: ReadString: expects " or n, but found 1, error found in #10 byte of ...|o","foo":1}}}],"kind|..., bigger context ...|"protocol":"tcp"},"selector":{"app":"demo","foo":1}}}],"kind":"DisruptionList","metadata":{"continue|...
+```
+
+Label selectors values should always be string (quoted).
