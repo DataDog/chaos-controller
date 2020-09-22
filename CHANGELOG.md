@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.11.0](https://github.com/DataDog/chaos-controller/tree/2.11.0) (2020-09-22)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.10.1...2.11.0)
+
+**Merged pull requests:**
+
+- Complete FAQ with a note to retry cleanup phase [\#162](https://github.com/DataDog/chaos-controller/pull/162) ([Devatoria](https://github.com/Devatoria))
+- Send an event when no target can be found from the given label selector [\#161](https://github.com/DataDog/chaos-controller/pull/161) ([Devatoria](https://github.com/Devatoria))
+- Switch injector resources to zero since we have the priority class now [\#160](https://github.com/DataDog/chaos-controller/pull/160) ([Devatoria](https://github.com/Devatoria))
+- Push to ddbuild ecr on release [\#159](https://github.com/DataDog/chaos-controller/pull/159) ([Azoam](https://github.com/Azoam))
+- Improve usage documentation and examples comments [\#158](https://github.com/DataDog/chaos-controller/pull/158) ([Devatoria](https://github.com/Devatoria))
+- Simplify reconcile loop [\#157](https://github.com/DataDog/chaos-controller/pull/157) ([Devatoria](https://github.com/Devatoria))
+- Remove unused vendor [\#156](https://github.com/DataDog/chaos-controller/pull/156) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_4c18d4fb074ce53c8bb8468c7087d9f8f218dfe9 [\#155](https://github.com/DataDog/chaos-controller/pull/155) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.10.1](https://github.com/DataDog/chaos-controller/tree/2.10.1) (2020-08-17)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.10.0...2.10.1)
