@@ -11,7 +11,6 @@ metadata:
 spec:
   selector: # label selector to target pods
     app: demo
-    foo: 1
   count: 1 # number of pods to target (-1 == target all the selected pods)
   network: # network disruption settings, all those disruptions are applied to outgoing traffic only
     hosts: # optional (targets all hosts if not specified)
