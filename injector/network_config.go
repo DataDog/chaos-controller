@@ -34,11 +34,12 @@ type NetworkDisruptionConfigStruct struct {
 	hosts             []string
 	port              int
 	protocol          string
+	flow              string
 	operations        []linkOperation
 }
 
 // NewNetworkDisruptionConfig creates a new network disruption object using the given netlink, dns, etc.
-func NewNetworkDisruptionConfig(logger *zap.SugaredLogger, tc network.TrafficController, netlink network.NetlinkAdapter, dns network.DNSClient, hosts []string, port int, protocol string) NetworkDisruptionConfig {
+func NewNetworkDisruptionConfig(logger *zap.SugaredLogger, tc network.TrafficController, netlink network.NetlinkAdapter, dns network.DNSClient, hosts []string, port int, protocol string, flow string) NetworkDisruptionConfig {
 	return &NetworkDisruptionConfigStruct{
 		Log:               logger,
 		TrafficController: tc,
@@ -47,13 +48,14 @@ func NewNetworkDisruptionConfig(logger *zap.SugaredLogger, tc network.TrafficCon
 		hosts:             hosts,
 		port:              port,
 		protocol:          protocol,
+		flow:              flow,
 		operations:        []linkOperation{},
 	}
 }
 
 // NewNetworkDisruptionConfigWithDefaults creates a new network disruption object using default netlink, dns, etc.
-func NewNetworkDisruptionConfigWithDefaults(logger *zap.SugaredLogger, hosts []string, port int, protocol string) NetworkDisruptionConfig {
-	return NewNetworkDisruptionConfig(logger, network.NewTrafficController(logger), network.NewNetlinkAdapter(), network.NewDNSClient(), hosts, port, protocol)
+func NewNetworkDisruptionConfigWithDefaults(logger *zap.SugaredLogger, hosts []string, port int, protocol string, flow string) NetworkDisruptionConfig {
+	return NewNetworkDisruptionConfig(logger, network.NewTrafficController(logger), network.NewNetlinkAdapter(), network.NewDNSClient(), hosts, port, protocol, flow)
 }
 
 // getInterfacesByIP returns the interfaces used to reach the given hosts
@@ -195,12 +197,12 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 		// if only the port or the protocol is specified, create only one filter for this port
 		if len(ips) > 0 {
 			for _, ip := range ips {
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, ip, c.port, c.protocol, "1:4"); err != nil {
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, ip, c.port, c.protocol, "1:4", c.flow); err != nil {
 					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 				}
 			}
 		} else if c.port > 0 || c.protocol != "" {
-			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, c.port, c.protocol, "1:4"); err != nil {
+			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, c.port, c.protocol, "1:4", c.flow); err != nil {
 				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 			}
 		}

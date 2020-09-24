@@ -41,6 +41,7 @@ var _ = Describe("Tc", func() {
 		port              int
 		protocol          string
 		flowid            string
+		flow              string
 	)
 
 	BeforeEach(func() {
@@ -69,6 +70,7 @@ var _ = Describe("Tc", func() {
 		port = 80
 		protocol = "tcp"
 		flowid = "1:2"
+		flow = "egress"
 	})
 
 	Describe("AddNetem", func() {
@@ -127,11 +129,22 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddFilter", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddFilter(iface, parent, handle, ip, port, protocol, flowid)
+			tcRunner.AddFilter(iface, parent, handle, ip, port, protocol, flowid, flow)
 		})
-		Context("add a filter on local IP and port 80 with flowid 1:4", func() {
+
+		Context("add a filter on local IP and port 80 with flowid 1:4 on egress traffic", func() {
 			It("should execute", func() {
 				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 127.0.0.1/32 match ip dport 80 0xffff match ip protocol 6 0xff flowid 1:2")
+			})
+		})
+
+		Context("add a filter on local IP and port 80 with flowid 1:4 on ingress traffic", func() {
+			BeforeEach(func() {
+				flow = "ingress"
+			})
+
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip src 127.0.0.1/32 match ip sport 80 0xffff match ip protocol 6 0xff flowid 1:2")
 			})
 		})
 	})

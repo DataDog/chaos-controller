@@ -22,6 +22,8 @@ type NetworkDisruptionSpec struct {
 	Port int `json:"port,omitempty"`
 	// +kubebuilder:validation:Enum=tcp;udp
 	Protocol string `json:"protocol,omitempty"`
+	// +kubebuilder:validation:Enum=egress;ingress
+	Flow string `json:"flow,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	Drop int `json:"drop,omitempty"`
@@ -71,6 +73,11 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 		if len(s.Hosts) > 0 {
 			args = append(args, "--hosts")
 			args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
+		}
+
+		// append flow
+		if s.Flow != "" {
+			args = append(args, "--flow", s.Flow)
 		}
 	case chaostypes.PodModeClean:
 		args = []string{

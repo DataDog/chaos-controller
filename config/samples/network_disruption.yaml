@@ -17,6 +17,7 @@ spec:
       - 10.0.0.0/8 # destination host
     port: 80 # optional, port to drop packets on
     protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+    flow: egress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
     drop: 10 # optional, probability to drop packets (between 0 and 100)
     corrupt: 5 # optional, probability to corrupt packets (between 0 and 100)
     delay: 1000 # optional, latency to apply to packets in ms

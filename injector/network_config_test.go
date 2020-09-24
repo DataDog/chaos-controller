@@ -27,6 +27,7 @@ var _ = Describe("Tc", func() {
 		hosts                                []string
 		port                                 int
 		protocol                             string
+		flow                                 string
 		delay                                time.Duration
 		drop                                 int
 		corrupt                              int
@@ -38,7 +39,7 @@ var _ = Describe("Tc", func() {
 		tc = network.TcMock{}
 		tc.On("AddNetem", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("ClearQdisc", mock.Anything).Return(nil)
 		tcIsQdiscClearedCall = tc.On("IsQdiscCleared", mock.Anything).Return(false, nil)
@@ -70,6 +71,7 @@ var _ = Describe("Tc", func() {
 		hosts = []string{}
 		port = 80
 		protocol = "tcp"
+		flow = "egress"
 		delay = time.Second
 		drop = 5
 		corrupt = 10
@@ -77,7 +79,7 @@ var _ = Describe("Tc", func() {
 	})
 
 	JustBeforeEach(func() {
-		config = NewNetworkDisruptionConfig(log, &tc, &nl, nil, hosts, port, protocol)
+		config = NewNetworkDisruptionConfig(log, &tc, &nl, nil, hosts, port, protocol, flow)
 	})
 
 	Describe("AddNetem", func() {
@@ -124,10 +126,10 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should add a filter to redirect traffic on delayed band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "1.1.1.1/32", port, protocol, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "2.2.2.2/32", port, protocol, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "1.1.1.1/32", port, protocol, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "2.2.2.2/32", port, protocol, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "1.1.1.1/32", port, protocol, "1:4", flow)
+				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "2.2.2.2/32", port, protocol, "1:4", flow)
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "1.1.1.1/32", port, protocol, "1:4", flow)
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "2.2.2.2/32", port, protocol, "1:4", flow)
 			})
 
 			It("should add delay to the interfaces parent qdisc", func() {
