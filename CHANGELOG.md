@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.12.0](https://github.com/DataDog/chaos-controller/tree/2.12.0) (2020-09-28)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.11.0...2.12.0)
+
+**Merged pull requests:**
+
+- Allow to filter on ingress traffic [\#164](https://github.com/DataDog/chaos-controller/pull/164) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_b61107ba16290b8046f795d9b8543bceda7417ba [\#163](https://github.com/DataDog/chaos-controller/pull/163) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.11.0](https://github.com/DataDog/chaos-controller/tree/2.11.0) (2020-09-22)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.10.1...2.11.0)
@@ -362,6 +371,7 @@
 
 - Pass instance UID to chaos-fi pods [\#15](https://github.com/DataDog/chaos-controller/pull/15) ([Devatoria](https://github.com/Devatoria))
 - Improve CI by using the generic docker-push image [\#14](https://github.com/DataDog/chaos-controller/pull/14) ([Devatoria](https://github.com/Devatoria))
+- CI improvement [\#12](https://github.com/DataDog/chaos-controller/pull/12) ([Devatoria](https://github.com/Devatoria))
 
 ## [0.0.3](https://github.com/DataDog/chaos-controller/tree/0.0.3) (2019-04-10)
 
@@ -370,7 +380,6 @@
 **Merged pull requests:**
 
 - Add datadog metrics and events [\#13](https://github.com/DataDog/chaos-controller/pull/13) ([Devatoria](https://github.com/Devatoria))
-- CI improvement [\#12](https://github.com/DataDog/chaos-controller/pull/12) ([Devatoria](https://github.com/Devatoria))
 - Define the chaos-fi image value via an environment variable [\#11](https://github.com/DataDog/chaos-controller/pull/11) ([Devatoria](https://github.com/Devatoria))
 - :wrench: set namespace when creating object instead since listoptions… [\#10](https://github.com/DataDog/chaos-controller/pull/10) ([kathy-huang](https://github.com/kathy-huang))
 - Match pods to DFI using namespace in addition to label selector [\#9](https://github.com/DataDog/chaos-controller/pull/9) ([kathy-huang](https://github.com/kathy-huang))
