@@ -24,16 +24,20 @@ const (
 	protocolIP  protocolIdentifier = 0
 	protocolTCP protocolIdentifier = 6
 	protocolUDP protocolIdentifier = 17
+
+	flowDirectionEgress  flowDirection = "egress"
+	flowDirectionIngress flowDirection = "ingress"
 )
 
 type protocolIdentifier int
+type flowDirection string
 
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
 type TrafficController interface {
 	AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
-	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocol string, flowid string) error
+	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocol string, flowid string, flow string) error
 	AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error
 	ClearQdisc(iface string) error
 	IsQdiscCleared(iface string) (bool, error)
@@ -43,7 +47,9 @@ type tcExecuter interface {
 	Run(args ...string) (stdout string, stderr error)
 }
 
-type defaultTcExecuter struct{}
+type defaultTcExecuter struct {
+	log *zap.SugaredLogger
+}
 
 // Run executes the given args using the tc command
 // and returns a wrapped error containing both the error returned by the execution and
@@ -57,6 +63,8 @@ func (e defaultTcExecuter) Run(args ...string) (string, error) {
 	cmd.Stderr = stderr
 
 	// run command
+	e.log.Infof("running tc command: %v", cmd.String())
+
 	err := cmd.Run()
 	if err != nil {
 		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
@@ -66,7 +74,6 @@ func (e defaultTcExecuter) Run(args ...string) (string, error) {
 }
 
 type tc struct {
-	log      *zap.SugaredLogger
 	executer tcExecuter
 }
 
@@ -74,8 +81,9 @@ type tc struct {
 // and being able to log
 func NewTrafficController(log *zap.SugaredLogger) TrafficController {
 	return tc{
-		log:      log,
-		executer: defaultTcExecuter{},
+		executer: defaultTcExecuter{
+			log: log,
+		},
 	}
 }
 
@@ -135,7 +143,7 @@ func (t tc) ClearQdisc(iface string) error {
 }
 
 // AddFilter generates a filter to redirect the traffic matching the given ip, port and protocol to the given flowid
-func (t tc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocol string, flowid string) error {
+func (t tc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocol string, flowid string, flow string) error {
 	var params string
 
 	// ensure at least an IP or a port has been specified (otherwise the filter doesn't make sense)
@@ -145,12 +153,20 @@ func (t tc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet,
 
 	// match ip if specified
 	if ip != nil {
-		params += fmt.Sprintf("match ip dst %s ", ip.String())
+		if flow == string(flowDirectionEgress) {
+			params += fmt.Sprintf("match ip dst %s ", ip.String())
+		} else if flow == string(flowDirectionIngress) {
+			params += fmt.Sprintf("match ip src %s ", ip.String())
+		}
 	}
 
 	// match port if specified
 	if port != 0 {
-		params += fmt.Sprintf("match ip dport %s 0xffff ", strconv.Itoa(port))
+		if flow == string(flowDirectionEgress) {
+			params += fmt.Sprintf("match ip dport %s 0xffff ", strconv.Itoa(port))
+		} else if flow == string(flowDirectionIngress) {
+			params += fmt.Sprintf("match ip sport %s 0xffff ", strconv.Itoa(port))
+		}
 	}
 
 	// match protocol if specified

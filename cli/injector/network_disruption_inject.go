@@ -21,6 +21,7 @@ var networkDisruptionInjectCmd = &cobra.Command{
 		hosts, _ := cmd.Flags().GetStringSlice("hosts")
 		port, _ := cmd.Flags().GetInt("port")
 		protocol, _ := cmd.Flags().GetString("protocol")
+		flow, _ := cmd.Flags().GetString("flow")
 		drop, _ := cmd.Flags().GetInt("drop")
 		corrupt, _ := cmd.Flags().GetInt("corrupt")
 		delay, _ := cmd.Flags().GetUint("delay")
@@ -42,6 +43,7 @@ var networkDisruptionInjectCmd = &cobra.Command{
 			Hosts:          hosts,
 			Port:           port,
 			Protocol:       protocol,
+			Flow:           flow,
 			Drop:           drop,
 			Corrupt:        corrupt,
 			Delay:          delay,
@@ -55,6 +57,7 @@ var networkDisruptionInjectCmd = &cobra.Command{
 func init() {
 	networkDisruptionInjectCmd.Flags().Int("port", 0, "Port to drop packets from and to")
 	networkDisruptionInjectCmd.Flags().String("protocol", "", "Protocol to filter packets on (tcp or udp)")
+	networkDisruptionInjectCmd.Flags().String("flow", "egress", "Flow direction to filter on (either egress or ingress)")
 	networkDisruptionInjectCmd.Flags().Int("drop", 100, "Percentage to drop packets (100 is a total drop)")
 	networkDisruptionInjectCmd.Flags().Int("corrupt", 100, "Percentage to corrupt packets (100 is a total corruption)")
 	networkDisruptionInjectCmd.Flags().Uint("delay", 0, "Delay to add to the given container in ms")

@@ -80,6 +80,11 @@ spec:
                   maximum: 100
                   minimum: 0
                   type: integer
+                flow:
+                  enum:
+                  - egress
+                  - ingress
+                  type: string
                 hosts:
                   items:
                     type: string
