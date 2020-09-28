@@ -7,6 +7,33 @@ The `network` field provides an automated way of adding disruptions to the outgo
 * `delay` adds the given delay to the outgoing traffic to simulate a slow network
 * `bandwidthLimit` limits the outgoing traffic bandwidth to simulate a bandwidth struggle
 
+## Traffic flow: egress vs. ingress
+
+The `flow` field allows you to either disrupt outgoing traffic (`egress`) or incoming traffic (`ingress`).
+
+### How is it different?
+
+If you're not sure which one you should use, here is a concrete example to let you know how does it work.
+
+Let's say you have 3 pods:
+* `server`: an nginx pod listening on 80
+* `client1`: a pod hitting nginx on port 80
+* `client2`: another pod hitting nginx on port 80
+
+Now let's explore the different use cases.
+
+#### Case 1: I want to disrupt `client1` without impacting `client2`
+
+In this case, you want to target the `client1` pod only and use the `egress` flow so you target packets going from the `client1` pod to the `server` pod.
+
+#### Case 2: I want to disrupt all clients
+
+In this case, you want to target the `server` pod and use the `ingress` flow so you target all incoming packets from both `client1` and `client2` pods.
+
+#### A note on `ingress` flow implementation and UDP
+
+The current implementation of the `ingress` flow is not a real filter on incoming packets but rather a filter on incoming packets answers (ie. outgoing packets). During a TCP communication, when the client sends a packet to the server, the server answers with an acknowledgement packet to confirm that it received the client's packet. By disrupting this acknowledgement packet, it simulates an ingress disruption. It means that `ingress` flow only works for TCP (or if the server uses UDP to send back an answer to the client).
+
 ## Implementation
 
 To apply those disruptions, the `tc` utility is used and the behavior is different according to the use cases.
