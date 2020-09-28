@@ -1,4 +1,4 @@
-# Network disruption ([example](../config/samples/network_disruption.yaml))
+# Network disruption
 
 The `network` field provides an automated way of adding disruptions to the outgoing network traffic:
 
@@ -6,6 +6,8 @@ The `network` field provides an automated way of adding disruptions to the outgo
 * `corrupt` corrupts a percentage of the outgoing traffic to simulate packets corruption
 * `delay` adds the given delay to the outgoing traffic to simulate a slow network
 * `bandwidthLimit` limits the outgoing traffic bandwidth to simulate a bandwidth struggle
+
+All of them can be combined in the same disruption resource.
 
 ## Traffic flow: egress vs. ingress
 

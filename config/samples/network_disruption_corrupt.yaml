@@ -12,5 +12,10 @@ spec:
   selector: # label selector to target pods
     app: demo
   count: 1 # number of pods to target (-1 == target all the selected pods)
-  nodeFailure: # node kernel panic or shutdown
-    shutdown: false # let the node restart after being crashed
+  network: # network disruption settings, all those disruptions are applied to outgoing traffic only
+    hosts: # optional (targets all hosts if not specified)
+      - 10.0.0.0/8 # destination host
+    port: 80 # optional, port to drop packets on
+    protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+    flow: egress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
+    corrupt: 100 # optional, probability to corrupt packets (between 0 and 100)

@@ -1,4 +1,4 @@
-# Disk pressure ([example](../config/samples/disk_pressure.yaml))
+# Disk pressure
 
 The `diskPressure` field offers a way to apply pressure on a specific mount path.
 
