@@ -27,15 +27,21 @@ Once applied, you can see the targeted pods by describing the `Disruption` resou
 
 Please take a look at the different disruptions documentation linked in the table of content for more information about what they can do and how to use them.
 
-Here is [a full example of the disruption resource](config/samples/complete.yaml) with comments. You can also have a look at the following use cases:
+Here is [a full example of the disruption resource](config/samples/complete.yaml) with comments. You can also have a look at the following use cases with examples of disruptions you can adapt and apply as you wish:
 
-* [I want to randomly kill one of my node](docs/node_failure.md)
-* [I want to drop the connection between my pods and a service](docs/network_disruption.md)
-* [I want to randomly corrupt network packets between my pods and a service](docs/network_disruption.md)
-* [I want to add network latency to my pods](docs/network_disruption.md)
-* [I want to restrict my pods bandwidth](docs/network_disruption.md)
-* [I want to put CPU pressure against my pods](docs/cpu_pressure.md)
-* [I want to throttle my disk to simulate slow IO](docs/disk_pressure.md)
+* [Node disruptions](docs/node_disruption.md)
+  * [I want to randomly kill one of my node](config/samples/node_failure.yaml)
+  * [I want to randomly kill one of my node and keep it down](config/samples/node_failure_shutdown.yaml)
+* [Network disruptions](docs/network_disruption.md)
+  * [I want to drop packets between my pods and a service](config/samples/network_disruption_drop.yaml)
+  * [I want to corrupt packets between my pods and a service](config/samples/network_disruption_corrupt.yaml)
+  * [I want to add network latency to packets between my pods and a service](config/samples/network_disruption_latency.yaml)
+  * [I want to restrict the bandwidth between my pods and a service](config/samples/network_disruption_bandwidth.yaml)
+* [CPU pressure](docs/cpu_pressure.md)
+  * [I want to put CPU pressure against my pods](config/samples/cpu_pressure.yaml)
+* [Disk pressure](docs/disk_pressure.md)
+  * [I want to throttle my disk reads](config/samples/disk_pressure_read.yaml)
+  * [I want to throttle my disk writes](config/samples/disk_pressure_write.yaml)
 
 ## A quick note on immutability
 

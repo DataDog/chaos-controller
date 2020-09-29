@@ -12,8 +12,10 @@ spec:
   selector: # label selector to target pods
     app: demo
   count: 1 # number of pods to target (-1 == target all the selected pods)
-  diskPressure: # disk pressure
-    path: /mnt/data # mount point (in the pod) to apply throttle on
-    throttling:
-      readBytesPerSec: 1024 # optional, read throttling in bytes per sec
-      writeBytesPerSec: 2048 # optional, write throttling in bytes per sec
+  network: # network disruption settings, all those disruptions are applied to outgoing traffic only
+    hosts: # optional (targets all hosts if not specified)
+      - 10.0.0.0/8 # destination host
+    port: 80 # optional, port to drop packets on
+    protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+    flow: egress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
+    drop: 100 # optional, probability to drop packets (between 0 and 100)

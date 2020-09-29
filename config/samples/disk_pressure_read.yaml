@@ -12,5 +12,7 @@ spec:
   selector: # label selector to target pods
     app: demo
   count: 1 # number of pods to target (-1 == target all the selected pods)
-  nodeFailure: # node kernel panic or shutdown
-    shutdown: false # let the node restart after being crashed
+  diskPressure: # disk pressure
+    path: /mnt/data # mount point (in the pod) to apply throttle on
+    throttling:
+      readBytesPerSec: 1024 # optional, read throttling in bytes per sec
