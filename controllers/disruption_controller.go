@@ -22,6 +22,7 @@ package controllers
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -147,6 +148,27 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 		// stop the reconcile loop, the finalizing step has finished and the resource should be garbage collected
 		return ctrl.Result{}, nil
+	}
+
+	// compute spec hash to detect any changes in the spec and warn the user about it
+	specBytes, err := json.Marshal(instance.Spec)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("error compute instance spec hash: %w", err)
+	}
+
+	specHash := fmt.Sprintf("%x", md5.Sum(specBytes))
+
+	if instance.Status.SpecHash != nil {
+		if *instance.Status.SpecHash != specHash {
+			r.Recorder.Event(instance, "Warning", "Mutated", "A mutation in the disruption spec has been detected. This resource is immutable and changes have no effect. Please delete and re-create the resource for changes to be effective.")
+
+			return ctrl.Result{}, nil
+		}
+	} else {
+		r.Log.Info("computing resource spec hash to detect further changes in spec", "instance", instance.Name, "namespace", instance.Namespace)
+		instance.Status.SpecHash = &specHash
+
+		return ctrl.Result{}, r.Update(context.Background(), instance)
 	}
 
 	// skip the injection if already done

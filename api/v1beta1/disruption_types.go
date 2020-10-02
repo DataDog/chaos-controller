@@ -47,6 +47,8 @@ type DisruptionStatus struct {
 	IsInjected   bool `json:"isInjected,omitempty"`
 	// +nullable
 	TargetPods []string `json:"targetPods,omitempty"`
+	// +nullable
+	SpecHash *string `json:"specHash,omitempty"`
 }
 
 // +kubebuilder:object:root=true
