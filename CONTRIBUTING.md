@@ -1,14 +1,22 @@
 # Contributing
 
-## Testing the controller locally
+This document explains how to install and run the project on a local minikube cluster.
 
-More extensive documentation about testing can be found in the testing [docs](docs/testing.md)
+## Requirements
+
+To get started, we need to have the following software installed:
+
+* [docker](https://docs.docker.com/get-docker/)
+* [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
+* [golangci-lint](https://github.com/golangci/golangci-lint)
+
+This project is based on kubebuilder, please make sure the [listed](https://book.kubebuilder.io/quick-start.html#prerequisites) requirements for kubebuilder are installed as well.
+
+## Deploy the controller locally
 
 ### Quick start
 
-Install the [required](docs/testing.md#requirements) requirements for this project first.
-
-If you want to test the controller locally (without having to redeploy a new image on a staging cluster), please use the [minikube project](https://kubernetes.io/docs/setup/learning-environment/minikube/) as described below:
+Install the [requirements](#requirements) for this project, then run the following commands:
 
 * start minikube with containerd engine
   * `make minikube-start`
@@ -18,16 +26,27 @@ If you want to test the controller locally (without having to redeploy a new ima
   * `kubectl create ns chaos-engineering`
   * `make install`
 
-If the controller is already deployed, you'll have to remove the running pod for changes to be applied.
+If the controller is already deployed and you want to test a new version of it, please run the `make restart` command.
 
 The [samples](config/samples) contains sample data which can be used to test your changes.
 
-* [deployment.yaml](config/samples/deployment.yaml) contains a simple container which can be used for testing
-* [chaos_v1beta1_disruption.yaml](config/samples/chaos_v1beta1_disruption.yaml) contains a Disruption resource. Feel free to comment out want you don't need.
+* [demo.yaml](config/samples/demo.yaml) contains a bunch of testing resources you can apply directly to your cluster
+  * `kubectl -n chaos-engineering apply -f config/samples/demo.yaml`
 
-Both samples can be applied using kubectl: `kubectl apply -f deployment.yaml`.
+### Helpers scripts
 
-### Minikube ISO
+For verification on minikube we created some helper [scripts](scripts/):
+
+* List contents of iptables for the given pod:
+  * `./scripts/list_iptables.sh <pod_name>`
+* List pod interfaces:
+  * `./scripts/list_links.sh <pod_name>`
+* List traffic control filters of the given pod:
+  * `./scripts/list_tc_filters.sh <pod_name>`
+* List traffic control qdiscs of the given pod:
+  * `./scripts/list_tc_qdiscs.sh <pod_name>`
+
+## Minikube ISO
 
 See [minikube_image.md](docs/minikube_image.md)
 
