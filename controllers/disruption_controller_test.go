@@ -136,6 +136,19 @@ var _ = Describe("Disruption Controller", func() {
 		})
 
 		It("should target all the selected pods", func() {
+			By("Ensuring that the spec hash has been computed")
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
+					return err
+				}
+
+				if disruption.Status.SpecHash == nil {
+					return fmt.Errorf("instance spec hash has not been computed yet")
+				}
+
+				return nil
+			}, timeout).Should(Succeed())
+
 			By("Ensuring that the inject pod has been created")
 			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 8) }, timeout).Should(Succeed())
 

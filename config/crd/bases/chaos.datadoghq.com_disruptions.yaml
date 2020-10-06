@@ -123,6 +123,9 @@ spec:
               type: boolean
             isInjected:
               type: boolean
+            specHash:
+              nullable: true
+              type: string
             targetPods:
               items:
                 type: string
