@@ -47,9 +47,9 @@ Here is [a full example of the disruption resource](config/samples/complete.yaml
 
 If you want to get started and deploy a disruption to your service, it's important to first note that a disruption is an **ephemeral resource** -- it should be created and then deleted as soon as your test is done, and thus the YAML generally shouldn't be kept long-term (in a Helm chart for example).
 
-To deploy a disruption to your pods, simply create a `disruption.yaml` file as done in the examples above. Then, `kubectl apply -f disruption.yaml` to create the resource in the same namespace as your pod. You should be able to `kubectl get pods` and see the running (or completed) disruption injector pod.
+To deploy a disruption to your pods, simply create a `disruption.yaml` file as done in the examples above. Then, `kubectl apply -f disruption.yaml` to create the resource in the same namespace as the pods you are targeting. You should be able to `kubectl get pods` and see the running (or completed) disruption injector pod.
 
-Then, when you're finished testing and want to remove the disruption, similarly run `kubectl delete -f disruption.yaml` to delete the disruption resource, and additionally run a cleanup pod to remove the failures from the affected pods.
+Then, when you're finished testing and want to remove the disruption, similarly run `kubectl delete -f disruption.yaml` to delete the disruption resource, and additionally a disruption cleanup pod will be created to remove the failures from the affected pods.
 
 ### A quick note on immutability
 
