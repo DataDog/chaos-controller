@@ -4,7 +4,7 @@ The controller was created to facilitate automation requirements in Datadog chao
 
 The `controller` is deployed as a `Deployment`. It watches for changes on the `Disruption` CRD, as well as their child resources.
 
-## Table of content
+## Table of Contents
 
 * [Usage](#usage)
 * [Installation](#installation)
@@ -17,7 +17,7 @@ The `controller` is deployed as a `Deployment`. It watches for changes on the `D
 
 The controller works with a custom Kubernetes resource named `Disruption` describing the wanted failures and the pods to target. By creating this resource in the namespace of the pods you want to affect, it'll create pods to inject the needed failures. On `Disruption` resource delete, those failures will be cleaned up.
 
-### Pods targeting
+### Pods Targeting
 
 The `Disruption` custom resource helps you to target the pods you want to be affected by the failures. This is done by a [label selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/). This selector will find all the pods matching the specified labels in the `Disruption` resource namespace and will affect either all of them or some of them *randomly* depending on the `count` value specified in the resource.
 
@@ -43,11 +43,19 @@ Here is [a full example of the disruption resource](config/samples/complete.yaml
   * [I want to throttle my disk reads](config/samples/disk_pressure_read.yaml)
   * [I want to throttle my disk writes](config/samples/disk_pressure_write.yaml)
 
-## A quick note on immutability
+### Deploying a Disruption
+
+If you want to get started and deploy a disruption to your service, it's important to first note that a disruption is an **ephemeral resource** -- it should be created and then deleted as soon as your test is done, and thus the YAML generally shouldn't be kept long-term (in a Helm chart for example).
+
+To deploy a disruption to your pods, simply create a `disruption.yaml` file as done in the examples above. Then, `kubectl apply -f disruption.yaml` to create the resource in the same namespace as the pods you are targeting. You should be able to `kubectl get pods` and see the running (or completed) disruption injector pod.
+
+Then, when you're finished testing and want to remove the disruption, similarly run `kubectl delete -f disruption.yaml` to delete the disruption resource, and additionally a disruption cleanup pod will be created to remove the failures from the affected pods.
+
+### A quick note on immutability
 
 The `Disruption` resource is immutable. Once applied, editing it will have no effect. If you need to change the disruption definition, you need to delete the existing resource and to re-create it.
 
-## Installation
+## Controller Installation
 
 To deploy it on your cluster, you just have to run the `make install` command and it will create the CRD for the `Disruption` kind and apply the needed manifests to create the controller deployment.
 
