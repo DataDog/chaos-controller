@@ -19,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // listChaosPods returns all the chaos pods for the given instance and mode
@@ -28,7 +29,7 @@ func listChaosPods(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode) (
 	instancePods := corev1.PodList{}
 
 	// create requirements
-	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetPodLabel, selection.In, []string{"foo", "bar"})
+	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetPodLabel, selection.In, []string{"foo", "bar", "car", "far"})
 	podModeRequirement, _ := labels.NewRequirement(chaostypes.PodModeLabel, selection.Equals, []string{string(mode)})
 
 	// add requirements to label selector
@@ -132,7 +133,7 @@ var _ = Describe("Disruption Controller", func() {
 
 	Context("target all pods", func() {
 		BeforeEach(func() {
-			disruption.Spec.Count = -1
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
 		})
 
 		It("should target all the selected pods", func() {
@@ -150,14 +151,14 @@ var _ = Describe("Disruption Controller", func() {
 			}, timeout).Should(Succeed())
 
 			By("Ensuring that the inject pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 8) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 16) }, timeout).Should(Succeed())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
 			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
 
 			By("Ensuring that the cleanup pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 4) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 8) }, timeout).Should(Succeed())
 
 			By("Simulating the completion of the cleanup pod by removing the finalizer")
 			Eventually(func() error {
@@ -175,7 +176,7 @@ var _ = Describe("Disruption Controller", func() {
 
 	Context("target one pod only", func() {
 		BeforeEach(func() {
-			disruption.Spec.Count = 1
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.Int, IntVal: 1}
 		})
 
 		It("should target all the selected pods", func() {
@@ -188,6 +189,36 @@ var _ = Describe("Disruption Controller", func() {
 
 			By("Ensuring that the cleanup pod has been created")
 			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 2) }, timeout).Should(Succeed())
+
+			By("Simulating the completion of the cleanup pod by removing the finalizer")
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
+					return err
+				}
+				disruption.ObjectMeta.Finalizers = []string{}
+				return k8sClient.Update(context.Background(), disruption)
+			}, timeout).Should(Succeed())
+
+			By("Waiting for disruption resource to be deleted")
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
+		})
+	})
+
+	Context("target 70% of pods (3 pods out of 4)", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "70%"}
+		})
+
+		It("should target all the selected pods", func() {
+			By("Ensuring that the inject pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 12) }, timeout).Should(Succeed())
+
+			By("Deleting the disruption resource")
+			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
+
+			By("Ensuring that the cleanup pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 6) }, timeout).Should(Succeed())
 
 			By("Simulating the completion of the cleanup pod by removing the finalizer")
 			Eventually(func() error {
