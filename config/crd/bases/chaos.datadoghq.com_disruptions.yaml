@@ -98,6 +98,7 @@ spec:
                   enum:
                   - tcp
                   - udp
+                  - ""
                   type: string
               type: object
             nodeFailure:

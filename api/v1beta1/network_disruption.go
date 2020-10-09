@@ -20,7 +20,7 @@ type NetworkDisruptionSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
 	Port int `json:"port,omitempty"`
-	// +kubebuilder:validation:Enum=tcp;udp
+	// +kubebuilder:validation:Enum=tcp;udp;""
 	Protocol string `json:"protocol,omitempty"`
 	// +kubebuilder:validation:Enum=egress;ingress
 	Flow string `json:"flow,omitempty"`
