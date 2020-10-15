@@ -535,6 +535,26 @@ func (r *DisruptionReconciler) generateChaosPod(instance *chaosv1beta1.Disruptio
 	// generate args for pod
 	args := generator.GenerateArgs(mode, instance.UID, containerID, r.MetricsSink.GetSinkName())
 
+	// to be fixed in future version; this section is for denying all experiments using hostNetwork and blocking on no port or host
+	if args[0] == "network-disruption" {
+		noPort := true
+		noHost := true
+		for _, item := range args {
+			if noPort && item == "port" {
+				noPort = false
+			}
+			if noHost && item == "hosts" {
+				noHost = false
+			}
+		}
+
+		if noPort || noHost {
+			if target.Spec.HostNetwork {
+				return fmt.Errorf("target pod %s is using hostNetwork and no ports or no hosts were specified (currently unsupported)", target.ObjectMeta.Name)
+			}
+		}
+	}
+
 	// generate pod
 	pod, err := r.generatePod(instance, target, args, mode, kind)
 	if err != nil {
