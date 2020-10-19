@@ -25,7 +25,6 @@ type Sink interface {
 	MetricCleanupDuration(duration time.Duration, tags []string) error
 	MetricInjectDuration(duration time.Duration, tags []string) error
 	MetricInjected(containerID, uid string, succeed bool, kind chaostypes.DisruptionKind, tags []string) error
-	MetricIPTablesRulesInjected(containerID, uid string, kind chaostypes.DisruptionKind, tags []string) error
 	MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) error
 	MetricReconcile() error
 	MetricReconcileDuration(duration time.Duration, tags []string) error

@@ -82,14 +82,6 @@ func (d *Sink) MetricCleaned(containerID, uid string, succeed bool, kind chaosty
 	return d.metricWithStatus(metricPrefixInjector+"cleaned", t)
 }
 
-// MetricIPTablesRulesInjected increment iptables_rules metrics
-func (d *Sink) MetricIPTablesRulesInjected(containerID, uid string, kind chaostypes.DisruptionKind, tags []string) error {
-	t := []string{"containerID:" + containerID, "UID:" + uid, "kind:" + string(kind)}
-	t = append(t, tags...)
-
-	return d.metricWithStatus(metricPrefixInjector+"iptables_rules.injected", t)
-}
-
 // MetricReconcile increment reconcile metric
 func (d *Sink) MetricReconcile() error {
 	return d.metricWithStatus(metricPrefixController+"reconcile", []string{})

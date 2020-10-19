@@ -52,11 +52,6 @@ func (n *Sink) MetricCleaned(containerID, uid string, succeed bool, kind chaosty
 	return nil
 }
 
-// MetricIPTablesRulesInjected increment iptables_rules metrics
-func (n *Sink) MetricIPTablesRulesInjected(containerID, uid string, kind chaostypes.DisruptionKind, tags []string) error {
-	return nil
-}
-
 // MetricCleanupDuration send timing metric for cleanup duration
 func (n *Sink) MetricCleanupDuration(duration time.Duration, tags []string) error {
 	fmt.Println("NOOP: MetricCleanupDuration +1")
