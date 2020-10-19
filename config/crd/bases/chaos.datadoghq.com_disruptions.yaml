@@ -120,8 +120,6 @@ spec:
         status:
           description: DisruptionStatus defines the observed state of Disruption
           properties:
-            isFinalizing:
-              type: boolean
             isInjected:
               type: boolean
             specHash:
