@@ -116,9 +116,10 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				return ctrl.Result{}, err
 			}
 
-			// if not cleaned yet, requeue and reconcile again in 30s-60s
+			// if not cleaned yet, requeue and reconcile again in 5s-10s
+			// the reason why we don't rely on the exponential backoff here is that it retries too fast at the beginning
 			if !isCleaned {
-				requeueAfter := time.Duration(rand.Intn(30)+30) * time.Second
+				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second
 
 				r.Log.Info(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter), "instance", instance.Name, "namespace", instance.Namespace)
 
