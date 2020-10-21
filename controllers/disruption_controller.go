@@ -75,6 +75,8 @@ type DisruptionReconciler struct {
 func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	_ = r.Log.WithValues("disruption", req.NamespacedName)
+
+	rand.Seed(time.Now().UnixNano())
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
@@ -114,11 +116,15 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				return ctrl.Result{}, err
 			}
 
+			// if not cleaned yet, requeue and reconcile again in 30s-60s
 			if !isCleaned {
-				r.Log.Info("disruption has not been fully cleaned yet, re-queuing", "instance", instance.Name, "namespace", instance.Namespace)
+				requeueAfter := time.Duration(rand.Intn(30)+30) * time.Second
+
+				r.Log.Info(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter), "instance", instance.Name, "namespace", instance.Namespace)
 
 				return ctrl.Result{
-					Requeue: true,
+					Requeue:      true,
+					RequeueAfter: requeueAfter,
 				}, r.Update(context.Background(), instance)
 			}
 
