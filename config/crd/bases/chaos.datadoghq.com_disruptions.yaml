@@ -122,6 +122,8 @@ spec:
           properties:
             isInjected:
               type: boolean
+            isStuckOnRemoval:
+              type: boolean
             specHash:
               nullable: true
               type: string

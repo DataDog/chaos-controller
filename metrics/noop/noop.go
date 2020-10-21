@@ -86,3 +86,17 @@ func (n *Sink) MetricPodsCreated(targetPod, instanceName, namespace, phase strin
 
 	return nil
 }
+
+// MetricStuckOnRemoval increments disruptions.stuck_on_removal metric
+func (n *Sink) MetricStuckOnRemoval(tags []string) error {
+	fmt.Println("NOOP: MetricStuckOnRemoval +1")
+
+	return nil
+}
+
+// MetricStuckOnRemovalCount sends disruptions.stuck_on_removal_count metric
+func (n *Sink) MetricStuckOnRemovalCount(count float64) error {
+	fmt.Println("NOOP: MetricStuckOnRemovalCount +1")
+
+	return nil
+}

@@ -43,7 +43,8 @@ type DisruptionSpec struct {
 
 // DisruptionStatus defines the observed state of Disruption
 type DisruptionStatus struct {
-	IsInjected bool `json:"isInjected,omitempty"`
+	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
+	IsInjected       bool `json:"isInjected,omitempty"`
 	// +nullable
 	TargetPods []string `json:"targetPods,omitempty"`
 	// +nullable

@@ -119,7 +119,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 				return ctrl.Result{
 					Requeue: true,
-				}, nil
+				}, r.Update(context.Background(), instance)
 			}
 
 			// we reach this code when all the cleanup pods have succeeded
@@ -367,6 +367,8 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 						r.Recorder.Event(instance, "Warning", "Undisruption failed", "Disruption could not being cleaned up, please debug manually")
 						r.Recorder.Event(p, "Warning", "Undisruption failed", fmt.Sprintf("Disruption %s could not being cleaned up, please debug manually", instance.Name))
 
+						instance.Status.IsStuckOnRemoval = true
+
 						continue
 					}
 				}
@@ -573,4 +575,38 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
 		Complete(r)
+}
+
+// WatchStuckOnRemoval lists disruptions every minutes and increment the "stuck on removal" metric
+// for every disruptions stuck on removal
+func (r *DisruptionReconciler) WatchStuckOnRemoval() {
+	for {
+		// wait for a minute
+		<-time.After(time.Minute)
+
+		l := chaosv1beta1.DisruptionList{}
+		count := 0
+
+		// list disruptions
+		if err := r.Client.List(context.Background(), &l); err != nil {
+			r.Log.Error(err, "error listing disruptions")
+			continue
+		}
+
+		// check for stuck ones
+		for _, d := range l.Items {
+			if d.Status.IsStuckOnRemoval {
+				count++
+
+				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"name:" + d.Name, "namespace:" + d.Namespace}); err != nil {
+					r.Log.Error(err, "error sending stuck_on_removal metric")
+				}
+			}
+		}
+
+		// send count metric
+		if err := r.MetricsSink.MetricStuckOnRemovalCount(float64(count)); err != nil {
+			r.Log.Error(err, "error sending stuck_on_removal_count metric")
+		}
+	}
 }

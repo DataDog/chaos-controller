@@ -110,6 +110,16 @@ func (d *Sink) MetricPodsCreated(targetPod, instanceName, namespace, phase strin
 	return d.metricWithStatus(metricPrefixController+"pods.created", tags)
 }
 
+// MetricStuckOnRemoval increments disruptions.stuck_on_removal metric
+func (d *Sink) MetricStuckOnRemoval(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"disruptions.stuck_on_removal", tags)
+}
+
+// MetricStuckOnRemovalCount sends disruptions.stuck_on_removal_count metric containing the count of stuck disruptions
+func (d *Sink) MetricStuckOnRemovalCount(count float64) error {
+	return d.client.Gauge(metricPrefixController+"disruptions.stuck_on_removal_total", count, []string{}, 1)
+}
+
 func boolToStatus(succeed bool) string {
 	var status string
 	if succeed {

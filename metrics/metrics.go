@@ -28,6 +28,8 @@ type Sink interface {
 	MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) error
 	MetricReconcile() error
 	MetricReconcileDuration(duration time.Duration, tags []string) error
+	MetricStuckOnRemoval(tags []string) error
+	MetricStuckOnRemovalCount(count float64) error
 }
 
 // GetSink returns an initiated sink
