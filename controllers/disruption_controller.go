@@ -75,10 +75,10 @@ type DisruptionReconciler struct {
 func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	_ = r.Log.WithValues("disruption", req.NamespacedName)
-
-	rand.Seed(time.Now().UnixNano())
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
+
+	rand.Seed(time.Now().UnixNano())
 
 	// reconcile metrics
 	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
