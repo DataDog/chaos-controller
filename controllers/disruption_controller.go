@@ -539,10 +539,12 @@ func (r *DisruptionReconciler) generateChaosPod(instance *chaosv1beta1.Disruptio
 	if args[0] == "network-disruption" {
 		noPort := true
 		noHost := true
+
 		for _, item := range args {
 			if noPort && item == "port" {
 				noPort = false
 			}
+
 			if noHost && item == "hosts" {
 				noHost = false
 			}
