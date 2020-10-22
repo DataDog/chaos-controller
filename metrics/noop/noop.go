@@ -52,11 +52,6 @@ func (n *Sink) MetricCleaned(containerID, uid string, succeed bool, kind chaosty
 	return nil
 }
 
-// MetricIPTablesRulesInjected increment iptables_rules metrics
-func (n *Sink) MetricIPTablesRulesInjected(containerID, uid string, kind chaostypes.DisruptionKind, tags []string) error {
-	return nil
-}
-
 // MetricCleanupDuration send timing metric for cleanup duration
 func (n *Sink) MetricCleanupDuration(duration time.Duration, tags []string) error {
 	fmt.Println("NOOP: MetricCleanupDuration +1")
@@ -88,6 +83,20 @@ func (n *Sink) MetricReconcileDuration(duration time.Duration, tags []string) er
 // MetricPodsCreated increment pods.created metric
 func (n *Sink) MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) error {
 	fmt.Println("NOOP: MetricPodsCreated +1")
+
+	return nil
+}
+
+// MetricStuckOnRemoval increments disruptions.stuck_on_removal metric
+func (n *Sink) MetricStuckOnRemoval(tags []string) error {
+	fmt.Println("NOOP: MetricStuckOnRemoval +1")
+
+	return nil
+}
+
+// MetricStuckOnRemovalCount sends disruptions.stuck_on_removal_count metric
+func (n *Sink) MetricStuckOnRemovalCount(count float64) error {
+	fmt.Println("NOOP: MetricStuckOnRemovalCount +1")
 
 	return nil
 }

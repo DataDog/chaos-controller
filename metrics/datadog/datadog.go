@@ -82,14 +82,6 @@ func (d *Sink) MetricCleaned(containerID, uid string, succeed bool, kind chaosty
 	return d.metricWithStatus(metricPrefixInjector+"cleaned", t)
 }
 
-// MetricIPTablesRulesInjected increment iptables_rules metrics
-func (d *Sink) MetricIPTablesRulesInjected(containerID, uid string, kind chaostypes.DisruptionKind, tags []string) error {
-	t := []string{"containerID:" + containerID, "UID:" + uid, "kind:" + string(kind)}
-	t = append(t, tags...)
-
-	return d.metricWithStatus(metricPrefixInjector+"iptables_rules.injected", t)
-}
-
 // MetricReconcile increment reconcile metric
 func (d *Sink) MetricReconcile() error {
 	return d.metricWithStatus(metricPrefixController+"reconcile", []string{})
@@ -116,6 +108,16 @@ func (d *Sink) MetricPodsCreated(targetPod, instanceName, namespace, phase strin
 	tags := []string{"phase:" + phase, "target_pod:" + targetPod, "name:" + instanceName, "status:" + status, "namespace:" + namespace}
 
 	return d.metricWithStatus(metricPrefixController+"pods.created", tags)
+}
+
+// MetricStuckOnRemoval increments disruptions.stuck_on_removal metric
+func (d *Sink) MetricStuckOnRemoval(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"disruptions.stuck_on_removal", tags)
+}
+
+// MetricStuckOnRemovalCount sends disruptions.stuck_on_removal_count metric containing the count of stuck disruptions
+func (d *Sink) MetricStuckOnRemovalCount(count float64) error {
+	return d.client.Gauge(metricPrefixController+"disruptions.stuck_on_removal_total", count, []string{}, 1)
 }
 
 func boolToStatus(succeed bool) string {
