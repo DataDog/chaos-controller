@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.13.0](https://github.com/DataDog/chaos-controller/tree/2.13.0) (2020-10-22)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.12.0...2.13.0)
+
+**Merged pull requests:**
+
+- Retry cleanup when it fails [\#172](https://github.com/DataDog/chaos-controller/pull/172) ([Devatoria](https://github.com/Devatoria))
+- Allow empty string as protocol in network disruption protocol enum list [\#171](https://github.com/DataDog/chaos-controller/pull/171) ([Devatoria](https://github.com/Devatoria))
+- Write spec hash in resource status to detect resource changes [\#169](https://github.com/DataDog/chaos-controller/pull/169) ([Devatoria](https://github.com/Devatoria))
+- Adds small section on how to deploy [\#168](https://github.com/DataDog/chaos-controller/pull/168) ([brandon-dd](https://github.com/brandon-dd))
+- Improve contributing doc [\#167](https://github.com/DataDog/chaos-controller/pull/167) ([Devatoria](https://github.com/Devatoria))
+- Improve examples by splitting them in per use-cases examples [\#166](https://github.com/DataDog/chaos-controller/pull/166) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_8332266aebf78e47a3a34d2ea15d1767d69fb963 [\#165](https://github.com/DataDog/chaos-controller/pull/165) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.12.0](https://github.com/DataDog/chaos-controller/tree/2.12.0) (2020-09-28)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.11.0...2.12.0)
@@ -371,7 +385,6 @@
 
 - Pass instance UID to chaos-fi pods [\#15](https://github.com/DataDog/chaos-controller/pull/15) ([Devatoria](https://github.com/Devatoria))
 - Improve CI by using the generic docker-push image [\#14](https://github.com/DataDog/chaos-controller/pull/14) ([Devatoria](https://github.com/Devatoria))
-- CI improvement [\#12](https://github.com/DataDog/chaos-controller/pull/12) ([Devatoria](https://github.com/Devatoria))
 
 ## [0.0.3](https://github.com/DataDog/chaos-controller/tree/0.0.3) (2019-04-10)
 
@@ -380,6 +393,7 @@
 **Merged pull requests:**
 
 - Add datadog metrics and events [\#13](https://github.com/DataDog/chaos-controller/pull/13) ([Devatoria](https://github.com/Devatoria))
+- CI improvement [\#12](https://github.com/DataDog/chaos-controller/pull/12) ([Devatoria](https://github.com/Devatoria))
 - Define the chaos-fi image value via an environment variable [\#11](https://github.com/DataDog/chaos-controller/pull/11) ([Devatoria](https://github.com/Devatoria))
 - :wrench: set namespace when creating object instead since listoptions… [\#10](https://github.com/DataDog/chaos-controller/pull/10) ([kathy-huang](https://github.com/kathy-huang))
 - Match pods to DFI using namespace in addition to label selector [\#9](https://github.com/DataDog/chaos-controller/pull/9) ([kathy-huang](https://github.com/kathy-huang))
