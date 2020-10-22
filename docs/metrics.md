@@ -16,7 +16,6 @@ A bunch of metrics are sent as well:
 
 * `chaos.nfi.injected` is the count of injected network failures
 * `chaos.nfi.cleaned` is the count of cleaned network failures
-* `chaos.nfi.rules.injected` is the count of injected iptables rules
 
 Every metric has the following common tags:
 

@@ -12,6 +12,11 @@ The logic is quite the same for every resources:
   * retrieve the infected nodes
   * create a cleanup pod on every infected nodes
   * wait for those cleanup pods to successfully finish their job before garbage collecting everything
+    * if the cleanup fails, the controller will
+      * wait for X seconds (X being between 5 and 10)
+      * requeue the request to reconcile it again
+      * create a new cleanup pod
+    * the cleanup retries up to 5 times before considering the disruption stuck on removal
 
 ## Note on failures cleanup
 
