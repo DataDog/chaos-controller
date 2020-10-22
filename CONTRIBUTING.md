@@ -37,8 +37,6 @@ The [samples](config/samples) contains sample data which can be used to test you
 
 For verification on minikube we created some helper [scripts](scripts/):
 
-* List contents of iptables for the given pod:
-  * `./scripts/list_iptables.sh <pod_name>`
 * List pod interfaces:
   * `./scripts/list_links.sh <pod_name>`
 * List traffic control filters of the given pod:

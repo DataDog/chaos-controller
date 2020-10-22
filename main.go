@@ -113,17 +113,21 @@ func main() {
 	ctrl.Log.Info("generated pod template", "template", podTemplateSpec)
 
 	// create reconciler
-	if err = (&controllers.DisruptionReconciler{
+	r := &controllers.DisruptionReconciler{
 		Client:          mgr.GetClient(),
 		Log:             ctrl.Log.WithName("controllers").WithName("Disruption"),
 		Scheme:          mgr.GetScheme(),
 		Recorder:        mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:     ms,
 		PodTemplateSpec: podTemplateSpec,
-	}).SetupWithManager(mgr); err != nil {
+	}
+
+	if err := r.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Disruption")
 		os.Exit(1)
 	}
+
+	go r.WatchStuckOnRemoval()
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

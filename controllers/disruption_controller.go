@@ -78,6 +78,8 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
+	rand.Seed(time.Now().UnixNano())
+
 	// reconcile metrics
 	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
 
@@ -106,34 +108,25 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	} else {
 		// if being deleted, call the finalizer
 		if controllerutil.ContainsFinalizer(instance, finalizer) {
-			// if the finalizing stage hasn't been triggered yet, start the cleaning
-			if !instance.Status.IsFinalizing {
-				if err := r.cleanFailures(instance); err != nil {
-					return ctrl.Result{}, err
-				}
+			r.Log.Info("creating cleanup pods", "instance", instance.Name, "namespace", instance.Namespace)
 
-				// set the finalizing flag
-				instance.Status.IsFinalizing = true
-				r.Log.Info("updating finalizing flag", "instance", instance.Name, "namespace", instance.Namespace)
-				return ctrl.Result{}, r.Update(context.Background(), instance)
-			}
-
-			// retrieve cleanup pods to check their states
-			cleanupPods, err := r.getChaosPods(instance, chaostypes.PodModeClean)
+			// create cleanup pods
+			isCleaned, err := r.cleanDisruptions(instance)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 
-			r.Log.Info("checking status of cleanup pods before deleting failure", "numcleanuppods", len(cleanupPods), "instance", instance.Name, "namespace", instance.Namespace)
+			// if not cleaned yet, requeue and reconcile again in 5s-10s
+			// the reason why we don't rely on the exponential backoff here is that it retries too fast at the beginning
+			if !isCleaned {
+				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second
 
-			// check if cleanup pods have succeeded, requeue until they have
-			for _, cleanupPod := range cleanupPods {
-				if cleanupPod.Status.Phase != corev1.PodSucceeded {
-					r.Log.Info("cleanup pod has not completed, retrying failure deletion", "instance", instance.Name, "namespace", instance.Namespace, "cleanuppod", cleanupPod.Name, "phase", cleanupPod.Status.Phase)
-					return ctrl.Result{
-						Requeue: true,
-					}, nil
-				}
+				r.Log.Info(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter), "instance", instance.Name, "namespace", instance.Namespace)
+
+				return ctrl.Result{
+					Requeue:      true,
+					RequeueAfter: requeueAfter,
+				}, r.Update(context.Background(), instance)
 			}
 
 			// we reach this code when all the cleanup pods have succeeded
@@ -310,68 +303,113 @@ func (r *DisruptionReconciler) getPodsToCleanup(instance *chaosv1beta1.Disruptio
 	return podsToCleanup, nil
 }
 
-// cleanFailures creates cleanup pods for a given disruption instance
-func (r *DisruptionReconciler) cleanFailures(instance *chaosv1beta1.Disruption) error {
+// cleanDisruptions creates cleanup pods for a given disruption instance
+// it returns true once all disruptions are cleaned
+func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruption) (bool, error) {
+	isFullyCleaned := true
+
 	// retrieve pods to cleanup
-	pods, err := r.getPodsToCleanup(instance)
+	podsToCleanup, err := r.getPodsToCleanup(instance)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// create one cleanup pod for pod to cleanup
-	for _, p := range pods {
+	for _, p := range podsToCleanup {
 		chaosPods := []*v1.Pod{}
 
 		// get ID of first container
 		containerID, err := getContainerID(p)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		// generate cleanup pods specs
 		if err := r.generateChaosPod(instance, &chaosPods, *p, chaostypes.PodModeClean, containerID, chaostypes.DisruptionKindNetworkDisruption); err != nil {
-			return err
+			return false, err
 		}
 
 		if err := r.generateChaosPod(instance, &chaosPods, *p, chaostypes.PodModeClean, containerID, chaostypes.DisruptionKindDiskPressure); err != nil {
-			return err
+			return false, err
 		}
 
 		// create cleanup pods
 		for _, chaosPod := range chaosPods {
-			found := &corev1.Pod{}
+			isCleaned := false
+
+			r.Log.Info("checking for existing cleanup pods", "instance", instance.Name, "namespace", instance.Namespace)
+
+			// get already existing cleanup pods for the specific disruption and target
+			existingCleanupPods, err := r.getOwnedPods(instance, chaosPod.Labels)
+			if err != nil {
+				return false, err
+			}
+
+			// skip if there is at least one pod not erroring (can be running, completed, etc.)
+			// consider the disruption cleaned for this target if at least one pod has succeeded
+			// limit number of cleanup pods per disruption to 5, after this we expect
+			// the users to manually check what's happening
+			if len(existingCleanupPods) > 0 {
+				skip := false
+
+				// check for a succeeded pod and for any non-erroring pods
+				for _, existingChaosPod := range existingCleanupPods {
+					if existingChaosPod.Status.Phase == corev1.PodSucceeded {
+						isCleaned = true
+					}
+
+					if existingChaosPod.Status.Phase != corev1.PodFailed {
+						skip = true
+					}
+				}
+
+				// if no pods have succeeded yet, do not consider the disruptions as cleaned
+				// if the disruption could not be cleaned up after 5 pods, skip and wait for
+				// a manual verification/clean up
+				if !isCleaned {
+					isFullyCleaned = false
+
+					if len(existingCleanupPods) >= 5 {
+						r.Log.Info("maximum cleanup pods count reached (5), please debug manually", "instance", instance.Name, "namespace", instance.Namespace)
+						r.Recorder.Event(instance, "Warning", "Undisruption failed", "Disruption could not being cleaned up, please debug manually")
+						r.Recorder.Event(p, "Warning", "Undisruption failed", fmt.Sprintf("Disruption %s could not being cleaned up, please debug manually", instance.Name))
+
+						instance.Status.IsStuckOnRemoval = true
+
+						continue
+					}
+				}
+
+				// do not create a new cleanup pod if at least one pod is not erroring
+				if skip {
+					continue
+				}
+			} else {
+				isFullyCleaned = false
+			}
 
 			// link cleanup pod to instance for garbage collection
 			if err := controllerutil.SetControllerReference(instance, chaosPod, r.Scheme); err != nil {
-				return err
-			}
-
-			// do nothing if cleanup pod already exists
-			err = r.Get(context.Background(), types.NamespacedName{Name: chaosPod.Name, Namespace: chaosPod.Namespace}, found)
-			if err != nil && reflect.DeepEqual(chaosPod.Spec, found.Spec) {
-				continue
-			} else if err != nil && !errors.IsNotFound(err) {
-				return err
+				return false, err
 			}
 
 			r.Log.Info("creating chaos cleanup chaosPod", "instance", instance.Name, "namespace", chaosPod.Namespace, "name", chaosPod.Name, "containerid", containerID)
 
-			err = r.Create(context.Background(), chaosPod)
-			if err != nil {
+			if err := r.Create(context.Background(), chaosPod); err != nil {
 				r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Cleanup pod for disruption \"%s\" failed to be created", instance.Name))
 				r.Recorder.Event(p, "Warning", "Undisrupted", fmt.Sprintf("Disruption %s failed to be cleaned up by pod %s", instance.Name, chaosPod.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", false))
 
-				return err
+				return false, err
 			}
 
 			r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for disruption \"%s\"", instance.Name))
-			r.Recorder.Event(p, "Normal", "Undisrupted", fmt.Sprintf("Disruption %s has been cleaned up by pod %s", instance.Name, chaosPod.Name))
+			r.Recorder.Event(p, "Normal", "Undisrupted", fmt.Sprintf("Disruption %s is being cleaned up by pod %s", instance.Name, chaosPod.Name))
 			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", true))
 		}
 	}
 
-	return nil
+	return isFullyCleaned, nil
 }
 
 // selectPodsForInjection will select min(count, all matching pods) random pods from the pods matching the instance label selector
@@ -446,15 +484,6 @@ func (r *DisruptionReconciler) getOwnedPods(instance *chaosv1beta1.Disruption, s
 	}
 
 	return ownedPods, nil
-}
-
-// getChaosPods returns all pods created by the given Disruption instance and being in the given mode (injection or cleanup)
-func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode) ([]corev1.Pod, error) {
-	selector := map[string]string{
-		chaostypes.PodModeLabel: string(mode),
-	}
-
-	return r.getOwnedPods(instance, selector)
 }
 
 // getContainerID gets the ID of the first container ID found in a Pod
@@ -574,4 +603,38 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
 		Complete(r)
+}
+
+// WatchStuckOnRemoval lists disruptions every minutes and increment the "stuck on removal" metric
+// for every disruptions stuck on removal
+func (r *DisruptionReconciler) WatchStuckOnRemoval() {
+	for {
+		// wait for a minute
+		<-time.After(time.Minute)
+
+		l := chaosv1beta1.DisruptionList{}
+		count := 0
+
+		// list disruptions
+		if err := r.Client.List(context.Background(), &l); err != nil {
+			r.Log.Error(err, "error listing disruptions")
+			continue
+		}
+
+		// check for stuck ones
+		for _, d := range l.Items {
+			if d.Status.IsStuckOnRemoval {
+				count++
+
+				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"name:" + d.Name, "namespace:" + d.Namespace}); err != nil {
+					r.Log.Error(err, "error sending stuck_on_removal metric")
+				}
+			}
+		}
+
+		// send count metric
+		if err := r.MetricsSink.MetricStuckOnRemovalCount(float64(count)); err != nil {
+			r.Log.Error(err, "error sending stuck_on_removal_count metric")
+		}
+	}
 }

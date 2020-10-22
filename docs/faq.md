@@ -8,7 +8,7 @@ Please note that if an error occurred during the cleanup phase, those pods won't
 
 ## My disruption resource is stuck on removal
 
-If an error occurred during the cleanup of the disruption (which occurs on removal), the finalizer won't be removed in order to be able to debug what happened and potentially do some manual cleaning. Here is how to proceed.
+If an error occurred during the cleanup of the disruption (which occurs on removal), the controller will retry to cleanup up to 5 times (with a random wait time between each try). If the cleanup still fails, the disruption resource will be marked as `Stuck on removal` and events will be registered in both the disruption and impacted pods to ask for a manual debugging. The finalizer won't be removed in order to be able to debug what happened and potentially do some manual cleaning. Here's what to do in this case:
 
 ### Look at the cleanup pods logs
 
@@ -20,24 +20,9 @@ kubectl -n <NAMESPACE> get pods -l chaos.datadoghq.com/pod-mode=clean
 
 ### Eventually re-trigger the cleanup phase
 
-If needed, you can re-trigger the cleanup phase. It'll create cleanup pods for the disruption. Because the cleanup phase is idempotent, trigger the cleanup on an already cleaned up pod is a noop.
+If needed, you can re-trigger the cleanup phase. It'll create cleanup pods for the pods not having been cleaned yet. To trigger this, remove any cleanup pods in the `Error` state (you can use the command above to list them). A new cleanup pod will be created during the next reconcile loop (it can take up to one minute to be triggered). If this pod succeeds to cleanup the disruption, it'll then be deleted.
 
-You need to edit the disruption, remove the `status.isFinalizing` field, and save.
-
-```sh
-kubectl -n <NAMESPACE> edit disruption <DISRUPTION>
-```
-
-```yaml
-[...]
-status:
-  isFinalizing: true
-[...]
-```
-
-**Please note that even if the retry succeeds, the disruption resource won't be removed by itself. Please look at the next step to finish the removal.**
-
-### Force resource removal
+### Eventually force resource removal
 
 Once you're sure you want to remove everything related to your disruption resource, just edit it and remove the finalizer from the list.
 
@@ -52,7 +37,7 @@ kubectl -n <NAMESPACE> edit disruption <DISRUPTION>
 [...]
 ```
 
-It'll instantly delete the resource and garbage collect other related resources.
+It'll instantly delete the resource and garbage collect other related resources. Please note that if you took no actions to cleanup what was applied by this disruption, this step won't do it for you!
 
 ## The controller fails to watch or list disruptions
 
