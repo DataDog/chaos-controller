@@ -306,16 +306,16 @@ func (r *DisruptionReconciler) getPodsToCleanup(instance *chaosv1beta1.Disruptio
 // cleanDisruptions creates cleanup pods for a given disruption instance
 // it returns true once all disruptions are cleaned
 func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruption) (bool, error) {
-	isTotallyCleaned := true
+	isFullyCleaned := true
 
 	// retrieve pods to cleanup
-	pods, err := r.getPodsToCleanup(instance)
+	podsToCleanup, err := r.getPodsToCleanup(instance)
 	if err != nil {
 		return false, err
 	}
 
 	// create one cleanup pod for pod to cleanup
-	for _, p := range pods {
+	for _, p := range podsToCleanup {
 		chaosPods := []*v1.Pod{}
 
 		// get ID of first container
@@ -340,7 +340,7 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 			r.Log.Info("checking for existing cleanup pods", "instance", instance.Name, "namespace", instance.Namespace)
 
 			// get already existing cleanup pods for the specific disruption and target
-			existingChaosPods, err := r.getOwnedPods(instance, chaosPod.Labels)
+			existingCleanupPods, err := r.getOwnedPods(instance, chaosPod.Labels)
 			if err != nil {
 				return false, err
 			}
@@ -349,11 +349,11 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 			// consider the disruption cleaned for this target if at least one pod has succeeded
 			// limit number of cleanup pods per disruption to 5, after this we expect
 			// the users to manually check what's happening
-			if len(existingChaosPods) > 0 {
+			if len(existingCleanupPods) > 0 {
 				skip := false
 
 				// check for a succeeded pod and for any non-erroring pods
-				for _, existingChaosPod := range existingChaosPods {
+				for _, existingChaosPod := range existingCleanupPods {
 					if existingChaosPod.Status.Phase == corev1.PodSucceeded {
 						isCleaned = true
 					}
@@ -367,9 +367,9 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 				// if the disruption could not be cleaned up after 5 pods, skip and wait for
 				// a manual verification/clean up
 				if !isCleaned {
-					isTotallyCleaned = false
+					isFullyCleaned = false
 
-					if len(existingChaosPods) >= 5 {
+					if len(existingCleanupPods) >= 5 {
 						r.Log.Info("maximum cleanup pods count reached (5), please debug manually", "instance", instance.Name, "namespace", instance.Namespace)
 						r.Recorder.Event(instance, "Warning", "Undisruption failed", "Disruption could not being cleaned up, please debug manually")
 						r.Recorder.Event(p, "Warning", "Undisruption failed", fmt.Sprintf("Disruption %s could not being cleaned up, please debug manually", instance.Name))
@@ -385,7 +385,7 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 					continue
 				}
 			} else {
-				isTotallyCleaned = false
+				isFullyCleaned = false
 			}
 
 			// link cleanup pod to instance for garbage collection
@@ -395,8 +395,7 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 
 			r.Log.Info("creating chaos cleanup chaosPod", "instance", instance.Name, "namespace", chaosPod.Namespace, "name", chaosPod.Name, "containerid", containerID)
 
-			err = r.Create(context.Background(), chaosPod)
-			if err != nil {
+			if err := r.Create(context.Background(), chaosPod); err != nil {
 				r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Cleanup pod for disruption \"%s\" failed to be created", instance.Name))
 				r.Recorder.Event(p, "Warning", "Undisrupted", fmt.Sprintf("Disruption %s failed to be cleaned up by pod %s", instance.Name, chaosPod.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", false))
@@ -410,7 +409,7 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 		}
 	}
 
-	return isTotallyCleaned, nil
+	return isFullyCleaned, nil
 }
 
 // selectPodsForInjection will select min(count, all matching pods) random pods from the pods matching the instance label selector
