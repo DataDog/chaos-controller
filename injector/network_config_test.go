@@ -7,13 +7,16 @@ package injector_test
 
 import (
 	"net"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/network"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 var _ = Describe("Tc", func() {
@@ -77,8 +80,9 @@ var _ = Describe("Tc", func() {
 		nl.On("LinkByName", "lo").Return(nllink1, nil)
 		nl.On("LinkByName", "eth0").Return(nllink2, nil)
 		nl.On("LinkByName", "eth1").Return(nllink3, nil)
-		nl.On("RoutesForIP", "1.1.1.1/32").Return([]network.NetlinkRoute{nlroute2}, nil)
-		nl.On("RoutesForIP", "2.2.2.2/32").Return([]network.NetlinkRoute{nlroute3}, nil)
+		nl.On("RoutesForIP", "10.0.0.1/32").Return([]network.NetlinkRoute{nlroute2}, nil) // node IP route going through eth0
+		nl.On("RoutesForIP", "1.1.1.1/32").Return([]network.NetlinkRoute{nlroute2}, nil)  // random external route going through eth0
+		nl.On("RoutesForIP", "2.2.2.2/32").Return([]network.NetlinkRoute{nlroute3}, nil)  // random external route going through eth1
 		nl.On("DefaultRoute").Return(nlroute2, nil)
 
 		// netem parameters
@@ -90,6 +94,9 @@ var _ = Describe("Tc", func() {
 		drop = 5
 		corrupt = 10
 		bandwidthLimit = 100
+
+		// environment variables
+		Expect(os.Setenv(chaostypes.TargetPodHostIPEnv, "10.0.0.1")).To(BeNil())
 	})
 
 	JustBeforeEach(func() {
@@ -100,7 +107,7 @@ var _ = Describe("Tc", func() {
 		JustBeforeEach(func() {
 			config.AddNetem(delay, drop, corrupt)
 			config.AddOutputLimit(bandwidthLimit)
-			config.ApplyOperations()
+			Expect(config.ApplyOperations()).To(BeNil())
 		})
 
 		Context("with no host, port or protocol specified", func() {
@@ -136,6 +143,10 @@ var _ = Describe("Tc", func() {
 
 			It("should add a filter to redirect default gateway IP traffic on a non-disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "192.168.0.1/32", 0, "", "1:1", "egress")
+			})
+
+			It("should add a filter to redirect node IP traffic on a non-disrupted band", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "10.0.0.1/32", 0, "", "1:1", "egress")
 			})
 
 			It("should apply disruptions to main interfaces 4th band", func() {
@@ -178,6 +189,10 @@ var _ = Describe("Tc", func() {
 
 			It("should add a filter to redirect default gateway IP traffic on a non-disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "192.168.0.1/32", 0, "", "1:1", "egress")
+			})
+
+			It("should add a filter to redirect node IP traffic on a non-disrupted band", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "10.0.0.1/32", 0, "", "1:1", "egress")
 			})
 
 			It("should apply disruptions to main interfaces 4th band", func() {

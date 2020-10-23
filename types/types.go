@@ -21,6 +21,8 @@ const (
 
 	// TargetPodLabel is the label used to identify the pod targeted by a chaos pod
 	TargetPodLabel = "chaos.datadoghq.com/target-pod"
+	// TargetPodHostIPEnv is the target pod host IP environment variable name
+	TargetPodHostIPEnv = "TARGET_POD_HOST_IP"
 
 	// DisruptionKindLabel is the label used to identify the disruption kind for a chaos pod
 	DisruptionKindLabel = "chaos.datadoghq.com/disruption-kind"
