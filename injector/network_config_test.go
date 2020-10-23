@@ -6,6 +6,7 @@
 package injector_test
 
 import (
+	"net"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -17,21 +18,21 @@ import (
 
 var _ = Describe("Tc", func() {
 	var (
-		config                               NetworkDisruptionConfig
-		tc                                   network.TcMock
-		tcIsQdiscClearedCall                 *mock.Call
-		nl                                   network.NetlinkAdapterMock
-		nllink1, nllink2                     *network.NetlinkLinkMock
-		nllink1TxQlenCall, nllink2TxQlenCall *mock.Call
-		nlroute1, nlroute2                   *network.NetlinkRouteMock
-		hosts                                []string
-		port                                 int
-		protocol                             string
-		flow                                 string
-		delay                                time.Duration
-		drop                                 int
-		corrupt                              int
-		bandwidthLimit                       uint
+		config                                                  NetworkDisruptionConfig
+		tc                                                      network.TcMock
+		tcIsQdiscClearedCall                                    *mock.Call
+		nl                                                      network.NetlinkAdapterMock
+		nllink1, nllink2, nllink3                               *network.NetlinkLinkMock
+		nllink1TxQlenCall, nllink2TxQlenCall, nllink3TxQlenCall *mock.Call
+		nlroute1, nlroute2, nlroute3                            *network.NetlinkRouteMock
+		hosts                                                   []string
+		port                                                    int
+		protocol                                                string
+		flow                                                    string
+		delay                                                   time.Duration
+		drop                                                    int
+		corrupt                                                 int
+		bandwidthLimit                                          uint
 	)
 
 	BeforeEach(func() {
@@ -53,19 +54,32 @@ var _ = Describe("Tc", func() {
 		nllink2.On("Name").Return("eth0")
 		nllink2.On("SetTxQLen", mock.Anything).Return(nil)
 		nllink2TxQlenCall = nllink2.On("TxQLen").Return(0)
+		nllink3 = &network.NetlinkLinkMock{}
+		nllink3.On("Name").Return("eth1")
+		nllink3.On("SetTxQLen", mock.Anything).Return(nil)
+		nllink3TxQlenCall = nllink3.On("TxQLen").Return(0)
 
 		nlroute1 = &network.NetlinkRouteMock{}
 		nlroute1.On("Link").Return(nllink1)
+		nlroute1.On("Gateway").Return(net.IP([]byte{}))
 		nlroute2 = &network.NetlinkRouteMock{}
 		nlroute2.On("Link").Return(nllink2)
+		nlroute2.On("Gateway").Return(net.ParseIP("192.168.0.1"))
+		nlroute3 = &network.NetlinkRouteMock{}
+		nlroute3.On("Link").Return(nllink3)
+		nlroute3.On("Gateway").Return(net.ParseIP("192.168.1.1"))
 
 		nl = network.NetlinkAdapterMock{}
-		nl.On("LinkList").Return([]network.NetlinkLink{nllink1, nllink2}, nil)
+		nl.On("LinkList").Return([]network.NetlinkLink{nllink1, nllink2, nllink3}, nil)
 		nl.On("LinkByIndex", 0).Return(nllink1, nil)
 		nl.On("LinkByIndex", 1).Return(nllink2, nil)
+		nl.On("LinkByIndex", 2).Return(nllink3, nil)
 		nl.On("LinkByName", "lo").Return(nllink1, nil)
 		nl.On("LinkByName", "eth0").Return(nllink2, nil)
-		nl.On("RoutesForIP", mock.Anything).Return([]network.NetlinkRoute{nlroute1, nlroute2}, nil)
+		nl.On("LinkByName", "eth1").Return(nllink3, nil)
+		nl.On("RoutesForIP", "1.1.1.1/32").Return([]network.NetlinkRoute{nlroute2}, nil)
+		nl.On("RoutesForIP", "2.2.2.2/32").Return([]network.NetlinkRoute{nlroute3}, nil)
+		nl.On("DefaultRoute").Return(nlroute2, nil)
 
 		// netem parameters
 		hosts = []string{}
@@ -95,16 +109,40 @@ var _ = Describe("Tc", func() {
 				protocol = ""
 			})
 
-			It("should not set or clear the interface qlen", func() {
+			It("should set or clear the interface qlen on all interfaces excluding lo", func() {
 				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
-				nllink2.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
+				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
+				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 0)
+				nllink3.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
+				nllink3.AssertCalled(GinkgoT(), "SetTxQLen", 0)
 			})
 
-			It("should apply disruptions to the interfaces root qdisc", func() {
-				tc.AssertCalled(GinkgoT(), "AddNetem", "lo", "root", mock.Anything, delay, drop, corrupt)
-				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "root", mock.Anything, delay, drop, corrupt)
-				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "lo", "1:", mock.Anything, bandwidthLimit)
-				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "1:", mock.Anything, bandwidthLimit)
+			It("should not apply anything to lo interface", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddNetem", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				tc.AssertNotCalled(GinkgoT(), "AddPrio", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				tc.AssertNotCalled(GinkgoT(), "AddOutputLimit", "lo", mock.Anything, mock.Anything, mock.Anything)
+			})
+
+			It("should create a prio qdisc on main interfaces", func() {
+				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "root", uint32(1), uint32(4), mock.Anything)
+				tc.AssertCalled(GinkgoT(), "AddPrio", "eth1", "root", uint32(1), uint32(4), mock.Anything)
+			})
+
+			It("should add a filter to redirect all traffic on main interfaces on the disrupted band", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "0.0.0.0/0", port, protocol, "1:4", flow)
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "0.0.0.0/0", port, protocol, "1:4", flow)
+			})
+
+			It("should add a filter to redirect default gateway IP traffic on a non-disrupted band", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "192.168.0.1/32", 0, "", "1:1", "egress")
+			})
+
+			It("should apply disruptions to main interfaces 4th band", func() {
+				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "1:4", mock.Anything, delay, drop, corrupt)
+				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "2:", mock.Anything, bandwidthLimit)
+				tc.AssertCalled(GinkgoT(), "AddNetem", "eth1", "1:4", mock.Anything, delay, drop, corrupt)
+				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth1", "2:", mock.Anything, bandwidthLimit)
 			})
 		})
 
@@ -113,30 +151,40 @@ var _ = Describe("Tc", func() {
 				hosts = []string{"1.1.1.1", "2.2.2.2"}
 			})
 
-			It("should set and clear the interface qlen", func() {
-				nllink1.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
-				nllink1.AssertCalled(GinkgoT(), "SetTxQLen", 0)
+			It("should set or clear the interface qlen on all interfaces excluding lo", func() {
+				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
 				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
 				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 0)
+				nllink3.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
+				nllink3.AssertCalled(GinkgoT(), "SetTxQLen", 0)
 			})
 
-			It("should create a prio qdisc on both interfaces", func() {
-				tc.AssertCalled(GinkgoT(), "AddPrio", "lo", "root", uint32(1), uint32(4), mock.Anything)
+			It("should not apply anything to lo interface", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddNetem", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				tc.AssertNotCalled(GinkgoT(), "AddPrio", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				tc.AssertNotCalled(GinkgoT(), "AddOutputLimit", "lo", mock.Anything, mock.Anything, mock.Anything)
+			})
+
+			It("should create a prio qdisc on main interfaces", func() {
 				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "root", uint32(1), uint32(4), mock.Anything)
+				tc.AssertCalled(GinkgoT(), "AddPrio", "eth1", "root", uint32(1), uint32(4), mock.Anything)
 			})
 
-			It("should add a filter to redirect traffic on delayed band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "1.1.1.1/32", port, protocol, "1:4", flow)
-				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "2.2.2.2/32", port, protocol, "1:4", flow)
+			It("should add a filter to redirect targeted traffic on related interfaces on the disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "1.1.1.1/32", port, protocol, "1:4", flow)
-				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "2.2.2.2/32", port, protocol, "1:4", flow)
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "2.2.2.2/32", port, protocol, "1:4", flow)
 			})
 
-			It("should add delay to the interfaces parent qdisc", func() {
-				tc.AssertCalled(GinkgoT(), "AddNetem", "lo", "1:4", mock.Anything, delay, drop, corrupt)
+			It("should add a filter to redirect default gateway IP traffic on a non-disrupted band", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "192.168.0.1/32", 0, "", "1:1", "egress")
+			})
+
+			It("should apply disruptions to main interfaces 4th band", func() {
 				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "1:4", mock.Anything, delay, drop, corrupt)
-				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "lo", "2:", mock.Anything, bandwidthLimit)
 				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "2:", mock.Anything, bandwidthLimit)
+				tc.AssertCalled(GinkgoT(), "AddNetem", "eth1", "1:4", mock.Anything, delay, drop, corrupt)
+				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth1", "2:", mock.Anything, bandwidthLimit)
 			})
 		})
 
@@ -144,12 +192,14 @@ var _ = Describe("Tc", func() {
 			BeforeEach(func() {
 				nllink1TxQlenCall.Return(1000)
 				nllink2TxQlenCall.Return(1000)
+				nllink3TxQlenCall.Return(1000)
 				hosts = []string{"1.1.1.1", "2.2.2.2"}
 			})
 
 			It("should not set and clear the interface qlen", func() {
 				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
 				nllink2.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
+				nllink3.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
 			})
 		})
 	})
@@ -161,8 +211,8 @@ var _ = Describe("Tc", func() {
 
 		Context("with a non-cleared qdisc", func() {
 			It("should clear the interfaces qdisc", func() {
-				tc.AssertCalled(GinkgoT(), "ClearQdisc", "lo")
 				tc.AssertCalled(GinkgoT(), "ClearQdisc", "eth0")
+				tc.AssertCalled(GinkgoT(), "ClearQdisc", "eth1")
 			})
 		})
 
@@ -174,6 +224,7 @@ var _ = Describe("Tc", func() {
 			It("should not clear the interfaces qdisc", func() {
 				tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "lo")
 				tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "eth0")
+				tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "eth1")
 			})
 		})
 	})

@@ -101,8 +101,9 @@ func (a netlinkAdapter) DefaultRoute() (NetlinkRoute, error) {
 		return nil, err
 	}
 
-	// list routes for all interfaces
-	routes, err := handler.RouteList(nil, netlink.FAMILY_V4)
+	// list routes for all interfaces using IPv4
+	// cf. https://godoc.org/golang.org/x/sys/unix#AF_INET for value 2
+	routes, err := handler.RouteList(nil, 2)
 	if err != nil {
 		return nil, err
 	}

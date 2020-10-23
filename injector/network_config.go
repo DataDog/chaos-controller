@@ -198,14 +198,16 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 				}
 			}
-		} else if c.port != 0 && c.protocol != "" {
-			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, c.port, c.protocol, "1:4", c.flow); err != nil {
-				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
-			}
 		} else {
-			_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
-			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nullIP, 0, "", "1:4", c.flow); err != nil {
-				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
+			if c.port != 0 && c.protocol != "" {
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, c.port, c.protocol, "1:4", c.flow); err != nil {
+					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
+				}
+			} else {
+				_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nullIP, 0, "", "1:4", c.flow); err != nil {
+					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
+				}
 			}
 		}
 
