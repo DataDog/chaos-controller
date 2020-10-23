@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.13.1](https://github.com/DataDog/chaos-controller/tree/2.13.1) (2020-10-23)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.13.0...2.13.1)
+
+**Merged pull requests:**
+
+- Exclude default route gateway IP on network disruption [\#175](https://github.com/DataDog/chaos-controller/pull/175) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_fb9ad708ebbe229e86ba83e7d33be08a42f802b2 [\#173](https://github.com/DataDog/chaos-controller/pull/173) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.13.0](https://github.com/DataDog/chaos-controller/tree/2.13.0) (2020-10-22)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.12.0...2.13.0)
@@ -348,7 +357,6 @@
 - Improve local testing [\#28](https://github.com/DataDog/chaos-controller/pull/28) ([Devatoria](https://github.com/Devatoria))
 - Add stuff to test the controller locally [\#27](https://github.com/DataDog/chaos-controller/pull/27) ([Devatoria](https://github.com/Devatoria))
 - Add helpers package tests [\#26](https://github.com/DataDog/chaos-controller/pull/26) ([Devatoria](https://github.com/Devatoria))
-- Update README with details about nfis [\#21](https://github.com/DataDog/chaos-controller/pull/21) ([kathy-huang](https://github.com/kathy-huang))
 
 ## [0.1.0](https://github.com/DataDog/chaos-controller/tree/0.1.0) (2019-05-02)
 
@@ -365,6 +373,7 @@
 **Merged pull requests:**
 
 - Change chaos-fi call due to rework [\#23](https://github.com/DataDog/chaos-controller/pull/23) ([Devatoria](https://github.com/Devatoria))
+- Update README with details about nfis [\#21](https://github.com/DataDog/chaos-controller/pull/21) ([kathy-huang](https://github.com/kathy-huang))
 - update README about updating helm chart for controller [\#20](https://github.com/DataDog/chaos-controller/pull/20) ([kathy-huang](https://github.com/kathy-huang))
 - add 'numPodsToTarget' field to crd to allow specifying a random numbe… [\#19](https://github.com/DataDog/chaos-controller/pull/19) ([kathy-huang](https://github.com/kathy-huang))
 - Remove injection pod update in each Reconcile call [\#17](https://github.com/DataDog/chaos-controller/pull/17) ([kathy-huang](https://github.com/kathy-huang))
