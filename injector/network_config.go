@@ -235,7 +235,7 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 
 		// the following lines are used to allow the node and the pod to communicate even with disruptions applied
 		// depending on the network configuration, only one of those filters can be useful but we must add all of them
-		// NOTE: the filter must be added after every other filters applied to the interface so it is used first
+		// NOTE: those filters must be added after every other filters applied to the interface so they are used first
 
 		// this filter allows the pod to communicate with the default route gateway IP
 		if defaultRoute.Link().Name() == link.Name() {
