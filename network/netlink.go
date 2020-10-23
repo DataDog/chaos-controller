@@ -6,6 +6,7 @@
 package network
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/vishvananda/netlink"
@@ -18,6 +19,7 @@ type NetlinkAdapter interface {
 	LinkByIndex(index int) (NetlinkLink, error)
 	LinkByName(name string) (NetlinkLink, error)
 	RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error)
+	DefaultRoute() (NetlinkRoute, error)
 }
 
 type netlinkAdapter struct{}
@@ -85,10 +87,42 @@ func (a netlinkAdapter) RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error) {
 
 		r = append(r, netlinkRoute{
 			link: newNetlinkLink(link),
+			gw:   route.Gw,
 		})
 	}
 
 	return r, nil
+}
+
+func (a netlinkAdapter) DefaultRoute() (NetlinkRoute, error) {
+	// get the handler
+	handler, err := netlink.NewHandle()
+	if err != nil {
+		return nil, err
+	}
+
+	// list routes for all interfaces
+	routes, err := handler.RouteList(nil, netlink.FAMILY_V4)
+	if err != nil {
+		return nil, err
+	}
+
+	// find the default route, the one with no source nor destination
+	for _, route := range routes {
+		if route.Dst == nil && route.Src == nil {
+			link, err := netlink.LinkByIndex(route.LinkIndex)
+			if err != nil {
+				return nil, fmt.Errorf("error identifying default route link: %w", err)
+			}
+
+			return netlinkRoute{
+				link: newNetlinkLink(link),
+				gw:   route.Gw,
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("error getting default route: not found")
 }
 
 // NetlinkLink is a host interface
@@ -132,12 +166,18 @@ func newNetlinkLink(link netlink.Link) *netlinkLink {
 // NetlinkRoute is a route attached to a host interface
 type NetlinkRoute interface {
 	Link() NetlinkLink
+	Gateway() net.IP
 }
 
 type netlinkRoute struct {
 	link NetlinkLink
+	gw   net.IP
 }
 
 func (r netlinkRoute) Link() NetlinkLink {
 	return r.link
+}
+
+func (r netlinkRoute) Gateway() net.IP {
+	return r.gw
 }
