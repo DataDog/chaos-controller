@@ -8,9 +8,11 @@ package injector
 import (
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/DataDog/chaos-controller/network"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
 )
 
@@ -131,6 +133,26 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 
 	c.Log.Infof("detected default gateway IP %s on interface %s", defaultRoute.Gateway().String(), defaultRoute.Link().Name())
 
+	// get the targeted pod node IP from the environment variable
+	hostIP, ok := os.LookupEnv(chaostypes.TargetPodHostIPEnv)
+	if !ok {
+		return fmt.Errorf("%s environment variable must be set with the target pod node IP", chaostypes.TargetPodHostIPEnv)
+	}
+
+	c.Log.Infof("detected node IP %s", hostIP)
+
+	hostIPNet := &net.IPNet{
+		IP:   net.ParseIP(hostIP),
+		Mask: net.CIDRMask(32, 32),
+	}
+
+	// get routes going to this node IP to add a filter excluding this IP from the disruptions later
+	// it is used to allow the node to reach the pod even with disruptions applied
+	hostIPRoutes, err := c.NetlinkAdapter.RoutesForIP(hostIPNet)
+	if err != nil {
+		return fmt.Errorf("error getting target pod node IP routes: %w", err)
+	}
+
 	// get the interfaces per IP map
 	linkByIP, err := c.getInterfacesByIP(c.hosts)
 	if err != nil {
@@ -211,10 +233,11 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			}
 		}
 
-		// if the link matches the link used by the default route then
-		// exclude the default gateway IP by redirecting it to a band not being affected by the disruption
-		// it avoids any issues with the node not being able to communicate with the pod (such as for liveness or readiness probes)
-		// NOTE: the filter must be added after every other filters applied to the interface so it is used first
+		// the following lines are used to allow the node and the pod to communicate even with disruptions applied
+		// depending on the network configuration, only one of those filters can be useful but we must add all of them
+		// NOTE: those filters must be added after every other filters applied to the interface so they are used first
+
+		// this filter allows the pod to communicate with the default route gateway IP
 		if defaultRoute.Link().Name() == link.Name() {
 			gatewayIP := &net.IPNet{
 				IP:   defaultRoute.Gateway(),
@@ -223,6 +246,15 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 
 			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, gatewayIP, 0, "", "1:1", "egress"); err != nil {
 				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
+			}
+		}
+
+		// this filter allows the pod to communicate with the node IP
+		for _, hostIPRoute := range hostIPRoutes {
+			if hostIPRoute.Link().Name() == link.Name() {
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, hostIPNet, 0, "", "1:1", "egress"); err != nil {
+					return fmt.Errorf("can't add the target pod node IP filter: %w", err)
+				}
 			}
 		}
 
