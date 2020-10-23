@@ -44,6 +44,13 @@ func (f *NetlinkAdapterMock) RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error) 
 	return args.Get(0).([]NetlinkRoute), args.Error(1)
 }
 
+//nolint:golint
+func (f *NetlinkAdapterMock) DefaultRoute() (NetlinkRoute, error) {
+	args := f.Called()
+
+	return args.Get(0).(NetlinkRoute), args.Error(1)
+}
+
 // NetlinkLinkMock is a mock implementation of the NetlinkLink interface
 type NetlinkLinkMock struct {
 	mock.Mock
@@ -80,4 +87,11 @@ func (f *NetlinkRouteMock) Link() NetlinkLink {
 	args := f.Called()
 
 	return args.Get(0).(NetlinkLink)
+}
+
+//nolint:golint
+func (f *NetlinkRouteMock) Gateway() net.IP {
+	args := f.Called()
+
+	return args.Get(0).(net.IP)
 }

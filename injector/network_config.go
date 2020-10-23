@@ -65,6 +65,7 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 
 	if len(hosts) > 0 {
 		c.Log.Info("auto-detecting interfaces to apply disruption to...")
+
 		// resolve hosts
 		ips, err := resolveHosts(c.DNSClient, hosts)
 		if err != nil {
@@ -94,16 +95,19 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 			}
 		}
 	} else {
-		c.Log.Info("no hosts specified, all interfaces will be impacted")
+		c.Log.Info("no hosts specified, all interfaces (except lo) will be impacted")
 
 		// prepare links/IP association by pre-creating links
+		// exclude lo interface
 		links, err := c.NetlinkAdapter.LinkList()
 		if err != nil {
 			c.Log.Fatalf("can't list links: %w", err)
 		}
 		for _, link := range links {
-			c.Log.Infof("adding interface %s", link.Name())
-			linkByIP[link.Name()] = []*net.IPNet{}
+			if link.Name() != "lo" {
+				c.Log.Infof("adding interface %s", link.Name())
+				linkByIP[link.Name()] = []*net.IPNet{}
+			}
 		}
 	}
 
@@ -111,18 +115,23 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 }
 
 // ApplyOperations applies the added operations
-// Depending on if hosts have been specified or not, this method will behave in a different way
-// If no host is specified:
-//  - the first operation will be attached to root
-//  - other operations will be chained
-// If at least one host is specified:
+// Here's what happen on tc side:
 //  - a prio qdisc will be created and attached to root
 //  - first operation will be attached to the last band of the prio qdisc
 //  - other operations will be chained
 //  - a filter will be created to redirect traffic related to the specified host(s) through the last prio band
+//    - if no host, port or protocol is specified, a filter redirecting all the traffic (0.0.0.0/0) to the disrupted band will be created
+//  - a last filter will be created to redirect traffic related to the local node through a not disrupted band
 func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
-	c.Log.Info("auto-detecting interfaces to apply disruption to...")
+	// get the default route to exclude it later
+	defaultRoute, err := c.NetlinkAdapter.DefaultRoute()
+	if err != nil {
+		return fmt.Errorf("error getting the default route: %w", err)
+	}
 
+	c.Log.Infof("detected default gateway IP %s on interface %s", defaultRoute.Gateway().String(), defaultRoute.Link().Name())
+
+	// get the interfaces per IP map
 	linkByIP, err := c.getInterfacesByIP(c.hosts)
 	if err != nil {
 		return fmt.Errorf("can't get interfaces per IP listing: %w", err)
@@ -130,8 +139,6 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 
 	// for each link/ip association, add disruption
 	for linkName, ips := range linkByIP {
-		// default parent to root
-		parent := "root"
 		clearTxQlen := false
 
 		// retrieve link from name
@@ -140,45 +147,34 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			return fmt.Errorf("can't retrieve link %s: %w", linkName, err)
 		}
 
-		// if at least an IP, a port or a protocol has been specified,
-		// we need to create a prio qdisc to be able to apply a filter
-		// and a delay only on traffic going to those IP
-		if len(ips) > 0 || c.port > 0 || c.protocol != "" {
-			// set the tx qlen if not already set as it is required to create a prio qdisc without dropping
-			// all the outgoing traffic
-			// this qlen will be removed once the injection is done if it was not present before
-			if link.TxQLen() == 0 {
-				c.Log.Infof("setting tx qlen for interface %s", link.Name())
+		// set the tx qlen if not already set as it is required to create a prio qdisc without dropping
+		// all the outgoing traffic
+		// this qlen will be removed once the injection is done if it was not present before
+		if link.TxQLen() == 0 {
+			c.Log.Infof("setting tx qlen for interface %s", link.Name())
 
-				// set clear flag to true so we can clean up this once qdiscs are created
-				clearTxQlen = true
+			// set clear flag to true so we can clean up this once qdiscs are created
+			clearTxQlen = true
 
-				// set qlen
-				if err := link.SetTxQLen(1000); err != nil {
-					return fmt.Errorf("can't set tx queue length on interface %s: %w", link.Name(), err)
-				}
+			// set qlen
+			if err := link.SetTxQLen(1000); err != nil {
+				return fmt.Errorf("can't set tx queue length on interface %s: %w", link.Name(), err)
 			}
-
-			// create a new qdisc for the given interface of type prio with 4 bands instead of 3
-			// we keep the default priomap, the extra band will be used to filter traffic going to the specified IP
-			// we only create this qdisc if we want to target traffic going to some hosts only, it avoids to apply disruptions to all the traffic for a bit of time
-			priomap := [16]uint32{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}
-
-			if err := c.TrafficController.AddPrio(link.Name(), "root", 1, 4, priomap); err != nil {
-				return fmt.Errorf("can't create a new qdisc for interface %s: %w", link.Name(), err)
-			}
-
-			// update parent reference since we created the prio qdisc
-			// this parent points to the last prio band (each band having a separate class)
-			parent = "1:4"
 		}
 
-		// set handle identifier for the first operation to apply
-		// handle is 1 if no qdisc has been created yet, or 2 otherwise
-		handle := uint32(1)
-		if parent != "root" {
-			handle++
+		// create a new qdisc for the given interface of type prio with 4 bands instead of 3
+		// we keep the default priomap, the extra band will be used to filter traffic going to the specified IP
+		// we only create this qdisc if we want to target traffic going to some hosts only, it avoids to apply disruptions to all the traffic for a bit of time
+		priomap := [16]uint32{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}
+
+		if err := c.TrafficController.AddPrio(link.Name(), "root", 1, 4, priomap); err != nil {
+			return fmt.Errorf("can't create a new qdisc for interface %s: %w", link.Name(), err)
 		}
+
+		// parent 1:4 refers to the 4th band of the prio qdisc (the only one with no traffic on it yet)
+		// handle starts from 2 because 1 is used by the prio qdisc itself
+		parent := "1:4"
+		handle := uint32(2)
 
 		// add operations
 		for _, operation := range c.operations {
@@ -194,16 +190,39 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 		}
 
 		// if some hosts are targeted, create one filter per host to redirect the traffic to the extra band created earlier
-		// if only the port or the protocol is specified, create only one filter for this port
+		// if only the port or the protocol is specified, create only one filter for this port or protocol
+		// if nothing is provided, create a filter to redirect all the traffic (0.0.0.0/0) to the disrupted band
 		if len(ips) > 0 {
 			for _, ip := range ips {
 				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, ip, c.port, c.protocol, "1:4", c.flow); err != nil {
 					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 				}
 			}
-		} else if c.port > 0 || c.protocol != "" {
-			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, c.port, c.protocol, "1:4", c.flow); err != nil {
-				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
+		} else {
+			if c.port != 0 && c.protocol != "" {
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, c.port, c.protocol, "1:4", c.flow); err != nil {
+					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
+				}
+			} else {
+				_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nullIP, 0, "", "1:4", c.flow); err != nil {
+					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
+				}
+			}
+		}
+
+		// if the link matches the link used by the default route then
+		// exclude the default gateway IP by redirecting it to a band not being affected by the disruption
+		// it avoids any issues with the node not being able to communicate with the pod (such as for liveness or readiness probes)
+		// NOTE: the filter must be added after every other filters applied to the interface so it is used first
+		if defaultRoute.Link().Name() == link.Name() {
+			gatewayIP := &net.IPNet{
+				IP:   defaultRoute.Gateway(),
+				Mask: net.CIDRMask(32, 32),
+			}
+
+			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, gatewayIP, 0, "", "1:1", "egress"); err != nil {
+				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
 			}
 		}
 
