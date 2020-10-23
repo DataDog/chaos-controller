@@ -74,6 +74,7 @@ The [manager configmap](config/manager/config.yaml) contains the chaos pod templ
 * `.Spec.NodeName` is filled with the same value as the targeted pod node name to fix the chaos pod on the same node as the targeted pod
 * `.Spec.Containers[0].Image` is filled with the chaos injector image
 * `.Spec.Containers[0].Args` is filled with arguments built for the chaos injector image
+* `.Spec.Containers[0].Env["TARGET_POD_HOST_IP"]` is filled using a reference to `status.hostIP`
 
 ## Contributing
 

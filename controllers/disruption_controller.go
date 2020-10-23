@@ -529,6 +529,14 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	pod.Spec.NodeName = target.Spec.NodeName
 	pod.Spec.Containers[0].Image = image
 	pod.Spec.Containers[0].Args = args
+	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
+		Name: chaostypes.TargetPodHostIPEnv,
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "status.hostIP",
+			},
+		},
+	})
 
 	return &pod, nil
 }
