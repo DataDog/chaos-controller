@@ -153,11 +153,7 @@ func (t tc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet,
 
 	// match ip if specified
 	if ip != nil {
-		if flow == string(flowDirectionEgress) {
-			params += fmt.Sprintf("match ip dst %s ", ip.String())
-		} else if flow == string(flowDirectionIngress) {
-			params += fmt.Sprintf("match ip src %s ", ip.String())
-		}
+		params += fmt.Sprintf("match ip dst %s ", ip.String())
 	}
 
 	// match port if specified

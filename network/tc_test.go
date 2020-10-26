@@ -144,7 +144,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip src 127.0.0.1/32 match ip sport 80 0xffff match ip protocol 6 0xff flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 127.0.0.1/32 match ip sport 80 0xffff match ip protocol 6 0xff flowid 1:2")
 			})
 		})
 	})

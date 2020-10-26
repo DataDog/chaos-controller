@@ -34,6 +34,8 @@ In this case, you want to target the `server` pod and use the `ingress` flow so 
 
 #### A note on `ingress` flow implementation and UDP
 
+*TL;DR: the `ingress` flow only works for TCP and on ports and protocol, not hosts*
+
 The current implementation of the `ingress` flow is not a real filter on incoming packets but rather a filter on incoming packets answers (ie. outgoing packets). During a TCP communication, when the client sends a packet to the server, the server answers with an acknowledgement packet to confirm that it received the client's packet. By disrupting this acknowledgement packet, it simulates an ingress disruption. It means that `ingress` flow only works for TCP (or if the server uses UDP to send back an answer to the client).
 
 ## Implementation
