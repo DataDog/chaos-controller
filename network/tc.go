@@ -27,7 +27,6 @@ const (
 )
 
 type protocolIdentifier int
-type flowDirection string
 
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
