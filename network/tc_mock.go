@@ -32,14 +32,19 @@ func (f *TcMock) AddPrio(iface string, parent string, handle uint32, bands uint3
 }
 
 //nolint:golint
-func (f *TcMock) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocol string, flowid string, flow string) error {
-	ips := "nil"
+func (f *TcMock) AddFilter(iface string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
+	srcIPs := "nil"
+	dstIPs := "nil"
 
-	if ip != nil {
-		ips = ip.String()
+	if srcIP != nil {
+		srcIPs = srcIP.String()
 	}
 
-	args := f.Called(iface, parent, handle, ips, port, protocol, flowid, flow)
+	if dstIP != nil {
+		dstIPs = dstIP.String()
+	}
+
+	args := f.Called(iface, parent, handle, srcIPs, dstIPs, srcPort, dstPort, protocol, flowid)
 
 	return args.Error(0)
 }

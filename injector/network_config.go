@@ -16,6 +16,11 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	flowEgress  = "egress"
+	flowIngress = "ingress"
+)
+
 // linkOperation represents a tc operation on a single network interface combined with the parent to bind to and the handle identifier to use
 type linkOperation func(network.NetlinkLink, string, uint32) error
 
@@ -211,25 +216,32 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			handle++
 		}
 
-		// if some hosts are targeted, create one filter per host to redirect the traffic to the extra band created earlier
-		// if only the port or the protocol is specified, create only one filter for this port or protocol
-		// if nothing is provided, create a filter to redirect all the traffic (0.0.0.0/0) to the disrupted band
+		// handle flow direction
+		// if flow is egress, filter will be on destination port
+		// if flow is ingress, filter will be on source port
+		var srcPort, dstPort int
+
+		switch c.flow {
+		case flowEgress:
+			dstPort = c.port
+		case flowIngress:
+			srcPort = c.port
+		default:
+			return fmt.Errorf("unsupported flow: %s", c.flow)
+		}
+
+		// if some hosts are targeted, create one filter per host to redirect the traffic to the disrupted band
+		// otherwise, create a filter redirecting all the traffic (0.0.0.0/0) using the given port and protocol to the disrupted band
 		if len(ips) > 0 {
 			for _, ip := range ips {
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, ip, c.port, c.protocol, "1:4", c.flow); err != nil {
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, ip, srcPort, dstPort, c.protocol, "1:4"); err != nil {
 					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 				}
 			}
 		} else {
-			if c.port != 0 && c.protocol != "" {
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, c.port, c.protocol, "1:4", c.flow); err != nil {
-					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
-				}
-			} else {
-				_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nullIP, 0, "", "1:4", c.flow); err != nil {
-					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
-				}
+			_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
+			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, nullIP, srcPort, dstPort, c.protocol, "1:4"); err != nil {
+				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 			}
 		}
 
@@ -244,7 +256,7 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 				Mask: net.CIDRMask(32, 32),
 			}
 
-			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, gatewayIP, 0, "", "1:1", "egress"); err != nil {
+			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
 				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
 			}
 		}
@@ -252,7 +264,7 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 		// this filter allows the pod to communicate with the node IP
 		for _, hostIPRoute := range hostIPRoutes {
 			if hostIPRoute.Link().Name() == link.Name() {
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, hostIPNet, 0, "", "1:1", "egress"); err != nil {
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, hostIPNet, 0, 0, "", "1:1"); err != nil {
 					return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 				}
 			}

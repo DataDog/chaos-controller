@@ -37,11 +37,10 @@ var _ = Describe("Tc", func() {
 		corrupt           int
 		bands             uint32
 		priomap           [16]uint32
-		ip                *net.IPNet
-		port              int
+		srcIP, dstIP      *net.IPNet
+		srcPort, dstPort  int
 		protocol          string
 		flowid            string
-		flow              string
 	)
 
 	BeforeEach(func() {
@@ -63,14 +62,18 @@ var _ = Describe("Tc", func() {
 		corrupt = 1
 		bands = 16
 		priomap = [16]uint32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
-		ip = &net.IPNet{
-			IP:   net.IPv4(127, 0, 0, 1),
+		srcIP = &net.IPNet{
+			IP:   net.IPv4(192, 168, 0, 1),
 			Mask: net.CIDRMask(32, 32),
 		}
-		port = 80
+		dstIP = &net.IPNet{
+			IP:   net.IPv4(10, 0, 0, 1),
+			Mask: net.CIDRMask(32, 32),
+		}
+		srcPort = 12345
+		dstPort = 80
 		protocol = "tcp"
 		flowid = "1:2"
-		flow = "egress"
 	})
 
 	Describe("AddNetem", func() {
@@ -129,22 +132,34 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddFilter", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddFilter(iface, parent, handle, ip, port, protocol, flowid, flow)
+			tcRunner.AddFilter(iface, parent, handle, srcIP, dstIP, srcPort, dstPort, protocol, flowid)
 		})
 
-		Context("add a filter on local IP and port 80 with flowid 1:4 on egress traffic", func() {
-			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 127.0.0.1/32 match ip dport 80 0xffff match ip protocol 6 0xff flowid 1:2")
-			})
-		})
-
-		Context("add a filter on local IP and port 80 with flowid 1:4 on ingress traffic", func() {
+		Context("add a filter on packets going to IP 10.0.0.1 and port 80 with flowid 1:4 on egress traffic", func() {
 			BeforeEach(func() {
-				flow = "ingress"
+				srcIP = nil
+				srcPort = 0
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 127.0.0.1/32 match ip sport 80 0xffff match ip protocol 6 0xff flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 10.0.0.1/32 match ip dport 80 0xffff match ip protocol 6 0xff flowid 1:2")
+			})
+		})
+
+		Context("add a filter on packets leaving IP 192.168.0.1 and using port 12345 with flowid 1:4 on egress traffic", func() {
+			BeforeEach(func() {
+				dstIP = nil
+				dstPort = 0
+			})
+
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip src 192.168.0.1/32 match ip sport 12345 0xffff match ip protocol 6 0xff flowid 1:2")
+			})
+		})
+
+		Context("add a filter on packets leaving IP 192.168.0.1 port 12345 and going to IP 10.0.0.1 port 80 with flowid 1:4 on egress traffic", func() {
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip src 192.168.0.1/32 match ip dst 10.0.0.1/32 match ip sport 12345 0xffff match ip dport 80 0xffff match ip protocol 6 0xff flowid 1:2")
 			})
 		})
 	})

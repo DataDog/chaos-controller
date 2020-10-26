@@ -24,9 +24,6 @@ const (
 	protocolIP  protocolIdentifier = 0
 	protocolTCP protocolIdentifier = 6
 	protocolUDP protocolIdentifier = 17
-
-	flowDirectionEgress  flowDirection = "egress"
-	flowDirectionIngress flowDirection = "ingress"
 )
 
 type protocolIdentifier int
@@ -37,7 +34,7 @@ type flowDirection string
 type TrafficController interface {
 	AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
-	AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocol string, flowid string, flow string) error
+	AddFilter(iface string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error
 	AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error
 	ClearQdisc(iface string) error
 	IsQdiscCleared(iface string) (bool, error)
@@ -143,26 +140,30 @@ func (t tc) ClearQdisc(iface string) error {
 }
 
 // AddFilter generates a filter to redirect the traffic matching the given ip, port and protocol to the given flowid
-func (t tc) AddFilter(iface string, parent string, handle uint32, ip *net.IPNet, port int, protocol string, flowid string, flow string) error {
+func (t tc) AddFilter(iface string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
 	var params string
 
 	// ensure at least an IP or a port has been specified (otherwise the filter doesn't make sense)
-	if ip == nil && port == 0 && protocol == "" {
+	if srcIP == nil && dstIP == nil && srcPort == 0 && dstPort == 0 && protocol == "" {
 		return fmt.Errorf("wrong filter, at least an IP or a port must be specified")
 	}
 
 	// match ip if specified
-	if ip != nil {
-		params += fmt.Sprintf("match ip dst %s ", ip.String())
+	if srcIP != nil {
+		params += fmt.Sprintf("match ip src %s ", srcIP.String())
+	}
+
+	if dstIP != nil {
+		params += fmt.Sprintf("match ip dst %s ", dstIP.String())
 	}
 
 	// match port if specified
-	if port != 0 {
-		if flow == string(flowDirectionEgress) {
-			params += fmt.Sprintf("match ip dport %s 0xffff ", strconv.Itoa(port))
-		} else if flow == string(flowDirectionIngress) {
-			params += fmt.Sprintf("match ip sport %s 0xffff ", strconv.Itoa(port))
-		}
+	if srcPort != 0 {
+		params += fmt.Sprintf("match ip sport %s 0xffff ", strconv.Itoa(srcPort))
+	}
+
+	if dstPort != 0 {
+		params += fmt.Sprintf("match ip dport %s 0xffff ", strconv.Itoa(dstPort))
 	}
 
 	// match protocol if specified
