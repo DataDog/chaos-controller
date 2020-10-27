@@ -10,28 +10,69 @@ To work around this, we've created a custom Minikube ISO that contains not only 
 
 ## Creating the Image
 
+### [MacOS only] Prepare your environment
+
+*Note: because of MacOS filesystem, you'll need to create a case-sensitive disk-image to build the ISO, otherwise it will fail.*
+
+#### Create a case-sensitive disk-image
+
+Copy [this script](https://gist.github.com/dixson3/8360571) in `/usr/local/bin/workspace`. Then, run the `workspace create` and `workspace attach` commands.
+
+#### Create the Vagrant machine
+
+Create the following `/Volumes/workspace/Vagrantfile` file:
+
+```ruby
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/bionic64"
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "16384"
+    vb.cpus = 8
+  end
+end
+```
+
+Adjust the `vb.memory` and `vb.cpus` values to match your computer values so the virtual machine can use as much resources as possible for a faster build and run the `vagrant up` command to create and start it.
+
+Once up and running, run the `vagrant ssh` command to SSH into the VM and run the `cd /vagrant` command to enter the mount point shared with your computer.
+
+*Note: all commands below should be run from the /vagrant folder when using vagrant.*
+
+### Install requirements
+
+Follow the [prerequisites](https://minikube.sigs.k8s.io/docs/contrib/building/iso/#prerequisites) documentation to install needed components.
+
+### Clone the repository using the right version
+
 First, clone the Minikube Git repository **and checkout a released version**, not master:
 
 ```bash
-git clone https://github.com/kubernetes/minikube.git && git checkout 93af9c1 # version 1.9.2
+git clone https://github.com/kubernetes/minikube.git
+cd minikube/
+git checkout 93af9c1 # version 1.9.2
 ```
 
-Then, modify this config file so that it includes the lines:
+### Configure additional kernel modules
+
+Edit the `./deploy/iso/minikube-iso/board/coreos/minikube/linux_defconfig` file and add the follow lines at the end of the file:
 
 ```
 CONFIG_NET_SCH_PRIO=y
 CONFIG_BLK_DEV_THROTTLING=y
 ```
 
-```bash
-nano ./deploy/iso/minikube-iso/board/coreos/minikube/linux_defconfig
-```
+### Build the ISO
 
-Finally, follow [the instructions](https://minikube.sigs.k8s.io/docs/contrib/building/iso/) to build a new ISO.
+Finally, run the `IN_DOCKER=1 make out/minikube.iso` command to start the build. Please note that the image can be extremely long to build.
 
-> Note: The image takes an _extremely long time_ to build in Docker on a normal laptop, upwards of 6 hours, and for me didn't work at all under OSX. It's highly recommended to stand up a fairly large EC2 instance, install build requirements, and run `make` with `IN_DOCKER=1` on that instance instead.
+### [MacOS only] Cleanup
 
-To provide an example of build time, I ran `make buildroot-image` and then `IN_DOCKER=1 make out/minikube.iso` on a `c5.9xlarge` Ubuntu EC2 instance (32 vCPU, 72GB RAM) for a modified Minikube 1.9.2, and the whole process took a little over an hour to produce the ISO.
+* Copy the `/Volumes/workspace/out/minikube.iso` file somewhere outside of the `workspace` volume.
+* Run the `vagrant destroy` command to shutdown and delete the virtual machine.
+* Run the `workspace detach` command to detach the `workspace` volume.
 
 ## Uploading the Image
 
