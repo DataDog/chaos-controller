@@ -13,8 +13,8 @@ type CgroupMock struct {
 }
 
 //nolint:golint
-func (f *CgroupMock) JoinCPU() error {
-	args := f.Called()
+func (f *CgroupMock) Join(kind string, pid int) error {
+	args := f.Called(kind, pid)
 
 	return args.Error(0)
 }

@@ -78,10 +78,16 @@ func NewCPUPressureInjectorWithConfig(uid string, spec v1beta1.CPUPressureSpec, 
 }
 
 func (i cpuPressureInjector) Inject() {
+	// retrieve thread group ID
+	tgid, err := syscall.Getpgid(os.Getpid())
+	if err != nil {
+		i.log.Fatalw("error retrieving thread group ID", "error", err)
+	}
+
 	// join container CPU cgroup
 	i.log.Infow("joining container CPU cgroup", "container", i.container.ID())
 
-	if err := i.container.Cgroup().JoinCPU(); err != nil {
+	if err := i.container.Cgroup().Join("cpu", tgid); err != nil {
 		i.log.Fatalw("failed to inject CPU pressure", "error", err)
 	}
 

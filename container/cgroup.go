@@ -9,14 +9,13 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"syscall"
 
 	"github.com/DataDog/chaos-controller/env"
 )
 
 // Cgroup represents a cgroup manager able to join the given cgroup
 type Cgroup interface {
-	JoinCPU() error
+	Join(kind string, pid int) error
 	DiskThrottleRead(identifier, bps int) error
 	DiskThrottleWrite(identifier, bps int) error
 }
@@ -57,17 +56,11 @@ func (c cgroup) writeCgroupFile(path, data string) error {
 	return nil
 }
 
-// JoinCPU adds the current thread group to the instance CPU cgroup
-func (c cgroup) JoinCPU() error {
-	tgid, err := syscall.Getpgid(os.Getpid())
-	if err != nil {
-		return fmt.Errorf("error joining CPU cgroup: %w", err)
-	}
+// Join adds the given PID to the given cgroup
+func (c cgroup) Join(kind string, pid int) error {
+	path := fmt.Sprintf("%s%s/%s/cgroup.procs", kind, c.cgroupMount, c.path)
 
-	// write TGID to cgroup procs file
-	path := fmt.Sprintf("%scpu/%s/cgroup.procs", c.cgroupMount, c.path)
-
-	return c.writeCgroupFile(path, strconv.Itoa(tgid))
+	return c.writeCgroupFile(path, strconv.Itoa(pid))
 }
 
 // diskThrottle writes a disk throttling rule to the given blkio cgroup file
