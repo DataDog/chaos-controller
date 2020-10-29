@@ -34,6 +34,7 @@ type TrafficController interface {
 	AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
 	AddFilter(iface string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error
+	AddCgroupFilter(iface string, parent string, handle uint32) error
 	AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error
 	ClearQdisc(iface string) error
 	IsQdiscCleared(iface string) (bool, error)
@@ -176,6 +177,13 @@ func (t tc) AddFilter(iface string, parent string, handle uint32, srcIP, dstIP *
 	return err
 }
 
+// AddCgroupFilter generates a cgroup filter
+func (t tc) AddCgroupFilter(iface string, parent string, handle uint32) error {
+	_, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "cgroup", "")...)
+
+	return err
+}
+
 func (t tc) IsQdiscCleared(iface string) (bool, error) {
 	cmd := fmt.Sprintf("qdisc show dev %s", iface)
 
@@ -219,7 +227,9 @@ func buildCmd(module string, iface string, parent string, handle uint32, kind st
 	cmd += fmt.Sprintf(" %s", kind)
 
 	// parameters
-	cmd += fmt.Sprintf(" %s", parameters)
+	if parameters != "" {
+		cmd += fmt.Sprintf(" %s", parameters)
+	}
 
 	return strings.Split(cmd, " ")
 }

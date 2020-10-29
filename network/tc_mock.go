@@ -50,6 +50,13 @@ func (f *TcMock) AddFilter(iface string, parent string, handle uint32, srcIP, ds
 }
 
 //nolint:golint
+func (f *TcMock) AddCgroupFilter(iface string, parent string, handle uint32) error {
+	args := f.Called(iface, parent, handle)
+
+	return args.Error(0)
+}
+
+//nolint:golint
 func (f *TcMock) AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error {
 	args := f.Called(iface, parent, handle, bytesPerSec)
 

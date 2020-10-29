@@ -164,6 +164,18 @@ var _ = Describe("Tc", func() {
 		})
 	})
 
+	Describe("AddCgroupFilter", func() {
+		JustBeforeEach(func() {
+			tcRunner.AddCgroupFilter(iface, parent, handle)
+		})
+
+		Context("add a cgroup filter", func() {
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root cgroup")
+			})
+		})
+	})
+
 	Describe("AddOutputLimit", func() {
 		JustBeforeEach(func() {
 			tcRunner.AddOutputLimit(iface, parent, handle, 12345)

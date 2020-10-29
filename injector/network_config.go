@@ -121,14 +121,30 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 	return linkByIP, nil
 }
 
-// ApplyOperations applies the added operations
+// ApplyOperations applies the added operations by building a tc tree
 // Here's what happen on tc side:
-//  - a prio qdisc will be created and attached to root
-//  - first operation will be attached to the last band of the prio qdisc
-//  - other operations will be chained
+//  - a first prio qdisc will be created and attached to root
+//    - it'll be used to apply the fisrt filter, filtering on packet IP destination, source/destination ports and protocol
+//  - a second prio qdisc will be created and attached to the first one
+//    - it'll be used to apply the second filter, filtering on packet classid to identify packets coming from the targeted process
+//  - operations will be chained to the second band of the second prio qdisc
+//  - a cgroup filter will be created to classify packets according to their classid (if any)
 //  - a filter will be created to redirect traffic related to the specified host(s) through the last prio band
 //    - if no host, port or protocol is specified, a filter redirecting all the traffic (0.0.0.0/0) to the disrupted band will be created
 //  - a last filter will be created to redirect traffic related to the local node through a not disrupted band
+//
+// Here's the tc tree representation:
+// root (1:) <-- prio qdisc with 4 bands with a filter classifying packets matching the given dst ip, src/dst ports and protocol with class 1:4
+//   |- (1:1) <-- first band
+//   |- (1:2) <-- second band
+//   |- (1:3) <-- third band
+//   |- (1:4) <-- fourth band
+//     |- (2:) <-- prio qdisc with 2 bands with a cgroup filter to classify packets according to their classid (packets with classid 2:2 will be affected by operations)
+//       |- (2:1) <-- first band
+//       |- (2:2) <-- second band
+//         |- (3:) <-- first operation
+//           |- (4:) <-- second operation
+//             ...
 func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 	// get the default route to exclude it later
 	defaultRoute, err := c.NetlinkAdapter.DefaultRoute()
@@ -198,10 +214,20 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			return fmt.Errorf("can't create a new qdisc for interface %s: %w", link.Name(), err)
 		}
 
-		// parent 1:4 refers to the 4th band of the prio qdisc (the only one with no traffic on it yet)
-		// handle starts from 2 because 1 is used by the prio qdisc itself
-		parent := "1:4"
-		handle := uint32(2)
+		// create second prio with only 2 bands to filter traffic with a specific classid
+		if err := c.TrafficController.AddPrio(link.Name(), "1:4", 2, 2, [16]uint32{}); err != nil {
+			return fmt.Errorf("can't create a new qdisc for interface %s: %w", link.Name(), err)
+		}
+
+		// create cgroup filter
+		if err := c.TrafficController.AddCgroupFilter(link.Name(), "2:0", 2); err != nil {
+			return fmt.Errorf("can't create the cgroup filter for interface %s: %w", link.Name(), err)
+		}
+
+		// parent 2:2 refers to the 2nd band of the 2nd prio qdisc
+		// handle starts from 3 because 1 and 2 are used by the 2 prio qdiscs
+		parent := "2:2"
+		handle := uint32(3)
 
 		// add operations
 		for _, operation := range c.operations {
