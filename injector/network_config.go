@@ -151,21 +151,6 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 		Mask: net.CIDRMask(32, 32),
 	}
 
-	// get the targeted pod IP from the environment variable
-	// so we can filter on this source IP specifically (to avoid any mismatch with outgoing packets,
-	// especially useful when targeting a pod using the host network)
-	podIP, ok := os.LookupEnv(chaostypes.TargetPodIPEnv)
-	if !ok {
-		return fmt.Errorf("%s environment variable must be set with the target pod IP", chaostypes.TargetPodIPEnv)
-	}
-
-	c.Log.Infof("target pod IP is %s", podIP)
-
-	podIPNet := &net.IPNet{
-		IP:   net.ParseIP(podIP),
-		Mask: net.CIDRMask(32, 32),
-	}
-
 	// get routes going to this node IP to add a filter excluding this IP from the disruptions later
 	// it is used to allow the node to reach the pod even with disruptions applied
 	hostIPRoutes, err := c.NetlinkAdapter.RoutesForIP(hostIPNet)
@@ -249,13 +234,13 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 		// otherwise, create a filter redirecting all the traffic (0.0.0.0/0) using the given port and protocol to the disrupted band
 		if len(ips) > 0 {
 			for _, ip := range ips {
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, podIPNet, ip, srcPort, dstPort, c.protocol, "1:4"); err != nil {
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, ip, srcPort, dstPort, c.protocol, "1:4"); err != nil {
 					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 				}
 			}
 		} else {
 			_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
-			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, podIPNet, nullIP, srcPort, dstPort, c.protocol, "1:4"); err != nil {
+			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, nullIP, srcPort, dstPort, c.protocol, "1:4"); err != nil {
 				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 			}
 		}
@@ -271,7 +256,7 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 				Mask: net.CIDRMask(32, 32),
 			}
 
-			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, podIPNet, gatewayIP, 0, 0, "", "1:1"); err != nil {
+			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
 				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
 			}
 		}
@@ -279,7 +264,7 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 		// this filter allows the pod to communicate with the node IP
 		for _, hostIPRoute := range hostIPRoutes {
 			if hostIPRoute.Link().Name() == link.Name() {
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, podIPNet, hostIPNet, 0, 0, "", "1:1"); err != nil {
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, hostIPNet, 0, 0, "", "1:1"); err != nil {
 					return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 				}
 			}
