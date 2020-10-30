@@ -9,7 +9,6 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -23,13 +22,22 @@ var _ = Describe("Failure", func() {
 		inj    Injector
 		config NetworkConfigMock
 		spec   v1beta1.NetworkDisruptionSpec
+		cgroup container.CgroupMock
 	)
 
 	BeforeEach(func() {
+		// cgroup
+		cgroup = container.CgroupMock{}
+		cgroup.On("Create", mock.Anything, mock.Anything).Return(nil)
+		cgroup.On("Empty", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		cgroup.On("Write", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		cgroup.On("Remove", mock.Anything, mock.Anything).Return(nil)
+
 		// container
 		ctn = container.ContainerMock{}
 		ctn.On("EnterNetworkNamespace").Return(nil)
 		ctn.On("ExitNetworkNamespace").Return(nil)
+		ctn.On("Cgroup").Return(&cgroup)
 
 		// network disruption conf
 		config = NetworkConfigMock{}
@@ -63,24 +71,40 @@ var _ = Describe("Failure", func() {
 		})
 
 		It("should call AddNetem on its network disruption config", func() {
-			Expect(config.AssertCalled(GinkgoT(), "AddNetem", time.Second, spec.Drop, spec.Corrupt)).To(BeTrue())
+			config.AssertCalled(GinkgoT(), "AddNetem", time.Second, spec.Drop, spec.Corrupt)
 		})
 
 		It("should call AddOutputLimit on its network disruption config", func() {
-			Expect(config.AssertCalled(GinkgoT(), "AddOutputLimit", uint(spec.BandwidthLimit))).To(BeTrue())
+			config.AssertCalled(GinkgoT(), "AddOutputLimit", uint(spec.BandwidthLimit))
 		})
 
-		Describe("inj.Clean", func() {
-			JustBeforeEach(func() {
-				inj.Clean()
-			})
-			It("should enter and exit the container network namespace", func() {
-				Expect(ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")).To(BeTrue())
-				Expect(ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")).To(BeTrue())
-			})
-			It("should call ClearOperations on its network disruption config", func() {
-				Expect(config.AssertCalled(GinkgoT(), "ClearOperations")).To(BeTrue())
-			})
+		It("should create and move existing processes to a dedicated net_cls cgroup", func() {
+			cgroup.AssertCalled(GinkgoT(), "Create", "net_cls", "chaos")
+			cgroup.AssertCalled(GinkgoT(), "Empty", "net_cls", "", "chaos")
+		})
+
+		It("should write 2:2 classid to newly created net_cls cgroup", func() {
+			cgroup.AssertCalled(GinkgoT(), "Write", "net_cls", "chaos", "net_cls.classid", "0x00020002")
+		})
+	})
+
+	Describe("inj.Clean", func() {
+		JustBeforeEach(func() {
+			inj.Clean()
+		})
+
+		It("should enter and exit the container network namespace", func() {
+			ctn.AssertCalled(GinkgoT(), "EnterNetworkNamespace")
+			ctn.AssertCalled(GinkgoT(), "ExitNetworkNamespace")
+		})
+
+		It("should call ClearOperations on its network disruption config", func() {
+			config.AssertCalled(GinkgoT(), "ClearOperations")
+		})
+
+		It("should empty and remove the dedicated net_cls cgroup", func() {
+			cgroup.AssertCalled(GinkgoT(), "Empty", "net_cls", "chaos", "")
+			cgroup.AssertCalled(GinkgoT(), "Remove", "net_cls", "chaos")
 		})
 	})
 })

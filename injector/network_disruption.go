@@ -86,10 +86,26 @@ func (i networkDisruptionInjector) Inject() {
 	}
 
 	if err := i.config.ApplyOperations(); err != nil {
-		i.log.Fatalf("error applying tc operations", "error", err)
+		i.log.Fatalw("error applying tc operations", "error", err)
 	}
 
 	i.log.Info("operations applied successfully")
+	i.log.Info("creating net_cls cgroup")
+
+	// create a net_cls cgroup
+	if err := i.container.Cgroup().Create("net_cls", "chaos"); err != nil {
+		i.log.Fatalw("error creating net_cls cgroup", "error", err)
+	}
+
+	// move container PIDs in the newly created net_cls namespace
+	if err := i.container.Cgroup().Empty("net_cls", "", "chaos"); err != nil {
+		i.log.Fatalw("error joining newly created net_cls cgroup", "error", err)
+	}
+
+	// write classid to newly created net_cls classid file
+	if err := i.container.Cgroup().Write("net_cls", "chaos", "net_cls.classid", "0x00020002"); err != nil {
+		i.log.Fatalw("error writing classid to newly created net_cls cgroup", "error", err)
+	}
 }
 
 // Clean removes all the injected disruption in the given container
@@ -118,6 +134,16 @@ func (i networkDisruptionInjector) Clean() {
 
 	if err := i.config.ClearOperations(); err != nil {
 		i.log.Fatalw("error clearing tc operations", "error", err)
+	}
+
+	// join back the pod default net_cls cgroup
+	if err := i.container.Cgroup().Empty("net_cls", "chaos", ""); err != nil {
+		i.log.Fatalw("error joining back default net_cls cgroup", "error", err)
+	}
+
+	// remove the net_cls cgroup
+	if err := i.container.Cgroup().Remove("net_cls", "chaos"); err != nil {
+		i.log.Fatalw("error removing net_cls cgroup", "error", err)
 	}
 
 	i.log.Info("successfully cleared injected network disruption")
