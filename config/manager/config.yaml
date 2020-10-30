@@ -18,6 +18,7 @@ data:
         "nodeName": "PLACEHOLDER"
       },
       "spec": {
+        "hostPID": true,
         "priorityClassName": "chaos-controller-high-priority",
         "restartPolicy": "Never",
         "containers": [
