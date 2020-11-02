@@ -13,8 +13,36 @@ type CgroupMock struct {
 }
 
 //nolint:golint
-func (f *CgroupMock) JoinCPU() error {
-	args := f.Called()
+func (f *CgroupMock) Create(kind, name string) error {
+	args := f.Called(kind, name)
+
+	return args.Error(0)
+}
+
+//nolint:golint
+func (f *CgroupMock) Remove(kind, name string) error {
+	args := f.Called(kind, name)
+
+	return args.Error(0)
+}
+
+//nolint:golint
+func (f *CgroupMock) Join(kind, name string, pid int) error {
+	args := f.Called(kind, name, pid)
+
+	return args.Error(0)
+}
+
+//nolint:golint
+func (f *CgroupMock) Write(kind, name, file, data string) error {
+	args := f.Called(kind, name, file, data)
+
+	return args.Error(0)
+}
+
+//nolint:golint
+func (f *CgroupMock) Empty(kind, from, to string) error {
+	args := f.Called(kind, from, to)
 
 	return args.Error(0)
 }

@@ -34,7 +34,7 @@ var _ = Describe("Failure", func() {
 	BeforeEach(func() {
 		// cgroup
 		cgroup = &container.CgroupMock{}
-		cgroup.On("JoinCPU").Return(nil)
+		cgroup.On("Join", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// container
 		ctn = &container.ContainerMock{}
@@ -82,7 +82,7 @@ var _ = Describe("Failure", func() {
 		})
 
 		It("should join the container CPU cgroup", func() {
-			cgroup.AssertCalled(GinkgoT(), "JoinCPU")
+			cgroup.AssertCalled(GinkgoT(), "Join", "cpu", "", mock.Anything)
 		})
 
 		It("should prioritize the current process", func() {
