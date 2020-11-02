@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.14.0](https://github.com/DataDog/chaos-controller/tree/2.14.0) (2020-11-02)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.13.2...2.14.0)
+
+**Merged pull requests:**
+
+- Target only interfaces listed in the routing table when no host is specified [\#181](https://github.com/DataDog/chaos-controller/pull/181) ([Devatoria](https://github.com/Devatoria))
+- Host network source ip [\#180](https://github.com/DataDog/chaos-controller/pull/180) ([Devatoria](https://github.com/Devatoria))
+- Improve minikube iso building documentation [\#179](https://github.com/DataDog/chaos-controller/pull/179) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_de418b49d5c362c4d7091d6602d2a7dbe7acc451 [\#178](https://github.com/DataDog/chaos-controller/pull/178) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.13.2](https://github.com/DataDog/chaos-controller/tree/2.13.2) (2020-10-23)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.13.1...2.13.2)
@@ -179,6 +190,7 @@
 - Check qdisc hasn't been cleared before trying to clear it [\#109](https://github.com/DataDog/chaos-controller/pull/109) ([Devatoria](https://github.com/Devatoria))
 - Add tests for the network package [\#108](https://github.com/DataDog/chaos-controller/pull/108) ([Devatoria](https://github.com/Devatoria))
 - Update container release\_changelog\_0b2bd25290da0f1fa63e31ad511625889c22aa90 [\#107](https://github.com/DataDog/chaos-controller/pull/107) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Add release documentation [\#105](https://github.com/DataDog/chaos-controller/pull/105) ([Devatoria](https://github.com/Devatoria))
 
 ## [2.3.0](https://github.com/DataDog/chaos-controller/tree/2.3.0) (2020-03-19)
 
@@ -187,7 +199,6 @@
 **Merged pull requests:**
 
 - Count field is now required and the value to target all pods is -1 [\#106](https://github.com/DataDog/chaos-controller/pull/106) ([Devatoria](https://github.com/Devatoria))
-- Add release documentation [\#105](https://github.com/DataDog/chaos-controller/pull/105) ([Devatoria](https://github.com/Devatoria))
 - Auto-generate changelog on tag push and open a PR to approve it [\#103](https://github.com/DataDog/chaos-controller/pull/103) ([Devatoria](https://github.com/Devatoria))
 - Add missing tag to release pull command [\#99](https://github.com/DataDog/chaos-controller/pull/99) ([Devatoria](https://github.com/Devatoria))
 - Add goreleaser GitHub action [\#98](https://github.com/DataDog/chaos-controller/pull/98) ([Devatoria](https://github.com/Devatoria))
@@ -258,7 +269,6 @@
 **Merged pull requests:**
 
 - Move logger instance into the CLI and pass it to the injector instance [\#52](https://github.com/DataDog/chaos-controller/pull/52) ([Devatoria](https://github.com/Devatoria))
-- Allow to specify a list of hosts in a network failure [\#51](https://github.com/DataDog/chaos-controller/pull/51) ([Devatoria](https://github.com/Devatoria))
 - Add requirements for contributing and local development [\#50](https://github.com/DataDog/chaos-controller/pull/50) ([Devatoria](https://github.com/Devatoria))
 - Add golangci-lint to the project [\#49](https://github.com/DataDog/chaos-controller/pull/49) ([Devatoria](https://github.com/Devatoria))
 
@@ -268,6 +278,7 @@
 
 **Merged pull requests:**
 
+- Allow to specify a list of hosts in a network failure [\#51](https://github.com/DataDog/chaos-controller/pull/51) ([Devatoria](https://github.com/Devatoria))
 - Fix resource version race condition on instance update in controller tests [\#48](https://github.com/DataDog/chaos-controller/pull/48) ([Devatoria](https://github.com/Devatoria))
 - Unique CRD and controller for all the failures [\#47](https://github.com/DataDog/chaos-controller/pull/47) ([Devatoria](https://github.com/Devatoria))
 - Ignore unneeded files and make better use of build cache [\#46](https://github.com/DataDog/chaos-controller/pull/46) ([Devatoria](https://github.com/Devatoria))
@@ -355,7 +366,6 @@
 - Improve doc [\#32](https://github.com/DataDog/chaos-controller/pull/32) ([Devatoria](https://github.com/Devatoria))
 - Makes host optional in CRD definition [\#31](https://github.com/DataDog/chaos-controller/pull/31) ([Azoam](https://github.com/Azoam))
 - Sam/infected node names [\#30](https://github.com/DataDog/chaos-controller/pull/30) ([Azoam](https://github.com/Azoam))
-- Add stuff to test the controller locally [\#27](https://github.com/DataDog/chaos-controller/pull/27) ([Devatoria](https://github.com/Devatoria))
 
 ## [0.1.1](https://github.com/DataDog/chaos-controller/tree/0.1.1) (2019-06-25)
 
@@ -365,6 +375,7 @@
 
 - Fix cleanup pods being deleted before completion [\#29](https://github.com/DataDog/chaos-controller/pull/29) ([Devatoria](https://github.com/Devatoria))
 - Improve local testing [\#28](https://github.com/DataDog/chaos-controller/pull/28) ([Devatoria](https://github.com/Devatoria))
+- Add stuff to test the controller locally [\#27](https://github.com/DataDog/chaos-controller/pull/27) ([Devatoria](https://github.com/Devatoria))
 - Add helpers package tests [\#26](https://github.com/DataDog/chaos-controller/pull/26) ([Devatoria](https://github.com/Devatoria))
 - Update README with details about nfis [\#21](https://github.com/DataDog/chaos-controller/pull/21) ([kathy-huang](https://github.com/kathy-huang))
 
