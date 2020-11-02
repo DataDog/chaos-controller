@@ -144,6 +144,7 @@ github.com/json-iterator/go,github.com/json-iterator/go,MIT
 github.com/konsorten/go-windows-terminal-sequences,github.com/konsorten/go-windows-terminal-sequences,MIT
 github.com/matttproud/golang_protobuf_extensions,github.com/matttproud/golang_protobuf_extensions/pbutil,Apache-2.0
 github.com/miekg/dns,github.com/miekg/dns,BSD-3-Clause
+github.com/mitchellh/go-ps,github.com/mitchellh/go-ps,MIT
 github.com/modern-go/concurrent,github.com/modern-go/concurrent,Apache-2.0
 github.com/modern-go/reflect2,github.com/modern-go/reflect2,Apache-2.0
 github.com/nxadm/tail,github.com/nxadm/tail,MIT

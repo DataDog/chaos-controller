@@ -110,7 +110,7 @@ func (a netlinkAdapter) DefaultRoute() (NetlinkRoute, error) {
 
 	// find the default route, the one with no source nor destination
 	for _, route := range routes {
-		if route.Dst == nil && route.Src == nil {
+		if route.Dst == nil {
 			link, err := netlink.LinkByIndex(route.LinkIndex)
 			if err != nil {
 				return nil, fmt.Errorf("error identifying default route link: %w", err)

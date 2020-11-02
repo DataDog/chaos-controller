@@ -44,7 +44,7 @@ var _ = Describe("Container", func() {
 
 		// cgroup
 		cgroup = &container.CgroupMock{}
-		cgroup.On("JoinCPU", mock.Anything).Return(nil)
+		cgroup.On("Join", mock.Anything, mock.Anything).Return(nil)
 
 		// config
 		config = Config{
