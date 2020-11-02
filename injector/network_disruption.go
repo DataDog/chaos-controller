@@ -72,7 +72,7 @@ func (i networkDisruptionInjector) Inject() {
 		}
 	}()
 
-	i.log.Infow("adding network disruptions", "drop", i.spec.Drop, "corrupt", i.spec.Corrupt)
+	i.log.Infow("adding network disruptions", "drop", i.spec.Drop, "corrupt", i.spec.Corrupt, "delay", i.spec.Delay, "bandwidthLimit", i.spec.BandwidthLimit)
 
 	// add netem
 	if i.spec.Delay > 0 || i.spec.Drop > 0 || i.spec.Corrupt > 0 {
