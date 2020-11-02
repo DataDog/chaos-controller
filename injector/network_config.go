@@ -102,7 +102,7 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 			}
 		}
 	} else {
-		c.Log.Info("no hosts specified, all interfaces (except lo) will be impacted")
+		c.Log.Info("no hosts specified, all interfaces will be impacted")
 
 		// prepare links/IP association by pre-creating links
 		// exclude lo interface
@@ -110,6 +110,7 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 		if err != nil {
 			c.Log.Fatalf("can't list links: %w", err)
 		}
+
 		for _, link := range links {
 			if link.Name() != "lo" {
 				c.Log.Infof("adding interface %s", link.Name())
