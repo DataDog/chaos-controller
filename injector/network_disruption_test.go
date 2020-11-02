@@ -18,11 +18,12 @@ import (
 
 var _ = Describe("Failure", func() {
 	var (
-		ctn    container.ContainerMock
-		inj    Injector
-		config NetworkConfigMock
-		spec   v1beta1.NetworkDisruptionSpec
-		cgroup container.CgroupMock
+		ctn              container.ContainerMock
+		inj              Injector
+		config           NetworkConfigMock
+		spec             v1beta1.NetworkDisruptionSpec
+		cgroup           container.CgroupMock
+		cgroupExistsCall *mock.Call
 	)
 
 	BeforeEach(func() {
@@ -32,6 +33,7 @@ var _ = Describe("Failure", func() {
 		cgroup.On("Empty", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		cgroup.On("Write", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		cgroup.On("Remove", mock.Anything, mock.Anything).Return(nil)
+		cgroupExistsCall = cgroup.On("Exists", mock.Anything, mock.Anything).Return(true, nil)
 
 		// container
 		ctn = container.ContainerMock{}
@@ -103,8 +105,20 @@ var _ = Describe("Failure", func() {
 		})
 
 		It("should empty and remove the dedicated net_cls cgroup", func() {
+			cgroup.AssertCalled(GinkgoT(), "Exists", "net_cls", "chaos")
 			cgroup.AssertCalled(GinkgoT(), "Empty", "net_cls", "chaos", "")
 			cgroup.AssertCalled(GinkgoT(), "Remove", "net_cls", "chaos")
+		})
+
+		When("net_cls cgroup does not exist anymore", func() {
+			BeforeEach(func() {
+				cgroupExistsCall.Return(false, nil)
+			})
+
+			It("should skip the cgroup cleanup", func() {
+				cgroup.AssertNumberOfCalls(GinkgoT(), "Empty", 0)
+				cgroup.AssertNumberOfCalls(GinkgoT(), "Remove", 0)
+			})
 		})
 	})
 })

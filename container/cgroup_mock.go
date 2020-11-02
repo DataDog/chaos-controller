@@ -48,6 +48,13 @@ func (f *CgroupMock) Empty(kind, from, to string) error {
 }
 
 //nolint:golint
+func (f *CgroupMock) Exists(kind, name string) (bool, error) {
+	args := f.Called(kind, name)
+
+	return args.Bool(0), args.Error(1)
+}
+
+//nolint:golint
 func (f *CgroupMock) DiskThrottleRead(identifier, bps int) error {
 	args := f.Called(identifier, bps)
 
