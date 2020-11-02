@@ -24,21 +24,54 @@ type NetlinkAdapter interface {
 
 type netlinkAdapter struct{}
 
+func (a netlinkAdapter) listRoutes() ([]netlink.Route, error) {
+	// get the handler
+	handler, err := netlink.NewHandle()
+	if err != nil {
+		return nil, err
+	}
+
+	// list routes for all interfaces using IPv4
+	// cf. https://godoc.org/golang.org/x/sys/unix#AF_INET for value 2
+	routes, err := handler.RouteList(nil, 2)
+	if err != nil {
+		return nil, err
+	}
+
+	return routes, nil
+}
+
 // NewNetlinkAdapter returns a standard netlink adapter
 func NewNetlinkAdapter() NetlinkAdapter {
 	return netlinkAdapter{}
 }
 
+// LinkList lists links used in the routing table for IPv4 only
 func (a netlinkAdapter) LinkList() ([]NetlinkLink, error) {
-	// list links
-	links, err := netlink.LinkList()
+	// get routes
+	routes, err := a.listRoutes()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error listing routes: %w", err)
 	}
 
-	// cast to interface
+	// store links indexes
+	linksIndexes := map[int]struct{}{}
+
+	for _, route := range routes {
+		if _, found := linksIndexes[route.LinkIndex]; !found {
+			linksIndexes[route.LinkIndex] = struct{}{}
+		}
+	}
+
+	// retrieve links from indexes and cast them
 	nlinks := []NetlinkLink{}
-	for _, link := range links {
+
+	for linkIndex := range linksIndexes {
+		link, err := netlink.LinkByIndex(linkIndex)
+		if err != nil {
+			return nil, fmt.Errorf("error getting link with index %d: %w", linkIndex, err)
+		}
+
 		nlinks = append(nlinks, newNetlinkLink(link))
 	}
 
@@ -95,17 +128,9 @@ func (a netlinkAdapter) RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error) {
 }
 
 func (a netlinkAdapter) DefaultRoute() (NetlinkRoute, error) {
-	// get the handler
-	handler, err := netlink.NewHandle()
+	routes, err := a.listRoutes()
 	if err != nil {
-		return nil, err
-	}
-
-	// list routes for all interfaces using IPv4
-	// cf. https://godoc.org/golang.org/x/sys/unix#AF_INET for value 2
-	routes, err := handler.RouteList(nil, 2)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error listing routes: %w", err)
 	}
 
 	// find the default route, the one with no source nor destination
