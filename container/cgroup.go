@@ -23,6 +23,7 @@ type Cgroup interface {
 	Join(kind, name string, pid int) error
 	Write(kind, name, file, data string) error
 	Empty(kind, from, to string) error
+	Exists(kind, name string) (bool, error)
 	DiskThrottleRead(identifier, bps int) error
 	DiskThrottleWrite(identifier, bps int) error
 }
@@ -111,6 +112,20 @@ func (c cgroup) Create(kind, name string) error {
 	}
 
 	return nil
+}
+
+// Exists returns true if the given cgroup exists, false otherwise
+func (c cgroup) Exists(kind, name string) (bool, error) {
+	path := fmt.Sprintf("%s/cgroup.procs", c.generatePath(kind, name))
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
 }
 
 // Empty moves every process from the given cgroup to the given cgroup in order to fully empty it

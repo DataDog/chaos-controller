@@ -137,13 +137,22 @@ func (i networkDisruptionInjector) Clean() {
 	}
 
 	// join back the pod default net_cls cgroup
-	if err := i.container.Cgroup().Empty("net_cls", "chaos", ""); err != nil {
-		i.log.Fatalw("error joining back default net_cls cgroup", "error", err)
+	exists, err := i.container.Cgroup().Exists("net_cls", "chaos")
+	if err != nil {
+		i.log.Fatalw("error checking if the chaos net_cls cgroup exists", "error", err)
 	}
 
-	// remove the net_cls cgroup
-	if err := i.container.Cgroup().Remove("net_cls", "chaos"); err != nil {
-		i.log.Fatalw("error removing net_cls cgroup", "error", err)
+	if exists {
+		if err := i.container.Cgroup().Empty("net_cls", "chaos", ""); err != nil {
+			i.log.Fatalw("error joining back default net_cls cgroup", "error", err)
+		}
+
+		// remove the net_cls cgroup
+		if err := i.container.Cgroup().Remove("net_cls", "chaos"); err != nil {
+			i.log.Fatalw("error removing net_cls cgroup", "error", err)
+		}
+	} else {
+		i.log.Info("chaos net_cls cgroup not found, skipping")
 	}
 
 	i.log.Info("successfully cleared injected network disruption")
