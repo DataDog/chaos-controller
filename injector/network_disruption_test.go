@@ -29,11 +29,8 @@ var _ = Describe("Failure", func() {
 	BeforeEach(func() {
 		// cgroup
 		cgroup = container.CgroupMock{}
-		cgroup.On("Create", mock.Anything, mock.Anything).Return(nil)
-		cgroup.On("Empty", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		cgroup.On("Write", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		cgroup.On("Remove", mock.Anything, mock.Anything).Return(nil)
-		cgroupExistsCall = cgroup.On("Exists", mock.Anything, mock.Anything).Return(true, nil)
+		cgroup.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		cgroupExistsCall = cgroup.On("Exists", mock.Anything).Return(true, nil)
 
 		// container
 		ctn = container.ContainerMock{}
@@ -80,13 +77,8 @@ var _ = Describe("Failure", func() {
 			config.AssertCalled(GinkgoT(), "AddOutputLimit", uint(spec.BandwidthLimit))
 		})
 
-		It("should create and move existing processes to a dedicated net_cls cgroup", func() {
-			cgroup.AssertCalled(GinkgoT(), "Create", "net_cls", "chaos")
-			cgroup.AssertCalled(GinkgoT(), "Empty", "net_cls", "", "chaos")
-		})
-
-		It("should write 2:2 classid to newly created net_cls cgroup", func() {
-			cgroup.AssertCalled(GinkgoT(), "Write", "net_cls", "chaos", "net_cls.classid", "0x00020002")
+		It("should write 2:2 classid to the container net_cls cgroup", func() {
+			cgroup.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", "0x00020002")
 		})
 	})
 
@@ -104,10 +96,9 @@ var _ = Describe("Failure", func() {
 			config.AssertCalled(GinkgoT(), "ClearOperations")
 		})
 
-		It("should empty and remove the dedicated net_cls cgroup", func() {
-			cgroup.AssertCalled(GinkgoT(), "Exists", "net_cls", "chaos")
-			cgroup.AssertCalled(GinkgoT(), "Empty", "net_cls", "chaos", "")
-			cgroup.AssertCalled(GinkgoT(), "Remove", "net_cls", "chaos")
+		It("should write the default classid value in the container net_cls cgroup", func() {
+			cgroup.AssertCalled(GinkgoT(), "Exists", "net_cls")
+			cgroup.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", "0x0")
 		})
 
 		When("net_cls cgroup does not exist anymore", func() {
@@ -116,8 +107,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should skip the cgroup cleanup", func() {
-				cgroup.AssertNumberOfCalls(GinkgoT(), "Empty", 0)
-				cgroup.AssertNumberOfCalls(GinkgoT(), "Remove", 0)
+				cgroup.AssertNumberOfCalls(GinkgoT(), "Write", 0)
 			})
 		})
 	})
