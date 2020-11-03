@@ -21,7 +21,6 @@ require (
 	github.com/gogo/googleapis v1.4.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/miekg/dns v1.1.31
-	github.com/mitchellh/go-ps v1.0.0
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
