@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.14.2](https://github.com/DataDog/chaos-controller/tree/2.14.2) (2020-11-03)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.14.1...2.14.2)
+
+**Merged pull requests:**
+
+- Re-use existing container net\_cls classid [\#185](https://github.com/DataDog/chaos-controller/pull/185) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_001ae0f8f2fbed78ffdf12f2268528db67696757 [\#184](https://github.com/DataDog/chaos-controller/pull/184) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.14.1](https://github.com/DataDog/chaos-controller/tree/2.14.1) (2020-11-02)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.14.0...2.14.1)
@@ -119,7 +128,6 @@
 
 - Update container release\_changelog\_bc5e0460e933309fcbfd63d3cc3403edcef25eec [\#141](https://github.com/DataDog/chaos-controller/pull/141) ([github-actions[bot]](https://github.com/apps/github-actions))
 - Add disk pressure feature [\#139](https://github.com/DataDog/chaos-controller/pull/139) ([Devatoria](https://github.com/Devatoria))
-- Factor out networking impl in latency and bandwidth limit disruptions [\#133](https://github.com/DataDog/chaos-controller/pull/133) ([brandon-dd](https://github.com/brandon-dd))
 
 ## [2.7.1](https://github.com/DataDog/chaos-controller/tree/2.7.1) (2020-07-06)
 
@@ -139,9 +147,11 @@
 **Merged pull requests:**
 
 - Create a chaos-engineering namespace for local testing [\#134](https://github.com/DataDog/chaos-controller/pull/134) ([Devatoria](https://github.com/Devatoria))
+- Factor out networking impl in latency and bandwidth limit disruptions [\#133](https://github.com/DataDog/chaos-controller/pull/133) ([brandon-dd](https://github.com/brandon-dd))
 - Adds new network bandwidth limitation disruption [\#132](https://github.com/DataDog/chaos-controller/pull/132) ([brandon-dd](https://github.com/brandon-dd))
 - Update docs with custom minikube ISO information [\#131](https://github.com/DataDog/chaos-controller/pull/131) ([brandon-dd](https://github.com/brandon-dd))
 - Update container release\_changelog\_732fb8265d8073d88598ec47ec4c3bc11bbe9da4 [\#129](https://github.com/DataDog/chaos-controller/pull/129) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Add cpu pressure injection [\#124](https://github.com/DataDog/chaos-controller/pull/124) ([Devatoria](https://github.com/Devatoria))
 
 ## [2.6.1](https://github.com/DataDog/chaos-controller/tree/2.6.1) (2020-05-11)
 
@@ -160,7 +170,6 @@
 **Merged pull requests:**
 
 - Change code owners to the new core resilience team [\#125](https://github.com/DataDog/chaos-controller/pull/125) ([Devatoria](https://github.com/Devatoria))
-- Add cpu pressure injection [\#124](https://github.com/DataDog/chaos-controller/pull/124) ([Devatoria](https://github.com/Devatoria))
 - api: Add a maximum value for networkLatency.delay [\#123](https://github.com/DataDog/chaos-controller/pull/123) ([dd-adn](https://github.com/dd-adn))
 - Switch to noop metrics sink by default [\#122](https://github.com/DataDog/chaos-controller/pull/122) ([Devatoria](https://github.com/Devatoria))
 - Fix manager bin path in deployment [\#121](https://github.com/DataDog/chaos-controller/pull/121) ([Devatoria](https://github.com/Devatoria))
@@ -280,6 +289,7 @@
 - Move logger instance into the CLI and pass it to the injector instance [\#52](https://github.com/DataDog/chaos-controller/pull/52) ([Devatoria](https://github.com/Devatoria))
 - Allow to specify a list of hosts in a network failure [\#51](https://github.com/DataDog/chaos-controller/pull/51) ([Devatoria](https://github.com/Devatoria))
 - Add requirements for contributing and local development [\#50](https://github.com/DataDog/chaos-controller/pull/50) ([Devatoria](https://github.com/Devatoria))
+- Add golangci-lint to the project [\#49](https://github.com/DataDog/chaos-controller/pull/49) ([Devatoria](https://github.com/Devatoria))
 
 ## [2.0.0](https://github.com/DataDog/chaos-controller/tree/2.0.0) (2020-01-29)
 
@@ -287,7 +297,6 @@
 
 **Merged pull requests:**
 
-- Add golangci-lint to the project [\#49](https://github.com/DataDog/chaos-controller/pull/49) ([Devatoria](https://github.com/Devatoria))
 - Fix resource version race condition on instance update in controller tests [\#48](https://github.com/DataDog/chaos-controller/pull/48) ([Devatoria](https://github.com/Devatoria))
 - Unique CRD and controller for all the failures [\#47](https://github.com/DataDog/chaos-controller/pull/47) ([Devatoria](https://github.com/Devatoria))
 - Ignore unneeded files and make better use of build cache [\#46](https://github.com/DataDog/chaos-controller/pull/46) ([Devatoria](https://github.com/Devatoria))
