@@ -90,21 +90,11 @@ func (i networkDisruptionInjector) Inject() {
 	}
 
 	i.log.Info("operations applied successfully")
-	i.log.Info("creating net_cls cgroup")
+	i.log.Info("editing pod net_cls cgroup to apply a classid to target container packets")
 
-	// create a net_cls cgroup
-	if err := i.container.Cgroup().Create("net_cls", "chaos"); err != nil {
-		i.log.Fatalw("error creating net_cls cgroup", "error", err)
-	}
-
-	// move container PIDs in the newly created net_cls namespace
-	if err := i.container.Cgroup().Empty("net_cls", "", "chaos"); err != nil {
-		i.log.Fatalw("error joining newly created net_cls cgroup", "error", err)
-	}
-
-	// write classid to newly created net_cls classid file
-	if err := i.container.Cgroup().Write("net_cls", "chaos", "net_cls.classid", "0x00020002"); err != nil {
-		i.log.Fatalw("error writing classid to newly created net_cls cgroup", "error", err)
+	// write classid to pod net_cls cgroup
+	if err := i.container.Cgroup().Write("net_cls", "net_cls.classid", "0x00020002"); err != nil {
+		i.log.Fatalw("error writing classid to pod net_cls cgroup", "error", err)
 	}
 }
 
@@ -136,23 +126,16 @@ func (i networkDisruptionInjector) Clean() {
 		i.log.Fatalw("error clearing tc operations", "error", err)
 	}
 
-	// join back the pod default net_cls cgroup
-	exists, err := i.container.Cgroup().Exists("net_cls", "chaos")
+	// write default classid to pod net_cls cgroup if it still exists
+	exists, err := i.container.Cgroup().Exists("net_cls")
 	if err != nil {
-		i.log.Fatalw("error checking if the chaos net_cls cgroup exists", "error", err)
+		i.log.Fatalw("error checking if pod net_cls cgroup still exists", "error", err)
 	}
 
 	if exists {
-		if err := i.container.Cgroup().Empty("net_cls", "chaos", ""); err != nil {
-			i.log.Fatalw("error joining back default net_cls cgroup", "error", err)
+		if err := i.container.Cgroup().Write("net_cls", "net_cls.classid", "0x0"); err != nil {
+			i.log.Fatalw("error reseting classid of pod net_cls cgroup", "error", err)
 		}
-
-		// remove the net_cls cgroup
-		if err := i.container.Cgroup().Remove("net_cls", "chaos"); err != nil {
-			i.log.Fatalw("error removing net_cls cgroup", "error", err)
-		}
-	} else {
-		i.log.Info("chaos net_cls cgroup not found, skipping")
 	}
 
 	i.log.Info("successfully cleared injected network disruption")

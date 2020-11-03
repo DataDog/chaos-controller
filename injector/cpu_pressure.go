@@ -87,7 +87,7 @@ func (i cpuPressureInjector) Inject() {
 	// join container CPU cgroup
 	i.log.Infow("joining container CPU cgroup", "container", i.container.ID())
 
-	if err := i.container.Cgroup().Join("cpu", "", tgid); err != nil {
+	if err := i.container.Cgroup().Join("cpu", tgid); err != nil {
 		i.log.Fatalw("failed to inject CPU pressure", "error", err)
 	}
 
