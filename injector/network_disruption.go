@@ -23,8 +23,8 @@ type networkDisruptionInjector struct {
 }
 
 // NewNetworkDisruptionInjector creates a NetworkDisruptionInjector object with default drivers
-func NewNetworkDisruptionInjector(uid string, spec v1beta1.NetworkDisruptionSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
-	config := NewNetworkDisruptionConfigWithDefaults(log, spec.Hosts, spec.Port, spec.Protocol, spec.Flow)
+func NewNetworkDisruptionInjector(uid string, level types.DisruptionLevel, spec v1beta1.NetworkDisruptionSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
+	config := NewNetworkDisruptionConfigWithDefaults(log, level, spec.Hosts, spec.Port, spec.Protocol, spec.Flow)
 
 	return NewNetworkDisruptionInjectorWithConfig(uid, spec, ctn, log, ms, config)
 }

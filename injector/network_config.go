@@ -38,6 +38,7 @@ type NetworkDisruptionConfigStruct struct {
 	TrafficController network.TrafficController
 	NetlinkAdapter    network.NetlinkAdapter
 	DNSClient         network.DNSClient
+	level             chaostypes.DisruptionLevel
 	hosts             []string
 	port              int
 	protocol          string
@@ -46,12 +47,13 @@ type NetworkDisruptionConfigStruct struct {
 }
 
 // NewNetworkDisruptionConfig creates a new network disruption object using the given netlink, dns, etc.
-func NewNetworkDisruptionConfig(logger *zap.SugaredLogger, tc network.TrafficController, netlink network.NetlinkAdapter, dns network.DNSClient, hosts []string, port int, protocol string, flow string) NetworkDisruptionConfig {
+func NewNetworkDisruptionConfig(logger *zap.SugaredLogger, tc network.TrafficController, netlink network.NetlinkAdapter, dns network.DNSClient, level chaostypes.DisruptionLevel, hosts []string, port int, protocol string, flow string) NetworkDisruptionConfig {
 	return &NetworkDisruptionConfigStruct{
 		Log:               logger,
 		TrafficController: tc,
 		NetlinkAdapter:    netlink,
 		DNSClient:         dns,
+		level:             level,
 		hosts:             hosts,
 		port:              port,
 		protocol:          protocol,
@@ -61,8 +63,8 @@ func NewNetworkDisruptionConfig(logger *zap.SugaredLogger, tc network.TrafficCon
 }
 
 // NewNetworkDisruptionConfigWithDefaults creates a new network disruption object using default netlink, dns, etc.
-func NewNetworkDisruptionConfigWithDefaults(logger *zap.SugaredLogger, hosts []string, port int, protocol string, flow string) NetworkDisruptionConfig {
-	return NewNetworkDisruptionConfig(logger, network.NewTrafficController(logger), network.NewNetlinkAdapter(), network.NewDNSClient(), hosts, port, protocol, flow)
+func NewNetworkDisruptionConfigWithDefaults(logger *zap.SugaredLogger, level chaostypes.DisruptionLevel, hosts []string, port int, protocol string, flow string) NetworkDisruptionConfig {
+	return NewNetworkDisruptionConfig(logger, network.NewTrafficController(logger), network.NewNetlinkAdapter(), network.NewDNSClient(), level, hosts, port, protocol, flow)
 }
 
 // getInterfacesByIP returns the interfaces used to reach the given hosts
@@ -215,20 +217,28 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			return fmt.Errorf("can't create a new qdisc for interface %s: %w", link.Name(), err)
 		}
 
-		// create second prio with only 2 bands to filter traffic with a specific classid
-		if err := c.TrafficController.AddPrio(link.Name(), "1:4", 2, 2, [16]uint32{}); err != nil {
-			return fmt.Errorf("can't create a new qdisc for interface %s: %w", link.Name(), err)
-		}
+		// parent 1:4 refers to the 4th band of the prio qdisc
+		// handle starts from 2 because 1 is used by the prio qdisc
+		parent := "1:4"
+		handle := uint32(2)
 
-		// create cgroup filter
-		if err := c.TrafficController.AddCgroupFilter(link.Name(), "2:0", 2); err != nil {
-			return fmt.Errorf("can't create the cgroup filter for interface %s: %w", link.Name(), err)
-		}
+		// if the disruption is at pod level, create a second qdisc to filter packets coming from
+		// this specific pod processes only
+		if c.level == chaostypes.DisruptionLevelPod {
+			// create second prio with only 2 bands to filter traffic with a specific classid
+			if err := c.TrafficController.AddPrio(link.Name(), "1:4", 2, 2, [16]uint32{}); err != nil {
+				return fmt.Errorf("can't create a new qdisc for interface %s: %w", link.Name(), err)
+			}
 
-		// parent 2:2 refers to the 2nd band of the 2nd prio qdisc
-		// handle starts from 3 because 1 and 2 are used by the 2 prio qdiscs
-		parent := "2:2"
-		handle := uint32(3)
+			// create cgroup filter
+			if err := c.TrafficController.AddCgroupFilter(link.Name(), "2:0", 2); err != nil {
+				return fmt.Errorf("can't create the cgroup filter for interface %s: %w", link.Name(), err)
+			}
+			// parent 2:2 refers to the 2nd band of the 2nd prio qdisc
+			// handle starts from 3 because 1 and 2 are used by the 2 prio qdiscs
+			parent = "2:2"
+			handle = uint32(3)
+		}
 
 		// add operations
 		for _, operation := range c.operations {
@@ -272,27 +282,57 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			}
 		}
 
-		// the following lines are used to allow the node and the pod to communicate even with disruptions applied
+		// the following lines are used to exclude some critical packets from any disruption such as health check probes
 		// depending on the network configuration, only one of those filters can be useful but we must add all of them
 		// NOTE: those filters must be added after every other filters applied to the interface so they are used first
+		if c.level == chaostypes.DisruptionLevelPod {
+			// this filter allows the pod to communicate with the default route gateway IP
+			if defaultRoute.Link().Name() == link.Name() {
+				gatewayIP := &net.IPNet{
+					IP:   defaultRoute.Gateway(),
+					Mask: net.CIDRMask(32, 32),
+				}
 
-		// this filter allows the pod to communicate with the default route gateway IP
-		if defaultRoute.Link().Name() == link.Name() {
-			gatewayIP := &net.IPNet{
-				IP:   defaultRoute.Gateway(),
-				Mask: net.CIDRMask(32, 32),
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
+					return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
+				}
 			}
 
-			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
-				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
+			// this filter allows the pod to communicate with the node IP
+			for _, hostIPRoute := range hostIPRoutes {
+				if hostIPRoute.Link().Name() == link.Name() {
+					if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, hostIPNet, 0, 0, "", "1:1"); err != nil {
+						return fmt.Errorf("can't add the target pod node IP filter: %w", err)
+					}
+				}
 			}
-		}
+		} else if c.level == chaostypes.DisruptionLevelNode {
+			// allow SSH connections
+			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
+				return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
+			}
 
-		// this filter allows the pod to communicate with the node IP
-		for _, hostIPRoute := range hostIPRoutes {
-			if hostIPRoute.Link().Name() == link.Name() {
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, hostIPNet, 0, 0, "", "1:1"); err != nil {
-					return fmt.Errorf("can't add the target pod node IP filter: %w", err)
+			// allow cloud provider health check
+			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
+				return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
+			}
+
+			// allow kubelet -> apiserver communications
+			// it first resolves the default apiserver service (the one created at cluster bootstrap and named kubernetes.default)
+			// then it adds a filter for each service IP (usually one) found for this service
+			apiservers, err := c.DNSClient.Resolve("kubernetes.default")
+			if err != nil {
+				return fmt.Errorf("error resolving apiservers service IP: %w", err)
+			}
+
+			for _, apiserver := range apiservers {
+				apiserverIPNet := &net.IPNet{
+					IP:   apiserver,
+					Mask: net.CIDRMask(32, 32),
+				}
+
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, apiserverIPNet, 0, 0, "", "1:1"); err != nil {
+					return fmt.Errorf("error adding filter allowing apiserver communications: %w", err)
 				}
 			}
 		}
