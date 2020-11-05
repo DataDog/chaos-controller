@@ -31,7 +31,7 @@ type protocolIdentifier int
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
 type TrafficController interface {
-	AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int) error
+	AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int, duplicate int) error
 	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
 	AddFilter(iface string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error
 	AddCgroupFilter(iface string, parent string, handle uint32) error
@@ -84,7 +84,7 @@ func NewTrafficController(log *zap.SugaredLogger) TrafficController {
 	}
 }
 
-func (t tc) AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int) error {
+func (t tc) AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int, duplicate int) error {
 	params := ""
 
 	if delay.Milliseconds() != 0 {
@@ -93,6 +93,10 @@ func (t tc) AddNetem(iface string, parent string, handle uint32, delay time.Dura
 
 	if drop != 0 {
 		params = fmt.Sprintf("%s loss %d%%", params, drop)
+	}
+
+	if duplicate != 0 {
+		params = fmt.Sprintf("%s duplicate %d%%", params, duplicate)
 	}
 
 	if corrupt != 0 {

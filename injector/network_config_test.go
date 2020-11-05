@@ -34,6 +34,7 @@ var _ = Describe("Tc", func() {
 		flow                                                    string
 		delay                                                   time.Duration
 		drop                                                    int
+		duplicate                                               int
 		corrupt                                                 int
 		bandwidthLimit                                          uint
 		level                                                   chaostypes.DisruptionLevel
@@ -43,7 +44,7 @@ var _ = Describe("Tc", func() {
 	BeforeEach(func() {
 		// tc
 		tc = network.TcMock{}
-		tc.On("AddNetem", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddNetem", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddCgroupFilter", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -100,6 +101,7 @@ var _ = Describe("Tc", func() {
 		flow = "egress"
 		delay = time.Second
 		drop = 5
+		duplicate = 5
 		corrupt = 10
 		bandwidthLimit = 100
 		level = chaostypes.DisruptionLevelPod
@@ -114,7 +116,7 @@ var _ = Describe("Tc", func() {
 
 	Describe("Injecting disruptions", func() {
 		JustBeforeEach(func() {
-			config.AddNetem(delay, drop, corrupt)
+			config.AddNetem(delay, drop, corrupt, duplicate)
 			config.AddOutputLimit(bandwidthLimit)
 			Expect(config.ApplyOperations()).To(BeNil())
 		})
@@ -162,9 +164,9 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should apply disruptions to main interfaces 4th band", func() {
-				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "2:2", mock.Anything, delay, drop, corrupt)
+				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "2:2", mock.Anything, delay, drop, corrupt, duplicate)
 				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "3:", mock.Anything, bandwidthLimit)
-				tc.AssertCalled(GinkgoT(), "AddNetem", "eth1", "2:2", mock.Anything, delay, drop, corrupt)
+				tc.AssertCalled(GinkgoT(), "AddNetem", "eth1", "2:2", mock.Anything, delay, drop, corrupt, duplicate)
 				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth1", "3:", mock.Anything, bandwidthLimit)
 			})
 		})

@@ -72,12 +72,12 @@ func (i networkDisruptionInjector) Inject() {
 		}
 	}()
 
-	i.log.Infow("adding network disruptions", "drop", i.spec.Drop, "corrupt", i.spec.Corrupt, "delay", i.spec.Delay, "bandwidthLimit", i.spec.BandwidthLimit)
+	i.log.Infow("adding network disruptions", "drop", i.spec.Drop, "duplicate", i.spec.Duplicate, "corrupt", i.spec.Corrupt, "delay", i.spec.Delay, "bandwidthLimit", i.spec.BandwidthLimit)
 
 	// add netem
-	if i.spec.Delay > 0 || i.spec.Drop > 0 || i.spec.Corrupt > 0 {
+	if i.spec.Delay > 0 || i.spec.Drop > 0 || i.spec.Corrupt > 0 || i.spec.Duplicate > 0 {
 		delay := time.Duration(i.spec.Delay) * time.Millisecond
-		i.config.AddNetem(delay, i.spec.Drop, i.spec.Corrupt)
+		i.config.AddNetem(delay, i.spec.Drop, i.spec.Corrupt, i.spec.Duplicate)
 	}
 
 	// add tbf
