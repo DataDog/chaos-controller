@@ -36,6 +36,8 @@ var _ = Describe("Tc", func() {
 		drop                                                    int
 		corrupt                                                 int
 		bandwidthLimit                                          uint
+		level                                                   chaostypes.DisruptionLevel
+		dns                                                     network.DNSMock
 	)
 
 	BeforeEach(func() {
@@ -81,10 +83,15 @@ var _ = Describe("Tc", func() {
 		nl.On("LinkByName", "lo").Return(nllink1, nil)
 		nl.On("LinkByName", "eth0").Return(nllink2, nil)
 		nl.On("LinkByName", "eth1").Return(nllink3, nil)
-		nl.On("RoutesForIP", "10.0.0.1/32").Return([]network.NetlinkRoute{nlroute2}, nil) // node IP route going through eth0
-		nl.On("RoutesForIP", "1.1.1.1/32").Return([]network.NetlinkRoute{nlroute2}, nil)  // random external route going through eth0
-		nl.On("RoutesForIP", "2.2.2.2/32").Return([]network.NetlinkRoute{nlroute3}, nil)  // random external route going through eth1
+		nl.On("RoutesForIP", "10.0.0.1/32").Return([]network.NetlinkRoute{nlroute2}, nil)      // node IP route going through eth0
+		nl.On("RoutesForIP", "1.1.1.1/32").Return([]network.NetlinkRoute{nlroute2}, nil)       // random external route going through eth0
+		nl.On("RoutesForIP", "2.2.2.2/32").Return([]network.NetlinkRoute{nlroute3}, nil)       // random external route going through eth1
+		nl.On("RoutesForIP", "192.168.0.254/32").Return([]network.NetlinkRoute{nlroute3}, nil) // apiserver route going through eth1
 		nl.On("DefaultRoute").Return(nlroute2, nil)
+
+		// dns
+		dns = network.DNSMock{}
+		dns.On("Resolve", "kubernetes.default").Return([]net.IP{net.ParseIP("192.168.0.254")}, nil)
 
 		// netem parameters
 		hosts = []string{}
@@ -95,16 +102,17 @@ var _ = Describe("Tc", func() {
 		drop = 5
 		corrupt = 10
 		bandwidthLimit = 100
+		level = chaostypes.DisruptionLevelPod
 
 		// environment variables
 		Expect(os.Setenv(chaostypes.TargetPodHostIPEnv, "10.0.0.1")).To(BeNil())
 	})
 
 	JustBeforeEach(func() {
-		config = NewNetworkDisruptionConfig(log, &tc, &nl, nil, hosts, port, protocol, flow)
+		config = NewNetworkDisruptionConfig(log, &tc, &nl, &dns, level, hosts, port, protocol, flow)
 	})
 
-	Describe("AddNetem", func() {
+	Describe("Injecting disruptions", func() {
 		JustBeforeEach(func() {
 			config.AddNetem(delay, drop, corrupt)
 			config.AddOutputLimit(bandwidthLimit)
@@ -285,9 +293,27 @@ var _ = Describe("Tc", func() {
 				nllink3.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
 			})
 		})
+
+		Context("with node level injection", func() {
+			BeforeEach(func() {
+				level = chaostypes.DisruptionLevelNode
+			})
+
+			It("should create only one prio qdisc on main interfaces", func() {
+				tc.AssertNumberOfCalls(GinkgoT(), "AddPrio", 2)
+				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "root", uint32(1), uint32(4), mock.Anything)
+				tc.AssertCalled(GinkgoT(), "AddPrio", "eth1", "root", uint32(1), uint32(4), mock.Anything)
+			})
+
+			It("should add safeguard filters allowing SSH, ARP and apiserver communications", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "nil", 22, 0, "tcp", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "nil", 0, 0, "arp", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "nil", "192.168.0.254/32", 0, 0, "", "1:1")
+			})
+		})
 	})
 
-	Describe("ClearAllQdiscs", func() {
+	Describe("Clearing all disruptions", func() {
 		JustBeforeEach(func() {
 			config.ClearOperations()
 		})
