@@ -282,67 +282,69 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			}
 		}
 
-		// the following lines are used to exclude some critical packets from any disruption such as health check probes
-		// depending on the network configuration, only one of those filters can be useful but we must add all of them
-		// NOTE: those filters must be added after every other filters applied to the interface so they are used first
-		if c.level == chaostypes.DisruptionLevelPod {
-			// this filter allows the pod to communicate with the default route gateway IP
-			if defaultRoute.Link().Name() == link.Name() {
-				gatewayIP := &net.IPNet{
-					IP:   defaultRoute.Gateway(),
-					Mask: net.CIDRMask(32, 32),
-				}
-
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
-					return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
-				}
-			}
-
-			// this filter allows the pod to communicate with the node IP
-			for _, hostIPRoute := range hostIPRoutes {
-				if hostIPRoute.Link().Name() == link.Name() {
-					if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, hostIPNet, 0, 0, "", "1:1"); err != nil {
-						return fmt.Errorf("can't add the target pod node IP filter: %w", err)
-					}
-				}
-			}
-		} else if c.level == chaostypes.DisruptionLevelNode {
-			// allow SSH connections
-			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
-				return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
-			}
-
-			// allow cloud provider health check
-			if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
-				return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
-			}
-
-			// allow kubelet -> apiserver communications
-			// it first resolves the default apiserver service (the one created at cluster bootstrap and named kubernetes.default)
-			// then it adds a filter for each service IP (usually one) found for this service
-			apiservers, err := c.DNSClient.Resolve("kubernetes.default")
-			if err != nil {
-				return fmt.Errorf("error resolving apiservers service IP: %w", err)
-			}
-
-			for _, apiserver := range apiservers {
-				apiserverIPNet := &net.IPNet{
-					IP:   apiserver,
-					Mask: net.CIDRMask(32, 32),
-				}
-
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, apiserverIPNet, 0, 0, "", "1:1"); err != nil {
-					return fmt.Errorf("error adding filter allowing apiserver communications: %w", err)
-				}
-			}
-		}
-
 		// reset the interface transmission queue length once filters have been created (only if qlen has been set earlier)
 		if clearTxQlen {
 			c.Log.Infof("clearing tx qlen for interface %s", link.Name())
 
 			if err := link.SetTxQLen(0); err != nil {
 				return fmt.Errorf("can't clear %s link transmission queue length: %w", link.Name(), err)
+			}
+		}
+	}
+
+	// the following lines are used to exclude some critical packets from any disruption such as health check probes
+	// depending on the network configuration, only one of those filters can be useful but we must add all of them
+	// NOTE: those filters must be added after every other filters applied to the interface so they are used first
+	if c.level == chaostypes.DisruptionLevelPod {
+		// this filter allows the pod to communicate with the default route gateway IP
+		gatewayIP := &net.IPNet{
+			IP:   defaultRoute.Gateway(),
+			Mask: net.CIDRMask(32, 32),
+		}
+
+		if err := c.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
+			return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
+		}
+
+		// this filter allows the pod to communicate with the node IP
+		for _, hostIPRoute := range hostIPRoutes {
+			if err := c.TrafficController.AddFilter(hostIPRoute.Link().Name(), "1:0", 0, nil, hostIPNet, 0, 0, "", "1:1"); err != nil {
+				return fmt.Errorf("can't add the target pod node IP filter: %w", err)
+			}
+		}
+	} else if c.level == chaostypes.DisruptionLevelNode {
+		// allow SSH connections (port 22/tcp)
+		if err := c.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
+			return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
+		}
+
+		// allow cloud provider health checks (arp)
+		if err := c.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
+			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
+		}
+
+		// allow kubelet -> apiserver communications
+		// resolve the kubernetes.default service created at cluster bootstrap and owning the apiserver cluster IP
+		apiservers, err := c.getInterfacesByIP([]string{"kubernetes.default"})
+		if err != nil {
+			return fmt.Errorf("error resolving apiservers service IP: %w", err)
+		}
+
+		if len(apiservers) == 0 {
+			return fmt.Errorf("could not resolve kubernetes.default service IP")
+		}
+
+		// allow all communications to this (eventually these) IP
+		for linkName, apiserverIPs := range apiservers {
+			link, err := c.NetlinkAdapter.LinkByName(linkName)
+			if err != nil {
+				return fmt.Errorf("error getting %s link: %w", linkName, err)
+			}
+
+			for _, ip := range apiserverIPs {
+				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, ip, 0, 0, "", "1:1"); err != nil {
+					return fmt.Errorf("error adding filter allowing apiserver communications: %w", err)
+				}
 			}
 		}
 	}
