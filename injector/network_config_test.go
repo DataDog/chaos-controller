@@ -126,24 +126,20 @@ var _ = Describe("Tc", func() {
 				protocol = ""
 			})
 
-			It("should set or clear the interface qlen on all interfaces excluding lo", func() {
-				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
+			It("should set or clear the interface qlen on all interfaces", func() {
+				nllink1.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
+				nllink1.AssertCalled(GinkgoT(), "SetTxQLen", 0)
 				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
 				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 0)
 				nllink3.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
 				nllink3.AssertCalled(GinkgoT(), "SetTxQLen", 0)
 			})
 
-			It("should not apply anything to lo interface", func() {
-				tc.AssertNotCalled(GinkgoT(), "AddNetem", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-				tc.AssertNotCalled(GinkgoT(), "AddPrio", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-				tc.AssertNotCalled(GinkgoT(), "AddFilter", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-				tc.AssertNotCalled(GinkgoT(), "AddOutputLimit", "lo", mock.Anything, mock.Anything, mock.Anything)
-			})
-
 			It("should create 2 prio qdiscs on main interfaces", func() {
+				tc.AssertCalled(GinkgoT(), "AddPrio", "lo", "root", uint32(1), uint32(4), mock.Anything)
 				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "root", uint32(1), uint32(4), mock.Anything)
 				tc.AssertCalled(GinkgoT(), "AddPrio", "eth1", "root", uint32(1), uint32(4), mock.Anything)
+				tc.AssertCalled(GinkgoT(), "AddPrio", "lo", "1:4", uint32(2), uint32(2), mock.Anything)
 				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "1:4", uint32(2), uint32(2), mock.Anything)
 				tc.AssertCalled(GinkgoT(), "AddPrio", "eth1", "1:4", uint32(2), uint32(2), mock.Anything)
 			})
@@ -227,7 +223,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should create only one prio qdisc on main interfaces", func() {
-				tc.AssertNumberOfCalls(GinkgoT(), "AddPrio", 2)
+				tc.AssertCalled(GinkgoT(), "AddPrio", "lo", "root", uint32(1), uint32(4), mock.Anything)
 				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "root", uint32(1), uint32(4), mock.Anything)
 				tc.AssertCalled(GinkgoT(), "AddPrio", "eth1", "root", uint32(1), uint32(4), mock.Anything)
 			})
@@ -247,6 +243,7 @@ var _ = Describe("Tc", func() {
 
 		Context("with a non-cleared qdisc", func() {
 			It("should clear the interfaces qdisc", func() {
+				tc.AssertCalled(GinkgoT(), "ClearQdisc", "lo")
 				tc.AssertCalled(GinkgoT(), "ClearQdisc", "eth0")
 				tc.AssertCalled(GinkgoT(), "ClearQdisc", "eth1")
 			})
