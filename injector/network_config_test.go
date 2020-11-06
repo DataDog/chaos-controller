@@ -83,7 +83,8 @@ var _ = Describe("Tc", func() {
 		nl.On("LinkByName", "lo").Return(nllink1, nil)
 		nl.On("LinkByName", "eth0").Return(nllink2, nil)
 		nl.On("LinkByName", "eth1").Return(nllink3, nil)
-		nl.On("RoutesForIP", "10.0.0.1/32").Return([]network.NetlinkRoute{nlroute2}, nil)      // node IP route going through eth0
+		nl.On("RoutesForIP", "10.0.0.1/32").Return([]network.NetlinkRoute{nlroute1}, nil)      // node IP route going through lo
+		nl.On("RoutesForIP", "10.0.0.2/32").Return([]network.NetlinkRoute{nlroute2}, nil)      // node IP route going through eth0
 		nl.On("RoutesForIP", "1.1.1.1/32").Return([]network.NetlinkRoute{nlroute2}, nil)       // random external route going through eth0
 		nl.On("RoutesForIP", "2.2.2.2/32").Return([]network.NetlinkRoute{nlroute3}, nil)       // random external route going through eth1
 		nl.On("RoutesForIP", "192.168.0.254/32").Return([]network.NetlinkRoute{nlroute3}, nil) // apiserver route going through eth1
@@ -105,7 +106,7 @@ var _ = Describe("Tc", func() {
 		level = chaostypes.DisruptionLevelPod
 
 		// environment variables
-		Expect(os.Setenv(chaostypes.TargetPodHostIPEnv, "10.0.0.1")).To(BeNil())
+		Expect(os.Setenv(chaostypes.TargetPodHostIPEnv, "10.0.0.2")).To(BeNil())
 	})
 
 	JustBeforeEach(func() {
@@ -162,7 +163,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should add a filter to redirect node IP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "10.0.0.1/32", 0, 0, "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "10.0.0.2/32", 0, 0, "", "1:1")
 			})
 
 			It("should apply disruptions to main interfaces 4th band", func() {
@@ -170,6 +171,16 @@ var _ = Describe("Tc", func() {
 				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "3:", mock.Anything, bandwidthLimit)
 				tc.AssertCalled(GinkgoT(), "AddNetem", "eth1", "2:2", mock.Anything, delay, drop, corrupt)
 				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth1", "3:", mock.Anything, bandwidthLimit)
+			})
+		})
+
+		Context("with a node IP being accessible through localhost, equals to a pod running on host network", func() {
+			BeforeEach(func() {
+				Expect(os.Setenv(chaostypes.TargetPodHostIPEnv, "10.0.0.1")).To(BeNil())
+			})
+
+			It("should not add a filter for this", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "10.0.0.1/32", 0, 0, "", "1:1")
 			})
 		})
 
@@ -178,51 +189,9 @@ var _ = Describe("Tc", func() {
 				flow = "ingress"
 			})
 
-			It("should set or clear the interface qlen on all interfaces excluding lo", func() {
-				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
-				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
-				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 0)
-				nllink3.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
-				nllink3.AssertCalled(GinkgoT(), "SetTxQLen", 0)
-			})
-
-			It("should not apply anything to lo interface", func() {
-				tc.AssertNotCalled(GinkgoT(), "AddNetem", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-				tc.AssertNotCalled(GinkgoT(), "AddPrio", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-				tc.AssertNotCalled(GinkgoT(), "AddFilter", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-				tc.AssertNotCalled(GinkgoT(), "AddOutputLimit", "lo", mock.Anything, mock.Anything, mock.Anything)
-			})
-
-			It("should create 2 prio qdiscs on main interfaces", func() {
-				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "root", uint32(1), uint32(4), mock.Anything)
-				tc.AssertCalled(GinkgoT(), "AddPrio", "eth1", "root", uint32(1), uint32(4), mock.Anything)
-				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "1:4", uint32(2), uint32(2), mock.Anything)
-				tc.AssertCalled(GinkgoT(), "AddPrio", "eth1", "1:4", uint32(2), uint32(2), mock.Anything)
-			})
-
 			It("should add a filter to redirect all traffic on main interfaces on the disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "0.0.0.0/0", port, 0, protocol, "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "nil", "0.0.0.0/0", port, 0, protocol, "1:4")
-			})
-
-			It("should add a cgroup filter to classify packets according to their classid", func() {
-				tc.AssertCalled(GinkgoT(), "AddCgroupFilter", "eth0", "2:0", mock.Anything)
-				tc.AssertCalled(GinkgoT(), "AddCgroupFilter", "eth1", "2:0", mock.Anything)
-			})
-
-			It("should add a filter to redirect default gateway IP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "192.168.0.1/32", 0, 0, "", "1:1")
-			})
-
-			It("should add a filter to redirect node IP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "10.0.0.1/32", 0, 0, "", "1:1")
-			})
-
-			It("should apply disruptions to main interfaces 4th band", func() {
-				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "2:2", mock.Anything, delay, drop, corrupt)
-				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "3:", mock.Anything, bandwidthLimit)
-				tc.AssertCalled(GinkgoT(), "AddNetem", "eth1", "2:2", mock.Anything, delay, drop, corrupt)
-				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth1", "3:", mock.Anything, bandwidthLimit)
 			})
 		})
 
@@ -231,51 +200,9 @@ var _ = Describe("Tc", func() {
 				hosts = []string{"1.1.1.1", "2.2.2.2"}
 			})
 
-			It("should set or clear the interface qlen on all interfaces excluding lo", func() {
-				nllink1.AssertNumberOfCalls(GinkgoT(), "SetTxQLen", 0)
-				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
-				nllink2.AssertCalled(GinkgoT(), "SetTxQLen", 0)
-				nllink3.AssertCalled(GinkgoT(), "SetTxQLen", 1000)
-				nllink3.AssertCalled(GinkgoT(), "SetTxQLen", 0)
-			})
-
-			It("should not apply anything to lo interface", func() {
-				tc.AssertNotCalled(GinkgoT(), "AddNetem", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-				tc.AssertNotCalled(GinkgoT(), "AddPrio", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-				tc.AssertNotCalled(GinkgoT(), "AddFilter", "lo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-				tc.AssertNotCalled(GinkgoT(), "AddOutputLimit", "lo", mock.Anything, mock.Anything, mock.Anything)
-			})
-
-			It("should create 2 prio qdiscs on main interfaces", func() {
-				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "root", uint32(1), uint32(4), mock.Anything)
-				tc.AssertCalled(GinkgoT(), "AddPrio", "eth1", "root", uint32(1), uint32(4), mock.Anything)
-				tc.AssertCalled(GinkgoT(), "AddPrio", "eth0", "1:4", uint32(2), uint32(2), mock.Anything)
-				tc.AssertCalled(GinkgoT(), "AddPrio", "eth1", "1:4", uint32(2), uint32(2), mock.Anything)
-			})
-
 			It("should add a filter to redirect targeted traffic on related interfaces on the disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "1.1.1.1/32", 0, port, protocol, "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "nil", "2.2.2.2/32", 0, port, protocol, "1:4")
-			})
-
-			It("should add a cgroup filter to classify packets according to their classid", func() {
-				tc.AssertCalled(GinkgoT(), "AddCgroupFilter", "eth0", "2:0", mock.Anything)
-				tc.AssertCalled(GinkgoT(), "AddCgroupFilter", "eth1", "2:0", mock.Anything)
-			})
-
-			It("should add a filter to redirect default gateway IP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "192.168.0.1/32", 0, 0, "", "1:1")
-			})
-
-			It("should add a filter to redirect node IP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "10.0.0.1/32", 0, 0, "", "1:1")
-			})
-
-			It("should apply disruptions to main interfaces 4th band", func() {
-				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "2:2", mock.Anything, delay, drop, corrupt)
-				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "3:", mock.Anything, bandwidthLimit)
-				tc.AssertCalled(GinkgoT(), "AddNetem", "eth1", "2:2", mock.Anything, delay, drop, corrupt)
-				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth1", "3:", mock.Anything, bandwidthLimit)
 			})
 		})
 

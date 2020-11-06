@@ -149,7 +149,7 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 //           |- (4:) <-- second operation
 //             ...
 func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
-	// get the default route to exclude it later
+	// retrieve the default route information
 	defaultRoute, err := c.NetlinkAdapter.DefaultRoute()
 	if err != nil {
 		return fmt.Errorf("error getting the default route: %w", err)
@@ -177,16 +177,19 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 		return fmt.Errorf("error getting target pod node IP routes: %w", err)
 	}
 
-	// get the interfaces per IP map
+	// get the interfaces per IP map looking like:
+	// "eth0" => [10.0.0.0/8, 192.168.0.1/32]
+	// "eth1" => [172.16.0.0/16, ...]
 	linkByIP, err := c.getInterfacesByIP(c.hosts)
 	if err != nil {
 		return fmt.Errorf("can't get interfaces per IP listing: %w", err)
 	}
 
+	// interfaces for which we need to clean qlen once injection is finished
+	clearTxQlen := []network.NetlinkLink{}
+
 	// for each link/ip association, add disruption
 	for linkName, ips := range linkByIP {
-		clearTxQlen := false
-
 		// retrieve link from name
 		link, err := c.NetlinkAdapter.LinkByName(linkName)
 		if err != nil {
@@ -200,7 +203,7 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			c.Log.Infof("setting tx qlen for interface %s", link.Name())
 
 			// set clear flag to true so we can clean up this once qdiscs are created
-			clearTxQlen = true
+			clearTxQlen = append(clearTxQlen, link)
 
 			// set qlen
 			if err := link.SetTxQLen(1000); err != nil {
@@ -281,15 +284,6 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 			}
 		}
-
-		// reset the interface transmission queue length once filters have been created (only if qlen has been set earlier)
-		if clearTxQlen {
-			c.Log.Infof("clearing tx qlen for interface %s", link.Name())
-
-			if err := link.SetTxQLen(0); err != nil {
-				return fmt.Errorf("can't clear %s link transmission queue length: %w", link.Name(), err)
-			}
-		}
 	}
 
 	// the following lines are used to exclude some critical packets from any disruption such as health check probes
@@ -307,9 +301,12 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 		}
 
 		// this filter allows the pod to communicate with the node IP
+		// we only add it if hostIP != podIP (ie. used interface is not lo, meaning the pod is using its own network namespace and not the host one)
 		for _, hostIPRoute := range hostIPRoutes {
-			if err := c.TrafficController.AddFilter(hostIPRoute.Link().Name(), "1:0", 0, nil, hostIPNet, 0, 0, "", "1:1"); err != nil {
-				return fmt.Errorf("can't add the target pod node IP filter: %w", err)
+			if hostIPRoute.Link().Name() != "lo" {
+				if err := c.TrafficController.AddFilter(hostIPRoute.Link().Name(), "1:0", 0, nil, hostIPNet, 0, 0, "", "1:1"); err != nil {
+					return fmt.Errorf("can't add the target pod node IP filter: %w", err)
+				}
 			}
 		}
 	} else if c.level == chaostypes.DisruptionLevelNode {
@@ -346,6 +343,16 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 					return fmt.Errorf("error adding filter allowing apiserver communications: %w", err)
 				}
 			}
+		}
+	}
+
+	// clear tx qlen
+	// reset the interface transmission queue length once filters have been created (only if qlen has been set earlier)
+	for _, link := range clearTxQlen {
+		c.Log.Infof("clearing tx qlen for interface %s", link.Name())
+
+		if err := link.SetTxQLen(0); err != nil {
+			return fmt.Errorf("can't clear %s link transmission queue length: %w", link.Name(), err)
 		}
 	}
 
