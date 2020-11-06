@@ -83,7 +83,6 @@ var _ = Describe("Tc", func() {
 		nl.On("LinkByName", "lo").Return(nllink1, nil)
 		nl.On("LinkByName", "eth0").Return(nllink2, nil)
 		nl.On("LinkByName", "eth1").Return(nllink3, nil)
-		nl.On("RoutesForIP", "10.0.0.1/32").Return([]network.NetlinkRoute{nlroute1}, nil)      // node IP route going through lo
 		nl.On("RoutesForIP", "10.0.0.2/32").Return([]network.NetlinkRoute{nlroute2}, nil)      // node IP route going through eth0
 		nl.On("RoutesForIP", "1.1.1.1/32").Return([]network.NetlinkRoute{nlroute2}, nil)       // random external route going through eth0
 		nl.On("RoutesForIP", "2.2.2.2/32").Return([]network.NetlinkRoute{nlroute3}, nil)       // random external route going through eth1
@@ -167,16 +166,6 @@ var _ = Describe("Tc", func() {
 				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "3:", mock.Anything, bandwidthLimit)
 				tc.AssertCalled(GinkgoT(), "AddNetem", "eth1", "2:2", mock.Anything, delay, drop, corrupt)
 				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth1", "3:", mock.Anything, bandwidthLimit)
-			})
-		})
-
-		Context("with a node IP being accessible through localhost, equals to a pod running on host network", func() {
-			BeforeEach(func() {
-				Expect(os.Setenv(chaostypes.TargetPodHostIPEnv, "10.0.0.1")).To(BeNil())
-			})
-
-			It("should not add a filter for this", func() {
-				tc.AssertNotCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "10.0.0.1/32", 0, 0, "", "1:1")
 			})
 		})
 

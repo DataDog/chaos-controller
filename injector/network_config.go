@@ -116,6 +116,10 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 			c.Log.Infof("adding interface %s", link.Name())
 			linkByIP[link.Name()] = []*net.IPNet{}
 		}
+
+		// explicitly add loopback interface
+		c.Log.Infof("adding loopback interface")
+		linkByIP["lo"] = []*net.IPNet{}
 	}
 
 	return linkByIP, nil
@@ -285,6 +289,7 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 
 	// the following lines are used to exclude some critical packets from any disruption such as health check probes
 	// depending on the network configuration, only one of those filters can be useful but we must add all of them
+	// those filters are only added if the related interface has been impacted by a disruption so far
 	// NOTE: those filters must be added after every other filters applied to the interface so they are used first
 	if c.level == chaostypes.DisruptionLevelPod {
 		// this filter allows the pod to communicate with the default route gateway IP
@@ -293,28 +298,32 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 			Mask: net.CIDRMask(32, 32),
 		}
 
-		if err := c.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
-			return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
+		if _, found := linkByIP[defaultRoute.Link().Name()]; found {
+			if err := c.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
+				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
+			}
 		}
 
 		// this filter allows the pod to communicate with the node IP
 		// we only add it if hostIP != podIP (ie. used interface is not lo, meaning the pod is using its own network namespace and not the host one)
 		for _, hostIPRoute := range hostIPRoutes {
-			if hostIPRoute.Link().Name() != "lo" {
+			if _, found := linkByIP[hostIPRoute.Link().Name()]; found {
 				if err := c.TrafficController.AddFilter(hostIPRoute.Link().Name(), "1:0", 0, nil, hostIPNet, 0, 0, "", "1:1"); err != nil {
 					return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 				}
 			}
 		}
 	} else if c.level == chaostypes.DisruptionLevelNode {
-		// allow SSH connections (port 22/tcp)
-		if err := c.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
-			return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
-		}
+		if _, found := linkByIP[defaultRoute.Link().Name()]; found {
+			// allow SSH connections (port 22/tcp)
+			if err := c.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
+				return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
+			}
 
-		// allow cloud provider health checks (arp)
-		if err := c.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
-			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
+			// allow cloud provider health checks (arp)
+			if err := c.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
+				return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
+			}
 		}
 
 		// allow kubelet -> apiserver communications
@@ -330,14 +339,16 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 
 		// allow all communications to this (eventually these) IP
 		for linkName, apiserverIPs := range apiservers {
-			link, err := c.NetlinkAdapter.LinkByName(linkName)
-			if err != nil {
-				return fmt.Errorf("error getting %s link: %w", linkName, err)
-			}
+			if _, found := linkByIP[linkName]; found {
+				link, err := c.NetlinkAdapter.LinkByName(linkName)
+				if err != nil {
+					return fmt.Errorf("error getting %s link: %w", linkName, err)
+				}
 
-			for _, ip := range apiserverIPs {
-				if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, ip, 0, 0, "", "1:1"); err != nil {
-					return fmt.Errorf("error adding filter allowing apiserver communications: %w", err)
+				for _, ip := range apiserverIPs {
+					if err := c.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, ip, 0, 0, "", "1:1"); err != nil {
+						return fmt.Errorf("error adding filter allowing apiserver communications: %w", err)
+					}
 				}
 			}
 		}
