@@ -73,7 +73,7 @@ func (c *NetworkDisruptionConfigStruct) getInterfacesByIP(hosts []string) (map[s
 	linkByIP := map[string][]*net.IPNet{}
 
 	if len(hosts) > 0 {
-		c.Log.Info("auto-detecting interfaces to apply disruption to...")
+		c.Log.Infow("auto-detecting used interfaces to reach the given hosts", "hosts", hosts)
 
 		// resolve hosts
 		ips, err := resolveHosts(c.DNSClient, hosts)
