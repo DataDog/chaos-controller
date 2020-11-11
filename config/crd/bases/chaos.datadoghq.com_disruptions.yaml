@@ -36,6 +36,9 @@ spec:
         spec:
           description: DisruptionSpec defines the desired state of Disruption
           properties:
+            container:
+              nullable: true
+              type: string
             count:
               type: integer
             cpuPressure:
@@ -114,6 +117,7 @@ spec:
               description: Set is a map of label:value. It implements Labels.
               type: object
           required:
+          - container
           - count
           - selector
           type: object

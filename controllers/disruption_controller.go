@@ -212,8 +212,8 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, err
 		}
 
-		// get ID of first container
-		containerID, err := getContainerID(&targetPod)
+		// get ID of targeted container or the first container
+		containerID, err := getContainerID(&targetPod, instance.Spec.Container)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -319,7 +319,7 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 		chaosPods := []*v1.Pod{}
 
 		// get ID of first container
-		containerID, err := getContainerID(p)
+		containerID, err := getContainerID(p, instance.Spec.Container)
 		if err != nil {
 			return false, err
 		}
@@ -486,10 +486,17 @@ func (r *DisruptionReconciler) getOwnedPods(instance *chaosv1beta1.Disruption, s
 	return ownedPods, nil
 }
 
-// getContainerID gets the ID of the first container ID found in a Pod
-func getContainerID(pod *corev1.Pod) (string, error) {
+// getContainerID gets the ID of the targetted container or of the first container ID found in a Pod
+func getContainerID(pod *corev1.Pod, target string) (string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
 		return "", fmt.Errorf("missing container ids for pod '%s'", pod.Name)
+	}
+
+	for _, container := range pod.Status.ContainerStatuses {
+		if container.Name == target {
+
+			return container.ContainerID, nil
+		}
 	}
 
 	return pod.Status.ContainerStatuses[0].ContainerID, nil
