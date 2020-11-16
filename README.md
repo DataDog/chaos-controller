@@ -19,7 +19,7 @@ The controller works with a custom Kubernetes resource named `Disruption` descri
 
 ### Pods Targeting
 
-The `Disruption` custom resource helps you to target the pods you want to be affected by the failures. This is done by a [label selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/). This selector will find all the pods matching the specified labels in the `Disruption` resource namespace and will affect either all of them or some of them *randomly* depending on the `count` value specified in the resource.
+The `Disruption` custom resource helps you to target the pods you want to be affected by the failures. This is done by a [label selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/). This selector will find all the pods matching the specified labels in the `Disruption` resource namespace and will affect either all of them or some of them *randomly* depending on the `count` value specified in the resource. For those who have pods with multiple containers and want to target a container in specific, the `container` value can be used to identify which container (by name) to target within the pod. By default the first container is targeted.
 
 Once applied, you can see the targeted pods by describing the `Disruption` resource.
 
