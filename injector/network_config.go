@@ -305,7 +305,6 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 		}
 
 		// this filter allows the pod to communicate with the node IP
-		// we only add it if hostIP != podIP (ie. used interface is not lo, meaning the pod is using its own network namespace and not the host one)
 		for _, hostIPRoute := range hostIPRoutes {
 			if _, found := linkByIP[hostIPRoute.Link().Name()]; found {
 				if err := c.TrafficController.AddFilter(hostIPRoute.Link().Name(), "1:0", 0, nil, hostIPNet, 0, 0, "", "1:1"); err != nil {
