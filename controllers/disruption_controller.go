@@ -569,8 +569,14 @@ func (r *DisruptionReconciler) generateChaosPod(instance *chaosv1beta1.Disruptio
 		return nil
 	}
 
+	// default level to pod if not specified
+	level := instance.Spec.Level
+	if level == chaostypes.DisruptionLevelUnspecified {
+		level = chaostypes.DisruptionLevelPod
+	}
+
 	// generate args for pod
-	args := generator.GenerateArgs(mode, instance.UID, containerID, r.MetricsSink.GetSinkName())
+	args := generator.GenerateArgs(mode, instance.UID, level, containerID, r.MetricsSink.GetSinkName())
 
 	// generate pod
 	pod, err := r.generatePod(instance, target, args, mode, kind)
