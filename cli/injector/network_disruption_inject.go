@@ -9,6 +9,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/types"
 	"github.com/spf13/cobra"
 )
 
@@ -17,6 +18,7 @@ var networkDisruptionInjectCmd = &cobra.Command{
 	Short: "Inject a network failure in the given container",
 	Run: func(cmd *cobra.Command, args []string) {
 		uid, _ := cmd.Flags().GetString("uid")
+		level, _ := cmd.Flags().GetString("level")
 		containerID, _ := cmd.Flags().GetString("container-id")
 		hosts, _ := cmd.Flags().GetStringSlice("hosts")
 		port, _ := cmd.Flags().GetInt("port")
@@ -49,7 +51,7 @@ var networkDisruptionInjectCmd = &cobra.Command{
 			Delay:          delay,
 			BandwidthLimit: bandwidthLimit,
 		}
-		i := injector.NewNetworkDisruptionInjector(uid, spec, c, log, ms)
+		i := injector.NewNetworkDisruptionInjector(uid, types.DisruptionLevel(level), spec, c, log, ms)
 		i.Inject()
 	},
 }

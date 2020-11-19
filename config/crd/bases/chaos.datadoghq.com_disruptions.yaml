@@ -64,6 +64,14 @@ spec:
               - path
               - throttling
               type: object
+            level:
+              description: DisruptionLevel represents which level the disruption should
+                be injected at
+              enum:
+              - pod
+              - node
+              - ""
+              type: string
             network:
               description: NetworkDisruptionSpec represents a network disruption injection
               properties:

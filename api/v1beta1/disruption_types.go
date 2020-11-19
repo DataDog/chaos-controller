@@ -18,6 +18,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -31,6 +32,8 @@ type DisruptionSpec struct {
 	Count int `json:"count"` // number of pods to target
 	// +kubebuilder:validation:Required
 	Selector labels.Set `json:"selector"` // label selector
+	// +kubebuilder:validation:Enum=pod;node;""
+	Level chaostypes.DisruptionLevel `json:"level,omitempty"`
 	// +nullable
 	Container string                 `json:"container,omitempty"`
 	Network   *NetworkDisruptionSpec `json:"network,omitempty"`

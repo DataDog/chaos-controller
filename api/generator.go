@@ -12,5 +12,5 @@ import (
 
 // DisruptionArgsGenerator generates args for the given disruption
 type DisruptionArgsGenerator interface {
-	GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string
+	GenerateArgs(mode chaostypes.PodMode, uid types.UID, level chaostypes.DisruptionLevel, containerID, sink string) []string
 }

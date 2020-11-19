@@ -38,7 +38,7 @@ type NetworkDisruptionSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string {
+func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, level chaostypes.DisruptionLevel, containerID, sink string) []string {
 	args := []string{}
 
 	switch mode {
@@ -50,6 +50,8 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 			string(uid),
 			"--metrics-sink",
 			sink,
+			"--level",
+			string(level),
 			"--container-id",
 			containerID,
 			"--port",
@@ -87,6 +89,8 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 			string(uid),
 			"--metrics-sink",
 			sink,
+			"--level",
+			string(level),
 			"--container-id",
 			containerID,
 		}
