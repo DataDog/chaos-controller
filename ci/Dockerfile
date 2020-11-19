@@ -8,9 +8,6 @@ RUN curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download
     mv kubebuilder_${version}_linux_${arch} kubebuilder && \
     mv kubebuilder /usr/local/
 
-# git
-RUN apt-get install -y --no-install-recommends git
-
 # golangci-lint
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.23.1
 
