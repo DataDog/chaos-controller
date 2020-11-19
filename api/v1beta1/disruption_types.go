@@ -32,9 +32,8 @@ type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	Selector labels.Set `json:"selector"` // label selector
 	// +nullable
-	Container string `json:"container"`
-	// +nullable
-	Network *NetworkDisruptionSpec `json:"network,omitempty"`
+	Container string                 `json:"container,omitempty"`
+	Network   *NetworkDisruptionSpec `json:"network,omitempty"`
 	// +nullable
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
 	// +nullable

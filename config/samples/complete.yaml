@@ -11,6 +11,7 @@ metadata:
 spec:
   selector: # label selector to target pods
     app: demo
+  container: demo1 # optional, name of the container to target within the targeted pod
   count: 1 # number of pods to target (-1 == target all the selected pods)
   nodeFailure: # node kernel panic or shutdown
     shutdown: true # optional, shutdown the host instead of triggering a stack dump (defaults to false)

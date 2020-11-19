@@ -66,7 +66,6 @@ spec:
               type: object
             network:
               description: NetworkDisruptionSpec represents a network disruption injection
-              nullable: true
               properties:
                 bandwidthLimit:
                   minimum: 0
@@ -117,7 +116,6 @@ spec:
               description: Set is a map of label:value. It implements Labels.
               type: object
           required:
-          - container
           - count
           - selector
           type: object
