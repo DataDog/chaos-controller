@@ -123,8 +123,8 @@ jobs:
     executor: python
     steps:
       - checkout
-      - python_install_requirements
       - alpine_install_git
+      - python_install_requirements
       - run:
           name: Ensure 3rd-party licenses are up-to-date
           command: inv license-check
@@ -134,6 +134,7 @@ jobs:
     executor: python
     steps:
       - checkout
+      - alpine_install_git
       - python_install_requirements
       - run:
           name: Ensure license header is present
