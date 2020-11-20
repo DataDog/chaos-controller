@@ -1,2 +1,3 @@
-spdx-lookup==0.3.2
+git+git://github.com/bbqsrc/spdx-python@v2.5
+git+git://github.com/bbqsrc/spdx-lookup-python@v0.3.2
 invoke==1.4.1
