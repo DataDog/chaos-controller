@@ -21,6 +21,7 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -29,7 +30,7 @@ import (
 // DisruptionSpec defines the desired state of Disruption
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
-	Count int `json:"count"` // number of pods to target
+	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
 	// +kubebuilder:validation:Required
 	Selector labels.Set `json:"selector"` // label selector
 	// +kubebuilder:validation:Enum=pod;node;""
