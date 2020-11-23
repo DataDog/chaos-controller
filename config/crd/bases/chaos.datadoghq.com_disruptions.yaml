@@ -39,7 +39,10 @@ spec:
             container:
               type: string
             count:
-              type: integer
+              anyOf:
+              - type: integer
+              - type: string
+              x-kubernetes-int-or-string: true
             cpuPressure:
               description: CPUPressureSpec represents a cpu pressure disruption
               nullable: true
@@ -87,6 +90,10 @@ spec:
                   minimum: 0
                   type: integer
                 drop:
+                  maximum: 100
+                  minimum: 0
+                  type: integer
+                duplicate:
                   maximum: 100
                   minimum: 0
                   type: integer

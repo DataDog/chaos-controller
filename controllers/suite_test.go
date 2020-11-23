@@ -63,6 +63,8 @@ var (
 	instanceKey types.NamespacedName
 	targetPodA  *corev1.Pod
 	targetPodB  *corev1.Pod
+	targetPodC  *corev1.Pod
+	targetPodD  *corev1.Pod
 )
 
 type fakeK8sClient struct {
@@ -223,6 +225,40 @@ var _ = BeforeEach(func() {
 			},
 		},
 	}
+	targetPodC = &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "car",
+			Namespace: "default",
+			Labels: map[string]string{
+				"foo": "bar",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				corev1.Container{
+					Image: "car",
+					Name:  "car",
+				},
+			},
+		},
+	}
+	targetPodD = &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "far",
+			Namespace: "default",
+			Labels: map[string]string{
+				"foo": "bar",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				corev1.Container{
+					Image: "far",
+					Name:  "far",
+				},
+			},
+		},
+	}
 
 	By("Creating target pod")
 	err := k8sClient.Create(context.Background(), targetPodA)
@@ -233,6 +269,20 @@ var _ = BeforeEach(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = k8sClient.Create(context.Background(), targetPodB)
+	if apierrors.IsInvalid(err) {
+		logf.Log.Error(err, "failed to create object, got an invalid object error")
+		return
+	}
+	Expect(err).NotTo(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), targetPodC)
+	if apierrors.IsInvalid(err) {
+		logf.Log.Error(err, "failed to create object, got an invalid object error")
+		return
+	}
+	Expect(err).NotTo(HaveOccurred())
+
+	err = k8sClient.Create(context.Background(), targetPodD)
 	if apierrors.IsInvalid(err) {
 		logf.Log.Error(err, "failed to create object, got an invalid object error")
 		return
@@ -249,4 +299,6 @@ var _ = AfterSuite(func() {
 var _ = AfterEach(func() {
 	_ = k8sClient.Delete(context.Background(), targetPodA)
 	_ = k8sClient.Delete(context.Background(), targetPodB)
+	_ = k8sClient.Delete(context.Background(), targetPodC)
+	_ = k8sClient.Delete(context.Background(), targetPodD)
 })

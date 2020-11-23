@@ -18,8 +18,8 @@ type TcMock struct {
 }
 
 //nolint:golint
-func (f *TcMock) AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int) error {
-	args := f.Called(iface, parent, handle, delay, drop, corrupt)
+func (f *TcMock) AddNetem(iface string, parent string, handle uint32, delay time.Duration, drop int, corrupt int, duplicate int) error {
+	args := f.Called(iface, parent, handle, delay, drop, corrupt, duplicate)
 
 	return args.Error(0)
 }
