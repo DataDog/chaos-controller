@@ -91,6 +91,10 @@ spec:
                   maximum: 100
                   minimum: 0
                   type: integer
+                duplicate:
+                  maximum: 100
+                  minimum: 0
+                  type: integer
                 flow:
                   enum:
                   - egress

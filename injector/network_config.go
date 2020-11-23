@@ -26,7 +26,7 @@ type linkOperation func(network.NetlinkLink, string, uint32) error
 
 // NetworkDisruptionConfig provides an interface for using the network traffic controller for new disruptions
 type NetworkDisruptionConfig interface {
-	AddNetem(delay time.Duration, drop int, corrupt int)
+	AddNetem(delay time.Duration, drop int, corrupt int, duplicate int)
 	AddOutputLimit(bytesPerSec uint)
 	ApplyOperations() error
 	ClearOperations() error
@@ -367,10 +367,10 @@ func (c *NetworkDisruptionConfigStruct) ApplyOperations() error {
 }
 
 // AddNetem adds network disruptions using the drivers in the NetworkDisruptionConfigStruct
-func (c *NetworkDisruptionConfigStruct) AddNetem(delay time.Duration, drop int, corrupt int) {
+func (c *NetworkDisruptionConfigStruct) AddNetem(delay time.Duration, drop int, corrupt int, duplicate int) {
 	// closure which adds netem disruptions
 	operation := func(link network.NetlinkLink, parent string, handle uint32) error {
-		return c.TrafficController.AddNetem(link.Name(), parent, handle, delay, drop, corrupt)
+		return c.TrafficController.AddNetem(link.Name(), parent, handle, delay, drop, corrupt, duplicate)
 	}
 
 	c.operations = append(c.operations, operation)
