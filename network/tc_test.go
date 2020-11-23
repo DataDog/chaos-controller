@@ -34,6 +34,7 @@ var _ = Describe("Tc", func() {
 		handle            uint32
 		delay             time.Duration
 		drop              int
+		duplicate         int
 		corrupt           int
 		bands             uint32
 		priomap           [16]uint32
@@ -59,6 +60,7 @@ var _ = Describe("Tc", func() {
 		handle = 0
 		delay = time.Second
 		drop = 5
+		duplicate = 5
 		corrupt = 1
 		bands = 16
 		priomap = [16]uint32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
@@ -78,12 +80,12 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddNetem", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddNetem(iface, parent, handle, delay, drop, corrupt)
+			tcRunner.AddNetem(iface, parent, handle, delay, drop, corrupt, duplicate)
 		})
 
 		Context("add 1s delay to lo interface to the root parent without any handle", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 1s loss 5% corrupt 1%")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 1s loss 5% duplicate 5% corrupt 1%")
 			})
 		})
 
@@ -93,7 +95,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem delay 1s loss 5% corrupt 1%")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem delay 1s loss 5% duplicate 5% corrupt 1%")
 			})
 		})
 
@@ -103,7 +105,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem delay 1s loss 5% corrupt 1%")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem delay 1s loss 5% duplicate 5% corrupt 1%")
 			})
 		})
 
@@ -113,7 +115,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 30m0s loss 5% corrupt 1%")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 30m0s loss 5% duplicate 5% corrupt 1%")
 			})
 		})
 	})
