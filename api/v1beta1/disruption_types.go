@@ -33,10 +33,10 @@ type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	Selector labels.Set `json:"selector"` // label selector
 	// +kubebuilder:validation:Enum=pod;node;""
-	Level chaostypes.DisruptionLevel `json:"level,omitempty"`
-	Container string                 `json:"container,omitempty"`
-    // +nullable
-	Network   *NetworkDisruptionSpec `json:"network,omitempty"`
+	Level     chaostypes.DisruptionLevel `json:"level,omitempty"`
+	Container string                     `json:"container,omitempty"`
+	// +nullable
+	Network *NetworkDisruptionSpec `json:"network,omitempty"`
 	// +nullable
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
 	// +nullable
