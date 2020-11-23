@@ -11,5 +11,5 @@ metadata:
 spec:
   selector: # label selector to target pods
     app: demo
-  count: 1 # number of pods to target (-1 == target all the selected pods)
+  count: 1 # number of pods to target or a percentage (1% - 100%)
   cpuPressure: {} # cpu load generator

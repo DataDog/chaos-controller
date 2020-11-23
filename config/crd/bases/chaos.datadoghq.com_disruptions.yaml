@@ -37,7 +37,10 @@ spec:
           description: DisruptionSpec defines the desired state of Disruption
           properties:
             count:
-              type: integer
+              anyOf:
+              - type: integer
+              - type: string
+              x-kubernetes-int-or-string: true
             cpuPressure:
               description: CPUPressureSpec represents a cpu pressure disruption
               nullable: true
