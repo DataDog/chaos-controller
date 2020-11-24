@@ -27,6 +27,7 @@ files_to_skip = [
     "config/webhook/manifests.yaml",
     "config/rbac/role.yaml",
     "config/crd/bases/chaos.datadoghq.com_disruptions.yaml",
+    "api/v1beta1/zz_generated.deepcopy.go",
 ]
 
 # generates the header with the given comment tag
