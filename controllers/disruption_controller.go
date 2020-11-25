@@ -29,6 +29,8 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -39,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -212,8 +215,8 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, err
 		}
 
-		// get ID of first container
-		containerID, err := getContainerID(&targetPod)
+		// get ID of targeted container or the first container
+		containerID, err := getContainerID(&targetPod, instance.Spec.Container)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -323,7 +326,7 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 		chaosPods := []*v1.Pod{}
 
 		// get ID of first container
-		containerID, err := getContainerID(p)
+		containerID, err := getContainerID(p, instance.Spec.Container)
 		if err != nil {
 			return false, err
 		}
@@ -431,9 +434,20 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 		return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
 	}
 
+	// instance.Spec.Count is a string that either represents a percentage or a value, we do the translation here
+	count := 0
+
+	count, err = getScaledValueFromIntOrPercent(instance.Spec.Count, len(allPods.Items), true)
+	if err != nil {
+		count = instance.Spec.Count.IntValue()
+	}
+
+	if count == 0 {
+		return nil, fmt.Errorf("parsing error, either incorrectly formatted percentage or incorrectly formatted integer: %s\n%w", instance.Spec.Count.String(), err)
+	}
 	// if count has not been specified or is greater than the actual number of matching pods,
 	// return all pods matching the label selector
-	if instance.Spec.Count == -1 || instance.Spec.Count >= len(allPods.Items) {
+	if count >= len(allPods.Items) {
 		return allPods, nil
 	}
 
@@ -449,14 +463,13 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 	}
 
 	// otherwise, randomly select pods
-	numPodsToSelect := int(math.Min(float64(instance.Spec.Count), float64(instance.Spec.Count-len(instance.Status.TargetPods))))
-	for i := 0; i < numPodsToSelect; i++ {
+	for i := 0; i < count; i++ {
 		// select and add a random pod
 		index := rand.Intn(len(allPods.Items))
 		chosenPod := allPods.Items[index]
 		selectedPods = append(selectedPods, chosenPod)
 
-		r.Log.Info("Selected random pod", "name", chosenPod.Name, "namespace", chosenPod.Namespace, "disruption", instance.Name, "count", instance.Spec.Count)
+		r.Log.Info("Selected random pod", "name", chosenPod.Name, "namespace", chosenPod.Namespace, "disruption", instance.Name, "count", count)
 
 		// remove the chosen pod from list of pods from which to select
 		allPods.Items[len(allPods.Items)-1], allPods.Items[index] = allPods.Items[index], allPods.Items[len(allPods.Items)-1]
@@ -490,10 +503,16 @@ func (r *DisruptionReconciler) getOwnedPods(instance *chaosv1beta1.Disruption, s
 	return ownedPods, nil
 }
 
-// getContainerID gets the ID of the first container ID found in a Pod
-func getContainerID(pod *corev1.Pod) (string, error) {
+// getContainerID gets the ID of the targeted container or of the first container ID found in a Pod
+func getContainerID(pod *corev1.Pod, target string) (string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
 		return "", fmt.Errorf("missing container ids for pod '%s'", pod.Name)
+	}
+
+	for _, container := range pod.Status.ContainerStatuses {
+		if container.Name == target {
+			return container.ContainerID, nil
+		}
 	}
 
 	return pod.Status.ContainerStatuses[0].ContainerID, nil
@@ -573,8 +592,14 @@ func (r *DisruptionReconciler) generateChaosPod(instance *chaosv1beta1.Disruptio
 		return nil
 	}
 
+	// default level to pod if not specified
+	level := instance.Spec.Level
+	if level == chaostypes.DisruptionLevelUnspecified {
+		level = chaostypes.DisruptionLevelPod
+	}
+
 	// generate args for pod
-	args := generator.GenerateArgs(mode, instance.UID, containerID, r.MetricsSink.GetSinkName())
+	args := generator.GenerateArgs(mode, instance.UID, level, containerID, r.MetricsSink.GetSinkName())
 
 	// generate pod
 	pod, err := r.generatePod(instance, target, args, mode, kind)
@@ -627,4 +652,57 @@ func (r *DisruptionReconciler) WatchStuckOnRemoval() {
 			r.Log.Error(err, "error sending stuck_on_removal_count metric")
 		}
 	}
+}
+
+// This method returns a scaled value from an IntOrString type. If the IntOrString
+// is a percentage string value it's treated as a percentage and scaled appropriately
+// in accordance to the total, if it's an int value it's treated as a a simple value and
+// if it is a string value which is either non-numeric or numeric but lacking a trailing '%' it returns an error.
+func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int, roundUp bool) (int, error) {
+	if intOrPercent == nil {
+		return 0, errors.NewBadRequest("nil value for IntOrString")
+	}
+
+	value, isPercent, err := getIntOrPercentValueSafely(intOrPercent)
+
+	if err != nil {
+		return 0, fmt.Errorf("invalid value for IntOrString: %v", err)
+	}
+
+	if isPercent {
+		if roundUp {
+			value = int(math.Ceil(float64(value) * (float64(total)) / 100))
+		} else {
+			value = int(math.Floor(float64(value) * (float64(total)) / 100))
+		}
+	}
+
+	return value, nil
+}
+
+func getIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error) {
+	switch intOrStr.Type {
+	case intstr.Int:
+		return intOrStr.IntValue(), false, nil
+	case intstr.String:
+		isPercent := false
+		s := intOrStr.StrVal
+
+		if strings.HasSuffix(s, "%") {
+			isPercent = true
+			s = strings.TrimSuffix(intOrStr.StrVal, "%")
+		} else {
+			return 0, false, fmt.Errorf("invalid type: string is not a percentage")
+		}
+
+		v, err := strconv.Atoi(s)
+
+		if err != nil {
+			return 0, false, fmt.Errorf("invalid value %q: %v", intOrStr.StrVal, err)
+		}
+
+		return v, isPercent, nil
+	}
+
+	return 0, false, fmt.Errorf("invalid type: neither int nor percentage")
 }

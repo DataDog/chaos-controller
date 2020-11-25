@@ -37,13 +37,21 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 
 	// do the request on the first configured dns resolver
 	dnsClient := dns.Client{}
-	dnsMessage := dns.Msg{}
-	dnsMessage.SetQuestion(host+".", dns.TypeA)
-
 	response := &dns.Msg{}
 
 	err = retry.Do(func() error {
-		response, _, err = dnsClient.Exchange(&dnsMessage, dnsConfig.Servers[0]+":53")
+		// query possible resolvers and fqdn based on servers and search domains specified in the dns configuration
+		for _, name := range dnsConfig.NameList(host) {
+			dnsMessage := dns.Msg{}
+			dnsMessage.SetQuestion(name, dns.TypeA)
+
+			for _, server := range dnsConfig.Servers {
+				response, _, err = dnsClient.Exchange(&dnsMessage, fmt.Sprintf("%s:53", server))
+				if len(response.Answer) > 0 {
+					return nil
+				}
+			}
+		}
 
 		return err
 	}, retry.Attempts(3))

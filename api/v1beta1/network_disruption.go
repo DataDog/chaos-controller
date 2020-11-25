@@ -29,6 +29,9 @@ type NetworkDisruptionSpec struct {
 	Drop int `json:"drop,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
+	Duplicate int `json:"duplicate,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
 	Corrupt int `json:"corrupt,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=59999
@@ -38,7 +41,7 @@ type NetworkDisruptionSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, containerID, sink string) []string {
+func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, level chaostypes.DisruptionLevel, containerID, sink string) []string {
 	args := []string{}
 
 	switch mode {
@@ -50,6 +53,8 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 			string(uid),
 			"--metrics-sink",
 			sink,
+			"--level",
+			string(level),
 			"--container-id",
 			containerID,
 			"--port",
@@ -58,6 +63,8 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 			strconv.Itoa(s.Corrupt),
 			"--drop",
 			strconv.Itoa(s.Drop),
+			"--duplicate",
+			strconv.Itoa(s.Duplicate),
 			"--delay",
 			strconv.Itoa(int(s.Delay)),
 			"--bandwidth-limit",
@@ -87,6 +94,8 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 			string(uid),
 			"--metrics-sink",
 			sink,
+			"--level",
+			string(level),
 			"--container-id",
 			containerID,
 		}

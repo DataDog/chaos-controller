@@ -23,8 +23,8 @@ type networkDisruptionInjector struct {
 }
 
 // NewNetworkDisruptionInjector creates a NetworkDisruptionInjector object with default drivers
-func NewNetworkDisruptionInjector(uid string, spec v1beta1.NetworkDisruptionSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
-	config := NewNetworkDisruptionConfigWithDefaults(log, spec.Hosts, spec.Port, spec.Protocol, spec.Flow)
+func NewNetworkDisruptionInjector(uid string, level types.DisruptionLevel, spec v1beta1.NetworkDisruptionSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
+	config := NewNetworkDisruptionConfigWithDefaults(log, level, spec.Hosts, spec.Port, spec.Protocol, spec.Flow)
 
 	return NewNetworkDisruptionInjectorWithConfig(uid, spec, ctn, log, ms, config)
 }
@@ -72,12 +72,12 @@ func (i networkDisruptionInjector) Inject() {
 		}
 	}()
 
-	i.log.Infow("adding network disruptions", "drop", i.spec.Drop, "corrupt", i.spec.Corrupt, "delay", i.spec.Delay, "bandwidthLimit", i.spec.BandwidthLimit)
+	i.log.Infow("adding network disruptions", "drop", i.spec.Drop, "duplicate", i.spec.Duplicate, "corrupt", i.spec.Corrupt, "delay", i.spec.Delay, "bandwidthLimit", i.spec.BandwidthLimit)
 
 	// add netem
-	if i.spec.Delay > 0 || i.spec.Drop > 0 || i.spec.Corrupt > 0 {
+	if i.spec.Delay > 0 || i.spec.Drop > 0 || i.spec.Corrupt > 0 || i.spec.Duplicate > 0 {
 		delay := time.Duration(i.spec.Delay) * time.Millisecond
-		i.config.AddNetem(delay, i.spec.Drop, i.spec.Corrupt)
+		i.config.AddNetem(delay, i.spec.Drop, i.spec.Corrupt, i.spec.Duplicate)
 	}
 
 	// add tbf

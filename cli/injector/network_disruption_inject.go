@@ -9,6 +9,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/types"
 	"github.com/spf13/cobra"
 )
 
@@ -17,12 +18,14 @@ var networkDisruptionInjectCmd = &cobra.Command{
 	Short: "Inject a network failure in the given container",
 	Run: func(cmd *cobra.Command, args []string) {
 		uid, _ := cmd.Flags().GetString("uid")
+		level, _ := cmd.Flags().GetString("level")
 		containerID, _ := cmd.Flags().GetString("container-id")
 		hosts, _ := cmd.Flags().GetStringSlice("hosts")
 		port, _ := cmd.Flags().GetInt("port")
 		protocol, _ := cmd.Flags().GetString("protocol")
 		flow, _ := cmd.Flags().GetString("flow")
 		drop, _ := cmd.Flags().GetInt("drop")
+		duplicate, _ := cmd.Flags().GetInt("duplicate")
 		corrupt, _ := cmd.Flags().GetInt("corrupt")
 		delay, _ := cmd.Flags().GetUint("delay")
 		bandwidthLimit, _ := cmd.Flags().GetInt("bandwidth-limit")
@@ -34,7 +37,7 @@ var networkDisruptionInjectCmd = &cobra.Command{
 		}
 
 		// check that at least one disruption has been specified
-		if drop == 0 && corrupt == 0 && delay == 0 && bandwidthLimit == 0 {
+		if drop == 0 && corrupt == 0 && delay == 0 && bandwidthLimit == 0 && duplicate == 0 {
 			log.Fatal("at least one disruption must be specified")
 		}
 
@@ -45,20 +48,22 @@ var networkDisruptionInjectCmd = &cobra.Command{
 			Protocol:       protocol,
 			Flow:           flow,
 			Drop:           drop,
+			Duplicate:      duplicate,
 			Corrupt:        corrupt,
 			Delay:          delay,
 			BandwidthLimit: bandwidthLimit,
 		}
-		i := injector.NewNetworkDisruptionInjector(uid, spec, c, log, ms)
+		i := injector.NewNetworkDisruptionInjector(uid, types.DisruptionLevel(level), spec, c, log, ms)
 		i.Inject()
 	},
 }
 
 func init() {
-	networkDisruptionInjectCmd.Flags().Int("port", 0, "Port to drop packets from and to")
+	networkDisruptionInjectCmd.Flags().Int("port", 0, "Port to disrupt packets from and to")
 	networkDisruptionInjectCmd.Flags().String("protocol", "", "Protocol to filter packets on (tcp or udp)")
 	networkDisruptionInjectCmd.Flags().String("flow", "egress", "Flow direction to filter on (either egress or ingress)")
 	networkDisruptionInjectCmd.Flags().Int("drop", 100, "Percentage to drop packets (100 is a total drop)")
+	networkDisruptionInjectCmd.Flags().Int("duplicate", 100, "Percentage to duplicate packets (100 is duplicating each packet)")
 	networkDisruptionInjectCmd.Flags().Int("corrupt", 100, "Percentage to corrupt packets (100 is a total corruption)")
 	networkDisruptionInjectCmd.Flags().Uint("delay", 0, "Delay to add to the given container in ms")
 	networkDisruptionInjectCmd.Flags().Int("bandwidth-limit", 0, "Bandwidth limit in bytes")

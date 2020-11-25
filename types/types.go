@@ -11,6 +11,9 @@ type PodMode string
 // DisruptionKind represents a disruption kind
 type DisruptionKind string
 
+// DisruptionLevel represents which level the disruption should be injected at
+type DisruptionLevel string
+
 const (
 	// PodModeLabel is the label used to identify the pod mode
 	PodModeLabel = "chaos.datadoghq.com/pod-mode"
@@ -34,4 +37,11 @@ const (
 	DisruptionKindCPUPressure = "cpu-pressure"
 	// DisruptionKindDiskPressure is a disk pressure disruption
 	DisruptionKindDiskPressure = "disk-pressure"
+
+	// DisruptionLevelUnspecified is the value used when the level of injection is not specified
+	DisruptionLevelUnspecified = ""
+	// DisruptionLevelPod is a disruption injected at the pod level
+	DisruptionLevelPod = "pod"
+	// DisruptionLevelNode is a disruption injected at the node level
+	DisruptionLevelNode = "node"
 )
