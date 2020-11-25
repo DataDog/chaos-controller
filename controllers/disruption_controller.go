@@ -235,6 +235,10 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, err
 		}
 
+		if len(chaosPods) == 0 {
+			r.Recorder.Event(instance, "Warning", "Empty Disruption", fmt.Sprintf("No disruption recognized for \"%s\" therefore no disruption applied.", instance.Name))
+		}
+
 		// create injection pods
 		for _, chaosPod := range chaosPods {
 			// link instance resource and injection pod for garbage collection
