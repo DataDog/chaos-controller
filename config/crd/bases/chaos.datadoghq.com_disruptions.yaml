@@ -107,6 +107,10 @@ spec:
                     type: string
                   nullable: true
                   type: array
+                jitter:
+                  maximum: 100
+                  minimum: 1
+                  type: integer
                 port:
                   maximum: 65535
                   minimum: 0
