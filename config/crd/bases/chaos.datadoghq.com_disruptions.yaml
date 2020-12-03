@@ -109,7 +109,7 @@ spec:
                   type: array
                 jitter:
                   maximum: 100
-                  minimum: 1
+                  minimum: 0
                   type: integer
                 port:
                   maximum: 65535
