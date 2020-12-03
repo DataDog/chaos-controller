@@ -52,7 +52,7 @@ var _ = Describe("Failure", func() {
 			Duplicate:      5,
 			Corrupt:        1,
 			Delay:          1000,
-			Jitter:         100,
+			DelayJitter:    100,
 			BandwidthLimit: 10000,
 		}
 	})

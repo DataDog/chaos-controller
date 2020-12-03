@@ -36,9 +36,9 @@ type NetworkDisruptionSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=59999
 	Delay uint `json:"delay,omitempty"`
-	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	Jitter uint `json:"jitter,omitempty"`
+	DelayJitter uint `json:"jitter,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
 }
@@ -71,7 +71,7 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 			"--delay",
 			strconv.Itoa(int(s.Delay)),
 			"--jitter",
-			strconv.Itoa(int(s.Jitter)),
+			strconv.Itoa(int(s.DelayJitter)),
 			"--bandwidth-limit",
 			strconv.Itoa(s.BandwidthLimit),
 		}

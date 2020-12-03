@@ -52,7 +52,7 @@ var networkDisruptionInjectCmd = &cobra.Command{
 			Duplicate:      duplicate,
 			Corrupt:        corrupt,
 			Delay:          delay,
-			Jitter:         jitter,
+			DelayJitter:    jitter,
 			BandwidthLimit: bandwidthLimit,
 		}
 		i := injector.NewNetworkDisruptionInjector(uid, types.DisruptionLevel(level), spec, c, log, ms)

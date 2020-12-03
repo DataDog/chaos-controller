@@ -88,11 +88,11 @@ func (t tc) AddNetem(iface string, parent string, handle uint32, delay time.Dura
 	params := ""
 
 	if delay.Milliseconds() != 0 {
-		params = fmt.Sprintf("%s delay %s", params, delay)
+		// add a 10% jitter to delay by default if not specified
 		if jitter.Milliseconds() == 0 {
 			jitter = time.Duration(float64(delay) * 0.1)
 		}
-		params = fmt.Sprintf("%s %s", params, jitter)
+		params = fmt.Sprintf("%s delay %s %s distribution normal", params, delay, jitter)
 	}
 
 	if drop != 0 {
