@@ -8,6 +8,7 @@ package helpers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -31,9 +32,12 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 
 	// filter pods based on the nfi's label selector, and only consider those within the same namespace as the nfi
 	pods := &corev1.PodList{}
+
 	listOptions := &client.ListOptions{
 		LabelSelector: selector.AsSelector(),
-		Namespace:     namespace,
+		Namespace:     namespace, // TODO: I think this doesn't work, I wanted to do the below
+		//FieldSelector: fields.Set{"status.phase": "Running"}.AsSelector(),
+		//FieldSelector: fields.Set{"Namespace": namespace}.AsSelector(),
 	}
 
 	// fetch pods from label selector
@@ -42,7 +46,15 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 		return nil, err
 	}
 
-	return pods, nil
+	runningPods := &corev1.PodList{}
+	for _, pod := range pods.Items {
+		fmt.Println(pod.Status.Phase)
+		if pod.Status.Phase == corev1.PodRunning {
+			runningPods.Items = append(runningPods.Items, pod)
+		}
+	}
+
+	return runningPods, nil
 }
 
 // PickRandomPods returns a shuffled sub-slice with a size of n of the given slice
