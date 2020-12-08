@@ -78,18 +78,19 @@ var _ = Describe("Helpers", func() {
 		pod = &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "foo",
-				Namespace:       "foo",
+				Namespace:       "fooNs",
 				OwnerReferences: []metav1.OwnerReference{*ownerRef},
 			},
 			Spec: corev1.PodSpec{
-				NodeName: "bar",
+				NodeName: "fooNode",
 			},
 		}
 		pods = []corev1.Pod{
 			*pod,
 			corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "bar",
+					Name:      "bar",
+					Namespace: "barNs",
 				},
 			},
 		}
@@ -111,7 +112,7 @@ var _ = Describe("Helpers", func() {
 		})
 		Context("with non-empty label selector", func() {
 			It("should pass given selector for the given namespace to the client", func() {
-				ns := "foo"
+				ns := "fooNs"
 				ls := map[string]string{
 					"app": "bar",
 				}
@@ -119,6 +120,13 @@ var _ = Describe("Helpers", func() {
 				Expect(err).To(BeNil())
 				Expect(c.ListOptions[0].Namespace).To(Equal(ns))
 				Expect(c.ListOptions[0].LabelSelector.Matches(labels.Set(ls))).To(BeTrue())
+			})
+			It("should return the only pod in the namespace", func() {
+				ns := "fooNs"
+				r, err := GetMatchingPods(&c, ns, map[string]string{"foo": "bar"})
+				numPodsInNs := 1
+				Expect(err).To(BeNil())
+				Expect(len(r.Items)).To(Equal(numPodsInNs))
 			})
 			It("should return the pods list with no error", func() {
 				r, err := GetMatchingPods(&c, "", map[string]string{"foo": "bar"})
