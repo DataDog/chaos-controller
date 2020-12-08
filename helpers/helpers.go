@@ -34,9 +34,7 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 
 	listOptions := &client.ListOptions{
 		LabelSelector: selector.AsSelector(),
-		Namespace:     namespace, // TODO: I think this doesn't work, I wanted to do the below
 		//FieldSelector: fields.Set{"status.phase": "Running"}.AsSelector(),
-		//FieldSelector: fields.Set{"Namespace": namespace}.AsSelector(),
 	}
 
 	// fetch pods from label selector
@@ -46,7 +44,9 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 	}
 
 	runningPods := &corev1.PodList{}
+
 	for _, pod := range pods.Items {
+
 		if pod.Status.Phase == corev1.PodRunning {
 			runningPods.Items = append(runningPods.Items, pod)
 		}
