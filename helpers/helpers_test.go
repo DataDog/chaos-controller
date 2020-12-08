@@ -143,6 +143,8 @@ var _ = Describe("Helpers", func() {
 				}
 				_, err := GetMatchingPods(&c, ns, ls)
 				Expect(err).To(BeNil())
+				// Note: Namespace filter is not applied for results of the fakeClient.
+				//       We instead test this functionality in the controller tests.
 				Expect(c.ListOptions[0].Namespace).To(Equal(ns))
 				Expect(c.ListOptions[0].LabelSelector.Matches(labels.Set(ls))).To(BeTrue())
 			})
