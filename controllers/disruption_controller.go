@@ -298,13 +298,17 @@ func (r *DisruptionReconciler) getPodsToCleanup(instance *chaosv1beta1.Disruptio
 
 		// skip if the pod doesn't exist anymore
 		if errors.IsNotFound(err) {
-			r.Log.Info("cleanup: pod no longer exists", "instance", instance.Name, "namespace", instance.Namespace, "name", podName)
+			r.Log.Info("cleanup: pod no longer exists (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", podName)
 			continue
 		} else if err != nil {
 			return nil, err
 		}
 
-		podsToCleanup = append(podsToCleanup, p)
+		if p.Status.Phase == corev1.PodRunning {
+			podsToCleanup = append(podsToCleanup, p)
+		} else {
+			r.Log.Info("cleanup: pod not running (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", podName)
+		}
 	}
 
 	return podsToCleanup, nil
