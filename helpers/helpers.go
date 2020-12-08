@@ -8,7 +8,6 @@ package helpers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -48,7 +47,6 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 
 	runningPods := &corev1.PodList{}
 	for _, pod := range pods.Items {
-		fmt.Println(pod.Status.Phase)
 		if pod.Status.Phase == corev1.PodRunning {
 			runningPods.Items = append(runningPods.Items, pod)
 		}
