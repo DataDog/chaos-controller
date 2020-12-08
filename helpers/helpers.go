@@ -34,6 +34,7 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 
 	listOptions := &client.ListOptions{
 		LabelSelector: selector.AsSelector(),
+		Namespace:     namespace,
 		//FieldSelector: fields.Set{"status.phase": "Running"}.AsSelector(),
 	}
 
