@@ -146,18 +146,6 @@ var _ = Describe("Helpers", func() {
 				Expect(c.ListOptions[0].Namespace).To(Equal(ns))
 				Expect(c.ListOptions[0].LabelSelector.Matches(labels.Set(ls))).To(BeTrue())
 			})
-			It("should return the only pod in the namespace", func() {
-				Expect(1).To(Equal(1))
-				// TODO THESE FAIL: gets 2 pods instead of 1
-				/*
-					ns := "foo"
-					r, err := GetMatchingPods(&c, ns, map[string]string{"foo": "bar"})
-					numPodsInNs := 1
-					Expect(err).To(BeNil())
-					Expect(len(r.Items)).To(Equal(numPodsInNs))
-					Expect(r.Items[0].Name).To(Equal("foo"))
-				*/
-			})
 			It("should return the pods list except for the failed pod", func() {
 				r, err := GetMatchingPods(&c, "", map[string]string{"foo": "bar"})
 				numFailedPods := 1
