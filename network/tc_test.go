@@ -33,7 +33,7 @@ var _ = Describe("Tc", func() {
 		parent            string
 		handle            uint32
 		delay             time.Duration
-		jitter            time.Duration
+		delayJitter       time.Duration
 		drop              int
 		duplicate         int
 		corrupt           int
@@ -60,7 +60,7 @@ var _ = Describe("Tc", func() {
 		parent = "root"
 		handle = 0
 		delay = time.Second
-		jitter = time.Second
+		delayJitter = time.Second
 		drop = 5
 		duplicate = 5
 		corrupt = 1
@@ -82,16 +82,16 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddNetem", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddNetem(iface, parent, handle, delay, jitter, drop, corrupt, duplicate)
+			tcRunner.AddNetem(iface, parent, handle, delay, delayJitter, drop, corrupt, duplicate)
 		})
 
-		Context("add 1s delay and 1s jitter to lo interface to the root parent without any handle", func() {
+		Context("add 1s delay and 1s delayJitter to lo interface to the root parent without any handle", func() {
 			It("should execute", func() {
 				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 1s 1s distribution normal loss 5% duplicate 5% corrupt 1%")
 			})
 		})
 
-		Context("add delay and jitter with a handle", func() {
+		Context("add delay and delayJitter with a handle", func() {
 			BeforeEach(func() {
 				handle = 1
 			})
@@ -101,7 +101,7 @@ var _ = Describe("Tc", func() {
 			})
 		})
 
-		Context("add delay and jitter to the a non-root parent", func() {
+		Context("add delay and delayJitter to the a non-root parent", func() {
 			BeforeEach(func() {
 				parent = "1:4"
 			})
@@ -111,10 +111,10 @@ var _ = Describe("Tc", func() {
 			})
 		})
 
-		Context("add a 30 minutes delay and 5m jitter", func() {
+		Context("add a 30 minutes delay and 5m delayJitter", func() {
 			BeforeEach(func() {
 				delay = 30 * time.Minute
-				jitter = 5 * time.Minute
+				delayJitter = 5 * time.Minute
 			})
 
 			It("should execute", func() {

@@ -33,7 +33,7 @@ var _ = Describe("Tc", func() {
 		protocol                                                string
 		flow                                                    string
 		delay                                                   time.Duration
-		jitter                                                  time.Duration
+		delayJitter                                             time.Duration
 		drop                                                    int
 		duplicate                                               int
 		corrupt                                                 int
@@ -101,7 +101,7 @@ var _ = Describe("Tc", func() {
 		protocol = "tcp"
 		flow = "egress"
 		delay = time.Second
-		jitter = time.Second
+		delayJitter = time.Second
 		drop = 5
 		duplicate = 5
 		corrupt = 10
@@ -118,7 +118,7 @@ var _ = Describe("Tc", func() {
 
 	Describe("Injecting disruptions", func() {
 		JustBeforeEach(func() {
-			config.AddNetem(delay, jitter, drop, corrupt, duplicate)
+			config.AddNetem(delay, delayJitter, drop, corrupt, duplicate)
 			config.AddOutputLimit(bandwidthLimit)
 			Expect(config.ApplyOperations()).To(BeNil())
 		})
@@ -166,9 +166,9 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should apply disruptions to main interfaces 4th band", func() {
-				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "2:2", mock.Anything, delay, jitter, drop, corrupt, duplicate)
+				tc.AssertCalled(GinkgoT(), "AddNetem", "eth0", "2:2", mock.Anything, delay, delayJitter, drop, corrupt, duplicate)
 				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth0", "3:", mock.Anything, bandwidthLimit)
-				tc.AssertCalled(GinkgoT(), "AddNetem", "eth1", "2:2", mock.Anything, delay, jitter, drop, corrupt, duplicate)
+				tc.AssertCalled(GinkgoT(), "AddNetem", "eth1", "2:2", mock.Anything, delay, delayJitter, drop, corrupt, duplicate)
 				tc.AssertCalled(GinkgoT(), "AddOutputLimit", "eth1", "3:", mock.Anything, bandwidthLimit)
 			})
 		})

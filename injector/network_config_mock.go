@@ -17,8 +17,8 @@ type NetworkConfigMock struct {
 }
 
 //nolint:golint
-func (f *NetworkConfigMock) AddNetem(delay time.Duration, jitter time.Duration, drop int, corrupt int, duplicate int) {
-	f.Called(delay, jitter, drop, corrupt, duplicate)
+func (f *NetworkConfigMock) AddNetem(delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) {
+	f.Called(delay, delayJitter, drop, corrupt, duplicate)
 }
 
 //nolint:golint
