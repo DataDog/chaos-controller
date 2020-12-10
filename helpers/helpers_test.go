@@ -148,8 +148,23 @@ var _ = Describe("Helpers", func() {
 				Expect(c.ListOptions[0].Namespace).To(Equal(ns))
 				Expect(c.ListOptions[0].LabelSelector.Matches(labels.Set(ls))).To(BeTrue())
 			})
-			It("should return the pods list except for the failed pod", func() {
-				r, err := GetMatchingPods(&c, "", map[string]string{"foo": "bar"}, false)
+		})
+		Context("with IsMock set to false", func() {
+			It("should return the pods list including failed pod", func() {
+				ls := map[string]string{
+					"app": "bar",
+				}
+				r, err := GetMatchingPods(&c, "", ls, true)
+				Expect(err).To(BeNil())
+				Expect(len(r.Items)).To(Equal(len(mixedStatusPods)))
+			})
+		})
+		Context("with IsMock set to true", func() {
+			It("should return the pods list including failed pod", func() {
+				ls := map[string]string{
+					"app": "bar",
+				}
+				r, err := GetMatchingPods(&c, "", ls, false)
 				numFailedPods := 1
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(len(mixedStatusPods) - numFailedPods))
