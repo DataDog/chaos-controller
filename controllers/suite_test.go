@@ -175,6 +175,7 @@ var _ = BeforeSuite(func(done Done) {
 				},
 			},
 		},
+		IsMock: true,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

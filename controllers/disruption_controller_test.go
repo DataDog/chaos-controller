@@ -19,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // listChaosPods returns all the chaos pods for the given instance and mode
@@ -130,107 +131,106 @@ var _ = Describe("Disruption Controller", func() {
 		Expect(k8sClient.Create(context.Background(), disruption)).To(BeNil())
 	})
 
-	// TODO: Fails because pods are Pending when Disruption is created -> Running pods -> Pending pods
-	/*
-		Context("target all pods", func() {
-			BeforeEach(func() {
-				disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
-			})
-
-			It("should target all the selected pods", func() {
-				By("Ensuring that the spec hash has been computed")
-				Eventually(func() error {
-					if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
-						return err
-					}
-
-					if disruption.Status.SpecHash == nil {
-						return fmt.Errorf("instance spec hash has not been computed yet")
-					}
-
-					return nil
-				}, timeout).Should(Succeed())
-
-				By("Ensuring that the inject pod has been created")
-				Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 16) }, timeout).Should(Succeed())
-
-				By("Deleting the disruption resource")
-				Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
-				Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
-
-				By("Ensuring that the cleanup pod has been created")
-				Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 8) }, timeout).Should(Succeed())
-
-				By("Simulating the completion of the cleanup pod by removing the finalizer")
-				Eventually(func() error {
-					if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
-						return err
-					}
-					disruption.ObjectMeta.Finalizers = []string{}
-					return k8sClient.Update(context.Background(), disruption)
-				}, timeout).Should(Succeed())
-
-				By("Waiting for disruption resource to be deleted")
-				Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
-
-		Context("target one pod only", func() {
-			BeforeEach(func() {
-				disruption.Spec.Count = &intstr.IntOrString{Type: intstr.Int, IntVal: 1}
-			})
-
-			It("should target all the selected pods", func() {
-				By("Ensuring that the inject pod has been created")
-				Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 4) }, timeout).Should(Succeed())
-
-				By("Deleting the disruption resource")
-				Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
-				Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
-
-				By("Ensuring that the cleanup pod has been created")
-				Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 2) }, timeout).Should(Succeed())
-
-				By("Simulating the completion of the cleanup pod by removing the finalizer")
-				Eventually(func() error {
-					if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
-						return err
-					}
-					disruption.ObjectMeta.Finalizers = []string{}
-					return k8sClient.Update(context.Background(), disruption)
-				}, timeout).Should(Succeed())
-
-				By("Waiting for disruption resource to be deleted")
-				Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
-			})
+	Context("target all pods", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
 		})
 
-		Context("target 70% of pods (3 pods out of 4)", func() {
-			BeforeEach(func() {
-				disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "70%"}
-			})
+		It("should target all the selected pods", func() {
+			By("Ensuring that the spec hash has been computed")
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
+					return err
+				}
 
-			It("should target all the selected pods", func() {
-				By("Ensuring that the inject pod has been created")
-				Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 12) }, timeout).Should(Succeed())
+				if disruption.Status.SpecHash == nil {
+					return fmt.Errorf("instance spec hash has not been computed yet")
+				}
 
-				By("Deleting the disruption resource")
-				Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
-				Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
+				return nil
+			}, timeout).Should(Succeed())
 
-				By("Ensuring that the cleanup pod has been created")
-				Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 6) }, timeout).Should(Succeed())
+			By("Ensuring that the inject pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 16) }, timeout).Should(Succeed())
 
-				By("Simulating the completion of the cleanup pod by removing the finalizer")
-				Eventually(func() error {
-					if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
-						return err
-					}
-					disruption.ObjectMeta.Finalizers = []string{}
-					return k8sClient.Update(context.Background(), disruption)
-				}, timeout).Should(Succeed())
+			By("Deleting the disruption resource")
+			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
 
-				By("Waiting for disruption resource to be deleted")
-				Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
-			})
+			By("Ensuring that the cleanup pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 8) }, timeout).Should(Succeed())
+
+			By("Simulating the completion of the cleanup pod by removing the finalizer")
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
+					return err
+				}
+				disruption.ObjectMeta.Finalizers = []string{}
+				return k8sClient.Update(context.Background(), disruption)
+			}, timeout).Should(Succeed())
+
+			By("Waiting for disruption resource to be deleted")
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
 		})
-	*/
+	})
+
+	Context("target one pod only", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.Int, IntVal: 1}
+		})
+
+		It("should target all the selected pods", func() {
+			By("Ensuring that the inject pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 4) }, timeout).Should(Succeed())
+
+			By("Deleting the disruption resource")
+			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
+
+			By("Ensuring that the cleanup pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 2) }, timeout).Should(Succeed())
+
+			By("Simulating the completion of the cleanup pod by removing the finalizer")
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
+					return err
+				}
+				disruption.ObjectMeta.Finalizers = []string{}
+				return k8sClient.Update(context.Background(), disruption)
+			}, timeout).Should(Succeed())
+
+			By("Waiting for disruption resource to be deleted")
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
+		})
+	})
+
+	Context("target 70% of pods (3 pods out of 4)", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "70%"}
+		})
+
+		It("should target all the selected pods", func() {
+			By("Ensuring that the inject pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeInject, 12) }, timeout).Should(Succeed())
+
+			By("Deleting the disruption resource")
+			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
+
+			By("Ensuring that the cleanup pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, chaostypes.PodModeClean, 6) }, timeout).Should(Succeed())
+
+			By("Simulating the completion of the cleanup pod by removing the finalizer")
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
+					return err
+				}
+				disruption.ObjectMeta.Finalizers = []string{}
+				return k8sClient.Update(context.Background(), disruption)
+			}, timeout).Should(Succeed())
+
+			By("Waiting for disruption resource to be deleted")
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
+		})
+	})
 })

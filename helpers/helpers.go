@@ -23,7 +23,7 @@ const (
 )
 
 // GetMatchingPods returns a pods list containing all pods matching the given label selector and namespace
-func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*corev1.PodList, error) {
+func GetMatchingPods(c client.Client, namespace string, selector labels.Set, isMock bool) (*corev1.PodList, error) {
 	// we want to ensure we never run into the possibility of using an empty label selector
 	if len(selector) < 1 || selector == nil {
 		return nil, errors.New("selector can't be an empty set")
@@ -48,7 +48,7 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 
 	for _, pod := range pods.Items {
 
-		if pod.Status.Phase == corev1.PodRunning {
+		if isMock || pod.Status.Phase == corev1.PodRunning {
 			runningPods.Items = append(runningPods.Items, pod)
 		}
 	}
