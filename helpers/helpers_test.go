@@ -131,7 +131,7 @@ var _ = Describe("Helpers", func() {
 	Describe("GetMatchingPods", func() {
 		Context("with empty label selector", func() {
 			It("should return an error", func() {
-				_, err := GetMatchingPods(nil, "", nil)
+				_, err := GetMatchingPods(nil, "", nil, false)
 				Expect(err).NotTo(BeNil())
 			})
 		})
@@ -141,7 +141,7 @@ var _ = Describe("Helpers", func() {
 				ls := map[string]string{
 					"app": "bar",
 				}
-				_, err := GetMatchingPods(&c, ns, ls)
+				_, err := GetMatchingPods(&c, ns, ls, false)
 				Expect(err).To(BeNil())
 				// Note: Namespace filter is not applied for results of the fakeClient.
 				//       We instead test this functionality in the controller tests.
@@ -149,7 +149,7 @@ var _ = Describe("Helpers", func() {
 				Expect(c.ListOptions[0].LabelSelector.Matches(labels.Set(ls))).To(BeTrue())
 			})
 			It("should return the pods list except for the failed pod", func() {
-				r, err := GetMatchingPods(&c, "", map[string]string{"foo": "bar"})
+				r, err := GetMatchingPods(&c, "", map[string]string{"foo": "bar"}, false)
 				numFailedPods := 1
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(len(mixedStatusPods) - numFailedPods))

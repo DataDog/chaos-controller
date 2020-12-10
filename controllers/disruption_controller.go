@@ -66,6 +66,7 @@ type DisruptionReconciler struct {
 	Recorder        record.EventRecorder
 	MetricsSink     metrics.Sink
 	PodTemplateSpec corev1.Pod
+	IsMock          bool
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -304,7 +305,7 @@ func (r *DisruptionReconciler) getPodsToCleanup(instance *chaosv1beta1.Disruptio
 			return nil, err
 		}
 
-		if p.Status.Phase == corev1.PodRunning {
+		if r.IsMock || p.Status.Phase == corev1.PodRunning {
 			podsToCleanup = append(podsToCleanup, p)
 		} else {
 			r.Log.Info("cleanup: pod not running (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", podName)
@@ -433,7 +434,7 @@ func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Dis
 	rand.Seed(time.Now().UnixNano())
 
 	// get pods matching the instance label selector
-	allPods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.Selector)
+	allPods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.Selector, r.IsMock)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
 	}
