@@ -7,12 +7,12 @@ package controllers
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/etcd-io/etcd/clientv3"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -22,7 +22,41 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func changePodStatuses(pods *corev1.PodList, originalPhase corev1.PodPhase, desiredPhase corev1.PodPhase) error {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{"localhost:" + testEnv.ControlPlane.Etcd.URL.Port()},
+		DialTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		return err
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+
+	for _, p := range pods.Items {
+		key := "/registry/pods/default/" + p.Name
+
+		GetResponse, err := cli.Get(ctx, key)
+		if err != nil {
+			return err
+		}
+
+		originalValue := string(GetResponse.Kvs[0].Value)
+		desriedValue := strings.Replace(originalValue, string(originalPhase), string(desiredPhase), 1)
+
+		_, err = cli.Put(ctx, key, desriedValue)
+		if err != nil {
+			return err
+		}
+	}
+
+	defer cli.Close()
+
+	return nil
+}
 
 // listChaosPods returns all the chaos pods for the given instance and mode
 func listChaosPods(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode) (corev1.PodList, error) {
@@ -122,50 +156,18 @@ var _ = Describe("Disruption Controller", func() {
 			},
 		}
 
-		// TAYTAY __ make client __________________________________________________________
-
-		endptURL := "localhost:" + testEnv.ControlPlane.Etcd.URL.Port()
-		fmt.Println(endptURL)
-
-		cli, err := clientv3.New(clientv3.Config{
-			Endpoints:   []string{endptURL},
-			DialTimeout: 5 * time.Second,
-		})
-		ctx, _ := context.WithTimeout(context.Background(), timeout)
-
-		// TAYTAY __ get pods __________________________________________________________
-
+		// fetch pods in namespace and set their statuses to Running so GetMatchingPods works
 		pods := &corev1.PodList{}
-		ns := "default"
 
 		listOptions := &client.ListOptions{
 			LabelSelector: disruption.Spec.Selector.AsSelector(),
-			Namespace:     ns,
+			Namespace:     "default",
 		}
 
-		err = k8sClient.List(context.Background(), pods, listOptions)
-		if err != nil {
-			fmt.Println("TAY failed to get pods", err)
-		}
+		err := k8sClient.List(context.Background(), pods, listOptions)
+		Expect(err).To(BeNil())
 
-		// TAYTAY __ etcd entries __________________________________________________________
-		key := "/registry/pods/" + ns + "/" + pods.Items[0].Name
-		fmt.Println(key)
-
-		GetResponse, err := cli.Get(ctx, key)
-		if err != nil {
-			fmt.Println("TAY failed to get")
-		}
-		fmt.Println(string(GetResponse.Kvs[0].Value))
-
-		PutResponse, err := cli.Put(ctx, key, GetResponse.Kvs[0].Value)
-		if err != nil {
-			fmt.Println("TAY failed to put")
-		}
-		fmt.Println(PutResponse)
-
-		defer cli.Close()
-		Expect(nil).ToNot(BeNil())
+		err = changePodStatuses(pods, corev1.PodPending, corev1.PodRunning)
 	})
 
 	AfterEach(func() {
