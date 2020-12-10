@@ -7,7 +7,9 @@ package controllers
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/etcd-io/etcd/clientv3"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -119,6 +121,51 @@ var _ = Describe("Disruption Controller", func() {
 				},
 			},
 		}
+
+		// TAYTAY __ make client __________________________________________________________
+
+		endptURL := "localhost:" + testEnv.ControlPlane.Etcd.URL.Port()
+		fmt.Println(endptURL)
+
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   []string{endptURL},
+			DialTimeout: 5 * time.Second,
+		})
+		ctx, _ := context.WithTimeout(context.Background(), timeout)
+
+		// TAYTAY __ get pods __________________________________________________________
+
+		pods := &corev1.PodList{}
+		ns := "default"
+
+		listOptions := &client.ListOptions{
+			LabelSelector: disruption.Spec.Selector.AsSelector(),
+			Namespace:     ns,
+		}
+
+		err = k8sClient.List(context.Background(), pods, listOptions)
+		if err != nil {
+			fmt.Println("TAY failed to get pods", err)
+		}
+
+		// TAYTAY __ etcd entries __________________________________________________________
+		key := "/registry/pods/" + ns + "/" + pods.Items[0].Name
+		fmt.Println(key)
+
+		GetResponse, err := cli.Get(ctx, key)
+		if err != nil {
+			fmt.Println("TAY failed to get")
+		}
+		fmt.Println(string(GetResponse.Kvs[0].Value))
+
+		PutResponse, err := cli.Put(ctx, key, GetResponse.Kvs[0].Value)
+		if err != nil {
+			fmt.Println("TAY failed to put")
+		}
+		fmt.Println(PutResponse)
+
+		defer cli.Close()
+		Expect(nil).ToNot(BeNil())
 	})
 
 	AfterEach(func() {
@@ -138,6 +185,7 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the spec hash has been computed")
+
 			Eventually(func() error {
 				if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
 					return err
