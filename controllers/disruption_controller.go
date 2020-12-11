@@ -218,6 +218,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to get target pod resource for pod \"%s\". Error: %s", targetPodName, err))
 			r.Log.Error(err, fmt.Sprintf("Failed to get pod resource for pod: %s", targetPodName))
 			failedTargets = append(failedTargets, targetPodName)
+
 			continue
 		}
 
@@ -227,6 +228,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to get containerID for targeted pod \"%s\". Error: %s", targetPodName, err))
 			r.Log.Info("Failed to retrieve containerID for targeted pod", "podName", targetPodName, "error", err)
 			failedTargets = append(failedTargets, targetPodName)
+
 			continue
 		}
 
@@ -235,6 +237,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to create Network Disruption injection for target pod \"%s\". Error: %s", targetPodName, err))
 			r.Log.Error(err, fmt.Sprintf("Failed to create Network Disruption injection for targeted pod: %s", targetPodName))
 			failedTargets = append(failedTargets, targetPodName)
+
 			continue
 		}
 
@@ -242,6 +245,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to create Node Disruption injection for target pod: \"%s\". Error: %s", targetPodName, err))
 			r.Log.Error(err, fmt.Sprintf("Failed to create Node Disruption injection for targeted pod: %s", targetPodName))
 			failedTargets = append(failedTargets, targetPodName)
+
 			continue
 		}
 
@@ -249,6 +253,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to create CPU Pressure Disruption injection for target pod: \"%s\". Error: %s", targetPodName, err))
 			r.Log.Error(err, fmt.Sprintf("Failed to create CPU Pressure Disruption injection for targeted pod: %s", targetPodName))
 			failedTargets = append(failedTargets, targetPodName)
+
 			continue
 		}
 
@@ -256,10 +261,11 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to create Disk Disruption injection for target pod: \"%s\". Error: %s", targetPodName, err))
 			r.Log.Error(err, fmt.Sprintf("Failed to create Disk Disruption injection for targeted pod: %s", targetPodName))
 			failedTargets = append(failedTargets, targetPodName)
+
 			continue
 		}
 
-		// remove targeted pods which the we failed to create injection pods for, they should no longer be considered for cleanup
+		// remove targeted pods which we failed to create injection pods for, they should no longer be considered for cleanup
 		if len(failedTargets) > 0 {
 			for _, failed := range failedTargets {
 				instance.Status.TargetPods, err = remove(failed, instance.Status.TargetPods)
@@ -267,7 +273,10 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 					r.Log.Error(err, fmt.Sprintf("Was not able to find Failed Target Pod %s", failed))
 				}
 			}
-			r.Update(context.Background(), instance)
+
+			if err := r.Update(context.Background(), instance); err != nil {
+				r.Log.Error(err, fmt.Sprintf("Was not able to update faulty targeted pods out from disruption.: %s", instance.Name))
+			}
 		}
 
 		// if no chaos pods were created at this point (without errors) that means we did not understand what was in the disruption config
@@ -692,10 +701,12 @@ func (r *DisruptionReconciler) WatchStuckOnRemoval() {
 // element is the string to be removed from the list
 func remove(element string, slice []string) ([]string, error) {
 	for i, value := range slice {
+
 		if value == element {
 			return append(slice[:i], slice[i+1:]...), nil
 		}
 	}
+
 	return nil, fmt.Errorf("Could not find element in list to remove")
 }
 
