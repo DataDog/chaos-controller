@@ -701,13 +701,12 @@ func (r *DisruptionReconciler) WatchStuckOnRemoval() {
 // element is the string to be removed from the list
 func remove(element string, slice []string) ([]string, error) {
 	for i, value := range slice {
-
 		if value == element {
 			return append(slice[:i], slice[i+1:]...), nil
 		}
 	}
 
-	return nil, fmt.Errorf("Could not find element in list to remove")
+	return nil, fmt.Errorf("could not find element in list to remove")
 }
 
 // This method returns a scaled value from an IntOrString type. If the IntOrString
