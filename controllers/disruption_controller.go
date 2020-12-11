@@ -206,38 +206,71 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// start injections
 	r.Log.Info("starting pods injection", "instance", instance.Name, "namespace", instance.Namespace, "targetPods", instance.Status.TargetPods)
 
+	// list of podNames that failed when creating injection pods, these will be deleted as they are no longer targeted due to the blocking errors
+	failedTargets := []string{}
+
 	for _, targetPodName := range instance.Status.TargetPods {
 		chaosPods := []*corev1.Pod{}
 		targetPod := corev1.Pod{}
 
 		// retrieve target pod resource
 		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: targetPodName}, &targetPod); err != nil {
-			return ctrl.Result{}, err
+			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to get target pod resource for pod \"%s\". Error: %s", targetPodName, err))
+			r.Log.Error(err, fmt.Sprintf("Failed to get pod resource for pod: %s", targetPodName))
+			failedTargets = append(failedTargets, targetPodName)
+			continue
 		}
 
 		// get ID of targeted container or the first container
 		containerID, err := getContainerID(&targetPod, instance.Spec.Container)
 		if err != nil {
-			return ctrl.Result{}, err
+			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to get containerID for targeted pod \"%s\". Error: %s", targetPodName, err))
+			r.Log.Info("Failed to retrieve containerID for targeted pod", "podName", targetPodName, "error", err)
+			failedTargets = append(failedTargets, targetPodName)
+			continue
 		}
 
 		// generate injection pods specs
 		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindNetworkDisruption); err != nil {
-			return ctrl.Result{}, err
+			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to create Network Disruption injection for target pod \"%s\". Error: %s", targetPodName, err))
+			r.Log.Error(err, fmt.Sprintf("Failed to create Network Disruption injection for targeted pod: %s", targetPodName))
+			failedTargets = append(failedTargets, targetPodName)
+			continue
 		}
 
 		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindNodeFailure); err != nil {
-			return ctrl.Result{}, err
+			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to create Node Disruption injection for target pod: \"%s\". Error: %s", targetPodName, err))
+			r.Log.Error(err, fmt.Sprintf("Failed to create Node Disruption injection for targeted pod: %s", targetPodName))
+			failedTargets = append(failedTargets, targetPodName)
+			continue
 		}
 
 		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindCPUPressure); err != nil {
-			return ctrl.Result{}, err
+			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to create CPU Pressure Disruption injection for target pod: \"%s\". Error: %s", targetPodName, err))
+			r.Log.Error(err, fmt.Sprintf("Failed to create CPU Pressure Disruption injection for targeted pod: %s", targetPodName))
+			failedTargets = append(failedTargets, targetPodName)
+			continue
 		}
 
 		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindDiskPressure); err != nil {
-			return ctrl.Result{}, err
+			r.Recorder.Event(instance, "Warning", "Failed For A Targeted Pod", fmt.Sprintf("Failed to create Disk Disruption injection for target pod: \"%s\". Error: %s", targetPodName, err))
+			r.Log.Error(err, fmt.Sprintf("Failed to create Disk Disruption injection for targeted pod: %s", targetPodName))
+			failedTargets = append(failedTargets, targetPodName)
+			continue
 		}
 
+		// remove targeted pods which the we failed to create injection pods for, they should no longer be considered for cleanup
+		if len(failedTargets) > 0 {
+			for _, failed := range failedTargets {
+				instance.Status.TargetPods, err = remove(failed, instance.Status.TargetPods)
+				if err != nil {
+					r.Log.Error(err, fmt.Sprintf("Was not able to find Failed Target Pod %s", failed))
+				}
+			}
+			r.Update(context.Background(), instance)
+		}
+
+		// if no chaos pods were created at this point (without errors) that means we did not understand what was in the disruption config
 		if len(chaosPods) == 0 {
 			r.Recorder.Event(instance, "Warning", "Empty Disruption", fmt.Sprintf("No disruption recognized for \"%s\" therefore no disruption applied.", instance.Name))
 		}
@@ -652,6 +685,18 @@ func (r *DisruptionReconciler) WatchStuckOnRemoval() {
 			r.Log.Error(err, "error sending stuck_on_removal_count metric")
 		}
 	}
+}
+
+// remove is used to remove a string element from a string slice, without consideration of order
+// slice is the slice in question
+// element is the string to be removed from the list
+func remove(element string, slice []string) ([]string, error) {
+	for i, value := range slice {
+		if value == element {
+			return append(slice[:i], slice[i+1:]...), nil
+		}
+	}
+	return nil, fmt.Errorf("Could not find element in list to remove")
 }
 
 // This method returns a scaled value from an IntOrString type. If the IntOrString
