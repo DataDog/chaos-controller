@@ -25,6 +25,7 @@ spec:
     drop: 10 # optional, probability to drop packets (between 0 and 100)
     corrupt: 5 # optional, probability to corrupt packets (between 0 and 100m)
     delay: 1000 # optional, latency to apply to packets in ms
+    delayJitter: 5 # optional, add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%
     bandwidthLimit: 10000 # optional, bandwidth limit in bytes
   cpuPressure: {} # cpu load generator
   diskPressure: # disk pressure
