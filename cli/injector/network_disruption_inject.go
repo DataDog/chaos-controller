@@ -28,6 +28,7 @@ var networkDisruptionInjectCmd = &cobra.Command{
 		duplicate, _ := cmd.Flags().GetInt("duplicate")
 		corrupt, _ := cmd.Flags().GetInt("corrupt")
 		delay, _ := cmd.Flags().GetUint("delay")
+		delayJitter, _ := cmd.Flags().GetUint("delayJitter")
 		bandwidthLimit, _ := cmd.Flags().GetInt("bandwidth-limit")
 
 		// prepare container
@@ -51,6 +52,7 @@ var networkDisruptionInjectCmd = &cobra.Command{
 			Duplicate:      duplicate,
 			Corrupt:        corrupt,
 			Delay:          delay,
+			DelayJitter:    delayJitter,
 			BandwidthLimit: bandwidthLimit,
 		}
 		i := injector.NewNetworkDisruptionInjector(uid, types.DisruptionLevel(level), spec, c, log, ms)
@@ -66,5 +68,6 @@ func init() {
 	networkDisruptionInjectCmd.Flags().Int("duplicate", 100, "Percentage to duplicate packets (100 is duplicating each packet)")
 	networkDisruptionInjectCmd.Flags().Int("corrupt", 100, "Percentage to corrupt packets (100 is a total corruption)")
 	networkDisruptionInjectCmd.Flags().Uint("delay", 0, "Delay to add to the given container in ms")
+	networkDisruptionInjectCmd.Flags().Uint("delayJitter", 0, "Sub-command for Delay; adds specified jitter to delay time")
 	networkDisruptionInjectCmd.Flags().Int("bandwidth-limit", 0, "Bandwidth limit in bytes")
 }

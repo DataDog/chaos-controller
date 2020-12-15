@@ -40,7 +40,7 @@ var _ = Describe("Failure", func() {
 
 		// network disruption conf
 		config = NetworkConfigMock{}
-		config.On("AddNetem", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
+		config.On("AddNetem", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 		config.On("AddOutputLimit", mock.Anything).Return()
 		config.On("ApplyOperations").Return(nil)
 		config.On("ClearOperations").Return(nil)
@@ -52,6 +52,7 @@ var _ = Describe("Failure", func() {
 			Duplicate:      5,
 			Corrupt:        1,
 			Delay:          1000,
+			DelayJitter:    100,
 			BandwidthLimit: 10000,
 		}
 	})
@@ -71,7 +72,7 @@ var _ = Describe("Failure", func() {
 		})
 
 		It("should call AddNetem on its network disruption config", func() {
-			config.AssertCalled(GinkgoT(), "AddNetem", time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
+			config.AssertCalled(GinkgoT(), "AddNetem", time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
 		})
 
 		It("should call AddOutputLimit on its network disruption config", func() {

@@ -89,6 +89,10 @@ spec:
                   maximum: 59999
                   minimum: 0
                   type: integer
+                delayJitter:
+                  maximum: 100
+                  minimum: 0
+                  type: integer
                 drop:
                   maximum: 100
                   minimum: 0
