@@ -7,10 +7,9 @@ package api
 
 import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // DisruptionArgsGenerator generates args for the given disruption
 type DisruptionArgsGenerator interface {
-	GenerateArgs(mode chaostypes.PodMode, uid types.UID, level chaostypes.DisruptionLevel, containerID, sink string) []string
+	GenerateArgs(mode chaostypes.PodMode, level chaostypes.DisruptionLevel, containerID, sink string) []string
 }

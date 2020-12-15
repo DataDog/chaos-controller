@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
@@ -44,7 +43,7 @@ type NetworkDisruptionSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, level chaostypes.DisruptionLevel, containerID, sink string) []string {
+func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, level chaostypes.DisruptionLevel, containerID, sink string) []string {
 	args := []string{}
 
 	switch mode {
@@ -52,8 +51,6 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 		args = []string{
 			"network-disruption",
 			"inject",
-			"--uid",
-			string(uid),
 			"--metrics-sink",
 			sink,
 			"--level",
@@ -95,8 +92,6 @@ func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, uid types.
 		args = []string{
 			"network-disruption",
 			"clean",
-			"--uid",
-			string(uid),
 			"--metrics-sink",
 			sink,
 			"--level",

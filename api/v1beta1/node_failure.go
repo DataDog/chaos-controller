@@ -7,7 +7,6 @@ package v1beta1
 
 import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // NodeFailureSpec represents a node failure injection
@@ -16,15 +15,13 @@ type NodeFailureSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, level chaostypes.DisruptionLevel, containerID, sink string) []string {
+func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, level chaostypes.DisruptionLevel, containerID, sink string) []string {
 	args := []string{}
 
 	if mode == chaostypes.PodModeInject {
 		args = []string{
 			"node-failure",
 			"inject",
-			"--uid",
-			string(uid),
 			"--metrics-sink",
 			sink,
 		}

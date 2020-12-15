@@ -148,7 +148,7 @@ spec:
             specHash:
               nullable: true
               type: string
-            targetPods:
+            targets:
               items:
                 type: string
               nullable: true

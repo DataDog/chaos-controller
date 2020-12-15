@@ -43,12 +43,12 @@ func (n *Sink) EventWithTags(title, text string, tags []string) error {
 }
 
 // MetricInjected increments the injected metric
-func (n *Sink) MetricInjected(containerID, uid string, succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
+func (n *Sink) MetricInjected(succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
 	return nil
 }
 
 // MetricCleaned increments the cleaned metric
-func (n *Sink) MetricCleaned(containerID, uid string, succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
+func (n *Sink) MetricCleaned(succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
 	return nil
 }
 

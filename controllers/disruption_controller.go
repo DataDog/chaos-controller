@@ -73,6 +73,7 @@ type DisruptionReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
 
 // Reconcile loop
 func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -172,21 +173,22 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	}
 
+	// retrieve targets from label selector
+	targets, err := r.selectTargets(instance)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// select pods eligible for an injection and add them
 	// to the instance status for the next loop
-	if len(instance.Status.TargetPods) == 0 {
+	if len(instance.Status.Targets) == 0 {
 		// select pods
 		r.Log.Info("selecting pods to inject disruption to", "instance", instance.Name, "namespace", instance.Namespace)
 
-		pods, err := r.selectPodsForInjection(instance)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
 		// stop here if no pods can be targeted
-		if len(pods.Items) == 0 {
-			r.Log.Info("the given label selector returned no pods", "instance", instance.Name, "selector", instance.Spec.Selector.String())
-			r.Recorder.Event(instance, "Warning", "NoTarget", "The given label selector did not target any pods")
+		if len(targets) == 0 {
+			r.Log.Info("the given label selector returned no targets", "instance", instance.Name, "selector", instance.Spec.Selector.String())
+			r.Recorder.Event(instance, "Warning", "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
 
 			return ctrl.Result{
 				Requeue: false,
@@ -194,47 +196,54 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 
 		// update instance status
-		r.Log.Info("updating instance status with pods selected for injection", "instance", instance.Name, "namespace", instance.Namespace)
-
-		for _, pod := range pods.Items {
-			instance.Status.TargetPods = append(instance.Status.TargetPods, pod.Name)
-		}
+		r.Log.Info("updating instance status with targets selected for injection", "instance", instance.Name, "namespace", instance.Namespace)
+		instance.Status.Targets = append(instance.Status.Targets, targets...)
 
 		return ctrl.Result{}, r.Update(context.Background(), instance)
 	}
 
 	// start injections
-	r.Log.Info("starting pods injection", "instance", instance.Name, "namespace", instance.Namespace, "targetPods", instance.Status.TargetPods)
+	r.Log.Info("starting targets injection", "instance", instance.Name, "namespace", instance.Namespace, "targetPods", instance.Status.Targets)
 
-	for _, targetPodName := range instance.Status.TargetPods {
+	for _, target := range instance.Status.Targets {
+		var targetNodeName, containerID string
+
 		chaosPods := []*corev1.Pod{}
-		targetPod := corev1.Pod{}
 
-		// retrieve target pod resource
-		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: targetPodName}, &targetPod); err != nil {
-			return ctrl.Result{}, err
-		}
+		// retrieve target
+		switch instance.Spec.Level {
+		case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
+			pod := corev1.Pod{}
 
-		// get ID of targeted container or the first container
-		containerID, err := getContainerID(&targetPod, instance.Spec.Container)
-		if err != nil {
-			return ctrl.Result{}, err
+			if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
+				return ctrl.Result{}, err
+			}
+
+			targetNodeName = pod.Spec.NodeName
+
+			// get ID of targeted container or the first container
+			containerID, err = getContainerID(&pod, instance.Spec.Container)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		case chaostypes.DisruptionLevelNode:
+			targetNodeName = target
 		}
 
 		// generate injection pods specs
-		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindNetworkDisruption); err != nil {
+		if err := r.generateChaosPod(instance, &chaosPods, target, targetNodeName, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindNetworkDisruption); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindNodeFailure); err != nil {
+		if err := r.generateChaosPod(instance, &chaosPods, target, targetNodeName, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindNodeFailure); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindCPUPressure); err != nil {
+		if err := r.generateChaosPod(instance, &chaosPods, target, targetNodeName, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindCPUPressure); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		if err := r.generateChaosPod(instance, &chaosPods, targetPod, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindDiskPressure); err != nil {
+		if err := r.generateChaosPod(instance, &chaosPods, target, targetNodeName, chaostypes.PodModeInject, containerID, chaostypes.DisruptionKindDiskPressure); err != nil {
 			return ctrl.Result{}, err
 		}
 
@@ -256,21 +265,21 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			}
 
 			if len(found) == 0 {
-				r.Log.Info("creating chaos pod", "instance", instance.Name, "namespace", instance.Namespace, "targetPod", targetPod.Name, "spec", chaosPod)
+				r.Log.Info("creating chaos pod", "instance", instance.Name, "namespace", instance.Namespace, "target", target, "spec", chaosPod)
 
 				if err = r.Create(context.Background(), chaosPod); err != nil {
 					r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
-					r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(targetPod.Name, instance.Name, instance.Namespace, "inject", false))
+					r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, "inject", false))
 
 					return ctrl.Result{}, err
 				}
 
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-				r.Recorder.Event(&targetPod, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this pod for injection", chaosPod.Name, instance.Name))
-				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(targetPod.Name, instance.Name, instance.Namespace, "inject", true))
+				r.recordEventOnTarget(instance, target, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resourcer for injection", chaosPod.Name, instance.Name))
+				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, "inject", true))
 			} else {
-				r.Log.Info("an injection pod is already existing for the selected pod", "instance", instance.Name, "namespace", instance.Namespace, "targetPod", targetPod.Name)
+				r.Log.Info("an injection pod is already existing for the selected pod", "instance", instance.Name, "namespace", instance.Namespace, "target", target)
 			}
 		}
 	}
@@ -285,62 +294,106 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	return ctrl.Result{}, r.Update(context.Background(), instance)
 }
 
-// getPodsToCleanup returns the still-existing pods that were targeted by the disruption, according to the pod names in the instance status
-func (r *DisruptionReconciler) getPodsToCleanup(instance *chaosv1beta1.Disruption) ([]*corev1.Pod, error) {
-	podsToCleanup := make([]*corev1.Pod, 0, len(instance.Status.TargetPods))
+// targetIsHealthy returns true if the given target exists, false otherwise
+func (r *DisruptionReconciler) targetIsHealthy(instance *chaosv1beta1.Disruption, target string) (bool, error) {
+	switch instance.Spec.Level {
+	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
+		var p corev1.Pod
 
-	// check if each pod still exists; skip if it doesn't
-	for _, podName := range instance.Status.TargetPods {
-		// get the targeted pods names from the status
-		podKey := types.NamespacedName{Name: podName, Namespace: instance.Namespace}
-		p := &corev1.Pod{}
-		err := r.Get(context.Background(), podKey, p)
+		// check if target still exists
+		if err := r.Get(context.Background(), types.NamespacedName{Name: target, Namespace: instance.Namespace}, &p); err != nil {
+			if errors.IsNotFound(err) {
+				r.Log.Info("cleanup: target no longer exists (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
 
-		// skip if the pod doesn't exist anymore
-		if errors.IsNotFound(err) {
-			r.Log.Info("cleanup: pod no longer exists (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", podName)
-			continue
-		} else if err != nil {
-			return nil, err
+				return false, nil
+			} else if err != nil {
+				return false, err
+			}
 		}
 
-		if p.Status.Phase == corev1.PodRunning {
-			podsToCleanup = append(podsToCleanup, p)
-		} else {
-			r.Log.Info("cleanup: pod not running (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", podName)
+		// check if pod is running
+		if p.Status.Phase != corev1.PodRunning {
+			r.Log.Info("cleanup: target not running (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
+
+			return false, nil
+		}
+	case chaostypes.DisruptionLevelNode:
+		var n corev1.Node
+		if err := r.Get(context.Background(), client.ObjectKey{Name: target}, &n); err != nil {
+			if errors.IsNotFound(err) {
+				r.Log.Info("cleanup: target no longer exists (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
+
+				return false, nil
+			} else if err != nil {
+				return false, err
+			}
+		}
+
+		// check if node is ready
+		ready := false
+
+		for _, condition := range n.Status.Conditions {
+			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+				ready = true
+				break
+			}
+		}
+
+		if !ready {
+			r.Log.Info("cleanup: target not ready (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
+
+			return false, nil
 		}
 	}
 
-	return podsToCleanup, nil
+	return true, nil
 }
 
 // cleanDisruptions creates cleanup pods for a given disruption instance
 // it returns true once all disruptions are cleaned
 func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruption) (bool, error) {
+	var containerID, targetNodeName string
+
+	chaosPods := []*v1.Pod{}
 	isFullyCleaned := true
 
-	// retrieve pods to cleanup
-	podsToCleanup, err := r.getPodsToCleanup(instance)
-	if err != nil {
-		return false, err
-	}
-
 	// create one cleanup pod for pod to cleanup
-	for _, p := range podsToCleanup {
-		chaosPods := []*v1.Pod{}
-
-		// get ID of first container
-		containerID, err := getContainerID(p, instance.Spec.Container)
+	for _, target := range instance.Status.Targets {
+		// check target readiness for cleanup
+		exists, err := r.targetIsHealthy(instance, target)
 		if err != nil {
 			return false, err
 		}
 
+		if !exists {
+			continue
+		}
+
+		switch instance.Spec.Level {
+		case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
+			pod := corev1.Pod{}
+
+			if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
+				return false, err
+			}
+
+			targetNodeName = pod.Spec.NodeName
+
+			// get ID of targeted container or the first container
+			containerID, err = getContainerID(&pod, instance.Spec.Container)
+			if err != nil {
+				return false, err
+			}
+		case chaostypes.DisruptionLevelNode:
+			targetNodeName = target
+		}
+
 		// generate cleanup pods specs
-		if err := r.generateChaosPod(instance, &chaosPods, *p, chaostypes.PodModeClean, containerID, chaostypes.DisruptionKindNetworkDisruption); err != nil {
+		if err := r.generateChaosPod(instance, &chaosPods, target, targetNodeName, chaostypes.PodModeClean, containerID, chaostypes.DisruptionKindNetworkDisruption); err != nil {
 			return false, err
 		}
 
-		if err := r.generateChaosPod(instance, &chaosPods, *p, chaostypes.PodModeClean, containerID, chaostypes.DisruptionKindDiskPressure); err != nil {
+		if err := r.generateChaosPod(instance, &chaosPods, target, targetNodeName, chaostypes.PodModeClean, containerID, chaostypes.DisruptionKindDiskPressure); err != nil {
 			return false, err
 		}
 
@@ -383,7 +436,7 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 					if len(existingCleanupPods) >= 5 {
 						r.Log.Info("maximum cleanup pods count reached (5), please debug manually", "instance", instance.Name, "namespace", instance.Namespace)
 						r.Recorder.Event(instance, "Warning", "Undisruption failed", "Disruption could not being cleaned up, please debug manually")
-						r.Recorder.Event(p, "Warning", "Undisruption failed", fmt.Sprintf("Disruption %s could not being cleaned up, please debug manually", instance.Name))
+						r.recordEventOnTarget(instance, target, "Warning", "Undisruption failed", fmt.Sprintf("Disruption %s could not being cleaned up, please debug manually", instance.Name))
 
 						instance.Status.IsStuckOnRemoval = true
 
@@ -408,79 +461,92 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 
 			if err := r.Create(context.Background(), chaosPod); err != nil {
 				r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Cleanup pod for disruption \"%s\" failed to be created", instance.Name))
-				r.Recorder.Event(p, "Warning", "Undisrupted", fmt.Sprintf("Disruption %s failed to be cleaned up by pod %s", instance.Name, chaosPod.Name))
-				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", false))
+				r.recordEventOnTarget(instance, target, "Warning", "Undisrupted", fmt.Sprintf("Disruption %s failed to be cleaned up by pod %s", instance.Name, chaosPod.Name))
+				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, "cleanup", false))
 
 				return false, err
 			}
 
 			r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created cleanup pod for disruption \"%s\"", instance.Name))
-			r.Recorder.Event(p, "Normal", "Undisrupted", fmt.Sprintf("Disruption %s is being cleaned up by pod %s", instance.Name, chaosPod.Name))
-			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(p.ObjectMeta.Name, instance.Name, instance.Namespace, "cleanup", true))
+			r.recordEventOnTarget(instance, target, "Normal", "Undisrupted", fmt.Sprintf("Disruption %s is being cleaned up by pod %s", instance.Name, chaosPod.Name))
+			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, "cleanup", true))
 		}
 	}
 
 	return isFullyCleaned, nil
 }
 
-// selectPodsForInjection will select min(count, all matching pods) random pods from the pods matching the instance label selector
-// target pods will only be selected once per instance
-// the chosen pods names will be reflected in the intance status
-// subsequent calls to this function will always return the same pods as the first call
-func (r *DisruptionReconciler) selectPodsForInjection(instance *chaosv1beta1.Disruption) (*corev1.PodList, error) {
-	selectedPods := []corev1.Pod{}
+// selectTargets will select min(count, all matching targets) random targets (pods or nodes depending on the disruption level)
+// from the targets matching the instance label selector
+// targets will only be selected once per instance
+// the chosen targets names will be reflected in the intance status
+// subsequent calls to this function will always return the same targets as the first call
+func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) ([]string, error) {
+	var (
+		err                         error
+		allTargets, selectedTargets []string
+	)
 
-	rand.Seed(time.Now().UnixNano())
+	// select either pods or nodes depending on the disruption level
+	switch instance.Spec.Level {
+	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
+		pods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.Selector)
+		if err != nil {
+			return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
+		}
 
-	// get pods matching the instance label selector
-	allPods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.Selector)
-	if err != nil {
-		return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
+		for _, pod := range pods.Items {
+			allTargets = append(allTargets, pod.Name)
+		}
+	case chaostypes.DisruptionLevelNode:
+		nodes, err := helpers.GetMatchingNodes(r.Client, instance.Spec.Selector)
+		if err != nil {
+			return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
+		}
+
+		for _, node := range nodes.Items {
+			allTargets = append(allTargets, node.Name)
+		}
 	}
 
 	// instance.Spec.Count is a string that either represents a percentage or a value, we do the translation here
-	count := 0
-
-	count, err = getScaledValueFromIntOrPercent(instance.Spec.Count, len(allPods.Items), true)
+	targetsCount, err := getScaledValueFromIntOrPercent(instance.Spec.Count, len(allTargets), true)
 	if err != nil {
-		count = instance.Spec.Count.IntValue()
+		targetsCount = instance.Spec.Count.IntValue()
 	}
 
-	if count == 0 {
+	// computed count should not be 0 unless the given count was not expected
+	if targetsCount == 0 {
 		return nil, fmt.Errorf("parsing error, either incorrectly formatted percentage or incorrectly formatted integer: %s\n%w", instance.Spec.Count.String(), err)
 	}
-	// if count has not been specified or is greater than the actual number of matching pods,
-	// return all pods matching the label selector
-	if count >= len(allPods.Items) {
-		return allPods, nil
+
+	// if count is greater than the actual number of matching targets, return all of them
+	if targetsCount >= len(allTargets) {
+		return allTargets, nil
 	}
 
 	// if we had already selected pods for the instance, only return the already-selected ones
-	if len(instance.Status.TargetPods) > 0 {
-		for _, pod := range allPods.Items {
-			if helpers.ContainsString(instance.Status.TargetPods, pod.Name) {
-				selectedPods = append(selectedPods, pod)
+	if len(instance.Status.Targets) > 0 {
+		for _, target := range allTargets {
+			if helpers.ContainsString(instance.Status.Targets, target) {
+				selectedTargets = append(selectedTargets, target)
 			}
 		}
 
-		return &corev1.PodList{Items: selectedPods}, nil
+		return selectedTargets, nil
 	}
 
-	// otherwise, randomly select pods
-	for i := 0; i < count; i++ {
-		// select and add a random pod
-		index := rand.Intn(len(allPods.Items))
-		chosenPod := allPods.Items[index]
-		selectedPods = append(selectedPods, chosenPod)
-
-		r.Log.Info("Selected random pod", "name", chosenPod.Name, "namespace", chosenPod.Namespace, "disruption", instance.Name, "count", count)
-
-		// remove the chosen pod from list of pods from which to select
-		allPods.Items[len(allPods.Items)-1], allPods.Items[index] = allPods.Items[index], allPods.Items[len(allPods.Items)-1]
-		allPods.Items = allPods.Items[:len(allPods.Items)-1]
+	// otherwise, randomly select targets within the list of targets
+	// and take care to remove it from the list once done
+	for i := 0; i < targetsCount; i++ {
+		index := rand.Intn(len(allTargets))
+		selectedTarget := allTargets[index]
+		selectedTargets = append(selectedTargets, selectedTarget)
+		allTargets[len(allTargets)-1], allTargets[index] = allTargets[index], allTargets[len(allTargets)-1]
+		allTargets = allTargets[:len(allTargets)-1]
 	}
 
-	return &corev1.PodList{Items: selectedPods}, nil
+	return selectedTargets, nil
 }
 
 func (r *DisruptionReconciler) getOwnedPods(instance *chaosv1beta1.Disruption, selector labels.Set) ([]corev1.Pod, error) {
@@ -524,7 +590,7 @@ func getContainerID(pod *corev1.Pod, target string) (string, error) {
 
 // generatePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
-func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, target corev1.Pod, args []string, mode chaostypes.PodMode, kind chaostypes.DisruptionKind) (*corev1.Pod, error) {
+func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, mode chaostypes.PodMode, kind chaostypes.DisruptionKind) (*corev1.Pod, error) {
 	pod := corev1.Pod{}
 
 	image, ok := os.LookupEnv("CHAOS_INJECTOR_IMAGE")
@@ -549,11 +615,11 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	}
 
 	pod.ObjectMeta.GenerateName = fmt.Sprintf("chaos-%s-%s-", instance.Name, mode)
-	pod.ObjectMeta.Namespace = target.Namespace
+	pod.ObjectMeta.Namespace = instance.Namespace
 	pod.ObjectMeta.Labels[chaostypes.PodModeLabel] = string(mode)
-	pod.ObjectMeta.Labels[chaostypes.TargetPodLabel] = target.Name
+	pod.ObjectMeta.Labels[chaostypes.TargetPodLabel] = targetName
 	pod.ObjectMeta.Labels[chaostypes.DisruptionKindLabel] = string(kind)
-	pod.Spec.NodeName = target.Spec.NodeName
+	pod.Spec.NodeName = targetNodeName
 	pod.Spec.Containers[0].Image = image
 	pod.Spec.Containers[0].Args = args
 	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
@@ -576,7 +642,7 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 }
 
 // generateChaosPod generates a chaos pod for the given instance and disruption kind if set
-func (r *DisruptionReconciler) generateChaosPod(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, target corev1.Pod, mode chaostypes.PodMode, containerID string, kind chaostypes.DisruptionKind) error {
+func (r *DisruptionReconciler) generateChaosPod(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, mode chaostypes.PodMode, containerID string, kind chaostypes.DisruptionKind) error {
 	var generator chaosapi.DisruptionArgsGenerator
 
 	// check for disruption kind
@@ -603,10 +669,10 @@ func (r *DisruptionReconciler) generateChaosPod(instance *chaosv1beta1.Disruptio
 	}
 
 	// generate args for pod
-	args := generator.GenerateArgs(mode, instance.UID, level, containerID, r.MetricsSink.GetSinkName())
+	args := generator.GenerateArgs(mode, level, containerID, r.MetricsSink.GetSinkName())
 
 	// generate pod
-	pod, err := r.generatePod(instance, target, args, mode, kind)
+	pod, err := r.generatePod(instance, targetName, targetNodeName, args, mode, kind)
 	if err != nil {
 		return err
 	}
@@ -615,6 +681,34 @@ func (r *DisruptionReconciler) generateChaosPod(instance *chaosv1beta1.Disruptio
 	*pods = append(*pods, pod)
 
 	return nil
+}
+
+// recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
+func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disruption, target string, eventtype, reason, message string) {
+	r.Log.Info("registering an event on a target", "target", target, "instance", instance.Name, "namespace", instance.Namespace, "level", instance.Spec.Level, "eventtype", eventtype, "reason", reason, "message", message)
+
+	var o runtime.Object
+
+	switch instance.Spec.Level {
+	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
+		p := &corev1.Pod{}
+
+		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {
+			r.Log.Error(err, "event failed to be registered on target", "target", target)
+		}
+
+		o = p
+	case chaostypes.DisruptionLevelNode:
+		n := &corev1.Node{}
+
+		if err := r.Get(context.Background(), types.NamespacedName{Name: target}, n); err != nil {
+			r.Log.Error(err, "event failed to be registered on target", "target", target)
+		}
+
+		o = n
+	}
+
+	r.Recorder.Event(o, eventtype, reason, message)
 }
 
 // SetupWithManager setups the current reconciler with the given manager

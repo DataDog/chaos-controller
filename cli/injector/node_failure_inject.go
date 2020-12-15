@@ -15,7 +15,6 @@ var nodeFailureInjectCmd = &cobra.Command{
 	Use:   "inject",
 	Short: "Inject a node failure on the actual node",
 	Run: func(cmd *cobra.Command, args []string) {
-		uid, _ := cmd.Flags().GetString("uid")
 		shutdown, _ := cmd.Flags().GetBool("shutdown")
 
 		// prepare spec
@@ -24,7 +23,7 @@ var nodeFailureInjectCmd = &cobra.Command{
 		}
 
 		// inject
-		i, err := injector.NewNodeFailureInjector(uid, spec, log, ms)
+		i, err := injector.NewNodeFailureInjector(spec, injector.NodeFailureInjectorConfig{Config: config})
 		if err != nil {
 			log.Fatalw("error creating the node injector", "error", err)
 		}

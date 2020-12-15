@@ -15,6 +15,4 @@ var cpuPressureCmd = &cobra.Command{
 
 func init() {
 	cpuPressureCmd.AddCommand(cpuPressureInjectCmd)
-	cpuPressureCmd.PersistentFlags().String("container-id", "", "ID of the container to inject")
-	_ = cobra.MarkFlagRequired(cpuPressureCmd.PersistentFlags(), "container-id")
 }
