@@ -39,15 +39,15 @@ func changePodStatuses(pods *corev1.PodList, originalPhase corev1.PodPhase, desi
 	for _, p := range pods.Items {
 		key := "/registry/pods/default/" + p.Name
 
-		GetResponse, err := cli.Get(ctx, key)
+		getResponse, err := cli.Get(ctx, key)
 		if err != nil {
 			return err
 		}
 
-		originalValue := string(GetResponse.Kvs[0].Value)
-		desriedValue := strings.Replace(originalValue, string(originalPhase), string(desiredPhase), 1)
+		originalValue := string(getResponse.Kvs[0].Value)
+		desiredValue := strings.Replace(originalValue, string(originalPhase), string(desiredPhase), 1)
 
-		_, err = cli.Put(ctx, key, desriedValue)
+		_, err = cli.Put(ctx, key, desiredValue)
 		if err != nil {
 			return err
 		}
