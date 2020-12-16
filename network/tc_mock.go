@@ -69,10 +69,3 @@ func (f *TcMock) ClearQdisc(iface string) error {
 
 	return args.Error(0)
 }
-
-//nolint:golint
-func (f *TcMock) IsQdiscCleared(iface string) (bool, error) {
-	args := f.Called(iface)
-
-	return args.Bool(0), args.Error(1)
-}

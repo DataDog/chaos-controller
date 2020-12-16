@@ -18,10 +18,10 @@ type tcExecuterMock struct {
 	mock.Mock
 }
 
-func (f *tcExecuterMock) Run(args ...string) (string, error) {
+func (f *tcExecuterMock) Run(args ...string) (int, string, error) {
 	a := f.Called(strings.Join(args, " "))
 
-	return a.String(0), a.Error(1)
+	return a.Int(0), a.String(1), a.Error(2)
 }
 
 var _ = Describe("Tc", func() {
@@ -48,7 +48,7 @@ var _ = Describe("Tc", func() {
 	BeforeEach(func() {
 		// fake command executer
 		tcExecuter = tcExecuterMock{}
-		tcExecuterRunCall = tcExecuter.On("Run", mock.Anything).Return("", nil)
+		tcExecuterRunCall = tcExecuter.On("Run", mock.Anything).Return(0, "", nil)
 
 		// tc runner
 		tcRunner = tc{
@@ -194,7 +194,7 @@ var _ = Describe("Tc", func() {
 
 	Describe("ClearQdisc", func() {
 		JustBeforeEach(func() {
-			tcRunner.ClearQdisc(iface)
+			Expect(tcRunner.ClearQdisc(iface)).To(BeNil())
 		})
 
 		Context("clear qdisc for local interface", func() {
@@ -202,35 +202,14 @@ var _ = Describe("Tc", func() {
 				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc del dev lo root")
 			})
 		})
-	})
 
-	Describe("IsQdiscCleared", func() {
-		var (
-			cleared bool
-			err     error
-		)
-
-		JustBeforeEach(func() {
-			cleared, err = tcRunner.IsQdiscCleared(iface)
-			Expect(err).To(BeNil())
-			tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc show dev lo")
-		})
-
-		Context("non-cleared qdisc", func() {
+		Context("clear an already cleared qdisc", func() {
 			BeforeEach(func() {
-				tcExecuterRunCall.Return("qdisc prio 1: root refcnt 2 bands 4 priomap  1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1", nil)
+				tcExecuterRunCall.Return(2, "", nil) // return exit code 2
 			})
-			It("should return false", func() {
-				Expect(cleared).To(BeFalse())
-			})
-		})
 
-		Context("already cleared qdisc", func() {
-			BeforeEach(func() {
-				tcExecuterRunCall.Return("qdisc noqueue 0: root refcnt 2", nil)
-			})
-			It("should return false", func() {
-				Expect(cleared).To(BeTrue())
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc del dev lo root")
 			})
 		})
 	})
