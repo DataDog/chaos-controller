@@ -45,3 +45,19 @@ const (
 	// DisruptionLevelNode is a disruption injected at the node level
 	DisruptionLevelNode = "node"
 )
+
+var (
+	// DisruptionKindsInject contains all existing disruption kinds that can be injected
+	DisruptionKindsInject = []DisruptionKind{
+		DisruptionKindNetworkDisruption,
+		DisruptionKindNodeFailure,
+		DisruptionKindCPUPressure,
+		DisruptionKindDiskPressure,
+	}
+
+	// DisruptionKindsClean contains all existing disruption kinds that can be cleaned
+	DisruptionKindsClean = []DisruptionKind{
+		DisruptionKindNetworkDisruption,
+		DisruptionKindDiskPressure,
+	}
+)
