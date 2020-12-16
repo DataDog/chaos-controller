@@ -66,6 +66,7 @@ type DisruptionReconciler struct {
 	Recorder        record.EventRecorder
 	MetricsSink     metrics.Sink
 	PodTemplateSpec corev1.Pod
+	TargetSelector  TargetSelector
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -311,61 +312,6 @@ func (r *DisruptionReconciler) removeSkippedTargets(instance *chaosv1beta1.Disru
 	instance.Status.Targets = remainingTargets
 }
 
-// targetIsHealthy returns true if the given target exists, false otherwise
-func (r *DisruptionReconciler) targetIsHealthy(instance *chaosv1beta1.Disruption, target string) (bool, error) {
-	switch instance.Spec.Level {
-	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
-		var p corev1.Pod
-
-		// check if target still exists
-		if err := r.Get(context.Background(), types.NamespacedName{Name: target, Namespace: instance.Namespace}, &p); err != nil {
-			if errors.IsNotFound(err) {
-				r.Log.Info("cleanup: target no longer exists (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
-
-				return false, nil
-			} else if err != nil {
-				return false, err
-			}
-		}
-
-		// check if pod is running
-		if p.Status.Phase != corev1.PodRunning {
-			r.Log.Info("cleanup: target not running (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
-
-			return false, nil
-		}
-	case chaostypes.DisruptionLevelNode:
-		var n corev1.Node
-		if err := r.Get(context.Background(), client.ObjectKey{Name: target}, &n); err != nil {
-			if errors.IsNotFound(err) {
-				r.Log.Info("cleanup: target no longer exists (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
-
-				return false, nil
-			} else if err != nil {
-				return false, err
-			}
-		}
-
-		// check if node is ready
-		ready := false
-
-		for _, condition := range n.Status.Conditions {
-			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
-				ready = true
-				break
-			}
-		}
-
-		if !ready {
-			r.Log.Info("cleanup: target not ready (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
-
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
 // cleanDisruptions creates cleanup pods for a given disruption instance
 // it returns true once all disruptions are cleaned
 func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruption) (bool, error) {
@@ -377,12 +323,16 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 	// create one cleanup pod for pod to cleanup
 	for _, target := range instance.Status.Targets {
 		// check target readiness for cleanup
-		exists, err := r.targetIsHealthy(instance, target)
-		if err != nil {
-			return false, err
-		}
+		err := r.TargetSelector.TargetIsHealthy(target, r.Client, instance)
 
-		if !exists {
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.Log.Info("cleanup: target no longer exists (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
+			} else if err.Error() == "Pod is not Running" || err.Error() == "Node is not Ready" {
+				r.Log.Info("cleanup: target not healthy (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
+			} else if err != nil {
+				r.Log.Error(err, err.Error())
+			}
 			continue
 		}
 
@@ -503,7 +453,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// select either pods or nodes depending on the disruption level
 	switch instance.Spec.Level {
 	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
-		pods, err := helpers.GetMatchingPods(r.Client, instance.Namespace, instance.Spec.Selector)
+		pods, err := r.TargetSelector.GetMatchingPods(r.Client, instance)
 		if err != nil {
 			return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
 		}
@@ -512,7 +462,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 			allTargets = append(allTargets, pod.Name)
 		}
 	case chaostypes.DisruptionLevelNode:
-		nodes, err := helpers.GetMatchingNodes(r.Client, instance.Spec.Selector)
+		nodes, err := r.TargetSelector.GetMatchingNodes(r.Client, instance)
 		if err != nil {
 			return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
 		}
@@ -565,6 +515,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 func (r *DisruptionReconciler) getOwnedPods(instance *chaosv1beta1.Disruption, selector labels.Set) ([]corev1.Pod, error) {
 	ownedPods := make([]corev1.Pod, 0)
 	pods := &corev1.PodList{}
+
 	listOptions := &client.ListOptions{
 		Namespace:     instance.Namespace,
 		LabelSelector: labels.SelectorFromSet(selector),

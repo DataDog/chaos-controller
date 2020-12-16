@@ -120,6 +120,7 @@ func main() {
 		Recorder:        mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:     ms,
 		PodTemplateSpec: podTemplateSpec,
+		TargetSelector:  controllers.RunningTargetSelector{},
 	}
 
 	if err := r.SetupWithManager(mgr); err != nil {

@@ -7,12 +7,10 @@ package controllers
 
 import (
 	"fmt"
-	"strings"
-	"time"
 
-	"github.com/etcd-io/etcd/clientv3"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -22,41 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-func changePodStatuses(pods *corev1.PodList, originalPhase corev1.PodPhase, desiredPhase corev1.PodPhase) error {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{"localhost:" + testEnv.ControlPlane.Etcd.URL.Port()},
-		DialTimeout: 5 * time.Second,
-	})
-	if err != nil {
-		return err
-	}
-
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
-
-	for _, p := range pods.Items {
-		key := "/registry/pods/default/" + p.Name
-
-		getResponse, err := cli.Get(ctx, key)
-		if err != nil {
-			return err
-		}
-
-		originalValue := string(getResponse.Kvs[0].Value)
-		desiredValue := strings.Replace(originalValue, string(originalPhase), string(desiredPhase), 1)
-
-		_, err = cli.Put(ctx, key, desiredValue)
-		if err != nil {
-			return err
-		}
-	}
-
-	defer cli.Close()
-
-	return nil
-}
 
 // listChaosPods returns all the chaos pods for the given instance and mode
 func listChaosPods(instance *chaosv1beta1.Disruption, mode chaostypes.PodMode) (corev1.PodList, error) {
@@ -155,19 +119,6 @@ var _ = Describe("Disruption Controller", func() {
 				},
 			},
 		}
-
-		// fetch pods in namespace and set their statuses to Running so GetMatchingPods works
-		pods := &corev1.PodList{}
-
-		listOptions := &client.ListOptions{
-			LabelSelector: disruption.Spec.Selector.AsSelector(),
-			Namespace:     "default",
-		}
-
-		err := k8sClient.List(context.Background(), pods, listOptions)
-		Expect(err).To(BeNil())
-
-		err = changePodStatuses(pods, corev1.PodPending, corev1.PodRunning)
 	})
 
 	AfterEach(func() {
@@ -187,7 +138,6 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the spec hash has been computed")
-
 			Eventually(func() error {
 				if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
 					return err

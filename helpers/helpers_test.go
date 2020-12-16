@@ -135,6 +135,9 @@ var _ = Describe("Helpers", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "foo",
 				},
+				Status: corev1.NodeStatus{
+					Phase: corev1.NodeRunning,
+				},
 			},
 		}
 
