@@ -16,9 +16,7 @@ var diskPressureCmd = &cobra.Command{
 func init() {
 	diskPressureCmd.AddCommand(diskPressureInjectCmd)
 	diskPressureCmd.AddCommand(diskPressureCleanCmd)
-	diskPressureCmd.PersistentFlags().String("container-id", "", "ID of the container to inject")
 	diskPressureCmd.PersistentFlags().String("path", "", "Path to apply/clean disk pressure to/from (will be applied to the whole disk)")
 
-	_ = cobra.MarkFlagRequired(diskPressureCmd.PersistentFlags(), "container-id")
 	_ = cobra.MarkFlagRequired(diskPressureCmd.PersistentFlags(), "path")
 }

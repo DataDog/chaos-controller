@@ -8,48 +8,48 @@ package injector
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/disk"
 	"github.com/DataDog/chaos-controller/env"
-	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/types"
-	"go.uber.org/zap"
 )
 
 type diskPressureInjector struct {
-	containerInjector
 	spec   v1beta1.DiskPressureSpec
 	config DiskPressureInjectorConfig
 }
 
 // DiskPressureInjectorConfig is the disk pressure injector config
 type DiskPressureInjectorConfig struct {
+	Config
 	Informer disk.Informer
 }
 
-// NewDiskPressureInjector creates a disk pressure injector with the default config
-func NewDiskPressureInjector(uid string, spec v1beta1.DiskPressureSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) (Injector, error) {
-	return NewDiskPressureInjectorWithConfig(uid, spec, ctn, log, ms, DiskPressureInjectorConfig{})
-}
+// NewDiskPressureInjector creates a disk pressure injector with the given config
+func NewDiskPressureInjector(spec v1beta1.DiskPressureSpec, config DiskPressureInjectorConfig) (Injector, error) {
+	var err error
 
-// NewDiskPressureInjectorWithConfig creates a disk pressure injector with the given config
-func NewDiskPressureInjectorWithConfig(uid string, spec v1beta1.DiskPressureSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config DiskPressureInjectorConfig) (Injector, error) {
-	if config.Informer == nil {
+	path := spec.Path
+
+	// get root mount path
+	mountHost, ok := os.LookupEnv(env.InjectorMountHost)
+	if !ok {
+		return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountHost)
+	}
+
+	// get path from container info if we target a pod
+	if config.Level == types.DisruptionLevelPod {
 		// get host path from mount path
-		hostPath, err := ctn.Runtime().HostPath(ctn.ID(), spec.Path)
+		path, err = config.Container.Runtime().HostPath(config.Container.ID(), spec.Path)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing disk informer: %w", err)
 		}
+	}
 
-		// get disk informer from host path
-		mountHost, ok := os.LookupEnv(env.InjectorMountHost)
-		if !ok {
-			return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountHost)
-		}
-
-		informer, err := disk.FromPath(mountHost + hostPath)
+	if config.Informer == nil {
+		informer, err := disk.FromPath(filepath.Clean(mountHost + path))
 		if err != nil {
 			return nil, fmt.Errorf("error initializing disk informer: %w", err)
 		}
@@ -58,15 +58,6 @@ func NewDiskPressureInjectorWithConfig(uid string, spec v1beta1.DiskPressureSpec
 	}
 
 	return diskPressureInjector{
-		containerInjector: containerInjector{
-			injector: injector{
-				uid:  uid,
-				log:  log,
-				ms:   ms,
-				kind: types.DisruptionKindDiskPressure,
-			},
-			container: ctn,
-		},
 		spec:   spec,
 		config: config,
 	}, nil
@@ -75,34 +66,34 @@ func NewDiskPressureInjectorWithConfig(uid string, spec v1beta1.DiskPressureSpec
 func (i diskPressureInjector) Inject() {
 	// add read throttle
 	if i.spec.Throttling.ReadBytesPerSec != nil {
-		if err := i.container.Cgroup().DiskThrottleRead(i.config.Informer.Major(), *i.spec.Throttling.ReadBytesPerSec); err != nil {
-			i.log.Fatalf("error throttling disk read: %v", err)
+		if err := i.config.Cgroup.DiskThrottleRead(i.config.Informer.Major(), *i.spec.Throttling.ReadBytesPerSec); err != nil {
+			i.config.Log.Fatalf("error throttling disk read: %v", err)
 		}
 
-		i.log.Infow("read throttling injected", "device", i.config.Informer.Source(), "bps", *i.spec.Throttling.ReadBytesPerSec)
+		i.config.Log.Infow("read throttling injected", "device", i.config.Informer.Source(), "bps", *i.spec.Throttling.ReadBytesPerSec)
 	}
 
 	// add write throttle
 	if i.spec.Throttling.WriteBytesPerSec != nil {
-		if err := i.container.Cgroup().DiskThrottleWrite(i.config.Informer.Major(), *i.spec.Throttling.WriteBytesPerSec); err != nil {
-			i.log.Fatalf("error throttling disk write: %v", err)
+		if err := i.config.Cgroup.DiskThrottleWrite(i.config.Informer.Major(), *i.spec.Throttling.WriteBytesPerSec); err != nil {
+			i.config.Log.Fatalf("error throttling disk write: %v", err)
 		}
 
-		i.log.Infow("write throttling injected", "device", i.config.Informer.Source(), "bps", *i.spec.Throttling.WriteBytesPerSec)
+		i.config.Log.Infow("write throttling injected", "device", i.config.Informer.Source(), "bps", *i.spec.Throttling.WriteBytesPerSec)
 	}
 }
 func (i diskPressureInjector) Clean() {
 	// clean read throttle
-	i.log.Infow("cleaning disk read throttle", "device", i.config.Informer.Source())
+	i.config.Log.Infow("cleaning disk read throttle", "device", i.config.Informer.Source())
 
-	if err := i.container.Cgroup().DiskThrottleRead(i.config.Informer.Major(), 0); err != nil {
-		i.log.Fatalf("error cleaning read disk throttle: %v", err)
+	if err := i.config.Cgroup.DiskThrottleRead(i.config.Informer.Major(), 0); err != nil {
+		i.config.Log.Fatalf("error cleaning read disk throttle: %v", err)
 	}
 
 	// clean write throttle
-	i.log.Infow("cleaning disk write throttle", "device", i.config.Informer.Source())
+	i.config.Log.Infow("cleaning disk write throttle", "device", i.config.Informer.Source())
 
-	if err := i.container.Cgroup().DiskThrottleWrite(i.config.Informer.Major(), 0); err != nil {
-		i.log.Fatalf("error cleaning write disk throttle: %v", err)
+	if err := i.config.Cgroup.DiskThrottleWrite(i.config.Informer.Major(), 0); err != nil {
+		i.config.Log.Fatalf("error cleaning write disk throttle: %v", err)
 	}
 }

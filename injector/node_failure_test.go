@@ -30,6 +30,10 @@ var _ = Describe("Failure", func() {
 		fw.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		config = NodeFailureInjectorConfig{
+			Config: Config{
+				Log:         log,
+				MetricsSink: ms,
+			},
 			FileWriter: &fw,
 		}
 
@@ -42,7 +46,7 @@ var _ = Describe("Failure", func() {
 
 	JustBeforeEach(func() {
 		var err error
-		inj, err = NewNodeFailureInjectorWithConfig("fake", spec, log, ms, config)
+		inj, err = NewNodeFailureInjector(spec, config)
 
 		Expect(err).To(BeNil())
 	})

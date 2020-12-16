@@ -7,7 +7,6 @@ package container
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 )
 
@@ -15,23 +14,20 @@ import (
 type Container interface {
 	ID() string
 	Runtime() Runtime
-	Netns() Netns
-	Cgroup() Cgroup
-	EnterNetworkNamespace() error
-	ExitNetworkNamespace() error
+	CgroupPath() string
+	PID() uint32
 }
 
 // Config contains needed interfaces
 type Config struct {
 	Runtime Runtime
-	Netns   Netns
-	Cgroup  Cgroup
 }
 
 type container struct {
-	config Config
-	id     string
-	rootns int
+	config     Config
+	id         string
+	cgroupPath string
+	pid        uint32
 }
 
 // New creates a new container object with default config
@@ -48,11 +44,7 @@ func NewWithConfig(id string, config Config) (Container, error) {
 		return nil, fmt.Errorf("unrecognized container ID format '%s', expecting 'containerd://<ID>' or 'docker://<ID>'", id)
 	}
 
-	// parse config
-	if config.Netns == nil {
-		config.Netns = &netnsDriver{}
-	}
-
+	// create runtime driver
 	if config.Runtime == nil {
 		var err error
 
@@ -70,28 +62,23 @@ func NewWithConfig(id string, config Config) (Container, error) {
 		}
 	}
 
-	if config.Cgroup == nil {
-		// retrieve cgroup path from container data
-		path, err := config.Runtime.CgroupPath(rawID[1])
-		if err != nil {
-			return nil, fmt.Errorf("error joining CPU cgroup: %w", err)
-		}
-
-		if config.Cgroup, err = newCgroup(path); err != nil {
-			return nil, fmt.Errorf("error creating default cgroup driver: %w", err)
-		}
+	// retrieve cgroup path from container info
+	cgroupPath, err := config.Runtime.CgroupPath(rawID[1])
+	if err != nil {
+		return nil, fmt.Errorf("error getting cgroup path: %w", err)
 	}
 
-	// retrieve root ns
-	rootns, err := config.Netns.GetCurrent()
+	// retrieve pid from container info
+	pid, err := config.Runtime.PID(rawID[1])
 	if err != nil {
-		return nil, fmt.Errorf("can't get root network namespace: %w", err)
+		return nil, fmt.Errorf("error getting PID: %w", err)
 	}
 
 	return container{
-		id:     rawID[1],
-		rootns: rootns,
-		config: config,
+		config:     config,
+		id:         rawID[1],
+		cgroupPath: cgroupPath,
+		pid:        pid,
 	}, nil
 }
 
@@ -103,60 +90,10 @@ func (c container) Runtime() Runtime {
 	return c.config.Runtime
 }
 
-func (c container) Netns() Netns {
-	return c.config.Netns
+func (c container) CgroupPath() string {
+	return c.cgroupPath
 }
 
-// exitNetworkNamespace returns into the root network namespace
-func (c container) ExitNetworkNamespace() error {
-	// re-enter into the root network namespace
-	err := c.config.Netns.Set(c.rootns)
-	if err != nil {
-		return fmt.Errorf("error while re-entering the root network namespace: %w", err)
-	}
-
-	// unlock the goroutine so it can be moved to another thread
-	// if needed
-	runtime.UnlockOSThread()
-
-	return nil
-}
-
-// enterNetworkNamespace saves the actual namespace and enters the given container network namespace
-func (c container) EnterNetworkNamespace() error {
-	// lock actual goroutine on the thread it is running on
-	// to avoid it to be moved to another thread which would cause
-	// the network namespace to change (and leak)
-	runtime.LockOSThread()
-
-	// get container pid
-	pid, err := c.config.Runtime.PID(c.id)
-	if err != nil {
-		return fmt.Errorf("can't get container pid: %w", err)
-	}
-
-	// get container network namespace
-	ns, err := c.config.Netns.GetFromPID(pid)
-	if err != nil {
-		return fmt.Errorf("error while retrieving the given container network namespace: %w", err)
-	}
-
-	// ensure root ns and container ns are not the same
-	// if it's the case, it could leak network injections on the host running the container
-	if ns == c.rootns {
-		return fmt.Errorf("root network namespace seems to be the same as the container network namespace")
-	}
-
-	// enter the container network namespace
-	err = c.config.Netns.Set(ns)
-	if err != nil {
-		return fmt.Errorf("error while entering the container network namespace: %w", err)
-	}
-
-	return nil
-}
-
-// Cgroup returns the cgroup driver
-func (c container) Cgroup() Cgroup {
-	return c.config.Cgroup
+func (c container) PID() uint32 {
+	return c.pid
 }

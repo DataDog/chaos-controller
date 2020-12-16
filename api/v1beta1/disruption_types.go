@@ -51,7 +51,7 @@ type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
 	IsInjected       bool `json:"isInjected,omitempty"`
 	// +nullable
-	TargetPods []string `json:"targetPods,omitempty"`
+	Targets []string `json:"targets,omitempty"`
 	// +nullable
 	SpecHash *string `json:"specHash,omitempty"`
 }

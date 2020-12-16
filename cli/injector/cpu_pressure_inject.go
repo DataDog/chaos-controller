@@ -7,7 +7,6 @@ package main
 
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/injector"
 	"github.com/spf13/cobra"
 )
@@ -16,20 +15,11 @@ var cpuPressureInjectCmd = &cobra.Command{
 	Use:   "inject",
 	Short: "Inject a CPU pressure on the actual node",
 	Run: func(cmd *cobra.Command, args []string) {
-		uid, _ := cmd.Flags().GetString("uid")
-		containerid, _ := cmd.Flags().GetString("container-id")
-
-		// prepare container
-		ctn, err := container.New(containerid)
-		if err != nil {
-			log.Fatalw("can't create container object", "error", err)
-		}
-
 		// prepare spec
 		spec := v1beta1.CPUPressureSpec{}
 
 		// inject
-		i := injector.NewCPUPressureInjector(uid, spec, ctn, log, ms)
+		i := injector.NewCPUPressureInjector(spec, injector.CPUPressureInjectorConfig{Config: config})
 		i.Inject()
 	},
 }

@@ -29,7 +29,7 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 		return nil, errors.New("selector can't be an empty set")
 	}
 
-	// filter pods based on the nfi's label selector, and only consider those within the same namespace as the nfi
+	// filter pods based on the label selector and namespace
 	pods := &corev1.PodList{}
 
 	listOptions := &client.ListOptions{
@@ -52,6 +52,28 @@ func GetMatchingPods(c client.Client, namespace string, selector labels.Set) (*c
 	}
 
 	return runningPods, nil
+}
+
+// GetMatchingNodes returns a nodes list containing all nodes matching the given label selector
+func GetMatchingNodes(c client.Client, selector labels.Set) (*corev1.NodeList, error) {
+	// we want to ensure we never run into the possibility of using an empty label selector
+	if len(selector) < 1 || selector == nil {
+		return nil, errors.New("selector can't be an empty set")
+	}
+
+	// filter nodes based on the label selector
+	nodes := &corev1.NodeList{}
+	listOptions := &client.ListOptions{
+		LabelSelector: selector.AsSelector(),
+	}
+
+	// fetch nodes from label selector
+	err := c.List(context.Background(), nodes, listOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return nodes, nil
 }
 
 // PickRandomPods returns a shuffled sub-slice with a size of n of the given slice

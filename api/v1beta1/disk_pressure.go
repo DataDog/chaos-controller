@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // DiskPressureSpec represents a disk pressure disruption
@@ -25,17 +24,17 @@ type DiskPressureThrottlingSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *DiskPressureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, level chaostypes.DisruptionLevel, containerID, sink string) []string {
+func (s *DiskPressureSpec) GenerateArgs(mode chaostypes.PodMode, level chaostypes.DisruptionLevel, containerID, sink string) []string {
 	var args []string
 
 	if mode == chaostypes.PodModeInject {
 		args = []string{
 			"disk-pressure",
 			"inject",
-			"--uid",
-			string(uid),
 			"--metrics-sink",
 			sink,
+			"--level",
+			string(level),
 			"--container-id",
 			containerID,
 			"--path",
@@ -55,10 +54,10 @@ func (s *DiskPressureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, 
 		args = []string{
 			"disk-pressure",
 			"clean",
-			"--uid",
-			string(uid),
 			"--metrics-sink",
 			sink,
+			"--level",
+			string(level),
 			"--container-id",
 			containerID,
 			"--path",

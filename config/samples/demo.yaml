@@ -56,6 +56,9 @@ spec:
         volumeMounts:
         - mountPath: /mnt/data
           name: data
+        resources:
+          limits:
+            cpu: 1
       volumes:
       - name: data
         persistentVolumeClaim:
