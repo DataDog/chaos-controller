@@ -204,23 +204,6 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 
-	Describe("PickRandomPods", func() {
-		Context("with n greater than pods list size", func() {
-			It("should return the whole slice shuffled", func() {
-				r := PickRandomPods(uint(len(twoPods)+1), twoPods)
-				Expect(len(r)).To(Equal(len(twoPods)))
-				Expect(r[0]).To(Equal(twoPods[1]))
-				Expect(r[1]).To(Equal(twoPods[0]))
-			})
-		})
-		Context("with n lower than pods list size", func() {
-			It("should return a shuffled subslice", func() {
-				r := PickRandomPods(1, twoPods)
-				Expect(len(r)).To(Equal(1))
-			})
-		})
-	})
-
 	Describe("GetOwnedPods", func() {
 		It("should return the pod owned by owner", func() {
 			r, err := GetOwnedPods(&c, &owner, nil)
