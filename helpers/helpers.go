@@ -8,8 +8,6 @@ package helpers
 import (
 	"context"
 	"errors"
-	"math/rand"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,27 +72,6 @@ func GetMatchingNodes(c client.Client, selector labels.Set) (*corev1.NodeList, e
 	}
 
 	return nodes, nil
-}
-
-// PickRandomPods returns a shuffled sub-slice with a size of n of the given slice
-func PickRandomPods(n uint, pods []corev1.Pod) []corev1.Pod {
-	rand.Seed(time.Now().Unix())
-
-	// copy slice to don't modify the given one
-	list := append([]corev1.Pod(nil), pods...)
-
-	// shuffle the slice
-	for i := len(list) - 1; i > 0; i-- {
-		j := rand.Intn(i)
-		list[i], list[j] = list[j], list[i]
-	}
-
-	// return the whole shuffled slice if the requested size is greater than the size of the slice
-	if int(n) > len(list) {
-		return list
-	}
-
-	return list[:n]
 }
 
 // GetOwnedPods returns a list of pods owned by the given object

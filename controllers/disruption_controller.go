@@ -183,7 +183,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// to the instance status for the next loop
 	if len(instance.Status.Targets) == 0 {
 		// select pods
-		r.Log.Info("selecting pods to inject disruption to", "instance", instance.Name, "namespace", instance.Namespace)
+		r.Log.Info("selecting targets to inject disruption to", "instance", instance.Name, "namespace", instance.Namespace, "selector", instance.Spec.Selector.String())
 
 		// stop here if no pods can be targeted
 		if len(targets) == 0 {
@@ -203,7 +203,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	}
 
 	// start injections
-	r.Log.Info("starting targets injection", "instance", instance.Name, "namespace", instance.Namespace, "targetPods", instance.Status.Targets)
+	r.Log.Info("starting targets injection", "instance", instance.Name, "namespace", instance.Namespace, "targets", instance.Status.Targets)
 
 	skippedTargets := []string{}
 
@@ -470,7 +470,7 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 				return false, err
 			}
 
-			r.Log.Info("creating chaos cleanup chaosPod", "instance", instance.Name, "namespace", chaosPod.Namespace, "name", chaosPod.Name, "containerid", containerID)
+			r.Log.Info("creating chaos cleanup pod", "instance", instance.Name, "namespace", chaosPod.Namespace, "name", chaosPod.Name, "target", target)
 
 			if err := r.Create(context.Background(), chaosPod); err != nil {
 				r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Cleanup pod for disruption \"%s\" failed to be created", instance.Name))
