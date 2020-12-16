@@ -12,35 +12,26 @@ import (
 	"syscall"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/container"
-	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/stress"
-	"github.com/DataDog/chaos-controller/types"
-	"go.uber.org/zap"
 )
 
 type cpuPressureInjector struct {
-	containerInjector
 	spec   v1beta1.CPUPressureSpec
 	config CPUPressureInjectorConfig
 }
 
 // CPUPressureInjectorConfig is the CPU pressure injector config
 type CPUPressureInjectorConfig struct {
+	Config
 	Stresser       stress.Stresser
 	StresserExit   chan struct{}
 	ProcessManager process.Manager
 	SignalHandler  chan os.Signal
 }
 
-// NewCPUPressureInjector creates a CPU pressure injector with the default config
-func NewCPUPressureInjector(uid string, spec v1beta1.CPUPressureSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink) Injector {
-	return NewCPUPressureInjectorWithConfig(uid, spec, ctn, log, ms, CPUPressureInjectorConfig{})
-}
-
-// NewCPUPressureInjectorWithConfig creates a CPU pressure injector with the given config
-func NewCPUPressureInjectorWithConfig(uid string, spec v1beta1.CPUPressureSpec, ctn container.Container, log *zap.SugaredLogger, ms metrics.Sink, config CPUPressureInjectorConfig) Injector {
+// NewCPUPressureInjector creates a CPU pressure injector with the given config
+func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInjectorConfig) Injector {
 	// create stresser
 	if config.Stresser == nil {
 		config.Stresser = stress.NewCPU(runtime.NumCPU())
@@ -63,15 +54,6 @@ func NewCPUPressureInjectorWithConfig(uid string, spec v1beta1.CPUPressureSpec, 
 	}
 
 	return cpuPressureInjector{
-		containerInjector: containerInjector{
-			injector: injector{
-				uid:  uid,
-				log:  log,
-				ms:   ms,
-				kind: types.DisruptionKindCPUPressure,
-			},
-			container: ctn,
-		},
 		spec:   spec,
 		config: config,
 	}
@@ -81,38 +63,38 @@ func (i cpuPressureInjector) Inject() {
 	// retrieve thread group ID
 	tgid, err := syscall.Getpgid(os.Getpid())
 	if err != nil {
-		i.log.Fatalw("error retrieving thread group ID", "error", err)
+		i.config.Log.Fatalw("error retrieving thread group ID", "error", err)
 	}
 
 	// join container CPU cgroup
-	i.log.Infow("joining container CPU cgroup", "container", i.container.ID())
+	i.config.Log.Infow("joining target CPU cgroup")
 
-	if err := i.container.Cgroup().Join("cpu", tgid); err != nil {
-		i.log.Fatalw("failed to inject CPU pressure", "error", err)
+	if err := i.config.Cgroup.Join("cpu", tgid); err != nil {
+		i.config.Log.Fatalw("failed to inject CPU pressure", "error", err)
 	}
 
 	// prioritize the current process
-	i.log.Info("highering current process priority")
+	i.config.Log.Info("highering current process priority")
 
 	if err := i.config.ProcessManager.Prioritize(); err != nil {
-		i.log.Fatalw("error highering the current process priority", "error", err)
+		i.config.Log.Fatalw("error highering the current process priority", "error", err)
 	}
 
 	// start eating CPU in separate goroutines
 	// we start one goroutine per available CPU
-	i.log.Infow("initializing load generator routines", "routines", runtime.NumCPU())
+	i.config.Log.Infow("initializing load generator routines", "routines", runtime.NumCPU())
 
 	go i.config.Stresser.Stress(i.config.StresserExit)
 
 	// wait until the process is killed
 	sig := <-i.config.SignalHandler
 
-	i.log.Infow("received exit signal, killing the cpu stresser routines...", "signal", sig.String())
+	i.config.Log.Infow("received exit signal, killing the cpu stresser routines...", "signal", sig.String())
 
 	// exit the stresser
 	i.config.StresserExit <- struct{}{}
 
-	i.log.Info("all routines has been killed, exiting")
+	i.config.Log.Info("all routines has been killed, exiting")
 }
 
 func (i cpuPressureInjector) Clean() {}

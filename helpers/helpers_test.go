@@ -35,8 +35,13 @@ func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...clie
 			f.ListOptions = append(f.ListOptions, o)
 		}
 	}
-	l, _ := list.(*corev1.PodList)
-	l.Items = mixedStatusPods
+
+	if l, ok := list.(*corev1.PodList); ok {
+		l.Items = mixedStatusPods
+	} else if l, ok := list.(*corev1.NodeList); ok {
+		l.Items = nodes
+	}
+
 	return nil
 }
 func (f fakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
@@ -60,6 +65,7 @@ func (f fakeClient) Status() client.StatusWriter {
 
 var mixedStatusPods []corev1.Pod
 var twoPods []corev1.Pod
+var nodes []corev1.Node
 
 var _ = Describe("Helpers", func() {
 	var c fakeClient
@@ -69,6 +75,8 @@ var _ = Describe("Helpers", func() {
 
 	BeforeEach(func() {
 		c = fakeClient{}
+
+		// owner pod
 		owner = corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "owner",
@@ -99,6 +107,7 @@ var _ = Describe("Helpers", func() {
 				Phase: corev1.PodRunning,
 			},
 		}
+
 		failedPod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "genericFailedPod",
@@ -120,6 +129,16 @@ var _ = Describe("Helpers", func() {
 			*ownedPod,
 		}
 
+		// nodes list
+		nodes = []corev1.Node{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo",
+				},
+			},
+		}
+
+		// misc
 		image = "chaos-injector:latest"
 		os.Setenv(helpers.ChaosFailureInjectionImageVariableName, image)
 	})
@@ -156,6 +175,31 @@ var _ = Describe("Helpers", func() {
 				numFailedPods := 1
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(len(mixedStatusPods) - numFailedPods))
+			})
+		})
+	})
+
+	Describe("GetMatchingNodes", func() {
+		Context("with empty label selector", func() {
+			It("should return an error", func() {
+				_, err := GetMatchingNodes(nil, nil)
+				Expect(err).NotTo(BeNil())
+			})
+		})
+		Context("with non-empty label selector", func() {
+			It("should pass given selector to the client", func() {
+				ls := map[string]string{
+					"app": "bar",
+				}
+				_, err := GetMatchingNodes(&c, ls)
+				Expect(err).To(BeNil())
+				Expect(c.ListOptions[0].LabelSelector.Matches(labels.Set(ls))).To(BeTrue())
+			})
+			It("should return the nodes list with no error", func() {
+				r, err := GetMatchingNodes(&c, map[string]string{"foo": "bar"})
+				Expect(err).To(BeNil())
+				Expect(len(r.Items)).To(Equal(len(nodes)))
+				Expect(r.Items[0].Name).To(Equal("foo"))
 			})
 		})
 	})

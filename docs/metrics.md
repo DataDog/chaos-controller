@@ -20,5 +20,3 @@ A bunch of metrics are sent as well:
 Every metric has the following common tags:
 
 * `status` which can be `succeed` or `failed` to represent the succeed or the failure of the injection
-* `containerid` is the affected container ID
-* `uid` is the Kubernetes `Disruption` resource UUID

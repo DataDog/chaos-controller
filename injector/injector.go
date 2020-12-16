@@ -6,8 +6,10 @@
 package injector
 
 import (
+	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
 )
@@ -18,22 +20,19 @@ type Injector interface {
 	Clean()
 }
 
-// injector represents a generic failure injector
-type injector struct {
-	log  *zap.SugaredLogger
-	ms   metrics.Sink
-	uid  string
-	kind types.DisruptionKind
+// Config represents a generic injector config
+type Config struct {
+	Log         *zap.SugaredLogger
+	MetricsSink metrics.Sink
+	Kind        types.DisruptionKind
+	Level       types.DisruptionLevel
+	Container   container.Container
+	Cgroup      cgroup.Manager
+	Netns       netns.Manager
 }
 
-// containerInjector represents an injector for containers
-type containerInjector struct {
-	injector
-	container container.Container
-}
-
-func (i injector) handleMetricSinkError(err error) {
+func (c Config) handleMetricSinkError(err error) {
 	if err != nil {
-		i.log.Errorw("error sending metric or event", "sink", i.ms.GetSinkName(), "error", err)
+		c.Log.Errorw("error sending metric or event", "sink", c.MetricsSink.GetSinkName(), "error", err)
 	}
 }

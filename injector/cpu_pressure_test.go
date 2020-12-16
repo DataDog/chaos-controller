@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/process"
@@ -20,25 +21,24 @@ import (
 
 var _ = Describe("Failure", func() {
 	var (
-		config       CPUPressureInjectorConfig
-		cgroup       *container.CgroupMock
-		ctn          *container.ContainerMock
-		stresser     *stress.StresserMock
-		stresserExit chan struct{}
-		manager      *process.ManagerMock
-		sigHandler   chan os.Signal
-		inj          Injector
-		spec         v1beta1.CPUPressureSpec
+		config        CPUPressureInjectorConfig
+		cgroupManager *cgroup.ManagerMock
+		ctn           *container.ContainerMock
+		stresser      *stress.StresserMock
+		stresserExit  chan struct{}
+		manager       *process.ManagerMock
+		sigHandler    chan os.Signal
+		inj           Injector
+		spec          v1beta1.CPUPressureSpec
 	)
 
 	BeforeEach(func() {
 		// cgroup
-		cgroup = &container.CgroupMock{}
-		cgroup.On("Join", mock.Anything, mock.Anything).Return(nil)
+		cgroupManager = &cgroup.ManagerMock{}
+		cgroupManager.On("Join", mock.Anything, mock.Anything).Return(nil)
 
 		// container
 		ctn = &container.ContainerMock{}
-		ctn.On("Cgroup").Return(cgroup)
 
 		// stresser
 		stresser = &stress.StresserMock{}
@@ -56,6 +56,12 @@ var _ = Describe("Failure", func() {
 
 		//config
 		config = CPUPressureInjectorConfig{
+			Config: Config{
+				Cgroup:      cgroupManager,
+				Container:   ctn,
+				Log:         log,
+				MetricsSink: ms,
+			},
 			Stresser:       stresser,
 			StresserExit:   stresserExit,
 			ProcessManager: manager,
@@ -67,7 +73,7 @@ var _ = Describe("Failure", func() {
 	})
 
 	JustBeforeEach(func() {
-		inj = NewCPUPressureInjectorWithConfig("fake", spec, ctn, log, ms, config)
+		inj = NewCPUPressureInjector(spec, config)
 	})
 
 	Describe("injection", func() {
@@ -81,8 +87,8 @@ var _ = Describe("Failure", func() {
 			sigHandler <- syscall.SIGTERM
 		})
 
-		It("should join the container CPU cgroup", func() {
-			cgroup.AssertCalled(GinkgoT(), "Join", "cpu", mock.Anything)
+		It("should join the CPU cgroup", func() {
+			cgroupManager.AssertCalled(GinkgoT(), "Join", "cpu", mock.Anything)
 		})
 
 		It("should prioritize the current process", func() {

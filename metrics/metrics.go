@@ -21,10 +21,10 @@ type Sink interface {
 	EventWithTags(title, text string, tags []string) error
 	Flush() error
 	GetSinkName() string
-	MetricCleaned(containerID, uid string, succeed bool, kind chaostypes.DisruptionKind, tags []string) error
+	MetricCleaned(succeed bool, kind chaostypes.DisruptionKind, tags []string) error
 	MetricCleanupDuration(duration time.Duration, tags []string) error
 	MetricInjectDuration(duration time.Duration, tags []string) error
-	MetricInjected(containerID, uid string, succeed bool, kind chaostypes.DisruptionKind, tags []string) error
+	MetricInjected(succeed bool, kind chaostypes.DisruptionKind, tags []string) error
 	MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) error
 	MetricReconcile() error
 	MetricReconcileDuration(duration time.Duration, tags []string) error

@@ -15,36 +15,28 @@ type ContainerMock struct {
 
 //nolint:golint
 func (f *ContainerMock) ID() string {
-	return "fake"
+	args := f.Called()
+
+	return args.String(0)
 }
 
 //nolint:golint
 func (f *ContainerMock) Runtime() Runtime {
-	return nil
-}
-
-//nolint:golint
-func (f *ContainerMock) Netns() Netns {
-	return nil
-}
-
-//nolint:golint
-func (f *ContainerMock) EnterNetworkNamespace() error {
 	args := f.Called()
 
-	return args.Error(0)
+	return args.Get(0).(Runtime)
 }
 
 //nolint:golint
-func (f *ContainerMock) ExitNetworkNamespace() error {
+func (f *ContainerMock) CgroupPath() string {
 	args := f.Called()
 
-	return args.Error(0)
+	return args.String(0)
 }
 
 //nolint:golint
-func (f *ContainerMock) Cgroup() Cgroup {
+func (f *ContainerMock) PID() uint32 {
 	args := f.Called()
 
-	return args.Get(0).(Cgroup)
+	return args.Get(0).(uint32)
 }

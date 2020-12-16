@@ -65,18 +65,18 @@ func (d *Sink) EventWithTags(title, text string, tags []string) error {
 }
 
 // MetricInjected increments the injected metric
-func (d *Sink) MetricInjected(containerID, uid string, succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
+func (d *Sink) MetricInjected(succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{"containerID:" + containerID, "UID:" + uid, "status:" + status, "kind:" + string(kind)}
+	t := []string{"status:" + status, "kind:" + string(kind)}
 	t = append(t, tags...)
 
 	return d.metricWithStatus(metricPrefixInjector+"injected", t)
 }
 
 // MetricCleaned increments the cleaned metric
-func (d *Sink) MetricCleaned(containerID, uid string, succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
+func (d *Sink) MetricCleaned(succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{"containerID:" + containerID, "UID:" + uid, "status:" + status, "kind:" + string(kind)}
+	t := []string{"status:" + status, "kind:" + string(kind)}
 	t = append(t, tags...)
 
 	return d.metricWithStatus(metricPrefixInjector+"cleaned", t)

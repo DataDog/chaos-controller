@@ -7,7 +7,6 @@ package v1beta1
 
 import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // CPUPressureSpec represents a cpu pressure disruption
@@ -15,17 +14,17 @@ type CPUPressureSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *CPUPressureSpec) GenerateArgs(mode chaostypes.PodMode, uid types.UID, level chaostypes.DisruptionLevel, containerID, sink string) []string {
+func (s *CPUPressureSpec) GenerateArgs(mode chaostypes.PodMode, level chaostypes.DisruptionLevel, containerID, sink string) []string {
 	args := []string{}
 
 	if mode == chaostypes.PodModeInject {
 		args = []string{
 			"cpu-pressure",
 			"inject",
-			"--uid",
-			string(uid),
 			"--metrics-sink",
 			sink,
+			"--level",
+			string(level),
 			"--container-id",
 			containerID,
 		}

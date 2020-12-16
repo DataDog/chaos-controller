@@ -7,9 +7,7 @@ package main
 
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/types"
 	"github.com/spf13/cobra"
 )
 
@@ -17,9 +15,6 @@ var networkDisruptionInjectCmd = &cobra.Command{
 	Use:   "inject",
 	Short: "Inject a network failure in the given container",
 	Run: func(cmd *cobra.Command, args []string) {
-		uid, _ := cmd.Flags().GetString("uid")
-		level, _ := cmd.Flags().GetString("level")
-		containerID, _ := cmd.Flags().GetString("container-id")
 		hosts, _ := cmd.Flags().GetStringSlice("hosts")
 		port, _ := cmd.Flags().GetInt("port")
 		protocol, _ := cmd.Flags().GetString("protocol")
@@ -30,12 +25,6 @@ var networkDisruptionInjectCmd = &cobra.Command{
 		delay, _ := cmd.Flags().GetUint("delay")
 		delayJitter, _ := cmd.Flags().GetUint("delayJitter")
 		bandwidthLimit, _ := cmd.Flags().GetInt("bandwidth-limit")
-
-		// prepare container
-		c, err := container.New(containerID)
-		if err != nil {
-			log.Fatalw("can't create container object", "error", err)
-		}
 
 		// check that at least one disruption has been specified
 		if drop == 0 && corrupt == 0 && delay == 0 && bandwidthLimit == 0 && duplicate == 0 {
@@ -55,7 +44,7 @@ var networkDisruptionInjectCmd = &cobra.Command{
 			DelayJitter:    delayJitter,
 			BandwidthLimit: bandwidthLimit,
 		}
-		i := injector.NewNetworkDisruptionInjector(uid, types.DisruptionLevel(level), spec, c, log, ms)
+		i := injector.NewNetworkDisruptionInjector(spec, injector.NetworkDisruptionInjectorConfig{Config: config})
 		i.Inject()
 	},
 }

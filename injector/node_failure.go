@@ -11,14 +11,10 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
-	"github.com/DataDog/chaos-controller/metrics"
-	"github.com/DataDog/chaos-controller/types"
-	"go.uber.org/zap"
 )
 
 // nodeFailureInjector describes a node failure injector
 type nodeFailureInjector struct {
-	injector
 	spec             v1beta1.NodeFailureSpec
 	config           NodeFailureInjectorConfig
 	sysrqPath        string
@@ -28,21 +24,17 @@ type nodeFailureInjector struct {
 // NodeFailureInjectorConfig contains needed drivers to
 // create a NodeFailureInjector
 type NodeFailureInjectorConfig struct {
+	Config
 	FileWriter FileWriter
 }
 
-// NewNodeFailureInjector creates a NodeFailureInjector object with the default drivers
-func NewNodeFailureInjector(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger, ms metrics.Sink) (Injector, error) {
-	config := NodeFailureInjectorConfig{
-		FileWriter: standardFileWriter{},
+// NewNodeFailureInjector creates a NodeFailureInjector object with the given config,
+// missing fields being initialized with the defaults
+func NewNodeFailureInjector(spec v1beta1.NodeFailureSpec, config NodeFailureInjectorConfig) (Injector, error) {
+	if config.FileWriter == nil {
+		config.FileWriter = standardFileWriter{}
 	}
 
-	return NewNodeFailureInjectorWithConfig(uid, spec, log, ms, config)
-}
-
-// NewNodeFailureInjectorWithConfig creates a NodeFailureInjector object with the given config,
-// missing fields being initialized with the defaults
-func NewNodeFailureInjectorWithConfig(uid string, spec v1beta1.NodeFailureSpec, log *zap.SugaredLogger, ms metrics.Sink, config NodeFailureInjectorConfig) (Injector, error) {
 	// retrieve mount path environment variables
 	sysrqPath, ok := os.LookupEnv(env.InjectorMountSysrq)
 	if !ok {
@@ -55,12 +47,6 @@ func NewNodeFailureInjectorWithConfig(uid string, spec v1beta1.NodeFailureSpec, 
 	}
 
 	return nodeFailureInjector{
-		injector: injector{
-			uid:  uid,
-			log:  log,
-			ms:   ms,
-			kind: types.DisruptionKindNodeFailure,
-		},
 		spec:             spec,
 		config:           config,
 		sysrqPath:        sysrqPath,
@@ -76,10 +62,10 @@ func (i nodeFailureInjector) Inject() {
 	// those ones might not be sent because of the node crash, it is better
 	// to rely on the controller metrics for this failure injection
 	defer func() {
-		i.handleMetricSinkError(i.ms.MetricInjected("", i.uid, err == nil, i.kind, []string{}))
+		i.config.handleMetricSinkError(i.config.MetricsSink.MetricInjected(err == nil, i.config.Kind, []string{}))
 	}()
 
-	i.log.Infow("injecting a node failure by triggering a kernel panic",
+	i.config.Log.Infow("injecting a node failure by triggering a kernel panic",
 		"sysrq_path", i.sysrqPath,
 		"sysrq_trigger_path", i.sysrqTriggerPath,
 	)
@@ -87,15 +73,15 @@ func (i nodeFailureInjector) Inject() {
 	// Ensure sysrq value is set to 1 (to accept the kernel panic trigger)
 	err = i.config.FileWriter.Write(i.sysrqPath, 0644, "1")
 	if err != nil {
-		i.log.Fatalw("error while writing to the sysrq file",
+		i.config.Log.Fatalw("error while writing to the sysrq file",
 			"error", err,
 			"path", i.sysrqPath,
 		)
 	}
 
 	// Trigger kernel panic
-	i.log.Infow("the injector is about to write to the sysrq trigger file")
-	i.log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
+	i.config.Log.Infow("the injector is about to write to the sysrq trigger file")
+	i.config.Log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
 
 	if i.spec.Shutdown {
 		err = i.config.FileWriter.Write(i.sysrqTriggerPath, 0200, "o")
@@ -104,7 +90,7 @@ func (i nodeFailureInjector) Inject() {
 	}
 
 	if err != nil {
-		i.log.Fatalw("error while writing to the sysrq trigger file",
+		i.config.Log.Fatalw("error while writing to the sysrq trigger file",
 			"error", err,
 			"path", i.sysrqTriggerPath,
 		)
