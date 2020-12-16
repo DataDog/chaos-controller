@@ -37,11 +37,10 @@ type TrafficController interface {
 	AddCgroupFilter(iface string, parent string, handle uint32) error
 	AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error
 	ClearQdisc(iface string) error
-	IsQdiscCleared(iface string) (bool, error)
 }
 
 type tcExecuter interface {
-	Run(args ...string) (stdout string, stderr error)
+	Run(args ...string) (exitCode int, stdout string, stderr error)
 }
 
 type defaultTcExecuter struct {
@@ -51,7 +50,7 @@ type defaultTcExecuter struct {
 // Run executes the given args using the tc command
 // and returns a wrapped error containing both the error returned by the execution and
 // the stderr content
-func (e defaultTcExecuter) Run(args ...string) (string, error) {
+func (e defaultTcExecuter) Run(args ...string) (int, string, error) {
 	// parse args and execute
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -67,7 +66,7 @@ func (e defaultTcExecuter) Run(args ...string) (string, error) {
 		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
 	}
 
-	return stdout.String(), err
+	return cmd.ProcessState.ExitCode(), stdout.String(), err
 }
 
 type tc struct {
@@ -110,7 +109,7 @@ func (t tc) AddNetem(iface string, parent string, handle uint32, delay time.Dura
 
 	params = strings.TrimPrefix(params, " ")
 
-	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", params)...)
+	_, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", params)...)
 
 	return err
 }
@@ -123,7 +122,7 @@ func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, pr
 
 	priomapStr = strings.TrimSpace(priomapStr)
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
-	_, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "prio", params)...)
+	_, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "prio", params)...)
 
 	return err
 }
@@ -137,13 +136,18 @@ func (t tc) AddOutputLimit(iface string, parent string, handle uint32, bytesPerS
 	//   - https://linux.die.net/man/8/tc-tbf
 	mycmd := buildCmd("qdisc", iface, parent, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))
 
-	_, err := t.executer.Run(mycmd...)
+	_, _, err := t.executer.Run(mycmd...)
 
 	return err
 }
 
 func (t tc) ClearQdisc(iface string) error {
-	_, err := t.executer.Run(strings.Split(fmt.Sprintf("qdisc del dev %s root", iface), " ")...)
+	exitCode, _, err := t.executer.Run(strings.Split(fmt.Sprintf("qdisc del dev %s root", iface), " ")...)
+
+	// tc exits with code 2 when the qdisc does not exist anymore
+	if exitCode == 2 {
+		return nil
+	}
 
 	return err
 }
@@ -181,29 +185,16 @@ func (t tc) AddFilter(iface string, parent string, handle uint32, srcIP, dstIP *
 	}
 
 	params += fmt.Sprintf("flowid %s", flowid)
-	_, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "u32", params)...)
+	_, _, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "u32", params)...)
 
 	return err
 }
 
 // AddCgroupFilter generates a cgroup filter
 func (t tc) AddCgroupFilter(iface string, parent string, handle uint32) error {
-	_, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "cgroup", "")...)
+	_, _, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "cgroup", "")...)
 
 	return err
-}
-
-func (t tc) IsQdiscCleared(iface string) (bool, error) {
-	cmd := fmt.Sprintf("qdisc show dev %s", iface)
-
-	// list interface qdiscs
-	out, err := t.executer.Run(strings.Split(cmd, " ")...)
-	if err != nil {
-		return false, fmt.Errorf("error getting %s qdisc info: %w", iface, err)
-	}
-
-	// ensure the root has no qdisc
-	return strings.HasPrefix(out, "qdisc noqueue 0: root refcnt"), nil
 }
 
 func getProtocolIndentifier(protocol string) protocolIdentifier {

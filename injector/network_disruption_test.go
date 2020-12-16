@@ -32,7 +32,6 @@ var _ = Describe("Failure", func() {
 		cgroupManager                                           *cgroup.ManagerMock
 		cgroupManagerExistsCall                                 *mock.Call
 		tc                                                      *network.TcMock
-		tcIsQdiscClearedCall                                    *mock.Call
 		nl                                                      *network.NetlinkAdapterMock
 		nllink1, nllink2, nllink3                               *network.NetlinkLinkMock
 		nllink1TxQlenCall, nllink2TxQlenCall, nllink3TxQlenCall *mock.Call
@@ -60,7 +59,6 @@ var _ = Describe("Failure", func() {
 		tc.On("AddCgroupFilter", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("ClearQdisc", mock.Anything).Return(nil)
-		tcIsQdiscClearedCall = tc.On("IsQdiscCleared", mock.Anything).Return(false, nil)
 
 		// netlink
 		nllink1 = &network.NetlinkLinkMock{}
@@ -276,23 +274,11 @@ var _ = Describe("Failure", func() {
 			netnsManager.AssertCalled(GinkgoT(), "Exit")
 		})
 
-		Context("with a non-cleared qdisc", func() {
+		Context("qdisc cleanup should happen", func() {
 			It("should clear the interfaces qdisc", func() {
 				tc.AssertCalled(GinkgoT(), "ClearQdisc", "lo")
 				tc.AssertCalled(GinkgoT(), "ClearQdisc", "eth0")
 				tc.AssertCalled(GinkgoT(), "ClearQdisc", "eth1")
-			})
-		})
-
-		Context("with an already cleared qdisc", func() {
-			BeforeEach(func() {
-				tcIsQdiscClearedCall.Return(true, nil)
-			})
-
-			It("should not clear the interfaces qdisc", func() {
-				tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "lo")
-				tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "eth0")
-				tc.AssertNotCalled(GinkgoT(), "ClearQdisc", "eth1")
 			})
 		})
 
