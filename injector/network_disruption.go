@@ -487,19 +487,9 @@ func (i *networkDisruptionInjector) clearOperations() error {
 			return fmt.Errorf("can't retrieve link %s: %w", linkName, err)
 		}
 
-		// ensure qdisc isn't cleared before clearing it to avoid any tc error
-		cleared, err := i.config.TrafficController.IsQdiscCleared(link.Name())
-		if err != nil {
-			return fmt.Errorf("can't ensure the %s link qdisc is cleared or not: %w", link.Name(), err)
-		}
-
 		// clear link qdisc if needed
-		if !cleared {
-			if err := i.config.TrafficController.ClearQdisc(link.Name()); err != nil {
-				return fmt.Errorf("can't delete the %s link qdisc: %w", link.Name(), err)
-			}
-		} else {
-			i.config.Log.Infof("%s link qdisc is already cleared, skipping", link.Name())
+		if err := i.config.TrafficController.ClearQdisc(link.Name()); err != nil {
+			return fmt.Errorf("can't delete the %s link qdisc: %w", link.Name(), err)
 		}
 	}
 
