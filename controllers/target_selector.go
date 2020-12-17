@@ -22,7 +22,6 @@ package controllers
 
 import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/helpers"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -32,22 +31,4 @@ type TargetSelector interface {
 	GetMatchingPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, error)
 	GetMatchingNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, error)
 	TargetIsHealthy(target string, c client.Client, instance *chaosv1beta1.Disruption) error
-}
-
-// RunningTargetSelector finds pods in Running Phase for applying network disruptions to a Kubernetes Cluster
-type RunningTargetSelector struct{}
-
-// GetMatchingPods returns candidate pods for this disruption given a namespace and label selector
-func (r RunningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, error) {
-	return helpers.GetMatchingPods(c, instance.Namespace, instance.Spec.Selector)
-}
-
-// GetMatchingNodes returns candidate nodes for this disruption given a label selector
-func (r RunningTargetSelector) GetMatchingNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, error) {
-	return helpers.GetMatchingNodes(c, instance.Spec.Selector)
-}
-
-// TargetIsHealthy returns true if the given target exists, false otherwise
-func (r RunningTargetSelector) TargetIsHealthy(target string, c client.Client, instance *chaosv1beta1.Disruption) error {
-	return helpers.TargetIsHealthy(target, c, instance.Spec.Level, instance.Namespace)
 }

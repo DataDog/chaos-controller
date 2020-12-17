@@ -49,7 +49,6 @@ import (
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/helpers"
 	"github.com/DataDog/chaos-controller/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
@@ -491,7 +490,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// if we had already selected pods for the instance, only return the already-selected ones
 	if len(instance.Status.Targets) > 0 {
 		for _, target := range allTargets {
-			if helpers.ContainsString(instance.Status.Targets, target) {
+			if containsString(instance.Status.Targets, target) {
 				selectedTargets = append(selectedTargets, target)
 			}
 		}
@@ -781,4 +780,51 @@ func getIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error)
 	}
 
 	return 0, false, fmt.Errorf("invalid type: neither int nor percentage")
+}
+
+// GetOwnedPods returns a list of pods owned by the given object
+func GetOwnedPods(c client.Client, owner metav1.Object, selector labels.Set) (corev1.PodList, error) {
+	// prepare list options
+	options := &client.ListOptions{Namespace: owner.GetNamespace()}
+	if selector != nil {
+		options.LabelSelector = selector.AsSelector()
+	}
+
+	// get pods
+	pods := corev1.PodList{}
+	ownedPods := corev1.PodList{}
+
+	err := c.List(context.Background(), &pods, options)
+	if err != nil {
+		return ownedPods, err
+	}
+
+	fmt.Println(len(pods.Items))
+
+	// check owner reference
+	for _, pod := range pods.Items {
+		//		fmt.Println(pod.ObjectMeta.OwnerReferences)
+		fmt.Println(pod.GetOwnerReferences())
+		for _, ownerRef := range pod.GetOwnerReferences() {
+			fmt.Println("--", ownerRef.UID)
+			fmt.Println("..", owner.GetUID())
+		}
+		if metav1.IsControlledBy(&pod, owner) {
+			ownedPods.Items = append(ownedPods.Items, pod)
+		}
+	}
+
+	return ownedPods, nil
+}
+
+// containsString returns true if the given slice contains the given string,
+// or returns false otherwise
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+
+	return false
 }

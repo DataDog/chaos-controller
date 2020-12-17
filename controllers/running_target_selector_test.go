@@ -3,23 +3,25 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2020 Datadog, Inc.
 
-package helpers_test
+package controllers
 
 import (
 	"context"
 	"os"
 
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
 
-	"github.com/DataDog/chaos-controller/helpers"
-	. "github.com/DataDog/chaos-controller/helpers"
+const (
+	// ChaosFailureInjectionImageVariableName is the name of the chaos failure injection image variable
+	ChaosFailureInjectionImageVariableName = "CHAOS_INJECTOR_IMAGE"
 )
 
 type fakeClient struct {
@@ -35,7 +37,6 @@ func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...clie
 			f.ListOptions = append(f.ListOptions, o)
 		}
 	}
-
 	if l, ok := list.(*corev1.PodList); ok {
 		l.Items = mixedStatusPods
 	} else if l, ok := list.(*corev1.NodeList); ok {
@@ -69,38 +70,28 @@ var nodes []corev1.Node
 
 var _ = Describe("Helpers", func() {
 	var c fakeClient
-	var owner corev1.Pod
-	var ownedPod *corev1.Pod
 	var image string
+	var disruption *chaosv1beta1.Disruption
+	var targetSelector RunningTargetSelector
 
 	BeforeEach(func() {
+		targetSelector = RunningTargetSelector{}
+
 		c = fakeClient{}
 
-		// owner pod
-		owner = corev1.Pod{
+		runningPod1 := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "owner",
-				UID:  "fakeUID",
-			},
-		}
-		ownerRef := metav1.NewControllerRef(&owner, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Pod"})
-
-		ownedPod = &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            "foo",
-				Namespace:       "foo",
-				OwnerReferences: []metav1.OwnerReference{*ownerRef},
-			},
-			Spec: corev1.PodSpec{
-				NodeName: "bar",
+				Name:      "genericRunningPod1",
+				Namespace: "bar",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
 			},
 		}
-		runningPod := &corev1.Pod{
+
+		runningPod2 := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "genericRunningPod",
+				Name:      "genericRunningPod2",
 				Namespace: "bar",
 			},
 			Status: corev1.PodStatus{
@@ -119,14 +110,14 @@ var _ = Describe("Helpers", func() {
 		}
 
 		mixedStatusPods = []corev1.Pod{
-			*runningPod,
+			*runningPod1,
+			*runningPod2,
 			*failedPod,
-			*ownedPod,
 		}
 
 		twoPods = []corev1.Pod{
-			*runningPod,
-			*ownedPod,
+			*runningPod1,
+			*runningPod2,
 		}
 
 		// nodes list
@@ -134,47 +125,89 @@ var _ = Describe("Helpers", func() {
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "foo",
+					Labels: map[string]string{
+						"foo": "bar",
+					},
 				},
 				Status: corev1.NodeStatus{
-					Phase: corev1.NodeRunning,
+					Conditions: []corev1.NodeCondition{
+						{
+							Type:   corev1.NodeReady,
+							Status: corev1.ConditionTrue,
+						},
+					},
 				},
 			},
 		}
 
 		// misc
 		image = "chaos-injector:latest"
-		os.Setenv(helpers.ChaosFailureInjectionImageVariableName, image)
+		os.Setenv(ChaosFailureInjectionImageVariableName, image)
+
+		disruption = &chaosv1beta1.Disruption{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "default",
+			},
+			Spec: chaosv1beta1.DisruptionSpec{
+				Selector: map[string]string{"foo": "bar"},
+				NodeFailure: &chaosv1beta1.NodeFailureSpec{
+					Shutdown: false,
+				},
+				Network: &chaosv1beta1.NetworkDisruptionSpec{
+					Hosts:          []string{"127.0.0.1"},
+					Port:           80,
+					Protocol:       "tcp",
+					Drop:           0,
+					Corrupt:        0,
+					Delay:          1000,
+					BandwidthLimit: 10000,
+				},
+				CPUPressure: &chaosv1beta1.CPUPressureSpec{},
+				DiskPressure: &chaosv1beta1.DiskPressureSpec{
+					Path:       "/mnt/foo",
+					Throttling: chaosv1beta1.DiskPressureThrottlingSpec{},
+				},
+			},
+		}
 	})
 
 	AfterEach(func() {
-		os.Unsetenv(helpers.ChaosFailureInjectionImageVariableName)
+		os.Unsetenv(ChaosFailureInjectionImageVariableName)
 	})
 
 	Describe("GetMatchingPods", func() {
 		Context("with empty label selector", func() {
 			It("should return an error", func() {
-				_, err := GetMatchingPods(nil, "", nil)
+				disruption.Namespace = ""
+				disruption.Spec.Selector = nil
+
+				_, err := targetSelector.GetMatchingPods(nil, disruption)
 				Expect(err).NotTo(BeNil())
 			})
 		})
 		Context("with non-empty label selector", func() {
 			It("should pass given selector for the given namespace to the client", func() {
-				ns := "foo"
 				ls := map[string]string{
 					"app": "bar",
 				}
-				_, err := GetMatchingPods(&c, ns, ls)
+				disruption.Namespace = "foo"
+				disruption.Spec.Selector = ls
+
+				_, err := targetSelector.GetMatchingPods(&c, disruption)
 				Expect(err).To(BeNil())
 				// Note: Namespace filter is not applied for results of the fakeClient.
 				//       We instead test this functionality in the controller tests.
-				Expect(c.ListOptions[0].Namespace).To(Equal(ns))
+				Expect(c.ListOptions[0].Namespace).To(Equal("foo"))
 				Expect(c.ListOptions[0].LabelSelector.Matches(labels.Set(ls))).To(BeTrue())
 			})
 			It("should return the pods list except for failed pod", func() {
-				ls := map[string]string{
+				disruption.Namespace = ""
+				disruption.Spec.Selector = map[string]string{
 					"app": "bar",
 				}
-				r, err := GetMatchingPods(&c, "", ls)
+
+				r, err := targetSelector.GetMatchingPods(&c, disruption)
 				numFailedPods := 1
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(len(mixedStatusPods) - numFailedPods))
@@ -185,21 +218,22 @@ var _ = Describe("Helpers", func() {
 	Describe("GetMatchingNodes", func() {
 		Context("with empty label selector", func() {
 			It("should return an error", func() {
-				_, err := GetMatchingNodes(nil, nil)
+				disruption.Spec.Selector = nil
+				_, err := targetSelector.GetMatchingNodes(&c, disruption)
 				Expect(err).NotTo(BeNil())
 			})
 		})
 		Context("with non-empty label selector", func() {
 			It("should pass given selector to the client", func() {
-				ls := map[string]string{
-					"app": "bar",
-				}
-				_, err := GetMatchingNodes(&c, ls)
+				ls := map[string]string{"app": "bar"}
+				disruption.Spec.Selector = ls
+				_, err := targetSelector.GetMatchingNodes(&c, disruption)
 				Expect(err).To(BeNil())
 				Expect(c.ListOptions[0].LabelSelector.Matches(labels.Set(ls))).To(BeTrue())
 			})
 			It("should return the nodes list with no error", func() {
-				r, err := GetMatchingNodes(&c, map[string]string{"foo": "bar"})
+				disruption.Spec.Selector = map[string]string{"foo": "bar"}
+				r, err := targetSelector.GetMatchingNodes(&c, disruption)
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(len(nodes)))
 				Expect(r.Items[0].Name).To(Equal("foo"))
@@ -207,12 +241,5 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 
-	Describe("GetOwnedPods", func() {
-		It("should return the pod owned by owner", func() {
-			r, err := GetOwnedPods(&c, &owner, nil)
-			Expect(err).To(BeNil())
-			Expect(len(r.Items)).To(Equal(1))
-			Expect(r.Items[0]).To(Equal(*ownedPod))
-		})
-	})
+	// "TargetIsHealthy"
 })
