@@ -329,9 +329,8 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 				r.Log.Info("cleanup: target no longer exists (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
 			} else if err.Error() == "Pod is not Running" || err.Error() == "Node is not Ready" {
 				r.Log.Info("cleanup: target not healthy (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
-			} else if err != nil {
-				r.Log.Error(err, err.Error())
 			}
+			r.Log.Error(err, err.Error())
 			continue
 		}
 
@@ -780,41 +779,6 @@ func getIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error)
 	}
 
 	return 0, false, fmt.Errorf("invalid type: neither int nor percentage")
-}
-
-// GetOwnedPods returns a list of pods owned by the given object
-func GetOwnedPods(c client.Client, owner metav1.Object, selector labels.Set) (corev1.PodList, error) {
-	// prepare list options
-	options := &client.ListOptions{Namespace: owner.GetNamespace()}
-	if selector != nil {
-		options.LabelSelector = selector.AsSelector()
-	}
-
-	// get pods
-	pods := corev1.PodList{}
-	ownedPods := corev1.PodList{}
-
-	err := c.List(context.Background(), &pods, options)
-	if err != nil {
-		return ownedPods, err
-	}
-
-	fmt.Println(len(pods.Items))
-
-	// check owner reference
-	for _, pod := range pods.Items {
-		//		fmt.Println(pod.ObjectMeta.OwnerReferences)
-		fmt.Println(pod.GetOwnerReferences())
-		for _, ownerRef := range pod.GetOwnerReferences() {
-			fmt.Println("--", ownerRef.UID)
-			fmt.Println("..", owner.GetUID())
-		}
-		if metav1.IsControlledBy(&pod, owner) {
-			ownedPods.Items = append(ownedPods.Items, pod)
-		}
-	}
-
-	return ownedPods, nil
 }
 
 // containsString returns true if the given slice contains the given string,

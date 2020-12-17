@@ -109,7 +109,7 @@ func (r RunningTargetSelector) GetMatchingNodes(c client.Client, instance *chaos
 	return runningNodes, nil
 }
 
-// TargetIsHealthy returns true if the given target exists, false otherwise
+// TargetIsHealthy returns an error if the given target is unhealthy or does not exist
 func (r RunningTargetSelector) TargetIsHealthy(target string, c client.Client, instance *chaosv1beta1.Disruption) error {
 	switch instance.Spec.Level {
 	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
