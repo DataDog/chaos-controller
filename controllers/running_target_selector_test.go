@@ -8,8 +8,10 @@ package controllers
 import (
 	"context"
 	"os"
+	"reflect"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -28,7 +30,17 @@ type fakeClient struct {
 	ListOptions []*client.ListOptions
 }
 
-func (f fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+
+	if key.Name == "runningnode" {
+		objVal := reflect.ValueOf(obj)
+		nodeVal := reflect.ValueOf(mixedNodes[0])
+		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
+	} else if key.Name == "failednode" {
+		objVal := reflect.ValueOf(obj)
+		nodeVal := reflect.ValueOf(mixedNodes[1])
+		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
+	}
 	return nil
 }
 func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
@@ -40,7 +52,7 @@ func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...clie
 	if l, ok := list.(*corev1.PodList); ok {
 		l.Items = mixedStatusPods
 	} else if l, ok := list.(*corev1.NodeList); ok {
-		l.Items = nodes
+		l.Items = justRunningNodes
 	}
 
 	return nil
@@ -66,7 +78,8 @@ func (f fakeClient) Status() client.StatusWriter {
 
 var mixedStatusPods []corev1.Pod
 var twoPods []corev1.Pod
-var nodes []corev1.Node
+var justRunningNodes []corev1.Node
+var mixedNodes []corev1.Node
 
 var _ = Describe("Helpers", func() {
 	var c fakeClient
@@ -120,24 +133,47 @@ var _ = Describe("Helpers", func() {
 			*runningPod2,
 		}
 
-		// nodes list
-		nodes = []corev1.Node{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo",
-					Labels: map[string]string{
-						"foo": "bar",
-					},
+		runningNode := &corev1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "runningnode",
+				Labels: map[string]string{
+					"foo": "bar",
 				},
-				Status: corev1.NodeStatus{
-					Conditions: []corev1.NodeCondition{
-						{
-							Type:   corev1.NodeReady,
-							Status: corev1.ConditionTrue,
-						},
+			},
+			Status: corev1.NodeStatus{
+				Conditions: []corev1.NodeCondition{
+					{
+						Type:   corev1.NodeReady,
+						Status: corev1.ConditionTrue,
 					},
 				},
 			},
+		}
+
+		failedNode := &corev1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "failednode",
+				Labels: map[string]string{
+					"foo": "bar",
+				},
+			},
+			Status: corev1.NodeStatus{
+				Conditions: []corev1.NodeCondition{
+					{
+						Type:   corev1.NodeReady,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			},
+		}
+
+		justRunningNodes = []corev1.Node{
+			*runningNode,
+		}
+
+		mixedNodes = []corev1.Node{
+			*runningNode,
+			*failedNode,
 		}
 
 		// misc
@@ -235,11 +271,30 @@ var _ = Describe("Helpers", func() {
 				disruption.Spec.Selector = map[string]string{"foo": "bar"}
 				r, err := targetSelector.GetMatchingNodes(&c, disruption)
 				Expect(err).To(BeNil())
-				Expect(len(r.Items)).To(Equal(len(nodes)))
-				Expect(r.Items[0].Name).To(Equal("foo"))
+				Expect(len(r.Items)).To(Equal(len(justRunningNodes)))
+				Expect(r.Items[0].Name).To(Equal("runningnode"))
 			})
 		})
 	})
 
-	// "TargetIsHealthy"
+	Describe("TargetIsHealthy", func() {
+		Context("with pod-level disruption spec", func() {
+			It("should return no error for RunnigPod", func() {
+				disruption.Spec.Selector = map[string]string{"foo": "bar"}
+				disruption.Spec.Level = types.DisruptionLevelNode
+
+				err := targetSelector.TargetIsHealthy("runningnode", &c, disruption)
+				Expect(err).To(BeNil())
+			})
+		})
+		Context("with node-level disruption spec", func() {
+			It("should return an error for RunnigPod", func() {
+				disruption.Spec.Selector = map[string]string{"foo": "bar"}
+				disruption.Spec.Level = types.DisruptionLevelNode
+
+				err := targetSelector.TargetIsHealthy("failednode", &c, disruption)
+				Expect(err).ToNot(BeNil())
+			})
+		})
+	})
 })

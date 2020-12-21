@@ -36,7 +36,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -66,8 +65,6 @@ var (
 	targetPodB  *corev1.Pod
 	targetPodC  *corev1.Pod
 	targetPodD  *corev1.Pod
-	ownerPod    *corev1.Pod
-	ownedPod    *corev1.Pod
 	labelFooBar map[string]string
 )
 
@@ -196,14 +193,14 @@ var _ = BeforeSuite(func(done Done) {
 
 var _ = BeforeEach(func() {
 	instanceKey = types.NamespacedName{Name: "foo", Namespace: "default"}
-
 	targetPodA = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 			Labels: map[string]string{
 				"foo": "bar",
-			}},
+			},
+		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				corev1.Container{
@@ -219,7 +216,8 @@ var _ = BeforeEach(func() {
 			Namespace: "default",
 			Labels: map[string]string{
 				"foo": "bar",
-			}},
+			},
+		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				corev1.Container{
@@ -235,7 +233,8 @@ var _ = BeforeEach(func() {
 			Namespace: "default",
 			Labels: map[string]string{
 				"foo": "bar",
-			}},
+			},
+		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				corev1.Container{
@@ -258,43 +257,6 @@ var _ = BeforeEach(func() {
 				corev1.Container{
 					Image: "far",
 					Name:  "far",
-				},
-			},
-		},
-	}
-	ownerPod = &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "tar",
-			Namespace: "default",
-			Labels: map[string]string{
-				"owner": "datadog",
-			},
-			//			UID: "fakeUID",
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				corev1.Container{
-					Image: "tar",
-					Name:  "tar",
-				},
-			},
-		},
-	}
-	ownerRef := metav1.NewControllerRef(ownerPod, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Pod"})
-	ownedPod = &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "jar",
-			Namespace: "default",
-			Labels: map[string]string{
-				"owner": "datadog",
-			},
-			OwnerReferences: []metav1.OwnerReference{*ownerRef},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				corev1.Container{
-					Image: "jar",
-					Name:  "jar",
 				},
 			},
 		},
@@ -328,20 +290,6 @@ var _ = BeforeEach(func() {
 		return
 	}
 	Expect(err).NotTo(HaveOccurred())
-
-	err = k8sClient.Create(context.Background(), ownerPod)
-	if apierrors.IsInvalid(err) {
-		logf.Log.Error(err, "failed to create object, got an invalid object error")
-		return
-	}
-	Expect(err).NotTo(HaveOccurred())
-
-	err = k8sClient.Create(context.Background(), ownedPod)
-	if apierrors.IsInvalid(err) {
-		logf.Log.Error(err, "failed to create object, got an invalid object error")
-		return
-	}
-	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
@@ -355,6 +303,4 @@ var _ = AfterEach(func() {
 	_ = k8sClient.Delete(context.Background(), targetPodB)
 	_ = k8sClient.Delete(context.Background(), targetPodC)
 	_ = k8sClient.Delete(context.Background(), targetPodD)
-	_ = k8sClient.Delete(context.Background(), ownerPod)
-	_ = k8sClient.Delete(context.Background(), ownedPod)
 })

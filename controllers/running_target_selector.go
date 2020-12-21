@@ -23,7 +23,6 @@ package controllers
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -85,8 +84,6 @@ func (r RunningTargetSelector) GetMatchingNodes(c client.Client, instance *chaos
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(nodes)
 
 	runningNodes := &corev1.NodeList{}
 

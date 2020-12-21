@@ -204,19 +204,6 @@ var _ = Describe("Disruption Controller", func() {
 			By("Waiting for disruption resource to be deleted")
 			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
 		})
-
-		// Doesn't work anymore in envtest :(
-		//
-		// It("should return the pod owned by owner", func() {
-		// 	ls := map[string]string{
-		// 		"owner": "datadog",
-		// 	}
-		// 	ownedPods, err := GetOwnedPods(k8sClient, ownerPod, ls)
-		//
-		// 	Expect(err).To(BeNil())
-		// 	Expect(len(ownedPods.Items)).To(Equal(1))
-		// 	Expect(ownedPods.Items[0]).To(Equal(ownedPod))
-		// })
 	})
 
 	Context("target 70% of pods (3 pods out of 4)", func() {
