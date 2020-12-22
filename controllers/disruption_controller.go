@@ -29,6 +29,7 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -449,6 +450,14 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		err                         error
 		allTargets, selectedTargets []string
 	)
+
+	// assert label selector matches valid grammar, avoids CORE-414
+	labelGrammar := "([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]"
+	rgx := regexp.MustCompile(labelGrammar)
+
+	if !rgx.MatchString(instance.Spec.Selector.AsSelector().String()) {
+		return nil, fmt.Errorf("given label selector is invalid, it does not match valid selector grammar: %s %s", instance.Spec.Selector.AsSelector().String(), labelGrammar)
+	}
 
 	// select either pods or nodes depending on the disruption level
 	switch instance.Spec.Level {
