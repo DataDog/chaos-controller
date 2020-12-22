@@ -31,7 +31,8 @@ import (
 // MockTargetSelector finds pods in Running Phase for applying network disruptions to a Kubernetes Cluster
 type MockTargetSelector struct{}
 
-// GetMatchingPods returns candidate pods for this disruption given a namespace and label selector
+// GetMatchingPods returns candidate pods for this disruption given a namespace and label selector.
+// For mocking purposes, pod statuses are not checked.
 func (m MockTargetSelector) GetMatchingPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, error) {
 	pods := &corev1.PodList{}
 
@@ -48,7 +49,8 @@ func (m MockTargetSelector) GetMatchingPods(c client.Client, instance *chaosv1be
 	return pods, nil
 }
 
-// GetMatchingNodes returns the still-existing nodes that were targeted by the disruption,
+// GetMatchingNodes returns the still-existing nodes that were targeted by the disruption.
+// For mocking purposes, node statuses are not checked.
 func (m MockTargetSelector) GetMatchingNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, error) {
 	nodes := &corev1.NodeList{}
 	listOptions := &client.ListOptions{
@@ -63,7 +65,8 @@ func (m MockTargetSelector) GetMatchingNodes(c client.Client, instance *chaosv1b
 	return nodes, nil
 }
 
-// TargetIsHealthy returns true if the given target exists, false otherwise
+// TargetIsHealthy returns an error if the given target is unhealthy or does not exist.
+// For mocking purposes, there is never an error.
 func (m MockTargetSelector) TargetIsHealthy(target string, c client.Client, instance *chaosv1beta1.Disruption) error {
 	return nil
 }

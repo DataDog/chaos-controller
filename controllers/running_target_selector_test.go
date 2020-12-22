@@ -47,13 +47,21 @@ type fakeClient struct {
 
 func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
 
-	if key.Name == "runningnode" {
+	if key.Name == "runningPod" {
 		objVal := reflect.ValueOf(obj)
-		nodeVal := reflect.ValueOf(mixedNodes[0])
+		nodeVal := reflect.ValueOf(runningPod1)
 		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
-	} else if key.Name == "failednode" {
+	} else if key.Name == "failedPod" {
 		objVal := reflect.ValueOf(obj)
-		nodeVal := reflect.ValueOf(mixedNodes[1])
+		nodeVal := reflect.ValueOf(failedPod)
+		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
+	} else if key.Name == "runningNode" {
+		objVal := reflect.ValueOf(obj)
+		nodeVal := reflect.ValueOf(runningNode)
+		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
+	} else if key.Name == "failedNode" {
+		objVal := reflect.ValueOf(obj)
+		nodeVal := reflect.ValueOf(failedNode)
 		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
 	}
 	return nil
@@ -91,8 +99,16 @@ func (f fakeClient) Status() client.StatusWriter {
 	return nil
 }
 
+var runningPod1 *corev1.Pod
+var runningPod2 *corev1.Pod
+var failedPod *corev1.Pod
+
 var mixedStatusPods []corev1.Pod
 var twoPods []corev1.Pod
+
+var runningNode *corev1.Node
+var failedNode *corev1.Node
+
 var justRunningNodes []corev1.Node
 var mixedNodes []corev1.Node
 
@@ -107,9 +123,9 @@ var _ = Describe("Helpers", func() {
 
 		c = fakeClient{}
 
-		runningPod1 := &corev1.Pod{
+		runningPod1 = &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "genericRunningPod1",
+				Name:      "runningPod",
 				Namespace: "bar",
 			},
 			Status: corev1.PodStatus{
@@ -117,9 +133,9 @@ var _ = Describe("Helpers", func() {
 			},
 		}
 
-		runningPod2 := &corev1.Pod{
+		runningPod2 = &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "genericRunningPod2",
+				Name:      "anotherRunningPod",
 				Namespace: "bar",
 			},
 			Status: corev1.PodStatus{
@@ -127,9 +143,9 @@ var _ = Describe("Helpers", func() {
 			},
 		}
 
-		failedPod := &corev1.Pod{
+		failedPod = &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "genericFailedPod",
+				Name:      "failedPod",
 				Namespace: "bar",
 			},
 			Status: corev1.PodStatus{
@@ -148,9 +164,9 @@ var _ = Describe("Helpers", func() {
 			*runningPod2,
 		}
 
-		runningNode := &corev1.Node{
+		runningNode = &corev1.Node{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "runningnode",
+				Name: "runningNode",
 				Labels: map[string]string{
 					"foo": "bar",
 				},
@@ -165,9 +181,9 @@ var _ = Describe("Helpers", func() {
 			},
 		}
 
-		failedNode := &corev1.Node{
+		failedNode = &corev1.Node{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "failednode",
+				Name: "failedNode",
 				Labels: map[string]string{
 					"foo": "bar",
 				},
@@ -191,7 +207,6 @@ var _ = Describe("Helpers", func() {
 			*failedNode,
 		}
 
-		// misc
 		image = "chaos-injector:latest"
 		os.Setenv(ChaosFailureInjectionImageVariableName, image)
 
@@ -287,27 +302,41 @@ var _ = Describe("Helpers", func() {
 				r, err := targetSelector.GetMatchingNodes(&c, disruption)
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(len(justRunningNodes)))
-				Expect(r.Items[0].Name).To(Equal("runningnode"))
+				Expect(r.Items[0].Name).To(Equal("runningNode"))
 			})
 		})
 	})
 
 	Describe("TargetIsHealthy", func() {
 		Context("with pod-level disruption spec", func() {
-			It("should return no error for RunnigPod", func() {
+			It("should return no error for running pod", func() {
 				disruption.Spec.Selector = map[string]string{"foo": "bar"}
-				disruption.Spec.Level = types.DisruptionLevelNode
+				disruption.Spec.Level = types.DisruptionLevelPod
 
-				err := targetSelector.TargetIsHealthy("runningnode", &c, disruption)
+				err := targetSelector.TargetIsHealthy("runningPod", &c, disruption)
 				Expect(err).To(BeNil())
+			})
+			It("should return error for failed pod", func() {
+				disruption.Spec.Selector = map[string]string{"foo": "bar"}
+				disruption.Spec.Level = types.DisruptionLevelPod
+
+				err := targetSelector.TargetIsHealthy("failedPod", &c, disruption)
+				Expect(err).ToNot(BeNil())
 			})
 		})
 		Context("with node-level disruption spec", func() {
-			It("should return an error for RunnigPod", func() {
+			It("should return an error for running node", func() {
 				disruption.Spec.Selector = map[string]string{"foo": "bar"}
 				disruption.Spec.Level = types.DisruptionLevelNode
 
-				err := targetSelector.TargetIsHealthy("failednode", &c, disruption)
+				err := targetSelector.TargetIsHealthy("runnningNode", &c, disruption)
+				Expect(err).ToNot(BeNil())
+			})
+			It("should return an error for failed node", func() {
+				disruption.Spec.Selector = map[string]string{"foo": "bar"}
+				disruption.Spec.Level = types.DisruptionLevelNode
+
+				err := targetSelector.TargetIsHealthy("failedNode", &c, disruption)
 				Expect(err).ToNot(BeNil())
 			})
 		})
