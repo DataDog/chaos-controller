@@ -330,7 +330,9 @@ func (r *DisruptionReconciler) cleanDisruptions(instance *chaosv1beta1.Disruptio
 			} else if err.Error() == "Pod is not Running" || err.Error() == "Node is not Ready" {
 				r.Log.Info("cleanup: target not healthy (skip)", "instance", instance.Name, "namespace", instance.Namespace, "name", target)
 			}
+
 			r.Log.Error(err, err.Error())
+
 			continue
 		}
 

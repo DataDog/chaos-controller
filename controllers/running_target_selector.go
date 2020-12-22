@@ -119,7 +119,7 @@ func (r RunningTargetSelector) TargetIsHealthy(target string, c client.Client, i
 
 		// check if pod is running
 		if p.Status.Phase != corev1.PodRunning {
-			return errors.New("Pod is not Running")
+			return errors.New("pod is not Running")
 		}
 	case chaostypes.DisruptionLevelNode:
 		var n corev1.Node
@@ -138,7 +138,7 @@ func (r RunningTargetSelector) TargetIsHealthy(target string, c client.Client, i
 		}
 
 		if !ready {
-			return errors.New("Node is not Ready")
+			return errors.New("node is not Ready")
 		}
 	}
 
