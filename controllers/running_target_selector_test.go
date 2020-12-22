@@ -309,33 +309,31 @@ var _ = Describe("Helpers", func() {
 
 	Describe("TargetIsHealthy", func() {
 		Context("with pod-level disruption spec", func() {
-			It("should return no error for running pod", func() {
+			BeforeEach(func() {
 				disruption.Spec.Selector = map[string]string{"foo": "bar"}
 				disruption.Spec.Level = types.DisruptionLevelPod
+			})
 
+			It("should return no error for running pod", func() {
 				err := targetSelector.TargetIsHealthy("runningPod", &c, disruption)
 				Expect(err).To(BeNil())
 			})
 			It("should return error for failed pod", func() {
-				disruption.Spec.Selector = map[string]string{"foo": "bar"}
-				disruption.Spec.Level = types.DisruptionLevelPod
-
 				err := targetSelector.TargetIsHealthy("failedPod", &c, disruption)
 				Expect(err).ToNot(BeNil())
 			})
 		})
 		Context("with node-level disruption spec", func() {
-			It("should return an error for running node", func() {
+			BeforeEach(func() {
 				disruption.Spec.Selector = map[string]string{"foo": "bar"}
 				disruption.Spec.Level = types.DisruptionLevelNode
+			})
 
+			It("should return an error for running node", func() {
 				err := targetSelector.TargetIsHealthy("runnningNode", &c, disruption)
 				Expect(err).ToNot(BeNil())
 			})
 			It("should return an error for failed node", func() {
-				disruption.Spec.Selector = map[string]string{"foo": "bar"}
-				disruption.Spec.Level = types.DisruptionLevelNode
-
 				err := targetSelector.TargetIsHealthy("failedNode", &c, disruption)
 				Expect(err).ToNot(BeNil())
 			})
