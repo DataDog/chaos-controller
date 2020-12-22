@@ -514,8 +514,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 func (r *DisruptionReconciler) getOwnedPods(instance *chaosv1beta1.Disruption, selector labels.Set) ([]corev1.Pod, error) {
 	ownedPods := make([]corev1.Pod, 0)
-	pods := &corev1.PodList{}
-
+	pods := &corev1.PodList{}ß
 	listOptions := &client.ListOptions{
 		Namespace:     instance.Namespace,
 		LabelSelector: labels.SelectorFromSet(selector),
