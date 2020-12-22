@@ -65,7 +65,6 @@ var (
 	targetPodB  *corev1.Pod
 	targetPodC  *corev1.Pod
 	targetPodD  *corev1.Pod
-	labelFooBar map[string]string
 )
 
 type fakeK8sClient struct {
