@@ -25,13 +25,9 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"reflect"
-	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -42,7 +38,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -543,21 +538,6 @@ func (r *DisruptionReconciler) getOwnedPods(instance *chaosv1beta1.Disruption, s
 	return ownedPods, nil
 }
 
-// getContainerID gets the ID of the targeted container or of the first container ID found in a Pod
-func getContainerID(pod *corev1.Pod, target string) (string, error) {
-	if len(pod.Status.ContainerStatuses) < 1 {
-		return "", fmt.Errorf("missing container ids for pod '%s'", pod.Name)
-	}
-
-	for _, container := range pod.Status.ContainerStatuses {
-		if container.Name == target {
-			return container.ContainerID, nil
-		}
-	}
-
-	return pod.Status.ContainerStatuses[0].ContainerID, nil
-}
-
 // generatePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
 func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, mode chaostypes.PodMode, kind chaostypes.DisruptionKind) (*corev1.Pod, error) {
@@ -733,82 +713,5 @@ func (r *DisruptionReconciler) WatchStuckOnRemoval() {
 		if err := r.MetricsSink.MetricStuckOnRemovalCount(float64(count)); err != nil {
 			r.Log.Error(err, "error sending stuck_on_removal_count metric")
 		}
-	}
-}
-
-// This method returns a scaled value from an IntOrString type. If the IntOrString
-// is a percentage string value it's treated as a percentage and scaled appropriately
-// in accordance to the total, if it's an int value it's treated as a a simple value and
-// if it is a string value which is either non-numeric or numeric but lacking a trailing '%' it returns an error.
-func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int, roundUp bool) (int, error) {
-	if intOrPercent == nil {
-		return 0, errors.NewBadRequest("nil value for IntOrString")
-	}
-
-	value, isPercent, err := getIntOrPercentValueSafely(intOrPercent)
-
-	if err != nil {
-		return 0, fmt.Errorf("invalid value for IntOrString: %v", err)
-	}
-
-	if isPercent {
-		if roundUp {
-			value = int(math.Ceil(float64(value) * (float64(total)) / 100))
-		} else {
-			value = int(math.Floor(float64(value) * (float64(total)) / 100))
-		}
-	}
-
-	return value, nil
-}
-
-func getIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error) {
-	switch intOrStr.Type {
-	case intstr.Int:
-		return intOrStr.IntValue(), false, nil
-	case intstr.String:
-		isPercent := false
-		s := intOrStr.StrVal
-
-		if strings.HasSuffix(s, "%") {
-			isPercent = true
-			s = strings.TrimSuffix(intOrStr.StrVal, "%")
-		} else {
-			return 0, false, fmt.Errorf("invalid type: string is not a percentage")
-		}
-
-		v, err := strconv.Atoi(s)
-
-		if err != nil {
-			return 0, false, fmt.Errorf("invalid value %q: %v", intOrStr.StrVal, err)
-		}
-
-		return v, isPercent, nil
-	}
-
-	return 0, false, fmt.Errorf("invalid type: neither int nor percentage")
-}
-
-// containsString returns true if the given slice contains the given string,
-// or returns false otherwise
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-
-	return false
-}
-
-func validateLabelSelector(selector labels.Selector) error {
-	// assert label selector matches valid grammar, avoids CORE-414
-	labelGrammar := "([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]"
-	rgx := regexp.MustCompile(labelGrammar)
-
-	if !rgx.MatchString(selector.String()) {
-		return fmt.Errorf("given label selector is invalid, it does not match valid selector grammar: %s %s", instance.Spec.Selector.AsSelector().String(), labelGrammar)
-	} else {
-		return nil
 	}
 }
