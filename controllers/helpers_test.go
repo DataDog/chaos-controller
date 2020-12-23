@@ -23,8 +23,27 @@ package controllers
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
-var _ = Describe("", func() {
+var _ = Describe("Label Selector Validation", func() {
 
+	Context("validating an empty label selector", func() {
+		It("", func() {
+			selector := labels.Set{}
+			Expect(validateLabelSelector(selector.AsSelector())).ToNot(BeNil())
+		})
+	})
+	Context("validating a good label selector", func() {
+		It("", func() {
+			selector := labels.Set{"foo": "bar"}
+			Expect(validateLabelSelector(selector.AsSelector())).To(BeNil())
+		})
+	})
+	Context("validating special characters in label selector", func() {
+		It("", func() {
+			selector := labels.Set{"foo": "”bar”"}
+			Expect(validateLabelSelector(selector.AsSelector())).ToNot(BeNil())
+		})
+	})
 })

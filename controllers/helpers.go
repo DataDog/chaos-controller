@@ -120,7 +120,7 @@ func validateLabelSelector(selector labels.Selector) error {
 
 	if !rgx.MatchString(selector.String()) {
 		return fmt.Errorf("given label selector is invalid, it does not match valid selector grammar: %s %s", selector.String(), labelGrammar)
-	} else {
-		return nil
 	}
+
+	return nil
 }

@@ -448,7 +448,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 	err = validateLabelSelector(instance.Spec.Selector.AsSelector())
 	if err != nil {
-		r.Log.Error(err, "error while selecting targets for disruption")
+		r.Recorder.Event(instance, "Warning", "InvalidLabelSelector", fmt.Sprintf("%s. No targets will be selected.", err.Error()))
 		return nil, err
 	}
 
