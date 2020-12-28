@@ -46,4 +46,10 @@ var _ = Describe("Label Selector Validation", func() {
 			Expect(validateLabelSelector(selector.AsSelector())).ToNot(BeNil())
 		})
 	})
+	Context("validating too many quotes in label selector", func() {
+		It("", func() {
+			selector := labels.Set{"foo": "\"bar\""}
+			Expect(validateLabelSelector(selector.AsSelector())).ToNot(BeNil())
+		})
+	})
 })
