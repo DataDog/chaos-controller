@@ -24,6 +24,8 @@ func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, level chaostypes
 			"inject",
 			"--metrics-sink",
 			sink,
+			"--level",
+			string(level),
 		}
 		if s.Shutdown {
 			args = append(args, "--shutdown")
