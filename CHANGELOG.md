@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.16.0](https://github.com/DataDog/chaos-controller/tree/2.16.0) (2021-01-05)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.15.0...2.16.0)
+
+**Closed issues:**
+
+- count: -1 does not work [\#197](https://github.com/DataDog/chaos-controller/issues/197)
+
+**Merged pull requests:**
+
+- CORE-417: Pass --level flag to injector for node\_failures [\#209](https://github.com/DataDog/chaos-controller/pull/209) ([ptnapoleon](https://github.com/ptnapoleon))
+- CORE-414: Validate label selector grammar [\#208](https://github.com/DataDog/chaos-controller/pull/208) ([ptnapoleon](https://github.com/ptnapoleon))
+- Ignore already cleaned qdiscs during network disruption cleanup [\#207](https://github.com/DataDog/chaos-controller/pull/207) ([Devatoria](https://github.com/Devatoria))
+- Improve logging and dump the disruption selector for debug [\#206](https://github.com/DataDog/chaos-controller/pull/206) ([Devatoria](https://github.com/Devatoria))
+- Skip target on injection error instead of stopping the reconcile loop [\#205](https://github.com/DataDog/chaos-controller/pull/205) ([Devatoria](https://github.com/Devatoria))
+- CORE-402: Another way to test only selecting Running Pods [\#204](https://github.com/DataDog/chaos-controller/pull/204) ([takakonishimura](https://github.com/takakonishimura))
+- \[Doc\] - Update sample documentation for count [\#202](https://github.com/DataDog/chaos-controller/pull/202) ([gaetan-deputier](https://github.com/gaetan-deputier))
+- Node level disruptions [\#198](https://github.com/DataDog/chaos-controller/pull/198) ([Devatoria](https://github.com/Devatoria))
+- CORE-296: Check pods are Running before Injection [\#196](https://github.com/DataDog/chaos-controller/pull/196) ([takakonishimura](https://github.com/takakonishimura))
+- Add jitter for delay to the chaos-controller [\#195](https://github.com/DataDog/chaos-controller/pull/195) ([Azoam](https://github.com/Azoam))
+- Delete unused metrics.go file~ [\#194](https://github.com/DataDog/chaos-controller/pull/194) ([takakonishimura](https://github.com/takakonishimura))
+- Add event when disruption name is not recognizable [\#193](https://github.com/DataDog/chaos-controller/pull/193) ([Azoam](https://github.com/Azoam))
+- Ignore license headers for api auto-generated files [\#192](https://github.com/DataDog/chaos-controller/pull/192) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_8eb5743aac6412002622254c71390a3d74ba93b7 [\#191](https://github.com/DataDog/chaos-controller/pull/191) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.15.0](https://github.com/DataDog/chaos-controller/tree/2.15.0) (2020-11-23)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.14.2...2.15.0)
@@ -97,6 +122,7 @@
 - Simplify reconcile loop [\#157](https://github.com/DataDog/chaos-controller/pull/157) ([Devatoria](https://github.com/Devatoria))
 - Remove unused vendor [\#156](https://github.com/DataDog/chaos-controller/pull/156) ([Devatoria](https://github.com/Devatoria))
 - Update container release\_changelog\_4c18d4fb074ce53c8bb8468c7087d9f8f218dfe9 [\#155](https://github.com/DataDog/chaos-controller/pull/155) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Update container release\_changelog\_73a3b846f65f4d6f352e81cf49382567dbf4094e [\#153](https://github.com/DataDog/chaos-controller/pull/153) ([github-actions[bot]](https://github.com/apps/github-actions))
 
 ## [2.10.1](https://github.com/DataDog/chaos-controller/tree/2.10.1) (2020-08-17)
 
@@ -105,7 +131,6 @@
 **Merged pull requests:**
 
 - Fix release registries [\#154](https://github.com/DataDog/chaos-controller/pull/154) ([Devatoria](https://github.com/Devatoria))
-- Update container release\_changelog\_73a3b846f65f4d6f352e81cf49382567dbf4094e [\#153](https://github.com/DataDog/chaos-controller/pull/153) ([github-actions[bot]](https://github.com/apps/github-actions))
 
 ## [2.10.0](https://github.com/DataDog/chaos-controller/tree/2.10.0) (2020-08-13)
 
