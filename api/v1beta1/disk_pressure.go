@@ -24,45 +24,27 @@ type DiskPressureThrottlingSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *DiskPressureSpec) GenerateArgs(mode chaostypes.PodMode, level chaostypes.DisruptionLevel, containerID, sink string) []string {
-	var args []string
+func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string) []string {
+	args := []string{
+		"disk-pressure",
+		"--metrics-sink",
+		sink,
+		"--level",
+		string(level),
+		"--container-id",
+		containerID,
+		"--path",
+		s.Path,
+	}
 
-	if mode == chaostypes.PodModeInject {
-		args = []string{
-			"disk-pressure",
-			"inject",
-			"--metrics-sink",
-			sink,
-			"--level",
-			string(level),
-			"--container-id",
-			containerID,
-			"--path",
-			s.Path,
-		}
+	// add read throttling flag if specified
+	if s.Throttling.ReadBytesPerSec != nil {
+		args = append(args, []string{"--read-bytes-per-sec", strconv.Itoa(*s.Throttling.ReadBytesPerSec)}...)
+	}
 
-		// add read throttling flag if specified
-		if s.Throttling.ReadBytesPerSec != nil {
-			args = append(args, []string{"--read-bytes-per-sec", strconv.Itoa(*s.Throttling.ReadBytesPerSec)}...)
-		}
-
-		// add write throttling flag if specified
-		if s.Throttling.WriteBytesPerSec != nil {
-			args = append(args, []string{"--write-bytes-per-sec", strconv.Itoa(*s.Throttling.WriteBytesPerSec)}...)
-		}
-	} else {
-		args = []string{
-			"disk-pressure",
-			"clean",
-			"--metrics-sink",
-			sink,
-			"--level",
-			string(level),
-			"--container-id",
-			containerID,
-			"--path",
-			s.Path,
-		}
+	// add write throttling flag if specified
+	if s.Throttling.WriteBytesPerSec != nil {
+		args = append(args, []string{"--write-bytes-per-sec", strconv.Itoa(*s.Throttling.WriteBytesPerSec)}...)
 	}
 
 	return args

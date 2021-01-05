@@ -8,6 +8,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
@@ -21,17 +23,22 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "chaos-injector",
-	Short: "Datadog chaos failures injection application",
-	Run:   nil,
+	Use:               "chaos-injector",
+	Short:             "Datadog chaos failures injection application",
+	Run:               nil,
+	PersistentPostRun: cleanAndExit,
 }
 
-var log *zap.SugaredLogger
-var ms metrics.Sink
-var sink string
-var level string
-var containerID string
-var config injector.Config
+var (
+	log         *zap.SugaredLogger
+	ms          metrics.Sink
+	sink        string
+	level       string
+	containerID string
+	config      injector.Config
+	signals     chan os.Signal
+	inj         injector.Injector
+)
 
 func init() {
 	rootCmd.AddCommand(networkDisruptionCmd)
@@ -46,6 +53,7 @@ func init() {
 	cobra.OnInitialize(initLogger)
 	cobra.OnInitialize(initMetricsSink)
 	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(initExitSignalsHandler)
 }
 
 func main() {
@@ -64,6 +72,7 @@ func main() {
 	}
 }
 
+// initLogger initializes a zap logger
 func initLogger() {
 	// prepare logger
 	zapInstance, err := zap.NewProduction()
@@ -75,6 +84,7 @@ func initLogger() {
 	log = zapInstance.Sugar()
 }
 
+// initMetricsSink initializes a metrics sink depending on the given flag
 func initMetricsSink() {
 	var err error
 
@@ -86,6 +96,7 @@ func initMetricsSink() {
 	}
 }
 
+// initConfig initializes the injector config and main components from the given flags
 func initConfig() {
 	var (
 		err        error
@@ -136,4 +147,29 @@ func initConfig() {
 		Cgroup:      cgroupMgr,
 		Netns:       netnsMgr,
 	}
+}
+
+// initExitSignalsHandler initializes the exit signal handler
+func initExitSignalsHandler() {
+	signals = make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+}
+
+// injectAndWait injects the disruption with the configured injector and waits
+// for an exit signal to be sent
+func injectAndWait(cmd *cobra.Command, args []string) {
+	log.Info("injecting the disruption")
+	inj.Inject()
+	log.Info("disruption injected, now waiting for an exit signal")
+
+	sig := <-signals
+
+	log.Infow("an exit signal has been received", "signal", sig.String())
+}
+
+// cleanAndExit cleans the disruption with the configured injector and exits nicely
+func cleanAndExit(cmd *cobra.Command, args []string) {
+	log.Info("cleaning the disruption")
+	inj.Clean()
+	log.Info("disruption cleaned, now exiting")
 }

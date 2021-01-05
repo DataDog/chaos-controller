@@ -5,9 +5,6 @@
 package injector_test
 
 import (
-	"os"
-	"syscall"
-
 	. "github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/mock"
 
@@ -27,7 +24,6 @@ var _ = Describe("Failure", func() {
 		stresser      *stress.StresserMock
 		stresserExit  chan struct{}
 		manager       *process.ManagerMock
-		sigHandler    chan os.Signal
 		inj           Injector
 		spec          v1beta1.CPUPressureSpec
 	)
@@ -51,9 +47,6 @@ var _ = Describe("Failure", func() {
 		manager = &process.ManagerMock{}
 		manager.On("Prioritize").Return(nil)
 
-		// signal handler
-		sigHandler = make(chan os.Signal)
-
 		//config
 		config = CPUPressureInjectorConfig{
 			Config: Config{
@@ -65,7 +58,6 @@ var _ = Describe("Failure", func() {
 			Stresser:       stresser,
 			StresserExit:   stresserExit,
 			ProcessManager: manager,
-			SignalHandler:  sigHandler,
 		}
 
 		// spec
@@ -78,13 +70,11 @@ var _ = Describe("Failure", func() {
 
 	Describe("injection", func() {
 		JustBeforeEach(func() {
-			// because the injection is blocking, we start it in a goroutine
-			// and send a fake sigterm signal to the signal handler
-			// to trigger the end of the injection
-			// we also send an event on the stresser exit chan to sync the stress call
-			go inj.Inject()
+			// because the cleaning phase is blocking, we start it in a goroutine
+			// and send a signal to the stresser exit handler
+			inj.Inject()
+			go inj.Clean()
 			stresserExit <- struct{}{}
-			sigHandler <- syscall.SIGTERM
 		})
 
 		It("should join the CPU cgroup", func() {

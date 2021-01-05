@@ -14,20 +14,15 @@ type CPUPressureSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *CPUPressureSpec) GenerateArgs(mode chaostypes.PodMode, level chaostypes.DisruptionLevel, containerID, sink string) []string {
-	args := []string{}
-
-	if mode == chaostypes.PodModeInject {
-		args = []string{
-			"cpu-pressure",
-			"inject",
-			"--metrics-sink",
-			sink,
-			"--level",
-			string(level),
-			"--container-id",
-			containerID,
-		}
+func (s *CPUPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string) []string {
+	args := []string{
+		"cpu-pressure",
+		"--metrics-sink",
+		sink,
+		"--level",
+		string(level),
+		"--container-id",
+		containerID,
 	}
 
 	return args

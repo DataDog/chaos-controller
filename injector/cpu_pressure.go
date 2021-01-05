@@ -7,7 +7,6 @@ package injector
 
 import (
 	"os"
-	"os/signal"
 	"runtime"
 	"syscall"
 
@@ -27,7 +26,6 @@ type CPUPressureInjectorConfig struct {
 	Stresser       stress.Stresser
 	StresserExit   chan struct{}
 	ProcessManager process.Manager
-	SignalHandler  chan os.Signal
 }
 
 // NewCPUPressureInjector creates a CPU pressure injector with the given config
@@ -40,13 +38,6 @@ func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInje
 	if config.StresserExit == nil {
 		config.StresserExit = make(chan struct{})
 	}
-
-	// signal handling
-	if config.SignalHandler == nil {
-		config.SignalHandler = make(chan os.Signal)
-	}
-
-	signal.Notify(config.SignalHandler, syscall.SIGINT, syscall.SIGTERM)
 
 	// create process manager
 	if config.ProcessManager == nil {
@@ -85,16 +76,11 @@ func (i cpuPressureInjector) Inject() {
 	i.config.Log.Infow("initializing load generator routines", "routines", runtime.NumCPU())
 
 	go i.config.Stresser.Stress(i.config.StresserExit)
+}
 
-	// wait until the process is killed
-	sig := <-i.config.SignalHandler
-
-	i.config.Log.Infow("received exit signal, killing the cpu stresser routines...", "signal", sig.String())
-
+func (i cpuPressureInjector) Clean() {
 	// exit the stresser
 	i.config.StresserExit <- struct{}{}
 
 	i.config.Log.Info("all routines has been killed, exiting")
 }
-
-func (i cpuPressureInjector) Clean() {}
