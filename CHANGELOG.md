@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.16.1](https://github.com/DataDog/chaos-controller/tree/2.16.1) (2021-01-07)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.16.0...2.16.1)
+
+**Merged pull requests:**
+
+- Force node failure disruption level to node instead of pod [\#212](https://github.com/DataDog/chaos-controller/pull/212) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_4370a7b1f671cf5a4589ac2c4fd012f634c6f09c [\#210](https://github.com/DataDog/chaos-controller/pull/210) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [2.16.0](https://github.com/DataDog/chaos-controller/tree/2.16.0) (2021-01-05)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.15.0...2.16.0)
@@ -122,7 +131,6 @@
 - Simplify reconcile loop [\#157](https://github.com/DataDog/chaos-controller/pull/157) ([Devatoria](https://github.com/Devatoria))
 - Remove unused vendor [\#156](https://github.com/DataDog/chaos-controller/pull/156) ([Devatoria](https://github.com/Devatoria))
 - Update container release\_changelog\_4c18d4fb074ce53c8bb8468c7087d9f8f218dfe9 [\#155](https://github.com/DataDog/chaos-controller/pull/155) ([github-actions[bot]](https://github.com/apps/github-actions))
-- Update container release\_changelog\_73a3b846f65f4d6f352e81cf49382567dbf4094e [\#153](https://github.com/DataDog/chaos-controller/pull/153) ([github-actions[bot]](https://github.com/apps/github-actions))
 
 ## [2.10.1](https://github.com/DataDog/chaos-controller/tree/2.10.1) (2020-08-17)
 
@@ -131,6 +139,7 @@
 **Merged pull requests:**
 
 - Fix release registries [\#154](https://github.com/DataDog/chaos-controller/pull/154) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_73a3b846f65f4d6f352e81cf49382567dbf4094e [\#153](https://github.com/DataDog/chaos-controller/pull/153) ([github-actions[bot]](https://github.com/apps/github-actions))
 
 ## [2.10.0](https://github.com/DataDog/chaos-controller/tree/2.10.0) (2020-08-13)
 
@@ -142,7 +151,6 @@
 - Add a small comment on known issue with current disk throttling implementation [\#151](https://github.com/DataDog/chaos-controller/pull/151) ([Devatoria](https://github.com/Devatoria))
 - Move mocks from test packages to re-use them [\#150](https://github.com/DataDog/chaos-controller/pull/150) ([Devatoria](https://github.com/Devatoria))
 - Add retry logic to dns resolution [\#149](https://github.com/DataDog/chaos-controller/pull/149) ([Azoam](https://github.com/Azoam))
-- Record events on targeted pods on injection and cleanup [\#148](https://github.com/DataDog/chaos-controller/pull/148) ([Devatoria](https://github.com/Devatoria))
 - Injector mounts rework [\#147](https://github.com/DataDog/chaos-controller/pull/147) ([Devatoria](https://github.com/Devatoria))
 - Update container release\_changelog\_93dde7cf2cd52f65ba84620dfa48027b17d33b2f [\#146](https://github.com/DataDog/chaos-controller/pull/146) ([github-actions[bot]](https://github.com/apps/github-actions))
 
@@ -164,6 +172,7 @@
 
 **Merged pull requests:**
 
+- Record events on targeted pods on injection and cleanup [\#148](https://github.com/DataDog/chaos-controller/pull/148) ([Devatoria](https://github.com/Devatoria))
 - Update container release\_changelog\_bc5e0460e933309fcbfd63d3cc3403edcef25eec [\#141](https://github.com/DataDog/chaos-controller/pull/141) ([github-actions[bot]](https://github.com/apps/github-actions))
 - Add disk pressure feature [\#139](https://github.com/DataDog/chaos-controller/pull/139) ([Devatoria](https://github.com/Devatoria))
 
