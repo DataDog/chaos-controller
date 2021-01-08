@@ -379,7 +379,6 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 				r.Log.Info("instance seems stuck on removal for this target, please check manually", "instance", instance.Name, "target", target, "chaosPod", chaosPod.Name)
 				r.Recorder.Event(instance, "Warning", "StuckOnRemoval", "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer")
 
-				cleaned = false
 				instance.Status.IsStuckOnRemoval = true
 			}
 		}
