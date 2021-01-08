@@ -6,6 +6,7 @@
 package injector
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"syscall"
@@ -50,25 +51,25 @@ func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInje
 	}
 }
 
-func (i cpuPressureInjector) Inject() {
+func (i cpuPressureInjector) Inject() error {
 	// retrieve thread group ID
 	tgid, err := syscall.Getpgid(os.Getpid())
 	if err != nil {
-		i.config.Log.Fatalw("error retrieving thread group ID", "error", err)
+		return fmt.Errorf("error retrieving thread group ID: %w", err)
 	}
 
 	// join container CPU cgroup
 	i.config.Log.Infow("joining target CPU cgroup")
 
 	if err := i.config.Cgroup.Join("cpu", tgid); err != nil {
-		i.config.Log.Fatalw("failed to inject CPU pressure", "error", err)
+		return fmt.Errorf("failed to inject CPU pressure: %w", err)
 	}
 
 	// prioritize the current process
 	i.config.Log.Info("highering current process priority")
 
 	if err := i.config.ProcessManager.Prioritize(); err != nil {
-		i.config.Log.Fatalw("error highering the current process priority", "error", err)
+		return fmt.Errorf("error highering the current process priority: %w", err)
 	}
 
 	// start eating CPU in separate goroutines
@@ -76,11 +77,15 @@ func (i cpuPressureInjector) Inject() {
 	i.config.Log.Infow("initializing load generator routines", "routines", runtime.NumCPU())
 
 	go i.config.Stresser.Stress(i.config.StresserExit)
+
+	return nil
 }
 
-func (i cpuPressureInjector) Clean() {
+func (i cpuPressureInjector) Clean() error {
 	// exit the stresser
 	i.config.StresserExit <- struct{}{}
 
 	i.config.Log.Info("all routines has been killed, exiting")
+
+	return nil
 }

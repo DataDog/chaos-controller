@@ -55,15 +55,8 @@ func NewNodeFailureInjector(spec v1beta1.NodeFailureSpec, config NodeFailureInje
 }
 
 // Inject triggers a kernel panic through the sysrq trigger
-func (i nodeFailureInjector) Inject() {
+func (i nodeFailureInjector) Inject() error {
 	var err error
-
-	// handle metrics
-	// those ones might not be sent because of the node crash, it is better
-	// to rely on the controller metrics for this failure injection
-	defer func() {
-		i.config.handleMetricSinkError(i.config.MetricsSink.MetricInjected(err == nil, i.config.Kind, []string{}))
-	}()
 
 	i.config.Log.Infow("injecting a node failure by triggering a kernel panic",
 		"sysrq_path", i.sysrqPath,
@@ -71,12 +64,8 @@ func (i nodeFailureInjector) Inject() {
 	)
 
 	// Ensure sysrq value is set to 1 (to accept the kernel panic trigger)
-	err = i.config.FileWriter.Write(i.sysrqPath, 0644, "1")
-	if err != nil {
-		i.config.Log.Fatalw("error while writing to the sysrq file",
-			"error", err,
-			"path", i.sysrqPath,
-		)
+	if err := i.config.FileWriter.Write(i.sysrqPath, 0644, "1"); err != nil {
+		return fmt.Errorf("error while writing to the sysrq file (%s): %w", i.sysrqPath, err)
 	}
 
 	// Trigger kernel panic
@@ -90,11 +79,12 @@ func (i nodeFailureInjector) Inject() {
 	}
 
 	if err != nil {
-		i.config.Log.Fatalw("error while writing to the sysrq trigger file",
-			"error", err,
-			"path", i.sysrqTriggerPath,
-		)
+		return fmt.Errorf("error while writing to the sysrq trigger file (%s): %w", i.sysrqTriggerPath, err)
 	}
+
+	return nil
 }
 
-func (i nodeFailureInjector) Clean() {}
+func (i nodeFailureInjector) Clean() error {
+	return nil
+}

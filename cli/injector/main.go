@@ -159,9 +159,18 @@ func initExitSignalsHandler() {
 // for an exit signal to be sent
 func injectAndWait(cmd *cobra.Command, args []string) {
 	log.Info("injecting the disruption")
-	inj.Inject()
-	log.Info("disruption injected, now waiting for an exit signal")
 
+	// start injection, do not fatal on error so we keep the pod
+	// running, allowing the cleanup to happen
+	if err := inj.Inject(); err != nil {
+		handleMetricError(ms.MetricInjected(false, cmd.Name(), nil))
+		log.Errorw("disruption injection failed", "error", err)
+	} else {
+		handleMetricError(ms.MetricInjected(true, cmd.Name(), nil))
+		log.Info("disruption injected, now waiting for an exit signal")
+	}
+
+	// wait for an exit signal, this is a blocking call
 	sig := <-signals
 
 	log.Infow("an exit signal has been received", "signal", sig.String())
@@ -170,6 +179,20 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 // cleanAndExit cleans the disruption with the configured injector and exits nicely
 func cleanAndExit(cmd *cobra.Command, args []string) {
 	log.Info("cleaning the disruption")
-	inj.Clean()
+
+	// start cleanup
+	if err := inj.Clean(); err != nil {
+		handleMetricError(ms.MetricCleaned(false, cmd.Name(), nil))
+		log.Fatalw("disruption cleanup failed", "error", err)
+	}
+
+	handleMetricError(ms.MetricCleaned(true, cmd.Name(), nil))
 	log.Info("disruption cleaned, now exiting")
+}
+
+// handleMetricError logs the given error if not nil
+func handleMetricError(err error) {
+	if err != nil {
+		log.Errorw("error sending metric", "sink", ms.GetSinkName(), "error", err)
+	}
 }

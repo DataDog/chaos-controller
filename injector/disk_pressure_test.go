@@ -80,7 +80,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("injection", func() {
 		JustBeforeEach(func() {
-			inj.Inject()
+			Expect(inj.Inject()).To(BeNil())
 		})
 
 		It("should throttle disk from cgroup", func() {
@@ -91,7 +91,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("clean", func() {
 		JustBeforeEach(func() {
-			inj.Clean()
+			Expect(inj.Clean()).To(BeNil())
 		})
 
 		It("should remove throttle from cgroup", func() {

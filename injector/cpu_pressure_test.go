@@ -6,6 +6,7 @@ package injector_test
 
 import (
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -72,8 +73,12 @@ var _ = Describe("Failure", func() {
 		JustBeforeEach(func() {
 			// because the cleaning phase is blocking, we start it in a goroutine
 			// and send a signal to the stresser exit handler
-			inj.Inject()
-			go inj.Clean()
+			Expect(inj.Inject()).To(BeNil())
+
+			go func() {
+				Expect(inj.Clean()).To(BeNil())
+			}()
+
 			stresserExit <- struct{}{}
 		})
 

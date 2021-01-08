@@ -63,11 +63,11 @@ func NewDiskPressureInjector(spec v1beta1.DiskPressureSpec, config DiskPressureI
 	}, nil
 }
 
-func (i diskPressureInjector) Inject() {
+func (i diskPressureInjector) Inject() error {
 	// add read throttle
 	if i.spec.Throttling.ReadBytesPerSec != nil {
 		if err := i.config.Cgroup.DiskThrottleRead(i.config.Informer.Major(), *i.spec.Throttling.ReadBytesPerSec); err != nil {
-			i.config.Log.Fatalf("error throttling disk read: %v", err)
+			return fmt.Errorf("error throttling disk read: %w", err)
 		}
 
 		i.config.Log.Infow("read throttling injected", "device", i.config.Informer.Source(), "bps", *i.spec.Throttling.ReadBytesPerSec)
@@ -76,24 +76,29 @@ func (i diskPressureInjector) Inject() {
 	// add write throttle
 	if i.spec.Throttling.WriteBytesPerSec != nil {
 		if err := i.config.Cgroup.DiskThrottleWrite(i.config.Informer.Major(), *i.spec.Throttling.WriteBytesPerSec); err != nil {
-			i.config.Log.Fatalf("error throttling disk write: %v", err)
+			return fmt.Errorf("error throttling disk write: %w", err)
 		}
 
 		i.config.Log.Infow("write throttling injected", "device", i.config.Informer.Source(), "bps", *i.spec.Throttling.WriteBytesPerSec)
 	}
+
+	return nil
 }
-func (i diskPressureInjector) Clean() {
+
+func (i diskPressureInjector) Clean() error {
 	// clean read throttle
 	i.config.Log.Infow("cleaning disk read throttle", "device", i.config.Informer.Source())
 
 	if err := i.config.Cgroup.DiskThrottleRead(i.config.Informer.Major(), 0); err != nil {
-		i.config.Log.Fatalf("error cleaning read disk throttle: %v", err)
+		return fmt.Errorf("error cleaning read disk throttle: %w", err)
 	}
 
 	// clean write throttle
 	i.config.Log.Infow("cleaning disk write throttle", "device", i.config.Informer.Source())
 
 	if err := i.config.Cgroup.DiskThrottleWrite(i.config.Informer.Major(), 0); err != nil {
-		i.config.Log.Fatalf("error cleaning write disk throttle: %v", err)
+		return fmt.Errorf("error cleaning write disk throttle: %w", err)
 	}
+
+	return nil
 }
