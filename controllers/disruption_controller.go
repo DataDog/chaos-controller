@@ -202,8 +202,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// start injections
 	r.Log.Info("starting targets injection", "instance", instance.Name, "namespace", instance.Namespace, "targets", instance.Status.Targets)
 
-	skippedTargets := []string{}
-
 	for _, target := range instance.Status.Targets {
 		var targetNodeName, containerID string
 
@@ -232,7 +230,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// generate injection pods specs
 		if err := r.generateChaosPods(instance, &chaosPods, target, targetNodeName, containerID); err != nil {
 			r.Log.Error(err, "error generating injection chaos pod for target, skipping it", "instance", instance.Name, "namespace", instance.Namespace, "target", target)
-			skippedTargets = append(skippedTargets, target)
 
 			continue
 		}
@@ -274,9 +271,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 	}
 
-	// remove skipped targets from the list so we don't have to clean them up later
-	r.removeSkippedTargets(instance, skippedTargets)
-
 	// update resource status injection flag
 	// we reach this line only when every injection pods have been created with success
 	r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
@@ -285,27 +279,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	instance.Status.IsInjected = true
 
 	return ctrl.Result{}, r.Update(context.Background(), instance)
-}
-
-func (r *DisruptionReconciler) removeSkippedTargets(instance *chaosv1beta1.Disruption, skippedTargets []string) {
-	remainingTargets := []string{}
-
-	for _, target := range instance.Status.Targets {
-		skipped := false
-
-		for _, skippedTarget := range skippedTargets {
-			if target == skippedTarget {
-				skipped = true
-				break
-			}
-		}
-
-		if !skipped {
-			remainingTargets = append(remainingTargets, target)
-		}
-	}
-
-	instance.Status.Targets = remainingTargets
 }
 
 // cleanDisruption triggers the cleanup of the given instance
