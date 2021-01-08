@@ -83,7 +83,7 @@ You can uninstall it the same way, by using the `make uninstall` command.
 
 The [manager configmap](config/manager/config.yaml) contains the chaos pod template (`pod-template.json`) used to generate chaos pods. This template can be customized but you have to keep in mind that some fields are overridden by the controller itself when generating the pod:
 
-* `.Metadata.GenerateName` is filled with a name like `chaos-<instace_name>-` so it generates chaos pod names automatically
+* `.Metadata.GenerateName` is filled with a name like `chaos-<instance_name>-` so it generates chaos pod names automatically
 * `.Metadata.Namespace` is filled with the same namespace as the targeted pod
 * `.Metadata.Labels`: a bunch of labels are added to existing labels
 	* `chaos.datadoghq.com/target-pod`: the pod targeted by the chaos pod
