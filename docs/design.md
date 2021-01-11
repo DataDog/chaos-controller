@@ -1,25 +1,88 @@
 # Design
 
-The controller is made of multiple custom resources, each resource describing a failure kind. It has been created with [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) so feel free to check the documentation for more details about the usual controller design.
+This documentation aims to describe the controller logic. It can help to understand how does it work.
 
-The logic is quite the same for every resources:
+## Components
 
-* on resource creation, the controller will
-  * target a set of pods according to the given label selector
-  * randomly select pods in those targeted pods
-  * for each selected pod, it'll create a side pod on the same node to inject the failure
-* on resource deletion, the controller will
-  * retrieve the infected nodes
-  * create a cleanup pod on every infected nodes
-  * wait for those cleanup pods to successfully finish their job before garbage collecting everything
-    * if the cleanup fails, the controller will
-      * wait for X seconds (X being between 5 and 10)
-      * requeue the request to reconcile it again
-      * create a new cleanup pod
-    * the cleanup retries up to 5 times before considering the disruption stuck on removal
+The chaos-controller is made of two main components:
 
-## Note on failures cleanup
+* the controller handling the disruption resource lifecycle
+* the injector, a CLI handling the disruption injection and cleanup into targets
 
-Some failures don't need cleanup pods (like node failure). In this case, the resource deletion will just lead to the garbage collection.
+## Disruption resource lifecycle
 
-The cleanup requires a finalizer on the failure resource to avoid the garbage collection to run before the end of the cleanup. In case of error during the cleanup, this finalizer won't be removed so everything related to the deleted failure resource will stay and won't be garbage collected. It allows you to easily inspect pods to know why it has failed and to do a manual cleanup if needed. To unstuck the resource deletion once everything is cleaned, you need to manually remove the finalizer from the finalizers list by editing the failure resource.
+The lifecycle is divided in two phases:
+
+* the injection phase happening on resource creation
+* the cleanup phase happening on resource deletion
+
+In between, there is a "waiting" phase where nothing happens.
+
+### Injection phase (on disruption resource creation)
+
+The injection phase takes care to create chaos pods to inject the described disruption.
+
+#### Step 1: add a disruption finalizer
+
+Adding a finalizer to the disruption resource will prevent it to be garbage collected on deletion, allowing the controller to properly take cleanup actions. It'll be removed by the cleanup phase later once we are sure that the disruption is fully cleared.
+
+#### Step 2: compute spec hash
+
+A hash of the disruption resource spec is computed and stored in the resource status. It is used later to detect any changes in the disruption spec. The resource being immutable (any changes made to it will have no effect), it allows to warn the user about that by recording an event in the resource.
+
+#### Step 3: select targets
+
+A list of targets is created from the given selector and level. It first lists the targets (pods if the given level is `pod`, nodes if it is `node`) matching the given label selector. Then, it randomly selects a certain amount of targets in the list depending on the given count. If the count is a percentage, it rounds up the amount.
+
+The list of targets is then added to the disruption resource status. An event is recorded in each target to ease tracing/debugging.
+
+#### Step 4: create chaos pods
+
+For each target and disruption kind (network, disk pressure, cpu pressure, etc.), one chaos pod is created (running the injector image). A chaos pod is always scheduled on the same node as the target. It will inject the disruption depending on the given parameters and will sleep, catching any exit signal (`SIGINT` or `SIGTERM`). A finalizer is also added to each chaos pod, preventing it to be garbage collected by Kubernetes during the cleanup phase.
+
+### Cleanup phase (on disruption resource deletion)
+
+#### Step 1: clean disruptions
+
+For each target, the controller checks if the target is still cleanable. A target is considered as not cleanable if it does not exist anymore or if it is not running. A non-cleanable target chaos pod will still be deleted, triggering the cleanup phase. However, its status won't be checked.
+
+Then, each chaos pod of a given target will be treated like this (it can take multiple loops to reconcile correctly):
+* if it is **completed** (exited successfully), **pending** (no injection happened or has been evicted) or **non-cleanable**, the finalizer of the chaos pod is **removed** allowing it to be garbage collected as soon as possible
+* if it is **running** or **pending**, the chaos pod is **deleted** (sending a `SIGTERM` to the underlying process) (note that the pod will not be removed until its finalizer is removed)
+* if it is **failed** (exited with an error) and **cleanable**, the chaos pod is kept for further investigation (and eventually manual cleaning) and the disruption is marked as stuck on removal (it won't be removed until manual actions are taken)
+
+The disruption is considered as cleaned when there is no chaos pods left. For each reconcile call where the disruption is not fully cleaned, the reconcile request is re-enqueued.
+
+#### Step 2: remove the finalizer
+
+Once the disruption is fully cleaned, the finalizer is removed and the resource is reconciled. Kubernetes will garbage collect it as soon as possible.
+
+## Injector lifecycle
+
+The chaos pod uses the injector component. It is a CLI initializing a specific injector used to inject and clean a disruption. It has one subcommand per disruption kind (network disruption, cpu pressure, disk pressure, etc.). Whatever the used injector is, the lifecycle is always the same.
+
+### Step 1: initialization
+
+The injector initializes all the stuff common to all disruptions:
+
+* the logger used to log from the injectors
+* the metrics sink used to report metrics
+* the injector configuration
+  * it loads the targeted container (if injecting at the pod level)
+  * it creates the cgroups manager (used by injectors to interact with the target cgroups)
+  * it creates the network namespace manager (used by injectors to interact with the target network namespace)
+* the exit signal handler used to catch `SIGINT` and `SIGTERM`
+
+### Step 2: pre-run
+
+It then enters the pre-run phase, initializing the injector itself depending on the given flags and with the previously initialized configuration. This is the only phase which is different for each injector.
+
+### Step 3: run (inject and wait)
+
+Once the injector is initialized, the injection starts. Once done, the injector sleeps listening to any signal arriving into the signal handler. At this point, nothing else will happen until a signal arrives, triggering the cleanup phase.
+
+If an error occurs during the injection, it logs it but does not exit. It allows to injector to clean partially injected disruptions.
+
+### Step 4: post-run (clean and exit)
+
+When a signal arrives into the signal handler channel, it triggers the post-run phase which calls the injector clean method. Any error happening during the cleanup phase will make the injector to exit with a non-zero code, considering the chaos pod as "failed".

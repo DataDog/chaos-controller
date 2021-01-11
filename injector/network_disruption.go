@@ -62,27 +62,11 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 }
 
 // Inject injects the given network disruption into the given container
-func (i networkDisruptionInjector) Inject() {
-	var err error
-
-	i.config.Log.Info("injecting network disruption")
-
-	// handle metrics
-	defer func() {
-		i.config.handleMetricSinkError(i.config.MetricsSink.MetricInjected(err == nil, i.config.Kind, []string{}))
-	}()
-
+func (i networkDisruptionInjector) Inject() error {
 	// enter target network namespace
-	if err = i.config.Netns.Enter(); err != nil {
-		i.config.Log.Fatalw("unable to enter the given container network namespace", "error", err)
+	if err := i.config.Netns.Enter(); err != nil {
+		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
-
-	// defer the exit on return
-	defer func() {
-		if err := i.config.Netns.Exit(); err != nil {
-			i.config.Log.Fatalw("unable to exit the given container network namespace", "error", err)
-		}
-	}()
 
 	i.config.Log.Infow("adding network disruptions", "drop", i.spec.Drop, "duplicate", i.spec.Duplicate, "corrupt", i.spec.Corrupt, "delay", i.spec.Delay, "delayJitter", i.spec.DelayJitter, "bandwidthLimit", i.spec.BandwidthLimit)
 
@@ -99,7 +83,7 @@ func (i networkDisruptionInjector) Inject() {
 	}
 
 	if err := i.applyOperations(); err != nil {
-		i.config.Log.Fatalw("error applying tc operations", "error", err)
+		return fmt.Errorf("error applying tc operations: %w", err)
 	}
 
 	i.config.Log.Info("operations applied successfully")
@@ -107,49 +91,50 @@ func (i networkDisruptionInjector) Inject() {
 
 	// write classid to pod net_cls cgroup
 	if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x00020002"); err != nil {
-		i.config.Log.Fatalw("error writing classid to pod net_cls cgroup", "error", err)
+		return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 	}
+
+	// exit target network namespace
+	if err := i.config.Netns.Exit(); err != nil {
+		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
+	}
+
+	return nil
 }
 
 // Clean removes all the injected disruption in the given container
-func (i networkDisruptionInjector) Clean() {
-	var err error
-
-	i.config.Log.Info("cleaning disruptions")
-	// handle metrics
-	defer func() {
-		i.config.handleMetricSinkError(i.config.MetricsSink.MetricCleaned(err == nil, i.config.Kind, []string{}))
-	}()
-
+func (i networkDisruptionInjector) Clean() error {
 	// enter container network namespace
-	if err = i.config.Netns.Enter(); err != nil {
-		i.config.Log.Fatalw("unable to enter the given container network namespace", "error", err)
+	if err := i.config.Netns.Enter(); err != nil {
+		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
 	// defer the exit on return
 	defer func() {
-		if err := i.config.Netns.Exit(); err != nil {
-			i.config.Log.Fatalw("unable to exit the given container network namespace", "error", err)
-		}
 	}()
 
 	if err := i.clearOperations(); err != nil {
-		i.config.Log.Fatalw("error clearing tc operations", "error", err)
+		return fmt.Errorf("error clearing tc operations: %w", err)
 	}
 
 	// write default classid to pod net_cls cgroup if it still exists
 	exists, err := i.config.Cgroup.Exists("net_cls")
 	if err != nil {
-		i.config.Log.Fatalw("error checking if pod net_cls cgroup still exists", "error", err)
+		return fmt.Errorf("error checking if pod net_cls cgroup still exists: %w", err)
 	}
 
 	if exists {
 		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x0"); err != nil {
-			i.config.Log.Fatalw("error reseting classid of pod net_cls cgroup", "error", err)
+			return fmt.Errorf("error reseting classid of pod net_cls cgroup: %w", err)
 		}
 	}
 
-	i.config.Log.Info("successfully cleared injected network disruption")
+	// exit target network namespace
+	if err := i.config.Netns.Exit(); err != nil {
+		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
+	}
+
+	return nil
 }
 
 // getInterfacesByIP returns the interfaces used to reach the given hosts
@@ -194,7 +179,7 @@ func (i *networkDisruptionInjector) getInterfacesByIP(hosts []string) (map[strin
 		// prepare links/IP association by pre-creating links
 		links, err := i.config.NetlinkAdapter.LinkList()
 		if err != nil {
-			i.config.Log.Fatalf("can't list links: %w", err)
+			return nil, fmt.Errorf("can't list links: %w", err)
 		}
 
 		for _, link := range links {

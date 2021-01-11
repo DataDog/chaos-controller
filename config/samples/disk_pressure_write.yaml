@@ -9,6 +9,7 @@ metadata:
   name: disruption-sample
   namespace: chaos-engineering # disruption resource must be in the same namespace as targeted pods
 spec:
+  level: pod # level the disruption should be injected at (can be either pod or node, defaults to pod)
   selector: # label selector to target pods
     app: demo
   count: 1 # number of pods to target or a percentage (1% - 100%)

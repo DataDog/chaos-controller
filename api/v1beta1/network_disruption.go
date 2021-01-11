@@ -43,68 +43,45 @@ type NetworkDisruptionSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkDisruptionSpec) GenerateArgs(mode chaostypes.PodMode, level chaostypes.DisruptionLevel, containerID, sink string) []string {
-	args := []string{}
+func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string) []string {
+	args := []string{
+		"network-disruption",
+		"--metrics-sink",
+		sink,
+		"--level",
+		string(level),
+		"--container-id",
+		containerID,
+		"--port",
+		strconv.Itoa(s.Port),
+		"--corrupt",
+		strconv.Itoa(s.Corrupt),
+		"--drop",
+		strconv.Itoa(s.Drop),
+		"--duplicate",
+		strconv.Itoa(s.Duplicate),
+		"--delay",
+		strconv.Itoa(int(s.Delay)),
+		"--delay-jitter",
+		strconv.Itoa(int(s.DelayJitter)),
+		"--bandwidth-limit",
+		strconv.Itoa(s.BandwidthLimit),
+	}
 
-	switch mode {
-	case chaostypes.PodModeInject:
-		args = []string{
-			"network-disruption",
-			"inject",
-			"--metrics-sink",
-			sink,
-			"--level",
-			string(level),
-			"--container-id",
-			containerID,
-			"--port",
-			strconv.Itoa(s.Port),
-			"--corrupt",
-			strconv.Itoa(s.Corrupt),
-			"--drop",
-			strconv.Itoa(s.Drop),
-			"--duplicate",
-			strconv.Itoa(s.Duplicate),
-			"--delay",
-			strconv.Itoa(int(s.Delay)),
-			"--delayJitter",
-			strconv.Itoa(int(s.DelayJitter)),
-			"--bandwidth-limit",
-			strconv.Itoa(s.BandwidthLimit),
-		}
+	// append protocol
+	if s.Protocol != "" {
+		args = append(args, "--protocol", s.Protocol)
+	}
 
-		// append protocol
-		if s.Protocol != "" {
-			args = append(args, "--protocol", s.Protocol)
-		}
+	// append hosts
+	if len(s.Hosts) > 0 {
+		args = append(args, "--hosts")
+		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
+	}
 
-		// append hosts
-		if len(s.Hosts) > 0 {
-			args = append(args, "--hosts")
-			args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
-		}
-
-		// append flow
-		if s.Flow != "" {
-			args = append(args, "--flow", s.Flow)
-		}
-	case chaostypes.PodModeClean:
-		args = []string{
-			"network-disruption",
-			"clean",
-			"--metrics-sink",
-			sink,
-			"--level",
-			string(level),
-			"--container-id",
-			containerID,
-		}
-
-		// append hosts
-		if len(s.Hosts) > 0 {
-			args = append(args, "--hosts")
-			args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
-		}
+	// append flow
+	if s.Flow != "" {
+		args = append(args, "--flow", s.Flow)
 	}
 
 	return args

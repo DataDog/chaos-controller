@@ -12,7 +12,6 @@ import (
 	"github.com/DataDog/chaos-controller/metrics/datadog"
 	"github.com/DataDog/chaos-controller/metrics/noop"
 	"github.com/DataDog/chaos-controller/metrics/types"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // Sink describes a metric sink
@@ -21,10 +20,10 @@ type Sink interface {
 	EventWithTags(title, text string, tags []string) error
 	Flush() error
 	GetSinkName() string
-	MetricCleaned(succeed bool, kind chaostypes.DisruptionKind, tags []string) error
+	MetricCleaned(succeed bool, kind string, tags []string) error
 	MetricCleanupDuration(duration time.Duration, tags []string) error
 	MetricInjectDuration(duration time.Duration, tags []string) error
-	MetricInjected(succeed bool, kind chaostypes.DisruptionKind, tags []string) error
+	MetricInjected(succeed bool, kind string, tags []string) error
 	MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) error
 	MetricReconcile() error
 	MetricReconcileDuration(duration time.Duration, tags []string) error
