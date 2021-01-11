@@ -85,4 +85,4 @@ If an error occurs during the injection, it logs it but does not exit. It allows
 
 ### Step 4: post-run (clean and exit)
 
-When a signal arrives into the signal handler channel, it triggers the post-run phase which calls the injector clean method. Any error happening during the cleanup phase will make the injector to exit with a non-zero code, considering the chaos pod as "failed".
+When a signal arrives into the signal handler channel, it triggers the post-run phase which calls the injector clean method. Any error happening during the cleanup phase will make the injector to retry up to 3 times and, if the error is still occurring, to exit with a non-zero code, considering the chaos pod as "failed".
