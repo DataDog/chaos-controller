@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/metrics/types"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // Sink describes a no-op sink
@@ -43,12 +42,12 @@ func (n *Sink) EventWithTags(title, text string, tags []string) error {
 }
 
 // MetricInjected increments the injected metric
-func (n *Sink) MetricInjected(succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
+func (n *Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	return nil
 }
 
 // MetricCleaned increments the cleaned metric
-func (n *Sink) MetricCleaned(succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
+func (n *Sink) MetricCleaned(succeed bool, kind string, tags []string) error {
 	return nil
 }
 

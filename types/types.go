@@ -5,9 +5,6 @@
 
 package types
 
-// PodMode represents an enum of possible chaos pod modes
-type PodMode string
-
 // DisruptionKind represents a disruption kind
 type DisruptionKind string
 
@@ -15,15 +12,8 @@ type DisruptionKind string
 type DisruptionLevel string
 
 const (
-	// PodModeLabel is the label used to identify the pod mode
-	PodModeLabel = "chaos.datadoghq.com/pod-mode"
-	// PodModeInject mode
-	PodModeInject = "inject"
-	// PodModeClean mode
-	PodModeClean = "clean"
-
-	// TargetPodLabel is the label used to identify the pod targeted by a chaos pod
-	TargetPodLabel = "chaos.datadoghq.com/target-pod"
+	// TargetLabel is the label used to identify the pod targeted by a chaos pod
+	TargetLabel = "chaos.datadoghq.com/target"
 	// TargetPodHostIPEnv is the target pod host IP environment variable name
 	TargetPodHostIPEnv = "TARGET_POD_HOST_IP"
 
@@ -47,17 +37,11 @@ const (
 )
 
 var (
-	// DisruptionKindsInject contains all existing disruption kinds that can be injected
-	DisruptionKindsInject = []DisruptionKind{
+	// DisruptionKinds contains all existing disruption kinds that can be injected
+	DisruptionKinds = []DisruptionKind{
 		DisruptionKindNetworkDisruption,
 		DisruptionKindNodeFailure,
 		DisruptionKindCPUPressure,
-		DisruptionKindDiskPressure,
-	}
-
-	// DisruptionKindsClean contains all existing disruption kinds that can be cleaned
-	DisruptionKindsClean = []DisruptionKind{
-		DisruptionKindNetworkDisruption,
 		DisruptionKindDiskPressure,
 	}
 )

@@ -5,14 +5,21 @@
 
 package main
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/injector"
+	"github.com/spf13/cobra"
+)
 
 var cpuPressureCmd = &cobra.Command{
 	Use:   "cpu-pressure",
 	Short: "CPU pressure subcommands",
-	Run:   nil,
-}
+	Run:   injectAndWait,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// prepare spec
+		spec := v1beta1.CPUPressureSpec{}
 
-func init() {
-	cpuPressureCmd.AddCommand(cpuPressureInjectCmd)
+		// create injector
+		inj = injector.NewCPUPressureInjector(spec, injector.CPUPressureInjectorConfig{Config: config})
+	},
 }

@@ -52,7 +52,7 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const (
-	timeout = time.Second * 5
+	timeout = time.Second * 10
 )
 
 var (

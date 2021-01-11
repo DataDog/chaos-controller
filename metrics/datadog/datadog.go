@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/metrics/types"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/datadog-go/statsd"
 )
 
@@ -65,18 +64,18 @@ func (d *Sink) EventWithTags(title, text string, tags []string) error {
 }
 
 // MetricInjected increments the injected metric
-func (d *Sink) MetricInjected(succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
+func (d *Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{"status:" + status, "kind:" + string(kind)}
+	t := []string{"status:" + status, "kind:" + kind}
 	t = append(t, tags...)
 
 	return d.metricWithStatus(metricPrefixInjector+"injected", t)
 }
 
 // MetricCleaned increments the cleaned metric
-func (d *Sink) MetricCleaned(succeed bool, kind chaostypes.DisruptionKind, tags []string) error {
+func (d *Sink) MetricCleaned(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{"status:" + status, "kind:" + string(kind)}
+	t := []string{"status:" + status, "kind:" + kind}
 	t = append(t, tags...)
 
 	return d.metricWithStatus(metricPrefixInjector+"cleaned", t)

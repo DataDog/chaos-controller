@@ -6,8 +6,8 @@
 package injector
 
 import (
+	"fmt"
 	"os"
-	"os/signal"
 	"runtime"
 	"syscall"
 
@@ -27,7 +27,6 @@ type CPUPressureInjectorConfig struct {
 	Stresser       stress.Stresser
 	StresserExit   chan struct{}
 	ProcessManager process.Manager
-	SignalHandler  chan os.Signal
 }
 
 // NewCPUPressureInjector creates a CPU pressure injector with the given config
@@ -41,13 +40,6 @@ func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInje
 		config.StresserExit = make(chan struct{})
 	}
 
-	// signal handling
-	if config.SignalHandler == nil {
-		config.SignalHandler = make(chan os.Signal)
-	}
-
-	signal.Notify(config.SignalHandler, syscall.SIGINT, syscall.SIGTERM)
-
 	// create process manager
 	if config.ProcessManager == nil {
 		config.ProcessManager = process.NewManager()
@@ -59,25 +51,25 @@ func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInje
 	}
 }
 
-func (i cpuPressureInjector) Inject() {
+func (i cpuPressureInjector) Inject() error {
 	// retrieve thread group ID
 	tgid, err := syscall.Getpgid(os.Getpid())
 	if err != nil {
-		i.config.Log.Fatalw("error retrieving thread group ID", "error", err)
+		return fmt.Errorf("error retrieving thread group ID: %w", err)
 	}
 
 	// join container CPU cgroup
 	i.config.Log.Infow("joining target CPU cgroup")
 
 	if err := i.config.Cgroup.Join("cpu", tgid); err != nil {
-		i.config.Log.Fatalw("failed to inject CPU pressure", "error", err)
+		return fmt.Errorf("failed to inject CPU pressure: %w", err)
 	}
 
 	// prioritize the current process
 	i.config.Log.Info("highering current process priority")
 
 	if err := i.config.ProcessManager.Prioritize(); err != nil {
-		i.config.Log.Fatalw("error highering the current process priority", "error", err)
+		return fmt.Errorf("error highering the current process priority: %w", err)
 	}
 
 	// start eating CPU in separate goroutines
@@ -86,15 +78,14 @@ func (i cpuPressureInjector) Inject() {
 
 	go i.config.Stresser.Stress(i.config.StresserExit)
 
-	// wait until the process is killed
-	sig := <-i.config.SignalHandler
+	return nil
+}
 
-	i.config.Log.Infow("received exit signal, killing the cpu stresser routines...", "signal", sig.String())
-
+func (i cpuPressureInjector) Clean() error {
 	// exit the stresser
 	i.config.StresserExit <- struct{}{}
 
 	i.config.Log.Info("all routines has been killed, exiting")
-}
 
-func (i cpuPressureInjector) Clean() {}
+	return nil
+}

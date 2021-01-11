@@ -16,8 +16,8 @@ import (
 
 // Injector is an interface being able to inject or clean disruptions
 type Injector interface {
-	Inject()
-	Clean()
+	Inject() error
+	Clean() error
 }
 
 // Config represents a generic injector config
@@ -29,10 +29,4 @@ type Config struct {
 	Container   container.Container
 	Cgroup      cgroup.Manager
 	Netns       netns.Manager
-}
-
-func (c Config) handleMetricSinkError(err error) {
-	if err != nil {
-		c.Log.Errorw("error sending metric or event", "sink", c.MetricsSink.GetSinkName(), "error", err)
-	}
 }

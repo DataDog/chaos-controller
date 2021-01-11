@@ -53,7 +53,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("injection", func() {
 		JustBeforeEach(func() {
-			inj.Inject()
+			Expect(inj.Inject()).To(BeNil())
 		})
 
 		It("should enable the sysrq handler", func() {

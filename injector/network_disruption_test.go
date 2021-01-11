@@ -144,7 +144,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("inj.Inject", func() {
 		JustBeforeEach(func() {
-			inj.Inject()
+			Expect(inj.Inject()).To(BeNil())
 		})
 
 		// general tests that should work for all contexts
@@ -266,7 +266,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("inj.Clean", func() {
 		JustBeforeEach(func() {
-			inj.Clean()
+			Expect(inj.Clean()).To(BeNil())
 		})
 
 		It("should enter the target network namespace", func() {

@@ -15,21 +15,18 @@ type NodeFailureSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NodeFailureSpec) GenerateArgs(mode chaostypes.PodMode, level chaostypes.DisruptionLevel, containerID, sink string) []string {
-	args := []string{}
+func (s *NodeFailureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string) []string {
+	args := []string{
+		"node-failure",
+		"inject",
+		"--metrics-sink",
+		sink,
+		"--level",
+		"node",
+	}
 
-	if mode == chaostypes.PodModeInject {
-		args = []string{
-			"node-failure",
-			"inject",
-			"--metrics-sink",
-			sink,
-			"--level",
-			"node",
-		}
-		if s.Shutdown {
-			args = append(args, "--shutdown")
-		}
+	if s.Shutdown {
+		args = append(args, "--shutdown")
 	}
 
 	return args

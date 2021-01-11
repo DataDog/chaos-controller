@@ -66,18 +66,18 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
 # Build the docker image
-docker-build-manager: manager
+docker-build-manager: minikube-ssh-host manager
 	mkdir -p out
 	docker build -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
 	docker save -o out/manager.tar ${MANAGER_IMAGE}
-	scp -i $$(minikube ssh-key) out/manager.tar docker@$$(minikube ip):/tmp
+	scp -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/manager.tar docker@$$(minikube ip):/tmp
 	minikube ssh -- sudo ctr cri load /tmp/manager.tar
 
-docker-build-injector: injector
+docker-build-injector: minikube-ssh-host injector
 	mkdir -p out
 	docker build -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
 	docker save -o out/injector.tar ${INJECTOR_IMAGE}
-	scp -i $$(minikube ssh-key) out/injector.tar docker@$$(minikube ip):/tmp
+	scp -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/injector.tar docker@$$(minikube ip):/tmp
 	minikube ssh -- sudo ctr cri load /tmp/injector.tar
 
 docker-build: docker-build-manager docker-build-injector
@@ -123,3 +123,6 @@ header-check: venv
 
 license-check: venv
 	source .venv/bin/activate; inv license-check
+
+minikube-ssh-host:
+	ssh-keygen -R $(shell minikube ip)
