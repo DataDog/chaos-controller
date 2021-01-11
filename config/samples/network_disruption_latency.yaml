@@ -19,5 +19,5 @@ spec:
     port: 80 # optional, port to drop packets on
     protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
     flow: egress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
-    delay: 1000 # optional, latency to apply to packets in ms
+    delay: 1000 # "mandatory", at least one of `bandwidthLimit`, `delay`, `drop`, `corrupt`, or `duplicate` must be specified; latency to apply to packets in ms
     delayJitter: 5 # optional, add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%
