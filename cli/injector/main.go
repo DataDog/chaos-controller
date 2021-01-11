@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
@@ -18,6 +19,7 @@ import (
 	"github.com/DataDog/chaos-controller/metrics/types"
 	"github.com/DataDog/chaos-controller/netns"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -180,8 +182,8 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 func cleanAndExit(cmd *cobra.Command, args []string) {
 	log.Info("cleaning the disruption")
 
-	// start cleanup
-	if err := inj.Clean(); err != nil {
+	// start cleanup which is retried up to 3 times using an exponential backoff algorithm
+	if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
 		handleMetricError(ms.MetricCleaned(false, cmd.Name(), nil))
 		log.Fatalw("disruption cleanup failed", "error", err)
 	}
@@ -195,4 +197,11 @@ func handleMetricError(err error) {
 	if err != nil {
 		log.Errorw("error sending metric", "sink", ms.GetSinkName(), "error", err)
 	}
+}
+
+// retryNotifyHandler is called when the cleanup fails
+// it logs the error and the time to wait before the next retry
+func retryNotifyHandler(err error, delay time.Duration) {
+	log.Errorw("disruption cleanup failed", "error", err)
+	log.Infof("retrying cleanup in %s", delay.String())
 }
