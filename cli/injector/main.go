@@ -7,6 +7,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,6 +23,10 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+)
+
+const (
+	readinessProbeFile = "/tmp/readiness_probe"
 )
 
 var rootCmd = &cobra.Command{
@@ -168,6 +173,11 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		handleMetricError(ms.MetricInjected(false, cmd.Name(), nil))
 		log.Errorw("disruption injection failed", "error", err)
 	} else {
+		// create and write readiness probe file if injection succeeded so the pod is marked as ready
+		if err := ioutil.WriteFile(readinessProbeFile, []byte("1"), 0644); err != nil {
+			log.Errorw("error writing readiness probe file", "error", err)
+		}
+
 		handleMetricError(ms.MetricInjected(true, cmd.Name(), nil))
 		log.Info("disruption injected, now waiting for an exit signal")
 	}
