@@ -496,6 +496,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	pod.ObjectMeta.Namespace = instance.Namespace
 	pod.ObjectMeta.Labels[chaostypes.TargetLabel] = targetName
 	pod.ObjectMeta.Labels[chaostypes.DisruptionKindLabel] = string(kind)
+	pod.ObjectMeta.Labels[chaostypes.DisruptionNameLabel] = instance.Name
 	pod.Spec.NodeName = targetNodeName
 	pod.Spec.Containers[0].Image = image
 	pod.Spec.Containers[0].Args = args
