@@ -11,7 +11,7 @@ kubectl -n <NAMESPACE> logs <POD_NAME>
 
 ## My disruption resource is stuck on removal, what should I do?
 
-If an error occurred during the cleanup of the disruption (which occurs on removal), the controller will keep failing pods and the disruption will be marked as stuck on removal to allow you to see what happened and eventually take any manual actions to complete the cleanup before removing everything. The very first thing to do is to look at the logs (cf. section above) to identify what has failed and what are the actions to take (for instance, should I delete the target pod to totally remove the disruption?). The disruption will be kept in this state until there are failed chaos pods. To completely remove a chaos pod, you must remove any finalizers it holds by using one of the following methods.
+If an error occurred during the cleanup of the disruption (which occurs on removal), the controller will keep failing pods and the disruption will be marked as stuck on removal to allow you to see what happened and eventually take any manual actions to complete the cleanup before removing everything. The very first thing to do is to look at the logs (cf. section above) to identify what has failed and what are the actions to take (for instance, should I delete the target pod to totally remove the disruption?). The disruption will be kept in this state while there are failed chaos pods. To completely remove a chaos pod, you must remove any finalizers it holds by using one of the following methods.
 
 ### I want to remove the finalizer on a single chaos pod
 
