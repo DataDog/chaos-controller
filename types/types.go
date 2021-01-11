@@ -34,6 +34,9 @@ const (
 	DisruptionLevelPod = "pod"
 	// DisruptionLevelNode is a disruption injected at the node level
 	DisruptionLevelNode = "node"
+
+	// DisruptionNameLabel is the label used to identify the disruption name for a chaos pod
+	DisruptionNameLabel = "chaos.datadoghq.com/disruption"
 )
 
 var (
