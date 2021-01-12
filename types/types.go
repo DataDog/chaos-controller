@@ -11,6 +11,9 @@ type DisruptionKind string
 // DisruptionLevel represents which level the disruption should be injected at
 type DisruptionLevel string
 
+// DisruptionInjectionStatus represents the injection status of a disruption
+type DisruptionInjectionStatus string
+
 const (
 	// TargetLabel is the label used to identify the pod targeted by a chaos pod
 	TargetLabel = "chaos.datadoghq.com/target"
@@ -34,6 +37,13 @@ const (
 	DisruptionLevelPod = "pod"
 	// DisruptionLevelNode is a disruption injected at the node level
 	DisruptionLevelNode = "node"
+
+	// DisruptionInjectionStatusNotInjected is the value of the injection status of a not yet injected disruption
+	DisruptionInjectionStatusNotInjected DisruptionInjectionStatus = "NotInjected"
+	// DisruptionInjectionStatusPartiallyInjected is the value of the injection status of a partially injected disruption
+	DisruptionInjectionStatusPartiallyInjected DisruptionInjectionStatus = "PartiallyInjected"
+	// DisruptionInjectionStatusInjected is the value of the injection status of a fully injected disruption
+	DisruptionInjectionStatusInjected DisruptionInjectionStatus = "Injected"
 
 	// DisruptionNameLabel is the label used to identify the disruption name for a chaos pod
 	DisruptionNameLabel = "chaos.datadoghq.com/disruption"
