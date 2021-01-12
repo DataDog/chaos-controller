@@ -6,6 +6,7 @@
 package v1beta1
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
@@ -40,6 +41,19 @@ type NetworkDisruptionSpec struct {
 	DelayJitter uint `json:"delayJitter,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
+}
+
+// Validate validates args for the given disruption
+func (s *NetworkDisruptionSpec) Validate() error {
+	if s.BandwidthLimit == 0 &&
+		s.Drop == 0 &&
+		s.Delay == 0 &&
+		s.Corrupt == 0 &&
+		s.Duplicate == 0 {
+		return errors.New("the network disruption was selected, but no disruption type was specified. Please set at least one of: drop, delay, bandwidthLimit, corrupt, or duplicate. No injection will occur")
+	}
+
+	return nil
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec

@@ -156,6 +156,11 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 		}
 
+		err = r.validateDisruptionSpec(instance)
+		if err != nil {
+			return ctrl.Result{Requeue: false}, err
+		}
+
 		// start injections
 		if err := r.startInjection(instance); err != nil {
 			r.Log.Error(err, "error injecting the disruption", "instance", instance.Name, "namespace", instance.Namespace)
@@ -528,6 +533,37 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 	if err != nil {
 		r.Log.Error(err, "error sending a metric")
 	}
+}
+
+func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Disruption) error {
+	for _, kind := range chaostypes.DisruptionKinds {
+		var validator chaosapi.DisruptionValidator
+
+		// check for disruption kind
+		switch kind {
+		case chaostypes.DisruptionKindNodeFailure:
+			validator = instance.Spec.NodeFailure
+		case chaostypes.DisruptionKindNetworkDisruption:
+			validator = instance.Spec.Network
+		case chaostypes.DisruptionKindCPUPressure:
+			validator = instance.Spec.CPUPressure
+		case chaostypes.DisruptionKindDiskPressure:
+			validator = instance.Spec.DiskPressure
+		}
+
+		// ensure that the underlying disruption spec is not nil
+		if reflect.ValueOf(validator).IsNil() {
+			continue
+		}
+
+		err := validator.Validate()
+		if err != nil {
+			r.Recorder.Event(instance, "Warning", "InvalidSpec", err.Error())
+			return err
+		}
+	}
+
+	return nil
 }
 
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
