@@ -77,8 +77,6 @@ type DisruptionReconciler struct {
 
 // Reconcile loop
 func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-	_ = r.Log.WithValues("disruption", req.NamespacedName)
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
@@ -107,7 +105,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	// check wether the object is being deleted or not
 	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
-		// if being deleted, call the finalizer
+		// the instance is being deleted, clean it if the finalizer is still present
 		if controllerutil.ContainsFinalizer(instance, disruptionFinalizer) {
 			isCleaned, err := r.cleanDisruption(instance)
 			if err != nil {
@@ -136,46 +134,46 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 			return ctrl.Result{}, r.Update(context.Background(), instance)
 		}
+	} else {
+		// the injection is being created or modified, apply needed actions
+		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 
-		// stop the reconcile loop, the finalizing step has finished and the resource should be garbage collected
-		return ctrl.Result{}, nil
+		// compute spec hash to detect any changes in the spec and warn the user about it
+		sameHashes, err := r.computeHash(instance)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("error computing instance spec hash: %w", err)
+		} else if !sameHashes {
+			r.Log.Info("instance spec hash has changed meaning a change to the spec has been made, aborting")
+
+			return ctrl.Result{}, nil
+		}
+
+		// retrieve targets from label selector
+		if err := r.selectTargets(instance); err != nil {
+			r.Log.Error(err, "error selecting targets", "instance", instance.Name, "namespace", instance.Namespace)
+
+			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
+		}
+
+		// start injections
+		if err := r.startInjection(instance); err != nil {
+			r.Log.Error(err, "error injecting the disruption", "instance", instance.Name, "namespace", instance.Namespace)
+
+			return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
+		}
+
+		// update resource status injection flag
+		// we reach this line only when every injection pods have been created with success
+		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+
+		r.Log.Info("updating injection status flag", "instance", instance.Name, "namespace", instance.Namespace)
+		instance.Status.IsInjected = true
+
+		return ctrl.Result{}, r.Update(context.Background(), instance)
 	}
 
-	// add the disruption finalizer
-	controllerutil.AddFinalizer(instance, disruptionFinalizer)
-
-	// compute spec hash to detect any changes in the spec and warn the user about it
-	sameHashes, err := r.computeHash(instance)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("error computing instance spec hash: %w", err)
-	} else if !sameHashes {
-		r.Log.Info("instance spec hash has changed meaning a change to the spec has been made, aborting")
-
-		return ctrl.Result{}, nil
-	}
-
-	// retrieve targets from label selector
-	if err := r.selectTargets(instance); err != nil {
-		r.Log.Error(err, "error selecting targets", "instance", instance.Name, "namespace", instance.Namespace)
-
-		return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
-	}
-
-	// start injections
-	if err := r.startInjection(instance); err != nil {
-		r.Log.Error(err, "error injecting the disruption", "instance", instance.Name, "namespace", instance.Namespace)
-
-		return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
-	}
-
-	// update resource status injection flag
-	// we reach this line only when every injection pods have been created with success
-	r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
-
-	r.Log.Info("updating injection status flag", "instance", instance.Name, "namespace", instance.Namespace)
-	instance.Status.IsInjected = true
-
-	return ctrl.Result{}, r.Update(context.Background(), instance)
+	// stop the reconcile loop, there's nothing else to do
+	return ctrl.Result{}, nil
 }
 
 // startInjection creates non-existing chaos pod for the given disruption
