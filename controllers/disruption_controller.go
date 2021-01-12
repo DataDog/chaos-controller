@@ -106,10 +106,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	}
 
 	// check wether the object is being deleted or not
-	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
-		// if not being deleted, add a finalizer if not present yet
-		controllerutil.AddFinalizer(instance, disruptionFinalizer)
-	} else {
+	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// if being deleted, call the finalizer
 		if controllerutil.ContainsFinalizer(instance, disruptionFinalizer) {
 			isCleaned, err := r.cleanDisruption(instance)
@@ -144,62 +141,47 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	}
 
+	// add the disruption finalizer
+	controllerutil.AddFinalizer(instance, disruptionFinalizer)
+
 	// compute spec hash to detect any changes in the spec and warn the user about it
-	specBytes, err := json.Marshal(instance.Spec)
+	sameHashes, err := r.computeHash(instance)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("error compute instance spec hash: %w", err)
-	}
+		return ctrl.Result{}, fmt.Errorf("error computing instance spec hash: %w", err)
+	} else if !sameHashes {
+		r.Log.Info("instance spec hash has changed meaning a change to the spec has been made, aborting")
 
-	specHash := fmt.Sprintf("%x", md5.Sum(specBytes))
-
-	if instance.Status.SpecHash != nil {
-		if *instance.Status.SpecHash != specHash {
-			r.Recorder.Event(instance, "Warning", "Mutated", "A mutation in the disruption spec has been detected. This resource is immutable and changes have no effect. Please delete and re-create the resource for changes to be effective.")
-
-			return ctrl.Result{}, nil
-		}
-	} else {
-		r.Log.Info("computing resource spec hash to detect further changes in spec", "instance", instance.Name, "namespace", instance.Namespace)
-		instance.Status.SpecHash = &specHash
-
-		return ctrl.Result{}, r.Update(context.Background(), instance)
-	}
-
-	// skip the injection if already done
-	if instance.Status.IsInjected {
 		return ctrl.Result{}, nil
 	}
 
 	// retrieve targets from label selector
-	targets, err := r.selectTargets(instance)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	if err := r.selectTargets(instance); err != nil {
+		r.Log.Error(err, "error selecting targets", "instance", instance.Name, "namespace", instance.Namespace)
 
-	// select pods eligible for an injection and add them
-	// to the instance status for the next loop
-	if len(instance.Status.Targets) == 0 {
-		// select pods
-		r.Log.Info("selecting targets to inject disruption to", "instance", instance.Name, "namespace", instance.Namespace, "selector", instance.Spec.Selector.String())
-
-		// stop here if no pods can be targeted
-		if len(targets) == 0 {
-			r.Log.Info("the given label selector returned no targets", "instance", instance.Name, "selector", instance.Spec.Selector.String())
-			r.Recorder.Event(instance, "Warning", "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
-
-			return ctrl.Result{
-				Requeue: false,
-			}, nil
-		}
-
-		// update instance status
-		r.Log.Info("updating instance status with targets selected for injection", "instance", instance.Name, "namespace", instance.Namespace)
-		instance.Status.Targets = append(instance.Status.Targets, targets...)
-
-		return ctrl.Result{}, r.Update(context.Background(), instance)
+		return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 	}
 
 	// start injections
+	if err := r.startInjection(instance); err != nil {
+		r.Log.Error(err, "error injecting the disruption", "instance", instance.Name, "namespace", instance.Namespace)
+
+		return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
+	}
+
+	// update resource status injection flag
+	// we reach this line only when every injection pods have been created with success
+	r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+
+	r.Log.Info("updating injection status flag", "instance", instance.Name, "namespace", instance.Namespace)
+	instance.Status.IsInjected = true
+
+	return ctrl.Result{}, r.Update(context.Background(), instance)
+}
+
+// startInjection creates non-existing chaos pod for the given disruption
+func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption) error {
+	var err error
+
 	r.Log.Info("starting targets injection", "instance", instance.Name, "namespace", instance.Namespace, "targets", instance.Status.Targets)
 
 	for _, target := range instance.Status.Targets {
@@ -213,7 +195,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			pod := corev1.Pod{}
 
 			if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
-				return ctrl.Result{}, err
+				return fmt.Errorf("error getting target to inject: %w", err)
 			}
 
 			targetNodeName = pod.Spec.NodeName
@@ -221,7 +203,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			// get ID of targeted container or the first container
 			containerID, err = getContainerID(&pod, instance.Spec.Container)
 			if err != nil {
-				return ctrl.Result{}, err
+				return fmt.Errorf("error getting target pod container ID: %w", err)
 			}
 		case chaostypes.DisruptionLevelNode:
 			targetNodeName = target
@@ -236,21 +218,24 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 		if len(chaosPods) == 0 {
 			r.Recorder.Event(instance, "Warning", "Empty Disruption", fmt.Sprintf("No disruption recognized for \"%s\" therefore no disruption applied.", instance.Name))
+
+			return nil
 		}
 
 		// create injection pods
 		for _, chaosPod := range chaosPods {
 			// link instance resource and injection pod for garbage collection
 			if err := controllerutil.SetControllerReference(instance, chaosPod, r.Scheme); err != nil {
-				return ctrl.Result{}, err
+				return fmt.Errorf("error setting chaos pod owner reference: %w", err)
 			}
 
 			// check if an injection pod already exists for the given (instance, namespace, disruption kind) tuple
 			found, err := r.getChaosPods(instance, chaosPod.Labels)
 			if err != nil {
-				return ctrl.Result{}, err
+				return fmt.Errorf("error getting existing chaos pods: %w", err)
 			}
 
+			// create injection pods if none have been found
 			if len(found) == 0 {
 				r.Log.Info("creating chaos pod", "instance", instance.Name, "namespace", instance.Namespace, "target", target, "spec", chaosPod)
 
@@ -258,7 +243,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 					r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
 					r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, "inject", false))
 
-					return ctrl.Result{}, err
+					return fmt.Errorf("error creating chaos pod: %w", err)
 				}
 
 				// send metrics and events
@@ -266,19 +251,41 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				r.recordEventOnTarget(instance, target, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resourcer for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, "inject", true))
 			} else {
-				r.Log.Info("an injection pod is already existing for the selected pod", "instance", instance.Name, "namespace", instance.Namespace, "target", target)
+				r.Log.Info("an injection pod is already existing for the selected target", "instance", instance.Name, "namespace", instance.Namespace, "target", target)
 			}
 		}
 	}
 
-	// update resource status injection flag
-	// we reach this line only when every injection pods have been created with success
-	r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+	return nil
+}
 
-	r.Log.Info("updating injection status flag", "instance", instance.Name, "namespace", instance.Namespace)
-	instance.Status.IsInjected = true
+// computeHash computes the given instance spec hash and returns true if both hashes (the computed one and the stored one) are the same
+// if it is not present in the instance status yet, the hash is stored and the function returns true
+// if it is present, both hash are compared: if they are different, a modification has been made to the disruption and the function returns false
+func (r *DisruptionReconciler) computeHash(instance *chaosv1beta1.Disruption) (bool, error) {
+	// serialize instance spec to JSON and compute bytes hash
+	specBytes, err := json.Marshal(instance.Spec)
+	if err != nil {
+		return false, fmt.Errorf("error computing instance spec hash: %w", err)
+	}
 
-	return ctrl.Result{}, r.Update(context.Background(), instance)
+	specHash := fmt.Sprintf("%x", md5.Sum(specBytes))
+
+	// compare computed and stored hashes if present
+	// register an event in the instance if hash are different
+	if instance.Status.SpecHash != nil {
+		if *instance.Status.SpecHash != specHash {
+			r.Recorder.Event(instance, "Warning", "Mutated", "A mutation in the disruption spec has been detected. This resource is immutable and changes have no effect. Please delete and re-create the resource for changes to be effective.")
+
+			return false, nil
+		}
+	}
+
+	// store the computed hash
+	r.Log.Info("storing resource spec hash to detect further changes in spec", "instance", instance.Name, "namespace", instance.Namespace)
+	instance.Status.SpecHash = &specHash
+
+	return true, r.Update(context.Background(), instance)
 }
 
 // cleanDisruption triggers the cleanup of the given instance
@@ -365,16 +372,21 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 // targets will only be selected once per instance
 // the chosen targets names will be reflected in the intance status
 // subsequent calls to this function will always return the same targets as the first call
-func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) ([]string, error) {
-	var (
-		err                         error
-		allTargets, selectedTargets []string
-	)
+func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
+	allTargets := []string{}
 
-	err = validateLabelSelector(instance.Spec.Selector.AsSelector())
-	if err != nil {
+	// exit early if we already have targets selected for the given instance
+	if len(instance.Status.Targets) > 0 {
+		return nil
+	}
+
+	r.Log.Info("selecting targets to inject disruption to", "instance", instance.Name, "namespace", instance.Namespace, "selector", instance.Spec.Selector.String())
+
+	// validate the given label selector to avoid any formating issues due to special chars
+	if err := validateLabelSelector(instance.Spec.Selector.AsSelector()); err != nil {
 		r.Recorder.Event(instance, "Warning", "InvalidLabelSelector", fmt.Sprintf("%s. No targets will be selected.", err.Error()))
-		return nil, err
+
+		return err
 	}
 
 	// select either pods or nodes depending on the disruption level
@@ -382,7 +394,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
 		pods, err := r.TargetSelector.GetMatchingPods(r.Client, instance)
 		if err != nil {
-			return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
+			return fmt.Errorf("can't get pods matching the given label selector: %w", err)
 		}
 
 		for _, pod := range pods.Items {
@@ -391,12 +403,19 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	case chaostypes.DisruptionLevelNode:
 		nodes, err := r.TargetSelector.GetMatchingNodes(r.Client, instance)
 		if err != nil {
-			return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
+			return fmt.Errorf("can't get pods matching the given label selector: %w", err)
 		}
 
 		for _, node := range nodes.Items {
 			allTargets = append(allTargets, node.Name)
 		}
+	}
+
+	// return an error if the selector returned no targets
+	if len(allTargets) == 0 {
+		r.Recorder.Event(instance, "Warning", "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
+
+		return fmt.Errorf("the label selector returned no targets")
 	}
 
 	// instance.Spec.Count is a string that either represents a percentage or a value, we do the translation here
@@ -407,36 +426,26 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 	// computed count should not be 0 unless the given count was not expected
 	if targetsCount == 0 {
-		return nil, fmt.Errorf("parsing error, either incorrectly formatted percentage or incorrectly formatted integer: %s\n%w", instance.Spec.Count.String(), err)
+		return fmt.Errorf("parsing error, either incorrectly formatted percentage or incorrectly formatted integer: %s\n%w", instance.Spec.Count.String(), err)
 	}
 
-	// if count is greater than the actual number of matching targets, return all of them
-	if targetsCount >= len(allTargets) {
-		return allTargets, nil
+	// if count is greater than the actual number of matching targets, cap it to avoid any issues
+	if targetsCount > len(allTargets) {
+		targetsCount = len(allTargets)
 	}
 
-	// if we had already selected pods for the instance, only return the already-selected ones
-	if len(instance.Status.Targets) > 0 {
-		for _, target := range allTargets {
-			if containsString(instance.Status.Targets, target) {
-				selectedTargets = append(selectedTargets, target)
-			}
-		}
-
-		return selectedTargets, nil
-	}
-
-	// otherwise, randomly select targets within the list of targets
-	// and take care to remove it from the list once done
+	// randomly pick up targets from the found ones
 	for i := 0; i < targetsCount; i++ {
 		index := rand.Intn(len(allTargets))
 		selectedTarget := allTargets[index]
-		selectedTargets = append(selectedTargets, selectedTarget)
+		instance.Status.Targets = append(instance.Status.Targets, selectedTarget)
 		allTargets[len(allTargets)-1], allTargets[index] = allTargets[index], allTargets[len(allTargets)-1]
 		allTargets = allTargets[:len(allTargets)-1]
 	}
 
-	return selectedTargets, nil
+	r.Log.Info("updating instance status with targets selected for injection", "instance", instance.Name, "namespace", instance.Namespace)
+
+	return r.Update(context.Background(), instance)
 }
 
 // getChaosPods returns chaos pods owned by the given instance and having the given labels
