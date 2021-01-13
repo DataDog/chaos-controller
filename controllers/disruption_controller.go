@@ -278,13 +278,15 @@ func (r *DisruptionReconciler) computeHash(instance *chaosv1beta1.Disruption) (b
 
 			return false, nil
 		}
+	} else {
+		// store the computed hash
+		r.Log.Info("storing resource spec hash to detect further changes in spec", "instance", instance.Name, "namespace", instance.Namespace)
+		instance.Status.SpecHash = &specHash
+
+		return true, r.Update(context.Background(), instance)
 	}
 
-	// store the computed hash
-	r.Log.Info("storing resource spec hash to detect further changes in spec", "instance", instance.Name, "namespace", instance.Namespace)
-	instance.Status.SpecHash = &specHash
-
-	return true, r.Update(context.Background(), instance)
+	return true, nil
 }
 
 // cleanDisruption triggers the cleanup of the given instance
