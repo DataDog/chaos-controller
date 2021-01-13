@@ -97,11 +97,12 @@ jobs:
   manifests:
     executor: golang
     steps:
-    - run:
-      name: Ensure manifests are checked into git
-      command: |
-        make manifests
-        git diff --exit-code
+      - go_restore_cache
+      - run:
+          name: Ensure manifests are checked into git
+          command: |
+            make manifests
+            git diff --exit-code
   # vets the code
   vet:
     executor: golang
