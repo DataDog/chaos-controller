@@ -94,6 +94,16 @@ jobs:
           command: |
             go mod tidy
             git diff --exit-code
+  # this will fail if changes in packages are checked into git but the updated manifests are not
+  manifests:
+    executor: golang
+    steps:
+      - go_restore_cache
+      - run:
+          name: Ensure manifests are checked into git
+          command: |
+            make manifests
+            git diff --exit-code
   # vets the code
   vet:
     executor: golang
@@ -146,6 +156,9 @@ workflows:
     jobs:
       - prepare-env
       - dependencies:
+          requires:
+            - prepare-env
+      - manifests:
           requires:
             - prepare-env
       - vet:
