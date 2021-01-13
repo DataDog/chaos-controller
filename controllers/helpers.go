@@ -101,18 +101,6 @@ func getIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error)
 	return 0, false, fmt.Errorf("invalid type: neither int nor percentage")
 }
 
-// containsString returns true if the given slice contains the given string,
-// or returns false otherwise
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-
-	return false
-}
-
 // assert label selector matches valid grammar, avoids CORE-414
 func validateLabelSelector(selector labels.Selector) error {
 	labelGrammar := "([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]"
