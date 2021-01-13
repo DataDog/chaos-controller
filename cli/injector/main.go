@@ -174,7 +174,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		log.Errorw("disruption injection failed", "error", err)
 	} else {
 		// create and write readiness probe file if injection succeeded so the pod is marked as ready
-		if err := ioutil.WriteFile(readinessProbeFile, []byte("1"), 0644); err != nil {
+		if err := ioutil.WriteFile(readinessProbeFile, []byte("1"), 0400); err != nil {
 			log.Errorw("error writing readiness probe file", "error", err)
 		}
 
