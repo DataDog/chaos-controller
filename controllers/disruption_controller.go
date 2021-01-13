@@ -25,6 +25,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"reflect"
@@ -264,7 +265,7 @@ func (r *DisruptionReconciler) computeHash(instance *chaosv1beta1.Disruption) (b
 	// serialize instance spec to JSON and compute bytes hash
 	specBytes, err := json.Marshal(instance.Spec)
 	if err != nil {
-		return false, fmt.Errorf("error computing instance spec hash: %w", err)
+		return false, fmt.Errorf("error serializing instance spec: %w", err)
 	}
 
 	specHash := fmt.Sprintf("%x", md5.Sum(specBytes))
@@ -427,10 +428,8 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		return fmt.Errorf("parsing error, either incorrectly formatted percentage or incorrectly formatted integer: %s\n%w", instance.Spec.Count.String(), err)
 	}
 
-	// if count is greater than the actual number of matching targets, cap it to avoid any issues
-	if targetsCount > len(allTargets) {
-		targetsCount = len(allTargets)
-	}
+	// if the asked targets count is greater than the amount of found targets, we take all of them
+	targetsCount = int(math.Min(float64(targetsCount), float64(len(allTargets))))
 
 	// randomly pick up targets from the found ones
 	for i := 0; i < targetsCount; i++ {
