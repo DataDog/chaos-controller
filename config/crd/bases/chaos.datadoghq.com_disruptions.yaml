@@ -141,6 +141,14 @@ spec:
         status:
           description: DisruptionStatus defines the observed state of Disruption
           properties:
+            injectionStatus:
+              description: DisruptionInjectionStatus represents the injection status
+                of a disruption
+              enum:
+              - NotInjected
+              - PartiallyInjected
+              - Injected
+              type: string
             isInjected:
               type: boolean
             isStuckOnRemoval:
