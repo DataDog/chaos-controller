@@ -94,6 +94,14 @@ jobs:
           command: |
             go mod tidy
             git diff --exit-code
+  manifests:
+    executor: golang
+    steps:
+    - run:
+      name: Ensure manifests are checked into git
+      command: |
+        make manifests
+        git diff --exit-code
   # vets the code
   vet:
     executor: golang
@@ -146,6 +154,9 @@ workflows:
     jobs:
       - prepare-env
       - dependencies:
+          requires:
+            - prepare-env
+      - manifests:
           requires:
             - prepare-env
       - vet:
