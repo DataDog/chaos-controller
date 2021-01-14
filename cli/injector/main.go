@@ -132,7 +132,7 @@ func initConfig() {
 			log.Fatalw("can't create container object", "error", err)
 		}
 
-		log.Infow("injector targeting container", "containerID", containerID)
+		log.Infow("injector targeting container", "containerID", containerID, "container labels", ctn.Labels())
 
 		cgroupPath = ctn.CgroupPath()
 		pid = ctn.PID()

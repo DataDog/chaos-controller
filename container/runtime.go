@@ -11,4 +11,5 @@ type Runtime interface {
 	PID(id string) (uint32, error)
 	CgroupPath(id string) (string, error)
 	HostPath(id, path string) (string, error)
+	Labels(id string) (map[string]string, error)
 }

@@ -28,6 +28,15 @@ func newDockerRuntime() (Runtime, error) {
 	return &dockerRuntime{client: c}, nil
 }
 
+func (d dockerRuntime) Labels(id string) (map[string]string, error) {
+	// ci, err := d.client.ContainerInspect(context.Background(), id)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error while loading given container: %w", err)
+	// }
+
+	return nil, nil
+}
+
 func (d dockerRuntime) PID(id string) (uint32, error) {
 	ci, err := d.client.ContainerInspect(context.Background(), id)
 	if err != nil {
