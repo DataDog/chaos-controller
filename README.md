@@ -7,7 +7,7 @@ The `controller` is deployed as a `Deployment`. It watches for changes on the `D
 ## Table of Contents
 
 * [Usage](#usage)
-* [Installation](#installation)
+* [Controller Installation](#controller-installation)
 * [Design](docs/design.md)
 * [Metrics](docs/metrics.md)
 * [FAQ](docs/faq.md)
