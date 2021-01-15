@@ -163,18 +163,87 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
 		}
 
-		// update resource status injection flag
-		// we reach this line only when every injection pods have been created with success
-		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+		// update resource status injection
+		// requeue the request if the disruption is not fully injected yet
+		injected, err := r.updateInjectionStatus(instance)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
+		} else if !injected {
+			r.Log.Info("disruption is not fully injected yet, requeing", "instance", instance.Name, "namespace", instance.Namespace)
 
-		r.Log.Info("updating injection status flag", "instance", instance.Name, "namespace", instance.Namespace)
-		instance.Status.IsInjected = true
+			return ctrl.Result{Requeue: true}, nil
+		}
+
+		// send injection duration metric representing the time it took to fully inject the disruption until its creation
+		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
 
 		return ctrl.Result{}, r.Update(context.Background(), instance)
 	}
 
 	// stop the reconcile loop, there's nothing else to do
 	return ctrl.Result{}, nil
+}
+
+// updateInjectionStatus updates the given instance injection status depending on its chaos pods statuses
+// - an instance with all chaos pods "ready" is considered as "injected"
+// - an instance with at least one chaos pod as "ready" is considered as "partially injected"
+// - an instance with no ready chaos pods is considered as "not injected"
+func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disruption) (bool, error) {
+	r.Log.Info("updating injection status", "instance", instance.Name, "namespace", instance.Namespace)
+
+	status := chaostypes.DisruptionInjectionStatusNotInjected
+	allReady := true
+
+	// get chaos pods
+	chaosPods, err := r.getChaosPods(instance, nil)
+	if err != nil {
+		return false, fmt.Errorf("error getting instance chaos pods: %w", err)
+	}
+
+	// check the chaos pods conditions looking for the ready condition
+	for _, chaosPod := range chaosPods {
+		podReady := false
+
+		// search for the "Ready" condition in the pod conditions
+		// consider the disruption "partially injected" if we found at least one ready pod
+		for _, cond := range chaosPod.Status.Conditions {
+			if cond.Type == corev1.PodReady {
+				if cond.Status == corev1.ConditionTrue {
+					podReady = true
+					status = chaostypes.DisruptionInjectionStatusPartiallyInjected
+
+					break
+				}
+			}
+		}
+
+		// consider the disruption as not fully injected if at least one not ready pod is found
+		if !podReady {
+			r.Log.Info("chaos pod is not ready yet", "instance", instance.Name, "namespace", instance.Namespace, "chaosPod", chaosPod.Name)
+
+			allReady = false
+		}
+	}
+
+	// consider the disruption as fully injected when all pods are ready
+	if allReady {
+		status = chaostypes.DisruptionInjectionStatusInjected
+	}
+
+	// update instance status
+	instance.Status.InjectionStatus = status
+
+	if err := r.Client.Update(context.Background(), instance); err != nil {
+		return false, err
+	}
+
+	// requeue the request if the disruption is not fully injected so we can
+	// eventually catch pods that are not ready yet but will be in the future
+	if status != chaostypes.DisruptionInjectionStatusInjected {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // startInjection creates non-existing chaos pod for the given disruption

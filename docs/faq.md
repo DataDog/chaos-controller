@@ -1,5 +1,13 @@
 # FAQ
 
+## How can I know if my disruption has been successfully injected or not?
+
+A disruption has an `Injection Status` field in its status that you can see by describing the resource. It can take the following values:
+
+* `NotInjected` when the disruption is not injected yet (no targets are affected)
+* `PartiallyInjected` when the disruption is not fully injected yet (at least one target is affected)
+* `Injected` when the disruption is fully injected (all targets are affected)
+
 ## How can I debug a disruption?
 
 Applying a disruption creates a bunch of pods to inject and clean it. Those are created in the same namespace as the disruption. You can look at the logs of those pods to understand what happened.
