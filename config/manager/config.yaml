@@ -84,6 +84,13 @@ data:
                 "memory": 0,
                 "cpu": 0
               }
+            },
+            "readinessProbe": {
+              "exec": {
+                "command": ["cat", "/tmp/readiness_probe"]
+              },
+              "periodSeconds": 1,
+              "failureThreshold": 5
             }
           }
         ],
