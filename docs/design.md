@@ -40,6 +40,16 @@ The list of targets is then added to the disruption resource status. An event is
 
 For each target and disruption kind (network, disk pressure, cpu pressure, etc.), one chaos pod is created (running the injector image). A chaos pod is always scheduled on the same node as the target. It will inject the disruption depending on the given parameters and will sleep, catching any exit signal (`SIGINT` or `SIGTERM`). A finalizer is also added to each chaos pod, preventing it to be garbage collected by Kubernetes during the cleanup phase.
 
+#### Step 5: update injection status
+
+The disruption injection status can take 3 different values:
+
+* `NotInjected` when none of the chaos pods have successfully injected the disruption yet
+* `PartiallyInjected` when at least one of the chaos pods has successfully injected the disruption
+* `Injected` when all chaos pods have successfully injected the disruption
+
+This status is being updated regularly until it reaches the `Injected` status. To evaluate if an injection went well or not, each chaos pod has a readiness probe looking for a file named `/tmp/readiness_probe`. This file is created by the injector when the injection is successful.
+
 ### Cleanup phase (on disruption resource deletion)
 
 #### Step 1: clean disruptions
@@ -79,7 +89,7 @@ It then enters the pre-run phase, initializing the injector itself depending on 
 
 ### Step 3: run (inject and wait)
 
-Once the injector is initialized, the injection starts. Once done, the injector sleeps listening to any signal arriving into the signal handler. At this point, nothing else will happen until a signal arrives, triggering the cleanup phase.
+Once the injector is initialized, the injection starts. Once done, the injector creates the `/tmp/readiness_probe` file to validate the readiness probe and then sleeps listening to any signal arriving into the signal handler. At this point, nothing else will happen until a signal arrives, triggering the cleanup phase.
 
 If an error occurs during the injection, it logs it but does not exit. It allows to injector to clean partially injected disruptions.
 
