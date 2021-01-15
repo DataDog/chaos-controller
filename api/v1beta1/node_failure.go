@@ -14,6 +14,11 @@ type NodeFailureSpec struct {
 	Shutdown bool `json:"shutdown,omitempty"`
 }
 
+// Validate validates args for the given disruption
+func (s *NodeFailureSpec) Validate() error {
+	return nil
+}
+
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
 func (s *NodeFailureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string) []string {
 	args := []string{
