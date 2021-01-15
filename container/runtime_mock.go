@@ -37,5 +37,5 @@ func (f *RuntimeMock) HostPath(id, path string) (string, error) {
 func (f *RuntimeMock) Labels(id string) (map[string]string, error) {
 	args := f.Called(id)
 
-	return map[string]string{args.String(0): args.String(0)}, args.Error(1)
+	return args.Get(0).(map[string]string), args.Error(1)
 }
