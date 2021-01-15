@@ -27,11 +27,6 @@ var networkDisruptionCmd = &cobra.Command{
 		delayJitter, _ := cmd.Flags().GetUint("delay-jitter")
 		bandwidthLimit, _ := cmd.Flags().GetInt("bandwidth-limit")
 
-		// check that at least one disruption has been specified
-		if drop == 0 && corrupt == 0 && delay == 0 && bandwidthLimit == 0 && duplicate == 0 {
-			log.Fatal("at least one disruption must be specified")
-		}
-
 		// prepare injection object
 		spec := v1beta1.NetworkDisruptionSpec{
 			Hosts:          hosts,

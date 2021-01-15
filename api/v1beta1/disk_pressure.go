@@ -6,6 +6,7 @@
 package v1beta1
 
 import (
+	"errors"
 	"strconv"
 
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -21,6 +22,15 @@ type DiskPressureSpec struct {
 type DiskPressureThrottlingSpec struct {
 	ReadBytesPerSec  *int `json:"readBytesPerSec,omitempty"`
 	WriteBytesPerSec *int `json:"writeBytesPerSec,omitempty"`
+}
+
+// Validate validates args for the given disruption
+func (s *DiskPressureSpec) Validate() error {
+	if s.Throttling.ReadBytesPerSec != nil && s.Throttling.WriteBytesPerSec != nil {
+		return errors.New("the disk pressure disruption was selected, but no throttling values were set. Please set at least one of: readBytesPerSec, or writeBytesPerSec. No injection will occur")
+	}
+
+	return nil
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec

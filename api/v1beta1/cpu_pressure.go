@@ -13,6 +13,11 @@ import (
 type CPUPressureSpec struct {
 }
 
+// Validate validates args for the given disruption
+func (s *CPUPressureSpec) Validate() error {
+	return nil
+}
+
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
 func (s *CPUPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string, dryRun bool) []string {
 	args := []string{
