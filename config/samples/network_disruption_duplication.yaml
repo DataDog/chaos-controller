@@ -18,4 +18,4 @@ spec:
     port: 80 # optional, port to drop packets on
     protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
     flow: egress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
-    duplicate: 50 # optional, probability to duplicate packets (between 0 and 100)
+    duplicate: 50 # "mandatory", at least one of `bandwidthLimit`, `delay`, `drop`, `corrupt`, or `duplicate` must be specified; probability to duplicate packets (between 0 and 100)
