@@ -66,6 +66,8 @@ spec:
               - path
               - throttling
               type: object
+            dryRun:
+              type: boolean
             level:
               description: DisruptionLevel represents which level the disruption should
                 be injected at

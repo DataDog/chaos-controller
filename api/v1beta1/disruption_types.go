@@ -32,7 +32,8 @@ type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
 	// +kubebuilder:validation:Required
-	Selector labels.Set `json:"selector"` // label selector
+	Selector labels.Set `json:"selector"`         // label selector
+	DryRun   bool       `json:"dryRun,omitempty"` // enable dry-run mode
 	// +kubebuilder:validation:Enum=pod;node;""
 	Level     chaostypes.DisruptionLevel `json:"level,omitempty"`
 	Container string                     `json:"container,omitempty"`

@@ -38,6 +38,7 @@ var rootCmd = &cobra.Command{
 
 var (
 	log         *zap.SugaredLogger
+	dryRun      bool
 	ms          metrics.Sink
 	sink        string
 	level       string
@@ -52,6 +53,7 @@ func init() {
 	rootCmd.AddCommand(nodeFailureCmd)
 	rootCmd.AddCommand(cpuPressureCmd)
 	rootCmd.AddCommand(diskPressureCmd)
+	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Enable dry-run mode")
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
 	rootCmd.PersistentFlags().StringVar(&containerID, "container-id", "", "Targeted container ID")
@@ -112,6 +114,11 @@ func initConfig() {
 		ctn        container.Container
 	)
 
+	// log when dry-run mode is enabled
+	if dryRun {
+		log.Warn("dry run mode enabled, no disruption will be injected but most of the commands will still be executed to simulate it as much as possible")
+	}
+
 	switch level {
 	case chaostypes.DisruptionLevelPod:
 		// check for container ID flag
@@ -135,7 +142,7 @@ func initConfig() {
 	}
 
 	// create cgroup manager
-	cgroupMgr, err := cgroup.NewManager(cgroupPath)
+	cgroupMgr, err := cgroup.NewManager(dryRun, cgroupPath)
 	if err != nil {
 		log.Fatalw("error creating cgroup manager", "error", err)
 	}
@@ -147,6 +154,7 @@ func initConfig() {
 	}
 
 	config = injector.Config{
+		DryRun:      dryRun,
 		Log:         log,
 		MetricsSink: ms,
 		Level:       chaostypes.DisruptionLevel(level),

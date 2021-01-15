@@ -24,7 +24,7 @@ type DiskPressureThrottlingSpec struct {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string) []string {
+func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string, dryRun bool) []string {
 	args := []string{
 		"disk-pressure",
 		"--metrics-sink",
@@ -35,6 +35,11 @@ func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, contai
 		containerID,
 		"--path",
 		s.Path,
+	}
+
+	// enable dry-run mode
+	if dryRun {
+		args = append(args, "--dry-run")
 	}
 
 	// add read throttling flag if specified
