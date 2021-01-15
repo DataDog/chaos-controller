@@ -29,12 +29,12 @@ func newDockerRuntime() (Runtime, error) {
 }
 
 func (d dockerRuntime) Labels(id string) (map[string]string, error) {
-	// ci, err := d.client.ContainerInspect(context.Background(), id)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error while loading given container: %w", err)
-	// }
+	ci, err := d.client.ContainerInspect(context.Background(), id)
+	if err != nil {
+		return nil, fmt.Errorf("error while loading given container: %w", err)
+	}
 
-	return nil, nil
+	return map[string]string{"Name": ci.ContainerJSONBase.Name}, nil
 }
 
 func (d dockerRuntime) PID(id string) (uint32, error) {
