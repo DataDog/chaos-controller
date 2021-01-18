@@ -14,10 +14,17 @@ type FileWriter interface {
 }
 
 // standardFileWriter implements the FileWriter interface
-type standardFileWriter struct{}
+type standardFileWriter struct {
+	dryRun bool
+}
 
 // Write writes the given data to the given file
 func (fw standardFileWriter) Write(path string, mode os.FileMode, data string) error {
+	// early exit if dry-run mode is enabled
+	if fw.dryRun {
+		return nil
+	}
+
 	f, err := os.OpenFile(path, os.O_WRONLY, mode)
 	if err != nil {
 		return err

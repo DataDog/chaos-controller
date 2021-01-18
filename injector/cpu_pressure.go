@@ -33,7 +33,7 @@ type CPUPressureInjectorConfig struct {
 func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInjectorConfig) Injector {
 	// create stresser
 	if config.Stresser == nil {
-		config.Stresser = stress.NewCPU(runtime.NumCPU())
+		config.Stresser = stress.NewCPU(config.DryRun, runtime.NumCPU())
 	}
 
 	if config.StresserExit == nil {

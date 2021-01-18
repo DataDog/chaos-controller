@@ -44,7 +44,8 @@ type tcExecuter interface {
 }
 
 type defaultTcExecuter struct {
-	log *zap.SugaredLogger
+	log    *zap.SugaredLogger
+	dryRun bool
 }
 
 // Run executes the given args using the tc command
@@ -61,6 +62,11 @@ func (e defaultTcExecuter) Run(args ...string) (int, string, error) {
 	// run command
 	e.log.Infof("running tc command: %v", cmd.String())
 
+	// early exit if dry-run mode is enabled
+	if e.dryRun {
+		return 0, "", nil
+	}
+
 	err := cmd.Run()
 	if err != nil {
 		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
@@ -75,10 +81,11 @@ type tc struct {
 
 // NewTrafficController creates a standard traffic controller using tc
 // and being able to log
-func NewTrafficController(log *zap.SugaredLogger) TrafficController {
+func NewTrafficController(log *zap.SugaredLogger, dryRun bool) TrafficController {
 	return tc{
 		executer: defaultTcExecuter{
-			log: log,
+			log:    log,
+			dryRun: dryRun,
 		},
 	}
 }

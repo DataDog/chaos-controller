@@ -8,18 +8,27 @@ package stress
 import "runtime"
 
 type cpu struct {
+	dryRun   bool
 	routines int
 }
 
 // NewCPU creates a CPU stresser
-func NewCPU(routines int) Stresser {
+func NewCPU(dryRun bool, routines int) Stresser {
 	return cpu{
+		dryRun:   dryRun,
 		routines: routines,
 	}
 }
 
 // Stress starts X goroutines loading CPU
 func (c cpu) Stress(exit <-chan struct{}) {
+	// early exit if dry-run mode is enabled
+	if c.dryRun {
+		<-exit
+
+		return
+	}
+
 	// routines exit channels
 	chs := make([]chan struct{}, c.routines)
 

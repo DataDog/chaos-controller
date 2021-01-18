@@ -17,6 +17,14 @@ The `controller` is deployed as a `Deployment`. It watches for changes on the `D
 
 The controller works with a custom Kubernetes resource named `Disruption` describing the wanted failures and the pods/nodes to target. By creating this resource in the namespace of the pods (no matter the namespace for nodes) you want to affect, it'll create pods to inject the needed failures. On `Disruption` resource delete, those failures will be cleaned up by those same pods.
 
+*Do not hesitate to apply disruptions with the dry-run mode enabled to do your tests!*
+
+### Dry-run mode
+
+First of all, you can enable the dry-run mode on any disruption to fake the injection if you are not sure about what you're doing. The dry-run mode will still select targets, create chaos pods and simulate the disruption as much as possible. It means that all "read" operations (like knowing which network interface to disrupt) will be executed while all "write" operations won't be (like creating what's needed to drop packets).
+
+It can be enabled by adding the `dryRun: true` field to the disruption spec. Please look at [the complete example](config/samples/complete.yaml) for more information.
+
 ### Level
 
 A disruption can be applied either at the `pod` level or at the `node` level:

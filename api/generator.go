@@ -11,5 +11,5 @@ import (
 
 // DisruptionArgsGenerator generates args for the given disruption
 type DisruptionArgsGenerator interface {
-	GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string) []string
+	GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string, dryRun bool) []string
 }
