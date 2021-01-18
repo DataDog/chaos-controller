@@ -71,14 +71,14 @@ docker-build-manager: minikube-ssh-host manager
 	docker build -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
 	docker save -o out/manager.tar ${MANAGER_IMAGE}
 	scp -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/manager.tar docker@$$(minikube ip):/tmp
-	minikube ssh -- sudo ctr cri load /tmp/manager.tar
+	minikube ssh -- sudo ctr -n=k8s.io images import /tmp/manager.tar
 
 docker-build-injector: minikube-ssh-host injector
 	mkdir -p out
 	docker build -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
 	docker save -o out/injector.tar ${INJECTOR_IMAGE}
 	scp -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/injector.tar docker@$$(minikube ip):/tmp
-	minikube ssh -- sudo ctr cri load /tmp/injector.tar
+	minikube ssh -- sudo ctr -n=k8s.io images import /tmp/injector.tar
 
 docker-build: docker-build-manager docker-build-injector
 
