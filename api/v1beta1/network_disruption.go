@@ -57,7 +57,7 @@ func (s *NetworkDisruptionSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string) []string {
+func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string, dryRun bool) []string {
 	args := []string{
 		"network-disruption",
 		"--metrics-sink",
@@ -80,6 +80,11 @@ func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, c
 		strconv.Itoa(int(s.DelayJitter)),
 		"--bandwidth-limit",
 		strconv.Itoa(s.BandwidthLimit),
+	}
+
+	// enable dry-run mode
+	if dryRun {
+		args = append(args, "--dry-run")
 	}
 
 	// append protocol

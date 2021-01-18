@@ -32,7 +32,9 @@ type NodeFailureInjectorConfig struct {
 // missing fields being initialized with the defaults
 func NewNodeFailureInjector(spec v1beta1.NodeFailureSpec, config NodeFailureInjectorConfig) (Injector, error) {
 	if config.FileWriter == nil {
-		config.FileWriter = standardFileWriter{}
+		config.FileWriter = standardFileWriter{
+			dryRun: config.DryRun,
+		}
 	}
 
 	// retrieve mount path environment variables

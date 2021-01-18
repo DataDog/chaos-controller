@@ -19,7 +19,7 @@ func (s *CPUPressureSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *CPUPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string) []string {
+func (s *CPUPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string, dryRun bool) []string {
 	args := []string{
 		"cpu-pressure",
 		"--metrics-sink",
@@ -28,6 +28,11 @@ func (s *CPUPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, contain
 		string(level),
 		"--container-id",
 		containerID,
+	}
+
+	// enable dry-run mode
+	if dryRun {
+		args = append(args, "--dry-run")
 	}
 
 	return args

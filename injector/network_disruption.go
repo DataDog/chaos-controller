@@ -43,7 +43,7 @@ type NetworkDisruptionInjectorConfig struct {
 // missing field being initialized with the defaults
 func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config NetworkDisruptionInjectorConfig) Injector {
 	if config.TrafficController == nil {
-		config.TrafficController = network.NewTrafficController(config.Log)
+		config.TrafficController = network.NewTrafficController(config.Log, config.DryRun)
 	}
 
 	if config.NetlinkAdapter == nil {

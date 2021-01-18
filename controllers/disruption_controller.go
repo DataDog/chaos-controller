@@ -424,7 +424,7 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 			if chaosPod.Status.Phase == corev1.PodRunning || chaosPod.Status.Phase == corev1.PodPending {
 				r.Log.Info("terminating chaos pod to trigger cleanup", "instance", instance.Name, "target", target, "chaosPod", chaosPod.Name)
 
-				if err := r.Client.Delete(context.Background(), &chaosPod); err != nil {
+				if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
 					r.Log.Error(err, "error terminating chaos pod", "instance", instance.Name, "target", target, "chaosPod", chaosPod.Name)
 				}
 			}
@@ -665,7 +665,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		}
 
 		// generate args for pod
-		args := generator.GenerateArgs(level, containerID, r.MetricsSink.GetSinkName())
+		args := generator.GenerateArgs(level, containerID, r.MetricsSink.GetSinkName(), instance.Spec.DryRun)
 
 		// generate pod
 		pod, err := r.generatePod(instance, targetName, targetNodeName, args, kind)
