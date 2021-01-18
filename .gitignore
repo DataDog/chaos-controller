@@ -28,3 +28,8 @@ dist
 
 # other
 .venv
+
+# packer
+packer_cache/
+crash.log
+*.json-e
