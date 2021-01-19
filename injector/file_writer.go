@@ -25,7 +25,7 @@ func (fw standardFileWriter) Write(path string, mode os.FileMode, data string) e
 		return nil
 	}
 
-	f, err := os.OpenFile(path, os.O_WRONLY, mode)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, mode)
 	if err != nil {
 		return err
 	}

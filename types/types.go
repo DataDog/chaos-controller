@@ -19,6 +19,8 @@ const (
 	TargetLabel = "chaos.datadoghq.com/target"
 	// TargetPodHostIPEnv is the target pod host IP environment variable name
 	TargetPodHostIPEnv = "TARGET_POD_HOST_IP"
+	// ChaosPodIPEnv is the chaos pod's own IP environment variable name
+	ChaosPodIPEnv = "CHAOS_POD_IP"
 
 	// DisruptionKindLabel is the label used to identify the disruption kind for a chaos pod
 	DisruptionKindLabel = "chaos.datadoghq.com/disruption-kind"
@@ -30,6 +32,8 @@ const (
 	DisruptionKindCPUPressure = "cpu-pressure"
 	// DisruptionKindDiskPressure is a disk pressure disruption
 	DisruptionKindDiskPressure = "disk-pressure"
+	// DisruptionKindDNSDisruption is a dns disruption
+	DisruptionKindDNSDisruption = "dns-disruption"
 
 	// DisruptionLevelUnspecified is the value used when the level of injection is not specified
 	DisruptionLevelUnspecified = ""
@@ -56,5 +60,6 @@ var (
 		DisruptionKindNodeFailure,
 		DisruptionKindCPUPressure,
 		DisruptionKindDiskPressure,
+		DisruptionKindDNSDisruption,
 	}
 )
