@@ -34,8 +34,8 @@ func (f *RuntimeMock) HostPath(id, path string) (string, error) {
 }
 
 //nolint:golint
-func (f *RuntimeMock) Labels(id string) (map[string]string, error) {
+func (f *RuntimeMock) Name(id string) (string, error) {
 	args := f.Called(id)
 
-	return args.Get(0).(map[string]string), args.Error(1)
+	return args.String(0), args.Error(1)
 }

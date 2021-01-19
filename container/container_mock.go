@@ -42,8 +42,8 @@ func (f *ContainerMock) PID() uint32 {
 }
 
 //nolint:golint
-func (f *ContainerMock) Labels() map[string]string {
+func (f *ContainerMock) Name() string {
 	args := f.Called()
 
-	return args.Get(0).(map[string]string)
+	return args.String(0)
 }
