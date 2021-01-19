@@ -18,13 +18,12 @@ sed -i'' -e "s/my-ip/$(curl ifconfig.me)/" packer.json
 Fill out values in `packer.json` for _profile_, _vpc_id_ and _subnet_id_
 
 ```
-aws-vault exec staging-engineering -- packer build packer.json
+packer build packer.json
 ```
 
 The process of building the minikube ISO can take a couple hours. Be patient.
 
 The completed minikube ISO will be copied to your local host at /tmp/minikube.iso
-
 
 
 ## Uploading the Image
