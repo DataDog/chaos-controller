@@ -26,7 +26,7 @@ type DiskPressureThrottlingSpec struct {
 
 // Validate validates args for the given disruption
 func (s *DiskPressureSpec) Validate() error {
-	if s.Throttling.ReadBytesPerSec != nil && s.Throttling.WriteBytesPerSec != nil {
+	if s.Throttling.ReadBytesPerSec == nil && s.Throttling.WriteBytesPerSec == nil {
 		return errors.New("the disk pressure disruption was selected, but no throttling values were set. Please set at least one of: readBytesPerSec, or writeBytesPerSec. No injection will occur")
 	}
 
