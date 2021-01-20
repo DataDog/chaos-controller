@@ -128,8 +128,10 @@ var _ = Describe("Disruption Controller", func() {
 				},
 				CPUPressure: &chaosv1beta1.CPUPressureSpec{},
 				DiskPressure: &chaosv1beta1.DiskPressureSpec{
-					Path:       "/mnt/foo",
-					Throttling: chaosv1beta1.DiskPressureThrottlingSpec{},
+					Path: "/mnt/foo",
+					Throttling: chaosv1beta1.DiskPressureThrottlingSpec{
+						ReadBytesPerSec: func() *int { i := int(1); return &i }(),
+					},
 				},
 			},
 		}
