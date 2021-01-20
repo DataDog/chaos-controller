@@ -31,6 +31,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -310,8 +311,9 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 			// create injection pods if none have been found
 			if len(found) == 0 {
-				r.Log.Info("creating chaos pod", "instance", instance.Name, "namespace", instance.Namespace, "target", target, "spec", chaosPod)
+				r.Log.Info("creating chaos pod", "instance", instance.Name, "namespace", instance.Namespace, "target", target)
 
+				// create the pod
 				if err = r.Create(context.Background(), chaosPod); err != nil {
 					r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
 					r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, "inject", false))
@@ -319,17 +321,41 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 					return fmt.Errorf("error creating chaos pod: %w", err)
 				}
 
+				// wait for the pod to be existing
+				if err := r.waitForPodCreation(chaosPod); err != nil {
+					r.Log.Error(err, "error waiting for chaos pod to be created", "instance", instance.Name, "namespace", instance.Namespace, "chaosPod", chaosPod.Name, "target", target)
+
+					continue
+				}
+
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
 				r.recordEventOnTarget(instance, target, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resourcer for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, "inject", true))
 			} else {
-				r.Log.Info("an injection pod is already existing for the selected target", "instance", instance.Name, "namespace", instance.Namespace, "target", target)
+				r.Log.Info("an injection pod is already existing for the selected target", "instance", instance.Name, "namespace", instance.Namespace, "target", target, "chaosPod", chaosPod.Name)
 			}
 		}
 	}
 
 	return nil
+}
+
+// waitForPodCreation waits for the given pod to be created
+// it tries to get the pod every second until it is able to retrieve it
+// if an unexpected error occurs (an error other than a "not found" error), the retry loop is stopped
+func (r *DisruptionReconciler) waitForPodCreation(pod *corev1.Pod) error {
+	expBackoff := backoff.NewExponentialBackOff()
+	expBackoff.MaxInterval = time.Second
+
+	return backoff.Retry(func() error {
+		err := r.Get(context.Background(), types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, pod)
+		if client.IgnoreNotFound(err) != nil {
+			return backoff.Permanent(err)
+		}
+
+		return err
+	}, expBackoff)
 }
 
 // computeHash computes the given instance spec hash and returns true if both hashes (the computed one and the stored one) are the same
