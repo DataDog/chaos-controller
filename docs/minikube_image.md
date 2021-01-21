@@ -10,69 +10,21 @@ To work around this, we've created a custom Minikube ISO that contains not only 
 
 ## Creating the Image
 
-### [MacOS only] Prepare your environment
-
-*Note: because of MacOS filesystem, you'll need to create a case-sensitive disk-image to build the ISO, otherwise it will fail.*
-
-#### Create a case-sensitive disk-image
-
-Copy [this script](https://gist.github.com/dixson3/8360571) in `/usr/local/bin/workspace`. Then, run the `workspace create` and `workspace attach` commands.
-
-#### Create the Vagrant machine
-
-Create the following `/Volumes/workspace/Vagrantfile` file:
-
-```ruby
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
-
-Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/bionic64"
-  config.vm.provider "virtualbox" do |vb|
-    vb.memory = "16384"
-    vb.cpus = 8
-  end
-end
+```
+cd hack
+sed -i'' -e "s/my-ip/$(curl ifconfig.me)/" packer.json
 ```
 
-Adjust the `vb.memory` and `vb.cpus` values to match your computer values so the virtual machine can use as much resources as possible for a faster build and run the `vagrant up` command to create and start it.
-
-Once up and running, run the `vagrant ssh` command to SSH into the VM and run the `cd /vagrant` command to enter the mount point shared with your computer.
-
-*Note: all commands below should be run from the /vagrant folder when using vagrant.*
-
-### Install requirements
-
-Follow the [prerequisites](https://minikube.sigs.k8s.io/docs/contrib/building/iso/#prerequisites) documentation to install needed components.
-
-### Clone the repository using the right version
-
-First, clone the Minikube Git repository **and checkout a released version**, not master:
-
-```bash
-git clone https://github.com/kubernetes/minikube.git
-cd minikube/
-git checkout 93af9c1 # version 1.9.2
-```
-
-### Configure additional kernel modules
-
-Edit the `./deploy/iso/minikube-iso/board/coreos/minikube/linux_defconfig` file and add the follow lines at the end of the file:
+Fill out values in `packer.json` for _profile_, _vpc_id_ and _subnet_id_
 
 ```
-CONFIG_NET_SCH_PRIO=y
-CONFIG_BLK_DEV_THROTTLING=y
+packer build packer.json
 ```
 
-### Build the ISO
+The process of building the minikube ISO can take a couple hours. Be patient.
 
-Finally, run the `IN_DOCKER=1 make out/minikube.iso` command to start the build. Please note that the image can be extremely long to build.
+The completed minikube ISO will be copied to your local host at /tmp/minikube.iso
 
-### [MacOS only] Cleanup
-
-* Copy the `/Volumes/workspace/out/minikube.iso` file somewhere outside of the `workspace` volume.
-* Run the `vagrant destroy` command to shutdown and delete the virtual machine.
-* Run the `workspace detach` command to detach the `workspace` volume.
 
 ## Uploading the Image
 

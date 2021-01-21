@@ -1,0 +1,37 @@
+{
+    "builders": [
+      {
+        "type": "amazon-ebs",
+        "profile": "",
+        "vpc_id": "",
+        "subnet_id": "",
+        "associate_public_ip_address": "true",
+        "temporary_security_group_source_cidrs": "my-ip/32",
+        "region": "us-east-1",
+        "launch_block_device_mappings": [
+            {
+              "device_name": "/dev/sda1",
+              "volume_size": 50,
+              "volume_type": "gp2",
+              "delete_on_termination": true
+            }
+          ],
+        "source_ami": "ami-011899242bb902164",
+        "instance_type": "m5.2xlarge",
+        "ssh_username": "ubuntu",
+        "ami_name": "minikube iso build ami - {{timestamp}}"
+      }
+    ],
+    "provisioners": [
+        {
+          "type": "shell",
+          "script": "packer.sh"
+        },
+        {
+            "type": "file",
+            "source": "/home/ubuntu/minikube/out/minikube.iso",
+            "destination": "/tmp/minikube.iso",
+            "direction" : "download"
+        }
+      ]
+  }
