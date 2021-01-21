@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.0.1](https://github.com/DataDog/chaos-controller/tree/3.0.1) (2021-01-20)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.0.0...3.0.1)
+
+**Merged pull requests:**
+
+- Fix disk pressure validator [\#228](https://github.com/DataDog/chaos-controller/pull/228) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_0e23c15c27dda702c10ea119abff1be84760c8be [\#225](https://github.com/DataDog/chaos-controller/pull/225) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [3.0.0](https://github.com/DataDog/chaos-controller/tree/3.0.0) (2021-01-18)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/2.16.1...3.0.0)
