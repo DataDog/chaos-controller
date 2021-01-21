@@ -40,3 +40,10 @@ func (f *ContainerMock) PID() uint32 {
 
 	return args.Get(0).(uint32)
 }
+
+//nolint:golint
+func (f *ContainerMock) Name() string {
+	args := f.Called()
+
+	return args.String(0)
+}

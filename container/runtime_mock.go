@@ -32,3 +32,10 @@ func (f *RuntimeMock) HostPath(id, path string) (string, error) {
 
 	return args.String(0), args.Error(1)
 }
+
+//nolint:golint
+func (f *RuntimeMock) Name(id string) (string, error) {
+	args := f.Called(id)
+
+	return args.String(0), args.Error(1)
+}
