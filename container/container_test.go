@@ -26,6 +26,7 @@ var _ = Describe("Container", func() {
 		runtime = &container.RuntimeMock{}
 		runtime.On("PID", mock.Anything).Return(uint32(666), nil)
 		runtime.On("CgroupPath", mock.Anything).Return("/fake/cgroup/path", nil)
+		runtime.On("Name", mock.Anything).Return("", nil)
 
 		// config
 		config = Config{

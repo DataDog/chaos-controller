@@ -16,6 +16,7 @@ type Container interface {
 	Runtime() Runtime
 	CgroupPath() string
 	PID() uint32
+	Name() string
 }
 
 // Config contains needed interfaces
@@ -28,6 +29,7 @@ type container struct {
 	id         string
 	cgroupPath string
 	pid        uint32
+	name       string
 }
 
 // New creates a new container object with default config
@@ -74,11 +76,17 @@ func NewWithConfig(id string, config Config) (Container, error) {
 		return nil, fmt.Errorf("error getting PID: %w", err)
 	}
 
+	name, err := config.Runtime.Name(rawID[1])
+	if err != nil {
+		return nil, fmt.Errorf("error getting container name: %w", err)
+	}
+
 	return container{
 		config:     config,
 		id:         rawID[1],
 		cgroupPath: cgroupPath,
 		pid:        pid,
+		name:       name,
 	}, nil
 }
 
@@ -96,4 +104,8 @@ func (c container) CgroupPath() string {
 
 func (c container) PID() uint32 {
 	return c.pid
+}
+
+func (c container) Name() string {
+	return c.name
 }

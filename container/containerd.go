@@ -25,6 +25,21 @@ func newContainerdRuntime() (Runtime, error) {
 	return &containerdRuntime{client: c}, nil
 }
 
+func (c containerdRuntime) Name(id string) (string, error) {
+	// load container structure
+	container, err := c.client.LoadContainer(context.Background(), id)
+	if err != nil {
+		return "", fmt.Errorf("error while loading the given container: %w", err)
+	}
+
+	info, err := container.Info(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("error while info-ing the given container: %w", err)
+	}
+
+	return info.Labels["io.kubernetes.container.name"], nil
+}
+
 func (c containerdRuntime) PID(id string) (uint32, error) {
 	// load container structure
 	container, err := c.client.LoadContainer(context.Background(), id)
