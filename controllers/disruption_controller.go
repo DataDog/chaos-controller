@@ -342,11 +342,12 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 }
 
 // waitForPodCreation waits for the given pod to be created
-// it tries to get the pod every second until it is able to retrieve it
+// it tries to get the pod using an exponential backoff with a max retry interval of 1 second and a max duration of 30 seconds
 // if an unexpected error occurs (an error other than a "not found" error), the retry loop is stopped
 func (r *DisruptionReconciler) waitForPodCreation(pod *corev1.Pod) error {
 	expBackoff := backoff.NewExponentialBackOff()
 	expBackoff.MaxInterval = time.Second
+	expBackoff.MaxElapsedTime = 30 * time.Second
 
 	return backoff.Retry(func() error {
 		err := r.Get(context.Background(), types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, pod)
