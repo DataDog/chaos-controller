@@ -30,6 +30,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	metricstypes "github.com/DataDog/chaos-controller/metrics/types"
 	corev1 "k8s.io/api/core/v1"
@@ -44,7 +45,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -121,7 +121,13 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
-	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
+	var err error
+
+	logger, err := log.NewZapLogger()
+	if err != nil {
+		logf.Log.Error(err, "error creating logger")
+		GinkgoT().Fail()
+	}
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -129,7 +135,6 @@ var _ = BeforeSuite(func(done Done) {
 		KubeAPIServerFlags: append(envtest.DefaultKubeAPIServerFlags, "--allow-privileged"),
 	}
 
-	var err error
 	cfg, err = testEnv.Start()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(cfg).ToNot(BeNil())
@@ -162,7 +167,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	err = (&DisruptionReconciler{
 		Client:      k8sClient,
-		Log:         ctrl.Log.WithName("controllers").WithName("Disruption"),
+		Log:         logger,
 		Recorder:    k8sManager.GetEventRecorderFor("disruption-controller"),
 		MetricsSink: ms,
 		Scheme:      scheme.Scheme,
