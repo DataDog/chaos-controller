@@ -47,7 +47,7 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 
 			for _, server := range dnsConfig.Servers {
 				response, _, err = dnsClient.Exchange(&dnsMessage, fmt.Sprintf("%s:53", server))
-				if len(response.Answer) > 0 {
+				if response != nil && len(response.Answer) > 0 {
 					return nil
 				}
 			}
