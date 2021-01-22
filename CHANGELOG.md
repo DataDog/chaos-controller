@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.1.0](https://github.com/DataDog/chaos-controller/tree/3.1.0) (2021-01-22)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.0.1...3.1.0)
+
+**Merged pull requests:**
+
+- Change controller log format to zap production format [\#232](https://github.com/DataDog/chaos-controller/pull/232) ([Devatoria](https://github.com/Devatoria))
+- Ensure DNS resolution response is not nil to avoid a panic [\#231](https://github.com/DataDog/chaos-controller/pull/231) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_a75ada688ede489cd23b45999c7413f26368db70 [\#230](https://github.com/DataDog/chaos-controller/pull/230) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Wait for chaos pod to be created and persisted before returning from the reconcile loop [\#229](https://github.com/DataDog/chaos-controller/pull/229) ([Devatoria](https://github.com/Devatoria))
+- Use Packer for minikube iso, upgrade minikube k8s version [\#227](https://github.com/DataDog/chaos-controller/pull/227) ([noqcks](https://github.com/noqcks))
+- CORE-443: Log the container ID, Name, and other labels when a chaos pod is injecting into a container [\#221](https://github.com/DataDog/chaos-controller/pull/221) ([ptnapoleon](https://github.com/ptnapoleon))
+
 ## [3.0.1](https://github.com/DataDog/chaos-controller/tree/3.0.1) (2021-01-20)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.0.0...3.0.1)
