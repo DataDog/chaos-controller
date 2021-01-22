@@ -28,10 +28,9 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
+	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -67,14 +66,7 @@ func main() {
 	flag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	flag.Parse()
 
-	// configure logger
-	loggerConfig := zap.NewProductionConfig()
-	loggerConfig.Level.SetLevel(zapcore.InfoLevel)
-	loggerConfig.EncoderConfig.MessageKey = "message"
-	loggerConfig.EncoderConfig.EncodeTime = zapcore.EpochMillisTimeEncoder
-
-	// generate logger
-	logger, err := loggerConfig.Build()
+	logger, err := log.NewZapLogger()
 	if err != nil {
 		setupLog.Error(err, "error creating controller logger")
 		os.Exit(1)
@@ -125,7 +117,7 @@ func main() {
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:          mgr.GetClient(),
-		Log:             logger.Sugar(),
+		Log:             logger,
 		Scheme:          mgr.GetScheme(),
 		Recorder:        mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:     ms,

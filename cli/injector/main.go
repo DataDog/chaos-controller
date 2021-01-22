@@ -16,6 +16,7 @@ import (
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/injector"
+	logger "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
 	"github.com/DataDog/chaos-controller/netns"
@@ -83,14 +84,14 @@ func main() {
 
 // initLogger initializes a zap logger
 func initLogger() {
+	var err error
+
 	// prepare logger
-	zapInstance, err := zap.NewProduction()
+	log, err = logger.NewZapLogger()
 	if err != nil {
 		fmt.Printf("error while creating logger: %v", err)
 		os.Exit(2)
 	}
-
-	log = zapInstance.Sugar()
 }
 
 // initMetricsSink initializes a metrics sink depending on the given flag
