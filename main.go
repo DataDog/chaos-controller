@@ -30,12 +30,13 @@ import (
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -66,7 +67,18 @@ func main() {
 	flag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New())
+	// configure logger
+	loggerConfig := zap.NewProductionConfig()
+	loggerConfig.Level.SetLevel(zapcore.InfoLevel)
+	loggerConfig.EncoderConfig.MessageKey = "message"
+	loggerConfig.EncoderConfig.EncodeTime = zapcore.EpochMillisTimeEncoder
+
+	// generate logger
+	logger, err := loggerConfig.Build()
+	if err != nil {
+		setupLog.Error(err, "error creating controller logger")
+		os.Exit(1)
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
@@ -113,7 +125,7 @@ func main() {
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:          mgr.GetClient(),
-		Log:             ctrl.Log.WithName("controllers").WithName("Disruption"),
+		Log:             logger.Sugar(),
 		Scheme:          mgr.GetScheme(),
 		Recorder:        mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:     ms,
