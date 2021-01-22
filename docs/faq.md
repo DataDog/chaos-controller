@@ -30,7 +30,7 @@ kubectl -n <NAMESPACE> patch pod <POD_NAME> --type=json -p '[{"op": "remove", "p
 ### I want to remove the finalizer on all chaos pods for a given disruption
 
 ```sh
-kubectl -n <NAMESPACE> get -ojson pods -l chaos.datadoghq.com/disruption=<DISRUPTION_NAME> | jq -r '.items[].metadata.name' | xargs -I{} kubectl -n <NAMESPACE> patch pod {} --type=json -p '[{"op": "remove", "path": "/metadata/finalizers"}]'
+NAMESPACE=<NAMESPACE> DISRUPTION=<DISRUPTION_NAME>; kubectl -n ${NAMESPACE} get -ojson pods -l chaos.datadoghq.com/disruption=${DISRUPTION} | jq -r '.items[].metadata.name' | xargs -I{} kubectl -n ${NAMESPACE} patch pod {} --type=json -p '[{"op": "remove", "path": "/metadata/finalizers"}]'
 ```
 
 ## The controller fails to watch or list disruptions
