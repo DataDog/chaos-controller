@@ -66,9 +66,7 @@ func main() {
 	flag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(func(o *zap.Options) {
-		o.Development = true
-	}))
+	ctrl.SetLogger(zap.New())
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
