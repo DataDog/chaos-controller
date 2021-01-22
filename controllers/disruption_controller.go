@@ -130,11 +130,16 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
 			r.Log.Infow("removing finalizer", "instance", instance.Name, "namespace", instance.Namespace)
-			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
-
 			controllerutil.RemoveFinalizer(instance, disruptionFinalizer)
 
-			return ctrl.Result{}, r.Update(context.Background(), instance)
+			if err := r.Update(context.Background(), instance); err != nil {
+				return ctrl.Result{}, err
+			}
+
+			// send reconciling duration metric
+			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+
+			return ctrl.Result{}, nil
 		}
 	} else {
 		// the injection is being created or modified, apply needed actions
@@ -169,6 +174,9 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
 		}
 
+		// send injection duration metric representing the time it took to fully inject the disruption until its creation
+		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+
 		// update resource status injection
 		// requeue the request if the disruption is not fully injected yet
 		injected, err := r.updateInjectionStatus(instance)
@@ -179,9 +187,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 			return ctrl.Result{Requeue: true}, nil
 		}
-
-		// send injection duration metric representing the time it took to fully inject the disruption until its creation
-		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
 
 		return ctrl.Result{}, r.Update(context.Background(), instance)
 	}
