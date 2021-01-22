@@ -117,7 +117,7 @@ func main() {
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:          mgr.GetClient(),
-		Log:             logger,
+		BaseLog:         logger,
 		Scheme:          mgr.GetScheme(),
 		Recorder:        mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:     ms,

@@ -167,7 +167,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	err = (&DisruptionReconciler{
 		Client:      k8sClient,
-		Log:         logger,
+		BaseLog:     logger,
 		Recorder:    k8sManager.GetEventRecorderFor("disruption-controller"),
 		MetricsSink: ms,
 		Scheme:      scheme.Scheme,

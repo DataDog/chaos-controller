@@ -62,12 +62,13 @@ var (
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	client.Client
-	Log             *zap.SugaredLogger
+	BaseLog         *zap.SugaredLogger
 	Scheme          *runtime.Scheme
 	Recorder        record.EventRecorder
 	MetricsSink     metrics.Sink
 	PodTemplateSpec corev1.Pod
 	TargetSelector  TargetSelector
+	log             *zap.SugaredLogger
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -84,6 +85,13 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	rand.Seed(time.Now().UnixNano())
 
+	// prepare logger instance context
+	// NOTE: it is valid while we don't do concurrent reconciling
+	// because the logger instance is pointer, concurrent reconciling would create a race condition
+	// where the logger context would change for all ongoing reconcile loops
+	// in the case we enable concurrent reconciling, we should create one logger instance per reconciling call
+	r.log = r.BaseLog.With("instance", req.Name, "namespace", req.Namespace)
+
 	// reconcile metrics
 	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
 
@@ -99,7 +107,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	}()()
 
 	// fetch the instance
-	r.Log.Infow("fetching disruption instance", "instance", req.Name, "namespace", req.Namespace)
+	r.log.Infow("fetching disruption instance")
 
 	if err := r.Get(context.Background(), req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -119,7 +127,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			if !isCleaned {
 				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second
 
-				r.Log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter), "instance", instance.Name, "namespace", instance.Namespace)
+				r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
 
 				return ctrl.Result{
 					Requeue:      true,
@@ -129,7 +137,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
-			r.Log.Infow("removing finalizer", "instance", instance.Name, "namespace", instance.Namespace)
+			r.log.Infow("removing finalizer")
 			controllerutil.RemoveFinalizer(instance, disruptionFinalizer)
 
 			if err := r.Update(context.Background(), instance); err != nil {
@@ -150,14 +158,14 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("error computing instance spec hash: %w", err)
 		} else if !sameHashes {
-			r.Log.Infow("instance spec hash has changed meaning a change to the spec has been made, aborting")
+			r.log.Infow("instance spec hash has changed meaning a change to the spec has been made, aborting")
 
 			return ctrl.Result{}, nil
 		}
 
 		// retrieve targets from label selector
 		if err := r.selectTargets(instance); err != nil {
-			r.Log.Errorw("error selecting targets", "error", err, "instance", instance.Name, "namespace", instance.Namespace)
+			r.log.Errorw("error selecting targets", "error", err)
 
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 		}
@@ -169,7 +177,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 		// start injections
 		if err := r.startInjection(instance); err != nil {
-			r.Log.Errorw("error injecting the disruption", "error", err, "instance", instance.Name, "namespace", instance.Namespace)
+			r.log.Errorw("error injecting the disruption", "error", err)
 
 			return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
 		}
@@ -183,7 +191,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
-			r.Log.Infow("disruption is not fully injected yet, requeing", "instance", instance.Name, "namespace", instance.Namespace)
+			r.log.Infow("disruption is not fully injected yet, requeing")
 
 			return ctrl.Result{Requeue: true}, nil
 		}
@@ -200,7 +208,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 // - an instance with at least one chaos pod as "ready" is considered as "partially injected"
 // - an instance with no ready chaos pods is considered as "not injected"
 func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disruption) (bool, error) {
-	r.Log.Infow("updating injection status", "instance", instance.Name, "namespace", instance.Namespace)
+	r.log.Infow("updating injection status")
 
 	status := chaostypes.DisruptionInjectionStatusNotInjected
 	allReady := true
@@ -230,7 +238,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 		// consider the disruption as not fully injected if at least one not ready pod is found
 		if !podReady {
-			r.Log.Infow("chaos pod is not ready yet", "instance", instance.Name, "namespace", instance.Namespace, "chaosPod", chaosPod.Name)
+			r.log.Infow("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
 
 			allReady = false
 		}
@@ -261,7 +269,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption) error {
 	var err error
 
-	r.Log.Infow("starting targets injection", "instance", instance.Name, "namespace", instance.Namespace, "targets", instance.Status.Targets)
+	r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
 
 	for _, target := range instance.Status.Targets {
 		var targetNodeName, containerID string
@@ -290,7 +298,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 		// generate injection pods specs
 		if err := r.generateChaosPods(instance, &chaosPods, target, targetNodeName, containerID); err != nil {
-			r.Log.Errorw("error generating injection chaos pod for target, skipping it", "error", err, "instance", instance.Name, "namespace", instance.Namespace, "target", target)
+			r.log.Errorw("error generating injection chaos pod for target, skipping it", "error", err, "target", target)
 
 			continue
 		}
@@ -316,7 +324,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 			// create injection pods if none have been found
 			if len(found) == 0 {
-				r.Log.Infow("creating chaos pod", "instance", instance.Name, "namespace", instance.Namespace, "target", target)
+				r.log.Infow("creating chaos pod", "target", target)
 
 				// create the pod
 				if err = r.Create(context.Background(), chaosPod); err != nil {
@@ -328,7 +336,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 				// wait for the pod to be existing
 				if err := r.waitForPodCreation(chaosPod); err != nil {
-					r.Log.Errorw("error waiting for chaos pod to be created", "error", err, "instance", instance.Name, "namespace", instance.Namespace, "chaosPod", chaosPod.Name, "target", target)
+					r.log.Errorw("error waiting for chaos pod to be created", "error", err, "chaosPod", chaosPod.Name, "target", target)
 
 					continue
 				}
@@ -338,7 +346,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 				r.recordEventOnTarget(instance, target, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resourcer for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, "inject", true))
 			} else {
-				r.Log.Infow("an injection pod is already existing for the selected target", "instance", instance.Name, "namespace", instance.Namespace, "target", target, "chaosPod", chaosPod.Name)
+				r.log.Infow("an injection pod is already existing for the selected target", "target", target, "chaosPod", chaosPod.Name)
 			}
 		}
 	}
@@ -386,7 +394,7 @@ func (r *DisruptionReconciler) computeHash(instance *chaosv1beta1.Disruption) (b
 		}
 	} else {
 		// store the computed hash
-		r.Log.Infow("storing resource spec hash to detect further changes in spec", "instance", instance.Name, "namespace", instance.Namespace)
+		r.log.Infow("storing resource spec hash to detect further changes in spec")
 		instance.Status.SpecHash = &specHash
 
 		return true, r.Update(context.Background(), instance)
@@ -415,13 +423,13 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 			if errors.IsNotFound(err) || err.Error() == "Pod is not Running" || err.Error() == "Node is not Ready" {
 				// if the target is not in a good shape, we still run the cleanup phase but we don't check for any issues happening during
 				// the cleanup to avoid blocking the disruption deletion for nothing
-				r.Log.Infow("target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", "instance", instance.Name, "namespace", instance.Namespace, "target", target)
+				r.log.Infow("target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", "target", target)
 
 				// by enabling this, we will remove the target associated chaos pods finalizers and delete them to trigger the cleanup phase
 				// but the chaos pods status will not be checked
 				ignoreCleanupStatus = true
 			} else {
-				r.Log.Error(err.Error())
+				r.log.Error(err.Error())
 
 				continue
 			}
@@ -443,27 +451,27 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 		for _, chaosPod := range chaosPods {
 			// if the chaos pod has succeeded, remove the finalizer so it can be garbage collected
 			if chaosPod.Status.Phase == corev1.PodSucceeded || chaosPod.Status.Phase == corev1.PodPending || ignoreCleanupStatus {
-				r.Log.Infow("chaos pod completed, removing finalizer", "instance", instance.Name, "target", target, "chaosPod", chaosPod.Name)
+				r.log.Infow("chaos pod completed, removing finalizer", "target", target, "chaosPod", chaosPod.Name)
 
 				controllerutil.RemoveFinalizer(&chaosPod, chaosPodFinalizer)
 
 				if err := r.Client.Update(context.Background(), &chaosPod); err != nil {
-					r.Log.Errorw("error removing chaos pod finalizer", "error", err, "instance", instance.Name, "target", target, "chaosPod", chaosPod.Name)
+					r.log.Errorw("error removing chaos pod finalizer", "error", err, "target", target, "chaosPod", chaosPod.Name)
 				}
 			}
 
 			// if the chaos pod is running or pending, delete it to trigger the termination and the cleanup
 			if chaosPod.Status.Phase == corev1.PodRunning || chaosPod.Status.Phase == corev1.PodPending {
-				r.Log.Infow("terminating chaos pod to trigger cleanup", "instance", instance.Name, "target", target, "chaosPod", chaosPod.Name)
+				r.log.Infow("terminating chaos pod to trigger cleanup", "target", target, "chaosPod", chaosPod.Name)
 
 				if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
-					r.Log.Errorw("error terminating chaos pod", "error", err, "instance", instance.Name, "target", target, "chaosPod", chaosPod.Name)
+					r.log.Errorw("error terminating chaos pod", "error", err, "target", target, "chaosPod", chaosPod.Name)
 				}
 			}
 
 			// if the chaos pod has failed, declare the disruption as stuck on removal so it can be investigated
 			if chaosPod.Status.Phase == corev1.PodFailed && !ignoreCleanupStatus {
-				r.Log.Infow("instance seems stuck on removal for this target, please check manually", "instance", instance.Name, "target", target, "chaosPod", chaosPod.Name)
+				r.log.Infow("instance seems stuck on removal for this target, please check manually", "target", target, "chaosPod", chaosPod.Name)
 				r.Recorder.Event(instance, "Warning", "StuckOnRemoval", "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer")
 
 				instance.Status.IsStuckOnRemoval = true
@@ -487,7 +495,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		return nil
 	}
 
-	r.Log.Infow("selecting targets to inject disruption to", "instance", instance.Name, "namespace", instance.Namespace, "selector", instance.Spec.Selector.String())
+	r.log.Infow("selecting targets to inject disruption to", "selector", instance.Spec.Selector.String())
 
 	// validate the given label selector to avoid any formating issues due to special chars
 	if err := validateLabelSelector(instance.Spec.Selector.AsSelector()); err != nil {
@@ -548,7 +556,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		allTargets = allTargets[:len(allTargets)-1]
 	}
 
-	r.Log.Infow("updating instance status with targets selected for injection", "instance", instance.Name, "namespace", instance.Namespace)
+	r.log.Infow("updating instance status with targets selected for injection")
 
 	return r.Update(context.Background(), instance)
 }
@@ -632,7 +640,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 // handleMetricSinkError logs the given metric sink error if it is not nil
 func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 	if err != nil {
-		r.Log.Errorw("error sending a metric", "error", err)
+		r.log.Errorw("error sending a metric", "error", err)
 	}
 }
 
@@ -714,7 +722,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 
 // recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
 func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disruption, target string, eventtype, reason, message string) {
-	r.Log.Infow("registering an event on a target", "target", target, "instance", instance.Name, "namespace", instance.Namespace, "level", instance.Spec.Level, "eventtype", eventtype, "reason", reason, "message", message)
+	r.log.Infow("registering an event on a target", "target", target, "eventtype", eventtype, "reason", reason, "message", message)
 
 	var o runtime.Object
 
@@ -723,7 +731,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 		p := &corev1.Pod{}
 
 		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {
-			r.Log.Errorw("event failed to be registered on target", "error", err, "target", target)
+			r.log.Errorw("event failed to be registered on target", "error", err, "target", target)
 		}
 
 		o = p
@@ -731,7 +739,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 		n := &corev1.Node{}
 
 		if err := r.Get(context.Background(), types.NamespacedName{Name: target}, n); err != nil {
-			r.Log.Errorw("event failed to be registered on target", "error", err, "target", target)
+			r.log.Errorw("event failed to be registered on target", "error", err, "target", target)
 		}
 
 		o = n
@@ -759,7 +767,7 @@ func (r *DisruptionReconciler) WatchStuckOnRemoval() {
 
 		// list disruptions
 		if err := r.Client.List(context.Background(), &l); err != nil {
-			r.Log.Errorw("error listing disruptions", "error", err)
+			r.log.Errorw("error listing disruptions", "error", err)
 			continue
 		}
 
@@ -769,14 +777,14 @@ func (r *DisruptionReconciler) WatchStuckOnRemoval() {
 				count++
 
 				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"name:" + d.Name, "namespace:" + d.Namespace}); err != nil {
-					r.Log.Errorw("error sending stuck_on_removal metric", "error", err)
+					r.log.Errorw("error sending stuck_on_removal metric", "error", err)
 				}
 			}
 		}
 
 		// send count metric
 		if err := r.MetricsSink.MetricStuckOnRemovalCount(float64(count)); err != nil {
-			r.Log.Errorw("error sending stuck_on_removal_count metric", "error", err)
+			r.log.Errorw("error sending stuck_on_removal_count metric", "error", err)
 		}
 	}
 }
