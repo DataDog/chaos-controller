@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.2.0](https://github.com/DataDog/chaos-controller/tree/3.2.0) (2021-01-25)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.1.0...3.2.0)
+
+**Merged pull requests:**
+
+- Rename target\_pod tag to target and remove phase tag from metrics [\#238](https://github.com/DataDog/chaos-controller/pull/238) ([Devatoria](https://github.com/Devatoria))
+- Set request context to controller logger [\#236](https://github.com/DataDog/chaos-controller/pull/236) ([Devatoria](https://github.com/Devatoria))
+- Ensure duration metrics are sent [\#235](https://github.com/DataDog/chaos-controller/pull/235) ([Devatoria](https://github.com/Devatoria))
+- Set a common logger with adapter encoding parameters [\#234](https://github.com/DataDog/chaos-controller/pull/234) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_c4008f6bac5819725605554fe0fde6b1f299787e [\#233](https://github.com/DataDog/chaos-controller/pull/233) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [3.1.0](https://github.com/DataDog/chaos-controller/tree/3.1.0) (2021-01-22)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.0.1...3.1.0)
@@ -70,6 +82,7 @@
 - Skip target on injection error instead of stopping the reconcile loop [\#205](https://github.com/DataDog/chaos-controller/pull/205) ([Devatoria](https://github.com/Devatoria))
 - CORE-402: Another way to test only selecting Running Pods [\#204](https://github.com/DataDog/chaos-controller/pull/204) ([takakonishimura](https://github.com/takakonishimura))
 - \[Doc\] - Update sample documentation for count [\#202](https://github.com/DataDog/chaos-controller/pull/202) ([gaetan-deputier](https://github.com/gaetan-deputier))
+- Tay/brainstorm/etcd [\#200](https://github.com/DataDog/chaos-controller/pull/200) ([takakonishimura](https://github.com/takakonishimura))
 - Node level disruptions [\#198](https://github.com/DataDog/chaos-controller/pull/198) ([Devatoria](https://github.com/Devatoria))
 - CORE-296: Check pods are Running before Injection [\#196](https://github.com/DataDog/chaos-controller/pull/196) ([takakonishimura](https://github.com/takakonishimura))
 - Add jitter for delay to the chaos-controller [\#195](https://github.com/DataDog/chaos-controller/pull/195) ([Azoam](https://github.com/Azoam))
