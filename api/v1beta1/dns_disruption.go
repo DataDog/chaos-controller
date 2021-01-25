@@ -18,8 +18,8 @@ type DNSDisruptionSpec []HostRecordPair
 
 // HostRecordPair represents a hostname and a dns record override
 type HostRecordPair struct {
-	Host   string    `json:"hostname"`
-	Record DNSRecord `json:"record"`
+	Hostname string    `json:"hostname"`
+	Record   DNSRecord `json:"record"`
 }
 
 // DNSRecord represents a type of DNS Record, such as A or CNAME, and the value of that record
@@ -31,7 +31,7 @@ type DNSRecord struct {
 // Validate validates args for the given disruption
 func (s DNSDisruptionSpec) Validate() error {
 	for _, pair := range s {
-		if pair.Host == "" {
+		if pair.Hostname == "" {
 			return errors.New("no hostname specified in dns disruption")
 		}
 
@@ -67,11 +67,14 @@ func (s DNSDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, contai
 	hostRecordPairArgs := []string{}
 
 	for _, pair := range s {
-		arg := fmt.Sprintf("%s;%s;%s", pair.Host, pair.Record.Type, pair.Record.Value)
+		arg := fmt.Sprintf("%s;%s;%s", pair.Hostname, pair.Record.Type, pair.Record.Value)
 		hostRecordPairArgs = append(hostRecordPairArgs, arg)
 	}
 
 	args = append(args, "--host-record-pairs")
+
+	// Each value passed to --host-record-pairs should be of the form `hostname;type;value`, e.g.
+	// `foo.bar.svc.cluster.local;A;10.0.0.0,10.0.0.13`
 	args = append(args, strings.Split(strings.Join(hostRecordPairArgs, " --host-record-pairs "), " ")...)
 
 	return args

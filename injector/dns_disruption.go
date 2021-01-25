@@ -23,7 +23,7 @@ type DNSDisruptionInjector struct {
 	config DNSDisruptionInjectorConfig
 }
 
-// DNSDisruptionInjectorConfig contains all needed drivers to create a dns disruption using `tc`
+// DNSDisruptionInjectorConfig contains all needed drivers to create a dns disruption using `iptables`
 type DNSDisruptionInjectorConfig struct {
 	Config
 	Iptables   network.Iptables
@@ -63,7 +63,7 @@ func (i DNSDisruptionInjector) Inject() error {
 	// Set up resolver config file
 	resolverConfig := []string{}
 	for _, record := range i.spec {
-		resolverConfig = append(resolverConfig, fmt.Sprintf("%s %s %s", record.Record.Type, record.Host, record.Record.Value))
+		resolverConfig = append(resolverConfig, fmt.Sprintf("%s %s %s", record.Record.Type, record.Hostname, record.Record.Value))
 	}
 
 	if err := i.config.FileWriter.Write("/tmp/dns.conf", 0644, strings.Join(resolverConfig, "\n")); err != nil {
@@ -71,7 +71,7 @@ func (i DNSDisruptionInjector) Inject() error {
 	}
 
 	// Run resolver (python is at /usr/bin/python3) (resolver is at /usr/local/bin)
-	_, _, err := i.RunPython("/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf")
+	_, _, err := i.runPython("/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf")
 	if err != nil {
 		return fmt.Errorf("unable to run resolver: %w", err)
 	}
@@ -121,10 +121,7 @@ func (i DNSDisruptionInjector) Clean() error {
 	return nil
 }
 
-// RunPython executes the given args using the python3 command
-// and returns a wrapped error containing both the error returned by the execution and
-// the stderr content
-func (i DNSDisruptionInjector) RunPython(args ...string) (int, string, error) {
+func (i DNSDisruptionInjector) runPython(args ...string) (int, string, error) {
 	// parse args and execute
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}

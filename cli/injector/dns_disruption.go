@@ -23,13 +23,19 @@ var dnsDisruptionCmd = &cobra.Command{
 
 		var hostRecordPairs []v1beta1.HostRecordPair
 
-		config.Log.Infow("arguments to dnsDisruptionCmd", "host-record-pairs", rawHostRecordPairs)
+		// Each value passed to --host-record-pairs should be of the form `hostname;type;value`, e.g.
+		// `foo.bar.svc.cluster.local;A;10.0.0.0,10.0.0.13`
+		log.Infow("arguments to dnsDisruptionCmd", "host-record-pairs", rawHostRecordPairs)
 
 		for _, line := range rawHostRecordPairs {
 			split := strings.Split(line, ";")
+			if len(split) != 3 {
+				log.Fatalw("could not parse --host-record-pairs argument to dns-disruption", "offending argument", line)
+				continue
+			}
 
 			hostRecordPair := v1beta1.HostRecordPair{
-				Host: split[0],
+				Hostname: split[0],
 				Record: v1beta1.DNSRecord{
 					Type:  split[1],
 					Value: split[2],
@@ -49,5 +55,5 @@ var dnsDisruptionCmd = &cobra.Command{
 
 func init() {
 	// We must use a StringArray rather than StringSlice here, because our ip values can contain commas. StringSlice will split on commas.
-	dnsDisruptionCmd.Flags().StringArray("host-record-pairs", []string{}, "list of host,record,value tuples as strings") // Array of strings, where each string is a host,record,value tuple??
+	dnsDisruptionCmd.Flags().StringArray("host-record-pairs", []string{}, "list of host,record,value tuples as strings") // `foo.bar.svc.cluster.local;A;10.0.0.0,10.0.0.13`
 }
