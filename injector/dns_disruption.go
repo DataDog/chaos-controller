@@ -32,9 +32,10 @@ type DNSDisruptionInjectorConfig struct {
 
 // NewDNSDisruptionInjector creates a DNSDisruptionInjector object with the given config,
 // missing field being initialized with the defaults
-func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisruptionInjectorConfig) Injector {
+func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisruptionInjectorConfig) (Injector, error) {
+	var err error
 	if config.Iptables == nil {
-		config.Iptables = network.NewIptables(config.Log, config.DryRun)
+		config.Iptables, err = network.NewIptables(config.Log, config.DryRun)
 	}
 
 	if config.FileWriter == nil {
@@ -46,7 +47,7 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 	return DNSDisruptionInjector{
 		spec:   spec,
 		config: config,
-	}
+	}, err
 }
 
 // Inject injects the given dns disruption into the given container
