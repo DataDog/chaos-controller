@@ -35,6 +35,12 @@ NAMESPACE=<NAMESPACE> DISRUPTION=<DISRUPTION_NAME>; kubectl -n ${NAMESPACE} get 
 NAMESPACE=<NAMESPACE> DISRUPTION=<DISRUPTION_NAME>; kubectl -n ${NAMESPACE} get -ojson pods -l chaos.datadoghq.com/disruption=${DISRUPTION} | jq -r '.items[].metadata.name' | xargs -I{} kubectl -n ${NAMESPACE} delete pod {}
 ```
 
+**Note: the chaos pods deletion can be stuck for some reason, like Kubernetes not being able to delete them. In this case, you might also want to remove the finalizer on the disruption resource itself which will then trigger the garbage collection of all related resources (including chaos pods) by Kubernetes.**
+
+```
+kubectl -n <NAMESPACE> patch disruption <DISRUPTION_NAME> --type=json -p '[{"op": "remove", "path": "/metadata/finalizers"}]'
+```
+
 ## The controller fails to watch or list disruptions
 
 If you see the following error in controller logs, it is probably because of a malformed label selector:
