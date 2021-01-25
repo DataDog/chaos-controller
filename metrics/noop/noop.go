@@ -80,7 +80,7 @@ func (n *Sink) MetricReconcileDuration(duration time.Duration, tags []string) er
 }
 
 // MetricPodsCreated increment pods.created metric
-func (n *Sink) MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) error {
+func (n *Sink) MetricPodsCreated(target, instanceName, namespace string, succeed bool) error {
 	fmt.Println("NOOP: MetricPodsCreated +1")
 
 	return nil

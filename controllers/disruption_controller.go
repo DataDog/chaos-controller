@@ -329,7 +329,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 				// create the pod
 				if err = r.Create(context.Background(), chaosPod); err != nil {
 					r.Recorder.Event(instance, "Warning", "Create failed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
-					r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, "inject", false))
+					r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, false))
 
 					return fmt.Errorf("error creating chaos pod: %w", err)
 				}
@@ -344,7 +344,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
 				r.recordEventOnTarget(instance, target, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resourcer for injection", chaosPod.Name, instance.Name))
-				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, "inject", true))
+				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 			} else {
 				r.log.Infow("an injection pod is already existing for the selected target", "target", target, "chaosPod", chaosPod.Name)
 			}
