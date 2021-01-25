@@ -6,6 +6,8 @@
 package injector_test
 
 import (
+	"os"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
@@ -50,6 +52,9 @@ var _ = Describe("Failure", func() {
 		iptables.On("DeleteRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("DeleteRuleByNum", mock.Anything, mock.Anything).Return(nil)
 
+		// environment variables
+		Expect(os.Setenv(chaostypes.ChaosPodIPEnv, "10.0.0.2")).To(BeNil())
+
 		// config
 		config = DNSDisruptionInjectorConfig{
 			Config: Config{
@@ -72,6 +77,22 @@ var _ = Describe("Failure", func() {
 		Expect(err).To(BeNil())
 	})
 	Describe("inj.Inject", func() {
+		JustBeforeEach(func() {
+			Expect(inj.Inject()).To(BeNil())
+		})
+
+		It("should enter and exit the target network namespace", func() {
+			netnsManager.AssertCalled(GinkgoT(), "Enter")
+			netnsManager.AssertCalled(GinkgoT(), "Exit")
+		})
+
+		Context("iptables rules should be created", func() {
+			It("should create one chain and two rules", func() {
+				iptables.AssertCalled(GinkgoT(), "AddRule", "OUTPUT", "udp", "53", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "AddRuleWithIP", "CHAOS-DNS", "udp", "53", "DNAT", "10.0.0.2")
+				iptables.AssertCalled(GinkgoT(), "CreateChain", "CHAOS-DNS")
+			})
+		})
 	})
 
 	Describe("inj.Clean", func() {
