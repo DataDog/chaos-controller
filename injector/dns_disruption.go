@@ -104,6 +104,11 @@ func (i DNSDisruptionInjector) Inject() error {
 
 // Clean removes the injected disruption in the given container
 func (i DNSDisruptionInjector) Clean() error {
+	// enter target network namespace
+	if err := i.config.Netns.Enter(); err != nil {
+		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
+	}
+
 	// Delete iptables rules
 	if err := i.config.Iptables.DeleteRule("OUTPUT", "udp", "53", "CHAOS-DNS"); err != nil {
 		return fmt.Errorf("unable to remove injected iptables rule: %w", err)
@@ -117,7 +122,12 @@ func (i DNSDisruptionInjector) Clean() error {
 		return fmt.Errorf("unable to remove injected iptables chain: %w", err)
 	}
 
-	// Resolver goes away when pod dies?
+	// exit target network namespace
+	if err := i.config.Netns.Exit(); err != nil {
+		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
+	}
+
+	// There is nothing we need to do to shut down the resolver beyond letting the pod terminate
 	return nil
 }
 

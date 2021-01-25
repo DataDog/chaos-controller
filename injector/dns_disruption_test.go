@@ -1,0 +1,94 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2020 Datadog, Inc.
+
+package injector_test
+
+import (
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cgroup"
+	"github.com/DataDog/chaos-controller/container"
+	. "github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/netns"
+	"github.com/DataDog/chaos-controller/network"
+	chaostypes "github.com/DataDog/chaos-controller/types"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
+)
+
+var _ = Describe("Failure", func() {
+	var (
+		inj          Injector
+		config       DNSDisruptionInjectorConfig
+		spec         v1beta1.DNSDisruptionSpec
+		netnsManager *netns.ManagerMock
+		iptables     *network.IptablesMock
+	)
+
+	BeforeEach(func() {
+		// cgroup
+		cgroupManager := &cgroup.ManagerMock{}
+		cgroupManager.On("Exists", "net_cls").Return(true, nil)
+		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		// netns
+		netnsManager = &netns.ManagerMock{}
+		netnsManager.On("Enter").Return(nil)
+		netnsManager.On("Exit").Return(nil)
+
+		// container
+		ctn := &container.ContainerMock{}
+
+		// iptables
+		iptables = &network.IptablesMock{}
+		iptables.On("CreateChain", mock.Anything).Return(nil)
+		iptables.On("DeleteChain", mock.Anything).Return(nil)
+		iptables.On("AddRuleWithIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("AddRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("DeleteRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("DeleteRuleByNum", mock.Anything, mock.Anything).Return(nil)
+
+		// config
+		config = DNSDisruptionInjectorConfig{
+			Config: Config{
+				Container:   ctn,
+				Log:         log,
+				MetricsSink: ms,
+				Netns:       netnsManager,
+				Cgroup:      cgroupManager,
+				Level:       chaostypes.DisruptionLevelPod,
+			},
+			Iptables: iptables,
+		}
+
+		spec = v1beta1.DNSDisruptionSpec{}
+	})
+
+	JustBeforeEach(func() {
+		var err error
+		inj, err = NewDNSDisruptionInjector(spec, config)
+		Expect(err).To(BeNil())
+	})
+	Describe("inj.Inject", func() {
+	})
+
+	Describe("inj.Clean", func() {
+		JustBeforeEach(func() {
+			Expect(inj.Clean()).To(BeNil())
+		})
+
+		It("should enter the target network namespace", func() {
+			netnsManager.AssertCalled(GinkgoT(), "Enter")
+			netnsManager.AssertCalled(GinkgoT(), "Exit")
+		})
+		Context("iptables cleanup should happen", func() {
+			It("should clear the iptables rules", func() {
+				iptables.AssertCalled(GinkgoT(), "DeleteRule", "OUTPUT", "udp", "53", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "DeleteRuleByNum", "CHAOS-DNS", 1)
+				iptables.AssertCalled(GinkgoT(), "DeleteChain", "CHAOS-DNS")
+			})
+		})
+	})
+})
