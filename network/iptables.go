@@ -43,24 +43,48 @@ func NewIptables(log *zap.SugaredLogger, dryRun bool) (Iptables, error) {
 }
 
 func (i iptables) CreateChain(name string) error {
+	if i.dryRun {
+		return nil
+	}
+
 	return i.ip.NewChain("nat", name)
 }
 func (i iptables) DeleteChain(name string) error {
+	if i.dryRun {
+		return nil
+	}
+
 	return i.ip.DeleteChain("nat", name)
 }
 
 func (i iptables) AddRuleWithIP(chain string, protocol string, port string, jump string, destinationIP string) error {
+	if i.dryRun {
+		return nil
+	}
+
 	return i.ip.Append("nat", chain, "-p", protocol, "--dport", port, "-j", jump, "--to-destination", fmt.Sprintf("%s:%s", destinationIP, port))
 }
 
 func (i iptables) AddRule(chain string, protocol string, port string, jump string) error {
+	if i.dryRun {
+		return nil
+	}
+
 	return i.ip.Append("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
 }
 
 func (i iptables) DeleteRule(chain string, protocol string, port string, jump string) error {
+	if i.dryRun {
+		return nil
+	}
+
 	return i.ip.DeleteIfExists("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
 }
 
 func (i iptables) DeleteRuleByNum(chain string, rulenum int) error {
+	if i.dryRun {
+		return nil
+	}
+
 	return i.ip.DeleteIfExists("nat", chain, strconv.Itoa(rulenum))
 }
