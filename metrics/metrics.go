@@ -24,7 +24,7 @@ type Sink interface {
 	MetricCleanupDuration(duration time.Duration, tags []string) error
 	MetricInjectDuration(duration time.Duration, tags []string) error
 	MetricInjected(succeed bool, kind string, tags []string) error
-	MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) error
+	MetricPodsCreated(target, instanceName, namespace string, succeed bool) error
 	MetricReconcile() error
 	MetricReconcileDuration(duration time.Duration, tags []string) error
 	MetricStuckOnRemoval(tags []string) error

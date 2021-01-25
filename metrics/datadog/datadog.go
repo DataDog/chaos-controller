@@ -102,9 +102,9 @@ func (d *Sink) MetricInjectDuration(duration time.Duration, tags []string) error
 }
 
 // MetricPodsCreated increment pods.created metric
-func (d *Sink) MetricPodsCreated(targetPod, instanceName, namespace, phase string, succeed bool) error {
+func (d *Sink) MetricPodsCreated(target, instanceName, namespace string, succeed bool) error {
 	status := boolToStatus(succeed)
-	tags := []string{"phase:" + phase, "target_pod:" + targetPod, "name:" + instanceName, "status:" + status, "namespace:" + namespace}
+	tags := []string{"target:" + target, "name:" + instanceName, "status:" + status, "namespace:" + namespace}
 
 	return d.metricWithStatus(metricPrefixController+"pods.created", tags)
 }
