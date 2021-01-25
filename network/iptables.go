@@ -13,8 +13,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// const iptablesPath = "/sbin/iptables"
-
 // Iptables is an interface for interacting with host firewall/iptables rules
 type Iptables interface {
 	CreateChain(name string) error
@@ -54,6 +52,10 @@ func (i iptables) DeleteChain(name string) error {
 		return nil
 	}
 
+	if exists, _ := i.ip.ChainExists("nat", name); !exists {
+		return nil
+	}
+
 	return i.ip.DeleteChain("nat", name)
 }
 
@@ -78,11 +80,28 @@ func (i iptables) DeleteRule(chain string, protocol string, port string, jump st
 		return nil
 	}
 
+	if exists, _ := i.ip.ChainExists("nat", chain); !exists {
+		return nil
+	}
+
+	// Why do we check if the jump target exists? A command of the form
+	// iptables -t nat -C OUTPUT -p udp --dport 53 -j CHAOS-DNS
+	// will actually error if the jump target does not exist. However, you are unable
+	// to delete a chain if there are rules that jump to it, so if the target does not exist
+	// we can be sure that the rule does not exist.
+	if exists, _ := i.ip.ChainExists("nat", jump); !exists {
+		return nil
+	}
+
 	return i.ip.DeleteIfExists("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
 }
 
 func (i iptables) DeleteRuleByNum(chain string, rulenum int) error {
 	if i.dryRun {
+		return nil
+	}
+
+	if exists, _ := i.ip.ChainExists("nat", chain); !exists {
 		return nil
 	}
 
