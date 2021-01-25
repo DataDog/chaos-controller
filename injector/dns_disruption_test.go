@@ -83,11 +83,20 @@ var _ = Describe("Failure", func() {
 			netnsManager.AssertCalled(GinkgoT(), "Enter")
 			netnsManager.AssertCalled(GinkgoT(), "Exit")
 		})
+
 		Context("iptables cleanup should happen", func() {
 			It("should clear the iptables rules", func() {
 				iptables.AssertCalled(GinkgoT(), "DeleteRule", "OUTPUT", "udp", "53", "CHAOS-DNS")
 				iptables.AssertCalled(GinkgoT(), "DeleteRuleByNum", "CHAOS-DNS", 1)
 				iptables.AssertCalled(GinkgoT(), "DeleteChain", "CHAOS-DNS")
+			})
+		})
+
+		Context("clean should be idempotent", func() {
+			It("should not error even on repeated calls", func() {
+				Expect(inj.Clean()).To(BeNil())
+				Expect(inj.Clean()).To(BeNil())
+				Expect(inj.Clean()).To(BeNil())
 			})
 		})
 	})
