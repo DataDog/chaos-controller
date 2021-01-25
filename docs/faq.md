@@ -21,16 +21,18 @@ kubectl -n <NAMESPACE> logs <POD_NAME>
 
 If an error occurred during the cleanup of the disruption (which occurs on removal), the controller will keep failing pods and the disruption will be marked as stuck on removal to allow you to see what happened and eventually take any manual actions to complete the cleanup before removing everything. The very first thing to do is to look at the logs (cf. section above) to identify what has failed and what are the actions to take (for instance, should I delete the target pod to totally remove the disruption?). The disruption will be kept in this state while there are failed chaos pods. To completely remove a chaos pod, you must remove any finalizers it holds by using one of the following methods.
 
-### I want to remove the finalizer on a single chaos pod
+### I want to remove a single chaos pod
 
 ```sh
 kubectl -n <NAMESPACE> patch pod <POD_NAME> --type=json -p '[{"op": "remove", "path": "/metadata/finalizers"}]'
+kubectl -n <NAMESPACE> delete pod <POD_NAME>
 ```
 
-### I want to remove the finalizer on all chaos pods for a given disruption
+### I want to remove all chaos pods for a given disruption
 
 ```sh
 NAMESPACE=<NAMESPACE> DISRUPTION=<DISRUPTION_NAME>; kubectl -n ${NAMESPACE} get -ojson pods -l chaos.datadoghq.com/disruption=${DISRUPTION} | jq -r '.items[].metadata.name' | xargs -I{} kubectl -n ${NAMESPACE} patch pod {} --type=json -p '[{"op": "remove", "path": "/metadata/finalizers"}]'
+NAMESPACE=<NAMESPACE> DISRUPTION=<DISRUPTION_NAME>; kubectl -n ${NAMESPACE} get -ojson pods -l chaos.datadoghq.com/disruption=${DISRUPTION} | jq -r '.items[].metadata.name' | xargs -I{} kubectl -n ${NAMESPACE} delete pod {}
 ```
 
 ## The controller fails to watch or list disruptions
