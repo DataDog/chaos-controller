@@ -6,10 +6,8 @@
 package injector
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -26,8 +24,9 @@ type DNSDisruptionInjector struct {
 // DNSDisruptionInjectorConfig contains all needed drivers to create a dns disruption using `iptables`
 type DNSDisruptionInjectorConfig struct {
 	Config
-	Iptables   network.Iptables
-	FileWriter FileWriter
+	Iptables     network.Iptables
+	FileWriter   FileWriter
+	PythonRunner PythonRunner
 }
 
 // NewDNSDisruptionInjector creates a DNSDisruptionInjector object with the given config,
@@ -41,6 +40,13 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 	if config.FileWriter == nil {
 		config.FileWriter = standardFileWriter{
 			dryRun: config.DryRun,
+		}
+	}
+
+	if config.PythonRunner == nil {
+		config.PythonRunner = standardPythonRunner{
+			dryRun: config.DryRun,
+			log:    config.Log,
 		}
 	}
 
@@ -70,8 +76,7 @@ func (i DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to write resolver config: %w", err)
 	}
 
-	// Run resolver (python is at /usr/bin/python3) (resolver is at /usr/local/bin)
-	_, _, err := i.runPython("/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf")
+	_, _, err := i.config.PythonRunner.RunPython("/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf")
 	if err != nil {
 		return fmt.Errorf("unable to run resolver: %w", err)
 	}
@@ -125,28 +130,4 @@ func (i DNSDisruptionInjector) Clean() error {
 
 	// There is nothing we need to do to shut down the resolver beyond letting the pod terminate
 	return nil
-}
-
-func (i DNSDisruptionInjector) runPython(args ...string) (int, string, error) {
-	// parse args and execute
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	cmd := exec.Command("/usr/bin/python3", args...)
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-
-	// run command
-	i.config.Log.Infof("running python3 command: %v", cmd.String())
-
-	// early exit if dry-run mode is enabled
-	if i.config.DryRun {
-		return 0, "", nil
-	}
-
-	err := cmd.Start()
-	if err != nil {
-		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
-	}
-
-	return cmd.ProcessState.ExitCode(), stdout.String(), err
 }

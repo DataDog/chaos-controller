@@ -43,6 +43,10 @@ var _ = Describe("Failure", func() {
 		// container
 		ctn := &container.ContainerMock{}
 
+		// pythonRunner
+		pythonRunner := &PythonRunnerMock{}
+		pythonRunner.On("RunPython", mock.Anything).Return(0, "", nil)
+
 		// iptables
 		iptables = &network.IptablesMock{}
 		iptables.On("CreateChain", mock.Anything).Return(nil)
@@ -64,7 +68,8 @@ var _ = Describe("Failure", func() {
 				Cgroup:      cgroupManager,
 				Level:       chaostypes.DisruptionLevelPod,
 			},
-			Iptables: iptables,
+			Iptables:     iptables,
+			PythonRunner: pythonRunner,
 		}
 
 		spec = v1beta1.DNSDisruptionSpec{}
