@@ -20,7 +20,7 @@ func (f *IptablesMock) CreateChain(name string) error {
 }
 
 //nolint:golint
-func (f *IptablesMock) DeleteChain(name string) error {
+func (f *IptablesMock) ClearAndDeleteChain(name string) error {
 	args := f.Called(name)
 
 	return args.Error(0)
@@ -43,13 +43,6 @@ func (f *IptablesMock) AddRule(chain string, protocol string, port string, jump 
 //nolint:golint
 func (f *IptablesMock) DeleteRule(chain string, protocol string, port string, jump string) error {
 	args := f.Called(chain, protocol, port, jump)
-
-	return args.Error(0)
-}
-
-//nolint:golint
-func (f *IptablesMock) DeleteRuleByNum(chain string, rulenum int) error {
-	args := f.Called(chain, rulenum)
 
 	return args.Error(0)
 }

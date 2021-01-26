@@ -46,11 +46,10 @@ var _ = Describe("Failure", func() {
 		// iptables
 		iptables = &network.IptablesMock{}
 		iptables.On("CreateChain", mock.Anything).Return(nil)
-		iptables.On("DeleteChain", mock.Anything).Return(nil)
+		iptables.On("ClearAndDeleteChain", mock.Anything).Return(nil)
 		iptables.On("AddRuleWithIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("AddRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("DeleteRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("DeleteRuleByNum", mock.Anything, mock.Anything).Return(nil)
 
 		// environment variables
 		Expect(os.Setenv(chaostypes.ChaosPodIPEnv, "10.0.0.2")).To(BeNil())
@@ -108,8 +107,7 @@ var _ = Describe("Failure", func() {
 		Context("iptables cleanup should happen", func() {
 			It("should clear the iptables rules", func() {
 				iptables.AssertCalled(GinkgoT(), "DeleteRule", "OUTPUT", "udp", "53", "CHAOS-DNS")
-				iptables.AssertCalled(GinkgoT(), "DeleteRuleByNum", "CHAOS-DNS", 1)
-				iptables.AssertCalled(GinkgoT(), "DeleteChain", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "ClearAndDeleteChain", "CHAOS-DNS")
 			})
 		})
 

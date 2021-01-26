@@ -7,7 +7,6 @@ package network
 
 import (
 	"fmt"
-	"strconv"
 
 	goiptables "github.com/coreos/go-iptables/iptables"
 	"go.uber.org/zap"
@@ -16,11 +15,10 @@ import (
 // Iptables is an interface for interacting with host firewall/iptables rules
 type Iptables interface {
 	CreateChain(name string) error
-	DeleteChain(name string) error
+	ClearAndDeleteChain(name string) error
 	AddRuleWithIP(chain string, protocol string, port string, jump string, destinationIP string) error
 	AddRule(chain string, protocol string, port string, jump string) error
 	DeleteRule(chain string, protocol string, port string, jump string) error
-	DeleteRuleByNum(chain string, rulenum int) error
 }
 
 type iptables struct {
@@ -47,16 +45,13 @@ func (i iptables) CreateChain(name string) error {
 
 	return i.ip.NewChain("nat", name)
 }
-func (i iptables) DeleteChain(name string) error {
+
+func (i iptables) ClearAndDeleteChain(name string) error {
 	if i.dryRun {
 		return nil
 	}
 
-	if exists, _ := i.ip.ChainExists("nat", name); !exists {
-		return nil
-	}
-
-	return i.ip.DeleteChain("nat", name)
+	return i.ip.ClearAndDeleteChain("nat", name)
 }
 
 func (i iptables) AddRuleWithIP(chain string, protocol string, port string, jump string, destinationIP string) error {
@@ -94,16 +89,4 @@ func (i iptables) DeleteRule(chain string, protocol string, port string, jump st
 	}
 
 	return i.ip.DeleteIfExists("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
-}
-
-func (i iptables) DeleteRuleByNum(chain string, rulenum int) error {
-	if i.dryRun {
-		return nil
-	}
-
-	if exists, _ := i.ip.ChainExists("nat", chain); !exists {
-		return nil
-	}
-
-	return i.ip.DeleteIfExists("nat", chain, strconv.Itoa(rulenum))
 }

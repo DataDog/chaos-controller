@@ -114,11 +114,7 @@ func (i DNSDisruptionInjector) Clean() error {
 		return fmt.Errorf("unable to remove injected iptables rule: %w", err)
 	}
 
-	if err := i.config.Iptables.DeleteRuleByNum("CHAOS-DNS", 1); err != nil {
-		return fmt.Errorf("unable to remove injected iptables rule: %w", err)
-	}
-
-	if err := i.config.Iptables.DeleteChain("CHAOS-DNS"); err != nil {
+	if err := i.config.Iptables.ClearAndDeleteChain("CHAOS-DNS"); err != nil {
 		return fmt.Errorf("unable to remove injected iptables chain: %w", err)
 	}
 
