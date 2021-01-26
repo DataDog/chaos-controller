@@ -14,10 +14,10 @@ spec:
     app: demo
   count: 1 # number of pods to target or a percentage (1% - 100%)
   dns:
-    - hostname: foo.bar.svc.cluster.local
+    - hostname: foo.bar.* # This field is a regex that matches hostnames
       record:
         type: A
-        value: 10.0.0.154,10.0.0.13
+        value: 10.0.0.154,10.0.0.13 # If a comma-delimited list of IPs is given, they will be round-robined
     - hostname: datadoghq.com
       record:
         type: CNAME

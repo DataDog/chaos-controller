@@ -69,8 +69,8 @@ spec:
             dns:
               description: DNSDisruptionSpec represents a dns disruption
               items:
-                description: HostRecordPair represents a hostname and a dns record
-                  override
+                description: HostRecordPair represents a hostname and a corresponding
+                  dns record override
                 properties:
                   hostname:
                     type: string

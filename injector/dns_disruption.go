@@ -30,7 +30,7 @@ type DNSDisruptionInjectorConfig struct {
 }
 
 // NewDNSDisruptionInjector creates a DNSDisruptionInjector object with the given config,
-// missing field being initialized with the defaults
+// missing fields are initialized with the defaults
 func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisruptionInjectorConfig) (Injector, error) {
 	var err error
 	if config.Iptables == nil {
@@ -107,7 +107,7 @@ func (i DNSDisruptionInjector) Inject() error {
 	return nil
 }
 
-// Clean removes the injected disruption in the given container
+// Clean removes the injected disruption from the given container
 func (i DNSDisruptionInjector) Clean() error {
 	// enter target network namespace
 	if err := i.config.Netns.Enter(); err != nil {

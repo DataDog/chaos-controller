@@ -16,7 +16,7 @@ import (
 // DNSDisruptionSpec represents a dns disruption
 type DNSDisruptionSpec []HostRecordPair
 
-// HostRecordPair represents a hostname and a dns record override
+// HostRecordPair represents a hostname and a corresponding dns record override
 type HostRecordPair struct {
 	Hostname string    `json:"hostname"`
 	Record   DNSRecord `json:"record"`
@@ -28,7 +28,7 @@ type DNSRecord struct {
 	Value string `json:"value"`
 }
 
-// Validate validates args for the given disruption
+// Validate validates that there are no missing hostnames or records for the given dns disruption spec
 func (s DNSDisruptionSpec) Validate() error {
 	for _, pair := range s {
 		if pair.Hostname == "" {
@@ -47,7 +47,7 @@ func (s DNSDisruptionSpec) Validate() error {
 	return nil
 }
 
-// GenerateArgs generates injection or cleanup pod arguments for the given spec
+// GenerateArgs generates injection pod arguments for the given spec
 func (s DNSDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string, dryRun bool) []string {
 	args := []string{
 		"dns-disruption",

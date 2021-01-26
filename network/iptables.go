@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Iptables is an interface for interacting with host firewall/iptables rules
+// Iptables is an interface for interacting with target nat firewall/iptables rules
 type Iptables interface {
 	CreateChain(name string) error
 	ClearAndDeleteChain(name string) error
@@ -43,6 +43,8 @@ func (i iptables) CreateChain(name string) error {
 		return nil
 	}
 
+	i.log.Infow("creating new iptables chain", "chain name", name)
+
 	return i.ip.NewChain("nat", name)
 }
 
@@ -50,6 +52,8 @@ func (i iptables) ClearAndDeleteChain(name string) error {
 	if i.dryRun {
 		return nil
 	}
+
+	i.log.Infow("deleting iptables chain", "chain name", name)
 
 	return i.ip.ClearAndDeleteChain("nat", name)
 }
@@ -59,6 +63,8 @@ func (i iptables) AddRuleWithIP(chain string, protocol string, port string, jump
 		return nil
 	}
 
+	i.log.Infow("creating new iptables rule", "chain name", chain, "protocol", protocol, "port", port, "jump target", jump, "destination", destinationIP)
+
 	return i.ip.Append("nat", chain, "-p", protocol, "--dport", port, "-j", jump, "--to-destination", fmt.Sprintf("%s:%s", destinationIP, port))
 }
 
@@ -67,6 +73,8 @@ func (i iptables) AddRule(chain string, protocol string, port string, jump strin
 		return nil
 	}
 
+	i.log.Infow("creating new iptables rule", "chain name", chain, "protocol", protocol, "port", port, "jump target", jump)
+
 	return i.ip.Append("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
 }
 
@@ -74,6 +82,8 @@ func (i iptables) DeleteRule(chain string, protocol string, port string, jump st
 	if i.dryRun {
 		return nil
 	}
+
+	i.log.Infow("deleting iptables rule", "chain name", chain, "protocol", protocol, "port", port, "jump target", jump)
 
 	if exists, _ := i.ip.ChainExists("nat", chain); !exists {
 		return nil
