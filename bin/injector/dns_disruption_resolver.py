@@ -1,9 +1,30 @@
-#!/usr/bin/env python
-"""Fakedns.py: A regular-expression based DNS MITM Server by Crypt0s."""
+#!/usr/bin/env python3
 """
+MIT License
+
+Copyright (c) 2020 Bryan "Crypt0s" Halfpap
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+"""
+Fakedns.py: A regular-expression based DNS MITM Server by Crypt0s.
 Taken from https://github.com/Crypt0s/FakeDns/blob/085737893532ae1c11717807cf3928e989029391/fakedns.py
-under MIT License https://github.com/Crypt0s/FakeDns/blob/2123879d7e361c7198b486c684882d5e96fe6edd/LICENSE
-on 2021/20/1
 """
 
 # This isn't the most elegent way - i could possibly support both versions of python,

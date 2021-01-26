@@ -28,6 +28,7 @@ files_to_skip = [
     "config/rbac/role.yaml",
     "config/crd/bases/chaos.datadoghq.com_disruptions.yaml",
     "api/v1beta1/zz_generated.deepcopy.go",
+    "bin/injector/dns_disruption_resolver.py",
 ]
 
 # generates the header with the given comment tag
