@@ -60,7 +60,7 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 func (i DNSDisruptionInjector) Inject() error {
 	i.config.Log.Infow("adding dns disruption", "spec", i.spec)
 
-	// get the targeted pod node IP from the environment variable
+	// get the chaos pod node IP from the environment variable
 	podIP, ok := os.LookupEnv(chaostypes.ChaosPodIPEnv)
 	if !ok {
 		return fmt.Errorf("%s environment variable must be set with the chaos pod IP", chaostypes.ChaosPodIPEnv)
@@ -99,6 +99,18 @@ func (i DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
 
+	if i.config.Level == chaostypes.DisruptionLevelNode {
+		// Exempt chaos pod from iptables re-routing
+		if err := i.config.Iptables.PrependRule("CHAOS-DNS", "-s", podIP, "-j", "RETURN"); err != nil {
+			return fmt.Errorf("unable to create new iptables rule: %w", err)
+		}
+
+		// Re-route all pods under node
+		if err := i.config.Iptables.PrependRule("PREROUTING", "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
+			return fmt.Errorf("unable to create new iptables rule: %w", err)
+		}
+	}
+
 	// exit target network namespace
 	if err := i.config.Netns.Exit(); err != nil {
 		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
@@ -117,6 +129,13 @@ func (i DNSDisruptionInjector) Clean() error {
 	// Delete iptables rules
 	if err := i.config.Iptables.DeleteRule("OUTPUT", "udp", "53", "CHAOS-DNS"); err != nil {
 		return fmt.Errorf("unable to remove injected iptables rule: %w", err)
+	}
+
+	if i.config.Level == chaostypes.DisruptionLevelNode {
+		// Delete prerouting rule affecting all pods on node
+		if err := i.config.Iptables.DeleteRule("PREROUTING", "udp", "53", "CHAOS-DNS"); err != nil {
+			return fmt.Errorf("unable to create new iptables rule: %w", err)
+		}
 	}
 
 	if err := i.config.Iptables.ClearAndDeleteChain("CHAOS-DNS"); err != nil {

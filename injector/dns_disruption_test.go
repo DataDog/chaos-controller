@@ -53,6 +53,7 @@ var _ = Describe("Failure", func() {
 		iptables.On("ClearAndDeleteChain", mock.Anything).Return(nil)
 		iptables.On("AddRuleWithIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("AddRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("PrependRule", mock.Anything, mock.Anything).Return(nil)
 		iptables.On("DeleteRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// environment variables
@@ -66,7 +67,7 @@ var _ = Describe("Failure", func() {
 				MetricsSink: ms,
 				Netns:       netnsManager,
 				Cgroup:      cgroupManager,
-				Level:       chaostypes.DisruptionLevelPod,
+				Level:       chaostypes.DisruptionLevelNode,
 			},
 			Iptables:     iptables,
 			PythonRunner: pythonRunner,
@@ -91,9 +92,11 @@ var _ = Describe("Failure", func() {
 		})
 
 		Context("iptables rules should be created", func() {
-			It("should create one chain and two rules", func() {
+			It("should create one chain and four rules", func() {
 				iptables.AssertCalled(GinkgoT(), "AddRule", "OUTPUT", "udp", "53", "CHAOS-DNS")
 				iptables.AssertCalled(GinkgoT(), "AddRuleWithIP", "CHAOS-DNS", "udp", "53", "DNAT", "10.0.0.2")
+				iptables.AssertCalled(GinkgoT(), "PrependRule", "CHAOS-DNS", []string{"-s", "10.0.0.2", "-j", "RETURN"})
+				iptables.AssertCalled(GinkgoT(), "PrependRule", "PREROUTING", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
 				iptables.AssertCalled(GinkgoT(), "CreateChain", "CHAOS-DNS")
 			})
 		})
