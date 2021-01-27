@@ -3,7 +3,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2020 Datadog, Inc.
+# Copyright 2021 Datadog, Inc.
 
 from invoke import task
 import glob
@@ -37,7 +37,7 @@ def generate_header_with_tag(tag: str) -> t.List:
         f"{tag} Unless explicitly stated otherwise all files in this repository are licensed\n",
         f"{tag} under the Apache License Version 2.0.\n",
         f"{tag} This product includes software developed at Datadog (https://www.datadoghq.com/).\n",
-        f"{tag} Copyright 2020 Datadog, Inc.\n",
+        f"{tag} Copyright 2021 Datadog, Inc.\n",
     ]
 
 

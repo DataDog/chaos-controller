@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2020 Datadog, Inc.
+// Copyright 2021 Datadog, Inc.
 
 /*
 
@@ -449,8 +449,45 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 
 		// terminate running chaos pods to trigger cleanup
 		for _, chaosPod := range chaosPods {
-			// if the chaos pod has succeeded, remove the finalizer so it can be garbage collected
-			if chaosPod.Status.Phase == corev1.PodSucceeded || chaosPod.Status.Phase == corev1.PodPending || ignoreCleanupStatus {
+			removeFinalizer := false
+			deletePod := false
+
+			// check the chaos pod status to determine if we can safely delete it or not
+			switch chaosPod.Status.Phase {
+			case corev1.PodSucceeded, corev1.PodPending:
+				// pod has terminated or is pending
+				// we can remove the pod and the finalizer and it'll be garbage collected
+				removeFinalizer = true
+				deletePod = true
+			case corev1.PodRunning:
+				// pod is still running
+				// we delete it to trigger termination but we keep the finalizer until it has terminated to eventually catch an error during cleanup
+				deletePod = true
+			case corev1.PodFailed:
+				// pod has failed
+				// we need to determine if we can remove it safely or if we need to block disruption deletion
+				// check if a container has been created (if not, the disruption was not injected)
+				if len(chaosPod.Status.ContainerStatuses) == 0 {
+					removeFinalizer = true
+					deletePod = true
+				}
+
+				// check if the container was able to start or not
+				// if not, we can safely delete the pod since the disruption was not injected
+				for _, cs := range chaosPod.Status.ContainerStatuses {
+					if cs.Name == "injector" {
+						if cs.State.Terminated != nil && cs.State.Terminated.Reason == "StartError" {
+							removeFinalizer = true
+							deletePod = true
+						}
+
+						break
+					}
+				}
+			}
+
+			// remove the finalizer if needed or if we should ignore the cleanup status
+			if removeFinalizer || ignoreCleanupStatus {
 				r.log.Infow("chaos pod completed, removing finalizer", "target", target, "chaosPod", chaosPod.Name)
 
 				controllerutil.RemoveFinalizer(&chaosPod, chaosPodFinalizer)
@@ -460,17 +497,20 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 				}
 			}
 
-			// if the chaos pod is running or pending, delete it to trigger the termination and the cleanup
-			if chaosPod.Status.Phase == corev1.PodRunning || chaosPod.Status.Phase == corev1.PodPending {
-				r.log.Infow("terminating chaos pod to trigger cleanup", "target", target, "chaosPod", chaosPod.Name)
+			// delete the chaos pod if needed and only if it has not been deleted already
+			if deletePod || ignoreCleanupStatus {
+				if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
+					r.log.Infow("terminating chaos pod to trigger cleanup", "target", target, "chaosPod", chaosPod.Name)
 
-				if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
-					r.log.Errorw("error terminating chaos pod", "error", err, "target", target, "chaosPod", chaosPod.Name)
+					if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
+						r.log.Errorw("error terminating chaos pod", "error", err, "target", target, "chaosPod", chaosPod.Name)
+					}
 				}
 			}
 
-			// if the chaos pod has failed, declare the disruption as stuck on removal so it can be investigated
-			if chaosPod.Status.Phase == corev1.PodFailed && !ignoreCleanupStatus {
+			// if the chaos pod finalizer must not be removed and the chaos pod must not be deleted
+			// and the cleanup status must not be ignored, we are stuck and won't be able to remove the disruption
+			if !removeFinalizer && !deletePod && !ignoreCleanupStatus {
 				r.log.Infow("instance seems stuck on removal for this target, please check manually", "target", target, "chaosPod", chaosPod.Name)
 				r.Recorder.Event(instance, "Warning", "StuckOnRemoval", "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer")
 
