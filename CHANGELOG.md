@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.2.0.beta1](https://github.com/DataDog/chaos-controller/tree/3.2.0.beta1) (2021-01-27)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.2.0...3.2.0.beta1)
+
+**Merged pull requests:**
+
+- Use Copyright 2021 for all new license headers [\#241](https://github.com/DataDog/chaos-controller/pull/241) ([ptnapoleon](https://github.com/ptnapoleon))
+- Ignore some edge cases failures from the injector on deletion [\#240](https://github.com/DataDog/chaos-controller/pull/240) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_c04ce2bde80462eb95ae762ceb67f82673bd5641 [\#239](https://github.com/DataDog/chaos-controller/pull/239) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [3.2.0](https://github.com/DataDog/chaos-controller/tree/3.2.0) (2021-01-25)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.1.0...3.2.0)
@@ -82,7 +92,6 @@
 - Skip target on injection error instead of stopping the reconcile loop [\#205](https://github.com/DataDog/chaos-controller/pull/205) ([Devatoria](https://github.com/Devatoria))
 - CORE-402: Another way to test only selecting Running Pods [\#204](https://github.com/DataDog/chaos-controller/pull/204) ([takakonishimura](https://github.com/takakonishimura))
 - \[Doc\] - Update sample documentation for count [\#202](https://github.com/DataDog/chaos-controller/pull/202) ([gaetan-deputier](https://github.com/gaetan-deputier))
-- Tay/brainstorm/etcd [\#200](https://github.com/DataDog/chaos-controller/pull/200) ([takakonishimura](https://github.com/takakonishimura))
 - Node level disruptions [\#198](https://github.com/DataDog/chaos-controller/pull/198) ([Devatoria](https://github.com/Devatoria))
 - CORE-296: Check pods are Running before Injection [\#196](https://github.com/DataDog/chaos-controller/pull/196) ([takakonishimura](https://github.com/takakonishimura))
 - Add jitter for delay to the chaos-controller [\#195](https://github.com/DataDog/chaos-controller/pull/195) ([Azoam](https://github.com/Azoam))
