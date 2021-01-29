@@ -16,7 +16,6 @@ var diskPressureCmd = &cobra.Command{
 	Short: "Disk pressure subcommands",
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		var err error
 		path, _ := cmd.Flags().GetString("path")
 		writeBytesPerSec, _ := cmd.Flags().GetInt("write-bytes-per-sec")
 		readBytesPerSec, _ := cmd.Flags().GetInt("read-bytes-per-sec")
@@ -40,10 +39,14 @@ var diskPressureCmd = &cobra.Command{
 			},
 		}
 
-		// create injector
-		inj, err = injector.NewDiskPressureInjector(spec, injector.DiskPressureInjectorConfig{Config: config})
-		if err != nil {
-			log.Fatalw("error initializing the disk pressure injector", "error", err)
+		// create injectors
+		for _, config := range configs {
+			inj, err := injector.NewDiskPressureInjector(spec, injector.DiskPressureInjectorConfig{Config: config})
+			if err != nil {
+				log.Fatalw("error initializing the disk pressure injector", "error", err)
+			}
+
+			injectors = append(injectors, inj)
 		}
 	},
 }

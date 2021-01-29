@@ -38,15 +38,15 @@ var rootCmd = &cobra.Command{
 }
 
 var (
-	log         *zap.SugaredLogger
-	dryRun      bool
-	ms          metrics.Sink
-	sink        string
-	level       string
-	containerID string
-	config      injector.Config
-	signals     chan os.Signal
-	inj         injector.Injector
+	log          *zap.SugaredLogger
+	dryRun       bool
+	ms           metrics.Sink
+	sink         string
+	level        string
+	containersID []string
+	configs      []injector.Config
+	signals      chan os.Signal
+	injectors    []injector.Injector
 )
 
 func init() {
@@ -57,7 +57,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Enable dry-run mode")
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
-	rootCmd.PersistentFlags().StringVar(&containerID, "container-id", "", "Targeted container ID")
+	rootCmd.PersistentFlags().StringSliceVar(&containersID, "containers-id", []string{}, "Targeted containers ID")
 	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "level")
 
 	cobra.OnInitialize(initLogger)
@@ -108,12 +108,11 @@ func initMetricsSink() {
 
 // initConfig initializes the injector config and main components from the given flags
 func initConfig() {
-	var (
-		err        error
-		cgroupPath string
-		pid        uint32
-		ctn        container.Container
-	)
+	cgroupPaths := []string{}
+	pids := []uint32{}
+	ctns := []container.Container{}
+	cgroupMgrs := []cgroup.Manager{}
+	netnsMgrs := []netns.Manager{}
 
 	// log when dry-run mode is enabled
 	if dryRun {
@@ -123,47 +122,65 @@ func initConfig() {
 	switch level {
 	case chaostypes.DisruptionLevelPod:
 		// check for container ID flag
-		if containerID == "" {
-			log.Fatal("--container-id flag must be passed when --level=pod")
+		if len(containersID) == 0 {
+			log.Fatal("--containers-id flag must be passed when --level=pod")
 		}
 
-		// retrieve container info
-		ctn, err = container.New(containerID)
-		if err != nil {
-			log.Fatalw("can't create container object", "error", err)
+		for _, containerID := range containersID {
+			// retrieve container info
+			ctn, err := container.New(containerID)
+			if err != nil {
+				log.Fatalw("can't create container object", "error", err)
+			}
+
+			log.Infow("injector targeting container", "containerID", containerID, "container name", ctn.Name())
+
+			cgroupPath := ctn.CgroupPath()
+			pid := ctn.PID()
+
+			ctns = append(ctns, ctn)
+			cgroupPaths = append(cgroupPaths, cgroupPath)
+			pids = append(pids, pid)
 		}
-
-		log.Infow("injector targeting container", "containerID", containerID, "container name", ctn.Name())
-
-		cgroupPath = ctn.CgroupPath()
-		pid = ctn.PID()
 	case chaostypes.DisruptionLevelNode:
-		cgroupPath = ""
-		pid = 1
+		cgroupPaths = []string{""}
+		pids = []uint32{1}
 	default:
 		log.Fatalf("unknown level: %s", level)
 	}
 
-	// create cgroup manager
-	cgroupMgr, err := cgroup.NewManager(dryRun, cgroupPath)
-	if err != nil {
-		log.Fatalw("error creating cgroup manager", "error", err)
+	// create cgroup managers
+	for _, cgroupPath := range cgroupPaths {
+		cgroupMgr, err := cgroup.NewManager(dryRun, cgroupPath)
+		if err != nil {
+			log.Fatalw("error creating cgroup manager", "error", err)
+		}
+
+		cgroupMgrs = append(cgroupMgrs, cgroupMgr)
 	}
 
 	// create network namespace manager
-	netnsMgr, err := netns.NewManager(pid)
-	if err != nil {
-		log.Fatalw("error creating network namespace manager", "error", err)
+	for _, pid := range pids {
+		netnsMgr, err := netns.NewManager(pid)
+		if err != nil {
+			log.Fatalw("error creating network namespace manager", "error", err)
+		}
+
+		netnsMgrs = append(netnsMgrs, netnsMgr)
 	}
 
-	config = injector.Config{
-		DryRun:      dryRun,
-		Log:         log,
-		MetricsSink: ms,
-		Level:       chaostypes.DisruptionLevel(level),
-		Container:   ctn,
-		Cgroup:      cgroupMgr,
-		Netns:       netnsMgr,
+	for i, ctn := range ctns {
+		config := injector.Config{
+			DryRun:      dryRun,
+			Log:         log,
+			MetricsSink: ms,
+			Level:       chaostypes.DisruptionLevel(level),
+			Container:   ctn,
+			Cgroup:      cgroupMgrs[i],
+			Netns:       netnsMgrs[i],
+		}
+
+		configs = append(configs, config)
 	}
 }
 
@@ -178,19 +195,21 @@ func initExitSignalsHandler() {
 func injectAndWait(cmd *cobra.Command, args []string) {
 	log.Info("injecting the disruption")
 
-	// start injection, do not fatal on error so we keep the pod
-	// running, allowing the cleanup to happen
-	if err := inj.Inject(); err != nil {
-		handleMetricError(ms.MetricInjected(false, cmd.Name(), nil))
-		log.Errorw("disruption injection failed", "error", err)
-	} else {
-		// create and write readiness probe file if injection succeeded so the pod is marked as ready
-		if err := ioutil.WriteFile(readinessProbeFile, []byte("1"), 0400); err != nil {
-			log.Errorw("error writing readiness probe file", "error", err)
-		}
+	for _, inj := range injectors {
+		// start injection, do not fatal on error so we keep the pod
+		// running, allowing the cleanup to happen
+		if err := inj.Inject(); err != nil {
+			handleMetricError(ms.MetricInjected(false, cmd.Name(), nil))
+			log.Errorw("disruption injection failed", "error", err)
+		} else {
+			// create and write readiness probe file if injection succeeded so the pod is marked as ready
+			if err := ioutil.WriteFile(readinessProbeFile, []byte("1"), 0400); err != nil {
+				log.Errorw("error writing readiness probe file", "error", err)
+			}
 
-		handleMetricError(ms.MetricInjected(true, cmd.Name(), nil))
-		log.Info("disruption injected, now waiting for an exit signal")
+			handleMetricError(ms.MetricInjected(true, cmd.Name(), nil))
+			log.Info("disruption injected, now waiting for an exit signal")
+		}
 	}
 
 	// wait for an exit signal, this is a blocking call
@@ -203,13 +222,16 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 func cleanAndExit(cmd *cobra.Command, args []string) {
 	log.Info("cleaning the disruption")
 
-	// start cleanup which is retried up to 3 times using an exponential backoff algorithm
-	if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
-		handleMetricError(ms.MetricCleaned(false, cmd.Name(), nil))
-		log.Fatalw("disruption cleanup failed", "error", err)
+	for _, inj := range injectors {
+		// start cleanup which is retried up to 3 times using an exponential backoff algorithm
+		if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
+			handleMetricError(ms.MetricCleaned(false, cmd.Name(), nil))
+			log.Fatalw("disruption cleanup failed", "error", err)
+		}
+
+		handleMetricError(ms.MetricCleaned(true, cmd.Name(), nil))
 	}
 
-	handleMetricError(ms.MetricCleaned(true, cmd.Name(), nil))
 	log.Info("disruption cleaned, now exiting")
 }
 
