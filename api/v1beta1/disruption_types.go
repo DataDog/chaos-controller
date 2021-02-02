@@ -35,8 +35,8 @@ type DisruptionSpec struct {
 	Selector labels.Set `json:"selector"`         // label selector
 	DryRun   bool       `json:"dryRun,omitempty"` // enable dry-run mode
 	// +kubebuilder:validation:Enum=pod;node;""
-	Level     chaostypes.DisruptionLevel `json:"level,omitempty"`
-	Container string                     `json:"container,omitempty"`
+	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
+	Containers []string                   `json:"containers,omitempty"`
 	// +nullable
 	Network *NetworkDisruptionSpec `json:"network,omitempty"`
 	// +nullable

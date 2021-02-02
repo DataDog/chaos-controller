@@ -33,19 +33,29 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// getContainerID gets the ID of the targeted container or of the first container ID found in a Pod
-func getContainerID(pod *corev1.Pod, target string) (string, error) {
+// getContainerIDs gets the IDs of the targeted containers or all container IDs found in a Pod
+func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
-		return "", fmt.Errorf("missing container ids for pod '%s'", pod.Name)
+		return []string{}, fmt.Errorf("missing container ids for pod '%s'", pod.Name)
 	}
 
+	ctns := []string{}
+	fallback := []string{}
 	for _, container := range pod.Status.ContainerStatuses {
-		if container.Name == target {
-			return container.ContainerID, nil
+		for _, target := range targets {
+			if container.Name == target {
+				ctns = append(ctns, container.ContainerID)
+			}
+
+			fallback = append(fallback, container.ContainerID)
 		}
 	}
 
-	return pod.Status.ContainerStatuses[0].ContainerID, nil
+	if len(ctns) == 0 {
+		ctns = fallback
+	}
+
+	return ctns, nil
 }
 
 // This function returns a scaled value from an IntOrString type. If the IntOrString
