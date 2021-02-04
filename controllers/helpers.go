@@ -42,10 +42,9 @@ func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 	ctns := []string{}
 	// if no containers are specified or found in the list of targeted containers, all containers are targeted using the fallback
 	fallback := []string{}
+
 	for _, container := range pod.Status.ContainerStatuses {
-
 		for _, target := range targets {
-
 			if container.Name == target {
 				ctns = append(ctns, container.ContainerID)
 			}
