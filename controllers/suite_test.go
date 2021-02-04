@@ -22,6 +22,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -81,10 +82,18 @@ func (f fakeK8sClient) Get(ctx context.Context, key client.ObjectKey, obj runtim
 
 	// try to convert given object into a pod
 	if pod, ok := obj.(*corev1.Pod); ok {
-		pod.Status.ContainerStatuses = []corev1.ContainerStatus{
-			{
-				ContainerID: "fakeID",
-			},
+		for i := 0; i < len(pod.Spec.Containers); i++ {
+			if i == 0 {
+				pod.Status.ContainerStatuses = []corev1.ContainerStatus{
+					{
+						Name:        "ctn1",
+						ContainerID: "fakeID",
+					},
+				}
+			} else {
+				name := fmt.Sprintf("ctn%d", i+1)
+				pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, corev1.ContainerStatus{Name: name, ContainerID: "fakeID"})
+			}
 		}
 	}
 
@@ -209,10 +218,6 @@ var _ = BeforeEach(func() {
 			Containers: []corev1.Container{
 				corev1.Container{
 					Image: "foo",
-					Name:  "foo",
-				},
-				corev1.Container{
-					Image: "foo",
 					Name:  "ctn1",
 				},
 				corev1.Container{
@@ -236,10 +241,6 @@ var _ = BeforeEach(func() {
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
-				corev1.Container{
-					Image: "bar",
-					Name:  "bar",
-				},
 				corev1.Container{
 					Image: "bar",
 					Name:  "ctn1",
@@ -267,10 +268,6 @@ var _ = BeforeEach(func() {
 			Containers: []corev1.Container{
 				corev1.Container{
 					Image: "car",
-					Name:  "car",
-				},
-				corev1.Container{
-					Image: "car",
 					Name:  "ctn1",
 				},
 				corev1.Container{
@@ -294,10 +291,6 @@ var _ = BeforeEach(func() {
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
-				corev1.Container{
-					Image: "far",
-					Name:  "far",
-				},
 				corev1.Container{
 					Image: "far",
 					Name:  "ctn1",
