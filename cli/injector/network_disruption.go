@@ -32,7 +32,7 @@ var networkDisruptionCmd = &cobra.Command{
 			var spec v1beta1.NetworkDisruptionSpec
 
 			// only specify spec for the first injector because
-			// the network namespace is shared accross all containers so we do not want
+			// the network namespace is shared across all containers so we do not want
 			// to inject more rules
 			if i == 0 {
 				spec = v1beta1.NetworkDisruptionSpec{

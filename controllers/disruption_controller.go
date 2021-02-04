@@ -273,6 +273,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 	for _, target := range instance.Status.Targets {
 		var targetNodeName string
+
 		var containersID []string
 
 		chaosPods := []*corev1.Pod{}
