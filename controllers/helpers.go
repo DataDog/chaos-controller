@@ -53,6 +53,10 @@ func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 	}
 
 	if len(ctns) == 0 {
+		// targets were expected, most likely a typo in container name, erroring
+		if len(targets) != 0 {
+			return ctns, fmt.Errorf("could not find specified targets in pod spec, most likly a typo")
+		}
 		return fallback, nil
 	}
 
