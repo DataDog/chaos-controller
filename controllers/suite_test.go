@@ -211,6 +211,18 @@ var _ = BeforeEach(func() {
 					Image: "foo",
 					Name:  "foo",
 				},
+				corev1.Container{
+					Image: "foo",
+					Name:  "ctn1",
+				},
+				corev1.Container{
+					Image: "foo",
+					Name:  "ctn2",
+				},
+				corev1.Container{
+					Image: "foo",
+					Name:  "ctn3",
+				},
 			},
 		},
 	}
@@ -227,6 +239,18 @@ var _ = BeforeEach(func() {
 				corev1.Container{
 					Image: "bar",
 					Name:  "bar",
+				},
+				corev1.Container{
+					Image: "bar",
+					Name:  "ctn1",
+				},
+				corev1.Container{
+					Image: "bar",
+					Name:  "ctn2",
+				},
+				corev1.Container{
+					Image: "bar",
+					Name:  "ctn3",
 				},
 			},
 		},
@@ -245,6 +269,18 @@ var _ = BeforeEach(func() {
 					Image: "car",
 					Name:  "car",
 				},
+				corev1.Container{
+					Image: "car",
+					Name:  "ctn1",
+				},
+				corev1.Container{
+					Image: "car",
+					Name:  "ctn2",
+				},
+				corev1.Container{
+					Image: "car",
+					Name:  "ctn3",
+				},
 			},
 		},
 	}
@@ -261,6 +297,18 @@ var _ = BeforeEach(func() {
 				corev1.Container{
 					Image: "far",
 					Name:  "far",
+				},
+				corev1.Container{
+					Image: "far",
+					Name:  "ctn1",
+				},
+				corev1.Container{
+					Image: "far",
+					Name:  "ctn2",
+				},
+				corev1.Container{
+					Image: "far",
+					Name:  "ctn3",
 				},
 			},
 		},
