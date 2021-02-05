@@ -119,6 +119,16 @@ func (d *Sink) MetricStuckOnRemovalCount(count float64) error {
 	return d.client.Gauge(metricPrefixController+"disruptions.stuck_on_removal_total", count, []string{}, 1)
 }
 
+// MetricDisruptionsCount sends the disruptions.count metric counting ongoing disruptions
+func (d *Sink) MetricDisruptionsCount(count float64) error {
+	return d.client.Gauge(metricPrefixController+"disruptions.count", count, []string{}, 1)
+}
+
+// MetricPodsCount sends the pods.count metric counting existing chaos pods
+func (d *Sink) MetricPodsCount(count float64) error {
+	return d.client.Gauge(metricPrefixController+"pods.count", count, []string{}, 1)
+}
+
 func boolToStatus(succeed bool) string {
 	var status string
 	if succeed {
