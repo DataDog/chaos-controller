@@ -67,7 +67,8 @@ func (s DNSDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, contai
 	hostRecordPairArgs := []string{}
 
 	for _, pair := range s {
-		arg := fmt.Sprintf("%s;%s;%s", pair.Hostname, pair.Record.Type, pair.Record.Value)
+		whiteSpaceCleanedIPList := strings.ReplaceAll(pair.Record.Value, " ", "")
+		arg := fmt.Sprintf("%s;%s;%s", pair.Hostname, pair.Record.Type, whiteSpaceCleanedIPList)
 		hostRecordPairArgs = append(hostRecordPairArgs, arg)
 	}
 
