@@ -130,7 +130,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	go r.WatchStuckOnRemoval()
+	go r.ReportMetrics()
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

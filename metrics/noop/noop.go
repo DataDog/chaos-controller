@@ -38,29 +38,35 @@ func (n *Sink) Flush() error {
 
 // EventWithTags creates a new event with the given title, text and tags and send it
 func (n *Sink) EventWithTags(title, text string, tags []string) error {
+	fmt.Printf("NOOP: Event %s\n", title)
+
 	return nil
 }
 
 // MetricInjected increments the injected metric
 func (n *Sink) MetricInjected(succeed bool, kind string, tags []string) error {
+	fmt.Printf("NOOP: MetricInjected %v\n", succeed)
+
 	return nil
 }
 
 // MetricCleaned increments the cleaned metric
 func (n *Sink) MetricCleaned(succeed bool, kind string, tags []string) error {
+	fmt.Printf("NOOP: MetricCleaned %v\n", succeed)
+
 	return nil
 }
 
 // MetricCleanupDuration send timing metric for cleanup duration
 func (n *Sink) MetricCleanupDuration(duration time.Duration, tags []string) error {
-	fmt.Println("NOOP: MetricCleanupDuration +1")
+	fmt.Printf("NOOP: MetricCleanupDuration %v\n", duration)
 
 	return nil
 }
 
 // MetricInjectDuration send timing metric for inject duration
 func (n *Sink) MetricInjectDuration(duration time.Duration, tags []string) error {
-	fmt.Println("NOOP: MetricInjectDuration +1")
+	fmt.Printf("NOOP: MetricInjectDuration %v\n", duration)
 
 	return nil
 }
@@ -74,7 +80,7 @@ func (n *Sink) MetricReconcile() error {
 
 // MetricReconcileDuration send timing metric for reconcile loop
 func (n *Sink) MetricReconcileDuration(duration time.Duration, tags []string) error {
-	fmt.Println("NOOP: MetricReconcileDuration +1")
+	fmt.Printf("NOOP: MetricReconcileDuration %v\n", duration)
 
 	return nil
 }
@@ -95,7 +101,21 @@ func (n *Sink) MetricStuckOnRemoval(tags []string) error {
 
 // MetricStuckOnRemovalCount sends disruptions.stuck_on_removal_count metric
 func (n *Sink) MetricStuckOnRemovalCount(count float64) error {
-	fmt.Println("NOOP: MetricStuckOnRemovalCount +1")
+	fmt.Printf("NOOP: MetricStuckOnRemovalCount %f\n", count)
+
+	return nil
+}
+
+// MetricDisruptionsCount sends disruptions.count metric
+func (n *Sink) MetricDisruptionsCount(count float64) error {
+	fmt.Printf("NOOP: MetricDisruptionsCount %f\n", count)
+
+	return nil
+}
+
+// MetricPodsCount sends pods.count metric
+func (n *Sink) MetricPodsCount(count float64) error {
+	fmt.Printf("NOOP: MetricPodsCount %f\n", count)
 
 	return nil
 }
