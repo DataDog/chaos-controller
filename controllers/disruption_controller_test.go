@@ -194,7 +194,7 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return expectChaosPod(disruption, 16) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Eventually(func() error { return expectChaosInjectors(disruption, 2) }, timeout).Should(Succeed())
+			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
@@ -218,7 +218,7 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return expectChaosPod(disruption, 4) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Eventually(func() error { return expectChaosInjectors(disruption, 2) }, timeout).Should(Succeed())
+			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
@@ -242,7 +242,7 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return expectChaosPod(disruption, 12) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Eventually(func() error { return expectChaosInjectors(disruption, 2) }, timeout).Should(Succeed())
+			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
@@ -267,7 +267,7 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return expectChaosPod(disruption, 16) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Eventually(func() error { return expectChaosInjectors(disruption, 3) }, timeout).Should(Succeed())
+			Expect(expectChaosInjectors(disruption, 3)).To(BeNil())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
