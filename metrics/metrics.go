@@ -29,6 +29,8 @@ type Sink interface {
 	MetricReconcileDuration(duration time.Duration, tags []string) error
 	MetricStuckOnRemoval(tags []string) error
 	MetricStuckOnRemovalCount(count float64) error
+	MetricDisruptionsCount(count float64) error
+	MetricPodsCount(count float64) error
 }
 
 // GetSink returns an initiated sink
