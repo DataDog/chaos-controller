@@ -795,15 +795,19 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// WatchStuckOnRemoval lists disruptions every minutes and increment the "stuck on removal" metric
-// for every disruptions stuck on removal
-func (r *DisruptionReconciler) WatchStuckOnRemoval() {
+// ReportMetrics reports some controller metrics every minute:
+// - stuck on removal disruptions count
+// - ongoing disruptions count
+func (r *DisruptionReconciler) ReportMetrics() {
 	for {
 		// wait for a minute
 		<-time.After(time.Minute)
 
+		// declare counters
+		stuckOnRemoval := 0
+		chaosPodsCount := 0
+
 		l := chaosv1beta1.DisruptionList{}
-		count := 0
 
 		// list disruptions
 		if err := r.Client.List(context.Background(), &l); err != nil {
@@ -814,17 +818,32 @@ func (r *DisruptionReconciler) WatchStuckOnRemoval() {
 		// check for stuck ones
 		for _, d := range l.Items {
 			if d.Status.IsStuckOnRemoval {
-				count++
+				stuckOnRemoval++
 
 				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"name:" + d.Name, "namespace:" + d.Namespace}); err != nil {
 					r.log.Errorw("error sending stuck_on_removal metric", "error", err)
 				}
 			}
+
+			chaosPods, err := r.getChaosPods(&d, nil)
+			if err != nil {
+				r.log.Errorw("error sending pods.count metric", "error", err)
+			}
+
+			chaosPodsCount += len(chaosPods)
 		}
 
-		// send count metric
-		if err := r.MetricsSink.MetricStuckOnRemovalCount(float64(count)); err != nil {
+		// send metrics
+		if err := r.MetricsSink.MetricStuckOnRemovalCount(float64(stuckOnRemoval)); err != nil {
 			r.log.Errorw("error sending stuck_on_removal_count metric", "error", err)
+		}
+
+		if err := r.MetricsSink.MetricDisruptionsCount(float64(len(l.Items))); err != nil {
+			r.log.Errorw("error sending disruptions.count metric", "error", err)
+		}
+
+		if err := r.MetricsSink.MetricPodsCount(float64(chaosPodsCount)); err != nil {
+			r.log.Errorw("error sending pods.count metric", "error", err)
 		}
 	}
 }
