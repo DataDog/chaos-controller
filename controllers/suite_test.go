@@ -82,18 +82,12 @@ func (f fakeK8sClient) Get(ctx context.Context, key client.ObjectKey, obj runtim
 
 	// try to convert given object into a pod
 	if pod, ok := obj.(*corev1.Pod); ok {
+		pod.Status.ContainerStatuses = []corev1.ContainerStatus{}
+
 		for i := 0; i < len(pod.Spec.Containers); i++ {
-			if i == 0 {
-				pod.Status.ContainerStatuses = []corev1.ContainerStatus{
-					{
-						Name:        "ctn1",
-						ContainerID: "fakeID",
-					},
-				}
-			} else {
-				name := fmt.Sprintf("ctn%d", i+1)
-				pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, corev1.ContainerStatus{Name: name, ContainerID: "fakeID"})
-			}
+			name := fmt.Sprintf("ctn%d", i+1)
+			ctnID := fmt.Sprintf("id%d", i+1)
+			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, corev1.ContainerStatus{Name: name, ContainerID: ctnID})
 		}
 	}
 

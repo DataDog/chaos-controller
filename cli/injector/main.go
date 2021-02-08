@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -43,7 +44,7 @@ var (
 	ms           metrics.Sink
 	sink         string
 	level        string
-	containersID []string
+	containerIDs []string
 	configs      []injector.Config
 	signals      chan os.Signal
 	injectors    []injector.Injector
@@ -57,7 +58,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Enable dry-run mode")
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
-	rootCmd.PersistentFlags().StringSliceVar(&containersID, "containers-id", []string{}, "Targeted containers ID")
+	rootCmd.PersistentFlags().StringSliceVar(&containerIDs, "containers-id", []string{}, "Targeted containers ID")
 	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "level")
 
 	cobra.OnInitialize(initLogger)
@@ -122,11 +123,11 @@ func initConfig() {
 	switch level {
 	case chaostypes.DisruptionLevelPod:
 		// check for container ID flag
-		if len(containersID) == 0 {
+		if len(containerIDs) == 0 {
 			log.Fatal("--containers-id flag must be passed when --level=pod")
 		}
 
-		for _, containerID := range containersID {
+		for _, containerID := range containerIDs {
 			// retrieve container info
 			ctn, err := container.New(containerID)
 			if err != nil {
@@ -145,6 +146,7 @@ func initConfig() {
 	case chaostypes.DisruptionLevelNode:
 		cgroupPaths = []string{""}
 		pids = []uint32{1}
+		ctns = append(ctns, nil)
 	default:
 		log.Fatalf("unknown level: %s", level)
 	}
@@ -221,15 +223,26 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 // cleanAndExit cleans the disruption with the configured injector and exits nicely
 func cleanAndExit(cmd *cobra.Command, args []string) {
 	log.Info("cleaning the disruption")
+	errs := []error{}
 
 	for _, inj := range injectors {
 		// start cleanup which is retried up to 3 times using an exponential backoff algorithm
 		if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
 			handleMetricError(ms.MetricCleaned(false, cmd.Name(), nil))
-			log.Fatalw("disruption cleanup failed", "error", err)
+			errs = append(errs, err)
 		}
 
 		handleMetricError(ms.MetricCleaned(true, cmd.Name(), nil))
+	}
+
+	// 1 or more injectors failed to clean, log and fatal
+	if len(errs) != 0 {
+		var combined strings.Builder
+		for _, err := range errs {
+			combined.WriteString(err.Error())
+			combined.WriteString(",")
+		}
+		log.Fatalw(fmt.Sprintf("disruption cleanup failed on %d injectors (comma separated errors)", len(errs)), "errors", combined.String())
 	}
 
 	log.Info("disruption cleaned, now exiting")

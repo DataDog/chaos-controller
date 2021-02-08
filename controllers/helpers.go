@@ -39,30 +39,32 @@ func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 		return []string{}, fmt.Errorf("missing container ids for pod '%s'", pod.Name)
 	}
 
-	ctns := []string{}
-	// if no containers are specified or found in the list of targeted containers, all containers are targeted using the fallback
-	fallback := []string{}
+	containersNameID := map[string]string{}
+	ctns := pod.Status.ContainerStatuses
+	containersID := []string{}
 
-	for _, container := range pod.Status.ContainerStatuses {
+	if len(targets) == 0 {
+		// get all containers ID
+		for _, c := range ctns {
+			containersID = append(containersID, c.ContainerID)
+		}
+	} else {
+		// populate containers name/ID map
+		for _, c := range ctns {
+			containersNameID[c.Name] = c.ContainerID
+		}
+
+		// look for the target in the map
 		for _, target := range targets {
-			if container.Name == target {
-				ctns = append(ctns, container.ContainerID)
+			if id, found := containersNameID[target]; found {
+				containersID = append(containersID, id)
+			} else {
+				return nil, fmt.Errorf(fmt.Sprintf("could not find specified targets in pod spec, possibly a typo | Pod Name: %s | Target Not Found: %s", pod.ObjectMeta.Name, target))
 			}
 		}
-
-		fallback = append(fallback, container.ContainerID)
 	}
 
-	if len(ctns) == 0 {
-		// targets were expected, most likely a typo in container name, erroring
-		if len(targets) != 0 {
-			return ctns, fmt.Errorf("could not find specified targets in pod spec, most likly a typo")
-		}
-
-		return fallback, nil
-	}
-
-	return ctns, nil
+	return containersID, nil
 }
 
 // This function returns a scaled value from an IntOrString type. If the IntOrString
