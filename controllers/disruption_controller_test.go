@@ -156,6 +156,16 @@ var _ = Describe("Disruption Controller", func() {
 		Expect(k8sClient.Create(context.Background(), disruption)).To(BeNil())
 	})
 
+	Context("afterEach should clean an undeleted disruption", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+		})
+
+		It("should leave a created disruption for afterEach to clean", func() {
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
+		})
+	})
+
 	Context("target all pods", func() {
 		BeforeEach(func() {
 			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
