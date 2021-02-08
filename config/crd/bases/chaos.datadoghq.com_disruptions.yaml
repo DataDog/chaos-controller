@@ -66,6 +66,32 @@ spec:
               - path
               - throttling
               type: object
+            dns:
+              description: DNSDisruptionSpec represents a dns disruption
+              items:
+                description: HostRecordPair represents a hostname and a corresponding
+                  dns record override
+                properties:
+                  hostname:
+                    type: string
+                  record:
+                    description: DNSRecord represents a type of DNS Record, such as
+                      A or CNAME, and the value of that record
+                    properties:
+                      type:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                    - type
+                    - value
+                    type: object
+                required:
+                - hostname
+                - record
+                type: object
+              nullable: true
+              type: array
             dryRun:
               type: boolean
             level:

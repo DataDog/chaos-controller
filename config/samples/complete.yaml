@@ -34,3 +34,12 @@ spec:
     throttling:
       readBytesPerSec: 1024 # optional, read throttling in bytes per sec
       writeBytesPerSec: 2048 # optional, write throttling in bytes per sec
+  dns:
+    - hostname: foo.bar.svc.cluster.local
+      record:
+        type: A
+        value: 10.0.0.154,10.0.0.13
+    - hostname: datadoghq.com
+      record:
+        type: CNAME
+        value: google.com

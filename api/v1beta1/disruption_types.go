@@ -45,6 +45,8 @@ type DisruptionSpec struct {
 	CPUPressure *CPUPressureSpec `json:"cpuPressure,omitempty"`
 	// +nullable
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
+	// +nullable
+	DNS DNSDisruptionSpec `json:"dns,omitempty"`
 }
 
 // DisruptionStatus defines the observed state of Disruption

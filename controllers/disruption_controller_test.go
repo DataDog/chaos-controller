@@ -133,6 +133,15 @@ var _ = Describe("Disruption Controller", func() {
 						ReadBytesPerSec: func() *int { i := int(1); return &i }(),
 					},
 				},
+				DNS: []chaosv1beta1.HostRecordPair{
+					{
+						Hostname: "ctn",
+						Record: chaosv1beta1.DNSRecord{
+							Type:  "A",
+							Value: "10.0.0.1, 10.0.0.2 , 10.0.0.3",
+						},
+					},
+				},
 			},
 		}
 	})
