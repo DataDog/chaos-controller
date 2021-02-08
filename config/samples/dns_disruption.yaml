@@ -1,0 +1,24 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: disruption-sample
+  namespace: chaos-engineering # disruption resource must be in the same namespace as targeted pods
+spec:
+  level: pod # level the disruption should be injected at (can be either pod or node, defaults to pod)
+  selector: # label selector to target pods
+    app: demo
+  count: 1 # number of pods to target or a percentage (1% - 100%)
+  dns:
+    - hostname: foo.bar.* # This field is a regex that matches hostnames
+      record:
+        type: A
+        value: 10.0.0.154,10.0.0.13 # If a comma-delimited list of IPs is given, they will be round-robined
+    - hostname: datadoghq.com
+      record:
+        type: CNAME
+        value: google.com

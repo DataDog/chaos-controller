@@ -672,6 +672,14 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 			},
 		},
 	})
+	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
+		Name: chaostypes.ChaosPodIPEnv,
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "status.podIP",
+			},
+		},
+	})
 
 	// add finalizer to the pod so it is not deleted before we can control its exit status
 	controllerutil.AddFinalizer(&pod, chaosPodFinalizer)
@@ -696,6 +704,8 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 			validator = instance.Spec.NodeFailure
 		case chaostypes.DisruptionKindNetworkDisruption:
 			validator = instance.Spec.Network
+		case chaostypes.DisruptionKindDNSDisruption:
+			validator = instance.Spec.DNS
 		case chaostypes.DisruptionKindCPUPressure:
 			validator = instance.Spec.CPUPressure
 		case chaostypes.DisruptionKindDiskPressure:
@@ -729,6 +739,8 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			generator = instance.Spec.NodeFailure
 		case chaostypes.DisruptionKindNetworkDisruption:
 			generator = instance.Spec.Network
+		case chaostypes.DisruptionKindDNSDisruption:
+			generator = instance.Spec.DNS
 		case chaostypes.DisruptionKindCPUPressure:
 			generator = instance.Spec.CPUPressure
 		case chaostypes.DisruptionKindDiskPressure:
