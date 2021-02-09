@@ -147,6 +147,7 @@ func initConfig() {
 	case chaostypes.DisruptionLevelNode:
 		cgroupPaths = []string{""}
 		pids = []uint32{1}
+
 		ctns = append(ctns, nil)
 	default:
 		log.Fatalf("unknown level: %s", level)
@@ -224,12 +225,14 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 // cleanAndExit cleans the disruption with the configured injector and exits nicely
 func cleanAndExit(cmd *cobra.Command, args []string) {
 	log.Info("cleaning the disruption")
+
 	errs := []error{}
 
 	for _, inj := range injectors {
 		// start cleanup which is retried up to 3 times using an exponential backoff algorithm
 		if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
 			handleMetricError(ms.MetricCleaned(false, cmd.Name(), nil))
+
 			errs = append(errs, err)
 		}
 
@@ -239,10 +242,12 @@ func cleanAndExit(cmd *cobra.Command, args []string) {
 	// 1 or more injectors failed to clean, log and fatal
 	if len(errs) != 0 {
 		var combined strings.Builder
+
 		for _, err := range errs {
 			combined.WriteString(err.Error())
 			combined.WriteString(",")
 		}
+
 		log.Fatalw(fmt.Sprintf("disruption cleanup failed on %d injectors (comma separated errors)", len(errs)), "errors", combined.String())
 	}
 
