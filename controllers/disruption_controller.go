@@ -35,6 +35,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,6 +47,7 @@ import (
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
@@ -62,13 +64,13 @@ var (
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	client.Client
-	BaseLog         *zap.SugaredLogger
-	Scheme          *runtime.Scheme
-	Recorder        record.EventRecorder
-	MetricsSink     metrics.Sink
-	PodTemplateSpec corev1.Pod
-	TargetSelector  TargetSelector
-	log             *zap.SugaredLogger
+	BaseLog             *zap.SugaredLogger
+	Scheme              *runtime.Scheme
+	Recorder            record.EventRecorder
+	MetricsSink         metrics.Sink
+	TargetSelector      TargetSelector
+	InjectorAnnotations map[string]string
+	log                 *zap.SugaredLogger
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -297,11 +299,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		}
 
 		// generate injection pods specs
-		if err := r.generateChaosPods(instance, &chaosPods, target, targetNodeName, containerID); err != nil {
-			r.log.Errorw("error generating injection chaos pod for target, skipping it", "error", err, "target", target)
-
-			continue
-		}
+		r.generateChaosPods(instance, &chaosPods, target, targetNodeName, containerID)
 
 		if len(chaosPods) == 0 {
 			r.Recorder.Event(instance, "Warning", "Empty Disruption", fmt.Sprintf("No disruption recognized for \"%s\" therefore no disruption applied.", instance.Name))
@@ -630,59 +628,186 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 
 // generatePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
-func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, kind chaostypes.DisruptionKind) (*corev1.Pod, error) {
-	pod := corev1.Pod{}
-
+func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, kind chaostypes.DisruptionKind) *corev1.Pod {
 	image, ok := os.LookupEnv("CHAOS_INJECTOR_IMAGE")
 	if !ok {
 		image = "chaos-injector"
 	}
 
-	// copy pod template
-	data, err := json.Marshal(r.PodTemplateSpec)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling chaos pod template: %w", err)
-	}
+	// volume host path type definitions
+	hostPathDirectory := corev1.HostPathDirectory
+	hostPathFile := corev1.HostPathFile
 
-	err = json.Unmarshal(data, &pod)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling chaos pod template: %w", err)
-	}
-
-	// customize pod template
-	if pod.ObjectMeta.Labels == nil {
-		pod.ObjectMeta.Labels = map[string]string{}
-	}
-
-	pod.ObjectMeta.GenerateName = fmt.Sprintf("chaos-%s-", instance.Name)
-	pod.ObjectMeta.Namespace = instance.Namespace
-	pod.ObjectMeta.Labels[chaostypes.TargetLabel] = targetName
-	pod.ObjectMeta.Labels[chaostypes.DisruptionKindLabel] = string(kind)
-	pod.ObjectMeta.Labels[chaostypes.DisruptionNameLabel] = instance.Name
-	pod.Spec.NodeName = targetNodeName
-	pod.Spec.Containers[0].Image = image
-	pod.Spec.Containers[0].Args = args
-	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
-		Name: chaostypes.TargetPodHostIPEnv,
-		ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: "status.hostIP",
+	// define injector pod
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: fmt.Sprintf("chaos-%s-", instance.Name), // generate the pod name automatically with a prefix
+			Namespace:    instance.Namespace,                      // use instance namespace
+			Annotations:  r.InjectorAnnotations,                   // add extra annotations passed to the controller
+			Labels: map[string]string{
+				chaostypes.TargetLabel:         targetName,    // target name label
+				chaostypes.DisruptionKindLabel: string(kind),  // disruption kind label
+				chaostypes.DisruptionNameLabel: instance.Name, // disruption name label
 			},
 		},
-	})
-	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, corev1.EnvVar{
-		Name: chaostypes.ChaosPodIPEnv,
-		ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: "status.podIP",
+		Spec: corev1.PodSpec{
+			HostPID:       true,                      // enable host pid
+			RestartPolicy: corev1.RestartPolicyNever, // do not restart the pod on fail or completion
+			NodeName:      targetNodeName,            // specify node name to schedule the pod
+			Containers: []corev1.Container{
+				{
+					Name:            "injector",              // container name
+					Image:           image,                   // container image gathered from the environment variable
+					ImagePullPolicy: corev1.PullIfNotPresent, // pull the image only when it is not present
+					Args:            args,                    // pass disruption arguments
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: func() *bool { b := true; return &b }(), // enable privileged mode
+					},
+					ReadinessProbe: &corev1.Probe{ // define readiness probe (file created by the injector when the injection is successful)
+						PeriodSeconds:    1,
+						FailureThreshold: 5,
+						Handler: corev1.Handler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"cat", "/tmp/readiness_probe"},
+							},
+						},
+					},
+					Resources: corev1.ResourceRequirements{ // set resources requests and limits to zero
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    *resource.NewQuantity(0, resource.DecimalSI),
+							corev1.ResourceMemory: *resource.NewQuantity(0, resource.DecimalSI),
+						},
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    *resource.NewQuantity(0, resource.DecimalSI),
+							corev1.ResourceMemory: *resource.NewQuantity(0, resource.DecimalSI),
+						},
+					},
+					Env: []corev1.EnvVar{ // define environment variables
+						{
+							Name: env.InjectorTargetPodHostIP,
+							ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{
+									FieldPath: "status.hostIP",
+								},
+							},
+						},
+						{
+							Name: env.InjectorChaosPodIP,
+							ValueFrom: &corev1.EnvVarSource{
+								FieldRef: &corev1.ObjectFieldSelector{
+									FieldPath: "status.podIP",
+								},
+							},
+						},
+						{
+							Name:  env.InjectorMountHost,
+							Value: "/mnt/host/",
+						},
+						{
+							Name:  env.InjectorMountProc,
+							Value: "/mnt/host/proc/",
+						},
+						{
+							Name:  env.InjectorMountSysrq,
+							Value: "/mnt/sysrq",
+						},
+						{
+							Name:  env.InjectorMountSysrqTrigger,
+							Value: "/mnt/sysrq-trigger",
+						},
+						{
+							Name:  env.InjectorMountCgroup,
+							Value: "/mnt/cgroup/",
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{ // define volume mounts required for disruptions to work
+						{
+							Name:      "run",
+							MountPath: "/run",
+						},
+						{
+							Name:      "sysrq",
+							MountPath: "/mnt/sysrq",
+						},
+						{
+							Name:      "sysrq-trigger",
+							MountPath: "/mnt/sysrq-trigger",
+						},
+						{
+							Name:      "cgroup",
+							MountPath: "/mnt/cgroup",
+						},
+						{
+							Name:      "host",
+							MountPath: "/mnt/host",
+							ReadOnly:  true,
+						},
+					},
+				},
+			},
+			Volumes: []corev1.Volume{ // declare volumes required for disruptions to work
+				{
+					Name: "run",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/run",
+							Type: &hostPathDirectory,
+						},
+					},
+				},
+				{
+					Name: "proc",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/proc",
+							Type: &hostPathDirectory,
+						},
+					},
+				},
+				{
+					Name: "sysrq",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/proc/sys/kernel/sysrq",
+							Type: &hostPathFile,
+						},
+					},
+				},
+				{
+					Name: "sysrq-trigger",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/proc/sysrq-trigger",
+							Type: &hostPathFile,
+						},
+					},
+				},
+				{
+					Name: "cgroup",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/sys/fs/cgroup",
+							Type: &hostPathDirectory,
+						},
+					},
+				},
+				{
+					Name: "host",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/",
+							Type: &hostPathDirectory,
+						},
+					},
+				},
 			},
 		},
-	})
+	}
 
 	// add finalizer to the pod so it is not deleted before we can control its exit status
 	controllerutil.AddFinalizer(&pod, chaosPodFinalizer)
 
-	return &pod, nil
+	return &pod
 }
 
 // handleMetricSinkError logs the given metric sink error if it is not nil
@@ -726,7 +851,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 }
 
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
-func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, containerID string) error {
+func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, containerID string) {
 	// generate chaos pods for each possible disruptions
 	for _, kind := range chaostypes.DisruptionKinds {
 		var generator chaosapi.DisruptionArgsGenerator
@@ -759,17 +884,9 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		// generate args for pod
 		args := generator.GenerateArgs(level, containerID, r.MetricsSink.GetSinkName(), instance.Spec.DryRun)
 
-		// generate pod
-		pod, err := r.generatePod(instance, targetName, targetNodeName, args, kind)
-		if err != nil {
-			return err
-		}
-
 		// append pod to chaos pods
-		*pods = append(*pods, pod)
+		*pods = append(*pods, r.generatePod(instance, targetName, targetNodeName, args, kind))
 	}
-
-	return nil
 }
 
 // recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level

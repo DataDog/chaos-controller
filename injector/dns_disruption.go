@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
@@ -61,9 +62,9 @@ func (i DNSDisruptionInjector) Inject() error {
 	i.config.Log.Infow("adding dns disruption", "spec", i.spec)
 
 	// get the chaos pod node IP from the environment variable
-	podIP, ok := os.LookupEnv(chaostypes.ChaosPodIPEnv)
+	podIP, ok := os.LookupEnv(env.InjectorChaosPodIP)
 	if !ok {
-		return fmt.Errorf("%s environment variable must be set with the chaos pod IP", chaostypes.ChaosPodIPEnv)
+		return fmt.Errorf("%s environment variable must be set with the chaos pod IP", env.InjectorChaosPodIP)
 	}
 
 	// Set up resolver config file
