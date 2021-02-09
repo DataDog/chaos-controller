@@ -173,11 +173,23 @@ var _ = Describe("Disruption Controller", func() {
 	AfterEach(func() {
 		// delete disruption resource
 		_ = k8sClient.Delete(context.Background(), disruption)
+		Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout).Should(Succeed())
+		Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
 	})
 
 	JustBeforeEach(func() {
 		By("Creating disruption resource")
 		Expect(k8sClient.Create(context.Background(), disruption)).To(BeNil())
+	})
+
+	Context("afterEach should clean an undeleted disruption", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+		})
+
+		It("should leave a created disruption for afterEach to clean", func() {
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
+		})
 	})
 
 	Context("target all pods", func() {
