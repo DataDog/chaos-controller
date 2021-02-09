@@ -188,7 +188,7 @@ var _ = Describe("Disruption Controller", func() {
 			}, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have been created")
-			Eventually(func() error { return expectChaosPod(disruption, 16) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 20) }, timeout).Should(Succeed())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
@@ -209,7 +209,7 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the inject pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, 4) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 5) }, timeout).Should(Succeed())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
@@ -230,7 +230,7 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the inject pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, 12) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 15) }, timeout).Should(Succeed())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
