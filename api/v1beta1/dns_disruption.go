@@ -48,7 +48,7 @@ func (s DNSDisruptionSpec) Validate() error {
 }
 
 // GenerateArgs generates injection pod arguments for the given spec
-func (s DNSDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containersID []string, sink string, dryRun bool) []string {
+func (s DNSDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
 	args := []string{
 		"dns-disruption",
 		"--metrics-sink",
@@ -56,7 +56,7 @@ func (s DNSDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, contai
 		"--level",
 		string(level),
 		"--containers-id",
-		strings.Join(containersID, ","),
+		strings.Join(containerIDs, ","),
 	}
 
 	// enable dry-run mode

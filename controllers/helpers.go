@@ -41,12 +41,12 @@ func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 
 	containersNameID := map[string]string{}
 	ctns := pod.Status.ContainerStatuses
-	containersID := []string{}
+	containerIDs := []string{}
 
 	if len(targets) == 0 {
 		// get all containers ID
 		for _, c := range ctns {
-			containersID = append(containersID, c.ContainerID)
+			containerIDs = append(containerIDs, c.ContainerID)
 		}
 	} else {
 		// populate containers name/ID map
@@ -57,14 +57,14 @@ func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 		// look for the target in the map
 		for _, target := range targets {
 			if id, found := containersNameID[target]; found {
-				containersID = append(containersID, id)
+				containerIDs = append(containerIDs, id)
 			} else {
 				return nil, fmt.Errorf(fmt.Sprintf("could not find specified targets in pod spec, possibly a typo | Pod Name: %s | Target Not Found: %s", pod.ObjectMeta.Name, target))
 			}
 		}
 	}
 
-	return containersID, nil
+	return containerIDs, nil
 }
 
 // This function returns a scaled value from an IntOrString type. If the IntOrString
