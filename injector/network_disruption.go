@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
@@ -233,9 +234,9 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	i.config.Log.Infof("detected default gateway IP %s on interface %s", defaultRoute.Gateway().String(), defaultRoute.Link().Name())
 
 	// get the targeted pod node IP from the environment variable
-	hostIP, ok := os.LookupEnv(chaostypes.TargetPodHostIPEnv)
+	hostIP, ok := os.LookupEnv(env.InjectorTargetPodHostIP)
 	if !ok {
-		return fmt.Errorf("%s environment variable must be set with the target pod node IP", chaostypes.TargetPodHostIPEnv)
+		return fmt.Errorf("%s environment variable must be set with the target pod node IP", env.InjectorTargetPodHostIP)
 	}
 
 	i.config.Log.Infof("target pod node IP is %s", hostIP)

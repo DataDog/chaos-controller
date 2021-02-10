@@ -169,20 +169,11 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&DisruptionReconciler{
-		Client:      k8sClient,
-		BaseLog:     logger,
-		Recorder:    k8sManager.GetEventRecorderFor("disruption-controller"),
-		MetricsSink: ms,
-		Scheme:      scheme.Scheme,
-		PodTemplateSpec: corev1.Pod{
-			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{
-					{
-						Name: "chaos",
-					},
-				},
-			},
-		},
+		Client:         k8sClient,
+		BaseLog:        logger,
+		Recorder:       k8sManager.GetEventRecorderFor("disruption-controller"),
+		MetricsSink:    ms,
+		Scheme:         scheme.Scheme,
 		TargetSelector: MockTargetSelector{},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
