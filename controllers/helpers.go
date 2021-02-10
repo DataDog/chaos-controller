@@ -59,7 +59,7 @@ func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 			if id, found := containersNameID[target]; found {
 				containerIDs = append(containerIDs, id)
 			} else {
-				return nil, fmt.Errorf(fmt.Sprintf("could not find specified targets in pod spec, possibly a typo | Pod Name: %s | Target Not Found: %s", pod.ObjectMeta.Name, target))
+				return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, target)
 			}
 		}
 	}
