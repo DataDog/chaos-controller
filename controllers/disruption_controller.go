@@ -274,7 +274,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 	for _, target := range instance.Status.Targets {
 		var targetNodeName string
 
-		var containersID []string
+		var containerIDs []string
 
 		chaosPods := []*corev1.Pod{}
 
@@ -290,7 +290,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 			targetNodeName = pod.Spec.NodeName
 
 			// get IDs of targeted containers or all containers
-			containersID, err = getContainerIDs(&pod, instance.Spec.Containers)
+			containerIDs, err = getContainerIDs(&pod, instance.Spec.Containers)
 			if err != nil {
 				return fmt.Errorf("error getting target pod container ID: %w", err)
 			}
@@ -299,7 +299,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		}
 
 		// generate injection pods specs
-		if err := r.generateChaosPods(instance, &chaosPods, target, targetNodeName, containersID); err != nil {
+		if err := r.generateChaosPods(instance, &chaosPods, target, targetNodeName, containerIDs); err != nil {
 			r.log.Errorw("error generating injection chaos pod for target, skipping it", "error", err, "target", target)
 
 			continue
@@ -728,7 +728,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 }
 
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
-func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, containersID []string) error {
+func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, containerIDs []string) error {
 	// generate chaos pods for each possible disruptions
 	for _, kind := range chaostypes.DisruptionKinds {
 		var generator chaosapi.DisruptionArgsGenerator
@@ -759,7 +759,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		}
 
 		// generate args for pod
-		args := generator.GenerateArgs(level, containersID, r.MetricsSink.GetSinkName(), instance.Spec.DryRun)
+		args := generator.GenerateArgs(level, containerIDs, r.MetricsSink.GetSinkName(), instance.Spec.DryRun)
 
 		// generate pod
 		pod, err := r.generatePod(instance, targetName, targetNodeName, args, kind)

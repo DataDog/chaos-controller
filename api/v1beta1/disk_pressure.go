@@ -35,7 +35,7 @@ func (s *DiskPressureSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containersID []string, sink string, dryRun bool) []string {
+func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
 	args := []string{
 		"disk-pressure",
 		"--metrics-sink",
@@ -43,7 +43,7 @@ func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, contai
 		"--level",
 		string(level),
 		"--containers-id",
-		strings.Join(containersID, ","),
+		strings.Join(containerIDs, ","),
 		"--path",
 		s.Path,
 	}

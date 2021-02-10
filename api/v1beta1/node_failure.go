@@ -20,7 +20,7 @@ func (s *NodeFailureSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NodeFailureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containersID []string, sink string, dryRun bool) []string {
+func (s *NodeFailureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
 	args := []string{
 		"node-failure",
 		"inject",
