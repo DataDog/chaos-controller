@@ -30,6 +30,7 @@ require (
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/opencontainers/selinux v1.6.0 // indirect
 	github.com/spf13/cobra v0.0.5
+	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/vishvananda/netlink v1.1.0
