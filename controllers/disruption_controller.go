@@ -29,6 +29,7 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff"
@@ -418,7 +419,7 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 		// ignore it if it is not ready anymore
 		err := r.TargetSelector.TargetIsHealthy(target, r.Client, instance)
 		if err != nil {
-			if errors.IsNotFound(err) || err.Error() == "Pod is not Running" || err.Error() == "Node is not Ready" {
+			if errors.IsNotFound(err) || strings.ToLower(err.Error()) == "pod is not running" || strings.ToLower(err.Error()) == "node is not ready" {
 				// if the target is not in a good shape, we still run the cleanup phase but we don't check for any issues happening during
 				// the cleanup to avoid blocking the disruption deletion for nothing
 				r.log.Infow("target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", "target", target)
@@ -428,6 +429,7 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 				ignoreCleanupStatus = true
 			} else {
 				r.log.Error(err.Error())
+				cleaned = false
 
 				continue
 			}
