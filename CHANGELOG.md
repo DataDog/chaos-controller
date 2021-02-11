@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.4.0](https://github.com/DataDog/chaos-controller/tree/3.4.0) (2021-02-11)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.3.0...3.4.0)
+
+**Merged pull requests:**
+
+- Fix wrong error checking leaking chaos pods [\#251](https://github.com/DataDog/chaos-controller/pull/251) ([Devatoria](https://github.com/Devatoria))
+- Fix expectChaosPod assertions after adding DNS spec [\#250](https://github.com/DataDog/chaos-controller/pull/250) ([ptnapoleon](https://github.com/ptnapoleon))
+- Generate injector pods from code instead of from template [\#249](https://github.com/DataDog/chaos-controller/pull/249) ([Devatoria](https://github.com/Devatoria))
+- CORE-527: Fix blocking delete in test cleanup for the disruption controller [\#248](https://github.com/DataDog/chaos-controller/pull/248) ([ptnapoleon](https://github.com/ptnapoleon))
+- Update container release\_changelog\_8432064109352c764e8a6b0375def3d70a2ed4f6 [\#247](https://github.com/DataDog/chaos-controller/pull/247) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [3.3.0](https://github.com/DataDog/chaos-controller/tree/3.3.0) (2021-02-08)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.2.0...3.3.0)
@@ -96,7 +108,6 @@
 - CORE-402: Another way to test only selecting Running Pods [\#204](https://github.com/DataDog/chaos-controller/pull/204) ([takakonishimura](https://github.com/takakonishimura))
 - \[Doc\] - Update sample documentation for count [\#202](https://github.com/DataDog/chaos-controller/pull/202) ([gaetan-deputier](https://github.com/gaetan-deputier))
 - Node level disruptions [\#198](https://github.com/DataDog/chaos-controller/pull/198) ([Devatoria](https://github.com/Devatoria))
-- CORE-296: Check pods are Running before Injection [\#196](https://github.com/DataDog/chaos-controller/pull/196) ([takakonishimura](https://github.com/takakonishimura))
 - Add jitter for delay to the chaos-controller [\#195](https://github.com/DataDog/chaos-controller/pull/195) ([Azoam](https://github.com/Azoam))
 - Delete unused metrics.go file~ [\#194](https://github.com/DataDog/chaos-controller/pull/194) ([takakonishimura](https://github.com/takakonishimura))
 - Add event when disruption name is not recognizable [\#193](https://github.com/DataDog/chaos-controller/pull/193) ([Azoam](https://github.com/Azoam))
@@ -324,7 +335,6 @@
 - Check qdisc hasn't been cleared before trying to clear it [\#109](https://github.com/DataDog/chaos-controller/pull/109) ([Devatoria](https://github.com/Devatoria))
 - Add tests for the network package [\#108](https://github.com/DataDog/chaos-controller/pull/108) ([Devatoria](https://github.com/Devatoria))
 - Update container release\_changelog\_0b2bd25290da0f1fa63e31ad511625889c22aa90 [\#107](https://github.com/DataDog/chaos-controller/pull/107) ([github-actions[bot]](https://github.com/apps/github-actions))
-- Add missing tag to release pull command [\#99](https://github.com/DataDog/chaos-controller/pull/99) ([Devatoria](https://github.com/Devatoria))
 
 ## [2.3.0](https://github.com/DataDog/chaos-controller/tree/2.3.0) (2020-03-19)
 
@@ -335,6 +345,7 @@
 - Count field is now required and the value to target all pods is -1 [\#106](https://github.com/DataDog/chaos-controller/pull/106) ([Devatoria](https://github.com/Devatoria))
 - Add release documentation [\#105](https://github.com/DataDog/chaos-controller/pull/105) ([Devatoria](https://github.com/Devatoria))
 - Auto-generate changelog on tag push and open a PR to approve it [\#103](https://github.com/DataDog/chaos-controller/pull/103) ([Devatoria](https://github.com/Devatoria))
+- Add missing tag to release pull command [\#99](https://github.com/DataDog/chaos-controller/pull/99) ([Devatoria](https://github.com/Devatoria))
 - Add goreleaser GitHub action [\#98](https://github.com/DataDog/chaos-controller/pull/98) ([Devatoria](https://github.com/Devatoria))
 - Review the way we push images from the CI [\#96](https://github.com/DataDog/chaos-controller/pull/96) ([Devatoria](https://github.com/Devatoria))
 - Add CI job to release images on docker hub [\#95](https://github.com/DataDog/chaos-controller/pull/95) ([Devatoria](https://github.com/Devatoria))
