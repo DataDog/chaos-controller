@@ -24,6 +24,8 @@ Let's say you have 3 pods:
 
 Now let's explore the different use cases.
 
+<kbd> <img src="../docs/img/network_flow_cases.png" height=150 width=600 align="center" /> </kbd>
+
 #### Case 1: I want to disrupt `client1` without impacting `client2`
 
 In this case, you want to target the `client1` pod only and use the `egress` flow so you target packets going from the `client1` pod to the `server` pod.
@@ -36,6 +38,8 @@ In this case, you want to target the `server` pod and use the `ingress` flow so 
 
 *TL;DR: the `ingress` flow only works for TCP and on ports and protocol, not hosts*
 
+<kbd> <img src="../docs/img/network_flow_ingress.png" height=80 width=300 align="right" /> </kbd>
+
 The current implementation of the `ingress` flow is not a real filter on incoming packets but rather a filter on incoming packets answers (ie. outgoing packets). During a TCP communication, when the client sends a packet to the server, the server answers with an acknowledgement packet to confirm that it received the client's packet. By disrupting this acknowledgement packet, it simulates an ingress disruption. It means that `ingress` flow only works for TCP (or if the server uses UDP to send back an answer to the client).
 
 ## Implementation
@@ -44,7 +48,7 @@ To apply those disruptions, the `tc` utility is used and the behavior is differe
 
 ### No host is specified
 
-If no host is specified in the network disruption, the disruptions will be applied to all the outgoing traffic on all interfaces. It means that the qdiscs will be created directly from each interface `root` parent and chained together.
+If no host is specified in the network disruption, the disruptions will be applied to all the outgoing traffic on all interfaces for pods which pass the requirements of the label selector aside from those necessary for healthchecks or communications with Kubernetes. It means that the qdiscs will be created directly from each interface `root` parent and chained together.
 
 ```
 eth0
