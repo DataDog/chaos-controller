@@ -24,7 +24,13 @@ Let's say you have 3 pods:
 
 Now let's explore the different use cases.
 
+<<<<<<< HEAD
 <kbd> <img src="../docs/img/network_flow_cases.png" height=150 width=600 align="center" /> </kbd>
+=======
+<p align="center"><kbd>
+    <img src="../docs/img/network_flow_cases.png" height=150 width=600 align="center" />
+</kbd></p>
+>>>>>>> b44cd428... sample diagrams and clarifying changes to network disruption documentation
 
 #### Case 1: I want to disrupt `client1` without impacting `client2`
 
@@ -38,7 +44,13 @@ In this case, you want to target the `server` pod and use the `ingress` flow so 
 
 *TL;DR: the `ingress` flow only works for TCP and on ports and protocol, not hosts*
 
+<<<<<<< HEAD
 <kbd> <img src="../docs/img/network_flow_ingress.png" height=80 width=300 align="right" /> </kbd>
+=======
+<p align="center"><kbd>
+    <img src="../docs/img/network_flow_ingress.png" height=80 width=300 />
+</kbd></p>
+>>>>>>> b44cd428... sample diagrams and clarifying changes to network disruption documentation
 
 The current implementation of the `ingress` flow is not a real filter on incoming packets but rather a filter on incoming packets answers (ie. outgoing packets). During a TCP communication, when the client sends a packet to the server, the server answers with an acknowledgement packet to confirm that it received the client's packet. By disrupting this acknowledgement packet, it simulates an ingress disruption. It means that `ingress` flow only works for TCP (or if the server uses UDP to send back an answer to the client).
 
