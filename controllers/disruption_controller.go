@@ -29,18 +29,18 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,11 +60,13 @@ const (
 var (
 	disruptionFinalizer = finalizerPrefix
 	chaosPodFinalizer   = finalizerPrefix + "/chaos-pod"
+	watchers            = map[types.UID]watch.Interface{}
 )
 
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	client.Client
+	RawClient           rest.Interface
 	BaseLog             *zap.SugaredLogger
 	Scheme              *runtime.Scheme
 	Recorder            record.EventRecorder
@@ -117,6 +119,11 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// create chaos pods watcher
+	if err := r.watchChaosPods(instance); err != nil {
+		return ctrl.Result{}, fmt.Errorf("error creating chaos pods watcher: %w", err)
+	}
+
 	// check whether the object is being deleted or not
 	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// the instance is being deleted, clean it if the finalizer is still present
@@ -138,6 +145,9 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 					RequeueAfter: requeueAfter,
 				}, r.Update(context.Background(), instance)
 			}
+
+			// stop chaos pods watcher
+			r.unwatchChaosPods(instance)
 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
@@ -412,132 +422,42 @@ func (r *DisruptionReconciler) computeHash(instance *chaosv1beta1.Disruption) (b
 }
 
 // cleanDisruption triggers the cleanup of the given instance
-// for each target and existing chaos pod, it'll take actions depending on the chaos pod status:
-//   - a running chaos pod will be deleted (triggering the cleanup phase)
-//   - a succeeded chaos pod (which has been deleted and has finished correctly) will see its finalizer removed (and then garbage collected)
-//   - a failed chaos pod will trigger the "stuck on removal" status of the disruption instance and will block its deletion
-// the function returns true when (and only when) all chaos pods have been successfully removed
-// if all pods have completed but are still present (because the finalizer has not been removed yet), it'll still return false
+// it deletes all existing chaos pods of the given instance
+// it returns true when the disruption is fully cleaned (when there is no chaos pods remaining)
 func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption) (bool, error) {
-	cleaned := true
+	// get existing chaos pods for the given instance
+	chaosPods, err := r.getChaosPods(instance, nil)
+	if err != nil {
+		return false, err
+	}
 
-	for _, target := range instance.Status.Targets {
-		ignoreCleanupStatus := false
+	// early exit considering the disruption as cleaned if there are no chaos pods remaining
+	if len(chaosPods) == 0 {
+		return true, nil
+	}
 
-		// check target readiness for cleanup
-		// ignore it if it is not ready anymore
-		err := r.TargetSelector.TargetIsHealthy(target, r.Client, instance)
-		if err != nil {
-			if errors.IsNotFound(err) || strings.ToLower(err.Error()) == "pod is not running" || strings.ToLower(err.Error()) == "node is not ready" {
-				// if the target is not in a good shape, we still run the cleanup phase but we don't check for any issues happening during
-				// the cleanup to avoid blocking the disruption deletion for nothing
-				r.log.Infow("target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", "target", target)
+	// terminate running chaos pods to trigger cleanup
+	for _, chaosPod := range chaosPods {
+		if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
+			r.log.Infow("terminating chaos pod to trigger cleanup", "chaosPod", chaosPod.Name)
 
-				// by enabling this, we will remove the target associated chaos pods finalizers and delete them to trigger the cleanup phase
-				// but the chaos pods status will not be checked
-				ignoreCleanupStatus = true
-			} else {
-				r.log.Error(err.Error())
-				cleaned = false
-
-				continue
-			}
-		}
-
-		// get already existing cleanup pods for the specific disruption and target
-		chaosPods, err := r.getChaosPods(instance, map[string]string{chaostypes.TargetLabel: target})
-		if err != nil {
-			return false, err
-		}
-
-		// if chaos pods still exist, even if they are completed
-		// we consider the disruption as not cleaned
-		if len(chaosPods) > 0 {
-			cleaned = false
-		}
-
-		// terminate running chaos pods to trigger cleanup
-		for _, chaosPod := range chaosPods {
-			removeFinalizer := false
-			deletePod := false
-
-			// check the chaos pod status to determine if we can safely delete it or not
-			switch chaosPod.Status.Phase {
-			case corev1.PodSucceeded, corev1.PodPending:
-				// pod has terminated or is pending
-				// we can remove the pod and the finalizer and it'll be garbage collected
-				removeFinalizer = true
-				deletePod = true
-			case corev1.PodRunning:
-				// pod is still running
-				// we delete it to trigger termination but we keep the finalizer until it has terminated to eventually catch an error during cleanup
-				deletePod = true
-			case corev1.PodFailed:
-				// pod has failed
-				// we need to determine if we can remove it safely or if we need to block disruption deletion
-				// check if a container has been created (if not, the disruption was not injected)
-				if len(chaosPod.Status.ContainerStatuses) == 0 {
-					removeFinalizer = true
-					deletePod = true
-				}
-
-				// check if the container was able to start or not
-				// if not, we can safely delete the pod since the disruption was not injected
-				for _, cs := range chaosPod.Status.ContainerStatuses {
-					if cs.Name == "injector" {
-						if cs.State.Terminated != nil && cs.State.Terminated.Reason == "StartError" {
-							removeFinalizer = true
-							deletePod = true
-						}
-
-						break
-					}
-				}
-			}
-
-			// remove the finalizer if needed or if we should ignore the cleanup status
-			if removeFinalizer || ignoreCleanupStatus {
-				r.log.Infow("chaos pod completed, removing finalizer", "target", target, "chaosPod", chaosPod.Name)
-
-				controllerutil.RemoveFinalizer(&chaosPod, chaosPodFinalizer)
-
-				if err := r.Client.Update(context.Background(), &chaosPod); err != nil {
-					r.log.Errorw("error removing chaos pod finalizer", "error", err, "target", target, "chaosPod", chaosPod.Name)
-				}
-			}
-
-			// delete the chaos pod if needed and only if it has not been deleted already
-			if deletePod || ignoreCleanupStatus {
-				if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
-					r.log.Infow("terminating chaos pod to trigger cleanup", "target", target, "chaosPod", chaosPod.Name)
-
-					if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
-						r.log.Errorw("error terminating chaos pod", "error", err, "target", target, "chaosPod", chaosPod.Name)
-					}
-				}
-			}
-
-			// if the chaos pod finalizer must not be removed and the chaos pod must not be deleted
-			// and the cleanup status must not be ignored, we are stuck and won't be able to remove the disruption
-			if !removeFinalizer && !deletePod && !ignoreCleanupStatus {
-				r.log.Infow("instance seems stuck on removal for this target, please check manually", "target", target, "chaosPod", chaosPod.Name)
-				r.Recorder.Event(instance, "Warning", "StuckOnRemoval", "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer")
-
-				instance.Status.IsStuckOnRemoval = true
+			if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
+				r.log.Errorw("error terminating chaos pod", "error", err, "chaosPod", chaosPod.Name)
 			}
 		}
 	}
 
-	return cleaned, nil
+	return false, nil
 }
 
 // selectTargets will select min(count, all matching targets) random targets (pods or nodes depending on the disruption level)
 // from the targets matching the instance label selector
 // targets will only be selected once per instance
+// targets flagged as ignored in the instance status won't be selected (already cleaned up targets)
 // the chosen targets names will be reflected in the intance status
-// subsequent calls to this function will always return the same targets as the first call
 func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
-	allTargets := []string{}
+	matchingTargets := []string{}
+	eligibleTargets := []string{}
 
 	// exit early if we already have targets selected for the given instance
 	if len(instance.Status.Targets) > 0 {
@@ -562,7 +482,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		}
 
 		for _, pod := range pods.Items {
-			allTargets = append(allTargets, pod.Name)
+			matchingTargets = append(matchingTargets, pod.Name)
 		}
 	case chaostypes.DisruptionLevelNode:
 		nodes, err := r.TargetSelector.GetMatchingNodes(r.Client, instance)
@@ -571,19 +491,26 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		}
 
 		for _, node := range nodes.Items {
-			allTargets = append(allTargets, node.Name)
+			matchingTargets = append(matchingTargets, node.Name)
+		}
+	}
+
+	// prune ignored targets from all targets
+	for _, target := range matchingTargets {
+		if !contains(instance.Status.IgnoredTargets, target) {
+			eligibleTargets = append(eligibleTargets, target)
 		}
 	}
 
 	// return an error if the selector returned no targets
-	if len(allTargets) == 0 {
+	if len(eligibleTargets) == 0 {
 		r.Recorder.Event(instance, "Warning", "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
 
 		return fmt.Errorf("the label selector returned no targets")
 	}
 
 	// instance.Spec.Count is a string that either represents a percentage or a value, we do the translation here
-	targetsCount, err := getScaledValueFromIntOrPercent(instance.Spec.Count, len(allTargets), true)
+	targetsCount, err := getScaledValueFromIntOrPercent(instance.Spec.Count, len(eligibleTargets), true)
 	if err != nil {
 		targetsCount = instance.Spec.Count.IntValue()
 	}
@@ -594,15 +521,15 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	}
 
 	// if the asked targets count is greater than the amount of found targets, we take all of them
-	targetsCount = int(math.Min(float64(targetsCount), float64(len(allTargets))))
+	targetsCount = int(math.Min(float64(targetsCount), float64(len(eligibleTargets))))
 
 	// randomly pick up targets from the found ones
 	for i := 0; i < targetsCount; i++ {
-		index := rand.Intn(len(allTargets))
-		selectedTarget := allTargets[index]
+		index := rand.Intn(len(eligibleTargets))
+		selectedTarget := eligibleTargets[index]
 		instance.Status.Targets = append(instance.Status.Targets, selectedTarget)
-		allTargets[len(allTargets)-1], allTargets[index] = allTargets[index], allTargets[len(allTargets)-1]
-		allTargets = allTargets[:len(allTargets)-1]
+		eligibleTargets[len(eligibleTargets)-1], eligibleTargets[index] = eligibleTargets[index], eligibleTargets[len(eligibleTargets)-1]
+		eligibleTargets = eligibleTargets[:len(eligibleTargets)-1]
 	}
 
 	r.log.Infow("updating instance status with targets selected for injection")

@@ -119,3 +119,10 @@ func (n *Sink) MetricPodsCount(count float64) error {
 
 	return nil
 }
+
+// MetricWatchersCount sends watchers.count metric
+func (n *Sink) MetricWatchersCount(count float64) error {
+	fmt.Printf("NOOP: MetricWatchersCount %f\n", count)
+
+	return nil
+}

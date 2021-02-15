@@ -30,8 +30,10 @@ import (
 	"github.com/DataDog/chaos-controller/metrics/types"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	// +kubebuilder:scaffold:imports
 )
@@ -97,9 +99,21 @@ func main() {
 		}
 	}()
 
+	// create raw Kubernetes client
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err.Error())
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:              mgr.GetClient(),
+		RawClient:           clientset.CoreV1().RESTClient(),
 		BaseLog:             logger,
 		Scheme:              mgr.GetScheme(),
 		Recorder:            mgr.GetEventRecorderFor("disruption-controller"),

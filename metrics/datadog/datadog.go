@@ -129,6 +129,11 @@ func (d *Sink) MetricPodsCount(count float64) error {
 	return d.client.Gauge(metricPrefixController+"pods.count", count, []string{}, 1)
 }
 
+// MetricWatchersCount sends the watchers.count metric counting existing chaos pods watchers
+func (d *Sink) MetricWatchersCount(count float64) error {
+	return d.client.Gauge(metricPrefixController+"watchers.count", count, []string{}, 1)
+}
+
 func boolToStatus(succeed bool) string {
 	var status string
 	if succeed {
