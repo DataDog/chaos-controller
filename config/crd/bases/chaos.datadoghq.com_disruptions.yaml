@@ -36,8 +36,10 @@ spec:
         spec:
           description: DisruptionSpec defines the desired state of Disruption
           properties:
-            container:
-              type: string
+            containers:
+              items:
+                type: string
+              type: array
             count:
               anyOf:
               - type: integer

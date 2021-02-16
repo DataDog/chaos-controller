@@ -22,6 +22,7 @@ package controllers
 
 import (
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -103,6 +104,28 @@ func expectChaosPod(instance *chaosv1beta1.Disruption, count int) error {
 	return nil
 }
 
+// expectChaosInjectors retrieves the list of created chaos pods and confirms
+// that the targeted containers are present
+func expectChaosInjectors(instance *chaosv1beta1.Disruption, count int) error {
+	l, err := listChaosPods(instance)
+	if err != nil {
+		return err
+	}
+	for _, p := range l.Items {
+		args := p.Spec.Containers[0].Args
+		for i, arg := range args {
+			if arg == "--containers-id" {
+				containers := strings.Split(args[i+1], ",")
+				if len(containers) != count {
+					return fmt.Errorf("incorrect number of targeted containers in spec")
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 var _ = Describe("Disruption Controller", func() {
 	var disruption *chaosv1beta1.Disruption
 
@@ -113,7 +136,8 @@ var _ = Describe("Disruption Controller", func() {
 				Namespace: "default",
 			},
 			Spec: chaosv1beta1.DisruptionSpec{
-				Selector: map[string]string{"foo": "bar"},
+				Selector:   map[string]string{"foo": "bar"},
+				Containers: []string{"ctn1", "ctn2"},
 				NodeFailure: &chaosv1beta1.NodeFailureSpec{
 					Shutdown: false,
 				},
@@ -190,6 +214,9 @@ var _ = Describe("Disruption Controller", func() {
 			By("Ensuring that the chaos pods have been created")
 			Eventually(func() error { return expectChaosPod(disruption, 20) }, timeout).Should(Succeed())
 
+			By("Ensuring that the chaos pods have correct number of targeted containers")
+			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
+
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
 			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
@@ -210,6 +237,9 @@ var _ = Describe("Disruption Controller", func() {
 		It("should target all the selected pods", func() {
 			By("Ensuring that the inject pod has been created")
 			Eventually(func() error { return expectChaosPod(disruption, 5) }, timeout).Should(Succeed())
+
+			By("Ensuring that the chaos pods have correct number of targeted containers")
+			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
 
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
@@ -232,6 +262,9 @@ var _ = Describe("Disruption Controller", func() {
 			By("Ensuring that the inject pod has been created")
 			Eventually(func() error { return expectChaosPod(disruption, 15) }, timeout).Should(Succeed())
 
+			By("Ensuring that the chaos pods have correct number of targeted containers")
+			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
+
 			By("Deleting the disruption resource")
 			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
 			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
@@ -240,6 +273,56 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout).Should(Succeed())
 
 			By("Waiting for disruption resource to be deleted")
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
+		})
+	})
+
+	Context("target all pods and all containers by default", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+			disruption.Spec.Containers = []string{}
+		})
+
+		It("should target all the selected pods", func() {
+			By("Ensuring that the chaos pods have been created")
+			Eventually(func() error { return expectChaosPod(disruption, 16) }, timeout).Should(Succeed())
+
+			By("Ensuring that the chaos pods have correct number of targeted containers")
+			Expect(expectChaosInjectors(disruption, 3)).To(BeNil())
+
+			By("Deleting the disruption resource")
+			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
+
+			By("Ensuring that the chaos pods have been deleted")
+			Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout).Should(Succeed())
+
+			By("Waiting for disruption to be removed")
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
+		})
+	})
+
+	Context("target all pods and only one container is selected", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+			disruption.Spec.Containers = []string{"ctn1"}
+		})
+
+		It("should target all the selected pods", func() {
+			By("Ensuring that the chaos pods have been created")
+			Eventually(func() error { return expectChaosPod(disruption, 16) }, timeout).Should(Succeed())
+
+			By("Ensuring that the chaos pods have correct number of targeted containers")
+			Expect(expectChaosInjectors(disruption, 1)).To(BeNil())
+
+			By("Deleting the disruption resource")
+			Expect(k8sClient.Delete(context.Background(), disruption)).To(BeNil())
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(Succeed())
+
+			By("Ensuring that the chaos pods have been deleted")
+			Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout).Should(Succeed())
+
+			By("Waiting for disruption to be removed")
 			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
 		})
 	})

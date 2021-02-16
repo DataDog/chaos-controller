@@ -22,6 +22,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -81,10 +82,12 @@ func (f fakeK8sClient) Get(ctx context.Context, key client.ObjectKey, obj runtim
 
 	// try to convert given object into a pod
 	if pod, ok := obj.(*corev1.Pod); ok {
-		pod.Status.ContainerStatuses = []corev1.ContainerStatus{
-			{
-				ContainerID: "fakeID",
-			},
+		pod.Status.ContainerStatuses = []corev1.ContainerStatus{}
+
+		for i := 0; i < len(pod.Spec.Containers); i++ {
+			name := fmt.Sprintf("ctn%d", i+1)
+			ctnID := fmt.Sprintf("id%d", i+1)
+			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, corev1.ContainerStatus{Name: name, ContainerID: ctnID})
 		}
 	}
 
@@ -200,7 +203,15 @@ var _ = BeforeEach(func() {
 			Containers: []corev1.Container{
 				corev1.Container{
 					Image: "foo",
-					Name:  "foo",
+					Name:  "ctn1",
+				},
+				corev1.Container{
+					Image: "foo",
+					Name:  "ctn2",
+				},
+				corev1.Container{
+					Image: "foo",
+					Name:  "ctn3",
 				},
 			},
 		},
@@ -217,7 +228,15 @@ var _ = BeforeEach(func() {
 			Containers: []corev1.Container{
 				corev1.Container{
 					Image: "bar",
-					Name:  "bar",
+					Name:  "ctn1",
+				},
+				corev1.Container{
+					Image: "bar",
+					Name:  "ctn2",
+				},
+				corev1.Container{
+					Image: "bar",
+					Name:  "ctn3",
 				},
 			},
 		},
@@ -234,7 +253,15 @@ var _ = BeforeEach(func() {
 			Containers: []corev1.Container{
 				corev1.Container{
 					Image: "car",
-					Name:  "car",
+					Name:  "ctn1",
+				},
+				corev1.Container{
+					Image: "car",
+					Name:  "ctn2",
+				},
+				corev1.Container{
+					Image: "car",
+					Name:  "ctn3",
 				},
 			},
 		},
@@ -251,7 +278,15 @@ var _ = BeforeEach(func() {
 			Containers: []corev1.Container{
 				corev1.Container{
 					Image: "far",
-					Name:  "far",
+					Name:  "ctn1",
+				},
+				corev1.Container{
+					Image: "far",
+					Name:  "ctn2",
+				},
+				corev1.Container{
+					Image: "far",
+					Name:  "ctn3",
 				},
 			},
 		},

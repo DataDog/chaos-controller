@@ -41,7 +41,7 @@ Let's imagine a node with two pods running: `foo` and `bar` and a disruption dro
 
 ### Targeting
 
-The `Disruption` custom resource helps you to target the pods/nodes you want to be affected by the failures. This is done by a [label selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/). This selector will find all the pods/nodes matching the specified labels in the `Disruption` resource namespace and will affect either all of them or some of them *randomly* depending on the `count` value specified in the resource. For those who have pods with multiple containers and want to target a container in specific, the `container` value can be used to identify which container (by name) to target within the pod. By default the first container is targeted.
+The `Disruption` custom resource helps you to target the pods/nodes you want to be affected by the failures. This is done by a [label selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/). This selector will find all the pods/nodes matching the specified labels in the `Disruption` resource namespace and will affect either all of them or some of them *randomly* depending on the `count` value specified in the resource. For those who have pods with multiple containers and want to target specific containers, the `containers` array can be used to identify which containers (by name) to target within the pod. By default all containers are targeted. If any specified target container is not found in the container list for all targeted pod (e.x. a typo), the disruption will fail.
 
 Depending on the [disruption level](#level), the selector will be applied to pods or nodes.
 

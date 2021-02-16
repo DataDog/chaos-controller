@@ -33,19 +33,38 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// getContainerID gets the ID of the targeted container or of the first container ID found in a Pod
-func getContainerID(pod *corev1.Pod, target string) (string, error) {
+// getContainerIDs gets the IDs of the targeted containers or all container IDs found in a Pod
+func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
-		return "", fmt.Errorf("missing container ids for pod '%s'", pod.Name)
+		return []string{}, fmt.Errorf("missing container ids for pod '%s'", pod.Name)
 	}
 
-	for _, container := range pod.Status.ContainerStatuses {
-		if container.Name == target {
-			return container.ContainerID, nil
+	containersNameID := map[string]string{}
+	ctns := pod.Status.ContainerStatuses
+	containerIDs := []string{}
+
+	if len(targets) == 0 {
+		// get all containers ID
+		for _, c := range ctns {
+			containerIDs = append(containerIDs, c.ContainerID)
+		}
+	} else {
+		// populate containers name/ID map
+		for _, c := range ctns {
+			containersNameID[c.Name] = c.ContainerID
+		}
+
+		// look for the target in the map
+		for _, target := range targets {
+			if id, found := containersNameID[target]; found {
+				containerIDs = append(containerIDs, id)
+			} else {
+				return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, target)
+			}
 		}
 	}
 
-	return pod.Status.ContainerStatuses[0].ContainerID, nil
+	return containerIDs, nil
 }
 
 // This function returns a scaled value from an IntOrString type. If the IntOrString

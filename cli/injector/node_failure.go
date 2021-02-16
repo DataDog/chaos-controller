@@ -16,7 +16,6 @@ var nodeFailureCmd = &cobra.Command{
 	Short: "Node failure subcommands",
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		var err error
 		shutdown, _ := cmd.Flags().GetBool("shutdown")
 
 		// prepare spec
@@ -25,9 +24,13 @@ var nodeFailureCmd = &cobra.Command{
 		}
 
 		// create injector
-		inj, err = injector.NewNodeFailureInjector(spec, injector.NodeFailureInjectorConfig{Config: config})
-		if err != nil {
-			log.Fatalw("error creating the node injector", "error", err)
+		for _, config := range configs {
+			inj, err := injector.NewNodeFailureInjector(spec, injector.NodeFailureInjectorConfig{Config: config})
+			if err != nil {
+				log.Fatalw("error creating the node injector", "error", err)
+			}
+
+			injectors = append(injectors, inj)
 		}
 	},
 }
