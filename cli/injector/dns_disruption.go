@@ -18,7 +18,6 @@ var dnsDisruptionCmd = &cobra.Command{
 	Short: "DNS disruption subcommand",
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		var err error
 		rawHostRecordPairs, _ := cmd.Flags().GetStringArray("host-record-pairs")
 
 		var hostRecordPairs []v1beta1.HostRecordPair
@@ -44,9 +43,14 @@ var dnsDisruptionCmd = &cobra.Command{
 			hostRecordPairs = append(hostRecordPairs, hostRecordPair)
 		}
 
-		inj, err = injector.NewDNSDisruptionInjector(hostRecordPairs, injector.DNSDisruptionInjectorConfig{Config: config})
-		if err != nil {
-			log.Fatalw("error initializing the dns disruption injector", "error", err)
+		// create injectors
+		for _, config := range configs {
+			inj, err := injector.NewDNSDisruptionInjector(hostRecordPairs, injector.DNSDisruptionInjectorConfig{Config: config})
+			if err != nil {
+				log.Fatalw("error initializing the DNS injector", "error", err)
+			}
+
+			injectors = append(injectors, inj)
 		}
 	},
 }

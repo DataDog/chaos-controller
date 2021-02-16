@@ -83,11 +83,15 @@ func (i networkDisruptionInjector) Inject() error {
 		i.addOutputLimitOperation(uint(i.spec.BandwidthLimit))
 	}
 
-	if err := i.applyOperations(); err != nil {
-		return fmt.Errorf("error applying tc operations: %w", err)
+	// apply operations if any
+	if len(i.operations) > 0 {
+		if err := i.applyOperations(); err != nil {
+			return fmt.Errorf("error applying tc operations: %w", err)
+		}
+
+		i.config.Log.Info("operations applied successfully")
 	}
 
-	i.config.Log.Info("operations applied successfully")
 	i.config.Log.Info("editing pod net_cls cgroup to apply a classid to target container packets")
 
 	// write classid to pod net_cls cgroup

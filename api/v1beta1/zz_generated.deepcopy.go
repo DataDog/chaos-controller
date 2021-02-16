@@ -189,6 +189,11 @@ func (in *DisruptionSpec) DeepCopyInto(out *DisruptionSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Containers != nil {
+		in, out := &in.Containers, &out.Containers
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Network != nil {
 		in, out := &in.Network, &out.Network
 		*out = new(NetworkDisruptionSpec)

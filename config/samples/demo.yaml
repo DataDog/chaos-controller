@@ -59,6 +59,16 @@ spec:
         resources:
           limits:
             cpu: 1
+      - name: demo2
+        image: ubuntu:bionic
+        command: ["/bin/bash"]
+        args: ["-c", "while true; do sleep 10000; done"]
+        volumeMounts:
+        - mountPath: /mnt/data
+          name: data
+        resources:
+          limits:
+            cpu: 1
       volumes:
       - name: data
         persistentVolumeClaim:
