@@ -47,4 +47,4 @@ For instance, if the `nginx` service is in a cluster of pods using the host netw
     <img src="../docs/img/network_flow_ingress_hosts_problem.png" height=200 width=570 />
 </kbd></p>
 
-For now, we do not have a solution for resolving to specific pod IPs.
+For now, we do not have a solution for resolving cluster IPs to specific pod IPs.
