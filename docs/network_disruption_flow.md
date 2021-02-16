@@ -1,4 +1,4 @@
-# Network disruption
+# Network disruption: Traffic Flow
 
 ## Q: Should I use egress or ingress for traffic flow?
 
@@ -9,9 +9,9 @@ Note the following when using `ingress` (learn more in the next section):
 * `ingress` flow should only specifiy `port` and `protocol` fields, not `hosts`
 
 If you are still not sure which one you should use, let's explore a concrete example. Let's say you have 3 pods:
-* `server`: an nginx pod listening on 80
-* `client1`: a pod hitting nginx on port 80
-* `client2`: another pod hitting nginx on port 80
+* `server`: an `nginx` pod listening on 80
+* `client1`: a pod hitting `nginx` on port 80
+* `client2`: another pod hitting `nginx` on port 80
 
 Now let's explore two use cases:
 
@@ -41,7 +41,7 @@ Additionally, the `hosts` field cannot be used reliably with `ingress` flow.
     <img src="../docs/img/network_flow_ingress_hosts_setup.png" height=250 width=600 />
 </kbd></p>
 
-For instance, if the nginx service is in a cluster of pods using the host network, the `hosts` field contains the cluster IP, but the source IP field of the packet would have the IP of the specific pod from which the request originated.
+For instance, if the `nginx` service is in a cluster of pods using the host network, the `hosts` field contains the cluster IP, but the source IP field of the packet would have the IP of the specific pod from which the request originated.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_flow_ingress_hosts_problem.png" height=200 width=570 />

@@ -34,7 +34,7 @@ If a CIDR block of one or multiple IP addresses is specified (egress only), the 
 
 ### Case 3: Hostname specified
 
-Instead of a CIDR, Hostnames can be provided for the `hosts` field. If the chaos-controller fails to resolve the `hosts` field to an IP address or a CIDR block, it tries to resolve the potential hostname on each resolver listed in  `/etc/resolv.conf` in order.
+Instead of a CIDR block, hostnames can be provided for the `hosts` field. If the chaos-controller fails to resolve the `hosts` field to an IP address or a CIDR block, it tries to resolve the potential hostname on each resolver listed in  `/etc/resolv.conf` in order.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_hosts_egress_hostname.png" height=250 width=600 />
