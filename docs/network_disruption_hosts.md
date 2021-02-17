@@ -1,8 +1,8 @@
 # Network disruption: Specifying hosts
 
-## Q: When should I specificy hosts?
+## Q: When should I specify hosts?
 
-As with all disruptions, pods are targeted for injection if they satisfy the conditions of the label selector specified in the `app` field of `selector`. For network disruptions, we can also specify to only disrupt packets interacting with a particular host or set of hosts through the `hosts` field. Let's see some examples.
+As with all disruptions, pods are targeted for injection if they satisfy the conditions of the label selector specified in the `selector` field. For network disruptions, we can also specify to only disrupt packets interacting with a particular host or set of hosts through the `hosts` field. Let's see some examples.
 
 ### Assumptions
 
