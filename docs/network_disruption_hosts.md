@@ -13,11 +13,11 @@ In each of the following cases, it is assumed that any port or protocol filters 
 If no host is specified in the network disruption, the disruptions will be applied to all the outgoing (`egress`) or incoming (`ingress`) traffic on all interfaces.
 
 <p align="center"><kbd>
-    <img src="../docs/img/network_hosts_egress_all.png" height=270 width=600 />
+    <img src="../docs/img/network_hosts/egress_all.png" height=270 width=600 />
 </kbd></p>
 
 <p align="center"><kbd>
-    <img src="../docs/img/network_hosts_ingress_all.png" height=270 width=600 />
+    <img src="../docs/img/network_hosts/ingress_all.png" height=270 width=600 />
 </kbd></p>
 
 ### Case 2: CIDR specified
@@ -25,11 +25,11 @@ If no host is specified in the network disruption, the disruptions will be appli
 If a CIDR block of one or multiple IP addresses is specified (egress only), the disruptions will be applied to any outgoing traffic on interfaces that contain a route table entry to the specified IP addresses.
 
 <p align="center"><kbd>
-    <img src="../docs/img/network_hosts_egress_one.png" height=280 width=600 />
+    <img src="../docs/img/network_hosts/egress_one.png" height=280 width=600 />
 </kbd></p>
 
 <p align="center"><kbd>
-    <img src="../docs/img/network_hosts_egress_cidr.png" height=280 width=600 />
+    <img src="../docs/img/network_hosts/egress_cidr.png" height=280 width=600 />
 </kbd></p>
 
 ### Case 3: Hostname specified
@@ -37,5 +37,5 @@ If a CIDR block of one or multiple IP addresses is specified (egress only), the 
 Instead of a CIDR block, hostnames can be provided for the `hosts` field. If the chaos-controller fails to resolve the `hosts` field to an IP address or a CIDR block, it tries to resolve the potential hostname on each resolver listed in  `/etc/resolv.conf` in order.
 
 <p align="center"><kbd>
-    <img src="../docs/img/network_hosts_egress_hostname.png" height=280 width=600 />
+    <img src="../docs/img/network_hosts/egress_hostname.png" height=280 width=600 />
 </kbd></p>
