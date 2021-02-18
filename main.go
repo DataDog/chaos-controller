@@ -54,6 +54,7 @@ func main() {
 	var (
 		metricsAddr          string
 		enableLeaderElection bool
+		deleteOnly           bool
 		podTemplate          string
 		podTemplateSpec      corev1.Pod
 		sink                 string
@@ -62,6 +63,8 @@ func main() {
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&deleteOnly, "delete-only-mode", false,
+		"Enable delete only mode which will not allow new disruption to start and will only continue to clean up and remove existing disruptions.")
 	flag.StringVar(&podTemplate, "pod-template", "/etc/manager/pod-template.json", "The template file to use to generate injection pods.")
 	flag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	flag.Parse()
@@ -123,6 +126,7 @@ func main() {
 		MetricsSink:     ms,
 		PodTemplateSpec: podTemplateSpec,
 		TargetSelector:  controllers.RunningTargetSelector{},
+		DeleteOnly:      deleteOnly,
 	}
 
 	if err := r.SetupWithManager(mgr); err != nil {

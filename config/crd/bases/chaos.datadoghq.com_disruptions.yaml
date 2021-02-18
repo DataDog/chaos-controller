@@ -47,6 +47,8 @@ spec:
               description: CPUPressureSpec represents a cpu pressure disruption
               nullable: true
               type: object
+            deleteOnly:
+              type: boolean
             diskPressure:
               description: DiskPressureSpec represents a disk pressure disruption
               nullable: true
