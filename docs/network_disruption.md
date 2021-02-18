@@ -13,17 +13,25 @@ All of them can be combined in the same disruption resource. To apply these disr
     <img src="../docs/img/network_prio/pfifo.png" height=200 width=650 />
 </kbd></p>
 
-By extending the default linux kernal functionality for prioritizing network traffic, the `chaos-controller` can disrupt only the packets matching criteria specified in the network disruption spec. Even if you do not specify many fields, our default configurations can be effective for most use cases. If you have specific disruption requirements such as what protocol to disrupt, flow direction, or target ports, see the below FAQ pages to learn this tool in more detail and figure out the right disruption for your team!
+By extending the default linux kernal functionality for prioritizing network traffic, the `chaos-controller` can disrupt only the packets matching criteria specified in the network disruption spec.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_prio/traditional_notation.png" height=300 width=450 />
 </kbd></p>
+
+<p align="center"><kbd>
+    <img src="../docs/img/network_hosts/generic.png" height=250 width=400 />
+</kbd></p>
+
+Even if you do not specify many fields, our default configurations can be effective for most use cases. However, some disruption scenarios require careful tuning of the specs to replicate. If you have specific disruption requirements such as what protocol to disrupt, flow direction, or target hosts and ports, check out the FAQ pages below to learn more about this tool!
 
 ## FAQs:
 
 * [How do I decide my traffic flow? (Ingress vs Egress)](/docs/network_disruption_flow.md)
 * [What should I specify in hosts?](/docs/network_disruption_hosts.md)
 * [What are `prio` qdiscs and how does chaos-controller use them?](/docs/network_disruption_prio.md)
+
+Still have questions? Reach out to contributors to explore out the right disruption for your team!
 
 ## Kernel modules
 
