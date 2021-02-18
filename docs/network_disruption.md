@@ -13,7 +13,7 @@ All of them can be combined in the same disruption resource. To apply these disr
     <img src="../docs/img/network_prio/pfifo.png" height=200 width=650 />
 </kbd></p>
 
-By extending the default linux kernal functionality for prioritizing network traffic, the `chaos-controller` can disrupt only the packets matching criteria specified in the network disruption spec.
+By extending the default linux kernel functionality for prioritizing network traffic, the `chaos-controller` can disrupt only the packets matching criteria specified in the network disruption spec.
 
 <p align="center">
     <kbd>
