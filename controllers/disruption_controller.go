@@ -65,14 +65,14 @@ var (
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	client.Client
-	BaseLog         *zap.SugaredLogger
-	Scheme          *runtime.Scheme
-	Recorder        record.EventRecorder
-	MetricsSink     metrics.Sink
-	DeleteOnly      bool
-	TargetSelector  TargetSelector
-  InjectorAnnotations map[string]string
-	log             *zap.SugaredLogger
+	BaseLog             *zap.SugaredLogger
+	Scheme              *runtime.Scheme
+	Recorder            record.EventRecorder
+	MetricsSink         metrics.Sink
+	DeleteOnly          bool
+	TargetSelector      TargetSelector
+	InjectorAnnotations map[string]string
+	log                 *zap.SugaredLogger
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
