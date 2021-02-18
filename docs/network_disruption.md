@@ -15,13 +15,14 @@ All of them can be combined in the same disruption resource. To apply these disr
 
 By extending the default linux kernal functionality for prioritizing network traffic, the `chaos-controller` can disrupt only the packets matching criteria specified in the network disruption spec.
 
-<p align="center"><kbd>
-    <img src="../docs/img/network_prio/traditional_notation.png" height=300 width=450 />
-</kbd></p>
-
-<p align="center"><kbd>
-    <img src="../docs/img/network_hosts/generic.png" height=250 width=400 />
-</kbd></p>
+<p align="center">
+    <kbd>
+        <img src="../docs/img/network_prio/traditional_notation.png" height=250 width=400 />
+    </kbd>
+    <kbd>
+        <img src="../docs/img/network_hosts/generic.png" height=250 width=400 />
+    </kbd>
+</p>
 
 Even if you do not specify many fields, our default configurations can be effective for most use cases. However, some disruption scenarios require careful tuning of the specs to replicate. If you have specific disruption requirements such as what protocol to disrupt, flow direction, or target hosts and ports, check out the FAQ pages below to learn more about this tool!
 
