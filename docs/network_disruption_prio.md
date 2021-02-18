@@ -87,7 +87,7 @@ Now that the disruption has been setup on the fourth band, we can apply filters 
     <img src="../docs/img/network_prio/node/filter_1-1.png" height=330 width=650 />
 </kbd></p>
 
-We first filter for all packets related to health checks by the cloud provider, traffic directed at the `gateway IP`, as well as communication with the Kubernetes `apiserver` to be sent to `Band 0`.
+We first filter for all packets related to health checks by the cloud provider or SSH to be sent to `Band 0`. We also consult `kubernetes.default` for any Kubernetes apiservers which should not be disrupted.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_prio/node/filter_1-4.png" height=330 width=650 />
@@ -125,13 +125,13 @@ The disruption should only affect packets leaving our target node or pod. On top
 #### (Step 2)  Disrupt the fourth band for traffic from pods
 
 <p align="center"><kbd>
-    <img src="../docs/img/network_prio/pod/2-0.png" height=270 width=650 />
+    <img src="../docs/img/network_prio/pod/2-1.png" height=270 width=650 />
 </kbd></p>
 
 To this fourth band, another `prio` qdisc with handle `2:` attached. This qdisc defaults to a priomap routing all traffic to `Band 0` (notated here as `{0}`). This band is a catch-all for packets which do not end up being disrupted.
 
 <p align="center"><kbd>
-    <img src="../docs/img/network_prio/pod/2-2.png" height=280 width=650 />
+    <img src="../docs/img/network_prio/pod/3-1.png" height=280 width=650 />
 </kbd></p>
 
 For the disruption itself, the chaos-controller mark all packets leaving the (process associated with the) target pod with `classid` `2:2`. A filter on handle `2:` checks for this field and enqueues packets matching this criteria to class `2:2` which contains a qdisc applying the configured network disruption (in this case a netem delay).
@@ -144,7 +144,7 @@ Now that the disruption has been setup on the fourth band, we can apply filters 
     <img src="../docs/img/network_prio/pod/filter_1-1.png" height=330 width=650 />
 </kbd></p>
 
-We first filter for all packets related to health checks by the cloud provider, traffic directed at the `gateway IP`, as well as communication with the Kubernetes `apiserver` to be sent to `Band 0`.
+We first filter for all packets related to `gateway IP` and `node IP` to be sent to `Band 0`. We also consult `kubernetes.default` for any Kubernetes apiservers which should not be disrupted.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_prio/pod/filter_1-4.png" height=330 width=650 />
