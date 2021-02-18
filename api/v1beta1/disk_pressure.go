@@ -8,6 +8,7 @@ package v1beta1
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
@@ -34,15 +35,15 @@ func (s *DiskPressureSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string, dryRun bool) []string {
+func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
 	args := []string{
 		"disk-pressure",
 		"--metrics-sink",
 		sink,
 		"--level",
 		string(level),
-		"--container-id",
-		containerID,
+		"--containers-id",
+		strings.Join(containerIDs, ","),
 		"--path",
 		s.Path,
 	}

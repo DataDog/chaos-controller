@@ -27,22 +27,32 @@ var networkDisruptionCmd = &cobra.Command{
 		delayJitter, _ := cmd.Flags().GetUint("delay-jitter")
 		bandwidthLimit, _ := cmd.Flags().GetInt("bandwidth-limit")
 
-		// prepare injection object
-		spec := v1beta1.NetworkDisruptionSpec{
-			Hosts:          hosts,
-			Port:           port,
-			Protocol:       protocol,
-			Flow:           flow,
-			Drop:           drop,
-			Duplicate:      duplicate,
-			Corrupt:        corrupt,
-			Delay:          delay,
-			DelayJitter:    delayJitter,
-			BandwidthLimit: bandwidthLimit,
-		}
+		// prepare injectors
+		for i, config := range configs {
+			var spec v1beta1.NetworkDisruptionSpec
 
-		// generate injector
-		inj = injector.NewNetworkDisruptionInjector(spec, injector.NetworkDisruptionInjectorConfig{Config: config})
+			// Only specify spec for the first injector because the network namespace
+			// is shared across all containers so we do not want to inject more rules.
+			// We must still tag outgoing packets from all containers with a classid
+			// in order for the disruption to take effect, so injectors must be created for each container.
+			if i == 0 {
+				spec = v1beta1.NetworkDisruptionSpec{
+					Hosts:          hosts,
+					Port:           port,
+					Protocol:       protocol,
+					Flow:           flow,
+					Drop:           drop,
+					Duplicate:      duplicate,
+					Corrupt:        corrupt,
+					Delay:          delay,
+					DelayJitter:    delayJitter,
+					BandwidthLimit: bandwidthLimit,
+				}
+			}
+
+			// generate injector
+			injectors = append(injectors, injector.NewNetworkDisruptionInjector(spec, injector.NetworkDisruptionInjectorConfig{Config: config}))
+		}
 	},
 }
 

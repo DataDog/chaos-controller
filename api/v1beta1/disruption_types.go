@@ -36,8 +36,8 @@ type DisruptionSpec struct {
 	DryRun     bool       `json:"dryRun,omitempty"`     // enable dry-run mode
 	DeleteOnly bool       `json:"deleteOnly,omitempty"` // enable delete-only mode
 	// +kubebuilder:validation:Enum=pod;node;""
-	Level     chaostypes.DisruptionLevel `json:"level,omitempty"`
-	Container string                     `json:"container,omitempty"`
+	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
+	Containers []string                   `json:"containers,omitempty"`
 	// +nullable
 	Network *NetworkDisruptionSpec `json:"network,omitempty"`
 	// +nullable
@@ -46,6 +46,8 @@ type DisruptionSpec struct {
 	CPUPressure *CPUPressureSpec `json:"cpuPressure,omitempty"`
 	// +nullable
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
+	// +nullable
+	DNS DNSDisruptionSpec `json:"dns,omitempty"`
 }
 
 // DisruptionStatus defines the observed state of Disruption

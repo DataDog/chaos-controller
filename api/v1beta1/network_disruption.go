@@ -57,15 +57,15 @@ func (s *NetworkDisruptionSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerID, sink string, dryRun bool) []string {
+func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
 	args := []string{
 		"network-disruption",
 		"--metrics-sink",
 		sink,
 		"--level",
 		string(level),
-		"--container-id",
-		containerID,
+		"--containers-id",
+		strings.Join(containerIDs, ","),
 		"--port",
 		strconv.Itoa(s.Port),
 		"--corrupt",

@@ -21,9 +21,6 @@ limitations under the License.
 package main
 
 import (
-	"encoding/json"
-	"flag"
-	"io/ioutil"
 	"os"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -31,7 +28,7 @@ import (
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -55,19 +52,17 @@ func main() {
 		metricsAddr          string
 		enableLeaderElection bool
 		deleteOnly           bool
-		podTemplate          string
-		podTemplateSpec      corev1.Pod
 		sink                 string
+		injectorAnnotations  map[string]string
 	)
 
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
-		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&deleteOnly, "delete-only-mode", false,
+  pflag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	pflag.BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	pflag.BoolVar(&deleteOnly, "delete-only-mode", false,
 		"Enable delete only mode which will not allow new disruption to start and will only continue to clean up and remove existing disruptions.")
-	flag.StringVar(&podTemplate, "pod-template", "/etc/manager/pod-template.json", "The template file to use to generate injection pods.")
-	flag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
-	flag.Parse()
+	pflag.StringToStringVar(&injectorAnnotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
+	pflag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
+	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
 	if err != nil {
@@ -102,21 +97,6 @@ func main() {
 		}
 	}()
 
-	// load pod template
-	bytes, err := ioutil.ReadFile(podTemplate) //nolint:gosec
-	if err != nil {
-		ctrl.Log.Error(err, "unable to read pod template file")
-		os.Exit(1)
-	}
-
-	err = json.Unmarshal(bytes, &podTemplateSpec)
-	if err != nil {
-		ctrl.Log.Error(err, "unable to load pod template spec")
-		os.Exit(1)
-	}
-
-	ctrl.Log.Info("generated pod template", "template", podTemplateSpec)
-
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:          mgr.GetClient(),
@@ -124,9 +104,9 @@ func main() {
 		Scheme:          mgr.GetScheme(),
 		Recorder:        mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:     ms,
-		PodTemplateSpec: podTemplateSpec,
 		TargetSelector:  controllers.RunningTargetSelector{},
 		DeleteOnly:      deleteOnly,
+    InjectorAnnotations: injectorAnnotations,
 	}
 
 	if err := r.SetupWithManager(mgr); err != nil {
@@ -134,7 +114,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	go r.WatchStuckOnRemoval()
+	go r.ReportMetrics()
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

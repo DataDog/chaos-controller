@@ -17,6 +17,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/network"
@@ -107,7 +108,7 @@ var _ = Describe("Failure", func() {
 		ctn = &container.ContainerMock{}
 
 		// environment variables
-		Expect(os.Setenv(chaostypes.TargetPodHostIPEnv, "10.0.0.2")).To(BeNil())
+		Expect(os.Setenv(env.InjectorTargetPodHostIP, "10.0.0.2")).To(BeNil())
 
 		// config
 		config = NetworkDisruptionInjectorConfig{
