@@ -51,14 +51,17 @@ func main() {
 	var (
 		metricsAddr          string
 		enableLeaderElection bool
+		deleteOnly           bool
 		sink                 string
 		injectorAnnotations  map[string]string
 	)
 
 	pflag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	pflag.BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	pflag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
+	pflag.BoolVar(&deleteOnly, "delete-only", false,
+		"Enable delete only mode which will not allow new disruption to start and will only continue to clean up and remove existing disruptions.")
 	pflag.StringToStringVar(&injectorAnnotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
+	pflag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
@@ -102,6 +105,7 @@ func main() {
 		Recorder:            mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:         ms,
 		TargetSelector:      controllers.RunningTargetSelector{},
+		DeleteOnly:          deleteOnly,
 		InjectorAnnotations: injectorAnnotations,
 	}
 

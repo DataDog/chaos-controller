@@ -19,6 +19,10 @@ The controller works with a custom Kubernetes resource named `Disruption` descri
 
 *Do not hesitate to apply disruptions with the dry-run mode enabled to do your tests!*
 
+### Delete-only mode
+
+This flag can be enabled specifically on the controller configuration itself (through the arguments of it's container). Once enabled, the controller in question will reject any incoming requests to create new injections for new disruptions. In this state, the controller will only accept requests to clean/remove disruptions. The controller must be restarted with the corresponding `--delete-only` argument in order to reach this state.
+
 ### Dry-run mode
 
 First of all, you can enable the dry-run mode on any disruption to fake the injection if you are not sure about what you're doing. The dry-run mode will still select targets, create chaos pods and simulate the disruption as much as possible. It means that all "read" operations (like knowing which network interface to disrupt) will be executed while all "write" operations won't be (like creating what's needed to drop packets).
