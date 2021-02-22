@@ -69,6 +69,7 @@ type DisruptionReconciler struct {
 	Scheme              *runtime.Scheme
 	Recorder            record.EventRecorder
 	MetricsSink         metrics.Sink
+	DeleteOnly          bool
 	TargetSelector      TargetSelector
 	InjectorAnnotations map[string]string
 	log                 *zap.SugaredLogger
@@ -153,6 +154,12 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, nil
 		}
 	} else {
+		if r.DeleteOnly {
+			// we are in delete only mode, no injections should be created
+			r.log.Infow("the controller is currently in delete only mode, no injections are being accepted at this time.")
+			r.Recorder.Event(instance, "Warning", "Delete Only Mode", "The Chaos Controller for this cluster is currently in delete-only mode. It will not be accepting any new disruptions at this time.")
+			return ctrl.Result{}, nil
+		}
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 
