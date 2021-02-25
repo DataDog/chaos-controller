@@ -72,8 +72,15 @@ func (r *DisruptionReconciler) watchChaosPods(instance *chaosv1beta1.Disruption)
 			if event.Type == watch.Modified {
 				// handle the pod termination to know if we can remove the finalizer or not
 				if err := backoff.Retry(func() error {
-					// retrieve instance
+					// retrieve instance from given identifier
 					if err := r.Get(context.Background(), id, instance); err != nil {
+						return err
+					}
+
+					// retrieve pod from retrieved object
+					// we must get it (instead of re-using the event object) because we need the latest
+					// version of the resource to be able to update it (and remove its finalizer)
+					if err := r.Get(context.Background(), types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, pod); err != nil {
 						return err
 					}
 
