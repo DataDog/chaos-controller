@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -74,6 +75,11 @@ func (r *DisruptionReconciler) watchChaosPods(instance *chaosv1beta1.Disruption)
 				if err := backoff.Retry(func() error {
 					// retrieve instance from given identifier
 					if err := r.Get(context.Background(), id, instance); err != nil {
+						// the disruption has been deleted in the meantime, so we can ignore the event and safely exit the retry
+						if client.IgnoreNotFound(err) == nil {
+							return nil
+						}
+
 						r.log.Errorw("error getting disruption instance", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name)
 
 						return err
@@ -83,20 +89,25 @@ func (r *DisruptionReconciler) watchChaosPods(instance *chaosv1beta1.Disruption)
 					// we must get it (instead of re-using the event object) because we need the latest
 					// version of the resource to be able to update it (and remove its finalizer)
 					if err := r.Get(context.Background(), types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, pod); err != nil {
-						r.log.Errorw("error getting chaos pod", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name)
+						// the pod has been deleted in the meantime, so we can ignore the event and safely exit the retry
+						if client.IgnoreNotFound(err) == nil {
+							return nil
+						}
+
+						r.log.Errorw("error getting chaos pod from watcher", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name)
 
 						return err
 					}
 
 					// handle event
 					if err := r.handleChaosPodTermination(instance, pod); err != nil {
-						r.log.Errorw("error handling chaos pod termination", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name)
+						r.log.Errorw("error handling chaos pod termination from watcher", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name)
 
 						return err
 					}
 
 					return nil
-				}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 10)); err != nil {
+				}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5)); err != nil {
 					r.log.Errorw("error calling chaos pods termination handling backoff function", "instance", id.Name, "namespace", id.Namespace, "error", err)
 				}
 			}
