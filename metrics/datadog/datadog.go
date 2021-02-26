@@ -134,6 +134,13 @@ func (d *Sink) MetricWatchersCount(count float64) error {
 	return d.client.Gauge(metricPrefixController+"watchers.count", count, []string{}, 1)
 }
 
+// MetricWatcherWorkersCount sends the watcher.workers.count metric counting existing workers for the given instance events watcher
+func (d *Sink) MetricWatcherWorkersCount(instanceName, namespace string, count float64) error {
+	tags := []string{"name:" + instanceName, "namespace:" + namespace}
+
+	return d.client.Gauge(metricPrefixController+"watcher.workers.count", count, tags, 1)
+}
+
 func boolToStatus(succeed bool) string {
 	var status string
 	if succeed {

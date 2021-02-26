@@ -85,6 +85,8 @@ func (r *DisruptionReconciler) createChaosPodsWatcher(instance *chaosv1beta1.Dis
 			instanceEventsWatcher.activeWorkersCount++
 			go r.watchChaosPodsEvents(instance, instanceEventsWatcher.watcher, i+neededWorkers)
 		}
+
+		r.handleMetricSinkError(r.MetricsSink.MetricWatcherWorkersCount(instance.Name, instance.Namespace, float64(instanceEventsWatcher.activeWorkersCount)))
 	}
 
 	return nil

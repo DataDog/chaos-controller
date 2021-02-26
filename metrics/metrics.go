@@ -32,6 +32,7 @@ type Sink interface {
 	MetricDisruptionsCount(count float64) error
 	MetricPodsCount(count float64) error
 	MetricWatchersCount(count float64) error
+	MetricWatcherWorkersCount(instanceName, namespace string, count float64) error
 }
 
 // GetSink returns an initiated sink

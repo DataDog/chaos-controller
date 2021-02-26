@@ -126,3 +126,10 @@ func (n *Sink) MetricWatchersCount(count float64) error {
 
 	return nil
 }
+
+// MetricWatcherWorkersCount sends watcher.workers.count metric
+func (n *Sink) MetricWatcherWorkersCount(instanceName, namespace string, count float64) error {
+	fmt.Printf("NOOP: MetricWatcherWorkersCount %s %s %f\n", instanceName, namespace, count)
+
+	return nil
+}
