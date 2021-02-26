@@ -74,6 +74,8 @@ func (r *DisruptionReconciler) watchChaosPods(instance *chaosv1beta1.Disruption)
 				if err := backoff.Retry(func() error {
 					// retrieve instance from given identifier
 					if err := r.Get(context.Background(), id, instance); err != nil {
+						r.log.Errorw("error getting disruption instance", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name)
+
 						return err
 					}
 
@@ -81,6 +83,8 @@ func (r *DisruptionReconciler) watchChaosPods(instance *chaosv1beta1.Disruption)
 					// we must get it (instead of re-using the event object) because we need the latest
 					// version of the resource to be able to update it (and remove its finalizer)
 					if err := r.Get(context.Background(), types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, pod); err != nil {
+						r.log.Errorw("error getting chaos pod", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name)
+
 						return err
 					}
 
@@ -92,7 +96,7 @@ func (r *DisruptionReconciler) watchChaosPods(instance *chaosv1beta1.Disruption)
 					}
 
 					return nil
-				}, backoff.NewExponentialBackOff()); err != nil {
+				}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 10)); err != nil {
 					r.log.Errorw("error calling chaos pods termination handling backoff function", "instance", id.Name, "namespace", id.Namespace, "error", err)
 				}
 			}
