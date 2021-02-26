@@ -8,6 +8,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -25,105 +26,139 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// watchChaosPods creates a watcher for the given instance chaos pods
-// it'll watch for any "modified" event happening on the pod
-// if such an event occurs, and if the pod still has a finalizer and is being deleted, it'll manage its lifecycle
-func (r *DisruptionReconciler) watchChaosPods(instance *chaosv1beta1.Disruption) error {
+// eventsWatcher represents a set of workers reading events
+// incoming into the watcher events channel and processing them
+type eventsWatcher struct {
+	watcher            watch.Interface
+	activeWorkersCount int
+}
+
+// createChaosPodsWatcher creates a watcher for the given instance chaos pods
+// it'll create a set of workers catching any "modified" event happening on the pod
+// the number of workers created depends on the number of targets the disruption has
+// the number of workers can only increase until the disruption is removed
+func (r *DisruptionReconciler) createChaosPodsWatcher(instance *chaosv1beta1.Disruption) error {
 	// check for an already existing watcher
-	if _, found := watchers[instance.UID]; found {
-		return nil
-	}
+	instanceEventsWatcher, found := watchers[instance.UID]
 
-	r.log.Info("creating a watcher on instance chaos pods")
+	if !found {
+		r.log.Info("creating a watcher on instance chaos pods")
 
-	// create a lister-watcher for the pod resource scoped to the instance namespace
-	listWatch := cache.NewListWatchFromClient(r.RawClient, string(corev1.ResourcePods), instance.Namespace, fields.Everything())
+		// create a lister-watcher for the pod resource scoped to the instance namespace
+		listWatch := cache.NewListWatchFromClient(r.RawClient, string(corev1.ResourcePods), instance.Namespace, fields.Everything())
 
-	// create a watcher for the pods owned by the given disruption instance
-	set := map[string]string{chaostypes.DisruptionNameLabel: instance.Name}
-	ls := labels.SelectorFromSet(set)
+		// create a watcher for the pods owned by the given disruption instance
+		set := map[string]string{chaostypes.DisruptionNameLabel: instance.Name}
+		ls := labels.SelectorFromSet(set)
 
-	watcher, err := listWatch.Watch(metav1.ListOptions{LabelSelector: ls.String()})
-	if err != nil {
-		return fmt.Errorf("error watching instance chaos pods: %w", err)
-	}
-
-	// add the watcher to the local cache
-	watchers[instance.UID] = watcher
-	r.handleMetricSinkError(r.MetricsSink.MetricWatchersCount(float64(len(watchers))))
-
-	// handle existing chaos pods termination before listening to events
-	// it is useful if a pod was deleted while we were not listening to events (otherwise they would never be cleaned)
-	r.log.Info("reconciling existing chaos pods before starting to watch new events")
-
-	if err := r.handleChaosPodsTermination(instance); err != nil {
-		return fmt.Errorf("error handling existing chaos pods termination before starting the watcher: %w", err)
-	}
-
-	// watch for events
-	go func(id types.NamespacedName) {
-		defer r.log.Infow("exiting chaos pods watcher function", "instance", id.Name, "namespace", id.Namespace)
-
-		for event := range watcher.ResultChan() {
-			pod := event.Object.(*corev1.Pod)
-			instance := &chaosv1beta1.Disruption{}
-
-			// we look for modified chaos pods because the deleted event happens only once the finalizer is removed and the resource is garbage collected
-			// we will receive multiple modified events on resource deletion
-			if event.Type == watch.Modified {
-				// handle the pod termination to know if we can remove the finalizer or not
-				if err := backoff.Retry(func() error {
-					// retrieve instance from given identifier
-					if err := r.Get(context.Background(), id, instance); err != nil {
-						// the disruption has been deleted in the meantime, so we can ignore the event and safely exit the retry
-						if client.IgnoreNotFound(err) == nil {
-							return nil
-						}
-
-						r.log.Errorw("error getting disruption instance", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name)
-
-						return err
-					}
-
-					// retrieve pod from retrieved object
-					// we must get it (instead of re-using the event object) because we need the latest
-					// version of the resource to be able to update it (and remove its finalizer)
-					if err := r.Get(context.Background(), types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, pod); err != nil {
-						// the pod has been deleted in the meantime, so we can ignore the event and safely exit the retry
-						if client.IgnoreNotFound(err) == nil {
-							return nil
-						}
-
-						r.log.Errorw("error getting chaos pod from watcher", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name)
-
-						return err
-					}
-
-					// handle event
-					if err := r.handleChaosPodTermination(instance, pod); err != nil {
-						r.log.Errorw("error handling chaos pod termination from watcher", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name)
-
-						return err
-					}
-
-					return nil
-				}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5)); err != nil {
-					r.log.Errorw("error calling chaos pods termination handling backoff function", "instance", id.Name, "namespace", id.Namespace, "error", err)
-				}
-			}
+		watcher, err := listWatch.Watch(metav1.ListOptions{LabelSelector: ls.String()})
+		if err != nil {
+			return fmt.Errorf("error watching instance chaos pods: %w", err)
 		}
-	}(types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name})
+
+		// add the watcher to the local cache
+		instanceEventsWatcher = &eventsWatcher{watcher: watcher}
+		watchers[instance.UID] = instanceEventsWatcher
+		r.handleMetricSinkError(r.MetricsSink.MetricWatchersCount(float64(len(watchers))))
+
+		// handle existing chaos pods termination before listening to events
+		// it is useful if a pod was deleted while we were not listening to events (otherwise they would never be cleaned)
+		r.log.Info("reconciling existing chaos pods before starting to watch new events")
+
+		if err := r.handleChaosPodsTermination(instance); err != nil {
+			return fmt.Errorf("error handling existing chaos pods termination before starting the watcher: %w", err)
+		}
+	}
+
+	// compute needed workers count depending on the number of targets
+	// workersCount will be at least 1
+	// log(0) == -Inf; log(1) == 0; so max(-Inf, 1) or max(0, 1) will return 1
+	workersCount := int(math.Max(math.Ceil(math.Log(float64(len(instance.Status.Targets)))), 1))
+	neededWorkers := workersCount - instanceEventsWatcher.activeWorkersCount
+
+	// create needed additional watcher workers
+	// we never decrease the number of workers
+	if neededWorkers > 0 {
+		r.log.Infof("creating %d new watcher workers for disruption instance", neededWorkers)
+
+		for i := 0; i < neededWorkers; i++ {
+			instanceEventsWatcher.activeWorkersCount++
+			go r.watchChaosPodsEvents(instance, instanceEventsWatcher.watcher, i+neededWorkers)
+		}
+	}
 
 	return nil
+}
+
+// watchChaosPodsEvents reads events incoming in the given watcher events channel and processes them
+func (r *DisruptionReconciler) watchChaosPodsEvents(instance *chaosv1beta1.Disruption, watcher watch.Interface, workerID int) {
+	r.log.Infow("creating a new watcher worker", "instance", instance.Name, "namespace", instance.Namespace, "workerID", workerID)
+	defer r.log.Infow("exiting chaos pods watcher function", "instance", instance.Name, "namespace", instance.Namespace, "workerID", workerID)
+
+	// build instance id
+	id := types.NamespacedName{
+		Namespace: instance.Namespace,
+		Name:      instance.Name,
+	}
+
+	// read events incoming in the watcher events chan
+	for event := range watcher.ResultChan() {
+		pod := event.Object.(*corev1.Pod)      // chaos pod
+		instance := &chaosv1beta1.Disruption{} // disruption instance
+
+		// we look for modified chaos pods because the deleted event happens only once the finalizer is removed and the resource is garbage collected
+		// we will receive multiple modified events on resource deletion
+		if event.Type == watch.Modified {
+			// handle the pod termination to know if we can remove the finalizer or not
+			if err := backoff.Retry(func() error {
+				// retrieve instance from given identifier
+				if err := r.Get(context.Background(), id, instance); err != nil {
+					// the disruption has been deleted in the meantime, so we can ignore the event and safely exit the retry
+					if client.IgnoreNotFound(err) == nil {
+						return nil
+					}
+
+					r.log.Errorw("error getting disruption instance", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name, "workerID", workerID)
+
+					return err
+				}
+
+				// retrieve pod from retrieved object
+				// we must get it (instead of re-using the event object) because we need the latest
+				// version of the resource to be able to update it (and remove its finalizer)
+				if err := r.Get(context.Background(), types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, pod); err != nil {
+					// the pod has been deleted in the meantime, so we can ignore the event and safely exit the retry
+					if client.IgnoreNotFound(err) == nil {
+						return nil
+					}
+
+					r.log.Errorw("error getting chaos pod from watcher", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name, "workerID", workerID)
+
+					return err
+				}
+
+				// handle event
+				if err := r.handleChaosPodTermination(instance, pod); err != nil {
+					r.log.Errorw("error handling chaos pod termination from watcher", "instance", id.Name, "namespace", id.Namespace, "error", err, "chaosPod", pod.Name, "workerID", workerID)
+
+					return err
+				}
+
+				return nil
+			}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5)); err != nil {
+				r.log.Errorw("error calling chaos pods termination handling backoff function", "instance", id.Name, "namespace", id.Namespace, "error", err, "workerID", workerID)
+			}
+		}
+	}
 }
 
 // unwatchChaosPods stops any watcher present on the disruption instance
 // and removes it from the local cache
 func (r *DisruptionReconciler) unwatchChaosPods(instance *chaosv1beta1.Disruption) {
-	if watcher, found := watchers[instance.UID]; found {
+	if eventsWatcher, found := watchers[instance.UID]; found {
 		r.log.Info("removing chaos pods watcher")
 
-		watcher.Stop()
+		eventsWatcher.watcher.Stop()
 		delete(watchers, instance.UID)
 		r.handleMetricSinkError(r.MetricsSink.MetricWatchersCount(float64(len(watchers))))
 	}

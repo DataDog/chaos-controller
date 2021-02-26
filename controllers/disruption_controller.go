@@ -39,7 +39,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -60,7 +59,7 @@ const (
 var (
 	disruptionFinalizer = finalizerPrefix
 	chaosPodFinalizer   = finalizerPrefix + "/chaos-pod"
-	watchers            = map[types.UID]watch.Interface{}
+	watchers            = map[types.UID]*eventsWatcher{}
 )
 
 // DisruptionReconciler reconciles a Disruption object
@@ -120,7 +119,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	}
 
 	// create chaos pods watcher
-	if err := r.watchChaosPods(instance); err != nil {
+	if err := r.createChaosPodsWatcher(instance); err != nil {
 		return ctrl.Result{}, fmt.Errorf("error creating chaos pods watcher: %w", err)
 	}
 
