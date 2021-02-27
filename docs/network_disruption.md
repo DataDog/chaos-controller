@@ -4,7 +4,7 @@ The `network` field provides an automated way of adding disruptions to the outgo
 
 * `drop` drops a percentage of the outgoing traffic to simulate packets loss
 * `corrupt` corrupts a percentage of the outgoing traffic to simulate packets corruption
-* `delay` adds the given delay (with +- jitter) to the outgoing traffic to simulate a slow network
+* `delay` adds the given delay (with `+-` jitter) to the outgoing traffic to simulate a slow network
 * `bandwidthLimit` limits the outgoing traffic bandwidth to simulate a bandwidth struggle
 
 All of them can be combined in the same disruption resource. To apply these disruptions, the `tc` utility is used and the behavior is different according to the use cases.
