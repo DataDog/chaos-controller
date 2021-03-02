@@ -131,3 +131,14 @@ func validateLabelSelector(selector labels.Selector) error {
 
 	return nil
 }
+
+// contains returns true when the given string is present in the given slice
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}

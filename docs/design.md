@@ -54,18 +54,19 @@ This status is being updated regularly until it reaches the `Injected` status. T
 
 #### Step 1: clean disruptions
 
+The controller deletes every chaos pods (not deleted yet) owned by the related disruption. Such a delete will trigger the reconcile loop again for this instance in order to handle the chaos pods termination.
+
+#### Step 2: handle chaos pods termination
+
+**NOTE: this step is done at each reconcile loop call, not only on disruption deletion, so any chaos pods being deleted, either by the controller or by an external reason (like a node being evicted), will be handled.**
+
 For each target, the controller checks if the target is still cleanable. A target is considered as not cleanable if it does not exist anymore or if it is not running. A non-cleanable target chaos pod will still be deleted, triggering the cleanup phase. However, its status won't be checked.
 
 Then, each chaos pod of a given target will be treated like this (it can take multiple loops to reconcile correctly):
 * if it is **completed** (exited successfully), **pending** (no injection happened or has been evicted) or **non-cleanable**, the finalizer of the chaos pod is **removed** allowing it to be garbage collected as soon as possible
-* if it is **running** or **pending**, the chaos pod is **deleted** (sending a `SIGTERM` to the underlying process) (note that the pod will not be removed until its finalizer is removed)
 * if it is **failed** (exited with an error) and **cleanable**, the chaos pod is kept for further investigation (and eventually manual cleaning) and the disruption is marked as stuck on removal (it won't be removed until manual actions are taken)
 
 The disruption is considered as cleaned when there is no chaos pods left. For each reconcile call where the disruption is not fully cleaned, the reconcile request is re-enqueued.
-
-#### Step 2: remove the finalizer
-
-Once the disruption is fully cleaned, the finalizer is removed and the resource is reconciled. Kubernetes will garbage collect it as soon as possible.
 
 ## Injector lifecycle
 
