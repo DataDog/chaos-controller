@@ -261,6 +261,13 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		return fmt.Errorf("can't get interfaces per IP listing: %w", err)
 	}
 
+	// allow kubelet -> apiserver communications
+	// resolve the kubernetes.default service created at cluster bootstrap and owning the apiserver cluster IP
+	apiservers, err := i.getInterfacesByIP([]string{"kubernetes.default"})
+	if err != nil {
+		return fmt.Errorf("error resolving apiservers service IP: %w", err)
+	}
+
 	// interfaces for which we need to clean qlen once injection is finished
 	clearTxQlen := []network.NetlinkLink{}
 
@@ -398,13 +405,6 @@ func (i *networkDisruptionInjector) applyOperations() error {
 			if err := i.config.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
 				return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
 			}
-		}
-
-		// allow kubelet -> apiserver communications
-		// resolve the kubernetes.default service created at cluster bootstrap and owning the apiserver cluster IP
-		apiservers, err := i.getInterfacesByIP([]string{"kubernetes.default"})
-		if err != nil {
-			return fmt.Errorf("error resolving apiservers service IP: %w", err)
 		}
 
 		if len(apiservers) == 0 {
