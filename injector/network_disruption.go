@@ -268,6 +268,10 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		return fmt.Errorf("error resolving apiservers service IP: %w", err)
 	}
 
+	if len(apiservers) == 0 {
+		return fmt.Errorf("could not resolve kubernetes.default service IP")
+	}
+
 	// interfaces for which we need to clean qlen once injection is finished
 	clearTxQlen := []network.NetlinkLink{}
 
@@ -405,10 +409,6 @@ func (i *networkDisruptionInjector) applyOperations() error {
 			if err := i.config.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
 				return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
 			}
-		}
-
-		if len(apiservers) == 0 {
-			return fmt.Errorf("could not resolve kubernetes.default service IP")
 		}
 
 		// allow all communications to this (eventually these) IP
