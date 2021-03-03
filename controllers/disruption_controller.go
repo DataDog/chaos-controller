@@ -537,6 +537,14 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 						removeFinalizer = true
 					}
 
+					if cs.State.Waiting != nil && cs.State.Waiting.Reason == "ContainerCreating" &&
+						cs.LastTerminationState.Terminated != nil && cs.LastTerminationState.Terminated.Reason == "ContainerStatusUnknown" &&
+						strings.Contains(cs.LastTerminationState.Terminated.Message, "container could not be located when the pod was deleted") {
+						r.log.Infow("chaos pod failed readiness probe during termination, removing finalizer", "chaosPod", chaosPod.Name)
+
+						removeFinalizer = true
+					}
+
 					break
 				}
 			}
