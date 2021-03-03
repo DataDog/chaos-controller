@@ -71,6 +71,13 @@ func (n *Sink) MetricInjectDuration(duration time.Duration, tags []string) error
 	return nil
 }
 
+// MetricDisruptionDuration sends timing metric for entire disruption duration
+func (n *Sink) MetricDisruptionDuration(duration time.Duration, tags []string) error {
+	fmt.Printf("NOOP: MetricDisruptionDuration %v\n", duration)
+
+	return nil
+}
+
 // MetricReconcile increment reconcile metric
 func (n *Sink) MetricReconcile() error {
 	fmt.Println("NOOP: MetricReconcile +1")
