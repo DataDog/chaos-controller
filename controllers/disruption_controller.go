@@ -967,23 +967,23 @@ func (r *DisruptionReconciler) ReportMetrics() {
 
 			chaosPods, err := r.getChaosPods(&d, nil)
 			if err != nil {
-				r.log.Errorw("error sending pods.count metric", "error", err)
+				r.log.Errorw("error listing chaos pods to send pods.gauge metric", "error", err)
 			}
 
 			chaosPodsCount += len(chaosPods)
 		}
 
 		// send metrics
-		if err := r.MetricsSink.MetricStuckOnRemovalCount(float64(stuckOnRemoval)); err != nil {
-			r.log.Errorw("error sending stuck_on_removal_count metric", "error", err)
+		if err := r.MetricsSink.MetricStuckOnRemovalGauge(float64(stuckOnRemoval)); err != nil {
+			r.log.Errorw("error sending stuck_on_removal_total metric", "error", err)
 		}
 
-		if err := r.MetricsSink.MetricDisruptionsCount(float64(len(l.Items))); err != nil {
-			r.log.Errorw("error sending disruptions.count metric", "error", err)
+		if err := r.MetricsSink.MetricDisruptionsGauge(float64(len(l.Items))); err != nil {
+			r.log.Errorw("error sending disruptions.gauge metric", "error", err)
 		}
 
-		if err := r.MetricsSink.MetricPodsCount(float64(chaosPodsCount)); err != nil {
-			r.log.Errorw("error sending pods.count metric", "error", err)
+		if err := r.MetricsSink.MetricPodsGauge(float64(chaosPodsCount)); err != nil {
+			r.log.Errorw("error sending pods.gauge metric", "error", err)
 		}
 	}
 }
