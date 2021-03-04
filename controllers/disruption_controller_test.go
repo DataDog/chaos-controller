@@ -35,6 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -324,6 +325,29 @@ var _ = Describe("Disruption Controller", func() {
 
 			By("Waiting for disruption to be removed")
 			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
+		})
+	})
+
+	Context("manually delete a chaos pod", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+		})
+
+		It("should properly handle the chaos pod finalizer", func() {
+			By("Ensuring that the chaos pods have been created")
+			Eventually(func() error { return expectChaosPod(disruption, 20) }, timeout).Should(Succeed())
+
+			By("Listing chaos pods to pick one to delete")
+			chaosPods, err := listChaosPods(disruption)
+			Expect(err).To(BeNil())
+			chaosPod := chaosPods.Items[0]
+			chaosPodKey := types.NamespacedName{Namespace: chaosPod.Namespace, Name: chaosPod.Name}
+
+			By("Deleting one of the chaos pod")
+			Expect(k8sClient.Delete(context.Background(), &chaosPod)).To(BeNil())
+
+			By("Waiting for the chaos pod finalizer to be removed")
+			Eventually(func() error { return k8sClient.Get(context.Background(), chaosPodKey, &chaosPod) }, timeout).Should(MatchError(fmt.Sprintf("Pod \"%s\" not found", chaosPod.Name)))
 		})
 	})
 })

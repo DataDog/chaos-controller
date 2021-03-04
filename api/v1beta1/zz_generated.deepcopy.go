@@ -239,6 +239,11 @@ func (in *DisruptionStatus) DeepCopyInto(out *DisruptionStatus) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.IgnoredTargets != nil {
+		in, out := &in.IgnoredTargets, &out.IgnoredTargets
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.SpecHash != nil {
 		in, out := &in.SpecHash, &out.SpecHash
 		*out = new(string)
