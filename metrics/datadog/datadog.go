@@ -101,6 +101,11 @@ func (d *Sink) MetricInjectDuration(duration time.Duration, tags []string) error
 	return d.timing(metricPrefixController+"inject.duration", duration, tags)
 }
 
+// MetricDisruptionDuration sends timing metric for entire disruption duration
+func (d *Sink) MetricDisruptionDuration(duration time.Duration, tags []string) error {
+	return d.timing(metricPrefixController+"disruption.duration", duration, tags)
+}
+
 // MetricPodsCreated increment pods.created metric
 func (d *Sink) MetricPodsCreated(target, instanceName, namespace string, succeed bool) error {
 	status := boolToStatus(succeed)
