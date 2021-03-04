@@ -99,23 +99,23 @@ func (n *Sink) MetricStuckOnRemoval(tags []string) error {
 	return nil
 }
 
-// MetricStuckOnRemovalCount sends disruptions.stuck_on_removal_count metric
-func (n *Sink) MetricStuckOnRemovalCount(count float64) error {
-	fmt.Printf("NOOP: MetricStuckOnRemovalCount %f\n", count)
+// MetricStuckOnRemovalGauge sends disruptions.stuck_on_removal_total metric
+func (n *Sink) MetricStuckOnRemovalGauge(gauge float64) error {
+	fmt.Printf("NOOP: MetricStuckOnRemovalGauge %f\n", gauge)
 
 	return nil
 }
 
-// MetricDisruptionsCount sends disruptions.count metric
-func (n *Sink) MetricDisruptionsCount(count float64) error {
-	fmt.Printf("NOOP: MetricDisruptionsCount %f\n", count)
+// MetricDisruptionsGauge sends disruptions.gauge metric
+func (n *Sink) MetricDisruptionsGauge(gauge float64) error {
+	fmt.Printf("NOOP: MetricDisruptionsGauge %f\n", gauge)
 
 	return nil
 }
 
-// MetricPodsCount sends pods.count metric
-func (n *Sink) MetricPodsCount(count float64) error {
-	fmt.Printf("NOOP: MetricPodsCount %f\n", count)
+// MetricPodsGauge sends pods.gauge metric
+func (n *Sink) MetricPodsGauge(gauge float64) error {
+	fmt.Printf("NOOP: MetricPodsGauge %f\n", gauge)
 
 	return nil
 }
