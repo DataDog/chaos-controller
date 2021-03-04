@@ -650,6 +650,12 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		targetsCount = instance.Spec.Count.IntValue()
 	}
 
+	// subtract already ignored targets from the targets count to avoid going through all the
+	// eligible targets with a disruption having a chaos pod failing everytime
+	// so a disruption having a count of 1 with an already ignored target (because the chaos pod has been removed)
+	// won't pick up another one
+	targetsCount -= len(instance.Status.IgnoredTargets)
+
 	// computed count should not be 0 unless the given count was not expected
 	if targetsCount == 0 {
 		return fmt.Errorf("parsing error, either incorrectly formatted percentage or incorrectly formatted integer: %s\n%w", instance.Spec.Count.String(), err)
