@@ -639,9 +639,10 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 	// return an error if the selector returned no targets
 	if len(eligibleTargets) == 0 {
+		r.log.Info("the given label selector did not return any targets, skipping")
 		r.Recorder.Event(instance, "Warning", "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
 
-		return fmt.Errorf("the label selector returned no targets")
+		return nil
 	}
 
 	// instance.Spec.Count is a string that either represents a percentage or a value, we do the translation here
@@ -650,19 +651,25 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		targetsCount = instance.Spec.Count.IntValue()
 	}
 
+	// computed count should not be 0 unless the given count was not expected
+	if targetsCount == 0 {
+		return fmt.Errorf("parsing error, either incorrectly formatted percentage or incorrectly formatted integer: %s\n%w", instance.Spec.Count.String(), err)
+	}
+
 	// subtract already ignored targets from the targets count to avoid going through all the
 	// eligible targets with a disruption having a chaos pod failing everytime
 	// so a disruption having a count of 1 with an already ignored target (because the chaos pod has been removed)
 	// won't pick up another one
 	targetsCount -= len(instance.Status.IgnoredTargets)
 
-	// computed count should not be 0 unless the given count was not expected
-	if targetsCount == 0 {
-		return fmt.Errorf("parsing error, either incorrectly formatted percentage or incorrectly formatted integer: %s\n%w", instance.Spec.Count.String(), err)
-	}
-
 	// if the asked targets count is greater than the amount of found targets, we take all of them
 	targetsCount = int(math.Min(float64(targetsCount), float64(len(eligibleTargets))))
+	if targetsCount < 1 {
+		r.log.Info("no more eligible targets for the disruption, skipping")
+		r.Recorder.Event(instance, "Warning", "NoTarget", "No more targets eligible for injection for this disruption, ignoring it")
+
+		return nil
+	}
 
 	// randomly pick up targets from the found ones
 	for i := 0; i < targetsCount; i++ {
