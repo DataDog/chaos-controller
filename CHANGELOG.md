@@ -1,5 +1,28 @@
 # Changelog
 
+## [3.5.1](https://github.com/DataDog/chaos-controller/tree/3.5.1) (2021-03-04)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.5.0...3.5.1)
+
+**Merged pull requests:**
+
+- Subtract ignored targets from targets count [\#263](https://github.com/DataDog/chaos-controller/pull/263) ([Devatoria](https://github.com/Devatoria))
+
+## [3.5.0](https://github.com/DataDog/chaos-controller/tree/3.5.0) (2021-03-04)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.4.0...3.5.0)
+
+**Merged pull requests:**
+
+- CORE-467: Collect a duration metric for the entire disruption duration [\#261](https://github.com/DataDog/chaos-controller/pull/261) ([ptnapoleon](https://github.com/ptnapoleon))
+- CORE-467: Replace "count" metrics with more accurate gauge names [\#260](https://github.com/DataDog/chaos-controller/pull/260) ([ptnapoleon](https://github.com/ptnapoleon))
+- CORE-582: Resolve kubernetes.default before disrupting [\#258](https://github.com/DataDog/chaos-controller/pull/258) ([ptnapoleon](https://github.com/ptnapoleon))
+- Handle the chaos pods termination not only on disruption deletion [\#257](https://github.com/DataDog/chaos-controller/pull/257) ([Devatoria](https://github.com/Devatoria))
+- Fix expectChaosPods assertion from 16 to 20 [\#256](https://github.com/DataDog/chaos-controller/pull/256) ([ptnapoleon](https://github.com/ptnapoleon))
+- \[CORE-423\] Add delete only mode to the chaos controller [\#255](https://github.com/DataDog/chaos-controller/pull/255) ([Azoam](https://github.com/Azoam))
+- Update container release\_changelog\_7f93155a1f416dbea9d48bd913a68cf316a6a487 [\#252](https://github.com/DataDog/chaos-controller/pull/252) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Instance multiple injectors when targeting multiple containers [\#244](https://github.com/DataDog/chaos-controller/pull/244) ([Devatoria](https://github.com/Devatoria))
+
 ## [3.4.0](https://github.com/DataDog/chaos-controller/tree/3.4.0) (2021-02-11)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.3.0...3.4.0)
@@ -108,6 +131,7 @@
 - CORE-402: Another way to test only selecting Running Pods [\#204](https://github.com/DataDog/chaos-controller/pull/204) ([takakonishimura](https://github.com/takakonishimura))
 - \[Doc\] - Update sample documentation for count [\#202](https://github.com/DataDog/chaos-controller/pull/202) ([gaetan-deputier](https://github.com/gaetan-deputier))
 - Node level disruptions [\#198](https://github.com/DataDog/chaos-controller/pull/198) ([Devatoria](https://github.com/Devatoria))
+- CORE-296: Check pods are Running before Injection [\#196](https://github.com/DataDog/chaos-controller/pull/196) ([takakonishimura](https://github.com/takakonishimura))
 - Add jitter for delay to the chaos-controller [\#195](https://github.com/DataDog/chaos-controller/pull/195) ([Azoam](https://github.com/Azoam))
 - Delete unused metrics.go file~ [\#194](https://github.com/DataDog/chaos-controller/pull/194) ([takakonishimura](https://github.com/takakonishimura))
 - Add event when disruption name is not recognizable [\#193](https://github.com/DataDog/chaos-controller/pull/193) ([Azoam](https://github.com/Azoam))
