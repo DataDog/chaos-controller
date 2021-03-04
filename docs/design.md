@@ -54,7 +54,7 @@ This status is being updated regularly until it reaches the `Injected` status. T
 
 #### Step 1: clean disruptions
 
-The controller deletes every chaos pods (not deleted yet) owned by the related disruption. Such a delete will trigger the reconcile loop again for this instance in order to handle the chaos pods termination.
+The controller deletes every chaos pod (not deleted yet) owned by the related disruption. Such a delete will trigger the reconcile loop again for this instance in order to handle the chaos pods' termination.
 
 #### Step 2: handle chaos pods termination
 
