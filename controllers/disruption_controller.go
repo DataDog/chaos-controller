@@ -237,34 +237,37 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		return false, fmt.Errorf("error getting instance chaos pods: %w", err)
 	}
 
-	// check the chaos pods conditions looking for the ready condition
-	for _, chaosPod := range chaosPods {
-		podReady := false
+	// consider a disruption not injected if no chaos pods are existing
+	if len(chaosPods) > 0 {
+		// check the chaos pods conditions looking for the ready condition
+		for _, chaosPod := range chaosPods {
+			podReady := false
 
-		// search for the "Ready" condition in the pod conditions
-		// consider the disruption "partially injected" if we found at least one ready pod
-		for _, cond := range chaosPod.Status.Conditions {
-			if cond.Type == corev1.PodReady {
-				if cond.Status == corev1.ConditionTrue {
-					podReady = true
-					status = chaostypes.DisruptionInjectionStatusPartiallyInjected
+			// search for the "Ready" condition in the pod conditions
+			// consider the disruption "partially injected" if we found at least one ready pod
+			for _, cond := range chaosPod.Status.Conditions {
+				if cond.Type == corev1.PodReady {
+					if cond.Status == corev1.ConditionTrue {
+						podReady = true
+						status = chaostypes.DisruptionInjectionStatusPartiallyInjected
 
-					break
+						break
+					}
 				}
+			}
+
+			// consider the disruption as not fully injected if at least one not ready pod is found
+			if !podReady {
+				r.log.Infow("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
+
+				allReady = false
 			}
 		}
 
-		// consider the disruption as not fully injected if at least one not ready pod is found
-		if !podReady {
-			r.log.Infow("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
-
-			allReady = false
+		// consider the disruption as fully injected when all pods are ready
+		if allReady {
+			status = chaostypes.DisruptionInjectionStatusInjected
 		}
-	}
-
-	// consider the disruption as fully injected when all pods are ready
-	if allReady {
-		status = chaostypes.DisruptionInjectionStatusInjected
 	}
 
 	// update instance status
