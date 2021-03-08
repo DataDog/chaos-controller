@@ -672,8 +672,8 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// if the asked targets count is greater than the amount of found targets, we take all of them
 	targetsCount = int(math.Min(float64(targetsCount), float64(len(eligibleTargets))))
 	if targetsCount < 1 {
-		r.log.Info("no more eligible targets for the disruption, skipping")
-		r.Recorder.Event(instance, "Warning", "NoTarget", "No more targets eligible for injection for this disruption, ignoring it")
+		r.log.Info("ignored targets has reached target count, skipping")
+		r.Recorder.Event(instance, "Warning", "NoTarget", "Ignored Targets is too large, we will no longer choose additional eligible targets for injection for this disruption")
 
 		return nil
 	}
