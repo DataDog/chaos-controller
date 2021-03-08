@@ -58,6 +58,8 @@ type DisruptionStatus struct {
 	// +nullable
 	Targets []string `json:"targets,omitempty"`
 	// +nullable
+	IgnoredTargets []string `json:"ignoredTargets,omitempty"`
+	// +nullable
 	SpecHash *string `json:"specHash,omitempty"`
 }
 

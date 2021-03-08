@@ -71,6 +71,13 @@ func (n *Sink) MetricInjectDuration(duration time.Duration, tags []string) error
 	return nil
 }
 
+// MetricDisruptionDuration sends timing metric for entire disruption duration
+func (n *Sink) MetricDisruptionDuration(duration time.Duration, tags []string) error {
+	fmt.Printf("NOOP: MetricDisruptionDuration %v\n", duration)
+
+	return nil
+}
+
 // MetricReconcile increment reconcile metric
 func (n *Sink) MetricReconcile() error {
 	fmt.Println("NOOP: MetricReconcile +1")
@@ -99,23 +106,23 @@ func (n *Sink) MetricStuckOnRemoval(tags []string) error {
 	return nil
 }
 
-// MetricStuckOnRemovalCount sends disruptions.stuck_on_removal_count metric
-func (n *Sink) MetricStuckOnRemovalCount(count float64) error {
-	fmt.Printf("NOOP: MetricStuckOnRemovalCount %f\n", count)
+// MetricStuckOnRemovalGauge sends disruptions.stuck_on_removal_total metric
+func (n *Sink) MetricStuckOnRemovalGauge(gauge float64) error {
+	fmt.Printf("NOOP: MetricStuckOnRemovalGauge %f\n", gauge)
 
 	return nil
 }
 
-// MetricDisruptionsCount sends disruptions.count metric
-func (n *Sink) MetricDisruptionsCount(count float64) error {
-	fmt.Printf("NOOP: MetricDisruptionsCount %f\n", count)
+// MetricDisruptionsGauge sends disruptions.gauge metric
+func (n *Sink) MetricDisruptionsGauge(gauge float64) error {
+	fmt.Printf("NOOP: MetricDisruptionsGauge %f\n", gauge)
 
 	return nil
 }
 
-// MetricPodsCount sends pods.count metric
-func (n *Sink) MetricPodsCount(count float64) error {
-	fmt.Printf("NOOP: MetricPodsCount %f\n", count)
+// MetricPodsGauge sends pods.gauge metric
+func (n *Sink) MetricPodsGauge(gauge float64) error {
+	fmt.Printf("NOOP: MetricPodsGauge %f\n", gauge)
 
 	return nil
 }
