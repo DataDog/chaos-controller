@@ -27,7 +27,8 @@ type Sink interface {
 	MetricPodsCreated(target, instanceName, namespace string, succeed bool) error
 	MetricReconcile() error
 	MetricReconcileDuration(duration time.Duration, tags []string) error
-	MetricDisruptionDuration(duration time.Duration, tags []string) error
+	MetricDisruptionCompletedDuration(duration time.Duration, tags []string) error
+	MetricDisruptionOngoingDuration(duration time.Duration, tags []string) error
 	MetricStuckOnRemoval(tags []string) error
 	MetricStuckOnRemovalGauge(gauge float64) error
 	MetricDisruptionsGauge(gauge float64) error
