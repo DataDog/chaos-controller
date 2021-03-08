@@ -209,7 +209,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
-			r.log.Infow("disruption is not fully injected yet, requeing")
+			r.log.Infow("disruption is not fully injected yet, requeuing")
 
 			return ctrl.Result{Requeue: true}, nil
 		}
