@@ -365,7 +365,11 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 				r.recordEventOnTarget(instance, target, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resourcer for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 			} else {
-				r.log.Infow("an injection pod is already existing for the selected target", "target", target, "chaosPod", chaosPod.Name)
+				var chaosPodNames []string
+				for _, pod := range found {
+					chaosPodNames = append(chaosPodNames, pod.Name)
+				}
+				r.log.Infow("an injection pod is already existing for the selected target", "target", target, "chaosPods", strings.Join(chaosPodNames, ","))
 			}
 		}
 	}
