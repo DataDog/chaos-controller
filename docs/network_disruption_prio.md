@@ -34,11 +34,11 @@ We can also control traffic through attaching filters to the handle. Here, we at
 
 ### Network Disruption implementation
 
-In the chaos-controller, priority mappings, chaining, and filters are combined to create disruptions targeting specific pods or nodes. In this section, we illustrate the `tc` steps involved in sample network disruption specs.
+In the chaos-controller, priority mappings, chaining, and filters are combined to create disruptions targeting specific pods or nodes. In this section, we take two sample network disruption specs (one for Node level and one for Pod level) to illustrate the `tc` steps involved.
 
 #### Node level visualization
 
-Let us take the following node-level disruption spec:
+Let us take the following node level disruption spec:
 ```
 spec:
   level: node
@@ -71,7 +71,7 @@ The disruption should only affect packets leaving our target node. On top of the
     <img src="../docs/img/network_prio/node/2-1.png" height=240 width=650 />
 </kbd></p>
 
-There are three disruptions specified: `delay`, `delayJitter`, and `bandwidth`. `delay` and `delayJitter` are both `netem` rules and will be applied in one `prio` qdisc attached to class `1:4`.
+There are three disruption-related fields specified: `delay`, `delayJitter`, and `bandwidth`. `delay` and `delayJitter` are both `netem` rules and will be applied in one `prio` qdisc attached to class `1:4`.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_prio/node/3-1.png" height=330 width=650 />
@@ -93,11 +93,11 @@ We first filter for all packets related to health checks by the cloud provider o
     <img src="../docs/img/network_prio/node/filter_1-4.png" height=330 width=650 />
 </kbd></p>
 
-Finally, we apply a filter to enqueue all packets to class `1:4` where the destination IP match the `hosts`. In this case, a filter is applied for `10.0.1.26/32` and another for `10.0.1.25/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0`. If a CIDR block or hostname is specified, corresponding filters are constructed for all IPs in that range.
+Finally, we apply a filter to enqueue all packets to class `1:4` where the `destination IP` is encompassed by the `hosts` field (see [this documentation](/docs/network_disruption_hosts.md) for more details). In this case, a filter is applied for `10.0.1.26/32` and another for `10.0.1.25/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0`. If a CIDR block or hostname is specified, corresponding filters are constructed for all IPs in that range.
 
 ### Network Disruption implementation for pod level
 
-Now, let us take the following pod-level disruption spec:
+Now, let us take the following pod level disruption spec:
 ```
 spec:
   level: pod
@@ -122,7 +122,7 @@ spec:
 
 The disruption should only affect packets leaving our target node. On top of the three default bands, chaos-controller creates a fourth band (class `1:4`) to which it will send packets identified as candidates for the disruptions. In this step, the filter on handle `1:` to route traffic to class `1:4` has not been set up. We will see the specific criteria in `Step 3` after setting up the fourth band completely.
 
-#### (Step 2)  Disrupt the fourth band for traffic from pods
+#### (Step 2)  Disrupt the fourth band for only the traffic orginating from specified pods
 
 <p align="center"><kbd>
     <img src="../docs/img/network_prio/pod/2-1.png" height=270 width=650 />
@@ -134,7 +134,7 @@ To this fourth band, another `prio` qdisc with handle `2:` attached. This qdisc 
     <img src="../docs/img/network_prio/pod/3-1.png" height=280 width=650 />
 </kbd></p>
 
-For the disruption itself, the chaos-controller mark all packets leaving the (process associated with the) target pod with `classid` `2:2`. A filter on handle `2:` checks for this field and enqueues packets matching this criteria to class `2:2` which contains a qdisc applying the configured network disruption (in this case a netem delay).
+For the disruption itself, the `chaos-controller` marks all packets leaving the (process associated with the) target pod with `classid` `2:2`. A filter on handle `2:` checks for this field and enqueues packets matching this criteria to prio class `2:2`. This class contains a qdisc applying the configured network disruption (in this case a netem delay) to all enqueued packets.
 
 #### (Step 3) Divert traffic
 
@@ -144,13 +144,13 @@ Now that the disruption has been setup on the fourth band, we can apply filters 
     <img src="../docs/img/network_prio/pod/filter_1-1.png" height=330 width=650 />
 </kbd></p>
 
-We first filter for all packets related to `gateway IP` and `node IP` to be sent to `Band 0`. We also consult `kubernetes.default` for any Kubernetes apiservers which should not be disrupted.
+We first filter for all packets related to `gateway IP` and `node IP` and send them to `Band 0`. We also consult `kubernetes.default` for any Kubernetes apiservers which should not be disrupted.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_prio/pod/filter_1-4.png" height=330 width=650 />
 </kbd></p>
 
-Finally, we apply a filter to enqueue all packets to class `1:4` where the destination IP match the `hosts`. In this case, a filter is applied for `10.0.1.254/32` and another for `10.0.1.255/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0` and no traffic is sent to class `2:1`.
+Finally, we apply a filter to enqueue all packets to class `1:4` whenever the `destination IP` is encompassed by the `hosts` field (see [this documentation](/docs/network_disruption_hosts.md) for more details). In this case, a filter is applied for `10.0.1.254/32` and another for `10.0.1.255/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0` and no traffic is ends up in class `2:1`.
 
 ## More documentation about `tc`
 

@@ -2,9 +2,10 @@
 
 The `network` field provides an automated way of adding disruptions to the outgoing network traffic:
 
-* `drop` drops a percentage of the outgoing traffic to simulate packets loss
-* `corrupt` corrupts a percentage of the outgoing traffic to simulate packets corruption
-* `delay` adds the given delay (`+` and `-` `delayJitter` as a percentage of delay) to the outgoing traffic to simulate a slow network
+* `drop` drops a percentage of the outgoing traffic to simulate packet loss
+* `corrupt` corrupts a percentage of the outgoing traffic to simulate packet corruption
+* `delay` adds the given delay to the outgoing traffic to simulate a slow network
+* `delayJitter` adds jitter to `delay` represented as a percentage: `delay ± delay * (delayJitter / 100)`
 * `bandwidthLimit` limits the outgoing traffic bandwidth to simulate a bandwidth struggle
 
 All of them can be combined in the same disruption resource. To apply these disruptions, the `tc` utility is used and the behavior is different according to the use cases.
@@ -24,7 +25,7 @@ By extending the default linux kernel functionality for prioritizing network tra
     </kbd>
 </p>
 
-Even if you do not specify many fields, our default configurations can be effective for most use cases. However, some disruption scenarios require careful tuning of the specs to replicate. If you have specific disruption requirements such as what protocol to disrupt, flow direction, or target hosts and ports, check out the FAQ pages below to learn more about this tool!
+Even if you do not specify many fields, our default configurations can be effective for most scenarios. However, some disruption scenarios require careful tuning of the specs in order to properly replicate them. If your team has specific disruption requirements around what `protocol` to disrupt, `flow` direction, or target `hosts` and `ports`, check out the FAQ pages below to learn more!
 
 ## FAQs:
 
@@ -32,7 +33,7 @@ Even if you do not specify many fields, our default configurations can be effect
 * [What should I specify in hosts?](/docs/network_disruption_hosts.md)
 * [What are `prio` qdiscs and how does chaos-controller use them?](/docs/network_disruption_prio.md)
 
-Still have questions? Reach out to contributors to explore out the right disruption for your team!
+Still have questions? Reach out to the contributors to explore our options!
 
 ## Kernel modules
 
