@@ -8,7 +8,7 @@
     <img src="../docs/img/network_prio/pfifo.png" height=200 width=650 />
 </kbd></p>
 
-The `prio` qdisc is a queuing discipline used to define Quality of Service (QoS) on the outgoing traffic. By default, a `prio` qdisc has 3 bands. A priority map spreads the traffic across those 3 bands depending on its criticality as indictaed in the IP packet. `Band 0` is always drained before dequeuing `Band 1`, and `Band 1` is drained before dequeing `Band 2`. More information about this can be found on the [official tc-prio documentation](https://linux.die.net/man/8/tc-prio). 
+The `prio` qdisc is a queuing discipline used to define Quality of Service (QoS) on the outgoing traffic. By default, a `prio` qdisc has 3 bands. A priority map spreads the traffic across those 3 bands depending on its criticality as indicated in the IP packet. `Band 0` is always drained before dequeuing `Band 1`, and `Band 1` is drained before dequeing `Band 2`. More information about this can be found on the [official tc-prio documentation](https://linux.die.net/man/8/tc-prio). 
 
 <p align="center"><kbd>
     <img src="../docs/img/network_prio/classic_visualization.png" height=300 width=650 />
@@ -54,7 +54,7 @@ spec:
     flow: egress
     delay: 1000
     delayJitter: 5
-    bandwidth: 5000
+    bandwidthLimit: 5000
 ```
 
 #### (Step 1) Add a fourth band
@@ -63,7 +63,7 @@ spec:
     <img src="../docs/img/network_prio/1-4.png" height=220 width=650 />
 </kbd></p>
 
-The disruption should only affect packets leaving our target node or pod. On top of the three default bands, chaos-controller creates a fourth band (class `1:4`) to which it will send packets identified as candidates for the disruptions. In this step, the filter on handle `1:` to route traffic to class `1:4` has not been set up. We will see the specific criteria in `Step 3` after setting up the fourth band completely.
+The disruption should only affect packets leaving our target node. On top of the three default bands, chaos-controller creates a fourth band (class `1:4`) to which it will send packets identified as candidates for the disruptions. In this step, the filter on handle `1:` to route traffic to class `1:4` has not been set up. We will see the specific criteria in `Step 3` after setting up the fourth band completely.
 
 #### (Step 2) Disrupt the fourth band
 
@@ -95,7 +95,7 @@ We first filter for all packets related to health checks by the cloud provider o
 
 Finally, we apply a filter to enqueue all packets to class `1:4` where the destination IP match the `hosts`. In this case, a filter is applied for `10.0.1.26/32` and another for `10.0.1.25/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0`. If a CIDR block or hostname is specified, corresponding filters are constructed for all IPs in that range.
 
-### Network Disruption implementation for process level
+### Network Disruption implementation for pod level
 
 Now, let us take the following pod-level disruption spec:
 ```
@@ -120,7 +120,7 @@ spec:
     <img src="../docs/img/network_prio/1-4.png" height=220 width=650 />
 </kbd></p>
 
-The disruption should only affect packets leaving our target node or pod. On top of the three default bands, chaos-controller creates a fourth band (class `1:4`) to which it will send packets identified as candidates for the disruptions. In this step, the filter on handle `1:` to route traffic to class `1:4` has not been set up. We will see the specific criteria in `Step 3` after setting up the fourth band completely.
+The disruption should only affect packets leaving our target node. On top of the three default bands, chaos-controller creates a fourth band (class `1:4`) to which it will send packets identified as candidates for the disruptions. In this step, the filter on handle `1:` to route traffic to class `1:4` has not been set up. We will see the specific criteria in `Step 3` after setting up the fourth band completely.
 
 #### (Step 2)  Disrupt the fourth band for traffic from pods
 

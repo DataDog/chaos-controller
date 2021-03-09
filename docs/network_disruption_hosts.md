@@ -38,7 +38,7 @@ Let's see some examples of different use cases!
 
 We assume that packets identified as necessary for healthchecks from the cloud service provider or for communications with Kubernetes are ignored.
 
-Additionally, note that the `hosts` field expects a list where the items of the list need not be of the same time (for example, you can have a hostname, IP address, and CIDR block in one disruption). They are visualized separately below to avoid confusion.
+Additionally, note that the `hosts` field expects a list where the items of the list need not be of the same type (for example, you can have a hostname, IP address, and CIDR block in one disruption). They are visualized separately below to avoid confusion.
 
 See the **Some special cases** section for examples of specifying the `port` and `protocol` fields.
 
@@ -121,13 +121,13 @@ Pods usually come with one network interface. This is common for nodes as well, 
 
 ### Case 1: Label selector for a few nodes
 
-When a node is targeted, all interfaces with route table entries to IP addresses specified in `hosts` (for completeness, this can be through an explicit list of IP addresses, CIDR blocks, hostnames, or some combination of these) will be targeted. Exactly as with pod leve, a `tc` rule is applied which impacts packets with destination IPs satisfying these `hosts` criteria.
+When a node is targeted, all interfaces with route table entries to IP addresses specified in `hosts` (for completeness, this can be through an explicit list of IP addresses, CIDR blocks, hostnames, or some combination of these) will be targeted. Exactly as with pod level, a `tc` rule is applied which impacts packets with destination IPs satisfying these `hosts` criteria.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_hosts/nodes_label_small.png" height=330 width=600/>
 </kbd></p>
 
-Keep in mind that the diagrams thus far imply that all network interfaces have a routing entry to any pod we wish to disrupt. This is a realistic representation for pods where we likely would not disrupt pods that do not communicate (through its single interface) with a pod in the `hosts` field. However, for nodes with multiple interfaces, it is conceviable and likely that not all interfaces have routing entries to pods encompassed by the `hosts` field. If no entires are found, the disruption is applied to a default interface instead.
+Keep in mind that the diagrams thus far imply that all network interfaces have a routing entry to any pod we wish to disrupt. This is a realistic representation for pods where we likely would not disrupt pods that do not communicate (through its single interface) with a pod in the `hosts` field. However, for nodes with multiple interfaces, it is conceviable and likely that not all interfaces have routing entries to pods encompassed by the `hosts` field. If no matching route table entries are found across all interfaces on a node, the disruption is applied to a default interface instead.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_hosts/nodes_limited_routes.png" height=330 width=600/>
