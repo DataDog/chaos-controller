@@ -101,9 +101,14 @@ func (d *Sink) MetricInjectDuration(duration time.Duration, tags []string) error
 	return d.timing(metricPrefixController+"inject.duration", duration, tags)
 }
 
-// MetricDisruptionDuration sends timing metric for entire disruption duration
-func (d *Sink) MetricDisruptionDuration(duration time.Duration, tags []string) error {
-	return d.timing(metricPrefixController+"disruption.duration", duration, tags)
+// MetricDisruptionCompletedDuration sends timing metric for entire disruption duration
+func (d *Sink) MetricDisruptionCompletedDuration(duration time.Duration, tags []string) error {
+	return d.timing(metricPrefixController+"disruption.completed_duration", duration, tags)
+}
+
+// MetricDisruptionOngoingDuration sends timing metric for disruption duration so far
+func (d *Sink) MetricDisruptionOngoingDuration(duration time.Duration, tags []string) error {
+	return d.timing(metricPrefixController+"disruption.ongoing_duration", duration, tags)
 }
 
 // MetricPodsCreated increment pods.created metric

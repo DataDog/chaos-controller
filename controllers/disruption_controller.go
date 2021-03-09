@@ -157,7 +157,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 			// send reconciling duration metric
 			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
-			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
 
 			return ctrl.Result{}, nil
 		}
@@ -1038,7 +1038,7 @@ func (r *DisruptionReconciler) ReportMetrics() {
 			continue
 		}
 
-		// check for stuck ones
+		// check for stuck durations, count chaos pods, and track ongoing disruption duration
 		for _, d := range l.Items {
 			if d.Status.IsStuckOnRemoval {
 				stuckOnRemoval++
@@ -1054,6 +1054,8 @@ func (r *DisruptionReconciler) ReportMetrics() {
 			}
 
 			chaosPodsCount += len(chaosPods)
+
+			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionOngoingDuration(time.Since(d.ObjectMeta.CreationTimestamp.Time), []string{"name:" + d.Name, "namespace:" + d.Namespace}))
 		}
 
 		// send metrics

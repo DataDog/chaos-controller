@@ -71,9 +71,16 @@ func (n *Sink) MetricInjectDuration(duration time.Duration, tags []string) error
 	return nil
 }
 
-// MetricDisruptionDuration sends timing metric for entire disruption duration
-func (n *Sink) MetricDisruptionDuration(duration time.Duration, tags []string) error {
-	fmt.Printf("NOOP: MetricDisruptionDuration %v\n", duration)
+// MetricDisruptionCompletedDuration sends timing metric for entire disruption duration
+func (n *Sink) MetricDisruptionCompletedDuration(duration time.Duration, tags []string) error {
+	fmt.Printf("NOOP: MetricDisruptionCompletedDuration %v\n", duration)
+
+	return nil
+}
+
+// MetricDisruptionOngoingDuration sends timing metric for disruption duration so far
+func (n *Sink) MetricDisruptionOngoingDuration(duration time.Duration, tags []string) error {
+	fmt.Printf("NOOP: MetricDisruptionOngoingDuration %v %s\n", duration, tags)
 
 	return nil
 }
