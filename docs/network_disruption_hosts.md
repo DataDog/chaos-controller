@@ -127,7 +127,7 @@ When a node is targeted, all interfaces with route table entries to IP addresses
     <img src="../docs/img/network_hosts/nodes_label_small.png" height=330 width=600/>
 </kbd></p>
 
-Keep in mind that the diagrams thus far represent that all network interfaces for have a routing entry to any pod we wish to .
+Keep in mind that the diagrams thus far imply that all network interfaces have a routing entry to any pod we wish to disrupt. This is a realistic representation for pods where we likely would not disrupt pods that do not communicate (through its single interface) with a pod in the `hosts` field. However, for nodes with multiple interfaces, it is conceviable and likely that not all interfaces have routing entries to pods encompassed by the `hosts` field. If no entires are found, the disruption is applied to a default interface instead.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_hosts/nodes_limited_routes.png" height=330 width=600/>
