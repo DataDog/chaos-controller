@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/metrics/types"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // Sink describes a no-op sink
@@ -123,6 +124,13 @@ func (n *Sink) MetricStuckOnRemovalGauge(gauge float64) error {
 // MetricDisruptionsGauge sends disruptions.gauge metric
 func (n *Sink) MetricDisruptionsGauge(gauge float64) error {
 	fmt.Printf("NOOP: MetricDisruptionsGauge %f\n", gauge)
+
+	return nil
+}
+
+// MetricDisruptionsCount counts finished disruptions, and tags the disruption kind
+func (n *Sink) MetricDisruptionsCount(kind chaostypes.DisruptionKind, tags []string) error {
+	fmt.Printf("NOOP: MetricDisruptionsCount %s %s\n", kind, tags)
 
 	return nil
 }

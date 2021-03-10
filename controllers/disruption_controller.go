@@ -158,6 +158,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			// send reconciling duration metric
 			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+			r.emitKindCountMetrics(instance)
 
 			return ctrl.Result{}, nil
 		}
@@ -907,6 +908,40 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 	if err != nil {
 		r.log.Errorw("error sending a metric", "error", err)
+	}
+}
+
+func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
+	for _, kind := range chaostypes.DisruptionKinds {
+		var validator chaosapi.DisruptionValidator
+
+		var tag chaostypes.DisruptionKind
+
+		// check for disruption kinds
+		switch kind {
+		case chaostypes.DisruptionKindNodeFailure:
+			validator = instance.Spec.NodeFailure
+			tag = chaostypes.DisruptionKindNodeFailure
+		case chaostypes.DisruptionKindNetworkDisruption:
+			validator = instance.Spec.Network
+			tag = chaostypes.DisruptionKindNetworkDisruption
+		case chaostypes.DisruptionKindDNSDisruption:
+			validator = instance.Spec.DNS
+			tag = chaostypes.DisruptionKindDNSDisruption
+		case chaostypes.DisruptionKindCPUPressure:
+			validator = instance.Spec.CPUPressure
+			tag = chaostypes.DisruptionKindCPUPressure
+		case chaostypes.DisruptionKindDiskPressure:
+			validator = instance.Spec.DiskPressure
+			tag = chaostypes.DisruptionKindDiskPressure
+		}
+
+		// ensure that the underlying disruption spec is not nil
+		if reflect.ValueOf(validator).IsNil() {
+			continue
+		}
+
+		r.handleMetricSinkError((r.MetricsSink.MetricDisruptionsCount(tag, []string{"name:" + instance.Name, "namespace:" + instance.Namespace})))
 	}
 }
 
