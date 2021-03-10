@@ -6,7 +6,7 @@
     <img src="../docs/img/network_hosts/notation_traffic.png" height=180 width=600 />
 </kbd></p>
 
-As with all disruptions, pods or nodes are targeted for injection if they satisfy the conditions of the label selector specified in the `selector` field. For network disruptions, we can also specify to only disrupt packets interacting with a particular host or set of hosts through the `hosts` field.
+As with all disruptions, pods or nodes are targeted for injection if they satisfy the conditions of the label selector specified in the `selector` field. For network disruptions, we can also specify to only disrupt packets interacting with a particular host or set of hosts through the `network.hosts` field. We will refer to `network.hosts` field in the rest of the document as the `hosts` field.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_hosts/notation_egress.png" height=160 width=570 />
@@ -26,7 +26,7 @@ For diagrams in this documentation, arrows represent traffic flow from a particu
     <img src="../docs/img/network_hosts/notation_targets.png" height=100 width=570 />
 </kbd></p>
 
-Note also that the `flow` (`ingress` vs `egress`) for a disruption should be selected deliberatel. Check out [this documentation](/docs/network_disruption_flow.md) for more details!
+Note also that the `flow` (`ingress` vs `egress`) for a disruption should be selected deliberately. Check out [this documentation](/docs/network_disruption_flow.md) for more details!
 
 <p align="center"><kbd>
     <img src="../docs/img/network_hosts/notation_ingress.png" height=160 width=570 />
@@ -140,7 +140,7 @@ The diagrams thus far seem to imply that all network interfaces have a routing t
 </kbd></p>
 
 ### Case 2: Disrupting an entire AZ
-If we disrupt an entire Availability Zone, note that the pods encompassed by the `hosts` field often fall within the nodes targeted.
+Given a label which encompasses all nodes in an Availability Zone, `chaos-controller` can simulate zonal failures for one or more cloud services.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_hosts/nodes_label_az.png" height=330 width=600/>

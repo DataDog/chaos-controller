@@ -8,7 +8,7 @@
     <img src="../docs/img/network_prio/pfifo.png" height=200 width=650 />
 </kbd></p>
 
-The `prio` qdisc is a queuing discipline used to define Quality of Service (QoS) on the outgoing traffic. By default, a `prio` qdisc has 3 bands. A priority map spreads the traffic across those 3 bands depending on its criticality as indicated in the IP packet. `Band 0` is always drained before dequeuing `Band 1`, and `Band 1` is drained before dequeing `Band 2`. More information about this can be found on the [official tc-prio documentation](https://linux.die.net/man/8/tc-prio). 
+The `prio` qdisc is a queuing discipline used to define Quality of Service (QoS) on the outgoing traffic. By default, a `prio` qdisc has 3 bands. A priority map spreads the traffic across those 3 bands depending on its criticality as indicated in the IP packet. `Band 0` is always drained before dequeuing `Band 1`, and `Band 1` is drained before dequeueing `Band 2`. More information about this can be found on the [official tc-prio documentation](https://linux.die.net/man/8/tc-prio). 
 
 <p align="center"><kbd>
     <img src="../docs/img/network_prio/classic_visualization.png" height=300 width=650 />
