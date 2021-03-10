@@ -6,7 +6,7 @@ The `flow` field allows you to either disrupt outgoing traffic (`egress`) or inc
 
 Note the following when using `ingress` (learn more in the next section):
 * TCP is the only protocol guaranteed to work
-* `ingress` flow should only specifiy `port` and `protocol` fields, not `hosts`
+* `ingress` flow should only specify `port` and `protocol` fields, not `hosts`
 
 If you are still not sure which one you should use, consider the following example. Say you have 3 pods:
 * `server`: an `nginx` pod listening on 80
