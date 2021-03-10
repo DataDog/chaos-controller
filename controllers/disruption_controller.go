@@ -541,8 +541,11 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 				}
 			}
 		default:
-			// ignoring any pods not being in a "terminated" state
-			continue
+			if !ignoreStatus {
+				// ignoring any pods not being in a "terminated" state
+				// if the target is not healthy, we clean up this pod regardless of its state
+				continue
+			}
 		}
 
 		// remove the finalizer if possible or if we can ignore the cleanup status
