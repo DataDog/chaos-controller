@@ -10,7 +10,6 @@
 - CORE-601: Clean up chaos pods if their targets dont exist [\#270](https://github.com/DataDog/chaos-controller/pull/270) ([ptnapoleon](https://github.com/ptnapoleon))
 - Change some log text to clarify when ignored targets is too large [\#268](https://github.com/DataDog/chaos-controller/pull/268) ([ptnapoleon](https://github.com/ptnapoleon))
 - CORE-458: Gather ongoing duration separately from completed duration … [\#267](https://github.com/DataDog/chaos-controller/pull/267) ([ptnapoleon](https://github.com/ptnapoleon))
-- Update container release\_changelog\_54aa80140063186b36a07d28677f191cd414ed36 [\#266](https://github.com/DataDog/chaos-controller/pull/266) ([github-actions[bot]](https://github.com/apps/github-actions))
 - CORE-585: Log found chaos pod names when injectors already exist for … [\#259](https://github.com/DataDog/chaos-controller/pull/259) ([ptnapoleon](https://github.com/ptnapoleon))
 
 ## [3.5.2](https://github.com/DataDog/chaos-controller/tree/3.5.2) (2021-03-05)
