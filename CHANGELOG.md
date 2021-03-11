@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.6.0](https://github.com/DataDog/chaos-controller/tree/3.6.0) (2021-03-11)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.5.2...3.6.0)
+
+**Merged pull requests:**
+
+- CORE-467: Emit a disruption count metric per kind [\#271](https://github.com/DataDog/chaos-controller/pull/271) ([ptnapoleon](https://github.com/ptnapoleon))
+- CORE-601: Clean up chaos pods if their targets dont exist [\#270](https://github.com/DataDog/chaos-controller/pull/270) ([ptnapoleon](https://github.com/ptnapoleon))
+- Change some log text to clarify when ignored targets is too large [\#268](https://github.com/DataDog/chaos-controller/pull/268) ([ptnapoleon](https://github.com/ptnapoleon))
+- CORE-458: Gather ongoing duration separately from completed duration … [\#267](https://github.com/DataDog/chaos-controller/pull/267) ([ptnapoleon](https://github.com/ptnapoleon))
+- Update container release\_changelog\_54aa80140063186b36a07d28677f191cd414ed36 [\#266](https://github.com/DataDog/chaos-controller/pull/266) ([github-actions[bot]](https://github.com/apps/github-actions))
+- CORE-585: Log found chaos pod names when injectors already exist for … [\#259](https://github.com/DataDog/chaos-controller/pull/259) ([ptnapoleon](https://github.com/ptnapoleon))
+
 ## [3.5.2](https://github.com/DataDog/chaos-controller/tree/3.5.2) (2021-03-05)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.5.1...3.5.2)
@@ -219,6 +232,7 @@
 - Improve contributing doc [\#167](https://github.com/DataDog/chaos-controller/pull/167) ([Devatoria](https://github.com/Devatoria))
 - Improve examples by splitting them in per use-cases examples [\#166](https://github.com/DataDog/chaos-controller/pull/166) ([Devatoria](https://github.com/Devatoria))
 - Update container release\_changelog\_8332266aebf78e47a3a34d2ea15d1767d69fb963 [\#165](https://github.com/DataDog/chaos-controller/pull/165) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Complete FAQ with a note to retry cleanup phase [\#162](https://github.com/DataDog/chaos-controller/pull/162) ([Devatoria](https://github.com/Devatoria))
 
 ## [2.12.0](https://github.com/DataDog/chaos-controller/tree/2.12.0) (2020-09-28)
 
@@ -235,7 +249,6 @@
 
 **Merged pull requests:**
 
-- Complete FAQ with a note to retry cleanup phase [\#162](https://github.com/DataDog/chaos-controller/pull/162) ([Devatoria](https://github.com/Devatoria))
 - Send an event when no target can be found from the given label selector [\#161](https://github.com/DataDog/chaos-controller/pull/161) ([Devatoria](https://github.com/Devatoria))
 - Switch injector resources to zero since we have the priority class now [\#160](https://github.com/DataDog/chaos-controller/pull/160) ([Devatoria](https://github.com/Devatoria))
 - Push to ddbuild ecr on release [\#159](https://github.com/DataDog/chaos-controller/pull/159) ([Azoam](https://github.com/Azoam))
