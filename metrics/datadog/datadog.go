@@ -6,10 +6,12 @@
 package datadog
 
 import (
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/DataDog/chaos-controller/metrics/types"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/datadog-go/statsd"
 )
 
@@ -132,6 +134,12 @@ func (d *Sink) MetricStuckOnRemovalGauge(gauge float64) error {
 // MetricDisruptionsGauge sends the disruptions.gauge metric counting ongoing disruptions
 func (d *Sink) MetricDisruptionsGauge(gauge float64) error {
 	return d.client.Gauge(metricPrefixController+"disruptions.gauge", gauge, []string{}, 1)
+}
+
+// MetricDisruptionsCount counts finished disruptions, and tags the disruption kind
+func (d *Sink) MetricDisruptionsCount(kind chaostypes.DisruptionKind, tags []string) error {
+	tags = append(tags, fmt.Sprintf("disruption_kind:%s", kind))
+	return d.metricWithStatus(metricPrefixController+"disruptions.count", tags)
 }
 
 // MetricPodsGauge sends the pods.gauge metric counting existing chaos pods
