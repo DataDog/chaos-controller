@@ -35,6 +35,7 @@ type Sink interface {
 	MetricDisruptionsGauge(gauge float64) error
 	MetricDisruptionsCount(kind chaostypes.DisruptionKind, tags []string) error
 	MetricPodsGauge(gauge float64) error
+	MetricRestart(tags []string) error
 }
 
 // GetSink returns an initiated sink

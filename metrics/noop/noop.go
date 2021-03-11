@@ -141,3 +141,10 @@ func (n *Sink) MetricPodsGauge(gauge float64) error {
 
 	return nil
 }
+
+// MetricRestart sends chaos.controller.restart metric
+func (n *Sink) MetricRestart(tags []string) error {
+	fmt.Printf("NOOP: MetricRestart\n")
+
+	return nil
+}
