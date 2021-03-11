@@ -67,7 +67,7 @@ func main() {
 	logger, err := log.NewZapLogger()
 	if err != nil {
 		setupLog.Error(err, "error creating controller logger")
-		os.Exit(1)
+		os.Exit(2)
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -79,7 +79,7 @@ func main() {
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		os.Exit(3)
 	}
 
 	// metrics sink
@@ -111,7 +111,7 @@ func main() {
 
 	if err := r.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Disruption")
-		os.Exit(1)
+		os.Exit(4)
 	}
 
 	go r.ReportMetrics()
@@ -121,6 +121,6 @@ func main() {
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		os.Exit(5)
 	}
 }
