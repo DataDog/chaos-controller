@@ -12,6 +12,7 @@ import (
 	"github.com/DataDog/chaos-controller/metrics/datadog"
 	"github.com/DataDog/chaos-controller/metrics/noop"
 	"github.com/DataDog/chaos-controller/metrics/types"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // Sink describes a metric sink
@@ -32,6 +33,7 @@ type Sink interface {
 	MetricStuckOnRemoval(tags []string) error
 	MetricStuckOnRemovalGauge(gauge float64) error
 	MetricDisruptionsGauge(gauge float64) error
+	MetricDisruptionsCount(kind chaostypes.DisruptionKind, tags []string) error
 	MetricPodsGauge(gauge float64) error
 }
 
