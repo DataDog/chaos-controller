@@ -141,3 +141,10 @@ func (n *Sink) MetricPodsGauge(gauge float64) error {
 
 	return nil
 }
+
+// MetricRestart sends restart metric
+func (n *Sink) MetricRestart() error {
+	fmt.Println("NOOP: MetricRestart")
+
+	return nil
+}
