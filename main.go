@@ -88,6 +88,10 @@ func main() {
 		ctrl.Log.Error(err, "error while creating metric sink")
 	}
 
+	if ms.MetricRestart() != nil {
+		logger.Errorw("error sending MetricRestart", "sink", ms.GetSinkName())
+	}
+
 	// handle metrics sink client close on exit
 	defer func() {
 		ctrl.Log.Info("closing metrics sink client before exiting", "sink", ms.GetSinkName())
