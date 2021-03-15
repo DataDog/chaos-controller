@@ -148,8 +148,8 @@ func (d *Sink) MetricPodsGauge(gauge float64) error {
 }
 
 // MetricRestart sends an increment of the
-func (d *Sink) MetricRestart(tags []string) error {
-	return d.metricWithStatus(metricPrefixController+"restart", tags)
+func (d *Sink) MetricRestart() error {
+	return d.metricWithStatus(metricPrefixController+"restart", []string{})
 }
 
 func boolToStatus(succeed bool) string {

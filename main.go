@@ -86,9 +86,8 @@ func main() {
 	ms, err := metrics.GetSink(types.SinkDriver(sink), types.SinkAppController)
 	if err != nil {
 		ctrl.Log.Error(err, "error while creating metric sink")
-	} else {
-		ms.MetricRestart([]string{""})
 	}
+	ms.MetricRestart()
 
 	// handle metrics sink client close on exit
 	defer func() {
