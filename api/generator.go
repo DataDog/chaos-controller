@@ -6,10 +6,33 @@
 package api
 
 import (
+	"strings"
+
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // DisruptionArgsGenerator generates args for the given disruption
 type DisruptionArgsGenerator interface {
 	GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string
+}
+
+// helper: generate common args
+func AppendCommonArgs(args []string, level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
+	args = append(args,
+		"--metrics-sink",
+		sink,
+		"--level",
+		string(level),
+		"--containers-id",
+		strings.Join(containerIDs, ","),
+	)
+
+	// enable dry-run mode
+	if dryRun {
+		args = append(args,
+			"--dry-run",
+		)
+	}
+
+	return args
 }

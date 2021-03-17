@@ -6,6 +6,7 @@
 package v1beta1
 
 import (
+	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
@@ -24,20 +25,14 @@ func (s *NodeFailureSpec) GenerateArgs(level chaostypes.DisruptionLevel, contain
 	args := []string{
 		"node-failure",
 		"inject",
-		"--metrics-sink",
-		sink,
-		"--level",
-		"node",
-	}
-
-	// enable dry-run mode
-	if dryRun {
-		args = append(args, "--dry-run")
 	}
 
 	if s.Shutdown {
 		args = append(args, "--shutdown")
 	}
+
+	// append common args
+	args = chaosapi.AppendCommonArgs(args, "node", containerIDs, sink, dryRun)
 
 	return args
 }

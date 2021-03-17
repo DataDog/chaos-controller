@@ -8,8 +8,8 @@ package v1beta1
 import (
 	"errors"
 	"strconv"
-	"strings"
 
+	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
@@ -38,19 +38,8 @@ func (s *DiskPressureSpec) Validate() error {
 func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
 	args := []string{
 		"disk-pressure",
-		"--metrics-sink",
-		sink,
-		"--level",
-		string(level),
-		"--containers-id",
-		strings.Join(containerIDs, ","),
 		"--path",
 		s.Path,
-	}
-
-	// enable dry-run mode
-	if dryRun {
-		args = append(args, "--dry-run")
 	}
 
 	// add read throttling flag if specified
@@ -62,6 +51,9 @@ func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, contai
 	if s.Throttling.WriteBytesPerSec != nil {
 		args = append(args, []string{"--write-bytes-per-sec", strconv.Itoa(*s.Throttling.WriteBytesPerSec)}...)
 	}
+
+	// append common args
+	args = chaosapi.AppendCommonArgs(args, level, containerIDs, sink, dryRun)
 
 	return args
 }

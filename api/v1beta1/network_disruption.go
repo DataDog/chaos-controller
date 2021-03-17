@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
@@ -60,12 +61,6 @@ func (s *NetworkDisruptionSpec) Validate() error {
 func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
 	args := []string{
 		"network-disruption",
-		"--metrics-sink",
-		sink,
-		"--level",
-		string(level),
-		"--containers-id",
-		strings.Join(containerIDs, ","),
 		"--port",
 		strconv.Itoa(s.Port),
 		"--corrupt",
@@ -80,11 +75,6 @@ func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, c
 		strconv.Itoa(int(s.DelayJitter)),
 		"--bandwidth-limit",
 		strconv.Itoa(s.BandwidthLimit),
-	}
-
-	// enable dry-run mode
-	if dryRun {
-		args = append(args, "--dry-run")
 	}
 
 	// append protocol
@@ -102,6 +92,9 @@ func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, c
 	if s.Flow != "" {
 		args = append(args, "--flow", s.Flow)
 	}
+
+	// append common args
+	args = chaosapi.AppendCommonArgs(args, level, containerIDs, sink, dryRun)
 
 	return args
 }
