@@ -34,42 +34,71 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: demo
+  name: demo-nginx
   namespace: chaos-engineering
   labels:
-    app: demo
+    app: demo-nginx
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: demo
+      app: demo-nginx
   template:
     metadata:
       labels:
-        app: demo
+        app: demo-nginx
     spec:
       containers:
-      - name: demo
-        image: ubuntu:bionic
-        command: ["/bin/bash"]
-        args: ["-c", "while true; do sleep 10000; done"]
+      - name: nginx
+        image: nginx
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-curl
+  namespace: chaos-engineering
+  labels:
+    app: demo-curl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-curl
+  template:
+    metadata:
+      labels:
+        app: demo-curl
+    spec:
+      containers:
+      - name: curl
+        image: appropriate/curl
+        command: ["/bin/sh"]
+        args: ["-c", "while true; do curl -vvv http://demo.chaos-engineering.svc.cluster.local:8080; sleep 1; done"]
         volumeMounts:
         - mountPath: /mnt/data
           name: data
         resources:
           limits:
             cpu: 1
-      - name: demo2
+      - name: dummy
         image: ubuntu:bionic
         command: ["/bin/bash"]
-        args: ["-c", "while true; do sleep 10000; done"]
+        args: ["-c", "while true; do sleep 1; done"]
         volumeMounts:
         - mountPath: /mnt/data
           name: data
-        resources:
-          limits:
-            cpu: 1
       volumes:
       - name: data
         persistentVolumeClaim:
           claimName: demo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo
+spec:
+  ports:
+    - port: 8080
+      targetPort: 80
+  selector:
+    app: demo-ngin

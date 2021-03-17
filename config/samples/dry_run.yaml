@@ -6,11 +6,13 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: cpu-pressure
+  name: dry-run
   namespace: chaos-engineering
 spec:
+  dryRun: true # enable dry-run mode (chaos pods will be created but won't inject anything)
   level: pod
   selector:
     app: demo-curl
   count: 1
-  cpuPressure: {} # consume as much CPU as possible to generate load
+  nodeFailure:
+    shutdown: false

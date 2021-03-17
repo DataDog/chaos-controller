@@ -6,11 +6,11 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: cpu-pressure
+  name: level-node
   namespace: chaos-engineering
 spec:
-  level: pod
+  level: node # impact the whole node instead of a single pod
   selector:
-    app: demo-curl
+    minikube.k8s.io/name: minikube # when node level is enabled, the selector applies to nodes and not pods
   count: 1
-  cpuPressure: {} # consume as much CPU as possible to generate load
+  cpuPressure: {}

@@ -6,11 +6,12 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: cpu-pressure
+  name: network-bandwidth-limitation
   namespace: chaos-engineering
 spec:
   level: pod
   selector:
     app: demo-curl
   count: 1
-  cpuPressure: {} # consume as much CPU as possible to generate load
+  network:
+    bandwidthLimit: 10000 # outgoing bandwidth limitation in bytes

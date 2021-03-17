@@ -6,11 +6,11 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: disruption-sample
-  namespace: chaos-engineering # disruption resource must be in the same namespace as targeted pods
+  name: node-failure-shutdown
+  namespace: chaos-engineering
 spec:
-  selector: # label selector to target pods
-    app: demo
-  count: 1 # number of pods to target or a percentage (1% - 100%)
-  nodeFailure: # node kernel panic or shutdown
-    shutdown: true # shutdown the host instead of triggering a stack dump
+  selector:
+    app: demo-curl
+  count: 1
+  nodeFailure:
+    shutdown: true # shutdown the host (violently) instead of triggering a kernel panic

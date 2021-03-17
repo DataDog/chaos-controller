@@ -6,11 +6,14 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: cpu-pressure
+  name: containers-targeting
   namespace: chaos-engineering
 spec:
   level: pod
   selector:
     app: demo-curl
+  containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
+    - dummy
   count: 1
-  cpuPressure: {} # consume as much CPU as possible to generate load
+  network:
+    drop: 10
