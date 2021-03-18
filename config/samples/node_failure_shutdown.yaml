@@ -13,4 +13,4 @@ spec:
     app: demo-curl
   count: 1
   nodeFailure:
-    shutdown: true # shutdown the host (violently) instead of triggering a kernel panic
+    shutdown: true # shutdown the host (violently) instead of triggering a kernel panic so the host is kept down and not restarted

@@ -6,16 +6,11 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: disruption-sample
-  namespace: chaos-engineering # disruption resource must be in the same namespace as targeted pods
+  name: network-duplication
+  namespace: chaos-engineering
 spec:
-  selector: # label selector to target pods
-    app: demo
-  count: 1 # number of pods to target (-1 == target all the selected pods)
-  network: # network disruption settings, all those disruptions are applied to outgoing traffic only
-    hosts: # optional (targets all hosts if not specified)
-      - 10.0.0.0/8 # destination host
-    port: 80 # optional, port to drop packets on
-    protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
-    flow: egress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
-    duplicate: 50 # "mandatory", at least one of `bandwidthLimit`, `delay`, `drop`, `corrupt`, or `duplicate` must be specified; probability to duplicate packets (between 0 and 100)
+  selector:
+    app: demo-curl
+  count: 1
+  network:
+    duplicate: 100 # percentage of outgoing packets to duplicate
