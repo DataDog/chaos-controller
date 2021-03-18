@@ -6,11 +6,12 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: node-failure-shutdown
+  name: count-percentage
   namespace: chaos-engineering
 spec:
+  level: pod
   selector:
     app: demo-curl
-  count: 1
+  count: 50% # target a percentage of the targets matching the selector instead of a fixed count (will be rounded up, min 1%, max 100%)
   nodeFailure:
-    shutdown: true # shutdown the host (violently) instead of triggering a kernel panic so the host is kept down and not restarted
+    shutdown: false

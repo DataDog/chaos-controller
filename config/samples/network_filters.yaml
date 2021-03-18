@@ -1,0 +1,23 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-filters
+  namespace: chaos-engineering
+spec:
+  level: pod
+  selector:
+    app: demo-curl
+  count: 1
+  network:
+    hosts: # disrupt only packets going to a specific host
+      - 1.2.3.4 # can be a single IP
+      - 10.0.0.0/8 # can be a CIDR
+      - datadoghq.com # can be a hostname (will be resolved on injection)
+    port: 80 # disrupt only packets going to a specific port
+    protocol: tcp # disrupt only packets using a specific protocol (can be either tcp or udp, defaults to both)
+    drop: 10

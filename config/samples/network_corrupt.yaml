@@ -6,11 +6,12 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: node-failure-shutdown
+  name: network-corrupt
   namespace: chaos-engineering
 spec:
+  level: pod
   selector:
     app: demo-curl
   count: 1
-  nodeFailure:
-    shutdown: true # shutdown the host (violently) instead of triggering a kernel panic so the host is kept down and not restarted
+  network:
+    corrupt: 100 # percentage of outgoing packets to corrupt

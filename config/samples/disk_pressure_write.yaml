@@ -6,14 +6,14 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: disruption-sample
-  namespace: chaos-engineering # disruption resource must be in the same namespace as targeted pods
+  name: disk-pressure-write
+  namespace: chaos-engineering
 spec:
-  level: pod # level the disruption should be injected at (can be either pod or node, defaults to pod)
-  selector: # label selector to target pods
-    app: demo
-  count: 1 # number of pods to target or a percentage (1% - 100%)
-  diskPressure: # disk pressure
+  level: pod
+  selector:
+    app: demo-curl
+  count: 1
+  diskPressure:
     path: /mnt/data # mount point (in the pod) to apply throttle on
     throttling:
-      writeBytesPerSec: 2048 # optional, write throttling in bytes per sec
+      writeBytesPerSec: 1024 # write throttling in bytes per sec
