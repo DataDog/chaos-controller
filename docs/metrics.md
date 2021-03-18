@@ -1,22 +1,24 @@
 # Metrics and events
 
+Here's the list of metrics sent by the controller and the injector.
+
 ## Controller
 
-* `chaos.controller.reconcile` is the count of reconcile loops
+* `chaos.controller.restart` increments when the controller is restarted
+* `chaos.controller.reconcile` increments when the reconcile loop is called
 * `chaos.controller.reconcile.duration` is the time passed in the reconcile loop
-* `chaos.controller.injection.duration` is the time it took to create injection pods since the creation of the disruption resource
-* `chaos.controller.cleanup.duration` is the time it took to create cleanup pods since the deletion of the disruption resource
-* `chaos.controller.pods.created` is the amount of pods created for injection and cleanup phases (can be filtered with the `phase` tag)
+* `chaos.controller.inject.duration` is the time it took to fully inject the disruption since its creation
+* `chaos.controller.cleanup.duration` is the time it took to fully cleanup the disruption since its deletion
+* `chaos.controller.pods.created` increments when a chaos pod is created
+* `chaos.controller.pods.gauge` is the total count of existing chaos pods
+* `chaos.controller.disruption.completed_duration` is the complete life time of the disruption, from creation to deletion
+* `chaos.controller.disruption.ongoing_duration` is the duration of the disruption so far, from creation to now
+* `chaos.controller.disruptions.stuck_on_removal` increments when a disruption is stuck on removal
+* `chaos.controller.disruptions.stuck_on_removal_total` is the total count of existing disruption being flagged as stuck on removal
+* `chaos.controller.disruptions.gauge` is the total count of existing disruption
+* `chaos.controller.disruptions.count` increments when a disruption is created
 
 ## Injector
 
-Events are sent when a new rule is injected and when the rules are cleared.
-
-A bunch of metrics are sent as well:
-
-* `chaos.nfi.injected` is the count of injected network failures
-* `chaos.nfi.cleaned` is the count of cleaned network failures
-
-Every metric has the following common tags:
-
-* `status` which can be `succeed` or `failed` to represent the succeed or the failure of the injection
+* `chaos.injector.injected` increments when a disruption is injected
+* `chaos.injector.cleaned` increments when a disruption is cleaned
