@@ -50,7 +50,7 @@ Once applied, you can see the targeted pods/nodes by describing the `Disruption`
 
 A disruption can be applied either at the `pod` level or at the `node` level:
 
-* When applied at the `pod` level, the controller will target pods and will affect only the targeted pods. Other pods running on the same node as those targeted should not be affected (there is a potential blast radius depending on the injected disruption).
+* When applied at the `pod` level, the controller will target pods and will affect only the targeted pods. Other pods running on the same node as those targeted may still be affected depending on the injected disruption.
 * When applied at the `node` level, the controller will target nodes and will potentially affect everything running on the node (other processes).
 
 #### Example
