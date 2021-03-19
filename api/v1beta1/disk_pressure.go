@@ -8,9 +8,6 @@ package v1beta1
 import (
 	"errors"
 	"strconv"
-
-	chaosapi "github.com/DataDog/chaos-controller/api"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // DiskPressureSpec represents a disk pressure disruption
@@ -35,7 +32,7 @@ func (s *DiskPressureSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
+func (s *DiskPressureSpec) GenerateArgs() []string {
 	args := []string{
 		"disk-pressure",
 		"--path",
@@ -51,9 +48,6 @@ func (s *DiskPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, contai
 	if s.Throttling.WriteBytesPerSec != nil {
 		args = append(args, []string{"--write-bytes-per-sec", strconv.Itoa(*s.Throttling.WriteBytesPerSec)}...)
 	}
-
-	// append common args
-	args = chaosapi.AppendCommonArgs(args, level, containerIDs, sink, dryRun)
 
 	return args
 }

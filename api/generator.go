@@ -13,10 +13,10 @@ import (
 
 // DisruptionArgsGenerator generates args for the given disruption
 type DisruptionArgsGenerator interface {
-	GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string
+	GenerateArgs() []string
 }
 
-// helper: generate common args
+// AppendCommonArgs is a helper function generating common args and appending them to the given args array
 func AppendCommonArgs(args []string, level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
 	args = append(args,
 		"--metrics-sink",

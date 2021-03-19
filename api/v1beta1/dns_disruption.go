@@ -9,9 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	chaosapi "github.com/DataDog/chaos-controller/api"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // DNSDisruptionSpec represents a dns disruption
@@ -49,7 +46,7 @@ func (s DNSDisruptionSpec) Validate() error {
 }
 
 // GenerateArgs generates injection pod arguments for the given spec
-func (s DNSDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
+func (s DNSDisruptionSpec) GenerateArgs() []string {
 	args := []string{
 		"dns-disruption",
 	}
@@ -67,9 +64,6 @@ func (s DNSDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, contai
 	// Each value passed to --host-record-pairs should be of the form `hostname;type;value`, e.g.
 	// `foo.bar.svc.cluster.local;A;10.0.0.0,10.0.0.13`
 	args = append(args, strings.Split(strings.Join(hostRecordPairArgs, " --host-record-pairs "), " ")...)
-
-	// append common args
-	args = chaosapi.AppendCommonArgs(args, level, containerIDs, sink, dryRun)
 
 	return args
 }

@@ -9,9 +9,6 @@ import (
 	"errors"
 	"strconv"
 	"strings"
-
-	chaosapi "github.com/DataDog/chaos-controller/api"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
@@ -58,7 +55,7 @@ func (s *NetworkDisruptionSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
+func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	args := []string{
 		"network-disruption",
 		"--port",
@@ -92,9 +89,6 @@ func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, c
 	if s.Flow != "" {
 		args = append(args, "--flow", s.Flow)
 	}
-
-	// append common args
-	args = chaosapi.AppendCommonArgs(args, level, containerIDs, sink, dryRun)
 
 	return args
 }

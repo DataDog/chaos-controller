@@ -5,11 +5,6 @@
 
 package v1beta1
 
-import (
-	chaosapi "github.com/DataDog/chaos-controller/api"
-	chaostypes "github.com/DataDog/chaos-controller/types"
-)
-
 // CPUPressureSpec represents a cpu pressure disruption
 type CPUPressureSpec struct {
 }
@@ -20,13 +15,10 @@ func (s *CPUPressureSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *CPUPressureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
+func (s *CPUPressureSpec) GenerateArgs() []string {
 	args := []string{
 		"cpu-pressure",
 	}
-
-	// append common args
-	args = chaosapi.AppendCommonArgs(args, level, containerIDs, sink, dryRun)
 
 	return args
 }
