@@ -46,6 +46,10 @@ The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/conc
 
 Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.
 
+#### Targeting a specific pod
+
+How can you target a specific pod by name, if it doesn't have a unique label selector you can use? The `Disruption` spec doesn't support field selectors at this time, so selecting by name isn't possible. However, you can use the `kubectl label pods` command, e.g., `kubectl label pods $podname unique-label-for-this-disruption=target-me` to dynamically add a unique label to the pod, which you can use as your label selector in the `Disruption` spec.
+
 ### Level
 
 A disruption can be applied either at the `pod` level or at the `node` level:
