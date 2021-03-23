@@ -9,8 +9,6 @@ import (
 	"errors"
 	"strconv"
 	"strings"
-
-	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
@@ -57,15 +55,9 @@ func (s *NetworkDisruptionSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
+func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	args := []string{
 		"network-disruption",
-		"--metrics-sink",
-		sink,
-		"--level",
-		string(level),
-		"--containers-id",
-		strings.Join(containerIDs, ","),
 		"--port",
 		strconv.Itoa(s.Port),
 		"--corrupt",
@@ -80,11 +72,6 @@ func (s *NetworkDisruptionSpec) GenerateArgs(level chaostypes.DisruptionLevel, c
 		strconv.Itoa(int(s.DelayJitter)),
 		"--bandwidth-limit",
 		strconv.Itoa(s.BandwidthLimit),
-	}
-
-	// enable dry-run mode
-	if dryRun {
-		args = append(args, "--dry-run")
 	}
 
 	// append protocol

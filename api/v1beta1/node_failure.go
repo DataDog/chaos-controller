@@ -5,10 +5,6 @@
 
 package v1beta1
 
-import (
-	chaostypes "github.com/DataDog/chaos-controller/types"
-)
-
 // NodeFailureSpec represents a node failure injection
 type NodeFailureSpec struct {
 	Shutdown bool `json:"shutdown,omitempty"`
@@ -20,19 +16,10 @@ func (s *NodeFailureSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NodeFailureSpec) GenerateArgs(level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool) []string {
+func (s *NodeFailureSpec) GenerateArgs() []string {
 	args := []string{
 		"node-failure",
 		"inject",
-		"--metrics-sink",
-		sink,
-		"--level",
-		"node",
-	}
-
-	// enable dry-run mode
-	if dryRun {
-		args = append(args, "--dry-run")
 	}
 
 	if s.Shutdown {
