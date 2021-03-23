@@ -39,15 +39,19 @@ var rootCmd = &cobra.Command{
 }
 
 var (
-	log          *zap.SugaredLogger
-	dryRun       bool
-	ms           metrics.Sink
-	sink         string
-	level        string
-	containerIDs []string
-	configs      []injector.Config
-	signals      chan os.Signal
-	injectors    []injector.Injector
+	log                 *zap.SugaredLogger
+	dryRun              bool
+	ms                  metrics.Sink
+	sink                string
+	level               string
+	containerIDs        []string
+	disruptionName      string
+	disruptionNamespace string
+	targetName          string
+	targetKind          string
+	configs             []injector.Config
+	signals             chan os.Signal
+	injectors           []injector.Injector
 )
 
 func init() {
@@ -56,12 +60,18 @@ func init() {
 	rootCmd.AddCommand(cpuPressureCmd)
 	rootCmd.AddCommand(diskPressureCmd)
 	rootCmd.AddCommand(dnsDisruptionCmd)
+	// basic args
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Enable dry-run mode")
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
 	rootCmd.PersistentFlags().StringSliceVar(&containerIDs, "containers-id", []string{}, "Targeted containers ID")
-	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "level")
+	// log context args
+	rootCmd.PersistentFlags().StringVar(&disruptionName, "log-context-disruption-name", "", "Log value: current disruption name")
+	rootCmd.PersistentFlags().StringVar(&disruptionNamespace, "log-context-disruption-namespace", "", "Log value: current disruption namespace")
+	rootCmd.PersistentFlags().StringVar(&targetName, "log-context-target-name", "", "Log value: current target name")
+	rootCmd.PersistentFlags().StringVar(&targetKind, "log-context-target-kind", "", "Log value: current target kind")
 
+	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "level")
 	cobra.OnInitialize(initLogger)
 	cobra.OnInitialize(initMetricsSink)
 	cobra.OnInitialize(initConfig)
@@ -94,6 +104,13 @@ func initLogger() {
 		fmt.Printf("error while creating logger: %v", err)
 		os.Exit(2)
 	}
+
+	log = log.With(
+		"disruption-name", disruptionName,
+		"disruption-namespace", disruptionNamespace,
+		"target-name", targetName,
+		"target-kind", targetKind,
+	)
 }
 
 // initMetricsSink initializes a metrics sink depending on the given flag
