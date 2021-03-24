@@ -1014,7 +1014,8 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 
 		// generate args for pod
 		args := chaosapi.AppendCommonArgs(generator.GenerateArgs(),
-			level, containerIDs, r.MetricsSink.GetSinkName(), instance.Spec.DryRun)
+			level, containerIDs, r.MetricsSink.GetSinkName(), instance.Spec.DryRun,
+			instance.Name, instance.Namespace, targetName)
 
 		// append pod to chaos pods
 		*pods = append(*pods, r.generatePod(instance, targetName, targetNodeName, args, kind))
