@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.7.0](https://github.com/DataDog/chaos-controller/tree/3.7.0) (2021-03-24)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.6.0...3.7.0)
+
+**Merged pull requests:**
+
+- CORE-497: add context to injector logger through injector CLI and its chaos-controller controller [\#279](https://github.com/DataDog/chaos-controller/pull/279) ([nathan-tournant](https://github.com/nathan-tournant))
+- Explain in the README how to target a specific pod by name [\#277](https://github.com/DataDog/chaos-controller/pull/277) ([ptnapoleon](https://github.com/ptnapoleon))
+- CORE-507: Single entry point for injector CLI common args [\#276](https://github.com/DataDog/chaos-controller/pull/276) ([nathan-tournant](https://github.com/nathan-tournant))
+- Revamp samples [\#275](https://github.com/DataDog/chaos-controller/pull/275) ([Devatoria](https://github.com/Devatoria))
+- CORE-528 - add MetricRestart on chaos-controller [\#274](https://github.com/DataDog/chaos-controller/pull/274) ([nathan-tournant](https://github.com/nathan-tournant))
+- Update container release\_changelog\_8bf23cad59208194fdef5c75ef7cb9a96803d0a1 [\#272](https://github.com/DataDog/chaos-controller/pull/272) ([github-actions[bot]](https://github.com/apps/github-actions))
+- CORE-371: Network Disruption Documentation Revamp [\#254](https://github.com/DataDog/chaos-controller/pull/254) ([takakonishimura](https://github.com/takakonishimura))
+
 ## [3.6.0](https://github.com/DataDog/chaos-controller/tree/3.6.0) (2021-03-11)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.5.2...3.6.0)
@@ -10,6 +24,7 @@
 - CORE-601: Clean up chaos pods if their targets dont exist [\#270](https://github.com/DataDog/chaos-controller/pull/270) ([ptnapoleon](https://github.com/ptnapoleon))
 - Change some log text to clarify when ignored targets is too large [\#268](https://github.com/DataDog/chaos-controller/pull/268) ([ptnapoleon](https://github.com/ptnapoleon))
 - CORE-458: Gather ongoing duration separately from completed duration … [\#267](https://github.com/DataDog/chaos-controller/pull/267) ([ptnapoleon](https://github.com/ptnapoleon))
+- Update container release\_changelog\_54aa80140063186b36a07d28677f191cd414ed36 [\#266](https://github.com/DataDog/chaos-controller/pull/266) ([github-actions[bot]](https://github.com/apps/github-actions))
 - CORE-585: Log found chaos pod names when injectors already exist for … [\#259](https://github.com/DataDog/chaos-controller/pull/259) ([ptnapoleon](https://github.com/ptnapoleon))
 
 ## [3.5.2](https://github.com/DataDog/chaos-controller/tree/3.5.2) (2021-03-05)
@@ -231,7 +246,6 @@
 - Improve contributing doc [\#167](https://github.com/DataDog/chaos-controller/pull/167) ([Devatoria](https://github.com/Devatoria))
 - Improve examples by splitting them in per use-cases examples [\#166](https://github.com/DataDog/chaos-controller/pull/166) ([Devatoria](https://github.com/Devatoria))
 - Update container release\_changelog\_8332266aebf78e47a3a34d2ea15d1767d69fb963 [\#165](https://github.com/DataDog/chaos-controller/pull/165) ([github-actions[bot]](https://github.com/apps/github-actions))
-- Complete FAQ with a note to retry cleanup phase [\#162](https://github.com/DataDog/chaos-controller/pull/162) ([Devatoria](https://github.com/Devatoria))
 
 ## [2.12.0](https://github.com/DataDog/chaos-controller/tree/2.12.0) (2020-09-28)
 
@@ -248,6 +262,7 @@
 
 **Merged pull requests:**
 
+- Complete FAQ with a note to retry cleanup phase [\#162](https://github.com/DataDog/chaos-controller/pull/162) ([Devatoria](https://github.com/Devatoria))
 - Send an event when no target can be found from the given label selector [\#161](https://github.com/DataDog/chaos-controller/pull/161) ([Devatoria](https://github.com/Devatoria))
 - Switch injector resources to zero since we have the priority class now [\#160](https://github.com/DataDog/chaos-controller/pull/160) ([Devatoria](https://github.com/Devatoria))
 - Push to ddbuild ecr on release [\#159](https://github.com/DataDog/chaos-controller/pull/159) ([Azoam](https://github.com/Azoam))
@@ -340,7 +355,6 @@
 **Merged pull requests:**
 
 - Change code owners to the new core resilience team [\#125](https://github.com/DataDog/chaos-controller/pull/125) ([Devatoria](https://github.com/Devatoria))
-- Add cpu pressure injection [\#124](https://github.com/DataDog/chaos-controller/pull/124) ([Devatoria](https://github.com/Devatoria))
 - api: Add a maximum value for networkLatency.delay [\#123](https://github.com/DataDog/chaos-controller/pull/123) ([dd-adn](https://github.com/dd-adn))
 - Switch to noop metrics sink by default [\#122](https://github.com/DataDog/chaos-controller/pull/122) ([Devatoria](https://github.com/Devatoria))
 - Fix manager bin path in deployment [\#121](https://github.com/DataDog/chaos-controller/pull/121) ([Devatoria](https://github.com/Devatoria))
@@ -354,6 +368,7 @@
 
 **Merged pull requests:**
 
+- Add cpu pressure injection [\#124](https://github.com/DataDog/chaos-controller/pull/124) ([Devatoria](https://github.com/Devatoria))
 - Allow connection establishment before drop in network failure [\#117](https://github.com/DataDog/chaos-controller/pull/117) ([Devatoria](https://github.com/Devatoria))
 - Add some more comments in the disruption example [\#116](https://github.com/DataDog/chaos-controller/pull/116) ([Devatoria](https://github.com/Devatoria))
 - Update 3rd party licenses to show spdx identifier [\#115](https://github.com/DataDog/chaos-controller/pull/115) ([Devatoria](https://github.com/Devatoria))
@@ -566,7 +581,6 @@
 - Improve local testing [\#28](https://github.com/DataDog/chaos-controller/pull/28) ([Devatoria](https://github.com/Devatoria))
 - Add stuff to test the controller locally [\#27](https://github.com/DataDog/chaos-controller/pull/27) ([Devatoria](https://github.com/Devatoria))
 - Add helpers package tests [\#26](https://github.com/DataDog/chaos-controller/pull/26) ([Devatoria](https://github.com/Devatoria))
-- Update README with details about nfis [\#21](https://github.com/DataDog/chaos-controller/pull/21) ([kathy-huang](https://github.com/kathy-huang))
 
 ## [0.1.0](https://github.com/DataDog/chaos-controller/tree/0.1.0) (2019-05-02)
 
@@ -575,6 +589,7 @@
 **Merged pull requests:**
 
 - Add node failure CRD and controller [\#25](https://github.com/DataDog/chaos-controller/pull/25) ([Devatoria](https://github.com/Devatoria))
+- Update README with details about nfis [\#21](https://github.com/DataDog/chaos-controller/pull/21) ([kathy-huang](https://github.com/kathy-huang))
 
 ## [0.0.6](https://github.com/DataDog/chaos-controller/tree/0.0.6) (2019-04-25)
 
