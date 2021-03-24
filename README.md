@@ -1,5 +1,7 @@
 # Chaos Controller
 
+**Latest Kubernetes version supported: 1.19.x ([more info](#kubernetes-120x-known-issues))**
+
 The Chaos Controller was created to facilitate automation requirements in Datadog chaos experiments. It helps to deal with failures during chaos engineering events by abstracting them, especially when dealing with big deployments or complex network operations. It introduces a custom Kubernetes resource named `Disruption`.
 
 ## Table of Contents
@@ -122,3 +124,7 @@ This flag can be enabled specifically on the controller configuration itself (th
 ## Contributing
 
 Please read the [contributing documentation](CONTRIBUTING.md) for more information.
+
+## Kubernetes 1.20.x known issues
+
+[The following issue](https://github.com/kubernetes/kubernetes/issues/97288) prevents the controller from running properly on Kubernetes 1.20.x. We don't plan to support this version. [The fix](https://github.com/kubernetes/kubernetes/pull/97980) should be released with Kubernetes 1.21.

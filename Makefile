@@ -99,16 +99,16 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
-# fixing kubernetes version at 1.17.0 because of this issue:
-# https://github.com/kubernetes/minikube/issues/7179
-# please remove once Minikube ships with a non-broken (> 1.18.0) version
+# fixing kubernetes version at 1.19.X because of this issue: https://github.com/kubernetes/kubernetes/issues/97288
+# once the following fix is released (https://github.com/kubernetes/kubernetes/pull/97980), planned for 1.21, we can use the latest
+# Kubernetes version again
 minikube-start:
 	minikube start \
 		--vm-driver=virtualbox \
 		--container-runtime=containerd \
 		--memory=4096 \
 		--cpus=4 \
-		--kubernetes-version=1.20.0 \
+		--kubernetes-version=1.19.9 \
 		--disk-size=50GB \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
 		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2021-01-18.iso
