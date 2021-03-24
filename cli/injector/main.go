@@ -48,7 +48,6 @@ var (
 	disruptionName      string
 	disruptionNamespace string
 	targetName          string
-	targetKind          string
 	configs             []injector.Config
 	signals             chan os.Signal
 	injectors           []injector.Injector
@@ -69,7 +68,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&disruptionName, "log-context-disruption-name", "", "Log value: current disruption name")
 	rootCmd.PersistentFlags().StringVar(&disruptionNamespace, "log-context-disruption-namespace", "", "Log value: current disruption namespace")
 	rootCmd.PersistentFlags().StringVar(&targetName, "log-context-target-name", "", "Log value: current target name")
-	rootCmd.PersistentFlags().StringVar(&targetKind, "log-context-target-kind", "", "Log value: current target kind")
 
 	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "level")
 	cobra.OnInitialize(initLogger)
@@ -106,10 +104,9 @@ func initLogger() {
 	}
 
 	log = log.With(
-		"disruption-name", disruptionName,
-		"disruption-namespace", disruptionNamespace,
-		"target-name", targetName,
-		"target-kind", targetKind,
+		"disruptionName", disruptionName,
+		"disruptionNamespace", disruptionNamespace,
+		"targetName", targetName,
 	)
 }
 

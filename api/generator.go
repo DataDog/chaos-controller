@@ -18,8 +18,7 @@ type DisruptionArgsGenerator interface {
 
 // AppendCommonArgs is a helper function generating common args and appending them to the given args array
 func AppendCommonArgs(args []string, level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool,
-	disruptionName string, disruptionNamespace string,
-	targetName string, targetKind string) []string {
+	disruptionName string, disruptionNamespace string, targetName string) []string {
 	args = append(args,
 		// basic args
 		"--metrics-sink", sink,
@@ -30,7 +29,6 @@ func AppendCommonArgs(args []string, level chaostypes.DisruptionLevel, container
 		"--log-context-disruption-name", disruptionName,
 		"--log-context-disruption-namespace", disruptionNamespace,
 		"--log-context-target-name", targetName,
-		"--log-context-target-kind", targetKind,
 	)
 
 	// enable dry-run mode
