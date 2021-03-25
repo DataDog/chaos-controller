@@ -272,9 +272,6 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		return fmt.Errorf("could not resolve kubernetes.default service IP")
 	}
 
-	// interfaces for which we need to clean qlen once injection is finished
-	clearTxQlen := []network.NetlinkLink{}
-
 	// for each link/ip association, add disruption
 	for linkName, ips := range linkByIP {
 		// retrieve link from name
@@ -289,13 +286,19 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		if link.TxQLen() == 0 {
 			i.config.Log.Infof("setting tx qlen for interface %s", link.Name())
 
-			// set clear flag to true so we can clean up this once qdiscs are created
-			clearTxQlen = append(clearTxQlen, link)
-
 			// set qlen
 			if err := link.SetTxQLen(1000); err != nil {
 				return fmt.Errorf("can't set tx queue length on interface %s: %w", link.Name(), err)
 			}
+
+			// defer the tx qlen clear
+			defer func(link network.NetlinkLink) {
+				i.config.Log.Infof("clearing tx qlen for interface %s", link.Name())
+
+				if err := link.SetTxQLen(0); err != nil {
+					i.config.Log.Errorw("can't clear %s link transmission queue length: %w", link.Name(), err)
+				}
+			}(link)
 		}
 
 		// create a new qdisc for the given interface of type prio with 4 bands instead of 3
@@ -425,16 +428,6 @@ func (i *networkDisruptionInjector) applyOperations() error {
 					}
 				}
 			}
-		}
-	}
-
-	// clear tx qlen
-	// reset the interface transmission queue length once filters have been created (only if qlen has been set earlier)
-	for _, link := range clearTxQlen {
-		i.config.Log.Infof("clearing tx qlen for interface %s", link.Name())
-
-		if err := link.SetTxQLen(0); err != nil {
-			return fmt.Errorf("can't clear %s link transmission queue length: %w", link.Name(), err)
 		}
 	}
 
