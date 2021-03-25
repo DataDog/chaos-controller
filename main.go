@@ -78,14 +78,14 @@ func main() {
 		Port:               9443,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		logger.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
 	// metrics sink
 	ms, err := metrics.GetSink(types.SinkDriver(sink), types.SinkAppController)
 	if err != nil {
-		ctrl.Log.Error(err, "error while creating metric sink")
+		logger.Error(err, "error while creating metric sink")
 	}
 
 	if ms.MetricRestart() != nil {
@@ -94,10 +94,10 @@ func main() {
 
 	// handle metrics sink client close on exit
 	defer func() {
-		ctrl.Log.Info("closing metrics sink client before exiting", "sink", ms.GetSinkName())
+		logger.Info("closing metrics sink client before exiting", "sink", ms.GetSinkName())
 
 		if err := ms.Close(); err != nil {
-			ctrl.Log.Error(err, "error closing metrics sink client", "sink", ms.GetSinkName())
+			logger.Error(err, "error closing metrics sink client", "sink", ms.GetSinkName())
 		}
 	}()
 
@@ -114,17 +114,17 @@ func main() {
 	}
 
 	if err := r.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Disruption")
+		logger.Error(err, "unable to create controller", "controller", "Disruption")
 		os.Exit(1)
 	}
 
 	go r.ReportMetrics()
 	// +kubebuilder:scaffold:builder
 
-	setupLog.Info("starting manager")
+	logger.Info("restarting chaos-controller")
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+		logger.Error(err, "problem running manager")
 		os.Exit(1)
 	}
 }
