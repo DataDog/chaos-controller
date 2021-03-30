@@ -44,7 +44,7 @@ You can enable the dry-run mode on any disruption to fake the injection. The dry
 
 ### Targeting
 
-The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the given label selector and will randomly select as many matching targets as defined in the `count` field.
+The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the given label selector and will randomly select as many matching targets as defined in the `count` field. It's possible to specify multiple label selectors, in which case the controller will select from targets that match all of them. If you are targeting pods, the disruption must be created in the same namespace as the targeted pods.
 
 Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.
 
