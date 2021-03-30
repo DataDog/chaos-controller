@@ -59,7 +59,11 @@ func (a netlinkAdapter) LinkList() ([]NetlinkLink, error) {
 
 	for _, route := range routes {
 		if _, found := linksIndexes[route.LinkIndex]; !found {
-			linksIndexes[route.LinkIndex] = struct{}{}
+			// ignore any "invalid" link index
+			// the link index can be 0 for blackhole routes for instance (eq. "*" interface in the routing table)
+			if route.LinkIndex > 0 {
+				linksIndexes[route.LinkIndex] = struct{}{}
+			}
 		}
 	}
 
