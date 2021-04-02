@@ -10,6 +10,7 @@ import (
 	"net"
 
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 )
 
 // NetlinkAdapter is an interface being able to read
@@ -25,20 +26,41 @@ type NetlinkAdapter interface {
 type netlinkAdapter struct{}
 
 func (a netlinkAdapter) listRoutes() ([]netlink.Route, error) {
-	// get the handler
+	allRoutes := []netlink.Route{}
+
+	// get the netlink handler
 	handler, err := netlink.NewHandle()
 	if err != nil {
 		return nil, err
 	}
 
-	// list routes for all interfaces using IPv4
-	// cf. https://godoc.org/golang.org/x/sys/unix#AF_INET for value 2
-	routes, err := handler.RouteList(nil, 2)
+	// list routing rules for IPv4
+	rules, err := handler.RuleList(unix.AF_INET)
 	if err != nil {
 		return nil, err
 	}
 
-	return routes, nil
+	// get routing tables identifiers from rules so we
+	// are able to list all the existing routing tables
+	tables := map[int]struct{}{}
+
+	for _, rule := range rules {
+		if _, found := tables[rule.Table]; !found {
+			tables[rule.Table] = struct{}{}
+		}
+	}
+
+	// get all the existing routing tables routes
+	for table := range tables {
+		routes, err := handler.RouteListFiltered(unix.AF_INET, &netlink.Route{Table: table}, netlink.RT_FILTER_TABLE)
+		if err != nil {
+			return nil, err
+		}
+
+		allRoutes = append(allRoutes, routes...)
+	}
+
+	return allRoutes, nil
 }
 
 // NewNetlinkAdapter returns a standard netlink adapter
@@ -46,7 +68,7 @@ func NewNetlinkAdapter() NetlinkAdapter {
 	return netlinkAdapter{}
 }
 
-// LinkList lists links used in the routing table for IPv4 only
+// LinkList lists links used in the routing tables for IPv4 only
 func (a netlinkAdapter) LinkList() ([]NetlinkLink, error) {
 	// get routes
 	routes, err := a.listRoutes()
