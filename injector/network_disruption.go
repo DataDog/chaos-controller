@@ -145,57 +145,44 @@ func (i networkDisruptionInjector) Clean() error {
 // getInterfacesByIP returns the interfaces used to reach the given hosts
 // if hosts is empty, all interfaces are returned
 func (i *networkDisruptionInjector) getInterfacesByIP(hosts []string) (map[string][]*net.IPNet, error) {
+	var err error
+
+	ips := []*net.IPNet{}
 	linkByIP := map[string][]*net.IPNet{}
 
+	// define the null IP matching all hosts
+	_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
+
 	if len(hosts) > 0 {
-		i.config.Log.Infow("auto-detecting used interfaces to reach the given hosts", "hosts", hosts)
+		i.config.Log.Infow("resolving the given hosts", "hosts", hosts)
 
 		// resolve hosts
-		ips, err := resolveHosts(i.config.DNSClient, hosts)
+		ips, err = resolveHosts(i.config.DNSClient, hosts)
 		if err != nil {
 			return nil, fmt.Errorf("can't resolve given hosts: %w", err)
 		}
-
-		// get the association between IP and interfaces to know
-		// which interfaces we have to inject disruption to
-		for _, ip := range ips {
-			// get routes for resolved destination IP
-			routes, err := i.config.NetlinkAdapter.RoutesForIP(ip)
-			if err != nil {
-				return nil, fmt.Errorf("can't get route for IP %s: %w", ip.String(), err)
-			}
-
-			// for each route, get the related interface and add it to the association
-			// between interfaces and IPs
-			for _, route := range routes {
-				i.config.Log.Infof("IP %s belongs to interface %s", ip.String(), route.Link().Name())
-
-				// store association, initialize the map entry if not present yet
-				if _, ok := linkByIP[route.Link().Name()]; !ok {
-					linkByIP[route.Link().Name()] = []*net.IPNet{}
-				}
-
-				linkByIP[route.Link().Name()] = append(linkByIP[route.Link().Name()], ip)
-			}
-		}
 	} else {
-		i.config.Log.Info("no hosts specified, all interfaces will be impacted")
-
-		// prepare links/IP association by pre-creating links
-		links, err := i.config.NetlinkAdapter.LinkList()
-		if err != nil {
-			return nil, fmt.Errorf("can't list links: %w", err)
-		}
-
-		for _, link := range links {
-			i.config.Log.Infof("adding interface %s", link.Name())
-			linkByIP[link.Name()] = []*net.IPNet{}
-		}
-
-		// explicitly add loopback interface
-		i.config.Log.Infof("adding loopback interface")
-		linkByIP["lo"] = []*net.IPNet{}
+		// by default, add the null IP macthing all hosts
+		ips = append(ips, nullIP)
 	}
+
+	// retrieve links used in the routing table
+	links, err := i.config.NetlinkAdapter.LinkList()
+	if err != nil {
+		return nil, fmt.Errorf("can't list links: %w", err)
+	}
+
+	// create the interfaces -> IPs association
+	for _, link := range links {
+		i.config.Log.Infof("adding interface %s", link.Name())
+
+		linkByIP[link.Name()] = ips
+	}
+
+	// explicitly add loopback interface
+	i.config.Log.Infof("adding loopback interface")
+
+	linkByIP["lo"] = ips
 
 	return linkByIP, nil
 }
@@ -362,15 +349,8 @@ func (i *networkDisruptionInjector) applyOperations() error {
 
 		// if some hosts are targeted, create one filter per host to redirect the traffic to the disrupted band
 		// otherwise, create a filter redirecting all the traffic (0.0.0.0/0) using the given port and protocol to the disrupted band
-		if len(ips) > 0 {
-			for _, ip := range ips {
-				if err := i.config.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, ip, srcPort, dstPort, i.spec.Protocol, "1:4"); err != nil {
-					return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
-				}
-			}
-		} else {
-			_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
-			if err := i.config.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, nullIP, srcPort, dstPort, i.spec.Protocol, "1:4"); err != nil {
+		for _, ip := range ips {
+			if err := i.config.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, ip, srcPort, dstPort, i.spec.Protocol, "1:4"); err != nil {
 				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 			}
 		}
