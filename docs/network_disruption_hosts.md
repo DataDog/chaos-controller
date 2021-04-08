@@ -127,17 +127,7 @@ When a node is targeted, all interfaces with route table entries to IP addresses
     <img src="../docs/img/network_hosts/nodes_label_small.png" height=330 width=600/>
 </kbd></p>
 
-The diagrams thus far seem to imply that all network interfaces have a routing table entry for any pod we wish to disrupt. This is a realistic representation for pods where you are unlikely to disrupt pods which do not communicate with the `hosts`. However, for nodes with multiple interfaces, it is conceviable and likely that not all interfaces have routing table entries to the specified `hosts`.
-
-<p align="center"><kbd>
-    <img src="../docs/img/network_hosts/nodes_limited_routes.png" height=330 width=600/>
-</kbd></p>
-
- If no matching route table entries are found across all interfaces on a node, the disruption is applied to a default interface instead.
-
-<p align="center"><kbd>
-    <img src="../docs/img/network_hosts/nodes_limited_simpler.png" height=330 width=600/>
-</kbd></p>
+The diagrams thus far seem to imply that all network interfaces have a routing table entry for any pod we wish to disrupt. For nodes with multiple interfaces, it is conceviable and likely that not all interfaces have routing table entries to the specified `hosts`. The `chaos-controller` applies tc rules to all interfaces which it discovers by traversing all routing tables.
 
 ### Case 2: Disrupting an entire AZ
 Given a label which encompasses all nodes in an Availability Zone, `chaos-controller` can simulate zonal failures for one or more cloud services.
