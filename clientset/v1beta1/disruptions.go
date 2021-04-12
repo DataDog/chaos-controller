@@ -19,6 +19,7 @@ package v1beta1
 
 import (
 	"context"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -36,7 +37,7 @@ type DisruptionInterface interface {
 
 type disruptionClient struct {
 	restClient rest.Interface
-	ns	string
+	ns         string
 }
 
 func (c *disruptionClient) List(ctx context.Context, opts metav1.ListOptions) (*v1beta1.DisruptionList, error) {

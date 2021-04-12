@@ -18,11 +18,12 @@ limitations under the License.
 package v1beta1
 
 import (
-   metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    "k8s.io/apimachinery/pkg/runtime"
- )
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+)
 
 var (
+	// ClientSchemeBuilder is exported for client-go purposes
 	ClientSchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
 )
 
@@ -30,8 +31,9 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(GroupVersion,
 		&Disruption{},
 		&DisruptionList{},
-		)
+	)
 
 	metav1.AddToGroupVersion(scheme, GroupVersion)
+
 	return nil
 }

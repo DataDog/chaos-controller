@@ -34,7 +34,7 @@ type DisruptionV1Beta1Client struct {
 
 func NewForConfig(c *rest.Config) (*DisruptionV1Beta1Client, error) {
 	config := *c
-	config.ContentConfig.GroupVersion = &schema.GroupVersion{Group: v1beta1.GroupName, Version: v1beta1.ApiVersion}
+	config.ContentConfig.GroupVersion = &schema.GroupVersion{Group: v1beta1.GroupName, Version: v1beta1.APIVersion}
 	config.APIPath = "/apis"
 	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 	config.UserAgent = rest.DefaultKubernetesUserAgent()
@@ -50,6 +50,6 @@ func NewForConfig(c *rest.Config) (*DisruptionV1Beta1Client, error) {
 func (c *DisruptionV1Beta1Client) Disruptions(namespace string) DisruptionInterface {
 	return &disruptionClient{
 		restClient: c.restClient,
-		ns: namespace,
+		ns:         namespace,
 	}
 }
