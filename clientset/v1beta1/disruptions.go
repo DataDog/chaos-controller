@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// DisruptionInterface is the interface for the end client the user will use
 type DisruptionInterface interface {
 	List(ctx context.Context, opts metav1.ListOptions) (*v1beta1.DisruptionList, error)
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta1.Disruption, error)
@@ -40,6 +41,7 @@ type disruptionClient struct {
 	ns         string
 }
 
+// List lists disruptions
 func (c *disruptionClient) List(ctx context.Context, opts metav1.ListOptions) (*v1beta1.DisruptionList, error) {
 	result := v1beta1.DisruptionList{}
 	err := c.restClient.
@@ -53,6 +55,7 @@ func (c *disruptionClient) List(ctx context.Context, opts metav1.ListOptions) (*
 	return &result, err
 }
 
+// Get gets a disruption
 func (c *disruptionClient) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta1.Disruption, error) {
 	result := v1beta1.Disruption{}
 	err := c.restClient.
@@ -67,6 +70,7 @@ func (c *disruptionClient) Get(ctx context.Context, name string, opts metav1.Get
 	return &result, err
 }
 
+// Delete deletes a disruption
 func (c *disruptionClient) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.restClient.
 		Delete().
@@ -78,6 +82,7 @@ func (c *disruptionClient) Delete(ctx context.Context, name string, opts metav1.
 		Error()
 }
 
+// Create creates a disruption
 func (c *disruptionClient) Create(ctx context.Context, disruption *v1beta1.Disruption) (*v1beta1.Disruption, error) {
 	result := v1beta1.Disruption{}
 	err := c.restClient.
@@ -91,8 +96,10 @@ func (c *disruptionClient) Create(ctx context.Context, disruption *v1beta1.Disru
 	return &result, err
 }
 
+// Watch watches a disruption(s)
 func (c *disruptionClient) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	opts.Watch = true
+
 	return c.restClient.
 		Get().
 		Namespace(c.ns).
