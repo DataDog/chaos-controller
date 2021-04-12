@@ -19,7 +19,6 @@ type NetlinkAdapter interface {
 	LinkList() ([]NetlinkLink, error)
 	LinkByIndex(index int) (NetlinkLink, error)
 	LinkByName(name string) (NetlinkLink, error)
-	RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error)
 	DefaultRoute() (NetlinkRoute, error)
 }
 
@@ -52,7 +51,10 @@ func (a netlinkAdapter) listRoutes() ([]netlink.Route, error) {
 
 	// get all the existing routing tables routes
 	for table := range tables {
-		routes, err := handler.RouteListFiltered(unix.AF_INET, &netlink.Route{Table: table}, netlink.RT_FILTER_TABLE)
+		// NOTE: wer are using a magic number here (1024, which comes from the netlink library constants) for MacOS build compatibility
+		// netlink.RT_FILTER_TABLE == 1024
+		// https://github.com/vishvananda/netlink/blob/v1.1.0/route_linux.go#L34
+		routes, err := handler.RouteListFiltered(unix.AF_INET, &netlink.Route{Table: table}, 1024)
 		if err != nil {
 			return nil, err
 		}
@@ -120,37 +122,6 @@ func (a netlinkAdapter) LinkByName(name string) (NetlinkLink, error) {
 	}
 
 	return newNetlinkLink(link), nil
-}
-
-func (a netlinkAdapter) RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error) {
-	r := []NetlinkRoute{}
-
-	// get the handler
-	handler, err := netlink.NewHandle()
-	if err != nil {
-		return nil, err
-	}
-
-	// get routes for given ip
-	routes, err := handler.RouteGet(ip.IP)
-	if err != nil {
-		return nil, err
-	}
-
-	// convert netlink routes to interfaces
-	for _, route := range routes {
-		link, err := netlink.LinkByIndex(route.LinkIndex)
-		if err != nil {
-			return nil, err
-		}
-
-		r = append(r, netlinkRoute{
-			link: newNetlinkLink(link),
-			gw:   route.Gw,
-		})
-	}
-
-	return r, nil
 }
 
 func (a netlinkAdapter) DefaultRoute() (NetlinkRoute, error) {
