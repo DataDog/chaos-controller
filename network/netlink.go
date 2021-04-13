@@ -51,7 +51,7 @@ func (a netlinkAdapter) listRoutes() ([]netlink.Route, error) {
 
 	// get all the existing routing tables routes
 	for table := range tables {
-		// NOTE: wer are using a magic number here (1024, which comes from the netlink library constants) for MacOS build compatibility
+		// NOTE: we are using a magic number here (1024, which comes from the netlink library constants) for MacOS build compatibility
 		// netlink.RT_FILTER_TABLE == 1024
 		// https://github.com/vishvananda/netlink/blob/v1.1.0/route_linux.go#L34
 		routes, err := handler.RouteListFiltered(unix.AF_INET, &netlink.Route{Table: table}, 1024)
