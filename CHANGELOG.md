@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.7.1](https://github.com/DataDog/chaos-controller/tree/3.7.1) (2021-04-13)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.7.0...3.7.1)
+
+**Merged pull requests:**
+
+- Fix spelling error on demo sample [\#287](https://github.com/DataDog/chaos-controller/pull/287) ([clairecng](https://github.com/clairecng))
+- Apply tc rules and filters to all interfaces instead of trying to guess the one to choose [\#286](https://github.com/DataDog/chaos-controller/pull/286) ([Devatoria](https://github.com/Devatoria))
+- Ignore invalid link index when applying a network disruption [\#285](https://github.com/DataDog/chaos-controller/pull/285) ([Devatoria](https://github.com/Devatoria))
+- Improve targeting documentation [\#284](https://github.com/DataDog/chaos-controller/pull/284) ([ptnapoleon](https://github.com/ptnapoleon))
+- CORE-623: use zap logger after logger init [\#283](https://github.com/DataDog/chaos-controller/pull/283) ([nathan-tournant](https://github.com/nathan-tournant))
+- Fix interface txqlen not being cleared on network disruption apply error [\#282](https://github.com/DataDog/chaos-controller/pull/282) ([Devatoria](https://github.com/Devatoria))
+- CORE-586: Fix the local Kubernetes version to 1.19 [\#281](https://github.com/DataDog/chaos-controller/pull/281) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_12b93b1a36e3872a4a705d28f78f0ba15f3f34f3 [\#280](https://github.com/DataDog/chaos-controller/pull/280) ([github-actions[bot]](https://github.com/apps/github-actions))
+- change chaos injector binary [\#278](https://github.com/DataDog/chaos-controller/pull/278) ([Azoam](https://github.com/Azoam))
+
 ## [3.7.0](https://github.com/DataDog/chaos-controller/tree/3.7.0) (2021-03-24)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.6.0...3.7.0)
@@ -355,6 +371,7 @@
 **Merged pull requests:**
 
 - Change code owners to the new core resilience team [\#125](https://github.com/DataDog/chaos-controller/pull/125) ([Devatoria](https://github.com/Devatoria))
+- Add cpu pressure injection [\#124](https://github.com/DataDog/chaos-controller/pull/124) ([Devatoria](https://github.com/Devatoria))
 - api: Add a maximum value for networkLatency.delay [\#123](https://github.com/DataDog/chaos-controller/pull/123) ([dd-adn](https://github.com/dd-adn))
 - Switch to noop metrics sink by default [\#122](https://github.com/DataDog/chaos-controller/pull/122) ([Devatoria](https://github.com/Devatoria))
 - Fix manager bin path in deployment [\#121](https://github.com/DataDog/chaos-controller/pull/121) ([Devatoria](https://github.com/Devatoria))
@@ -368,7 +385,6 @@
 
 **Merged pull requests:**
 
-- Add cpu pressure injection [\#124](https://github.com/DataDog/chaos-controller/pull/124) ([Devatoria](https://github.com/Devatoria))
 - Allow connection establishment before drop in network failure [\#117](https://github.com/DataDog/chaos-controller/pull/117) ([Devatoria](https://github.com/Devatoria))
 - Add some more comments in the disruption example [\#116](https://github.com/DataDog/chaos-controller/pull/116) ([Devatoria](https://github.com/Devatoria))
 - Update 3rd party licenses to show spdx identifier [\#115](https://github.com/DataDog/chaos-controller/pull/115) ([Devatoria](https://github.com/Devatoria))
@@ -581,6 +597,7 @@
 - Improve local testing [\#28](https://github.com/DataDog/chaos-controller/pull/28) ([Devatoria](https://github.com/Devatoria))
 - Add stuff to test the controller locally [\#27](https://github.com/DataDog/chaos-controller/pull/27) ([Devatoria](https://github.com/Devatoria))
 - Add helpers package tests [\#26](https://github.com/DataDog/chaos-controller/pull/26) ([Devatoria](https://github.com/Devatoria))
+- Update README with details about nfis [\#21](https://github.com/DataDog/chaos-controller/pull/21) ([kathy-huang](https://github.com/kathy-huang))
 
 ## [0.1.0](https://github.com/DataDog/chaos-controller/tree/0.1.0) (2019-05-02)
 
@@ -589,7 +606,6 @@
 **Merged pull requests:**
 
 - Add node failure CRD and controller [\#25](https://github.com/DataDog/chaos-controller/pull/25) ([Devatoria](https://github.com/Devatoria))
-- Update README with details about nfis [\#21](https://github.com/DataDog/chaos-controller/pull/21) ([kathy-huang](https://github.com/kathy-huang))
 
 ## [0.0.6](https://github.com/DataDog/chaos-controller/tree/0.0.6) (2019-04-25)
 
