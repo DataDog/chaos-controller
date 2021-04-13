@@ -93,10 +93,6 @@ var _ = Describe("Failure", func() {
 		nl.On("LinkByName", "lo").Return(nllink1, nil)
 		nl.On("LinkByName", "eth0").Return(nllink2, nil)
 		nl.On("LinkByName", "eth1").Return(nllink3, nil)
-		nl.On("RoutesForIP", "10.0.0.2/32").Return([]network.NetlinkRoute{nlroute2}, nil)      // node IP route going through eth0
-		nl.On("RoutesForIP", "1.1.1.1/32").Return([]network.NetlinkRoute{nlroute2}, nil)       // random external route going through eth0
-		nl.On("RoutesForIP", "2.2.2.2/32").Return([]network.NetlinkRoute{nlroute3}, nil)       // random external route going through eth1
-		nl.On("RoutesForIP", "192.168.0.254/32").Return([]network.NetlinkRoute{nlroute3}, nil) // apiserver route going through eth1
 		nl.On("DefaultRoute").Return(nlroute2, nil)
 
 		// dns
@@ -208,6 +204,7 @@ var _ = Describe("Failure", func() {
 		// hosts filtering cases
 		Context("with no hosts specified", func() {
 			It("should add a filter to redirect all traffic on main interfaces on the disrupted band", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "nil", "0.0.0.0/0", 0, spec.Port, spec.Protocol, "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "0.0.0.0/0", 0, spec.Port, spec.Protocol, "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "nil", "0.0.0.0/0", 0, spec.Port, spec.Protocol, "1:4")
 			})
@@ -218,8 +215,12 @@ var _ = Describe("Failure", func() {
 				spec.Hosts = []string{"1.1.1.1", "2.2.2.2"}
 			})
 
-			It("should add a filter to redirect targeted traffic on related interfaces on the disrupted band filter on given hosts as destination IP", func() {
+			It("should add a filter to redirect targeted traffic on all interfaces on the disrupted band filter on given hosts as destination IP", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "nil", "1.1.1.1/32", 0, spec.Port, spec.Protocol, "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "1.1.1.1/32", 0, spec.Port, spec.Protocol, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "nil", "1.1.1.1/32", 0, spec.Port, spec.Protocol, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "lo", "1:0", mock.Anything, "nil", "2.2.2.2/32", 0, spec.Port, spec.Protocol, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "2.2.2.2/32", 0, spec.Port, spec.Protocol, "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "nil", "2.2.2.2/32", 0, spec.Port, spec.Protocol, "1:4")
 			})
 		})
@@ -232,6 +233,7 @@ var _ = Describe("Failure", func() {
 
 			It("should add a filter to redirect node IP traffic on a non-disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "10.0.0.2/32", 0, 0, "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "nil", "10.0.0.2/32", 0, 0, "", "1:1")
 			})
 		})
 
@@ -242,13 +244,16 @@ var _ = Describe("Failure", func() {
 
 			It("should add a filter to redirect SSH traffic on a non-disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "nil", 22, 0, "tcp", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "nil", "nil", 22, 0, "tcp", "1:1")
 			})
 
 			It("should add a filter to redirect ARP traffic on a non-disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "nil", 0, 0, "arp", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "nil", "nil", 0, 0, "arp", "1:1")
 			})
 
 			It("should add a filter to apiserver traffic on a non-disrupted band", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", "eth0", "1:0", mock.Anything, "nil", "192.168.0.254/32", 0, 0, "", "1:1")
 				tc.AssertCalled(GinkgoT(), "AddFilter", "eth1", "1:0", mock.Anything, "nil", "192.168.0.254/32", 0, 0, "", "1:1")
 			})
 		})

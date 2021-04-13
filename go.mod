@@ -38,6 +38,7 @@ require (
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.uber.org/zap v1.10.0
 	golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
+	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 	gotest.tools/v3 v3.0.2 // indirect
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6

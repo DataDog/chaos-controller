@@ -38,13 +38,6 @@ func (f *NetlinkAdapterMock) LinkByName(name string) (NetlinkLink, error) {
 }
 
 //nolint:golint
-func (f *NetlinkAdapterMock) RoutesForIP(ip *net.IPNet) ([]NetlinkRoute, error) {
-	args := f.Called(ip.String())
-
-	return args.Get(0).([]NetlinkRoute), args.Error(1)
-}
-
-//nolint:golint
 func (f *NetlinkAdapterMock) DefaultRoute() (NetlinkRoute, error) {
 	args := f.Called()
 
