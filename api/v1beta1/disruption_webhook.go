@@ -16,6 +16,8 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
+
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -47,6 +49,23 @@ func (r *Disruption) ValidateCreate() error {
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	logger.Infow("validating updated disruption", "instance", r.Name, "namespace", r.Namespace)
+
+	// compare old and new disruption hashes and deny any spec changes
+	oldHash, err := old.(*Disruption).Spec.Hash()
+	if err != nil {
+		return fmt.Errorf("error getting old disruption hash: %w", err)
+	}
+
+	newHash, err := r.Spec.Hash()
+	if err != nil {
+		return fmt.Errorf("error getting new disruption hash: %w", err)
+	}
+
+	logger.Infow("comparing disruption spec hashes", "instance", r.Name, "namespace", r.Namespace, "oldHash", oldHash, "newHash", newHash)
+
+	if oldHash != newHash {
+		return fmt.Errorf("a disruption spec can't be edited, please delete and recreate it if needed")
+	}
 
 	return nil
 }

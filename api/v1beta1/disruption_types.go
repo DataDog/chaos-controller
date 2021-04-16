@@ -18,6 +18,10 @@ limitations under the License.
 package v1beta1
 
 import (
+	"crypto/md5"
+	"encoding/json"
+	"fmt"
+
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -59,8 +63,6 @@ type DisruptionStatus struct {
 	Targets []string `json:"targets,omitempty"`
 	// +nullable
 	IgnoredTargets []string `json:"ignoredTargets,omitempty"`
-	// +nullable
-	SpecHash *string `json:"specHash,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -86,4 +88,16 @@ type DisruptionList struct {
 
 func init() {
 	SchemeBuilder.Register(&Disruption{}, &DisruptionList{})
+}
+
+// Hash returns the disruption spec JSON hash
+func (ds *DisruptionSpec) Hash() (string, error) {
+	// serialize instance spec to JSON
+	specBytes, err := json.Marshal(ds)
+	if err != nil {
+		return "", fmt.Errorf("error serializing instance spec: %w", err)
+	}
+
+	// compute bytes hash
+	return fmt.Sprintf("%x", md5.Sum(specBytes)), nil
 }
