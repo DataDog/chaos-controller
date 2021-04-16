@@ -16,16 +16,18 @@ limitations under the License.
 package v1beta1
 
 import (
+	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-// log is for logging in this package.
-var disruptionlog = logf.Log.WithName("disruption-resource")
+var logger *zap.SugaredLogger
 
-func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger) error {
+	logger = &zap.SugaredLogger{}
+	*logger = *l.With("source", "admission-controller")
+
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
@@ -37,11 +39,15 @@ var _ webhook.Validator = &Disruption{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateCreate() error {
+	logger.Infow("validating created disruption", "instance", r.Name, "namespace", r.Namespace)
+
 	return nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateUpdate(old runtime.Object) error {
+	logger.Infow("validating updated disruption", "instance", r.Name, "namespace", r.Namespace)
+
 	return nil
 }
 
