@@ -23,16 +23,17 @@ package main
 import (
 	"os"
 
-	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/controllers"
-	"github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/chaos-controller/metrics"
-	"github.com/DataDog/chaos-controller/metrics/types"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/controllers"
+	"github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/metrics/types"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -119,6 +120,11 @@ func main() {
 	}
 
 	go r.ReportMetrics()
+
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	logger.Infow("restarting chaos-controller")
