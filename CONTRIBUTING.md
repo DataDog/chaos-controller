@@ -20,6 +20,8 @@ Install the [requirements](#requirements) for this project, then run the followi
 
 * start minikube with containerd engine
   * `make minikube-start`
+* deploy cert-manager
+  * `kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.3.0/cert-manager.yaml`
 * build the new image of the controller with your local changes
   * `make docker-build`
 * deploy the CRD and the controller on the minikube cluster
