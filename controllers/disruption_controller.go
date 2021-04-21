@@ -22,8 +22,6 @@ package controllers
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"math"
 	"math/rand"
@@ -172,16 +170,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 
-		// compute spec hash to detect any changes in the spec and warn the user about it
-		sameHashes, err := r.computeHash(instance)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("error computing instance spec hash: %w", err)
-		} else if !sameHashes {
-			r.log.Infow("instance spec hash has changed meaning a change to the spec has been made, aborting")
-
-			return ctrl.Result{}, nil
-		}
-
 		// retrieve targets from label selector
 		if err := r.selectTargets(instance); err != nil {
 			r.log.Errorw("error selecting targets", "error", err)
@@ -189,7 +177,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 		}
 
-		err = r.validateDisruptionSpec(instance)
+		err := r.validateDisruptionSpec(instance)
 		if err != nil {
 			return ctrl.Result{Requeue: false}, err
 		}
@@ -394,37 +382,6 @@ func (r *DisruptionReconciler) waitForPodCreation(pod *corev1.Pod) error {
 
 		return err
 	}, expBackoff)
-}
-
-// computeHash computes the given instance spec hash and returns true if both hashes (the computed one and the stored one) are the same
-// if it is not present in the instance status yet, the hash is stored and the function returns true
-// if it is present, both hash are compared: if they are different, a modification has been made to the disruption and the function returns false
-func (r *DisruptionReconciler) computeHash(instance *chaosv1beta1.Disruption) (bool, error) {
-	// serialize instance spec to JSON and compute bytes hash
-	specBytes, err := json.Marshal(instance.Spec)
-	if err != nil {
-		return false, fmt.Errorf("error serializing instance spec: %w", err)
-	}
-
-	specHash := fmt.Sprintf("%x", md5.Sum(specBytes))
-
-	// compare computed and stored hashes if present
-	// register an event in the instance if hash are different
-	if instance.Status.SpecHash != nil {
-		if *instance.Status.SpecHash != specHash {
-			r.Recorder.Event(instance, "Warning", "Mutated", "A mutation in the disruption spec has been detected. This resource is immutable and changes have no effect. Please delete and re-create the resource for changes to be effective.")
-
-			return false, nil
-		}
-	} else {
-		// store the computed hash
-		r.log.Infow("storing resource spec hash to detect further changes in spec")
-		instance.Status.SpecHash = &specHash
-
-		return true, r.Update(context.Background(), instance)
-	}
-
-	return true, nil
 }
 
 // cleanDisruption triggers the cleanup of the given instance

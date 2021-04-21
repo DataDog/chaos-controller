@@ -188,9 +188,6 @@ spec:
               type: boolean
             isStuckOnRemoval:
               type: boolean
-            specHash:
-              nullable: true
-              type: string
             targets:
               items:
                 type: string

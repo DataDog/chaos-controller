@@ -21,7 +21,7 @@ package v1beta1
 
 import (
 	"k8s.io/apimachinery/pkg/labels"
-	runtime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -243,11 +243,6 @@ func (in *DisruptionStatus) DeepCopyInto(out *DisruptionStatus) {
 		in, out := &in.IgnoredTargets, &out.IgnoredTargets
 		*out = make([]string, len(*in))
 		copy(*out, *in)
-	}
-	if in.SpecHash != nil {
-		in, out := &in.SpecHash, &out.SpecHash
-		*out = new(string)
-		**out = **in
 	}
 }
 
