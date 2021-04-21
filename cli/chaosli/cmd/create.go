@@ -1,8 +1,11 @@
+<<<<<<< HEAD
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
+=======
+>>>>>>> initial structure for chaos cli
 package cmd
 
 import (
@@ -11,6 +14,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+<<<<<<< HEAD
+=======
+// helloCmd represents the hello command
+>>>>>>> initial structure for chaos cli
 var createCmd = &cobra.Command{
 	Use:   "create",
 	Short: "create a disruption.",
@@ -23,9 +30,14 @@ var createCmd = &cobra.Command{
 
 func create(filePath string) string {
 	if filePath == "" {
+<<<<<<< HEAD
 		return pathError
 	}
 
+=======
+		return "No Path Given, Exiting..."
+	}
+>>>>>>> initial structure for chaos cli
 	return "Creation TODO"
 }
 
