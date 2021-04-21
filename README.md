@@ -105,6 +105,8 @@ Here is [a full example of the disruption resource](config/samples/complete.yaml
 
 **Note: it only applies to people outside of Datadog.**
 
+**Please install [cert-manager](https://cert-manager.io/docs/installation/kubernetes/) before going further. It is required for the admission controller to get its own self-signed certificate.**
+
 To deploy it on your cluster, you just have to run the `make install` command and it will create the CRD for the `Disruption` kind and apply the needed manifests to create the controller deployment.
 
 You can uninstall it the same way, by using the `make uninstall` command.
