@@ -80,7 +80,7 @@ func (i iptables) AddRule(chain string, protocol string, port string, jump strin
 
 	i.log.Infow("creating new iptables rule", "chain name", chain, "protocol", protocol, "port", port, "jump target", jump)
 
-	return i.ip.AppendUnique("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
+	return i.ip.AppendUnique("nat", chain, "-m", "cgroup", "--cgroup", "0x00100010", "-p", protocol, "--dport", port, "-j", jump)
 }
 
 func (i iptables) PrependRule(chain string, rulespec ...string) error {
@@ -114,5 +114,5 @@ func (i iptables) DeleteRule(chain string, protocol string, port string, jump st
 		return nil
 	}
 
-	return i.ip.DeleteIfExists("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
+	return i.ip.DeleteIfExists("nat", chain, "-m", "cgroup", "--cgroup", "0x00100010", "-p", protocol, "--dport", port, "-j", jump)
 }

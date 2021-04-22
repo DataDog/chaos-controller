@@ -74,7 +74,8 @@ func (m manager) generatePath(kind string) string {
 // Write writes the given data to the given cgroup kind
 func (m manager) Write(kind, file, data string) error {
 	path := fmt.Sprintf("%s/%s", m.generatePath(kind), file)
-
+	// TODO: remove debug line
+	fmt.Printf("\n%s > %s\n", data, path)
 	return m.write(path, data)
 }
 

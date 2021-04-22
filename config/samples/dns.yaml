@@ -3,6 +3,26 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
 
+# apiVersion: chaos.datadoghq.com/v1beta1
+# kind: Disruption
+# metadata:
+#   name: dns
+#   namespace: chaos-engineering
+# spec:
+#   level: pod
+#   selector:
+#     app: demo-curl
+#   count: 1
+#   dns: # disrupt DNS resolutions by faking results
+#     - hostname: foo.bar.svc.cluster.local # record hostname which should be faked
+#       record:
+#         type: A # return an A record
+#         value: 10.0.0.154,10.0.0.13 # list of IPs to return (will be round-robined)
+#     - hostname: datadoghq.com # record hostname which should be faked
+#       record:
+#         type: CNAME # return a CNAME record
+#         value: google.com # hostname to return
+
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
@@ -12,13 +32,11 @@ spec:
   level: pod
   selector:
     app: demo-curl
+  containers:
+    - curl
   count: 1
   dns: # disrupt DNS resolutions by faking results
-    - hostname: foo.bar.svc.cluster.local # record hostname which should be faked
+    - hostname: demo.chaos-engineering.svc.cluster.local # record hostname which should be faked
       record:
         type: A # return an A record
         value: 10.0.0.154,10.0.0.13 # list of IPs to return (will be round-robined)
-    - hostname: datadoghq.com # record hostname which should be faked
-      record:
-        type: CNAME # return a CNAME record
-        value: google.com # hostname to return

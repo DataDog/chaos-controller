@@ -82,20 +82,30 @@ func (i DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to run resolver: %w", err)
 	}
 
+	i.config.Log.Infow("check container info [TAG]", "name", i.config.Container.Name(), "id", i.config.Container.ID(), "cgroup", i.config.Container.CgroupPath())
+
+	// write classid to container net_cls cgroup
+	if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x00100010"); err != nil {
+		return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
+	}
+
 	// enter target network namespace
 	if err := i.config.Netns.Enter(); err != nil {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
 	// Set up iptables rules
+	// Create CHAOS-DNS Chain
 	if err := i.config.Iptables.CreateChain("CHAOS-DNS"); err != nil {
 		return fmt.Errorf("unable to create new iptables chain: %w", err)
 	}
 
+	// Redirect all CHAOS-DNS traffic to podIP
 	if err := i.config.Iptables.AddRuleWithIP("CHAOS-DNS", "udp", "53", "DNAT", podIP); err != nil {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
 
+	// Redirect selected OUTPUT traffic to CHAOS-DNS
 	if err := i.config.Iptables.AddRule("OUTPUT", "udp", "53", "CHAOS-DNS"); err != nil {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
