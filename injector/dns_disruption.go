@@ -30,6 +30,8 @@ type DNSDisruptionInjectorConfig struct {
 	PythonRunner PythonRunner
 }
 
+const cgroupId = "0x00100010"
+
 // NewDNSDisruptionInjector creates a DNSDisruptionInjector object with the given config,
 // missing fields are initialized with the defaults
 func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisruptionInjectorConfig) (Injector, error) {
@@ -82,10 +84,8 @@ func (i DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to run resolver: %w", err)
 	}
 
-	i.config.Log.Infow("check container info [TAG]", "name", i.config.Container.Name(), "id", i.config.Container.ID(), "cgroup", i.config.Container.CgroupPath())
-
-	// write classid to container net_cls cgroup
-	if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x00100010"); err != nil {
+	// write classid to container net_cls cgroup - for iptable filtering
+	if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", cgroupId); err != nil {
 		return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 	}
 
@@ -95,18 +95,16 @@ func (i DNSDisruptionInjector) Inject() error {
 	}
 
 	// Set up iptables rules
-	// Create CHAOS-DNS Chain
 	if err := i.config.Iptables.CreateChain("CHAOS-DNS"); err != nil {
 		return fmt.Errorf("unable to create new iptables chain: %w", err)
 	}
 
-	// Redirect all CHAOS-DNS traffic to podIP
 	if err := i.config.Iptables.AddRuleWithIP("CHAOS-DNS", "udp", "53", "DNAT", podIP); err != nil {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
 
-	// Redirect selected OUTPUT traffic to CHAOS-DNS
-	if err := i.config.Iptables.AddRule("OUTPUT", "udp", "53", "CHAOS-DNS"); err != nil {
+	// Redirects traffic marked by targeted cgroupId
+	if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", cgroupId, "udp", "53", "CHAOS-DNS"); err != nil {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
 
@@ -117,7 +115,7 @@ func (i DNSDisruptionInjector) Inject() error {
 		}
 
 		// Re-route all pods under node
-		if err := i.config.Iptables.PrependRule("PREROUTING", "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
+		if err := i.config.Iptables.AddCgroupFilterRule("PREROUTING", cgroupId, "udp", "53", "CHAOS-DNS"); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 	}
@@ -138,13 +136,13 @@ func (i DNSDisruptionInjector) Clean() error {
 	}
 
 	// Delete iptables rules
-	if err := i.config.Iptables.DeleteRule("OUTPUT", "udp", "53", "CHAOS-DNS"); err != nil {
+	if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", cgroupId, "udp", "53", "CHAOS-DNS"); err != nil {
 		return fmt.Errorf("unable to remove injected iptables rule: %w", err)
 	}
 
 	if i.config.Level == chaostypes.DisruptionLevelNode {
 		// Delete prerouting rule affecting all pods on node
-		if err := i.config.Iptables.DeleteRule("PREROUTING", "udp", "53", "CHAOS-DNS"); err != nil {
+		if err := i.config.Iptables.DeleteCgroupFilterRule("PREROUTING", cgroupId, "udp", "53", "CHAOS-DNS"); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 	}

@@ -18,8 +18,10 @@ type Iptables interface {
 	ClearAndDeleteChain(name string) error
 	AddRuleWithIP(chain string, protocol string, port string, jump string, destinationIP string) error
 	AddRule(chain string, protocol string, port string, jump string) error
+	AddCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error
 	PrependRule(chain string, rulespec ...string) error
 	DeleteRule(chain string, protocol string, port string, jump string) error
+	DeleteCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error
 }
 
 type iptables struct {
@@ -94,6 +96,16 @@ func (i iptables) PrependRule(chain string, rulespec ...string) error {
 	return i.ip.Insert("nat", chain, 1, rulespec...)
 }
 
+// Add a rule with
+func (i iptables) AddCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error {
+	if i.dryRun {
+		return nil
+	}
+	i.log.Infow("creating new iptables rule", "chain name", chain, "cgroup/netclass/classid identifier", cgroupid, "protocol", protocol, "port", port, "jump target", jump)
+
+	return i.ip.Insert("nat", chain, 1, "-m", "cgroup", "--cgroup", cgroupid, "-p", protocol, "--dport", port, "-j", jump)
+}
+
 func (i iptables) DeleteRule(chain string, protocol string, port string, jump string) error {
 	if i.dryRun {
 		return nil
@@ -114,5 +126,23 @@ func (i iptables) DeleteRule(chain string, protocol string, port string, jump st
 		return nil
 	}
 
-	return i.ip.DeleteIfExists("nat", chain, "-m", "cgroup", "--cgroup", "0x00100010", "-p", protocol, "--dport", port, "-j", jump)
+	return i.ip.DeleteIfExists("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
+}
+
+func (i iptables) DeleteCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error {
+	if i.dryRun {
+		return nil
+	}
+
+	i.log.Infow("deleting iptables rule", "chain name", chain, "protocol", protocol, "port", port, "jump target", jump)
+
+	if exists, _ := i.ip.ChainExists("nat", chain); !exists {
+		return nil
+	}
+
+	if exists, _ := i.ip.ChainExists("nat", jump); !exists {
+		return nil
+	}
+
+	return i.ip.DeleteIfExists("nat", chain, "-m", "cgroup", "--cgroup", cgroupid, "-p", protocol, "--dport", port, "-j", jump)
 }
