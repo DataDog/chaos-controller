@@ -44,6 +44,10 @@ func (i iptables) CreateChain(name string) error {
 		return nil
 	}
 
+	if res, _ := i.ip.ChainExists("nat", name); res {
+		return nil
+	}
+
 	i.log.Infow("creating new iptables chain", "chain name", name)
 
 	return i.ip.NewChain("nat", name)
