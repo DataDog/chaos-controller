@@ -13,7 +13,7 @@ webhooks:
       namespace: system
       path: /validate-chaos-datadoghq-com-v1beta1-disruption
   failurePolicy: Fail
-  name: vdisruption.kb.io
+  name: chaos-controller-admission-webhook.chaos-engineering.svc
   rules:
   - apiGroups:
     - chaos.datadoghq.com
