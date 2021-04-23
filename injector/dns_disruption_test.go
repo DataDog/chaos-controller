@@ -118,7 +118,7 @@ var _ = Describe("Failure", func() {
 		Context("iptables cleanup should happen", func() {
 			It("should clear the iptables rules", func() {
 				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "OUTPUT", CGROUPID, "udp", "53", "CHAOS-DNS")
-				// iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "PREROUTING", injector.CGROUPID, "udp", "53", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "PREROUTING", CGROUPID, "udp", "53", "CHAOS-DNS")
 				iptables.AssertCalled(GinkgoT(), "ClearAndDeleteChain", "CHAOS-DNS")
 			})
 		})
