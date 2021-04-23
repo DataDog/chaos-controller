@@ -53,3 +53,17 @@ func (f *IptablesMock) DeleteRule(chain string, protocol string, port string, ju
 
 	return args.Error(0)
 }
+
+//nolint:golint
+func (f *IptablesMock) AddCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error {
+	args := f.Called(chain, cgroupid, protocol, port, jump)
+
+	return args.Error(0)
+}
+
+//nolint:golint
+func (f *IptablesMock) DeleteCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error {
+	args := f.Called(chain, cgroupid, protocol, port, jump)
+
+	return args.Error(0)
+}

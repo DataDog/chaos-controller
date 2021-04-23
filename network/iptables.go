@@ -96,12 +96,14 @@ func (i iptables) PrependRule(chain string, rulespec ...string) error {
 	return i.ip.Insert("nat", chain, 1, rulespec...)
 }
 
-// Add a rule with
+// Add a rule with cgroup filter
 func (i iptables) AddCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error {
 	if i.dryRun {
 		return nil
 	}
-	i.log.Infow("creating new iptables rule", "chain name", chain, "cgroup/netclass/classid identifier", cgroupid, "protocol", protocol, "port", port, "jump target", jump)
+
+	i.log.Infow("creating new iptables rule", "chain name", chain, "cgroup/netclass/classid identifier", cgroupid,
+		"protocol", protocol, "port", port, "jump target", jump)
 
 	return i.ip.Insert("nat", chain, 1, "-m", "cgroup", "--cgroup", cgroupid, "-p", protocol, "--dport", port, "-j", jump)
 }
@@ -129,6 +131,7 @@ func (i iptables) DeleteRule(chain string, protocol string, port string, jump st
 	return i.ip.DeleteIfExists("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
 }
 
+// Delete a rule with cgroup filter
 func (i iptables) DeleteCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error {
 	if i.dryRun {
 		return nil
