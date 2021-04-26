@@ -28,9 +28,8 @@ type DNSDisruptionInjectorConfig struct {
 	Iptables     network.Iptables
 	FileWriter   FileWriter
 	PythonRunner PythonRunner
+	CgroupID     string
 }
-
-const CGROUPID = "0x00100010"
 
 // NewDNSDisruptionInjector creates a DNSDisruptionInjector object with the given config,
 // missing fields are initialized with the defaults
@@ -52,6 +51,9 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 			log:    config.Log,
 		}
 	}
+
+	// arbitrary constant to mark packets by cgroup
+	config.CgroupID = "0x00100010"
 
 	return DNSDisruptionInjector{
 		spec:   spec,
@@ -99,12 +101,12 @@ func (i DNSDisruptionInjector) Inject() error {
 	}
 
 	// write classid to container net_cls cgroup - for iptable filtering
-	if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", CGROUPID); err != nil {
+	if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", i.config.CgroupID); err != nil {
 		return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 	}
 
-	// Redirect  traffic marked by targeted CGROUPID to CHAOS-DNS
-	if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", CGROUPID, "udp", "53", "CHAOS-DNS"); err != nil {
+	// Redirect traffic marked by targeted CgroupID to CHAOS-DNS
+	if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", i.config.CgroupID, "udp", "53", "CHAOS-DNS"); err != nil {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
 
@@ -145,7 +147,7 @@ func (i DNSDisruptionInjector) Clean() error {
 	}
 
 	// Delete iptables rules
-	if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", CGROUPID, "udp", "53", "CHAOS-DNS"); err != nil {
+	if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", i.config.CgroupID, "udp", "53", "CHAOS-DNS"); err != nil {
 		return fmt.Errorf("unable to remove injected iptables rule: %w", err)
 	}
 
