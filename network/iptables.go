@@ -105,7 +105,7 @@ func (i iptables) AddCgroupFilterRule(chain string, cgroupid string, protocol st
 	i.log.Infow("creating new iptables rule", "chain name", chain, "cgroup/netclass/classid identifier", cgroupid,
 		"protocol", protocol, "port", port, "jump target", jump)
 
-	return i.ip.Insert("nat", chain, 1, "-m", "cgroup", "--cgroup", cgroupid, "-p", protocol, "--dport", port, "-j", jump)
+	return i.ip.AppendUnique("nat", chain, "-m", "cgroup", "--cgroup", cgroupid, "-p", protocol, "--dport", port, "-j", jump)
 }
 
 func (i iptables) DeleteRule(chain string, protocol string, port string, jump string) error {
