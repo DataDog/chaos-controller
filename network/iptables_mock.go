@@ -34,13 +34,6 @@ func (f *IptablesMock) AddRuleWithIP(chain string, protocol string, port string,
 }
 
 //nolint:golint
-func (f *IptablesMock) AddRule(chain string, protocol string, port string, jump string) error {
-	args := f.Called(chain, protocol, port, jump)
-
-	return args.Error(0)
-}
-
-//nolint:golint
 func (f *IptablesMock) PrependRule(chain string, rulespec ...string) error {
 	args := f.Called(chain, rulespec)
 
