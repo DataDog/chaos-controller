@@ -106,7 +106,7 @@ minikube-start:
 	minikube start \
 		--vm-driver=virtualbox \
 		--container-runtime=containerd \
-		--memory=4096 \
+		--memory=8192 \
 		--cpus=4 \
 		--kubernetes-version=1.19.9 \
 		--disk-size=50GB \
