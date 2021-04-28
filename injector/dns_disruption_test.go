@@ -73,7 +73,6 @@ var _ = Describe("Failure", func() {
 			},
 			Iptables:     iptables,
 			PythonRunner: pythonRunner,
-			CgroupID:     "0x00100010",
 		}
 
 		spec = v1beta1.DNSDisruptionSpec{}
@@ -98,7 +97,7 @@ var _ = Describe("Failure", func() {
 			It("should create one chain and four rules", func() {
 				iptables.AssertCalled(GinkgoT(), "CreateChain", "CHAOS-DNS")
 				iptables.AssertCalled(GinkgoT(), "AddRuleWithIP", "CHAOS-DNS", "udp", "53", "DNAT", "10.0.0.2")
-				iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "OUTPUT", "0x00100010", "udp", "53", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "OUTPUT", INJECTOR_DNS_CGROUP_CLASSID, "udp", "53", "CHAOS-DNS")
 				iptables.AssertCalled(GinkgoT(), "PrependRule", "CHAOS-DNS", []string{"-s", "10.0.0.2", "-j", "RETURN"})
 				iptables.AssertCalled(GinkgoT(), "PrependRule", "OUTPUT", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
 				iptables.AssertCalled(GinkgoT(), "PrependRule", "PREROUTING", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
@@ -118,7 +117,7 @@ var _ = Describe("Failure", func() {
 
 		Context("iptables cleanup should happen", func() {
 			It("should clear the iptables rules", func() {
-				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "OUTPUT", "0x00100010", "udp", "53", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "OUTPUT", INJECTOR_DNS_CGROUP_CLASSID, "udp", "53", "CHAOS-DNS")
 				iptables.AssertCalled(GinkgoT(), "DeleteRule", "OUTPUT", "udp", "53", "CHAOS-DNS")
 				iptables.AssertCalled(GinkgoT(), "DeleteRule", "PREROUTING", "udp", "53", "CHAOS-DNS")
 				iptables.AssertCalled(GinkgoT(), "ClearAndDeleteChain", "CHAOS-DNS")
