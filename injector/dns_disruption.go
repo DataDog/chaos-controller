@@ -98,14 +98,16 @@ func (i DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
 
-	// write classid to container net_cls cgroup - for iptable filtering
-	if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", INJECTOR_DNS_CGROUP_CLASSID); err != nil {
-		return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
-	}
+	if i.config.Level == chaostypes.DisruptionLevelPod {
+		// write classid to container net_cls cgroup - for iptable filtering
+		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", INJECTOR_DNS_CGROUP_CLASSID); err != nil {
+			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
+		}
 
-	// Redirect traffic marked by targeted INJECTOR_DNS_CGROUP_CLASSID to CHAOS-DNS
-	if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", INJECTOR_DNS_CGROUP_CLASSID, "udp", "53", "CHAOS-DNS"); err != nil {
-		return fmt.Errorf("unable to create new iptables rule: %w", err)
+		// Redirect traffic marked by targeted INJECTOR_DNS_CGROUP_CLASSID to CHAOS-DNS
+		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", INJECTOR_DNS_CGROUP_CLASSID, "udp", "53", "CHAOS-DNS"); err != nil {
+			return fmt.Errorf("unable to create new iptables rule: %w", err)
+		}
 	}
 
 	if i.config.Level == chaostypes.DisruptionLevelNode {
@@ -139,14 +141,16 @@ func (i DNSDisruptionInjector) Clean() error {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
-	// reset net_cls classid
-	if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x0"); err != nil {
-		return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
-	}
+	if i.config.Level == chaostypes.DisruptionLevelPod {
+		// reset net_cls classid
+		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x0"); err != nil {
+			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
+		}
 
-	// Delete iptables rules
-	if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", INJECTOR_DNS_CGROUP_CLASSID, "udp", "53", "CHAOS-DNS"); err != nil {
-		return fmt.Errorf("unable to remove injected iptables rule: %w", err)
+		// Delete iptables rules
+		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", INJECTOR_DNS_CGROUP_CLASSID, "udp", "53", "CHAOS-DNS"); err != nil {
+			return fmt.Errorf("unable to remove injected iptables rule: %w", err)
+		}
 	}
 
 	if i.config.Level == chaostypes.DisruptionLevelNode {
