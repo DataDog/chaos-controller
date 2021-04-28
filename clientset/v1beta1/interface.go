@@ -29,12 +29,10 @@ type DisruptionV1Beta1Interface interface {
 	Disruptions(namespace string) DisruptionInterface
 }
 
-// DisruptionV1Beta1Client wraps a restclient in a way that gives you nice methods
 type DisruptionV1Beta1Client struct {
 	restClient rest.Interface
 }
 
-// NewForConfig gets you a clientset
 func NewForConfig(c *rest.Config) (*DisruptionV1Beta1Client, error) {
 	config := *c
 	config.ContentConfig.GroupVersion = &schema.GroupVersion{Group: v1beta1.GroupName, Version: v1beta1.APIVersion}
@@ -50,7 +48,7 @@ func NewForConfig(c *rest.Config) (*DisruptionV1Beta1Client, error) {
 	return &DisruptionV1Beta1Client{restClient: client}, nil
 }
 
-// Disruptions gets you a client for disruptions (why is it named this way in the doc, im not sure)
+// Disruptions returns a client for interacting with disruptions
 func (c *DisruptionV1Beta1Client) Disruptions(namespace string) DisruptionInterface {
 	return &disruptionClient{
 		restClient: c.restClient,
