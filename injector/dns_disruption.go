@@ -30,7 +30,7 @@ type DNSDisruptionInjectorConfig struct {
 	PythonRunner PythonRunner
 }
 
-const INJECTOR_DNS_CGROUP_CLASSID = "0x00100010"
+const InjectorDNSCgroupClassID = "0x00100010"
 
 // NewDNSDisruptionInjector creates a DNSDisruptionInjector object with the given config,
 // missing fields are initialized with the defaults
@@ -100,12 +100,12 @@ func (i DNSDisruptionInjector) Inject() error {
 
 	if i.config.Level == chaostypes.DisruptionLevelPod {
 		// write classid to container net_cls cgroup - for iptable filtering
-		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", INJECTOR_DNS_CGROUP_CLASSID); err != nil {
+		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", InjectorDNSCgroupClassID); err != nil {
 			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 		}
 
-		// Redirect traffic marked by targeted INJECTOR_DNS_CGROUP_CLASSID to CHAOS-DNS
-		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", INJECTOR_DNS_CGROUP_CLASSID, "udp", "53", "CHAOS-DNS"); err != nil {
+		// Redirect traffic marked by targeted InjectorDNSCgroupClassID to CHAOS-DNS
+		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 	}
@@ -148,7 +148,7 @@ func (i DNSDisruptionInjector) Clean() error {
 		}
 
 		// Delete iptables rules
-		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", INJECTOR_DNS_CGROUP_CLASSID, "udp", "53", "CHAOS-DNS"); err != nil {
+		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
 			return fmt.Errorf("unable to remove injected iptables rule: %w", err)
 		}
 	}

@@ -23,16 +23,17 @@ import (
 
 var _ = Describe("Failure", func() {
 	var (
-		inj          Injector
-		config       DNSDisruptionInjectorConfig
-		spec         v1beta1.DNSDisruptionSpec
-		netnsManager *netns.ManagerMock
-		iptables     *network.IptablesMock
+		inj           Injector
+		config        DNSDisruptionInjectorConfig
+		spec          v1beta1.DNSDisruptionSpec
+		cgroupManager *cgroup.ManagerMock
+		netnsManager  *netns.ManagerMock
+		iptables      *network.IptablesMock
 	)
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager := &cgroup.ManagerMock{}
+		cgroupManager = &cgroup.ManagerMock{}
 		cgroupManager.On("Exists", "net_cls").Return(true, nil)
 		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
@@ -111,7 +112,10 @@ var _ = Describe("Failure", func() {
 				config.Level = chaostypes.DisruptionLevelPod
 			})
 			It("creates pod-level iptable filter rules", func() {
-				iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "OUTPUT", INJECTOR_DNS_CGROUP_CLASSID, "udp", "53", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS")
+			})
+			It("should write the custom classid to the target net_cls cgroup", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", InjectorDNSCgroupClassID)
 			})
 		})
 	})
@@ -142,7 +146,10 @@ var _ = Describe("Failure", func() {
 				config.Level = chaostypes.DisruptionLevelPod
 			})
 			It("should clear the pod-level iptables rules", func() {
-				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "OUTPUT", INJECTOR_DNS_CGROUP_CLASSID, "udp", "53", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS")
+			})
+			It("should reset the custom classid", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", "0x0")
 			})
 		})
 
