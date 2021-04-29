@@ -50,11 +50,14 @@ func init() {
 
 func main() {
 	var (
-		metricsAddr          string
-		enableLeaderElection bool
-		deleteOnly           bool
-		sink                 string
-		injectorAnnotations  map[string]string
+		metricsAddr             string
+		enableLeaderElection    bool
+		deleteOnly              bool
+		sink                    string
+		injectorAnnotations     map[string]string
+		admissionWebhookCertDir string
+		admissionWebhookHost    string
+		admissionWebhookPort    int
 	)
 
 	pflag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
@@ -63,6 +66,9 @@ func main() {
 		"Enable delete only mode which will not allow new disruption to start and will only continue to clean up and remove existing disruptions.")
 	pflag.StringToStringVar(&injectorAnnotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	pflag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
+	pflag.StringVar(&admissionWebhookCertDir, "admission-webhook-cert-dir", "", "Admission webhook certificate directory to search for tls.crt and tls.key files")
+	pflag.StringVar(&admissionWebhookHost, "admission-webhook-host", "", "Host used by the admission controller to serve requests")
+	pflag.IntVar(&admissionWebhookPort, "admission-webhook-port", 9443, "Port used by the admission controller to serve requests")
 	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
@@ -76,7 +82,9 @@ func main() {
 		MetricsBindAddress: metricsAddr,
 		LeaderElection:     enableLeaderElection,
 		LeaderElectionID:   "75ec2fa4.datadoghq.com",
-		Port:               9443,
+		Host:               admissionWebhookHost,
+		Port:               admissionWebhookPort,
+		CertDir:            admissionWebhookCertDir,
 	})
 	if err != nil {
 		logger.Errorw("unable to start manager", "error", err)
