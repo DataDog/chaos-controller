@@ -58,6 +58,10 @@ build:make:
     - "runner:docker"
     - "size:large"
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2875076-79d562c-1.4.0
+  before_script:
+    - echo "Logging into the Docker Hub"
+    - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
+    - aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_pwd --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin docker.io
 
 # pre-release
 # build the target from the local Dockerfile and push it to
@@ -126,10 +130,6 @@ release-injector:
   stage: release-public
   tags: [ "runner:docker", "size:large" ]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:v1912023-8c8dc1c-0.6.1
-  before_script:
-    - echo "Logging into the Docker Hub"
-    - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
-    - aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_pwd --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin docker.io
   script:
     - docker pull 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME}:${TAG}
     - docker tag 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME}:${TAG} datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
