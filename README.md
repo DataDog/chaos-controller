@@ -130,3 +130,11 @@ Please read the [contributing documentation](CONTRIBUTING.md) for more informati
 ## Kubernetes 1.20.x known issues
 
 [The following issue](https://github.com/kubernetes/kubernetes/issues/97288) prevents the controller from running properly on Kubernetes 1.20.x. We don't plan to support this version. [The fix](https://github.com/kubernetes/kubernetes/pull/97980) should be released with Kubernetes 1.21.
+
+## Disclaimer
+
+The `chaos-controller` allows you to disrupt your Kubernetes infrastructure through various means including but not limited to: bringing down resources you have provisioned, corrupting, dropping, or delaying critical data form being transmitted between resources, and intentionally exhausting critical computational resources. Please read the implications of each type of disruption carefully before applying them to critical production or similarly critical systems.
+
+The use of `chaos-controller` is done at your own discretion and risk and with agreement that you will be solely responsible for any damage to your Kubernetes infrastructure or loss of data that results from such activities. You are solely responsible for adequate backup of the data lost during and maintaining uptime of your product for users when using the `chaos-controller`, and we will not be liable for any damages that you may suffer.
+
+No advice or information, whether oral or written, obtained by you from us or from this codebase shall create any warranty for the software.
