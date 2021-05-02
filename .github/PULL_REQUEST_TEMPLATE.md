@@ -1,15 +1,26 @@
-### What does this PR do?
+## What does this PR do?
 
-A brief description of the change being made with this pull request.
+- [ ] Adds new Functinoality
+- [ ] Alters existing functionality
+- [ ] Fixes a bug
+- [ ] Improves Documentation
 
-### Motivation
+A brief description of changes to implementation or controller behavior:
 
-What inspired you to submit this pull request?
+Motivation for change:
 
-### Testing Guidelines
+## Code Quality
 
-Any efforts to test these changes? If not possible, why?
+### Testing
 
-### Additional Notes
+- [ ] I used existing unit tests
+- [ ] I manually tested locally
+- [ ] I will manually test in a canary deployment
 
-Anything else we should know when reviewing?
+Please lest your manual testing steps (sample `yaml` file, commands, important checks):
+
+### Checklist
+
+- [ ] The documentation is up to date
+- [ ] My code is sufficiently commented
+- [ ] I have tested to the best of my ability
