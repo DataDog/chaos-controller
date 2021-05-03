@@ -4,6 +4,15 @@ Datadog runs regular chaos experiments to test the resilience of our distributed
 
 To get started, a chaos engineer simply needs to define a `yaml` file which contains all of the specifications needed by our custom Kubernetes Resource to run the preferred disruption `Kind`.
 
+## Kubernetes 1.20.x known issues
+
+**Latest Kubernetes version supported: 1.19.x ([more info](#kubernetes-120x-known-issues))**
+[The following issue](https://github.com/kubernetes/kubernetes/issues/97288) prevents the controller from running properly on Kubernetes 1.20.x. We don't plan to support this version. [The fix](https://github.com/kubernetes/kubernetes/pull/97980) should be released with Kubernetes 1.21.
+
+## Disclaimer
+
+The **Chaos Controller** allows you to disrupt your Kubernetes infrastructure through various means including but not limited to: bringing down resources you have provisioned and preventing critical data from being transmitted between resources. The use of **Chaos Controller** on your production system is done at your own discretion and risk.
+
 ## Table of Contents
 
 * [Getting Started](#usage)
@@ -15,8 +24,6 @@ To get started, a chaos engineer simply needs to define a `yaml` file which cont
 * [Contributing](#contributing)
 
 ## Getting Started
-
-**Latest Kubernetes version supported: 1.19.x ([more info](#kubernetes-120x-known-issues))**
 
 Disruptions are built as short-living resources which should be manually created and removed once your experiments are done. They should not be part of any application deployment. Getting started is as simple as creating a Kubernetes resource using `kubectl apply -f <disruption_file.yaml>`, and clean up would be `kubectl delete -f <disruption_file>.yaml`. For your safety, we recommend you get started with the `dry-run` mode enabled.
 
@@ -62,11 +69,3 @@ Please read the [installation guide](docs/installation.md) for instructions on d
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) to develop chaos-controller in your local Minikube environment!
-
-# DISCLAIMER
-
-The **Chaos Controller** allows you to disrupt your Kubernetes infrastructure through various means including but not limited to: bringing down resources you have provisioned and preventing critical data form being transmitted between resources. The use of **Chaos Controller** on your production system is done at your own discretion and risk and with agreement that you will be solely responsible for any damage to your Kubernetes infrastructure or loss of data that results from such activities. Datadog will not be liable for any damages that you may suffer. No advice or information, whether oral or written, obtained by you from us or this codebase shall create any warranty for the software.
-
-## Kubernetes 1.20.x known issues
-
-[The following issue](https://github.com/kubernetes/kubernetes/issues/97288) prevents the controller from running properly on Kubernetes 1.20.x. We don't plan to support this version. [The fix](https://github.com/kubernetes/kubernetes/pull/97980) should be released with Kubernetes 1.21.
