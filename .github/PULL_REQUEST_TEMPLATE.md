@@ -1,6 +1,6 @@
 ## What does this PR do?
 
-- [ ] Adds new Functinoality
+- [ ] Adds new functionality
 - [ ] Alters existing functionality
 - [ ] Fixes a bug
 - [ ] Improves Documentation
@@ -17,7 +17,7 @@ Motivation for change:
 - [ ] I manually tested locally
 - [ ] I will manually test in a canary deployment
 
-Please lest your manual testing steps (sample `yaml` file, commands, important checks):
+Please list your manual testing steps (sample `yaml` file, commands, important checks):
 
 ### Checklist
 

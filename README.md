@@ -34,9 +34,9 @@ spec:
     shutdown: false # trigger a kernel panic on the target node
 ```
 
-Please not that the `Disruption` resource is **immutable**. Once applied, editing it will have no effect. If you need to change the disruption definition, you need to delete the existing resource and to re-create it.
+Please note that the `Disruption` resource is **immutable**. Once applied, editing it will have no effect. If you need to change the disruption definition, you need to delete the existing resource and to re-create it.
 
-Below are list of common options to get started. Visit the [usage guide](docs/usage.yaml) for more customizations and sample use cases!
+Below is a list of common options to get started. Visit the [usage guide](docs/usage.yaml) for more customizations and sample use cases!
 
 ### Dry-run mode
 
@@ -61,7 +61,7 @@ Please read the [installation guide](docs/installation.md) for instructions on d
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) to develop chaos-controller in your local Minikube enviornment!
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) to develop chaos-controller in your local Minikube environment!
 
 # DISCLAIMER
 
