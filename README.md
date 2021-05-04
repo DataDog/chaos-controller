@@ -15,7 +15,7 @@ The **Chaos Controller** allows you to disrupt your Kubernetes infrastructure th
 
 ## Table of Contents
 
-* [Getting Started](#usage)
+* [Getting Started](#getting-started)
 * [Examples](#examples)
 * [Installation](#installation)
 * [Design](docs/design.md)
