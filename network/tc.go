@@ -31,12 +31,12 @@ type protocolIdentifier int
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
 type TrafficController interface {
-	AddNetem(iface string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error
-	AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
-	AddFilter(iface string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error
-	AddCgroupFilter(iface string, parent string, handle uint32) error
-	AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error
-	ClearQdisc(iface string) error
+	AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error
+	AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
+	AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error
+	AddCgroupFilter(ifaces []string, parent string, handle uint32) error
+	AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error
+	ClearQdisc(ifaces []string) error
 }
 
 type tcExecuter interface {
@@ -90,7 +90,7 @@ func NewTrafficController(log *zap.SugaredLogger, dryRun bool) TrafficController
 	}
 }
 
-func (t tc) AddNetem(iface string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
+func (t tc) AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
 	params := ""
 
 	if delay.Milliseconds() != 0 {
@@ -116,12 +116,16 @@ func (t tc) AddNetem(iface string, parent string, handle uint32, delay time.Dura
 
 	params = strings.TrimPrefix(params, " ")
 
-	_, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", params)...)
+	for _, iface := range ifaces {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", params)...); err != nil {
+			return err
+		}
+	}
 
-	return err
+	return nil
 }
 
-func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
+func (t tc) AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
 	priomapStr := ""
 	for _, bit := range priomap {
 		priomapStr += fmt.Sprintf(" %d", bit)
@@ -129,38 +133,45 @@ func (t tc) AddPrio(iface string, parent string, handle uint32, bands uint32, pr
 
 	priomapStr = strings.TrimSpace(priomapStr)
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
-	_, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "prio", params)...)
 
-	return err
+	for _, iface := range ifaces {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "prio", params)...); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (t tc) AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error {
+func (t tc) AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error {
 	// `latency` is max length of time a packet can sit in the queue before being sent; 50ms should be plenty
 	// `burst` is the number of bytes that can be sent at unlimited speed before the rate limiting kicks in,
 	// so again we'll be safe by setting `burst` to be the same as `rate` (should be more than enough)
 	// for more info, see the following:
 	//   - https://unix.stackexchange.com/questions/100785/bucket-size-in-tbf
 	//   - https://linux.die.net/man/8/tc-tbf
-	mycmd := buildCmd("qdisc", iface, parent, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))
-
-	_, _, err := t.executer.Run(mycmd...)
-
-	return err
-}
-
-func (t tc) ClearQdisc(iface string) error {
-	exitCode, _, err := t.executer.Run(strings.Split(fmt.Sprintf("qdisc del dev %s root", iface), " ")...)
-
-	// tc exits with code 2 when the qdisc does not exist anymore
-	if exitCode == 2 {
-		return nil
+	for _, iface := range ifaces {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))...); err != nil {
+			return err
+		}
 	}
 
-	return err
+	return nil
+}
+
+func (t tc) ClearQdisc(ifaces []string) error {
+	for _, iface := range ifaces {
+		// tc exits with code 2 when the qdisc does not exist anymore
+		if exitCode, _, err := t.executer.Run(strings.Split(fmt.Sprintf("qdisc del dev %s root", iface), " ")...); err != nil && exitCode != 2 {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // AddFilter generates a filter to redirect the traffic matching the given ip, port and protocol to the given flowid
-func (t tc) AddFilter(iface string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
+func (t tc) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
 	var params string
 
 	// ensure at least an IP or a port has been specified (otherwise the filter doesn't make sense)
@@ -192,16 +203,25 @@ func (t tc) AddFilter(iface string, parent string, handle uint32, srcIP, dstIP *
 	}
 
 	params += fmt.Sprintf("flowid %s", flowid)
-	_, _, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "u32", params)...)
 
-	return err
+	for _, iface := range ifaces {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "u32", params)...); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // AddCgroupFilter generates a cgroup filter
-func (t tc) AddCgroupFilter(iface string, parent string, handle uint32) error {
-	_, _, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "cgroup", "")...)
+func (t tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error {
+	for _, iface := range ifaces {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "cgroup", "")...); err != nil {
+			return err
+		}
+	}
 
-	return err
+	return nil
 }
 
 func getProtocolIndentifier(protocol string) protocolIdentifier {

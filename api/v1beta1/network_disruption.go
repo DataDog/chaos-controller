@@ -7,8 +7,8 @@ package v1beta1
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
-	"strings"
 )
 
 const (
@@ -21,12 +21,7 @@ const (
 // NetworkDisruptionSpec represents a network disruption injection
 type NetworkDisruptionSpec struct {
 	// +nullable
-	Hosts []string `json:"hosts,omitempty"`
-	// +kubebuilder:validation:Minimum=0
-	// +kubebuilder:validation:Maximum=65535
-	Port int `json:"port,omitempty"`
-	// +kubebuilder:validation:Enum=tcp;udp;""
-	Protocol string `json:"protocol,omitempty"`
+	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
 	// +kubebuilder:validation:Enum=egress;ingress
 	Flow string `json:"flow,omitempty"`
 	// +kubebuilder:validation:Minimum=0
@@ -48,6 +43,15 @@ type NetworkDisruptionSpec struct {
 	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
 }
 
+type NetworkDisruptionHostSpec struct {
+	Host string `json:"host,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
+	Port int `json:"port,omitempty"`
+	// +kubebuilder:validation:Enum=tcp;udp;""
+	Protocol string `json:"protocol,omitempty"`
+}
+
 // Validate validates args for the given disruption
 func (s *NetworkDisruptionSpec) Validate() error {
 	if s.BandwidthLimit == 0 &&
@@ -65,8 +69,6 @@ func (s *NetworkDisruptionSpec) Validate() error {
 func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	args := []string{
 		"network-disruption",
-		"--port",
-		strconv.Itoa(s.Port),
 		"--corrupt",
 		strconv.Itoa(s.Corrupt),
 		"--drop",
@@ -81,15 +83,9 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 		strconv.Itoa(s.BandwidthLimit),
 	}
 
-	// append protocol
-	if s.Protocol != "" {
-		args = append(args, "--protocol", s.Protocol)
-	}
-
 	// append hosts
-	if len(s.Hosts) > 0 {
-		args = append(args, "--hosts")
-		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
+	for _, host := range s.Hosts {
+		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s", host.Host, host.Port, host.Protocol))
 	}
 
 	// append flow
