@@ -99,6 +99,10 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
+minikube-memory := 4096
+minikube-start-big: minikube-memory := 8192
+minikube-start-big: minikube-start
+
 # fixing kubernetes version at 1.19.X because of this issue: https://github.com/kubernetes/kubernetes/issues/97288
 # once the following fix is released (https://github.com/kubernetes/kubernetes/pull/97980), planned for 1.21, we can use the latest
 # Kubernetes version again
@@ -106,7 +110,7 @@ minikube-start:
 	minikube start \
 		--vm-driver=virtualbox \
 		--container-runtime=containerd \
-		--memory=4096 \
+		--memory=${minikube-memory} \
 		--cpus=4 \
 		--kubernetes-version=1.19.9 \
 		--disk-size=50GB \
