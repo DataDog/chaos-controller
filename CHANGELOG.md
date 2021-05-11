@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.9.0](https://github.com/DataDog/chaos-controller/tree/3.9.0) (2021-05-10)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.8.1...3.9.0)
+
+**Merged pull requests:**
+
+- Update container release\_changelog\_0ecdd93d8f7041ae97144d3804c61dd913df3541 [\#296](https://github.com/DataDog/chaos-controller/pull/296) ([github-actions[bot]](https://github.com/apps/github-actions))
+- CORE-594: Add Clientset code needing for using client-go with Disruption Resource [\#288](https://github.com/DataDog/chaos-controller/pull/288) ([ptnapoleon](https://github.com/ptnapoleon))
+
 ## [3.8.1](https://github.com/DataDog/chaos-controller/tree/3.8.1) (2021-04-30)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.8.0...3.8.1)
