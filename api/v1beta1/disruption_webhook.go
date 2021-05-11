@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"fmt"
+	"reflect"
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,10 +29,18 @@ func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLog
 // +kubebuilder:webhook:verbs=create;update,path=/validate-chaos-datadoghq-com-v1beta1-disruption,mutating=false,failurePolicy=fail,groups=chaos.datadoghq.com,resources=disruptions,versions=v1beta1,name=chaos-controller-admission-webhook.chaos-engineering.svc
 
 var _ webhook.Validator = &Disruption{}
+var ingressFlow = "ingress"
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateCreate() error {
 	logger.Infow("validating created disruption", "instance", r.Name, "namespace", r.Namespace)
+
+	networkDisruption := r.Spec.Network
+	networkDisruptionExists := !reflect.ValueOf(networkDisruption).IsNil()
+
+	if networkDisruptionExists && networkDisruption.Flow == ingressFlow && len(networkDisruption.Hosts) > 0 {
+		return fmt.Errorf("a network disruption should not specify a hosts list when targeting ingress packets")
+	}
 
 	return nil
 }
