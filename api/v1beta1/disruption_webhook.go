@@ -7,7 +7,6 @@ package v1beta1
 
 import (
 	"fmt"
-	"reflect"
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,6 +16,7 @@ import (
 
 var logger *zap.SugaredLogger
 
+// SetupWebhookWithManager creates Webhook for Admissions Controller, allowing validation of resource requests
 func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger) error {
 	logger = &zap.SugaredLogger{}
 	*logger = *l.With("source", "admission-controller")
@@ -35,10 +35,7 @@ var ingressFlow = "ingress"
 func (r *Disruption) ValidateCreate() error {
 	logger.Infow("validating created disruption", "instance", r.Name, "namespace", r.Namespace)
 
-	networkDisruption := r.Spec.Network
-	networkDisruptionExists := !reflect.ValueOf(networkDisruption).IsNil()
-
-	if networkDisruptionExists && networkDisruption.Flow == ingressFlow && len(networkDisruption.Hosts) > 0 {
+	if r.Spec.Network != nil && r.Spec.Network.Flow == ingressFlow && len(r.Spec.Network.Hosts) > 0 {
 		return fmt.Errorf("a network disruption should not specify a hosts list when targeting ingress packets")
 	}
 
