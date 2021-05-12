@@ -356,7 +356,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		// otherwise, create a filter redirecting all the traffic (0.0.0.0/0) using the given port and protocol to the disrupted band
 		for _, ip := range ips {
 			if err := i.config.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, ip, srcPort, dstPort, i.spec.Protocol, "1:4"); err != nil {
-				return fmt.Errorf("can't add a MEW filter to interface %s: %w", link.Name(), err)
+				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
 			}
 		}
 	}
