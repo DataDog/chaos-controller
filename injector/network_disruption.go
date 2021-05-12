@@ -17,11 +17,6 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
-const (
-	flowEgress  = "egress"
-	flowIngress = "ingress"
-)
-
 // linkOperation represents a tc operation on a single network interface combined with the parent to bind to and the handle identifier to use
 type linkOperation func(network.NetlinkLink, string, uint32) error
 
@@ -349,9 +344,9 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		var srcPort, dstPort int
 
 		switch i.spec.Flow {
-		case flowEgress:
+		case v1beta1.FlowEgress:
 			dstPort = i.spec.Port
-		case flowIngress:
+		case v1beta1.FlowIngress:
 			srcPort = i.spec.Port
 		default:
 			return fmt.Errorf("unsupported flow: %s", i.spec.Flow)
@@ -361,7 +356,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		// otherwise, create a filter redirecting all the traffic (0.0.0.0/0) using the given port and protocol to the disrupted band
 		for _, ip := range ips {
 			if err := i.config.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, ip, srcPort, dstPort, i.spec.Protocol, "1:4"); err != nil {
-				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
+				return fmt.Errorf("can't add a MEW filter to interface %s: %w", link.Name(), err)
 			}
 		}
 	}

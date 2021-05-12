@@ -16,7 +16,6 @@ import (
 
 var logger *zap.SugaredLogger
 
-// SetupWebhookWithManager creates Webhook for Admissions Controller, allowing validation of resource requests
 func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger) error {
 	logger = &zap.SugaredLogger{}
 	*logger = *l.With("source", "admission-controller")
@@ -29,13 +28,12 @@ func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLog
 // +kubebuilder:webhook:verbs=create;update,path=/validate-chaos-datadoghq-com-v1beta1-disruption,mutating=false,failurePolicy=fail,groups=chaos.datadoghq.com,resources=disruptions,versions=v1beta1,name=chaos-controller-admission-webhook.chaos-engineering.svc
 
 var _ webhook.Validator = &Disruption{}
-var ingressFlow = "ingress"
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateCreate() error {
 	logger.Infow("validating created disruption", "instance", r.Name, "namespace", r.Namespace)
 
-	if r.Spec.Network != nil && r.Spec.Network.Flow == ingressFlow && len(r.Spec.Network.Hosts) > 0 {
+	if r.Spec.Network != nil && r.Spec.Network.Flow == FlowIngress && len(r.Spec.Network.Hosts) > 0 {
 		return fmt.Errorf("a network disruption should not specify a hosts list when targeting ingress packets")
 	}
 
