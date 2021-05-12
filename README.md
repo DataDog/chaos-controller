@@ -6,7 +6,8 @@ To get started, a chaos engineer simply needs to define a `yaml` file which cont
 
 ## Kubernetes 1.20.x known issues
 
-**Latest Kubernetes version supported: 1.19.x ([more info](#kubernetes-120x-known-issues))**
+**Latest Kubernetes version supported: 1.19.x**
+
 [The following issue](https://github.com/kubernetes/kubernetes/issues/97288) prevents the controller from running properly on Kubernetes 1.20.x. We don't plan to support this version. [The fix](https://github.com/kubernetes/kubernetes/pull/97980) should be released with Kubernetes 1.21.
 
 ## Disclaimer
@@ -16,7 +17,7 @@ The **Chaos Controller** allows you to disrupt your Kubernetes infrastructure th
 ## Table of Contents
 
 * [Getting Started](#getting-started)
-* [Examples](#examples)
+* [Examples](docs/usage.md#examples)
 * [Installation](#installation)
 * [Design](docs/design.md)
 * [Metrics](docs/metrics.md)
@@ -43,7 +44,7 @@ spec:
 
 Please note that the `Disruption` resource is **immutable**. Once applied, editing it will have no effect. If you need to change the disruption definition, you need to delete the existing resource and to re-create it.
 
-Below is a list of common options to get started. Visit the [usage guide](docs/usage.yaml) for more customizations and sample use cases!
+Below is a list of common options to get started. Visit the [usage guide](docs/usage.md) for more customizations and sample use cases!
 
 ### Dry-run mode
 

@@ -2,7 +2,7 @@
 
 ## Dry-run mode
 
- This fakes the injection while still going through the process of selecting targets, creating chaos pods, and simulating the disruption as much as possible. Put a different way, all "read" operations (like knowing which network interface to disrupt) will be executed while all "write" operations won't be (like creating what's needed to drop packets). Checkout this [example](config/samples/dry_run.yaml).
+ This fakes the injection while still going through the process of selecting targets, creating chaos pods, and simulating the disruption as much as possible. Put a different way, all "read" operations (like knowing which network interface to disrupt) will be executed while all "write" operations won't be (like creating what's needed to drop packets). Checkout this [example](../config/samples/dry_run.yaml).
 
 ## Level
 
@@ -30,27 +30,27 @@ How can you target a specific pod by name, if it doesn't have a unique label sel
 
 ### Targeting a specific container within a pod
 
-By default, a disruption affects all containers within the pod. You can restrict the scope of the disruption to a single container or to only some containers [like this](config/samples/containers_targeting.yaml).
+By default, a disruption affects all containers within the pod. You can restrict the scope of the disruption to a single container or to only some containers [like this](../config/samples/containers_targeting.yaml).
 
 ## Examples
 
 Please take a look at the different disruptions documentation linked in the table of content for more information about what they can do and how to use them.
 
-Here is [a full example of the disruption resource](config/samples/complete.yaml) with comments. You can also have a look at the following use cases with examples of disruptions you can adapt and apply as you wish:
+Here is [a full example of the disruption resource](../config/samples/complete.yaml) with comments. You can also have a look at the following use cases with examples of disruptions you can adapt and apply as you wish:
 
-* [Node disruptions](docs/node_disruption.md)
-  * [I want to randomly kill one of my node](config/samples/node_failure.yaml)
-  * [I want to randomly kill one of my node and keep it down](config/samples/node_failure_shutdown.yaml)
-* [Network disruptions](docs/network_disruption.md)
-  * [I want to drop packets going out from my pods](config/samples/network_drop.yaml)
-  * [I want to corrupt packets going out from my pods](config/samples/network_corrupt.yaml)
-  * [I want to add network latency to packets going out from my pods](config/samples/network_delay.yaml)
-  * [I want to restrict the outgoing bandwidth of my pods](config/samples/network_bandwidth_limitation.yaml)
-  * [I want to disrupt packets going to a specific port or host](config/samples/network_filters.yaml)
-* [CPU pressure](docs/cpu_pressure.md)
-  * [I want to put CPU pressure against my pods](config/samples/cpu_pressure.yaml)
-* [Disk pressure](docs/disk_pressure.md)
-  * [I want to throttle my pods disk reads](config/samples/disk_pressure_read.yaml)
-  * [I want to throttle my pods disk writes](config/samples/disk_pressure_write.yaml)
-* [DNS resolution mocking](docs/dns_disruption.md)
-  * [I want to fake my pods DNS resolutions](config/samples/dns.yaml)
+* [Node disruptions](/docs/node_disruption.md)
+  * [I want to randomly kill one of my node](../config/samples/node_failure.yaml)
+  * [I want to randomly kill one of my node and keep it down](../config/samples/node_failure_shutdown.yaml)
+* [Network disruptions](/docs/network_disruption.md)
+  * [I want to drop packets going out from my pods](../config/samples/network_drop.yaml)
+  * [I want to corrupt packets going out from my pods](../config/samples/network_corrupt.yaml)
+  * [I want to add network latency to packets going out from my pods](../config/samples/network_delay.yaml)
+  * [I want to restrict the outgoing bandwidth of my pods](../config/samples/network_bandwidth_limitation.yaml)
+  * [I want to disrupt packets going to a specific port or host](../config/samples/network_filters.yaml)
+* [CPU pressure](/docs/cpu_pressure.md)
+  * [I want to put CPU pressure against my pods](../config/samples/cpu_pressure.yaml)
+* [Disk pressure](/docs/disk_pressure.md)
+  * [I want to throttle my pods disk reads](../config/samples/disk_pressure_read.yaml)
+  * [I want to throttle my pods disk writes](../config/samples/disk_pressure_write.yaml)
+* [DNS resolution mocking](/docs/dns_disruption.md)
+  * [I want to fake my pods DNS resolutions](../config/samples/dns.yaml)
