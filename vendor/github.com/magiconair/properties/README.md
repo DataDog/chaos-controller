@@ -126,4 +126,3 @@ GIT_COMMITTER_DATE="$date" GIT_COMMITTER_NAME="$name" GIT_COMMITTER_EMAIL="$emai
 I apologize for the inconvenience.
 
 Frank
-
