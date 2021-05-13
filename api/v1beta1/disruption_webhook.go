@@ -33,6 +33,10 @@ var _ webhook.Validator = &Disruption{}
 func (r *Disruption) ValidateCreate() error {
 	logger.Infow("validating created disruption", "instance", r.Name, "namespace", r.Namespace)
 
+	if r.Spec.Network != nil && r.Spec.Network.Flow == FlowIngress && len(r.Spec.Network.Hosts) > 0 {
+		return fmt.Errorf("a network disruption should not specify a hosts list when targeting ingress packets")
+	}
+
 	return nil
 }
 
