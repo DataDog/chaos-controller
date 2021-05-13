@@ -17,11 +17,6 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
-const (
-	flowEgress  = "egress"
-	flowIngress = "ingress"
-)
-
 // linkOperation represents a tc operation on a single network interface combined with the parent to bind to and the handle identifier to use
 type linkOperation func(network.NetlinkLink, string, uint32) error
 
@@ -349,9 +344,9 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		var srcPort, dstPort int
 
 		switch i.spec.Flow {
-		case flowEgress:
+		case v1beta1.FlowEgress:
 			dstPort = i.spec.Port
-		case flowIngress:
+		case v1beta1.FlowIngress:
 			srcPort = i.spec.Port
 		default:
 			return fmt.Errorf("unsupported flow: %s", i.spec.Flow)
