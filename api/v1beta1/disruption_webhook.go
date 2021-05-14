@@ -10,6 +10,7 @@ import (
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
@@ -35,6 +36,10 @@ func (r *Disruption) ValidateCreate() error {
 
 	if r.Spec.Network != nil && r.Spec.Network.Flow == FlowIngress && len(r.Spec.Network.Hosts) > 0 {
 		return fmt.Errorf("a network disruption should not specify a hosts list when targeting ingress packets")
+	}
+
+	if r.Spec.Count.Type == intstr.Int && r.Spec.Count.IntValue() < 0 {
+		return fmt.Errorf("count must be a positive integer or a percentage value")
 	}
 
 	return nil

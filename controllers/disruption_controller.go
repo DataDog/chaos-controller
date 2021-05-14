@@ -598,19 +598,19 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		}
 	}
 
+	// return an error if the selector returned no targets
+	if len(matchingTargets) == 0 {
+		r.log.Info("the given label selector did not return any targets, skipping")
+		r.Recorder.Event(instance, "Warning", "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
+
+		return nil
+	}
+
 	// prune ignored targets from all targets
 	for _, target := range matchingTargets {
 		if !contains(instance.Status.IgnoredTargets, target) {
 			eligibleTargets = append(eligibleTargets, target)
 		}
-	}
-
-	// return an error if the selector returned no targets
-	if len(eligibleTargets) == 0 {
-		r.log.Info("the given label selector did not return any targets, skipping")
-		r.Recorder.Event(instance, "Warning", "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
-
-		return nil
 	}
 
 	// instance.Spec.Count is a string that either represents a percentage or a value, we do the translation here
@@ -620,7 +620,8 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	}
 
 	// computed count should not be 0 unless the given count was not expected
-	if targetsCount == 0 {
+	if targetsCount <= 0 {
+		r.Recorder.Event(instance, "Warning", "NoTarget", fmt.Sprintf("Target count is %d. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).", targetsCount))
 		return fmt.Errorf("parsing error, either incorrectly formatted percentage or incorrectly formatted integer: %s\n%w", instance.Spec.Count.String(), err)
 	}
 
