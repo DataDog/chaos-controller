@@ -20,6 +20,7 @@ package v1beta1
 import (
 	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -100,4 +101,27 @@ func (ds *DisruptionSpec) Hash() (string, error) {
 
 	// compute bytes hash
 	return fmt.Sprintf("%x", md5.Sum(specBytes)), nil
+}
+
+func (s *DisruptionSpec) Validate() error {
+	// Rule: no targeted container if disruption is node-level
+	if len(s.Containers) > 0 && s.Level != chaostypes.DisruptionLevelPod {
+		return errors.New("cannot target specific container of a node-level disruption")
+	}
+
+	// Rule: at least one disruption field
+	if s.DNS == nil &&
+		s.CPUPressure == nil &&
+		s.Network == nil &&
+		s.NodeFailure == nil &&
+		s.DiskPressure == nil {
+		return errors.New("cannot apply a disruption with no target process")
+	}
+
+	//Rule: DNS and Network disruptions are incompatible
+	if s.DNS != nil && s.Network != nil {
+		return errors.New("cannot apply DNS and Network disruptions concurrently")
+	}
+
+	return nil
 }
