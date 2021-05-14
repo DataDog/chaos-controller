@@ -6,9 +6,12 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -80,9 +83,33 @@ func initConfig() {
 	}
 }
 
-func validate(filePath string) string {
+func validatePath(filePath string) string {
 	if filePath == "" {
 		return "No Path Given, Exiting..."
 	}
 	return "Validation TODO"
+}
+
+func DisruptionFromFile(path string) (v1beta1.DisruptionSpec, error) {
+	yaml, err := os.Open(path)
+	if err != nil {
+		return v1beta1.DisruptionSpec{}, err
+	}
+
+	yamlBytes, err := ioutil.ReadAll(yaml)
+	if err != nil {
+		return v1beta1.DisruptionSpec{}, err
+	}
+
+	parsedSpec := v1beta1.DisruptionSpec{}
+	err = json.Unmarshal(yamlBytes, &parsedSpec)
+
+	if err != nil {
+		return v1beta1.DisruptionSpec{}, err
+	}
+	return parsedSpec, nil
+}
+
+func DisruptionToFile(path string, spec v1beta1.DisruptionSpec) error {
+	return nil
 }

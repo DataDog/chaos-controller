@@ -17,7 +17,7 @@ var validateCmd = &cobra.Command{
 	Long:  `validates the yaml of the disruption for structure.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("path")
-		fmt.Println(validate(path))
+		fmt.Println(validatePath(path))
 	},
 }
 
