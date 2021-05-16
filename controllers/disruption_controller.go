@@ -868,25 +868,18 @@ func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disru
 	for _, kind := range chaostypes.DisruptionKinds {
 		var validator chaosapi.DisruptionValidator
 
-		var tag chaostypes.DisruptionKind
-
 		// check for disruption kinds
 		switch kind {
 		case chaostypes.DisruptionKindNodeFailure:
 			validator = instance.Spec.NodeFailure
-			tag = chaostypes.DisruptionKindNodeFailure
 		case chaostypes.DisruptionKindNetworkDisruption:
 			validator = instance.Spec.Network
-			tag = chaostypes.DisruptionKindNetworkDisruption
 		case chaostypes.DisruptionKindDNSDisruption:
 			validator = instance.Spec.DNS
-			tag = chaostypes.DisruptionKindDNSDisruption
 		case chaostypes.DisruptionKindCPUPressure:
 			validator = instance.Spec.CPUPressure
-			tag = chaostypes.DisruptionKindCPUPressure
 		case chaostypes.DisruptionKindDiskPressure:
 			validator = instance.Spec.DiskPressure
-			tag = chaostypes.DisruptionKindDiskPressure
 		}
 
 		// ensure that the underlying disruption spec is not nil
@@ -894,7 +887,7 @@ func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disru
 			continue
 		}
 
-		r.handleMetricSinkError((r.MetricsSink.MetricDisruptionsCount(tag, []string{"name:" + instance.Name, "namespace:" + instance.Namespace})))
+		r.handleMetricSinkError((r.MetricsSink.MetricDisruptionsCount(kind, []string{"name:" + instance.Name, "namespace:" + instance.Namespace})))
 	}
 }
 
