@@ -65,6 +65,31 @@ func (a netlinkAdapter) listRoutes() ([]netlink.Route, error) {
 	return allRoutes, nil
 }
 
+func (a netlinkAdapter) getBridgeLinks(bridge netlink.Link) ([]netlink.Link, error) {
+	bridgeLinks := []netlink.Link{}
+
+	// get the netlink handler
+	handler, err := netlink.NewHandle()
+	if err != nil {
+		return nil, err
+	}
+
+	// list all links links
+	links, err := handler.LinkList()
+	if err != nil {
+		return nil, err
+	}
+
+	// get links having the given bridge link as master
+	for _, link := range links {
+		if link.Attrs().MasterIndex == bridge.Attrs().Index {
+			bridgeLinks = append(bridgeLinks, link)
+		}
+	}
+
+	return bridgeLinks, nil
+}
+
 // NewNetlinkAdapter returns a standard netlink adapter
 func NewNetlinkAdapter() NetlinkAdapter {
 	return netlinkAdapter{}
@@ -95,12 +120,24 @@ func (a netlinkAdapter) LinkList() ([]NetlinkLink, error) {
 	nlinks := []NetlinkLink{}
 
 	for linkIndex := range linksIndexes {
+		// get link from the link index found in the route
 		link, err := netlink.LinkByIndex(linkIndex)
 		if err != nil {
 			return nil, fmt.Errorf("error getting link with index %d: %w", linkIndex, err)
 		}
-
 		nlinks = append(nlinks, newNetlinkLink(link))
+
+		// for any bridge link, get bridge slaves (interfaces for which the bridge link is considered as master)
+		if link.Type() == "bridge" {
+			bridgeLinks, err := a.getBridgeLinks(link)
+			if err != nil {
+				return nil, fmt.Errorf("error getting bridge links for interface %s: %w", link.Attrs().Name, err)
+			}
+
+			for _, bridgeLink := range bridgeLinks {
+				nlinks = append(nlinks, newNetlinkLink(bridgeLink))
+			}
+		}
 	}
 
 	return nlinks, nil
