@@ -207,7 +207,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 
 	// allow kubelet -> apiserver communications
 	// resolve the kubernetes.default service created at cluster bootstrap and owning the apiserver cluster IP
-	apiserverIPs, err := resolveHosts(i.config.DNSClient, []string{"kubernetes.default"})
+	apiserverIPs, err := resolveHost(i.config.DNSClient, "kubernetes.default")
 	if err != nil {
 		return fmt.Errorf("error resolving apiservers service IP: %w", err)
 	}
@@ -292,7 +292,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		if len(i.spec.Hosts) > 0 {
 			for _, host := range i.spec.Hosts {
 				// resolve given hosts if needed
-				ips, err := resolveHosts(i.config.DNSClient, []string{host.Host})
+				ips, err := resolveHost(i.config.DNSClient, host.Host)
 				if err != nil {
 					return fmt.Errorf("error resolving given host %s: %w", host.Host, err)
 				}
