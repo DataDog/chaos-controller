@@ -125,6 +125,7 @@ func (a netlinkAdapter) LinkList() ([]NetlinkLink, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error getting link with index %d: %w", linkIndex, err)
 		}
+
 		nlinks = append(nlinks, newNetlinkLink(link))
 
 		// for any bridge link, get bridge slaves (interfaces for which the bridge link is considered as master)
