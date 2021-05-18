@@ -6,6 +6,7 @@
 package injector
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -15,10 +16,19 @@ import (
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 // linkOperation represents a tc operation on a single network interface combined with the parent to bind to and the handle identifier to use
 type linkOperation func([]string, string, uint32) error
+
+// networkDisruptionService describes a parsed Kubernetes service, representing an (ip, port, protocol) tuple
+type networkDisruptionService struct {
+	ip       *net.IPNet
+	port     int
+	protocol string
+}
 
 // networkDisruptionInjector describes a network disruption
 type networkDisruptionInjector struct {
@@ -272,39 +282,68 @@ func (i *networkDisruptionInjector) applyOperations() error {
 
 	// create tc filters depending on the given hosts to match
 	// redirect all packets of all interfaces if no host is given
-	if len(i.spec.Hosts) > 0 {
-		for _, host := range i.spec.Hosts {
-			// handle flow direction
-			// if flow is egress, filter will be on destination port
-			// if flow is ingress, filter will be on source port
-			var srcPort, dstPort int
-
-			switch i.spec.Flow {
-			case v1beta1.FlowEgress:
-				dstPort = host.Port
-			case v1beta1.FlowIngress:
-				srcPort = host.Port
-			default:
-				return fmt.Errorf("unsupported flow: %s", i.spec.Flow)
-			}
-
-			ips, err := resolveHosts(i.config.DNSClient, []string{host.Host})
-			if err != nil {
-				return fmt.Errorf("error resolving given host %s: %w", host.Host, err)
-			}
-
-			// if some hosts are targeted, create one filter per host to redirect the traffic to the disrupted band
-			// otherwise, create a filter redirecting all the traffic (0.0.0.0/0) using the given port and protocol to the disrupted band
-			for _, ip := range ips {
-				if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, ip, srcPort, dstPort, host.Protocol, "1:4"); err != nil {
-					return fmt.Errorf("can't add a filter: %w", err)
-				}
-			}
-		}
-	} else {
+	if len(i.spec.Hosts) == 0 && len(i.spec.Services) == 0 {
 		_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
 		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nullIP, 0, 0, "", "1:4"); err != nil {
 			return fmt.Errorf("can't add a filter: %w", err)
+		}
+	} else {
+		// apply filters for given hosts
+		if len(i.spec.Hosts) > 0 {
+			for _, host := range i.spec.Hosts {
+				// resolve given hosts if needed
+				ips, err := resolveHosts(i.config.DNSClient, []string{host.Host})
+				if err != nil {
+					return fmt.Errorf("error resolving given host %s: %w", host.Host, err)
+				}
+
+				// filter on found IPs and CIDRs
+				for _, ip := range ips {
+					// handle flow direction
+					var srcPort, dstPort int
+					var srcIP, dstIP *net.IPNet
+
+					switch i.spec.Flow {
+					case v1beta1.FlowEgress:
+						dstPort = host.Port
+						dstIP = ip
+					case v1beta1.FlowIngress:
+						srcPort = host.Port
+						srcIP = ip
+					}
+
+					// create tc filter
+					if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, host.Protocol, "1:4"); err != nil {
+						return fmt.Errorf("can't add a filter: %w", err)
+					}
+				}
+			}
+		}
+
+		// apply filters for given services
+		services, err := i.getServices()
+		if err != nil {
+			return fmt.Errorf("error getting services IPs and ports: %w", err)
+		}
+
+		for _, service := range services {
+			// handle flow direction
+			var srcPort, dstPort int
+			var srcIP, dstIP *net.IPNet
+
+			switch i.spec.Flow {
+			case v1beta1.FlowEgress:
+				dstPort = service.port
+				dstIP = service.ip
+			case v1beta1.FlowIngress:
+				srcPort = service.port
+				srcIP = service.ip
+			}
+
+			// create tc filter
+			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, service.protocol, "1:4"); err != nil {
+				return fmt.Errorf("can't add a filter: %w", err)
+			}
 		}
 	}
 
@@ -347,6 +386,56 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	}
 
 	return nil
+}
+
+// getServices parses the Kubernetes services in the disruption spec and returns a set of (ip, port, protocol) tuples
+func (i *networkDisruptionInjector) getServices() ([]networkDisruptionService, error) {
+	services := []networkDisruptionService{}
+
+	for _, service := range i.spec.Services {
+		// retrieve service
+		k8sService, err := i.config.K8sClient.CoreV1().Services(service.Namespace).Get(context.Background(), service.Name, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s): %w", service.Namespace, service.Name, err)
+		}
+
+		// retrieve endpoints from selector
+		endpoints, err := i.config.K8sClient.CoreV1().Pods(service.Namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(k8sService.Spec.Selector).String(),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s) endpoints: %w", service.Namespace, service.Name, err)
+		}
+
+		i.config.Log.Infow("found service endpoints", "service", service.Name, "endpoints", len(endpoints.Items))
+
+		// retrieve endpoints IPs
+		for _, endpoint := range endpoints.Items {
+			// compute endpoint IP (pod IP)
+			_, endpointIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", endpoint.Status.PodIP))
+
+			for _, port := range k8sService.Spec.Ports {
+				services = append(services, networkDisruptionService{
+					ip:       endpointIP,
+					port:     int(port.TargetPort.IntVal),
+					protocol: string(port.Protocol),
+				})
+			}
+		}
+
+		// compute service IP
+		_, serviceIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", k8sService.Spec.ClusterIP))
+
+		for _, port := range k8sService.Spec.Ports {
+			services = append(services, networkDisruptionService{
+				ip:       serviceIP,
+				port:     int(port.Port),
+				protocol: string(port.Protocol),
+			})
+		}
+	}
+
+	return services, nil
 }
 
 // AddNetem adds network disruptions using the drivers in the networkDisruptionInjector

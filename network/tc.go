@@ -225,7 +225,7 @@ func (t tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error
 }
 
 func getProtocolIndentifier(protocol string) protocolIdentifier {
-	switch protocol {
+	switch strings.ToLower(protocol) {
 	case "tcp":
 		return protocolTCP
 	case "udp":

@@ -16,9 +16,9 @@ spec:
   network:
     drop: 100
     hosts:
-      - host: 1.2.3.4 # host can be a single IP
-      - host: 10.0.0.0/8 # or it can be a CIDR
-        port: 80 # if not specified, all ports are targeted
-      - host: datadoghq.com # or it can be a hostname (then all the resolved IP will be taken)
-        port: 443
-        protocol: tcp # if not specified, tcp and udp are targeted
+      - host: 1.2.3.4
+        port: 8080
+        protocol: tcp
+    services:
+      - name: demo
+        namespace: chaos-engineering

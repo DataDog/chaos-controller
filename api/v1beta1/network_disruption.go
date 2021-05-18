@@ -22,6 +22,8 @@ const (
 type NetworkDisruptionSpec struct {
 	// +nullable
 	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
+	// +nullable
+	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
 	// +kubebuilder:validation:Enum=egress;ingress
 	Flow string `json:"flow,omitempty"`
 	// +kubebuilder:validation:Minimum=0
@@ -50,6 +52,11 @@ type NetworkDisruptionHostSpec struct {
 	Port int `json:"port,omitempty"`
 	// +kubebuilder:validation:Enum=tcp;udp;""
 	Protocol string `json:"protocol,omitempty"`
+}
+
+type NetworkDisruptionServiceSpec struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
 }
 
 // Validate validates args for the given disruption
@@ -86,6 +93,11 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	// append hosts
 	for _, host := range s.Hosts {
 		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s", host.Host, host.Port, host.Protocol))
+	}
+
+	// append services
+	for _, service := range s.Services {
+		args = append(args, "--services", fmt.Sprintf("%s;%s", service.Name, service.Namespace))
 	}
 
 	// append flow

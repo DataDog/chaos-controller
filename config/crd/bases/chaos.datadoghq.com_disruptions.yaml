@@ -154,6 +154,19 @@ spec:
                     type: object
                   nullable: true
                   type: array
+                services:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      namespace:
+                        type: string
+                    required:
+                    - name
+                    - namespace
+                    type: object
+                  nullable: true
+                  type: array
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection
