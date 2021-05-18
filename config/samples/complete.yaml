@@ -21,10 +21,13 @@ spec:
   nodeFailure: # node kernel panic or shutdown
     shutdown: true # optional, shutdown the host instead of triggering a stack dump (defaults to false)
   network: # network disruption settings, all those disruptions are applied to outgoing traffic only
-    hosts: # optional (targets all hosts if not specified)
-      - 10.0.0.0/8 # destination host
-    port: 80 # optional, port to drop packets on
-    protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+    hosts: # optional, list of destination hosts to filter on
+      - host: 10.0.0.0/8 # optional, IP, CIDR or hostname to filter on
+        port: 80 # optional, port to drop packets on
+        protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+    services: # optional, list of destination Kubernetes services to filter on
+      - name: foo # service name
+        namespace: bar # service namespace
     flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
     drop: 10 # "mandatory", at least one of `bandwidthLimit`, `delay`, `drop`, `corrupt`, or `duplicate` must be specified; probability to drop packets (between 0 and 100)
     corrupt: 5 # probability to corrupt packets (between 0 and 100)
