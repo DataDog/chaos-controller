@@ -11,6 +11,13 @@ import (
 	"strings"
 )
 
+const (
+	// FlowEgress is the string representation of network disruptions applied to outgoing packets
+	FlowEgress = "egress"
+	// FlowIngress is the string representation of network disruptions applied to incoming packets
+	FlowIngress = "ingress"
+)
+
 // NetworkDisruptionSpec represents a network disruption injection
 type NetworkDisruptionSpec struct {
 	// +nullable
