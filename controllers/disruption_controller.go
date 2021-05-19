@@ -63,14 +63,15 @@ var (
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	client.Client
-	BaseLog             *zap.SugaredLogger
-	Scheme              *runtime.Scheme
-	Recorder            record.EventRecorder
-	MetricsSink         metrics.Sink
-	DeleteOnly          bool
-	TargetSelector      TargetSelector
-	InjectorAnnotations map[string]string
-	log                 *zap.SugaredLogger
+	BaseLog                *zap.SugaredLogger
+	Scheme                 *runtime.Scheme
+	Recorder               record.EventRecorder
+	MetricsSink            metrics.Sink
+	DeleteOnly             bool
+	TargetSelector         TargetSelector
+	InjectorAnnotations    map[string]string
+	InjectorServiceAccount string
+	log                    *zap.SugaredLogger
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -706,9 +707,10 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 			},
 		},
 		Spec: corev1.PodSpec{
-			HostPID:       true,                      // enable host pid
-			RestartPolicy: corev1.RestartPolicyNever, // do not restart the pod on fail or completion
-			NodeName:      targetNodeName,            // specify node name to schedule the pod
+			HostPID:            true,                      // enable host pid
+			RestartPolicy:      corev1.RestartPolicyNever, // do not restart the pod on fail or completion
+			NodeName:           targetNodeName,            // specify node name to schedule the pod
+			ServiceAccountName: r.InjectorServiceAccount,  // service account to use
 			Containers: []corev1.Container{
 				{
 					Name:            "injector",              // container name

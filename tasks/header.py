@@ -8,6 +8,7 @@
 from invoke import task
 import glob
 import typing as t
+import os
 
 file_extension_map = {
     "go": "//",
@@ -24,9 +25,6 @@ auto_generated_headers = [
 ]
 
 files_to_skip = [
-    "config/webhook/manifests.yaml",
-    "config/rbac/role.yaml",
-    "config/crd/bases/chaos.datadoghq.com_disruptions.yaml",
     "api/v1beta1/zz_generated.deepcopy.go",
     "bin/injector/dns_disruption_resolver.py",
 ]
@@ -114,5 +112,9 @@ def header_check(ctx):
                 print(f"header missing in {file}")
                 update_header(file, header, header_position)
                 exit_code = 1
+
+    # always exit 0 if we ignore the exit code
+    if os.getenv("IGNORE_EXIT_CODE", False) == "True":
+        exit(0)
 
     exit(exit_code)

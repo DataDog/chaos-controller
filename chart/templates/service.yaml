@@ -2,18 +2,27 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
-
 apiVersion: v1
 kind: Service
 metadata:
-  labels:
-    control-plane: controller-manager
-  name: controller-manager-metrics-service
-  namespace: system
+  name: chaos-controller-metrics-service
+  namespace: chaos-engineering
 spec:
   ports:
   - name: https
     port: 8443
     targetPort: https
   selector:
-    control-plane: controller-manager
+    app: chaos-controller
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chaos-controller-webhook-service
+  namespace: chaos-engineering
+spec:
+  ports:
+  - port: 443
+    targetPort: 9443
+  selector:
+    app: chaos-controller

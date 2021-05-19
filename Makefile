@@ -3,8 +3,6 @@
 # Image URL to use all building/pushing image targets
 MANAGER_IMAGE ?= chaos-controller:latest
 INJECTOR_IMAGE ?= chaos-injector:latest
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -27,27 +25,21 @@ manager: generate
 injector:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/injector/injector ./cli/injector/
 
-# Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate manifests
-	go run ./main.go
-
 # Install CRDs and controller into a cluster
 install: manifests
-	kustomize build config/crd | kubectl apply -f -
-	cd config/manager && kustomize edit set image controller=${MANAGER_IMAGE}
-	kustomize build config/default | kubectl -n chaos-engineering apply -f -
+	helm template chart/ | kubectl apply -f -
 
 # Uninstall CRDs and controller from a cluster
 uninstall: manifests
-	kustomize build config/crd | kubectl delete -f -
-	kustomize build config/default | kubectl -n chaos-engineering delete -f -
+	helm template chart/ | kubectl delete -f -
 
 restart:
-	kubectl -n chaos-engineering rollout restart deployment chaos-controller-controller-manager
+	kubectl -n chaos-engineering rollout restart deployment chaos-controller
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:trivialVersions=true paths="./..." output:crd:dir=./chart/templates/ output:rbac:dir=./chart/templates/
+	make header-check-ignore-exit-code
 
 # Run go fmt against code
 fmt:
@@ -66,21 +58,21 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
 # Build the docker image
-docker-build-manager: minikube-ssh-host manager
+minikube-build-manager: minikube-ssh-host manager
 	mkdir -p out
 	docker build -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
 	docker save -o out/manager.tar ${MANAGER_IMAGE}
 	scp -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/manager.tar docker@$$(minikube ip):/tmp
 	minikube ssh -- sudo ctr -n=k8s.io images import /tmp/manager.tar
 
-docker-build-injector: minikube-ssh-host injector
+minikube-build-injector: minikube-ssh-host injector
 	mkdir -p out
 	docker build -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
 	docker save -o out/injector.tar ${INJECTOR_IMAGE}
 	scp -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/injector.tar docker@$$(minikube ip):/tmp
 	minikube ssh -- sudo ctr -n=k8s.io images import /tmp/injector.tar
 
-docker-build: docker-build-manager docker-build-injector
+minikube-build: minikube-build-manager minikube-build-injector
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -121,8 +113,11 @@ venv:
 	test -d .venv || python3 -m venv .venv
 	source .venv/bin/activate; pip install -qr tasks/requirements.txt
 
+ignore-exit-code := False
+header-check-ignore-exit-code: ignore-exit-code := True
+header-check-ignore-exit-code: header-check
 header-check: venv
-	source .venv/bin/activate; inv header-check
+	source .venv/bin/activate; IGNORE_EXIT_CODE=${ignore-exit-code} inv header-check
 
 license-check: venv
 	source .venv/bin/activate; inv license-check

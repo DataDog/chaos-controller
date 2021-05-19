@@ -2,12 +2,7 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
-
-resources:
-- manager.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-images:
-- name: controller
-  newName: chaos-controller
-  newTag: latest
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chaos-engineering

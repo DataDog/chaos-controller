@@ -2,30 +2,35 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
-
-# permissions to do edit disruptions.
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
-  name: disruption-editor-role
+  name: chaos-controller-leader-election-role
+  namespace: chaos-engineering
 rules:
 - apiGroups:
-  - chaos.datadoghq.com
+  - ""
   resources:
-  - disruptions
+  - configmaps
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
+  - create
+  - update
+  - patch
+  - delete
 - apiGroups:
-  - chaos.datadoghq.com
+  - ""
   resources:
-  - disruptions/status
+  - configmaps/status
   verbs:
   - get
-  - patch
   - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create

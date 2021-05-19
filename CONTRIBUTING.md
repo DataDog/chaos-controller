@@ -23,17 +23,16 @@ Install the [requirements](#requirements) for this project, then run the followi
 * deploy cert-manager
   * `kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.3.0/cert-manager.yaml`
 * build the new image of the controller with your local changes
-  * `make docker-build`
+  * `make minikube-build`
 * deploy the CRD and the controller on the minikube cluster
-  * `kubectl create ns chaos-engineering`
   * `make install`
 
 If the controller is already deployed and you want to test a new version of it, please run the `make restart` command.
 
-The [samples](config/samples) contains sample data which can be used to test your changes.
+The [samples](examples/) contains sample data which can be used to test your changes.
 
-* [demo.yaml](config/samples/demo.yaml) contains a bunch of testing resources you can apply directly to your cluster
-  * `kubectl -n chaos-engineering apply -f config/samples/demo.yaml`
+* [demo.yaml](examples/demo.yaml) contains a bunch of testing resources you can apply directly to your cluster
+  * `kubectl -n chaos-engineering apply -f examples/demo.yaml`
 
 ### Helpers scripts
 
@@ -65,15 +64,14 @@ When the API package is changed, the CRD (custom resource definition) must be re
 * `make generate`: generate boilerplate code.
 * `make install`: install CRDs and controller into a cluster
 * `make manifests`: generate manifests e.g. CRD, RBAC etc.
-* `make run`: run against the configured Kubernetes cluster in ~/.kube/config
 * `make uninstall`: uninstall CRDs and controller from a cluster
 * `make restart`: restart the controller
 
 ### Building
 
-* `make docker-build`: build both images and load them into minikube
-  * `make docker-build-injector`: build the injector image and load it into minikube
-  * `make docker-build-manager`: build the manager image and load it into minikube
+* `make minikube-build`: build both images and load them into minikube
+  * `make minikube-build-injector`: build the injector image and load it into minikube
+  * `make minikube-build-manager`: build the manager image and load it into minikube
 * `make injector`: build injector binary
 * `make manager`: build manager binary
 * `make minikube-start`: start minikube with our ISO and containerd runtime
