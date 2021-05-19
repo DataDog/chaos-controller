@@ -6,9 +6,14 @@
 package v1beta1
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"strconv"
-	"strings"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -21,12 +26,9 @@ const (
 // NetworkDisruptionSpec represents a network disruption injection
 type NetworkDisruptionSpec struct {
 	// +nullable
-	Hosts []string `json:"hosts,omitempty"`
-	// +kubebuilder:validation:Minimum=0
-	// +kubebuilder:validation:Maximum=65535
-	Port int `json:"port,omitempty"`
-	// +kubebuilder:validation:Enum=tcp;udp;""
-	Protocol string `json:"protocol,omitempty"`
+	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
+	// +nullable
+	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
 	// +kubebuilder:validation:Enum=egress;ingress
 	Flow string `json:"flow,omitempty"`
 	// +kubebuilder:validation:Minimum=0
@@ -48,14 +50,59 @@ type NetworkDisruptionSpec struct {
 	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
 }
 
+type NetworkDisruptionHostSpec struct {
+	Host string `json:"host,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
+	Port int `json:"port,omitempty"`
+	// +kubebuilder:validation:Enum=tcp;udp;""
+	Protocol string `json:"protocol,omitempty"`
+}
+
+type NetworkDisruptionServiceSpec struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+}
+
 // Validate validates args for the given disruption
 func (s *NetworkDisruptionSpec) Validate() error {
+	// check that at least one network disruption is set
 	if s.BandwidthLimit == 0 &&
 		s.Drop == 0 &&
 		s.Delay == 0 &&
 		s.Corrupt == 0 &&
 		s.Duplicate == 0 {
 		return errors.New("the network disruption was selected, but no disruption type was specified. Please set at least one of: drop, delay, bandwidthLimit, corrupt, or duplicate. No injection will occur")
+	}
+
+	// ensure spec filters on something if ingress mode is enabled
+	if s.Flow == FlowIngress {
+		if len(s.Hosts) == 0 && len(s.Services) == 0 {
+			return errors.New("the network disruption has ingress flow enabled but no hosts or services are provided, which is required for it to work")
+		}
+	}
+
+	// ensure given services exist and are compatible
+	for _, service := range s.Services {
+		k8sService := corev1.Service{}
+		serviceKey := types.NamespacedName{
+			Namespace: service.Namespace,
+			Name:      service.Name,
+		}
+
+		// try to get the service and throw an error if it does not exist
+		if err := k8sClient.Get(context.Background(), serviceKey, &k8sService); err != nil {
+			if client.IgnoreNotFound(err) == nil {
+				return fmt.Errorf("the service specified in the network disruption (%s/%s) does not exist", service.Namespace, service.Name)
+			}
+
+			return fmt.Errorf("error retrieving the specified network disruption service: %w", err)
+		}
+
+		// check the service type
+		if k8sService.Spec.Type != corev1.ServiceTypeClusterIP {
+			return fmt.Errorf("the service specified in the network disruption (%s/%s) is of type %s, but only the following service types are supported: ClusterIP", service.Namespace, service.Name, k8sService.Spec.Type)
+		}
 	}
 
 	return nil
@@ -65,8 +112,6 @@ func (s *NetworkDisruptionSpec) Validate() error {
 func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	args := []string{
 		"network-disruption",
-		"--port",
-		strconv.Itoa(s.Port),
 		"--corrupt",
 		strconv.Itoa(s.Corrupt),
 		"--drop",
@@ -81,15 +126,14 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 		strconv.Itoa(s.BandwidthLimit),
 	}
 
-	// append protocol
-	if s.Protocol != "" {
-		args = append(args, "--protocol", s.Protocol)
+	// append hosts
+	for _, host := range s.Hosts {
+		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s", host.Host, host.Port, host.Protocol))
 	}
 
-	// append hosts
-	if len(s.Hosts) > 0 {
-		args = append(args, "--hosts")
-		args = append(args, strings.Split(strings.Join(s.Hosts, " --hosts "), " ")...)
+	// append services
+	for _, service := range s.Services {
+		args = append(args, "--services", fmt.Sprintf("%s;%s", service.Name, service.Namespace))
 	}
 
 	// append flow

@@ -14,6 +14,7 @@ spec:
     app: demo-curl
   count: 1
   network:
-    flow: ingress # disrupt incoming traffic instead of outgoing (requires at least a port or a host to be specified, only works for TCP, please read implementation details before using to know the current limitations)
-    port: 80
     drop: 10
+    flow: ingress # disrupt incoming traffic instead of outgoing (requires at least a port or a host to be specified, only works for TCP, please read implementation details before using to know the current limitations)
+    hosts:
+      - port: 80

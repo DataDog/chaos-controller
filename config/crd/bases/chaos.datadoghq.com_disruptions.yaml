@@ -138,19 +138,35 @@ spec:
                   type: string
                 hosts:
                   items:
-                    type: string
+                    properties:
+                      host:
+                        type: string
+                      port:
+                        maximum: 65535
+                        minimum: 0
+                        type: integer
+                      protocol:
+                        enum:
+                        - tcp
+                        - udp
+                        - ""
+                        type: string
+                    type: object
                   nullable: true
                   type: array
-                port:
-                  maximum: 65535
-                  minimum: 0
-                  type: integer
-                protocol:
-                  enum:
-                  - tcp
-                  - udp
-                  - ""
-                  type: string
+                services:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      namespace:
+                        type: string
+                    required:
+                    - name
+                    - namespace
+                    type: object
+                  nullable: true
+                  type: array
               type: object
             nodeFailure:
               description: NodeFailureSpec represents a node failure injection

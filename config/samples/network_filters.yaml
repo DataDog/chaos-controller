@@ -14,10 +14,11 @@ spec:
     app: demo-curl
   count: 1
   network:
-    hosts: # disrupt only packets going to a specific host
-      - 1.2.3.4 # can be a single IP
-      - 10.0.0.0/8 # can be a CIDR
-      - datadoghq.com # can be a hostname (will be resolved on injection)
-    port: 80 # disrupt only packets going to a specific port
-    protocol: tcp # disrupt only packets using a specific protocol (can be either tcp or udp, defaults to both)
-    drop: 10
+    drop: 100
+    hosts:
+      - host: 1.2.3.4
+        port: 8080
+        protocol: tcp
+    services:
+      - name: demo
+        namespace: chaos-engineering
