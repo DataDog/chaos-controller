@@ -79,6 +79,7 @@ type DisruptionReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
+// +kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
 
 // Reconcile loop
 func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {

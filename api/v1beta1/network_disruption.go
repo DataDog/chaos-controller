@@ -6,9 +6,14 @@
 package v1beta1
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -61,12 +66,43 @@ type NetworkDisruptionServiceSpec struct {
 
 // Validate validates args for the given disruption
 func (s *NetworkDisruptionSpec) Validate() error {
+	// check that at least one network disruption is set
 	if s.BandwidthLimit == 0 &&
 		s.Drop == 0 &&
 		s.Delay == 0 &&
 		s.Corrupt == 0 &&
 		s.Duplicate == 0 {
 		return errors.New("the network disruption was selected, but no disruption type was specified. Please set at least one of: drop, delay, bandwidthLimit, corrupt, or duplicate. No injection will occur")
+	}
+
+	// ensure spec filters on something if ingress mode is enabled
+	if s.Flow == FlowIngress {
+		if len(s.Hosts) == 0 && len(s.Services) == 0 {
+			return errors.New("the network disruption has ingress flow enabled but no hosts or services are provided, which is required for it to work")
+		}
+	}
+
+	// ensure given services exist and are compatible
+	for _, service := range s.Services {
+		k8sService := corev1.Service{}
+		serviceKey := types.NamespacedName{
+			Namespace: service.Namespace,
+			Name:      service.Name,
+		}
+
+		// try to get the service and throw an error if it does not exist
+		if err := k8sClient.Get(context.Background(), serviceKey, &k8sService); err != nil {
+			if client.IgnoreNotFound(err) == nil {
+				return fmt.Errorf("the service specified in the network disruption (%s/%s) does not exist", service.Namespace, service.Name)
+			}
+
+			return fmt.Errorf("error retrieving the specified network disruption service: %w", err)
+		}
+
+		// check the service type
+		if k8sService.Spec.Type != corev1.ServiceTypeClusterIP {
+			return fmt.Errorf("the service specified in the network disruption (%s/%s) is of type %s, but only the following service types are supported: ClusterIP", service.Namespace, service.Name, k8sService.Spec.Type)
+		}
 	}
 
 	return nil
