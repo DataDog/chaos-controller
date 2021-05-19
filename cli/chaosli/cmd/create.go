@@ -271,6 +271,61 @@ func getNodeFailure() *v1beta1.NodeFailureSpec {
 	return spec
 }
 
+func getHosts() []v1beta1.NetworkDisruptionHostSpec {
+	if !confirmOption("Would you like to specify any hosts?",
+		"If you want to target _all_ traffic, or only want to target k8s services, don't specify any hosts.") {
+		return nil
+	}
+
+	var hosts []v1beta1.NetworkDisruptionHostSpec
+	getHost := func() v1beta1.NetworkDisruptionHostSpec {
+		host := v1beta1.NetworkDisruptionHostSpec{}
+
+		host.Host = getInput("Add a host to target (or leave blank)",
+			"This will affect the network traffic between these hosts and your target. These can be hostnames, IPs, or CIDR blocks. These _cannot_ be k8s services.")
+		host.Port, _ = strconv.Atoi(getInput("What port would you like to target? (or leave blank for all)", "If specified, we will only affect traffic using this port"))
+
+		if confirmOption("Would you like to specifically target only tcp or udp traffic?", "The default is to target all traffic.") {
+			host.Protocol, _ = selectInput("Please choose then (or ctrl+c to go back)", []string{"tcp", "udp"}, "This will cause only the traffic using this protocol to be affected.")
+		}
+
+		return host
+	}
+
+	hosts = append(hosts, getHost())
+
+	for confirmOption("Would you like to add another host?", "") {
+		hosts = append(hosts, getHost())
+	}
+
+	return hosts
+}
+
+func getServices() []v1beta1.NetworkDisruptionServiceSpec {
+	if !confirmOption("Would you like to specify any k8s services?",
+		"If you want to target _all_ traffic, or only want to target hosts, don't specify any services.") {
+		return nil
+	}
+
+	var services []v1beta1.NetworkDisruptionServiceSpec
+	getService := func() v1beta1.NetworkDisruptionServiceSpec {
+		service := v1beta1.NetworkDisruptionServiceSpec{}
+
+		service.Name = getInput("What is the name of this service?", "")
+		service.Namespace = getInput("What namespace is this service in?", "")
+
+		return service
+	}
+
+	services = append(services, getService())
+
+	for confirmOption("Would you like to add another k8s service?", "") {
+		services = append(services, getService())
+	}
+
+	return services
+}
+
 func getNetwork() *v1beta1.NetworkDisruptionSpec {
 	if !confirmKind("Network Disruption", "Injects a variety of possible network issues") {
 		return nil
@@ -278,9 +333,11 @@ func getNetwork() *v1beta1.NetworkDisruptionSpec {
 
 	spec := &v1beta1.NetworkDisruptionSpec{}
 
-	// TODO rebase this onto main
-	spec.Hosts = getSliceInput("Add a host to target (or leave blank)", "This will affect the network traffic between these hosts and your target.")
-	spec.Port, _ = strconv.Atoi(getInput("what port to target (or leave blank)", "If specified, we will only affect traffic using this port"))
+	fmt.Println(`The network disruption will inject issues between your targets, and the hosts + kubernetes services they communicate with.
+ We need to handle targeting "regular" hosts from kubernetes services differently for technical reasons that are explained in the docs.`)
+
+	spec.Hosts = getHosts()
+	spec.Services = getServices()
 
 	spec.Flow, _ = selectInput(
 		"Choose a flow direction",
