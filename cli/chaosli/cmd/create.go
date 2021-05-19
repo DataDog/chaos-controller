@@ -6,7 +6,10 @@
 package cmd
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -24,7 +27,12 @@ var createCmd = &cobra.Command{
 	Short: "create a disruption.",
 	Long:  `creates a disruption given input from the user.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(create())
+		spec, _ := create()
+		jsonRep, _ := json.MarshalIndent(spec, "", " ")
+
+		writer := bufio.NewWriter(os.Stdout)
+		writer.Write(jsonRep)
+		writer.Flush()
 	},
 }
 
