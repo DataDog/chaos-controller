@@ -31,5 +31,5 @@ type Config struct {
 	Container   container.Container
 	Cgroup      cgroup.Manager
 	Netns       netns.Manager
-	K8sClient   *kubernetes.Clientset
+	K8sClient   kubernetes.Interface
 }

@@ -22,6 +22,10 @@ import (
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	kubernetes "k8s.io/client-go/kubernetes/fake"
 )
 
 var _ = Describe("Failure", func() {
@@ -39,6 +43,7 @@ var _ = Describe("Failure", func() {
 		nlroute1, nlroute2, nlroute3                            *network.NetlinkRouteMock
 		dns                                                     *network.DNSMock
 		netnsManager                                            *netns.ManagerMock
+		k8sClient                                               *kubernetes.Clientset
 	)
 
 	BeforeEach(func() {
@@ -106,6 +111,43 @@ var _ = Describe("Failure", func() {
 		// environment variables
 		Expect(os.Setenv(env.InjectorTargetPodHostIP, "10.0.0.2")).To(BeNil())
 
+		// fake kubernetes client and resources
+		fakeService := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: corev1.ServiceSpec{
+				Type:      corev1.ServiceTypeClusterIP,
+				ClusterIP: "172.16.0.1",
+				Ports: []corev1.ServicePort{
+					{
+						Port:       80,
+						TargetPort: intstr.FromInt(8080),
+						Protocol:   corev1.ProtocolTCP,
+					},
+				},
+				Selector: map[string]string{
+					"app": "foo",
+				},
+			},
+		}
+
+		fakeEndpoint := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo-abcd-1234",
+				Namespace: "bar",
+				Labels: map[string]string{
+					"app": "foo",
+				},
+			},
+			Status: corev1.PodStatus{
+				PodIP: "10.1.0.4",
+			},
+		}
+
+		k8sClient = kubernetes.NewSimpleClientset(fakeService, fakeEndpoint)
+
 		// config
 		config = NetworkDisruptionInjectorConfig{
 			Config: Config{
@@ -115,6 +157,7 @@ var _ = Describe("Failure", func() {
 				Netns:       netnsManager,
 				Cgroup:      cgroupManager,
 				Level:       chaostypes.DisruptionLevelPod,
+				K8sClient:   k8sClient,
 			},
 			TrafficController: tc,
 			NetlinkAdapter:    nl,
@@ -193,7 +236,7 @@ var _ = Describe("Failure", func() {
 			})
 		})
 
-		// hosts filtering cases
+		// hosts and services filtering cases
 		Context("with no hosts specified", func() {
 			It("should add a filter to redirect all traffic on main interfaces on the disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "0.0.0.0/0", 0, 0, "", "1:4")
@@ -219,6 +262,22 @@ var _ = Describe("Failure", func() {
 			It("should add a filter to redirect targeted traffic on all interfaces on the disrupted band filter on given hosts as destination IP", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "1.1.1.1/32", 0, 80, "tcp", "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "2.2.2.2/32", 0, 443, "tcp", "1:4")
+			})
+		})
+
+		Context("with multiple services specified", func() {
+			BeforeEach(func() {
+				spec.Services = []v1beta1.NetworkDisruptionServiceSpec{
+					{
+						Name:      "foo",
+						Namespace: "bar",
+					},
+				}
+			})
+
+			It("should add a filter to redirect targeted traffic on all interfaces on the disrupted band filter on given service cluster IP and endpoints IPs", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "1:4")
 			})
 		})
 
