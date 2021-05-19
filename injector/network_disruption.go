@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-// linkOperation represents a tc operation on a single network interface combined with the parent to bind to and the handle identifier to use
+// linkOperation represents a tc operation on a set of network interfaces combined with the parent to bind to and the handle identifier to use
 type linkOperation func([]string, string, uint32) error
 
 // networkDisruptionService describes a parsed Kubernetes service, representing an (ip, port, protocol) tuple
