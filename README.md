@@ -17,8 +17,8 @@ The **Chaos Controller** allows you to disrupt your Kubernetes infrastructure th
 ## Table of Contents
 
 * [Getting Started](#getting-started)
+* [Quick install](#quick-install)
 * [Examples](docs/usage.md#examples)
-* [Installation](docs/installation.md)
 * [Design](docs/design.md)
 * [Metrics](docs/metrics.md)
 * [FAQ](docs/faq.md)
@@ -42,23 +42,24 @@ spec:
     shutdown: false # trigger a kernel panic on the target node
 ```
 
-Please note that the `Disruption` resource is **immutable**. Once applied, editing it will have no effect. If you need to change the disruption definition, you need to delete the existing resource and to re-create it.
+Please note that the `Disruption` resource is **immutable**. Once applied, you can't edit it. If you need to change the disruption definition, you need to delete the existing resource and to re-create it.
 
-Below is a list of common options to get started. Visit the [usage guide](docs/usage.md) for more customizations and sample use cases!
+Visit the [usage guide](docs/usage.md) for more customizations and sample use cases!
 
-### Dry-run mode
+## Quick install
 
- This fakes the injection while still going through the process of selecting targets, creating chaos pods, and simulating the disruption as much as possible. Put a different way, all "read" operations (like knowing which network interface to disrupt) will be executed while all "write" operations won't be (like creating what's needed to drop packets). Checkout this [example](examples/dry_run.yaml).
+**NOTE:** Datadog engineers should consult Chaos Engineering team to deploy chaos-controller to a new cluster.**
 
-### Level
+Please look at the [advanced installation documentation](docs/installation.md) for any customization.
 
-A disruption can be applied either at the `pod` level or at the `node` level:
+### Requirements
 
-* When applied at the `pod` level, the controller will target pods and will affect only the targeted pods. Other pods running on the same node as those targeted may still be affected depending on the injected disruption.
-* When applied at the `node` level, the controller will target nodes and will potentially affect everything running on the node (other processes).
+Install [cert-manager](https://cert-manager.io/docs/installation/kubernetes/) before going further. It is required for the admission controller to get its own self-signed certificate.
 
-### Targeting
+### Install the manifests
 
-The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the given label selector and will randomly select a number (defined in the `count` field) of matching targets. Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.
+This file is generate for each new release and will always point to the latest stable version of the controller.
 
-**NOTE:** If you are targeting pods, the disruption must be created in the same namespace as the targeted pods.
+```
+kubectl apply -f https://raw.githubusercontent.com/DataDog/chaos-controller/main/chart/install.yaml
+```
