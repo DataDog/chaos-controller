@@ -144,7 +144,7 @@ ifneq (,$(shell git fetch --dry-run))
 	exit 1
 endif
 	echo "Generating install manifest..."
-	helm template chart/ --set images.tag=$(VERSION) > ./chart/install.yaml
+	helm template chart/ --set images.tag=$(VERSION) --set images.controller=datadog/chaos-controller --set images.injector=datadog/chaos-injector > ./chart/install.yaml
 	git add ./chart/install.yaml
 	git commit -m "Generate install manifest for version $(VERSION)"
 	echo "Creating git tag..."
