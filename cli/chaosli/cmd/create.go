@@ -6,10 +6,9 @@
 package cmd
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"os"
+	"io/ioutil"
 	"strconv"
 	"strings"
 
@@ -41,9 +40,11 @@ var createCmd = &cobra.Command{
 			fmt.Printf("yaml err: %v", err)
 		}
 
-		writer := bufio.NewWriter(os.Stdout)
-		writer.Write(y)
-		writer.Flush()
+		path, _ := cmd.Flags().GetString("path")
+		err = ioutil.WriteFile(path, y, 0644)
+		if err != nil {
+			fmt.Printf("writeFile err: %v", err)
+		}
 	},
 }
 
@@ -57,6 +58,7 @@ func getMetadata() []byte {
 		"What namespace should your disruption be created in?",
 		"If you are targeting pods, you _must_ create the disruption in the same namespace as the targeted pods.",
 		true)
+	//TODO enforce lowercase here for both of these a DNS-1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')
 
 	return []byte(fmt.Sprintf(`{"name": %s, "namespace": %s}`, name, namespace))
 }
@@ -392,15 +394,15 @@ func getNetwork() *v1beta1.NetworkDisruptionSpec {
 	)
 
 	if confirmOption("Would you like to drop packets?", "Packets will be dropped before leaving the target") {
-		spec.Drop, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100%", true))
+		spec.Drop, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", true))
 	}
 
 	if confirmOption("Would you like to duplicate packets?", "Packets will be duplicated immediately before leaving the target") {
-		spec.Duplicate, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100%", true))
+		spec.Duplicate, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", true))
 	}
 
 	if confirmOption("Would you like to corrupt packets?", "Packets will be corrupted before leaving the target") {
-		spec.Corrupt, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100%", true))
+		spec.Corrupt, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", true))
 	}
 
 	if confirmOption("Would you like to delay packets?", "Packets will be delayed before leaving the target") {
@@ -478,4 +480,6 @@ func getLevel() types.DisruptionLevel {
 	return types.DisruptionLevel(level)
 }
 
-func init() {}
+func init() {
+	createCmd.Flags().String("path", "disruption.yaml", "The file to write the new disruption to.")
+}
