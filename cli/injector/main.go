@@ -25,6 +25,8 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -187,6 +189,17 @@ func initConfig() {
 		netnsMgrs = append(netnsMgrs, netnsMgr)
 	}
 
+	// create kubernetes clientset
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		log.Fatalw("error getting kubernetes client config", "error", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Fatalw("error creating kubernetes client", "error", err)
+	}
+
 	for i, ctn := range ctns {
 		config := injector.Config{
 			DryRun:      dryRun,
@@ -196,6 +209,7 @@ func initConfig() {
 			Container:   ctn,
 			Cgroup:      cgroupMgrs[i],
 			Netns:       netnsMgrs[i],
+			K8sClient:   clientset,
 		}
 
 		configs = append(configs, config)

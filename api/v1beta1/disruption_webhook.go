@@ -11,21 +11,22 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 var logger *zap.SugaredLogger
+var k8sClient client.Client
 
 func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger) error {
 	logger = &zap.SugaredLogger{}
 	*logger = *l.With("source", "admission-controller")
+	k8sClient = mgr.GetClient()
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
 }
-
-// +kubebuilder:webhook:verbs=create;update,path=/validate-chaos-datadoghq-com-v1beta1-disruption,mutating=false,failurePolicy=fail,groups=chaos.datadoghq.com,resources=disruptions,versions=v1beta1,name=chaos-controller-admission-webhook.chaos-engineering.svc
 
 var _ webhook.Validator = &Disruption{}
 
@@ -33,8 +34,10 @@ var _ webhook.Validator = &Disruption{}
 func (r *Disruption) ValidateCreate() error {
 	logger.Infow("validating created disruption", "instance", r.Name, "namespace", r.Namespace)
 
-	if r.Spec.Network != nil && r.Spec.Network.Flow == FlowIngress && len(r.Spec.Network.Hosts) > 0 {
-		return fmt.Errorf("a network disruption should not specify a hosts list when targeting ingress packets")
+	if r.Spec.Network != nil {
+		if err := r.Spec.Network.Validate(); err != nil {
+			return err
+		}
 	}
 
 	return nil

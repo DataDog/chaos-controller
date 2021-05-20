@@ -8,6 +8,7 @@
 from invoke import task
 import glob
 import typing as t
+import os
 
 file_extension_map = {
     "go": "//",
@@ -24,11 +25,11 @@ auto_generated_headers = [
 ]
 
 files_to_skip = [
-    "config/webhook/manifests.yaml",
-    "config/rbac/role.yaml",
-    "config/crd/bases/chaos.datadoghq.com_disruptions.yaml",
     "api/v1beta1/zz_generated.deepcopy.go",
     "bin/injector/dns_disruption_resolver.py",
+    "chart/templates/crds/chaos.datadoghq.com_disruptions.yaml",
+    "chart/templates/role.yaml",
+    "chart/install.yaml",
 ]
 
 # generates the header with the given comment tag
@@ -114,5 +115,4 @@ def header_check(ctx):
                 print(f"header missing in {file}")
                 update_header(file, header, header_position)
                 exit_code = 1
-
     exit(exit_code)

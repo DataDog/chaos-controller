@@ -18,21 +18,21 @@ type TcMock struct {
 }
 
 //nolint:golint
-func (f *TcMock) AddNetem(iface string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
-	args := f.Called(iface, parent, handle, delay, delayJitter, drop, corrupt, duplicate)
+func (f *TcMock) AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
+	args := f.Called(ifaces, parent, handle, delay, delayJitter, drop, corrupt, duplicate)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *TcMock) AddPrio(iface string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
-	args := f.Called(iface, parent, handle, bands, priomap)
+func (f *TcMock) AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
+	args := f.Called(ifaces, parent, handle, bands, priomap)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *TcMock) AddFilter(iface string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
+func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
 	srcIPs := "nil"
 	dstIPs := "nil"
 
@@ -44,28 +44,28 @@ func (f *TcMock) AddFilter(iface string, parent string, handle uint32, srcIP, ds
 		dstIPs = dstIP.String()
 	}
 
-	args := f.Called(iface, parent, handle, srcIPs, dstIPs, srcPort, dstPort, protocol, flowid)
+	args := f.Called(ifaces, parent, handle, srcIPs, dstIPs, srcPort, dstPort, protocol, flowid)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *TcMock) AddCgroupFilter(iface string, parent string, handle uint32) error {
-	args := f.Called(iface, parent, handle)
+func (f *TcMock) AddCgroupFilter(ifaces []string, parent string, handle uint32) error {
+	args := f.Called(ifaces, parent, handle)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *TcMock) AddOutputLimit(iface string, parent string, handle uint32, bytesPerSec uint) error {
-	args := f.Called(iface, parent, handle, bytesPerSec)
+func (f *TcMock) AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error {
+	args := f.Called(ifaces, parent, handle, bytesPerSec)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *TcMock) ClearQdisc(iface string) error {
-	args := f.Called(iface)
+func (f *TcMock) ClearQdisc(ifaces []string) error {
+	args := f.Called(ifaces)
 
 	return args.Error(0)
 }

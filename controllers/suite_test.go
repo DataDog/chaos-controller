@@ -134,7 +134,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:  []string{filepath.Join("..", "config", "crd", "bases")},
+		CRDDirectoryPaths:  []string{filepath.Join("..", "chart", "templates", "crds")},
 		KubeAPIServerFlags: append(envtest.DefaultKubeAPIServerFlags, "--allow-privileged"),
 	}
 
@@ -169,12 +169,14 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&DisruptionReconciler{
-		Client:         k8sClient,
-		BaseLog:        logger,
-		Recorder:       k8sManager.GetEventRecorderFor("disruption-controller"),
-		MetricsSink:    ms,
-		Scheme:         scheme.Scheme,
-		TargetSelector: MockTargetSelector{},
+		Client:                 k8sClient,
+		BaseLog:                logger,
+		Recorder:               k8sManager.GetEventRecorderFor("disruption-controller"),
+		MetricsSink:            ms,
+		Scheme:                 scheme.Scheme,
+		TargetSelector:         MockTargetSelector{},
+		InjectorImage:          "chaos-injector",
+		InjectorServiceAccount: "chaos-injector",
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

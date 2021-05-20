@@ -221,9 +221,13 @@ var _ = Describe("Helpers", func() {
 					Shutdown: false,
 				},
 				Network: &chaosv1beta1.NetworkDisruptionSpec{
-					Hosts:          []string{"127.0.0.1"},
-					Port:           80,
-					Protocol:       "tcp",
+					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
+						{
+							Host:     "127.0.0.1",
+							Port:     80,
+							Protocol: "tcp",
+						},
+					},
 					Drop:           0,
 					Corrupt:        0,
 					Delay:          1000,

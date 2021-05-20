@@ -1,0 +1,25 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: chaos-controller-serving-cert
+  namespace: chaos-engineering
+spec:
+  dnsNames:
+  - chaos-controller-webhook-service.chaos-engineering.svc
+  - chaos-controller-webhook-service.chaos-engineering.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: chaos-controller-selfsigned-issuer
+  secretName: webhook-server-cert
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: chaos-controller-selfsigned-issuer
+  namespace: chaos-engineering
+spec:
+  selfSigned: {}
