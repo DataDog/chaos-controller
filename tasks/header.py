@@ -29,6 +29,7 @@ files_to_skip = [
     "bin/injector/dns_disruption_resolver.py",
     "chart/templates/crds/chaos.datadoghq.com_disruptions.yaml",
     "chart/templates/role.yaml",
+    "chart/install.yaml",
 ]
 
 # generates the header with the given comment tag

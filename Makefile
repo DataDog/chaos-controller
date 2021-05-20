@@ -1,8 +1,9 @@
 .PHONY: manager injector
 
 # Image URL to use all building/pushing image targets
-MANAGER_IMAGE ?= chaos-controller:latest
-INJECTOR_IMAGE ?= chaos-injector:latest
+IMAGE_TAG ?= $(shell git describe --tags)
+MANAGER_IMAGE ?= chaos-controller:${IMAGE_TAG}
+INJECTOR_IMAGE ?= chaos-injector:${IMAGE_TAG}
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -27,11 +28,11 @@ injector:
 
 # Install CRDs and controller into a cluster
 install: manifests
-	helm template chart/ | kubectl apply -f -
+	kubectl apply -f ./chart/install.yaml
 
 # Uninstall CRDs and controller from a cluster
 uninstall: manifests
-	helm template chart/ | kubectl delete -f -
+	kubectl delete -f ./chart/install.yaml
 
 restart:
 	kubectl -n chaos-engineering rollout restart deployment chaos-controller
@@ -39,6 +40,7 @@ restart:
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:trivialVersions=true paths="./..." output:crd:dir=./chart/templates/crds/ output:rbac:dir=./chart/templates/
+	helm template chart/ --set images.tag=${IMAGE_TAG} > ./chart/install.yaml
 
 # Run go fmt against code
 fmt:
