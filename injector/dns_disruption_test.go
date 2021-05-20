@@ -23,16 +23,17 @@ import (
 
 var _ = Describe("Failure", func() {
 	var (
-		inj          Injector
-		config       DNSDisruptionInjectorConfig
-		spec         v1beta1.DNSDisruptionSpec
-		netnsManager *netns.ManagerMock
-		iptables     *network.IptablesMock
+		inj           Injector
+		config        DNSDisruptionInjectorConfig
+		spec          v1beta1.DNSDisruptionSpec
+		cgroupManager *cgroup.ManagerMock
+		netnsManager  *netns.ManagerMock
+		iptables      *network.IptablesMock
 	)
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager := &cgroup.ManagerMock{}
+		cgroupManager = &cgroup.ManagerMock{}
 		cgroupManager.On("Exists", "net_cls").Return(true, nil)
 		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
@@ -53,9 +54,10 @@ var _ = Describe("Failure", func() {
 		iptables.On("CreateChain", mock.Anything).Return(nil)
 		iptables.On("ClearAndDeleteChain", mock.Anything).Return(nil)
 		iptables.On("AddRuleWithIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("AddRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("AddCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("PrependRule", mock.Anything, mock.Anything).Return(nil)
 		iptables.On("DeleteRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("DeleteCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// environment variables
 		Expect(os.Setenv(env.InjectorChaosPodIP, "10.0.0.2")).To(BeNil())
@@ -92,13 +94,28 @@ var _ = Describe("Failure", func() {
 			netnsManager.AssertCalled(GinkgoT(), "Exit")
 		})
 
-		Context("iptables rules should be created", func() {
-			It("should create one chain and four rules", func() {
-				iptables.AssertCalled(GinkgoT(), "AddRule", "OUTPUT", "udp", "53", "CHAOS-DNS")
-				iptables.AssertCalled(GinkgoT(), "AddRuleWithIP", "CHAOS-DNS", "udp", "53", "DNAT", "10.0.0.2")
+		It("should create and set the CHAOS-DNS Chain", func() {
+			iptables.AssertCalled(GinkgoT(), "CreateChain", "CHAOS-DNS")
+			iptables.AssertCalled(GinkgoT(), "AddRuleWithIP", "CHAOS-DNS", "udp", "53", "DNAT", "10.0.0.2")
+		})
+
+		Context("disruption is node-level", func() {
+			It("creates node-level iptable filter rules", func() {
 				iptables.AssertCalled(GinkgoT(), "PrependRule", "CHAOS-DNS", []string{"-s", "10.0.0.2", "-j", "RETURN"})
+				iptables.AssertCalled(GinkgoT(), "PrependRule", "OUTPUT", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
 				iptables.AssertCalled(GinkgoT(), "PrependRule", "PREROUTING", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
-				iptables.AssertCalled(GinkgoT(), "CreateChain", "CHAOS-DNS")
+			})
+		})
+
+		Context("disruption is pod-level", func() {
+			BeforeEach(func() {
+				config.Level = chaostypes.DisruptionLevelPod
+			})
+			It("creates pod-level iptable filter rules", func() {
+				iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS")
+			})
+			It("should write the custom classid to the target net_cls cgroup", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", InjectorDNSCgroupClassID)
 			})
 		})
 	})
@@ -113,10 +130,26 @@ var _ = Describe("Failure", func() {
 			netnsManager.AssertCalled(GinkgoT(), "Exit")
 		})
 
-		Context("iptables cleanup should happen", func() {
-			It("should clear the iptables rules", func() {
+		It("should clear and delete the CHAOS-DNS Chain", func() {
+			iptables.AssertCalled(GinkgoT(), "ClearAndDeleteChain", "CHAOS-DNS")
+		})
+
+		Context("disruption is node-level", func() {
+			It("should clear the node-level iptable rules", func() {
 				iptables.AssertCalled(GinkgoT(), "DeleteRule", "OUTPUT", "udp", "53", "CHAOS-DNS")
-				iptables.AssertCalled(GinkgoT(), "ClearAndDeleteChain", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "DeleteRule", "PREROUTING", "udp", "53", "CHAOS-DNS")
+			})
+		})
+
+		Context("disruption is pod-level", func() {
+			BeforeEach(func() {
+				config.Level = chaostypes.DisruptionLevelPod
+			})
+			It("should clear the pod-level iptables rules", func() {
+				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS")
+			})
+			It("should reset the custom classid", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", "0x0")
 			})
 		})
 

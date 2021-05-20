@@ -28,9 +28,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
+// GroupName is exported for client-go purposes
+const GroupName = "chaos.datadoghq.com"
+
+// APIVersion is exported for client-go purposes
+const APIVersion = "v1beta1"
+
 var (
 	// GroupVersion is group version used to register these objects
-	GroupVersion = schema.GroupVersion{Group: "chaos.datadoghq.com", Version: "v1beta1"}
+	GroupVersion = schema.GroupVersion{Group: GroupName, Version: APIVersion}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}

@@ -1,5 +1,35 @@
 # Changelog
 
+## [3.9.0](https://github.com/DataDog/chaos-controller/tree/3.9.0) (2021-05-10)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.8.1...3.9.0)
+
+**Merged pull requests:**
+
+- Update container release\_changelog\_0ecdd93d8f7041ae97144d3804c61dd913df3541 [\#296](https://github.com/DataDog/chaos-controller/pull/296) ([github-actions[bot]](https://github.com/apps/github-actions))
+- CORE-594: Add Clientset code needing for using client-go with Disruption Resource [\#288](https://github.com/DataDog/chaos-controller/pull/288) ([ptnapoleon](https://github.com/ptnapoleon))
+
+## [3.8.1](https://github.com/DataDog/chaos-controller/tree/3.8.1) (2021-04-30)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.8.0...3.8.1)
+
+**Merged pull requests:**
+
+- Log into docker hub on pre-release to avoid pull rate limiting [\#295](https://github.com/DataDog/chaos-controller/pull/295) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_28c1d25c18f250a0dc42a2b003108fd51484f666 [\#294](https://github.com/DataDog/chaos-controller/pull/294) ([github-actions[bot]](https://github.com/apps/github-actions))
+
+## [3.8.0](https://github.com/DataDog/chaos-controller/tree/3.8.0) (2021-04-29)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.7.1...3.8.0)
+
+**Merged pull requests:**
+
+- Allow to specify cert dir for admission webhook [\#293](https://github.com/DataDog/chaos-controller/pull/293) ([Devatoria](https://github.com/Devatoria))
+- CORE-540: Bugfix: DNS Disruption on one container within a pod only disrupts targeted container [\#292](https://github.com/DataDog/chaos-controller/pull/292) ([nathan-tournant](https://github.com/nathan-tournant))
+- Bootstrap the admission controller [\#291](https://github.com/DataDog/chaos-controller/pull/291) ([Devatoria](https://github.com/Devatoria))
+- Exclude export comment rule from linting [\#290](https://github.com/DataDog/chaos-controller/pull/290) ([ptnapoleon](https://github.com/ptnapoleon))
+- Update container release\_changelog\_5fcdae27a69f4626fa35fb33f878dbb13b775a3b [\#289](https://github.com/DataDog/chaos-controller/pull/289) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [3.7.1](https://github.com/DataDog/chaos-controller/tree/3.7.1) (2021-04-13)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.7.0...3.7.1)

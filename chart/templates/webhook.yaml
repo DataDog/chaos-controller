@@ -1,0 +1,29 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+  name: chaos-controller
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: chaos-controller-webhook-service
+      namespace: chaos-engineering
+      path: /validate-chaos-datadoghq-com-v1beta1-disruption
+  failurePolicy: Fail
+  name: chaos-controller-admission-webhook.chaos-engineering.svc
+  rules:
+  - apiGroups:
+    - chaos.datadoghq.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - disruptions

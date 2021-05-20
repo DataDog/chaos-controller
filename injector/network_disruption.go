@@ -6,6 +6,7 @@
 package injector
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -15,15 +16,19 @@ import (
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
-const (
-	flowEgress  = "egress"
-	flowIngress = "ingress"
-)
+// linkOperation represents a tc operation on a set of network interfaces combined with the parent to bind to and the handle identifier to use
+type linkOperation func([]string, string, uint32) error
 
-// linkOperation represents a tc operation on a single network interface combined with the parent to bind to and the handle identifier to use
-type linkOperation func(network.NetlinkLink, string, uint32) error
+// networkDisruptionService describes a parsed Kubernetes service, representing an (ip, port, protocol) tuple
+type networkDisruptionService struct {
+	ip       *net.IPNet
+	port     int
+	protocol string
+}
 
 // networkDisruptionInjector describes a network disruption
 type networkDisruptionInjector struct {
@@ -142,52 +147,7 @@ func (i networkDisruptionInjector) Clean() error {
 	return nil
 }
 
-// getInterfacesByIP returns the interfaces used to reach the given hosts
-// if hosts is empty, all interfaces are returned
-func (i *networkDisruptionInjector) getInterfacesByIP(hosts []string) (map[string][]*net.IPNet, error) {
-	var err error
-
-	ips := []*net.IPNet{}
-	linkByIP := map[string][]*net.IPNet{}
-
-	// define the null IP matching all hosts
-	_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
-
-	if len(hosts) > 0 {
-		i.config.Log.Infow("resolving the given hosts", "hosts", hosts)
-
-		// resolve hosts
-		ips, err = resolveHosts(i.config.DNSClient, hosts)
-		if err != nil {
-			return nil, fmt.Errorf("can't resolve given hosts: %w", err)
-		}
-	} else {
-		// by default, add the null IP macthing all hosts
-		ips = append(ips, nullIP)
-	}
-
-	// retrieve links used in the routing table
-	links, err := i.config.NetlinkAdapter.LinkList()
-	if err != nil {
-		return nil, fmt.Errorf("can't list links: %w", err)
-	}
-
-	// create the interfaces -> IPs association
-	for _, link := range links {
-		i.config.Log.Infof("adding interface %s", link.Name())
-
-		linkByIP[link.Name()] = ips
-	}
-
-	// explicitly add loopback interface
-	i.config.Log.Infof("adding loopback interface")
-
-	linkByIP["lo"] = ips
-
-	return linkByIP, nil
-}
-
-// ApplyOperations applies the added operations by building a tc tree
+// applyOperations applies the added operations by building a tc tree
 // Here's what happen on tc side:
 //  - a first prio qdisc will be created and attached to root
 //    - it'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol
@@ -212,6 +172,18 @@ func (i *networkDisruptionInjector) getInterfacesByIP(hosts []string) (map[strin
 //           |- (4:) <-- second operation
 //             ...
 func (i *networkDisruptionInjector) applyOperations() error {
+	// get interfaces
+	links, err := i.config.NetlinkAdapter.LinkList()
+	if err != nil {
+		return fmt.Errorf("error listing interfaces: %w", err)
+	}
+
+	// build a map of link name and link interface
+	interfaces := []string{}
+	for _, link := range links {
+		interfaces = append(interfaces, link.Name())
+	}
+
 	// retrieve the default route information
 	defaultRoute, err := i.config.NetlinkAdapter.DefaultRoute()
 	if err != nil {
@@ -228,58 +200,22 @@ func (i *networkDisruptionInjector) applyOperations() error {
 
 	i.config.Log.Infof("target pod node IP is %s", nodeIP)
 
-	hostIPNet := &net.IPNet{
+	nodeIPNet := &net.IPNet{
 		IP:   net.ParseIP(nodeIP),
 		Mask: net.CIDRMask(32, 32),
 	}
 
-	// get all interfaces with the wildcard/zero route (0.0.0.0/0) which
-	// can be used in filters to match all destination or source hosts
-	// "eth0" => [0.0.0.0/0]
-	// "eth1" => [0.0.0.0/0]
-	wildcardIPInterfaces, err := i.getInterfacesByIP(nil)
-	if err != nil {
-		return fmt.Errorf("error getting network interfaces for wildcard IP: %w", err)
-	}
-
-	// get all interfaces with the node IP
-	// "eth0" => [192.168.0.1/32]
-	// "eth1" => [192.168.0.1/32]
-	nodeIPInterfaces, err := i.getInterfacesByIP([]string{hostIPNet.String()})
-	if err != nil {
-		return fmt.Errorf("error getting target pod node interfaces/IP binding: %w", err)
-	}
-
-	// get all interfaces with specified hosts in the disruption
-	// "eth0" => [10.0.0.0/8, 192.168.0.1/32]
-	// "eth1" => [10.0.0.0/8, 192.168.0.1/32]
-	hostsIPInterfaces, err := i.getInterfacesByIP(i.spec.Hosts)
-	if err != nil {
-		return fmt.Errorf("can't get interfaces per hosts listing: %w", err)
-	}
-
 	// allow kubelet -> apiserver communications
 	// resolve the kubernetes.default service created at cluster bootstrap and owning the apiserver cluster IP
-	apiserverIPInterfaces, err := i.getInterfacesByIP([]string{"kubernetes.default"})
+	apiserverIPs, err := resolveHost(i.config.DNSClient, "kubernetes.default")
 	if err != nil {
 		return fmt.Errorf("error resolving apiservers service IP: %w", err)
 	}
 
-	if len(apiserverIPInterfaces) == 0 {
-		return fmt.Errorf("could not resolve kubernetes.default service IP")
-	}
-
-	// for each link/ip association, add disruption
-	for linkName, ips := range hostsIPInterfaces {
-		// retrieve link from name
-		link, err := i.config.NetlinkAdapter.LinkByName(linkName)
-		if err != nil {
-			return fmt.Errorf("can't retrieve link %s: %w", linkName, err)
-		}
-
-		// set the tx qlen if not already set as it is required to create a prio qdisc without dropping
-		// all the outgoing traffic
-		// this qlen will be removed once the injection is done if it was not present before
+	// set the tx qlen if not already set as it is required to create a prio qdisc without dropping
+	// all the outgoing traffic
+	// this qlen will be removed once the injection is done if it was not present before
+	for _, link := range links {
 		if link.TxQLen() == 0 {
 			i.config.Log.Infof("setting tx qlen for interface %s", link.Name())
 
@@ -297,71 +233,116 @@ func (i *networkDisruptionInjector) applyOperations() error {
 				}
 			}(link)
 		}
+	}
 
-		// create a new qdisc for the given interface of type prio with 4 bands instead of 3
-		// we keep the default priomap, the extra band will be used to filter traffic going to the specified IP
-		// we only create this qdisc if we want to target traffic going to some hosts only, it avoids to apply disruptions to all the traffic for a bit of time
-		priomap := [16]uint32{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}
+	// create a new qdisc for the given interface of type prio with 4 bands instead of 3
+	// we keep the default priomap, the extra band will be used to filter traffic going to the specified IP
+	// we only create this qdisc if we want to target traffic going to some hosts only, it avoids to apply disruptions to all the traffic for a bit of time
+	priomap := [16]uint32{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}
 
-		if err := i.config.TrafficController.AddPrio(link.Name(), "root", 1, 4, priomap); err != nil {
-			return fmt.Errorf("can't create a new qdisc for interface %s: %w", link.Name(), err)
+	if err := i.config.TrafficController.AddPrio(interfaces, "root", 1, 4, priomap); err != nil {
+		return fmt.Errorf("can't create a new qdisc: %w", err)
+	}
+
+	// parent 1:4 refers to the 4th band of the prio qdisc
+	// handle starts from 2 because 1 is used by the prio qdisc
+	parent := "1:4"
+	handle := uint32(2)
+
+	// if the disruption is at pod level, create a second qdisc to filter packets coming from
+	// this specific pod processes only
+	if i.config.Level == chaostypes.DisruptionLevelPod {
+		// create second prio with only 2 bands to filter traffic with a specific classid
+		if err := i.config.TrafficController.AddPrio(interfaces, "1:4", 2, 2, [16]uint32{}); err != nil {
+			return fmt.Errorf("can't create a new qdisc: %w", err)
 		}
 
-		// parent 1:4 refers to the 4th band of the prio qdisc
-		// handle starts from 2 because 1 is used by the prio qdisc
-		parent := "1:4"
-		handle := uint32(2)
+		// create cgroup filter
+		if err := i.config.TrafficController.AddCgroupFilter(interfaces, "2:0", 2); err != nil {
+			return fmt.Errorf("can't create the cgroup filter: %w", err)
+		}
+		// parent 2:2 refers to the 2nd band of the 2nd prio qdisc
+		// handle starts from 3 because 1 and 2 are used by the 2 prio qdiscs
+		parent = "2:2"
+		handle = uint32(3)
+	}
 
-		// if the disruption is at pod level, create a second qdisc to filter packets coming from
-		// this specific pod processes only
-		if i.config.Level == chaostypes.DisruptionLevelPod {
-			// create second prio with only 2 bands to filter traffic with a specific classid
-			if err := i.config.TrafficController.AddPrio(link.Name(), "1:4", 2, 2, [16]uint32{}); err != nil {
-				return fmt.Errorf("can't create a new qdisc for interface %s: %w", link.Name(), err)
+	// add operations
+	for _, operation := range i.operations {
+		if err := operation(interfaces, parent, handle); err != nil {
+			return fmt.Errorf("could not perform operation on newly created qdisc: %w", err)
+		}
+
+		// update parent reference and handle identifier for the next operation
+		// the next operation parent will be the current handle identifier
+		// the next handle identifier is just an increment of the actual one
+		parent = fmt.Sprintf("%d:", handle)
+		handle++
+	}
+
+	// create tc filters depending on the given hosts to match
+	// redirect all packets of all interfaces if no host is given
+	if len(i.spec.Hosts) == 0 && len(i.spec.Services) == 0 {
+		_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nullIP, 0, 0, "", "1:4"); err != nil {
+			return fmt.Errorf("can't add a filter: %w", err)
+		}
+	} else {
+		// apply filters for given hosts
+		if len(i.spec.Hosts) > 0 {
+			for _, host := range i.spec.Hosts {
+				// resolve given hosts if needed
+				ips, err := resolveHost(i.config.DNSClient, host.Host)
+				if err != nil {
+					return fmt.Errorf("error resolving given host %s: %w", host.Host, err)
+				}
+
+				// filter on found IPs and CIDRs
+				for _, ip := range ips {
+					// handle flow direction
+					var srcPort, dstPort int
+					var srcIP, dstIP *net.IPNet
+
+					switch i.spec.Flow {
+					case v1beta1.FlowEgress:
+						dstPort = host.Port
+						dstIP = ip
+					case v1beta1.FlowIngress:
+						srcPort = host.Port
+						srcIP = ip
+					}
+
+					// create tc filter
+					if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, host.Protocol, "1:4"); err != nil {
+						return fmt.Errorf("can't add a filter: %w", err)
+					}
+				}
+			}
+		}
+
+		// apply filters for given services
+		services, err := i.getServices()
+		if err != nil {
+			return fmt.Errorf("error getting services IPs and ports: %w", err)
+		}
+
+		for _, service := range services {
+			// handle flow direction
+			var srcPort, dstPort int
+			var srcIP, dstIP *net.IPNet
+
+			switch i.spec.Flow {
+			case v1beta1.FlowEgress:
+				dstPort = service.port
+				dstIP = service.ip
+			case v1beta1.FlowIngress:
+				srcPort = service.port
+				srcIP = service.ip
 			}
 
-			// create cgroup filter
-			if err := i.config.TrafficController.AddCgroupFilter(link.Name(), "2:0", 2); err != nil {
-				return fmt.Errorf("can't create the cgroup filter for interface %s: %w", link.Name(), err)
-			}
-			// parent 2:2 refers to the 2nd band of the 2nd prio qdisc
-			// handle starts from 3 because 1 and 2 are used by the 2 prio qdiscs
-			parent = "2:2"
-			handle = uint32(3)
-		}
-
-		// add operations
-		for _, operation := range i.operations {
-			if err := operation(link, parent, handle); err != nil {
-				return fmt.Errorf("could not perform operation on newly created qdisc for interface %s: %w", link.Name(), err)
-			}
-
-			// update parent reference and handle identifier for the next operation
-			// the next operation parent will be the current handle identifier
-			// the next handle identifier is just an increment of the actual one
-			parent = fmt.Sprintf("%d:", handle)
-			handle++
-		}
-
-		// handle flow direction
-		// if flow is egress, filter will be on destination port
-		// if flow is ingress, filter will be on source port
-		var srcPort, dstPort int
-
-		switch i.spec.Flow {
-		case flowEgress:
-			dstPort = i.spec.Port
-		case flowIngress:
-			srcPort = i.spec.Port
-		default:
-			return fmt.Errorf("unsupported flow: %s", i.spec.Flow)
-		}
-
-		// if some hosts are targeted, create one filter per host to redirect the traffic to the disrupted band
-		// otherwise, create a filter redirecting all the traffic (0.0.0.0/0) using the given port and protocol to the disrupted band
-		for _, ip := range ips {
-			if err := i.config.TrafficController.AddFilter(link.Name(), "1:0", 0, nil, ip, srcPort, dstPort, i.spec.Protocol, "1:4"); err != nil {
-				return fmt.Errorf("can't add a filter to interface %s: %w", link.Name(), err)
+			// create tc filter
+			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, service.protocol, "1:4"); err != nil {
+				return fmt.Errorf("can't add a filter: %w", err)
 			}
 		}
 	}
@@ -377,37 +358,29 @@ func (i *networkDisruptionInjector) applyOperations() error {
 			Mask: net.CIDRMask(32, 32),
 		}
 
-		if err := i.config.TrafficController.AddFilter(defaultRoute.Link().Name(), "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
+		if err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
 			return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
 		}
 
 		// this filter allows the pod to communicate with the node IP
-		for linkName, nodeIPs := range nodeIPInterfaces {
-			for _, hostIP := range nodeIPs {
-				if err := i.config.TrafficController.AddFilter(linkName, "1:0", 0, nil, hostIP, 0, 0, "", "1:1"); err != nil {
-					return fmt.Errorf("can't add the target pod node IP filter: %w", err)
-				}
-			}
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nodeIPNet, 0, 0, "", "1:1"); err != nil {
+			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 		}
 	} else if i.config.Level == chaostypes.DisruptionLevelNode {
-		for linkName := range wildcardIPInterfaces {
-			// allow SSH connections (port 22/tcp)
-			if err := i.config.TrafficController.AddFilter(linkName, "1:0", 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
-				return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
-			}
-
-			// allow cloud provider health checks (arp)
-			if err := i.config.TrafficController.AddFilter(linkName, "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
-				return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
-			}
+		// allow SSH connections on all interfaces (port 22/tcp)
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
+			return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
 		}
 
-		// allow all communications to this (eventually these) IP
-		for linkName, apiserverIPs := range apiserverIPInterfaces {
-			for _, apiserverIP := range apiserverIPs {
-				if err := i.config.TrafficController.AddFilter(linkName, "1:0", 0, nil, apiserverIP, 0, 0, "", "1:1"); err != nil {
-					return fmt.Errorf("error adding filter allowing apiserver communications: %w", err)
-				}
+		// allow cloud provider health checks on all interfaces(arp)
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
+			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
+		}
+
+		// allow requests to the Kubernetes apiserver (so kubelet does not declare the node as not ready)
+		for _, apiserverIP := range apiserverIPs {
+			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, apiserverIP, 0, 0, "", "1:1"); err != nil {
+				return fmt.Errorf("error adding filter allowing apiserver communications: %w", err)
 			}
 		}
 	}
@@ -415,11 +388,61 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	return nil
 }
 
+// getServices parses the Kubernetes services in the disruption spec and returns a set of (ip, port, protocol) tuples
+func (i *networkDisruptionInjector) getServices() ([]networkDisruptionService, error) {
+	services := []networkDisruptionService{}
+
+	for _, service := range i.spec.Services {
+		// retrieve service
+		k8sService, err := i.config.K8sClient.CoreV1().Services(service.Namespace).Get(context.Background(), service.Name, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s): %w", service.Namespace, service.Name, err)
+		}
+
+		// retrieve endpoints from selector
+		endpoints, err := i.config.K8sClient.CoreV1().Pods(service.Namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(k8sService.Spec.Selector).String(),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s) endpoints: %w", service.Namespace, service.Name, err)
+		}
+
+		i.config.Log.Infow("found service endpoints", "service", service.Name, "endpoints", len(endpoints.Items))
+
+		// retrieve endpoints IPs
+		for _, endpoint := range endpoints.Items {
+			// compute endpoint IP (pod IP)
+			_, endpointIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", endpoint.Status.PodIP))
+
+			for _, port := range k8sService.Spec.Ports {
+				services = append(services, networkDisruptionService{
+					ip:       endpointIP,
+					port:     int(port.TargetPort.IntVal),
+					protocol: string(port.Protocol),
+				})
+			}
+		}
+
+		// compute service IP
+		_, serviceIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", k8sService.Spec.ClusterIP))
+
+		for _, port := range k8sService.Spec.Ports {
+			services = append(services, networkDisruptionService{
+				ip:       serviceIP,
+				port:     int(port.Port),
+				protocol: string(port.Protocol),
+			})
+		}
+	}
+
+	return services, nil
+}
+
 // AddNetem adds network disruptions using the drivers in the networkDisruptionInjector
 func (i *networkDisruptionInjector) addNetemOperation(delay, delayJitter time.Duration, drop int, corrupt int, duplicate int) {
 	// closure which adds netem disruptions
-	operation := func(link network.NetlinkLink, parent string, handle uint32) error {
-		return i.config.TrafficController.AddNetem(link.Name(), parent, handle, delay, delayJitter, drop, corrupt, duplicate)
+	operation := func(interfaces []string, parent string, handle uint32) error {
+		return i.config.TrafficController.AddNetem(interfaces, parent, handle, delay, delayJitter, drop, corrupt, duplicate)
 	}
 
 	i.operations = append(i.operations, operation)
@@ -428,8 +451,8 @@ func (i *networkDisruptionInjector) addNetemOperation(delay, delayJitter time.Du
 // AddOutputLimit adds a network bandwidth disruption using the drivers in the networkDisruptionInjector
 func (i *networkDisruptionInjector) addOutputLimitOperation(bytesPerSec uint) {
 	// closure which adds a bandwidth limit
-	operation := func(link network.NetlinkLink, parent string, handle uint32) error {
-		return i.config.TrafficController.AddOutputLimit(link.Name(), parent, handle, bytesPerSec)
+	operation := func(interfaces []string, parent string, handle uint32) error {
+		return i.config.TrafficController.AddOutputLimit(interfaces, parent, handle, bytesPerSec)
 	}
 
 	i.operations = append(i.operations, operation)
@@ -437,20 +460,23 @@ func (i *networkDisruptionInjector) addOutputLimitOperation(bytesPerSec uint) {
 
 // clearOperations removes all disruptions by clearing all custom qdiscs created for the given config struct (filters will be deleted as well)
 func (i *networkDisruptionInjector) clearOperations() error {
+	i.config.Log.Infof("clearing root qdiscs")
+
 	// get all interfaces
-	links, err := i.getInterfacesByIP(nil)
+	links, err := i.config.NetlinkAdapter.LinkList()
 	if err != nil {
 		return fmt.Errorf("can't get interfaces per IP map: %w", err)
 	}
 
 	// clear all interfaces root qdisc so it gets back to default
-	for linkName := range links {
-		i.config.Log.Infof("clearing root qdisc for interface %s", linkName)
+	interfaces := []string{}
+	for _, link := range links {
+		interfaces = append(interfaces, link.Name())
+	}
 
-		// clear link qdisc if needed
-		if err := i.config.TrafficController.ClearQdisc(linkName); err != nil {
-			return fmt.Errorf("can't delete the %s link qdisc: %w", linkName, err)
-		}
+	// clear link qdisc if needed
+	if err := i.config.TrafficController.ClearQdisc(interfaces); err != nil {
+		return fmt.Errorf("error deleting root qdisc: %w", err)
 	}
 
 	return nil
