@@ -158,7 +158,7 @@ func confirmOption(query string, helpText string) bool {
 	return result
 }
 
-func getInput(query string, helpText string) string {
+func getInput(query string, helpText string, required bool) string {
 	var result string
 
 	prompt := &survey.Input{
@@ -166,7 +166,12 @@ func getInput(query string, helpText string) string {
 		Help:    helpText,
 	}
 
-	err := survey.AskOne(prompt, &result)
+	var opt survey.AskOpt
+	if required {
+		opt = survey.WithValidator(survey.Required)
+	}
+
+	err := survey.AskOne(prompt, &result, opt)
 
 	if err != nil {
 		fmt.Printf("getInput failed: %v", err)
@@ -189,7 +194,7 @@ func selectInput(query string, inputs []string, helpText string) (string, error)
 	return result, err
 }
 
-func getSliceInput(query string, helpText string) []string {
+func getSliceInput(query string, helpText string, required bool) []string {
 	var results string
 
 	prompt := &survey.Multiline{
@@ -197,7 +202,12 @@ func getSliceInput(query string, helpText string) []string {
 		Help:    helpText,
 	}
 
-	err := survey.AskOne(prompt, &results)
+	var opt survey.AskOpt
+	if required {
+		opt = survey.WithValidator(survey.Required)
+	}
+
+	err := survey.AskOne(prompt, &results, opt)
 
 	if err != nil {
 		fmt.Printf("getSliceInput failed: %v\n", err)
@@ -215,7 +225,9 @@ func getDNS() v1beta1.DNSDisruptionSpec {
 		hrPair := v1beta1.HostRecordPair{}
 
 		hrPair.Hostname = getInput("Specify a hostname to target",
-			"When your target makes a DNS request for this hostname; the disruption will make sure the value you specify is returned, rather than the real record.")
+			"When your target makes a DNS request for this hostname; the disruption will make sure the value you specify is returned, rather than the real record.",
+			true,
+		)
 		hrPair.Record.Type, _ = selectInput("the type of DNS record to inject",
 			[]string{"A", "CNAME"},
 			"We only support these two types of DNS requests for now. An A record request gets back an IP for a hostname, while a CNAME request maps an alias domain name to the canonical name.")
@@ -225,7 +237,7 @@ func getDNS() v1beta1.DNSDisruptionSpec {
 			helpText = "We're specifying a CNAME record, so the value should be a hostname to redirect to."
 		}
 
-		hrPair.Record.Value = getInput("What value would you like to inject into this DNS record?", helpText)
+		hrPair.Record.Value = getInput("What value would you like to inject into this DNS record?", helpText, true)
 
 		return hrPair
 	}
@@ -252,15 +264,16 @@ func getDiskPressure() *v1beta1.DiskPressureSpec {
 	spec.Path = getInput(
 		"Specify a path to apply IO pressure to",
 		"Specify a specific mount point to target a specific disk",
+		true,
 	)
 
 	if confirmOption("Would you like to apply read pressure?", "This applies read-based IO pressure (check the docs)") {
-		readBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs"))
+		readBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs", false))
 		spec.Throttling.ReadBytesPerSec = &readBPS
 	}
 
 	if confirmOption("Would you like to apply write pressure?", "This applies write-based IO pressure (check the docs)") {
-		writeBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs"))
+		writeBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs", false))
 		spec.Throttling.WriteBytesPerSec = &writeBPS
 	}
 
@@ -298,8 +311,10 @@ func getHosts() []v1beta1.NetworkDisruptionHostSpec {
 		host := v1beta1.NetworkDisruptionHostSpec{}
 
 		host.Host = getInput("Add a host to target (or leave blank)",
-			"This will affect the network traffic between these hosts and your target. These can be hostnames, IPs, or CIDR blocks. These _cannot_ be k8s services.")
-		host.Port, _ = strconv.Atoi(getInput("What port would you like to target? (or leave blank for all)", "If specified, we will only affect traffic using this port"))
+			"This will affect the network traffic between these hosts and your target. These can be hostnames, IPs, or CIDR blocks. These _cannot_ be k8s services.",
+			false,
+		)
+		host.Port, _ = strconv.Atoi(getInput("What port would you like to target? (or leave blank for all)", "If specified, we will only affect traffic using this port", false))
 
 		if confirmOption("Would you like to specifically target only tcp or udp traffic?", "The default is to target all traffic.") {
 			host.Protocol, _ = selectInput("Please choose then (or ctrl+c to go back)", []string{"tcp", "udp"}, "This will cause only the traffic using this protocol to be affected.")
@@ -327,8 +342,8 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 	getService := func() v1beta1.NetworkDisruptionServiceSpec {
 		service := v1beta1.NetworkDisruptionServiceSpec{}
 
-		service.Name = getInput("What is the name of this service?", "")
-		service.Namespace = getInput("What namespace is this service in?", "")
+		service.Name = getInput("What is the name of this service?", "", true)
+		service.Namespace = getInput("What namespace is this service in?", "", true)
 
 		return service
 	}
@@ -363,27 +378,27 @@ func getNetwork() *v1beta1.NetworkDisruptionSpec {
 	)
 
 	if confirmOption("Would you like to drop packets?", "Packets will be dropped before leaving the target") {
-		spec.Drop, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100%"))
+		spec.Drop, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100%", true))
 	}
 
 	if confirmOption("Would you like to duplicate packets?", "Packets will be duplicated immediately before leaving the target") {
-		spec.Duplicate, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100%"))
+		spec.Duplicate, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100%", true))
 	}
 
 	if confirmOption("Would you like to corrupt packets?", "Packets will be corrupted before leaving the target") {
-		spec.Corrupt, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100%"))
+		spec.Corrupt, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100%", true))
 	}
 
 	if confirmOption("Would you like to delay packets?", "Packets will be delayed before leaving the target") {
-		delay, _ := strconv.ParseUint(getInput("How much to delay (in ms)?", "This will be the median amount of delay to apply"), 10, 0)
+		delay, _ := strconv.ParseUint(getInput("How much to delay (in ms)?", "This will be the median amount of delay to apply", true), 10, 0)
 		spec.Delay = uint(delay)
 
-		delayJitter, _ := strconv.ParseUint(getInput("What jitter on that delay (in ms)?", "This will be normally distributed around the delay you specified earlier. This will cause packets to re-order!"), 10, 0)
+		delayJitter, _ := strconv.ParseUint(getInput("What jitter on that delay (in ms)?", "This will be normally distributed around the delay you specified earlier. This will cause packets to re-order!", false), 10, 0)
 		spec.DelayJitter = uint(delayJitter)
 	}
 
 	if confirmOption("Would you like to limit bandwidth?", "bandwidthlimit") {
-		spec.BandwidthLimit, _ = strconv.Atoi(getInput("What bandwidth limit should we set (in bytes per second)?", ">0"))
+		spec.BandwidthLimit, _ = strconv.Atoi(getInput("What bandwidth limit should we set (in bytes per second)?", ">0", true))
 	}
 
 	return spec
@@ -394,7 +409,7 @@ func getContainers() []string {
 		return nil
 	}
 
-	containers := getSliceInput("Please enter a comma-delimited list of container name[s] to target.", "Please specify their names, not their IDs!")
+	containers := getSliceInput("Please enter a comma-delimited list of container name[s] to target.", "Please specify their names, not their IDs!", false)
 
 	return containers
 }
@@ -403,6 +418,7 @@ func getCount() *intstr.IntOrString {
 	result := getInput(
 		"How many targets would you like to disrupt? This can be an integer, or a percentage.",
 		"Please specify an integer >0 or a percentage from 1% - 100%. If specifying a percentage, you must suffix with the % character, or we will think its an integer!",
+		true,
 	)
 	// TODO somehow grab the other intrstr validate here
 
@@ -412,7 +428,11 @@ func getCount() *intstr.IntOrString {
 }
 
 func getSelectors() labels.Set {
-	selectors := getSliceInput("Add a label selector[s] for targeting.", "Please specify this in the form of `key=value`, e.g., `app=hello-node`. One label selector per new-line. If you specify multiple, we will only target the union.")
+	selectors := getSliceInput(
+		"Add a label selector[s] for targeting.",
+		"Please specify this in the form of `key=value`, e.g., `app=hello-node`. One label selector per new-line. If you specify multiple, we will only target the union.",
+		true,
+	)
 
 	var selectorLabels labels.Set
 
