@@ -3,11 +3,7 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
 
-resources:
-- manager.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
 images:
-- name: controller
-  newName: chaos-controller
-  newTag: latest
+  controller: docker.io/library/chaos-controller
+  injector: docker.io/library/chaos-injector
+  tag: latest

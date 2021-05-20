@@ -2,6 +2,14 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
-
-resources:
-- monitor.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chaos-controller
+  namespace: chaos-engineering
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chaos-injector
+  namespace: chaos-engineering

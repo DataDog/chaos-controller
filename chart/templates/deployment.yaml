@@ -1,0 +1,63 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chaos-controller
+  namespace: chaos-engineering
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chaos-controller
+  template:
+    metadata:
+      labels:
+        app: chaos-controller
+    spec:
+      serviceAccount: chaos-controller
+      containers:
+      - name: kube-rbac-proxy
+        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.4.1
+        imagePullPolicy: IfNotPresent
+        args:
+        - --secure-listen-address=0.0.0.0:8443
+        - --upstream=http://127.0.0.1:8080/
+        - --logtostderr=true
+        - --v=10
+        ports:
+        - containerPort: 8443
+          name: https
+      - name: manager
+        image: {{ .Values.images.controller }}:{{ .Values.images.tag }}
+        imagePullPolicy: IfNotPresent
+        command:
+        - /usr/local/bin/manager
+        args:
+        - --metrics-addr=127.0.0.1:8080
+        - --enable-leader-election
+        - --metrics-sink=noop
+        - --injector-image={{ .Values.images.injector }}:{{ .Values.images.tag }}
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 100m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-cert
