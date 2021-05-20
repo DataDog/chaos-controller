@@ -84,23 +84,3 @@ When the API package is changed, the CRD (custom resource definition) must be re
 * `make lint`: run golangci-lint against codebase.
 * `make test`: run tests
 * `make vet`: run go vet against the codebase.
-
-## Release
-
-Releasing a new version of the project is pretty simple: just push a new tag!
-
-```
-git tag -a X.Y.Z
-git push --follow-tags origin master
-```
-
-It'll trigger a bunch of [GitHub Actions](https://github.com/DataDog/chaos-controller/blob/master/.github/workflows/release.yml) that will:
-
-* create a new release
-  * build both controller and injector binaries for linux amd64
-  * archive them with license related files
-  * create a release with a generated changelog and uploaded files
-* update the changelog
-  * generate the changelog
-  * push it to a new branch
-  * open a PR for you to approve the changes
