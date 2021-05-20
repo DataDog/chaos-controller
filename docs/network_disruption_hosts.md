@@ -1,4 +1,4 @@
-# Network disruption: Specifying hosts
+# Network disruption: Specifying hosts and services
 
 ## Q: When should I specify hosts?
 
@@ -6,11 +6,31 @@
     <img src="../docs/img/network_hosts/notation_traffic.png" height=180 width=600 />
 </kbd></p>
 
-As with all disruptions, pods or nodes are targeted for injection if they satisfy the conditions of the label selector specified in the `selector` field. For network disruptions, we can also specify to only disrupt packets interacting with a particular host or set of hosts through the `network.hosts` field. We will refer to `network.hosts` field in the rest of the document as the `hosts` field.
+As with all disruptions, pods or nodes are targeted for injection if they satisfy the conditions of the label selector specified in the `selector` field. 
+For network disruptions, we can also specify to only disrupt packets interacting with a particular host or set of hosts through the `network.hosts` field. We will refer to `network.hosts` field in the rest of the document as the `hosts` field.
+The `hosts` field takes a list of `host`/`port`/`protocol` tuples. All three fields are optional.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_hosts/notation_egress.png" height=160 width=570 />
 </kbd></p>
+
+## Q: When should I specify services instead?
+
+While the `network.hosts` field is meant for specifying only disrupting packets interacting with a particular IP, hostname, or CIDR range,
+a very common usecase of network disruptions is to disrupt packets interacting with a particular kubernetes service. This can be tricky for users,
+as NAT rules are applied before `tc` rules, and thus the port that a pod uses to send packets to a service is not ncessarily the same port used by the node in the root network namespace.
+It is not simple to detect that a hostname passed to `network.hosts` is a kubernetes service, and thus we include the `network.services` field.
+
+Whenever you want to disrupt traffic interacting with a kubernetes service[s], for correctness's sake, you _must_ specify the service under `network.services`, rather than `network.hosts`.
+`network.services` takes a list of services, which are defined with each service's `name` and `namespace`. The controller will take care of
+applying `tc` rules in a way that targets any port that may be used to talk to that service. There are no changes to how you should configure this field in a `node` level disruption
+vs. a `pod` level disruption.
+```
+network:
+  service:
+    - name: service_name
+      namespace: example_namespace
+```
 
 ## Notation
 
@@ -36,9 +56,9 @@ Note also that the `flow` (`ingress` vs `egress`) for a disruption should be sel
 
 In this document, you can assume that packets identified as necessary for healthchecks from the cloud service provider or for communications with Kubernetes are ignored.
 
-Additionally, note that the `hosts` field expects a list where the items of the list need not be of the same type (for example, you can have a hostname, IP address, and CIDR block in one disruption). They are visualized separately in the use cases outlined below to avoid confusion.
+Additionally, note that the `hosts.host` subfield expects an item that need not be of the same type across multiple `hosts` (for example, you can have a hostname, IP address, and CIDR block in one disruption). They are visualized separately in the use cases outlined below to avoid confusion.
 
-See the **Some special cases** section for examples of specifying the `port` and `protocol` fields.
+See the **Some special cases** section for examples of specifying the `port` and `protocol` subfields.
 
 With these nuances and notations in mind, let us explore some examples.
 
@@ -91,6 +111,7 @@ If the `hosts` field contains a CIDR, the routing table is consulted. If the lis
 </kbd></p>
 
 Instead of a CIDR block, hostnames can be provided in the `hosts` field. If the `chaos-controller` fails to resolve the `hosts` field to an IP address or a CIDR block, it then tries to resolve the potential hostname on each resolver listed in `/etc/resolv.conf` in order.
+Remember, this hostname must _not_ be a kubernetes service's hostname.
 
 ### Some special cases
 
