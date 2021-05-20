@@ -39,7 +39,6 @@ restart:
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:trivialVersions=true paths="./..." output:crd:dir=./chart/templates/ output:rbac:dir=./chart/templates/
-	make header-check-ignore-exit-code
 
 # Run go fmt against code
 fmt:
@@ -113,11 +112,8 @@ venv:
 	test -d .venv || python3 -m venv .venv
 	source .venv/bin/activate; pip install -qr tasks/requirements.txt
 
-ignore-exit-code := False
-header-check-ignore-exit-code: ignore-exit-code := True
-header-check-ignore-exit-code: header-check
 header-check: venv
-	source .venv/bin/activate; IGNORE_EXIT_CODE=${ignore-exit-code} inv header-check
+	source .venv/bin/activate; inv header-check
 
 license-check: venv
 	source .venv/bin/activate; inv license-check
