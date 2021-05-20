@@ -1,9 +1,9 @@
-.PHONY: manager injector
+.PHONY: manager injector release
+.SILENT: release
 
 # Image URL to use all building/pushing image targets
-IMAGE_TAG ?= $(shell git describe --tags)
-MANAGER_IMAGE ?= chaos-controller:${IMAGE_TAG}
-INJECTOR_IMAGE ?= chaos-injector:${IMAGE_TAG}
+MANAGER_IMAGE ?= chaos-controller:latest
+INJECTOR_IMAGE ?= chaos-injector:latest
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -28,11 +28,11 @@ injector:
 
 # Install CRDs and controller into a cluster
 install: manifests
-	kubectl apply -f ./chart/install.yaml
+	helm template ./chart | kubectl apply -f -
 
 # Uninstall CRDs and controller from a cluster
 uninstall: manifests
-	kubectl delete -f ./chart/install.yaml
+	helm template ./chart | kubectl delete -f -
 
 restart:
 	kubectl -n chaos-engineering rollout restart deployment chaos-controller
@@ -40,7 +40,6 @@ restart:
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:trivialVersions=true paths="./..." output:crd:dir=./chart/templates/crds/ output:rbac:dir=./chart/templates/
-	helm template chart/ --set images.tag=${IMAGE_TAG} > ./chart/install.yaml
 
 # Run go fmt against code
 fmt:
@@ -122,3 +121,33 @@ license-check: venv
 
 minikube-ssh-host:
 	ssh-keygen -R $(shell minikube ip)
+
+release:
+ifeq (,$(VERSION))
+	echo "You must specify a tag to release: VERSION=1.0.0 make release"
+	exit 1
+endif
+ifneq (,$(shell git tag -l $(VERSION)))
+	echo "Tag $(VERSION) already exists"
+	exit 1
+endif
+ifneq (main,$(shell git branch --show-current))
+	echo "You must run this target on main branch"
+	exit 1
+endif
+ifneq (,$(shell git status --short))
+	echo "You can't have pending changes when running this target, please stash or push any changes"
+	exit 1
+endif
+ifneq (,$(shell git fetch --dry-run))
+	echo "Your local main branch is not up-to-date with the remote main branch, please pull"
+	exit 1
+endif
+	echo "Generating install manifest..."
+	helm template chart/ --set images.tag=$(VERSION) > ./chart/install.yaml
+	git add ./chart/install.yaml
+	git commit -m "Generate install manifest for version $(VERSION)"
+	echo "Creating git tag..."
+	git tag -a $(VERSION) -m "Release $(VERSION)"
+	echo "All done! Please run the following command when you feel ready:"
+	echo "\t --> git push origin main --follow-tags <--"
