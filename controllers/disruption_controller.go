@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"reflect"
 	"strings"
 	"time"
 
@@ -866,24 +865,8 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
 	for _, kind := range chaostypes.DisruptionKinds {
-		var validator chaosapi.DisruptionValidator
-
-		// check for disruption kinds
-		switch kind {
-		case chaostypes.DisruptionKindNodeFailure:
-			validator = instance.Spec.NodeFailure
-		case chaostypes.DisruptionKindNetworkDisruption:
-			validator = instance.Spec.Network
-		case chaostypes.DisruptionKindDNSDisruption:
-			validator = instance.Spec.DNS
-		case chaostypes.DisruptionKindCPUPressure:
-			validator = instance.Spec.CPUPressure
-		case chaostypes.DisruptionKindDiskPressure:
-			validator = instance.Spec.DiskPressure
-		}
-
-		// ensure that the underlying disruption spec is not nil
-		if reflect.ValueOf(validator).IsNil() {
+		disruptionExists, _, _ := instance.Spec.DisruptionKindInterfaceGenerator(kind)
+		if !disruptionExists {
 			continue
 		}
 
@@ -892,41 +875,11 @@ func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disru
 }
 
 func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Disruption) error {
-	err := instance.Spec.Validate()
+	err := instance.Spec.ValidateDisruptionSpec()
 	if err != nil {
 		r.Recorder.Event(instance, "Warning", "InvalidSpec", err.Error())
 		return err
 	}
-
-	for _, kind := range chaostypes.DisruptionKinds {
-		var validator chaosapi.DisruptionValidator
-
-		// check for disruption kind
-		switch kind {
-		case chaostypes.DisruptionKindNodeFailure:
-			validator = instance.Spec.NodeFailure
-		case chaostypes.DisruptionKindNetworkDisruption:
-			validator = instance.Spec.Network
-		case chaostypes.DisruptionKindDNSDisruption:
-			validator = instance.Spec.DNS
-		case chaostypes.DisruptionKindCPUPressure:
-			validator = instance.Spec.CPUPressure
-		case chaostypes.DisruptionKindDiskPressure:
-			validator = instance.Spec.DiskPressure
-		}
-
-		// ensure that the underlying disruption spec is not nil
-		if reflect.ValueOf(validator).IsNil() {
-			continue
-		}
-
-		err := validator.Validate()
-		if err != nil {
-			r.Recorder.Event(instance, "Warning", "InvalidSpec", err.Error())
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -936,22 +889,8 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 	for _, kind := range chaostypes.DisruptionKinds {
 		var generator chaosapi.DisruptionArgsGenerator
 
-		// check for disruption kind
-		switch kind {
-		case chaostypes.DisruptionKindNodeFailure:
-			generator = instance.Spec.NodeFailure
-		case chaostypes.DisruptionKindNetworkDisruption:
-			generator = instance.Spec.Network
-		case chaostypes.DisruptionKindDNSDisruption:
-			generator = instance.Spec.DNS
-		case chaostypes.DisruptionKindCPUPressure:
-			generator = instance.Spec.CPUPressure
-		case chaostypes.DisruptionKindDiskPressure:
-			generator = instance.Spec.DiskPressure
-		}
-
-		// ensure that the underlying disruption spec is not nil
-		if reflect.ValueOf(generator).IsNil() {
+		disruptionExists, _, generator := instance.Spec.DisruptionKindInterfaceGenerator(kind)
+		if !disruptionExists {
 			continue
 		}
 

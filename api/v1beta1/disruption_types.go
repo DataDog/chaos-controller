@@ -22,7 +22,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 
+	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -124,4 +126,50 @@ func (s *DisruptionSpec) Validate() error {
 	}
 
 	return nil
+}
+
+// validates rules for disruption global scope and all subsequent disruption specifications
+func (s *DisruptionSpec) ValidateDisruptionSpec() error {
+	err := s.Validate()
+	if err != nil {
+		return err
+	}
+
+	for _, kind := range chaostypes.DisruptionKinds {
+		var validator chaosapi.DisruptionValidator
+
+		disruptionExists, validator, _ := s.DisruptionKindInterfaceGenerator(kind)
+		if !disruptionExists {
+			continue
+		}
+
+		err := validator.Validate()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validates existence and generates instances of DisruptionKind Interfaces: DisruptionValidator, DisruptionArgsGenerator
+func (s *DisruptionSpec) DisruptionKindInterfaceGenerator(kind chaostypes.DisruptionKind) (bool, chaosapi.DisruptionValidator, chaosapi.DisruptionArgsGenerator) {
+	var validator chaosapi.DisruptionValidator
+	var generator chaosapi.DisruptionArgsGenerator
+
+	switch kind {
+	case chaostypes.DisruptionKindNodeFailure:
+		validator, generator = s.NodeFailure, s.NodeFailure
+	case chaostypes.DisruptionKindNetworkDisruption:
+		validator, generator = s.Network, s.Network
+	case chaostypes.DisruptionKindDNSDisruption:
+		validator, generator = s.DNS, s.DNS
+	case chaostypes.DisruptionKindCPUPressure:
+		validator, generator = s.CPUPressure, s.CPUPressure
+	case chaostypes.DisruptionKindDiskPressure:
+		validator, generator = s.DiskPressure, s.DiskPressure
+	}
+
+	// ensure that the underlying disruption spec is not nil
+	disruptionExists := !reflect.ValueOf(validator).IsNil() && !reflect.ValueOf(generator).IsNil()
+	return disruptionExists, validator, generator
 }
