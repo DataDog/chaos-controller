@@ -23,8 +23,9 @@ var createCmd = &cobra.Command{
 
 func create(filePath string) string {
 	if filePath == "" {
-		return "No Path Given, Exiting..."
+		return pathError
 	}
+
 	return "Creation TODO"
 }
 

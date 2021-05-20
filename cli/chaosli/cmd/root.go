@@ -17,6 +17,8 @@ import (
 
 var cfgFile string
 
+const pathError string = "No Path Given, Exiting..."
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "chaosli",
@@ -34,7 +36,7 @@ in english for better understanding, and more.`,
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	rootCmd.Execute()
+	_ = rootCmd.Execute()
 }
 
 func init() {
@@ -82,7 +84,8 @@ func initConfig() {
 
 func validate(filePath string) string {
 	if filePath == "" {
-		return "No Path Given, Exiting..."
+		return pathError
 	}
+
 	return "Validation TODO"
 }
