@@ -46,7 +46,7 @@ Here is [a full example of the disruption resource](../examples/complete.yaml) w
   * [I want to corrupt packets going out from my pods](../examples/network_corrupt.yaml)
   * [I want to add network latency to packets going out from my pods](../examples/network_delay.yaml)
   * [I want to restrict the outgoing bandwidth of my pods](../examples/network_bandwidth_limitation.yaml)
-  * [I want to disrupt packets going to a specific port or host](../examples/network_filters.yaml)
+  * [I want to disrupt packets going to a specific host, port or Kubernetes service](../examples/network_filters.yaml)
 * [CPU pressure](/docs/cpu_pressure.md)
   * [I want to put CPU pressure against my pods](../examples/cpu_pressure.yaml)
 * [Disk pressure](/docs/disk_pressure.md)
