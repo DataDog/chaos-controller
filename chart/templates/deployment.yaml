@@ -31,7 +31,7 @@ spec:
         - containerPort: 8443
           name: https
       - name: manager
-        image: {{ .Values.image }}
+        image: {{ .Values.images.controller }}:{{ .Values.images.tag }}
         imagePullPolicy: IfNotPresent
         command:
         - /usr/local/bin/manager
@@ -39,9 +39,7 @@ spec:
         - --metrics-addr=127.0.0.1:8080
         - --enable-leader-election
         - --metrics-sink=noop
-        env:
-        - name: CHAOS_FI_IMAGE
-          value: docker.io/library/chaos-injector:latest
+        - --injector-image={{ .Values.images.injector }}:{{ .Values.images.tag }}
         ports:
         - containerPort: 9443
           name: webhook-server

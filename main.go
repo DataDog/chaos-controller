@@ -56,6 +56,7 @@ func main() {
 		sink                    string
 		injectorAnnotations     map[string]string
 		injectorServiceAccount  string
+		injectorImage           string
 		admissionWebhookCertDir string
 		admissionWebhookHost    string
 		admissionWebhookPort    int
@@ -67,6 +68,7 @@ func main() {
 		"Enable delete only mode which will not allow new disruption to start and will only continue to clean up and remove existing disruptions.")
 	pflag.StringToStringVar(&injectorAnnotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	pflag.StringVar(&injectorServiceAccount, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
+	pflag.StringVar(&injectorImage, "injector-image", "chaos-injector", "Service account to use for the generated injector pods")
 	pflag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	pflag.StringVar(&admissionWebhookCertDir, "admission-webhook-cert-dir", "", "Admission webhook certificate directory to search for tls.crt and tls.key files")
 	pflag.StringVar(&admissionWebhookHost, "admission-webhook-host", "", "Host used by the admission controller to serve requests")
@@ -123,6 +125,7 @@ func main() {
 		DeleteOnly:             deleteOnly,
 		InjectorAnnotations:    injectorAnnotations,
 		InjectorServiceAccount: injectorServiceAccount,
+		InjectorImage:          injectorImage,
 	}
 
 	if err := r.SetupWithManager(mgr); err != nil {
