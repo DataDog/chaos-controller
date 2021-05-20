@@ -27,7 +27,7 @@ auto_generated_headers = [
 files_to_skip = [
     "api/v1beta1/zz_generated.deepcopy.go",
     "bin/injector/dns_disruption_resolver.py",
-    "chart/templates/chaos.datadoghq.com_disruptions.yaml",
+    "chart/templates/crds/chaos.datadoghq.com_disruptions.yaml",
     "chart/templates/role.yaml",
 ]
 
