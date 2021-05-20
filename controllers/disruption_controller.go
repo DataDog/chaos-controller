@@ -880,6 +880,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 		r.Recorder.Event(instance, "Warning", "InvalidSpec", err.Error())
 		return err
 	}
+
 	return nil
 }
 

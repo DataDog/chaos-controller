@@ -94,9 +94,9 @@ func init() {
 }
 
 // Hash returns the disruption spec JSON hash
-func (ds *DisruptionSpec) Hash() (string, error) {
+func (s *DisruptionSpec) Hash() (string, error) {
 	// serialize instance spec to JSON
-	specBytes, err := json.Marshal(ds)
+	specBytes, err := json.Marshal(s)
 	if err != nil {
 		return "", fmt.Errorf("error serializing instance spec: %w", err)
 	}
@@ -148,12 +148,14 @@ func (s *DisruptionSpec) ValidateDisruptionSpec() error {
 			return err
 		}
 	}
+
 	return nil
 }
 
 // validates existence and generates instances of DisruptionKind Interfaces: DisruptionValidator, DisruptionArgsGenerator
 func (s *DisruptionSpec) DisruptionKindInterfaceGenerator(kind chaostypes.DisruptionKind) (bool, chaosapi.DisruptionValidator, chaosapi.DisruptionArgsGenerator) {
 	var validator chaosapi.DisruptionValidator
+
 	var generator chaosapi.DisruptionArgsGenerator
 
 	switch kind {
@@ -171,5 +173,6 @@ func (s *DisruptionSpec) DisruptionKindInterfaceGenerator(kind chaostypes.Disrup
 
 	// ensure that the underlying disruption spec is not nil
 	disruptionExists := !reflect.ValueOf(validator).IsNil() && !reflect.ValueOf(generator).IsNil()
+
 	return disruptionExists, validator, generator
 }
