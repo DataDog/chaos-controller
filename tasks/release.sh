@@ -20,7 +20,7 @@ if [ ! -z "$(git status --short)" ]; then
 	exit 1
 fi
 
-if [ -z "$(git fetch --dry-run)" ]; then
+if [ ! -z "$(git fetch --dry-run)" ]; then
 	echo "Your local main branch is not up-to-date with the remote main branch, please pull"
 	exit 1
 fi
