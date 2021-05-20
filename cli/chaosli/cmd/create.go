@@ -17,6 +17,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/types"
+	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -28,10 +29,17 @@ var createCmd = &cobra.Command{
 	Long:  `creates a disruption given input from the user.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		spec, _ := create()
-		jsonRep, _ := json.MarshalIndent(spec, "", " ")
+		jsonRep, err := json.MarshalIndent(spec, "", " ")
+		if err != nil {
+			fmt.Printf("json err: %v", err)
+		}
+		y, err := yaml.JSONToYAML(jsonRep)
+		if err != nil {
+			fmt.Printf("yaml err: %v", err)
+		}
 
 		writer := bufio.NewWriter(os.Stdout)
-		writer.Write(jsonRep)
+		writer.Write(y)
 		writer.Flush()
 	},
 }
