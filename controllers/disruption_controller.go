@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -63,14 +62,16 @@ var (
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	client.Client
-	BaseLog             *zap.SugaredLogger
-	Scheme              *runtime.Scheme
-	Recorder            record.EventRecorder
-	MetricsSink         metrics.Sink
-	DeleteOnly          bool
-	TargetSelector      TargetSelector
-	InjectorAnnotations map[string]string
-	log                 *zap.SugaredLogger
+	BaseLog                *zap.SugaredLogger
+	Scheme                 *runtime.Scheme
+	Recorder               record.EventRecorder
+	MetricsSink            metrics.Sink
+	DeleteOnly             bool
+	TargetSelector         TargetSelector
+	InjectorAnnotations    map[string]string
+	InjectorServiceAccount string
+	InjectorImage          string
+	log                    *zap.SugaredLogger
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -684,11 +685,6 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 // generatePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
 func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, kind chaostypes.DisruptionKind) *corev1.Pod {
-	image, ok := os.LookupEnv("CHAOS_INJECTOR_IMAGE")
-	if !ok {
-		image = "chaos-injector"
-	}
-
 	// volume host path type definitions
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
@@ -706,13 +702,14 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 			},
 		},
 		Spec: corev1.PodSpec{
-			HostPID:       true,                      // enable host pid
-			RestartPolicy: corev1.RestartPolicyNever, // do not restart the pod on fail or completion
-			NodeName:      targetNodeName,            // specify node name to schedule the pod
+			HostPID:            true,                      // enable host pid
+			RestartPolicy:      corev1.RestartPolicyNever, // do not restart the pod on fail or completion
+			NodeName:           targetNodeName,            // specify node name to schedule the pod
+			ServiceAccountName: r.InjectorServiceAccount,  // service account to use
 			Containers: []corev1.Container{
 				{
 					Name:            "injector",              // container name
-					Image:           image,                   // container image gathered from the environment variable
+					Image:           r.InjectorImage,         // container image gathered from controller flags
 					ImagePullPolicy: corev1.PullIfNotPresent, // pull the image only when it is not present
 					Args:            args,                    // pass disruption arguments
 					SecurityContext: &corev1.SecurityContext{
