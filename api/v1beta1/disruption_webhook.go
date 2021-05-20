@@ -28,8 +28,6 @@ func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLog
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-chaos-datadoghq-com-v1beta1-disruption,mutating=false,failurePolicy=fail,groups=chaos.datadoghq.com,resources=disruptions,versions=v1beta1,name=chaos-controller-admission-webhook.chaos-engineering.svc
-
 var _ webhook.Validator = &Disruption{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type

@@ -2,9 +2,7 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
-
-resources:
-- certificate.yaml
-
-configurations:
-- kustomizeconfig.yaml
+apiVersion: v2
+name: chaos-controller
+description: Datadog Chaos Controller chart
+version: 1.0.0
