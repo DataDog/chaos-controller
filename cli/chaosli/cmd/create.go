@@ -28,11 +28,14 @@ var createCmd = &cobra.Command{
 	Short: "create a disruption.",
 	Long:  `creates a disruption given input from the user.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		spec, _ := create()
+		spec, _ := createSpec()
 		jsonRep, err := json.MarshalIndent(spec, "", " ")
 		if err != nil {
 			fmt.Printf("json err: %v", err)
 		}
+
+		jsonRep = []byte(fmt.Sprintf(`{"apiVersion": "chaos.datadoghq.com/v1beta1", "kind": "Disruption", "metadata": %s, "spec": %s}`, getMetadata(), jsonRep))
+
 		y, err := yaml.JSONToYAML(jsonRep)
 		if err != nil {
 			fmt.Printf("yaml err: %v", err)
@@ -47,7 +50,18 @@ var createCmd = &cobra.Command{
 const intro = `Hello! This tool will walk you through creating a disruption. Please reply to the prompts, and use ctrl+c to end.
 The generated disruption will have "dryRun:true" set for safety, which means you can safely apply it without injecting any failure.`
 
-func create() (v1beta1.DisruptionSpec, error) {
+func getMetadata() []byte {
+	fmt.Println("Last step, you just have to name your disruption, and specify what k8s namespace it should live in.")
+	name := getInput("Please name your disruption.", "This will be the name used when you want to run `kubectl describe disruption`", true)
+	namespace := getInput(
+		"What namespace should your disruption be created in?",
+		"If you are targeting pods, you _must_ create the disruption in the same namespace as the targeted pods.",
+		true)
+
+	return []byte(fmt.Sprintf(`{"name": %s, "namespace": %s}`, name, namespace))
+}
+
+func createSpec() (v1beta1.DisruptionSpec, error) {
 	fmt.Println(intro)
 
 	spec := v1beta1.DisruptionSpec{}
