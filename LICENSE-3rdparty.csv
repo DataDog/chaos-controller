@@ -230,6 +230,7 @@ github.com/spf13/viper,github.com/spf13/viper,MIT
 github.com/stretchr/objx,github.com/stretchr/objx,MIT
 github.com/stretchr/testify,github.com/stretchr/testify/assert,MIT
 github.com/stretchr/testify,github.com/stretchr/testify/mock,MIT
+github.com/subosito/gotenv,github.com/subosito/gotenv,MIT
 github.com/syndtr/gocapability,github.com/syndtr/gocapability/capability,BSD-2-Clause
 github.com/vishvananda/netlink,github.com/vishvananda/netlink,Apache-2.0
 github.com/vishvananda/netlink,github.com/vishvananda/netlink/nl,Apache-2.0
@@ -276,6 +277,7 @@ golang.org/x/oauth2,golang.org/x/oauth2/jws,BSD-3-Clause
 golang.org/x/oauth2,golang.org/x/oauth2/jwt,BSD-3-Clause
 golang.org/x/sync,golang.org/x/sync/errgroup,BSD-3-Clause
 golang.org/x/sync,golang.org/x/sync/semaphore,BSD-3-Clause
+golang.org/x/sys,golang.org/x/sys/internal/unsafeheader,BSD-3-Clause
 golang.org/x/sys,golang.org/x/sys/unix,BSD-3-Clause
 golang.org/x/sys,golang.org/x/sys/windows,BSD-3-Clause
 golang.org/x/text,golang.org/x/text/encoding,BSD-3-Clause
@@ -381,6 +383,7 @@ google.golang.org/protobuf,google.golang.org/protobuf/types/known/anypb,BSD-3-Cl
 google.golang.org/protobuf,google.golang.org/protobuf/types/known/durationpb,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/types/known/timestamppb,BSD-3-Clause
 gopkg.in/inf.v0,gopkg.in/inf.v0,BSD-3-Clause
+gopkg.in/ini.v1,gopkg.in/ini.v1,Apache-2.0
 gopkg.in/tomb.v1,gopkg.in/tomb.v1,BSD-3-Clause
 gopkg.in/yaml.v2,gopkg.in/yaml.v2,Apache-2.0
 k8s.io/api,k8s.io/api/admission/v1beta1,Apache-2.0
