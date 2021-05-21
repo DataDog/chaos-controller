@@ -22,6 +22,7 @@ require (
 	github.com/gogo/googleapis v1.4.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/miekg/dns v1.1.31
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
@@ -31,6 +32,7 @@ require (
 	github.com/opencontainers/selinux v1.6.0 // indirect
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
+	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.4.0
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/vishvananda/netlink v1.1.0
