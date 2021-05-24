@@ -103,6 +103,7 @@ func DisruptionFromFile(path string) (v1beta1.DisruptionSpec, error) {
 	if err != nil {
 		return v1beta1.DisruptionSpec{}, err
 	}
+
 	return parsedSpec, nil
 }
 

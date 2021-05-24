@@ -53,6 +53,7 @@ The generated disruption will have "dryRun:true" set for safety, which means you
 
 func getMetadata() []byte {
 	fmt.Println("Last step, you just have to name your disruption, and specify what k8s namespace it should live in.")
+
 	name := getInput("Please name your disruption.", "This will be the name used when you want to run `kubectl describe disruption`", true)
 	namespace := getInput(
 		"What namespace should your disruption be created in?",
@@ -323,6 +324,7 @@ func getHosts() []v1beta1.NetworkDisruptionHostSpec {
 	}
 
 	var hosts []v1beta1.NetworkDisruptionHostSpec
+
 	getHost := func() v1beta1.NetworkDisruptionHostSpec {
 		host := v1beta1.NetworkDisruptionHostSpec{}
 
@@ -355,6 +357,7 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 	}
 
 	var services []v1beta1.NetworkDisruptionServiceSpec
+
 	getService := func() v1beta1.NetworkDisruptionServiceSpec {
 		service := v1beta1.NetworkDisruptionServiceSpec{}
 

@@ -25,6 +25,7 @@ func validate(filePath string) string {
 	if filePath == "" {
 		return pathError
 	}
+
 	return "Validation TODO"
 }
 
