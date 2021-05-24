@@ -23,8 +23,9 @@ var explainCmd = &cobra.Command{
 
 func explanation(filePath string) string {
 	if filePath == "" {
-		return "No Path Given, Exiting..."
+		return pathError
 	}
+
 	return "Explanation TODO"
 }
 

@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -19,6 +20,8 @@ import (
 )
 
 var cfgFile string
+
+const pathError string = "No Path Given, Exiting..."
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -37,7 +40,7 @@ in english for better understanding, and more.`,
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	rootCmd.Execute()
+	_ = rootCmd.Execute()
 }
 
 func init() {
@@ -81,13 +84,6 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
-}
-
-func validatePath(filePath string) string {
-	if filePath == "" {
-		return "No Path Given, Exiting..."
-	}
-	return "Validation TODO"
 }
 
 func DisruptionFromFile(path string) (v1beta1.DisruptionSpec, error) {

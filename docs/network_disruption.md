@@ -25,12 +25,14 @@ By extending the default linux kernel functionality for prioritizing network tra
     </kbd>
 </p>
 
-Even if you do not specify many fields, our default configurations can be effective for most scenarios. However, some disruption scenarios require careful tuning of the specs in order to properly replicate them. If your team has specific disruption requirements around what `protocol` to disrupt, `flow` direction, or target `hosts` and `ports`, check out the FAQ pages below to learn more!
+Even if you do not specify many fields, our default configurations can be effective for most scenarios. However, some disruption scenarios require careful tuning of the specs in order to properly replicate them. 
+If your team has specific disruption requirements around what `protocol` to disrupt, `flow` direction, or targeting `hosts`, `ports`, or kubernetes `services`, check out the FAQ pages below to learn more!
+
 
 ## FAQs:
 
 * [How do I decide my traffic flow? (Ingress vs Egress)](/docs/network_disruption_flow.md)
-* [What should I specify in hosts?](/docs/network_disruption_hosts.md)
+* [What should I specify in hosts vs services?](/docs/network_disruption_hosts.md)
 * [What are `prio` qdiscs and how does chaos-controller use them?](/docs/network_disruption_prio.md)
 
 Still have questions? Reach out to the contributors to explore our options!
