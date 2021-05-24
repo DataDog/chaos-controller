@@ -10,7 +10,6 @@ import (
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -41,8 +40,8 @@ func (r *Disruption) ValidateCreate() error {
 		}
 	}
 
-	if r.Spec.Count.Type == intstr.Int && r.Spec.Count.IntValue() < 0 {
-		return fmt.Errorf("count must be a positive integer or a percentage value")
+	if err := validateCount(r.Spec.Count); err != nil {
+		return err
 	}
 
 	return nil
