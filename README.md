@@ -36,7 +36,7 @@ metadata:
   name: node-failure
   namespace: chaos-engineering
 spec:
-  selector: # a label selector used to target some resources
+  selector: # a label selector used to target resources
     app: demo-curl
   count: 1 # the number of resources to target
   nodeFailure:
