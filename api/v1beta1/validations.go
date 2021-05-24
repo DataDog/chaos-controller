@@ -45,6 +45,7 @@ func validateCount(count *intstr.IntOrString) error {
 	if err != nil {
 		return err
 	}
+
 	if isPercent {
 		if value <= 0 || value > 100 {
 			return fmt.Errorf("count must be a positive integer or a valid percentage value")
