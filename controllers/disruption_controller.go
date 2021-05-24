@@ -608,13 +608,6 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		return nil
 	}
 
-	// prune ignored targets from all targets
-	for _, target := range matchingTargets {
-		if !contains(instance.Status.IgnoredTargets, target) {
-			eligibleTargets = append(eligibleTargets, target)
-		}
-	}
-
 	// instance.Spec.Count is a string that either represents a percentage or a value, we do the translation here
 	targetsCount, err := getScaledValueFromIntOrPercent(instance.Spec.Count, len(matchingTargets), true)
 	if err != nil {
@@ -626,6 +619,13 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// so a disruption having a count of 1 with an already ignored target (because the chaos pod has been removed)
 	// won't pick up another one
 	targetsCount -= len(instance.Status.IgnoredTargets)
+
+	// prune ignored targets from all targets
+	for _, target := range matchingTargets {
+		if !contains(instance.Status.IgnoredTargets, target) {
+			eligibleTargets = append(eligibleTargets, target)
+		}
+	}
 
 	// if the asked targets count is greater than the amount of found targets, we take all of them
 	targetsCount = int(math.Min(float64(targetsCount), float64(len(eligibleTargets))))

@@ -13,6 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+// GetIntOrPercentValueSafely has three return values. The first is the int value of intOrStr, and the second is
+// if that int value is a percentage (true) or simply an integer (false).
 func GetIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error) {
 	switch intOrStr.Type {
 	case intstr.Int:
