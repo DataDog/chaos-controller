@@ -616,15 +616,9 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	}
 
 	// instance.Spec.Count is a string that either represents a percentage or a value, we do the translation here
-	targetsCount, err := getScaledValueFromIntOrPercent(instance.Spec.Count, len(eligibleTargets), true)
+	targetsCount, err := getScaledValueFromIntOrPercent(instance.Spec.Count, len(matchingTargets), true)
 	if err != nil {
 		targetsCount = instance.Spec.Count.IntValue()
-	}
-
-	// computed count should not be 0 unless the given count was not expected
-	if targetsCount <= 0 {
-		r.Recorder.Event(instance, "Warning", "NoTarget", fmt.Sprintf("Target count is %d. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).", targetsCount))
-		return fmt.Errorf("parsing error, either incorrectly formatted percentage or incorrectly formatted integer: %s\n%w", instance.Spec.Count.String(), err)
 	}
 
 	// subtract already ignored targets from the targets count to avoid going through all the
