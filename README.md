@@ -19,7 +19,7 @@ kubectl apply -f https://raw.githubusercontent.com/DataDog/chaos-controller/main
 
 This `install.yaml` is generated for each new release and will always point to the latest stable version of the controller. If you already have a Kubernetes environment, you can install **Chaos Controller** from Docker Hub.
 
-> _The [Advanced Installation Docus](docs/installation.md) contain flags to customize webhooks, annotate injector pods, etc._
+> _The [Advanced Installation Docs](docs/installation.md) contain flags to customize webhooks, annotate injector pods, etc._
 
 > _The [Contributing Docs](CONTRIBUTING.md) explain how to spin up a local Minikube with demo pods so you can run your first disruption!_
 
