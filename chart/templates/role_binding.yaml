@@ -1,0 +1,56 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: chaos-controller-leader-election-rolebinding
+  namespace: chaos-engineering
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: chaos-controller-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: chaos-controller
+  namespace: chaos-engineering
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: chaos-controller-injector-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: chaos-injector-role
+subjects:
+- kind: ServiceAccount
+  name: chaos-injector
+  namespace: chaos-engineering
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: chaos-controller-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: chaos-controller-role
+subjects:
+- kind: ServiceAccount
+  name: chaos-controller
+  namespace: chaos-engineering
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: chaos-controller-proxy-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: chaos-controller-proxy-role
+subjects:
+- kind: ServiceAccount
+  name: chaos-controller
+  namespace: chaos-engineering

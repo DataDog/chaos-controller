@@ -1,0 +1,28 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+apiVersion: v1
+kind: Service
+metadata:
+  name: chaos-controller-metrics-service
+  namespace: chaos-engineering
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: https
+  selector:
+    app: chaos-controller
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chaos-controller-webhook-service
+  namespace: chaos-engineering
+spec:
+  ports:
+  - port: 443
+    targetPort: 9443
+  selector:
+    app: chaos-controller

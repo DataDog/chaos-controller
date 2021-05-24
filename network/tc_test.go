@@ -29,7 +29,7 @@ var _ = Describe("Tc", func() {
 		tcRunner          tc
 		tcExecuter        tcExecuterMock
 		tcExecuterRunCall *mock.Call
-		iface             string
+		ifaces            []string
 		parent            string
 		handle            uint32
 		delay             time.Duration
@@ -56,7 +56,7 @@ var _ = Describe("Tc", func() {
 		}
 
 		// injected variables
-		iface = "lo"
+		ifaces = []string{"lo", "eth0"}
 		parent = "root"
 		handle = 0
 		delay = time.Second
@@ -82,7 +82,7 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddNetem", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddNetem(iface, parent, handle, delay, delayJitter, drop, corrupt, duplicate)
+			tcRunner.AddNetem(ifaces, parent, handle, delay, delayJitter, drop, corrupt, duplicate)
 		})
 
 		Context("add 1s delay and 1s delayJitter to lo interface to the root parent without any handle", func() {
@@ -125,7 +125,7 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddPrio", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddPrio(iface, parent, handle, bands, priomap)
+			tcRunner.AddPrio(ifaces, parent, handle, bands, priomap)
 		})
 
 		Context("add a 16 bands prio with a priomap with one case per band", func() {
@@ -137,7 +137,7 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddFilter", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddFilter(iface, parent, handle, srcIP, dstIP, srcPort, dstPort, protocol, flowid)
+			tcRunner.AddFilter(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, protocol, flowid)
 		})
 
 		Context("add a filter on packets going to IP 10.0.0.1 and port 80 with flowid 1:4 on egress traffic", func() {
@@ -171,7 +171,7 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddCgroupFilter", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddCgroupFilter(iface, parent, handle)
+			tcRunner.AddCgroupFilter(ifaces, parent, handle)
 		})
 
 		Context("add a cgroup filter", func() {
@@ -183,7 +183,7 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddOutputLimit", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddOutputLimit(iface, parent, handle, 12345)
+			tcRunner.AddOutputLimit(ifaces, parent, handle, 12345)
 		})
 		Context("add an output limit on root device of 12345 bytes per second", func() {
 			It("should execute", func() {
@@ -194,7 +194,7 @@ var _ = Describe("Tc", func() {
 
 	Describe("ClearQdisc", func() {
 		JustBeforeEach(func() {
-			Expect(tcRunner.ClearQdisc(iface)).To(BeNil())
+			Expect(tcRunner.ClearQdisc(ifaces)).To(BeNil())
 		})
 
 		Context("clear qdisc for local interface", func() {

@@ -12,6 +12,7 @@ import (
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
+	"k8s.io/client-go/kubernetes"
 )
 
 // Injector is an interface being able to inject or clean disruptions
@@ -30,4 +31,5 @@ type Config struct {
 	Container   container.Container
 	Cgroup      cgroup.Manager
 	Netns       netns.Manager
+	K8sClient   kubernetes.Interface
 }

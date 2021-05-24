@@ -1,0 +1,24 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-filters
+  namespace: chaos-engineering
+spec:
+  level: pod
+  selector:
+    app: demo-curl
+  count: 1
+  network:
+    drop: 100
+    hosts: # filter on hosts (an IP, a port, a protocol, or a combination of those)
+      - host: 1.2.3.4 # optional, the destination host to filter on (can be an IP, a CIDR or a hostname)
+        port: 80 # optional, the destination port to filter on
+        protocol: tcp # optiona, the protocol to filter on
+    services: # filter on Kubernetes services; this will correctly handle the port differences in node vs. pod-level disruptions
+      - name: demo # service name
+        namespace: chaos-engineering # service namespace
