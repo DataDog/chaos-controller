@@ -106,31 +106,7 @@ func (s *DisruptionSpec) Hash() (string, error) {
 }
 
 func (s *DisruptionSpec) Validate() error {
-	// Rule: no targeted container if disruption is node-level
-	if len(s.Containers) > 0 && s.Level != chaostypes.DisruptionLevelPod {
-		return errors.New("cannot target specific container of a node-level disruption")
-	}
-
-	// Rule: at least one disruption field
-	if s.DNS == nil &&
-		s.CPUPressure == nil &&
-		s.Network == nil &&
-		s.NodeFailure == nil &&
-		s.DiskPressure == nil {
-		return errors.New("cannot apply a disruption with no target process")
-	}
-
-	//Rule: DNS and Network disruptions are incompatible
-	if s.DNS != nil && s.Network != nil {
-		return errors.New("cannot apply DNS and Network disruptions concurrently")
-	}
-
-	return nil
-}
-
-// validates rules for disruption global scope and all subsequent disruption specifications
-func (s *DisruptionSpec) ValidateDisruptionSpec() error {
-	err := s.Validate()
+	err := s.validateGlobalDisruptionScope()
 	if err != nil {
 		return err
 	}
@@ -147,6 +123,30 @@ func (s *DisruptionSpec) ValidateDisruptionSpec() error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// validates rules for disruption global scope and all subsequent disruption specifications
+func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
+	// Rule: no targeted container if disruption is node-level
+	if len(s.Containers) > 0 && s.Level != chaostypes.DisruptionLevelPod {
+		return errors.New("cannot target specific containers in a node-level disruption")
+	}
+
+	// Rule: at least one disruption field
+	if s.DNS == nil &&
+		s.CPUPressure == nil &&
+		s.Network == nil &&
+		s.NodeFailure == nil &&
+		s.DiskPressure == nil {
+		return errors.New("cannot apply an empty disruption - you need to add at least one of Network, DNS, DiskPressure, NodeFailure, CPUPressure fields")
+	}
+
+	//Rule: DNS and Network disruptions are incompatible
+	if s.DNS != nil && s.Network != nil {
+		return errors.New("cannot apply DNS and Network disruptions concurrently")
 	}
 
 	return nil
@@ -172,7 +172,7 @@ func (s *DisruptionSpec) DisruptionKindInterfaceGenerator(kind chaostypes.Disrup
 	}
 
 	// ensure that the underlying disruption spec is not nil
-	disruptionExists := !reflect.ValueOf(validator).IsNil() && !reflect.ValueOf(generator).IsNil()
+	disruptionExists := !reflect.ValueOf(validator).IsNil()
 
 	return disruptionExists, validator, generator
 }

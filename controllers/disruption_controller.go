@@ -875,7 +875,7 @@ func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disru
 }
 
 func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Disruption) error {
-	err := instance.Spec.ValidateDisruptionSpec()
+	err := instance.Spec.Validate()
 	if err != nil {
 		r.Recorder.Event(instance, "Warning", "InvalidSpec", err.Error())
 		return err
