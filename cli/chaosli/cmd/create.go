@@ -68,7 +68,6 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 	fmt.Println(intro)
 
 	spec := v1beta1.DisruptionSpec{}
-	spec.DryRun = true
 
 	err := promptForKind(&spec)
 
@@ -83,8 +82,14 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 	if spec.Level == types.DisruptionLevelPod {
 		spec.Containers = getContainers()
 	}
+	spec.DryRun = getDryRun()
 
 	return spec, nil
+}
+
+func getDryRun() bool {
+	return confirmOption(`Would you like us to set the dryRun option? If toggled to "true", then applying the disruption will be "safe".`,
+		`If selected, then when you apply this disruption, targets will be selected, and chaos pods created, but we won't inject any failures. Simply delete the option from the yaml or change it to "dryRun: false" in order to apply the disruption normally.`)
 }
 
 func indexOfString(slice []string, indexed string) int {
