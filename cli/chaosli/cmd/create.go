@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 var createCmd = &cobra.Command{
@@ -74,6 +76,7 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 	if spec.Level == types.DisruptionLevelPod {
 		spec.Containers = getContainers()
 	}
+
 	spec.DryRun = getDryRun()
 
 	return spec, nil
@@ -159,20 +162,14 @@ func confirmOption(query string, helpText string) bool {
 	return result
 }
 
-func getInput(query string, helpText string, required bool) string {
+func getInput(query string, helpText string, opts ...survey.AskOpt) string {
 	var result string
 
 	prompt := &survey.Input{
 		Message: query,
 		Help:    helpText,
 	}
-
-	var opt survey.AskOpt
-	if required {
-		opt = survey.WithValidator(survey.Required)
-	}
-
-	err := survey.AskOne(prompt, &result, opt)
+	err := survey.AskOne(prompt, &result, opts...)
 
 	if err == terminal.InterruptErr {
 		os.Exit(1)
@@ -201,7 +198,7 @@ func selectInput(query string, inputs []string, helpText string) (string, error)
 	return result, err
 }
 
-func getSliceInput(query string, helpText string, required bool) []string {
+func getSliceInput(query string, helpText string, opts ...survey.AskOpt) []string {
 	var results string
 
 	prompt := &survey.Multiline{
@@ -209,12 +206,7 @@ func getSliceInput(query string, helpText string, required bool) []string {
 		Help:    helpText,
 	}
 
-	var opt survey.AskOpt
-	if required {
-		opt = survey.WithValidator(survey.Required)
-	}
-
-	err := survey.AskOne(prompt, &results, opt)
+	err := survey.AskOne(prompt, &results, opts...)
 
 	if err == terminal.InterruptErr {
 		os.Exit(1)
@@ -228,12 +220,29 @@ func getSliceInput(query string, helpText string, required bool) []string {
 func getMetadata() []byte {
 	fmt.Println("Last step, you just have to name your disruption, and specify what k8s namespace it should live in.")
 
-	name := getInput("Please name your disruption.", "This will be the name used when you want to run `kubectl describe disruption`", true)
+	validator := func(val interface{}) error {
+		if str, ok := val.(string); ok {
+			errs := validation.IsDNS1123Subdomain(str)
+			if errs != nil {
+				return fmt.Errorf("the name and namespace need to be valid DNS-1123 subdomains: %s", errs)
+			}
+		} else {
+			return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
+		}
+		return nil
+	}
+
+	name := getInput("Please name your disruption.",
+		"This will be the name used when you want to run `kubectl describe disruption`",
+		survey.WithValidator(survey.Required),
+		survey.WithValidator(validator),
+	)
 	namespace := getInput(
 		"What namespace should your disruption be created in?",
 		"If you are targeting pods, you _must_ create the disruption in the same namespace as the targeted pods.",
-		true)
-	//TODO enforce lowercase here for both of these a DNS-1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')
+		survey.WithValidator(survey.Required),
+		survey.WithValidator(validator),
+	)
 
 	return []byte(fmt.Sprintf(`{"name": %s, "namespace": %s}`, name, namespace))
 }
@@ -248,7 +257,7 @@ func getDNS() v1beta1.DNSDisruptionSpec {
 
 		hrPair.Hostname = getInput("Specify a hostname to target",
 			"When your target makes a DNS request for this hostname; the disruption will make sure the value you specify is returned, rather than the real record.",
-			true,
+			survey.WithValidator(survey.Required),
 		)
 		hrPair.Record.Type, _ = selectInput("the type of DNS record to inject",
 			[]string{"A", "CNAME"},
@@ -259,7 +268,7 @@ func getDNS() v1beta1.DNSDisruptionSpec {
 			helpText = "We're specifying a CNAME record, so the value should be a hostname to redirect to."
 		}
 
-		hrPair.Record.Value = getInput("What value would you like to inject into this DNS record?", helpText, true)
+		hrPair.Record.Value = getInput("What value would you like to inject into this DNS record?", helpText, survey.WithValidator(survey.Required))
 
 		return hrPair
 	}
@@ -286,16 +295,16 @@ func getDiskPressure() *v1beta1.DiskPressureSpec {
 	spec.Path = getInput(
 		"Specify a path to apply IO pressure to, e.g., /mnt/data",
 		"Specify a specific mount point to target the disk mounted there",
-		true,
+		survey.WithValidator(survey.Required),
 	)
 
 	if confirmOption("Would you like to apply read pressure?", "This applies read-based IO pressure (check the docs)") {
-		readBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs", false))
+		readBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs"))
 		spec.Throttling.ReadBytesPerSec = &readBPS
 	}
 
 	if confirmOption("Would you like to apply write pressure?", "This applies write-based IO pressure (check the docs)") {
-		writeBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs", false))
+		writeBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs"))
 		spec.Throttling.WriteBytesPerSec = &writeBPS
 	}
 
@@ -335,9 +344,8 @@ func getHosts() []v1beta1.NetworkDisruptionHostSpec {
 
 		host.Host = getInput("Add a host to target (or leave blank)",
 			"This will affect the network traffic between these hosts and your target. These can be hostnames, IPs, or CIDR blocks. These _cannot_ be k8s services.",
-			false,
 		)
-		host.Port, _ = strconv.Atoi(getInput("What port would you like to target? (or leave blank for all)", "If specified, we will only affect traffic using this port", false))
+		host.Port, _ = strconv.Atoi(getInput("What port would you like to target? (or leave blank for all)", "If specified, we will only affect traffic using this port"))
 
 		if confirmOption("Would you like to specifically target only tcp or udp traffic?", "The default is to target all traffic.") {
 			host.Protocol, _ = selectInput("Please choose then (or ctrl+c to go back)", []string{"tcp", "udp"}, "This will cause only the traffic using this protocol to be affected.")
@@ -366,8 +374,8 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 	getService := func() v1beta1.NetworkDisruptionServiceSpec {
 		service := v1beta1.NetworkDisruptionServiceSpec{}
 
-		service.Name = getInput("What is the name of this service?", "", true)
-		service.Namespace = getInput("What namespace is this service in?", "", true)
+		service.Name = getInput("What is the name of this service?", "", survey.WithValidator(survey.Required))
+		service.Namespace = getInput("What namespace is this service in?", "", survey.WithValidator(survey.Required))
 
 		return service
 	}
@@ -402,27 +410,27 @@ func getNetwork() *v1beta1.NetworkDisruptionSpec {
 	)
 
 	if confirmOption("Would you like to drop packets?", "Packets will be dropped before leaving the target") {
-		spec.Drop, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", true))
+		spec.Drop, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", survey.WithValidator(survey.Required)))
 	}
 
 	if confirmOption("Would you like to duplicate packets?", "Packets will be duplicated immediately before leaving the target") {
-		spec.Duplicate, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", true))
+		spec.Duplicate, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", survey.WithValidator(survey.Required)))
 	}
 
 	if confirmOption("Would you like to corrupt packets?", "Packets will be corrupted before leaving the target") {
-		spec.Corrupt, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", true))
+		spec.Corrupt, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", survey.WithValidator(survey.Required)))
 	}
 
 	if confirmOption("Would you like to delay packets?", "Packets will be delayed before leaving the target") {
-		delay, _ := strconv.ParseUint(getInput("How much to delay (in ms)?", "This will be the median amount of delay to apply", true), 10, 0)
+		delay, _ := strconv.ParseUint(getInput("How much to delay (in ms)?", "This will be the median amount of delay to apply", survey.WithValidator(survey.Required)), 10, 0)
 		spec.Delay = uint(delay)
 
-		delayJitter, _ := strconv.ParseUint(getInput("What jitter on that delay (in ms)?", "This will be normally distributed around the delay you specified earlier. This will cause packets to re-order!", false), 10, 0)
+		delayJitter, _ := strconv.ParseUint(getInput("What jitter on that delay (in ms)?", "This will be normally distributed around the delay you specified earlier. This will cause packets to re-order!"), 10, 0)
 		spec.DelayJitter = uint(delayJitter)
 	}
 
 	if confirmOption("Would you like to limit bandwidth?", "bandwidthlimit") {
-		spec.BandwidthLimit, _ = strconv.Atoi(getInput("What bandwidth limit should we set (in bytes per second)?", ">0", true))
+		spec.BandwidthLimit, _ = strconv.Atoi(getInput("What bandwidth limit should we set (in bytes per second)?", ">0", survey.WithValidator(survey.Required)))
 	}
 
 	return spec
@@ -433,18 +441,22 @@ func getContainers() []string {
 		return nil
 	}
 
-	containers := getSliceInput("Please enter a comma-delimited list of container name[s] to target.", "Please specify their names, not their IDs!", false)
+	containers := getSliceInput("Please enter a comma-delimited list of container name[s] to target.", "Please specify their names, not their IDs!")
 
 	return containers
 }
 
 func getCount() *intstr.IntOrString {
+	validator := func(val interface{}) error {
+		// TODO somehow grab the other intrstr validate here
+		return nil
+	}
 	result := getInput(
 		"How many targets would you like to disrupt? This can be an integer, or a percentage.",
 		"Please specify an integer >0 or a percentage from 1% - 100%. If specifying a percentage, you must suffix with the % character, or we will think its an integer!",
-		true,
+		survey.WithValidator(survey.Required),
+		survey.WithValidator(validator),
 	)
-	// TODO somehow grab the other intrstr validate here
 
 	wrappedResult := intstr.FromString(result)
 
@@ -452,11 +464,24 @@ func getCount() *intstr.IntOrString {
 }
 
 func getSelectors() labels.Set {
+	validator := func(val interface{}) error {
+		if str, ok := val.(string); ok {
+			for _, s := range strings.Split(str, "\n") {
+				if !strings.Contains(s, "=") {
+					return fmt.Errorf("please specify label selectors in the form key=value")
+				}
+			}
+		} else {
+			return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
+		}
+		return nil
+	}
 	selectors := getSliceInput(
 		"Add a label selector[s] for targeting.",
 		`Please specify this in the form of "key=value", e.g., "app=hello-node". One label selector per new-line. If you specify multiple, we will only target the union of all selectors.
 For example, if you set both "app=hello-node" and "pod-name=ubuntu-uuid", then no matter how many pods with the label "app=hello-node" there were, the disruption would only target pods who also had the label "pod-name=ubuntu-uuid".`,
-		true,
+		survey.WithValidator(survey.Required),
+		survey.WithValidator(validator),
 	)
 
 	var selectorLabels labels.Set
