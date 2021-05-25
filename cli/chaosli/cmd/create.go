@@ -312,7 +312,7 @@ func getNodeFailure() *v1beta1.NodeFailureSpec {
 
 	spec := &v1beta1.NodeFailureSpec{}
 	spec.Shutdown = confirmOption("Would you like to shutdown the node permanently?",
-		"Choosing yes will terminate the VM completely, and a new node will be scheduled. If you don't enable this, we will just restart the target node.")
+		"Choosing yes will terminate the VM completely. If you don't enable this, we will just restart the target node.")
 
 	return spec
 }
