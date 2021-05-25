@@ -24,3 +24,4 @@ Please list your manual testing steps (sample `yaml` file, commands, important c
 - [ ] The documentation is up to date
 - [ ] My code is sufficiently commented
 - [ ] I have tested to the best of my ability
+- [ ] I have signed my commit (see [Contributing Docs](../CONTRIBUTING.md))

@@ -2,21 +2,29 @@
 
 This document explains how to install and run the project on a local minikube cluster.
 
+## Signing commits using `gpg`
+
+* Download gpg [here](https://gnupg.org/download/)
+* [Generating a new `gpg` key](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/generating-a-new-gpg-key)
+* [Add `gpg` key to your GitHub account](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/adding-a-new-gpg-key-to-your-github-account)
+* [Tell git about your signing key](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/telling-git-about-your-signing-key)
+* [Automatically sign all commits](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/signing-commits)
+
 ## Requirements
 
 To get started, we need to have the following software installed:
 
 * [docker](https://docs.docker.com/get-docker/)
-* [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
+* [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) (1: Installation)
 * [golangci-lint](https://github.com/golangci/golangci-lint)
+* [Kubebuilder Prerequisites](https://book.kubebuilder.io/quick-start.html#prerequisites) (go, docker, kubectl, kubebuilder, controller-gen)
+* [helm](https://helm.sh/docs/intro/quickstart/)
 
-This project is based on kubebuilder, please make sure the [listed](https://book.kubebuilder.io/quick-start.html#prerequisites) requirements for kubebuilder are installed as well.
+# Deploy the controller locally
 
-## Deploy the controller locally
+## Quick start
 
-### Quick start
-
-Install the [requirements](#requirements) for this project, then run the following commands:
+Once you have installed the above requirements, run the following commands:
 
 * start minikube with containerd engine
   * `make minikube-start`
@@ -32,9 +40,10 @@ If the controller is already deployed and you want to test a new version of it, 
 The [samples](examples/) contains sample data which can be used to test your changes.
 
 * [demo.yaml](examples/demo.yaml) contains a bunch of testing resources you can apply directly to your cluster
+  * `kubectl create ns chaos-engineering`
   * `kubectl -n chaos-engineering apply -f examples/demo.yaml`
 
-### Helpers scripts
+## Helpers scripts
 
 For verification on minikube we created some helper [scripts](scripts/):
 
