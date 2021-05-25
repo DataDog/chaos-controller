@@ -40,6 +40,10 @@ func (r *Disruption) ValidateCreate() error {
 		}
 	}
 
+	if err := validateCount(r.Spec.Count); err != nil {
+		return err
+	}
+
 	return nil
 }
 
