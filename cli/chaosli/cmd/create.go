@@ -284,8 +284,8 @@ func getDiskPressure() *v1beta1.DiskPressureSpec {
 	spec := &v1beta1.DiskPressureSpec{}
 
 	spec.Path = getInput(
-		"Specify a path to apply IO pressure to",
-		"Specify a specific mount point to target a specific disk",
+		"Specify a path to apply IO pressure to, e.g., /mnt/data",
+		"Specify a specific mount point to target the disk mounted there",
 		true,
 	)
 
