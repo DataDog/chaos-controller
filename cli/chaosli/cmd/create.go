@@ -52,17 +52,8 @@ var createCmd = &cobra.Command{
 const intro = `Hello! This tool will walk you through creating a disruption. Please reply to the prompts, and use Ctrl+C to end.
 The generated disruption will have "dryRun:true" set for safety, which means you can safely apply it without injecting any failure.`
 
-func getMetadata() []byte {
-	fmt.Println("Last step, you just have to name your disruption, and specify what k8s namespace it should live in.")
-
-	name := getInput("Please name your disruption.", "This will be the name used when you want to run `kubectl describe disruption`", true)
-	namespace := getInput(
-		"What namespace should your disruption be created in?",
-		"If you are targeting pods, you _must_ create the disruption in the same namespace as the targeted pods.",
-		true)
-	//TODO enforce lowercase here for both of these a DNS-1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')
-
-	return []byte(fmt.Sprintf(`{"name": %s, "namespace": %s}`, name, namespace))
+func init() {
+	createCmd.Flags().String("path", "disruption.yaml", "The file to write the new disruption to.")
 }
 
 func createSpec() (v1beta1.DisruptionSpec, error) {
@@ -86,21 +77,6 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 	spec.DryRun = getDryRun()
 
 	return spec, nil
-}
-
-func getDryRun() bool {
-	return confirmOption(`Would you like us to set the dryRun option? If toggled to "true", then applying the disruption will be "safe".`,
-		`If selected, then when you apply this disruption, targets will be selected, and chaos pods created, but we won't inject any failures. Simply delete the option from the yaml or change it to "dryRun: false" in order to apply the disruption normally.`)
-}
-
-func indexOfString(slice []string, indexed string) int {
-	for i, item := range slice {
-		if item == indexed {
-			return i
-		}
-	}
-
-	return -1
 }
 
 func promptForKind(spec *v1beta1.DisruptionSpec) error {
@@ -247,6 +223,19 @@ func getSliceInput(query string, helpText string, required bool) []string {
 	}
 
 	return strings.Split(results, "\n")
+}
+
+func getMetadata() []byte {
+	fmt.Println("Last step, you just have to name your disruption, and specify what k8s namespace it should live in.")
+
+	name := getInput("Please name your disruption.", "This will be the name used when you want to run `kubectl describe disruption`", true)
+	namespace := getInput(
+		"What namespace should your disruption be created in?",
+		"If you are targeting pods, you _must_ create the disruption in the same namespace as the targeted pods.",
+		true)
+	//TODO enforce lowercase here for both of these a DNS-1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')
+
+	return []byte(fmt.Sprintf(`{"name": %s, "namespace": %s}`, name, namespace))
 }
 
 func getDNS() v1beta1.DNSDisruptionSpec {
@@ -500,6 +489,17 @@ func getLevel() types.DisruptionLevel {
 	return types.DisruptionLevel(level)
 }
 
-func init() {
-	createCmd.Flags().String("path", "disruption.yaml", "The file to write the new disruption to.")
+func getDryRun() bool {
+	return confirmOption(`Would you like us to set the dryRun option? If toggled to "true", then applying the disruption will be "safe".`,
+		`If selected, then when you apply this disruption, targets will be selected, and chaos pods created, but we won't inject any failures. Simply delete the option from the yaml or change it to "dryRun: false" in order to apply the disruption normally.`)
+}
+
+func indexOfString(slice []string, indexed string) int {
+	for i, item := range slice {
+		if item == indexed {
+			return i
+		}
+	}
+
+	return -1
 }
