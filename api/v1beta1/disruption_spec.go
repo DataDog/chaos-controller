@@ -105,6 +105,7 @@ func (s *DisruptionSpec) Hash() (string, error) {
 	return fmt.Sprintf("%x", md5.Sum(specBytes)), nil
 }
 
+// validates rules for disruption global scope and all subsequent disruption specifications
 func (s *DisruptionSpec) Validate() error {
 	err := s.validateGlobalDisruptionScope()
 	if err != nil {
@@ -112,7 +113,7 @@ func (s *DisruptionSpec) Validate() error {
 	}
 
 	for _, kind := range chaostypes.DisruptionKinds {
-		subspec := s.DisruptionSubKindPicker(kind)
+		subspec := s.DisruptionKindPicker(kind)
 		if reflect.ValueOf(subspec).IsNil() {
 			continue
 		}
@@ -126,7 +127,7 @@ func (s *DisruptionSpec) Validate() error {
 	return nil
 }
 
-// validates rules for disruption global scope and all subsequent disruption specifications
+// validates rules for disruption global scope
 func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 	// Rule: no targeted container if disruption is node-level
 	if len(s.Containers) > 0 && s.Level != chaostypes.DisruptionLevelPod {
@@ -151,7 +152,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 }
 
 // returns this DisruptionSpec's instance of a DisruptionSubSpec based on given kind
-func (s *DisruptionSpec) DisruptionSubKindPicker(kind chaostypes.DisruptionKind) chaosapi.DisruptionSubSpec {
+func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKind) chaosapi.DisruptionSubSpec {
 	var subspec chaosapi.DisruptionSubSpec
 
 	switch kind {

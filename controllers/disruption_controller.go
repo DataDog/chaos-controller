@@ -866,7 +866,7 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
 	for _, kind := range chaostypes.DisruptionKinds {
-		subspec := instance.Spec.DisruptionSubKindPicker(kind)
+		subspec := instance.Spec.DisruptionKindPicker(kind)
 		if reflect.ValueOf(subspec).IsNil() {
 			continue
 		}
@@ -889,7 +889,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, containerIDs []string) {
 	// generate chaos pods for each possible disruptions
 	for _, kind := range chaostypes.DisruptionKinds {
-		subspec := instance.Spec.DisruptionSubKindPicker(kind)
+		subspec := instance.Spec.DisruptionKindPicker(kind)
 		if reflect.ValueOf(subspec).IsNil() {
 			continue
 		}
