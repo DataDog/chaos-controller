@@ -24,9 +24,8 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"strconv"
-	"strings"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -76,7 +75,7 @@ func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int,
 		return 0, errors.NewBadRequest("nil value for IntOrString")
 	}
 
-	value, isPercent, err := getIntOrPercentValueSafely(intOrPercent)
+	value, isPercent, err := v1beta1.GetIntOrPercentValueSafely(intOrPercent)
 
 	if err != nil {
 		return 0, fmt.Errorf("invalid value for IntOrString: %v", err)
@@ -91,33 +90,6 @@ func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int,
 	}
 
 	return value, nil
-}
-
-func getIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error) {
-	switch intOrStr.Type {
-	case intstr.Int:
-		return intOrStr.IntValue(), false, nil
-	case intstr.String:
-		isPercent := false
-		s := intOrStr.StrVal
-
-		if strings.HasSuffix(s, "%") {
-			isPercent = true
-			s = strings.TrimSuffix(intOrStr.StrVal, "%")
-		} else {
-			return 0, false, fmt.Errorf("invalid type: string is not a percentage")
-		}
-
-		v, err := strconv.Atoi(s)
-
-		if err != nil {
-			return 0, false, fmt.Errorf("invalid value %q: %v", intOrStr.StrVal, err)
-		}
-
-		return v, isPercent, nil
-	}
-
-	return 0, false, fmt.Errorf("invalid type: neither int nor percentage")
 }
 
 // assert label selector matches valid grammar, avoids CORE-414
