@@ -454,7 +454,8 @@ func getCount() *intstr.IntOrString {
 func getSelectors() labels.Set {
 	selectors := getSliceInput(
 		"Add a label selector[s] for targeting.",
-		"Please specify this in the form of `key=value`, e.g., `app=hello-node`. One label selector per new-line. If you specify multiple, we will only target the union.",
+		`Please specify this in the form of "key=value", e.g., "app=hello-node". One label selector per new-line. If you specify multiple, we will only target the union of all selectors.
+For example, if you set both "app=hello-node" and "pod-name=ubuntu-uuid", then no matter how many pods with the label "app=hello-node" there were, the disruption would only target pods who also had the label "pod-name=ubuntu-uuid".`,
 		true,
 	)
 
