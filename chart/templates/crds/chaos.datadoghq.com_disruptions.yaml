@@ -154,6 +154,11 @@ spec:
                     type: object
                   nullable: true
                   type: array
+                port:
+                  maximum: 65535
+                  minimum: 0
+                  nullable: true
+                  type: integer
                 services:
                   items:
                     properties:

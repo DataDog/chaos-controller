@@ -48,6 +48,10 @@ type NetworkDisruptionSpec struct {
 	DelayJitter uint `json:"delayJitter,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
+	// +nullable
+	DeprecatedPort *int `json:"port,omitempty"`
 }
 
 type NetworkDisruptionHostSpec struct {
@@ -103,6 +107,11 @@ func (s *NetworkDisruptionSpec) Validate() error {
 		if k8sService.Spec.Type != corev1.ServiceTypeClusterIP {
 			return fmt.Errorf("the service specified in the network disruption (%s/%s) is of type %s, but only the following service types are supported: ClusterIP", service.Namespace, service.Name, k8sService.Spec.Type)
 		}
+	}
+
+	// ensure deprecated fields are not used
+	if s.DeprecatedPort != nil {
+		return fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts or services instead")
 	}
 
 	return nil
