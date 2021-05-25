@@ -15,15 +15,16 @@ This document explains how to install and run the project on a local minikube cl
 To get started, we need to have the following software installed:
 
 * [docker](https://docs.docker.com/get-docker/)
-* [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
+* [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) (1: Installation)
 * [golangci-lint](https://github.com/golangci/golangci-lint)
-* [Kubebuilder Prerequisites](https://book.kubebuilder.io/quick-start.html#prerequisites)
+* [Kubebuilder Prerequisites](https://book.kubebuilder.io/quick-start.html#prerequisites) (go, docker, kubectl, kubebuilder, controller-gen)
+* [helm](https://helm.sh/docs/intro/quickstart/)
 
 # Deploy the controller locally
 
 ## Quick start
 
-Install the [requirements](#requirements) for this project, then run the following commands:
+Once you have installed the above requirements, run the following commands:
 
 * start minikube with containerd engine
   * `make minikube-start`
@@ -39,6 +40,7 @@ If the controller is already deployed and you want to test a new version of it, 
 The [samples](examples/) contains sample data which can be used to test your changes.
 
 * [demo.yaml](examples/demo.yaml) contains a bunch of testing resources you can apply directly to your cluster
+  * `kubectl create ns chaos-engineering`
   * `kubectl -n chaos-engineering apply -f examples/demo.yaml`
 
 ## Helpers scripts
