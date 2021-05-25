@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 
@@ -48,7 +49,7 @@ var createCmd = &cobra.Command{
 	},
 }
 
-const intro = `Hello! This tool will walk you through creating a disruption. Please reply to the prompts, and use ctrl+c to end.
+const intro = `Hello! This tool will walk you through creating a disruption. Please reply to the prompts, and use Ctrl+C to end.
 The generated disruption will have "dryRun:true" set for safety, which means you can safely apply it without injecting any failure.`
 
 func getMetadata() []byte {
@@ -104,7 +105,7 @@ func indexOfString(slice []string, indexed string) int {
 
 func promptForKind(spec *v1beta1.DisruptionSpec) error {
 	initial := "Let's begin by choosing the type of disruption to apply! Which disruption kind would you like to add?"
-	followUp := "Would you like to add another disruption kind? It's not necessary, most disruptions involve only one kind. Ctrl+C to finish adding kinds."
+	followUp := "Would you like to add another disruption kind? It's not necessary, most disruptions involve only one kind. Select .. to finish adding kinds."
 	kinds := []string{"dns", "network", "cpu", "disk", "node failure"}
 	helpText := `The DNS disruption allows for overriding the A or CNAME records returned by DNS queries.
 The Network disruption allows for injecting a variety of different network issues into your target.
@@ -117,15 +118,13 @@ Select one for more information on it.`
 
 	for {
 		response, err := selectInput(query, kinds, helpText)
-		if err != nil && (query != followUp || err != terminal.InterruptErr) {
-			// An initial ctrl+c means we should abort the entire interaction, but
-			// once we're on follow-up, that merely means the user is done
+		if err != nil {
 			return err
-		} else if query == followUp && err == terminal.InterruptErr {
-			return nil
 		}
 
 		switch response {
+		case "..":
+			return nil
 		case "dns":
 			spec.DNS = getDNS()
 			if spec.DNS == nil {
@@ -152,10 +151,12 @@ Select one for more information on it.`
 				continue
 			}
 		}
-
-		query = followUp
 		i := indexOfString(kinds, response)
 		kinds = append(kinds[:i], kinds[i+1:]...)
+		if query == initial {
+			kinds = append(kinds, "..")
+		}
+		query = followUp
 	}
 }
 
@@ -173,7 +174,9 @@ func confirmOption(query string, helpText string) bool {
 
 	err := survey.AskOne(prompt, &result)
 
-	if err != nil {
+	if err == terminal.InterruptErr {
+		os.Exit(1)
+	} else if err != nil {
 		fmt.Printf("confirmOption failed: %v", err)
 	}
 
@@ -195,7 +198,9 @@ func getInput(query string, helpText string, required bool) string {
 
 	err := survey.AskOne(prompt, &result, opt)
 
-	if err != nil {
+	if err == terminal.InterruptErr {
+		os.Exit(1)
+	} else if err != nil {
 		fmt.Printf("getInput failed: %v", err)
 	}
 
@@ -212,6 +217,10 @@ func selectInput(query string, inputs []string, helpText string) (string, error)
 	}
 
 	err := survey.AskOne(prompt, &result)
+
+	if err == terminal.InterruptErr {
+		os.Exit(1)
+	}
 
 	return result, err
 }
@@ -231,7 +240,9 @@ func getSliceInput(query string, helpText string, required bool) []string {
 
 	err := survey.AskOne(prompt, &results, opt)
 
-	if err != nil {
+	if err == terminal.InterruptErr {
+		os.Exit(1)
+	} else if err != nil {
 		fmt.Printf("getSliceInput failed: %v\n", err)
 	}
 
