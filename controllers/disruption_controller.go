@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"reflect"
 	"strings"
 	"time"
 
@@ -865,8 +866,8 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
 	for _, kind := range chaostypes.DisruptionKinds {
-		disruptionExists, _, _ := instance.Spec.DisruptionKindInterfaceGenerator(kind)
-		if !disruptionExists {
+		subspec := instance.Spec.DisruptionSubKindPicker(kind)
+		if reflect.ValueOf(subspec).IsNil() {
 			continue
 		}
 
@@ -888,10 +889,8 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, containerIDs []string) {
 	// generate chaos pods for each possible disruptions
 	for _, kind := range chaostypes.DisruptionKinds {
-		var generator chaosapi.DisruptionArgsGenerator
-
-		disruptionExists, _, generator := instance.Spec.DisruptionKindInterfaceGenerator(kind)
-		if !disruptionExists {
+		subspec := instance.Spec.DisruptionSubKindPicker(kind)
+		if reflect.ValueOf(subspec).IsNil() {
 			continue
 		}
 
@@ -902,7 +901,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		}
 
 		// generate args for pod
-		args := chaosapi.AppendCommonArgs(generator.GenerateArgs(),
+		args := chaosapi.AppendCommonArgs(subspec.GenerateArgs(),
 			level, containerIDs, r.MetricsSink.GetSinkName(), instance.Spec.DryRun,
 			instance.Name, instance.Namespace, targetName)
 

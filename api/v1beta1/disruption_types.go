@@ -112,14 +112,12 @@ func (s *DisruptionSpec) Validate() error {
 	}
 
 	for _, kind := range chaostypes.DisruptionKinds {
-		var validator chaosapi.DisruptionValidator
-
-		disruptionExists, validator, _ := s.DisruptionKindInterfaceGenerator(kind)
-		if !disruptionExists {
+		subspec := s.DisruptionSubKindPicker(kind)
+		if reflect.ValueOf(subspec).IsNil() {
 			continue
 		}
 
-		err := validator.Validate()
+		err := subspec.Validate()
 		if err != nil {
 			return err
 		}
@@ -152,27 +150,22 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 	return nil
 }
 
-// validates existence and generates instances of DisruptionKind Interfaces: DisruptionValidator, DisruptionArgsGenerator
-func (s *DisruptionSpec) DisruptionKindInterfaceGenerator(kind chaostypes.DisruptionKind) (bool, chaosapi.DisruptionValidator, chaosapi.DisruptionArgsGenerator) {
-	var validator chaosapi.DisruptionValidator
-
-	var generator chaosapi.DisruptionArgsGenerator
+// returns this DisruptionSpec's instance of a DisruptionSubSpec based on given kind
+func (s *DisruptionSpec) DisruptionSubKindPicker(kind chaostypes.DisruptionKind) chaosapi.DisruptionSubSpec {
+	var subspec chaosapi.DisruptionSubSpec
 
 	switch kind {
 	case chaostypes.DisruptionKindNodeFailure:
-		validator, generator = s.NodeFailure, s.NodeFailure
+		subspec = s.NodeFailure
 	case chaostypes.DisruptionKindNetworkDisruption:
-		validator, generator = s.Network, s.Network
+		subspec = s.Network
 	case chaostypes.DisruptionKindDNSDisruption:
-		validator, generator = s.DNS, s.DNS
+		subspec = s.DNS
 	case chaostypes.DisruptionKindCPUPressure:
-		validator, generator = s.CPUPressure, s.CPUPressure
+		subspec = s.CPUPressure
 	case chaostypes.DisruptionKindDiskPressure:
-		validator, generator = s.DiskPressure, s.DiskPressure
+		subspec = s.DiskPressure
 	}
 
-	// ensure that the underlying disruption spec is not nil
-	disruptionExists := !reflect.ValueOf(validator).IsNil()
-
-	return disruptionExists, validator, generator
+	return subspec
 }

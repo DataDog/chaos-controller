@@ -34,7 +34,7 @@ var _ webhook.Validator = &Disruption{}
 func (r *Disruption) ValidateCreate() error {
 	logger.Infow("validating created disruption", "instance", r.Name, "namespace", r.Namespace)
 
-	if err := r.Spec.ValidateDisruptionSpec(); err != nil {
+	if err := r.Spec.Validate(); err != nil {
 		return err
 	}
 
