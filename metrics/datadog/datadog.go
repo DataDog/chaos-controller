@@ -137,7 +137,7 @@ func (d *Sink) MetricDisruptionsGauge(gauge float64) error {
 }
 
 // MetricDisruptionsCount counts finished disruptions, and tags the disruption kind
-func (d *Sink) MetricDisruptionsCount(kind chaostypes.DisruptionKind, tags []string) error {
+func (d *Sink) MetricDisruptionsCount(kind chaostypes.DisruptionKindName, tags []string) error {
 	tags = append(tags, fmt.Sprintf("disruption_kind:%s", kind))
 	return d.metricWithStatus(metricPrefixController+"disruptions.count", tags)
 }

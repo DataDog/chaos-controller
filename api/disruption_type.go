@@ -11,8 +11,8 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
-// Contains all methods required for a disruption sub-specification (Network, DNS, CPUPressure, etc.)
-type DisruptionSubSpec interface {
+// DisruptionKind contains all methods required for a disruption sub-specification (Network, DNS, CPUPressure, etc.)
+type DisruptionKind interface {
 	// generates CLI args for the given disruption sub-specification
 	GenerateArgs() []string
 

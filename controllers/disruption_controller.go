@@ -679,7 +679,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 
 // generatePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
-func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, kind chaostypes.DisruptionKind) *corev1.Pod {
+func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, kind chaostypes.DisruptionKindName) *corev1.Pod {
 	// volume host path type definitions
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
@@ -865,7 +865,7 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 }
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
-	for _, kind := range chaostypes.DisruptionKinds {
+	for _, kind := range chaostypes.DisruptionKindNames {
 		subspec := instance.Spec.DisruptionKindPicker(kind)
 		if reflect.ValueOf(subspec).IsNil() {
 			continue
@@ -888,7 +888,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
 func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, containerIDs []string) {
 	// generate chaos pods for each possible disruptions
-	for _, kind := range chaostypes.DisruptionKinds {
+	for _, kind := range chaostypes.DisruptionKindNames {
 		subspec := instance.Spec.DisruptionKindPicker(kind)
 		if reflect.ValueOf(subspec).IsNil() {
 			continue

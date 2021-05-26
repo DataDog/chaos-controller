@@ -112,13 +112,13 @@ func (s *DisruptionSpec) Validate() error {
 		return err
 	}
 
-	for _, kind := range chaostypes.DisruptionKinds {
-		subspec := s.DisruptionKindPicker(kind)
-		if reflect.ValueOf(subspec).IsNil() {
+	for _, kind := range chaostypes.DisruptionKindNames {
+		disruptionKind := s.DisruptionKindPicker(kind)
+		if reflect.ValueOf(disruptionKind).IsNil() {
 			continue
 		}
 
-		err := subspec.Validate()
+		err := disruptionKind.Validate()
 		if err != nil {
 			return err
 		}
@@ -152,21 +152,21 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 }
 
 // returns this DisruptionSpec's instance of a DisruptionSubSpec based on given kind
-func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKind) chaosapi.DisruptionSubSpec {
-	var subspec chaosapi.DisruptionSubSpec
+func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName) chaosapi.DisruptionKind {
+	var disruptionKind chaosapi.DisruptionKind
 
 	switch kind {
 	case chaostypes.DisruptionKindNodeFailure:
-		subspec = s.NodeFailure
+		disruptionKind = s.NodeFailure
 	case chaostypes.DisruptionKindNetworkDisruption:
-		subspec = s.Network
+		disruptionKind = s.Network
 	case chaostypes.DisruptionKindDNSDisruption:
-		subspec = s.DNS
+		disruptionKind = s.DNS
 	case chaostypes.DisruptionKindCPUPressure:
-		subspec = s.CPUPressure
+		disruptionKind = s.CPUPressure
 	case chaostypes.DisruptionKindDiskPressure:
-		subspec = s.DiskPressure
+		disruptionKind = s.DiskPressure
 	}
 
-	return subspec
+	return disruptionKind
 }

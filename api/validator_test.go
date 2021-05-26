@@ -16,7 +16,7 @@ import (
 var _ = Describe("Validator", func() {
 	var (
 		err       error
-		validator DisruptionSubSpec
+		validator DisruptionKind
 	)
 
 	JustBeforeEach(func() {
