@@ -111,7 +111,7 @@ func (s *NetworkDisruptionSpec) Validate() error {
 
 	// ensure deprecated fields are not used
 	if s.DeprecatedPort != nil {
-		return fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts or services instead")
+		return fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts instead")
 	}
 
 	return nil
