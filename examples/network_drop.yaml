@@ -15,3 +15,6 @@ spec:
   count: 1
   network:
     drop: 100 # percentage of outgoing packets to drop
+    hosts:
+      - host: 10.0.0.0/8 # destination host
+      - port: 80 # destination port
