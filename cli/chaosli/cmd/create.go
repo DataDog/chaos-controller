@@ -92,7 +92,7 @@ func promptForKind(spec *v1beta1.DisruptionSpec) error {
 	kinds := []string{"dns", "network", "cpu", "disk", "node failure"}
 	helpText := `The DNS disruption allows for overriding the A or CNAME records returned by DNS queries.
 The Network disruption allows for injecting a variety of different network issues into your target.
-The CPU and Disk Pressure disruptions apply cpu or IO pressure to your target, respectively.
+The CPU and Disk disruptions apply cpu pressure or IO throttling to your target, respectively.
 Tne Node Failure disruption can either shutdown or restart the targeted node, or the node hosting the targeted pod.
 
 Select one for more information on it.`
@@ -162,7 +162,7 @@ Select one for more information on it.`
 
 			err := spec.DiskPressure.Validate()
 			if err != nil {
-				fmt.Printf("There were some problems with your disk pressure disruption's spec: %v\n\n", err)
+				fmt.Printf("There were some problems with your disk throttling disruption's spec: %v\n\n", err)
 
 				spec.DiskPressure = nil
 
@@ -344,25 +344,25 @@ func getDNS() v1beta1.DNSDisruptionSpec {
 }
 
 func getDiskPressure() *v1beta1.DiskPressureSpec {
-	if !confirmKind("Disk Pressure", "Applies IO pressure to the target") {
+	if !confirmKind("Disk Pressure", "Simulates disk pressure by applying IO throttling to the target") {
 		return nil
 	}
 
 	spec := &v1beta1.DiskPressureSpec{}
 
 	spec.Path = getInput(
-		"Specify a path to apply IO pressure to, e.g., /mnt/data",
+		"Specify a path to apply IO throttling to, e.g., /mnt/data",
 		"Specify a specific mount point to target the disk mounted there",
 		survey.WithValidator(survey.Required),
 	)
 
-	if confirmOption("Would you like to apply read pressure?", "This applies read-based IO pressure (check the docs)") {
-		readBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs", survey.WithValidator(integerValidator)))
+	if confirmOption("Would you like to apply read throttling?", "This applies read-based IO throttling (check the docs)") {
+		readBPS, _ := strconv.Atoi(getInput("Specify the target amount of throttling, in bytes per second.", "check the docs", survey.WithValidator(integerValidator)))
 		spec.Throttling.ReadBytesPerSec = &readBPS
 	}
 
-	if confirmOption("Would you like to apply write pressure?", "This applies write-based IO pressure (check the docs)") {
-		writeBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs", survey.WithValidator(integerValidator)))
+	if confirmOption("Would you like to apply write throttling?", "This applies write-based IO throttling (check the docs)") {
+		writeBPS, _ := strconv.Atoi(getInput("Specify the target amount of throttling, in bytes per second.", "check the docs", survey.WithValidator(integerValidator)))
 		spec.Throttling.WriteBytesPerSec = &writeBPS
 	}
 
