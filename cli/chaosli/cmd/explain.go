@@ -39,8 +39,6 @@ func (e *Explanations) explainMetaSpec(spec v1beta1.DisruptionSpec) {
 		fmt.Println("\tℹ️  will be run on the Pod level, so everything in this disruption is scoped at this level.")
 	} else if spec.Level == chaostypes.DisruptionLevelNode {
 		fmt.Println("\tℹ️  will be run on the Node level, so everything in this disruption is scoped at this level.")
-	} else {
-		fmt.Println("\tℹ️  level is unknown and will most likely cause errors when applied.")
 	}
 
 	if spec.Selector != nil {
@@ -87,7 +85,7 @@ func (e *Explanations) explainDiskPressure(spec v1beta1.DisruptionSpec) {
 	}
 	fmt.Println("💉 injects a disk pressure disruption ...")
 	if diskPressure.Path == "" {
-		fmt.Println("\t⚠️ no path specified for disk disruption, this is required!!")
+		fmt.Println("\t🗂  on path N/A")
 	} else {
 		fmt.Printf("\t🗂  on path %s\n", diskPressure.Path)
 	}
@@ -123,12 +121,25 @@ func (e *Explanations) explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 		return
 	}
 	fmt.Println("💉 injects a network disruption ...")
-	// TODO rebase onto the new services PR
+	fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following hosts/ports/protocols triplets:")
+
+	for _, data := range network.Hosts {
+		fmt.Printf("\t\t🎯 Host: %s\n", data.Host)
+		fmt.Printf("\t\t\t⛵️ Port: %d\n", data.Port)
+		fmt.Printf("\t\t\t🧾 Protocol: %s\n", data.Protocol)
+	}
+
+	fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following services/namespaces pairs:")
+
+	for _, data := range network.Services {
+		fmt.Printf("\t\t🎯 Service: %s\n", data.Name)
+		fmt.Printf("\t\t\t⛵️ Namespace: %s\n", data.Namespace)
+	}
 
 	if network.Flow == v1beta1.FlowIngress {
-		fmt.Println("\t💥 applies network failures on incoming traffic to the targets only.") //TODO technically not true, link to docs?
+		fmt.Println("\t💥 applies network failures on incoming traffic instead of outgoing.")
 	} else {
-		fmt.Println("\t💥 applies network failures on outgoing traffic to the targets only.")
+		fmt.Println("\t💥 applies network failures on outgoing traffic.")
 	}
 
 	if network.Drop != 0 {
