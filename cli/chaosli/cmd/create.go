@@ -117,7 +117,7 @@ Select one for more information on it.`
 
 			err := spec.DNS.Validate()
 			if err != nil {
-				fmt.Printf("There were some problems with your DNS disruption's spec: %v", err)
+				fmt.Printf("There were some problems with your DNS disruption's spec: %v\n\n", err)
 
 				spec.DNS = nil
 
@@ -132,7 +132,7 @@ Select one for more information on it.`
 
 			err := spec.Network.Validate()
 			if err != nil {
-				fmt.Printf("There were some problems with your network disruption's spec: %v", err)
+				fmt.Printf("There were some problems with your network disruption's spec: %v\n\n", err)
 
 				spec.Network = nil
 
@@ -147,7 +147,7 @@ Select one for more information on it.`
 
 			err := spec.CPUPressure.Validate()
 			if err != nil {
-				fmt.Printf("There were some problems with your CPU pressure disruption's spec: %v", err)
+				fmt.Printf("There were some problems with your CPU pressure disruption's spec: %v\n\n", err)
 
 				spec.CPUPressure = nil
 
@@ -162,7 +162,7 @@ Select one for more information on it.`
 
 			err := spec.DiskPressure.Validate()
 			if err != nil {
-				fmt.Printf("There were some problems with your disk pressure disruption's spec: %v", err)
+				fmt.Printf("There were some problems with your disk pressure disruption's spec: %v\n\n", err)
 
 				spec.DiskPressure = nil
 
@@ -177,7 +177,7 @@ Select one for more information on it.`
 
 			err := spec.NodeFailure.Validate()
 			if err != nil {
-				fmt.Printf("There were some problems with your node failure disruption's spec: %v", err)
+				fmt.Printf("There were some problems with your node failure disruption's spec: %v\n\n", err)
 
 				spec.NodeFailure = nil
 
@@ -400,6 +400,8 @@ func getHosts() []v1beta1.NetworkDisruptionHostSpec {
 	getHost := func() v1beta1.NetworkDisruptionHostSpec {
 		host := v1beta1.NetworkDisruptionHostSpec{}
 
+		fmt.Println(`Each "host" is a 3-tuple of host, port, and protocol. `)
+
 		host.Host = getInput("Add a host to target (or leave blank)",
 			"This will affect the network traffic between these hosts and your target. These can be hostnames, IPs, or CIDR blocks. These _cannot_ be k8s services.",
 		)
@@ -414,7 +416,7 @@ func getHosts() []v1beta1.NetworkDisruptionHostSpec {
 
 	hosts = append(hosts, getHost())
 
-	for confirmOption("Would you like to add another host?", "") {
+	for confirmOption("Would you like to add another host/port/protocol tuple?", "") {
 		hosts = append(hosts, getHost())
 	}
 
@@ -468,15 +470,15 @@ func getNetwork() *v1beta1.NetworkDisruptionSpec {
 	)
 
 	if confirmOption("Would you like to drop packets?", "Packets will be dropped before leaving the target") {
-		spec.Drop, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", survey.WithValidator(survey.Required)))
+		spec.Drop, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", survey.WithValidator(survey.Required), survey.WithValidator(percentageValidator)))
 	}
 
 	if confirmOption("Would you like to duplicate packets?", "Packets will be duplicated immediately before leaving the target") {
-		spec.Duplicate, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", survey.WithValidator(survey.Required)))
+		spec.Duplicate, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", survey.WithValidator(survey.Required), survey.WithValidator(percentageValidator)))
 	}
 
 	if confirmOption("Would you like to corrupt packets?", "Packets will be corrupted before leaving the target") {
-		spec.Corrupt, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", survey.WithValidator(survey.Required)))
+		spec.Corrupt, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", survey.WithValidator(survey.Required), survey.WithValidator(percentageValidator)))
 	}
 
 	if confirmOption("Would you like to delay packets?", "Packets will be delayed before leaving the target") {
@@ -533,9 +535,11 @@ func getSelectors() labels.Set {
 					return fmt.Errorf("please specify label selectors in the form key=value")
 				}
 			}
+		} else {
+			return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
 		}
 
-		return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
+		return nil
 	}
 	selectors := getSliceInput(
 		"Add a label selector[s] for targeting.",
@@ -588,4 +592,18 @@ func indexOfString(slice []string, indexed string) int {
 	}
 
 	return -1
+}
+
+func percentageValidator(val interface{}) error {
+	if str, ok := val.(string); ok {
+		input := intstr.Parse(str)
+		value, _, _ := v1beta1.GetIntOrPercentValueSafely(&input)
+		if value < 0 || value > 100 {
+			return fmt.Errorf("input must be a valid percentage value, between 0-100: got %s", str)
+		}
+	} else {
+		return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
+	}
+
+	return nil
 }

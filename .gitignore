@@ -28,7 +28,9 @@ dist
 
 # other
 .venv
-disruption.yaml #output of chaosli create
+
+#output of chaosli create
+disruption.yaml 
 
 # packer
 packer_cache/
