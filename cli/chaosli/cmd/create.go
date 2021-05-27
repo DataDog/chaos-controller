@@ -598,6 +598,7 @@ func percentageValidator(val interface{}) error {
 	if str, ok := val.(string); ok {
 		input := intstr.Parse(str)
 		value, _, _ := v1beta1.GetIntOrPercentValueSafely(&input)
+
 		if value < 0 || value > 100 {
 			return fmt.Errorf("input must be a valid percentage value, between 0-100: got %s", str)
 		}
