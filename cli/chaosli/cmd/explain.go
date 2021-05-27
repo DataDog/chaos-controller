@@ -29,6 +29,7 @@ func (e *Explanations) printSeparator() {
 func (e *Explanations) explainMetaSpec(spec v1beta1.DisruptionSpec) {
 	e.printSeparator()
 	fmt.Println("🧰 has the following metadata  ...")
+
 	if spec.DryRun {
 		fmt.Println("\tℹ️  has DryRun set to true meaning no actual disruption is being run.")
 	} else {
@@ -49,6 +50,7 @@ func (e *Explanations) explainMetaSpec(spec v1beta1.DisruptionSpec) {
 		if spec.Level == chaostypes.DisruptionLevelNode {
 			fmt.Println("\tℹ️  is using the node level. The Containers attribute only makes sense when using the pod level!")
 		}
+
 		fmt.Printf("\tℹ️  will target the following containers when targeting on the pod level\n\t\t🎯  %s\n", strings.Join(spec.Containers, ","))
 	}
 
@@ -58,6 +60,7 @@ func (e *Explanations) explainMetaSpec(spec v1beta1.DisruptionSpec) {
 
 func (e *Explanations) explainNodeFailure(spec v1beta1.DisruptionSpec) {
 	nodeFailure := spec.NodeFailure
+
 	if nodeFailure == nil {
 		return
 	}
@@ -66,14 +69,17 @@ func (e *Explanations) explainNodeFailure(spec v1beta1.DisruptionSpec) {
 	} else {
 		fmt.Println("💉 injects a node failure which triggers a kernel panic on the node.")
 	}
+
 	e.printSeparator()
 }
 
 func (e *Explanations) explainCPUPressure(spec v1beta1.DisruptionSpec) {
 	cpuPressure := spec.CPUPressure
+
 	if cpuPressure == nil {
 		return
 	}
+
 	fmt.Println("💉 injects a cpu pressure disruption ...")
 	e.printSeparator()
 }
@@ -102,21 +108,25 @@ func (e *Explanations) explainDiskPressure(spec v1beta1.DisruptionSpec) {
 
 func (e *Explanations) explainDNS(spec v1beta1.DisruptionSpec) {
 	dns := spec.DNS
+
 	if dns == nil || len(dns) == 0 {
 		return
 	}
 	fmt.Println("💉 injects a dns disruption ...")
 	fmt.Println("\t🥸  to spoof the following hostnames...")
+
 	for _, data := range dns {
 		fmt.Printf("\t\t👩🏽‍✈️ hostname: %s ...\n", data.Hostname)
 		fmt.Printf("\t\t\t🧾 has type %s\n", data.Record.Type)
 		fmt.Printf("\t\t\t🥷🏿  will be spoofed with %s\n", data.Record.Value)
 	}
+
 	e.printSeparator()
 }
 
 func (e *Explanations) explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	network := spec.Network
+
 	if network == nil {
 		return
 	}
@@ -162,19 +172,24 @@ func (e *Explanations) explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 
 func (e *Explanations) explainMultiDisruption(spec v1beta1.DisruptionSpec) {
 	existsMulti := false
+
 	if spec.NodeFailure != nil {
 		if spec.CPUPressure != nil || spec.DNS != nil || spec.DiskPressure != nil || spec.Network != nil {
 			fmt.Println("⚠️  You are attempting to run a Node Failure Disruption in addition to another one of our other failures.\n" +
 				"   Keep in mind that once the Node Failure runs (the kernel panic) the other disruptions will most likely not.")
+
 			existsMulti = true
 		}
 	}
+
 	if spec.Network != nil && spec.CPUPressure != nil {
 		fmt.Println("⚠️  You are attempting to run a Network Disruption and a CPU Pressure Disruption.\n" +
 			"   Keep in mind that CPU Pressure will most likely add additional issues to the network therefore your network disruption\n" +
 			"   will be less exact in its defined failures.")
+
 		existsMulti = true
 	}
+
 	if existsMulti {
 		e.printSeparator()
 	}
@@ -192,17 +207,21 @@ var explainCmd = &cobra.Command{
 
 func explanation(filePath string) {
 	var disruption v1beta1.Disruption
+
 	if filePath == "" {
 		fmt.Println(pathError)
 	}
+
 	fullPath, _ := filepath.Abs(filePath)
-	disruptionBytes, err := ioutil.ReadFile(fullPath)
+	disruptionBytes, err := ioutil.ReadFile(fullPath.Clean(fullPath))
+
 	if err != nil {
 		log.Printf("disruption.Get err   #%v ", err)
 		//panic(err)
 		return
 	}
 	err = yaml.Unmarshal(disruptionBytes, &disruption)
+
 	if err != nil {
 		log.Fatalf("Unmarshal: %v", err)
 	}
