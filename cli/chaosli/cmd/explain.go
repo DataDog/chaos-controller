@@ -105,6 +105,7 @@ func (e *Explanations) explainDiskPressure(spec v1beta1.DisruptionSpec) {
 	if diskPressure.Throttling.ReadBytesPerSec != nil {
 		fmt.Printf("\t\t📖 %d read bytes per second\n", *diskPressure.Throttling.ReadBytesPerSec)
 	}
+
 	if diskPressure.Throttling.WriteBytesPerSec != nil {
 		fmt.Printf("\t\t📝 %d write bytes per second\n", *diskPressure.Throttling.WriteBytesPerSec)
 	}
@@ -137,6 +138,7 @@ func (e *Explanations) explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	if network == nil {
 		return
 	}
+
 	fmt.Println("💉 injects a network disruption ...")
 	fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following hosts/ports/protocols triplets:")
 
@@ -162,18 +164,23 @@ func (e *Explanations) explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	if network.Drop != 0 {
 		fmt.Printf("\t\t💣 applies a packet drop of %d percent.\n", network.Drop)
 	}
+
 	if network.Corrupt != 0 {
 		fmt.Printf("\t\t💣 will corrupt packets at %d percent.\n", network.Drop)
 	}
+
 	if network.Delay != 0 {
 		fmt.Printf("\t\t💣 applies a packet delay of %d ms.\n", network.Delay)
+
 		if network.DelayJitter != 0 {
 			fmt.Printf("\t\t\t💣 applies a jitter of %d ms to the delay value to add randomness to the delay.\n", network.Delay)
 		}
 	}
+
 	if network.BandwidthLimit != 0 {
 		fmt.Printf("\t\t💣 applies a bandwidth limit of %d ms.\n", network.BandwidthLimit)
 	}
+
 	e.printSeparator()
 }
 
@@ -233,6 +240,7 @@ func explanation(filePath string) {
 	if err != nil {
 		log.Fatalf("Unmarshal: %v", err)
 	}
+
 	fmt.Println("This Disruption...")
 
 	e := Explanations{separator: "======================================================================================================================================="}
