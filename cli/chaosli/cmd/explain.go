@@ -64,6 +64,7 @@ func (e *Explanations) explainNodeFailure(spec v1beta1.DisruptionSpec) {
 	if nodeFailure == nil {
 		return
 	}
+
 	if nodeFailure.Shutdown {
 		fmt.Println("💉 injects a node failure which shuts down the host (violently) instead of triggering a kernel panic so the host is kept down and not restarted.")
 	} else {
@@ -86,16 +87,21 @@ func (e *Explanations) explainCPUPressure(spec v1beta1.DisruptionSpec) {
 
 func (e *Explanations) explainDiskPressure(spec v1beta1.DisruptionSpec) {
 	diskPressure := spec.DiskPressure
+
 	if diskPressure == nil {
 		return
 	}
+
 	fmt.Println("💉 injects a disk pressure disruption ...")
+
 	if diskPressure.Path == "" {
 		fmt.Println("\t🗂  on path N/A")
 	} else {
 		fmt.Printf("\t🗂  on path %s\n", diskPressure.Path)
 	}
+
 	fmt.Println("\t🏃🏾‍♀️ with the following thresholds...")
+
 	if diskPressure.Throttling.ReadBytesPerSec != nil {
 		fmt.Printf("\t\t📖 %d read bytes per second\n", *diskPressure.Throttling.ReadBytesPerSec)
 	}
@@ -112,6 +118,7 @@ func (e *Explanations) explainDNS(spec v1beta1.DisruptionSpec) {
 	if dns == nil || len(dns) == 0 {
 		return
 	}
+
 	fmt.Println("💉 injects a dns disruption ...")
 	fmt.Println("\t🥸  to spoof the following hostnames...")
 
@@ -220,12 +227,14 @@ func explanation(filePath string) {
 		//panic(err)
 		return
 	}
+
 	err = yaml.Unmarshal(disruptionBytes, &disruption)
 
 	if err != nil {
 		log.Fatalf("Unmarshal: %v", err)
 	}
 	fmt.Println("This Disruption...")
+
 	e := Explanations{separator: "======================================================================================================================================="}
 	e.explainMetaSpec(disruption.Spec)
 	e.explainMultiDisruption(disruption.Spec)
