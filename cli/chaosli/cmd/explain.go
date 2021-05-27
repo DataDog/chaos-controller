@@ -19,16 +19,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type Explanations struct {
-	separator string
+func printSeparator() {
+	fmt.Println("=======================================================================================================================================")
 }
 
-func (e *Explanations) printSeparator() {
-	fmt.Println(e.separator)
-}
-
-func (e *Explanations) explainMetaSpec(spec v1beta1.DisruptionSpec) {
-	e.printSeparator()
+func explainMetaSpec(spec v1beta1.DisruptionSpec) {
+	printSeparator()
 	fmt.Println("🧰 has the following metadata  ...")
 
 	if spec.DryRun {
@@ -56,10 +52,10 @@ func (e *Explanations) explainMetaSpec(spec v1beta1.DisruptionSpec) {
 	}
 
 	fmt.Printf("\tℹ️  is going to target %s %s (either described as a percentage of total %ss or actual number of them).\n", spec.Count, spec.Level, spec.Level)
-	e.printSeparator()
+	printSeparator()
 }
 
-func (e *Explanations) explainNodeFailure(spec v1beta1.DisruptionSpec) {
+func explainNodeFailure(spec v1beta1.DisruptionSpec) {
 	nodeFailure := spec.NodeFailure
 
 	if nodeFailure == nil {
@@ -72,10 +68,10 @@ func (e *Explanations) explainNodeFailure(spec v1beta1.DisruptionSpec) {
 		fmt.Println("💉 injects a node failure which triggers a kernel panic on the node.")
 	}
 
-	e.printSeparator()
+	printSeparator()
 }
 
-func (e *Explanations) explainCPUPressure(spec v1beta1.DisruptionSpec) {
+func explainCPUPressure(spec v1beta1.DisruptionSpec) {
 	cpuPressure := spec.CPUPressure
 
 	if cpuPressure == nil {
@@ -83,10 +79,10 @@ func (e *Explanations) explainCPUPressure(spec v1beta1.DisruptionSpec) {
 	}
 
 	fmt.Println("💉 injects a cpu pressure disruption ...")
-	e.printSeparator()
+	printSeparator()
 }
 
-func (e *Explanations) explainDiskPressure(spec v1beta1.DisruptionSpec) {
+func explainDiskPressure(spec v1beta1.DisruptionSpec) {
 	diskPressure := spec.DiskPressure
 
 	if diskPressure == nil {
@@ -111,10 +107,10 @@ func (e *Explanations) explainDiskPressure(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t📝 %d write bytes per second\n", *diskPressure.Throttling.WriteBytesPerSec)
 	}
 
-	e.printSeparator()
+	printSeparator()
 }
 
-func (e *Explanations) explainDNS(spec v1beta1.DisruptionSpec) {
+func explainDNS(spec v1beta1.DisruptionSpec) {
 	dns := spec.DNS
 
 	if dns == nil || len(dns) == 0 {
@@ -130,10 +126,10 @@ func (e *Explanations) explainDNS(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t\t🥷🏿  will be spoofed with %s\n", data.Record.Value)
 	}
 
-	e.printSeparator()
+	printSeparator()
 }
 
-func (e *Explanations) explainNetworkFailure(spec v1beta1.DisruptionSpec) {
+func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	network := spec.Network
 
 	if network == nil {
@@ -182,10 +178,10 @@ func (e *Explanations) explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t💣 applies a bandwidth limit of %d ms.\n", network.BandwidthLimit)
 	}
 
-	e.printSeparator()
+	printSeparator()
 }
 
-func (e *Explanations) explainMultiDisruption(spec v1beta1.DisruptionSpec) {
+func explainMultiDisruption(spec v1beta1.DisruptionSpec) {
 	existsMulti := false
 
 	if spec.NodeFailure != nil {
@@ -206,7 +202,7 @@ func (e *Explanations) explainMultiDisruption(spec v1beta1.DisruptionSpec) {
 	}
 
 	if existsMulti {
-		e.printSeparator()
+		printSeparator()
 	}
 }
 
@@ -243,14 +239,13 @@ func explanation(filePath string) {
 
 	fmt.Println("This Disruption...")
 
-	e := Explanations{separator: "======================================================================================================================================="}
-	e.explainMetaSpec(disruption.Spec)
-	e.explainMultiDisruption(disruption.Spec)
-	e.explainNodeFailure(disruption.Spec)
-	e.explainNetworkFailure(disruption.Spec)
-	e.explainCPUPressure(disruption.Spec)
-	e.explainDiskPressure(disruption.Spec)
-	e.explainDNS(disruption.Spec)
+	explainMetaSpec(disruption.Spec)
+	explainMultiDisruption(disruption.Spec)
+	explainNodeFailure(disruption.Spec)
+	explainNetworkFailure(disruption.Spec)
+	explainCPUPressure(disruption.Spec)
+	explainDiskPressure(disruption.Spec)
+	explainDNS(disruption.Spec)
 }
 
 func init() {
