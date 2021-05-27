@@ -48,7 +48,7 @@ var createCmd = &cobra.Command{
 		}
 
 		path, _ := cmd.Flags().GetString("path")
-		err = ioutil.WriteFile(path, y, 0644)
+		err = ioutil.WriteFile(path, y, 0644) // #nosec
 		if err != nil {
 			fmt.Printf("writeFile err: %v", err)
 		}
@@ -110,6 +110,7 @@ Select one for more information on it.`
 			return nil
 		case "dns":
 			spec.DNS = getDNS()
+
 			if spec.DNS == nil {
 				continue
 			}
@@ -117,11 +118,14 @@ Select one for more information on it.`
 			err := spec.DNS.Validate()
 			if err != nil {
 				fmt.Printf("There were some problems with your DNS disruption's spec: %v", err)
+
 				spec.DNS = nil
+
 				continue
 			}
 		case "network":
 			spec.Network = getNetwork()
+
 			if spec.Network == nil {
 				continue
 			}
@@ -129,11 +133,14 @@ Select one for more information on it.`
 			err := spec.Network.Validate()
 			if err != nil {
 				fmt.Printf("There were some problems with your network disruption's spec: %v", err)
+
 				spec.Network = nil
+
 				continue
 			}
 		case "cpu":
 			spec.CPUPressure = getCPUPressure()
+
 			if spec.CPUPressure == nil {
 				continue
 			}
@@ -141,11 +148,14 @@ Select one for more information on it.`
 			err := spec.CPUPressure.Validate()
 			if err != nil {
 				fmt.Printf("There were some problems with your CPU pressure disruption's spec: %v", err)
+
 				spec.CPUPressure = nil
+
 				continue
 			}
 		case "disk":
 			spec.DiskPressure = getDiskPressure()
+
 			if spec.DiskPressure == nil {
 				continue
 			}
@@ -153,11 +163,14 @@ Select one for more information on it.`
 			err := spec.DiskPressure.Validate()
 			if err != nil {
 				fmt.Printf("There were some problems with your disk pressure disruption's spec: %v", err)
+
 				spec.DiskPressure = nil
+
 				continue
 			}
 		case "node failure":
 			spec.NodeFailure = getNodeFailure()
+
 			if spec.NodeFailure == nil {
 				continue
 			}
@@ -165,16 +178,20 @@ Select one for more information on it.`
 			err := spec.NodeFailure.Validate()
 			if err != nil {
 				fmt.Printf("There were some problems with your node failure disruption's spec: %v", err)
+
 				spec.NodeFailure = nil
+
 				continue
 			}
 		}
 
 		i := indexOfString(kinds, response)
 		kinds = append(kinds[:i], kinds[i+1:]...)
+
 		if query == initial {
 			kinds = append(kinds, "..")
 		}
+
 		query = followUp
 	}
 }
@@ -269,6 +286,7 @@ func getMetadata() []byte {
 		} else {
 			return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
 		}
+
 		return nil
 	}
 
@@ -488,8 +506,12 @@ func getContainers() []string {
 
 func getCount() *intstr.IntOrString {
 	validator := func(val interface{}) error {
-		// TODO somehow grab the other intrstr validate here
-		return nil
+		if str, ok := val.(string); ok {
+			count := intstr.Parse(str)
+			return v1beta1.ValidateCount(&count)
+		}
+
+		return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
 	}
 	result := getInput(
 		"How many targets would you like to disrupt? This can be an integer, or a percentage.",
@@ -511,10 +533,9 @@ func getSelectors() labels.Set {
 					return fmt.Errorf("please specify label selectors in the form key=value")
 				}
 			}
-		} else {
-			return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
 		}
-		return nil
+
+		return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
 	}
 	selectors := getSliceInput(
 		"Add a label selector[s] for targeting.",

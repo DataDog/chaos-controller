@@ -38,7 +38,7 @@ func (r *Disruption) ValidateCreate() error {
 		return err
 	}
 
-	if err := validateCount(r.Spec.Count); err != nil {
+	if err := ValidateCount(r.Spec.Count); err != nil {
 		return err
 	}
 

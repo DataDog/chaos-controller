@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 
@@ -87,7 +88,7 @@ func initConfig() {
 }
 
 func DisruptionFromFile(path string) (v1beta1.DisruptionSpec, error) {
-	yaml, err := os.Open(path)
+	yaml, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		return v1beta1.DisruptionSpec{}, err
 	}
