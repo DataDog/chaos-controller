@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -231,8 +232,7 @@ func explanation(filePath string) {
 
 	if err != nil {
 		log.Printf("disruption.Get err   #%v ", err)
-		//panic(err)
-		return
+		os.Exit(1)
 	}
 
 	err = yaml.Unmarshal(disruptionBytes, &disruption)
