@@ -357,12 +357,12 @@ func getDiskPressure() *v1beta1.DiskPressureSpec {
 	)
 
 	if confirmOption("Would you like to apply read pressure?", "This applies read-based IO pressure (check the docs)") {
-		readBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs"))
+		readBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs", survey.WithValidator(integerValidator)))
 		spec.Throttling.ReadBytesPerSec = &readBPS
 	}
 
 	if confirmOption("Would you like to apply write pressure?", "This applies write-based IO pressure (check the docs)") {
-		writeBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs"))
+		writeBPS, _ := strconv.Atoi(getInput("Specify the target amount of pressure, in bytes per second.", "check the docs", survey.WithValidator(integerValidator)))
 		spec.Throttling.WriteBytesPerSec = &writeBPS
 	}
 
@@ -405,7 +405,7 @@ func getHosts() []v1beta1.NetworkDisruptionHostSpec {
 		host.Host = getInput("Add a host to target (or leave blank)",
 			"This will affect the network traffic between these hosts and your target. These can be hostnames, IPs, or CIDR blocks. These _cannot_ be k8s services.",
 		)
-		host.Port, _ = strconv.Atoi(getInput("What port would you like to target? (or leave blank for all)", "If specified, we will only affect traffic using this port"))
+		host.Port, _ = strconv.Atoi(getInput("What port would you like to target? (or leave blank for all)", "If specified, we will only affect traffic using this port", survey.WithValidator(integerValidator)))
 
 		if confirmOption("Would you like to specifically target only tcp or udp traffic?", "The default is to target all traffic.") {
 			host.Protocol, _ = selectInput("Please choose then (or ctrl+c to go back)", []string{"tcp", "udp"}, "This will cause only the traffic using this protocol to be affected.")
@@ -490,7 +490,7 @@ func getNetwork() *v1beta1.NetworkDisruptionSpec {
 	}
 
 	if confirmOption("Would you like to limit bandwidth?", "bandwidthlimit") {
-		spec.BandwidthLimit, _ = strconv.Atoi(getInput("What bandwidth limit should we set (in bytes per second)?", ">0", survey.WithValidator(survey.Required)))
+		spec.BandwidthLimit, _ = strconv.Atoi(getInput("What bandwidth limit should we set (in bytes per second)?", ">0", survey.WithValidator(survey.Required), survey.WithValidator(integerValidator)))
 	}
 
 	return spec
@@ -600,6 +600,19 @@ func percentageValidator(val interface{}) error {
 		value, _, _ := v1beta1.GetIntOrPercentValueSafely(&input)
 		if value < 0 || value > 100 {
 			return fmt.Errorf("input must be a valid percentage value, between 0-100: got %s", str)
+		}
+	} else {
+		return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
+	}
+
+	return nil
+}
+
+func integerValidator(val interface{}) error {
+	if str, ok := val.(string); ok {
+		_, err := strconv.Atoi(str)
+		if err != nil {
+			return fmt.Errorf("this value must be an integer: got %v", err)
 		}
 	} else {
 		return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
