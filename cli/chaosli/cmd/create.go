@@ -31,6 +31,10 @@ var createCmd = &cobra.Command{
 	Long:  `creates a disruption given input from the user.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		spec, _ := createSpec()
+		err := spec.Validate()
+		if err != nil {
+			fmt.Printf("There were some problems when validating your disruption: %v", err)
+		}
 		jsonRep, err := json.MarshalIndent(spec, "", " ")
 		if err != nil {
 			fmt.Printf("json err: %v", err)
@@ -109,9 +113,23 @@ Select one for more information on it.`
 			if spec.DNS == nil {
 				continue
 			}
+
+			err := spec.DNS.Validate()
+			if err != nil {
+				fmt.Printf("There were some problems with your DNS disruption's spec: %v", err)
+				spec.DNS = nil
+				continue
+			}
 		case "network":
 			spec.Network = getNetwork()
 			if spec.Network == nil {
+				continue
+			}
+
+			err := spec.Network.Validate()
+			if err != nil {
+				fmt.Printf("There were some problems with your network disruption's spec: %v", err)
+				spec.Network = nil
 				continue
 			}
 		case "cpu":
@@ -119,9 +137,23 @@ Select one for more information on it.`
 			if spec.CPUPressure == nil {
 				continue
 			}
+
+			err := spec.CPUPressure.Validate()
+			if err != nil {
+				fmt.Printf("There were some problems with your CPU pressure disruption's spec: %v", err)
+				spec.CPUPressure = nil
+				continue
+			}
 		case "disk":
 			spec.DiskPressure = getDiskPressure()
 			if spec.DiskPressure == nil {
+				continue
+			}
+
+			err := spec.DiskPressure.Validate()
+			if err != nil {
+				fmt.Printf("There were some problems with your disk pressure disruption's spec: %v", err)
+				spec.DiskPressure = nil
 				continue
 			}
 		case "node failure":
@@ -129,7 +161,15 @@ Select one for more information on it.`
 			if spec.NodeFailure == nil {
 				continue
 			}
+
+			err := spec.NodeFailure.Validate()
+			if err != nil {
+				fmt.Printf("There were some problems with your node failure disruption's spec: %v", err)
+				spec.NodeFailure = nil
+				continue
+			}
 		}
+
 		i := indexOfString(kinds, response)
 		kinds = append(kinds[:i], kinds[i+1:]...)
 		if query == initial {
