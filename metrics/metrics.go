@@ -33,7 +33,7 @@ type Sink interface {
 	MetricStuckOnRemoval(tags []string) error
 	MetricStuckOnRemovalGauge(gauge float64) error
 	MetricDisruptionsGauge(gauge float64) error
-	MetricDisruptionsCount(kind chaostypes.DisruptionKind, tags []string) error
+	MetricDisruptionsCount(kind chaostypes.DisruptionKindName, tags []string) error
 	MetricPodsGauge(gauge float64) error
 	MetricRestart() error
 }
