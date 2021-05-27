@@ -20,8 +20,11 @@ package v1beta1
 import (
 	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"reflect"
 
+	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -91,13 +94,74 @@ func init() {
 }
 
 // Hash returns the disruption spec JSON hash
-func (ds *DisruptionSpec) Hash() (string, error) {
+func (s *DisruptionSpec) Hash() (string, error) {
 	// serialize instance spec to JSON
-	specBytes, err := json.Marshal(ds)
+	specBytes, err := json.Marshal(s)
 	if err != nil {
 		return "", fmt.Errorf("error serializing instance spec: %w", err)
 	}
 
 	// compute bytes hash
 	return fmt.Sprintf("%x", md5.Sum(specBytes)), nil
+}
+
+// Validate applies rules for disruption global scope and all subsequent disruption specifications
+func (s *DisruptionSpec) Validate() error {
+	err := s.validateGlobalDisruptionScope()
+	if err != nil {
+		return err
+	}
+
+	for _, kind := range chaostypes.DisruptionKindNames {
+		disruptionKind := s.DisruptionKindPicker(kind)
+		if reflect.ValueOf(disruptionKind).IsNil() {
+			continue
+		}
+
+		err := disruptionKind.Validate()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Validate applies rules for disruption global scope
+func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
+	// Rule: no targeted container if disruption is node-level
+	if len(s.Containers) > 0 && s.Level == chaostypes.DisruptionLevelNode {
+		return errors.New("cannot target specific containers in a node-level disruption")
+	}
+
+	// Rule: at least one disruption field
+	if s.DNS == nil &&
+		s.CPUPressure == nil &&
+		s.Network == nil &&
+		s.NodeFailure == nil &&
+		s.DiskPressure == nil {
+		return errors.New("cannot apply an empty disruption - you need to add at least one of Network, DNS, DiskPressure, NodeFailure, CPUPressure fields")
+	}
+
+	return nil
+}
+
+// DisruptionKindPicker returns this DisruptionSpec's instance of a DisruptionKind based on given kind name
+func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName) chaosapi.DisruptionKind {
+	var disruptionKind chaosapi.DisruptionKind
+
+	switch kind {
+	case chaostypes.DisruptionKindNodeFailure:
+		disruptionKind = s.NodeFailure
+	case chaostypes.DisruptionKindNetworkDisruption:
+		disruptionKind = s.Network
+	case chaostypes.DisruptionKindDNSDisruption:
+		disruptionKind = s.DNS
+	case chaostypes.DisruptionKindCPUPressure:
+		disruptionKind = s.CPUPressure
+	case chaostypes.DisruptionKindDiskPressure:
+		disruptionKind = s.DiskPressure
+	}
+
+	return disruptionKind
 }
