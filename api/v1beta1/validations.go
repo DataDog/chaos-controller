@@ -39,7 +39,7 @@ func GetIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error)
 	return 0, false, fmt.Errorf("invalid type: neither int nor percentage")
 }
 
-func validateCount(count *intstr.IntOrString) error {
+func ValidateCount(count *intstr.IntOrString) error {
 	value, isPercent, err := GetIntOrPercentValueSafely(count)
 	if err != nil {
 		return err
