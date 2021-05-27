@@ -213,7 +213,7 @@ func explanation(filePath string) {
 	}
 
 	fullPath, _ := filepath.Abs(filePath)
-	disruptionBytes, err := ioutil.ReadFile(fullPath.Clean(fullPath))
+	disruptionBytes, err := ioutil.ReadFile(fullPath)
 
 	if err != nil {
 		log.Printf("disruption.Get err   #%v ", err)
