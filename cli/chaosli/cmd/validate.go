@@ -21,6 +21,14 @@ var validateCmd = &cobra.Command{
 	},
 }
 
+func validate(filePath string) string {
+	if filePath == "" {
+		return pathError
+	}
+
+	return "Validation TODO"
+}
+
 func init() {
 	validateCmd.Flags().String("path", "", "The path to the disruption file to be validated.")
 }
