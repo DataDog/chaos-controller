@@ -6,14 +6,9 @@
 package v1beta1
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strconv"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -86,26 +81,10 @@ func (s *NetworkDisruptionSpec) Validate() error {
 		}
 	}
 
-	// ensure given services exist and are compatible
-	for _, service := range s.Services {
-		k8sService := corev1.Service{}
-		serviceKey := types.NamespacedName{
-			Namespace: service.Namespace,
-			Name:      service.Name,
-		}
-
-		// try to get the service and throw an error if it does not exist
-		if err := k8sClient.Get(context.Background(), serviceKey, &k8sService); err != nil {
-			if client.IgnoreNotFound(err) == nil {
-				return fmt.Errorf("the service specified in the network disruption (%s/%s) does not exist", service.Namespace, service.Name)
-			}
-
-			return fmt.Errorf("error retrieving the specified network disruption service: %w", err)
-		}
-
-		// check the service type
-		if k8sService.Spec.Type != corev1.ServiceTypeClusterIP {
-			return fmt.Errorf("the service specified in the network disruption (%s/%s) is of type %s, but only the following service types are supported: ClusterIP", service.Namespace, service.Name, k8sService.Spec.Type)
+	if k8sClient != nil {
+		err := validateServices(k8sClient, s.Services)
+		if err != nil {
+			return err
 		}
 	}
 
