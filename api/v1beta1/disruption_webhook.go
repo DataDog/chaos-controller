@@ -8,6 +8,7 @@ package v1beta1
 import (
 	"fmt"
 
+	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -17,11 +18,13 @@ import (
 
 var logger *zap.SugaredLogger
 var k8sClient client.Client
+var metricsSink metrics.Sink
 
-func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger) error {
+func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink) error {
 	logger = &zap.SugaredLogger{}
 	*logger = *l.With("source", "admission-controller")
 	k8sClient = mgr.GetClient()
+	metricsSink = ms
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
@@ -35,10 +38,12 @@ func (r *Disruption) ValidateCreate() error {
 	logger.Infow("validating created disruption", "instance", r.Name, "namespace", r.Namespace)
 
 	if err := r.Spec.Validate(); err != nil {
-		return err
-	}
+		mErr := metricsSink.MetricFailedValidation()
 
-	if err := ValidateCount(r.Spec.Count); err != nil {
+		if mErr != nil {
+			logger.Errorw("error sending a metric", "error", mErr)
+		}
+
 		return err
 	}
 
