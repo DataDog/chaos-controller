@@ -7,13 +7,7 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 
-	goyaml "github.com/ghodss/yaml"
-
-	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/spf13/cobra"
 )
 
@@ -26,14 +20,6 @@ var validateCmd = &cobra.Command{
 		return validatePath(path)
 	},
 	RunE: ValidateDisruption,
-}
-
-func validate(filePath string) string {
-	if filePath == "" {
-		return pathError
-	}
-
-	return "Validation TODO"
 }
 
 func init() {
@@ -58,25 +44,4 @@ func validatePath(filePath string) error {
 	}
 
 	return nil
-}
-
-func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
-	yaml, err := os.Open(filepath.Clean(path))
-	if err != nil {
-		return v1beta1.Disruption{}, err
-	}
-
-	yamlBytes, err := ioutil.ReadAll(yaml)
-	if err != nil {
-		return v1beta1.Disruption{}, err
-	}
-
-	parsedSpec := v1beta1.Disruption{}
-	err = goyaml.Unmarshal(yamlBytes, &parsedSpec)
-
-	if err != nil {
-		return v1beta1.Disruption{}, err
-	}
-
-	return parsedSpec, nil
 }
