@@ -237,6 +237,12 @@ func explanation(filePath string) {
 		log.Fatalf("Unmarshal: %v", err)
 	}
 
+	err = disruption.Spec.Validate()
+
+	if err != nil {
+		log.Fatalf("There were some problems when validating your disruption: %v", err)
+	}
+
 	fmt.Println("This Disruption...")
 
 	explainMetaSpec(disruption.Spec)
