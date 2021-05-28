@@ -97,7 +97,7 @@ func explainDiskPressure(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t🗂  on path %s\n", diskPressure.Path)
 	}
 
-	fmt.Println("\t🏃🏾‍♀️ with the following thresholds...")
+	fmt.Println("\t🏃🏾‍♀️ with the following thresholds...") //nolint:stylecheck
 
 	if diskPressure.Throttling.ReadBytesPerSec != nil {
 		fmt.Printf("\t\t📖 %d read bytes per second\n", *diskPressure.Throttling.ReadBytesPerSec)
@@ -121,7 +121,7 @@ func explainDNS(spec v1beta1.DisruptionSpec) {
 	fmt.Println("\t🥸  to spoof the following hostnames...")
 
 	for _, data := range dns {
-		fmt.Printf("\t\t👩🏽‍✈️ hostname: %s ...\n", data.Hostname)
+		fmt.Printf("\t\t👩🏽‍✈️ hostname: %s ...\n", data.Hostname) //nolint:stylecheck
 		fmt.Printf("\t\t\t🧾 has type %s\n", data.Record.Type)
 		fmt.Printf("\t\t\t🥷🏿  will be spoofed with %s\n", data.Record.Value)
 	}
@@ -216,15 +216,15 @@ var explainCmd = &cobra.Command{
 	},
 }
 
-func explanation(filePath string) {
+func explanation(path string) {
 	var disruption v1beta1.Disruption
 
-	if filePath == "" {
+	if path == "" {
 		fmt.Println(pathError)
 	}
 
-	fullPath, _ := filepath.Abs(filePath)
-	disruptionBytes, err := ioutil.ReadFile(fullPath)
+	path, _ = filepath.Abs(filepath.Clean(path))
+	disruptionBytes, err := ioutil.ReadFile(path)
 
 	if err != nil {
 		log.Printf("disruption.Get err   #%v ", err)
