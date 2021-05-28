@@ -33,6 +33,10 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 		fmt.Println("\tℹ️  has DryRun set to false meaning this disruption WILL run.")
 	}
 
+	if spec.Level == chaostypes.DisruptionLevelUnspecified {
+		spec.Level = chaostypes.DisruptionLevelPod
+	}
+
 	if spec.Level == chaostypes.DisruptionLevelPod {
 		fmt.Println("\tℹ️  will be run on the Pod level, so everything in this disruption is scoped at this level.")
 	} else if spec.Level == chaostypes.DisruptionLevelNode {
@@ -51,7 +55,7 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\tℹ️  will target the following containers when targeting on the pod level\n\t\t🎯  %s\n", strings.Join(spec.Containers, ","))
 	}
 
-	fmt.Printf("\tℹ️  is going to target %s %s (either described as a percentage of total %ss or actual number of them).\n", spec.Count, spec.Level, spec.Level)
+	fmt.Printf("\tℹ️  is going to target %s %s(s) (either described as a percentage of total %ss or actual number of them).\n", spec.Count, spec.Level, spec.Level)
 	printSeparator()
 }
 
@@ -137,15 +141,35 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	}
 
 	fmt.Println("💉 injects a network disruption ...")
-	fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following hosts/ports/protocols triplets:")
 
-	for _, data := range network.Hosts {
-		fmt.Printf("\t\t🎯 Host: %s\n", data.Host)
-		fmt.Printf("\t\t\t⛵️ Port: %d\n", data.Port)
-		fmt.Printf("\t\t\t🧾 Protocol: %s\n", data.Protocol)
+	if len(network.Hosts) != 0 {
+		fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following hosts/ports/protocols triplets:")
 	}
 
-	fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following services/namespaces pairs:")
+	for _, data := range network.Hosts {
+
+		if len(data.Host) != 0 {
+			fmt.Printf("\t\t🎯 Host: %s\n", data.Host)
+		} else {
+			fmt.Println("\t\t🎯 Host: All Hosts")
+		}
+
+		if data.Port != 0 {
+			fmt.Printf("\t\t\t⛵️ Port: %d\n", data.Port)
+		} else {
+			fmt.Println("\t\t\t⛵️ Port: All Ports")
+		}
+
+		if len(data.Protocol) != 0 {
+			fmt.Printf("\t\t\t🧾 Protocol: %s\n", data.Protocol)
+		} else {
+			fmt.Println("\t\t\t🧾 Protocol: All Protocols")
+		}
+	}
+
+	if len(network.Services) != 0 {
+		fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following services/namespaces pairs:")
+	}
 
 	for _, data := range network.Services {
 		fmt.Printf("\t\t🎯 Service: %s\n", data.Name)
@@ -163,7 +187,7 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	}
 
 	if network.Corrupt != 0 {
-		fmt.Printf("\t\t💣 will corrupt packets at %d percent.\n", network.Drop)
+		fmt.Printf("\t\t💣 will corrupt packets at %d percent.\n", network.Corrupt)
 	}
 
 	if network.Delay != 0 {
