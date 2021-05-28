@@ -15,7 +15,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"github.com/ghodss/yaml"
+	goyaml "github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 )
 
@@ -223,15 +223,26 @@ func explanation(path string) {
 		fmt.Println(pathError)
 	}
 
-	path, _ = filepath.Abs(filepath.Clean(path))
-	disruptionBytes, err := ioutil.ReadFile(path)
+	fullPath, err := filepath.Abs(path)
+
+	if err != nil {
+		log.Fatalf("Finding Absolute Path: %v", err)
+	}
+
+	disruptionPath, err := os.Open(filepath.Clean(fullPath))
+
+	if err != nil {
+		log.Fatalf("Openning Yaml: %v", err)
+	}
+
+	disruptionBytes, err := ioutil.ReadAll(disruptionPath)
 
 	if err != nil {
 		log.Printf("disruption.Get err   #%v ", err)
 		os.Exit(1)
 	}
 
-	err = yaml.Unmarshal(disruptionBytes, &disruption)
+	err = goyaml.Unmarshal(disruptionBytes, &disruption)
 
 	if err != nil {
 		log.Fatalf("Unmarshal: %v", err)
