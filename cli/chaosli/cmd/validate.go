@@ -8,7 +8,6 @@ package cmd
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -26,7 +25,7 @@ var validateCmd = &cobra.Command{
 		path, _ := cmd.Flags().GetString("path")
 		return validatePath(path)
 	},
-	Run: ValidateDisruption,
+	RunE: ValidateDisruption,
 }
 
 func validate(filePath string) string {
@@ -41,14 +40,16 @@ func init() {
 	validateCmd.Flags().String("path", "", "The path to the disruption file to be validated.")
 }
 
-func ValidateDisruption(cmd *cobra.Command, args []string) {
+func ValidateDisruption(cmd *cobra.Command, args []string) error {
 	path, _ := cmd.Flags().GetString("path")
 	disruption, _ := DisruptionFromFile(path)
 
 	err := disruption.Spec.Validate()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
 
 func validatePath(filePath string) error {
