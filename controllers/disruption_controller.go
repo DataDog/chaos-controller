@@ -679,7 +679,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 
 // generatePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
-func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, kind chaostypes.DisruptionKind) *corev1.Pod {
+func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, kind chaostypes.DisruptionKindName) *corev1.Pod {
 	// volume host path type definitions
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
@@ -865,67 +865,21 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 }
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
-	for _, kind := range chaostypes.DisruptionKinds {
-		var validator chaosapi.DisruptionValidator
-
-		var tag chaostypes.DisruptionKind
-
-		// check for disruption kinds
-		switch kind {
-		case chaostypes.DisruptionKindNodeFailure:
-			validator = instance.Spec.NodeFailure
-			tag = chaostypes.DisruptionKindNodeFailure
-		case chaostypes.DisruptionKindNetworkDisruption:
-			validator = instance.Spec.Network
-			tag = chaostypes.DisruptionKindNetworkDisruption
-		case chaostypes.DisruptionKindDNSDisruption:
-			validator = instance.Spec.DNS
-			tag = chaostypes.DisruptionKindDNSDisruption
-		case chaostypes.DisruptionKindCPUPressure:
-			validator = instance.Spec.CPUPressure
-			tag = chaostypes.DisruptionKindCPUPressure
-		case chaostypes.DisruptionKindDiskPressure:
-			validator = instance.Spec.DiskPressure
-			tag = chaostypes.DisruptionKindDiskPressure
-		}
-
-		// ensure that the underlying disruption spec is not nil
-		if reflect.ValueOf(validator).IsNil() {
+	for _, kind := range chaostypes.DisruptionKindNames {
+		subspec := instance.Spec.DisruptionKindPicker(kind)
+		if reflect.ValueOf(subspec).IsNil() {
 			continue
 		}
 
-		r.handleMetricSinkError((r.MetricsSink.MetricDisruptionsCount(tag, []string{"name:" + instance.Name, "namespace:" + instance.Namespace})))
+		r.handleMetricSinkError((r.MetricsSink.MetricDisruptionsCount(kind, []string{"name:" + instance.Name, "namespace:" + instance.Namespace})))
 	}
 }
 
 func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Disruption) error {
-	for _, kind := range chaostypes.DisruptionKinds {
-		var validator chaosapi.DisruptionValidator
-
-		// check for disruption kind
-		switch kind {
-		case chaostypes.DisruptionKindNodeFailure:
-			validator = instance.Spec.NodeFailure
-		case chaostypes.DisruptionKindNetworkDisruption:
-			validator = instance.Spec.Network
-		case chaostypes.DisruptionKindDNSDisruption:
-			validator = instance.Spec.DNS
-		case chaostypes.DisruptionKindCPUPressure:
-			validator = instance.Spec.CPUPressure
-		case chaostypes.DisruptionKindDiskPressure:
-			validator = instance.Spec.DiskPressure
-		}
-
-		// ensure that the underlying disruption spec is not nil
-		if reflect.ValueOf(validator).IsNil() {
-			continue
-		}
-
-		err := validator.Validate()
-		if err != nil {
-			r.Recorder.Event(instance, "Warning", "InvalidSpec", err.Error())
-			return err
-		}
+	err := instance.Spec.Validate()
+	if err != nil {
+		r.Recorder.Event(instance, "Warning", "InvalidSpec", err.Error())
+		return err
 	}
 
 	return nil
@@ -934,25 +888,9 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
 func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, containerIDs []string) {
 	// generate chaos pods for each possible disruptions
-	for _, kind := range chaostypes.DisruptionKinds {
-		var generator chaosapi.DisruptionArgsGenerator
-
-		// check for disruption kind
-		switch kind {
-		case chaostypes.DisruptionKindNodeFailure:
-			generator = instance.Spec.NodeFailure
-		case chaostypes.DisruptionKindNetworkDisruption:
-			generator = instance.Spec.Network
-		case chaostypes.DisruptionKindDNSDisruption:
-			generator = instance.Spec.DNS
-		case chaostypes.DisruptionKindCPUPressure:
-			generator = instance.Spec.CPUPressure
-		case chaostypes.DisruptionKindDiskPressure:
-			generator = instance.Spec.DiskPressure
-		}
-
-		// ensure that the underlying disruption spec is not nil
-		if reflect.ValueOf(generator).IsNil() {
+	for _, kind := range chaostypes.DisruptionKindNames {
+		subspec := instance.Spec.DisruptionKindPicker(kind)
+		if reflect.ValueOf(subspec).IsNil() {
 			continue
 		}
 
@@ -963,7 +901,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		}
 
 		// generate args for pod
-		args := chaosapi.AppendCommonArgs(generator.GenerateArgs(),
+		args := chaosapi.AppendCommonArgs(subspec.GenerateArgs(),
 			level, containerIDs, r.MetricsSink.GetSinkName(), instance.Spec.DryRun,
 			instance.Name, instance.Namespace, targetName)
 

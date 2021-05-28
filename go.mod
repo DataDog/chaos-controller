@@ -3,6 +3,7 @@ module github.com/DataDog/chaos-controller
 go 1.13
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.2.12
 	github.com/DataDog/datadog-go v4.0.0+incompatible
 	github.com/Microsoft/hcsshim v0.8.9 // indirect
 	github.com/Microsoft/hcsshim/test v0.0.0-20200818230740-94556e86d3db // indirect

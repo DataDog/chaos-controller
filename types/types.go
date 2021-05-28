@@ -5,8 +5,8 @@
 
 package types
 
-// DisruptionKind represents a disruption kind
-type DisruptionKind string
+// DisruptionKindName represents a disruption kind
+type DisruptionKindName string
 
 // DisruptionLevel represents which level the disruption should be injected at
 type DisruptionLevel string
@@ -50,8 +50,8 @@ const (
 )
 
 var (
-	// DisruptionKinds contains all existing disruption kinds that can be injected
-	DisruptionKinds = []DisruptionKind{
+	// DisruptionKindNames contains all existing disruption kinds that can be injected
+	DisruptionKindNames = []DisruptionKindName{
 		DisruptionKindNetworkDisruption,
 		DisruptionKindNodeFailure,
 		DisruptionKindCPUPressure,

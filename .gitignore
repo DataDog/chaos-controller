@@ -29,6 +29,9 @@ dist
 # other
 .venv
 
+#output of chaosli create
+disruption.yaml 
+
 # packer
 packer_cache/
 crash.log

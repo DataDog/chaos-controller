@@ -11,9 +11,13 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
-// DisruptionArgsGenerator generates args for the given disruption
-type DisruptionArgsGenerator interface {
+// DisruptionKind contains all methods required for a disruption sub-specification (Network, DNS, CPUPressure, etc.)
+type DisruptionKind interface {
+	// generates CLI args for the given disruption sub-specification
 	GenerateArgs() []string
+
+	// validates schema for the given disruption sub-specification
+	Validate() error
 }
 
 // AppendCommonArgs is a helper function generating common args and appending them to the given args array
