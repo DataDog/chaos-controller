@@ -147,7 +147,6 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	}
 
 	for _, data := range network.Hosts {
-
 		if len(data.Host) != 0 {
 			fmt.Printf("\t\t🎯 Host: %s\n", data.Host)
 		} else {
