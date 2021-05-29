@@ -4,6 +4,19 @@
 
 Datadog runs regular chaos experiments to test the resilience of our distributed cloud applications hosted in Kubernetes. The Chaos Controller facilitates automation of these experiments by simulating common "disruptions" including but not limited to: poor network quality, exhaustion of computational resources, or unexpected node failures. All you need to do to get started is define a `yaml` file which contains all of the specifications needed by our custom Kubernetes Resource to run the preferred disruption `Kind`.
 
+## Gamedays
+
+At Datadog, we use the Chaos Controller to run Gamedays where we intentionally introduce failures into staging and production systems to test the resilience of our critical applications.
+
+<p align="center"><kbd>
+    <img src="docs/img/gameday/dns.png" width=700 align="center" />
+</kbd></p>
+<p align="center"><kbd>
+    <img src="docs/img/gameday/consul.png" width=700 align="center" />
+</kbd></p>
+
+The Chaos Controller allows us to simulate a variety of small and large scenarios (and combination of scenarios) such as a network degradation across an AZ which limits access to critical DNS resolvers (top) or a bad configuration triggering a “thundering herd” on Consul's key-value store (bottom).
+
 ## Local Development
 
 Chaos Engineering is necessarily different from system to system. We encourage you to try out this tool, and extend it for your own use cases. If you want to run the source code locally to make and test implementation changes, visit the [Contributing Docs](CONTRIBUTING.md) which explain how to spin up chaos-controller source code on Minikube. By the way, we welcome Pull Requests.
@@ -46,11 +59,17 @@ spec:
 
 To disrupt your cluster, run `kubectl apply -f <disruption_file.yaml>`. You can clean up the disruption with `kubectl delete -f <disruption_file>.yaml`. For your safety, we recommend you get started with the `dry-run` mode enabled.
 
-> :open_book: _The [usage guide](docs/usage.md) contains usecases and sample disruption files!_
+<p align="center"><kbd>
+    <img src="docs/img/deployment/apply_delete.png" width=500 align="center" />
+</kbd></p>
+
+> :open_book: _The [features guide](docs/features.md) contains usecases and sample disruption files!_
+
+> :open_book: _The [development guide](docs/development.md) contains tips for developing locally!_
 
 ## Useful Links
 
-* [Examples](docs/usage.md#examples)
+* [Examples](docs/features.md#examples)
 * [Design](docs/design.md)
 * [Metrics](docs/metrics.md)
 * [FAQ](docs/faq.md)
