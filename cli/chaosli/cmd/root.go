@@ -22,8 +22,6 @@ import (
 
 var cfgFile string
 
-const pathError string = "No Path Given, Exiting..."
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "chaosli",
@@ -109,5 +107,13 @@ func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
 }
 
 func DisruptionToFile(path string, spec v1beta1.DisruptionSpec) error {
+	return nil
+}
+
+func validatePath(filePath string) error {
+	if filePath == "" {
+		return fmt.Errorf("no path given, exiting")
+	}
+
 	return nil
 }

@@ -6,8 +6,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -19,28 +17,25 @@ var validateCmd = &cobra.Command{
 		path, _ := cmd.Flags().GetString("path")
 		return validatePath(path)
 	},
-	RunE: ValidateDisruption,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		path, _ := cmd.Flags().GetString("path")
+		return ValidateDisruption(path)
+	},
 }
 
 func init() {
 	validateCmd.Flags().String("path", "", "The path to the disruption file to be validated.")
 }
 
-func ValidateDisruption(cmd *cobra.Command, args []string) error {
-	path, _ := cmd.Flags().GetString("path")
-	disruption, _ := DisruptionFromFile(path)
-
-	err := disruption.Spec.Validate()
+func ValidateDisruption(path string) error {
+	disruption, err := DisruptionFromFile(path)
 	if err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func validatePath(filePath string) error {
-	if filePath == "" {
-		return fmt.Errorf("no path given, exiting")
+	err = disruption.Spec.Validate()
+	if err != nil {
+		return err
 	}
 
 	return nil
