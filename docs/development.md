@@ -59,6 +59,12 @@ If your pod gets stuck in terminating, it's possible that there was an issue wit
 
 ## Basic Troubleshooting
 
+See the existing disruptions (corresponding to `metadata.name`):
+* ```kubectl -n chaos-engineering get disruptions```
+
+Get a detailed overview of the live disruption (spec, finalizer, major events, etc)
+* ```kubectl -n chaos-engineering describe disruption <disruption name>```
+
 See the chaos pods (with names like `chaos-network-delay-llczv`, `chaos-network-drop-qlqnw`):
 * ```kubectl -n chaos-engineering get pods```
 
