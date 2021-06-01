@@ -143,6 +143,10 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, CPUPressure fields is needed")
 	}
 
+	if err := ValidateCount(s.Count); err != nil {
+		return err
+	}
+
 	return nil
 }
 
