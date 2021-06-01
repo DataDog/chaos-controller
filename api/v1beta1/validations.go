@@ -52,19 +52,19 @@ func GetIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error)
 		return intOrStr.IntValue(), false, nil
 	case intstr.String:
 		s := intOrStr.StrVal
+		isPercent := false
 
 		if strings.HasSuffix(s, "%") {
 			s = strings.TrimSuffix(intOrStr.StrVal, "%")
-
-			v, err := strconv.Atoi(s)
-			if err != nil {
-				return 0, false, fmt.Errorf("invalid value %q: %v", intOrStr.StrVal, err)
-			}
-
-			return v, true, nil
+			isPercent = true
 		}
 
-		return 0, false, fmt.Errorf("invalid type: string is not a percentage")
+		v, err := strconv.Atoi(s)
+		if err != nil {
+			return 0, false, fmt.Errorf("invalid value %q: %v", intOrStr.StrVal, err)
+		}
+
+		return v, isPercent, nil
 	}
 
 	return 0, false, fmt.Errorf("invalid type: neither int nor percentage")
