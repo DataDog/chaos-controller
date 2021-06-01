@@ -73,7 +73,7 @@ func GetIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error)
 func ValidateCount(count *intstr.IntOrString) error {
 	value, isPercent, err := GetIntOrPercentValueSafely(count)
 	if err != nil {
-		return err
+		return fmt.Errorf("error determining value of spec.count: %w", err)
 	}
 
 	if isPercent {
