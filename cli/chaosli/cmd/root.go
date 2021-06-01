@@ -6,13 +6,13 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	goyaml "github.com/ghodss/yaml"
 
 	"github.com/spf13/cobra"
 
@@ -21,8 +21,6 @@ import (
 )
 
 var cfgFile string
-
-const pathError string = "No Path Given, Exiting..."
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -87,27 +85,35 @@ func initConfig() {
 	}
 }
 
-func DisruptionFromFile(path string) (v1beta1.DisruptionSpec, error) {
+func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
 	yaml, err := os.Open(filepath.Clean(path))
 	if err != nil {
-		return v1beta1.DisruptionSpec{}, err
+		return v1beta1.Disruption{}, err
 	}
 
 	yamlBytes, err := ioutil.ReadAll(yaml)
 	if err != nil {
-		return v1beta1.DisruptionSpec{}, err
+		return v1beta1.Disruption{}, err
 	}
 
-	parsedSpec := v1beta1.DisruptionSpec{}
-	err = json.Unmarshal(yamlBytes, &parsedSpec)
+	parsedSpec := v1beta1.Disruption{}
+	err = goyaml.Unmarshal(yamlBytes, &parsedSpec)
 
 	if err != nil {
-		return v1beta1.DisruptionSpec{}, err
+		return v1beta1.Disruption{}, err
 	}
 
 	return parsedSpec, nil
 }
 
 func DisruptionToFile(path string, spec v1beta1.DisruptionSpec) error {
+	return nil
+}
+
+func validatePath(filePath string) error {
+	if filePath == "" {
+		return fmt.Errorf("no path given, exiting")
+	}
+
 	return nil
 }
