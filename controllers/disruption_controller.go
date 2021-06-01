@@ -71,6 +71,7 @@ type DisruptionReconciler struct {
 	InjectorAnnotations    map[string]string
 	InjectorServiceAccount string
 	InjectorImage          string
+	ImagePullSecrets       string
 	log                    *zap.SugaredLogger
 }
 
@@ -684,6 +685,168 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
 
+	podSpec := corev1.PodSpec{
+		HostPID:            true,                      // enable host pid
+		RestartPolicy:      corev1.RestartPolicyNever, // do not restart the pod on fail or completion
+		NodeName:           targetNodeName,            // specify node name to schedule the pod
+		ServiceAccountName: r.InjectorServiceAccount,  // service account to use
+		Containers: []corev1.Container{
+			{
+				Name:            "injector",              // container name
+				Image:           r.InjectorImage,         // container image gathered from controller flags
+				ImagePullPolicy: corev1.PullIfNotPresent, // pull the image only when it is not present
+				Args:            args,                    // pass disruption arguments
+				SecurityContext: &corev1.SecurityContext{
+					Privileged: func() *bool { b := true; return &b }(), // enable privileged mode
+				},
+				ReadinessProbe: &corev1.Probe{ // define readiness probe (file created by the injector when the injection is successful)
+					PeriodSeconds:    1,
+					FailureThreshold: 5,
+					Handler: corev1.Handler{
+						Exec: &corev1.ExecAction{
+							Command: []string{"cat", "/tmp/readiness_probe"},
+						},
+					},
+				},
+				Resources: corev1.ResourceRequirements{ // set resources requests and limits to zero
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    *resource.NewQuantity(0, resource.DecimalSI),
+						corev1.ResourceMemory: *resource.NewQuantity(0, resource.DecimalSI),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    *resource.NewQuantity(0, resource.DecimalSI),
+						corev1.ResourceMemory: *resource.NewQuantity(0, resource.DecimalSI),
+					},
+				},
+				Env: []corev1.EnvVar{ // define environment variables
+					{
+						Name: env.InjectorTargetPodHostIP,
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "status.hostIP",
+							},
+						},
+					},
+					{
+						Name: env.InjectorChaosPodIP,
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "status.podIP",
+							},
+						},
+					},
+					{
+						Name:  env.InjectorMountHost,
+						Value: "/mnt/host/",
+					},
+					{
+						Name:  env.InjectorMountProc,
+						Value: "/mnt/host/proc/",
+					},
+					{
+						Name:  env.InjectorMountSysrq,
+						Value: "/mnt/sysrq",
+					},
+					{
+						Name:  env.InjectorMountSysrqTrigger,
+						Value: "/mnt/sysrq-trigger",
+					},
+					{
+						Name:  env.InjectorMountCgroup,
+						Value: "/mnt/cgroup/",
+					},
+				},
+				VolumeMounts: []corev1.VolumeMount{ // define volume mounts required for disruptions to work
+					{
+						Name:      "run",
+						MountPath: "/run",
+					},
+					{
+						Name:      "sysrq",
+						MountPath: "/mnt/sysrq",
+					},
+					{
+						Name:      "sysrq-trigger",
+						MountPath: "/mnt/sysrq-trigger",
+					},
+					{
+						Name:      "cgroup",
+						MountPath: "/mnt/cgroup",
+					},
+					{
+						Name:      "host",
+						MountPath: "/mnt/host",
+						ReadOnly:  true,
+					},
+				},
+			},
+		},
+		Volumes: []corev1.Volume{ // declare volumes required for disruptions to work
+			{
+				Name: "run",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/run",
+						Type: &hostPathDirectory,
+					},
+				},
+			},
+			{
+				Name: "proc",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/proc",
+						Type: &hostPathDirectory,
+					},
+				},
+			},
+			{
+				Name: "sysrq",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/proc/sys/kernel/sysrq",
+						Type: &hostPathFile,
+					},
+				},
+			},
+			{
+				Name: "sysrq-trigger",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/proc/sysrq-trigger",
+						Type: &hostPathFile,
+					},
+				},
+			},
+			{
+				Name: "cgroup",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/sys/fs/cgroup",
+						Type: &hostPathDirectory,
+					},
+				},
+			},
+			{
+				Name: "host",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/",
+						Type: &hostPathDirectory,
+					},
+				},
+			},
+		},
+	}
+
+	if r.ImagePullSecrets != "" {
+		podSpec.ImagePullSecrets = []corev1.LocalObjectReference{
+			{
+				Name: r.ImagePullSecrets,
+			},
+		}
+	}
+
 	// define injector pod
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -696,159 +859,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 				chaostypes.DisruptionNameLabel: instance.Name, // disruption name label
 			},
 		},
-		Spec: corev1.PodSpec{
-			HostPID:            true,                      // enable host pid
-			RestartPolicy:      corev1.RestartPolicyNever, // do not restart the pod on fail or completion
-			NodeName:           targetNodeName,            // specify node name to schedule the pod
-			ServiceAccountName: r.InjectorServiceAccount,  // service account to use
-			Containers: []corev1.Container{
-				{
-					Name:            "injector",              // container name
-					Image:           r.InjectorImage,         // container image gathered from controller flags
-					ImagePullPolicy: corev1.PullIfNotPresent, // pull the image only when it is not present
-					Args:            args,                    // pass disruption arguments
-					SecurityContext: &corev1.SecurityContext{
-						Privileged: func() *bool { b := true; return &b }(), // enable privileged mode
-					},
-					ReadinessProbe: &corev1.Probe{ // define readiness probe (file created by the injector when the injection is successful)
-						PeriodSeconds:    1,
-						FailureThreshold: 5,
-						Handler: corev1.Handler{
-							Exec: &corev1.ExecAction{
-								Command: []string{"cat", "/tmp/readiness_probe"},
-							},
-						},
-					},
-					Resources: corev1.ResourceRequirements{ // set resources requests and limits to zero
-						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    *resource.NewQuantity(0, resource.DecimalSI),
-							corev1.ResourceMemory: *resource.NewQuantity(0, resource.DecimalSI),
-						},
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    *resource.NewQuantity(0, resource.DecimalSI),
-							corev1.ResourceMemory: *resource.NewQuantity(0, resource.DecimalSI),
-						},
-					},
-					Env: []corev1.EnvVar{ // define environment variables
-						{
-							Name: env.InjectorTargetPodHostIP,
-							ValueFrom: &corev1.EnvVarSource{
-								FieldRef: &corev1.ObjectFieldSelector{
-									FieldPath: "status.hostIP",
-								},
-							},
-						},
-						{
-							Name: env.InjectorChaosPodIP,
-							ValueFrom: &corev1.EnvVarSource{
-								FieldRef: &corev1.ObjectFieldSelector{
-									FieldPath: "status.podIP",
-								},
-							},
-						},
-						{
-							Name:  env.InjectorMountHost,
-							Value: "/mnt/host/",
-						},
-						{
-							Name:  env.InjectorMountProc,
-							Value: "/mnt/host/proc/",
-						},
-						{
-							Name:  env.InjectorMountSysrq,
-							Value: "/mnt/sysrq",
-						},
-						{
-							Name:  env.InjectorMountSysrqTrigger,
-							Value: "/mnt/sysrq-trigger",
-						},
-						{
-							Name:  env.InjectorMountCgroup,
-							Value: "/mnt/cgroup/",
-						},
-					},
-					VolumeMounts: []corev1.VolumeMount{ // define volume mounts required for disruptions to work
-						{
-							Name:      "run",
-							MountPath: "/run",
-						},
-						{
-							Name:      "sysrq",
-							MountPath: "/mnt/sysrq",
-						},
-						{
-							Name:      "sysrq-trigger",
-							MountPath: "/mnt/sysrq-trigger",
-						},
-						{
-							Name:      "cgroup",
-							MountPath: "/mnt/cgroup",
-						},
-						{
-							Name:      "host",
-							MountPath: "/mnt/host",
-							ReadOnly:  true,
-						},
-					},
-				},
-			},
-			Volumes: []corev1.Volume{ // declare volumes required for disruptions to work
-				{
-					Name: "run",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/run",
-							Type: &hostPathDirectory,
-						},
-					},
-				},
-				{
-					Name: "proc",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/proc",
-							Type: &hostPathDirectory,
-						},
-					},
-				},
-				{
-					Name: "sysrq",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/proc/sys/kernel/sysrq",
-							Type: &hostPathFile,
-						},
-					},
-				},
-				{
-					Name: "sysrq-trigger",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/proc/sysrq-trigger",
-							Type: &hostPathFile,
-						},
-					},
-				},
-				{
-					Name: "cgroup",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/sys/fs/cgroup",
-							Type: &hostPathDirectory,
-						},
-					},
-				},
-				{
-					Name: "host",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/",
-							Type: &hostPathDirectory,
-						},
-					},
-				},
-			},
-		},
+		Spec: podSpec,
 	}
 
 	// add finalizer to the pod so it is not deleted before we can control its exit status

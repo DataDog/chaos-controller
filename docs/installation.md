@@ -34,6 +34,13 @@ The injector image to use can be specified via this flag and can be useful in ca
 --injector-image <image>
 ```
 
+### Image Pull Secrets
+
+To [pull the Docker images from a private registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry) which is behind authentication you can create a Kubernetes Secret and set the flag below:
+```
+--image-pull-secrets <secrets-name>
+```
+
 ### Admission webhook
 
 The admission webhook can be configured, which is mostly only useful if you do not want to rely on cert-manager to generate your certificates. Please note that the admission webhook will **always** expect `tls.crt` and `tls.key` files to exist in the cert dir to work properly.
