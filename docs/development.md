@@ -3,7 +3,6 @@
 ## Testing Locally
 
 [demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster in whatever namespace you choose (it can be `chaos-engineering`) by running:
-  * `kubectl create ns chaos-engineering`
   * `kubectl -n chaos-engineering apply -f examples/demo.yaml`
 
 ## Applying your Manifest
@@ -63,10 +62,10 @@ If your pod gets stuck in terminating, it's possible that there was an issue wit
 See the chaos pods (with names like `chaos-network-delay-llczv`, `chaos-network-drop-qlqnw`):
 * ```kubectl -n chaos-engineering get pods```
 
-Check the logs of the pod:
+Check the logs of the resource:
 * ```kubectl -n chaos-engineering logs <pod name>```
 
-Check the logs of the pod:
+Get a detailed overview of the resource (finaliers, major events, allocated IP address, containers, etc):
 * ```kubectl -n chaos-engineering describe pod <pod name>```
 
 More complex troubleshooting on the [faq.md](docs/faq.md) page.

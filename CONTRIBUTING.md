@@ -51,7 +51,6 @@ To deploy a new version of the CRD by modifying your local `api/v1beta1/disrupti
 The [samples](examples/) contains sample data which can be used to test your changes.
 
 [demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster in whatever namespace you choose (it can be `chaos-engineering`) by running:
-  * `kubectl create ns chaos-engineering`
   * `kubectl -n chaos-engineering apply -f examples/demo.yaml`
 
 Once you define your test manifest, run:
