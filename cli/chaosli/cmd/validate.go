@@ -6,8 +6,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -15,20 +13,30 @@ var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "validate disruption config",
 	Long:  `validates the yaml of the disruption for structure.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		path, _ := cmd.Flags().GetString("path")
-		fmt.Println(validate(path))
+		return validatePath(path)
 	},
-}
-
-func validate(filePath string) string {
-	if filePath == "" {
-		return pathError
-	}
-
-	return "Validation TODO"
+	RunE: func(cmd *cobra.Command, args []string) error {
+		path, _ := cmd.Flags().GetString("path")
+		return ValidateDisruption(path)
+	},
 }
 
 func init() {
 	validateCmd.Flags().String("path", "", "The path to the disruption file to be validated.")
+}
+
+func ValidateDisruption(path string) error {
+	disruption, err := DisruptionFromFile(path)
+	if err != nil {
+		return err
+	}
+
+	err = disruption.Spec.Validate()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

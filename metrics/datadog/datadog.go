@@ -152,6 +152,11 @@ func (d *Sink) MetricRestart() error {
 	return d.metricWithStatus(metricPrefixController+"restart", []string{})
 }
 
+// MetricFailedValidation increments the failed validation metric
+func (d *Sink) MetricFailedValidation() error {
+	return d.metricWithStatus(metricPrefixController+"validation.failed", []string{})
+}
+
 func boolToStatus(succeed bool) string {
 	var status string
 	if succeed {

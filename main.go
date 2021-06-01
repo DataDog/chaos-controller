@@ -135,7 +135,7 @@ func main() {
 
 	go r.ReportMetrics()
 
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger); err != nil {
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
 		os.Exit(1)
 	}
