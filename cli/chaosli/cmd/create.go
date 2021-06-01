@@ -52,6 +52,8 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			fmt.Printf("writeFile err: %v", err)
 		}
+
+		fmt.Printf("We wrote your disruption to %s, thanks!", path)
 	},
 }
 
@@ -596,6 +598,10 @@ func indexOfString(slice []string, indexed string) int {
 
 func percentageValidator(val interface{}) error {
 	if str, ok := val.(string); ok {
+		if str == "" {
+			return nil
+		}
+
 		input := intstr.Parse(str)
 		value, _, _ := v1beta1.GetIntOrPercentValueSafely(&input)
 
@@ -611,6 +617,10 @@ func percentageValidator(val interface{}) error {
 
 func integerValidator(val interface{}) error {
 	if str, ok := val.(string); ok {
+		if str == "" {
+			return nil
+		}
+
 		_, err := strconv.Atoi(str)
 		if err != nil {
 			return fmt.Errorf("this value must be an integer: got %v", err)
