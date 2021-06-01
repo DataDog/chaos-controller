@@ -47,6 +47,8 @@ const (
 
 	// DisruptionNameLabel is the label used to identify the disruption name for a chaos pod
 	DisruptionNameLabel = "chaos.datadoghq.com/disruption"
+	// DisruptionOwnerLabel is the label used to identify the disruption name for a chaos pod
+	DisruptionOwnerLabel = "chaos.datadoghq.com/disruption-owner"
 )
 
 var (

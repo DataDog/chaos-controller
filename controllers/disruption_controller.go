@@ -321,11 +321,6 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 		// create injection pods
 		for _, chaosPod := range chaosPods {
-			// link instance resource and injection pod for garbage collection
-			if err := controllerutil.SetControllerReference(instance, chaosPod, r.Scheme); err != nil {
-				return fmt.Errorf("error setting chaos pod owner reference: %w", err)
-			}
-
 			// check if an injection pod already exists for the given (instance, namespace, disruption kind) tuple
 			found, err := r.getChaosPods(instance, chaosPod.Labels)
 			if err != nil {
@@ -652,29 +647,27 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 // getChaosPods returns chaos pods owned by the given instance and having the given labels
 func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error) {
-	ownedPods := make([]corev1.Pod, 0)
 	pods := &corev1.PodList{}
+	var err error
+	if ls == nil {
+		ls = make(map[string]string)
+	}
+	ls[chaostypes.DisruptionOwnerLabel], err = instance.Spec.Hash()
+	if err != nil {
+		return nil, fmt.Errorf("error calculating spechash to list owned pods: %w", err)
+	}
 
 	// list pods in the instance namespace and for the given target
 	listOptions := &client.ListOptions{
-		Namespace:     instance.Namespace,
 		LabelSelector: labels.SelectorFromSet(ls),
 	}
 
-	err := r.Client.List(context.Background(), pods, listOptions)
+	err = r.Client.List(context.Background(), pods, listOptions)
 	if err != nil {
 		return nil, fmt.Errorf("error listing owned pods: %w", err)
 	}
 
-	// filter all pods in the same namespace as instance,
-	// only returning those owned by the given instance
-	for _, pod := range pods.Items {
-		if metav1.IsControlledBy(&pod, instance) {
-			ownedPods = append(ownedPods, pod)
-		}
-	}
-
-	return ownedPods, nil
+	return pods.Items, nil
 }
 
 // generatePod generates a pod from a generic pod template in the same namespace
@@ -683,17 +676,19 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// volume host path type definitions
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
+	specHash, _ := instance.Spec.Hash()
 
 	// define injector pod
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("chaos-%s-", instance.Name), // generate the pod name automatically with a prefix
-			Namespace:    instance.Namespace,                      // use instance namespace
+			Namespace:    "chaos-engineering",                     // TODO find out the controller's namespace
 			Annotations:  r.InjectorAnnotations,                   // add extra annotations passed to the controller
 			Labels: map[string]string{
-				chaostypes.TargetLabel:         targetName,    // target name label
-				chaostypes.DisruptionKindLabel: string(kind),  // disruption kind label
-				chaostypes.DisruptionNameLabel: instance.Name, // disruption name label
+				chaostypes.TargetLabel:          targetName,    // target name label
+				chaostypes.DisruptionKindLabel:  string(kind),  // disruption kind label
+				chaostypes.DisruptionNameLabel:  instance.Name, // disruption name label
+				chaostypes.DisruptionOwnerLabel: specHash,      // disruption name label
 			},
 		},
 		Spec: corev1.PodSpec{
