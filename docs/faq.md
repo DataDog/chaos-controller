@@ -10,10 +10,10 @@ A disruption has an `Injection Status` field in its status that you can see by d
 
 ## How can I debug a disruption?
 
-Applying a disruption creates a bunch of pods to inject and clean it. Those are created in the same namespace as the disruption. You can look at the logs of those pods to understand what happened.
+Applying a disruption creates a bunch of pods to inject and clean it. Those are typically created in the same namespace as the chaos-controller. You can look at the logs of those pods to understand what happened.
 
 ```sh
-kubectl -n <NAMESPACE> get pods -l chaos.datadoghq.com/disruption=<DISRUPTION_NAME>
+kubectl -n <NAMESPACE> get pods -l chaos.datadoghq.com/disruption=<DISRUPTION_NAMESPACE>-<DISRUPTION_NAME>
 kubectl -n <NAMESPACE> logs <POD_NAME>
 ```
 
@@ -31,8 +31,8 @@ kubectl -n <NAMESPACE> delete pod <POD_NAME>
 ### I want to remove all chaos pods for a given disruption
 
 ```sh
-NAMESPACE=<NAMESPACE> DISRUPTION=<DISRUPTION_NAME>; kubectl -n ${NAMESPACE} get -ojson pods -l chaos.datadoghq.com/disruption=${DISRUPTION} | jq -r '.items[].metadata.name' | xargs -I{} kubectl -n ${NAMESPACE} patch pod {} --type=json -p '[{"op": "remove", "path": "/metadata/finalizers"}]'
-NAMESPACE=<NAMESPACE> DISRUPTION=<DISRUPTION_NAME>; kubectl -n ${NAMESPACE} get -ojson pods -l chaos.datadoghq.com/disruption=${DISRUPTION} | jq -r '.items[].metadata.name' | xargs -I{} kubectl -n ${NAMESPACE} delete pod {}
+NAMESPACE=<NAMESPACE> DISRUPTION=<DISRUPTION_NAME> DISRUPTION_NAMESPACE=<DISRUPTION_NAMESPACE>; kubectl -n ${NAMESPACE} get -ojson pods -l chaos.datadoghq.com/disruption=${DISRUPTION_NAMESPACE}-${DISRUPTION} | jq -r '.items[].metadata.name' | xargs -I{} kubectl -n ${NAMESPACE} patch pod {} --type=json -p '[{"op": "remove", "path": "/metadata/finalizers"}]'
+NAMESPACE=<NAMESPACE> DISRUPTION=<DISRUPTION_NAME> DISRUPTION_NAMESPACE=<DISRUPTION_NAMESPACE>; kubectl -n ${NAMESPACE} get -ojson pods -l chaos.datadoghq.com/disruption=${DISRUPTION_NAMESPACE}-${DISRUPTION} | jq -r '.items[].metadata.name' | xargs -I{} kubectl -n ${NAMESPACE} delete pod {}
 ```
 
 **Note: the chaos pods deletion can be stuck for some reason, like Kubernetes not being able to delete them. In this case, you might also want to remove the finalizer on the disruption resource itself which will then trigger the garbage collection of all related resources (including chaos pods) by Kubernetes.**

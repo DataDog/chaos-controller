@@ -312,10 +312,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		}
 
 		// generate injection pods specs
-		err := r.generateChaosPods(instance, &chaosPods, target, targetNodeName, containerIDs)
-		if err != nil {
-			return err
-		}
+		r.generateChaosPods(instance, &chaosPods, target, targetNodeName, containerIDs)
 
 		if len(chaosPods) == 0 {
 			r.Recorder.Event(instance, "Warning", "Empty Disruption", fmt.Sprintf("No disruption recognized for \"%s\" therefore no disruption applied.", instance.Name))
@@ -656,10 +653,10 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 	if ls == nil {
 		ls = make(map[string]string)
 	}
-	ls[chaostypes.DisruptionOwnerLabel], err = instance.Spec.Hash()
-	if err != nil {
-		return nil, fmt.Errorf("error calculating spechash to list owned pods: %w", err)
-	}
+	// If this isn't a valid label, we will instead list ALL pods
+	ls[chaostypes.DisruptionNameLabel] = fmt.Sprintf("%s-%s", instance.Namespace, instance.Name)
+
+	r.log.Infow("Getting chaos pods with this label", "labels", ls.String())
 
 	// list pods in the instance namespace and for the given target
 	listOptions := &client.ListOptions{
@@ -676,14 +673,10 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 
 // generatePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
-func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, kind chaostypes.DisruptionKindName) (*corev1.Pod, error) {
+func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, kind chaostypes.DisruptionKindName) *corev1.Pod {
 	// volume host path type definitions
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
-	specHash, err := instance.Spec.Hash()
-	if err != nil {
-		return nil, fmt.Errorf("error calculating spechash to specify owned pods: %w", err)
-	}
 
 	// define injector pod
 	pod := corev1.Pod{
@@ -692,10 +685,9 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 			Namespace:    r.InjectorServiceAccountNamespace,       // chaos pods need to be in the same namespace as their service account to run
 			Annotations:  r.InjectorAnnotations,                   // add extra annotations passed to the controller
 			Labels: map[string]string{
-				chaostypes.TargetLabel:          targetName,    // target name label
-				chaostypes.DisruptionKindLabel:  string(kind),  // disruption kind label
-				chaostypes.DisruptionNameLabel:  instance.Name, // disruption name label
-				chaostypes.DisruptionOwnerLabel: specHash,      // disruption name label
+				chaostypes.TargetLabel:         targetName,                                              // target name label
+				chaostypes.DisruptionKindLabel: string(kind),                                            // disruption kind label
+				chaostypes.DisruptionNameLabel: fmt.Sprintf("%s-%s", instance.Namespace, instance.Name), // disruption name label
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -856,7 +848,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// add finalizer to the pod so it is not deleted before we can control its exit status
 	controllerutil.AddFinalizer(&pod, chaosPodFinalizer)
 
-	return &pod, nil
+	return &pod
 }
 
 // handleMetricSinkError logs the given metric sink error if it is not nil
@@ -888,7 +880,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 }
 
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
-func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, containerIDs []string) error {
+func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, containerIDs []string) {
 	// generate chaos pods for each possible disruptions
 	for _, kind := range chaostypes.DisruptionKindNames {
 		subspec := instance.Spec.DisruptionKindPicker(kind)
@@ -908,14 +900,8 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			instance.Name, instance.Namespace, targetName)
 
 		// append pod to chaos pods
-		pod, err := r.generatePod(instance, targetName, targetNodeName, args, kind)
-		if err != nil {
-			return fmt.Errorf("error generating chaos pod: %w", err)
-		}
-		*pods = append(*pods, pod)
+		*pods = append(*pods, r.generatePod(instance, targetName, targetNodeName, args, kind))
 	}
-
-	return nil
 }
 
 // recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
