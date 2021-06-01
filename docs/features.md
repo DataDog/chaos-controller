@@ -1,4 +1,4 @@
-# Chaos Controller Usage Guide
+# Chaos Controller Features Guide
 
 ## Dry-run mode
 
