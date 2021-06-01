@@ -131,7 +131,7 @@ func (s *DisruptionSpec) Validate() error {
 func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 	// Rule: no targeted container if disruption is node-level
 	if len(s.Containers) > 0 && s.Level == chaostypes.DisruptionLevelNode {
-		return errors.New("cannot target specific containers in a node-level disruption")
+		return errors.New("cannot target specific containers because the level configuration is set to node")
 	}
 
 	// Rule: at least one disruption field
@@ -140,7 +140,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		s.Network == nil &&
 		s.NodeFailure == nil &&
 		s.DiskPressure == nil {
-		return errors.New("cannot apply an empty disruption - you need to add at least one of Network, DNS, DiskPressure, NodeFailure, CPUPressure fields")
+		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, CPUPressure fields is needed")
 	}
 
 	if err := ValidateCount(s.Count); err != nil {
