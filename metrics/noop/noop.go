@@ -148,3 +148,9 @@ func (n *Sink) MetricRestart() error {
 
 	return nil
 }
+
+func (n *Sink) MetricFailedValidation() error {
+	fmt.Println("NOOP: MetricFailedValidation")
+
+	return nil
+}
