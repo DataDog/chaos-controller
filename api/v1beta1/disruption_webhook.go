@@ -67,6 +67,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 
 	logger.Infow("comparing disruption spec hashes", "instance", r.Name, "namespace", r.Namespace, "oldHash", oldHash, "newHash", newHash)
 
+	// If you remove this check, you _must_ define a new way to determine disruption ownership of chaos pods
 	if oldHash != newHash {
 		return fmt.Errorf("a disruption spec can't be edited, please delete and recreate it if needed")
 	}
