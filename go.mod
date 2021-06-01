@@ -3,6 +3,7 @@ module github.com/DataDog/chaos-controller
 go 1.13
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.2.12
 	github.com/DataDog/datadog-go v4.0.0+incompatible
 	github.com/Microsoft/hcsshim v0.8.9 // indirect
 	github.com/Microsoft/hcsshim/test v0.0.0-20200818230740-94556e86d3db // indirect
@@ -19,6 +20,7 @@ require (
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
 	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/ghodss/yaml v1.0.0
 	github.com/gogo/googleapis v1.4.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/miekg/dns v1.1.31

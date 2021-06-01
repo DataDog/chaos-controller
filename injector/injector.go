@@ -26,7 +26,7 @@ type Config struct {
 	DryRun      bool
 	Log         *zap.SugaredLogger
 	MetricsSink metrics.Sink
-	Kind        types.DisruptionKind
+	Kind        types.DisruptionKindName
 	Level       types.DisruptionLevel
 	Container   container.Container
 	Cgroup      cgroup.Manager

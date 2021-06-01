@@ -129,7 +129,7 @@ func (n *Sink) MetricDisruptionsGauge(gauge float64) error {
 }
 
 // MetricDisruptionsCount counts finished disruptions, and tags the disruption kind
-func (n *Sink) MetricDisruptionsCount(kind chaostypes.DisruptionKind, tags []string) error {
+func (n *Sink) MetricDisruptionsCount(kind chaostypes.DisruptionKindName, tags []string) error {
 	fmt.Printf("NOOP: MetricDisruptionsCount %s %s\n", kind, tags)
 
 	return nil

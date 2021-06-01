@@ -6,12 +6,43 @@
 package v1beta1
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func validateServices(k8sClient client.Client, services []NetworkDisruptionServiceSpec) error {
+	// ensure given services exist and are compatible
+	for _, service := range services {
+		k8sService := corev1.Service{}
+		serviceKey := types.NamespacedName{
+			Namespace: service.Namespace,
+			Name:      service.Name,
+		}
+
+		// try to get the service and throw an error if it does not exist
+		if err := k8sClient.Get(context.Background(), serviceKey, &k8sService); err != nil {
+			if client.IgnoreNotFound(err) == nil {
+				return fmt.Errorf("the service specified in the network disruption (%s/%s) does not exist", service.Namespace, service.Name)
+			}
+
+			return fmt.Errorf("error retrieving the specified network disruption service: %w", err)
+		}
+
+		// check the service type
+		if k8sService.Spec.Type != corev1.ServiceTypeClusterIP {
+			return fmt.Errorf("the service specified in the network disruption (%s/%s) is of type %s, but only the following service types are supported: ClusterIP", service.Namespace, service.Name, k8sService.Spec.Type)
+		}
+	}
+
+	return nil
+}
 
 // GetIntOrPercentValueSafely has three return values. The first is the int value of intOrStr, and the second is
 // if that int value is a percentage (true) or simply an integer (false).
@@ -39,7 +70,7 @@ func GetIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error)
 	return 0, false, fmt.Errorf("invalid type: neither int nor percentage")
 }
 
-func validateCount(count *intstr.IntOrString) error {
+func ValidateCount(count *intstr.IntOrString) error {
 	value, isPercent, err := GetIntOrPercentValueSafely(count)
 	if err != nil {
 		return err
