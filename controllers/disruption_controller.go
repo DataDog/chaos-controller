@@ -641,7 +641,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		eligibleTargets = eligibleTargets[:len(eligibleTargets)-1]
 	}
 
-	r.log.Infow("updating instance status with targets selected for injection", "instance", instance) // TODO remove debug line
+	r.log.Infow("updating instance status with targets selected for injection")
 
 	return r.Update(context.Background(), instance)
 }

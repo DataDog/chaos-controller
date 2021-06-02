@@ -43,7 +43,6 @@ import (
 func listChaosPods(instance *chaosv1beta1.Disruption) (corev1.PodList, error) {
 	l := corev1.PodList{}
 	ls := labels.NewSelector()
-	instancePods := corev1.PodList{}
 
 	// create requirements
 	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "bar", "car", "far"})
@@ -60,7 +59,7 @@ func listChaosPods(instance *chaosv1beta1.Disruption) (corev1.PodList, error) {
 		return corev1.PodList{}, fmt.Errorf("can't list chaos pods: %w", err)
 	}
 
-	return instancePods, nil
+	return l, nil
 }
 
 // expectChaosPod retrieves the list of created chaos pods related to the given and to the
@@ -81,9 +80,6 @@ func expectChaosPod(instance *chaosv1beta1.Disruption, count int) error {
 	for _, p := range l.Items {
 		if p.GenerateName == "" {
 			return fmt.Errorf("GenerateName field can't be empty")
-		}
-		if p.Namespace != instance.Namespace {
-			return fmt.Errorf("pod namesapce must match instance namespace")
 		}
 		if len(p.Spec.Containers[0].Args) == 0 {
 			return fmt.Errorf("pod container args must be set")
