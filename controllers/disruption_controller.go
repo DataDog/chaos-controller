@@ -653,8 +653,9 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 	if ls == nil {
 		ls = make(map[string]string)
 	}
-	// If this isn't a valid label, we will instead list ALL pods
-	ls[chaostypes.DisruptionNameLabel] = fmt.Sprintf("%s-%s", instance.Namespace, instance.Name)
+	// If these aren't valid labels, we will instead list ALL pods
+	ls[chaostypes.DisruptionNameLabel] = instance.Name
+	ls[chaostypes.DisruptionNamespaceLabel] = instance.Namespace
 
 	r.log.Infow("Getting chaos pods with this label", "labels", ls.String())
 
@@ -685,9 +686,10 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 			Namespace:    r.InjectorServiceAccountNamespace,       // chaos pods need to be in the same namespace as their service account to run
 			Annotations:  r.InjectorAnnotations,                   // add extra annotations passed to the controller
 			Labels: map[string]string{
-				chaostypes.TargetLabel:         targetName,                                              // target name label
-				chaostypes.DisruptionKindLabel: string(kind),                                            // disruption kind label
-				chaostypes.DisruptionNameLabel: fmt.Sprintf("%s-%s", instance.Namespace, instance.Name), // disruption name label
+				chaostypes.TargetLabel:              targetName,         // target name label
+				chaostypes.DisruptionKindLabel:      string(kind),       // disruption kind label
+				chaostypes.DisruptionNameLabel:      instance.Name,      // disruption name label, used to determine ownership
+				chaostypes.DisruptionNamespaceLabel: instance.Namespace, // disruption namespace label, used to determine ownership
 			},
 		},
 		Spec: corev1.PodSpec{
