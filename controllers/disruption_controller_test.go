@@ -47,23 +47,17 @@ func listChaosPods(instance *chaosv1beta1.Disruption) (corev1.PodList, error) {
 
 	// create requirements
 	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "bar", "car", "far"})
+	disruptionNameRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNameLabel, selection.Equals, []string{instance.Name})
+	disruptionNamespaceRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNamespaceLabel, selection.Equals, []string{instance.Namespace})
 
 	// add requirements to label selector
-	ls = ls.Add(*targetPodRequirement)
+	ls = ls.Add(*targetPodRequirement, *disruptionNamespaceRequirement, *disruptionNameRequirement)
 
 	// get matching pods
 	if err := k8sClient.List(context.Background(), &l, &client.ListOptions{
-		Namespace:     "default",
 		LabelSelector: ls,
 	}); err != nil {
 		return corev1.PodList{}, fmt.Errorf("can't list chaos pods: %w", err)
-	}
-
-	// filter to get only pods owned by the given instance
-	for _, pod := range l.Items {
-		if metav1.IsControlledBy(&pod, instance) {
-			instancePods.Items = append(instancePods.Items, pod)
-		}
 	}
 
 	return instancePods, nil
