@@ -649,10 +649,11 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 // getChaosPods returns chaos pods owned by the given instance and having the given labels
 func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error) {
 	pods := &corev1.PodList{}
-	var err error
+
 	if ls == nil {
 		ls = make(map[string]string)
 	}
+
 	// If these aren't valid labels, we will instead list ALL pods
 	ls[chaostypes.DisruptionNameLabel] = instance.Name
 	ls[chaostypes.DisruptionNamespaceLabel] = instance.Namespace
@@ -664,7 +665,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 		LabelSelector: labels.SelectorFromSet(ls),
 	}
 
-	err = r.Client.List(context.Background(), pods, listOptions)
+	err := r.Client.List(context.Background(), pods, listOptions)
 	if err != nil {
 		return nil, fmt.Errorf("error listing owned pods: %w", err)
 	}
