@@ -3,9 +3,12 @@
 ## Is there any specific tooling that can help me create/understand my disruptions?
 
 Yes! Take a look at [Chaosli](../cli/chaosli/README.md). This is a command line interface that has many features which include:
-explaining your disruption configuration is a human digestible way.
-creating new disruptions from scratch answering simple questions.
-validating your disruptions before running them.
+
+Explaining your disruption configuration is a human digestible way.
+
+Creating new disruptions from scratch answering simple questions.
+
+Validating your disruptions before running them.
 
 ## How can I know if my disruption has been successfully injected or not?
 

@@ -1,6 +1,6 @@
 # Chaosli
 
-Chaosli (Chaos Line Interface) is motivated by creating a more user friendly and digestible chaos-controller experience. The CLI pairs with your Disruption configuration, giving you information to give you a better sense of what is going on or what will happen when you apply new disruptions. With features like explain and validation, it gives users, not only a better understanding, but a better experience with the controller.  
+The Chaos Controller CLI, `chaosli`, is meant to help create a more user friendly and digestible chaos-controller experience. The CLI pairs with your Disruption's definition, giving you information to give you a better sense of what is going on, and what will happen when you apply new disruptions. With features like explain and validation, it gives users, not only a better understanding, but a better experience with the controller.  
 
 
 #### Table of Contents
@@ -13,7 +13,7 @@ Chaosli (Chaos Line Interface) is motivated by creating a more user friendly and
 ---
 Usage: `go run chaosli/main.go validate --path <path to disruption file>`
 
-Description: Validates your disruption files to make sure everything is correctly formatted.
+Description: Validates your disruption file (location defined by `--path`) to make sure everything is correctly formatted, and all options have valid configurations.
 
 Example:
 
@@ -30,7 +30,7 @@ Error: cannot apply an empty disruption - at least one of Network, DNS, DiskPres
 ---
 Usage: `go run chaosli/main.go explain --path <path to disruption file>`
 
-Description: Prints out a summary of the disruption defined by `path`.
+Description: Prints out a summary of the disruption (location defined by `--path`).
 
 Example:
 
@@ -54,6 +54,6 @@ This Disruption...
 
 #### Creation
 ---
-Usage: `go run chaosli/main.go create --path <path of new disruption file>`
+Usage: `go run chaosli/main.go create --path <path to output generated disruption file>`
 
 Description: User friendly input process that helps you create your disruptions from scratch answering simple questions.
