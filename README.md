@@ -63,6 +63,8 @@ To disrupt your cluster, run `kubectl apply -f <disruption_file.yaml>`. You can 
     <img src="docs/img/deployment/apply_delete.png" width=500 align="center" />
 </kbd></p>
 
+Check out [Chaosli](./cli/chaosli/README.md) if you want some help understanding/creating disruption configurations.
+
 > :open_book: _The [features guide](docs/features.md) contains usecases and sample disruption files!_
 
 > :open_book: _The [development guide](docs/development.md) contains tips for developing locally!_
