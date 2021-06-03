@@ -1,6 +1,6 @@
-# ChaosCLI
+# Chaosli
 
-The ChaosCLI is motivated by creating a more user friendly and digestible chaos-controller experience. The CLI pairs with your Disruption configuration, giving you information to give you a better sense of what is going on or what will happen when you apply new disruptions. With features like explain and validation, it gives users, not only a better understanding, but a better experience with the controller.  
+Chaosli (Chaos Line Interface) is motivated by creating a more user friendly and digestible chaos-controller experience. The CLI pairs with your Disruption configuration, giving you information to give you a better sense of what is going on or what will happen when you apply new disruptions. With features like explain and validation, it gives users, not only a better understanding, but a better experience with the controller.  
 
 
 #### Table of Contents
