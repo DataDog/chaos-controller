@@ -1,4 +1,4 @@
-> :warning: **Latest Kubernetes version supported is 1.19.x!** _This [Kubernetes issue](https://github.com/kubernetes/kubernetes/issues/97288") prevents the controller from running properly on Kubernetes 1.20.x which will not be supported. The [fix](https://github.com/kubernetes/kubernetes/pull/97980) will be released with Kubernetes 1.21._
+> :warning: **Kubernetes version 1.20.x is not supported!** _This [Kubernetes issue](https://github.com/kubernetes/kubernetes/issues/97288) prevents the controller from running properly on Kubernetes 1.20.x. The [fix](https://github.com/kubernetes/kubernetes/pull/97980) was released with Kubernetes 1.21. Kubernetes versions earlier than 1.20 are still supported._
 
 # Chaos Controller
 
