@@ -168,7 +168,7 @@ var _ = Describe("Disruption Controller", func() {
 	AfterEach(func() {
 		// delete disruption resource
 		_ = k8sClient.Delete(context.Background(), disruption)
-		Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout).Should(Succeed())
+		Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout*2).Should(Succeed())
 		Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
 	})
 
