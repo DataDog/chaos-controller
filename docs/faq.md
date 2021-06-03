@@ -1,5 +1,10 @@
 # FAQ
 
+## Where can I find the chaos pods for my disruption?
+
+In order to ensure that chaos pods have access to the ClusterRole they need, all chaos pods are created in the same namespace as the `chaos-injector`
+ service account. This is configured with a flag when starting the chaos-controller. By default, this is the "chaos-engineering" namespace.
+
 ## How can I know if my disruption has been successfully injected or not?
 
 A disruption has an `Injection Status` field in its status that you can see by describing the resource. It can take the following values:
