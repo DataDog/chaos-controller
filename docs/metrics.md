@@ -17,6 +17,7 @@ Here's the list of metrics sent by the controller and the injector.
 * `chaos.controller.disruptions.stuck_on_removal_total` is the total count of existing disruption being flagged as stuck on removal
 * `chaos.controller.disruptions.gauge` is the total count of existing disruption
 * `chaos.controller.disruptions.count` increments when a disruption is created
+* `chaos.controller.validation.failed` increments when a disruption fails ValidateCreate in the admission webhook
 
 ## Injector
 
