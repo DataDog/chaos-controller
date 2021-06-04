@@ -43,30 +43,23 @@ import (
 func listChaosPods(instance *chaosv1beta1.Disruption) (corev1.PodList, error) {
 	l := corev1.PodList{}
 	ls := labels.NewSelector()
-	instancePods := corev1.PodList{}
 
 	// create requirements
 	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "bar", "car", "far"})
+	disruptionNameRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNameLabel, selection.Equals, []string{instance.Name})
+	disruptionNamespaceRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNamespaceLabel, selection.Equals, []string{instance.Namespace})
 
 	// add requirements to label selector
-	ls = ls.Add(*targetPodRequirement)
+	ls = ls.Add(*targetPodRequirement, *disruptionNamespaceRequirement, *disruptionNameRequirement)
 
 	// get matching pods
 	if err := k8sClient.List(context.Background(), &l, &client.ListOptions{
-		Namespace:     "default",
 		LabelSelector: ls,
 	}); err != nil {
 		return corev1.PodList{}, fmt.Errorf("can't list chaos pods: %w", err)
 	}
 
-	// filter to get only pods owned by the given instance
-	for _, pod := range l.Items {
-		if metav1.IsControlledBy(&pod, instance) {
-			instancePods.Items = append(instancePods.Items, pod)
-		}
-	}
-
-	return instancePods, nil
+	return l, nil
 }
 
 // expectChaosPod retrieves the list of created chaos pods related to the given and to the
@@ -87,9 +80,6 @@ func expectChaosPod(instance *chaosv1beta1.Disruption, count int) error {
 	for _, p := range l.Items {
 		if p.GenerateName == "" {
 			return fmt.Errorf("GenerateName field can't be empty")
-		}
-		if p.Namespace != instance.Namespace {
-			return fmt.Errorf("pod namesapce must match instance namespace")
 		}
 		if len(p.Spec.Containers[0].Args) == 0 {
 			return fmt.Errorf("pod container args must be set")
@@ -178,7 +168,7 @@ var _ = Describe("Disruption Controller", func() {
 	AfterEach(func() {
 		// delete disruption resource
 		_ = k8sClient.Delete(context.Background(), disruption)
-		Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout).Should(Succeed())
+		Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout*2).Should(Succeed())
 		Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
 	})
 
