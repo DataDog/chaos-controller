@@ -45,8 +45,10 @@ const (
 	// DisruptionInjectionStatusInjected is the value of the injection status of a fully injected disruption
 	DisruptionInjectionStatusInjected DisruptionInjectionStatus = "Injected"
 
-	// DisruptionNameLabel is the label used to identify the disruption name for a chaos pod
-	DisruptionNameLabel = "chaos.datadoghq.com/disruption"
+	// DisruptionNameLabel is the label used to identify the disruption name for a chaos pod. This is used to determine pod ownership.
+	DisruptionNameLabel = "chaos.datadoghq.com/disruption-name"
+	// DisruptionNamespaceLabel is the label used to identify the disruption namespace for a chaos pod. This is used to determine pod ownership.
+	DisruptionNamespaceLabel = "chaos.datadoghq.com/disruption-namespace"
 )
 
 var (
