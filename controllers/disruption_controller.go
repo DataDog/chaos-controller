@@ -662,6 +662,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 
 	// list pods in the defined namespace and for the given target
 	listOptions := &client.ListOptions{
+		Namespace:     r.InjectorServiceAccountNamespace,
 		LabelSelector: labels.SelectorFromSet(ls),
 	}
 
