@@ -658,7 +658,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 	ls[chaostypes.DisruptionNameLabel] = instance.Name
 	ls[chaostypes.DisruptionNamespaceLabel] = instance.Namespace
 
-	r.log.Infow("Getting chaos pods with this label", "labels", ls.String())
+	r.log.Infow("Searching for chaos pods with label selector...", "labels", ls.String())
 
 	// list pods in the instance namespace and for the given target
 	listOptions := &client.ListOptions{
