@@ -38,7 +38,7 @@ The list of targets is then added to the disruption resource status. An event is
 
 #### Step 4: create chaos pods
 
-For each target and disruption kind (network, disk pressure, cpu pressure, etc.), one chaos pod is created (running the injector image). A chaos pod is always scheduled on the same node as the target. It will inject the disruption depending on the given parameters and will sleep, catching any exit signal (`SIGINT` or `SIGTERM`). A finalizer is also added to each chaos pod, preventing it to be garbage collected by Kubernetes during the cleanup phase.
+For each target and disruption kind (network, disk pressure, cpu pressure, etc.), one chaos pod is created (running the injector image). A chaos pod is always scheduled on the same node as the target, but [will not be in the same namespace as the target](faq.md#Where-can-I-find-the-chaos-pods-for-my-disruption?). It will inject the disruption depending on the given parameters and will sleep, catching any exit signal (`SIGINT` or `SIGTERM`). A finalizer is also added to each chaos pod, preventing it to be garbage collected by Kubernetes during the cleanup phase.
 
 #### Step 5: update injection status
 
