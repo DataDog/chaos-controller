@@ -58,6 +58,7 @@ func main() {
 		injectorServiceAccount          string
 		injectorServiceAccountNamespace string
 		injectorImage                   string
+		imagePullSecrets                string
 		admissionWebhookCertDir         string
 		admissionWebhookHost            string
 		admissionWebhookPort            int
@@ -71,6 +72,7 @@ func main() {
 	pflag.StringVar(&injectorServiceAccount, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
 	pflag.StringVar(&injectorServiceAccountNamespace, "injector-service-account-namespace", "chaos-engineering", "Namespace of the service account to use for the generated injector pods. Should also host the controller.")
 	pflag.StringVar(&injectorImage, "injector-image", "chaos-injector", "Service account to use for the generated injector pods")
+	pflag.StringVar(&imagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	pflag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	pflag.StringVar(&admissionWebhookCertDir, "admission-webhook-cert-dir", "", "Admission webhook certificate directory to search for tls.crt and tls.key files")
 	pflag.StringVar(&admissionWebhookHost, "admission-webhook-host", "", "Host used by the admission controller to serve requests")
@@ -129,6 +131,7 @@ func main() {
 		InjectorServiceAccount:          injectorServiceAccount,
 		InjectorImage:                   injectorImage,
 		InjectorServiceAccountNamespace: injectorServiceAccountNamespace,
+		ImagePullSecrets:                imagePullSecrets,
 	}
 
 	if err := r.SetupWithManager(mgr); err != nil {
