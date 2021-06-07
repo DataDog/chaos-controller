@@ -2,8 +2,8 @@
 .SILENT: release
 
 # Image URL to use all building/pushing image targets
-MANAGER_IMAGE ?= chaos-controller:latest
-INJECTOR_IMAGE ?= chaos-injector:latest
+MANAGER_IMAGE ?= docker.io/chaos-controller:latest
+INJECTOR_IMAGE ?= docker.io/chaos-injector:latest
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -61,6 +61,7 @@ generate: controller-gen
 minikube-build-manager: minikube-ssh-host manager
 	mkdir -p out
 	docker build -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
+	rm -f out/manager.tar
 	docker save -o out/manager.tar ${MANAGER_IMAGE}
 	scp -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/manager.tar docker@$$(minikube ip):/tmp
 	minikube ssh -- sudo ctr -n=k8s.io images import /tmp/manager.tar
@@ -68,6 +69,7 @@ minikube-build-manager: minikube-ssh-host manager
 minikube-build-injector: minikube-ssh-host injector
 	mkdir -p out
 	docker build -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
+	rm -f out/injector.tar
 	docker save -o out/injector.tar ${INJECTOR_IMAGE}
 	scp -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/injector.tar docker@$$(minikube ip):/tmp
 	minikube ssh -- sudo ctr -n=k8s.io images import /tmp/injector.tar
@@ -95,16 +97,13 @@ minikube-memory := 4096
 minikube-start-big: minikube-memory := 8192
 minikube-start-big: minikube-start
 
-# fixing kubernetes version at 1.19.X because of this issue: https://github.com/kubernetes/kubernetes/issues/97288
-# once the following fix is released (https://github.com/kubernetes/kubernetes/pull/97980), planned for 1.21, we can use the latest
-# Kubernetes version again
 minikube-start:
 	minikube start \
 		--vm-driver=virtualbox \
 		--container-runtime=containerd \
 		--memory=${minikube-memory} \
 		--cpus=4 \
-		--kubernetes-version=1.19.9 \
+		--kubernetes-version=1.21.1 \
 		--disk-size=50GB \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
 		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2021-01-18.iso

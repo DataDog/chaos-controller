@@ -8,6 +8,7 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: demo
+  namespace: default
   labels:
     type: local
 spec:
@@ -23,6 +24,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: demo
+  namespace: default
 spec:
   storageClassName: manual
   accessModes:
@@ -35,7 +37,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: demo-nginx
-  namespace: chaos-engineering
+  namespace: default
   labels:
     app: demo-nginx
 spec:
@@ -56,7 +58,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: demo-curl
-  namespace: chaos-engineering
+  namespace: default
   labels:
     app: demo-curl
 spec:
@@ -96,6 +98,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: demo
+  namespace: default
 spec:
   ports:
     - port: 8080

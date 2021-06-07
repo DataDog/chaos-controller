@@ -169,14 +169,15 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&DisruptionReconciler{
-		Client:                 k8sClient,
-		BaseLog:                logger,
-		Recorder:               k8sManager.GetEventRecorderFor("disruption-controller"),
-		MetricsSink:            ms,
-		Scheme:                 scheme.Scheme,
-		TargetSelector:         MockTargetSelector{},
-		InjectorImage:          "chaos-injector",
-		InjectorServiceAccount: "chaos-injector",
+		Client:                          k8sClient,
+		BaseLog:                         logger,
+		Recorder:                        k8sManager.GetEventRecorderFor("disruption-controller"),
+		MetricsSink:                     ms,
+		Scheme:                          scheme.Scheme,
+		TargetSelector:                  MockTargetSelector{},
+		InjectorImage:                   "chaos-injector",
+		InjectorServiceAccount:          "chaos-injector",
+		InjectorServiceAccountNamespace: "default",
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

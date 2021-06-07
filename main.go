@@ -50,17 +50,18 @@ func init() {
 
 func main() {
 	var (
-		metricsAddr             string
-		enableLeaderElection    bool
-		deleteOnly              bool
-		sink                    string
-		injectorAnnotations     map[string]string
-		injectorServiceAccount  string
-		injectorImage           string
-		imagePullSecrets        string
-		admissionWebhookCertDir string
-		admissionWebhookHost    string
-		admissionWebhookPort    int
+		metricsAddr                     string
+		enableLeaderElection            bool
+		deleteOnly                      bool
+		sink                            string
+		injectorAnnotations             map[string]string
+		injectorServiceAccount          string
+		injectorServiceAccountNamespace string
+		injectorImage                   string
+		imagePullSecrets                string
+		admissionWebhookCertDir         string
+		admissionWebhookHost            string
+		admissionWebhookPort            int
 	)
 
 	pflag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
@@ -69,6 +70,7 @@ func main() {
 		"Enable delete only mode which will not allow new disruption to start and will only continue to clean up and remove existing disruptions.")
 	pflag.StringToStringVar(&injectorAnnotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	pflag.StringVar(&injectorServiceAccount, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
+	pflag.StringVar(&injectorServiceAccountNamespace, "injector-service-account-namespace", "chaos-engineering", "Namespace of the service account to use for the generated injector pods. Should also host the controller.")
 	pflag.StringVar(&injectorImage, "injector-image", "chaos-injector", "Service account to use for the generated injector pods")
 	pflag.StringVar(&imagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	pflag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
@@ -118,17 +120,18 @@ func main() {
 
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
-		Client:                 mgr.GetClient(),
-		BaseLog:                logger,
-		Scheme:                 mgr.GetScheme(),
-		Recorder:               mgr.GetEventRecorderFor("disruption-controller"),
-		MetricsSink:            ms,
-		TargetSelector:         controllers.RunningTargetSelector{},
-		DeleteOnly:             deleteOnly,
-		InjectorAnnotations:    injectorAnnotations,
-		InjectorServiceAccount: injectorServiceAccount,
-		InjectorImage:          injectorImage,
-		ImagePullSecrets:       imagePullSecrets,
+		Client:                          mgr.GetClient(),
+		BaseLog:                         logger,
+		Scheme:                          mgr.GetScheme(),
+		Recorder:                        mgr.GetEventRecorderFor("disruption-controller"),
+		MetricsSink:                     ms,
+		TargetSelector:                  controllers.RunningTargetSelector{},
+		DeleteOnly:                      deleteOnly,
+		InjectorAnnotations:             injectorAnnotations,
+		InjectorServiceAccount:          injectorServiceAccount,
+		InjectorImage:                   injectorImage,
+		InjectorServiceAccountNamespace: injectorServiceAccountNamespace,
+		ImagePullSecrets:                imagePullSecrets,
 	}
 
 	if err := r.SetupWithManager(mgr); err != nil {

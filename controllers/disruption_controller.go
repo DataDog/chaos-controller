@@ -62,17 +62,18 @@ var (
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	client.Client
-	BaseLog                *zap.SugaredLogger
-	Scheme                 *runtime.Scheme
-	Recorder               record.EventRecorder
-	MetricsSink            metrics.Sink
-	DeleteOnly             bool
-	TargetSelector         TargetSelector
-	InjectorAnnotations    map[string]string
-	InjectorServiceAccount string
-	InjectorImage          string
-	ImagePullSecrets       string
-	log                    *zap.SugaredLogger
+	BaseLog                         *zap.SugaredLogger
+	Scheme                          *runtime.Scheme
+	Recorder                        record.EventRecorder
+	MetricsSink                     metrics.Sink
+	DeleteOnly                      bool
+	TargetSelector                  TargetSelector
+	InjectorAnnotations             map[string]string
+	InjectorServiceAccount          string
+	InjectorImage                   string
+	ImagePullSecrets                string
+	log                             *zap.SugaredLogger
+	InjectorServiceAccountNamespace string
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -322,11 +323,6 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 		// create injection pods
 		for _, chaosPod := range chaosPods {
-			// link instance resource and injection pod for garbage collection
-			if err := controllerutil.SetControllerReference(instance, chaosPod, r.Scheme); err != nil {
-				return fmt.Errorf("error setting chaos pod owner reference: %w", err)
-			}
-
 			// check if an injection pod already exists for the given (instance, namespace, disruption kind) tuple
 			found, err := r.getChaosPods(instance, chaosPod.Labels)
 			if err != nil {
@@ -653,12 +649,21 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 // getChaosPods returns chaos pods owned by the given instance and having the given labels
 func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error) {
-	ownedPods := make([]corev1.Pod, 0)
 	pods := &corev1.PodList{}
 
-	// list pods in the instance namespace and for the given target
+	if ls == nil {
+		ls = make(map[string]string)
+	}
+
+	// If these aren't valid labels, we will instead list ALL pods
+	ls[chaostypes.DisruptionNameLabel] = instance.Name
+	ls[chaostypes.DisruptionNamespaceLabel] = instance.Namespace
+
+	r.log.Infow("searching for chaos pods with label selector...", "labels", ls.String())
+
+	// list pods in the defined namespace and for the given target
 	listOptions := &client.ListOptions{
-		Namespace:     instance.Namespace,
+		Namespace:     r.InjectorServiceAccountNamespace,
 		LabelSelector: labels.SelectorFromSet(ls),
 	}
 
@@ -667,15 +672,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 		return nil, fmt.Errorf("error listing owned pods: %w", err)
 	}
 
-	// filter all pods in the same namespace as instance,
-	// only returning those owned by the given instance
-	for _, pod := range pods.Items {
-		if metav1.IsControlledBy(&pod, instance) {
-			ownedPods = append(ownedPods, pod)
-		}
-	}
-
-	return ownedPods, nil
+	return pods.Items, nil
 }
 
 // generatePod generates a pod from a generic pod template in the same namespace
@@ -851,12 +848,13 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("chaos-%s-", instance.Name), // generate the pod name automatically with a prefix
-			Namespace:    instance.Namespace,                      // use instance namespace
+			Namespace:    r.InjectorServiceAccountNamespace,       // chaos pods need to be in the same namespace as their service account to run
 			Annotations:  r.InjectorAnnotations,                   // add extra annotations passed to the controller
 			Labels: map[string]string{
-				chaostypes.TargetLabel:         targetName,    // target name label
-				chaostypes.DisruptionKindLabel: string(kind),  // disruption kind label
-				chaostypes.DisruptionNameLabel: instance.Name, // disruption name label
+				chaostypes.TargetLabel:              targetName,         // target name label
+				chaostypes.DisruptionKindLabel:      string(kind),       // disruption kind label
+				chaostypes.DisruptionNameLabel:      instance.Name,      // disruption name label, used to determine ownership
+				chaostypes.DisruptionNamespaceLabel: instance.Namespace, // disruption namespace label, used to determine ownership
 			},
 		},
 		Spec: podSpec,
