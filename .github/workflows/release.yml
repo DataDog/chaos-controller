@@ -51,3 +51,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PULL_REQUEST_FROM_BRANCH: release_changelog_${{ github.sha }}
+          PULL_REQUEST_BRANCH: main
