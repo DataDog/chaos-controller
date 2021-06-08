@@ -536,7 +536,7 @@ spec:
         - containerPort: 8443
           name: https
       - name: manager
-        image: datadog/chaos-controller:4.0.0
+        image: datadog/chaos-controller:4.0.1
         imagePullPolicy: IfNotPresent
         command:
         - /usr/local/bin/manager
@@ -544,7 +544,7 @@ spec:
         - --metrics-addr=127.0.0.1:8080
         - --enable-leader-election
         - --metrics-sink=noop
-        - --injector-image=datadog/chaos-injector:4.0.0
+        - --injector-image=datadog/chaos-injector:4.0.1
         ports:
         - containerPort: 9443
           name: webhook-server
