@@ -1,5 +1,63 @@
 # Changelog
 
+## [4.0.1](https://github.com/DataDog/chaos-controller/tree/4.0.1) (2021-06-08)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.0.0...4.0.1)
+
+**Merged pull requests:**
+
+- Make changelog PRs to main [\#333](https://github.com/DataDog/chaos-controller/pull/333) ([ptnapoleon](https://github.com/ptnapoleon))
+- Add missing metric documentation to docs/metrics.md [\#330](https://github.com/DataDog/chaos-controller/pull/330) ([ptnapoleon](https://github.com/ptnapoleon))
+- Add support for image pull secrets [\#328](https://github.com/DataDog/chaos-controller/pull/328) ([nikos912000](https://github.com/nikos912000))
+
+## [4.0.0](https://github.com/DataDog/chaos-controller/tree/4.0.0) (2021-06-04)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.10.0...4.0.0)
+
+**Closed issues:**
+
+- User Issue: issue with cgroups in EKS [\#317](https://github.com/DataDog/chaos-controller/issues/317)
+
+**Merged pull requests:**
+
+- \[CHAOS-45\] Add Documentation to the ChaosCLI [\#331](https://github.com/DataDog/chaos-controller/pull/331) ([Azoam](https://github.com/Azoam))
+- Update the latest supported k8s version to 1.21.1 [\#329](https://github.com/DataDog/chaos-controller/pull/329) ([ptnapoleon](https://github.com/ptnapoleon))
+- Fix the Validatecount experience [\#327](https://github.com/DataDog/chaos-controller/pull/327) ([ptnapoleon](https://github.com/ptnapoleon))
+- chaosli validators shouldnt require input, survey.Required exists for… [\#326](https://github.com/DataDog/chaos-controller/pull/326) ([ptnapoleon](https://github.com/ptnapoleon))
+- CHAOS-85: Create all pods in chaos engineering [\#325](https://github.com/DataDog/chaos-controller/pull/325) ([ptnapoleon](https://github.com/ptnapoleon))
+- Improve developer documentation [\#324](https://github.com/DataDog/chaos-controller/pull/324) ([takakonishimura](https://github.com/takakonishimura))
+- Generalize cgroup path construction [\#323](https://github.com/DataDog/chaos-controller/pull/323) ([blazebissar](https://github.com/blazebissar))
+- Increment a metric when a disruption fails ValidateCreate [\#322](https://github.com/DataDog/chaos-controller/pull/322) ([ptnapoleon](https://github.com/ptnapoleon))
+- Temporarily make validateServices conditional, to help CLIs [\#321](https://github.com/DataDog/chaos-controller/pull/321) ([ptnapoleon](https://github.com/ptnapoleon))
+- CORE-702: Validation call from CLI PR [\#320](https://github.com/DataDog/chaos-controller/pull/320) ([nathan-tournant](https://github.com/nathan-tournant))
+- Tweak configs for Fedora/Podman compatibility [\#319](https://github.com/DataDog/chaos-controller/pull/319) ([blazebissar](https://github.com/blazebissar))
+- CHAOS-43: Yaml to English Feature [\#318](https://github.com/DataDog/chaos-controller/pull/318) ([Azoam](https://github.com/Azoam))
+- scope netowrkdisruption.port to hosts in error msg [\#316](https://github.com/DataDog/chaos-controller/pull/316) ([takakonishimura](https://github.com/takakonishimura))
+- README has emojis [\#315](https://github.com/DataDog/chaos-controller/pull/315) ([takakonishimura](https://github.com/takakonishimura))
+- link to external docs on signing GitHub commits with gpg [\#314](https://github.com/DataDog/chaos-controller/pull/314) ([takakonishimura](https://github.com/takakonishimura))
+- Readable README [\#313](https://github.com/DataDog/chaos-controller/pull/313) ([takakonishimura](https://github.com/takakonishimura))
+- Increase the amount of documentation on how to use the new services f… [\#312](https://github.com/DataDog/chaos-controller/pull/312) ([ptnapoleon](https://github.com/ptnapoleon))
+- Add the basic structure for the new CLI [\#311](https://github.com/DataDog/chaos-controller/pull/311) ([ptnapoleon](https://github.com/ptnapoleon))
+- Rename master to main for branch ref in release action [\#310](https://github.com/DataDog/chaos-controller/pull/310) ([Devatoria](https://github.com/Devatoria))
+- Validate Update: global disruption scope [\#309](https://github.com/DataDog/chaos-controller/pull/309) ([nathan-tournant](https://github.com/nathan-tournant))
+- CHAOS-51: Implement the "create" command of chaosli; Help users build a disruption spec [\#307](https://github.com/DataDog/chaos-controller/pull/307) ([ptnapoleon](https://github.com/ptnapoleon))
+- Better handle the case where count is set to -1 [\#305](https://github.com/DataDog/chaos-controller/pull/305) ([ptnapoleon](https://github.com/ptnapoleon))
+- Upgrade to cobra v1.1.3 from v0.0.5 [\#302](https://github.com/DataDog/chaos-controller/pull/302) ([ptnapoleon](https://github.com/ptnapoleon))
+
+## [3.10.0](https://github.com/DataDog/chaos-controller/tree/3.10.0) (2021-05-20)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.9.0...3.10.0)
+
+**Merged pull requests:**
+
+- Switch from kustomize to helm to generate manifests [\#308](https://github.com/DataDog/chaos-controller/pull/308) ([Devatoria](https://github.com/Devatoria))
+- Fix CI dockerhub push not logging in [\#306](https://github.com/DataDog/chaos-controller/pull/306) ([Devatoria](https://github.com/Devatoria))
+- Fix dead links in README and other docs [\#304](https://github.com/DataDog/chaos-controller/pull/304) ([ptnapoleon](https://github.com/ptnapoleon))
+- CORE-84: Prevent config of ingress flow & hosts lists on Network Disruptions [\#303](https://github.com/DataDog/chaos-controller/pull/303) ([takakonishimura](https://github.com/takakonishimura))
+- Update container release\_changelog\_202961fc69dceef1d2adc83a7d8f5fa76d9d1a5b [\#301](https://github.com/DataDog/chaos-controller/pull/301) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Allow services filtering in the network disruption [\#300](https://github.com/DataDog/chaos-controller/pull/300) ([Devatoria](https://github.com/Devatoria))
+- Basic logistics for open-sourcing Chaos Controller [\#299](https://github.com/DataDog/chaos-controller/pull/299) ([takakonishimura](https://github.com/takakonishimura))
+
 ## [3.9.0](https://github.com/DataDog/chaos-controller/tree/3.9.0) (2021-05-10)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/3.8.1...3.9.0)
