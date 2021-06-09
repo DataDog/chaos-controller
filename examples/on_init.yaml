@@ -6,12 +6,12 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: network-drop
-  namespace: chaos-demo
+  name: on-init
 spec:
+  onInit: true # apply the disruption on pod initialization (it requires the pod to target to be redeployed with the chaos.datadoghq.com/disrupt-on-init label to be held in the pending state)
   level: pod
   selector:
     app: demo-curl
   count: 1
   network:
-    drop: 100 # percentage of outgoing packets to drop
+    drop: 100

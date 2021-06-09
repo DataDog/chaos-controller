@@ -23,10 +23,13 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -43,9 +46,21 @@ func (r RunningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv
 
 	// filter pods based on the label selector and namespace
 	pods := &corev1.PodList{}
+	selector := instance.Spec.Selector.AsSelector()
+
+	// if the disruption is supposed to be injected on pod init,
+	// let's add a requirement to get pods having the matching label only
+	if instance.Spec.OnInit {
+		onInitRequirement, err := labels.NewRequirement(chaostypes.DisruptOnInitLabel, selection.Exists, []string{})
+		if err != nil {
+			return nil, fmt.Errorf("error adding the disrupt-on-init label requirement: %w", err)
+		}
+
+		selector.Add(*onInitRequirement)
+	}
 
 	listOptions := &client.ListOptions{
-		LabelSelector: instance.Spec.Selector.AsSelector(),
+		LabelSelector: selector,
 		Namespace:     instance.Namespace,
 	}
 
@@ -58,7 +73,25 @@ func (r RunningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv
 	runningPods := &corev1.PodList{}
 
 	for _, pod := range pods.Items {
-		if pod.Status.Phase == corev1.PodRunning {
+		// if the disruption is applied on init, we only target pending pods with a running
+		// chaos handler init container
+		// otherwise, we only target running pods
+		if instance.Spec.OnInit {
+			hasChaosHandler := false
+
+			// search for a potential running chaos handler init container
+			for _, initContainerStatus := range pod.Status.InitContainerStatuses {
+				if initContainerStatus.Name == "chaos-handler" && initContainerStatus.State.Running != nil {
+					hasChaosHandler = true
+
+					break
+				}
+			}
+
+			if pod.Status.Phase == corev1.PodPending && hasChaosHandler {
+				runningPods.Items = append(runningPods.Items, pod)
+			}
+		} else if pod.Status.Phase == corev1.PodRunning {
 			runningPods.Items = append(runningPods.Items, pod)
 		}
 	}

@@ -39,13 +39,16 @@ func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 	}
 
 	containersNameID := map[string]string{}
-	ctns := pod.Status.ContainerStatuses
 	containerIDs := []string{}
 
+	ctns := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...)
+
 	if len(targets) == 0 {
-		// get all containers ID
+		// get all running containers ID
 		for _, c := range ctns {
-			containerIDs = append(containerIDs, c.ContainerID)
+			if c.State.Running != nil {
+				containerIDs = append(containerIDs, c.ContainerID)
+			}
 		}
 	} else {
 		// populate containers name/ID map

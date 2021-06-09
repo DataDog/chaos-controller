@@ -50,6 +50,8 @@ var (
 	disruptionName      string
 	disruptionNamespace string
 	targetName          string
+	onInit              bool
+	handlerPID          uint32
 	configs             []injector.Config
 	signals             chan os.Signal
 	injectors           []injector.Injector
@@ -61,11 +63,14 @@ func init() {
 	rootCmd.AddCommand(cpuPressureCmd)
 	rootCmd.AddCommand(diskPressureCmd)
 	rootCmd.AddCommand(dnsDisruptionCmd)
+
 	// basic args
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Enable dry-run mode")
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
 	rootCmd.PersistentFlags().StringSliceVar(&containerIDs, "containers-id", []string{}, "Targeted containers ID")
+	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
+
 	// log context args
 	rootCmd.PersistentFlags().StringVar(&disruptionName, "log-context-disruption-name", "", "Log value: current disruption name")
 	rootCmd.PersistentFlags().StringVar(&disruptionNamespace, "log-context-disruption-namespace", "", "Log value: current disruption namespace")
@@ -156,6 +161,11 @@ func initConfig() {
 			cgroupPath := ctn.CgroupPath()
 			pid := ctn.PID()
 
+			// keep pid for later if this is a chaos handler container
+			if onInit && ctn.Name() == "chaos-handler" {
+				handlerPID = pid
+			}
+
 			ctns = append(ctns, ctn)
 			cgroupPaths = append(cgroupPaths, cgroupPath)
 			pids = append(pids, pid)
@@ -203,6 +213,7 @@ func initConfig() {
 	for i, ctn := range ctns {
 		config := injector.Config{
 			DryRun:      dryRun,
+			OnInit:      onInit,
 			Log:         log,
 			MetricsSink: ms,
 			Level:       chaostypes.DisruptionLevel(level),
@@ -241,6 +252,27 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 			handleMetricError(ms.MetricInjected(true, cmd.Name(), nil))
 			log.Info("disruption injected, now waiting for an exit signal")
+		}
+	}
+
+	// once injected, send a signal to the handler container so it can exit and let other containers go on
+	if onInit {
+		log.Info("notifying the handler container that injection is now done")
+
+		// ensure a handler container was found
+		if handlerPID != 0 {
+			// retrieve handler container process to send a signal
+			handlerProcess, err := os.FindProcess(int(handlerPID))
+			if err != nil {
+				log.Errorw("error retrieving handler container process", "error", err)
+			}
+
+			// send the SIGUSR1 signal
+			if err := handlerProcess.Signal(syscall.SIGUSR1); err != nil {
+				log.Errorw("error sending a SIGUSR1 signal to the handler container process", "error", err, "pid", handlerPID)
+			}
+		} else {
+			log.Error("the --on-init flag was provided but no handler container could be found")
 		}
 	}
 

@@ -8,6 +8,7 @@ variables:
   CURRENT_CI_IMAGE: 0.4.0
   CONTROLLER_IMAGE_NAME: chaos-controller
   INJECTOR_IMAGE_NAME: chaos-injector
+  HANDLER_IMAGE_NAME: chaos-handler
 
 stages:
   - ci-image
@@ -49,6 +50,7 @@ build:make:
     paths:
       - bin/injector/injector
       - bin/manager/manager
+      - bin/handler/handler
 
 # meta-release
 # release image and common stuff
@@ -72,11 +74,12 @@ build:make:
   script:
     - release.sh --build-from=./bin/manager/Dockerfile --build-context=./bin/manager/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
     - release.sh --build-from=./bin/injector/Dockerfile --build-context=./bin/injector/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME} ${TAG}
+    - release.sh --build-from=./bin/handler/Dockerfile --build-context=./bin/handler/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME} ${TAG}
   dependencies:
     - build:make
 
 # pre-release-ref
-# build a reference image tag for controller and injector
+# build a reference image tag for controller images
 pre-release-ref:
   <<: *pre-release
   when: manual
@@ -86,7 +89,7 @@ pre-release-ref:
     TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
 
 # pre-release-tag
-# build a tag image tag for controller and injector
+# build a tag image tag for controller images
 pre-release-tag:
   <<: *pre-release
   when: always
@@ -126,6 +129,12 @@ release-injector:
     IMAGE: "${INJECTOR_IMAGE_NAME}"
     TAG: "${CI_COMMIT_TAG}"
 
+release-handler:
+  <<: *release
+  variables:
+    IMAGE: "${HANDLER_IMAGE_NAME}"
+    TAG: "${CI_COMMIT_TAG}"
+
 .release-docker-hub: &release-docker-hub
   <<: *meta-release
   stage: release-public
@@ -138,6 +147,9 @@ release-injector:
     - docker pull 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME}:${TAG}
     - docker tag 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME}:${TAG} datadog/${INJECTOR_IMAGE_NAME}:${TAG}
     - docker push datadog/${INJECTOR_IMAGE_NAME}:${TAG}
+    - docker pull 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME}:${TAG}
+    - docker tag 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME}:${TAG} datadog/${HANDLER_IMAGE_NAME}:${TAG}
+    - docker push datadog/${HANDLER_IMAGE_NAME}:${TAG}
 
 release-docker-hub-ref:
   <<: *release-docker-hub

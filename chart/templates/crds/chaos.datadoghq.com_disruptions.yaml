@@ -180,6 +180,8 @@ spec:
                 shutdown:
                   type: boolean
               type: object
+            onInit:
+              type: boolean
             selector:
               additionalProperties:
                 type: string

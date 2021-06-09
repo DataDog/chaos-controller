@@ -17,6 +17,8 @@ type DisruptionInjectionStatus string
 const (
 	// TargetLabel is the label used to identify the pod targeted by a chaos pod
 	TargetLabel = "chaos.datadoghq.com/target"
+	// InjectHandlerLabel is the expected label when a chaos handler init container must be injected
+	DisruptOnInitLabel = "chaos.datadoghq.com/disrupt-on-init"
 
 	// DisruptionKindLabel is the label used to identify the disruption kind for a chaos pod
 	DisruptionKindLabel = "chaos.datadoghq.com/disruption-kind"
