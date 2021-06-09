@@ -7,7 +7,7 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: network-filters
-  namespace: chaos-engineering
+  namespace: chaos-demo
 spec:
   level: pod
   selector:
@@ -21,4 +21,4 @@ spec:
         protocol: tcp # optiona, the protocol to filter on
     services: # filter on Kubernetes services; this will correctly handle the port differences in node vs. pod-level disruptions
       - name: demo # service name
-        namespace: chaos-engineering # service namespace
+        namespace: chaos-demo # service namespace

@@ -2,13 +2,13 @@
 
 ## Testing Locally
 
-[demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster in whatever namespace you choose (it can be `chaos-engineering`) by running:
-  * `kubectl -n chaos-engineering apply -f examples/demo.yaml`
+[demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster in whatever namespace you choose (`chaos-demo` by default), by running:
+  * `kubectl apply -f examples/demo.yaml`
 
 ## Applying your Manifest
 
 Once you define your test manifest, run:
-  * `kubectl -n chaos-engineering apply -f examples/<manifest>.yaml`
+  * `kubectl apply -f examples/<manifest>.yaml`
 
 
 <p align="center"><kbd>
@@ -30,20 +30,20 @@ An explanitory error message like the following will print:
 
 ### Reapplying a manifest
 
-Because Chaos Controller disruptions are immutable, the correct way to reapply a manifest after edit is actually to delete the resource entirely and then apply. Modifying an already applied manifest file and then reapplying it by only running `kubectl -n chaos-engineering> apply -f examples/<manifest>.yaml` will print an error message like the following:
+Because Chaos Controller disruptions are immutable, the correct way to reapply a manifest after edit is actually to delete the resource entirely and then apply. Modifying an already applied manifest file and then reapplying it by only running `kubectl apply -f examples/<manifest>.yaml` will print an error message like the following:
 
 ```
-Error from server (a disruption spec can't be edited, please delete and recreate it if needed): error when applying patch: {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"chaos.datadoghq.com/v1beta1\",\"kind\":\"Disruption\",\"metadata\":{\"annotations\":{},\"name\":\"network-drop\",\"namespace\":\"chaos-engineering\"},\"spec\":{\"count\":10,\"level\":\"pod\",\"network\":{\"drop\":100,\"hosts\":[{\"host\":\"10.0.0.0/8\"},{\"port\":80}]},\"selector\":{\"app\":\"demo-curl\"}}}\n"}},"spec":{"count":10}}
+Error from server (a disruption spec can't be edited, please delete and recreate it if needed): error when applying patch: {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"chaos.datadoghq.com/v1beta1\",\"kind\":\"Disruption\",\"metadata\":{\"annotations\":{},\"name\":\"network-drop\",\"namespace\":\"chaos-demo\"},\"spec\":{\"count\":10,\"level\":\"pod\",\"network\":{\"drop\":100,\"hosts\":[{\"host\":\"10.0.0.0/8\"},{\"port\":80}]},\"selector\":{\"app\":\"demo-curl\"}}}\n"}},"spec":{"count":10}}
 to:
 Resource: "chaos.datadoghq.com/v1beta1, Resource=disruptions", GroupVersionKind: "chaos.datadoghq.com/v1beta1, Kind=Disruption"
-Name: "network-drop", Namespace: "chaos-engineering"
+Name: "network-drop", Namespace: "chaos-demo"
 for: "examples/network_drop.yaml": admission webhook "chaos-controller-admission-webhook.chaos-engineering.svc" denied the request: a disruption spec can't be edited, please delete and recreate it if needed
 ```
 
 ## Deleting your Manifest
 
 Once you are done testing, you can remove the disruption by running:
-  * `kubectl -n chaos-engineering delete -f examples/<manifest>.yaml`
+  * `kubectl delete -f examples/<manifest>.yaml`
 
 <p align="center"><kbd>
     <img src="../docs/img/deployment/delete.png" width=800 align="center" />
@@ -60,19 +60,19 @@ If your pod gets stuck in terminating, it's possible that there was an issue wit
 ## Basic Troubleshooting
 
 See the existing disruptions (corresponding to `metadata.name`):
-* ```kubectl -n chaos-engineering get disruptions```
+* ```kubectl get disruptions```
 
 Get a detailed overview of the live disruption (spec, finalizer, major events, etc)
-* ```kubectl -n chaos-engineering describe disruption <disruption name>```
+* ```kubectl describe disruption <disruption name>```
 
 See the chaos pods (with names like `chaos-network-delay-llczv`, `chaos-network-drop-qlqnw`):
 * ```kubectl -n chaos-engineering get pods```
 
 Check the logs of the resource:
-* ```kubectl -n chaos-engineering logs <pod name>```
+* ```kubectl logs <pod name>```
 
-Get a detailed overview of the resource (finaliers, major events, allocated IP address, containers, etc):
-* ```kubectl -n chaos-engineering describe pod <pod name>```
+Get a detailed overview of the resource (finalizers, major events, allocated IP address, containers, etc):
+* ```kubectl describe pod <pod name>```
 
 More complex troubleshooting on the [faq.md](docs/faq.md) page.
 

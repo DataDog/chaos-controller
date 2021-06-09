@@ -50,14 +50,14 @@ To deploy a new version of the CRD by modifying your local `api/v1beta1/disrupti
 
 The [samples](examples/) contains sample data which can be used to test your changes.
 
-[demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster in whatever namespace you choose (it can be `chaos-engineering`) by running:
-  * `kubectl -n chaos-engineering apply -f examples/demo.yaml`
+[demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster in whatever namespace you choose (`chaos-demo` by default) by running:
+  * `kubectl apply -f examples/demo.yaml`
 
 Once you define your test manifest, run:
-  * `kubectl -n chaos-engineering apply -f examples/<manifest>.yaml`
+  * `kubectl apply -f examples/<manifest>.yaml`
 
 To remove the disruption, run:
-  * `kubectl -n chaos-engineering delete -f examples/<manifest>.yaml`
+  * `kubectl delete -f examples/<manifest>.yaml`
 
 See [development guide](docs/development.md) for more robust documentation and tips!
 
