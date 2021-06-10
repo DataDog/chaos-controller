@@ -7,7 +7,7 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: disruption-sample
-  namespace: chaos-engineering # disruption resource must be in the same namespace as targeted pods
+  namespace: chaos-demo # disruption resource must be in the same namespace as targeted pods
 spec:
   dryRun: false # optional, enable dry-run mode (chaos pods will be created but won't inject anything)
   level: pod # level the disruption should be injected at (can be either pod or node, defaults to pod)

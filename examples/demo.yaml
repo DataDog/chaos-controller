@@ -5,10 +5,17 @@
 
 ---
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: chaos-demo
+  labels:
+    name: chaos-demo
+---
+apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: demo
-  namespace: default
+  namespace: chaos-demo
   labels:
     type: local
 spec:
@@ -24,7 +31,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: demo
-  namespace: default
+  namespace: chaos-demo
 spec:
   storageClassName: manual
   accessModes:
@@ -37,7 +44,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: demo-nginx
-  namespace: default
+  namespace: chaos-demo
   labels:
     app: demo-nginx
 spec:
@@ -58,7 +65,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: demo-curl
-  namespace: default
+  namespace: chaos-demo
   labels:
     app: demo-curl
 spec:
@@ -75,7 +82,7 @@ spec:
       - name: curl
         image: appropriate/curl
         command: ["/bin/sh"]
-        args: ["-c", "while true; do curl -vvv http://demo.chaos-engineering.svc.cluster.local:8080; sleep 1; done"]
+        args: ["-c", "while true; do curl -vvv http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; done"]
         volumeMounts:
         - mountPath: /mnt/data
           name: data
@@ -98,7 +105,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: demo
-  namespace: default
+  namespace: chaos-demo
 spec:
   ports:
     - port: 8080
