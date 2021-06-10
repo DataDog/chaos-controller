@@ -7,7 +7,7 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: cpu-pressure
-  namespace: chaos-engineering
+  namespace: chaos-demo
 spec:
   level: pod
   selector:

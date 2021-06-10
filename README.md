@@ -48,7 +48,7 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: node-failure
-  namespace: chaos-engineering
+  namespace: chaos-demo
 spec:
   selector: # a label selector used to target resources
     app: demo-curl

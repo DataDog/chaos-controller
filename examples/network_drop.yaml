@@ -7,7 +7,7 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: network-drop
-  namespace: chaos-engineering
+  namespace: chaos-demo
 spec:
   level: pod
   selector:
