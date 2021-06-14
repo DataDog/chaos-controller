@@ -53,6 +53,9 @@ The [samples](examples/) contains sample data which can be used to test your cha
 [demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster in whatever namespace you choose (`chaos-demo` by default) by running:
   * `kubectl apply -f examples/demo.yaml`
 
+To see whether curls are succeeding by tailing kubectl logs, run:
+  * `kubectl logs -f <curl pod>`
+
 Once you define your test manifest, run:
   * `kubectl apply -f examples/<manifest>.yaml`
 
