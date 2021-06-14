@@ -54,7 +54,7 @@ The [samples](examples/) contains sample data which can be used to test your cha
   * `kubectl apply -f examples/demo.yaml`
 
 To see whether curls are succeeding, by using kubectl to tail the pod's logs, run:
-  * `kubectl logs -f <curl pod>`
+  * `kubectl logs -f <curl pod> curl`
 
 Once you define your test manifest, run:
   * `kubectl apply -f examples/<manifest>.yaml`
