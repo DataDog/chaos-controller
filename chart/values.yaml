@@ -3,11 +3,25 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
 
-images:
+images: # images and tag to pull for each component of the stack
   controller: docker.io/library/chaos-controller
   injector: docker.io/library/chaos-injector
   handler: docker.io/library/chaos-handler
   tag: latest
+  pullSecrets: false # name of the secret object to use when pulling images
+
+controller:
+  deleteOnly: false # enable delete-only mode
+  metricsSink: noop # metrics driver (noop or datadog)
+  webhook: # admission webhook configuration
+    certDir: "" # certificate directory (must contain tls.crt and tls.key files)
+    host: "" # host to use to serve requests
+    port: 9443 # port to use to serve requests
+
+injector:
+  annotations: {} # extra annotations passed to the chaos injector pods
+  serviceAccount: chaos-injector # service account to use for the chaos injector pods
+  serviceAccountNamespace: chaos-engineering # namespace where the service account can be found (NOTE: changing this will change the namespace in which the chaos pods are created)
 
 handler:
   timeout: 1m # time the handler init container will wait before exiting if no signal is received
