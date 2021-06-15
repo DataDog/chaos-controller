@@ -40,6 +40,8 @@ spec:
         - --enable-leader-election
         - --metrics-sink=noop
         - --injector-image={{ .Values.images.injector }}:{{ .Values.images.tag }}
+        - --handler-image={{ .Values.images.handler }}:{{ .Values.images.tag }}
+        - --handler-timeout={{ .Values.handler.timeout }}
         {{- if .Values.images.pullSecrets }}
         - --image-pull-secrets={{ .Values.images.pullSecrets }}
         {{- end }}

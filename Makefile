@@ -1,9 +1,10 @@
-.PHONY: manager injector release
+.PHONY: manager injector handler release
 .SILENT: release
 
 # Image URL to use all building/pushing image targets
 MANAGER_IMAGE ?= docker.io/chaos-controller:latest
 INJECTOR_IMAGE ?= docker.io/chaos-injector:latest
+HANDLER_IMAGE ?= docker.io/chaos-handler:latest
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -12,7 +13,7 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-all: manager injector
+all: manager injector handler
 
 # Run tests
 test: generate manifests
@@ -25,6 +26,10 @@ manager: generate
 # Build injector binary
 injector:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/injector/injector ./cli/injector/
+
+# Build handler binary
+handler:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/handler/handler ./cli/handler/
 
 # Install CRDs and controller into a cluster
 install: manifests
@@ -74,7 +79,15 @@ minikube-build-injector: minikube-ssh-host injector
 	scp -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/injector.tar docker@$$(minikube ip):/tmp
 	minikube ssh -- sudo ctr -n=k8s.io images import /tmp/injector.tar
 
-minikube-build: minikube-build-manager minikube-build-injector
+minikube-build-handler: minikube-ssh-host handler
+	mkdir -p out
+	docker build -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
+	rm -f out/handler.tar
+	docker save -o out/handler.tar ${HANDLER_IMAGE}
+	scp -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/handler.tar docker@$$(minikube ip):/tmp
+	minikube ssh -- sudo ctr -n=k8s.io images import /tmp/handler.tar
+
+minikube-build: minikube-build-manager minikube-build-injector minikube-build-handler
 
 # find or download controller-gen
 # download controller-gen if necessary

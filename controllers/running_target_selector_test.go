@@ -46,7 +46,6 @@ type fakeClient struct {
 }
 
 func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
-
 	if key.Name == "runningPod" {
 		objVal := reflect.ValueOf(obj)
 		nodeVal := reflect.ValueOf(runningPod1)
@@ -54,6 +53,10 @@ func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.
 	} else if key.Name == "failedPod" {
 		objVal := reflect.ValueOf(obj)
 		nodeVal := reflect.ValueOf(failedPod)
+		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
+	} else if key.Name == "pendingPod" {
+		objVal := reflect.ValueOf(obj)
+		nodeVal := reflect.ValueOf(pendingPod)
 		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
 	} else if key.Name == "runningNode" {
 		objVal := reflect.ValueOf(obj)
@@ -64,14 +67,17 @@ func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.
 		nodeVal := reflect.ValueOf(failedNode)
 		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
 	}
+
 	return nil
 }
+
 func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
 	for _, opt := range opts {
 		if o, ok := opt.(*client.ListOptions); ok {
 			f.ListOptions = append(f.ListOptions, o)
 		}
 	}
+
 	if l, ok := list.(*corev1.PodList); ok {
 		l.Items = mixedStatusPods
 	} else if l, ok := list.(*corev1.NodeList); ok {
@@ -80,21 +86,27 @@ func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...clie
 
 	return nil
 }
+
 func (f fakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
 	return nil
 }
+
 func (f fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
 	return nil
 }
+
 func (f fakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
 	return nil
 }
+
 func (f fakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return nil
 }
+
 func (f fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
 	return nil
 }
+
 func (f fakeClient) Status() client.StatusWriter {
 	return nil
 }
@@ -102,6 +114,7 @@ func (f fakeClient) Status() client.StatusWriter {
 var runningPod1 *corev1.Pod
 var runningPod2 *corev1.Pod
 var failedPod *corev1.Pod
+var pendingPod *corev1.Pod
 
 var mixedStatusPods []corev1.Pod
 var twoPods []corev1.Pod
@@ -130,6 +143,14 @@ var _ = Describe("Helpers", func() {
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "foo",
+						State: corev1.ContainerState{
+							Running: &corev1.ContainerStateRunning{},
+						},
+					},
+				},
 			},
 		}
 
@@ -140,6 +161,14 @@ var _ = Describe("Helpers", func() {
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "foo",
+						State: corev1.ContainerState{
+							Running: &corev1.ContainerStateRunning{},
+						},
+					},
+				},
 			},
 		}
 
@@ -153,10 +182,29 @@ var _ = Describe("Helpers", func() {
 			},
 		}
 
+		pendingPod = &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pendingPod",
+				Namespace: "bar",
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodPending,
+				InitContainerStatuses: []corev1.ContainerStatus{
+					{
+						Name: "chaos-handler",
+						State: corev1.ContainerState{
+							Running: &corev1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		}
+
 		mixedStatusPods = []corev1.Pod{
 			*runningPod1,
 			*runningPod2,
 			*failedPod,
+			*pendingPod,
 		}
 
 		twoPods = []corev1.Pod{
@@ -256,6 +304,7 @@ var _ = Describe("Helpers", func() {
 				Expect(err).NotTo(BeNil())
 			})
 		})
+
 		Context("with non-empty label selector", func() {
 			It("should pass given selector for the given namespace to the client", func() {
 				ls := map[string]string{
@@ -278,9 +327,21 @@ var _ = Describe("Helpers", func() {
 				}
 
 				r, err := targetSelector.GetMatchingPods(&c, disruption)
-				numFailedPods := 1
+				numExcludedPods := 2 // pending + failed pods
 				Expect(err).To(BeNil())
-				Expect(len(r.Items)).To(Equal(len(mixedStatusPods) - numFailedPods))
+				Expect(len(r.Items)).To(Equal(len(mixedStatusPods) - numExcludedPods))
+			})
+		})
+
+		Context("with on init mode enabled", func() {
+			BeforeEach(func() {
+				disruption.Spec.OnInit = true
+			})
+
+			It("should match pending pods with init containers only", func() {
+				r, err := targetSelector.GetMatchingPods(&c, disruption)
+				Expect(err).To(BeNil())
+				Expect(r.Items[0]).To(Equal(*pendingPod))
 			})
 		})
 	})
@@ -293,6 +354,7 @@ var _ = Describe("Helpers", func() {
 				Expect(err).NotTo(BeNil())
 			})
 		})
+
 		Context("with non-empty label selector", func() {
 			It("should pass given selector to the client", func() {
 				ls := map[string]string{"app": "bar"}
@@ -327,6 +389,7 @@ var _ = Describe("Helpers", func() {
 				Expect(err).ToNot(BeNil())
 			})
 		})
+
 		Context("with node-level disruption spec", func() {
 			BeforeEach(func() {
 				disruption.Spec.Selector = map[string]string{"foo": "bar"}

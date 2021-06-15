@@ -27,3 +27,32 @@ webhooks:
     - UPDATE
     resources:
     - disruptions
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+  name: chaos-controller-pod-chaos-handler
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: chaos-controller-webhook-service
+      namespace: chaos-engineering
+      path: /mutate-v1-pod-chaos-handler-init-container
+  failurePolicy: Ignore
+  name: chaos-controller-admission-webhook.chaos-engineering.svc
+  objectSelector:
+    matchExpressions:
+      - key: "chaos.datadoghq.com/disrupt-on-init"
+        operator: Exists
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
