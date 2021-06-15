@@ -87,7 +87,13 @@ func (f fakeK8sClient) Get(ctx context.Context, key client.ObjectKey, obj runtim
 		for i := 0; i < len(pod.Spec.Containers); i++ {
 			name := fmt.Sprintf("ctn%d", i+1)
 			ctnID := fmt.Sprintf("id%d", i+1)
-			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, corev1.ContainerStatus{Name: name, ContainerID: ctnID})
+			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, corev1.ContainerStatus{
+				Name:        name,
+				ContainerID: ctnID,
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{},
+				},
+			})
 		}
 	}
 

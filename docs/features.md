@@ -32,6 +32,23 @@ How can you target a specific pod by name, if it doesn't have a unique label sel
 
 By default, a disruption affects all containers within the pod. You can restrict the scope of the disruption to a single container or to only some containers [like this](../examples/containers_targeting.yaml).
 
+## Applying a disruption on pod initialization
+
+> :memo: This mode has some restrictions:
+>   * it only works for network related (network and dns) disruptions
+>   * it only works with the pod level
+>   * it does not support containers scoping (applying a disruption to only some containers)
+
+It can be handy to disrupt packets on pod initialization, meaning before containers are actually created and started, to test startup dependencies or init containers. You can do this in only two steps:
+
+* redeploy your pod with the specific label `chaos.datadoghq.com/disrupt-on-init` to hold it in the initialization state
+  * the chaos-controller will inject an init containers name `chaos-handler` as the first init container in your pod
+  * this init container is lightweight and does nothing but waiting for a `SIGUSR1` signal to complete successfully
+* apply your disruption [with the init mode on](../examples/on_init.yaml)
+  * the chaos pod will inject the disruption and unstuck your pod from the pending state
+
+Note that in this mode, only pending pods with a running `chaos-handler` init container and matching your labels + the special label specified above will be targeted. The `chaos-handler` init container will automatically exit and fail if no signal is received within the specified timeout (default is 1 minute).
+
 ## Examples
 
 Please take a look at the different disruptions documentation linked in the table of content for more information about what they can do and how to use them.
@@ -54,3 +71,5 @@ Here is [a full example of the disruption resource](../examples/complete.yaml) w
   * [I want to throttle my pods disk writes](../examples/disk_pressure_write.yaml)
 * [DNS resolution mocking](/docs/dns_disruption.md)
   * [I want to fake my pods DNS resolutions](../examples/dns.yaml)
+* Network and DNS disruptions
+  * [I want to disrupt network packets on pod initialization](../examples/on_init.yaml)

@@ -324,6 +324,17 @@ var _ = Describe("Failure", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "0.0.0.0/0", "nil", 80, 0, "", "1:4")
 			})
 		})
+
+		Context("on pod initialization", func() {
+			BeforeEach(func() {
+				config.OnInit = true
+			})
+
+			It("should not add a second prio band with the cgroup filter", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "1:4", uint32(2), uint32(2), mock.Anything)
+				tc.AssertNotCalled(GinkgoT(), "AddCgroupFilter", []string{"lo", "eth0", "eth1"}, "2:0", mock.Anything)
+			})
+		})
 	})
 
 	Describe("inj.Clean", func() {

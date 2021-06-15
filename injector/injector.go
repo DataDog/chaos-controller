@@ -24,6 +24,7 @@ type Injector interface {
 // Config represents a generic injector config
 type Config struct {
 	DryRun      bool
+	OnInit      bool
 	Log         *zap.SugaredLogger
 	MetricsSink metrics.Sink
 	Kind        types.DisruptionKindName

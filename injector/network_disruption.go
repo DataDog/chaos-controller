@@ -249,9 +249,11 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	parent := "1:4"
 	handle := uint32(2)
 
-	// if the disruption is at pod level, create a second qdisc to filter packets coming from
-	// this specific pod processes only
-	if i.config.Level == chaostypes.DisruptionLevelPod {
+	// if the disruption is at pod level and there's no handler to notify,
+	// create a second qdisc to filter packets coming from this specific pod processes only
+	// if the disruption is applied on init, we consider that some more containers may be created within
+	// the pod so we can't scope the disruption to a specific set of containers
+	if i.config.Level == chaostypes.DisruptionLevelPod && !i.config.OnInit {
 		// create second prio with only 2 bands to filter traffic with a specific classid
 		if err := i.config.TrafficController.AddPrio(interfaces, "1:4", 2, 2, [16]uint32{}); err != nil {
 			return fmt.Errorf("can't create a new qdisc: %w", err)

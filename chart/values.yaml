@@ -6,4 +6,8 @@
 images:
   controller: docker.io/library/chaos-controller
   injector: docker.io/library/chaos-injector
+  handler: docker.io/library/chaos-handler
   tag: latest
+
+handler:
+  timeout: 1m # time the handler init container will wait before exiting if no signal is received

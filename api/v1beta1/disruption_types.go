@@ -41,6 +41,7 @@ type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	Selector labels.Set `json:"selector"`         // label selector
 	DryRun   bool       `json:"dryRun,omitempty"` // enable dry-run mode
+	OnInit   bool       `json:"onInit,omitempty"` // enable disruption on init
 	// +kubebuilder:validation:Enum=pod;node;""
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
 	Containers []string                   `json:"containers,omitempty"`
@@ -143,6 +144,24 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, CPUPressure fields is needed")
 	}
 
+	// Rule: on init compatibility
+	if s.OnInit {
+		if s.CPUPressure != nil ||
+			s.NodeFailure != nil ||
+			s.DiskPressure != nil {
+			return errors.New("OnInit is only compatible with network and dns disruptions")
+		}
+
+		if s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
+			return errors.New("OnInit is only compatible with pod level disruptions")
+		}
+
+		if len(s.Containers) > 0 {
+			return errors.New("OnInit is not compatible with containers scoping")
+		}
+	}
+
+	// Rule: count must be valid
 	if err := ValidateCount(s.Count); err != nil {
 		return err
 	}

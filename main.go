@@ -22,18 +22,21 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
+	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -58,6 +61,8 @@ func main() {
 		injectorServiceAccount          string
 		injectorServiceAccountNamespace string
 		injectorImage                   string
+		handlerImage                    string
+		handlerTimeout                  time.Duration
 		imagePullSecrets                string
 		admissionWebhookCertDir         string
 		admissionWebhookHost            string
@@ -71,7 +76,9 @@ func main() {
 	pflag.StringToStringVar(&injectorAnnotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	pflag.StringVar(&injectorServiceAccount, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
 	pflag.StringVar(&injectorServiceAccountNamespace, "injector-service-account-namespace", "chaos-engineering", "Namespace of the service account to use for the generated injector pods. Should also host the controller.")
-	pflag.StringVar(&injectorImage, "injector-image", "chaos-injector", "Service account to use for the generated injector pods")
+	pflag.StringVar(&injectorImage, "injector-image", "chaos-injector", "Image to pull for the injector pods")
+	pflag.StringVar(&handlerImage, "handler-image", "chaos-handler", "Image to pull for the handler containers")
+	pflag.DurationVar(&handlerTimeout, "handler-timeout", time.Minute, "Handler init container timeout")
 	pflag.StringVar(&imagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	pflag.StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	pflag.StringVar(&admissionWebhookCertDir, "admission-webhook-cert-dir", "", "Admission webhook certificate directory to search for tls.crt and tls.key files")
@@ -141,10 +148,22 @@ func main() {
 
 	go r.ReportMetrics()
 
+	// register disruption validating webhook
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
 		os.Exit(1)
 	}
+
+	// register chaos handler init container mutating webhook
+	mgr.GetWebhookServer().Register("/mutate-v1-pod-chaos-handler-init-container", &webhook.Admission{
+		Handler: &chaoswebhook.ChaosHandlerMutator{
+			Client:  mgr.GetClient(),
+			Log:     logger,
+			Image:   handlerImage,
+			Timeout: handlerTimeout,
+		},
+	})
+
 	// +kubebuilder:scaffold:builder
 
 	logger.Infow("restarting chaos-controller")
