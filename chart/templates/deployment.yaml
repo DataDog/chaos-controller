@@ -38,13 +38,25 @@ spec:
         args:
         - --metrics-addr=127.0.0.1:8080
         - --enable-leader-election
-        - --metrics-sink=noop
+        - --metrics-sink={{ .Values.controller.metricsSink }}
         - --injector-image={{ .Values.images.injector }}:{{ .Values.images.tag }}
         - --handler-image={{ .Values.images.handler }}:{{ .Values.images.tag }}
         - --handler-timeout={{ .Values.handler.timeout }}
         {{- if .Values.images.pullSecrets }}
         - --image-pull-secrets={{ .Values.images.pullSecrets }}
         {{- end }}
+        {{- if .Values.controller.deleteOnly }}
+        - --delete-only
+        {{- end }}
+        {{- range $key, $val := .Values.injector.annotations }}
+        - --injector-annotations
+        - {{ $key }}={{ $val }}
+        {{- end }}
+        - --injector-service-account={{ .Values.injector.serviceAccount }}
+        - --injector-service-account-namespace={{ .Values.injector.serviceAccountNamespace }}
+        - --admission-webhook-cert-dir={{ .Values.controller.webhook.certDir }}
+        - --admission-webhook-host={{ .Values.controller.webhook.host }}
+        - --admission-webhook-port={{ .Values.controller.webhook.port }}
         ports:
         - containerPort: 9443
           name: webhook-server

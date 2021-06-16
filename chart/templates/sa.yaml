@@ -11,5 +11,5 @@ metadata:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: chaos-injector
-  namespace: chaos-engineering
+  name: {{ .Values.injector.serviceAccount }}
+  namespace: {{ .Values.injector.serviceAccountNamespace }}
