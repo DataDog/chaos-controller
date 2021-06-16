@@ -55,6 +55,7 @@ var (
 	configs             []injector.Config
 	signals             chan os.Signal
 	injectors           []injector.Injector
+	readyToInject       bool
 )
 
 func init() {
@@ -146,14 +147,18 @@ func initConfig() {
 	case chaostypes.DisruptionLevelPod:
 		// check for container ID flag
 		if len(containerIDs) == 0 {
-			log.Fatal("--containers-id flag must be passed when --level=pod")
+			log.Error("--containers-id flag must be passed when --level=pod")
+
+			return
 		}
 
 		for _, containerID := range containerIDs {
 			// retrieve container info
 			ctn, err := container.New(containerID)
 			if err != nil {
-				log.Fatalw("can't create container object", "error", err)
+				log.Errorw("can't create container object", "error", err)
+
+				return
 			}
 
 			log.Infow("injector targeting container", "containerID", containerID, "container name", ctn.Name())
@@ -176,14 +181,18 @@ func initConfig() {
 
 		ctns = append(ctns, nil)
 	default:
-		log.Fatalf("unknown level: %s", level)
+		log.Errorf("unknown level: %s", level)
+
+		return
 	}
 
 	// create cgroup managers
 	for _, cgroupPath := range cgroupPaths {
 		cgroupMgr, err := cgroup.NewManager(dryRun, cgroupPath)
 		if err != nil {
-			log.Fatalw("error creating cgroup manager", "error", err)
+			log.Errorw("error creating cgroup manager", "error", err)
+
+			return
 		}
 
 		cgroupMgrs = append(cgroupMgrs, cgroupMgr)
@@ -193,7 +202,9 @@ func initConfig() {
 	for _, pid := range pids {
 		netnsMgr, err := netns.NewManager(pid)
 		if err != nil {
-			log.Fatalw("error creating network namespace manager", "error", err)
+			log.Errorw("error creating network namespace manager", "error", err)
+
+			return
 		}
 
 		netnsMgrs = append(netnsMgrs, netnsMgr)
@@ -202,12 +213,16 @@ func initConfig() {
 	// create kubernetes clientset
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		log.Fatalw("error getting kubernetes client config", "error", err)
+		log.Errorw("error getting kubernetes client config", "error", err)
+
+		return
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		log.Fatalw("error creating kubernetes client", "error", err)
+		log.Errorw("error creating kubernetes client", "error", err)
+
+		return
 	}
 
 	for i, ctn := range ctns {
@@ -225,6 +240,9 @@ func initConfig() {
 
 		configs = append(configs, config)
 	}
+
+	// mark the disruption as ready to be injected only when all injector configurations are successfully created
+	readyToInject = true
 }
 
 // initExitSignalsHandler initializes the exit signal handler
@@ -236,6 +254,13 @@ func initExitSignalsHandler() {
 // injectAndWait injects the disruption with the configured injector and waits
 // for an exit signal to be sent
 func injectAndWait(cmd *cobra.Command, args []string) {
+	// early exit if an injector configuration failed to be generated during initialization
+	if !readyToInject {
+		log.Error("an injector could not be configured successfully during initialization, aborting the injection now")
+
+		return
+	}
+
 	log.Info("injecting the disruption")
 
 	for _, inj := range injectors {
