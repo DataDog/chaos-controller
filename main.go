@@ -133,7 +133,6 @@ func main() {
 		Recorder:                        mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:                     ms,
 		TargetSelector:                  controllers.RunningTargetSelector{},
-		DeleteOnly:                      deleteOnly,
 		InjectorAnnotations:             injectorAnnotations,
 		InjectorServiceAccount:          injectorServiceAccount,
 		InjectorImage:                   injectorImage,
@@ -149,7 +148,7 @@ func main() {
 	go r.ReportMetrics()
 
 	// register disruption validating webhook
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms); err != nil {
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, deleteOnly); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
 		os.Exit(1)
 	}

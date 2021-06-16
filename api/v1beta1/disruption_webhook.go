@@ -6,6 +6,7 @@
 package v1beta1
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/DataDog/chaos-controller/metrics"
@@ -19,12 +20,14 @@ import (
 var logger *zap.SugaredLogger
 var k8sClient client.Client
 var metricsSink metrics.Sink
+var deleteOnly bool
 
-func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink) error {
+func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, deleteOnlyFlag bool) error {
 	logger = &zap.SugaredLogger{}
 	*logger = *l.With("source", "admission-controller")
 	k8sClient = mgr.GetClient()
 	metricsSink = ms
+	deleteOnly = deleteOnlyFlag
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
@@ -36,6 +39,10 @@ var _ webhook.Validator = &Disruption{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateCreate() error {
 	logger.Infow("validating created disruption", "instance", r.Name, "namespace", r.Namespace)
+
+	if deleteOnly {
+		return errors.New("the controller is currently in delete-only mode, you can't create new disruptions for now")
+	}
 
 	if err := r.Spec.Validate(); err != nil {
 		mErr := metricsSink.MetricFailedValidation()
