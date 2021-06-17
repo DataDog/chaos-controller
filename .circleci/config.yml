@@ -137,7 +137,6 @@ jobs:
     executor: bash
     steps:
       - checkout
-      - run: docker run -t --rm norberttech/md-link-linter --exclude=vendor --exclude=node_modules .
   # runs the tests
   test:
     executor: golang
