@@ -33,6 +33,12 @@ commands:
       - run:
           name: Install git
           command: apk update && apk add git
+  npm_install_markdownlint:
+    description: "Install markdownlint using npm"
+    steps:
+      - run:
+          name: Install markdownlint
+          command: npm install markdownlint-cli2
 
 templates:
   # sets the working directory to the project path
@@ -55,6 +61,9 @@ executors:
     <<: *working_directory
     docker:
       - image: python:3.8.1-alpine3.10
+  npm:
+    docker:
+      - image: cimg/node:16.3.0
   bash:
     <<: *working_directory
     docker:
@@ -132,6 +141,13 @@ jobs:
     steps:
       - go_restore_cache
       - run: make lint
+  # runs the markdownlint-cli2 on all docs
+  mdlint:
+    executor: npm
+    steps:
+      - checkout
+      - npm_install_markdownlint
+      - run: node_modules/markdownlint-cli2/markdownlint-cli2.js docs/*md
   # runs the tests
   test:
     executor: golang
@@ -180,6 +196,7 @@ workflows:
       - lint:
           requires:
             - prepare-env
+      - mdlint
       - test:
           requires:
             - prepare-env
