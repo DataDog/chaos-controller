@@ -21,7 +21,12 @@ var cpuPressureCmd = &cobra.Command{
 
 		// create injector
 		for _, config := range configs {
-			injectors = append(injectors, injector.NewCPUPressureInjector(spec, injector.CPUPressureInjectorConfig{Config: config}))
+			injector, err := injector.NewCPUPressureInjector(spec, injector.CPUPressureInjectorConfig{Config: config})
+			if err != nil {
+				log.Fatalw("error initializing the cpu pressure injector", "error", err)
+			}
+
+			injectors = append(injectors, injector)
 		}
 	},
 }

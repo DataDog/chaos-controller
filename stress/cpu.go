@@ -5,23 +5,68 @@
 
 package stress
 
-import "runtime"
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"runtime"
+	"strconv"
+	"strings"
+	"syscall"
+
+	pscpu "github.com/shirou/gopsutil/cpu"
+	"go.uber.org/zap"
+)
 
 type cpu struct {
+	log      *zap.SugaredLogger
 	dryRun   bool
 	routines int
+	tgid     int
 }
 
 // NewCPU creates a CPU stresser
-func NewCPU(dryRun bool, routines int) Stresser {
+func NewCPU(dryRun bool, log *zap.SugaredLogger) (Stresser, error) {
+	cores := 0
+
+	// get the total amount of cores
+	cpuInfo, err := pscpu.Info()
+	if err != nil {
+		return nil, fmt.Errorf("error getting cpu info: %w", err)
+	}
+
+	for _, info := range cpuInfo {
+		cores += int(info.Cores)
+	}
+
+	// get thread group ID
+	tgid, err := syscall.Getpgid(os.Getpid())
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving thread group ID: %w", err)
+	}
+
 	return cpu{
 		dryRun:   dryRun,
-		routines: routines,
-	}
+		routines: cores,
+		log:      log,
+		tgid:     tgid,
+	}, nil
 }
 
 // Stress starts X goroutines loading CPU
 func (c cpu) Stress(exit <-chan struct{}) {
+	c.log.Infow("starting stresser routines", "routines", c.routines)
+
+	// set real GOMAXPROCS value
+	oldValue := runtime.GOMAXPROCS(c.routines)
+	c.log.Infow("updated the GOMAXPROCS value", "newValue", c.routines, "oldValue", oldValue)
+
+	// set current task affinity
+	cmd := exec.Command("taskset", "-pac", fmt.Sprintf("0-%d", c.routines-1), strconv.Itoa(c.tgid))
+
+	stdoutStderr, err := cmd.CombinedOutput()
+	c.log.Infow("set task affinity", "command", strings.Join(cmd.Args, " "), "output", stdoutStderr, "err", err)
+
 	// early exit if dry-run mode is enabled
 	if c.dryRun {
 		<-exit

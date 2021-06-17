@@ -25,6 +25,7 @@ github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/timeout,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/vmcompute,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/wclayer,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/osversion,MIT
+github.com/StackExchange/wmi,github.com/StackExchange/wmi,MIT
 github.com/avast/retry-go,github.com/avast/retry-go,MIT
 github.com/beorn7/perks,github.com/beorn7/perks/quantile,MIT
 github.com/cenkalti/backoff,github.com/cenkalti/backoff,MIT
@@ -119,6 +120,8 @@ github.com/evanphx/json-patch,github.com/evanphx/json-patch,BSD-3-Clause
 github.com/fsnotify/fsnotify,github.com/fsnotify/fsnotify,BSD-3-Clause
 github.com/ghodss/yaml,github.com/ghodss/yaml,MIT
 github.com/go-logr/logr,github.com/go-logr/logr,Apache-2.0
+github.com/go-ole/go-ole,github.com/go-ole/go-ole,MIT
+github.com/go-ole/go-ole,github.com/go-ole/go-ole/oleutil,MIT
 github.com/gogo/googleapis,github.com/gogo/googleapis/google/rpc,Apache-2.0
 github.com/gogo/protobuf,github.com/gogo/protobuf/gogoproto,BSD-3-Clause
 github.com/gogo/protobuf,github.com/gogo/protobuf/proto,BSD-3-Clause
@@ -227,6 +230,8 @@ github.com/prometheus/common,github.com/prometheus/common/model,Apache-2.0
 github.com/prometheus/procfs,github.com/prometheus/procfs,Apache-2.0
 github.com/prometheus/procfs,github.com/prometheus/procfs/internal/fs,Apache-2.0
 github.com/prometheus/procfs,github.com/prometheus/procfs/internal/util,Apache-2.0
+github.com/shirou/gopsutil,github.com/shirou/gopsutil/cpu,BSD-3-Clause
+github.com/shirou/gopsutil,github.com/shirou/gopsutil/internal/common,BSD-3-Clause
 github.com/sirupsen/logrus,github.com/sirupsen/logrus,MIT
 github.com/spf13/afero,github.com/spf13/afero,Apache-2.0
 github.com/spf13/afero,github.com/spf13/afero/mem,Apache-2.0
@@ -240,6 +245,8 @@ github.com/stretchr/testify,github.com/stretchr/testify/assert,MIT
 github.com/stretchr/testify,github.com/stretchr/testify/mock,MIT
 github.com/subosito/gotenv,github.com/subosito/gotenv,MIT
 github.com/syndtr/gocapability,github.com/syndtr/gocapability/capability,BSD-2-Clause
+github.com/tklauser/go-sysconf,github.com/tklauser/go-sysconf,BSD-3-Clause
+github.com/tklauser/numcpus,github.com/tklauser/numcpus,Apache-2.0
 github.com/vishvananda/netlink,github.com/vishvananda/netlink,Apache-2.0
 github.com/vishvananda/netlink,github.com/vishvananda/netlink/nl,Apache-2.0
 github.com/vishvananda/netns,github.com/vishvananda/netns,Apache-2.0

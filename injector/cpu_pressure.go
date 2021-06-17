@@ -8,7 +8,6 @@ package injector
 import (
 	"fmt"
 	"os"
-	"runtime"
 	"syscall"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -30,10 +29,15 @@ type CPUPressureInjectorConfig struct {
 }
 
 // NewCPUPressureInjector creates a CPU pressure injector with the given config
-func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInjectorConfig) Injector {
+func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInjectorConfig) (Injector, error) {
+	var err error
+
 	// create stresser
 	if config.Stresser == nil {
-		config.Stresser = stress.NewCPU(config.DryRun, runtime.NumCPU())
+		config.Stresser, err = stress.NewCPU(config.DryRun, config.Log)
+		if err != nil {
+			return nil, fmt.Errorf("error initializing CPU stresser: %w", err)
+		}
 	}
 
 	if config.StresserExit == nil {
@@ -48,7 +52,7 @@ func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInje
 	return cpuPressureInjector{
 		spec:   spec,
 		config: config,
-	}
+	}, nil
 }
 
 func (i cpuPressureInjector) Inject() error {
@@ -74,7 +78,7 @@ func (i cpuPressureInjector) Inject() error {
 
 	// start eating CPU in separate goroutines
 	// we start one goroutine per available CPU
-	i.config.Log.Infow("initializing load generator routines", "routines", runtime.NumCPU())
+	i.config.Log.Infow("running stresser")
 
 	go i.config.Stresser.Stress(i.config.StresserExit)
 
