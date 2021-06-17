@@ -18,7 +18,7 @@ Once you define your test manifest, run:
 Applying the manifest triggers the admission controller which validates your yaml file.
 
 ### Successful validation
-The resource request is passed to the reconcile loop which creates as many chaos pods as the number of disruptions kinds you included in your manifest. The controller also adds a `finalizer` to acvite disruptions so they are not cleaned up by Kubernetes before the disruption is cleaned up. Each chaos pod applies its specific disruption kind (`network_disruption`, `cpu_pressure`, `node_failure`, etc) to your target resources.
+The resource request is passed to the reconcile loop which creates as many chaos pods as the number of disruptions kinds you included in your manifest. The controller also adds a `finalizer` to active disruptions so they are not cleaned up by Kubernetes before the disruption is cleaned up. Each chaos pod applies its specific disruption kind (`network_disruption`, `cpu_pressure`, `node_failure`, etc) to your target resources.
 
 A succesful apply prints:
 * ```disruption.chaos.datadoghq.com/"<manifest name>" created```
@@ -74,11 +74,11 @@ Check the logs of the resource:
 Get a detailed overview of the resource (finalizers, major events, allocated IP address, containers, etc):
 * ```kubectl describe pod <pod name>```
 
-More complex troubleshooting on the [faq.md](docs/faq.md) page.
+More complex troubleshooting on the [faq.md](faq.md) page.
 
 ## Helpers scripts
 
-For verification on minikube we created some helper [scripts](scripts/):
+For verification on minikube we created some helper [scripts](../scripts):
 
 * List pod interfaces:
   * `./scripts/list_links.sh <pod_name>`

@@ -9,6 +9,7 @@ metadata:
   name: node-failure-shutdown
   namespace: chaos-demo
 spec:
+  level: node # note that any labels need to be applied on the nodes for this Disruption to work
   selector:
     app: demo-curl
   count: 1

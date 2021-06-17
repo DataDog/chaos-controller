@@ -4,7 +4,7 @@ If you do not plan to use the generated manifests because you need some specific
 
 ## Customize the controller
 
-The controller has multiple flags which can be passed through the [deployment](chart/templates/deployment.yaml) manifest.
+The controller has multiple flags which can be passed through the [deployment](../chart/templates/deployment.yaml) manifest.
 
 ### Delete-only mode
 

@@ -27,7 +27,7 @@ applying `tc` rules in a way that targets any port that may be used to talk to t
 vs. a `pod` level disruption.
 ```
 network:
-  service:
+  services:
     - name: service_name
       namespace: example_namespace
 ```
