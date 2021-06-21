@@ -75,7 +75,7 @@ Threads fairness:
     execution time (avg/stddev):   9.9758/0.00
 ```
 
-Example `sysbench` With the CPU pressure applied:
+Example `sysbench` with the CPU pressure applied:
 
 ```
 root@demo-curl-8589cffd98-ccjqg:/# sysbench --test=cpu run
