@@ -50,7 +50,3 @@ require (
 	k8s.io/client-go v0.18.6
 	sigs.k8s.io/controller-runtime v0.6.2
 )
-
-replace github.com/coreos/bbolt v1.3.5 => go.etcd.io/bbolt v1.3.5
-
-replace go.etcd.io/bbolt v1.3.5 => github.com/coreos/bbolt v1.3.5
