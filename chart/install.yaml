@@ -208,6 +208,8 @@ spec:
                 shutdown:
                   type: boolean
               type: object
+            onInit:
+              type: boolean
             selector:
               additionalProperties:
                 type: string
@@ -536,7 +538,7 @@ spec:
         - containerPort: 8443
           name: https
       - name: manager
-        image: datadog/chaos-controller:4.0.1
+        image: datadog/chaos-controller:4.1.0
         imagePullPolicy: IfNotPresent
         command:
         - /usr/local/bin/manager
@@ -544,7 +546,14 @@ spec:
         - --metrics-addr=127.0.0.1:8080
         - --enable-leader-election
         - --metrics-sink=noop
-        - --injector-image=datadog/chaos-injector:4.0.1
+        - --injector-image=datadog/chaos-injector:4.1.0
+        - --handler-image=docker.io/library/chaos-handler:4.1.0
+        - --handler-timeout=1m
+        - --injector-service-account=chaos-injector
+        - --injector-service-account-namespace=chaos-engineering
+        - --admission-webhook-cert-dir=
+        - --admission-webhook-host=
+        - --admission-webhook-port=9443
         ports:
         - containerPort: 9443
           name: webhook-server
@@ -594,6 +603,36 @@ metadata:
   namespace: chaos-engineering
 spec:
   selfSigned: {}
+---
+# Source: chaos-controller/templates/webhook.yaml
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+  name: chaos-controller-pod-chaos-handler
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: chaos-controller-webhook-service
+      namespace: chaos-engineering
+      path: /mutate-v1-pod-chaos-handler-init-container
+  failurePolicy: Ignore
+  name: chaos-controller-admission-webhook.chaos-engineering.svc
+  objectSelector:
+    matchExpressions:
+      - key: "chaos.datadoghq.com/disrupt-on-init"
+        operator: Exists
+  rules:
+  - apiGroups:
+    - ""
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - pods
 ---
 # Source: chaos-controller/templates/webhook.yaml
 # Unless explicitly stated otherwise all files in this repository are licensed
