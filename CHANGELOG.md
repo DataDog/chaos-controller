@@ -1,5 +1,30 @@
 # Changelog
 
+## [4.1.0](https://github.com/DataDog/chaos-controller/tree/4.1.0) (2021-06-25)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.0.1...4.1.0)
+
+**Closed issues:**
+
+- User Issue: CPU disruption not working [\#344](https://github.com/DataDog/chaos-controller/issues/344)
+- User Request: Push 4.0.1 images to DockerHub [\#339](https://github.com/DataDog/chaos-controller/issues/339)
+
+**Merged pull requests:**
+
+- Pin goroutine stresser threads to the right cpuset [\#353](https://github.com/DataDog/chaos-controller/pull/353) ([Devatoria](https://github.com/Devatoria))
+- remove unnecessary replaces from go.mod [\#349](https://github.com/DataDog/chaos-controller/pull/349) ([takakonishimura](https://github.com/takakonishimura))
+- cpu pressure docs revamped [\#348](https://github.com/DataDog/chaos-controller/pull/348) ([takakonishimura](https://github.com/takakonishimura))
+- Minor updates in docs. [\#345](https://github.com/DataDog/chaos-controller/pull/345) ([nikos912000](https://github.com/nikos912000))
+- Handle delete-only mode in admission webhook instead of controller [\#343](https://github.com/DataDog/chaos-controller/pull/343) ([Devatoria](https://github.com/Devatoria))
+- Do not fatal on injector initialization but fail gently [\#342](https://github.com/DataDog/chaos-controller/pull/342) ([Devatoria](https://github.com/Devatoria))
+- Add all the possible variables to the chart [\#341](https://github.com/DataDog/chaos-controller/pull/341) ([Devatoria](https://github.com/Devatoria))
+- Specify the minimal k8s version supported by the controller [\#340](https://github.com/DataDog/chaos-controller/pull/340) ([Devatoria](https://github.com/Devatoria))
+- add curl log visitibility [\#338](https://github.com/DataDog/chaos-controller/pull/338) ([takakonishimura](https://github.com/takakonishimura))
+- Update CODEOWNERS for chaos-engineering group [\#337](https://github.com/DataDog/chaos-controller/pull/337) ([ptnapoleon](https://github.com/ptnapoleon))
+- Move demo resources to `chaos-demo` namespace by default [\#336](https://github.com/DataDog/chaos-controller/pull/336) ([ptnapoleon](https://github.com/ptnapoleon))
+- Allow to apply network disruptions on init containers [\#335](https://github.com/DataDog/chaos-controller/pull/335) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_6eb9fcb9e0d15c85c078131b1a342fffe11b16c8 [\#334](https://github.com/DataDog/chaos-controller/pull/334) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [4.0.1](https://github.com/DataDog/chaos-controller/tree/4.0.1) (2021-06-08)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.0.0...4.0.1)
