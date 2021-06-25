@@ -45,7 +45,7 @@ func NewManager(dryRun bool, path string) (Manager, error) {
 	}, nil
 }
 
-// read reads the given cgroup file data and returns it as a string
+// read reads the given cgroup file data and returns it as a string, truncating leading \n char
 func (m manager) read(path string) (string, error) {
 	//nolint:gosec
 	data, err := ioutil.ReadFile(path)
@@ -85,7 +85,7 @@ func (m manager) generatePath(kind string) string {
 	return fmt.Sprintf("%s%s/%s", m.mount, kind, m.path)
 }
 
-// Write writes the given data to the given cgroup kind
+// Read reads the given cgroup file data and returns the content as a string
 func (m manager) Read(kind, file string) (string, error) {
 	path := fmt.Sprintf("%s/%s", m.generatePath(kind), file)
 
