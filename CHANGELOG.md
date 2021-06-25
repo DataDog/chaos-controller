@@ -1,5 +1,15 @@
 # Changelog
 
+## [4.1.1](https://github.com/DataDog/chaos-controller/tree/4.1.1) (2021-06-25)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.1.0...4.1.1)
+
+**Merged pull requests:**
+
+- Do not mark injector ready on injector fail [\#356](https://github.com/DataDog/chaos-controller/pull/356) ([Devatoria](https://github.com/Devatoria))
+- Fix network disruption failing to be injected on a node with multiple… [\#355](https://github.com/DataDog/chaos-controller/pull/355) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_8d4d9b5c17bfd437544f89a6d6034fd53a917947 [\#354](https://github.com/DataDog/chaos-controller/pull/354) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [4.1.0](https://github.com/DataDog/chaos-controller/tree/4.1.0) (2021-06-25)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.0.1...4.1.0)
