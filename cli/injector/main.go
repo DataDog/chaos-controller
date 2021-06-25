@@ -263,21 +263,29 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 	log.Info("injecting the disruption")
 
+	errOnInject := false
+
 	for _, inj := range injectors {
 		// start injection, do not fatal on error so we keep the pod
 		// running, allowing the cleanup to happen
 		if err := inj.Inject(); err != nil {
+			errOnInject = true
+
 			handleMetricError(ms.MetricInjected(false, cmd.Name(), nil))
 			log.Errorw("disruption injection failed", "error", err)
 		} else {
-			// create and write readiness probe file if injection succeeded so the pod is marked as ready
-			if err := ioutil.WriteFile(readinessProbeFile, []byte("1"), 0400); err != nil {
-				log.Errorw("error writing readiness probe file", "error", err)
-			}
-
 			handleMetricError(ms.MetricInjected(true, cmd.Name(), nil))
 			log.Info("disruption injected, now waiting for an exit signal")
 		}
+	}
+
+	// create and write readiness probe file if injection succeeded so the pod is marked as ready
+	if !errOnInject {
+		if err := ioutil.WriteFile(readinessProbeFile, []byte("1"), 0400); err != nil {
+			log.Errorw("error writing readiness probe file", "error", err)
+		}
+	} else {
+		log.Error("an injector could not inject the disruption successfully, please look at the logs above for more details")
 	}
 
 	// once injected, send a signal to the handler container so it can exit and let other containers go on
