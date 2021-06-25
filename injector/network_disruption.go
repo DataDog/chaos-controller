@@ -185,12 +185,12 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	}
 
 	// retrieve the default route information
-	defaultRoute, err := i.config.NetlinkAdapter.DefaultRoute()
+	defaultRoutes, err := i.config.NetlinkAdapter.DefaultRoutes()
 	if err != nil {
 		return fmt.Errorf("error getting the default route: %w", err)
 	}
 
-	i.config.Log.Infof("detected default gateway IP %s on interface %s", defaultRoute.Gateway().String(), defaultRoute.Link().Name())
+	i.config.Log.Infof("detected default gateway IPs %s", defaultRoutes)
 
 	// get the targeted pod node IP from the environment variable
 	nodeIP, ok := os.LookupEnv(env.InjectorTargetPodHostIP)
@@ -355,13 +355,15 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// NOTE: those filters must be added after every other filters applied to the interface so they are used first
 	if i.config.Level == chaostypes.DisruptionLevelPod {
 		// this filter allows the pod to communicate with the default route gateway IP
-		gatewayIP := &net.IPNet{
-			IP:   defaultRoute.Gateway(),
-			Mask: net.CIDRMask(32, 32),
-		}
+		for _, defaultRoute := range defaultRoutes {
+			gatewayIP := &net.IPNet{
+				IP:   defaultRoute.Gateway(),
+				Mask: net.CIDRMask(32, 32),
+			}
 
-		if err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
-			return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
+			if err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
+				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
+			}
 		}
 
 		// this filter allows the pod to communicate with the node IP
