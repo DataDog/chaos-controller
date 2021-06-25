@@ -18,3 +18,10 @@ func (f *ManagerMock) Prioritize() error {
 
 	return args.Error(0)
 }
+
+//nolint:golint
+func (f *ManagerMock) ThreadID() int {
+	args := f.Called()
+
+	return args.Int(0)
+}

@@ -7,15 +7,18 @@ package cgroup
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/DataDog/chaos-controller/env"
 )
 
 // Manager represents a cgroup manager able to join the given cgroup
 type Manager interface {
-	Join(kind string, pid int) error
+	Join(kind string, pid int, inherit bool) error
+	Read(kind, file string) (string, error)
 	Write(kind, file, data string) error
 	Exists(kind string) (bool, error)
 	DiskThrottleRead(identifier, bps int) error
@@ -40,6 +43,17 @@ func NewManager(dryRun bool, path string) (Manager, error) {
 		path:   path,
 		mount:  mount,
 	}, nil
+}
+
+// read reads the given cgroup file data and returns it as a string, truncating leading \n char
+func (m manager) read(path string) (string, error) {
+	//nolint:gosec
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("error reading cgroup file %s: %w", path, err)
+	}
+
+	return strings.TrimSuffix(string(data), "\n"), nil
 }
 
 // write appends the given data to the given cgroup file path
@@ -71,6 +85,13 @@ func (m manager) generatePath(kind string) string {
 	return fmt.Sprintf("%s%s/%s", m.mount, kind, m.path)
 }
 
+// Read reads the given cgroup file data and returns the content as a string
+func (m manager) Read(kind, file string) (string, error) {
+	path := fmt.Sprintf("%s/%s", m.generatePath(kind), file)
+
+	return m.read(path)
+}
+
 // Write writes the given data to the given cgroup kind
 func (m manager) Write(kind, file, data string) error {
 	path := fmt.Sprintf("%s/%s", m.generatePath(kind), file)
@@ -93,8 +114,16 @@ func (m manager) Exists(kind string) (bool, error) {
 }
 
 // Join adds the given PID to the given cgroup
-func (m manager) Join(kind string, pid int) error {
-	path := fmt.Sprintf("%s/cgroup.procs", m.generatePath(kind))
+// If inherit is set to true, all PID of the same group will be moved to the cgroup (writing to cgroup.procs file)
+// Otherwise, only the given PID will be moved to the cgroup (writing to tasks file)
+func (m manager) Join(kind string, pid int, inherit bool) error {
+	file := "tasks"
+
+	if inherit {
+		file = "cgroup.procs"
+	}
+
+	path := fmt.Sprintf("%s/%s", m.generatePath(kind), file)
 
 	return m.write(path, strconv.Itoa(pid))
 }

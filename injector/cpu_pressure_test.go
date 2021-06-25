@@ -32,7 +32,8 @@ var _ = Describe("Failure", func() {
 	BeforeEach(func() {
 		// cgroup
 		cgroupManager = &cgroup.ManagerMock{}
-		cgroupManager.On("Join", mock.Anything, mock.Anything).Return(nil)
+		cgroupManager.On("Join", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		cgroupManager.On("Read", "cpuset", "cpuset.cpus").Return("0-1", nil)
 
 		// container
 		ctn = &container.ContainerMock{}
@@ -47,6 +48,7 @@ var _ = Describe("Failure", func() {
 		// manager
 		manager = &process.ManagerMock{}
 		manager.On("Prioritize").Return(nil)
+		manager.On("ThreadID").Return(666)
 
 		//config
 		config = CPUPressureInjectorConfig{
@@ -82,8 +84,10 @@ var _ = Describe("Failure", func() {
 			stresserExit <- struct{}{}
 		})
 
-		It("should join the CPU cgroup", func() {
-			cgroupManager.AssertCalled(GinkgoT(), "Join", "cpu", mock.Anything)
+		It("should join the cpu and cpuset cgroups", func() {
+			cgroupManager.AssertCalled(GinkgoT(), "Join", "cpu", 666, false)
+			cgroupManager.AssertCalled(GinkgoT(), "Join", "cpuset", 666, false)
+			cgroupManager.AssertNumberOfCalls(GinkgoT(), "Join", 4)
 		})
 
 		It("should prioritize the current process", func() {
