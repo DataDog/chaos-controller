@@ -19,7 +19,7 @@ type NetlinkAdapter interface {
 	LinkList() ([]NetlinkLink, error)
 	LinkByIndex(index int) (NetlinkLink, error)
 	LinkByName(name string) (NetlinkLink, error)
-	DefaultRoute() (NetlinkRoute, error)
+	DefaultRoutes() ([]NetlinkRoute, error)
 }
 
 type netlinkAdapter struct{}
@@ -162,7 +162,9 @@ func (a netlinkAdapter) LinkByName(name string) (NetlinkLink, error) {
 	return newNetlinkLink(link), nil
 }
 
-func (a netlinkAdapter) DefaultRoute() (NetlinkRoute, error) {
+func (a netlinkAdapter) DefaultRoutes() ([]NetlinkRoute, error) {
+	defaultRoutes := []NetlinkRoute{}
+
 	routes, err := a.listRoutes()
 	if err != nil {
 		return nil, fmt.Errorf("error listing routes: %w", err)
@@ -170,20 +172,24 @@ func (a netlinkAdapter) DefaultRoute() (NetlinkRoute, error) {
 
 	// find the default route, the one with no source nor destination
 	for _, route := range routes {
-		if route.Dst == nil {
+		if route.Dst == nil && route.Gw != nil {
 			link, err := netlink.LinkByIndex(route.LinkIndex)
 			if err != nil {
 				return nil, fmt.Errorf("error identifying default route link: %w", err)
 			}
 
-			return netlinkRoute{
+			defaultRoutes = append(defaultRoutes, netlinkRoute{
 				link: newNetlinkLink(link),
 				gw:   route.Gw,
-			}, nil
+			})
 		}
 	}
 
-	return nil, fmt.Errorf("error getting default route: not found")
+	if len(defaultRoutes) == 0 {
+		return nil, fmt.Errorf("error getting default route: not found")
+	}
+
+	return defaultRoutes, nil
 }
 
 // NetlinkLink is a host interface
@@ -241,4 +247,8 @@ func (r netlinkRoute) Link() NetlinkLink {
 
 func (r netlinkRoute) Gateway() net.IP {
 	return r.gw
+}
+
+func (r netlinkRoute) String() string {
+	return fmt.Sprintf("%s on %s", r.gw, r.link.Name())
 }

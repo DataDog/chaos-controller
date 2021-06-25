@@ -38,10 +38,10 @@ func (f *NetlinkAdapterMock) LinkByName(name string) (NetlinkLink, error) {
 }
 
 //nolint:golint
-func (f *NetlinkAdapterMock) DefaultRoute() (NetlinkRoute, error) {
+func (f *NetlinkAdapterMock) DefaultRoutes() ([]NetlinkRoute, error) {
 	args := f.Called()
 
-	return args.Get(0).(NetlinkRoute), args.Error(1)
+	return args.Get(0).([]NetlinkRoute), args.Error(1)
 }
 
 // NetlinkLinkMock is a mock implementation of the NetlinkLink interface

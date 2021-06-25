@@ -98,7 +98,7 @@ var _ = Describe("Failure", func() {
 		nl.On("LinkByName", "lo").Return(nllink1, nil)
 		nl.On("LinkByName", "eth0").Return(nllink2, nil)
 		nl.On("LinkByName", "eth1").Return(nllink3, nil)
-		nl.On("DefaultRoute").Return(nlroute2, nil)
+		nl.On("DefaultRoutes").Return([]network.NetlinkRoute{nlroute2}, nil)
 
 		// dns
 		dns = &network.DNSMock{}
