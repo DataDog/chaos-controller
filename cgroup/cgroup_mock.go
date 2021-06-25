@@ -13,10 +13,17 @@ type ManagerMock struct {
 }
 
 //nolint:golint
-func (f *ManagerMock) Join(kind string, pid int) error {
-	args := f.Called(kind, pid)
+func (f *ManagerMock) Join(kind string, pid int, inherit bool) error {
+	args := f.Called(kind, pid, inherit)
 
 	return args.Error(0)
+}
+
+//nolint:golint
+func (f *ManagerMock) Read(kind, file string) (string, error) {
+	args := f.Called(kind, file)
+
+	return args.String(0), args.Error(1)
 }
 
 //nolint:golint

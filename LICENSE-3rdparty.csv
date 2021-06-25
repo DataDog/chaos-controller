@@ -608,6 +608,7 @@ k8s.io/client-go,k8s.io/client-go/util/workqueue,Apache-2.0
 k8s.io/klog,k8s.io/klog,Apache-2.0
 k8s.io/klog/v2,k8s.io/klog/v2,Apache-2.0
 k8s.io/kube-openapi,k8s.io/kube-openapi/pkg/util/proto,Apache-2.0
+k8s.io/kubernetes,k8s.io/kubernetes/pkg/kubelet/cm/cpuset,Apache-2.0
 k8s.io/utils,k8s.io/utils/buffer,Apache-2.0
 k8s.io/utils,k8s.io/utils/integer,Apache-2.0
 k8s.io/utils,k8s.io/utils/pointer,Apache-2.0
