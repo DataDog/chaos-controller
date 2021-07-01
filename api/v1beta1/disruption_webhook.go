@@ -48,7 +48,7 @@ func (r *Disruption) ValidateCreate() error {
 
 	// handle a disruption using the onInit feature without the handler being enabled
 	if !handlerEnabled && r.Spec.OnInit {
-		return errors.New("the chaos handler is disabled but the disruption onInit field is set to true, please enable the handler by specifying the --handler-enabled flag to the controller if you want to use the onInit feature")
+		return errors.New("the chaos handler is disabled but the disruption onInit field is set to true, please enable the handler by specifying the --handler-enabled flag to the controller if you want to use the onInit feature (requires Kubernetes >= 1.15)")
 	}
 
 	if err := r.Spec.Validate(); err != nil {
