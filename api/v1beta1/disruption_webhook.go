@@ -21,13 +21,15 @@ var logger *zap.SugaredLogger
 var k8sClient client.Client
 var metricsSink metrics.Sink
 var deleteOnly bool
+var handlerEnabled bool
 
-func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, deleteOnlyFlag bool) error {
+func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, deleteOnlyFlag, handlerEnabledFlag bool) error {
 	logger = &zap.SugaredLogger{}
 	*logger = *l.With("source", "admission-controller")
 	k8sClient = mgr.GetClient()
 	metricsSink = ms
 	deleteOnly = deleteOnlyFlag
+	handlerEnabled = handlerEnabledFlag
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
@@ -42,6 +44,11 @@ func (r *Disruption) ValidateCreate() error {
 
 	if deleteOnly {
 		return errors.New("the controller is currently in delete-only mode, you can't create new disruptions for now")
+	}
+
+	// handle a disruption using the onInit feature without the handler being enabled
+	if !handlerEnabled && r.Spec.OnInit {
+		return errors.New("the chaos handler is disabled but the disruption onInit field is set to true, please enable the handler by specifying the --handler-enabled flag to the controller if you want to use the onInit feature")
 	}
 
 	if err := r.Spec.Validate(); err != nil {
