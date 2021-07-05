@@ -6,6 +6,9 @@
 package cmd
 
 import (
+	"fmt"
+
+	ddmark "github.com/DataDog/chaos-controller/ddmark"
 	"github.com/spf13/cobra"
 )
 
@@ -28,15 +31,24 @@ func init() {
 }
 
 func ValidateDisruption(path string) error {
-	disruption, err := DisruptionFromFile(path)
+	marshalledStruct, err := DisruptionFromFile(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("%v: %v", path, err)
 	}
 
-	err = disruption.Spec.Validate()
-	if err != nil {
-		return err
-	}
+	ddmark.ValidateStruct(marshalledStruct, path,
+		"github.com/DataDog/chaos-controller/api/v1beta1",
+	)
+
+	// disruption, err := DisruptionFromFile(path)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// err = disruption.Spec.Validate()
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
