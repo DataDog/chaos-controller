@@ -248,6 +248,9 @@ func initConfig() {
 
 // initExitSignalsHandler initializes the exit signal handler
 func initExitSignalsHandler() {
+	// signals needs to be a buffered channel, so that we can receive a signal anytime during the injection process
+	// as an unbuffered channel will ignore signals sent before it begins listening. We can keep the buffer size to `1` here
+	// as no matter how many SIGINT or SIGTERMs we receive, we want to carry out the same action: clean and die
 	signals = make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 }

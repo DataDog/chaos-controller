@@ -675,6 +675,10 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// volume host path type definitions
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
+
+	// The default TerminationGracePeriodSeconds is 30s. This can be too low for a chaos pod to finish cleaning. After TGPS passes,
+	// the signal sent to a pod becomes SIGKILL, which will interrupt any in-progress cleaning. Setting this to a generous 2 minutes in the pod spec itself,
+	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
 	terminationGracePeriod := int64(120)
 
 	podSpec := corev1.PodSpec{
