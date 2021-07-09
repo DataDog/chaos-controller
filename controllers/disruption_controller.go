@@ -675,12 +675,14 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// volume host path type definitions
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
+	terminationGracePeriod := int64(120)
 
 	podSpec := corev1.PodSpec{
-		HostPID:            true,                      // enable host pid
-		RestartPolicy:      corev1.RestartPolicyNever, // do not restart the pod on fail or completion
-		NodeName:           targetNodeName,            // specify node name to schedule the pod
-		ServiceAccountName: r.InjectorServiceAccount,  // service account to use
+		HostPID:                       true,                      // enable host pid
+		RestartPolicy:                 corev1.RestartPolicyNever, // do not restart the pod on fail or completion
+		NodeName:                      targetNodeName,            // specify node name to schedule the pod
+		ServiceAccountName:            r.InjectorServiceAccount,  // service account to use
+		TerminationGracePeriodSeconds: &terminationGracePeriod,
 		Containers: []corev1.Container{
 			{
 				Name:            "injector",              // container name

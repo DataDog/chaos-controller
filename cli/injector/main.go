@@ -248,7 +248,7 @@ func initConfig() {
 
 // initExitSignalsHandler initializes the exit signal handler
 func initExitSignalsHandler() {
-	signals = make(chan os.Signal)
+	signals = make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 }
 
