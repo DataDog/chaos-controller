@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2021 Datadog, Inc.
+
 package validation
 
 import (
@@ -65,9 +70,10 @@ func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
 
 	for _, item := range e {
 		if structMap[item] != nil {
-			matchCount += 1
+			matchCount++
 		}
 	}
+
 	if matchCount > 1 {
 		return fmt.Errorf("%v: some fields are incompatible, there can only be one of %v", ruleName(e), e)
 	}
@@ -92,12 +98,14 @@ func (r RequiredFields) ApplyRule(fieldvalue reflect.Value) error {
 	if !ok {
 		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(r), fieldvalue.Type(), "struct")
 	}
+
 	for _, fieldname := range r {
 		val := structMap[fieldname]
 		if val == nil {
 			return fmt.Errorf("%v: required fields: %v, currently at least %v is missing", ruleName(r), r, fieldname)
 		}
 	}
+
 	return nil
 }
 
@@ -115,6 +123,7 @@ func Register(reg *k8smarkers.Registry) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -123,6 +132,7 @@ func Register(reg *k8smarkers.Registry) error {
 func addDefinition(obj interface{}, targetType k8smarkers.TargetType) {
 	name := rulePrefix + reflect.TypeOf(obj).Name()
 	def, err := k8smarkers.MakeDefinition(name, targetType, obj)
+
 	if err != nil {
 		panic(err)
 	}
@@ -140,7 +150,9 @@ func structValueToMap(value reflect.Value) (map[string]interface{}, bool) {
 	if value.Kind() != reflect.Struct {
 		return nil, false
 	}
+
 	relType := value.Type()
+
 	for i := 0; i < relType.NumField(); i++ {
 		if !value.Field(i).IsValid() || value.Field(i).IsZero() {
 			m[relType.Field(i).Name] = nil
@@ -148,6 +160,7 @@ func structValueToMap(value reflect.Value) (map[string]interface{}, bool) {
 			m[relType.Field(i).Name] = value.Field(i).Interface()
 		}
 	}
+
 	return m, (len(m) > 0)
 }
 

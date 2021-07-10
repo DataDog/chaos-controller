@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2021 Datadog, Inc.
+
 package ddmark
 
 import (
@@ -34,12 +39,14 @@ func ValidateStruct(marshalledStruct interface{}, filePath string, structPkg ...
 		fmt.Println("error loading markers from crd validation")
 		return
 	}
+
 	var errorList []error = make([]error, 0)
 
 	typesMap := getAllPackageTypes(pkgs)
 	if len(typesMap) == 0 {
 		errorList = append(errorList, fmt.Errorf("%v: loaded classes are empty or not found", filePath))
 	}
+
 	validateStruct(marshalledStruct, typesMap, nil, &errorList, filePath)
 	printErrorList(errorList)
 }
@@ -64,6 +71,7 @@ func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarker
 				}
 			}
 		}
+
 		if value.Kind() == reflect.Slice {
 			for i := 0; i < value.Len(); i++ {
 				validateStruct(value.Index(i).Interface(), typesMap, nil, errorList, fieldName+">"+value.Type().Name())
@@ -82,7 +90,9 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 			if !ok {
 				*errorList = append(*errorList, fmt.Errorf("%v: required marker needs to be a bool, check struct definition", fieldName))
 			}
+
 			boolIsRequired := bool(typedIsRequired)
+
 			if boolIsRequired {
 				*errorList = append(*errorList, fmt.Errorf("%v is required", fieldName))
 				return
@@ -98,6 +108,7 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 
 		markerValue := reflect.ValueOf(marker[0])
 		isok := markerValue.Type().ConvertibleTo(thisdef.Output)
+
 		if !isok {
 			*errorList = append(*errorList,
 				fmt.Errorf("%v - %v: this marker is of kind %v - cannot be converted to %v",
@@ -105,11 +116,13 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 					markerName,
 					markerValue.Type().Kind(),
 					thisdef.Output.Kind()))
+
 			continue
 		}
-		markerType := markerValue.Convert(thisdef.Output)
 
+		markerType := markerValue.Convert(thisdef.Output)
 		ddmarker, ok := markerType.Interface().(ddvalidation.DDValidationMarker)
+
 		if !ok {
 			*errorList = append(*errorList, fmt.Errorf("cannot convert %v to DDmarker, please check the interface definition", thisdef.Output))
 		} else if value.IsValid() {
@@ -123,19 +136,24 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 
 func getAllPackageTypes(packages []*k8sloader.Package) map[string]*k8smarkers.TypeInfo {
 	var typesMap = map[string]*k8smarkers.TypeInfo{}
+
 	for _, pkg := range packages {
 		var isEmpty bool = true
+
 		err := k8smarkers.EachType(col, pkg, func(info *k8smarkers.TypeInfo) {
 			isEmpty = false
 			typesMap[info.Name] = info
 		})
+
 		if err != nil {
 			fmt.Println(pkg, "marker loader:", err)
 		}
+
 		if isEmpty {
 			fmt.Printf("marker loader: package %s is not found or contains no structure\n", pkg)
 		}
 	}
+
 	return typesMap
 }
 
@@ -146,34 +164,9 @@ func printErrorList(errorList []error) {
 		fmt.Println("file is valid !")
 	default:
 		fmt.Println("errors found:")
+
 		for _, err := range errorList {
 			fmt.Println(err)
 		}
-	}
-}
-
-// printAllCollectedMarks lists all marks found in the loaded packages
-func printAllCollectedMarks() {
-	println("\nprintAllCollectedMarks")
-	for _, mark := range col.AllDefinitions() {
-		fmt.Println(mark.Name, mark.Target, mark.Output)
-	}
-}
-
-// printAllRecordedStructs lists all the structs listed in the package, with its corresponding markers
-func printAllRecordedStructs() {
-	println("\nprintAllRecordedStructs")
-	for _, pkg := range pkgs {
-		fmt.Println(pkg.PkgPath)
-		k8smarkers.EachType(col, pkg, func(info *k8smarkers.TypeInfo) {
-			fmt.Println("name:", info.Name)
-			for _, field := range info.Fields {
-				fmt.Println("	field:", field.Name, field.RawField.Type)
-				for name, marker := range field.Markers {
-					fmt.Println("		marker:", name, "=>", marker)
-				}
-			}
-			fmt.Println()
-		})
 	}
 }
