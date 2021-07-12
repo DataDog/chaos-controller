@@ -7,6 +7,8 @@ package validation
 
 import "reflect"
 
+// DDValidationMarker is the interface for Validation Markers, which apply rules to a given structure's field
 type DDValidationMarker interface {
+	// ApplyRule asserts the marker's rule is checked and returns an error if it isn't (invalidating the config)
 	ApplyRule(reflect.Value) error
 }

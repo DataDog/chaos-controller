@@ -23,15 +23,21 @@ func init() {
 	addDefinition(Required(true), k8smarkers.DescribesField)
 
 	addDefinition(ExclusiveFields(nil), k8smarkers.DescribesType)
-	addDefinition(RequiredFields(nil), k8smarkers.DescribesType)
 }
 
+// Maximum can applied to an int field and provides a (non-strict) maximum value for that field
 type Maximum int
+
+// Minimum can applied to an int field and provides a (non-strict) minimum value for that field
 type Minimum int
+
+// Enum can be applied to a string (or string-able) field and provides a restricted amount of possible values for that field
 type Enum []string
+
+// Required can be applied to any field, and asserts this field will return an error if not provided
 type Required bool
 
-type RequiredFields []string
+// ExclusiveFields can be applied to structs, and asserts that at most one of the given field names is not null
 type ExclusiveFields []string
 
 func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
@@ -93,22 +99,6 @@ func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
 	return fmt.Errorf("%v: field needs to be one of %v, currently \"%v\"", ruleName(e), e, fieldvalue)
 }
 
-func (r RequiredFields) ApplyRule(fieldvalue reflect.Value) error {
-	structMap, ok := structValueToMap(fieldvalue)
-	if !ok {
-		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(r), fieldvalue.Type(), "struct")
-	}
-
-	for _, fieldname := range r {
-		val := structMap[fieldname]
-		if val == nil {
-			return fmt.Errorf("%v: required fields: %v, currently at least %v is missing", ruleName(r), r, fieldname)
-		}
-	}
-
-	return nil
-}
-
 func (r Required) ApplyRule(fieldvalue reflect.Value) error {
 	if bool(r) && (!fieldvalue.IsValid() || fieldvalue.IsZero()) {
 		return fmt.Errorf("%v: field is required: currently %v", ruleName(r), "missing")
@@ -129,6 +119,7 @@ func Register(reg *k8smarkers.Registry) error {
 
 // HELPERS
 
+// addDefinition creates and adds a definition to the package's AllDefinition object, containing all markers definitions
 func addDefinition(obj interface{}, targetType k8smarkers.TargetType) {
 	name := rulePrefix + reflect.TypeOf(obj).Name()
 	def, err := k8smarkers.MakeDefinition(name, targetType, obj)
@@ -140,10 +131,12 @@ func addDefinition(obj interface{}, targetType k8smarkers.TargetType) {
 	AllDefinitions = append(AllDefinitions, def)
 }
 
+// ruleName takes a marker's object and returns its complete name
 func ruleName(i interface{}) string {
 	return fmt.Sprintf("%v%v", rulePrefix, reflect.TypeOf(i).Name())
 }
 
+// structValueToMap takes a struct value and turns it into a map, allowing more flexible field and value parsing
 func structValueToMap(value reflect.Value) (map[string]interface{}, bool) {
 	m := make(map[string]interface{})
 
@@ -164,6 +157,7 @@ func structValueToMap(value reflect.Value) (map[string]interface{}, bool) {
 	return m, (len(m) > 0)
 }
 
+// parstIntOrUInt allows to factorize rules for ints and uints -- will need to be replaced if large uints are expected
 func parseIntOrUInt(value reflect.Value) (int, bool) {
 	fieldInt, ok := value.Interface().(int) // convert from int
 	if !ok {                                // convert from uint
