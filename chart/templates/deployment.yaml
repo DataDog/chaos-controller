@@ -54,7 +54,11 @@ spec:
         {{- end }}
         - --injector-service-account={{ .Values.injector.serviceAccount }}
         - --injector-service-account-namespace={{ .Values.injector.serviceAccountNamespace }}
+        {{- if .Values.controller.webhook.generateCert }}
+        - --admission-webhook-cert-dir=/tmp/k8s-webhook-server/serving-certs
+        {{- else }}
         - --admission-webhook-cert-dir={{ .Values.controller.webhook.certDir }}
+        {{- end }}
         - --admission-webhook-host={{ .Values.controller.webhook.host }}
         - --admission-webhook-port={{ .Values.controller.webhook.port }}
         ports:
@@ -81,4 +85,4 @@ spec:
       - name: cert
         secret:
           defaultMode: 420
-          secretName: webhook-server-cert
+          secretName: chaos-controller-webhook-secret

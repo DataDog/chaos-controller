@@ -574,9 +574,9 @@ spec:
       - name: cert
         secret:
           defaultMode: 420
-          secretName: webhook-server-cert
+          secretName: chaos-controller-webhook-secret
 ---
-# Source: chaos-controller/templates/cert.yaml
+# Source: chaos-controller/templates/webhook.yaml
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
@@ -593,9 +593,9 @@ spec:
   issuerRef:
     kind: Issuer
     name: chaos-controller-selfsigned-issuer
-  secretName: webhook-server-cert
+  secretName: chaos-controller-webhook-secret
 ---
-# Source: chaos-controller/templates/cert.yaml
+# Source: chaos-controller/templates/webhook.yaml
 apiVersion: cert-manager.io/v1alpha2
 kind: Issuer
 metadata:

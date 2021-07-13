@@ -52,3 +52,21 @@ The admission webhook can be configured, which is mostly only useful if you do n
 --admission-webhook-host <ip to listen on>
 --admission-webhook-port <port to listen on>
 ```
+
+If you use Helm you can set the `controller.webhook.generateCert` parameter to `true` in the [values.yaml](../chart/values.yaml). Running the following from the `chart` directory will generate self-signed certificates and install the controller and any resources needed:
+
+```
+helm install -f values.yaml chaos-controller ./
+```
+
+### Setup in a cluster with Istio Service Mesh
+
+If you use a service mesh like Istio and the Istio sidecar is installed in application pods by default you may get the following error message:
+```
+Internal error occurred: failed calling webhook "chaos-controller-webhook-service.chaos-engineering.svc": Post "https://chaos-controller-webhook-service.chaos-engineering.svc:443/validate-chaos-datadoghq-com-v1beta1-disruption?timeout=30s": x509: certificate is not valid for any names, but wanted to match chaos-controller-webhook-service.chaos-engineering.svc
+```
+
+You can try disabling the Istio injection on the chaos controller pods. This can be done by adding the following annotation to the Deployment:
+```
+sidecar.istio.io/inject: "false"
+```
