@@ -113,6 +113,4 @@ var _ = Describe("Validation Rules Cases", func() {
 			Expect(excl.ApplyRule(ValueOf(fakeObj))).To(BeNil())
 		})
 	})
-
-	// TODO: add unit tests to all validation markers
 })

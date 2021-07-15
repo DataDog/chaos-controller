@@ -37,7 +37,7 @@ type Enum []string
 // Required can be applied to any field, and asserts this field will return an error if not provided
 type Required bool
 
-// ExclusiveFields can be applied to structs, and asserts that at most one of the given field names is not null
+// ExclusiveFields can be applied to structs, and asserts that at most one of the specified fields is set
 type ExclusiveFields []string
 
 func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
@@ -157,7 +157,7 @@ func structValueToMap(value reflect.Value) (map[string]interface{}, bool) {
 	return m, (len(m) > 0)
 }
 
-// parstIntOrUInt allows to factorize rules for ints and uints -- will need to be replaced if large uints are expected
+// parseIntOrUInt allows us to factorize rules for ints and uints -- this will need to be replaced if large uints are expected
 func parseIntOrUInt(value reflect.Value) (int, bool) {
 	fieldInt, ok := value.Interface().(int) // convert from int
 	if !ok {                                // convert from uint
