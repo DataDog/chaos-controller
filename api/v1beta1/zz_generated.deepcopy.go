@@ -316,6 +316,11 @@ func (in *NetworkDisruptionSpec) DeepCopyInto(out *NetworkDisruptionSpec) {
 		*out = make([]NetworkDisruptionHostSpec, len(*in))
 		copy(*out, *in)
 	}
+	if in.AllowedHosts != nil {
+		in, out := &in.AllowedHosts, &out.AllowedHosts
+		*out = make([]NetworkDisruptionHostSpec, len(*in))
+		copy(*out, *in)
+	}
 	if in.Services != nil {
 		in, out := &in.Services, &out.Services
 		*out = make([]NetworkDisruptionServiceSpec, len(*in))
