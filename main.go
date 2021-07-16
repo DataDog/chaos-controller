@@ -61,6 +61,7 @@ func main() {
 		injectorServiceAccount          string
 		injectorServiceAccountNamespace string
 		injectorImage                   string
+		handlerEnabled                  bool
 		handlerImage                    string
 		handlerTimeout                  time.Duration
 		imagePullSecrets                string
@@ -77,6 +78,7 @@ func main() {
 	pflag.StringVar(&injectorServiceAccount, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
 	pflag.StringVar(&injectorServiceAccountNamespace, "injector-service-account-namespace", "chaos-engineering", "Namespace of the service account to use for the generated injector pods. Should also host the controller.")
 	pflag.StringVar(&injectorImage, "injector-image", "chaos-injector", "Image to pull for the injector pods")
+	pflag.BoolVar(&handlerEnabled, "handler-enabled", false, "Enable the chaos handler for on-init disruptions")
 	pflag.StringVar(&handlerImage, "handler-image", "chaos-handler", "Image to pull for the handler containers")
 	pflag.DurationVar(&handlerTimeout, "handler-timeout", time.Minute, "Handler init container timeout")
 	pflag.StringVar(&imagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
@@ -148,7 +150,7 @@ func main() {
 	go r.ReportMetrics()
 
 	// register disruption validating webhook
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, deleteOnly); err != nil {
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, deleteOnly, handlerEnabled); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
 		os.Exit(1)
 	}
