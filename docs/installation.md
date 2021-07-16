@@ -69,4 +69,27 @@ Internal error occurred: failed calling webhook "chaos-controller-webhook-servic
 You can try disabling the Istio injection on the chaos controller pods. This can be done by adding the following annotation to the Deployment:
 ```
 sidecar.istio.io/inject: "false"
+
+### Handler
+
+The handler container is used to provide the `onInit` disruption feature. It is injected as the first init containers of the targeted pod by the admission webhook on its creation and keeps the pod in the initialization state until an injector unlocks it. It can be enabled with this flag.
+
+```
+--handler-enabled
+```
+
+#### Handler image
+
+The handler image can be specified via this flag.
+
+```
+--handler-image <image>
+```
+
+#### Handler timeout
+
+The handler container can have a timeout to avoid keeping the targeted pod indefinitely in case an error occurs with the injector.
+
+```
+--handler-timeout <duration>
 ```
