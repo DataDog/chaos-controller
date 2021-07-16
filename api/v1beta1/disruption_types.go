@@ -50,6 +50,8 @@ type DisruptionSpec struct {
 	// +nullable
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
 	// +nullable
+	PodFailure *PodFailureSpec `json:"podFailure,omitempty"`
+	// +nullable
 	CPUPressure *CPUPressureSpec `json:"cpuPressure,omitempty"`
 	// +nullable
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
@@ -140,14 +142,16 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		s.CPUPressure == nil &&
 		s.Network == nil &&
 		s.NodeFailure == nil &&
+		s.PodFailure == nil &&
 		s.DiskPressure == nil {
-		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, CPUPressure fields is needed")
+		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, PodFailure, CPUPressure fields is needed")
 	}
 
 	// Rule: on init compatibility
 	if s.OnInit {
 		if s.CPUPressure != nil ||
 			s.NodeFailure != nil ||
+			s.PodFailure != nil ||
 			s.DiskPressure != nil {
 			return errors.New("OnInit is only compatible with network and dns disruptions")
 		}
@@ -176,6 +180,8 @@ func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName
 	switch kind {
 	case chaostypes.DisruptionKindNodeFailure:
 		disruptionKind = s.NodeFailure
+	case chaostypes.DisruptionKindPodFailure:
+		disruptionKind = s.PodFailure
 	case chaostypes.DisruptionKindNetworkDisruption:
 		disruptionKind = s.Network
 	case chaostypes.DisruptionKindDNSDisruption:

@@ -26,6 +26,8 @@ const (
 	DisruptionKindNetworkDisruption = "network-disruption"
 	// DisruptionKindNodeFailure is a node failure disruption
 	DisruptionKindNodeFailure = "node-failure"
+	// DisruptionKindPodFailure is a pod failure disruption
+	DisruptionKindPodFailure = "pod-failure"
 	// DisruptionKindCPUPressure is a CPU pressure disruption
 	DisruptionKindCPUPressure = "cpu-pressure"
 	// DisruptionKindDiskPressure is a disk pressure disruption

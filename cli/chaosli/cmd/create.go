@@ -185,6 +185,21 @@ Select one for more information on it.`
 
 				continue
 			}
+		case "pod failure":
+			spec.PodFailure = getPodFailure()
+
+			if spec.PodFailure == nil {
+				continue
+			}
+
+			err := spec.PodFailure.Validate()
+			if err != nil {
+				fmt.Printf("There were some problems with your pod failure disruption's spec: %v\n\n", err)
+
+				spec.PodFailure = nil
+
+				continue
+			}
 		}
 
 		i := indexOfString(kinds, response)
@@ -387,6 +402,18 @@ func getNodeFailure() *v1beta1.NodeFailureSpec {
 	spec := &v1beta1.NodeFailureSpec{}
 	spec.Shutdown = confirmOption("Would you like to shutdown the node permanently?",
 		"Choosing yes will terminate the VM completely. If you don't enable this, we will just restart the target node.")
+
+	return spec
+}
+
+func getPodFailure() *v1beta1.PodFailureSpec {
+	if !confirmKind("Pod Failure", "This will either kill (SIGKILL) or interrupt (SIGINT) the targeted pod's container(s)") {
+		return nil
+	}
+
+	spec := &v1beta1.PodFailureSpec{}
+	spec.Kill = confirmOption("Would you like to kill the pod's containers?",
+		"Choosing yes will kill the pod's containers. If you don't enable this, we will just interrupt the target containers.")
 
 	return spec
 }

@@ -132,6 +132,9 @@ var _ = Describe("Disruption Controller", func() {
 				NodeFailure: &chaosv1beta1.NodeFailureSpec{
 					Shutdown: false,
 				},
+				PodFailure: &chaosv1beta1.PodFailureSpec{
+					Kill: false,
+				},
 				Network: &chaosv1beta1.NetworkDisruptionSpec{
 					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
 						{

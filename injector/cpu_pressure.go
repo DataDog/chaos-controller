@@ -43,7 +43,7 @@ func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInje
 
 	// create process manager
 	if config.ProcessManager == nil {
-		config.ProcessManager = process.NewManager()
+		config.ProcessManager = process.NewManager(config.DryRun)
 	}
 
 	return cpuPressureInjector{

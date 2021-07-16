@@ -5,8 +5,12 @@
 
 package process
 
-// Manager manages the current process
+import "os"
+
+// Manager manages a process
 type Manager interface {
 	Prioritize() error
 	ThreadID() int
+	Find(pid int) (*os.Process, error)
+	Signal(process *os.Process, signal os.Signal) error
 }

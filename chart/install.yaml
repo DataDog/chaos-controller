@@ -208,6 +208,13 @@ spec:
                 shutdown:
                   type: boolean
               type: object
+            podFailure:
+              description: PodFailureSpec represents a pod failure injection
+              nullable: true
+              properties:
+                kill:
+                  type: boolean
+              type: object
             onInit:
               type: boolean
             selector:

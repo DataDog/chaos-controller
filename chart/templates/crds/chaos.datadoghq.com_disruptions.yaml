@@ -182,6 +182,13 @@ spec:
               type: object
             onInit:
               type: boolean
+            podFailure:
+              description: PodFailureSpec represents a pod failure injection
+              nullable: true
+              properties:
+                kill:
+                  type: boolean
+              type: object
             selector:
               additionalProperties:
                 type: string

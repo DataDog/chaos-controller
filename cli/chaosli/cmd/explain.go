@@ -59,6 +59,22 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 	printSeparator()
 }
 
+func explainPodFailure(spec v1beta1.DisruptionSpec) {
+	podFailure := spec.PodFailure
+
+	if podFailure == nil {
+		return
+	}
+
+	if podFailure.Kill {
+		fmt.Println("💉 injects a pod failure which sends the SIGKILL signal to the pod's container(s).")
+	} else {
+		fmt.Println("💉 injects a pod failure which sends the SIGINT signal to the pod's container(s).")
+	}
+
+	printSeparator()
+}
+
 func explainNodeFailure(spec v1beta1.DisruptionSpec) {
 	nodeFailure := spec.NodeFailure
 
