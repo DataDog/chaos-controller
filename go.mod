@@ -8,6 +8,7 @@ require (
 	github.com/Microsoft/hcsshim v0.8.9 // indirect
 	github.com/Microsoft/hcsshim/test v0.0.0-20200818230740-94556e86d3db // indirect
 	github.com/avast/retry-go v2.6.0+incompatible
+	github.com/briandowns/spinner v1.16.0
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/containerd/cgroups v0.0.0-20200817152742-7a3c009711fb // indirect
 	github.com/containerd/containerd v1.4.0

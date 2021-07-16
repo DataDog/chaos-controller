@@ -51,6 +51,7 @@ func init() {
 	rootCmd.AddCommand(createCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(explainCmd)
+	rootCmd.AddCommand(contextCmd)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.chaosli.yaml)")
 
@@ -116,4 +117,8 @@ func validatePath(filePath string) error {
 	}
 
 	return nil
+}
+
+func PrintSeparator() {
+	fmt.Println("=======================================================================================================================================")
 }

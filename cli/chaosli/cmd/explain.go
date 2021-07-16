@@ -19,12 +19,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func printSeparator() {
-	fmt.Println("=======================================================================================================================================")
-}
-
 func explainMetaSpec(spec v1beta1.DisruptionSpec) {
-	printSeparator()
+	PrintSeparator()
 	fmt.Println("🧰 has the following metadata  ...")
 
 	if spec.DryRun {
@@ -56,7 +52,7 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 	}
 
 	fmt.Printf("\tℹ️  is going to target %s %s(s) (either described as a percentage of total %ss or actual number of them).\n", spec.Count, spec.Level, spec.Level)
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainNodeFailure(spec v1beta1.DisruptionSpec) {
@@ -72,7 +68,7 @@ func explainNodeFailure(spec v1beta1.DisruptionSpec) {
 		fmt.Println("💉 injects a node failure which triggers a kernel panic on the node.")
 	}
 
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainCPUPressure(spec v1beta1.DisruptionSpec) {
@@ -83,7 +79,7 @@ func explainCPUPressure(spec v1beta1.DisruptionSpec) {
 	}
 
 	fmt.Println("💉 injects a cpu pressure disruption ...")
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainDiskPressure(spec v1beta1.DisruptionSpec) {
@@ -111,7 +107,7 @@ func explainDiskPressure(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t📝 %d write bytes per second\n", *diskPressure.Throttling.WriteBytesPerSec)
 	}
 
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainDNS(spec v1beta1.DisruptionSpec) {
@@ -130,7 +126,7 @@ func explainDNS(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t\t🥷🏿  will be spoofed with %s\n", data.Record.Value)
 	}
 
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
@@ -201,7 +197,7 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t💣 applies a bandwidth limit of %d ms.\n", network.BandwidthLimit)
 	}
 
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainMultiDisruption(spec v1beta1.DisruptionSpec) {
@@ -225,7 +221,7 @@ func explainMultiDisruption(spec v1beta1.DisruptionSpec) {
 	}
 
 	if existsMulti {
-		printSeparator()
+		PrintSeparator()
 	}
 }
 
