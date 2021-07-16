@@ -18,5 +18,5 @@ It also allows us to define custom rules to apply to our structures, and focus t
 * Define new rules/read the existing rules within the ddmark/validation/validation.go file
 * Add the appropriate rules to the appropriate struct fields in the package you wish to add validation to (care for type checking - eg. Maximum rule can only be applied to int/uint fields)
 * Make sure to use the format `// +ddmark:validation:<rulename>=<value>`
-* Call the `ValidateStruc` function, with the unmarshalled struct, the file path and the full path of the packages containing the included structs definition (with markers embedded). Check `cli/chaosli/cmd/validate.go` for a functionning example.
+* Call the `ValidateStruct` function, with the unmarshalled struct, the file path and the full path of the packages containing the included structs definition (with markers embedded). Check `cli/chaosli/cmd/validate.go` for a functionning example.
 

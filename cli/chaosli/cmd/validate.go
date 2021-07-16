@@ -36,9 +36,11 @@ func ValidateDisruption(path string) error {
 		return fmt.Errorf("%v: %v", path, err)
 	}
 
-	ddmark.ValidateStruct(marshalledStruct, path,
+	errorList := ddmark.ValidateStruct(marshalledStruct, path,
 		"github.com/DataDog/chaos-controller/api/v1beta1",
 	)
+
+	ddmark.PrintErrorList(errorList)
 
 	// disruption, err := DisruptionFromFile(path)
 	// if err != nil {

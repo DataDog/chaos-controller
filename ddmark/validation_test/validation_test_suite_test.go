@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
-package ddmark_test
+package validation_test
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDdmark(t *testing.T) {
+func TestValidationTest(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "DDmark Suite")
+	RunSpecs(t, "ValidationTest Suite")
 }

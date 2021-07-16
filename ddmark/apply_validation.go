@@ -14,53 +14,53 @@ import (
 	k8smarkers "sigs.k8s.io/controller-tools/pkg/markers"
 )
 
-var pkgs []*k8sloader.Package
-var col *k8smarkers.Collector
-var reg *k8smarkers.Registry
-
-func init() {
-	col = &k8smarkers.Collector{}
-	reg = &k8smarkers.Registry{}
+func InitializeMarkers() *k8smarkers.Collector {
+	col := &k8smarkers.Collector{}
+	reg := &k8smarkers.Registry{}
 
 	// takes all the markers definition found in the ddmark/validation package, prior to analyzing the packages
 	err := ddvalidation.Register(reg)
 	if err != nil {
 		fmt.Printf("\nerror loading markers from crd validation: %v", err)
-		return
+		return col
 	}
 
 	col.Registry = reg
+	return col
 }
 
 // ValidateStruct applies struct markers found in structPkgs struct definitions to a marshalledStruct object.
 // It allows to enforce markers rule onto that object, according to the constraints defined in structPkgs
-func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) {
+func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error {
+	col := InitializeMarkers()
+
 	var err error
+	var errorList []error = make([]error, 0)
+	var pkgs []*k8sloader.Package
+
 	pkgs, err = k8sloader.LoadRoots(structPkgs...)
 
 	if err != nil {
-		fmt.Printf("error loading markers from crd validation: \n\t%v", err)
-		return
+		return append(errorList, fmt.Errorf("error loading markers from crd validation: \n\t%v", err))
 	}
 
-	var errorList []error = make([]error, 0)
-
-	typesMap := getAllPackageTypes(pkgs)
+	typesMap := getAllPackageTypes(pkgs, col)
 	if len(typesMap) == 0 {
 		errorList = append(errorList, fmt.Errorf("%v: loaded classes are empty or not found", filePath))
 	}
 
-	validateStruct(marshalledStruct, typesMap, nil, &errorList, filePath)
-	printErrorList(errorList)
+	validateStruct(marshalledStruct, typesMap, nil, &errorList, filePath, col)
+	// printErrorList(errorList)
+	return errorList
 }
 
 // validateStruct is an internal recursive function that recursively applies markers rules to types and fields
-func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarkers.TypeInfo, markerValues k8smarkers.MarkerValues, errorList *[]error, fieldName string) {
+func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarkers.TypeInfo, markerValues k8smarkers.MarkerValues, errorList *[]error, fieldName string, col *k8smarkers.Collector) {
 	value := reflect.Indirect(reflect.ValueOf(marshalledStruct)) // dereferences pointer value if there is one
 	if value.IsValid() && !value.IsZero() {
 		markerType := typesMap[value.Type().Name()]
 		if markerType != nil {
-			applyMarkers(value, markerType.Markers, errorList, fieldName, k8smarkers.DescribesType)
+			applyMarkers(value, markerType.Markers, errorList, fieldName, k8smarkers.DescribesType, col)
 
 			// apply markers to each fields
 			for _, field := range markerType.Fields {
@@ -71,6 +71,7 @@ func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarker
 						field.Markers,
 						errorList,
 						fieldName+">"+field.Name,
+						col,
 					)
 				}
 			}
@@ -78,16 +79,16 @@ func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarker
 
 		if value.Kind() == reflect.Slice || value.Kind() == reflect.Array {
 			for i := 0; i < value.Len(); i++ {
-				validateStruct(value.Index(i).Interface(), typesMap, nil, errorList, fieldName+">"+value.Type().Name())
+				validateStruct(value.Index(i).Interface(), typesMap, nil, errorList, fieldName+">"+value.Type().Name(), col)
 			}
 		}
 	}
 
-	applyMarkers(value, markerValues, errorList, fieldName, k8smarkers.DescribesField)
+	applyMarkers(value, markerValues, errorList, fieldName, k8smarkers.DescribesField, col)
 }
 
 // applyMarkers applies all markers found in the markers arg to a given type/field
-func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorList *[]error, fieldName string, targetType k8smarkers.TargetType) {
+func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorList *[]error, fieldName string, targetType k8smarkers.TargetType, col *k8smarkers.Collector) {
 	if !value.IsValid() {
 		isRequired := markers.Get("ddmark:validation:Required")
 		if isRequired != nil {
@@ -140,7 +141,7 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 }
 
 // getAllPackageTypes extracts all marker rules found in packages and keeps them in a map, ordered by type names
-func getAllPackageTypes(packages []*k8sloader.Package) map[string]*k8smarkers.TypeInfo {
+func getAllPackageTypes(packages []*k8sloader.Package, col *k8smarkers.Collector) map[string]*k8smarkers.TypeInfo {
 	var typesMap = map[string]*k8smarkers.TypeInfo{}
 
 	for _, pkg := range packages {
@@ -166,7 +167,7 @@ func getAllPackageTypes(packages []*k8sloader.Package) map[string]*k8smarkers.Ty
 // HELPERS
 
 // printErrorList prints the list of errors returned by the markers validation process
-func printErrorList(errorList []error) {
+func PrintErrorList(errorList []error) {
 	switch a := len(errorList); {
 	case a == 0:
 		fmt.Println("file is valid !")
