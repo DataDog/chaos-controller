@@ -143,7 +143,7 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 // NetworkDisruptionHostSpecFromString parses the given hosts to host specs
 // The expected format for hosts is <host>;<port>;<protocol>
 func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHostSpec, error) {
-	var parsedHosts []NetworkDisruptionHostSpec
+	parsedHosts := []NetworkDisruptionHostSpec{}
 
 	// parse given hosts
 	for _, host := range hosts {
@@ -170,7 +170,7 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 // NetworkDisruptionServiceSpecFromString parses the given services to service specs
 // The expected format for services is <serviceName>;<serviceNamespace>
 func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisruptionServiceSpec, error) {
-	var parsedServices []NetworkDisruptionServiceSpec
+	parsedServices := []NetworkDisruptionServiceSpec{}
 
 	// parse given services
 	for _, service := range services {

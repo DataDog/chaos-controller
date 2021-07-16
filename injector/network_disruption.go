@@ -23,12 +23,6 @@ import (
 // linkOperation represents a tc operation on a set of network interfaces combined with the parent to bind to and the handle identifier to use
 type linkOperation func([]string, string, uint32) error
 
-type ipPortProtocol struct {
-	IP       *net.IPNet
-	Port     int
-	Protocol string
-}
-
 // networkDisruptionService describes a parsed Kubernetes service, representing an (ip, port, protocol) tuple
 type networkDisruptionService struct {
 	ip       *net.IPNet
@@ -415,8 +409,10 @@ func (i *networkDisruptionInjector) addFiltersForServices(interfaces []string, f
 
 	for _, service := range services {
 		// handle flow direction
-		var srcPort, dstPort int
-		var srcIP, dstIP *net.IPNet
+		var (
+			srcPort, dstPort int
+			srcIP, dstIP     *net.IPNet
+		)
 
 		switch i.spec.Flow {
 		case v1beta1.FlowEgress:
@@ -447,8 +443,10 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 
 		for _, ip := range ips {
 			// handle flow direction
-			var srcPort, dstPort int
-			var srcIP, dstIP *net.IPNet
+			var (
+				srcPort, dstPort int
+				srcIP, dstIP     *net.IPNet
+			)
 
 			switch i.spec.Flow {
 			case v1beta1.FlowEgress:
