@@ -83,7 +83,6 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 	targetsShow := []string{}
 	targetsAll := []string{}
 	targetsSplit := strings.Split(string(targets), "\n")
-
 	for i := 0; i < len(targetsSplit); i++ {
 
 		if len(targetsShow) < MAXTARGETSHOW {
@@ -155,7 +154,6 @@ func grabDataForTargets(targets []string, disruption v1beta1.Disruption) ([]v1.P
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not grab target data: %v", err)
 		}
-
 		if level == types.DisruptionLevelPod {
 
 			if err := json.Unmarshal(targetData, &pod); err != nil {
@@ -164,7 +162,6 @@ func grabDataForTargets(targets []string, disruption v1beta1.Disruption) ([]v1.P
 
 			pods = append(pods, pod)
 		} else {
-
 			if err := json.Unmarshal(targetData, &node); err != nil {
 				return nil, nil, fmt.Errorf("json encoding failed: %v", err)
 			}
@@ -191,13 +188,14 @@ func printContainerStatus(targetInfo []v1.Pod) {
 
 		for j := 0; j < len(pod.Status.ContainerStatuses); j++ {
 			totalContainers++
+
 			containerStatus := pod.Status.ContainerStatuses[j]
 			info += "\t\t🤓 Container Name: " + containerStatus.Name + "\n" +
 				"\t\t⭕️ Ready Status: " + strconv.FormatBool(containerStatus.Ready) + "\n"
 
 			state := containerStatus.State
 
-			switch true {
+			switch {
 			case state.Running != nil:
 				info += "\t\t📝 State: Running\n\n"
 				percentCollect["Running"] += 1.0
@@ -220,6 +218,7 @@ func printContainerStatus(targetInfo []v1.Pod) {
 	}
 
 	PrintSeparator()
+
 	percentInfo := "Lets look at the overall status of your targeted pod's containers...\n"
 
 	for key, value := range percentCollect {
@@ -233,6 +232,7 @@ func printContainerStatus(targetInfo []v1.Pod) {
 
 			continue
 		}
+
 		percentInfo += "\tState:                 " + key + "\n" +
 			"\tPercent:               " + fmt.Sprint(math.Round(roundedValue*100)/100) + "%\n\n"
 	}
