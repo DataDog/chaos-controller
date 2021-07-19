@@ -36,6 +36,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 
 	s := spinner.New(spinner.CharSets[38], 100*time.Millisecond)
 	s.Start()
+
 	size, err := getTargetSize(disruption)
 
 	if err != nil {
@@ -43,7 +44,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 	}
 
 	// Remove header NAME from consideration
-	size = size - 1
+	size--
 	// If the size is 0, first check if changing the level will do anything, otherwise
 	// mention to the user that the labels they are using won't target anything
 
@@ -66,6 +67,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 		if size > 0 {
 			errorString = fmt.Sprintf("\nWe noticed that your target size is 0 for level %s given your label selectors. We checked to see if the %s level would give you results and we found %d %ss. Is this the level you wanted to use?", level, newLevel, size, newLevel)
 		}
+
 		return nil, fmt.Errorf(errorString)
 	}
 
@@ -83,16 +85,20 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 	targetsSplit := strings.Split(string(targets), "\n")
 
 	for i := 0; i < len(targetsSplit); i++ {
+
 		if len(targetsShow) < MAXTARGETSHOW {
 			targetsShow = append(targetsShow, targetsSplit[i])
 		}
+
 		if targetsSplit[i] == "NAME" || targetsSplit[i] == "" {
 			continue
 		}
+
 		targetsAll = append(targetsAll, targetsSplit[i])
 	}
 
 	fmt.Printf("\n🎯 There are %d %ss that will be targeted\n", size, level)
+
 	if size >= MAXTARGETSHOW {
 		fmt.Println("📝 Here are a small set of those targets:")
 	}
@@ -120,6 +126,7 @@ func getTargetSize(disruption v1beta1.Disruption) (int, error) {
 	if err != nil {
 		return -1, fmt.Errorf("could not count the number of targets correlating to target selector: %v", err)
 	}
+
 	size, err := strconv.Atoi(strings.Trim(string(sizeString), "\n"))
 
 	if err != nil {
@@ -150,17 +157,21 @@ func grabDataForTargets(targets []string, disruption v1beta1.Disruption) ([]v1.P
 		}
 
 		if level == types.DisruptionLevelPod {
+
 			if err := json.Unmarshal(targetData, &pod); err != nil {
 				return nil, nil, fmt.Errorf("json encoding failed: %v", err)
 			}
+
 			pods = append(pods, pod)
 		} else {
+
 			if err := json.Unmarshal(targetData, &node); err != nil {
 				return nil, nil, fmt.Errorf("json encoding failed: %v", err)
 			}
 			nodes = append(nodes, node)
 		}
 	}
+
 	s.Stop()
 
 	return pods, nodes, nil
@@ -171,24 +182,29 @@ func printContainerStatus(targetInfo []v1.Pod) {
 
 	fmt.Println("\nLets take" +
 		" a look at the status of your Targeted Pod Containers...")
+
 	totalContainers := 0
+
 	for i := 0; i < len(targetInfo); i++ {
 		pod := targetInfo[i]
 		info := "\t🥸  Pod Name: " + pod.Name + "\n"
 
 		for j := 0; j < len(pod.Status.ContainerStatuses); j++ {
-			totalContainers += 1
+			totalContainers++
 			containerStatus := pod.Status.ContainerStatuses[j]
 			info += "\t\t🤓 Container Name: " + containerStatus.Name + "\n" +
 				"\t\t⭕️ Ready Status: " + strconv.FormatBool(containerStatus.Ready) + "\n"
 
-			if containerStatus.State.Running != nil {
+			state := containerStatus.State
+
+			switch true {
+			case state.Running != nil:
 				info += "\t\t📝 State: Running\n\n"
 				percentCollect["Running"] += 1.0
-			} else if containerStatus.State.Waiting != nil {
+			case state.Waiting != nil:
 				info += "\t\t📝 State: Waiting\n\n"
 				percentCollect["Waiting"] += 1.0
-			} else if containerStatus.State.Terminated != nil {
+			case state.Terminated != nil:
 				info += "\t\t📝 State: Terminated\n\n"
 				percentCollect["Terminated"] += 1.0
 			}
@@ -214,11 +230,13 @@ func printContainerStatus(targetInfo []v1.Pod) {
 				"\tPercent:               " + fmt.Sprint(math.Round(roundedValue*100)/100) + "%\n\n"
 			percentInfo += "\tState:                 " + "Not Ready" + "\n" +
 				"\tPercent:               " + fmt.Sprint(100.00-math.Round(roundedValue*100)/100) + "%\n\n"
+
 			continue
 		}
 		percentInfo += "\tState:                 " + key + "\n" +
 			"\tPercent:               " + fmt.Sprint(math.Round(roundedValue*100)/100) + "%\n\n"
 	}
+
 	fmt.Println(percentInfo)
 }
 
@@ -262,6 +280,7 @@ func printPodStatus(targetsInfo []v1.Pod) {
 		percentInfo += "\tCondition Type/Status: " + key + "\n" +
 			"\tPercent:               " + fmt.Sprint(math.Round(roundedValue*100)/100) + "%\n\n"
 	}
+
 	fmt.Println(percentInfo)
 
 	PrintSeparator()
@@ -299,6 +318,7 @@ func printNodeStatus(targetsInfo []v1.Node) {
 	PrintSeparator()
 
 	percentInfo := "Lets look at the overall status...\n"
+
 	for key, value := range percentCollectCondition {
 		roundedValue := value * 100.00
 		percentInfo += "\tCondition Type/Status: " + key + "\n" +
@@ -354,7 +374,6 @@ func contextualize(path string) {
 	} else {
 		printNodeStatus(nodesData)
 	}
-
 }
 
 func init() {

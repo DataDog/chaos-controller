@@ -128,6 +128,7 @@ func ReadUnmarshallValidate(path string) (v1beta1.Disruption) {
 
 	parsedSpec := v1beta1.Disruption{}
 	err = goyaml.Unmarshal(yamlBytes, &parsedSpec)
+
 	if err != nil {
 		log.Fatalf("unmarshal: %v", err)
 	}

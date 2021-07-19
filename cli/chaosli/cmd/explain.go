@@ -236,6 +236,7 @@ var explainCmd = &cobra.Command{
 
 func explanation(path string) {
 	disruption := ReadUnmarshallValidate(path)
+
 	fmt.Println("This Disruption...")
 
 	explainMetaSpec(disruption.Spec)
