@@ -5,6 +5,7 @@
 
 package validation
 
+// This struct cannot be within the validation_test package in order to be properly loaded by the loader package, inherent to the markers
 type Teststruct struct {
 	MinMaxTest          MinMaxTestStruct
 	RequiredTest        RequiredTestStruct

@@ -114,7 +114,6 @@ enumtest:
 		})
 	})
 
-	//FIXME: ExclusiveFields Test
 	Context("ExclusiveFields Marker", func() {
 		It("rejects invalid values", func() {
 			var exclusivefieldsInvalidYaml = `
