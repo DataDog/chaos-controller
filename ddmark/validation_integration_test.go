@@ -3,11 +3,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
-package validation_test
+package ddmark_test
 
 import (
 	"github.com/DataDog/chaos-controller/ddmark"
-	ddvalidation "github.com/DataDog/chaos-controller/ddmark/validation"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	k8syaml "sigs.k8s.io/yaml"
@@ -141,12 +140,12 @@ exclusivefieldstest:
 })
 
 // unmarshall a file into a TestStruct
-func testStructFromYaml(yamlBytes []byte) (ddvalidation.Teststruct, error) {
-	parsedSpec := ddvalidation.Teststruct{}
+func testStructFromYaml(yamlBytes []byte) (ddmark.Teststruct, error) {
+	parsedSpec := ddmark.Teststruct{}
 	err := k8syaml.UnmarshalStrict(yamlBytes, &parsedSpec)
 
 	if err != nil {
-		return ddvalidation.Teststruct{}, err
+		return ddmark.Teststruct{}, err
 	}
 
 	return parsedSpec, nil
@@ -155,7 +154,7 @@ func testStructFromYaml(yamlBytes []byte) (ddvalidation.Teststruct, error) {
 func validateString(yamlStr string) []error {
 	marshalledStruct, err := testStructFromYaml([]byte(yamlStr))
 	errorList := ddmark.ValidateStruct(marshalledStruct, "test_suite",
-		"github.com/DataDog/chaos-controller/ddmark/validation",
+		"github.com/DataDog/chaos-controller/ddmark",
 	)
 	if err != nil {
 		errorList = append(errorList, err)

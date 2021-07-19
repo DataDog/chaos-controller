@@ -3,13 +3,13 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
-package validation_test
+package ddmark_test
 
 import (
 	"math/rand"
 	. "reflect"
 
-	. "github.com/DataDog/chaos-controller/ddmark/validation"
+	. "github.com/DataDog/chaos-controller/ddmark"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -17,8 +17,13 @@ import (
 var _ = Describe("Validation Rules Cases", func() {
 
 	Context("Maximum test", func() {
-		maxInt := rand.Intn(1000)
-		max := Maximum(maxInt)
+		var maxInt int
+		var max Maximum
+
+		BeforeEach(func() {
+			maxInt = rand.Intn(1000)
+			max = Maximum(maxInt)
+		})
 
 		It("rejects superior values", func() {
 			Expect(max.ApplyRule(ValueOf(maxInt + 1))).ToNot(BeNil())
@@ -32,8 +37,14 @@ var _ = Describe("Validation Rules Cases", func() {
 	})
 
 	Context("Minimum test", func() {
-		minInt := rand.Intn(1000)
-		min := Minimum(minInt)
+		var minInt int
+		var min Minimum
+
+		BeforeEach(func() {
+			minInt = rand.Intn(1000)
+			min = Minimum(minInt)
+		})
+
 		It("accepts superior value", func() {
 			Expect(min.ApplyRule(ValueOf(minInt + 1))).To(BeNil())
 		})
@@ -73,8 +84,8 @@ var _ = Describe("Validation Rules Cases", func() {
 	})
 
 	Context("Required test", func() {
-		trueRequired := Required(true)
-		falseRequired := Required(false)
+		const trueRequired Required = Required(true)
+		const falseRequired Required = Required(false)
 
 		It("true errors given nil", func() {
 			Expect(trueRequired.ApplyRule(ValueOf(nil))).ToNot(BeNil())
@@ -95,19 +106,23 @@ var _ = Describe("Validation Rules Cases", func() {
 	})
 
 	Context("ExclusiveFields test", func() {
-		arr := []string{"Field1", "Field2", "Field3"}
-
-		excl := ExclusiveFields(arr)
-
-		fakeObj := struct {
+		type dummyStruct struct {
 			Field1 string
 			Field2 int
 			Field3 int
-		}{
-			Field1: "a",
-			Field2: 2,
-			Field3: 3,
 		}
+
+		arr := []string{"Field1", "Field2", "Field3"}
+		excl := ExclusiveFields(arr)
+		var fakeObj dummyStruct
+
+		BeforeEach(func() {
+			fakeObj = dummyStruct{
+				Field1: "a",
+				Field2: 2,
+				Field3: 3,
+			}
+		})
 
 		It("rejects object with 3+ fields", func() {
 			Expect(excl.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())

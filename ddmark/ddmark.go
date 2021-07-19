@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"reflect"
 
-	ddvalidation "github.com/DataDog/chaos-controller/ddmark/validation"
 	k8sloader "sigs.k8s.io/controller-tools/pkg/loader"
 	k8smarkers "sigs.k8s.io/controller-tools/pkg/markers"
 )
@@ -19,7 +18,7 @@ func InitializeMarkers() *k8smarkers.Collector {
 	reg := &k8smarkers.Registry{}
 
 	// takes all the markers definition found in the ddmark/validation package, prior to analyzing the packages
-	err := ddvalidation.Register(reg)
+	err := Register(reg)
 	if err != nil {
 		fmt.Printf("\nerror loading markers from crd validation: %v", err)
 		return col
@@ -95,7 +94,7 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 	if !value.IsValid() {
 		isRequired := markers.Get("ddmark:validation:Required")
 		if isRequired != nil {
-			typedIsRequired, ok := isRequired.(ddvalidation.Required)
+			typedIsRequired, ok := isRequired.(Required)
 			if !ok {
 				*errorList = append(*errorList, fmt.Errorf("%v: required marker needs to be a bool, check struct definition", fieldName))
 			}
@@ -131,7 +130,7 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 			}
 
 			markerType := markerValue.Convert(thisdef.Output)
-			ddmarker, ok := markerType.Interface().(ddvalidation.DDValidationMarker)
+			ddmarker, ok := markerType.Interface().(DDValidationMarker)
 
 			if !ok {
 				*errorList = append(*errorList, fmt.Errorf("cannot convert %v to DDmarker, please check the interface definition", thisdef.Output))
