@@ -83,6 +83,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 	targetsShow := []string{}
 	targetsAll := []string{}
 	targetsSplit := strings.Split(string(targets), "\n")
+
 	for i := 0; i < len(targetsSplit); i++ {
 		if len(targetsShow) < MAXTARGETSHOW {
 			targetsShow = append(targetsShow, targetsSplit[i])
@@ -153,6 +154,7 @@ func grabDataForTargets(targets []string, disruption v1beta1.Disruption) ([]v1.P
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not grab target data: %v", err)
 		}
+		
 		if level == types.DisruptionLevelPod {
 			if err := json.Unmarshal(targetData, &pod); err != nil {
 				return nil, nil, fmt.Errorf("json encoding failed: %v", err)
@@ -300,7 +302,7 @@ func printNodeStatus(targetsInfo []v1.Node) {
 			info += "\t\t⭕️ Type: " + string(address.Type) + "\n" +
 				"\t\tℹ️  Address: " + address.Address + "\n"
 		}
-		
+
 		info += "\t📜 Node Conditions:\n"
 
 		for _, status := range node.Status.Conditions {
