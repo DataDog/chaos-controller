@@ -32,7 +32,7 @@ type Maximum int
 type Minimum int
 
 // Enum can be applied to a string (or string-able) field and provides a restricted amount of possible values for that field
-type Enum []string
+type Enum []interface{}
 
 // Required can be applied to any field, and asserts this field will return an error if not provided
 type Required bool
@@ -88,10 +88,10 @@ func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
 }
 
 func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
-	fieldString := fieldvalue.String()
+	fieldInterface := fieldvalue.Interface()
 
-	for _, str := range e {
-		if fieldString == str || fieldString == "" {
+	for _, markerInterface := range e {
+		if fieldInterface == markerInterface || fieldInterface == nil {
 			return nil
 		}
 	}
