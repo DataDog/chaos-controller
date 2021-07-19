@@ -20,6 +20,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -243,6 +244,11 @@ func (in *DisruptionStatus) DeepCopyInto(out *DisruptionStatus) {
 		in, out := &in.IgnoredTargets, &out.IgnoredTargets
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
+	if in.UserInfo != nil {
+		in, out := &in.UserInfo, &out.UserInfo
+		*out = new(v1.UserInfo)
+		(*in).DeepCopyInto(*out)
 	}
 }
 
