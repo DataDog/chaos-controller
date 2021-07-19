@@ -91,6 +91,12 @@ func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
 	fieldInterface := fieldvalue.Interface()
 
 	for _, markerInterface := range e {
+		if reflect.ValueOf(markerInterface).Type().ConvertibleTo(fieldvalue.Type()) {
+			markerInterface = reflect.ValueOf(markerInterface).Convert(fieldvalue.Type()).Interface()
+		} else {
+			return fmt.Errorf("%v: Type Error - field needs to be one of %v, currently \"%v\"", ruleName(e), e, fieldvalue)
+		}
+
 		if fieldInterface == markerInterface || fieldInterface == nil {
 			return nil
 		}
