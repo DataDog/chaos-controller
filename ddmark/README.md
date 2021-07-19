@@ -20,3 +20,8 @@ It also allows us to define custom rules to apply to our structures, and focus t
 * Make sure to use the format `// +ddmark:validation:<rulename>=<value>`
 * Call the `ValidateStruct` function, with the unmarshalled struct, the file path and the full path of the packages containing the included structs definition (with markers embedded). Check `cli/chaosli/cmd/validate.go` for a functionning example.
 
+## To Do
+- [ ] Add formal documentation on each existing marker: 
+    - [ ] specs
+    - [ ] expected behavior
+    - [ ] usage example
