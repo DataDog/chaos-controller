@@ -46,15 +46,26 @@ var _ = Describe("Validation Rules Cases", func() {
 	})
 
 	Context("Enum test", func() {
-		arr := []string{"a", "b", "c"}
-		validEnum := Enum(arr)
+		arrStr := []interface{}{"a", "b", "c"}
+		arrInt := []interface{}{1, 2, 3}
+		validStrEnum := Enum(arrStr)
+		validIntEnum := Enum(arrInt)
 		emptyEnum := Enum(nil)
 
-		It("accepts a valid value", func() {
-			Expect(validEnum.ApplyRule(ValueOf(arr[0]))).To(BeNil())
+		It("accepts a valid string value", func() {
+			Expect(validStrEnum.ApplyRule(ValueOf(arrStr[0]))).To(BeNil())
 		})
-		It("rejects a valid value", func() {
-			Expect(validEnum.ApplyRule(ValueOf("notavalue"))).ToNot(BeNil())
+		It("rejects an invalid string value", func() {
+			Expect(validStrEnum.ApplyRule(ValueOf("notavalue"))).ToNot(BeNil())
+		})
+		It("accepts a valid int value", func() {
+			Expect(validIntEnum.ApplyRule(ValueOf(arrInt[0]))).To(BeNil())
+		})
+		It("rejects an invalid int value", func() {
+			Expect(validIntEnum.ApplyRule(ValueOf(4))).ToNot(BeNil())
+		})
+		It("int enum rejects a fitting string value", func() {
+			Expect(validIntEnum.ApplyRule(ValueOf("1"))).ToNot(BeNil())
 		})
 		It("errors out if enum is empty", func() {
 			Expect(emptyEnum.ApplyRule(ValueOf("any"))).ToNot(BeNil())

@@ -6,16 +6,19 @@
 package validation
 
 type Teststruct struct {
-	MinMaxTest      MinMaxTestStruct
-	RequiredTest    RequiredTestStruct
-	EnumTest        EnumTestStruct
-	ExclusiveFields ExclusiveFieldsTestStruct
+	MinMaxTest          MinMaxTestStruct
+	RequiredTest        RequiredTestStruct
+	EnumTest            EnumTestStruct
+	ExclusiveFieldsTest ExclusiveFieldsTestStruct
 }
 
-// +ddmark:validation:ExclusiveFields={Subfield1,Subfield2}
+// +ddmark:validation:ExclusiveFields={PIntField,PStrField}
+// +ddmark:validation:ExclusiveFields={IntField,StrField}
 type ExclusiveFieldsTestStruct struct {
-	Subfield2  int
-	PSubfield2 *int
+	IntField  int
+	PIntField *int
+	StrField  string
+	PStrField *string
 }
 
 type MinMaxTestStruct struct {
@@ -48,7 +51,11 @@ type RequiredTestStruct struct {
 
 type EnumTestStruct struct {
 	// +ddmark:validation:Enum={aa,bb,11}
-	StrField1 string
+	StrField string
 	// +ddmark:validation:Enum={aa,bb,11}
-	PStrField1 *string
+	PStrField *string
+	// +ddmark:validation:Enum={1,2,3}
+	IntField int
+	// +ddmark:validation:Enum={1,2,3}
+	PIntField int
 }

@@ -14,7 +14,7 @@ import (
 )
 
 var _ = Describe("Validation Integration Tests", func() {
-	Context("Minimum/Maximum", func() {
+	Context("Minimum/Maximum Markers", func() {
 		It("checks out valid values", func() {
 			var minmaxValidYaml string = `
 minmaxtest:
@@ -44,7 +44,7 @@ minmaxtest:
 		})
 	})
 
-	Context("Required", func() {
+	Context("Required Marker", func() {
 		It("rejects on all but one missing fields", func() {
 			var requiredOneFieldYaml string = `
 requiredtest:
@@ -88,8 +88,57 @@ requiredtest:
 			Expect(errorList).To(HaveLen(0))
 		})
 	})
-	//FIXME: Enum Test
+
+	Context("Enum Marker", func() {
+		It("checks out valid values", func() {
+			var enumCorrectYaml string = `
+enumtest:
+  strfield: aa
+  pstrfield: bb
+  intfield: 1
+  pintfield: 2
+`
+			errorList := validateString(enumCorrectYaml)
+			Expect(errorList).To(HaveLen(0))
+		})
+		It("rejects invalid values", func() {
+			var enumCorrectYaml string = `
+enumtest:
+  strfield: notinenum
+  pstrfield: notinenum
+  intfield: 4
+  pintfield: 4
+`
+			errorList := validateString(enumCorrectYaml)
+			Expect(errorList).To(HaveLen(4))
+		})
+	})
+
 	//FIXME: ExclusiveFields Test
+	Context("ExclusiveFields Marker", func() {
+		It("rejects invalid values", func() {
+			var exclusivefieldsInvalidYaml = `
+exclusivefieldstest:
+  intfield: 1
+  pintfield: 1
+  strfield: aa
+  pstrfield: aa
+`
+			errorList := validateString(exclusivefieldsInvalidYaml)
+			Expect(errorList).To(HaveLen(2))
+		})
+		It("checks out valid values", func() {
+			var exclusivefieldsValidYaml = `
+exclusivefieldstest:
+  intfield: 
+  pintfield: 1
+  strfield: aa
+  pstrfield: 
+`
+			errorList := validateString(exclusivefieldsValidYaml)
+			Expect(errorList).To(HaveLen(0))
+		})
+	})
 })
 
 // unmarshall a file into a TestStruct
@@ -112,7 +161,5 @@ func validateString(yamlStr string) []error {
 	if err != nil {
 		errorList = append(errorList, err)
 	}
-	ddmark.PrintErrorList(errorList)
-
 	return errorList
 }

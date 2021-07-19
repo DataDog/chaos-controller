@@ -26,6 +26,7 @@ func InitializeMarkers() *k8smarkers.Collector {
 	}
 
 	col.Registry = reg
+
 	return col
 }
 
@@ -35,7 +36,9 @@ func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ..
 	col := InitializeMarkers()
 
 	var err error
+
 	var errorList []error = make([]error, 0)
+
 	var pkgs []*k8sloader.Package
 
 	pkgs, err = k8sloader.LoadRoots(structPkgs...)
@@ -50,7 +53,7 @@ func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ..
 	}
 
 	validateStruct(marshalledStruct, typesMap, nil, &errorList, filePath, col)
-	// printErrorList(errorList)
+
 	return errorList
 }
 
