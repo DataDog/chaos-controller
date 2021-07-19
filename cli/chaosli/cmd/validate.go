@@ -40,17 +40,16 @@ func ValidateDisruption(path string) error {
 		"github.com/DataDog/chaos-controller/api/v1beta1",
 	)
 
+	err = marshalledStruct.Spec.Validate()
+	if err != nil {
+		errorList = append(errorList, err)
+	}
+
 	ddmark.PrintErrorList(errorList)
 
-	// disruption, err := DisruptionFromFile(path)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// err = disruption.Spec.Validate()
-	// if err != nil {
-	// 	return err
-	// }
+	if len(errorList) > 0 {
+		return errorList[0]
+	}
 
 	return nil
 }
