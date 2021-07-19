@@ -106,35 +106,37 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 		}
 	}
 
-	for markerName, marker := range markers {
+	for markerName, markerValueList := range markers {
 		thisdef := col.Lookup(fmt.Sprintf("+%s", markerName), targetType)
 		if thisdef == nil {
 			panic(fmt.Errorf("could not find marker definition - check target type"))
 		}
 
-		markerValue := reflect.ValueOf(marker[0])
-		isok := markerValue.Type().ConvertibleTo(thisdef.Output)
+		for _, markerValueInterface := range markerValueList {
+			markerValue := reflect.ValueOf(markerValueInterface)
+			isok := markerValue.Type().ConvertibleTo(thisdef.Output)
 
-		if !isok {
-			*errorList = append(*errorList,
-				fmt.Errorf("%v - %v: this marker is of kind %v - cannot be converted to %v",
-					fieldName,
-					markerName,
-					markerValue.Type().Kind(),
-					thisdef.Output.Kind()))
+			if !isok {
+				*errorList = append(*errorList,
+					fmt.Errorf("%v - %v: this marker is of kind %v - cannot be converted to %v",
+						fieldName,
+						markerName,
+						markerValue.Type().Kind(),
+						thisdef.Output.Kind()))
 
-			continue
-		}
+				continue
+			}
 
-		markerType := markerValue.Convert(thisdef.Output)
-		ddmarker, ok := markerType.Interface().(ddvalidation.DDValidationMarker)
+			markerType := markerValue.Convert(thisdef.Output)
+			ddmarker, ok := markerType.Interface().(ddvalidation.DDValidationMarker)
 
-		if !ok {
-			*errorList = append(*errorList, fmt.Errorf("cannot convert %v to DDmarker, please check the interface definition", thisdef.Output))
-		} else if value.IsValid() {
-			err := ddmarker.ApplyRule(value)
-			if err != nil {
-				*errorList = append(*errorList, fmt.Errorf("%v - %v", fieldName, err))
+			if !ok {
+				*errorList = append(*errorList, fmt.Errorf("cannot convert %v to DDmarker, please check the interface definition", thisdef.Output))
+			} else if value.IsValid() {
+				err := ddmarker.ApplyRule(value)
+				if err != nil {
+					*errorList = append(*errorList, fmt.Errorf("%v - %v", fieldName, err))
+				}
 			}
 		}
 	}
