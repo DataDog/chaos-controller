@@ -3,24 +3,21 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/briandowns/spinner"
-	goyaml "github.com/ghodss/yaml"
-	"github.com/spf13/cobra"
-	"io/ioutil"
-	v1 "k8s.io/api/core/v1"
 	"log"
 	"math"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/types"
+	"github.com/briandowns/spinner"
+	"github.com/spf13/cobra"
+	v1 "k8s.io/api/core/v1"
 )
 
 const MAXTARGETSHOW = 10
-const POD = "pod"
 
 func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 	spec := disruption.Spec
@@ -31,7 +28,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 	podNamespaces := disruption.ObjectMeta.Namespace
 	rowNames := 1
 
-	if level == "node" {
+	if level == types.DisruptionLevelNode {
 		rowNames = 1
 	}
 
@@ -39,16 +36,10 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 
 	s := spinner.New(spinner.CharSets[38], 100*time.Millisecond)
 	s.Start()
-	cmd := fmt.Sprintf("kubectl get %s -n %s -l %s | wc -l", level, podNamespaces, labels)
-	sizeString, err := exec.Command("bash", "-c", cmd).Output()
+	size, err := getTargetSize(disruption)
 
 	if err != nil {
-		return nil, fmt.Errorf("Could not count the number of pods correlating to target selector: %v", err)
-	}
-	size, err := strconv.Atoi(strings.Trim(string(sizeString), "\n"))
-
-	if err != nil {
-		return nil, fmt.Errorf("Could not convert string to integer in context target size: %v", err)
+		return nil, err
 	}
 
 	// Remove header NAME from consideration
@@ -60,35 +51,29 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 		errorString := fmt.Sprintf("\nThe label selectors chosen (%s) result in 0 targets, meaning this disruption would do nothing given the namespace/cluster/label combination.", labels)
 		newLevel := ""
 
-		if level == POD {
-			newLevel = "node"
+		if level == types.DisruptionLevelPod {
+			disruption.Spec.Level = types.DisruptionLevelNode
 		} else {
-			newLevel = POD
+			disruption.Spec.Level = types.DisruptionLevelPod
 		}
-		cmd := fmt.Sprintf("kubectl get %s -n %s -l %s | wc -l", newLevel, podNamespaces, labels)
-		sizeString, err := exec.Command("bash", "-c", cmd).Output()
+
+		size, err = getTargetSize(disruption)
 
 		if err != nil {
-			return nil, fmt.Errorf("Could not count the number of pods correlating to target selector: %v", err)
-		}
-		size, err = strconv.Atoi(strings.Trim(string(sizeString), "\n"))
-
-		if err != nil {
-			return nil, fmt.Errorf("Could not convert string to integer in context target size: %v", err)
+			return nil, err
 		}
 
 		if size > 0 {
 			errorString = fmt.Sprintf("\nWe noticed that your target size is 0 for level %s given your label selectors. We checked to see if the %s level would give you results and we found %d %ss. Is this the level you wanted to use?", level, newLevel, size, newLevel)
 		}
-		fmt.Println(errorString)
-		return nil, fmt.Errorf("bad sized targets")
+		return nil, fmt.Errorf(errorString)
 	}
 
-	cmd = fmt.Sprintf("kubectl get %s -n %s -l %s | awk '{print $%d}'", level, podNamespaces, labels, rowNames)
+	cmd := fmt.Sprintf("kubectl get %s -n %s -l %s | awk '{print $%d}'", level, podNamespaces, labels, rowNames)
 	targets, err := exec.Command("bash", "-c", cmd).Output()
 
 	if err != nil {
-		return nil, fmt.Errorf("Could not grab list of targets names correlating to target selector: %v", err)
+		return nil, fmt.Errorf("could not grab list of targets names correlating to target selector: %v", err)
 	}
 
 	s.Stop()
@@ -108,7 +93,9 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 	}
 
 	fmt.Printf("\n🎯 There are %d %ss that will be targeted\n", size, level)
-	fmt.Println("📝 Here are a small set of those targets:")
+	if size >= MAXTARGETSHOW {
+		fmt.Println("📝 Here are a small set of those targets:")
+	}
 
 	for _, target := range targetsShow {
 		fmt.Println(target)
@@ -121,6 +108,25 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 	PrintSeparator()
 
 	return targetsAll, nil
+}
+
+func getTargetSize(disruption v1beta1.Disruption) (int, error) {
+	level := disruption.Spec.Level
+	podNamespace := disruption.Namespace
+	labels := disruption.Labels
+	cmd := fmt.Sprintf("kubectl get %s -n %s -l %s | wc -l", level, podNamespace, labels)
+	sizeString, err := exec.Command("bash", "-c", cmd).Output()
+
+	if err != nil {
+		return -1, fmt.Errorf("could not count the number of targets correlating to target selector: %v", err)
+	}
+	size, err := strconv.Atoi(strings.Trim(string(sizeString), "\n"))
+
+	if err != nil {
+		return -1, fmt.Errorf("could not convert string to integer in context target size: %v", err)
+	}
+
+	return size, nil
 }
 
 func grabDataForTargets(targets []string, disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, error) {
@@ -140,17 +146,17 @@ func grabDataForTargets(targets []string, disruption v1beta1.Disruption) ([]v1.P
 		targetData, err := exec.Command("bash", "-c", cmd).Output()
 
 		if err != nil {
-			return nil, nil, fmt.Errorf("Could not grab target data: %v", err)
+			return nil, nil, fmt.Errorf("could not grab target data: %v", err)
 		}
 
-		if level == POD {
+		if level == types.DisruptionLevelPod {
 			if err := json.Unmarshal(targetData, &pod); err != nil {
-				return nil, nil, fmt.Errorf("Json encoding failed: %v", err)
+				return nil, nil, fmt.Errorf("json encoding failed: %v", err)
 			}
 			pods = append(pods, pod)
 		} else {
 			if err := json.Unmarshal(targetData, &node); err != nil {
-				return nil, nil, fmt.Errorf("Json encoding failed: %v", err)
+				return nil, nil, fmt.Errorf("json encoding failed: %v", err)
 			}
 			nodes = append(nodes, node)
 		}
@@ -307,11 +313,7 @@ func checkKubectl() error {
 	cmd := exec.Command("kubectl", "get", "pods", "-n", "chaos-engineering")
 	_, err := cmd.Output()
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 var contextCmd = &cobra.Command{
@@ -329,57 +331,24 @@ var contextCmd = &cobra.Command{
 }
 
 func contextualize(path string) {
-	var disruption v1beta1.Disruption
+	disruption := ReadUnmarshallValidate(path)
 
-	fullPath, err := filepath.Abs(path)
-
+	err := checkKubectl()
 	if err != nil {
-		log.Fatalf("Finding Absolute Path: %v", err)
-	}
-
-	disruptionPath, err := os.Open(filepath.Clean(fullPath))
-
-	if err != nil {
-		log.Fatalf("Openning Yam: %v", err)
-	}
-
-	disruptionBytes, err := ioutil.ReadAll(disruptionPath)
-
-	if err != nil {
-		log.Printf("disruption.Get err   #%v ", err)
-		os.Exit(1)
-	}
-
-	err = goyaml.Unmarshal(disruptionBytes, &disruption)
-
-	if err != nil {
-		log.Fatalf("Unmarshal: %v", err)
-	}
-
-	err = disruption.Spec.Validate()
-
-	if err != nil {
-		log.Fatalf("There were some problems when validating your disruption: %v", err)
-	}
-
-	err = checkKubectl()
-	if err != nil {
-		log.Fatalf("Could not find/use kubectl command, make sure it is in your PATH variable and that all authorizations for the command are set (login to your authorization provider (e.g. AppGate).")
+		log.Fatalf("Could not find/use kubectl command, make sure it is in your PATH variable and that all authorizations for the command are set (login to your authorization provider (e.g. Your VPN).")
 	}
 
 	targets, err := contextTargetsSize(disruption)
 	if err != nil {
-		log.Fatalf("Could not grab context regarding size and names of pods: %v", err)
+		log.Fatalf("Could not grab context regarding size and names of targets: %v", err)
 	}
 
-	// Because the state of each of the pods and the state of their containers uses the same information, lets grab
-	// that set of data here and then pass them to other functions to do the searching
 	podsData, nodesData, err := grabDataForTargets(targets, disruption)
 	if err != nil {
 		log.Fatalf("Attempted to grab data for targets and failed: %v", err)
 	}
 
-	if disruption.Spec.Level == POD {
+	if disruption.Spec.Level == types.DisruptionLevelPod {
 		printPodStatus(podsData)
 		printContainerStatus(podsData)
 	} else {
@@ -390,4 +359,5 @@ func contextualize(path string) {
 
 func init() {
 	contextCmd.Flags().String("path", "", "The path to the disruption file to be contextualized.")
+	contextCmd.Println("This flag requires that you are connected to a cluster and kubectl works as intended on that cluster. All the results of this flag will be based on your current kubectx.")
 }

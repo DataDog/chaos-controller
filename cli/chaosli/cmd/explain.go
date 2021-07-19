@@ -7,15 +7,10 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	goyaml "github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 )
 
@@ -240,39 +235,7 @@ var explainCmd = &cobra.Command{
 }
 
 func explanation(path string) {
-	var disruption v1beta1.Disruption
-
-	fullPath, err := filepath.Abs(path)
-
-	if err != nil {
-		log.Fatalf("Finding Absolute Path: %v", err)
-	}
-
-	disruptionPath, err := os.Open(filepath.Clean(fullPath))
-
-	if err != nil {
-		log.Fatalf("Openning Yaml: %v", err)
-	}
-
-	disruptionBytes, err := ioutil.ReadAll(disruptionPath)
-
-	if err != nil {
-		log.Printf("disruption.Get err   #%v ", err)
-		os.Exit(1)
-	}
-
-	err = goyaml.Unmarshal(disruptionBytes, &disruption)
-
-	if err != nil {
-		log.Fatalf("Unmarshal: %v", err)
-	}
-
-	err = disruption.Spec.Validate()
-
-	if err != nil {
-		log.Fatalf("There were some problems when validating your disruption: %v", err)
-	}
-
+	disruption := ReadUnmarshallValidate(path)
 	fmt.Println("This Disruption...")
 
 	explainMetaSpec(disruption.Spec)

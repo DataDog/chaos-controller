@@ -8,6 +8,7 @@ package cmd
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -87,22 +88,7 @@ func initConfig() {
 }
 
 func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
-	yaml, err := os.Open(filepath.Clean(path))
-	if err != nil {
-		return v1beta1.Disruption{}, err
-	}
-
-	yamlBytes, err := ioutil.ReadAll(yaml)
-	if err != nil {
-		return v1beta1.Disruption{}, err
-	}
-
-	parsedSpec := v1beta1.Disruption{}
-	err = goyaml.Unmarshal(yamlBytes, &parsedSpec)
-
-	if err != nil {
-		return v1beta1.Disruption{}, err
-	}
+	parsedSpec := ReadUnmarshallValidate(path)
 
 	return parsedSpec, nil
 }
@@ -121,4 +107,36 @@ func validatePath(filePath string) error {
 
 func PrintSeparator() {
 	fmt.Println("=======================================================================================================================================")
+}
+
+func ReadUnmarshallValidate(path string) (v1beta1.Disruption) {
+	fullPath, err := filepath.Abs(path)
+	if err != nil {
+		log.Fatalf("finding Absolute Path: %v", err)
+	}
+
+	yaml, err := os.Open(filepath.Clean(fullPath))
+	if err != nil {
+		log.Fatalf("could not open yaml: %v", err)
+	}
+
+	yamlBytes, err := ioutil.ReadAll(yaml)
+	if err != nil {
+		log.Printf("disruption.Get err   #%v ", err)
+		os.Exit(1)
+	}
+
+	parsedSpec := v1beta1.Disruption{}
+	err = goyaml.Unmarshal(yamlBytes, &parsedSpec)
+	if err != nil {
+		log.Fatalf("unmarshal: %v", err)
+	}
+
+	err = parsedSpec.Spec.Validate()
+
+	if err != nil {
+		log.Fatalf("there were some problems when validating your disruption: %v", err)
+	}
+
+	return parsedSpec
 }
