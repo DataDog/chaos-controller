@@ -165,6 +165,14 @@ func main() {
 		},
 	})
 
+	// register user info mutating webhook
+	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info", &webhook.Admission{
+		Handler: &chaoswebhook.UserInfoMutator{
+			Client: mgr.GetClient(),
+			Log:    logger,
+		},
+	})
+
 	// +kubebuilder:scaffold:builder
 
 	logger.Infow("restarting chaos-controller")
