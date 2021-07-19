@@ -36,6 +36,7 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // DisruptionSpec defines the desired state of Disruption
+// +ddmark:validation:ExclusiveFields={Network,DNS}
 type DisruptionSpec struct {
 	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
