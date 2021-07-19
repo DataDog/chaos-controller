@@ -37,7 +37,7 @@ import (
 
 // DisruptionSpec defines the desired state of Disruption
 type DisruptionSpec struct {
-	// +kubebuilder:validation:Required
+	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
 	// +nullable
 	Selector labels.Set `json:"selector,omitempty"` // label selector
@@ -66,7 +66,7 @@ type DisruptionSpec struct {
 type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
 	IsInjected       bool `json:"isInjected,omitempty"`
-	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;Injected
+	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
 	Targets []string `json:"targets,omitempty"`
