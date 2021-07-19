@@ -47,9 +47,5 @@ func ValidateDisruption(path string) error {
 
 	ddmark.PrintErrorList(errorList)
 
-	if len(errorList) > 0 {
-		return errorList[0]
-	}
-
 	return nil
 }
