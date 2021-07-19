@@ -84,7 +84,6 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 	targetsAll := []string{}
 	targetsSplit := strings.Split(string(targets), "\n")
 	for i := 0; i < len(targetsSplit); i++ {
-
 		if len(targetsShow) < MAXTARGETSHOW {
 			targetsShow = append(targetsShow, targetsSplit[i])
 		}
@@ -155,7 +154,6 @@ func grabDataForTargets(targets []string, disruption v1beta1.Disruption) ([]v1.P
 			return nil, nil, fmt.Errorf("could not grab target data: %v", err)
 		}
 		if level == types.DisruptionLevelPod {
-
 			if err := json.Unmarshal(targetData, &pod); err != nil {
 				return nil, nil, fmt.Errorf("json encoding failed: %v", err)
 			}
@@ -260,6 +258,7 @@ func printPodStatus(targetsInfo []v1.Pod) {
 				"\t\tℹ️  Status: " + string(status.Status) + "\n\n"
 			percentCollectCondition[string(status.Type)+"/"+string(status.Status)] += 1.0 / float64(len(targetsInfo))
 		}
+
 		percentCollectPhase[string(pod.Status.Phase)] += 1.0 / float64(len(targetsInfo))
 
 		if i < MAXTARGETSHOW {
@@ -267,6 +266,7 @@ func printPodStatus(targetsInfo []v1.Pod) {
 		}
 	}
 	PrintSeparator()
+
 	percentInfo := "Lets look at the overall status...\n"
 
 	for key, value := range percentCollectPhase {
@@ -300,6 +300,7 @@ func printNodeStatus(targetsInfo []v1.Node) {
 			info += "\t\t⭕️ Type: " + string(address.Type) + "\n" +
 				"\t\tℹ️  Address: " + address.Address + "\n"
 		}
+		
 		info += "\t📜 Node Conditions:\n"
 
 		for _, status := range node.Status.Conditions {
