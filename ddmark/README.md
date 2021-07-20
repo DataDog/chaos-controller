@@ -15,13 +15,32 @@ It also allows us to define custom rules to apply to our structures, and focus t
 
 ## How to use DDMark ?
 
-* Define new rules/read the existing rules within the ddmark/validation/validation.go file
-* Add the desired rules to the appropriate struct fields in the package you wish to add validation to (care for type checking - eg. Maximum rule can only be applied to int/uint fields)
+* Define new rules/read the existing rules within the `ddmark/validation/validation.go` file (or in this doc)
+* Examples can be found in the `ddmark/teststruct.go` file
+* Add the desired rules to the appropriate struct fields in the package you wish to add validation to (care for type checking - eg. Maximum rule can only be applied to `int/uint` fields)
 * Make sure to use the format `// +ddmark:validation:<rulename>=<value>`
 * Call the `ValidateStruct` function, with the unmarshalled struct, the file path, and the full path of the packages containing the included structs definition (with markers embedded). Check `cli/chaosli/cmd/validate.go` for a functioning example.
 
-## To Do
-- [ ] Add formal documentation on each existing marker: 
-    - [ ] specs
-    - [ ] expected behavior
-    - [ ] usage example
+## Markers Documentation
+
+- Enum:
+  - `// +ddmark:validation:Enum={<any>,<any>,...}`
+  - Applies to: `<any>` field
+  - Asserts field value is one of the given values of the Enum list
+- ExclusiveFields:
+  - `// +ddmark:validation:ExclusiveFields={<fieldName1>,<fieldName2>,...}`
+  - Applies to: `<struct>` type
+  - Asserts only one of the given fieldnames isn’t `nil`
+- Maximum:
+  - `// +ddmark:validation:Maximum=<int/uint>`
+  - Applies to: `int/uint` field
+  - Asserts a value is equal or inferior to a given int
+- Minimum:
+  - `// +ddmark:validation:Minimum=<int/uint>`
+  - Applies to: `int/uint` field
+  - Asserts a value is equal or superior to the given int
+- Required:
+  - `// +ddmark:validation:Required=<bool>`
+  - Applies to: `<any>` field
+  - Asserts the concerned field isn’t `nil` (or 0, “”, or other null value)
+
