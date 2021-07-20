@@ -152,6 +152,9 @@ func testStructFromYaml(yamlBytes []byte) (ddmark.Teststruct, error) {
 }
 
 func validateString(yamlStr string) []error {
+	// Teststruct is a test-dedicated struct built strictly for these integration tests
+	var marshalledStruct ddmark.Teststruct
+
 	marshalledStruct, err := testStructFromYaml([]byte(yamlStr))
 	errorList := ddmark.ValidateStruct(marshalledStruct, "test_suite",
 		"github.com/DataDog/chaos-controller/ddmark",

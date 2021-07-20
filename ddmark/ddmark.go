@@ -62,9 +62,10 @@ func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarker
 	if value.IsValid() && !value.IsZero() {
 		markerType := typesMap[value.Type().Name()]
 		if markerType != nil {
+			// apply the markers on the type level (if there is any)
 			applyMarkers(value, markerType.Markers, errorList, fieldName, k8smarkers.DescribesType, col)
 
-			// apply markers to each fields
+			// apply this function to each subsequent fields - on structs only
 			for _, field := range markerType.Fields {
 				if fieldValue := value.FieldByName(field.Name); fieldValue.IsValid() {
 					validateStruct(
@@ -79,6 +80,7 @@ func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarker
 			}
 		}
 
+		// apply markers to slice/array values
 		if value.Kind() == reflect.Slice || value.Kind() == reflect.Array {
 			for i := 0; i < value.Len(); i++ {
 				validateStruct(value.Index(i).Interface(), typesMap, nil, errorList, fieldName+">"+value.Type().Name(), col)
@@ -91,6 +93,7 @@ func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarker
 
 // applyMarkers applies all markers found in the markers arg to a given type/field
 func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorList *[]error, fieldName string, targetType k8smarkers.TargetType, col *k8smarkers.Collector) {
+	// if value is Invalid, field is most likely absent -- needs to add an error if Required is found true
 	if !value.IsValid() {
 		isRequired := markers.Get("ddmark:validation:Required")
 		if isRequired != nil {
@@ -108,13 +111,18 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 		}
 	}
 
+	// run all existing markers for that field
 	for markerName, markerValueList := range markers {
+		// fetch the marker definition in order to type-check the corresponding field
 		thisdef := col.Lookup(fmt.Sprintf("+%s", markerName), targetType)
 		if thisdef == nil {
 			panic(fmt.Errorf("could not find marker definition - check target type"))
 		}
 
+		// if a marker is used multiple times on a single type/field, a single marker will have multiple values
+		// that need to be iterated on (eg. ExclusiveFields, where multiple pairs can be concurrently restricted)
 		for _, markerValueInterface := range markerValueList {
+			// type-check the marker value to fit the DDValidationMarker interface
 			markerValue := reflect.ValueOf(markerValueInterface)
 			isok := markerValue.Type().ConvertibleTo(thisdef.Output)
 
@@ -129,12 +137,14 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 				continue
 			}
 
+			// convert to the DDValidationMarker interface in order to apply validation
 			markerType := markerValue.Convert(thisdef.Output)
 			ddmarker, ok := markerType.Interface().(DDValidationMarker)
 
 			if !ok {
 				*errorList = append(*errorList, fmt.Errorf("cannot convert %v to DDmarker, please check the interface definition", thisdef.Output))
 			} else if value.IsValid() {
+				// conversions are done, value is correct, proceed to validation
 				err := ddmarker.ApplyRule(value)
 				if err != nil {
 					*errorList = append(*errorList, fmt.Errorf("%v - %v", fieldName, err))
@@ -170,7 +180,7 @@ func getAllPackageTypes(packages []*k8sloader.Package, col *k8smarkers.Collector
 
 // HELPERS
 
-// printErrorList prints the list of errors returned by the markers validation process
+// PrintErrorList prints a list of errors returned by the markers validation process
 func PrintErrorList(errorList []error) {
 	switch a := len(errorList); {
 	case a == 0:

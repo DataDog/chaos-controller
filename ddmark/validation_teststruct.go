@@ -3,9 +3,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
+// This struct cannot be within the ddmark_test package in order to be properly loaded
+// by the loader package, inherent to the markers
 package ddmark
 
-// This struct cannot be within the ddmark_test package in order to be properly loaded by the loader package, inherent to the markers
 type Teststruct struct {
 	MinMaxTest          MinMaxTestStruct
 	RequiredTest        RequiredTestStruct

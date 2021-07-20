@@ -31,7 +31,8 @@ type Maximum int
 // Minimum can applied to an int field and provides a (non-strict) minimum value for that field
 type Minimum int
 
-// Enum can be applied to a string (or string-able) field and provides a restricted amount of possible values for that field
+// Enum can be applied to any interface field and provides a restricted amount of possible values for that field.
+// Values within the marker strictly need to fit the given field interface. Usage is recommended to simple types.
 type Enum []interface{}
 
 // Required can be applied to any field, and asserts this field will return an error if not provided

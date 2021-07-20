@@ -33,7 +33,7 @@ func init() {
 func ValidateDisruption(path string) error {
 	marshalledStruct, err := DisruptionFromFile(path)
 	if err != nil {
-		return fmt.Errorf("%v: %v", path, err)
+		return fmt.Errorf("error reading from disruption at %v: %v", path, err)
 	}
 
 	errorList := ddmark.ValidateStruct(marshalledStruct, path,
