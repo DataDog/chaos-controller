@@ -60,6 +60,7 @@ var (
 	DisruptionKindNames = []DisruptionKindName{
 		DisruptionKindNetworkDisruption,
 		DisruptionKindNodeFailure,
+		DisruptionKindPodFailure,
 		DisruptionKindCPUPressure,
 		DisruptionKindDiskPressure,
 		DisruptionKindDNSDisruption,

@@ -7,7 +7,7 @@ package v1beta1
 
 // PodFailureSpec represents a pod failure injection
 type PodFailureSpec struct {
-	Kill bool `json:"kill,omitempty"`
+	Forced bool `json:"forced,omitempty"`
 }
 
 // Validate validates args for the given disruption
@@ -22,8 +22,8 @@ func (s *PodFailureSpec) GenerateArgs() []string {
 		"inject",
 	}
 
-	if s.Kill {
-		args = append(args, "--kill")
+	if s.Forced {
+		args = append(args, "--forced")
 	}
 
 	return args

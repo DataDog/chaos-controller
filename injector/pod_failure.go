@@ -7,11 +7,11 @@ package injector
 
 import (
 	"fmt"
-	"github.com/DataDog/chaos-controller/process"
 	"os"
 	"syscall"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/process"
 )
 
 // podFailureInjector describes a pod failure injector
@@ -33,31 +33,34 @@ func NewPodFailureInjector(spec v1beta1.PodFailureSpec, config PodFailureInjecto
 	if config.ProcessManager == nil {
 		config.ProcessManager = process.NewManager(config.DryRun)
 	}
+
 	return podFailureInjector{
 		spec:   spec,
 		config: config,
 	}
 }
 
-// Inject sends a SIGKILL/SIGINT signal to the container's PID
+// Inject sends a SIGKILL/SIGTERM signal to the container's PID
 func (i podFailureInjector) Inject() error {
 	var err error
 
 	containerPid := int(i.config.Container.PID())
 	proc, err := i.config.ProcessManager.Find(containerPid)
+
 	if err != nil {
 		return fmt.Errorf("error while finding the process: %w", err)
 	}
 
 	var sig os.Signal
-	if i.spec.Kill {
+	if i.spec.Forced {
 		sig = syscall.SIGKILL
 	} else {
-		sig = syscall.SIGINT
+		sig = syscall.SIGTERM
 	}
 
 	// Send signal
 	i.config.Log.Infow("injecting a pod failure", "signal", sig, "container", containerPid)
+
 	if err = i.config.ProcessManager.Signal(proc, sig); err != nil {
 		return fmt.Errorf("error while sending the %s signal to container with PID %d: %w", sig, containerPid, err)
 	}

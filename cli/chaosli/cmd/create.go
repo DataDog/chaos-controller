@@ -407,13 +407,13 @@ func getNodeFailure() *v1beta1.NodeFailureSpec {
 }
 
 func getPodFailure() *v1beta1.PodFailureSpec {
-	if !confirmKind("Pod Failure", "This will either kill (SIGKILL) or interrupt (SIGINT) the targeted pod's container(s)") {
+	if !confirmKind("Pod Failure", "This will terminate the targeted pod's container(s) gracefully (SIGTERM) or non-gracefully (SIGKILL)") {
 		return nil
 	}
 
 	spec := &v1beta1.PodFailureSpec{}
-	spec.Kill = confirmOption("Would you like to kill the pod's containers?",
-		"Choosing yes will kill the pod's containers. If you don't enable this, we will just interrupt the target containers.")
+	spec.Forced = confirmOption("Would you like to terminate the pod's containers non-gracefully?",
+		"Choosing yes will terminate the pod's containers non-gracefully. If you don't enable this, we will terminate the target containers gracefully.")
 
 	return spec
 }

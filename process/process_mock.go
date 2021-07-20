@@ -6,8 +6,9 @@
 package process
 
 import (
-	"github.com/stretchr/testify/mock"
 	"os"
+
+	"github.com/stretchr/testify/mock"
 )
 
 // ManagerMock is a mock implementation of the Manager interface

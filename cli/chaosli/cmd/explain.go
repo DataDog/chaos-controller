@@ -66,10 +66,10 @@ func explainPodFailure(spec v1beta1.DisruptionSpec) {
 		return
 	}
 
-	if podFailure.Kill {
+	if podFailure.Forced {
 		fmt.Println("💉 injects a pod failure which sends the SIGKILL signal to the pod's container(s).")
 	} else {
-		fmt.Println("💉 injects a pod failure which sends the SIGINT signal to the pod's container(s).")
+		fmt.Println("💉 injects a pod failure which sends the SIGTERM signal to the pod's container(s).")
 	}
 
 	printSeparator()
@@ -298,6 +298,7 @@ func explanation(path string) {
 	explainMetaSpec(disruption.Spec)
 	explainMultiDisruption(disruption.Spec)
 	explainNodeFailure(disruption.Spec)
+	explainPodFailure(disruption.Spec)
 	explainNetworkFailure(disruption.Spec)
 	explainCPUPressure(disruption.Spec)
 	explainDiskPressure(disruption.Spec)

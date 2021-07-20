@@ -212,7 +212,7 @@ spec:
               description: PodFailureSpec represents a pod failure injection
               nullable: true
               properties:
-                kill:
+                forced:
                   type: boolean
               type: object
             onInit:

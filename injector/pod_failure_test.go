@@ -64,9 +64,9 @@ var _ = Describe("Failure", func() {
 			Expect(inj.Inject()).To(BeNil())
 		})
 
-		Context("with kill enabled", func() {
+		Context("with forced enabled", func() {
 			BeforeEach(func() {
-				spec.Kill = true
+				spec.Forced = true
 			})
 
 			It("should send the SIGKILL signal to the given process", func() {
@@ -74,9 +74,9 @@ var _ = Describe("Failure", func() {
 			})
 		})
 
-		Context("with kill disabled", func() {
-			It("should send the SIGINT signal to the given process", func() {
-				manager.AssertCalled(GinkgoT(), "Signal", proc, syscall.SIGINT)
+		Context("with forced disabled", func() {
+			It("should send the SIGTERM signal to the given process", func() {
+				manager.AssertCalled(GinkgoT(), "Signal", proc, syscall.SIGTERM)
 			})
 		})
 

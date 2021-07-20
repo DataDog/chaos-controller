@@ -269,7 +269,7 @@ var _ = Describe("Helpers", func() {
 					Shutdown: false,
 				},
 				PodFailure: &chaosv1beta1.PodFailureSpec{
-					Kill: false,
+					Forced: false,
 				},
 				Network: &chaosv1beta1.NetworkDisruptionSpec{
 					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{

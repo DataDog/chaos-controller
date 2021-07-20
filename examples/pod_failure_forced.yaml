@@ -6,11 +6,11 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: pod-failure-kill
+  name: pod-failure-forced
   namespace: chaos-demo
 spec:
   selector:
     app: demo-curl
   count: 1
   podFailure:
-    kill: true # send a SIGTERM signal to the pod's containers
+    forced: true # send a SIGKILL signal to the specified containers

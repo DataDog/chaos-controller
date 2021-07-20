@@ -16,11 +16,11 @@ var podFailureCmd = &cobra.Command{
 	Short: "Pod failure subcommands",
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		kill, _ := cmd.Flags().GetBool("kill")
+		forced, _ := cmd.Flags().GetBool("forced")
 
 		// prepare spec
 		spec := v1beta1.PodFailureSpec{
-			Kill: kill,
+			Forced: forced,
 		}
 
 		// create injector
@@ -33,5 +33,5 @@ var podFailureCmd = &cobra.Command{
 }
 
 func init() {
-	podFailureCmd.Flags().Bool("kill", false, "If specified, the container will be killed instead of interrupted")
+	podFailureCmd.Flags().Bool("forced", false, "If set to false, the SIGKILL signal will be sent to the container. By default we send the SIGTERM signal.")
 }
