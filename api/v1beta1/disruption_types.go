@@ -137,6 +137,10 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		return errors.New("cannot target specific containers because the level configuration is set to node")
 	}
 
+	if s.PodFailure != nil && s.Level == chaostypes.DisruptionLevelNode {
+		return errors.New("cannot execute a pod failure because the level configuration is set to node")
+	}
+
 	// Rule: at least one disruption field
 	if s.DNS == nil &&
 		s.CPUPressure == nil &&
