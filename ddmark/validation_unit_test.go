@@ -14,6 +14,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+type dummyStruct struct {
+	Field1 string
+	Field2 int
+	Field3 *int
+}
+
 var _ = Describe("Validation Rules Cases", func() {
 
 	Context("Maximum test", func() {
@@ -134,21 +140,18 @@ var _ = Describe("Validation Rules Cases", func() {
 	})
 
 	Context("ExclusiveFields test", func() {
-		type dummyStruct struct {
-			Field1 string
-			Field2 int
-			Field3 int
-		}
-
 		arr := []string{"Field1", "Field2", "Field3"}
 		excl := ExclusiveFields(arr)
 		var fakeObj dummyStruct
 
 		BeforeEach(func() {
+			i := 3
+			var pi *int = &i
+
 			fakeObj = dummyStruct{
 				Field1: "a",
 				Field2: 2,
-				Field3: 3,
+				Field3: pi,
 			}
 		})
 
@@ -177,6 +180,53 @@ var _ = Describe("Validation Rules Cases", func() {
 		It("accepts object with all fields but first set", func() {
 			fakeObj.Field1 = ""
 			Expect(excl.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+		})
+	})
+
+	Context("LinkedFields test", func() {
+		arr := []string{"Field1", "Field2", "Field3"}
+		linked := LinkedFields(arr)
+		var fakeObj dummyStruct
+
+		BeforeEach(func() {
+			i := 3
+			var pi *int = &i
+
+			fakeObj = dummyStruct{
+				Field1: "a",
+				Field2: 2,
+				Field3: pi,
+			}
+		})
+
+		It("validates object with all fields (0 pointer not nil)", func() {
+			i := 0
+			var pi *int = &i
+
+			fakeObj.Field1 = "a"
+			fakeObj.Field2 = 1
+			fakeObj.Field3 = pi
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+		})
+
+		It("rejects object with one missing field (0 int is nil)", func() {
+			i := 1
+			var pi *int = &i
+
+			fakeObj.Field1 = "a"
+			fakeObj.Field2 = 0
+			fakeObj.Field3 = pi
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+		})
+
+		It("validates object with nul Field1", func() {
+			i := 1
+			var pi *int = &i
+
+			fakeObj.Field1 = ""
+			fakeObj.Field2 = 1
+			fakeObj.Field3 = pi
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
 		})
 	})
 })

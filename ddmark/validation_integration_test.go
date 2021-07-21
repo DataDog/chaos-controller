@@ -164,6 +164,45 @@ exclusivefieldstest:
 			Expect(errorList).To(HaveLen(0))
 		})
 	})
+
+	Context("LinkedFields Marker", func() {
+		It("checks out valid values", func() {
+			var linkedfieldsValidYaml = `
+linkedfieldstest:
+  strfield: aa
+  pstrfield: bb  
+  intfield: 1
+  pintfield: 1
+  aintfield: [1,2]
+`
+			errorList := validateString(linkedfieldsValidYaml)
+			Expect(errorList).To(HaveLen(0))
+		})
+		It("rejects both errors", func() {
+			var linkedfieldsInvalidYaml = `
+linkedfieldstest:
+  strfield: aa
+  pstrfield: aa
+  intfield: 
+  pintfield:
+  aintfield:
+`
+			errorList := validateString(linkedfieldsInvalidYaml)
+			Expect(errorList).To(HaveLen(2))
+		})
+		It("rejects one error, 0 value is nil on pointer", func() {
+			var linkedfieldsInvalidYaml = `
+linkedfieldstest:
+  strfield: aa
+  pstrfield: aa
+  intfield: 0
+  pintfield: 0
+  aintfield: [1,2]
+`
+			errorList := validateString(linkedfieldsInvalidYaml)
+			Expect(errorList).To(HaveLen(1))
+		})
+	})
 })
 
 // unmarshall a file into a TestStruct

@@ -23,6 +23,7 @@ func init() {
 	addDefinition(Required(true), k8smarkers.DescribesField)
 
 	addDefinition(ExclusiveFields(nil), k8smarkers.DescribesType)
+	addDefinition(LinkedFields(nil), k8smarkers.DescribesType)
 }
 
 // Maximum can applied to an int field and provides a (non-strict) maximum value for that field
@@ -40,6 +41,9 @@ type Required bool
 
 // ExclusiveFields can be applied to structs, and asserts if the first field is set, none of the others are
 type ExclusiveFields []string
+
+// LinkedFields can be applied to structs, and asserts that if the first field isn't nil, then non of the others are either
+type LinkedFields []string
 
 func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
@@ -127,6 +131,29 @@ func (r Required) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 	if !fieldvalue.IsValid() || fieldvalue.IsZero() {
 		return fmt.Errorf("%v: field is required: currently missing", ruleName(r))
+	}
+
+	return nil
+}
+
+func (l LinkedFields) ApplyRule(fieldvalue reflect.Value) error {
+	fieldvalue = reflect.Indirect(fieldvalue)
+
+	var matchCount int = 0
+
+	structMap, ok := structValueToMap(fieldvalue)
+	if !ok {
+		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(l), fieldvalue.Type(), "struct")
+	}
+
+	for _, item := range l {
+		if structMap[item] != nil {
+			matchCount++
+		}
+	}
+
+	if structMap[l[0]] != nil && matchCount != len(l) {
+		return fmt.Errorf("%v: if field %v isn't nil, all of the following field need to be defined: %v", ruleName(l), l[0], l)
 	}
 
 	return nil
