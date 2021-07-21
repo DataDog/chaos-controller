@@ -108,6 +108,24 @@ spec:
               description: NetworkDisruptionSpec represents a network disruption injection
               nullable: true
               properties:
+                allowedHosts:
+                  items:
+                    properties:
+                      host:
+                        type: string
+                      port:
+                        maximum: 65535
+                        minimum: 0
+                        type: integer
+                      protocol:
+                        enum:
+                        - tcp
+                        - udp
+                        - ""
+                        type: string
+                    type: object
+                  nullable: true
+                  type: array
                 bandwidthLimit:
                   minimum: 0
                   type: integer

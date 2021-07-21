@@ -32,6 +32,26 @@ network:
       namespace: example_namespace
 ```
 
+## Q: How can I exclude some hosts from being disrupted?
+
+It is sometimes handy to disrupt all packets going to a whole CIDR but excluding some of them. You have two ways to exclude some hosts from being disrupted in a network disruption:
+* from the disruption itself, so it applies to this disruption only
+* from the controller, so it applies to all network disruptions even when not specified explicitly
+
+### From the disruption
+
+You can specify hosts to exclude in the `allowedHosts` field of a network disruption with the same format as the `hosts` field. [Here's an example illustrating that](../examples/network_allowed_hosts.yaml).
+
+### From the controller
+
+You can pass a flag to the controller to specify hosts which would be excluded from all disruptions even when not specified in the disruption itself. The flag to use is `--injector-network-disruption-allowed-hosts` and has the same format as the flag passed to the injector container: `<host>;<port>;<protocol>`.
+
+```
+--injector-network-disruption-allowed-hosts 10.0.0.1;53;udp
+```
+
+It can be configured easily [in the chart values.yaml file](../chart/values.yaml).
+
 ## Notation
 
 Although the `hosts` field is handled in the same way for both pod and node level disruptions, different network interfaces may be targeted based node configurations. For example, pods that have their own networking interface work differently than pods that use their hosts' networking directly:

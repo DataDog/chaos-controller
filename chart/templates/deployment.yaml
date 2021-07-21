@@ -57,6 +57,9 @@ spec:
         {{- end }}
         - --injector-service-account={{ .Values.injector.serviceAccount }}
         - --injector-service-account-namespace={{ .Values.injector.serviceAccountNamespace }}
+        {{- range .Values.injector.networkDisruption.allowedHosts }}
+        - --injector-network-disruption-allowed-hosts={{ .host }};{{ .port }};{{ .protocol }}
+        {{- end }}
         {{- if .Values.controller.webhook.generateCert }}
         - --admission-webhook-cert-dir=/tmp/k8s-webhook-server/serving-certs
         {{- else }}
