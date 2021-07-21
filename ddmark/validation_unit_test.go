@@ -25,6 +25,15 @@ var _ = Describe("Validation Rules Cases", func() {
 			max = Maximum(maxInt)
 		})
 
+		It("accept large negative values", func() {
+			Expect(max.ApplyRule(ValueOf(-1001))).To(BeNil())
+		})
+		It("rejects small string values", func() {
+			Expect(max.ApplyRule(ValueOf("0"))).ToNot(BeNil())
+		})
+		It("rejects large string values", func() {
+			Expect(max.ApplyRule(ValueOf("1001"))).ToNot(BeNil())
+		})
 		It("rejects superior values", func() {
 			Expect(max.ApplyRule(ValueOf(maxInt + 1))).ToNot(BeNil())
 		})
@@ -45,6 +54,15 @@ var _ = Describe("Validation Rules Cases", func() {
 			min = Minimum(minInt)
 		})
 
+		It("rejects large negative values", func() {
+			Expect(min.ApplyRule(ValueOf(-1001))).ToNot(BeNil())
+		})
+		It("rejects small string values", func() {
+			Expect(min.ApplyRule(ValueOf("0"))).ToNot(BeNil())
+		})
+		It("rejects large string values", func() {
+			Expect(min.ApplyRule(ValueOf("1001"))).ToNot(BeNil())
+		})
 		It("accepts superior value", func() {
 			Expect(min.ApplyRule(ValueOf(minInt + 1))).To(BeNil())
 		})
@@ -57,7 +75,7 @@ var _ = Describe("Validation Rules Cases", func() {
 	})
 
 	Context("Enum test", func() {
-		arrStr := []interface{}{"a", "b", "c"}
+		arrStr := []interface{}{"a", "b", "c", "4"}
 		arrInt := []interface{}{1, 2, 3}
 		validStrEnum := Enum(arrStr)
 		validIntEnum := Enum(arrInt)
@@ -68,6 +86,12 @@ var _ = Describe("Validation Rules Cases", func() {
 		})
 		It("rejects an invalid string value", func() {
 			Expect(validStrEnum.ApplyRule(ValueOf("notavalue"))).ToNot(BeNil())
+		})
+		It("rejects an invalid int value", func() {
+			Expect(validStrEnum.ApplyRule(ValueOf(4))).ToNot(BeNil())
+		})
+		It("rejects a combined str value", func() {
+			Expect(validStrEnum.ApplyRule(ValueOf("ab"))).ToNot(BeNil())
 		})
 		It("accepts a valid int value", func() {
 			Expect(validIntEnum.ApplyRule(ValueOf(arrInt[0]))).To(BeNil())
@@ -103,6 +127,10 @@ var _ = Describe("Validation Rules Cases", func() {
 		It("false doesn't error given nil", func() {
 			Expect(falseRequired.ApplyRule(ValueOf(nil))).To(BeNil())
 		})
+		It("false accepts regular values", func() {
+			Expect(trueRequired.ApplyRule(ValueOf("a"))).To(BeNil())
+			Expect(trueRequired.ApplyRule(ValueOf(1))).To(BeNil())
+		})
 	})
 
 	Context("ExclusiveFields test", func() {
@@ -136,6 +164,13 @@ var _ = Describe("Validation Rules Cases", func() {
 		It("validates object with 1 field", func() {
 			fakeObj.Field1 = ""
 			fakeObj.Field2 = 0
+			Expect(excl.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+		})
+
+		It("accepts object with 0 fields", func() {
+			fakeObj.Field1 = ""
+			fakeObj.Field2 = 0
+			fakeObj.Field3 = 0
 			Expect(excl.ApplyRule(ValueOf(fakeObj))).To(BeNil())
 		})
 	})
