@@ -343,7 +343,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 
 	// add filters for allowed hosts
 	if err := i.addFiltersForHosts(interfaces, i.spec.AllowedHosts, "1:1"); err != nil {
-		return fmt.Errorf("error adding filter for alloed hosts: %w", err)
+		return fmt.Errorf("error adding filter for allowed hosts: %w", err)
 	}
 
 	return nil
