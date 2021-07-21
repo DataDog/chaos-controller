@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package disruption_listener;
+
+import "google/protobuf/empty.proto";
+
+service DisruptionListener {
+  rpc SendDisruption(DisruptionSpec) returns (google.protobuf.Empty) {}
+  rpc DisruptionStatus(google.protobuf.Empty) returns (DisruptionSpec) {}
+  rpc CleanDisruption(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+}
+
+message DisruptionSpec {
+  repeated EndpointAlteration endpointAlterations =1;
+}
+
+message EndpointAlteration {
+  string targetEndpoint = 1;
+  string errorToReturn = 2;
+  string overrideToReturn = 3;
+}

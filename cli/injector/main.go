@@ -65,6 +65,7 @@ func init() {
 	rootCmd.AddCommand(cpuPressureCmd)
 	rootCmd.AddCommand(diskPressureCmd)
 	rootCmd.AddCommand(dnsDisruptionCmd)
+	rootCmd.AddCommand(grpcDisruptionCmd)
 
 	// basic args
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Enable dry-run mode")

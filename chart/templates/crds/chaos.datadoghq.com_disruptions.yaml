@@ -129,6 +129,39 @@ spec:
               type: array
             dryRun:
               type: boolean
+            grpc:
+              description: GRPCDisruptionSpec represents a gRPC disruption
+              items:
+                description: EndpointAlteration represents an endpoint to disrupt
+                  and the corresponding error to return
+                properties:
+                  endpoint:
+                    type: string
+                  error:
+                    enum:
+                    - OK
+                    - CANCELED_CODE
+                    - UNKNOWN_CODE
+                    - INVALID_ARGUMENT
+                    - DEADLINE_EXCEEDED
+                    - NOT_FOUND
+                    - ALREADY_EXISTS
+                    - PERMISSION_DENIED
+                    - RESOURCE_EXHAUSTED
+                    - FAILED_PRECONDITION
+                    - ABORTED_CODE
+                    - OUT_OF_RANGE
+                    - UNIMPLEMENTED_CODE
+                    - INTERNAL_CODE
+                    - UNAVAILABLE_CODE
+                    - DATALOSS_CODE
+                    - UNAUTHENTICATED_CODE
+                    type: string
+                  override:
+                    type: string
+                type: object
+              nullable: true
+              type: array
             level:
               description: DisruptionLevel represents which level the disruption should
                 be injected at

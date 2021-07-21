@@ -60,6 +60,8 @@ type DisruptionSpec struct {
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
 	// +nullable
 	DNS DNSDisruptionSpec `json:"dns,omitempty"`
+	// +nullable
+	GRPC GRPCDisruptionSpec `json:"grpc,omitempty"`
 }
 
 // DisruptionStatus defines the observed state of Disruption
@@ -153,13 +155,14 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 	}
 
 	// Rule: at least one disruption field
-	if s.DNS == nil &&
+	if s.Network == nil &&
 		s.CPUPressure == nil &&
-		s.Network == nil &&
+		s.DiskPressure == nil &&
 		s.NodeFailure == nil &&
 		s.ContainerFailure == nil &&
-		s.DiskPressure == nil {
-		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, ContainerFailure, CPUPressure fields is needed")
+		s.DNS == nil &&
+		s.GRPC == nil {
+		return errors.New("cannot apply an empty disruption - at least one of Network, CPUPressure, DiskPressure, NodeFailure, Container Failure, DNS, GRPC fields is needed")
 	}
 
 	// Rule: on init compatibility
@@ -199,12 +202,14 @@ func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName
 		disruptionKind = s.ContainerFailure
 	case chaostypes.DisruptionKindNetworkDisruption:
 		disruptionKind = s.Network
-	case chaostypes.DisruptionKindDNSDisruption:
-		disruptionKind = s.DNS
 	case chaostypes.DisruptionKindCPUPressure:
 		disruptionKind = s.CPUPressure
 	case chaostypes.DisruptionKindDiskPressure:
 		disruptionKind = s.DiskPressure
+	case chaostypes.DisruptionKindDNSDisruption:
+		disruptionKind = s.DNS
+	case chaostypes.DisruptionKindGRPCDisruption:
+		disruptionKind = s.GRPC
 	}
 
 	return disruptionKind
