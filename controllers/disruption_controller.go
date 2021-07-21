@@ -902,7 +902,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		}
 
 		// generate args for pod
-		args := chaosapi.AppendCommonArgs(subspec.GenerateArgs(),
+		args := chaosapi.AppendArgs(subspec.GenerateArgs(),
 			level, kind, containerIDs, r.MetricsSink.GetSinkName(), instance.Spec.DryRun,
 			instance.Name, instance.Namespace, targetName, instance.Spec.OnInit, r.InjectorNetworkDisruptionAllowedHosts)
 

@@ -20,8 +20,8 @@ type DisruptionKind interface {
 	Validate() error
 }
 
-// AppendCommonArgs is a helper function generating common args and appending them to the given args array
-func AppendCommonArgs(args []string, level chaostypes.DisruptionLevel, kind chaostypes.DisruptionKindName, containerIDs []string, sink string, dryRun bool,
+// AppendArgs is a helper function generating common and global args and appending them to the given args array
+func AppendArgs(args []string, level chaostypes.DisruptionLevel, kind chaostypes.DisruptionKindName, containerIDs []string, sink string, dryRun bool,
 	disruptionName string, disruptionNamespace string, targetName string, onInit bool, allowedHosts []string) []string {
 	args = append(args,
 		// basic args
