@@ -98,7 +98,7 @@ func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
 			return fmt.Errorf("%v: Type Error - field needs to be one of %v, currently \"%v\"", ruleName(e), e, fieldvalue)
 		}
 
-		if fieldInterface == markerInterface || fieldInterface == nil {
+		if fieldInterface == markerInterface || reflect.ValueOf(fieldInterface).IsZero() {
 			return nil
 		}
 	}
