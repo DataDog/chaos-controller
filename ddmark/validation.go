@@ -42,7 +42,9 @@ type Required bool
 type ExclusiveFields []string
 
 func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
-	fieldInt, ok := parseIntOrUInt(fieldvalue)
+	fieldvalue = reflect.Indirect(fieldvalue)
+	fieldInt, ok := parseIntOrUInt(reflect.Indirect(fieldvalue))
+
 	if !ok {
 		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(m), fieldvalue.Type(), "int or uint")
 	}
@@ -55,7 +57,9 @@ func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
 }
 
 func (m Minimum) ApplyRule(fieldvalue reflect.Value) error {
-	fieldInt, ok := parseIntOrUInt(fieldvalue)
+	fieldvalue = reflect.Indirect(fieldvalue)
+	fieldInt, ok := parseIntOrUInt(reflect.Indirect(fieldvalue))
+
 	if !ok {
 		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(m), fieldvalue.Type(), "int or uint")
 	}
@@ -68,9 +72,11 @@ func (m Minimum) ApplyRule(fieldvalue reflect.Value) error {
 }
 
 func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
+	fieldvalue = reflect.Indirect(fieldvalue)
+
 	var matchCount int = 0
 
-	structMap, ok := structValueToMap(fieldvalue)
+	structMap, ok := structValueToMap(reflect.Indirect(fieldvalue))
 	if !ok {
 		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(e), fieldvalue.Type(), "struct")
 	}
@@ -89,6 +95,7 @@ func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
 }
 
 func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
+	fieldvalue = reflect.Indirect(fieldvalue)
 	fieldInterface := fieldvalue.Interface()
 
 	for _, markerInterface := range e {
@@ -107,7 +114,16 @@ func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
 }
 
 func (r Required) ApplyRule(fieldvalue reflect.Value) error {
-	if bool(r) && (!fieldvalue.IsValid() || fieldvalue.IsZero()) {
+	if !bool(r) {
+		return nil
+	}
+
+	if fieldvalue.Kind() == reflect.Ptr && (!fieldvalue.IsNil() || !fieldvalue.IsZero()) {
+		return nil
+	}
+
+	fieldvalue = reflect.Indirect(fieldvalue)
+	if !fieldvalue.IsValid() || fieldvalue.IsZero() {
 		return fmt.Errorf("%v: field is required: currently %v", ruleName(r), "missing")
 	}
 

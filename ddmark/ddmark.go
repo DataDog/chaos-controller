@@ -58,16 +58,18 @@ func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ..
 
 // validateStruct is an internal recursive function that recursively applies markers rules to types and fields
 func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarkers.TypeInfo, markerValues k8smarkers.MarkerValues, errorList *[]error, fieldName string, col *k8smarkers.Collector) {
-	value := reflect.Indirect(reflect.ValueOf(marshalledStruct)) // dereferences pointer value if there is one
-	if value.IsValid() && !value.IsZero() {
-		markerType := typesMap[value.Type().Name()]
+	value := reflect.ValueOf(marshalledStruct)
+	unpointedValue := reflect.Indirect(value) // dereferences pointer value if there is one
+
+	if unpointedValue.IsValid() && !unpointedValue.IsZero() {
+		markerType := typesMap[unpointedValue.Type().Name()]
 		if markerType != nil {
 			// apply the markers on the type level (if there is any)
 			applyMarkers(value, markerType.Markers, errorList, fieldName, k8smarkers.DescribesType, col)
 
 			// apply this function to each subsequent fields - on structs only
 			for _, field := range markerType.Fields {
-				if fieldValue := value.FieldByName(field.Name); fieldValue.IsValid() {
+				if fieldValue := unpointedValue.FieldByName(field.Name); fieldValue.IsValid() {
 					validateStruct(
 						fieldValue.Interface(),
 						typesMap,
@@ -81,9 +83,9 @@ func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarker
 		}
 
 		// apply markers to slice/array values
-		if value.Kind() == reflect.Slice || value.Kind() == reflect.Array {
-			for i := 0; i < value.Len(); i++ {
-				validateStruct(value.Index(i).Interface(), typesMap, nil, errorList, fieldName+">"+value.Type().Name(), col)
+		if unpointedValue.Kind() == reflect.Slice || unpointedValue.Kind() == reflect.Array {
+			for i := 0; i < unpointedValue.Len(); i++ {
+				validateStruct(unpointedValue.Index(i).Interface(), typesMap, nil, errorList, fieldName+">"+unpointedValue.Type().Name(), col)
 			}
 		}
 	}
@@ -94,7 +96,8 @@ func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarker
 // applyMarkers applies all markers found in the markers arg to a given type/field
 func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorList *[]error, fieldName string, targetType k8smarkers.TargetType, col *k8smarkers.Collector) {
 	// if value is Invalid, field is most likely absent -- needs to add an error if Required is found true
-	if !value.IsValid() {
+	// if !value.IsValid() {
+	if value.Interface() == nil {
 		isRequired := markers.Get("ddmark:validation:Required")
 		if isRequired != nil {
 			typedIsRequired, ok := isRequired.(Required)

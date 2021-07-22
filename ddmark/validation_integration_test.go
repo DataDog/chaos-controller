@@ -52,16 +52,16 @@ requiredtest:
 			errorList := validateString(requiredOneFieldYaml)
 			Expect(errorList).To(HaveLen(5))
 		})
-		It("rejects all missing fields", func() {
+		It("rejects and counts all 4 missing fields", func() {
 			var requiredNoFieldYaml string = `
 requiredtest:
   intfield: 1
   pintfield: 0
 `
 			errorList := validateString(requiredNoFieldYaml)
-			Expect(errorList).To(HaveLen(5))
+			Expect(errorList).To(HaveLen(4))
 		})
-		It("rejects on all missing fields", func() {
+		It("rejects and counts all 5 missing fields", func() {
 			var requiredNoField2Yaml string = `
 requiredtest:
   pintfield: 1
@@ -69,15 +69,15 @@ requiredtest:
     a:
 `
 			errorList := validateString(requiredNoField2Yaml)
-			Expect(errorList).To(HaveLen(5))
+			Expect(errorList).To(HaveLen(4))
 		})
 		It("checks out on valid file", func() {
 			var requiredValidYaml string = `
 requiredtest:
   intfield: 1
-  pintfield: 1
+  pintfield: 0
   strfield: a
-  pstrfield: a
+  pstrfield: ""
   structfield:
     a: 1
   pstructfield:
