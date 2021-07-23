@@ -96,6 +96,43 @@ spec:
               type: array
             dryRun:
               type: boolean
+            http:
+              description: HTTPDisruptionSpec represents an http disruption
+              nullable: true
+              properties:
+                domains:
+                  items:
+                    description: TargetDomain represents an http-hosting endpoint
+                    properties:
+                      domain:
+                        type: string
+                      header:
+                        items:
+                          description: RequestFields represents some of the fields
+                            present in the http header
+                          properties:
+                            method:
+                              type: string
+                            uri:
+                              type: string
+                          required:
+                          - method
+                          - uri
+                          type: object
+                        type: array
+                    required:
+                    - domain
+                    - header
+                    type: object
+                  type: array
+                ports:
+                  items:
+                    type: integer
+                  type: array
+              required:
+              - domains
+              - ports
+              type: object
             level:
               description: DisruptionLevel represents which level the disruption should
                 be injected at

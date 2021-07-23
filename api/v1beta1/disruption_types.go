@@ -56,6 +56,8 @@ type DisruptionSpec struct {
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
 	// +nullable
 	DNS DNSDisruptionSpec `json:"dns,omitempty"`
+	//+nullable
+	HTTP HTTPDisruptionSpec `json:"http,omitempty"`
 }
 
 // DisruptionStatus defines the observed state of Disruption
@@ -143,6 +145,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		s.CPUPressure == nil &&
 		s.Network == nil &&
 		s.NodeFailure == nil &&
+		s.HTTP == nil &&
 		s.DiskPressure == nil {
 		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, CPUPressure fields is needed")
 	}
@@ -187,6 +190,8 @@ func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName
 		disruptionKind = s.CPUPressure
 	case chaostypes.DisruptionKindDiskPressure:
 		disruptionKind = s.DiskPressure
+	case chaostypes.DisruptionKindHTTP:
+		disruptionKind = s.HTTP
 	}
 
 	return disruptionKind

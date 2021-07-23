@@ -32,6 +32,8 @@ const (
 	DisruptionKindDiskPressure = "disk-pressure"
 	// DisruptionKindDNSDisruption is a dns disruption
 	DisruptionKindDNSDisruption = "dns-disruption"
+	// DisruptionKindHTTPDisruption is an http disruption
+	DisruptionKindHTTPDisruption = "http-disruption"
 
 	// DisruptionLevelUnspecified is the value used when the level of injection is not specified
 	DisruptionLevelUnspecified = ""
@@ -61,5 +63,6 @@ var (
 		DisruptionKindCPUPressure,
 		DisruptionKindDiskPressure,
 		DisruptionKindDNSDisruption,
+		DisruptionKindHTTPDisruption,
 	}
 )
