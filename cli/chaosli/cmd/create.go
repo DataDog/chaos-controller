@@ -185,18 +185,18 @@ Select one for more information on it.`
 
 				continue
 			}
-		case "pod failure":
-			spec.PodFailure = getPodFailure()
+		case "container failure":
+			spec.ContainerFailure = getContainerFailure()
 
-			if spec.PodFailure == nil {
+			if spec.ContainerFailure == nil {
 				continue
 			}
 
-			err := spec.PodFailure.Validate()
+			err := spec.ContainerFailure.Validate()
 			if err != nil {
-				fmt.Printf("There were some problems with your pod failure disruption's spec: %v\n\n", err)
+				fmt.Printf("There were some problems with your container failure disruption's spec: %v\n\n", err)
 
-				spec.PodFailure = nil
+				spec.ContainerFailure = nil
 
 				continue
 			}
@@ -406,12 +406,12 @@ func getNodeFailure() *v1beta1.NodeFailureSpec {
 	return spec
 }
 
-func getPodFailure() *v1beta1.PodFailureSpec {
-	if !confirmKind("Pod Failure", "This will terminate the targeted pod's container(s) gracefully (SIGTERM) or non-gracefully (SIGKILL)") {
+func getContainerFailure() *v1beta1.ContainerFailureSpec {
+	if !confirmKind("Container Failure", "This will terminate the targeted pod's container(s) gracefully (SIGTERM) or non-gracefully (SIGKILL)") {
 		return nil
 	}
 
-	spec := &v1beta1.PodFailureSpec{}
+	spec := &v1beta1.ContainerFailureSpec{}
 	spec.Forced = confirmOption("Would you like to terminate the pod's containers non-gracefully?",
 		"Choosing yes will terminate the pod's containers non-gracefully. If you don't enable this, we will terminate the target containers gracefully.")
 

@@ -21,12 +21,12 @@ import (
 
 var _ = Describe("Failure", func() {
 	var (
-		config  PodFailureInjectorConfig
+		config  ContainerFailureInjectorConfig
 		manager *process.ManagerMock
 		proc    *os.Process
 		ctn     *container.ContainerMock
 		inj     Injector
-		spec    v1beta1.PodFailureSpec
+		spec    v1beta1.ContainerFailureSpec
 	)
 
 	BeforeEach(func() {
@@ -43,7 +43,7 @@ var _ = Describe("Failure", func() {
 		manager.On("Find", mock.Anything).Return(proc, nil)
 		manager.On("Signal", mock.Anything, mock.Anything).Return(nil)
 
-		config = PodFailureInjectorConfig{
+		config = ContainerFailureInjectorConfig{
 			Config: Config{
 				Log:         log,
 				MetricsSink: ms,
@@ -52,11 +52,11 @@ var _ = Describe("Failure", func() {
 			ProcessManager: manager,
 		}
 
-		spec = v1beta1.PodFailureSpec{}
+		spec = v1beta1.ContainerFailureSpec{}
 	})
 
 	JustBeforeEach(func() {
-		inj = NewPodFailureInjector(spec, config)
+		inj = NewContainerFailureInjector(spec, config)
 	})
 
 	Describe("injection", func() {

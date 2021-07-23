@@ -36,6 +36,13 @@ spec:
         spec:
           description: DisruptionSpec defines the desired state of Disruption
           properties:
+            containerFailure:
+              description: ContainerFailureSpec represents a container failure injection
+              nullable: true
+              properties:
+                forced:
+                  type: boolean
+              type: object
             containers:
               items:
                 type: string
@@ -182,13 +189,6 @@ spec:
               type: object
             onInit:
               type: boolean
-            podFailure:
-              description: PodFailureSpec represents a pod failure injection
-              nullable: true
-              properties:
-                forced:
-                  type: boolean
-              type: object
             selector:
               additionalProperties:
                 type: string

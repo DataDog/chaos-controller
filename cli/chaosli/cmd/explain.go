@@ -59,17 +59,17 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 	printSeparator()
 }
 
-func explainPodFailure(spec v1beta1.DisruptionSpec) {
-	podFailure := spec.PodFailure
+func explainContainerFailure(spec v1beta1.DisruptionSpec) {
+	containerFailure := spec.ContainerFailure
 
-	if podFailure == nil {
+	if containerFailure == nil {
 		return
 	}
 
-	if podFailure.Forced {
-		fmt.Println("💉 injects a pod failure which sends the SIGKILL signal to the pod's container(s).")
+	if containerFailure.Forced {
+		fmt.Println("💉 injects a container failure which sends the SIGKILL signal to the pod's container(s).")
 	} else {
-		fmt.Println("💉 injects a pod failure which sends the SIGTERM signal to the pod's container(s).")
+		fmt.Println("💉 injects a container failure which sends the SIGTERM signal to the pod's container(s).")
 	}
 
 	printSeparator()
@@ -298,7 +298,7 @@ func explanation(path string) {
 	explainMetaSpec(disruption.Spec)
 	explainMultiDisruption(disruption.Spec)
 	explainNodeFailure(disruption.Spec)
-	explainPodFailure(disruption.Spec)
+	explainContainerFailure(disruption.Spec)
 	explainNetworkFailure(disruption.Spec)
 	explainCPUPressure(disruption.Spec)
 	explainDiskPressure(disruption.Spec)

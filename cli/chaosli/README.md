@@ -23,7 +23,7 @@ Example:
 # network_delay.yaml in examples has a network disruption specified
 
 $ go run chaosli/main.go validate --path=../examples/network_delay.yaml
-Error: cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, PodFailure, CPUPressure fields is needed
+Error: cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, ContainerFailure, CPUPressure fields is needed
 ```
 
 #### Explain

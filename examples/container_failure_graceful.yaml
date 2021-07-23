@@ -14,5 +14,5 @@ spec:
   containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
     - dummy
   count: 1
-  podFailure:
+  containerFailure:
     forced: false # send a SIGTERM signal to the specified containers

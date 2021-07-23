@@ -208,8 +208,8 @@ spec:
                 shutdown:
                   type: boolean
               type: object
-            podFailure:
-              description: PodFailureSpec represents a pod failure injection
+            containerFailure:
+              description: ContainerFailureSpec represents a container failure injection
               nullable: true
               properties:
                 forced:

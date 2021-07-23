@@ -90,13 +90,13 @@ var _ = Describe("Validator", func() {
 	JustBeforeEach(func() {
 		err = validator.Validate()
 	})
-	Describe("validating pod failure spec", func() {
+	Describe("validating container failure spec", func() {
 		var spec *v1beta1.DisruptionSpec
 
 		BeforeEach(func() {
 			spec = &v1beta1.DisruptionSpec{
-				Count:      &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
-				PodFailure: &v1beta1.PodFailureSpec{},
+				Count:            &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				ContainerFailure: &v1beta1.ContainerFailureSpec{},
 			}
 			validator = spec
 		})

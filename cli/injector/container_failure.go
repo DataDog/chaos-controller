@@ -11,21 +11,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var podFailureCmd = &cobra.Command{
-	Use:   "pod-failure",
-	Short: "Pod failure subcommands",
+var containerFailureCmd = &cobra.Command{
+	Use:   "container-failure",
+	Short: "Container failure subcommands",
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		forced, _ := cmd.Flags().GetBool("forced")
 
 		// prepare spec
-		spec := v1beta1.PodFailureSpec{
+		spec := v1beta1.ContainerFailureSpec{
 			Forced: forced,
 		}
 
 		// create injector
 		for _, config := range configs {
-			inj := injector.NewPodFailureInjector(spec, injector.PodFailureInjectorConfig{Config: config})
+			inj := injector.NewContainerFailureInjector(spec, injector.ContainerFailureInjectorConfig{Config: config})
 
 			injectors = append(injectors, inj)
 		}
@@ -33,5 +33,5 @@ var podFailureCmd = &cobra.Command{
 }
 
 func init() {
-	podFailureCmd.Flags().Bool("forced", false, "If set to false, the SIGKILL signal will be sent to the container. By default we send the SIGTERM signal.")
+	containerFailureCmd.Flags().Bool("forced", false, "If set to false, the SIGKILL signal will be sent to the container. By default we send the SIGTERM signal.")
 }

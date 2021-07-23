@@ -5,20 +5,20 @@
 
 package v1beta1
 
-// PodFailureSpec represents a pod failure injection
-type PodFailureSpec struct {
+// ContainerFailureSpec represents a container failure injection
+type ContainerFailureSpec struct {
 	Forced bool `json:"forced,omitempty"`
 }
 
 // Validate validates args for the given disruption
-func (s *PodFailureSpec) Validate() error {
+func (s *ContainerFailureSpec) Validate() error {
 	return nil
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *PodFailureSpec) GenerateArgs() []string {
+func (s *ContainerFailureSpec) GenerateArgs() []string {
 	args := []string{
-		"pod-failure",
+		"container-failure",
 		"inject",
 	}
 

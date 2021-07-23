@@ -14,34 +14,34 @@ import (
 	"github.com/DataDog/chaos-controller/process"
 )
 
-// podFailureInjector describes a pod failure injector
-type podFailureInjector struct {
-	spec   v1beta1.PodFailureSpec
-	config PodFailureInjectorConfig
+// containerFailureInjector describes a container failure injector
+type containerFailureInjector struct {
+	spec   v1beta1.ContainerFailureSpec
+	config ContainerFailureInjectorConfig
 }
 
-// PodFailureInjectorConfig contains needed drivers to
-// create a PodFailureInjector
-type PodFailureInjectorConfig struct {
+// ContainerFailureInjectorConfig contains needed drivers to
+// create a ContainerFailureInjector
+type ContainerFailureInjectorConfig struct {
 	Config
 	ProcessManager process.Manager
 }
 
-// NewPodFailureInjector creates a PodFailureInjector object with the given config,
+// NewContainerFailureInjector creates a ContainerFailureInjector object with the given config,
 // missing fields being initialized with the defaults
-func NewPodFailureInjector(spec v1beta1.PodFailureSpec, config PodFailureInjectorConfig) Injector {
+func NewContainerFailureInjector(spec v1beta1.ContainerFailureSpec, config ContainerFailureInjectorConfig) Injector {
 	if config.ProcessManager == nil {
 		config.ProcessManager = process.NewManager(config.DryRun)
 	}
 
-	return podFailureInjector{
+	return containerFailureInjector{
 		spec:   spec,
 		config: config,
 	}
 }
 
 // Inject sends a SIGKILL/SIGTERM signal to the container's PID
-func (i podFailureInjector) Inject() error {
+func (i containerFailureInjector) Inject() error {
 	var err error
 
 	containerPid := int(i.config.Container.PID())
@@ -59,7 +59,7 @@ func (i podFailureInjector) Inject() error {
 	}
 
 	// Send signal
-	i.config.Log.Infow("injecting a pod failure", "signal", sig, "container", containerPid)
+	i.config.Log.Infow("injecting a container failure", "signal", sig, "container", containerPid)
 
 	if err = i.config.ProcessManager.Signal(proc, sig); err != nil {
 		return fmt.Errorf("error while sending the %s signal to container with PID %d: %w", sig, containerPid, err)
@@ -68,6 +68,6 @@ func (i podFailureInjector) Inject() error {
 	return nil
 }
 
-func (i podFailureInjector) Clean() error {
+func (i containerFailureInjector) Clean() error {
 	return nil
 }
