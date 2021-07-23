@@ -36,6 +36,14 @@ The injector image to use can be specified via this flag and can be useful in ca
 --injector-image <image>
 ```
 
+### Injector network disruption allowed hosts
+
+As explained [in the network disruption documentation](../docs/network_disruption_hosts.md), you can globally (for all network disruptions) exclude some hosts from network disruptions. This list of hosts can be specified with the `--injector-network-disruption-allowed-hosts` flag:
+
+```
+--injector-network-disruption-allowed-hosts 10.0.0.1;53;udp
+```
+
 ### Image Pull Secrets
 
 To [pull the Docker images from a private registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry) which is behind authentication you can create a Kubernetes Secret and set the flag below:
@@ -69,4 +77,27 @@ Internal error occurred: failed calling webhook "chaos-controller-webhook-servic
 You can try disabling the Istio injection on the chaos controller pods. This can be done by adding the following annotation to the Deployment:
 ```
 sidecar.istio.io/inject: "false"
+
+### Handler
+
+The handler container is used to provide the `onInit` disruption feature. It is injected as the first init containers of the targeted pod by the admission webhook on its creation and keeps the pod in the initialization state until an injector unlocks it. It can be enabled with this flag.
+
+```
+--handler-enabled
+```
+
+#### Handler image
+
+The handler image can be specified via this flag.
+
+```
+--handler-image <image>
+```
+
+#### Handler timeout
+
+The handler container can have a timeout to avoid keeping the targeted pod indefinitely in case an error occurs with the injector.
+
+```
+--handler-timeout <duration>
 ```

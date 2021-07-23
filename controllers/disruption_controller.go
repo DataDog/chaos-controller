@@ -62,17 +62,18 @@ var (
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	client.Client
-	BaseLog                         *zap.SugaredLogger
-	Scheme                          *runtime.Scheme
-	Recorder                        record.EventRecorder
-	MetricsSink                     metrics.Sink
-	TargetSelector                  TargetSelector
-	InjectorAnnotations             map[string]string
-	InjectorServiceAccount          string
-	InjectorImage                   string
-	ImagePullSecrets                string
-	log                             *zap.SugaredLogger
-	InjectorServiceAccountNamespace string
+	BaseLog                               *zap.SugaredLogger
+	Scheme                                *runtime.Scheme
+	Recorder                              record.EventRecorder
+	MetricsSink                           metrics.Sink
+	TargetSelector                        TargetSelector
+	InjectorAnnotations                   map[string]string
+	InjectorServiceAccount                string
+	InjectorImage                         string
+	ImagePullSecrets                      string
+	log                                   *zap.SugaredLogger
+	InjectorServiceAccountNamespace       string
+	InjectorNetworkDisruptionAllowedHosts []string
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -902,9 +903,9 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		}
 
 		// generate args for pod
-		args := chaosapi.AppendCommonArgs(subspec.GenerateArgs(),
-			level, containerIDs, r.MetricsSink.GetSinkName(), instance.Spec.DryRun,
-			instance.Name, instance.Namespace, targetName, instance.Spec.OnInit)
+		args := chaosapi.AppendArgs(subspec.GenerateArgs(),
+			level, kind, containerIDs, r.MetricsSink.GetSinkName(), instance.Spec.DryRun,
+			instance.Name, instance.Namespace, targetName, instance.Spec.OnInit, r.InjectorNetworkDisruptionAllowedHosts)
 
 		// append pod to chaos pods
 		*pods = append(*pods, r.generatePod(instance, targetName, targetNodeName, args, kind))

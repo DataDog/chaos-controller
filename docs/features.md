@@ -35,6 +35,8 @@ By default, a disruption affects all containers within the pod. You can restrict
 ## Applying a disruption on pod initialization
 
 > :memo: This mode has some restrictions:
+>   * it requires a 1.15+ Kubernetes cluster
+>   * it requires the `--handler-enabled` flag on the controller container
 >   * it only works for network related (network and dns) disruptions
 >   * it only works with the pod level
 >   * it does not support containers scoping (applying a disruption to only some containers)

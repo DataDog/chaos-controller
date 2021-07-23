@@ -40,6 +40,9 @@ spec:
         - --enable-leader-election
         - --metrics-sink={{ .Values.controller.metricsSink }}
         - --injector-image={{ .Values.images.injector }}:{{ .Values.images.tag }}
+        {{- if .Values.handler.enabled }}
+        - --handler-enabled
+        {{- end }}
         - --handler-image={{ .Values.images.handler }}:{{ .Values.images.tag }}
         - --handler-timeout={{ .Values.handler.timeout }}
         {{- if .Values.images.pullSecrets }}
@@ -54,6 +57,9 @@ spec:
         {{- end }}
         - --injector-service-account={{ .Values.injector.serviceAccount }}
         - --injector-service-account-namespace={{ .Values.injector.serviceAccountNamespace }}
+        {{- range .Values.injector.networkDisruption.allowedHosts }}
+        - --injector-network-disruption-allowed-hosts={{ .host }};{{ .port }};{{ .protocol }}
+        {{- end }}
         {{- if .Values.controller.webhook.generateCert }}
         - --admission-webhook-cert-dir=/tmp/k8s-webhook-server/serving-certs
         {{- else }}
