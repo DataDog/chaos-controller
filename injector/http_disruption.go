@@ -11,17 +11,24 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 const (
 	httpPort = ":80"
 	tlsPort  = ":443"
+
+	dnsChain = "CHAOS-HTTP"
 )
 
 type HTTPDisruptionInjector struct {
 	config HTTPDisruptionInjectorConfig
+	spec   v1beta1.HTTPDisruptionSpec
 }
 
 type HTTPDisruptionInjectorConfig struct {
@@ -54,12 +61,55 @@ func NewHTTPDisruptionInjector(config HTTPDisruptionInjectorConfig) (Injector, e
 }
 
 func (i HTTPDisruptionInjector) Inject() error {
-	i.config.Log.Infow("adding http disruption", "spec", i.config) // TODO: Change this to spec
+	i.config.Log.Infow("adding http disruption", "spec", i.spec) // TODO: Change this to spec
+
+	// get the chaos pod node IP from the environment variable
+	podIP, ok := os.LookupEnv(env.InjectorChaosPodIP)
+	if !ok {
+		return fmt.Errorf("%s environment variable must be set with the chaos pod IP", env.InjectorChaosPodIP)
+	}
+
+	i.startProxyServers()
 
 	// TODO: Add IP table updates here
+	if err := i.config.Netns.Enter(); err != nil {
+		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
+	}
 
-	// TODO: Start the proxy servers
-	i.startProxyServer()
+	if err := i.config.Iptables.CreateChain(dnsChain); err != nil {
+		return fmt.Errorf("unable to create new iptables chain: %w", err)
+	}
+
+	if err := i.config.Iptables.AddRuleWithIP(dnsChain, "tcp", "80", "DNAT", podIP); err != nil {
+		return fmt.Errorf("unable to create new iptables HTTP rule: %w", err)
+	}
+
+	if err := i.config.Iptables.AddRuleWithIP(dnsChain, "tcp", "443", "DNAT", podIP); err != nil {
+		return fmt.Errorf("unable to create new iptables HTTPS rule: %w", err)
+	}
+
+	if i.config.Level == chaostypes.DisruptionLevelPod {
+		// write classid to container net_cls cgroup - for iptable filtering
+		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", InjectorDNSCgroupClassID); err != nil {
+			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
+		}
+
+		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "tcp", "80", dnsChain); err != nil {
+			return fmt.Errorf("unable to create new HTTP iptables rule: %w", err)
+		}
+
+		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "tcp", "443", dnsChain); err != nil {
+			return fmt.Errorf("unable to create new HTTPS iptables rule: %w", err)
+		}
+	}
+
+	if i.config.Level == chaostypes.DisruptionLevelNode {
+		return fmt.Errorf("unable to create HTTP disruption at the node level")
+	}
+
+	if err := i.config.Netns.Exit(); err != nil {
+		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
+	}
 
 	return nil
 }
@@ -70,11 +120,42 @@ func (i HTTPDisruptionInjector) Clean() error {
 	i.config.ProxyExit <- struct{}{}
 
 	// TODO: Clean up IP Tables
+	if err := i.config.Netns.Enter(); err != nil {
+		return fmt.Errorf("unable to enter the given container namespace: %w", err)
+	}
+
+	if i.config.Level == chaostypes.DisruptionLevelPod {
+		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x0"); err != nil {
+			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
+		}
+
+		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "tcp", "80", dnsChain); err != nil {
+			return fmt.Errorf("unable to remove injected HTTP iptables rule: %w", err)
+		}
+		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "tcp", "443", dnsChain); err != nil {
+			return fmt.Errorf("unable to remove injected HTTPS iptables rule: %w", err)
+		}
+	}
+
+	if i.config.Level == chaostypes.DisruptionLevelNode {
+		return fmt.Errorf("unable to create HTTP disruption at the node level")
+	}
+
+	if err := i.config.Iptables.ClearAndDeleteChain(dnsChain); err != nil {
+		return fmt.Errorf("unable to remove injected iptables chain: %w", err)
+	}
+
+	if err := i.config.Netns.Exit(); err != nil {
+		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
+	}
 
 	return nil
 }
 
-func (i HTTPDisruptionInjector) startProxyServer() error {
+// startProxyServers starts both the HTT and HTTPS proxy servers on their own goroutines.
+// One more goroutine is started which blocks until it receives a signal on the `ProxyExit`
+// channel at which point it calls the `Shutdown` method for both the HTTP and HTTPS servers.
+func (i HTTPDisruptionInjector) startProxyServers() error {
 	http.HandleFunc("/", i.proxyHandler)
 
 	tlsServer := &http.Server{Addr: tlsPort}
@@ -100,11 +181,18 @@ func (i HTTPDisruptionInjector) startProxyServer() error {
 	return nil
 }
 
+// proxyHandler handles the HTTP requests for both the HTTP and HTTPS servers.
+// If a request matches a provided filter from the `HTTPDisruptionSpec` then it
+// simply returns. Otherwise it continues to handle the requests.
 func (i HTTPDisruptionInjector) proxyHandler(rw http.ResponseWriter, r *http.Request) {
 	i.config.Log.Infow("REQUEST", "METHOD", r.Method, "PATH", r.URL.Path, "HEADER", r.Header)
-	if r.Method == http.MethodPost {
-		i.config.Log.Debug("DROPPING REQUEST ", r.Host+r.URL.Path)
-		return
+
+	// match requests by the spec
+	for _, domain := range i.spec.Domains {
+		if domain.Domain == r.URL.Host {
+			i.config.Log.Debugw("DROPPING", "DOMAIN", domain.Domain)
+			return
+		}
 	}
 
 	var scheme string
@@ -136,5 +224,12 @@ func (i HTTPDisruptionInjector) proxyHandler(rw http.ResponseWriter, r *http.Req
 		return
 	}
 
+	for key, values := range resp.Header {
+		for _, val := range values {
+			rw.Header().Add(key, val)
+		}
+	}
+
+	rw.WriteHeader(resp.StatusCode)
 	rw.Write(body)
 }
