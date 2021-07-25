@@ -65,8 +65,8 @@ func (s HTTPDisruptionSpec) GenerateArgs() []string {
 	args = append(args, httpPortArg)
 	args = append(args, httpsPortArg)
 
-	// Each value passed to --request-field should be of the form `uri;method`, e.g.
-	// `/foo/bar/baz;GET`
+	// Each value passed to --request-field should be of the form `domain+uri;method`, e.g.
+	// `foo.com/bar/baz;GET`
 	args = append(args, strings.Split(strings.Join(targetDomainArgs, " --request-field "), " ")...)
 
 	return args

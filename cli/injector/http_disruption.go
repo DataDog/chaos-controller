@@ -25,6 +25,7 @@ var httpDisruptionCmd = &cobra.Command{
 
 func init() {
 	// We must use a StringArray rather than StringSlice here, because our ip values can contain commas. StringSlice will split on commas.
-	dnsDisruptionCmd.Flags().StringArray("host-record-pairs", []string{}, "list of host,record,value tuples as strings") // `foo.bar.svc.cluster.local;A;10.0.0.0,10.0.0.13`
-	dnsDisruptionCmd.Flags().StringArray("http-port-list", []string{}, "list of host,record,value tuples as strings")    // `foo.bar.svc.cluster.local;A;10.0.0.0,10.0.0.13`
+	httpDisruptionCmd.Flags().StringArray("http-port-list", []string{}, "list of comma-delineated port values for http traffic as strings")   // `80,8080`
+	httpDisruptionCmd.Flags().StringArray("https-port-list", []string{}, "list of comma-delineated port values for https traffic as strings") // `443,8443`
+	httpDisruptionCmd.Flags().StringArray("request-field", []string{}, "list of domain, uri, method values as strings")                       // `foo.com/bar/baz;GET
 }
