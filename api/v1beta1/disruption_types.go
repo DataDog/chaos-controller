@@ -190,7 +190,7 @@ func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName
 		disruptionKind = s.CPUPressure
 	case chaostypes.DisruptionKindDiskPressure:
 		disruptionKind = s.DiskPressure
-	case chaostypes.DisruptionKindHTTP:
+	case chaostypes.DisruptionKindHTTPDisruption:
 		disruptionKind = s.HTTP
 	}
 

@@ -188,7 +188,7 @@ func (i HTTPDisruptionInjector) proxyHandler(rw http.ResponseWriter, r *http.Req
 	i.config.Log.Infow("REQUEST", "METHOD", r.Method, "PATH", r.URL.Path, "HEADER", r.Header)
 
 	// match requests by the spec
-	for _, domain := range i.spec.Domains {
+	for _, domain := range i.spec[0].Domains {
 		if domain.Domain == r.URL.Host {
 			i.config.Log.Debugw("DROPPING", "DOMAIN", domain.Domain)
 			return

@@ -6,13 +6,15 @@
 package v1beta1
 
 import (
-	"errors"
+//	"errors"
 	"fmt"
 	"strings"
 )
 
 // HTTPDisruptionSpec represents an http disruption
-type HTTPDisruptionSpec struct {
+type HTTPDisruptionSpec []HTTPDisruption
+
+type HTTPDisruption struct {
 	Domains []TargetDomain `json:"domains"`
 	Ports   []int          `json:"ports"`
 }
@@ -37,19 +39,21 @@ func (s HTTPDisruptionSpec) GenerateArgs() []string {
 
 	arg := "--port-list "
 
-	for _, port := range s.Ports {
+	for _, port := range s[0].Ports {
 		arg = fmt.Sprintf("%s,%d", arg, port)
 	}
-	args.append(fmt.Sprintf("%s ", arg))
+	args = append(args, arg)
 
 	targetDomainArgs := []string{}
 
-	for _, target := range s.Header {
-		whiteSpaceCleanedUri := strings.ReplaceAll(target.Uri, " ", "")
-		whiteSpaceCleanedMethod := strings.ReplaceAll(target.Method, " ", "")
-		arg = fmt.sprintf("%s;%s", whiteSpaceCleanedUri, qhiteSpaceCleanedMethod)
-
-		targetDomainArgs = append(targetDomainArgs, arg)
+	for _, target := range s[0].Domains {
+		whiteSpaceCleanedDomain := strings.ReplaceAll(target.Domain, " ", "")
+		for _, header := range(target.Header) {
+			whiteSpaceCleanedUri := strings.ReplaceAll(header.Uri, " ", "")
+			whiteSpaceCleanedMethod := strings.ReplaceAll(header.Method, " ", "")
+			arg = fmt.Sprintf("%s%s;%s", whiteSpaceCleanedDomain, whiteSpaceCleanedUri, whiteSpaceCleanedMethod)
+			targetDomainArgs = append(targetDomainArgs, arg)
+		}
 	}
 
 	args = append(args, "--request-field")
@@ -59,4 +63,10 @@ func (s HTTPDisruptionSpec) GenerateArgs() []string {
 	args = append(args, strings.Split(strings.Join(targetDomainArgs, " --request-field "), " ")...)
 
 	return args
+}
+
+// Validate validates that there are no missing URIs or methods in the given http disruption spec
+func (s HTTPDisruptionSpec) Validate() error {
+	// TODO: implement
+	return nil
 }
