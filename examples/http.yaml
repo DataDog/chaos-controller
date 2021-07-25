@@ -18,6 +18,8 @@ spec:
       header:
         - method: GET
           uri: /
+        - method: PUT
+          uri: /
       ports:
         http: [8000,8080]
         https: [8443,9443]
