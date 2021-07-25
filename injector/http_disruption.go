@@ -39,7 +39,7 @@ type HTTPDisruptionInjectorConfig struct {
 	ProxyExit chan struct{}
 }
 
-func NewHTTPDisruptionInjector(config HTTPDisruptionInjectorConfig) (Injector, error) {
+func NewHTTPDisruptionInjector(spec v1beta1.HTTPDisruptionSpec, config HTTPDisruptionInjectorConfig) (Injector, error) {
 	var err error
 	if config.Iptables == nil {
 		config.Iptables, err = network.NewIptables(config.Log, config.DryRun)
@@ -57,6 +57,7 @@ func NewHTTPDisruptionInjector(config HTTPDisruptionInjectorConfig) (Injector, e
 
 	return HTTPDisruptionInjector{
 		config: config,
+		spec:   spec,
 	}, err
 }
 
@@ -119,7 +120,6 @@ func (i HTTPDisruptionInjector) Clean() error {
 
 	i.config.ProxyExit <- struct{}{}
 
-	// TODO: Clean up IP Tables
 	if err := i.config.Netns.Enter(); err != nil {
 		return fmt.Errorf("unable to enter the given container namespace: %w", err)
 	}
@@ -174,8 +174,13 @@ func (i HTTPDisruptionInjector) startProxyServers() error {
 	go func() {
 		// Block until there is a signal to shutdown the proxy
 		<-i.config.ProxyExit
-		tlsServer.Shutdown(context.TODO())
-		httpServer.Shutdown(context.TODO())
+		if err := tlsServer.Shutdown(context.TODO()); err != nil {
+			i.config.Log.Error(err)
+		}
+
+		if err := httpServer.Shutdown(context.TODO()); err != nil {
+			i.config.Log.Error(err)
+		}
 	}()
 
 	return nil
@@ -185,12 +190,12 @@ func (i HTTPDisruptionInjector) startProxyServers() error {
 // If a request matches a provided filter from the `HTTPDisruptionSpec` then it
 // simply returns. Otherwise it continues to handle the requests.
 func (i HTTPDisruptionInjector) proxyHandler(rw http.ResponseWriter, r *http.Request) {
-	i.config.Log.Infow("REQUEST", "METHOD", r.Method, "PATH", r.URL.Path, "HEADER", r.Header)
+	i.config.Log.Infow("request", "method", r.Method, "path", r.URL.Path, "header", r.Header)
 
 	// match requests by the spec
 	for _, domain := range i.spec {
 		if domain.Domain == r.URL.Host {
-			i.config.Log.Debugw("DROPPING", "DOMAIN", domain.Domain)
+			i.config.Log.Debugw("dropping", "domain", domain.Domain)
 			return
 		}
 	}
