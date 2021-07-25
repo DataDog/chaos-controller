@@ -98,41 +98,49 @@ spec:
               type: boolean
             http:
               description: HTTPDisruptionSpec represents an http disruption
-              nullable: true
-              properties:
-                domains:
-                  items:
-                    description: TargetDomain represents an http-hosting endpoint
+              items:
+                description: TargetDomain represents an http-hosting endpoint
+                properties:
+                  domain:
+                    type: string
+                  header:
+                    items:
+                      description: RequestFields represents some of the fields present
+                        in the http request header
+                      properties:
+                        method:
+                          type: string
+                        uri:
+                          type: string
+                      required:
+                      - method
+                      - uri
+                      type: object
+                    type: array
+                  ports:
+                    description: PortTypes represents the HTTPS and HTTP ports to
+                      forward via iptables and the ones that the corresponding proxy
+                      services should listen on
                     properties:
-                      domain:
-                        type: string
-                      header:
+                      http:
                         items:
-                          description: RequestFields represents some of the fields
-                            present in the http header
-                          properties:
-                            method:
-                              type: string
-                            uri:
-                              type: string
-                          required:
-                          - method
-                          - uri
-                          type: object
+                          type: integer
+                        type: array
+                      https:
+                        items:
+                          type: integer
                         type: array
                     required:
-                    - domain
-                    - header
+                    - http
+                    - https
                     type: object
-                  type: array
-                ports:
-                  items:
-                    type: integer
-                  type: array
-              required:
-              - domains
-              - ports
-              type: object
+                required:
+                - domain
+                - header
+                - ports
+                type: object
+              nullable: true
+              type: array
             level:
               description: DisruptionLevel represents which level the disruption should
                 be injected at

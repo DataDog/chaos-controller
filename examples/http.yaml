@@ -16,7 +16,8 @@ spec:
   http:
     - domain: demo.chaos-demo.svc.cluster.local
       header:
-        method: GET
-        uri: /
-    - ports:
-        [8080, 8000]
+        - method: GET
+          uri: /
+      ports:
+        http: [8000,8080]
+        https: [8443,9443]

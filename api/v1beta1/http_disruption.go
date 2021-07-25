@@ -12,23 +12,25 @@ import (
 )
 
 // HTTPDisruptionSpec represents an http disruption
-type HTTPDisruptionSpec []HTTPDisruption
-
-type HTTPDisruption struct {
-	Domains []TargetDomain `json:"domains"`
-	Ports   []int          `json:"ports"`
-}
+type HTTPDisruptionSpec []TargetDomain
 
 // TargetDomain represents an http-hosting endpoint
 type TargetDomain struct {
 	Domain string         `json:"domain"`
 	Header []RequestField `json:"header"`
+	Ports PortTypes `json:"ports"`
 }
 
-// RequestFields represents some of the fields present in the http header
+// RequestFields represents some of the fields present in the http request header
 type RequestField struct {
 	Uri    string `json:"uri"`
 	Method string `json:"method"`
+}
+
+// PortTypes represents the HTTPS and HTTP ports to forward via iptables and the ones that the corresponding proxy services should listen on
+type PortTypes struct {
+	HTTPS []int `json:"https"`
+	HTTP []int `json:"http"`
 }
 
 // GenerateArgs generates injection pod arguments for the given spec
@@ -37,26 +39,31 @@ func (s HTTPDisruptionSpec) GenerateArgs() []string {
 		"http-disruption",
 	}
 
-	arg := "--port-list "
-
-	for _, port := range s[0].Ports {
-		arg = fmt.Sprintf("%s,%d", arg, port)
-	}
-	args = append(args, arg)
+	httpPortArg := "--http-port-list "
+	httpsPortArg := " --https-port-list "
 
 	targetDomainArgs := []string{}
 
-	for _, target := range s[0].Domains {
+	for _, target := range s {
 		whiteSpaceCleanedDomain := strings.ReplaceAll(target.Domain, " ", "")
+
 		for _, header := range(target.Header) {
 			whiteSpaceCleanedUri := strings.ReplaceAll(header.Uri, " ", "")
 			whiteSpaceCleanedMethod := strings.ReplaceAll(header.Method, " ", "")
-			arg = fmt.Sprintf("%s%s;%s", whiteSpaceCleanedDomain, whiteSpaceCleanedUri, whiteSpaceCleanedMethod)
+			arg := fmt.Sprintf("--request-field %s%s;%s", whiteSpaceCleanedDomain, whiteSpaceCleanedUri, whiteSpaceCleanedMethod)
 			targetDomainArgs = append(targetDomainArgs, arg)
+			}
+
+		for _, port := range target.Ports.HTTP {
+			httpPortArg = fmt.Sprintf("%s,%d", httpPortArg, port)
+		}
+		for _, port := range target.Ports.HTTPS {
+			httpsPortArg = fmt.Sprintf("%s,%d", httpsPortArg, port)
 		}
 	}
 
-	args = append(args, "--request-field")
+	args = append(args, httpPortArg)
+	args = append(args, httpsPortArg)
 
 	// Each value passed to --request-field should be of the form `uri;method`, e.g.
 	// `/foo/bar/baz;GET`
