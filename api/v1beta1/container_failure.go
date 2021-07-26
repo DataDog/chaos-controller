@@ -19,7 +19,6 @@ func (s *ContainerFailureSpec) Validate() error {
 func (s *ContainerFailureSpec) GenerateArgs() []string {
 	args := []string{
 		"container-failure",
-		"inject",
 	}
 
 	if s.Forced {

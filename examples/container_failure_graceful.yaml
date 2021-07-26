@@ -16,4 +16,3 @@ spec:
   count: 1
   containerFailure:
     forced: false # send a SIGTERM signal to the specified containers
-    
