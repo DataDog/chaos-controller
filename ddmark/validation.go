@@ -43,7 +43,7 @@ type ExclusiveFields []string
 
 func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
-	fieldInt, ok := parseIntOrUInt(reflect.Indirect(fieldvalue))
+	fieldInt, ok := parseIntOrUInt(fieldvalue)
 
 	if !ok {
 		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(m), fieldvalue.Type(), "int or uint")
@@ -58,7 +58,7 @@ func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
 
 func (m Minimum) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
-	fieldInt, ok := parseIntOrUInt(reflect.Indirect(fieldvalue))
+	fieldInt, ok := parseIntOrUInt(fieldvalue)
 
 	if !ok {
 		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(m), fieldvalue.Type(), "int or uint")
@@ -76,7 +76,7 @@ func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
 
 	var matchCount int = 0
 
-	structMap, ok := structValueToMap(reflect.Indirect(fieldvalue))
+	structMap, ok := structValueToMap(fieldvalue)
 	if !ok {
 		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(e), fieldvalue.Type(), "struct")
 	}

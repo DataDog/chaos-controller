@@ -23,6 +23,15 @@ minmaxtest:
 			errorList := validateString(minmaxValidYaml)
 			Expect(errorList).To(HaveLen(0))
 		})
+		It("rejects empty pointer value", func() {
+			var minmaxValidYaml string = `
+minmaxtest:
+  intfield: 6
+  pintfield: 
+`
+			errorList := validateString(minmaxValidYaml)
+			Expect(errorList).To(HaveLen(0))
+		})
 		It("checks out valid values", func() {
 			var minmaxValidYaml string = `
 minmaxtest:
@@ -48,6 +57,15 @@ minmaxtest:
 			var requiredOneFieldYaml string = `
 requiredtest:
   intfield: 1
+`
+			errorList := validateString(requiredOneFieldYaml)
+			Expect(errorList).To(HaveLen(5))
+		})
+		It("rejects on all but one missing fields", func() {
+			var requiredOneFieldYaml string = `
+requiredtest:
+  intfield: 1
+  pintfield: 
 `
 			errorList := validateString(requiredOneFieldYaml)
 			Expect(errorList).To(HaveLen(5))

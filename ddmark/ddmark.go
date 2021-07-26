@@ -96,8 +96,7 @@ func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarker
 // applyMarkers applies all markers found in the markers arg to a given type/field
 func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorList *[]error, fieldName string, targetType k8smarkers.TargetType, col *k8smarkers.Collector) {
 	// if value is Invalid, field is most likely absent -- needs to add an error if Required is found true
-	// if !value.IsValid() {
-	if value.Interface() == nil {
+	if !reflect.Indirect(value).IsValid() {
 		isRequired := markers.Get("ddmark:validation:Required")
 		if isRequired != nil {
 			typedIsRequired, ok := isRequired.(Required)
@@ -112,6 +111,8 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 				return
 			}
 		}
+
+		return
 	}
 
 	// run all existing markers for that field
@@ -146,8 +147,8 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 
 			if !ok {
 				*errorList = append(*errorList, fmt.Errorf("cannot convert %v to DDmarker, please check the interface definition", thisdef.Output))
-			} else if value.IsValid() {
-				// conversions are done, value is correct, proceed to validation
+			} else {
+				// conversions are done, proceed to validation
 				err := ddmarker.ApplyRule(value)
 				if err != nil {
 					*errorList = append(*errorList, fmt.Errorf("%v - %v", fieldName, err))
