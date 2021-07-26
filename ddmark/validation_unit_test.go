@@ -171,9 +171,12 @@ var _ = Describe("Validation Rules Cases", func() {
 		})
 
 		It("accepts object with 0 fields", func() {
+			i := 0
+			var pi *int = &i
+
 			fakeObj.Field1 = ""
 			fakeObj.Field2 = 0
-			fakeObj.Field3 = 0
+			fakeObj.Field3 = pi
 			Expect(excl.ApplyRule(ValueOf(fakeObj))).To(BeNil())
 		})
 
