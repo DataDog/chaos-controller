@@ -33,5 +33,5 @@ var containerFailureCmd = &cobra.Command{
 }
 
 func init() {
-	containerFailureCmd.Flags().Bool("forced", false, "If set to false, the SIGKILL signal will be sent to the container. By default we send the SIGTERM signal.")
+	containerFailureCmd.Flags().Bool("forced", false, "If set to true, the SIGKILL signal will be sent to the container. By default we send the SIGTERM signal.")
 }

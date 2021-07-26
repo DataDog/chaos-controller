@@ -13,4 +13,5 @@ spec:
     app: demo-curl
   count: 1
   containerFailure:
-    forced: true # send a SIGKILL signal to the specified containers
+    forced: true # send a SIGKILL signal all of the pod's containers
+    

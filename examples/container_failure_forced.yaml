@@ -16,3 +16,4 @@ spec:
   count: 1
   containerFailure:
     forced: true # send a SIGKILL signal to the specified containers
+    
