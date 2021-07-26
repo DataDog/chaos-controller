@@ -45,6 +45,7 @@ func (p manager) Find(pid int) (*os.Process, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to find process: %w", err)
 	}
+
 	return proc, nil
 }
 
