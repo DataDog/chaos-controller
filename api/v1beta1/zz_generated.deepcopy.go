@@ -386,12 +386,12 @@ func (in *PortTypes) DeepCopyInto(out *PortTypes) {
 	*out = *in
 	if in.HTTPS != nil {
 		in, out := &in.HTTPS, &out.HTTPS
-		*out = make([]int, len(*in))
+		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
 	if in.HTTP != nil {
 		in, out := &in.HTTP, &out.HTTP
-		*out = make([]int, len(*in))
+		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
 }

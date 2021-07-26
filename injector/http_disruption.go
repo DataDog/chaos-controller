@@ -52,7 +52,7 @@ func NewHTTPDisruptionInjector(spec v1beta1.HTTPDisruptionSpec, config HTTPDisru
 	}
 
 	if config.ProxyExit == nil {
-		config.ProxyExit = make(chan struct{})
+		config.ProxyExit = make(chan struct{}, 2)
 	}
 
 	return HTTPDisruptionInjector{
@@ -62,7 +62,7 @@ func NewHTTPDisruptionInjector(spec v1beta1.HTTPDisruptionSpec, config HTTPDisru
 }
 
 func (i HTTPDisruptionInjector) Inject() error {
-	i.config.Log.Infow("adding http disruption", "spec", i.spec) // TODO: Change this to spec
+	i.config.Log.Infow("adding http disruption", "spec", i.spec)
 
 	// get the chaos pod node IP from the environment variable
 	podIP, ok := os.LookupEnv(env.InjectorChaosPodIP)
@@ -117,6 +117,10 @@ func (i HTTPDisruptionInjector) Inject() error {
 
 func (i HTTPDisruptionInjector) Clean() error {
 	i.config.Log.Info("Stopping HTTP disruption proxy")
+
+	if i.config.ProxyExit == nil {
+		return fmt.Errorf("proxy exit channel is nil")
+	}
 
 	i.config.ProxyExit <- struct{}{}
 

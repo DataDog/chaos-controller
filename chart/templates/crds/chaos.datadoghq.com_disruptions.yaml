@@ -124,11 +124,11 @@ spec:
                     properties:
                       http:
                         items:
-                          type: integer
+                          type: string
                         type: array
                       https:
                         items:
-                          type: integer
+                          type: string
                         type: array
                     required:
                     - http

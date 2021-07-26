@@ -29,8 +29,8 @@ type RequestField struct {
 
 // PortTypes represents the HTTPS and HTTP ports to forward via iptables and the ones that the corresponding proxy services should listen on
 type PortTypes struct {
-	HTTPS []int `json:"https"`
-	HTTP  []int `json:"http"`
+	HTTPS []string `json:"https"`
+	HTTP  []string `json:"http"`
 }
 
 // GenerateArgs generates injection pod arguments for the given spec
@@ -39,8 +39,8 @@ func (s HTTPDisruptionSpec) GenerateArgs() []string {
 		"http-disruption",
 	}
 
-	httpPortArg := "--http-port-list "
-	httpsPortArg := " --https-port-list "
+	httpPortArg := "--http-port-list"
+	httpsPortArg := "--https-port-list"
 
 	targetDomainArgs := []string{}
 
@@ -50,16 +50,12 @@ func (s HTTPDisruptionSpec) GenerateArgs() []string {
 		for _, header := range target.Header {
 			whiteSpaceCleanedUri := strings.ReplaceAll(header.Uri, " ", "")
 			whiteSpaceCleanedMethod := strings.ReplaceAll(header.Method, " ", "")
-			arg := fmt.Sprintf("--request-field %s%s;%s", whiteSpaceCleanedDomain, whiteSpaceCleanedUri, whiteSpaceCleanedMethod)
+			arg := fmt.Sprintf("%s;%s;%s", whiteSpaceCleanedDomain, whiteSpaceCleanedUri, whiteSpaceCleanedMethod)
 			targetDomainArgs = append(targetDomainArgs, arg)
 		}
 
-		for _, port := range target.Ports.HTTP {
-			httpPortArg = fmt.Sprintf("%s,%d", httpPortArg, port)
-		}
-		for _, port := range target.Ports.HTTPS {
-			httpsPortArg = fmt.Sprintf("%s,%d", httpsPortArg, port)
-		}
+		httpPortArg = fmt.Sprintf("%s=%s", httpPortArg, strings.Join(target.Ports.HTTP, ","))
+		httpsPortArg = fmt.Sprintf("%s=%s", httpsPortArg, strings.Join(target.Ports.HTTPS, ","))
 	}
 
 	args = append(args, httpPortArg)
@@ -67,7 +63,7 @@ func (s HTTPDisruptionSpec) GenerateArgs() []string {
 
 	// Each value passed to --request-field should be of the form `domain+uri;method`, e.g.
 	// `foo.com/bar/baz;GET`
-	args = append(args, strings.Split(strings.Join(targetDomainArgs, " --request-field "), " ")...)
+	args = append(args, fmt.Sprintf("--request-field=%s", strings.Join(targetDomainArgs, ",")))
 
 	return args
 }
