@@ -235,7 +235,7 @@ var explainCmd = &cobra.Command{
 }
 
 func explanation(path string) {
-	disruption := ReadUnmarshallValidate(path)
+	disruption := ReadUnmarshalValidate(path)
 
 	fmt.Println("This Disruption...")
 
