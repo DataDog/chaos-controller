@@ -88,7 +88,7 @@ func initConfig() {
 }
 
 func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
-	parsedSpec := ReadUnmarshallValidate(path)
+	parsedSpec := ReadUnmarshalValidate(path)
 
 	return parsedSpec, nil
 }
@@ -109,7 +109,7 @@ func PrintSeparator() {
 	fmt.Println("=======================================================================================================================================")
 }
 
-func ReadUnmarshallValidate(path string) (v1beta1.Disruption) {
+func ReadUnmarshalValidate(path string) v1beta1.Disruption {
 	fullPath, err := filepath.Abs(path)
 	if err != nil {
 		log.Fatalf("finding Absolute Path: %v", err)

@@ -23,8 +23,6 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 	spec := disruption.Spec
 	labels := spec.Selector.String()
 	level := spec.Level
-	// If node level, this \n will give us empty namespaces for node which is intended because nodes
-	// do not require namespaces to be described
 	podNamespaces := disruption.ObjectMeta.Namespace
 	rowNames := 1
 
@@ -154,7 +152,7 @@ func grabDataForTargets(targets []string, disruption v1beta1.Disruption) ([]v1.P
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not grab target data: %v", err)
 		}
-		
+
 		if level == types.DisruptionLevelPod {
 			if err := json.Unmarshal(targetData, &pod); err != nil {
 				return nil, nil, fmt.Errorf("json encoding failed: %v", err)
@@ -354,7 +352,7 @@ var contextCmd = &cobra.Command{
 }
 
 func contextualize(path string) {
-	disruption := ReadUnmarshallValidate(path)
+	disruption := ReadUnmarshalValidate(path)
 
 	err := checkKubectl()
 	if err != nil {
