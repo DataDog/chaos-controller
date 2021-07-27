@@ -20,7 +20,8 @@ limitations under the License.
 package v1beta1
 
 import (
-	"k8s.io/api/authentication/v1"
+	authenticationv1 "k8s.io/api/authentication/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -190,6 +191,13 @@ func (in *DisruptionSpec) DeepCopyInto(out *DisruptionSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.AdvancedSelector != nil {
+		in, out := &in.AdvancedSelector, &out.AdvancedSelector
+		*out = make([]v1.LabelSelectorRequirement, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.Containers != nil {
 		in, out := &in.Containers, &out.Containers
 		*out = make([]string, len(*in))
@@ -247,7 +255,7 @@ func (in *DisruptionStatus) DeepCopyInto(out *DisruptionStatus) {
 	}
 	if in.UserInfo != nil {
 		in, out := &in.UserInfo, &out.UserInfo
-		*out = new(v1.UserInfo)
+		*out = new(authenticationv1.UserInfo)
 		(*in).DeepCopyInto(*out)
 	}
 }
