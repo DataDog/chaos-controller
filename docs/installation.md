@@ -36,6 +36,14 @@ The injector image to use can be specified via this flag and can be useful in ca
 --injector-image <image>
 ```
 
+### Injector network disruption allowed hosts
+
+As explained [in the network disruption documentation](../docs/network_disruption_hosts.md), you can globally (for all network disruptions) exclude some hosts from network disruptions. This list of hosts can be specified with the `--injector-network-disruption-allowed-hosts` flag:
+
+```
+--injector-network-disruption-allowed-hosts 10.0.0.1;53;udp
+```
+
 ### Image Pull Secrets
 
 To [pull the Docker images from a private registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry) which is behind authentication you can create a Kubernetes Secret and set the flag below:
@@ -51,4 +59,45 @@ The admission webhook can be configured, which is mostly only useful if you do n
 --admission-webhook-cert-dir <cert dir>
 --admission-webhook-host <ip to listen on>
 --admission-webhook-port <port to listen on>
+```
+
+If you use Helm you can set the `controller.webhook.generateCert` parameter to `true` in the [values.yaml](../chart/values.yaml). Running the following from the `chart` directory will generate self-signed certificates and install the controller and any resources needed:
+
+```
+helm install -f values.yaml chaos-controller ./
+```
+
+### Setup in a cluster with Istio Service Mesh
+
+If you use a service mesh like Istio and the Istio sidecar is installed in application pods by default you may get the following error message:
+```
+Internal error occurred: failed calling webhook "chaos-controller-webhook-service.chaos-engineering.svc": Post "https://chaos-controller-webhook-service.chaos-engineering.svc:443/validate-chaos-datadoghq-com-v1beta1-disruption?timeout=30s": x509: certificate is not valid for any names, but wanted to match chaos-controller-webhook-service.chaos-engineering.svc
+```
+
+You can try disabling the Istio injection on the chaos controller pods. This can be done by adding the following annotation to the Deployment:
+```
+sidecar.istio.io/inject: "false"
+
+### Handler
+
+The handler container is used to provide the `onInit` disruption feature. It is injected as the first init containers of the targeted pod by the admission webhook on its creation and keeps the pod in the initialization state until an injector unlocks it. It can be enabled with this flag.
+
+```
+--handler-enabled
+```
+
+#### Handler image
+
+The handler image can be specified via this flag.
+
+```
+--handler-image <image>
+```
+
+#### Handler timeout
+
+The handler container can have a timeout to avoid keeping the targeted pod indefinitely in case an error occurs with the injector.
+
+```
+--handler-timeout <duration>
 ```

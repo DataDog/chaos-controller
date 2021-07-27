@@ -6,9 +6,6 @@
 package main
 
 import (
-	"strconv"
-	"strings"
-
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
 	"github.com/spf13/cobra"
@@ -20,6 +17,7 @@ var networkDisruptionCmd = &cobra.Command{
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		hosts, _ := cmd.Flags().GetStringSlice("hosts")
+		allowedHosts, _ := cmd.Flags().GetStringSlice("allowed-hosts")
 		services, _ := cmd.Flags().GetStringSlice("services")
 		flow, _ := cmd.Flags().GetString("flow")
 		drop, _ := cmd.Flags().GetInt("drop")
@@ -38,45 +36,24 @@ var networkDisruptionCmd = &cobra.Command{
 			// We must still tag outgoing packets from all containers with a classid
 			// in order for the disruption to take effect, so injectors must be created for each container.
 			if i == 0 {
-				parsedHosts := []v1beta1.NetworkDisruptionHostSpec{}
-				parsedServices := []v1beta1.NetworkDisruptionServiceSpec{}
-
-				// parse given hosts
-				for _, host := range hosts {
-					// parse host with format <host>;<port>;<protocol>
-					parsedHost := strings.SplitN(host, ";", 3)
-
-					// cast port to int
-					port, err := strconv.Atoi(parsedHost[1])
-					if err != nil {
-						log.Fatalw("unexpected port parameter", "error", err, "host", host)
-					}
-
-					// generate host spec
-					parsedHosts = append(parsedHosts, v1beta1.NetworkDisruptionHostSpec{
-						Host:     parsedHost[0],
-						Port:     port,
-						Protocol: parsedHost[2],
-					})
+				parsedHosts, err := v1beta1.NetworkDisruptionHostSpecFromString(hosts)
+				if err != nil {
+					log.Fatalw("error parsing hosts", "error", err)
 				}
 
-				// parse given services
-				for _, service := range services {
-					// parse service with format <name>;<namespace>
-					parsedService := strings.Split(service, ";")
-					if len(parsedService) != 2 {
-						log.Fatalw("unexpected service", "service", service)
-					}
+				parsedAllowedHosts, err := v1beta1.NetworkDisruptionHostSpecFromString(allowedHosts)
+				if err != nil {
+					log.Fatalw("error parsing allowed hosts", "error", err)
+				}
 
-					// generate service spec
-					parsedServices = append(parsedServices, v1beta1.NetworkDisruptionServiceSpec{
-						Name:      parsedService[0],
-						Namespace: parsedService[1],
-					})
+				parsedServices, err := v1beta1.NetworkDisruptionServiceSpecFromString(services)
+				if err != nil {
+					log.Fatalw("error parsing services", "error", err)
 				}
 
 				spec = v1beta1.NetworkDisruptionSpec{
 					Hosts:          parsedHosts,
+					AllowedHosts:   parsedAllowedHosts,
 					Services:       parsedServices,
 					Flow:           flow,
 					Drop:           drop,
@@ -96,6 +73,7 @@ var networkDisruptionCmd = &cobra.Command{
 
 func init() {
 	networkDisruptionCmd.Flags().StringSlice("hosts", []string{}, "List of hosts (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>)")
+	networkDisruptionCmd.Flags().StringSlice("allowed-hosts", []string{}, "List of allowed hosts not being impacted by the disruption (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>)")
 	networkDisruptionCmd.Flags().StringSlice("services", []string{}, "List of services to apply disruptions to (format: <name>;<namespace>)")
 	networkDisruptionCmd.Flags().String("flow", "egress", "Flow direction to filter on (either egress or ingress)")
 	networkDisruptionCmd.Flags().Int("drop", 100, "Percentage to drop packets (100 is a total drop)")

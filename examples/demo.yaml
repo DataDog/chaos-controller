@@ -60,6 +60,12 @@ spec:
       containers:
       - name: nginx
         image: nginx
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 3
 ---
 apiVersion: apps/v1
 kind: Deployment

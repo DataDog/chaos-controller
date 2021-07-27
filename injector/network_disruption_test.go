@@ -167,6 +167,7 @@ var _ = Describe("Failure", func() {
 		spec = v1beta1.NetworkDisruptionSpec{
 			Hosts:          []v1beta1.NetworkDisruptionHostSpec{},
 			Services:       []v1beta1.NetworkDisruptionServiceSpec{},
+			AllowedHosts:   []v1beta1.NetworkDisruptionHostSpec{},
 			Drop:           90,
 			Duplicate:      80,
 			Corrupt:        70,
@@ -333,6 +334,21 @@ var _ = Describe("Failure", func() {
 			It("should not add a second prio band with the cgroup filter", func() {
 				tc.AssertNotCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "1:4", uint32(2), uint32(2), mock.Anything)
 				tc.AssertNotCalled(GinkgoT(), "AddCgroupFilter", []string{"lo", "eth0", "eth1"}, "2:0", mock.Anything)
+			})
+		})
+
+		Context("with allowed hosts", func() {
+			BeforeEach(func() {
+				spec.AllowedHosts = []v1beta1.NetworkDisruptionHostSpec{
+					{
+						Host: "8.8.8.8",
+						Port: 53,
+					},
+				}
+			})
+
+			It("should add a filter to redirect traffic going to 8.8.8.8/32 on port 53 on the not disrupted band", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "8.8.8.8/32", 0, 53, "", "1:1")
 			})
 		})
 	})

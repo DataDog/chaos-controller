@@ -1,0 +1,23 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-drop
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    app: demo-curl
+  count: 1
+  network:
+    drop: 100 # percentage of outgoing packets to drop
+    hosts: # optional, list of destination hosts to filter on
+      - host: 10.0.0.0/8 # optional, IP, CIDR or hostname to filter on
+        port: 80 # optional, port to drop packets on
+        protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+    allowedHosts: # optional, list of excluded hosts which would not be disrupted
+      - host: 10.0.0.1 # optional, IP, CIDR or hostname to filter on

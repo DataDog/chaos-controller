@@ -2,21 +2,33 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
+{{- $ca := genCA "chaos-controller-webhook-service-ca" 3650 }}
+{{- $cn := "chaos-controller-webhook-service" }}
+{{- $altName1 := "chaos-controller-webhook-service.chaos-engineering.svc" }}
+{{- $altName2 := "chaos-controller-webhook-service.chaos-engineering.svc.cluster.local" }}
+{{- $cert := genSignedCert $cn nil (list $altName1 $altName2) 3650 $ca }}
+---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
+  {{- if not .Values.controller.webhook.generateCert }}
     cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+  {{- end }}
   name: chaos-controller
 webhooks:
 - clientConfig:
+  {{- if not .Values.controller.webhook.generateCert }}
     caBundle: Cg==
+  {{- else }}
+    caBundle: {{ b64enc $ca.Cert }}
+  {{- end }}
     service:
       name: chaos-controller-webhook-service
       namespace: chaos-engineering
       path: /validate-chaos-datadoghq-com-v1beta1-disruption
   failurePolicy: Fail
-  name: chaos-controller-admission-webhook.chaos-engineering.svc
+  name: chaos-controller-webhook-service.chaos-engineering.svc
   rules:
   - apiGroups:
     - chaos.datadoghq.com
@@ -32,11 +44,17 @@ apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
   annotations:
+  {{- if not .Values.controller.webhook.generateCert }}
     cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+  {{- end }}
   name: chaos-controller-pod-chaos-handler
 webhooks:
 - clientConfig:
+  {{- if not .Values.controller.webhook.generateCert }}
     caBundle: Cg==
+  {{- else }}
+    caBundle: {{ b64enc $ca.Cert }}
+  {{- end }}
     service:
       name: chaos-controller-webhook-service
       namespace: chaos-engineering
@@ -56,3 +74,71 @@ webhooks:
     - CREATE
     resources:
     - pods
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+  {{- if not .Values.controller.webhook.generateCert }}
+    cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+  {{- end }}
+  name: chaos-controller-disruption-user-info
+webhooks:
+- clientConfig:
+  {{- if not .Values.controller.webhook.generateCert }}
+    caBundle: Cg==
+  {{- else }}
+    caBundle: {{ b64enc $ca.Cert }}
+  {{- end }}
+    service:
+      name: chaos-controller-webhook-service
+      namespace: chaos-engineering
+      path: /mutate-chaos-datadoghq-com-v1beta1-disruption-user-info
+  failurePolicy: Fail
+  name: chaos-controller-admission-webhook.chaos-engineering.svc
+  rules:
+  - apiGroups:
+    - "chaos.datadoghq.com"
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    resources:
+    - disruptions
+---
+{{- if not .Values.controller.webhook.generateCert }}
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: chaos-controller-serving-cert
+  namespace: chaos-engineering
+spec:
+  dnsNames:
+    - chaos-controller-webhook-service.chaos-engineering.svc
+    - chaos-controller-webhook-service.chaos-engineering.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: chaos-controller-selfsigned-issuer
+  secretName: chaos-controller-webhook-secret
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: chaos-controller-selfsigned-issuer
+  namespace: chaos-engineering
+spec:
+  selfSigned: {}
+{{- else }}
+---
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/tls
+metadata:
+  name: chaos-controller-webhook-secret
+  namespace: chaos-engineering
+  labels:
+    app: chaos-controller
+data:
+  tls.crt: {{ b64enc $cert.Cert }}
+  tls.key: {{ b64enc $cert.Key }}
+{{- end }}

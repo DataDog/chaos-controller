@@ -1,0 +1,48 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chaos-controller-config
+  namespace: chaos-engineering
+data:
+  config.yaml: |
+    controller:
+      metricsAddr: "127.0.0.1:8080"
+      leaderElection: true
+      metricsSink: {{ .Values.controller.metricsSink | quote }}
+      deleteOnly: {{ .Values.controller.deleteOnly }}
+      imagePullSecrets: {{ .Values.images.pullSecrets }}
+      webhook:
+        {{- if .Values.controller.webhook.generateCert }}
+        certDir: /tmp/k8s-webhook-server/serving-certs
+        {{- else }}
+        certDir: {{ .Values.controller.webhook.certDir | quote }}
+        {{- end }}
+        host: {{ .Values.controller.webhook.host | quote }}
+        port: {{ .Values.controller.webhook.port }}
+    injector:
+      image: {{ .Values.images.injector | quote }}
+      {{- if .Values.injector.annotations }}
+      annotations:
+        {{- range $key, $val := .Values.injector.annotations }}
+        {{ $key }}: {{ $val | quote }}
+        {{- end }}
+      {{- end }}
+      serviceAccount:
+        name: {{ .Values.injector.serviceAccount | quote }}
+        namespace: {{ .Values.injector.serviceAccountNamespace | quote }}
+      {{- if .Values.injector.networkDisruption.allowedHosts }}
+      networkDisruption:
+        allowedHosts:
+          {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}
+          - {{ printf "%s;%v;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") | quote }}
+          {{- end }}
+      {{- end }}
+    handler:
+      enabled: {{ .Values.handler.enabled }}
+      image: {{ .Values.images.handler | quote }}
+      timeout: {{ .Values.handler.timeout | quote }}
