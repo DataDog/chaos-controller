@@ -18,8 +18,9 @@ spec:
       header:
         - method: GET
           uri: /
+      domain: foo.bar.local
+      header:
         - method: PUT
-          uri: /
-      ports:
-        http: ["8000","8080"]
-        https: ["8443","9443", "8888"]
+          uri: /baz
+    httpPorts: [8000,8080]
+    httpsPorts: [8443,9443]

@@ -56,8 +56,8 @@ type DisruptionSpec struct {
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
 	// +nullable
 	DNS DNSDisruptionSpec `json:"dns,omitempty"`
-	//+nullable
-	HTTP HTTPDisruptionSpec `json:"http,omitempty"`
+	// +nullable
+	HTTP *HTTPDisruptionSpec `json:"http,omitempty"`
 }
 
 // DisruptionStatus defines the observed state of Disruption
@@ -147,7 +147,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		s.NodeFailure == nil &&
 		s.HTTP == nil &&
 		s.DiskPressure == nil {
-		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, CPUPressure fields is needed")
+		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, HTTP, DiskPressure, NodeFailure, CPUPressure fields is needed")
 	}
 
 	// Rule: on init compatibility

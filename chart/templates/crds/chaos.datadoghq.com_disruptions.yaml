@@ -98,49 +98,41 @@ spec:
               type: boolean
             http:
               description: HTTPDisruptionSpec represents an http disruption
-              items:
-                description: TargetDomain represents an http-hosting endpoint
-                properties:
-                  domain:
-                    type: string
-                  header:
-                    items:
-                      description: RequestFields represents some of the fields present
-                        in the http request header
-                      properties:
-                        method:
-                          type: string
-                        uri:
-                          type: string
-                      required:
-                      - method
-                      - uri
-                      type: object
-                    type: array
-                  ports:
-                    description: PortTypes represents the HTTPS and HTTP ports to
-                      forward via iptables and the ones that the corresponding proxy
-                      services should listen on
-                    properties:
-                      http:
-                        items:
-                          type: string
-                        type: array
-                      https:
-                        items:
-                          type: string
-                        type: array
-                    required:
-                    - http
-                    - https
-                    type: object
-                required:
-                - domain
-                - header
-                - ports
-                type: object
               nullable: true
-              type: array
+              properties:
+                domains:
+                  items:
+                    description: TargetDomain represents an http-hosting endpoint
+                    properties:
+                      domain:
+                        type: string
+                      header:
+                        items:
+                          description: RequestFields represents some of the fields
+                            present in the http request header
+                          properties:
+                            method:
+                              type: string
+                            uri:
+                              type: string
+                          required:
+                          - method
+                          - uri
+                          type: object
+                        type: array
+                    type: object
+                  type: array
+                httpPorts:
+                  items:
+                    type: integer
+                  nullable: true
+                  type: array
+                httpsPorts:
+                  items:
+                    type: integer
+                  nullable: true
+                  type: array
+              type: object
             level:
               description: DisruptionLevel represents which level the disruption should
                 be injected at

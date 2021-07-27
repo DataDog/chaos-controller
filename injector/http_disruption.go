@@ -23,7 +23,7 @@ const (
 	httpPort = ":80"
 	tlsPort  = ":443"
 
-	dnsChain = "CHAOS-HTTP"
+	httpChain = "CHAOS-HTTP"
 )
 
 type HTTPDisruptionInjector struct {
@@ -38,6 +38,8 @@ type HTTPDisruptionInjectorConfig struct {
 
 	ProxyExit chan struct{}
 }
+
+const InjectorHTTPCgroupClassID = "0x00110011"
 
 func NewHTTPDisruptionInjector(spec v1beta1.HTTPDisruptionSpec, config HTTPDisruptionInjectorConfig) (Injector, error) {
 	var err error
@@ -77,29 +79,29 @@ func (i HTTPDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
-	if err := i.config.Iptables.CreateChain(dnsChain); err != nil {
+	if err := i.config.Iptables.CreateChain(httpChain); err != nil {
 		return fmt.Errorf("unable to create new iptables chain: %w", err)
 	}
 
-	if err := i.config.Iptables.AddRuleWithIP(dnsChain, "tcp", "80", "DNAT", podIP); err != nil {
+	if err := i.config.Iptables.AddRuleWithIP(httpChain, "tcp", "80", "DNAT", podIP); err != nil {
 		return fmt.Errorf("unable to create new iptables HTTP rule: %w", err)
 	}
 
-	if err := i.config.Iptables.AddRuleWithIP(dnsChain, "tcp", "443", "DNAT", podIP); err != nil {
+	if err := i.config.Iptables.AddRuleWithIP(httpChain, "tcp", "443", "DNAT", podIP); err != nil {
 		return fmt.Errorf("unable to create new iptables HTTPS rule: %w", err)
 	}
 
 	if i.config.Level == chaostypes.DisruptionLevelPod {
 		// write classid to container net_cls cgroup - for iptable filtering
-		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", InjectorDNSCgroupClassID); err != nil {
+		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", InjectorHTTPCgroupClassID); err != nil {
 			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 		}
 
-		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "tcp", "80", dnsChain); err != nil {
+		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "80", httpChain); err != nil {
 			return fmt.Errorf("unable to create new HTTP iptables rule: %w", err)
 		}
 
-		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "tcp", "443", dnsChain); err != nil {
+		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "443", httpChain); err != nil {
 			return fmt.Errorf("unable to create new HTTPS iptables rule: %w", err)
 		}
 	}
@@ -133,10 +135,10 @@ func (i HTTPDisruptionInjector) Clean() error {
 			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 		}
 
-		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "tcp", "80", dnsChain); err != nil {
+		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "80", httpChain); err != nil {
 			return fmt.Errorf("unable to remove injected HTTP iptables rule: %w", err)
 		}
-		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "tcp", "443", dnsChain); err != nil {
+		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "443", httpChain); err != nil {
 			return fmt.Errorf("unable to remove injected HTTPS iptables rule: %w", err)
 		}
 	}
@@ -145,7 +147,7 @@ func (i HTTPDisruptionInjector) Clean() error {
 		return fmt.Errorf("unable to create HTTP disruption at the node level")
 	}
 
-	if err := i.config.Iptables.ClearAndDeleteChain(dnsChain); err != nil {
+	if err := i.config.Iptables.ClearAndDeleteChain(httpChain); err != nil {
 		return fmt.Errorf("unable to remove injected iptables chain: %w", err)
 	}
 
@@ -197,7 +199,7 @@ func (i HTTPDisruptionInjector) proxyHandler(rw http.ResponseWriter, r *http.Req
 	i.config.Log.Infow("request", "method", r.Method, "path", r.URL.Path, "header", r.Header)
 
 	// match requests by the spec
-	for _, domain := range i.spec {
+	for _, domain := range i.spec.Domains {
 		if domain.Domain == r.URL.Host {
 			i.config.Log.Debugw("dropping", "domain", domain.Domain)
 			return
