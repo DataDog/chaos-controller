@@ -20,9 +20,9 @@ type DisruptionKind interface {
 	Validate() error
 }
 
-// AppendCommonArgs is a helper function generating common args and appending them to the given args array
-func AppendCommonArgs(args []string, level chaostypes.DisruptionLevel, containerIDs []string, sink string, dryRun bool,
-	disruptionName string, disruptionNamespace string, targetName string, onInit bool) []string {
+// AppendArgs is a helper function generating common and global args and appending them to the given args array
+func AppendArgs(args []string, level chaostypes.DisruptionLevel, kind chaostypes.DisruptionKindName, containerIDs []string, sink string, dryRun bool,
+	disruptionName string, disruptionNamespace string, targetName string, onInit bool, allowedHosts []string) []string {
 	args = append(args,
 		// basic args
 		"--metrics-sink", sink,
@@ -43,6 +43,13 @@ func AppendCommonArgs(args []string, level chaostypes.DisruptionLevel, container
 	// enable chaos handler init container notification
 	if onInit {
 		args = append(args, "--on-init")
+	}
+
+	// append allowed hosts for network disruptions
+	if kind == chaostypes.DisruptionKindNetworkDisruption {
+		for _, host := range allowedHosts {
+			args = append(args, "--allowed-hosts", host)
+		}
 	}
 
 	return args

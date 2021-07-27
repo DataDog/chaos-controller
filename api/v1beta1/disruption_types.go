@@ -26,6 +26,7 @@ import (
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -67,6 +68,8 @@ type DisruptionStatus struct {
 	Targets []string `json:"targets,omitempty"`
 	// +nullable
 	IgnoredTargets []string `json:"ignoredTargets,omitempty"`
+	// +nullable
+	UserInfo *authv1.UserInfo `json:"userInfo,omitempty"`
 }
 
 // +kubebuilder:object:root=true

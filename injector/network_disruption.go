@@ -291,61 +291,13 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		}
 	} else {
 		// apply filters for given hosts
-		if len(i.spec.Hosts) > 0 {
-			for _, host := range i.spec.Hosts {
-				// resolve given hosts if needed
-				ips, err := resolveHost(i.config.DNSClient, host.Host)
-				if err != nil {
-					return fmt.Errorf("error resolving given host %s: %w", host.Host, err)
-				}
-
-				// filter on found IPs and CIDRs
-				for _, ip := range ips {
-					// handle flow direction
-					var srcPort, dstPort int
-					var srcIP, dstIP *net.IPNet
-
-					switch i.spec.Flow {
-					case v1beta1.FlowEgress:
-						dstPort = host.Port
-						dstIP = ip
-					case v1beta1.FlowIngress:
-						srcPort = host.Port
-						srcIP = ip
-					}
-
-					// create tc filter
-					if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, host.Protocol, "1:4"); err != nil {
-						return fmt.Errorf("can't add a filter: %w", err)
-					}
-				}
-			}
+		if err := i.addFiltersForHosts(interfaces, i.spec.Hosts, "1:4"); err != nil {
+			return fmt.Errorf("error adding filters for given hosts: %w", err)
 		}
 
 		// apply filters for given services
-		services, err := i.getServices()
-		if err != nil {
-			return fmt.Errorf("error getting services IPs and ports: %w", err)
-		}
-
-		for _, service := range services {
-			// handle flow direction
-			var srcPort, dstPort int
-			var srcIP, dstIP *net.IPNet
-
-			switch i.spec.Flow {
-			case v1beta1.FlowEgress:
-				dstPort = service.port
-				dstIP = service.ip
-			case v1beta1.FlowIngress:
-				srcPort = service.port
-				srcIP = service.ip
-			}
-
-			// create tc filter
-			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, service.protocol, "1:4"); err != nil {
-				return fmt.Errorf("can't add a filter: %w", err)
-			}
+		if err := i.addFiltersForServices(interfaces, "1:4"); err != nil {
+			return fmt.Errorf("error adding filters for given services: %w", err)
 		}
 	}
 
@@ -387,6 +339,11 @@ func (i *networkDisruptionInjector) applyOperations() error {
 				return fmt.Errorf("error adding filter allowing apiserver communications: %w", err)
 			}
 		}
+	}
+
+	// add filters for allowed hosts
+	if err := i.addFiltersForHosts(interfaces, i.spec.AllowedHosts, "1:1"); err != nil {
+		return fmt.Errorf("error adding filter for allowed hosts: %w", err)
 	}
 
 	return nil
@@ -440,6 +397,74 @@ func (i *networkDisruptionInjector) getServices() ([]networkDisruptionService, e
 	}
 
 	return services, nil
+}
+
+// addFiltersForServices creates tc filters on given interfaces for services in disruption spec classifying matching packets in the given flowid
+func (i *networkDisruptionInjector) addFiltersForServices(interfaces []string, flowid string) error {
+	// apply filters for given services
+	services, err := i.getServices()
+	if err != nil {
+		return fmt.Errorf("error getting services IPs and ports: %w", err)
+	}
+
+	for _, service := range services {
+		// handle flow direction
+		var (
+			srcPort, dstPort int
+			srcIP, dstIP     *net.IPNet
+		)
+
+		switch i.spec.Flow {
+		case v1beta1.FlowEgress:
+			dstPort = service.port
+			dstIP = service.ip
+		case v1beta1.FlowIngress:
+			srcPort = service.port
+			srcIP = service.ip
+		}
+
+		// create tc filter
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, service.protocol, flowid); err != nil {
+			return fmt.Errorf("can't add a filter: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// addFiltersForHosts creates tc filters on given interfaces for given hosts classifying matching packets in the given flowid
+func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, hosts []v1beta1.NetworkDisruptionHostSpec, flowid string) error {
+	for _, host := range hosts {
+		// resolve given hosts if needed
+		ips, err := resolveHost(i.config.DNSClient, host.Host)
+		if err != nil {
+			return fmt.Errorf("error resolving given host %s: %w", host.Host, err)
+		}
+
+		for _, ip := range ips {
+			// handle flow direction
+			var (
+				srcPort, dstPort int
+				srcIP, dstIP     *net.IPNet
+			)
+
+			switch i.spec.Flow {
+			case v1beta1.FlowEgress:
+				dstPort = host.Port
+				dstIP = ip
+			case v1beta1.FlowIngress:
+				srcPort = host.Port
+				srcIP = ip
+			}
+
+			// create tc filter
+			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, host.Protocol, flowid); err != nil {
+				return fmt.Errorf("error adding filte for host %s: %w", host.Host, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // AddNetem adds network disruptions using the drivers in the networkDisruptionInjector

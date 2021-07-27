@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -22,6 +23,8 @@ const (
 type NetworkDisruptionSpec struct {
 	// +nullable
 	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
+	// +nullable
+	AllowedHosts []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
 	// +nullable
 	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
 	// +kubebuilder:validation:Enum=egress;ingress
@@ -119,6 +122,11 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s", host.Host, host.Port, host.Protocol))
 	}
 
+	// append allowed hosts
+	for _, host := range s.AllowedHosts {
+		args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s", host.Host, host.Port, host.Protocol))
+	}
+
 	// append services
 	for _, service := range s.Services {
 		args = append(args, "--services", fmt.Sprintf("%s;%s", service.Name, service.Namespace))
@@ -130,4 +138,54 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	}
 
 	return args
+}
+
+// NetworkDisruptionHostSpecFromString parses the given hosts to host specs
+// The expected format for hosts is <host>;<port>;<protocol>
+func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHostSpec, error) {
+	parsedHosts := []NetworkDisruptionHostSpec{}
+
+	// parse given hosts
+	for _, host := range hosts {
+		// parse host with format <host>;<port>;<protocol>
+		parsedHost := strings.SplitN(host, ";", 3)
+
+		// cast port to int
+		port, err := strconv.Atoi(parsedHost[1])
+		if err != nil {
+			return nil, fmt.Errorf("unexpected port parameter in %s: %v", host, err)
+		}
+
+		// generate host spec
+		parsedHosts = append(parsedHosts, NetworkDisruptionHostSpec{
+			Host:     parsedHost[0],
+			Port:     port,
+			Protocol: parsedHost[2],
+		})
+	}
+
+	return parsedHosts, nil
+}
+
+// NetworkDisruptionServiceSpecFromString parses the given services to service specs
+// The expected format for services is <serviceName>;<serviceNamespace>
+func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisruptionServiceSpec, error) {
+	parsedServices := []NetworkDisruptionServiceSpec{}
+
+	// parse given services
+	for _, service := range services {
+		// parse service with format <name>;<namespace>
+		parsedService := strings.Split(service, ";")
+		if len(parsedService) != 2 {
+			return nil, fmt.Errorf("unexpected service format: %s", service)
+		}
+
+		// generate service spec
+		parsedServices = append(parsedServices, NetworkDisruptionServiceSpec{
+			Name:      parsedService[0],
+			Namespace: parsedService[1],
+		})
+	}
+
+	return parsedServices, nil
 }

@@ -1,5 +1,23 @@
 # Changelog
 
+## [4.2.0](https://github.com/DataDog/chaos-controller/tree/4.2.0) (2021-07-26)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.1.1...4.2.0)
+
+**Closed issues:**
+
+- User Request: Self-signed certificates generated through Helm [\#358](https://github.com/DataDog/chaos-controller/issues/358)
+
+**Merged pull requests:**
+
+- Bump github.com/containerd/containerd from 1.4.0 to 1.4.3 [\#370](https://github.com/DataDog/chaos-controller/pull/370) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Move controller configuration to a configmap [\#367](https://github.com/DataDog/chaos-controller/pull/367) ([Devatoria](https://github.com/Devatoria))
+- Store request user info in disruption status on create [\#365](https://github.com/DataDog/chaos-controller/pull/365) ([Devatoria](https://github.com/Devatoria))
+- Add a way to exclude hosts from network disruptions [\#363](https://github.com/DataDog/chaos-controller/pull/363) ([Devatoria](https://github.com/Devatoria))
+- \[\#358\] Helm-generated self-signed certificates. [\#360](https://github.com/DataDog/chaos-controller/pull/360) ([nikos912000](https://github.com/nikos912000))
+- Add a --handler-enabled flag to the controller [\#359](https://github.com/DataDog/chaos-controller/pull/359) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_2024b8717bc7f47110a23b4667a3c0df7f875507 [\#357](https://github.com/DataDog/chaos-controller/pull/357) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [4.1.1](https://github.com/DataDog/chaos-controller/tree/4.1.1) (2021-06-25)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.1.0...4.1.1)
