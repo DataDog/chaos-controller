@@ -1,8 +1,8 @@
 package main
 
 import (
-	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
@@ -47,8 +47,8 @@ var httpDisruptionCmd = &cobra.Command{
 		}
 
 		rawRequestFields, _ = cmd.Flags().GetStringArray("request-field")
-		spec := v1beta1.HTTPDisruptionSpec {
-			Domains: []v1beta1.TargetDomain{},
+		spec := v1beta1.HTTPDisruptionSpec{
+			Domains:    []v1beta1.TargetDomain{},
 			HttpPorts:  httpPortVals,
 			HttpsPorts: httpsPortVals,
 		}

@@ -83,7 +83,7 @@ func (i HTTPDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to create new iptables chain: %w", err)
 	}
 
-	if err := i.config.Iptables.AddRuleWithIP(httpChain, "tcp", "80", "DNAT", podIP); err != nil {
+	if err := i.config.Iptables.AddRuleWithIP(httpChain, "tcp", "8080", "DNAT", podIP); err != nil {
 		return fmt.Errorf("unable to create new iptables HTTP rule: %w", err)
 	}
 
@@ -97,7 +97,7 @@ func (i HTTPDisruptionInjector) Inject() error {
 			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 		}
 
-		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "80", httpChain); err != nil {
+		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "8080", httpChain); err != nil {
 			return fmt.Errorf("unable to create new HTTP iptables rule: %w", err)
 		}
 
@@ -135,7 +135,7 @@ func (i HTTPDisruptionInjector) Clean() error {
 			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 		}
 
-		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "80", httpChain); err != nil {
+		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "8080", httpChain); err != nil {
 			return fmt.Errorf("unable to remove injected HTTP iptables rule: %w", err)
 		}
 		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "443", httpChain); err != nil {
@@ -162,6 +162,12 @@ func (i HTTPDisruptionInjector) Clean() error {
 // One more goroutine is started which blocks until it receives a signal on the `ProxyExit`
 // channel at which point it calls the `Shutdown` method for both the HTTP and HTTPS servers.
 func (i HTTPDisruptionInjector) startProxyServers() error {
+	// Recover from registering multiple proxyHandlers to /
+	defer func() {
+		if r := recover(); r != nil {
+			i.config.Log.Info("Extra proxyHandler registration")
+		}
+	}()
 	http.HandleFunc("/", i.proxyHandler)
 
 	tlsServer := &http.Server{Addr: tlsPort}

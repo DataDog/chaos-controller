@@ -8,8 +8,8 @@ package v1beta1
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 // HTTPDisruptionSpec represents an http disruption

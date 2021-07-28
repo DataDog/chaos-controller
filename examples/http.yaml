@@ -14,11 +14,12 @@ spec:
     app: demo-curl
   count: 1
   http:
+    domains:
     - domain: demo.chaos-demo.svc.cluster.local
       header:
         - method: GET
           uri: /
-      domain: foo.bar.local
+    - domain: foo.bar.local
       header:
         - method: PUT
           uri: /baz
