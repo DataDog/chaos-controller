@@ -384,5 +384,5 @@ func contextualize(path string) {
 
 func init() {
 	contextCmd.Flags().String("path", "", "The path to the disruption file to be contextualized.")
-	contextCmd.Println("This flag requires that you are connected to a cluster and kubectl works as intended on that cluster. All the results of this flag will be based on your current kubectx.")
+	contextCmd.Println("This command requires that you are connected to a cluster and kubectl works as intended on that cluster. All the results of this command will be based on your current kubectx.")
 }
