@@ -93,18 +93,6 @@ func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
 	return parsedSpec, nil
 }
 
-func DisruptionToFile(path string, spec v1beta1.DisruptionSpec) error {
-	return nil
-}
-
-func validatePath(filePath string) error {
-	if filePath == "" {
-		return fmt.Errorf("no path given, exiting")
-	}
-
-	return nil
-}
-
 func PrintSeparator() {
 	fmt.Println("=======================================================================================================================================")
 }

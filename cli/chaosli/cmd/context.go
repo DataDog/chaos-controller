@@ -27,13 +27,8 @@ const MAXTARGETSHOW = 10
 func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 	spec := disruption.Spec
 	labels := spec.Selector.String()
-	level := spec.Level
+	level := string(spec.Level)
 	podNamespaces := disruption.ObjectMeta.Namespace
-	rowNames := 1
-
-	if level == types.DisruptionLevelNode {
-		rowNames = 1
-	}
 
 	fmt.Println("Let's look at your targets...")
 
@@ -53,7 +48,6 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 
 	if size <= 0 {
 		errorString := fmt.Sprintf("\nThe label selectors chosen (%s) result in 0 targets, meaning this disruption would do nothing given the namespace/cluster/label combination.", labels)
-		newLevel := ""
 
 		if level == types.DisruptionLevelPod {
 			disruption.Spec.Level = types.DisruptionLevelNode
@@ -62,19 +56,21 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 		}
 
 		size, err = getTargetSize(disruption)
+		// Remove header NAME from consideration
+		size--
 
 		if err != nil {
 			return nil, err
 		}
 
 		if size > 0 {
-			errorString = fmt.Sprintf("\nWe noticed that your target size is 0 for level %s given your label selectors. We checked to see if the %s level would give you results and we found %d %ss. Is this the level you wanted to use?", level, newLevel, size, newLevel)
+			errorString = fmt.Sprintf("\nWe noticed that your target size is 0 for level %s given your label selectors. We checked to see if the %s level would give you results and we found %d %ss. Is this the level you wanted to use?", level, disruption.Spec.Level, size, disruption.Spec.Level)
 		}
 
 		return nil, fmt.Errorf(errorString)
 	}
 
-	cmd := fmt.Sprintf("kubectl get %s -n %s -l %s | awk '{print $%d}'", level, podNamespaces, labels, rowNames)
+	cmd := fmt.Sprintf("kubectl get %s -n %s -l %s | awk '{print $1}'", level, podNamespaces, labels)
 	targets, err := exec.Command("bash", "-c", cmd).Output()
 
 	if err != nil {
@@ -101,7 +97,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 
 	fmt.Printf("\n🎯 There are %d %ss that will be targeted\n", size, level)
 
-	if size >= MAXTARGETSHOW {
+	if size > MAXTARGETSHOW {
 		fmt.Println("📝 Here are a small set of those targets:")
 	}
 
@@ -109,7 +105,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 		fmt.Println(target)
 	}
 
-	if size >= MAXTARGETSHOW {
+	if size > MAXTARGETSHOW {
 		fmt.Println("...")
 	}
 
@@ -121,7 +117,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 func getTargetSize(disruption v1beta1.Disruption) (int, error) {
 	level := disruption.Spec.Level
 	podNamespace := disruption.Namespace
-	labels := disruption.Labels
+	labels := disruption.Spec.Selector.String()
 	cmd := fmt.Sprintf("kubectl get %s -n %s -l %s | wc -l", level, podNamespace, labels)
 	sizeString, err := exec.Command("bash", "-c", cmd).Output()
 
@@ -185,8 +181,7 @@ func printContainerStatus(targetInfo []v1.Pod) {
 
 	totalContainers := 0
 
-	for i := 0; i < len(targetInfo); i++ {
-		pod := targetInfo[i]
+	for i, pod := range targetInfo {
 		info := "\t🥸  Pod Name: " + pod.Name + "\n"
 
 		for j := 0; j < len(pod.Status.ContainerStatuses); j++ {
@@ -346,10 +341,6 @@ var contextCmd = &cobra.Command{
 	Use:   "context",
 	Short: "contextualizes disruption config",
 	Long:  `makes use of kubectl to give a better idea of how big the scope of the disruption will be.`,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		path, _ := cmd.Flags().GetString("path")
-		return validatePath(path)
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("path")
 		contextualize(path)

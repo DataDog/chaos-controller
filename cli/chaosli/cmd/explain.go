@@ -224,10 +224,6 @@ var explainCmd = &cobra.Command{
 	Use:   "explain",
 	Short: "explains disruption config",
 	Long:  `translates the yaml of the disruption configuration to english.`,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		path, _ := cmd.Flags().GetString("path")
-		return validatePath(path)
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("path")
 		explanation(path)
@@ -250,4 +246,5 @@ func explanation(path string) {
 
 func init() {
 	explainCmd.Flags().String("path", "", "The path to the disruption file to be explained.")
+	explainCmd.MarkFlagRequired("path")
 }

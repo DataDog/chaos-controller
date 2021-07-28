@@ -62,6 +62,7 @@ The generated disruption will have "dryRun:true" set for safety, which means you
 
 func init() {
 	createCmd.Flags().String("path", "disruption.yaml", "The file to write the new disruption to.")
+	createCmd.MarkFlagRequired("path")
 }
 
 func createSpec() (v1beta1.DisruptionSpec, error) {
