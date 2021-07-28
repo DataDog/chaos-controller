@@ -246,5 +246,8 @@ func explanation(path string) {
 
 func init() {
 	explainCmd.Flags().String("path", "", "The path to the disruption file to be explained.")
-	explainCmd.MarkFlagRequired("path")
+	err := explainCmd.MarkFlagRequired("path")
+	if err != nil {
+		return 
+	}
 }
