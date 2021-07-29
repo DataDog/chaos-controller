@@ -24,6 +24,17 @@ The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/conc
 
 **NOTE:** If you are targeting pods, the disruption must be created in the same namespace as the targeted pods.
 
+### Advanced targeting
+
+In addition to the simple `selector` field matching an exact key/value label, one can do some more advanced targeting with the `advancedSelector` field. It uses the [label selector requirements mechanism](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#LabelSelectorRequirement) allowing to match labels with the following operator:
+
+* `Exists`: the label with the specified key is present, no matter the value
+* `DoesNotExist`: the label with the specified key is not present
+* `In`: the label with the specified key has a value strictly equal to one of the given values
+* `NotIn`: the label with the specified key has a value not matching any of the given values
+
+You can look at [an example of the expected format](../examples/advanced_selector.yaml) to know how to use it.
+
 ### Targeting a specific pod
 
 How can you target a specific pod by name, if it doesn't have a unique label selector you can use? The `Disruption` spec doesn't support field selectors at this time, so selecting by name isn't possible. However, you can use the `kubectl label pods` command, e.g., `kubectl label pods $podname unique-label-for-this-disruption=target-me` to dynamically add a unique label to the pod, which you can use as your label selector in the `Disruption` spec.
