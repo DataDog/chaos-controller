@@ -305,7 +305,6 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		}
 
 		// generate injection pods specs
-
 		r.generateChaosPods(instance, &chaosPods, target, targetNodeName, containerIDs)
 
 		if len(chaosPods) == 0 {

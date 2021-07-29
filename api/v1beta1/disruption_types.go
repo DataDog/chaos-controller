@@ -147,6 +147,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		return errors.New("cannot target specific containers because the level configuration is set to node")
 	}
 
+	// Rule: container failure not possible if disruption is node-level
 	if s.ContainerFailure != nil && s.Level == chaostypes.DisruptionLevelNode {
 		return errors.New("cannot execute a container failure because the level configuration is set to node")
 	}

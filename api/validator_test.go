@@ -97,6 +97,7 @@ var _ = Describe("Validator", func() {
 			spec = &v1beta1.DisruptionSpec{
 				Count:            &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
 				ContainerFailure: &v1beta1.ContainerFailureSpec{},
+				Selector:         map[string]string{"foo": "bar"},
 			}
 			validator = spec
 		})
