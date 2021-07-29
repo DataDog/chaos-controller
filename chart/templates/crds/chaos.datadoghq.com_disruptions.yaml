@@ -62,6 +62,13 @@ spec:
                 type: object
               nullable: true
               type: array
+            containerFailure:
+              description: ContainerFailureSpec represents a container failure injection
+              nullable: true
+              properties:
+                forced:
+                  type: boolean
+              type: object
             containers:
               items:
                 type: string

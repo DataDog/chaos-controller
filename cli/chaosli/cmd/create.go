@@ -91,7 +91,7 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 func promptForKind(spec *v1beta1.DisruptionSpec) error {
 	initial := "Let's begin by choosing the type of disruption to apply! Which disruption kind would you like to add?"
 	followUp := "Would you like to add another disruption kind? It's not necessary, most disruptions involve only one kind. Select .. to finish adding kinds."
-	kinds := []string{"dns", "network", "cpu", "disk", "node failure"}
+	kinds := []string{"dns", "network", "cpu", "disk", "node failure", "container failure"}
 	helpText := `The DNS disruption allows for overriding the A or CNAME records returned by DNS queries.
 The Network disruption allows for injecting a variety of different network issues into your target.
 The CPU and Disk disruptions apply cpu pressure or IO throttling to your target, respectively.
@@ -182,6 +182,21 @@ Select one for more information on it.`
 				fmt.Printf("There were some problems with your node failure disruption's spec: %v\n\n", err)
 
 				spec.NodeFailure = nil
+
+				continue
+			}
+		case "container failure":
+			spec.ContainerFailure = getContainerFailure()
+
+			if spec.ContainerFailure == nil {
+				continue
+			}
+
+			err := spec.ContainerFailure.Validate()
+			if err != nil {
+				fmt.Printf("There were some problems with your container failure disruption's spec: %v\n\n", err)
+
+				spec.ContainerFailure = nil
 
 				continue
 			}
@@ -387,6 +402,18 @@ func getNodeFailure() *v1beta1.NodeFailureSpec {
 	spec := &v1beta1.NodeFailureSpec{}
 	spec.Shutdown = confirmOption("Would you like to shutdown the node permanently?",
 		"Choosing yes will terminate the VM completely. If you don't enable this, we will just restart the target node.")
+
+	return spec
+}
+
+func getContainerFailure() *v1beta1.ContainerFailureSpec {
+	if !confirmKind("Container Failure", "This will terminate the targeted pod's container(s) gracefully (SIGTERM) or non-gracefully (SIGKILL)") {
+		return nil
+	}
+
+	spec := &v1beta1.ContainerFailureSpec{}
+	spec.Forced = confirmOption("Would you like to terminate the pod's containers non-gracefully?",
+		"Choosing yes will terminate the pod's containers non-gracefully. If you don't enable this, we will terminate the target containers gracefully.")
 
 	return spec
 }

@@ -6,8 +6,10 @@
 package api_test
 
 import (
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	. "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -72,6 +74,47 @@ var _ = Describe("Validator", func() {
 				spec.Throttling.ReadBytesPerSec = func(i int) *int { return &i }(2048)
 			})
 
+			It("should validate", func() {
+				Expect(err).To(BeNil())
+			})
+		})
+	})
+})
+
+var _ = Describe("Validator", func() {
+	var (
+		err       error
+		validator *v1beta1.DisruptionSpec
+	)
+
+	JustBeforeEach(func() {
+		err = validator.Validate()
+	})
+	Describe("validating container failure spec", func() {
+		var spec *v1beta1.DisruptionSpec
+
+		BeforeEach(func() {
+			spec = &v1beta1.DisruptionSpec{
+				Count:            &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				ContainerFailure: &v1beta1.ContainerFailureSpec{},
+				Selector:         map[string]string{"foo": "bar"},
+			}
+			validator = spec
+		})
+
+		Context("with level set to node", func() {
+			BeforeEach(func() {
+				spec.Level = chaostypes.DisruptionLevelNode
+			})
+			It("should not validate", func() {
+				Expect(err).To(Not(BeNil()))
+			})
+		})
+
+		Context("with level set to pod", func() {
+			BeforeEach(func() {
+				spec.Level = chaostypes.DisruptionLevelPod
+			})
 			It("should validate", func() {
 				Expect(err).To(BeNil())
 			})

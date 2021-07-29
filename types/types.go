@@ -26,6 +26,8 @@ const (
 	DisruptionKindNetworkDisruption = "network-disruption"
 	// DisruptionKindNodeFailure is a node failure disruption
 	DisruptionKindNodeFailure = "node-failure"
+	// DisruptionKindContainerFailure is a container failure disruption
+	DisruptionKindContainerFailure = "container-failure"
 	// DisruptionKindCPUPressure is a CPU pressure disruption
 	DisruptionKindCPUPressure = "cpu-pressure"
 	// DisruptionKindDiskPressure is a disk pressure disruption
@@ -58,6 +60,7 @@ var (
 	DisruptionKindNames = []DisruptionKindName{
 		DisruptionKindNetworkDisruption,
 		DisruptionKindNodeFailure,
+		DisruptionKindContainerFailure,
 		DisruptionKindCPUPressure,
 		DisruptionKindDiskPressure,
 		DisruptionKindDNSDisruption,
