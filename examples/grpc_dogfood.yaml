@@ -12,7 +12,9 @@ spec:
   level: pod
   selector:
     app: chaos-dogfood-server
-  count: 1
-  grpc: # disrupt gRPC endpoints with faking results
-    - endpoint: /chaos_dogfood.ChaosDogfood/order # endpoint of gRPC service which should be faked
-      error: ALREADY_EXISTS
+  count: 100%
+  grpc:
+    - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog
+      error: NOT_FOUND
+    - endpoint: /chaos_dogfood.ChaosDogfood/order
+      override: "{}"

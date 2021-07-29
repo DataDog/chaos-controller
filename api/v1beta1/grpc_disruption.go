@@ -17,7 +17,7 @@ type GRPCDisruptionSpec []EndpointAlteration
 // EndpointAlteration represents an endpoint to disrupt and the corresponding error to return
 type EndpointAlteration struct {
 	TargetEndpoint string `json:"endpoint,omitempty"`
-	// +kubebuilder:validation:Enum=OK;CANCELED_CODE;UNKNOWN_CODE;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED_CODE;OUT_OF_RANGE;UNIMPLEMENTED_CODE;INTERNAL_CODE;UNAVAILABLE_CODE;DATALOSS_CODE;UNAUTHENTICATED_CODE
+	// +kubebuilder:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATALOSS;UNAUTHENTICATED
 	ErrorToReturn string `json:"error,omitempty"`
 	// +kubebuilder:validation:Enum={}
 	OverrideToReturn string `json:"override,omitempty"`

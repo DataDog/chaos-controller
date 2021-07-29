@@ -140,8 +140,8 @@ spec:
                   error:
                     enum:
                     - OK
-                    - CANCELED_CODE
-                    - UNKNOWN_CODE
+                    - CANCELED
+                    - UNKNOWN
                     - INVALID_ARGUMENT
                     - DEADLINE_EXCEEDED
                     - NOT_FOUND
@@ -149,13 +149,13 @@ spec:
                     - PERMISSION_DENIED
                     - RESOURCE_EXHAUSTED
                     - FAILED_PRECONDITION
-                    - ABORTED_CODE
+                    - ABORTED
                     - OUT_OF_RANGE
-                    - UNIMPLEMENTED_CODE
-                    - INTERNAL_CODE
-                    - UNAVAILABLE_CODE
-                    - DATALOSS_CODE
-                    - UNAUTHENTICATED_CODE
+                    - UNIMPLEMENTED
+                    - INTERNAL
+                    - UNAVAILABLE
+                    - DATALOSS
+                    - UNAUTHENTICATED
                     type: string
                   override:
                     type: string

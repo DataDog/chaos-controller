@@ -31,7 +31,7 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 	opts = append(opts, grpc.WithInsecure())
 	opts = append(opts, grpc.WithBlock())
 
-	serverAddr := "10.244.0.22:50051" // TODO: make address / port of gRPC service
+	serverAddr := "10.244.0.53:50051" // TODO: make address / port of gRPC service
 	config.Log.Infow("connecting to " + serverAddr + "...")
 
 	conn, err := grpc.Dial(serverAddr, opts...)
@@ -52,7 +52,7 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 func (i GRPCDisruptionInjector) Inject() error {
 	i.config.Log.Infow("adding grpc disruption", "spec", i.spec)
 
-	chaos_grpc.ExecuteSendDisruption(i.client)
+	chaos_grpc.ExecuteSendDisruption(i.client, i.spec)
 	return nil
 }
 
