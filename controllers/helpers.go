@@ -21,14 +21,18 @@ limitations under the License.
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"regexp"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -75,7 +79,7 @@ func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 // if it is a string value which is either non-numeric or numeric but lacking a trailing '%' it returns an error.
 func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int, roundUp bool) (int, error) {
 	if intOrPercent == nil {
-		return 0, errors.NewBadRequest("nil value for IntOrString")
+		return 0, k8serrors.NewBadRequest("nil value for IntOrString")
 	}
 
 	value, isPercent, err := v1beta1.GetIntOrPercentValueSafely(intOrPercent)
@@ -105,6 +109,68 @@ func validateLabelSelector(selector labels.Selector) error {
 	}
 
 	return nil
+}
+
+// getLabelSelectorFromInstance crafts a label selector made of requirements from the given disruption instance
+func getLabelSelectorFromInstance(instance *v1beta1.Disruption) (labels.Selector, error) {
+	// we want to ensure we never run into the possibility of using an empty label selector
+	if (len(instance.Spec.Selector) == 0 || instance.Spec.Selector == nil) && (len(instance.Spec.AdvancedSelector) == 0 || instance.Spec.AdvancedSelector == nil) {
+		return nil, errors.New("selector can't be an empty set")
+	}
+
+	selector := labels.NewSelector()
+
+	// add simple selectors by parsing them
+	if instance.Spec.Selector != nil {
+		req, err := labels.ParseToRequirements(instance.Spec.Selector.AsSelector().String())
+		if err != nil {
+			return nil, fmt.Errorf("error parsing given selector to requirements: %w", err)
+		}
+
+		selector = selector.Add(req...)
+	}
+
+	// add advanced selectors
+	if instance.Spec.AdvancedSelector != nil {
+		for _, req := range instance.Spec.AdvancedSelector {
+			var op selection.Operator
+
+			// parse the operator to convert it from one package to another
+			switch req.Operator {
+			case metav1.LabelSelectorOpIn:
+				op = selection.In
+			case metav1.LabelSelectorOpNotIn:
+				op = selection.NotIn
+			case metav1.LabelSelectorOpExists:
+				op = selection.Exists
+			case metav1.LabelSelectorOpDoesNotExist:
+				op = selection.DoesNotExist
+			default:
+				return nil, fmt.Errorf("error parsing advanced selector operator %s: must be either In, NotIn, Exists or DoesNotExist", req.Operator)
+			}
+
+			// generate and add the requirement to the selector
+			parsedReq, err := labels.NewRequirement(req.Key, op, req.Values)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
+			}
+
+			selector = selector.Add(*parsedReq)
+		}
+	}
+
+	// if the disruption is supposed to be injected on pod init
+	// then let's add a requirement to get pods having the matching label only
+	if instance.Spec.OnInit {
+		onInitRequirement, err := labels.NewRequirement(chaostypes.DisruptOnInitLabel, selection.Exists, []string{})
+		if err != nil {
+			return nil, fmt.Errorf("error adding the disrupt-on-init label requirement: %w", err)
+		}
+
+		selector.Add(*onInitRequirement)
+	}
+
+	return selector, nil
 }
 
 // contains returns true when the given string is present in the given slice

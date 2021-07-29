@@ -36,6 +36,32 @@ spec:
         spec:
           description: DisruptionSpec defines the desired state of Disruption
           properties:
+            advancedSelector:
+              items:
+                description: A label selector requirement is a selector that contains
+                  values, a key, and an operator that relates the key and values.
+                properties:
+                  key:
+                    description: key is the label key that the selector applies to.
+                    type: string
+                  operator:
+                    description: operator represents a key's relationship to a set
+                      of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                    type: string
+                  values:
+                    description: values is an array of string values. If the operator
+                      is In or NotIn, the values array must be non-empty. If the operator
+                      is Exists or DoesNotExist, the values array must be empty. This
+                      array is replaced during a strategic merge patch.
+                    items:
+                      type: string
+                    type: array
+                required:
+                - key
+                - operator
+                type: object
+              nullable: true
+              type: array
             containerFailure:
               description: ContainerFailureSpec represents a container failure injection
               nullable: true
@@ -211,10 +237,10 @@ spec:
               additionalProperties:
                 type: string
               description: Set is a map of label:value. It implements Labels.
+              nullable: true
               type: object
           required:
           - count
-          - selector
           type: object
         status:
           description: DisruptionStatus defines the observed state of Disruption

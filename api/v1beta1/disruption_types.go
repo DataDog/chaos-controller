@@ -39,10 +39,12 @@ import (
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
-	// +kubebuilder:validation:Required
-	Selector labels.Set `json:"selector"`         // label selector
-	DryRun   bool       `json:"dryRun,omitempty"` // enable dry-run mode
-	OnInit   bool       `json:"onInit,omitempty"` // enable disruption on init
+	// +nullable
+	Selector labels.Set `json:"selector,omitempty"` // label selector
+	// +nullable
+	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
+	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
+	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
 	// +kubebuilder:validation:Enum=pod;node;""
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
 	Containers []string                   `json:"containers,omitempty"`
@@ -135,6 +137,11 @@ func (s *DisruptionSpec) Validate() error {
 
 // Validate applies rules for disruption global scope
 func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
+	// Rule: at least one kind of selector is set
+	if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
+		return errors.New("either selector or advancedSelector field must be set")
+	}
+
 	// Rule: no targeted container if disruption is node-level
 	if len(s.Containers) > 0 && s.Level == chaostypes.DisruptionLevelNode {
 		return errors.New("cannot target specific containers because the level configuration is set to node")

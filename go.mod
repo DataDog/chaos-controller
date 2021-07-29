@@ -10,7 +10,7 @@ require (
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/containerd/cgroups v0.0.0-20200817152742-7a3c009711fb // indirect
-	github.com/containerd/containerd v1.4.0
+	github.com/containerd/containerd v1.4.8
 	github.com/containerd/continuity v0.0.0-20200710164510-efbc4488d8fe // indirect
 	github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b // indirect
 	github.com/containerd/go-runc v0.0.0-20200707131846-23d84c510c41 // indirect
@@ -20,6 +20,7 @@ require (
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
 	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
 	github.com/gogo/googleapis v1.4.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect

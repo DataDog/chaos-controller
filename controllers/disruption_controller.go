@@ -562,10 +562,12 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	r.log.Infow("selecting targets to inject disruption to", "selector", instance.Spec.Selector.String())
 
 	// validate the given label selector to avoid any formating issues due to special chars
-	if err := validateLabelSelector(instance.Spec.Selector.AsSelector()); err != nil {
-		r.Recorder.Event(instance, "Warning", "InvalidLabelSelector", fmt.Sprintf("%s. No targets will be selected.", err.Error()))
+	if instance.Spec.Selector != nil {
+		if err := validateLabelSelector(instance.Spec.Selector.AsSelector()); err != nil {
+			r.Recorder.Event(instance, "Warning", "InvalidLabelSelector", fmt.Sprintf("%s. No targets will be selected.", err.Error()))
 
-		return err
+			return err
+		}
 	}
 
 	// select either pods or nodes depending on the disruption level

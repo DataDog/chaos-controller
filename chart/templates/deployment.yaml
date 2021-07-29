@@ -36,37 +36,7 @@ spec:
         command:
         - /usr/local/bin/manager
         args:
-        - --metrics-addr=127.0.0.1:8080
-        - --enable-leader-election
-        - --metrics-sink={{ .Values.controller.metricsSink }}
-        - --injector-image={{ .Values.images.injector }}:{{ .Values.images.tag }}
-        {{- if .Values.handler.enabled }}
-        - --handler-enabled
-        {{- end }}
-        - --handler-image={{ .Values.images.handler }}:{{ .Values.images.tag }}
-        - --handler-timeout={{ .Values.handler.timeout }}
-        {{- if .Values.images.pullSecrets }}
-        - --image-pull-secrets={{ .Values.images.pullSecrets }}
-        {{- end }}
-        {{- if .Values.controller.deleteOnly }}
-        - --delete-only
-        {{- end }}
-        {{- range $key, $val := .Values.injector.annotations }}
-        - --injector-annotations
-        - {{ $key }}={{ $val }}
-        {{- end }}
-        - --injector-service-account={{ .Values.injector.serviceAccount }}
-        - --injector-service-account-namespace={{ .Values.injector.serviceAccountNamespace }}
-        {{- range .Values.injector.networkDisruption.allowedHosts }}
-        - --injector-network-disruption-allowed-hosts={{ .host }};{{ .port }};{{ .protocol }}
-        {{- end }}
-        {{- if .Values.controller.webhook.generateCert }}
-        - --admission-webhook-cert-dir=/tmp/k8s-webhook-server/serving-certs
-        {{- else }}
-        - --admission-webhook-cert-dir={{ .Values.controller.webhook.certDir }}
-        {{- end }}
-        - --admission-webhook-host={{ .Values.controller.webhook.host }}
-        - --admission-webhook-port={{ .Values.controller.webhook.port }}
+        - --config=/etc/chaos-controller/config.yaml
         ports:
         - containerPort: 9443
           name: webhook-server
@@ -82,6 +52,9 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+        - mountPath: /etc/chaos-controller
+          name: config
+          readOnly: true
       {{- if .Values.images.pullSecrets }}
       imagePullSecrets:
         - name: {{ .Values.images.pullSecrets }}
@@ -92,3 +65,6 @@ spec:
         secret:
           defaultMode: 420
           secretName: chaos-controller-webhook-secret
+      - name: config
+        configMap:
+          name: chaos-controller-config

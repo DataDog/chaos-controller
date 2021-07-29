@@ -13,7 +13,20 @@ spec:
   level: pod # level the disruption should be injected at (can be either pod or node, defaults to pod)
   selector: # label selector[s] to target pods
     app: demo
-    team: developers
+    team: developer
+  advancedSelector: # advanced selectors can select targets on something else than an exact key/value match
+    - key: app
+      operator: Exists
+  # - key: app
+  #   operator: DoesNotExist
+  # - key: app
+  #   operator: In
+  #   values:
+  #     - curl
+  # - key: app
+  #   operator: NotIn
+  #   values:
+  #     - nginx
   containers: # optional, name of the containers to target within the targeted pod, by default all pods are targeted
     - demo
     - demo2
