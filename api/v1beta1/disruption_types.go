@@ -53,6 +53,8 @@ type DisruptionSpec struct {
 	// +nullable
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
 	// +nullable
+	ContainerFailure *ContainerFailureSpec `json:"containerFailure,omitempty"`
+	// +nullable
 	CPUPressure *CPUPressureSpec `json:"cpuPressure,omitempty"`
 	// +nullable
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
@@ -145,19 +147,26 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		return errors.New("cannot target specific containers because the level configuration is set to node")
 	}
 
+	// Rule: container failure not possible if disruption is node-level
+	if s.ContainerFailure != nil && s.Level == chaostypes.DisruptionLevelNode {
+		return errors.New("cannot execute a container failure because the level configuration is set to node")
+	}
+
 	// Rule: at least one disruption field
 	if s.DNS == nil &&
 		s.CPUPressure == nil &&
 		s.Network == nil &&
 		s.NodeFailure == nil &&
+		s.ContainerFailure == nil &&
 		s.DiskPressure == nil {
-		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, CPUPressure fields is needed")
+		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, ContainerFailure, CPUPressure fields is needed")
 	}
 
 	// Rule: on init compatibility
 	if s.OnInit {
 		if s.CPUPressure != nil ||
 			s.NodeFailure != nil ||
+			s.ContainerFailure != nil ||
 			s.DiskPressure != nil {
 			return errors.New("OnInit is only compatible with network and dns disruptions")
 		}
@@ -186,6 +195,8 @@ func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName
 	switch kind {
 	case chaostypes.DisruptionKindNodeFailure:
 		disruptionKind = s.NodeFailure
+	case chaostypes.DisruptionKindContainerFailure:
+		disruptionKind = s.ContainerFailure
 	case chaostypes.DisruptionKindNetworkDisruption:
 		disruptionKind = s.Network
 	case chaostypes.DisruptionKindDNSDisruption:
