@@ -48,6 +48,7 @@ var (
 	sink                string
 	level               string
 	containerIDs        []string
+	podIP               string
 	disruptionName      string
 	disruptionNamespace string
 	targetName          string
@@ -75,6 +76,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
 	rootCmd.PersistentFlags().StringSliceVar(&containerIDs, "containers-id", []string{}, "Targeted containers ID")
+	rootCmd.PersistentFlags().StringVar(&podIP, "pod-ip", "", "Targeted pod IP")
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
 	rootCmd.PersistentFlags().StringVar(&dnsServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
 	rootCmd.PersistentFlags().StringVar(&kubeDNS, "kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
@@ -183,6 +185,14 @@ func initConfig() {
 			cgroupPaths = append(cgroupPaths, cgroupPath)
 			pids = append(pids, pid)
 		}
+
+		// check for pod IP flag
+		if podIP == "" {
+			log.Error("--pod-ip flag must be passed when --level=pod")
+
+			return
+		}
+
 	case chaostypes.DisruptionLevelNode:
 		cgroupPaths = []string{""}
 		pids = []uint32{1}
@@ -266,6 +276,7 @@ func initConfig() {
 			MetricsSink: ms,
 			Level:       chaostypes.DisruptionLevel(level),
 			Container:   ctn,
+			PodIP:       podIP,
 			Cgroup:      cgroupMgrs[i],
 			Netns:       netnsMgrs[i],
 			K8sClient:   clientset,
