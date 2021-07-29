@@ -21,13 +21,14 @@ type DisruptionKind interface {
 }
 
 // AppendArgs is a helper function generating common and global args and appending them to the given args array
-func AppendArgs(args []string, level chaostypes.DisruptionLevel, kind chaostypes.DisruptionKindName, containerIDs []string, sink string, dryRun bool,
+func AppendArgs(args []string, level chaostypes.DisruptionLevel, kind chaostypes.DisruptionKindName, containerIDs []string, podIP string, sink string, dryRun bool,
 	disruptionName string, disruptionNamespace string, targetName string, onInit bool, allowedHosts []string) []string {
 	args = append(args,
 		// basic args
 		"--metrics-sink", sink,
 		"--level", string(level),
 		"--containers-id", strings.Join(containerIDs, ","),
+		"--pod-ip", podIP,
 
 		// log context args
 		"--log-context-disruption-name", disruptionName,
