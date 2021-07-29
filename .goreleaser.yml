@@ -10,15 +10,38 @@ builds:
       - amd64
   - id: injector
     binary: injector
+    main: ./cli/injector
     goos:
       - linux
     goarch:
       - amd64
+  - id: handler
+    binary: handler
+    main: ./cli/handler
+    goos:
+      - linux
+    goarch:
+      - amd64
+  - id: chaosli
+    binary: chaosli
+    main: ./cli/chaosli
+    goos:
+      - linux
+      - darwin
 archives:
-  - files:
+  - id: controller
+    builds:
+      - controller
+      - injector
+      - handler
+    files:
     - LICENSE
     - LICENSE-3rdparty.csv
     - NOTICE
     - CHANGELOG.md
     - README.md
     - docs/*
+  - id: chaosli
+    builds:
+      - chaosli
+    format: binary
