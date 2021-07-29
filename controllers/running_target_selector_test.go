@@ -31,7 +31,6 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -306,25 +305,44 @@ var _ = Describe("Helpers", func() {
 		})
 
 		Context("with non-empty label selector", func() {
-			It("should pass given selector for the given namespace to the client", func() {
-				ls := map[string]string{
+			BeforeEach(func() {
+				disruption.Namespace = "foo"
+				disruption.Spec.Selector = map[string]string{
 					"app": "bar",
 				}
-				disruption.Namespace = "foo"
-				disruption.Spec.Selector = ls
+				disruption.Spec.AdvancedSelector = []metav1.LabelSelectorRequirement{
+					{
+						Key:      "app",
+						Operator: metav1.LabelSelectorOpExists,
+					},
+					{
+						Key:      "app",
+						Operator: metav1.LabelSelectorOpDoesNotExist,
+					},
+					{
+						Key:      "app",
+						Operator: metav1.LabelSelectorOpIn,
+						Values:   []string{"bar"},
+					},
+					{
+						Key:      "app",
+						Operator: metav1.LabelSelectorOpNotIn,
+						Values:   []string{"bar"},
+					},
+				}
+			})
 
+			It("should pass given selector for the given namespace to the client", func() {
 				_, err := targetSelector.GetMatchingPods(&c, disruption)
 				Expect(err).To(BeNil())
 				// Note: Namespace filter is not applied for results of the fakeClient.
 				//       We instead test this functionality in the controller tests.
 				Expect(c.ListOptions[0].Namespace).To(Equal("foo"))
-				Expect(c.ListOptions[0].LabelSelector.Matches(labels.Set(ls))).To(BeTrue())
+				Expect(c.ListOptions[0].LabelSelector.String()).To(Equal("app=bar,app,!app,app in (bar),app notin (bar)"))
 			})
+
 			It("should return the pods list except for failed pod", func() {
 				disruption.Namespace = ""
-				disruption.Spec.Selector = map[string]string{
-					"app": "bar",
-				}
 
 				r, err := targetSelector.GetMatchingPods(&c, disruption)
 				numExcludedPods := 2 // pending + failed pods
@@ -356,16 +374,41 @@ var _ = Describe("Helpers", func() {
 		})
 
 		Context("with non-empty label selector", func() {
+			BeforeEach(func() {
+				disruption.Spec.Selector = map[string]string{
+					"app": "bar",
+				}
+				disruption.Spec.AdvancedSelector = []metav1.LabelSelectorRequirement{
+					{
+						Key:      "app",
+						Operator: metav1.LabelSelectorOpExists,
+					},
+					{
+						Key:      "app",
+						Operator: metav1.LabelSelectorOpDoesNotExist,
+					},
+					{
+						Key:      "app",
+						Operator: metav1.LabelSelectorOpIn,
+						Values:   []string{"bar"},
+					},
+					{
+						Key:      "app",
+						Operator: metav1.LabelSelectorOpNotIn,
+						Values:   []string{"bar"},
+					},
+				}
+			})
+
 			It("should pass given selector to the client", func() {
-				ls := map[string]string{"app": "bar"}
-				disruption.Spec.Selector = ls
 				_, err := targetSelector.GetMatchingNodes(&c, disruption)
 				Expect(err).To(BeNil())
-				Expect(c.ListOptions[0].LabelSelector.Matches(labels.Set(ls))).To(BeTrue())
+				Expect(c.ListOptions[0].LabelSelector.String()).To(Equal("app=bar,app,!app,app in (bar),app notin (bar)"))
 			})
+
 			It("should return the nodes list with no error", func() {
-				disruption.Spec.Selector = map[string]string{"foo": "bar"}
 				r, err := targetSelector.GetMatchingNodes(&c, disruption)
+
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(len(justRunningNodes)))
 				Expect(r.Items[0].Name).To(Equal("runningNode"))

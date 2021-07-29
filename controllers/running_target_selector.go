@@ -28,8 +28,6 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -39,34 +37,21 @@ type RunningTargetSelector struct{}
 
 // GetMatchingPods returns a pods list containing all running pods matching the given label selector and namespace
 func (r RunningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, error) {
-	// we want to ensure we never run into the possibility of using an empty label selector
-	if len(instance.Spec.Selector) < 1 || instance.Spec.Selector == nil {
-		return nil, errors.New("selector can't be an empty set")
+	// get parsed selector
+	selector, err := getLabelSelectorFromInstance(instance)
+	if err != nil {
+		return nil, fmt.Errorf("error getting label selector from disruption: %w", err)
 	}
 
 	// filter pods based on the label selector and namespace
 	pods := &corev1.PodList{}
-	selector := instance.Spec.Selector.AsSelector()
-
-	// if the disruption is supposed to be injected on pod init,
-	// let's add a requirement to get pods having the matching label only
-	if instance.Spec.OnInit {
-		onInitRequirement, err := labels.NewRequirement(chaostypes.DisruptOnInitLabel, selection.Exists, []string{})
-		if err != nil {
-			return nil, fmt.Errorf("error adding the disrupt-on-init label requirement: %w", err)
-		}
-
-		selector.Add(*onInitRequirement)
-	}
-
 	listOptions := &client.ListOptions{
 		LabelSelector: selector,
 		Namespace:     instance.Namespace,
 	}
 
 	// fetch pods from label selector
-	err := c.List(context.Background(), pods, listOptions)
-	if err != nil {
+	if err := c.List(context.Background(), pods, listOptions); err != nil {
 		return nil, err
 	}
 
@@ -101,20 +86,20 @@ func (r RunningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv
 
 // GetMatchingNodes returns a nodes list containing all nodes matching the given label selector
 func (r RunningTargetSelector) GetMatchingNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, error) {
-	// we want to ensure we never run into the possibility of using an empty label selector
-	if len(instance.Spec.Selector) < 1 || instance.Spec.Selector == nil {
-		return nil, errors.New("selector can't be an empty set")
+	// get parsed selector
+	selector, err := getLabelSelectorFromInstance(instance)
+	if err != nil {
+		return nil, fmt.Errorf("error getting label selector from disruption: %w", err)
 	}
 
 	// filter nodes based on the label selector
 	nodes := &corev1.NodeList{}
 	listOptions := &client.ListOptions{
-		LabelSelector: instance.Spec.Selector.AsSelector(),
+		LabelSelector: selector,
 	}
 
 	// fetch nodes from label selector
-	err := c.List(context.Background(), nodes, listOptions)
-	if err != nil {
+	if err := c.List(context.Background(), nodes, listOptions); err != nil {
 		return nil, err
 	}
 
