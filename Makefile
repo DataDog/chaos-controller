@@ -31,6 +31,10 @@ injector:
 handler:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/handler/handler ./cli/handler/
 
+# Build chaosli
+chaosli:
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o bin/chaosli/chaosli_darwin_amd64 ./cli/chaosli/
+
 # Install CRDs and controller into a cluster
 install: manifests
 	helm template ./chart | kubectl apply -f -
