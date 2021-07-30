@@ -81,7 +81,8 @@ func contextTargetsSize(disruption v1beta1.Disruption) (*[]v1.Pod, *[]v1.Node, e
 func showPods(pods *v1.PodList) *[]v1.Pod {
 	targetsShow := []string{}
 
-	var targetsAll []v1.Pod
+	targetsAll := make([]v1.Pod, len(pods.Items))
+
 	for _, pod := range pods.Items {
 		if len(targetsShow) < maxtargetshow {
 			targetsShow = append(targetsShow, pod.Name)
@@ -187,7 +188,7 @@ func getNodes(disruption v1beta1.Disruption) *v1.NodeList {
 		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
 	}
 	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
-	
+
 	if err != nil {
 		panic(err.Error())
 	}
