@@ -83,7 +83,6 @@ func showPods(pods *v1.PodList) *[]v1.Pod {
 
 	var targetsAll []v1.Pod
 	for _, pod := range pods.Items {
-
 		if len(targetsShow) < maxtargetshow {
 			targetsShow = append(targetsShow, pod.Name)
 		}
@@ -165,6 +164,7 @@ func getPods(disruption v1beta1.Disruption) *v1.PodList {
 		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
 	}
 	pods, err := clientset.CoreV1().Pods(disruption.ObjectMeta.Namespace).List(context.TODO(), options)
+
 	if err != nil {
 		panic(err.Error())
 	}
@@ -187,6 +187,7 @@ func getNodes(disruption v1beta1.Disruption) *v1.NodeList {
 		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
 	}
 	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
+	
 	if err != nil {
 		panic(err.Error())
 	}
