@@ -73,7 +73,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
 	rootCmd.PersistentFlags().StringSliceVar(&containerIDs, "containers-id", []string{}, "Targeted containers ID")
-	rootCmd.PersistentFlags().StringVar(&podIP, "pod-ip", "", "Targeted pod IP")
+	rootCmd.PersistentFlags().StringVar(&podIP, "pod-ip", "", "Pod IP of targeted pod")
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
 
 	// log context args

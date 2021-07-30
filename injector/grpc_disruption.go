@@ -6,9 +6,11 @@
 package injector
 
 import (
+	"strconv"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaos_grpc "github.com/DataDog/chaos-controller/grpc"
-	pb "github.com/DataDog/chaos-controller/grpc/proto"
+	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
 	"google.golang.org/grpc"
 )
 
@@ -31,7 +33,7 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 	opts = append(opts, grpc.WithInsecure())
 	opts = append(opts, grpc.WithBlock())
 
-	serverAddr := config.PodIP + ":50051" // TODO: make address / port of gRPC service
+	serverAddr := config.PodIP + ":" + strconv.Itoa(spec.Port)
 	config.Log.Infow("connecting to " + serverAddr + "...")
 
 	conn, err := grpc.Dial(serverAddr, opts...)
