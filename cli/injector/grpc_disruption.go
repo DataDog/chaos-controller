@@ -61,13 +61,15 @@ var grpcDisruptionCmd = &cobra.Command{
 			Endpoints: endpointAlterations,
 		}
 		// create injectors
-		for _, config := range configs {
-			inj, err := injector.NewGRPCDisruptionInjector(spec, injector.GRPCDisruptionInjectorConfig{Config: config})
-			if err != nil {
-				log.Fatalw("error initializing the gRPC injector", "error", err)
-			}
+		for i, config := range configs {
+			if i == 0 {
+				inj, err := injector.NewGRPCDisruptionInjector(spec, injector.GRPCDisruptionInjectorConfig{Config: config})
+				if err != nil {
+					log.Fatalw("error initializing the gRPC injector", "error", err)
+				}
 
-			injectors = append(injectors, inj)
+				injectors = append(injectors, inj)
+			}
 		}
 	},
 }
