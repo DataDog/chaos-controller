@@ -8,6 +8,11 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
+	"math"
+	"path/filepath"
+	"strconv"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/types"
 	"github.com/spf13/cobra"
@@ -17,16 +22,15 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"log"
-	"math"
-	"path/filepath"
-	"strconv"
 )
 
 var maxtargetshow int
 var kubeconfig string
 var verbose bool
 
+// besides calculating size, this function also grabs the list of targets corresponding to the
+// selector in the disruption. The targets can either be a list of pods or a list of nodes
+// therefore only one of the return types is actually populated while the other is empty.
 func contextTargetsSize(disruption v1beta1.Disruption) (*[]v1.Pod, *[]v1.Node, error) {
 	spec := disruption.Spec
 	labels := spec.Selector.String()
@@ -34,11 +38,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) (*[]v1.Pod, *[]v1.Node, e
 
 	fmt.Println("Let's look at your targets...")
 
-	size, err := getTargetSize(disruption)
-
-	if err != nil {
-		return nil, nil, err
-	}
+	size := getTargetSize(disruption)
 
 	// If the size is 0, first check if changing the level will do anything, otherwise
 	// mention to the user that the labels they are using won't target anything
@@ -52,11 +52,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) (*[]v1.Pod, *[]v1.Node, e
 			disruption.Spec.Level = types.DisruptionLevelPod
 		}
 
-		size, err = getTargetSize(disruption)
-
-		if err != nil {
-			return nil, nil, err
-		}
+		size = getTargetSize(disruption)
 
 		if size > 0 {
 			errorString = fmt.Sprintf("\nWe noticed that your target size is 0 for level %s given your label selectors. We checked to see if the %s level would give you results and we found %d %ss. Is this the level you wanted to use?", level, disruption.Spec.Level, size, disruption.Spec.Level)
@@ -66,12 +62,12 @@ func contextTargetsSize(disruption v1beta1.Disruption) (*[]v1.Pod, *[]v1.Node, e
 	}
 
 	var allPods *[]v1.Pod
+
 	var allNodes *[]v1.Node
 
 	if level == types.DisruptionLevelPod {
 		pods := getPods(disruption)
 		allPods = showPods(pods)
-
 	} else {
 		nodes := getNodes(disruption)
 		allNodes = showNodes(nodes)
@@ -79,13 +75,13 @@ func contextTargetsSize(disruption v1beta1.Disruption) (*[]v1.Pod, *[]v1.Node, e
 
 	PrintSeparator()
 
-	return allPods, allNodes , nil
+	return allPods, allNodes, nil
 }
 
-func showPods(pods *v1.PodList) (*[]v1.Pod) {
+func showPods(pods *v1.PodList) *[]v1.Pod {
 	targetsShow := []string{}
-	var targetsAll []v1.Pod
 
+	var targetsAll []v1.Pod
 	for _, pod := range pods.Items {
 
 		if len(targetsShow) < maxtargetshow {
@@ -112,7 +108,7 @@ func showPods(pods *v1.PodList) (*[]v1.Pod) {
 	return &targetsAll
 }
 
-func showNodes(nodes *v1.NodeList) (*[]v1.Node) {
+func showNodes(nodes *v1.NodeList) *[]v1.Node {
 	targetsShow := []string{}
 	targetsAll := []v1.Node{}
 
@@ -141,7 +137,7 @@ func showNodes(nodes *v1.NodeList) (*[]v1.Node) {
 	return &targetsAll
 }
 
-func getTargetSize(disruption v1beta1.Disruption) (int, error) {
+func getTargetSize(disruption v1beta1.Disruption) int {
 	level := disruption.Spec.Level
 	size := 0
 
@@ -151,10 +147,10 @@ func getTargetSize(disruption v1beta1.Disruption) (int, error) {
 		size = len(getNodes(disruption).Items)
 	}
 
-	return size, nil
+	return size
 }
 
-func getPods(disruption v1beta1.Disruption) (*v1.PodList) {
+func getPods(disruption v1beta1.Disruption) *v1.PodList {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		panic(err.Error())
@@ -169,11 +165,14 @@ func getPods(disruption v1beta1.Disruption) (*v1.PodList) {
 		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
 	}
 	pods, err := clientset.CoreV1().Pods(disruption.ObjectMeta.Namespace).List(context.TODO(), options)
+	if err != nil {
+		panic(err.Error())
+	}
 
 	return pods
 }
 
-func getNodes(disruption v1beta1.Disruption) (*v1.NodeList) {
+func getNodes(disruption v1beta1.Disruption) *v1.NodeList {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		panic(err.Error())
@@ -188,6 +187,9 @@ func getNodes(disruption v1beta1.Disruption) (*v1.NodeList) {
 		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
 	}
 	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
+	if err != nil {
+		panic(err.Error())
+	}
 
 	return nodes
 }
@@ -196,7 +198,7 @@ func printContainerStatus(targetInfo *[]v1.Pod) {
 	percentCollect := make(map[string]float64)
 
 	if verbose {
-		fmt.Println("\nLets take a look at the status of your Targeted Pod Containers...\n")
+		fmt.Printf("\nLets take a look at the status of your Targeted Pod Containers...\n\n")
 	}
 
 	totalContainers := 0
@@ -234,7 +236,7 @@ func printContainerStatus(targetInfo *[]v1.Pod) {
 		}
 
 		if i < maxtargetshow && verbose {
-			fmt.Printf(info)
+			fmt.Print(info)
 		}
 	}
 
@@ -268,13 +270,13 @@ func printPodStatus(targetsInfo *[]v1.Pod) {
 	percentCollectCondition := make(map[string]float64)
 
 	if verbose {
-		fmt.Println("\nLets take a look at the status of your Targeted Pods...\n")
+		fmt.Printf("\nLets take a look at the status of your Targeted Pods...\n\n")
 	}
 
 	// adding 1 to these states so we can run percentages. Since we have the number
 	// of instances with that specific state (the += 1.0) and we know the total
 	// number of instances, we can easily get a percentage.
-	for i, pod := range *targetsInfo  {
+	for i, pod := range *targetsInfo {
 		info := "\t🥸  Pod Name: " + pod.Name + "\n" +
 			"\t👵🏾 Pod Host IP: " + pod.Status.HostIP + "\n" +
 			"\t👧🏾 Pod IP: " + pod.Status.PodIP + "\n" +
@@ -291,7 +293,7 @@ func printPodStatus(targetsInfo *[]v1.Pod) {
 		percentCollectPhase[string(pod.Status.Phase)] += 1.0 / float64(len(*targetsInfo))
 
 		if i < maxtargetshow && verbose {
-			fmt.Printf(info)
+			fmt.Print(info)
 		}
 	}
 
@@ -322,10 +324,10 @@ func printNodeStatus(targetsInfo *[]v1.Node) {
 	percentCollectCondition := make(map[string]float64)
 
 	if verbose {
-		fmt.Println("\nLets take a look at the status of your Targeted Nodes...\n")
+		fmt.Printf("\nLets take a look at the status of your Targeted Nodes...\n\n")
 	}
 
-	for i , node := range *targetsInfo {
+	for i, node := range *targetsInfo {
 		info := "\t🥸  Node Name: " + node.Name + "\n" +
 			"\t📲 Node Addresses: \n"
 
@@ -348,7 +350,7 @@ func printNodeStatus(targetsInfo *[]v1.Node) {
 		}
 
 		if i < maxtargetshow && verbose {
-			fmt.Printf(info)
+			fmt.Print(info)
 		}
 	}
 
@@ -383,11 +385,12 @@ var contextCmd = &cobra.Command{
 
 func contextualize(path string) {
 	disruption := ReadUnmarshalValidate(path)
+
 	if len(kubeconfig) == 0 {
 		kubeconfig = filepath.Join(homedir.HomeDir(), ".kube", "config")
 	}
 
-	pods, nodes , err := contextTargetsSize(disruption)
+	pods, nodes, err := contextTargetsSize(disruption)
 
 	if err != nil {
 		log.Fatalf("Could not grab context regarding size and names of targets: %v", err)
