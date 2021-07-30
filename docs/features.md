@@ -24,6 +24,17 @@ The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/conc
 
 **NOTE:** If you are targeting pods, the disruption must be created in the same namespace as the targeted pods.
 
+### Advanced targeting
+
+In addition to the simple `selector` field matching an exact key/value label, one can do some more advanced targeting with the `advancedSelector` field. It uses the [label selector requirements mechanism](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#LabelSelectorRequirement) allowing to match labels with the following operator:
+
+* `Exists`: the label with the specified key is present, no matter the value
+* `DoesNotExist`: the label with the specified key is not present
+* `In`: the label with the specified key has a value strictly equal to one of the given values
+* `NotIn`: the label with the specified key has a value not matching any of the given values
+
+You can look at [an example of the expected format](../examples/advanced_selector.yaml) to know how to use it.
+
 ### Targeting a specific pod
 
 How can you target a specific pod by name, if it doesn't have a unique label selector you can use? The `Disruption` spec doesn't support field selectors at this time, so selecting by name isn't possible. However, you can use the `kubectl label pods` command, e.g., `kubectl label pods $podname unique-label-for-this-disruption=target-me` to dynamically add a unique label to the pod, which you can use as your label selector in the `Disruption` spec.
@@ -60,6 +71,11 @@ Here is [a full example of the disruption resource](../examples/complete.yaml) w
 * [Node disruptions](/docs/node_disruption.md)
   * [I want to randomly kill one of my node](../examples/node_failure.yaml)
   * [I want to randomly kill one of my node and keep it down](../examples/node_failure_shutdown.yaml)
+* [Pod disruptions](/docs/container_disruption.md)
+  * [I want to terminate all the containers of one of my pods gracefully](../examples/container_failure_all_graceful.yaml)
+  * [I want to terminate all the containers of one of my pods non-gracefully](../examples/container_failure_all_forced.yaml)
+  * [I want to terminate a container of one of my pods gracefully](../examples/container_failure_graceful.yaml)
+  * [I want to terminate a container of one of my pods non-gracefully](../examples/container_failure_forced.yaml)
 * [Network disruptions](/docs/network_disruption.md)
   * [I want to drop packets going out from my pods](../examples/network_drop.yaml)
   * [I want to corrupt packets going out from my pods](../examples/network_corrupt.yaml)

@@ -39,10 +39,12 @@ import (
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
-	// +kubebuilder:validation:Required
-	Selector labels.Set `json:"selector"`         // label selector
-	DryRun   bool       `json:"dryRun,omitempty"` // enable dry-run mode
-	OnInit   bool       `json:"onInit,omitempty"` // enable disruption on init
+	// +nullable
+	Selector labels.Set `json:"selector,omitempty"` // label selector
+	// +nullable
+	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
+	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
+	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
 	// +kubebuilder:validation:Enum=pod;node;""
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
 	Containers []string                   `json:"containers,omitempty"`
@@ -50,6 +52,8 @@ type DisruptionSpec struct {
 	Network *NetworkDisruptionSpec `json:"network,omitempty"`
 	// +nullable
 	NodeFailure *NodeFailureSpec `json:"nodeFailure,omitempty"`
+	// +nullable
+	ContainerFailure *ContainerFailureSpec `json:"containerFailure,omitempty"`
 	// +nullable
 	CPUPressure *CPUPressureSpec `json:"cpuPressure,omitempty"`
 	// +nullable
@@ -133,9 +137,19 @@ func (s *DisruptionSpec) Validate() error {
 
 // Validate applies rules for disruption global scope
 func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
+	// Rule: at least one kind of selector is set
+	if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
+		return errors.New("either selector or advancedSelector field must be set")
+	}
+
 	// Rule: no targeted container if disruption is node-level
 	if len(s.Containers) > 0 && s.Level == chaostypes.DisruptionLevelNode {
 		return errors.New("cannot target specific containers because the level configuration is set to node")
+	}
+
+	// Rule: container failure not possible if disruption is node-level
+	if s.ContainerFailure != nil && s.Level == chaostypes.DisruptionLevelNode {
+		return errors.New("cannot execute a container failure because the level configuration is set to node")
 	}
 
 	// Rule: at least one disruption field
@@ -143,14 +157,16 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		s.CPUPressure == nil &&
 		s.Network == nil &&
 		s.NodeFailure == nil &&
+		s.ContainerFailure == nil &&
 		s.DiskPressure == nil {
-		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, CPUPressure fields is needed")
+		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, ContainerFailure, CPUPressure fields is needed")
 	}
 
 	// Rule: on init compatibility
 	if s.OnInit {
 		if s.CPUPressure != nil ||
 			s.NodeFailure != nil ||
+			s.ContainerFailure != nil ||
 			s.DiskPressure != nil {
 			return errors.New("OnInit is only compatible with network and dns disruptions")
 		}
@@ -179,6 +195,8 @@ func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName
 	switch kind {
 	case chaostypes.DisruptionKindNodeFailure:
 		disruptionKind = s.NodeFailure
+	case chaostypes.DisruptionKindContainerFailure:
+		disruptionKind = s.ContainerFailure
 	case chaostypes.DisruptionKindNetworkDisruption:
 		disruptionKind = s.Network
 	case chaostypes.DisruptionKindDNSDisruption:

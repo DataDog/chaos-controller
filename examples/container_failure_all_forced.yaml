@@ -1,0 +1,16 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: container-failure-all-forced
+  namespace: chaos-demo
+spec:
+  selector:
+    app: demo-curl
+  count: 1
+  containerFailure:
+    forced: true # send a SIGKILL signal to all of the pod's containers

@@ -1,0 +1,28 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: advanced-selector
+  namespace: chaos-demo
+spec:
+  level: pod
+  advancedSelector: # advanced selectors can select targets on something else than an exact key/value match
+    - key: app
+      operator: Exists
+  # - key: app
+  #   operator: DoesNotExist
+  # - key: app
+  #   operator: In
+  #   values:
+  #     - curl
+  # - key: app
+  #   operator: NotIn
+  #   values:
+  #     - nginx
+  count: 1
+  network:
+    drop: 10

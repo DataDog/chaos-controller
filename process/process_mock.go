@@ -5,7 +5,11 @@
 
 package process
 
-import "github.com/stretchr/testify/mock"
+import (
+	"os"
+
+	"github.com/stretchr/testify/mock"
+)
 
 // ManagerMock is a mock implementation of the Manager interface
 type ManagerMock struct {
@@ -24,4 +28,18 @@ func (f *ManagerMock) ThreadID() int {
 	args := f.Called()
 
 	return args.Int(0)
+}
+
+//nolint:golint
+func (f *ManagerMock) Find(pid int) (*os.Process, error) {
+	args := f.Called(pid)
+
+	return args.Get(0).(*os.Process), args.Error(1)
+}
+
+//nolint:golint
+func (f *ManagerMock) Signal(process *os.Process, signal os.Signal) error {
+	args := f.Called(process, signal)
+
+	return args.Error(0)
 }
