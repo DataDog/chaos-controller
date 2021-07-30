@@ -6,7 +6,7 @@ import (
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	pb "github.com/DataDog/chaos-controller/grpc/proto"
+	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -17,7 +17,7 @@ func ExecuteSendDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1
 	defer cancel()
 
 	var endpointAlterationList []*pb.EndpointAlteration
-	for _, altSpec := range spec {
+	for _, altSpec := range spec.Endpoints {
 		endpointAlteration := pb.EndpointAlteration{
 			TargetEndpoint:   altSpec.TargetEndpoint,
 			ErrorToReturn:    altSpec.ErrorToReturn,

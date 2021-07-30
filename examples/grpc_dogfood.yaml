@@ -6,7 +6,7 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: grpc
+  name: grpc3
   namespace: chaos-demo
 spec:
   level: pod
@@ -14,7 +14,9 @@ spec:
     app: chaos-dogfood-server
   count: 100%
   grpc:
-    - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog
-      error: NOT_FOUND
-    - endpoint: /chaos_dogfood.ChaosDogfood/order
-      override: "{}"
+    port: 50051
+    endpoints:
+      - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog
+        error: NOT_FOUND
+      - endpoint: /chaos_dogfood.ChaosDogfood/order
+        override: "{}"

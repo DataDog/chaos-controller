@@ -66,7 +66,7 @@ type DisruptionSpec struct {
 	// +nullable
 	DNS DNSDisruptionSpec `json:"dns,omitempty"`
 	// +nullable
-	GRPC GRPCDisruptionSpec `json:"grpc,omitempty"`
+	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
 }
 
 // DisruptionStatus defines the observed state of Disruption

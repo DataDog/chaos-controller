@@ -54,9 +54,15 @@ var grpcDisruptionCmd = &cobra.Command{
 			endpointAlterations = append(endpointAlterations, endpointAlteration)
 		}
 
+		port, _ := cmd.Flags().GetInt("port")
+
+		spec := v1beta1.GRPCDisruptionSpec{
+			Port:      port,
+			Endpoints: endpointAlterations,
+		}
 		// create injectors
 		for _, config := range configs {
-			inj, err := injector.NewGRPCDisruptionInjector(endpointAlterations, injector.GRPCDisruptionInjectorConfig{Config: config})
+			inj, err := injector.NewGRPCDisruptionInjector(spec, injector.GRPCDisruptionInjectorConfig{Config: config})
 			if err != nil {
 				log.Fatalw("error initializing the gRPC injector", "error", err)
 			}
@@ -69,4 +75,5 @@ var grpcDisruptionCmd = &cobra.Command{
 func init() {
 	// We must use a StringArray rather than StringSlice here, because our ip values can contain commas. StringSlice will split on commas.
 	grpcDisruptionCmd.Flags().StringArray("endpoint-alterations", []string{}, "list of endpoint,alteration_type,alteration_value tuples as strings") // `/chaos_dogfood.ChaosDogfood/order;override;{}`
+	grpcDisruptionCmd.Flags().Int("port", 0, "port to disrupt on target pod")
 }
