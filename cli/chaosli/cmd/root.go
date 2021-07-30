@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	goyaml "github.com/ghodss/yaml"
@@ -95,6 +96,10 @@ func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
 
 func PrintSeparator() {
 	fmt.Println("=======================================================================================================================================")
+	// after a separator we should assume there is information we want the user to read before more prints start
+	// flooding the terminal. That is why we add this sleep of 2 seconds to give some time for the user to
+	// digest the new information before consuming the next
+	time.Sleep(2 * time.Second)
 }
 
 func ReadUnmarshalValidate(path string) v1beta1.Disruption {

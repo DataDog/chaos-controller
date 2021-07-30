@@ -6,43 +6,40 @@
 package cmd
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"log"
-	"math"
-	"os/exec"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/types"
-	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
+	"log"
+	"math"
+	"path/filepath"
+	"strconv"
 )
 
-const MAXTARGETSHOW = 10
+var maxtargetshow int
+var kubeconfig string
+var verbose bool
 
-func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
+func contextTargetsSize(disruption v1beta1.Disruption) (*[]v1.Pod, *[]v1.Node, error) {
 	spec := disruption.Spec
 	labels := spec.Selector.String()
 	level := string(spec.Level)
-	podNamespaces := disruption.ObjectMeta.Namespace
 
 	fmt.Println("Let's look at your targets...")
-
-	s := spinner.New(spinner.CharSets[38], 100*time.Millisecond)
-	s.Start()
 
 	size, err := getTargetSize(disruption)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// Remove header NAME from consideration
-	size--
 	// If the size is 0, first check if changing the level will do anything, otherwise
 	// mention to the user that the labels they are using won't target anything
 
@@ -56,48 +53,51 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 		}
 
 		size, err = getTargetSize(disruption)
-		// Remove header NAME from consideration
-		size--
 
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if size > 0 {
 			errorString = fmt.Sprintf("\nWe noticed that your target size is 0 for level %s given your label selectors. We checked to see if the %s level would give you results and we found %d %ss. Is this the level you wanted to use?", level, disruption.Spec.Level, size, disruption.Spec.Level)
 		}
 
-		return nil, fmt.Errorf(errorString)
+		return nil, nil, fmt.Errorf(errorString)
 	}
 
-	cmd := fmt.Sprintf("kubectl get %s -n %s -l %s | awk '{print $1}'", level, podNamespaces, labels)
-	targets, err := exec.Command("bash", "-c", cmd).Output()
+	var allPods *[]v1.Pod
+	var allNodes *[]v1.Node
 
-	if err != nil {
-		return nil, fmt.Errorf("could not grab list of targets names correlating to target selector: %v", err)
+	if level == types.DisruptionLevelPod {
+		pods := getPods(disruption)
+		allPods = showPods(pods)
+
+	} else {
+		nodes := getNodes(disruption)
+		allNodes = showNodes(nodes)
 	}
 
-	s.Stop()
+	PrintSeparator()
 
+	return allPods, allNodes , nil
+}
+
+func showPods(pods *v1.PodList) (*[]v1.Pod) {
 	targetsShow := []string{}
-	targetsAll := []string{}
-	targetsSplit := strings.Split(string(targets), "\n")
+	var targetsAll []v1.Pod
 
-	for i := 0; i < len(targetsSplit); i++ {
-		if len(targetsShow) < MAXTARGETSHOW {
-			targetsShow = append(targetsShow, targetsSplit[i])
+	for _, pod := range pods.Items {
+
+		if len(targetsShow) < maxtargetshow {
+			targetsShow = append(targetsShow, pod.Name)
 		}
 
-		if targetsSplit[i] == "NAME" || targetsSplit[i] == "" {
-			continue
-		}
-
-		targetsAll = append(targetsAll, targetsSplit[i])
+		targetsAll = append(targetsAll, pod)
 	}
 
-	fmt.Printf("\n🎯 There are %d %ss that will be targeted\n", size, level)
+	fmt.Printf("\n🎯 There are %d pods that will be targeted\n", len(pods.Items))
 
-	if size > MAXTARGETSHOW {
+	if len(pods.Items) > maxtargetshow {
 		fmt.Println("📝 Here are a small set of those targets:")
 	}
 
@@ -105,85 +105,108 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]string, error) {
 		fmt.Println(target)
 	}
 
-	if size > MAXTARGETSHOW {
+	if len(pods.Items) > maxtargetshow {
 		fmt.Println("...")
 	}
 
-	PrintSeparator()
+	return &targetsAll
+}
 
-	return targetsAll, nil
+func showNodes(nodes *v1.NodeList) (*[]v1.Node) {
+	targetsShow := []string{}
+	targetsAll := []v1.Node{}
+
+	for _, node := range nodes.Items {
+		if len(targetsShow) < maxtargetshow {
+			targetsShow = append(targetsShow, node.Name)
+		}
+
+		targetsAll = append(targetsAll, node)
+	}
+
+	fmt.Printf("\n🎯 There are %d nodes that will be targeted\n", len(nodes.Items))
+
+	if len(nodes.Items) > maxtargetshow {
+		fmt.Println("📝 Here are a small set of those targets:")
+	}
+
+	for _, target := range targetsShow {
+		fmt.Println(target)
+	}
+
+	if len(nodes.Items) > maxtargetshow {
+		fmt.Println("...")
+	}
+
+	return &targetsAll
 }
 
 func getTargetSize(disruption v1beta1.Disruption) (int, error) {
 	level := disruption.Spec.Level
-	podNamespace := disruption.Namespace
-	labels := disruption.Spec.Selector.String()
-	cmd := fmt.Sprintf("kubectl get %s -n %s -l %s | wc -l", level, podNamespace, labels)
-	sizeString, err := exec.Command("bash", "-c", cmd).Output()
+	size := 0
 
-	if err != nil {
-		return -1, fmt.Errorf("could not count the number of targets correlating to target selector: %v", err)
-	}
-
-	size, err := strconv.Atoi(strings.Trim(string(sizeString), "\n"))
-
-	if err != nil {
-		return -1, fmt.Errorf("could not convert string to integer in context target size: %v", err)
+	if level == types.DisruptionLevelPod {
+		size = len(getPods(disruption).Items)
+	} else {
+		size = len(getNodes(disruption).Items)
 	}
 
 	return size, nil
 }
 
-func grabDataForTargets(targets []string, disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, error) {
-	namespace := disruption.ObjectMeta.Namespace
-	level := disruption.Spec.Level
-	pods := []v1.Pod{}
-	nodes := []v1.Node{}
-
-	s := spinner.New(spinner.CharSets[38], 100*time.Millisecond)
-	s.Start()
-
-	for _, targetName := range targets {
-		pod := v1.Pod{}
-		node := v1.Node{}
-
-		cmd := fmt.Sprintf("kubectl get %s -o json -n %s %s", level, namespace, targetName)
-		targetData, err := exec.Command("bash", "-c", cmd).Output()
-
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not grab target data: %v", err)
-		}
-
-		if level == types.DisruptionLevelPod {
-			if err := json.Unmarshal(targetData, &pod); err != nil {
-				return nil, nil, fmt.Errorf("json encoding failed: %v", err)
-			}
-
-			pods = append(pods, pod)
-		} else {
-			if err := json.Unmarshal(targetData, &node); err != nil {
-				return nil, nil, fmt.Errorf("json encoding failed: %v", err)
-			}
-			nodes = append(nodes, node)
-		}
+func getPods(disruption v1beta1.Disruption) (*v1.PodList) {
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		panic(err.Error())
 	}
 
-	s.Stop()
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
 
-	return pods, nodes, nil
+	options := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
+	}
+	pods, err := clientset.CoreV1().Pods(disruption.ObjectMeta.Namespace).List(context.TODO(), options)
+
+	return pods
 }
 
-func printContainerStatus(targetInfo []v1.Pod) {
+func getNodes(disruption v1beta1.Disruption) (*v1.NodeList) {
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	options := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
+	}
+	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
+
+	return nodes
+}
+
+func printContainerStatus(targetInfo *[]v1.Pod) {
 	percentCollect := make(map[string]float64)
 
-	fmt.Println("\nLets take" +
-		" a look at the status of your Targeted Pod Containers...")
+	if verbose {
+		fmt.Println("\nLets take a look at the status of your Targeted Pod Containers...\n")
+	}
 
 	totalContainers := 0
 
-	for i, pod := range targetInfo {
+	for i, pod := range *targetInfo {
 		info := "\t🥸  Pod Name: " + pod.Name + "\n"
 
+		// adding 1 to these states so we can run percentages. Since we have the number
+		// of instances with that specific state (the += 1.0) and we know the total
+		// number of instances, we can easily get a percentage.
 		for j := 0; j < len(pod.Status.ContainerStatuses); j++ {
 			totalContainers++
 
@@ -210,12 +233,14 @@ func printContainerStatus(targetInfo []v1.Pod) {
 			}
 		}
 
-		if i < MAXTARGETSHOW {
-			fmt.Printf(info + "\n\n")
+		if i < maxtargetshow && verbose {
+			fmt.Printf(info)
 		}
 	}
 
-	PrintSeparator()
+	if verbose {
+		PrintSeparator()
+	}
 
 	percentInfo := "Lets look at the overall status of your targeted pod's containers...\n"
 
@@ -238,14 +263,18 @@ func printContainerStatus(targetInfo []v1.Pod) {
 	fmt.Println(percentInfo)
 }
 
-func printPodStatus(targetsInfo []v1.Pod) {
+func printPodStatus(targetsInfo *[]v1.Pod) {
 	percentCollectPhase := make(map[string]float64)
 	percentCollectCondition := make(map[string]float64)
 
-	fmt.Println("\nLets take a look at the status of your Targeted Pods...")
+	if verbose {
+		fmt.Println("\nLets take a look at the status of your Targeted Pods...\n")
+	}
 
-	for i := 0; i < len(targetsInfo); i++ {
-		pod := targetsInfo[i]
+	// adding 1 to these states so we can run percentages. Since we have the number
+	// of instances with that specific state (the += 1.0) and we know the total
+	// number of instances, we can easily get a percentage.
+	for i, pod := range *targetsInfo  {
 		info := "\t🥸  Pod Name: " + pod.Name + "\n" +
 			"\t👵🏾 Pod Host IP: " + pod.Status.HostIP + "\n" +
 			"\t👧🏾 Pod IP: " + pod.Status.PodIP + "\n" +
@@ -256,16 +285,19 @@ func printPodStatus(targetsInfo []v1.Pod) {
 			info = info +
 				"\t\t⭕️ Type: " + string(status.Type) + "\n" +
 				"\t\tℹ️  Status: " + string(status.Status) + "\n\n"
-			percentCollectCondition[string(status.Type)+"/"+string(status.Status)] += 1.0 / float64(len(targetsInfo))
+			percentCollectCondition[string(status.Type)+"/"+string(status.Status)] += 1.0 / float64(len(*targetsInfo))
 		}
 
-		percentCollectPhase[string(pod.Status.Phase)] += 1.0 / float64(len(targetsInfo))
+		percentCollectPhase[string(pod.Status.Phase)] += 1.0 / float64(len(*targetsInfo))
 
-		if i < MAXTARGETSHOW {
-			fmt.Printf(info + "\n\n")
+		if i < maxtargetshow && verbose {
+			fmt.Printf(info)
 		}
 	}
-	PrintSeparator()
+
+	if verbose {
+		PrintSeparator()
+	}
 
 	percentInfo := "Lets look at the overall status...\n"
 
@@ -286,13 +318,14 @@ func printPodStatus(targetsInfo []v1.Pod) {
 	PrintSeparator()
 }
 
-func printNodeStatus(targetsInfo []v1.Node) {
+func printNodeStatus(targetsInfo *[]v1.Node) {
 	percentCollectCondition := make(map[string]float64)
 
-	fmt.Println("\nLets take a look at the status of your Targeted Nodes...")
+	if verbose {
+		fmt.Println("\nLets take a look at the status of your Targeted Nodes...\n")
+	}
 
-	for i := 0; i < len(targetsInfo); i++ {
-		node := targetsInfo[i]
+	for i , node := range *targetsInfo {
 		info := "\t🥸  Node Name: " + node.Name + "\n" +
 			"\t📲 Node Addresses: \n"
 
@@ -303,20 +336,25 @@ func printNodeStatus(targetsInfo []v1.Node) {
 
 		info += "\t📜 Node Conditions:\n"
 
+		// adding 1 to these states so we can run percentages. Since we have the number
+		// of instances with that specific state (the += 1.0) and we know the total
+		// number of instances, we can easily get a percentage.
 		for _, status := range node.Status.Conditions {
 			info = info +
 				"\t\t⭕️ Type: " + string(status.Type) + "\n" +
 				"\t\tℹ️  Status: " + string(status.Status) + "\n" +
 				"\t\t🤨 Reason: " + status.Reason + "\n\n"
-			percentCollectCondition[string(status.Type)+"/"+string(status.Status)] += 1.0 / float64(len(targetsInfo))
+			percentCollectCondition[string(status.Type)+"/"+string(status.Status)] += 1.0 / float64(len(*targetsInfo))
 		}
 
-		if i < MAXTARGETSHOW {
-			fmt.Printf(info + "\n\n")
+		if i < maxtargetshow && verbose {
+			fmt.Printf(info)
 		}
 	}
 
-	PrintSeparator()
+	if verbose {
+		PrintSeparator()
+	}
 
 	percentInfo := "Lets look at the overall status...\n"
 
@@ -330,56 +368,51 @@ func printNodeStatus(targetsInfo []v1.Node) {
 	PrintSeparator()
 }
 
-func checkKubectl() error {
-	cmd := exec.Command("kubectl", "get", "pods", "-n", "chaos-engineering")
-	_, err := cmd.Output()
-
-	return err
-}
-
 var contextCmd = &cobra.Command{
 	Use:   "context",
 	Short: "contextualizes disruption config",
 	Long:  `makes use of kubectl to give a better idea of how big the scope of the disruption will be.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("path")
+		kubeconfig, _ = cmd.Flags().GetString("kubeconfig")
+		verbose, _ = cmd.Flags().GetBool("verbose")
+		maxtargetshow, _ = cmd.Flags().GetInt("maxtargetshow")
 		contextualize(path)
 	},
 }
 
 func contextualize(path string) {
 	disruption := ReadUnmarshalValidate(path)
-
-	err := checkKubectl()
-	if err != nil {
-		log.Fatalf("Could not find/use kubectl command, make sure it is in your PATH variable and that all authorizations for the command are set (login to your authorization provider (e.g. Your VPN).")
+	if len(kubeconfig) == 0 {
+		kubeconfig = filepath.Join(homedir.HomeDir(), ".kube", "config")
 	}
 
-	targets, err := contextTargetsSize(disruption)
+	pods, nodes , err := contextTargetsSize(disruption)
+
 	if err != nil {
 		log.Fatalf("Could not grab context regarding size and names of targets: %v", err)
 	}
 
-	podsData, nodesData, err := grabDataForTargets(targets, disruption)
-	if err != nil {
-		log.Fatalf("Attempted to grab data for targets and failed: %v", err)
-	}
-
+	// validate should catch if the disruption level is invalid, safe to assume default else is Node
 	if disruption.Spec.Level == types.DisruptionLevelPod {
-		printPodStatus(podsData)
-		printContainerStatus(podsData)
+		printPodStatus(pods)
+		printContainerStatus(pods)
 	} else {
-		printNodeStatus(nodesData)
+		printNodeStatus(nodes)
 	}
 }
 
 func init() {
 	contextCmd.Flags().String("path", "", "The path to the disruption file to be contextualized.")
+	contextCmd.Flags().String("kubeconfig", "", "The path to your kube configuration directory (.../.kube/config). defaults to ~/.kube/config.")
+	contextCmd.Flags().Bool("verbose", false, "If set, will describe a small set of 10 of your targets. Otherwise it only describes percentages of the group of targets in total.")
+	contextCmd.Flags().Int("maxtargetshow", 5, "Only really applies when verbose is set to true; This value determines how many targets will be described in the output.")
 	err := contextCmd.MarkFlagRequired("path")
 
 	if err != nil {
 		return
 	}
 
-	contextCmd.Println("This command requires that you are connected to a cluster and kubectl works as intended on that cluster. All the results of this command will be based on your current kubectx.")
+	contextCmd.Println("This command requires that you are connected to a kubernetes cluster. All the results of this command will be based on your current kubectx.")
+	PrintSeparator()
 }
