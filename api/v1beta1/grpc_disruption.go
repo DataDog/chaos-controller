@@ -39,11 +39,31 @@ func (s GRPCDisruptionSpec) Validate() error {
 		return errors.New("the gRPC disruption was selected with no endpoints specified, but endpoints must be specified")
 	}
 
+	endpointSet := make(map[string]map[int]string)
+
 	for _, pair := range s.Endpoints {
 		if pair.TargetEndpoint == "" {
 			return errors.New("some list items in gRPC disruption are missing endpoints; specify an endpoint for each item in the list")
-		} else if (pair.ErrorToReturn != "" && pair.OverrideToReturn != "") || (pair.ErrorToReturn == "" && pair.OverrideToReturn == "") {
-			return fmt.Errorf("the gRPC disruption can either return an error or override; specify exactly one for endpoint %s", pair.TargetEndpoint)
+		}
+
+		// check that endpoint is not already configured for another alteration in the list
+		if alterations, ok := endpointSet[pair.TargetEndpoint]; ok {
+			serializedConfig := ""
+			for key := range alterations {
+				serializedConfig += "(" + strconv.Itoa(key) + "% of packets return " + alterations[key] + ") "
+			}
+			return fmt.Errorf("target endpoint %s is already configured as: %s", pair.TargetEndpoint, serializedConfig)
+		}
+
+		// check that exactly one of ErrorToReturn or OverrideToReturn is configured
+		if pair.ErrorToReturn != "" && pair.OverrideToReturn != "" {
+			return fmt.Errorf("the gRPC disruption has ErrorToReturn and OverrideToReturn specified for endpoint %s, but it can only have one", pair.TargetEndpoint)
+		} else if pair.ErrorToReturn != "" {
+			endpointSet[pair.TargetEndpoint] = map[int]string{100: pair.ErrorToReturn}
+		} else if pair.OverrideToReturn != "" {
+			endpointSet[pair.TargetEndpoint] = map[int]string{100: pair.OverrideToReturn}
+		} else {
+			return fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", pair.TargetEndpoint)
 		}
 	}
 	return nil

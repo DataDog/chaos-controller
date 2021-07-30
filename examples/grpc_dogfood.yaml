@@ -6,7 +6,7 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: grpc
+  name: grpc2
   namespace: chaos-demo
 spec:
   level: pod
