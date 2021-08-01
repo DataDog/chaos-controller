@@ -230,15 +230,6 @@ func (i HTTPDisruptionInjector) startProxyServers() error {
 // simply returns. Otherwise it continues to handle the requests.
 func (i HTTPDisruptionInjector) proxyHandler(rw http.ResponseWriter, r *http.Request) {
 	i.config.Log.Infow("request", "method", r.Method, "request host", r.Host, "url host", r.URL.Host, "path", r.URL.Path, "header", r.Header)
-
-	// match requests by the spec
-	for _, domain := range i.spec.Domains {
-		if domain.Domain == r.URL.Host {
-			i.config.Log.Debugw("dropping", "domain", domain.Domain)
-			return
-		}
-	}
-
 	var scheme string
 	if r.TLS != nil {
 		scheme = "https"
@@ -254,6 +245,19 @@ func (i HTTPDisruptionInjector) proxyHandler(rw http.ResponseWriter, r *http.Req
 		reqHost = r.URL.Host
 	}
 
+	// Match requests by the spec
+	for _, domain := range i.spec.Domains {
+		if domain.Domain == r.URL.Host {
+			for _, httpHeader := range domain.Header {
+				if httpHeader.Uri == r.URL.Path && httpHeader.Method == r.Method {
+					i.config.Log.Debugw("dropping", "domain", domain.Domain, "uri", r.URL.Path, "method", r.Method)
+					return
+				}
+			}
+		}
+	}
+
+	// Forward the request
 	proxyURI := fmt.Sprintf("%s://%s%s", scheme, reqHost, r.URL.Path)
 
 	req, err := http.NewRequest(r.Method, proxyURI, r.Body)

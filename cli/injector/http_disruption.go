@@ -23,7 +23,7 @@ var httpDisruptionCmd = &cobra.Command{
 		if len(rawRequestFields) != 0 {
 			for _, field := range rawRequestFields {
 				port, err := strconv.Atoi(field)
-				if err == nil {
+				if err != nil {
 					log.Fatalw("failed to parse port value, skipping:", field)
 					continue
 				}
@@ -41,7 +41,7 @@ var httpDisruptionCmd = &cobra.Command{
 		if len(rawRequestFields) != 0 {
 			for _, field := range rawRequestFields {
 				port, err := strconv.Atoi(field)
-				if err == nil {
+				if err != nil {
 					log.Fatalw("failed to parse port value, skipping:", field)
 					continue
 				}
