@@ -194,16 +194,16 @@ func (i HTTPDisruptionInjector) startProxyServers() error {
 
 		go func() {
 			i.config.Log.Info("Starting HTTP server on ", port)
-			httpServers[len(httpServers) - 1].ListenAndServe()
+			httpServers[len(httpServers)-1].ListenAndServe()
 		}()
 	}
 
-	for _, port := range i.spec.HttpPorts {
+	for _, port := range i.spec.HttpsPorts {
 		tlsServers = append(tlsServers, &http.Server{Addr: strconv.Itoa(port)})
 
 		go func() {
 			i.config.Log.Info("Starting TLS server on ", port)
-			tlsServers[len(tlsServers) - 1].ListenAndServeTLS("", "")
+			tlsServers[len(tlsServers)-1].ListenAndServeTLS("", "")
 		}()
 	}
 

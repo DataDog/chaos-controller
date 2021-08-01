@@ -17,29 +17,35 @@ var httpDisruptionCmd = &cobra.Command{
 		httpPortVals := []int{}
 		httpsPortVals := []int{}
 
+		// Handle http port args
 		rawRequestFields, _ := cmd.Flags().GetStringArray("http-port-list")
-		log.Info("rawRequestFields for http-port-list", rawRequestFields)
+		log.Info("arguments to httpDisruptionCmd", "http-port-list", rawRequestFields)
 		if len(rawRequestFields) != 0 {
-			for _, rawField := range rawRequestFields {
-				port, err := strconv.Atoi(rawField)
-				if err != nil {
-					log.Fatalw("could not parse --http-port-list argument to http-disruption", "offending argument", rawField)
+			for _, field := range rawRequestFields {
+				port, err := strconv.Atoi(field)
+				if err == nil {
+					log.Fatalw("failed to parse port value, skipping:", field)
 					continue
 				}
+
 				httpPortVals = append(httpPortVals, port)
 			}
 		} else {
 			log.Info("using default http port: 80")
 			httpPortVals = append(httpPortVals, 80)
 		}
+
+		// Handle https port args
 		rawRequestFields, _ = cmd.Flags().GetStringArray("https-port-list")
+		log.Info("arguments to httpDisruptionCmd", "https-port-list", rawRequestFields)
 		if len(rawRequestFields) != 0 {
-			for _, rawField := range rawRequestFields {
-				port, err := strconv.Atoi(rawField)
-				if err != nil {
-					log.Fatalw("could not parse --https-port-list argument to http-disruption", "offending argument", rawField)
+			for _, field := range rawRequestFields {
+				port, err := strconv.Atoi(field)
+				if err == nil {
+					log.Fatalw("failed to parse port value, skipping:", field)
 					continue
 				}
+
 				httpsPortVals = append(httpsPortVals, port)
 			}
 		} else {
@@ -47,13 +53,15 @@ var httpDisruptionCmd = &cobra.Command{
 			httpsPortVals = append(httpsPortVals, 443)
 		}
 
-		rawRequestFields, _ = cmd.Flags().GetStringArray("request-field")
 		spec := v1beta1.HTTPDisruptionSpec{
 			Domains:    []v1beta1.TargetDomain{},
 			HttpPorts:  httpPortVals,
 			HttpsPorts: httpsPortVals,
 		}
 
+		// Handle domain/uri/http method tuples
+		rawRequestFields, _ = cmd.Flags().GetStringArray("request-field")
+		log.Info("arguments to httpDisruptionCmd", "request-field", rawRequestFields)
 		for _, rawField := range rawRequestFields {
 			fields := strings.Split(rawField, ";")
 			if len(fields) != 3 {
@@ -84,8 +92,7 @@ var httpDisruptionCmd = &cobra.Command{
 }
 
 func init() {
-	// We must use a StringArray rather than StringSlice here, because our ip values can contain commas. StringSlice will split on commas.
-	httpDisruptionCmd.Flags().StringSlice("http-port-list", []string{}, "list of comma-delineated port values for http traffic as strings")   // `80,8080`
-	httpDisruptionCmd.Flags().StringSlice("https-port-list", []string{}, "list of comma-delineated port values for https traffic as strings") // `443,8443`
-	httpDisruptionCmd.Flags().StringSlice("request-field", []string{}, "list of domain, uri, method values as strings")                       // `foo.com/bar/baz;GET
+	httpDisruptionCmd.Flags().StringArray("http-port-list", []string{}, "list of port values for http traffic as strings")   // `80`
+	httpDisruptionCmd.Flags().StringArray("https-port-list", []string{}, "list of port values for https traffic as strings") // `443`
+	httpDisruptionCmd.Flags().StringArray("request-field", []string{}, "list of domain, uri, method values as strings")      // `foo.com;/bar/baz;GET
 }
