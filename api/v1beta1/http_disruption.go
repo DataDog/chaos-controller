@@ -63,7 +63,6 @@ func (s HTTPDisruptionSpec) GenerateArgs() []string {
 
 	// Each value passed to --http-port-list and --https-port-list should be a single port
 	args = append(args, "--http-port-list")
-
 	args = append(args, strings.Split(strings.Join(httpPortArgs, " --http-port-list "), " ")...)
 	args = append(args, "--https-port-list")
 	args = append(args, strings.Split(strings.Join(httpsPortArgs, " --https-port-list "), " ")...)

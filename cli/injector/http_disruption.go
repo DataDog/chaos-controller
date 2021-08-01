@@ -18,7 +18,8 @@ var httpDisruptionCmd = &cobra.Command{
 		httpsPortVals := []int{}
 
 		rawRequestFields, _ := cmd.Flags().GetStringArray("http-port-list")
-		if len(rawRequestFields) == 0 {
+		log.Info("rawRequestFields for http-port-list", rawRequestFields)
+		if len(rawRequestFields) != 0 {
 			for _, rawField := range rawRequestFields {
 				port, err := strconv.Atoi(rawField)
 				if err != nil {
@@ -32,7 +33,7 @@ var httpDisruptionCmd = &cobra.Command{
 			httpPortVals = append(httpPortVals, 80)
 		}
 		rawRequestFields, _ = cmd.Flags().GetStringArray("https-port-list")
-		if len(rawRequestFields) == 0 {
+		if len(rawRequestFields) != 0 {
 			for _, rawField := range rawRequestFields {
 				port, err := strconv.Atoi(rawField)
 				if err != nil {

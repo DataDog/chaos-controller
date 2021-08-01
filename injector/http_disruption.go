@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
@@ -20,9 +21,6 @@ import (
 )
 
 const (
-	httpPort = ":80"
-	tlsPort  = ":443"
-
 	httpChain = "CHAOS-HTTP"
 )
 
@@ -63,6 +61,31 @@ func NewHTTPDisruptionInjector(spec v1beta1.HTTPDisruptionSpec, config HTTPDisru
 	}, err
 }
 
+func (i HTTPDisruptionInjector) CreateIptablesRules(podIP string, port int) error {
+	if err := i.config.Iptables.AddRuleWithIP(httpChain, "tcp", strconv.Itoa(port), "DNAT", podIP); err != nil {
+		return fmt.Errorf("unable to create new iptables HTTP(S) rule: %w", err)
+	}
+
+	if i.config.Level == chaostypes.DisruptionLevelPod {
+		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", strconv.Itoa(port), httpChain); err != nil {
+			return fmt.Errorf("unable to create new HTTP(S) iptables rule: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (i HTTPDisruptionInjector) DeleteIptablesRules(port int) error {
+	if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", strconv.Itoa(port), httpChain); err != nil {
+		return fmt.Errorf("unable to remove injected HTTP(S) iptables rule: %w", err)
+	}
+	if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", strconv.Itoa(port), httpChain); err != nil {
+		return fmt.Errorf("unable to remove injected HTTP(S) iptables rule: %w", err)
+	}
+
+	return nil
+}
+
 func (i HTTPDisruptionInjector) Inject() error {
 	i.config.Log.Infow("adding http disruption", "spec", i.spec)
 
@@ -74,7 +97,6 @@ func (i HTTPDisruptionInjector) Inject() error {
 
 	i.startProxyServers()
 
-	// TODO: Add IP table updates here
 	if err := i.config.Netns.Enter(); err != nil {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
@@ -83,27 +105,19 @@ func (i HTTPDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to create new iptables chain: %w", err)
 	}
 
-	if err := i.config.Iptables.AddRuleWithIP(httpChain, "tcp", "8080", "DNAT", podIP); err != nil {
-		return fmt.Errorf("unable to create new iptables HTTP rule: %w", err)
-	}
-
-	if err := i.config.Iptables.AddRuleWithIP(httpChain, "tcp", "443", "DNAT", podIP); err != nil {
-		return fmt.Errorf("unable to create new iptables HTTPS rule: %w", err)
-	}
-
 	if i.config.Level == chaostypes.DisruptionLevelPod {
 		// write classid to container net_cls cgroup - for iptable filtering
 		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", InjectorHTTPCgroupClassID); err != nil {
 			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 		}
+	}
 
-		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "8080", httpChain); err != nil {
-			return fmt.Errorf("unable to create new HTTP iptables rule: %w", err)
-		}
-
-		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "443", httpChain); err != nil {
-			return fmt.Errorf("unable to create new HTTPS iptables rule: %w", err)
-		}
+	// Add iptables rules for each specified port, spec defaults to 80/443 from the cli
+	for _, httpPort := range i.spec.HttpPorts {
+		i.CreateIptablesRules(podIP, httpPort)
+	}
+	for _, httpsPort := range i.spec.HttpsPorts {
+		i.CreateIptablesRules(podIP, httpsPort)
 	}
 
 	if i.config.Level == chaostypes.DisruptionLevelNode {
@@ -135,11 +149,12 @@ func (i HTTPDisruptionInjector) Clean() error {
 			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 		}
 
-		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "8080", httpChain); err != nil {
-			return fmt.Errorf("unable to remove injected HTTP iptables rule: %w", err)
+		// Delete iptables rules for each specified port, spec defaults to 80/443 from the cli
+		for _, httpPort := range i.spec.HttpPorts {
+			i.DeleteIptablesRules(httpPort)
 		}
-		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorHTTPCgroupClassID, "tcp", "443", httpChain); err != nil {
-			return fmt.Errorf("unable to remove injected HTTPS iptables rule: %w", err)
+		for _, httpsPort := range i.spec.HttpsPorts {
+			i.DeleteIptablesRules(httpsPort)
 		}
 	}
 
@@ -158,7 +173,7 @@ func (i HTTPDisruptionInjector) Clean() error {
 	return nil
 }
 
-// startProxyServers starts both the HTT and HTTPS proxy servers on their own goroutines.
+// startProxyServers starts both the HTTP and HTTPS proxy servers on their own goroutines.
 // One more goroutine is started which blocks until it receives a signal on the `ProxyExit`
 // channel at which point it calls the `Shutdown` method for both the HTTP and HTTPS servers.
 func (i HTTPDisruptionInjector) startProxyServers() error {
@@ -170,28 +185,40 @@ func (i HTTPDisruptionInjector) startProxyServers() error {
 	}()
 	http.HandleFunc("/", i.proxyHandler)
 
-	tlsServer := &http.Server{Addr: tlsPort}
-	httpServer := &http.Server{Addr: httpPort}
+	var tlsServers []*http.Server
+	var httpServers []*http.Server
 
-	go func() {
-		i.config.Log.Info("Starting TLS server on ", tlsPort)
-		tlsServer.ListenAndServeTLS("", "")
-	}()
+	// Create servers and bind to every needed port
+	for _, port := range i.spec.HttpPorts {
+		httpServers = append(httpServers, &http.Server{Addr: strconv.Itoa(port)})
 
-	go func() {
-		i.config.Log.Info("Starting HTTP server on ", httpPort)
-		httpServer.ListenAndServe()
-	}()
+		go func() {
+			i.config.Log.Info("Starting HTTP server on ", port)
+			httpServers[len(httpServers) - 1].ListenAndServe()
+		}()
+	}
+
+	for _, port := range i.spec.HttpPorts {
+		tlsServers = append(tlsServers, &http.Server{Addr: strconv.Itoa(port)})
+
+		go func() {
+			i.config.Log.Info("Starting TLS server on ", port)
+			tlsServers[len(tlsServers) - 1].ListenAndServeTLS("", "")
+		}()
+	}
 
 	go func() {
 		// Block until there is a signal to shutdown the proxy
 		<-i.config.ProxyExit
-		if err := tlsServer.Shutdown(context.TODO()); err != nil {
-			i.config.Log.Error(err)
+		for _, server := range tlsServers {
+			if err := server.Shutdown(context.TODO()); err != nil {
+				i.config.Log.Error(err)
+			}
 		}
-
-		if err := httpServer.Shutdown(context.TODO()); err != nil {
-			i.config.Log.Error(err)
+		for _, server := range tlsServers {
+			if err := server.Shutdown(context.TODO()); err != nil {
+				i.config.Log.Error(err)
+			}
 		}
 	}()
 
@@ -202,7 +229,7 @@ func (i HTTPDisruptionInjector) startProxyServers() error {
 // If a request matches a provided filter from the `HTTPDisruptionSpec` then it
 // simply returns. Otherwise it continues to handle the requests.
 func (i HTTPDisruptionInjector) proxyHandler(rw http.ResponseWriter, r *http.Request) {
-	i.config.Log.Infow("request", "method", r.Method, "path", r.URL.Path, "header", r.Header)
+	i.config.Log.Infow("request", "method", r.Method, "request host", r.Host, "url host", r.URL.Host, "path", r.URL.Path, "header", r.Header)
 
 	// match requests by the spec
 	for _, domain := range i.spec.Domains {
@@ -219,7 +246,15 @@ func (i HTTPDisruptionInjector) proxyHandler(rw http.ResponseWriter, r *http.Req
 		scheme = "http"
 	}
 
-	proxyURI := fmt.Sprintf("%s://%s%s", scheme, r.URL.Host, r.URL.Path)
+	// Check for override of Host field
+	var reqHost string
+	if r.Host != "" {
+		reqHost = r.Host
+	} else {
+		reqHost = r.URL.Host
+	}
+
+	proxyURI := fmt.Sprintf("%s://%s%s", scheme, reqHost, r.URL.Path)
 
 	req, err := http.NewRequest(r.Method, proxyURI, r.Body)
 	if err != nil {
