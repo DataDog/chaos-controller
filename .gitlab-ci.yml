@@ -22,7 +22,6 @@ stages:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker:18.03.1
   tags:
     - "runner:docker"
-    - "size:large"
 
 ci-image:
   <<: *docker-runner
