@@ -63,7 +63,7 @@ func explainContainerFailure(spec v1beta1.DisruptionSpec) {
 		fmt.Println("💉 injects a container failure which sends the SIGTERM signal to the pod's container(s).")
 	}
 
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainNodeFailure(spec v1beta1.DisruptionSpec) {
