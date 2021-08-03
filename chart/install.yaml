@@ -292,13 +292,6 @@ spec:
                 shutdown:
                   type: boolean
               type: object
-            containerFailure:
-              description: ContainerFailureSpec represents a container failure injection
-              nullable: true
-              properties:
-                forced:
-                  type: boolean
-              type: object
             onInit:
               type: boolean
             selector:
