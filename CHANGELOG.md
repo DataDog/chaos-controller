@@ -1,5 +1,29 @@
 # Changelog
 
+## [4.2.1](https://github.com/DataDog/chaos-controller/tree/4.2.1) (2021-08-03)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.2.0...4.2.1)
+
+**Implemented enhancements:**
+
+- User Request: Support for duration [\#350](https://github.com/DataDog/chaos-controller/issues/350)
+- User Request: HTTP Disruptions [\#347](https://github.com/DataDog/chaos-controller/issues/347)
+
+**Closed issues:**
+
+- User Request: Dead man's switch [\#375](https://github.com/DataDog/chaos-controller/issues/375)
+- User Request: Support for pod state disruptions [\#352](https://github.com/DataDog/chaos-controller/issues/352)
+
+**Merged pull requests:**
+
+- Enable autopush to dockerhub on release [\#383](https://github.com/DataDog/chaos-controller/pull/383) ([Devatoria](https://github.com/Devatoria))
+- Add chaosli target to Makefile [\#382](https://github.com/DataDog/chaos-controller/pull/382) ([Devatoria](https://github.com/Devatoria))
+- Publish the chaosli binaries in releases [\#381](https://github.com/DataDog/chaos-controller/pull/381) ([Devatoria](https://github.com/Devatoria))
+- Allow advanced target selectors in disruptions [\#373](https://github.com/DataDog/chaos-controller/pull/373) ([Devatoria](https://github.com/Devatoria))
+- Bump github.com/containerd/containerd from 1.4.3 to 1.4.8 [\#372](https://github.com/DataDog/chaos-controller/pull/372) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Update container release\_changelog\_816009f5cb59a34c31848d7b5969aa173adcbf53 [\#371](https://github.com/DataDog/chaos-controller/pull/371) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Introduce container failures [\#366](https://github.com/DataDog/chaos-controller/pull/366) ([nikos912000](https://github.com/nikos912000))
+
 ## [4.2.0](https://github.com/DataDog/chaos-controller/tree/4.2.0) (2021-07-26)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.1.1...4.2.0)
