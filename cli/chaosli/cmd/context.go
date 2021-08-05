@@ -32,14 +32,18 @@ var verbose bool
 // selector in the disruption. The targets can either be a list of pods or a list of nodes
 // therefore only one of the return types is actually populated while the other is empty.
 func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, error) {
+	var pods v1.PodList
+
+	var nodes v1.NodeList
+
+	var allPods []v1.Pod
+
+	var allNodes []v1.Node
+	
 	spec := disruption.Spec
 	labels := spec.Selector.String()
 	level := string(spec.Level)
 	size := 0
-	var pods v1.PodList
-	var nodes v1.NodeList
-	var allPods []v1.Pod
-	var allNodes []v1.Node
 
 	fmt.Println("Let's look at your targets...")
 
