@@ -39,7 +39,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, err
 	var allPods []v1.Pod
 
 	var allNodes []v1.Node
-	
+
 	spec := disruption.Spec
 	labels := spec.Selector.String()
 	level := string(spec.Level)
