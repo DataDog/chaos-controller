@@ -115,8 +115,7 @@ func ReadUnmarshalValidate(path string) v1beta1.Disruption {
 
 	yamlBytes, err := ioutil.ReadAll(yaml)
 	if err != nil {
-		log.Printf("disruption.Get err   #%v ", err)
-		os.Exit(1)
+		log.Fatalf("disruption.Get err   #%v ", err)
 	}
 
 	parsedSpec := v1beta1.Disruption{}

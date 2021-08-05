@@ -31,14 +31,25 @@ var verbose bool
 // besides calculating size, this function also grabs the list of targets corresponding to the
 // selector in the disruption. The targets can either be a list of pods or a list of nodes
 // therefore only one of the return types is actually populated while the other is empty.
-func contextTargetsSize(disruption v1beta1.Disruption) (*[]v1.Pod, *[]v1.Node, error) {
+func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, error) {
 	spec := disruption.Spec
 	labels := spec.Selector.String()
 	level := string(spec.Level)
+	size := 0
+	var pods v1.PodList
+	var nodes v1.NodeList
+	var allPods []v1.Pod
+	var allNodes []v1.Node
 
 	fmt.Println("Let's look at your targets...")
 
-	size := getTargetSize(disruption)
+	if level == types.DisruptionLevelPod {
+		pods = getPods(disruption)
+		size = len(pods.Items)
+	} else {
+		nodes = getNodes(disruption)
+		size = len(nodes.Items)
+	}
 
 	// If the size is 0, first check if changing the level will do anything, otherwise
 	// mention to the user that the labels they are using won't target anything
@@ -61,15 +72,9 @@ func contextTargetsSize(disruption v1beta1.Disruption) (*[]v1.Pod, *[]v1.Node, e
 		return nil, nil, fmt.Errorf(errorString)
 	}
 
-	var allPods *[]v1.Pod
-
-	var allNodes *[]v1.Node
-
 	if level == types.DisruptionLevelPod {
-		pods := getPods(disruption)
 		allPods = showPods(pods)
 	} else {
-		nodes := getNodes(disruption)
 		allNodes = showNodes(nodes)
 	}
 
@@ -78,17 +83,17 @@ func contextTargetsSize(disruption v1beta1.Disruption) (*[]v1.Pod, *[]v1.Node, e
 	return allPods, allNodes, nil
 }
 
-func showPods(pods *v1.PodList) *[]v1.Pod {
+func showPods(pods v1.PodList) []v1.Pod {
 	targetsShow := []string{}
 
 	targetsAll := make([]v1.Pod, len(pods.Items))
 
-	for _, pod := range pods.Items {
+	for i, pod := range pods.Items {
 		if len(targetsShow) < maxtargetshow {
 			targetsShow = append(targetsShow, pod.Name)
 		}
 
-		targetsAll = append(targetsAll, pod)
+		targetsAll[i] = pod
 	}
 
 	fmt.Printf("\n🎯 There are %d pods that will be targeted\n", len(pods.Items))
@@ -105,10 +110,10 @@ func showPods(pods *v1.PodList) *[]v1.Pod {
 		fmt.Println("...")
 	}
 
-	return &targetsAll
+	return targetsAll
 }
 
-func showNodes(nodes *v1.NodeList) *[]v1.Node {
+func showNodes(nodes v1.NodeList) []v1.Node {
 	targetsShow := []string{}
 	targetsAll := []v1.Node{}
 
@@ -134,7 +139,7 @@ func showNodes(nodes *v1.NodeList) *[]v1.Node {
 		fmt.Println("...")
 	}
 
-	return &targetsAll
+	return targetsAll
 }
 
 func getTargetSize(disruption v1beta1.Disruption) int {
@@ -150,7 +155,7 @@ func getTargetSize(disruption v1beta1.Disruption) int {
 	return size
 }
 
-func getPods(disruption v1beta1.Disruption) *v1.PodList {
+func getPods(disruption v1beta1.Disruption) v1.PodList {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		panic(err.Error())
@@ -170,10 +175,10 @@ func getPods(disruption v1beta1.Disruption) *v1.PodList {
 		panic(err.Error())
 	}
 
-	return pods
+	return *pods
 }
 
-func getNodes(disruption v1beta1.Disruption) *v1.NodeList {
+func getNodes(disruption v1beta1.Disruption) v1.NodeList {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		panic(err.Error())
@@ -193,10 +198,10 @@ func getNodes(disruption v1beta1.Disruption) *v1.NodeList {
 		panic(err.Error())
 	}
 
-	return nodes
+	return *nodes
 }
 
-func printContainerStatus(targetInfo *[]v1.Pod) {
+func printContainerStatus(targetInfo []v1.Pod) {
 	percentCollect := make(map[string]float64)
 
 	if verbose {
@@ -205,7 +210,7 @@ func printContainerStatus(targetInfo *[]v1.Pod) {
 
 	totalContainers := 0
 
-	for i, pod := range *targetInfo {
+	for i, pod := range targetInfo {
 		info := "\t🥸  Pod Name: " + pod.Name + "\n"
 
 		// adding 1 to these states so we can run percentages. Since we have the number
@@ -267,7 +272,7 @@ func printContainerStatus(targetInfo *[]v1.Pod) {
 	fmt.Println(percentInfo)
 }
 
-func printPodStatus(targetsInfo *[]v1.Pod) {
+func printPodStatus(targetsInfo []v1.Pod) {
 	percentCollectPhase := make(map[string]float64)
 	percentCollectCondition := make(map[string]float64)
 
@@ -278,7 +283,7 @@ func printPodStatus(targetsInfo *[]v1.Pod) {
 	// adding 1 to these states so we can run percentages. Since we have the number
 	// of instances with that specific state (the += 1.0) and we know the total
 	// number of instances, we can easily get a percentage.
-	for i, pod := range *targetsInfo {
+	for i, pod := range targetsInfo {
 		info := "\t🥸  Pod Name: " + pod.Name + "\n" +
 			"\t👵🏾 Pod Host IP: " + pod.Status.HostIP + "\n" +
 			"\t👧🏾 Pod IP: " + pod.Status.PodIP + "\n" +
@@ -289,10 +294,10 @@ func printPodStatus(targetsInfo *[]v1.Pod) {
 			info = info +
 				"\t\t⭕️ Type: " + string(status.Type) + "\n" +
 				"\t\tℹ️  Status: " + string(status.Status) + "\n\n"
-			percentCollectCondition[string(status.Type)+"/"+string(status.Status)] += 1.0 / float64(len(*targetsInfo))
+			percentCollectCondition[string(status.Type)+"/"+string(status.Status)] += 1.0 / float64(len(targetsInfo))
 		}
 
-		percentCollectPhase[string(pod.Status.Phase)] += 1.0 / float64(len(*targetsInfo))
+		percentCollectPhase[string(pod.Status.Phase)] += 1.0 / float64(len(targetsInfo))
 
 		if i < maxtargetshow && verbose {
 			fmt.Print(info)
@@ -322,14 +327,14 @@ func printPodStatus(targetsInfo *[]v1.Pod) {
 	PrintSeparator()
 }
 
-func printNodeStatus(targetsInfo *[]v1.Node) {
+func printNodeStatus(targetsInfo []v1.Node) {
 	percentCollectCondition := make(map[string]float64)
 
 	if verbose {
 		fmt.Printf("\nLets take a look at the status of your Targeted Nodes...\n\n")
 	}
 
-	for i, node := range *targetsInfo {
+	for i, node := range targetsInfo {
 		info := "\t🥸  Node Name: " + node.Name + "\n" +
 			"\t📲 Node Addresses: \n"
 
@@ -348,7 +353,7 @@ func printNodeStatus(targetsInfo *[]v1.Node) {
 				"\t\t⭕️ Type: " + string(status.Type) + "\n" +
 				"\t\tℹ️  Status: " + string(status.Status) + "\n" +
 				"\t\t🤨 Reason: " + status.Reason + "\n\n"
-			percentCollectCondition[string(status.Type)+"/"+string(status.Status)] += 1.0 / float64(len(*targetsInfo))
+			percentCollectCondition[string(status.Type)+"/"+string(status.Status)] += 1.0 / float64(len(targetsInfo))
 		}
 
 		if i < maxtargetshow && verbose {
@@ -410,7 +415,7 @@ func contextualize(path string) {
 func init() {
 	contextCmd.Flags().String("path", "", "The path to the disruption file to be contextualized.")
 	contextCmd.Flags().String("kubeconfig", "", "The path to your kube configuration directory (.../.kube/config). defaults to ~/.kube/config.")
-	contextCmd.Flags().Bool("verbose", false, "If set, will describe a small set of 10 of your targets. Otherwise it only describes percentages of the group of targets in total.")
+	contextCmd.Flags().Bool("verbose", false, "If set, will describe a small set of 5 (default) of your targets. Otherwise it only describes percentages of the group of targets in total.")
 	contextCmd.Flags().Int("maxtargetshow", 5, "Only really applies when verbose is set to true; This value determines how many targets will be described in the output.")
 	err := contextCmd.MarkFlagRequired("path")
 
