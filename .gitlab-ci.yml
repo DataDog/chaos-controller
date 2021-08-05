@@ -36,7 +36,6 @@ ci-image:
 .common: &common
   tags:
     - "runner:main"
-    - "size:large"
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/chaos-controller:$CURRENT_CI_IMAGE
 
 build:make:
@@ -57,7 +56,6 @@ build:make:
   <<: *common
   tags:
     - "runner:docker"
-    - "size:large"
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2875076-79d562c-1.4.0
   before_script:
     - echo "Logging into the Docker Hub"
@@ -137,7 +135,7 @@ release-handler:
 .release-docker-hub: &release-docker-hub
   <<: *meta-release
   stage: release-public
-  tags: [ "runner:docker", "size:large" ]
+  tags: [ "runner:docker" ]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:v1912023-8c8dc1c-0.6.1
   script:
     - docker pull 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME}:${TAG}
