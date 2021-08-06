@@ -24,21 +24,23 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-var maxtargetshow int
-var kubeconfig string
-var verbose bool
+var (
+	maxtargetshow int
+	kubeconfig    string
+	verbose       bool
+	clientset     *kubernetes.Clientset
+)
 
 // besides calculating size, this function also grabs the list of targets corresponding to the
 // selector in the disruption. The targets can either be a list of pods or a list of nodes
 // therefore only one of the return types is actually populated while the other is empty.
 func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, error) {
-	var pods v1.PodList
-
-	var nodes v1.NodeList
-
-	var allPods []v1.Pod
-
-	var allNodes []v1.Node
+	var (
+		pods     v1.PodList
+		nodes    v1.NodeList
+		allPods  []v1.Pod
+		allNodes []v1.Node
+	)
 
 	spec := disruption.Spec
 	labels := spec.Selector.String()
@@ -57,7 +59,6 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, err
 
 	// If the size is 0, first check if changing the level will do anything, otherwise
 	// mention to the user that the labels they are using won't target anything
-
 	if size <= 0 {
 		errorString := fmt.Sprintf("\nThe label selectors chosen (%s) result in 0 targets, meaning this disruption would do nothing given the namespace/cluster/label combination.", labels)
 
@@ -160,21 +161,10 @@ func getTargetSize(disruption v1beta1.Disruption) int {
 }
 
 func getPods(disruption v1beta1.Disruption) v1.PodList {
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
 	options := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
 	}
 	pods, err := clientset.CoreV1().Pods(disruption.ObjectMeta.Namespace).List(context.TODO(), options)
-
 	if err != nil {
 		panic(err.Error())
 	}
@@ -183,21 +173,10 @@ func getPods(disruption v1beta1.Disruption) v1.PodList {
 }
 
 func getNodes(disruption v1beta1.Disruption) v1.NodeList {
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
 	options := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
 	}
 	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
-
 	if err != nil {
 		panic(err.Error())
 	}
@@ -381,6 +360,23 @@ func printNodeStatus(targetsInfo []v1.Node) {
 	PrintSeparator()
 }
 
+func setKubeconfig() {
+	if len(kubeconfig) == 0 {
+		kubeconfig = filepath.Join(homedir.HomeDir(), ".kube", "config")
+	}
+
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	clientset, err = kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+
+}
+
 var contextCmd = &cobra.Command{
 	Use:   "context",
 	Short: "contextualizes disruption config",
@@ -396,11 +392,7 @@ var contextCmd = &cobra.Command{
 
 func contextualize(path string) {
 	disruption := ReadUnmarshalValidate(path)
-
-	if len(kubeconfig) == 0 {
-		kubeconfig = filepath.Join(homedir.HomeDir(), ".kube", "config")
-	}
-
+	setKubeconfig()
 	pods, nodes, err := contextTargetsSize(disruption)
 
 	if err != nil {

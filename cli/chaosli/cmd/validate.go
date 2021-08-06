@@ -21,9 +21,8 @@ var validateCmd = &cobra.Command{
 
 func init() {
 	validateCmd.Flags().String("path", "", "The path to the disruption file to be validated.")
-	err := validateCmd.MarkFlagRequired("path")
 
-	if err != nil {
+	if err := validateCmd.MarkFlagRequired("path"); err != nil {
 		return
 	}
 }
