@@ -157,7 +157,7 @@ func showNodes(nodes v1.NodeList) []v1.Node {
 	return targetsAll
 }
 
-func getTargetSize(disruption v1beta1.Disruption) (int,error) {
+func getTargetSize(disruption v1beta1.Disruption) (int, error) {
 	level := disruption.Spec.Level
 	size := 0
 
@@ -187,25 +187,23 @@ func getPods(disruption v1beta1.Disruption) (v1.PodList, error) {
 	pods, err := clientset.CoreV1().Pods(disruption.ObjectMeta.Namespace).List(context.TODO(), options)
 
 	if err != nil {
-		fmt.Errorf("Errored when attempted to get list of pods: %v", err)
-		return v1.PodList{}, err
+		return v1.PodList{}, fmt.Errorf("errored when attempted to get list of pods: %v", err)
 	}
 
 	return *pods, nil
 }
 
-func getNodes(disruption v1beta1.Disruption) (v1.NodeList,error) {
+func getNodes(disruption v1beta1.Disruption) (v1.NodeList, error) {
 	options := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
 	}
 	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
 
 	if err != nil {
-		fmt.Errorf("Errored when attempted to get list of nodes: %v", err)
-		return v1.NodeList{}, err
+		return v1.NodeList{}, fmt.Errorf("errored when attempted to get list of nodes: %v", err)
 	}
 
-	return *nodes,nil
+	return *nodes, nil
 }
 
 func printContainerStatus(targetInfo []v1.Pod) {
@@ -391,12 +389,12 @@ func setKubeconfig() error {
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		return fmt.Errorf("Failed to Build the kubeconfiguration: %v", err)
+		return fmt.Errorf("failed to Build the kubeconfiguration: %v", err)
 	}
 
 	clientset, err = kubernetes.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("Failed to create clientset: %v", err)
+		return fmt.Errorf("failed to create clientset: %v", err)
 	}
 
 	return nil
@@ -417,6 +415,7 @@ var contextCmd = &cobra.Command{
 
 func contextualize(path string) {
 	disruption := ReadUnmarshalValidate(path)
+
 	if err := setKubeconfig(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
