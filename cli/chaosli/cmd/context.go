@@ -8,8 +8,8 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -40,6 +40,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, err
 		nodes    v1.NodeList
 		allPods  []v1.Pod
 		allNodes []v1.Node
+		err      error
 	)
 
 	spec := disruption.Spec
@@ -50,10 +51,16 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, err
 	fmt.Println("Let's look at your targets...")
 
 	if level == types.DisruptionLevelPod {
-		pods = getPods(disruption)
+		if pods, err = getPods(disruption); err != nil {
+			return nil, nil, err
+		}
+
 		size = len(pods.Items)
 	} else {
-		nodes = getNodes(disruption)
+		if nodes, err = getNodes(disruption); err != nil {
+			return nil, nil, err
+		}
+
 		size = len(nodes.Items)
 	}
 
@@ -68,7 +75,10 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, err
 			disruption.Spec.Level = types.DisruptionLevelPod
 		}
 
-		size = getTargetSize(disruption)
+		size, err = getTargetSize(disruption)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		if size > 0 {
 			errorString = fmt.Sprintf("\nWe noticed that your target size is 0 for level %s given your label selectors. We checked to see if the %s level would give you results and we found %d %ss. Is this the level you wanted to use?", level, disruption.Spec.Level, size, disruption.Spec.Level)
@@ -147,41 +157,55 @@ func showNodes(nodes v1.NodeList) []v1.Node {
 	return targetsAll
 }
 
-func getTargetSize(disruption v1beta1.Disruption) int {
+func getTargetSize(disruption v1beta1.Disruption) (int,error) {
 	level := disruption.Spec.Level
 	size := 0
 
 	if level == types.DisruptionLevelPod {
-		size = len(getPods(disruption).Items)
+		targets, err := getPods(disruption)
+		if err != nil {
+			return -1, err
+		}
+
+		size = len(targets.Items)
 	} else {
-		size = len(getNodes(disruption).Items)
+		targets, err := getNodes(disruption)
+		if err != nil {
+			return -1, err
+		}
+
+		size = len(targets.Items)
 	}
 
-	return size
+	return size, nil
 }
 
-func getPods(disruption v1beta1.Disruption) v1.PodList {
+func getPods(disruption v1beta1.Disruption) (v1.PodList, error) {
 	options := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
 	}
 	pods, err := clientset.CoreV1().Pods(disruption.ObjectMeta.Namespace).List(context.TODO(), options)
+
 	if err != nil {
-		panic(err.Error())
+		fmt.Errorf("Errored when attempted to get list of pods: %v", err)
+		return v1.PodList{}, err
 	}
 
-	return *pods
+	return *pods, nil
 }
 
-func getNodes(disruption v1beta1.Disruption) v1.NodeList {
+func getNodes(disruption v1beta1.Disruption) (v1.NodeList,error) {
 	options := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
 	}
 	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
+
 	if err != nil {
-		panic(err.Error())
+		fmt.Errorf("Errored when attempted to get list of nodes: %v", err)
+		return v1.NodeList{}, err
 	}
 
-	return *nodes
+	return *nodes,nil
 }
 
 func printContainerStatus(targetInfo []v1.Pod) {
@@ -360,21 +384,22 @@ func printNodeStatus(targetsInfo []v1.Node) {
 	PrintSeparator()
 }
 
-func setKubeconfig() {
+func setKubeconfig() error {
 	if len(kubeconfig) == 0 {
 		kubeconfig = filepath.Join(homedir.HomeDir(), ".kube", "config")
 	}
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		panic(err.Error())
+		return fmt.Errorf("Failed to Build the kubeconfiguration: %v", err)
 	}
 
 	clientset, err = kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err.Error())
+		return fmt.Errorf("Failed to create clientset: %v", err)
 	}
 
+	return nil
 }
 
 var contextCmd = &cobra.Command{
@@ -392,11 +417,16 @@ var contextCmd = &cobra.Command{
 
 func contextualize(path string) {
 	disruption := ReadUnmarshalValidate(path)
-	setKubeconfig()
+	if err := setKubeconfig(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	pods, nodes, err := contextTargetsSize(disruption)
 
 	if err != nil {
-		log.Fatalf("Could not grab context regarding size and names of targets: %v", err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	// validate should catch if the disruption level is invalid, safe to assume default else is Node
