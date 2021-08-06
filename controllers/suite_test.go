@@ -210,15 +210,15 @@ var _ = BeforeEach(func() {
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
-				corev1.Container{
+				{
 					Image: "foo",
 					Name:  "ctn1",
 				},
-				corev1.Container{
+				{
 					Image: "foo",
 					Name:  "ctn2",
 				},
-				corev1.Container{
+				{
 					Image: "foo",
 					Name:  "ctn3",
 				},
@@ -235,15 +235,15 @@ var _ = BeforeEach(func() {
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
-				corev1.Container{
+				{
 					Image: "bar",
 					Name:  "ctn1",
 				},
-				corev1.Container{
+				{
 					Image: "bar",
 					Name:  "ctn2",
 				},
-				corev1.Container{
+				{
 					Image: "bar",
 					Name:  "ctn3",
 				},
@@ -260,15 +260,15 @@ var _ = BeforeEach(func() {
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
-				corev1.Container{
+				{
 					Image: "car",
 					Name:  "ctn1",
 				},
-				corev1.Container{
+				{
 					Image: "car",
 					Name:  "ctn2",
 				},
-				corev1.Container{
+				{
 					Image: "car",
 					Name:  "ctn3",
 				},
@@ -285,15 +285,15 @@ var _ = BeforeEach(func() {
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
-				corev1.Container{
+				{
 					Image: "far",
 					Name:  "ctn1",
 				},
-				corev1.Container{
+				{
 					Image: "far",
 					Name:  "ctn2",
 				},
-				corev1.Container{
+				{
 					Image: "far",
 					Name:  "ctn3",
 				},
