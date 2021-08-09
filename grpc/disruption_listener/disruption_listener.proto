@@ -13,11 +13,16 @@ service DisruptionListener {
 }
 
 message DisruptionSpec {
-  repeated EndpointAlteration endpointAlterations =1;
+  repeated EndpointSpec endpoints = 1;
 }
 
-message EndpointAlteration {
+message EndpointSpec {
   string targetEndpoint = 1;
-  string errorToReturn = 2;
-  string overrideToReturn = 3;
+  repeated AlterationSpec alterations = 2;
+}
+
+message AlterationSpec {
+  string errorToReturn = 1;
+  string overrideToReturn = 2;
+  int32 queryPercent = 3;
 }

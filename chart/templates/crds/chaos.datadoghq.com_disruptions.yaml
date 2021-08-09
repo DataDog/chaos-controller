@@ -162,6 +162,10 @@ spec:
                         type: string
                       override:
                         type: string
+                      query_pct:
+                        maximum: 100
+                        minimum: 1
+                        type: integer
                     type: object
                   type: array
                 port:

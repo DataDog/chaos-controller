@@ -27,6 +27,9 @@ type EndpointAlteration struct {
 	ErrorToReturn string `json:"error,omitempty"`
 	// +kubebuilder:validation:Enum={}
 	OverrideToReturn string `json:"override,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	QueryPercent int `json:"query_pct,omitempty"`
 }
 
 // Validate validates that there are no missing hostnames or records for the given grpc disruption spec
@@ -39,31 +42,28 @@ func (s GRPCDisruptionSpec) Validate() error {
 		return errors.New("the gRPC disruption was selected with no endpoints specified, but endpoints must be specified")
 	}
 
-	endpointSet := make(map[string]map[int]string)
+	queryPctByEndpoint := make(map[string]int)
 
-	for _, pair := range s.Endpoints {
-		if pair.TargetEndpoint == "" {
+	for _, alteration := range s.Endpoints {
+		if alteration.TargetEndpoint == "" {
 			return errors.New("some list items in gRPC disruption are missing endpoints; specify an endpoint for each item in the list")
 		}
 
-		// check that endpoint is not already configured for another alteration in the list
-		if alterations, ok := endpointSet[pair.TargetEndpoint]; ok {
-			serializedConfig := ""
-			for key := range alterations {
-				serializedConfig += "(" + strconv.Itoa(key) + "% of packets return " + alterations[key] + ") "
+		// check that endpoint is not already configured such that the sum of mangled queryPercents total to more than 100%
+		if totalQueryPercent, ok := queryPctByEndpoint[alteration.TargetEndpoint]; ok {
+			if alteration.QueryPercent > 0 {
+				if totalQueryPercent+alteration.QueryPercent >= 100 {
+					return errors.New("total queryPercent of all alterations applied to endpoint %s is over 100%; modify them to so their total is 100% or less")
+				}
+				queryPctByEndpoint[alteration.TargetEndpoint] += alteration.QueryPercent
 			}
-			return fmt.Errorf("target endpoint %s is already configured as: %s", pair.TargetEndpoint, serializedConfig)
 		}
 
 		// check that exactly one of ErrorToReturn or OverrideToReturn is configured
-		if pair.ErrorToReturn != "" && pair.OverrideToReturn != "" {
-			return fmt.Errorf("the gRPC disruption has ErrorToReturn and OverrideToReturn specified for endpoint %s, but it can only have one", pair.TargetEndpoint)
-		} else if pair.ErrorToReturn != "" {
-			endpointSet[pair.TargetEndpoint] = map[int]string{100: pair.ErrorToReturn}
-		} else if pair.OverrideToReturn != "" {
-			endpointSet[pair.TargetEndpoint] = map[int]string{100: pair.OverrideToReturn}
-		} else {
-			return fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", pair.TargetEndpoint)
+		if alteration.ErrorToReturn != "" && alteration.OverrideToReturn != "" {
+			return fmt.Errorf("the gRPC disruption has ErrorToReturn and OverrideToReturn specified for endpoint %s, but it can only have one", alteration.TargetEndpoint)
+		} else if alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "" {
+			return fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint)
 		}
 	}
 	return nil
@@ -77,26 +77,35 @@ func (s GRPCDisruptionSpec) GenerateArgs() []string {
 
 	endpointAlterationArgs := []string{}
 
-	for _, pair := range s.Endpoints {
+	for _, endptAlt := range s.Endpoints {
 		var alterationType, alterationValue string
-		if pair.ErrorToReturn != "" {
+		if endptAlt.ErrorToReturn != "" {
 			alterationType = "error"
-			alterationValue = pair.ErrorToReturn
+			alterationValue = endptAlt.ErrorToReturn
 		}
-		if pair.OverrideToReturn != "" {
+		if endptAlt.OverrideToReturn != "" {
 			alterationType = "override"
-			alterationValue = pair.OverrideToReturn
+			alterationValue = endptAlt.OverrideToReturn
 		}
-		arg := fmt.Sprintf("%s;%s;%s", pair.TargetEndpoint, alterationType, alterationValue)
+
+		arg := fmt.Sprintf(
+			"%s;%s;%s;%s",
+			endptAlt.TargetEndpoint,
+			alterationType,
+			alterationValue,
+			strconv.Itoa(endptAlt.QueryPercent),
+		)
 
 		endpointAlterationArgs = append(endpointAlterationArgs, arg)
 	}
 
 	args = append(args, []string{"--port", strconv.Itoa(s.Port)}...)
 
-	// Each value passed to --host-record-pairs should be of the form `endpoint;alteration_type;alteration_value`, e.g.
-	// `/chaos_dogfood.ChaosDogfood/order;error;ALREADY_EXISTS`
-	// `/chaos_dogfood.ChaosDogfood/order;override;{}`
+	// Each value passed to --host-record-pairs should be of the form
+	// `endpoint;alteration_type;alteration_value;optional_query_percent`
+	// e.g.
+	// `/chaos_dogfood.ChaosDogfood/order;error;ALREADY_EXISTS;30`
+	// `/chaos_dogfood.ChaosDogfood/order;override;{};`
 	args = append(args, "--endpoint-alterations")
 	args = append(args, strings.Split(strings.Join(endpointAlterationArgs, " --endpoint-alterations "), " ")...)
 

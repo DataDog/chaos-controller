@@ -6,6 +6,7 @@
 package main
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -30,22 +31,30 @@ var grpcDisruptionCmd = &cobra.Command{
 
 		for _, line := range rawEndpointAlterations {
 			split := strings.Split(line, ";")
-			if len(split) != 3 {
+			if len(split) != 4 {
 				log.Fatalw("could not parse --endpoint-alterations argument to grpc-disruption", "offending argument", line)
 				continue
 			}
 
 			var endpointAlteration v1beta1.EndpointAlteration
 
+			queryPercent, err := strconv.Atoi(split[3])
+			if err != nil {
+				log.Fatalw("could not parse --endpoint-alterations argument to grpc-disruption", "parsing failed for queryPercent", split[3])
+				continue
+			}
+
 			if split[1] == "error" {
 				endpointAlteration = v1beta1.EndpointAlteration{
 					TargetEndpoint: split[0],
 					ErrorToReturn:  split[2],
+					QueryPercent:   queryPercent,
 				}
 			} else if split[1] == "override" {
 				endpointAlteration = v1beta1.EndpointAlteration{
 					TargetEndpoint:   split[0],
 					OverrideToReturn: split[2],
+					QueryPercent:     queryPercent,
 				}
 			} else {
 				log.Fatalw("GRPC injector does not understand alteration type", "type", split[1])
@@ -76,6 +85,6 @@ var grpcDisruptionCmd = &cobra.Command{
 
 func init() {
 	// We must use a StringArray rather than StringSlice here, because our ip values can contain commas. StringSlice will split on commas.
-	grpcDisruptionCmd.Flags().StringArray("endpoint-alterations", []string{}, "list of endpoint,alteration_type,alteration_value tuples as strings") // `/chaos_dogfood.ChaosDogfood/order;override;{}`
+	grpcDisruptionCmd.Flags().StringArray("endpoint-alterations", []string{}, "list of endpoint,alteration_type,alteration_value,optional_query_percent tuples as strings") // `/chaos_dogfood.ChaosDogfood/order;override;{}`
 	grpcDisruptionCmd.Flags().Int("port", 0, "port to disrupt on target pod")
 }
