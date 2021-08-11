@@ -118,7 +118,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			Expect(altCfg_69.OverrideToReturn).To(Equal("{}"))
 		})
 	})
-	Context("with three alterations", func() {
+	Context("with three alterations that add to 100", func() {
 		BeforeEach(func() {
 			mapping[altCfgs[0]] = PercentAffected(40)
 			mapping[altCfgs[1]] = PercentAffected(40)
