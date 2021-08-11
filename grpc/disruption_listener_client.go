@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2021 Datadog, Inc.
+
 package grpc
 
 import (
@@ -10,41 +15,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-/*
-
-message DisruptionSpec {
-  repeated EndpointSpec endpoints = 1;
-}
-
-message EndpointSpec {
-  string targetEndpoint = 1;
-  repeated AlterationSpec alterations = 2;
-}
-
-message AlterationSpec {
-  string errorToReturn = 1;
-  string overrideToReturn = 2;
-  int32 queryPercent = 3;
-}
-
-*/
-
-/*
-	endptSpec := &pb.EndpointSpec{
-		TargetEndpoint: string(endptConfig.TargetEndpoint),
-		Alterations: make([]*pb.AlterationSpec, 0),
-	}
-
-	for altConfig, pctAffected := range endptConfig.Alterations {
-		altSpec := &pb.AlterationSpec{
-			ErrorToReturn:    altConfig.ErrorToReturn,
-			OverrideToReturn: altConfig.OverrideToReturn,
-			QueryPercent:     int32(pctAffected),
-		}
-		endptSpec.Alterations = append(endptSpec.Alterations, altSpec)
-	}
-	ds.Endpoints = append(ds.Endpoints, endptSpec)
-*/
 // ExecuteSendDisruption takes in a CRD specification for GRPC disruptions and
 // executes a SendDisruption call on the provided DisruptionListenerClient
 func ExecuteSendDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1.GRPCDisruptionSpec) {

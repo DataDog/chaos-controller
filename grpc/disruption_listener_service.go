@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2021 Datadog, Inc.
+
 package grpc
 
 import (
@@ -13,9 +18,11 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// When a random integer from 0 to 100 is randomly selected, the PercentSlotToAlteration mapping is referenced to
-// identify the disruption to apply to a query. The mapping represents user preference the proportion of queries
-// affected by each alteration. See DESIGN.md for examples.
+/*
+ * When a random integer from 0 to 100 is randomly selected, the PercentSlotToAlteration mapping is referenced to
+ * identify the disruption to apply to a query. The mapping represents user preference the proportion of queries
+ * affected by each alteration. See ALGORITHM.md for examples.
+ */
 
 // DisruptionListener is a gRPC Service that can disrupt endpoints of a gRPC server.
 type DisruptionListener struct {
@@ -90,12 +97,12 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying TargetEndpoint for all endpointAlterations")
 		}
 
-		alterationToPercentAffected, err := getAlterationToPercentAffected(endpointSpec.Alterations, targeted)
+		alterationToPercentAffected, err := GetAlterationToPercentAffected(endpointSpec.Alterations, targeted)
 		if err != nil {
 			return nil, err
 		}
 
-		percentSlotToAlteration, err := getPercentSlotToAlteration(alterationToPercentAffected)
+		percentSlotToAlteration, err := GetPercentSlotToAlteration(alterationToPercentAffected)
 		if err != nil {
 			return nil, err
 		}
@@ -173,9 +180,8 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 	return handler(ctx, req)
 }
 
-// Helper Functions
-
-func getAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targeted TargetEndpoint) (map[AlterationConfiguration]PercentAffected, error) {
+// GetAlterationToPercentAffected takes a series of alterations configured for a Spec and maps them to the percentage of queries which should be affected
+func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targeted TargetEndpoint) (map[AlterationConfiguration]PercentAffected, error) {
 	// object returned indicates, for a particular AlterationConfiguration, what percentage of queries to which it should apply
 	mapping := make(map[AlterationConfiguration]PercentAffected)
 
@@ -242,7 +248,8 @@ func getAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 	return mapping, nil
 }
 
-func getPercentSlotToAlteration(endpointSpecList map[AlterationConfiguration]PercentAffected) (map[PercentSlot]AlterationConfiguration, error) {
+// GetPercentSlotToAlteration Converts a mapping from alterationConfiguration to the percentage of requests which should return this altered response
+func GetPercentSlotToAlteration(endpointSpecList map[AlterationConfiguration]PercentAffected) (map[PercentSlot]AlterationConfiguration, error) {
 	hashMap := make(map[PercentSlot]AlterationConfiguration)
 	currPct := 0
 
