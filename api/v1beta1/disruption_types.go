@@ -41,12 +41,14 @@ type DisruptionSpec struct {
 	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
 	// +nullable
+	// +ddmark:validation:Required=true
 	Selector labels.Set `json:"selector,omitempty"` // label selector
 	// +nullable
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
 	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
 	// +kubebuilder:validation:Enum=pod;node;""
+	// +ddmark:validation:Enum=pod;node;""
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
 	Containers []string                   `json:"containers,omitempty"`
 	// +nullable
