@@ -6,7 +6,7 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: grpc2
+  name: grpc
   namespace: chaos-demo
 spec:
   level: pod
@@ -18,5 +18,12 @@ spec:
     endpoints:
       - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog
         error: NOT_FOUND
+        query_pct: 25
+      - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog
+        error: ALREADY_EXISTS
+        query_pct: 50
+      - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog
+        override: "{}"
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         override: "{}"
+        query_pct: 50
