@@ -21,9 +21,31 @@ func ExecuteSendDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	endpointSpecs := GenerateEndpointSpecs(spec.Endpoints)
+
+	_, err := client.SendDisruption(ctx, &pb.DisruptionSpec{Endpoints: endpointSpecs})
+	if err != nil {
+		log.Printf("Received an error: %v", err)
+	}
+}
+
+// ExecuteCleanDisruption executes a CleanDisruption call on the provided DisruptionListenerClient
+func ExecuteCleanDisruption(client pb.DisruptionListenerClient) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := client.CleanDisruption(ctx, &emptypb.Empty{})
+	if err != nil {
+		log.Printf("Received an error: %v", err)
+	}
+}
+
+// GenerateEndpointSpecs converts an EndpointAlteration into a list of EndpointSpecs which
+// can be sent through gRPC call to disruptionListener
+func GenerateEndpointSpecs(endpoints []chaosv1beta1.EndpointAlteration) []*pb.EndpointSpec {
 	targetToEndpointSpec := make(map[string]*pb.EndpointSpec)
 
-	for _, endptAlt := range spec.Endpoints {
+	for _, endptAlt := range endpoints {
 		targeted := endptAlt.TargetEndpoint
 
 		if existingEndptSpec, ok := targetToEndpointSpec[targeted]; ok {
@@ -52,22 +74,5 @@ func ExecuteSendDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1
 		endpointSpecs = append(endpointSpecs, endptSpec)
 	}
 
-	_, err := client.SendDisruption(
-		ctx,
-		&pb.DisruptionSpec{Endpoints: endpointSpecs},
-	)
-
-	if err != nil {
-		log.Printf("Received an error: %v", err)
-	}
-}
-
-// ExecuteCleanDisruption executes a CleanDisruption call on the provided DisruptionListenerClient
-func ExecuteCleanDisruption(client pb.DisruptionListenerClient) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_, err := client.CleanDisruption(ctx, &emptypb.Empty{})
-	if err != nil {
-		log.Printf("Received an error: %v", err)
-	}
+	return endpointSpecs
 }

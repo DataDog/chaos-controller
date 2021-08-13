@@ -69,6 +69,7 @@ var grpcDisruptionCmd = &cobra.Command{
 			Port:      port,
 			Endpoints: endpointAlterations,
 		}
+
 		// create injectors
 		for i, config := range configs {
 			if i == 0 {
