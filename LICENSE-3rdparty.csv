@@ -27,6 +27,7 @@ github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/wclayer,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/osversion,MIT
 github.com/avast/retry-go,github.com/avast/retry-go,MIT
 github.com/beorn7/perks,github.com/beorn7/perks/quantile,MIT
+github.com/briandowns/spinner,github.com/briandowns/spinner,Apache-2.0
 github.com/cenkalti/backoff,github.com/cenkalti/backoff,MIT
 github.com/containerd/cgroups,github.com/containerd/cgroups/stats/v1,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd,Apache-2.0
@@ -116,6 +117,7 @@ github.com/docker/go-connections,github.com/docker/go-connections/tlsconfig,Apac
 github.com/docker/go-events,github.com/docker/go-events,Apache-2.0
 github.com/docker/go-units,github.com/docker/go-units,Apache-2.0
 github.com/evanphx/json-patch,github.com/evanphx/json-patch,BSD-3-Clause
+github.com/fatih/color,github.com/fatih/color,MIT
 github.com/fsnotify/fsnotify,github.com/fsnotify/fsnotify,BSD-3-Clause
 github.com/ghodss/yaml,github.com/ghodss/yaml,MIT
 github.com/go-logr/logr,github.com/go-logr/logr,Apache-2.0

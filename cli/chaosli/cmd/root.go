@@ -8,8 +8,10 @@ package cmd
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	goyaml "sigs.k8s.io/yaml"
@@ -51,6 +53,7 @@ func init() {
 	rootCmd.AddCommand(createCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(explainCmd)
+	rootCmd.AddCommand(contextCmd)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.chaosli.yaml)")
 
@@ -86,34 +89,47 @@ func initConfig() {
 }
 
 func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
-	yaml, err := os.Open(filepath.Clean(path))
+	parsedSpec := ReadUnmarshalValidate(path)
+
+	return parsedSpec, nil
+}
+
+func PrintSeparator() {
+	fmt.Println("=======================================================================================================================================")
+	// after a separator we should assume there is information we want the user to read before more prints start
+	// flooding the terminal. That is why we add this sleep of 2 seconds to give some time for the user to
+	// digest the new information before consuming the next
+	time.Sleep(2 * time.Second)
+}
+
+func ReadUnmarshalValidate(path string) v1beta1.Disruption {
+	fullPath, err := filepath.Abs(path)
 	if err != nil {
-		return v1beta1.Disruption{}, err
+		log.Fatalf("finding Absolute Path: %v", err)
+	}
+
+	yaml, err := os.Open(filepath.Clean(fullPath))
+	if err != nil {
+		log.Fatalf("could not open yaml: %v", err)
 	}
 
 	yamlBytes, err := ioutil.ReadAll(yaml)
 	if err != nil {
-		return v1beta1.Disruption{}, err
+		log.Fatalf("disruption.Get err   #%v ", err)
 	}
 
 	parsedSpec := v1beta1.Disruption{}
 	err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec)
 
 	if err != nil {
-		return v1beta1.Disruption{}, err
+		log.Fatalf("unmarshal: %v", err)
 	}
 
-	return parsedSpec, nil
-}
+	err = parsedSpec.Spec.Validate()
 
-func DisruptionToFile(path string, spec v1beta1.DisruptionSpec) error {
-	return nil
-}
-
-func validatePath(filePath string) error {
-	if filePath == "" {
-		return fmt.Errorf("no path given, exiting")
+	if err != nil {
+		log.Fatalf("there were some problems when validating your disruption: %v", err)
 	}
 
-	return nil
+	return parsedSpec
 }
