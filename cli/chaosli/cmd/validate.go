@@ -16,10 +16,6 @@ var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "validate disruption config",
 	Long:  `validates the yaml of the disruption for structure.`,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		path, _ := cmd.Flags().GetString("path")
-		return validatePath(path)
-	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		path, _ := cmd.Flags().GetString("path")
 		return ValidateDisruption(path)
@@ -28,6 +24,10 @@ var validateCmd = &cobra.Command{
 
 func init() {
 	validateCmd.Flags().String("path", "", "The path to the disruption file to be validated.")
+
+	if err := validateCmd.MarkFlagRequired("path"); err != nil {
+		return
+	}
 }
 
 func ValidateDisruption(path string) error {
