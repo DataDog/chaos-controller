@@ -39,7 +39,7 @@ type NetworkDisruptionSpec struct {
 	// +kubebuilder:validation:Maximum=100
 	Corrupt int `json:"corrupt,omitempty"`
 	// +kubebuilder:validation:Minimum=0
-	// +kubebuilder:validation:Maximum=59999
+	// +kubebuilder:validation:Maximum=60000
 	Delay uint `json:"delay,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
