@@ -49,7 +49,7 @@ func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
 		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(m), fieldvalue.Type(), "int or uint")
 	}
 
-	if int(m) < fieldInt {
+	if int(m) <= fieldInt {
 		return fmt.Errorf("%v: field has value %v, max is %v (included)", ruleName(m), fieldInt, m)
 	}
 
@@ -64,7 +64,7 @@ func (m Minimum) ApplyRule(fieldvalue reflect.Value) error {
 		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(m), fieldvalue.Type(), "int or uint")
 	}
 
-	if int(m) > fieldInt {
+	if int(m) >= fieldInt {
 		return fmt.Errorf("%v: field has value %v, min is %v (included)", ruleName(m), fieldInt, m)
 	}
 
@@ -124,7 +124,7 @@ func (r Required) ApplyRule(fieldvalue reflect.Value) error {
 
 	fieldvalue = reflect.Indirect(fieldvalue)
 	if !fieldvalue.IsValid() || fieldvalue.IsZero() {
-		return fmt.Errorf("%v: field is required: currently %v", ruleName(r), "missing")
+		return fmt.Errorf("%v: field is required: currently missing", ruleName(r))
 	}
 
 	return nil

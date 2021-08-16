@@ -120,7 +120,8 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, errorLis
 		// fetch the marker definition in order to type-check the corresponding field
 		thisdef := col.Lookup(fmt.Sprintf("+%s", markerName), targetType)
 		if thisdef == nil {
-			panic(fmt.Errorf("could not find marker definition - check target type"))
+			*errorList = append(*errorList, fmt.Errorf("could not find marker definition for %v - check target type", markerName))
+			continue
 		}
 
 		// if a marker is used multiple times on a single type/field, a single marker will have multiple values
