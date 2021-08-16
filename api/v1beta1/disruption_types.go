@@ -38,9 +38,11 @@ import (
 // DisruptionSpec defines the desired state of Disruption
 // +ddmark:validation:ExclusiveFields={Network,DNS}
 type DisruptionSpec struct {
+	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
 	// +nullable
+	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
 	Selector labels.Set `json:"selector,omitempty"` // label selector
 	// +nullable
