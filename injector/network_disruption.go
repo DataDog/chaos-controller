@@ -80,7 +80,7 @@ func (i networkDisruptionInjector) Inject() error {
 	// add netem
 	if i.spec.Delay > 0 || i.spec.Drop > 0 || i.spec.Corrupt > 0 || i.spec.Duplicate > 0 {
 		delay := time.Duration(i.spec.Delay) * time.Millisecond
-		
+
 		var delayJitter time.Duration
 
 		// add a 10% delayJitter to delay by default if not specified
