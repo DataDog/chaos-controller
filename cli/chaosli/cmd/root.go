@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	goyaml "github.com/ghodss/yaml"
+	goyaml "sigs.k8s.io/yaml"
 
 	"github.com/spf13/cobra"
 
@@ -119,7 +119,7 @@ func ReadUnmarshalValidate(path string) v1beta1.Disruption {
 	}
 
 	parsedSpec := v1beta1.Disruption{}
-	err = goyaml.Unmarshal(yamlBytes, &parsedSpec)
+	err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec)
 
 	if err != nil {
 		log.Fatalf("unmarshal: %v", err)
