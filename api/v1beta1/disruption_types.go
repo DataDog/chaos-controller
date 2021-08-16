@@ -36,16 +36,21 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // DisruptionSpec defines the desired state of Disruption
+// +ddmark:validation:ExclusiveFields={Network,DNS}
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
+	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
 	// +nullable
+	// +kubebuilder:validation:Required
+	// +ddmark:validation:Required=true
 	Selector labels.Set `json:"selector,omitempty"` // label selector
 	// +nullable
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
 	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
 	// +kubebuilder:validation:Enum=pod;node;""
+	// +ddmark:validation:Enum=pod;node;""
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
 	Containers []string                   `json:"containers,omitempty"`
 	// +nullable
@@ -67,6 +72,7 @@ type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
 	IsInjected       bool `json:"isInjected,omitempty"`
 	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;Injected
+	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
 	Targets []string `json:"targets,omitempty"`

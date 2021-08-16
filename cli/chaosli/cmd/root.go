@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	goyaml "github.com/ghodss/yaml"
+	goyaml "sigs.k8s.io/yaml"
 
 	"github.com/spf13/cobra"
 
@@ -97,7 +97,7 @@ func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
 	}
 
 	parsedSpec := v1beta1.Disruption{}
-	err = goyaml.Unmarshal(yamlBytes, &parsedSpec)
+	err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec)
 
 	if err != nil {
 		return v1beta1.Disruption{}, err
