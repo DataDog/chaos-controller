@@ -84,8 +84,9 @@ func (i networkDisruptionInjector) Inject() error {
 
 		// add a 10% delayJitter to delay by default if not specified
 		if i.spec.DelayJitter == 0 {
-			delayJitter = time.Duration(float64(i.spec.Delay) * 0.1) * time.Millisecond
+			delayJitter = time.Duration(float64(i.spec.Delay)*0.1) * time.Millisecond
 		} else {
+			// convert delayJitter into a percentage then multiply that with delay to get correct percentage of delay
 			delayJitter = time.Duration((float64(i.spec.DelayJitter)/100.0)*float64(i.spec.Delay)) * time.Millisecond
 		}
 
