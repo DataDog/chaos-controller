@@ -184,8 +184,8 @@ spec:
                   type: integer
                 flow:
                   enum:
-                  - ingress
                   - egress
+                  - ingress
                   type: string
                 hosts:
                   items:
@@ -253,6 +253,10 @@ spec:
             injectionStatus:
               description: DisruptionInjectionStatus represents the injection status
                 of a disruption
+              enum:
+              - NotInjected
+              - PartiallyInjected
+              - Injected
               type: string
             isInjected:
               type: boolean

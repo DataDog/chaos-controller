@@ -71,6 +71,7 @@ type DisruptionSpec struct {
 type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
 	IsInjected       bool `json:"isInjected,omitempty"`
+	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;Injected
 	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable

@@ -27,8 +27,8 @@ type NetworkDisruptionSpec struct {
 	AllowedHosts []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
 	// +nullable
 	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
-	// +kubebuilder:validation:Enum=ingress;egress
-	// +ddmark:validation:Enum=ingress;egress
+	// +kubebuilder:validation:Enum=egress;ingress
+	// +ddmark:validation:Enum=egress;ingress
 	Flow string `json:"flow,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
