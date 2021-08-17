@@ -719,11 +719,17 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
 
+	// The default TerminationGracePeriodSeconds is 30s. This can be too low for a chaos pod to finish cleaning. After TGPS passes,
+	// the signal sent to a pod becomes SIGKILL, which will interrupt any in-progress cleaning. By double this to 1 minute in the pod spec itself,
+	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
+	terminationGracePeriod := int64(60)
+
 	podSpec := corev1.PodSpec{
-		HostPID:            true,                      // enable host pid
-		RestartPolicy:      corev1.RestartPolicyNever, // do not restart the pod on fail or completion
-		NodeName:           targetNodeName,            // specify node name to schedule the pod
-		ServiceAccountName: r.InjectorServiceAccount,  // service account to use
+		HostPID:                       true,                      // enable host pid
+		RestartPolicy:                 corev1.RestartPolicyNever, // do not restart the pod on fail or completion
+		NodeName:                      targetNodeName,            // specify node name to schedule the pod
+		ServiceAccountName:            r.InjectorServiceAccount,  // service account to use
+		TerminationGracePeriodSeconds: &terminationGracePeriod,
 		Containers: []corev1.Container{
 			{
 				Name:            "injector",              // container name
