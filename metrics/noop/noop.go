@@ -32,18 +32,6 @@ func (n *Sink) GetSinkName() string {
 	return string(types.SinkDriverNoop)
 }
 
-// Flush returns nil
-func (n *Sink) Flush() error {
-	return nil
-}
-
-// EventWithTags creates a new event with the given title, text and tags and send it
-func (n *Sink) EventWithTags(title, text string, tags []string) error {
-	fmt.Printf("NOOP: Event %s\n", title)
-
-	return nil
-}
-
 // MetricInjected increments the injected metric
 func (n *Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	fmt.Printf("NOOP: MetricInjected %v\n", succeed)

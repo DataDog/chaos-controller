@@ -49,22 +49,6 @@ func (d *Sink) GetSinkName() string {
 	return string(types.SinkDriverDatadog)
 }
 
-// Flush forces the client to send the metrics in the current cache
-func (d *Sink) Flush() error {
-	return d.client.Flush()
-}
-
-// EventWithTags creates a new event with the given title, text and tags and send it
-func (d *Sink) EventWithTags(title, text string, tags []string) error {
-	e := &statsd.Event{
-		Title: title,
-		Text:  text,
-		Tags:  tags,
-	}
-
-	return d.client.Event(e)
-}
-
 // MetricInjected increments the injected metric
 func (d *Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)

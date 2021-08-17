@@ -18,8 +18,6 @@ import (
 // Sink describes a metric sink
 type Sink interface {
 	Close() error
-	EventWithTags(title, text string, tags []string) error
-	Flush() error
 	GetSinkName() string
 	MetricCleaned(succeed bool, kind string, tags []string) error
 	MetricCleanupDuration(duration time.Duration, tags []string) error
