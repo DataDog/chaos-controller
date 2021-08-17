@@ -27,7 +27,6 @@ github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/wclayer,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/osversion,MIT
 github.com/avast/retry-go,github.com/avast/retry-go,MIT
 github.com/beorn7/perks,github.com/beorn7/perks/quantile,MIT
-github.com/briandowns/spinner,github.com/briandowns/spinner,Apache-2.0
 github.com/cenkalti/backoff,github.com/cenkalti/backoff,MIT
 github.com/containerd/cgroups,github.com/containerd/cgroups/stats/v1,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd,Apache-2.0
@@ -117,7 +116,6 @@ github.com/docker/go-connections,github.com/docker/go-connections/tlsconfig,Apac
 github.com/docker/go-events,github.com/docker/go-events,Apache-2.0
 github.com/docker/go-units,github.com/docker/go-units,Apache-2.0
 github.com/evanphx/json-patch,github.com/evanphx/json-patch,BSD-3-Clause
-github.com/fatih/color,github.com/fatih/color,MIT
 github.com/fsnotify/fsnotify,github.com/fsnotify/fsnotify,BSD-3-Clause
 github.com/ghodss/yaml,github.com/ghodss/yaml,MIT
 github.com/go-logr/logr,github.com/go-logr/logr,Apache-2.0
@@ -159,7 +157,6 @@ github.com/imdario/mergo,github.com/imdario/mergo,BSD-3-Clause
 github.com/inconshreveable/mousetrap,github.com/inconshreveable/mousetrap,Apache-2.0
 github.com/json-iterator/go,github.com/json-iterator/go,MIT
 github.com/kballard/go-shellquote,github.com/kballard/go-shellquote,MIT
-github.com/konsorten/go-windows-terminal-sequences,github.com/konsorten/go-windows-terminal-sequences,MIT
 github.com/magiconair/properties,github.com/magiconair/properties,BSD-2-Clause
 github.com/mattn/go-colorable,github.com/mattn/go-colorable,MIT
 github.com/mattn/go-isatty,github.com/mattn/go-isatty,MIT
@@ -385,12 +382,11 @@ google.golang.org/protobuf,google.golang.org/protobuf/internal/encoding/messages
 google.golang.org/protobuf,google.golang.org/protobuf/internal/encoding/tag,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/encoding/text,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/errors,BSD-3-Clause
-google.golang.org/protobuf,google.golang.org/protobuf/internal/fieldnum,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/fieldsort,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/filedesc,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/filetype,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/flags,BSD-3-Clause
-google.golang.org/protobuf,google.golang.org/protobuf/internal/genname,BSD-3-Clause
+google.golang.org/protobuf,google.golang.org/protobuf/internal/genid,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/impl,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/mapsort,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/pragma,BSD-3-Clause
