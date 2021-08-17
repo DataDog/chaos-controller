@@ -551,7 +551,6 @@ func (r *DisruptionReconciler) ignoreTarget(instance *chaosv1beta1.Disruption, t
 // subsequent calls to this function will always return the same targets as the first call
 func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
 	matchingTargets := []string{}
-	eligibleTargets := []string{}
 
 	// exit early if we already have targets selected for the given instance
 	if len(instance.Status.Targets) > 0 {
@@ -611,18 +610,19 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// won't pick up another one
 	targetsCount -= len(instance.Status.IgnoredTargets)
 
-	// prune ignored targets from all targets
-	for _, target := range matchingTargets {
-		if !contains(instance.Status.IgnoredTargets, target) {
-			eligibleTargets = append(eligibleTargets, target)
-		}
+	// filter matching targets to only get eligible ones
+	eligibleTargets, err := r.getEligibleTargets(instance, matchingTargets)
+	if err != nil {
+		r.log.Errorw("error getting eligible targets", "error", err)
+
+		return fmt.Errorf("error getting eligible targets: %w", err)
 	}
 
 	// if the asked targets count is greater than the amount of found targets, we take all of them
 	targetsCount = int(math.Min(float64(targetsCount), float64(len(eligibleTargets))))
 	if targetsCount < 1 {
 		r.log.Info("ignored targets has reached target count, skipping")
-		r.Recorder.Event(instance, "Warning", "NoTarget", "Ignored Targets is too large, we will no longer choose additional eligible targets for injection for this disruption")
+		r.Recorder.Event(instance, "Warning", "NoTarget", "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)")
 
 		return nil
 	}
@@ -641,17 +641,60 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	return r.Update(context.Background(), instance)
 }
 
+// getEligibleTargets returns targets which can be targeted by the given instance from the given targets pool
+// it skips ignored targets and targets being already targeted by another disruption
+func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disruption, targets []string) ([]string, error) {
+	r.log.Info("getting eligible targets for disruption injection")
+
+	eligibleTargets := []string{}
+
+	for _, target := range targets {
+		// skip ignored targets
+		if contains(instance.Status.IgnoredTargets, target) {
+			continue
+		}
+
+		// skip targets already targeted by a chaos pod from another disruption
+		chaosPods, err := r.getChaosPods(nil, map[string]string{
+			chaostypes.TargetLabel:              target,             // filter with target name
+			chaostypes.DisruptionNamespaceLabel: instance.Namespace, // filter with current instance namespace (to avoid getting targets having the same name but living in different namespaces)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("error getting chaos pods targeting the given target (%s): %w", target, err)
+		}
+
+		if len(chaosPods) > 0 {
+			r.log.Infow("target is already affected by another disruption, skipping", "target", target)
+
+			continue
+		}
+
+		// add target if eligible
+		eligibleTargets = append(eligibleTargets, target)
+	}
+
+	return eligibleTargets, nil
+}
+
 // getChaosPods returns chaos pods owned by the given instance and having the given labels
+// both instance and label set are optional but at least one must be provided
 func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error) {
 	pods := &corev1.PodList{}
+
+	// ensure we always have at least a disruption instance or a label set to filter on
+	if instance == nil && ls == nil {
+		return nil, fmt.Errorf("you must specify at least a disruption instance or a label set to get chaos pods")
+	}
 
 	if ls == nil {
 		ls = make(map[string]string)
 	}
 
-	// If these aren't valid labels, we will instead list ALL pods
-	ls[chaostypes.DisruptionNameLabel] = instance.Name
-	ls[chaostypes.DisruptionNamespaceLabel] = instance.Namespace
+	// if these aren't valid labels, we will instead list ALL pods
+	if instance != nil {
+		ls[chaostypes.DisruptionNameLabel] = instance.Name
+		ls[chaostypes.DisruptionNamespaceLabel] = instance.Namespace
+	}
 
 	r.log.Infow("searching for chaos pods with label selector...", "labels", ls.String())
 
