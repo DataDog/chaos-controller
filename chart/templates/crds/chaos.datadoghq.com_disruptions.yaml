@@ -167,7 +167,7 @@ spec:
                   minimum: 0
                   type: integer
                 delay:
-                  maximum: 59999
+                  maximum: 60000
                   minimum: 0
                   type: integer
                 delayJitter:
