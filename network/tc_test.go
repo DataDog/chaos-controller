@@ -87,7 +87,7 @@ var _ = Describe("Tc", func() {
 
 		Context("add 1s delay and 1s delayJitter to lo interface to the root parent without any handle", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 1s 1s distribution normal loss 5% duplicate 5% corrupt 1%")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 1000ms 1000ms distribution normal loss 5% duplicate 5% corrupt 1%")
 			})
 		})
 
@@ -97,7 +97,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem delay 1s 1s distribution normal loss 5% duplicate 5% corrupt 1%")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem delay 1000ms 1000ms distribution normal loss 5% duplicate 5% corrupt 1%")
 			})
 		})
 
@@ -107,18 +107,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem delay 1s 1s distribution normal loss 5% duplicate 5% corrupt 1%")
-			})
-		})
-
-		Context("add a 30 minutes delay and 5m delayJitter", func() {
-			BeforeEach(func() {
-				delay = 30 * time.Minute
-				delayJitter = 5 * time.Minute
-			})
-
-			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 30m0s 5m0s distribution normal loss 5% duplicate 5% corrupt 1%")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem delay 1000ms 1000ms distribution normal loss 5% duplicate 5% corrupt 1%")
 			})
 		})
 	})

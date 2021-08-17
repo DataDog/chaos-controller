@@ -8,6 +8,7 @@ package injector
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"time"
@@ -79,7 +80,19 @@ func (i networkDisruptionInjector) Inject() error {
 	// add netem
 	if i.spec.Delay > 0 || i.spec.Drop > 0 || i.spec.Corrupt > 0 || i.spec.Duplicate > 0 {
 		delay := time.Duration(i.spec.Delay) * time.Millisecond
-		delayJitter := time.Duration((float64(i.spec.DelayJitter)/100.0)*float64(i.spec.Delay)) * time.Millisecond
+
+		var delayJitter time.Duration
+
+		// add a 10% delayJitter to delay by default if not specified
+		if i.spec.DelayJitter == 0 {
+			delayJitter = time.Duration(float64(i.spec.Delay)*0.1) * time.Millisecond
+		} else {
+			// convert delayJitter into a percentage then multiply that with delay to get correct percentage of delay
+			delayJitter = time.Duration((float64(i.spec.DelayJitter)/100.0)*float64(i.spec.Delay)) * time.Millisecond
+		}
+
+		delayJitter = time.Duration(math.Max(float64(delayJitter), float64(time.Millisecond)))
+
 		i.addNetemOperation(delay, delayJitter, i.spec.Drop, i.spec.Corrupt, i.spec.Duplicate)
 	}
 
