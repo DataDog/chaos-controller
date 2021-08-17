@@ -6,6 +6,9 @@
 package cmd
 
 import (
+	"fmt"
+
+	ddmark "github.com/DataDog/chaos-controller/ddmark"
 	"github.com/spf13/cobra"
 )
 
@@ -13,10 +16,6 @@ var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "validate disruption config",
 	Long:  `validates the yaml of the disruption for structure.`,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		path, _ := cmd.Flags().GetString("path")
-		return validatePath(path)
-	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		path, _ := cmd.Flags().GetString("path")
 		return ValidateDisruption(path)
@@ -25,18 +24,28 @@ var validateCmd = &cobra.Command{
 
 func init() {
 	validateCmd.Flags().String("path", "", "The path to the disruption file to be validated.")
+
+	if err := validateCmd.MarkFlagRequired("path"); err != nil {
+		return
+	}
 }
 
 func ValidateDisruption(path string) error {
-	disruption, err := DisruptionFromFile(path)
+	marshalledStruct, err := DisruptionFromFile(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading from disruption at %v: %v", path, err)
 	}
 
-	err = disruption.Spec.Validate()
+	errorList := ddmark.ValidateStruct(marshalledStruct, path,
+		"github.com/DataDog/chaos-controller/api/v1beta1",
+	)
+
+	err = marshalledStruct.Spec.Validate()
 	if err != nil {
-		return err
+		errorList = append(errorList, err)
 	}
+
+	ddmark.PrintErrorList(errorList)
 
 	return nil
 }
