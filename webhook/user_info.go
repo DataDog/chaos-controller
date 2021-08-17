@@ -39,15 +39,14 @@ func (m *UserInfoMutator) Handle(ctx context.Context, req admission.Request) adm
 	}
 
 	// decode object
-	err := m.decoder.Decode(req, dis)
-	if err != nil {
+	if err := m.decoder.Decode(req, dis); err != nil {
 		m.Log.Errorw("error decoding disruption object", "error", err, "name", req.Name, "namespace", req.Namespace)
 
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
 	// retrieve user info
-	m.Log.Infow("storing user info in disrution", "name", dis.Name, "namespace", dis.Namespace)
+	m.Log.Infow("storing user info in disruption", "name", dis.Name, "namespace", dis.Namespace)
 
 	dis.Status.UserInfo = &req.UserInfo
 
