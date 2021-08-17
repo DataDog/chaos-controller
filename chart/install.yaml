@@ -51,13 +51,13 @@ data:
         host: ""
         port: 9443
     injector:
-      image: "datadog/chaos-injector"
+      image: "datadog/chaos-injector:4.2.1"
       serviceAccount:
         name: "chaos-injector"
         namespace: "chaos-engineering"
     handler:
       enabled: true
-      image: "docker.io/library/chaos-handler"
+      image: "datadog/chaos-handler:4.2.1"
       timeout: "1m"
 ---
 # Source: chaos-controller/templates/crds/chaos.datadoghq.com_disruptions.yaml
