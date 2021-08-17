@@ -49,22 +49,6 @@ func (d *Sink) GetSinkName() string {
 	return string(types.SinkDriverDatadog)
 }
 
-// Flush forces the client to send the metrics in the current cache
-func (d *Sink) Flush() error {
-	return d.client.Flush()
-}
-
-// EventWithTags creates a new event with the given title, text and tags and send it
-func (d *Sink) EventWithTags(title, text string, tags []string) error {
-	e := &statsd.Event{
-		Title: title,
-		Text:  text,
-		Tags:  tags,
-	}
-
-	return d.client.Event(e)
-}
-
 // MetricInjected increments the injected metric
 func (d *Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
@@ -152,9 +136,24 @@ func (d *Sink) MetricRestart() error {
 	return d.metricWithStatus(metricPrefixController+"restart", []string{})
 }
 
-// MetricFailedValidation increments the failed validation metric
-func (d *Sink) MetricFailedValidation() error {
-	return d.metricWithStatus(metricPrefixController+"validation.failed", []string{})
+// MetricValidationFailed increments the failed validation metric
+func (d *Sink) MetricValidationFailed(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"validation.failed", tags)
+}
+
+// MetricValidationCreated increments the failed validation metric
+func (d *Sink) MetricValidationCreated(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"validation.created", tags)
+}
+
+// MetricValidationUpdated increments the failed validation metric
+func (d *Sink) MetricValidationUpdated(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"validation.updated", tags)
+}
+
+// MetricValidationDeleted increments the failed validation metric
+func (d *Sink) MetricValidationDeleted(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"validation.deleted", tags)
 }
 
 func boolToStatus(succeed bool) string {
