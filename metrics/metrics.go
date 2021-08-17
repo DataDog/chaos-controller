@@ -18,8 +18,6 @@ import (
 // Sink describes a metric sink
 type Sink interface {
 	Close() error
-	EventWithTags(title, text string, tags []string) error
-	Flush() error
 	GetSinkName() string
 	MetricCleaned(succeed bool, kind string, tags []string) error
 	MetricCleanupDuration(duration time.Duration, tags []string) error
@@ -36,7 +34,10 @@ type Sink interface {
 	MetricDisruptionsCount(kind chaostypes.DisruptionKindName, tags []string) error
 	MetricPodsGauge(gauge float64) error
 	MetricRestart() error
-	MetricFailedValidation() error
+	MetricValidationFailed(tags []string) error
+	MetricValidationCreated(tags []string) error
+	MetricValidationUpdated(tags []string) error
+	MetricValidationDeleted(tags []string) error
 }
 
 // GetSink returns an initiated sink
