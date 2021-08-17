@@ -7,24 +7,15 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	goyaml "github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 )
 
-func printSeparator() {
-	fmt.Println("=======================================================================================================================================")
-}
-
 func explainMetaSpec(spec v1beta1.DisruptionSpec) {
-	printSeparator()
+	PrintSeparator()
 	fmt.Println("🧰 has the following metadata  ...")
 
 	if spec.DryRun {
@@ -56,7 +47,7 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 	}
 
 	fmt.Printf("\tℹ️  is going to target %s %s(s) (either described as a percentage of total %ss or actual number of them).\n", spec.Count, spec.Level, spec.Level)
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainContainerFailure(spec v1beta1.DisruptionSpec) {
@@ -72,7 +63,7 @@ func explainContainerFailure(spec v1beta1.DisruptionSpec) {
 		fmt.Println("💉 injects a container failure which sends the SIGTERM signal to the pod's container(s).")
 	}
 
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainNodeFailure(spec v1beta1.DisruptionSpec) {
@@ -88,7 +79,7 @@ func explainNodeFailure(spec v1beta1.DisruptionSpec) {
 		fmt.Println("💉 injects a node failure which triggers a kernel panic on the node.")
 	}
 
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainCPUPressure(spec v1beta1.DisruptionSpec) {
@@ -99,7 +90,7 @@ func explainCPUPressure(spec v1beta1.DisruptionSpec) {
 	}
 
 	fmt.Println("💉 injects a cpu pressure disruption ...")
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainDiskPressure(spec v1beta1.DisruptionSpec) {
@@ -127,7 +118,7 @@ func explainDiskPressure(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t📝 %d write bytes per second\n", *diskPressure.Throttling.WriteBytesPerSec)
 	}
 
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainDNS(spec v1beta1.DisruptionSpec) {
@@ -146,7 +137,7 @@ func explainDNS(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t\t🥷🏿  will be spoofed with %s\n", data.Record.Value)
 	}
 
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
@@ -217,7 +208,7 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t💣 applies a bandwidth limit of %d ms.\n", network.BandwidthLimit)
 	}
 
-	printSeparator()
+	PrintSeparator()
 }
 
 func explainMultiDisruption(spec v1beta1.DisruptionSpec) {
@@ -241,7 +232,7 @@ func explainMultiDisruption(spec v1beta1.DisruptionSpec) {
 	}
 
 	if existsMulti {
-		printSeparator()
+		PrintSeparator()
 	}
 }
 
@@ -249,10 +240,6 @@ var explainCmd = &cobra.Command{
 	Use:   "explain",
 	Short: "explains disruption config",
 	Long:  `translates the yaml of the disruption configuration to english.`,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		path, _ := cmd.Flags().GetString("path")
-		return validatePath(path)
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("path")
 		explanation(path)
@@ -260,38 +247,7 @@ var explainCmd = &cobra.Command{
 }
 
 func explanation(path string) {
-	var disruption v1beta1.Disruption
-
-	fullPath, err := filepath.Abs(path)
-
-	if err != nil {
-		log.Fatalf("Finding Absolute Path: %v", err)
-	}
-
-	disruptionPath, err := os.Open(filepath.Clean(fullPath))
-
-	if err != nil {
-		log.Fatalf("Openning Yaml: %v", err)
-	}
-
-	disruptionBytes, err := ioutil.ReadAll(disruptionPath)
-
-	if err != nil {
-		log.Printf("disruption.Get err   #%v ", err)
-		os.Exit(1)
-	}
-
-	err = goyaml.Unmarshal(disruptionBytes, &disruption)
-
-	if err != nil {
-		log.Fatalf("Unmarshal: %v", err)
-	}
-
-	err = disruption.Spec.Validate()
-
-	if err != nil {
-		log.Fatalf("There were some problems when validating your disruption: %v", err)
-	}
+	disruption := ReadUnmarshalValidate(path)
 
 	fmt.Println("This Disruption...")
 
@@ -307,4 +263,9 @@ func explanation(path string) {
 
 func init() {
 	explainCmd.Flags().String("path", "", "The path to the disruption file to be explained.")
+	err := explainCmd.MarkFlagRequired("path")
+
+	if err != nil {
+		return
+	}
 }

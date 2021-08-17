@@ -259,6 +259,7 @@ go.uber.org/zap,go.uber.org/zap/zapcore,MIT
 golang.org/x/crypto,golang.org/x/crypto/ed25519,BSD-3-Clause
 golang.org/x/crypto,golang.org/x/crypto/ed25519/internal/edwards25519,BSD-3-Clause
 golang.org/x/crypto,golang.org/x/crypto/ssh/terminal,BSD-3-Clause
+golang.org/x/mod,golang.org/x/mod/semver,BSD-3-Clause
 golang.org/x/net,golang.org/x/net/bpf,BSD-3-Clause
 golang.org/x/net,golang.org/x/net/context,BSD-3-Clause
 golang.org/x/net,golang.org/x/net/context/ctxhttp,BSD-3-Clause
@@ -309,6 +310,17 @@ golang.org/x/text,golang.org/x/text/unicode/bidi,BSD-3-Clause
 golang.org/x/text,golang.org/x/text/unicode/norm,BSD-3-Clause
 golang.org/x/text,golang.org/x/text/width,BSD-3-Clause
 golang.org/x/time,golang.org/x/time/rate,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/go/gcexportdata,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/go/internal/gcimporter,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/go/internal/packagesdriver,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/go/packages,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/internal/event,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/internal/event/core,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/internal/event/keys,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/internal/event/label,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/internal/gocommand,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/internal/packagesinternal,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/internal/typesinternal,BSD-3-Clause
 golang.org/x/xerrors,golang.org/x/xerrors,BSD-3-Clause
 golang.org/x/xerrors,golang.org/x/xerrors/internal,BSD-3-Clause
 gomodules.xyz/jsonpatch/v2,gomodules.xyz/jsonpatch/v2,Apache-2.0
@@ -651,5 +663,7 @@ sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/admiss
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/conversion,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/internal/certwatcher,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics,Apache-2.0
+sigs.k8s.io/controller-tools,sigs.k8s.io/controller-tools/pkg/loader,Apache-2.0
+sigs.k8s.io/controller-tools,sigs.k8s.io/controller-tools/pkg/markers,Apache-2.0
 sigs.k8s.io/structured-merge-diff/v3,sigs.k8s.io/structured-merge-diff/v3/value,Apache-2.0
 sigs.k8s.io/yaml,sigs.k8s.io/yaml,MIT

@@ -26,7 +26,7 @@ if [ ! -z "$(git fetch --dry-run)" ]; then
 fi
 
 echo "Generating install manifest..."
-helm template ./chart/ --set images.tag=${VERSION} --set images.controller=datadog/chaos-controller --set images.injector=datadog/chaos-injector > ./chart/install.yaml
+helm template ./chart/ --set images.tag=${VERSION} --set images.controller=datadog/chaos-controller --set images.injector=datadog/chaos-injector --set images.handler=datadog/chaos-handler > ./chart/install.yaml
 git add ./chart/install.yaml
 git commit -m "Generate install manifest for version ${VERSION}"
 echo "Creating git tag..."
