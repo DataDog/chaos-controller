@@ -25,7 +25,7 @@ data:
         host: {{ .Values.controller.webhook.host | quote }}
         port: {{ .Values.controller.webhook.port }}
     injector:
-      image: {{ .Values.images.injector | quote }}
+      image: {{ printf "%s:%s" .Values.images.injector .Values.images.tag | quote }}
       {{- if .Values.injector.annotations }}
       annotations:
         {{- range $key, $val := .Values.injector.annotations }}
@@ -44,5 +44,5 @@ data:
       {{- end }}
     handler:
       enabled: {{ .Values.handler.enabled }}
-      image: {{ .Values.images.handler | quote }}
+      image: {{ printf "%s:%s" .Values.images.handler .Values.images.tag | quote }}
       timeout: {{ .Values.handler.timeout | quote }}
