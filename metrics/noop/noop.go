@@ -137,8 +137,26 @@ func (n *Sink) MetricRestart() error {
 	return nil
 }
 
-func (n *Sink) MetricFailedValidation() error {
-	fmt.Println("NOOP: MetricFailedValidation")
+func (n *Sink) MetricValidationFailed(tags []string) error {
+	fmt.Printf("NOOP: MetricValidationFailed %s\n", tags)
+
+	return nil
+}
+
+func (n *Sink) MetricValidationCreated(tags []string) error {
+	fmt.Printf("NOOP: MetricValidationCreated %s\n", tags)
+
+	return nil
+}
+
+func (n *Sink) MetricValidationUpdated(tags []string) error {
+	fmt.Printf("NOOP: MetricValidationUpdated %s\n", tags)
+
+	return nil
+}
+
+func (n *Sink) MetricValidationDeleted(tags []string) error {
+	fmt.Printf("NOOP: MetricValidationDeleted %s\n", tags)
 
 	return nil
 }

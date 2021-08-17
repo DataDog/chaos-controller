@@ -136,9 +136,24 @@ func (d *Sink) MetricRestart() error {
 	return d.metricWithStatus(metricPrefixController+"restart", []string{})
 }
 
-// MetricFailedValidation increments the failed validation metric
-func (d *Sink) MetricFailedValidation() error {
-	return d.metricWithStatus(metricPrefixController+"validation.failed", []string{})
+// MetricValidationFailed increments the failed validation metric
+func (d *Sink) MetricValidationFailed(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"validation.failed", tags)
+}
+
+// MetricValidationCreated increments the failed validation metric
+func (d *Sink) MetricValidationCreated(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"validation.created", tags)
+}
+
+// MetricValidationUpdated increments the failed validation metric
+func (d *Sink) MetricValidationUpdated(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"validation.updated", tags)
+}
+
+// MetricValidationDeleted increments the failed validation metric
+func (d *Sink) MetricValidationDeleted(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"validation.deleted", tags)
 }
 
 func boolToStatus(succeed bool) string {
