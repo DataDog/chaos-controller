@@ -77,44 +77,53 @@ var _ = Describe("Failure", func() {
 		})
 
 		It("should make a sendDisruption call to the disruption_listener on target service", func() {
+			disruptionListenerSpecMatcher := mock.MatchedBy(func(spec *pb.DisruptionSpec) bool {
+				endpts := spec.Endpoints
+				if len(endpts) != 2 {
+					return false
+				}
 
-			disruptionListenerSpec := &pb.DisruptionSpec{
-				Endpoints: []*pb.EndpointSpec{
+				altSpecForOrder := []*pb.AlterationSpec{
 					{
-						TargetEndpoint: "/chaos_dogfood.ChaosDogfood/getCatalog",
-						Alterations: []*pb.AlterationSpec{
-							{
-								ErrorToReturn:    "NOT_FOUND",
-								OverrideToReturn: "",
-								QueryPercent:     int32(25),
-							},
-							{
-								ErrorToReturn:    "ALREADY_EXISTS",
-								OverrideToReturn: "",
-								QueryPercent:     int32(50),
-							},
-							{
-								ErrorToReturn:    "",
-								OverrideToReturn: "{}",
-							},
-						},
+						ErrorToReturn:    "",
+						OverrideToReturn: "{}",
+						QueryPercent:     int32(50),
+					},
+				}
+
+				altSpecForGetCatalog := []*pb.AlterationSpec{
+					{
+						ErrorToReturn:    "NOT_FOUND",
+						OverrideToReturn: "",
+						QueryPercent:     int32(25),
 					},
 					{
-						TargetEndpoint: "/chaos_dogfood.ChaosDogfood/order",
-						Alterations: []*pb.AlterationSpec{
-							{
-								ErrorToReturn:    "",
-								OverrideToReturn: "{}",
-								QueryPercent:     int32(50),
-							},
-						},
+						ErrorToReturn:    "ALREADY_EXISTS",
+						OverrideToReturn: "",
+						QueryPercent:     int32(50),
 					},
-				},
-			}
+					{
+						ErrorToReturn:    "",
+						OverrideToReturn: "{}",
+					},
+				}
+
+				if endpts[0].TargetEndpoint == "/chaos_dogfood.ChaosDogfood/order" {
+					return specsAreEqual(endpts[0].Alterations[0], altSpecForOrder[0]) &&
+						specsAreEqual(endpts[1].Alterations[0], altSpecForGetCatalog[0]) &&
+						specsAreEqual(endpts[1].Alterations[1], altSpecForGetCatalog[1]) &&
+						specsAreEqual(endpts[1].Alterations[2], altSpecForGetCatalog[2])
+				}
+				return specsAreEqual(endpts[1].Alterations[0], altSpecForOrder[0]) &&
+					specsAreEqual(endpts[0].Alterations[0], altSpecForGetCatalog[0]) &&
+					specsAreEqual(endpts[0].Alterations[1], altSpecForGetCatalog[1]) &&
+					specsAreEqual(endpts[0].Alterations[2], altSpecForGetCatalog[2])
+			})
+
 			disruptionListenerClient.AssertCalled(
 				GinkgoT(),
 				"SendDisruption",
-				disruptionListenerSpec,
+				disruptionListenerSpecMatcher,
 			)
 		})
 	})
@@ -133,3 +142,9 @@ var _ = Describe("Failure", func() {
 		})
 	})
 })
+
+func specsAreEqual(actual *pb.AlterationSpec, expected *pb.AlterationSpec) bool {
+	return actual.ErrorToReturn == expected.ErrorToReturn &&
+		actual.OverrideToReturn == expected.OverrideToReturn &&
+		actual.QueryPercent == expected.QueryPercent
+}
