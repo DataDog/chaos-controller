@@ -1,5 +1,27 @@
 # Changelog
 
+## [4.3.0](https://github.com/DataDog/chaos-controller/tree/4.3.0) (2021-08-18)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.2.1...4.3.0)
+
+**Closed issues:**
+
+- User Issue: :latest tag did not work for datadog/chaos-injector, but :4.2.1 did [\#393](https://github.com/DataDog/chaos-controller/issues/393)
+
+**Merged pull requests:**
+
+- Send more metrics from the validating admission webhook [\#395](https://github.com/DataDog/chaos-controller/pull/395) ([Devatoria](https://github.com/Devatoria))
+- Add images tag to generated install.yaml manifest file [\#394](https://github.com/DataDog/chaos-controller/pull/394) ([Devatoria](https://github.com/Devatoria))
+- \[CHAOS-123\] Fix bug related to delayJitter being in microseconds [\#392](https://github.com/DataDog/chaos-controller/pull/392) ([Azoam](https://github.com/Azoam))
+- Update specified version of opencontainers/runc for security reasons [\#391](https://github.com/DataDog/chaos-controller/pull/391) ([ptnapoleon](https://github.com/ptnapoleon))
+- Ignore targets being already affected by another disruption [\#389](https://github.com/DataDog/chaos-controller/pull/389) ([Devatoria](https://github.com/Devatoria))
+- CHAOS-127: Remove no-op size setting in gitlab-ci.yml [\#386](https://github.com/DataDog/chaos-controller/pull/386) ([ptnapoleon](https://github.com/ptnapoleon))
+- Bump expected chaos pods in test now that we have more disruption kinds [\#385](https://github.com/DataDog/chaos-controller/pull/385) ([ptnapoleon](https://github.com/ptnapoleon))
+- Update container release\_changelog\_11ed7b00584ba915140983bb3e0a762f6b211473 [\#384](https://github.com/DataDog/chaos-controller/pull/384) ([github-actions[bot]](https://github.com/apps/github-actions))
+- Adding context feature to chaosli [\#364](https://github.com/DataDog/chaos-controller/pull/364) ([Azoam](https://github.com/Azoam))
+- DDMark - CRD validation code integration [\#362](https://github.com/DataDog/chaos-controller/pull/362) ([nathan-tournant](https://github.com/nathan-tournant))
+- CHAOS-121: Handle deleting chaos pods before they finish injecting [\#361](https://github.com/DataDog/chaos-controller/pull/361) ([ptnapoleon](https://github.com/ptnapoleon))
+
 ## [4.2.1](https://github.com/DataDog/chaos-controller/tree/4.2.1) (2021-08-03)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.2.0...4.2.1)
