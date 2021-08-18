@@ -215,3 +215,19 @@ func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName
 
 	return disruptionKind
 }
+
+// GetKindNames returns the non-nil disruption kind names for the given disruption
+func (s *DisruptionSpec) GetKindNames() []chaostypes.DisruptionKindName {
+	kinds := []chaostypes.DisruptionKindName{}
+
+	for _, kind := range chaostypes.DisruptionKindNames {
+		subspec := s.DisruptionKindPicker(kind)
+		if reflect.ValueOf(subspec).IsNil() {
+			continue
+		}
+
+		kinds = append(kinds, kind)
+	}
+
+	return kinds
+}

@@ -8,7 +8,6 @@ package v1beta1
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
@@ -53,7 +52,7 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	if err := r.Spec.Validate(); err != nil {
-		if mErr := metricsSink.MetricValidationFailed(r.getTagsFromUserInfo()); mErr != nil {
+		if mErr := metricsSink.MetricValidationFailed(r.getMetricsTags()); mErr != nil {
 			logger.Errorw("error sending a metric", "error", mErr)
 		}
 
@@ -61,7 +60,7 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	// send validation metric
-	if err := metricsSink.MetricValidationCreated(r.getTagsFromUserInfo()); err != nil {
+	if err := metricsSink.MetricValidationCreated(r.getMetricsTags()); err != nil {
 		logger.Errorw("error sending a metric", "error", err)
 	}
 
@@ -90,7 +89,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	}
 
 	// send validation metric
-	if err := metricsSink.MetricValidationUpdated(r.getTagsFromUserInfo()); err != nil {
+	if err := metricsSink.MetricValidationUpdated(r.getMetricsTags()); err != nil {
 		logger.Errorw("error sending a metric", "error", err)
 	}
 
@@ -100,22 +99,34 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateDelete() error {
 	// send validation metric
-	if err := metricsSink.MetricValidationDeleted(r.getTagsFromUserInfo()); err != nil {
+	if err := metricsSink.MetricValidationDeleted(r.getMetricsTags()); err != nil {
 		logger.Errorw("error sending a metric", "error", err)
 	}
 
 	return nil
 }
 
-// getTagsFromUserInfo parses user info to generate metrics tags from the username and groups
-// it replaces any : with a - within groups
-func (r *Disruption) getTagsFromUserInfo() []string {
-	// add username
-	tags := []string{"username:" + r.Status.UserInfo.Username}
+// getMetricsTags parses the disruption to generate metrics tags
+func (r *Disruption) getMetricsTags() []string {
+	tags := []string{
+		"name:" + r.Name,
+		"namespace:" + r.Namespace,
+		"username:" + r.Status.UserInfo.Username,
+	}
 
 	// add groups
 	for _, group := range r.Status.UserInfo.Groups {
-		tags = append(tags, "group:"+strings.ReplaceAll(group, ":", "-"))
+		tags = append(tags, "group:"+group)
+	}
+
+	// add selectors
+	for key, val := range r.Spec.Selector {
+		tags = append(tags, fmt.Sprintf("selector:%s:%s", key, val))
+	}
+
+	// add kinds
+	for _, kind := range r.Spec.GetKindNames() {
+		tags = append(tags, "kind:"+string(kind))
 	}
 
 	return tags

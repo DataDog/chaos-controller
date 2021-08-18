@@ -917,12 +917,7 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 }
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
-	for _, kind := range chaostypes.DisruptionKindNames {
-		subspec := instance.Spec.DisruptionKindPicker(kind)
-		if reflect.ValueOf(subspec).IsNil() {
-			continue
-		}
-
+	for _, kind := range instance.Spec.GetKindNames() {
 		r.handleMetricSinkError((r.MetricsSink.MetricDisruptionsCount(kind, []string{"name:" + instance.Name, "namespace:" + instance.Namespace})))
 	}
 }
