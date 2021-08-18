@@ -28,20 +28,24 @@ type GRPCDisruptionInjectorConfig struct {
 
 // NewGRPCDisruptionInjector creates a GRPCDisruptionInjector object with the given config,
 // missing fields are initialized with the defaults
-func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisruptionInjectorConfig) (Injector, error) {
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	opts = append(opts, grpc.WithBlock())
+func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisruptionInjectorConfig, client pb.DisruptionListenerClient) (Injector, error) {
+	var err error
 
-	serverAddr := config.PodIP + ":" + strconv.Itoa(spec.Port)
-	config.Log.Infow("connecting to " + serverAddr + "...")
+	if client == nil {
+		var opts []grpc.DialOption
+		opts = append(opts, grpc.WithInsecure())
+		opts = append(opts, grpc.WithBlock())
 
-	conn, err := grpc.Dial(serverAddr, opts...)
-	if err != nil {
-		config.Log.Fatalf("fail to dial: %v", err)
+		serverAddr := config.PodIP + ":" + strconv.Itoa(spec.Port)
+		config.Log.Infow("connecting to " + serverAddr + "...")
+
+		conn, err := grpc.Dial(serverAddr, opts...)
+		if err != nil {
+			config.Log.Fatalf("fail to dial: %v", err)
+		}
+
+		client = pb.NewDisruptionListenerClient(conn)
 	}
-
-	client := pb.NewDisruptionListenerClient(conn)
 
 	return GRPCDisruptionInjector{
 		spec:   spec,
