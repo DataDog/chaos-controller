@@ -53,10 +53,10 @@ var _ = Describe("Failure", func() {
 		//config
 		config = CPUPressureInjectorConfig{
 			Config: Config{
-				Cgroup:      cgroupManager,
-				Container:   ctn,
-				Log:         log,
-				MetricsSink: ms,
+				Cgroup:          cgroupManager,
+				TargetContainer: ctn,
+				Log:             log,
+				MetricsSink:     ms,
 			},
 			Stresser:       stresser,
 			StresserExit:   stresserExit,

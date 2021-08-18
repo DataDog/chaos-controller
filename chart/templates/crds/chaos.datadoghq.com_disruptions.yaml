@@ -157,7 +157,7 @@ spec:
                         - UNIMPLEMENTED
                         - INTERNAL
                         - UNAVAILABLE
-                        - DATALOSS
+                        - DATA_LOSS
                         - UNAUTHENTICATED
                         type: string
                       override:

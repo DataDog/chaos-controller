@@ -3,55 +3,108 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
+/*
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package injector_test
 
 import (
+	"testing"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
 	. "github.com/DataDog/chaos-controller/injector"
+
+	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-var _ = Describe("Failure", func() {
-	var (
-		inj                      Injector
-		config                   GRPCDisruptionInjectorConfig
-		spec                     v1beta1.GRPCDisruptionSpec
-		disruptionListenerClient *DisruptionListenerClientMock
-	)
+func TestSendDisruption(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "gRPC Disruption Suite - Send Disruption")
 
-	BeforeEach(func() {
-		disruptionListenerClient = &DisruptionListenerClientMock{}
-		disruptionListenerClient.On("SendDisruption", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil)
-		disruptionListenerClient.On("CleanDisruption", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil)
-
-		// config
-		config = GRPCDisruptionInjectorConfig{
-			Config: Config{
-				Log: log,
+	// define parameters of NewGRPCDisruptionInjector
+	spec := v1beta1.GRPCDisruptionSpec{
+		Port: 2000,
+		Endpoints: []v1beta1.EndpointAlteration{
+			{
+				TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+				ErrorToReturn:    "",
+				OverrideToReturn: "{}",
+				QueryPercent:     50,
 			},
-		}
+			{
+				TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/getCatalog",
+				ErrorToReturn:    "NOT_FOUND",
+				OverrideToReturn: "",
+				QueryPercent:     25,
+			},
+			{
+				TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/getCatalog",
+				ErrorToReturn:    "ALREADY_EXISTS",
+				OverrideToReturn: "",
+				QueryPercent:     50,
+			},
+			{
+				TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/getCatalog",
+				ErrorToReturn:    "",
+				OverrideToReturn: "{}",
+				QueryPercent:     0,
+			},
+		},
+	}
 
-		spec = v1beta1.GRPCDisruptionSpec{
-			Port: 2000,
-			Endpoints: []v1beta1.EndpointAlteration{
+	config := GRPCDisruptionInjectorConfig{
+		Config: Config{
+			Log: log,
+		},
+	}
+
+	disruptionListenerClient := &DisruptionListenerClientMock{}
+
+	// define expectations
+	disruptionListenerClient.On("SendDisruption",
+		mock.Anything,
+		mock.MatchedBy(func(spec *pb.DisruptionSpec) bool {
+			endpts := spec.Endpoints
+			if len(endpts) != 2 {
+				return false
+			}
+
+			altSpecForOrder := []*pb.AlterationSpec{
 				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/getCatalog",
+					ErrorToReturn:    "",
+					OverrideToReturn: "{}",
+					QueryPercent:     int32(50),
+				},
+			}
+
+			altSpecForGetCatalog := []*pb.AlterationSpec{
+				{
 					ErrorToReturn:    "NOT_FOUND",
 					OverrideToReturn: "",
-					QueryPercent:     25,
+					QueryPercent:     int32(25),
 				},
 				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/getCatalog",
 					ErrorToReturn:    "ALREADY_EXISTS",
 					OverrideToReturn: "",
-					QueryPercent:     50,
+					QueryPercent:     int32(50),
 				},
 				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/getCatalog",
 					ErrorToReturn:    "",
 					OverrideToReturn: "{}",
 					QueryPercent:     0,

@@ -20,14 +20,15 @@ var grpcDisruptionCmd = &cobra.Command{
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		rawEndpointAlterations, _ := cmd.Flags().GetStringArray("endpoint-alterations")
-
-		var endpointAlterations []v1beta1.EndpointAlteration
+		port, _ := cmd.Flags().GetInt("port")
 
 		// Each value passed to --endpoint-alterations should be of the form `endpoint;alterationtype;alterationvalue`, e.g.
 		// `/chaos_dogfood.ChaosDogfood/order;error;ALREADY_EXISTS`
 		// `/chaos_dogfood.ChaosDogfood/order;override;{}`
 
 		log.Infow("arguments to grpcDisruptionCmd", "endpoint-alterations", rawEndpointAlterations)
+
+		var endpointAlterations []v1beta1.EndpointAlteration
 
 		for _, line := range rawEndpointAlterations {
 			split := strings.Split(line, ";")
@@ -43,27 +44,25 @@ var grpcDisruptionCmd = &cobra.Command{
 				log.Fatalw("could not parse --endpoint-alterations argument to grpc-disruption", "parsing failed for queryPercent", split[3])
 				continue
 			}
-
-			if split[1] == "error" {
+			switch split[1] {
+			case v1beta1.ERROR:
 				endpointAlteration = v1beta1.EndpointAlteration{
 					TargetEndpoint: split[0],
 					ErrorToReturn:  split[2],
 					QueryPercent:   queryPercent,
 				}
-			} else if split[1] == "override" {
+			case v1beta1.OVERRIDE:
 				endpointAlteration = v1beta1.EndpointAlteration{
 					TargetEndpoint:   split[0],
 					OverrideToReturn: split[2],
 					QueryPercent:     queryPercent,
 				}
-			} else {
+			default:
 				log.Fatalw("GRPC injector does not understand alteration type", "type", split[1])
 			}
 
 			endpointAlterations = append(endpointAlterations, endpointAlteration)
 		}
-
-		port, _ := cmd.Flags().GetInt("port")
 
 		spec := v1beta1.GRPCDisruptionSpec{
 			Port:      port,

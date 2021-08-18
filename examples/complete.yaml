@@ -69,7 +69,7 @@ spec:
         type: CNAME # return a CNAME record
         value: google.com # hostname to return
   grpc: # disrupt gRPC responses by faking results
-    port: 50051
+    port: 50051 # port to disrupt
     endpoints:
       - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
         error: NOT_FOUND # gRPC error code to return instead computed response

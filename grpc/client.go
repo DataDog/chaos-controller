@@ -7,7 +7,6 @@ package grpc
 
 import (
 	"context"
-	"log"
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -18,14 +17,14 @@ import (
 // ExecuteSendDisruption takes in a CRD specification for GRPC disruptions and
 // executes a SendDisruption call on the provided DisruptionListenerClient
 func ExecuteSendDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1.GRPCDisruptionSpec) {
+	endpointSpecs := GenerateEndpointSpecs(spec.Endpoints)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	endpointSpecs := GenerateEndpointSpecs(spec.Endpoints)
-
 	_, err := client.SendDisruption(ctx, &pb.DisruptionSpec{Endpoints: endpointSpecs})
 	if err != nil {
-		log.Printf("Received an error: %v", err)
+		log.Error("Received an error: %v", err)
 	}
 }
 
@@ -36,7 +35,7 @@ func ExecuteCleanDisruption(client pb.DisruptionListenerClient) {
 
 	_, err := client.CleanDisruption(ctx, &emptypb.Empty{})
 	if err != nil {
-		log.Printf("Received an error: %v", err)
+		log.Error("Received an error: %v", err)
 	}
 }
 
@@ -57,7 +56,7 @@ func GenerateEndpointSpecs(endpoints []chaosv1beta1.EndpointAlteration) []*pb.En
 			existingEndptSpec.Alterations = append(existingEndptSpec.Alterations, altSpec)
 		} else {
 			targetToEndpointSpec[targeted] = &pb.EndpointSpec{
-				TargetEndpoint: string(endptAlt.TargetEndpoint),
+				TargetEndpoint: endptAlt.TargetEndpoint,
 				Alterations: []*pb.AlterationSpec{
 					{
 						ErrorToReturn:    endptAlt.ErrorToReturn,

@@ -65,12 +65,12 @@ var _ = Describe("Failure", func() {
 		// config
 		config = DNSDisruptionInjectorConfig{
 			Config: Config{
-				Container:   ctn,
-				Log:         log,
-				MetricsSink: ms,
-				Netns:       netnsManager,
-				Cgroup:      cgroupManager,
-				Level:       chaostypes.DisruptionLevelNode,
+				TargetContainer: ctn,
+				Log:             log,
+				MetricsSink:     ms,
+				Netns:           netnsManager,
+				Cgroup:          cgroupManager,
+				Level:           chaostypes.DisruptionLevelNode,
 			},
 			Iptables:     iptables,
 			PythonRunner: pythonRunner,

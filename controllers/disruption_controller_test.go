@@ -21,22 +21,20 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"golang.org/x/net/context"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // listChaosPods returns all the chaos pods for the given instance and mode
@@ -117,8 +115,11 @@ func expectChaosInjectors(instance *chaosv1beta1.Disruption, count int) error {
 	for _, p := range l.Items {
 		args := p.Spec.Containers[0].Args
 		for i, arg := range args {
-			if arg == "--containers-id" {
-				injectors += len(strings.Split(args[i+1], ","))
+			if arg == "--target-containers-id" {
+				containers := strings.Split(args[i+1], ",")
+				if len(containers) != count {
+					return fmt.Errorf("incorrect number of targeted containers in spec")
+				}
 			}
 		}
 	}
@@ -179,9 +180,9 @@ var _ = Describe("Disruption Controller", func() {
 						},
 					},
 				},
-				GRPC: &v1beta1.GRPCDisruptionSpec{
+				GRPC: &chaosv1beta1.GRPCDisruptionSpec{
 					Port: 2000,
-					Endpoints: []v1beta1.EndpointAlteration{
+					Endpoints: []chaosv1beta1.EndpointAlteration{
 						{
 							TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 							ErrorToReturn:    "",

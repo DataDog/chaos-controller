@@ -16,6 +16,8 @@ import (
 type GRPCDisruptionSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535
+	// +ddmark:validation:Minimum=1
+	// +ddmark:validation:Maximum=65535
 	Port      int                  `json:"port,omitempty"`
 	Endpoints []EndpointAlteration `json:"endpoints,omitempty"`
 }
@@ -23,19 +25,28 @@ type GRPCDisruptionSpec struct {
 // EndpointAlteration represents an endpoint to disrupt and the corresponding error to return
 type EndpointAlteration struct {
 	TargetEndpoint string `json:"endpoint,omitempty"`
-	// +kubebuilder:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATALOSS;UNAUTHENTICATED
+	// +kubebuilder:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
+	// +ddmark:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
 	ErrorToReturn string `json:"error,omitempty"`
 	// +kubebuilder:validation:Enum={}
+	// +ddmark:validation:Enum={}
 	OverrideToReturn string `json:"override,omitempty"`
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
+	// +ddmark:validation:Minimum=0
+	// +ddmark:validation:Maximum=100
 	QueryPercent int `json:"query_pct,omitempty"`
 }
+
+const (
+	ERROR    = "error"
+	OVERRIDE = "override"
+)
 
 // Validate validates that there are no missing hostnames or records for the given grpc disruption spec
 func (s GRPCDisruptionSpec) Validate() error {
 	if s.Port == 0 {
-		return errors.New("some list items in gRPC disruption are missing endpoints; specify an endpoint for each item in the list")
+		return errors.New("the gRPC disruption does not specify the port which the target service exposes, but port must be specified")
 	}
 
 	if len(s.Endpoints) == 0 {
@@ -55,6 +66,7 @@ func (s GRPCDisruptionSpec) Validate() error {
 				if totalQueryPercent+alteration.QueryPercent >= 100 {
 					return errors.New("total queryPercent of all alterations applied to endpoint %s is over 100%; modify them to so their total is 100% or less")
 				}
+
 				queryPctByEndpoint[alteration.TargetEndpoint] += alteration.QueryPercent
 			}
 		}
@@ -66,6 +78,7 @@ func (s GRPCDisruptionSpec) Validate() error {
 			return fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint)
 		}
 	}
+
 	return nil
 }
 
@@ -79,12 +92,14 @@ func (s GRPCDisruptionSpec) GenerateArgs() []string {
 
 	for _, endptAlt := range s.Endpoints {
 		var alterationType, alterationValue string
+
 		if endptAlt.ErrorToReturn != "" {
-			alterationType = "error"
+			alterationType = ERROR
 			alterationValue = endptAlt.ErrorToReturn
 		}
+
 		if endptAlt.OverrideToReturn != "" {
-			alterationType = "override"
+			alterationType = OVERRIDE
 			alterationValue = endptAlt.OverrideToReturn
 		}
 
@@ -101,7 +116,7 @@ func (s GRPCDisruptionSpec) GenerateArgs() []string {
 
 	args = append(args, []string{"--port", strconv.Itoa(s.Port)}...)
 
-	// Each value passed to --host-record-pairs should be of the form
+	// Each value passed to --endpoint-alterations should be of the form
 	// `endpoint;alteration_type;alteration_value;optional_query_percent`
 	// e.g.
 	// `/chaos_dogfood.ChaosDogfood/order;error;ALREADY_EXISTS;30`
