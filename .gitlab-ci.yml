@@ -100,9 +100,6 @@ pre-release-tag:
 .release: &release
   <<: *meta-release
   stage: release
-  when: always
-  only:
-    - tags
   script:
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-staging/${IMAGE} ${TAG}
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-prod/${IMAGE} ${TAG}
@@ -114,20 +111,50 @@ pre-release-tag:
     - set -x
     - ./ci/supplement_docker_headers.sh
 
-release-controller:
+.release-ref: &release-ref
   <<: *release
+  when: manual
+  except:
+    - tags
+
+.release-tag: &release-tag
+  <<: *release
+  when: always
+  only:
+    - tags
+
+release-controller-ref:
+  <<: *release-ref
+  variables:
+    IMAGE: "${CONTROLLER_IMAGE_NAME}"
+    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+
+release-injector-ref:
+  <<: *release-ref
+  variables:
+    IMAGE: "${INJECTOR_IMAGE_NAME}"
+    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+
+release-handler-ref:
+  <<: *release-ref
+  variables:
+    IMAGE: "${HANDLER_IMAGE_NAME}"
+    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+
+release-controller-tag:
+  <<: *release-tag
   variables:
     IMAGE: "${CONTROLLER_IMAGE_NAME}"
     TAG: "${CI_COMMIT_TAG}"
 
-release-injector:
-  <<: *release
+release-injector-tag:
+  <<: *release-tag
   variables:
     IMAGE: "${INJECTOR_IMAGE_NAME}"
     TAG: "${CI_COMMIT_TAG}"
 
-release-handler:
-  <<: *release
+release-handler-tag:
+  <<: *release-tag
   variables:
     IMAGE: "${HANDLER_IMAGE_NAME}"
     TAG: "${CI_COMMIT_TAG}"
