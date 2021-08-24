@@ -12,6 +12,8 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/spf13/cobra"
+
+	grpc_api "github.com/DataDog/chaos-controller/grpc"
 )
 
 func explainMetaSpec(spec v1beta1.DisruptionSpec) {
@@ -140,6 +142,41 @@ func explainDNS(spec v1beta1.DisruptionSpec) {
 	PrintSeparator()
 }
 
+func explainGRPC(spec v1beta1.DisruptionSpec) {
+	grpc := spec.GRPC
+
+	if grpc == nil {
+		return
+	}
+
+	fmt.Printf("💉 injects a gRPC disruption on port %d ...\n", grpc.Port)
+	fmt.Println("\t🥸  to spoof the following endpoints...")
+
+	endptSpec := grpc_api.GenerateEndpointSpecs(grpc.Endpoints) //[]*pb.EndpointSpec
+
+	for _, endpt := range endptSpec {
+		fmt.Printf("\t\t👩‍⚕️ endpoint: %s ...\n", endpt.TargetEndpoint) //nolint:stylecheck
+
+		alterationToPercentAffected, _ := grpc_api.GetAlterationToPercentAffected(
+			endpt.Alterations,
+			grpc_api.TargetEndpoint(endpt.TargetEndpoint),
+		)
+
+		var spoof string
+		for altConfig, pct := range alterationToPercentAffected {
+			if altConfig.ErrorToReturn != "" {
+				spoof = fmt.Sprintf("error: %s", altConfig.ErrorToReturn)
+			} else {
+				spoof = fmt.Sprintf("override: %s", altConfig.OverrideToReturn)
+			}
+
+			fmt.Printf("\t\t\t💣 will be %d percent spoofed with %s\n", pct, spoof)
+		}
+	}
+
+	PrintSeparator()
+}
+
 func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	network := spec.Network
 
@@ -259,6 +296,7 @@ func explanation(path string) {
 	explainCPUPressure(disruption.Spec)
 	explainDiskPressure(disruption.Spec)
 	explainDNS(disruption.Spec)
+	explainGRPC(disruption.Spec)
 }
 
 func init() {

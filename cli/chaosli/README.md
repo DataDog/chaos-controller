@@ -64,6 +64,9 @@ Description: User friendly input process that helps you create your disruptions 
 
 #### Context
 ---
-Usage: `go run chaosli/main.go context --path <path to disruption file>`
+Usage: `chaosli context --path <path to disruption file>`
 
 Description: Gives you context of the targets you intend to disrupt. Shares information regarding status of pods, containers, and nodes. Shares information regarding the state of pods, containers, and nodes as well. 
+
+#### Testing Locally
+Run `go run chaosli/main.go context --path <path to disruption file>`
