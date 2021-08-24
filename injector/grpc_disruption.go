@@ -72,6 +72,7 @@ func (i GRPCDisruptionInjector) Clean() error {
 	i.config.Log.Infow("removing grpc disruption", "spec", i.spec)
 
 	chaos_grpc.ExecuteCleanDisruption(i.client)
+
 	return closeConnection(i.conn, i.config)
 }
 
