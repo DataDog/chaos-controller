@@ -16,7 +16,7 @@ If you are still not sure which one you should use, consider the following examp
 Now let us explore two use cases:
 
 <p align="center"><kbd>
-    <img src="../docs/img/network_flow/cases.png" height=150 width=600 align="center" />
+    <img src="../../docs/img/network_flow/cases.png" height=150 width=600 align="center" />
 </kbd></p>
 
 ### Case 1: I want to disrupt `client1` without impacting `client2`
@@ -30,7 +30,7 @@ In this case, you want to target the `server` pod and use the `ingress` flow so 
 ## Q: Why are there limitations on `ingress`?
 
 <p align="center"><kbd>
-    <img src="../docs/img/network_flow/ingress.png" height=80 width=300 />
+    <img src="../../docs/img/network_flow/ingress.png" height=80 width=300 />
 </kbd></p>
 
 The current implementation of the `ingress` flow is not a real filter on incoming packets but rather a filter on responses to these packets (ie. outgoing packets). During a TCP communication, when the client sends a packet to the server, the server answers with an acknowledgement packet to confirm that it received the client's packet. By disrupting this acknowledgement packet, it simulates an ingress disruption. As such, the `ingress` flow implementation will not work for UDP unless the server depends on the response packets.
