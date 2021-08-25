@@ -278,6 +278,14 @@ func main() {
 		},
 	})
 
+	// register spec default mutating webhook
+	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-spec-defaults", &webhook.Admission{
+		Handler: &chaoswebhook.DefaultMutator{
+			Client: mgr.GetClient(),
+			Log:    logger,
+		},
+	})
+
 	// +kubebuilder:scaffold:builder
 
 	logger.Infow("restarting chaos-controller")

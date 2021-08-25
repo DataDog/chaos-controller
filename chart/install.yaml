@@ -772,6 +772,32 @@ webhooks:
 ---
 # Source: chaos-controller/templates/webhook.yaml
 apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+  name: chaos-controller-disruption-spec-defaults
+webhooks:
+  - clientConfig:
+      caBundle: Cg==
+      service:
+        name: chaos-controller-webhook-service
+        namespace: chaos-engineering
+        path: /mutate-chaos-datadoghq-com-v1beta1-disruption-spec-defaults
+    failurePolicy: Fail
+    name: chaos-controller-admission-webhook.chaos-engineering.svc
+    rules:
+      - apiGroups:
+          - "chaos.datadoghq.com"
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+        resources:
+          - disruptions
+---
+# Source: chaos-controller/templates/webhook.yaml
+apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
   annotations:

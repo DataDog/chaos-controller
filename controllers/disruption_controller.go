@@ -726,12 +726,15 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
 	terminationGracePeriod := int64(60)
 
+	activeDeadlineSeconds := calculateDeadlineSeconds(instance.Spec.DurationSeconds, instance.ObjectMeta.CreationTimestamp.Time)
+
 	podSpec := corev1.PodSpec{
 		HostPID:                       true,                      // enable host pid
 		RestartPolicy:                 corev1.RestartPolicyNever, // do not restart the pod on fail or completion
 		NodeName:                      targetNodeName,            // specify node name to schedule the pod
 		ServiceAccountName:            r.InjectorServiceAccount,  // service account to use
 		TerminationGracePeriodSeconds: &terminationGracePeriod,
+		ActiveDeadlineSeconds:         &activeDeadlineSeconds,
 		Containers: []corev1.Container{
 			{
 				Name:            "injector",              // container name

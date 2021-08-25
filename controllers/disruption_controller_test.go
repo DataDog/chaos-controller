@@ -139,10 +139,11 @@ var _ = Describe("Disruption Controller", func() {
 				Namespace: "default",
 			},
 			Spec: chaosv1beta1.DisruptionSpec{
-				DryRun:     true,
-				Count:      &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-				Selector:   map[string]string{"foo": "bar"},
-				Containers: []string{"ctn1"},
+				DryRun:          true,
+				Count:           &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+				Selector:        map[string]string{"foo": "bar"},
+				Containers:      []string{"ctn1"},
+				DurationSeconds: 3600,
 				NodeFailure: &chaosv1beta1.NodeFailureSpec{
 					Shutdown: false,
 				},

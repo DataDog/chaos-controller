@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -93,6 +94,20 @@ func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int,
 	}
 
 	return value, nil
+}
+
+func calculateDeadlineSeconds(durationSeconds int64, creationTime time.Time) int64 {
+	// first we must calculate the timout from when the disruption was created, not from now
+	timeout := creationTime.Add(time.Second * time.Duration(durationSeconds))
+	now := time.Now() // rather not take the risk that the time changes by a second during this function
+
+	// if we missed it, return a 0 second deadline
+	if timeout.Before(now) {
+		return 0
+	}
+
+	// otherwise return the number of seconds between now and the deadline
+	return int64(timeout.Sub(now).Seconds())
 }
 
 // assert label selector matches valid grammar, avoids CORE-414
