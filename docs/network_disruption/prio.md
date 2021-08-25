@@ -93,7 +93,7 @@ We first filter for all packets related to health checks by the cloud provider o
     <img src="../docs/img/network_prio/node/filter_1-4.png" height=330 width=650 />
 </kbd></p>
 
-Finally, we apply a filter to enqueue all packets to class `1:4` where the `destination IP` is encompassed by the `hosts` field (see [this documentation](/docs/network_disruption_hosts.md) for more details). In this case, a filter is applied for `10.0.1.26/32` and another for `10.0.1.25/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0`. If a CIDR block or hostname is specified, corresponding filters are constructed for all IPs in that range.
+Finally, we apply a filter to enqueue all packets to class `1:4` where the `destination IP` is encompassed by the `hosts` field (see [this documentation](/docs/network_disruption/hosts.md) for more details). In this case, a filter is applied for `10.0.1.26/32` and another for `10.0.1.25/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0`. If a CIDR block or hostname is specified, corresponding filters are constructed for all IPs in that range.
 
 ### Network Disruption implementation for pod level
 
@@ -150,7 +150,7 @@ We first filter for all packets related to `gateway IP` and `node IP` and send t
     <img src="../docs/img/network_prio/pod/filter_1-4.png" height=330 width=650 />
 </kbd></p>
 
-Finally, we apply a filter to enqueue all packets to class `1:4` whenever the `destination IP` is encompassed by the `hosts` field (see [this documentation](/docs/network_disruption_hosts.md) for more details). In this case, a filter is applied for `10.0.1.254/32` and another for `10.0.1.255/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0` and no traffic is ends up in class `2:1`.
+Finally, we apply a filter to enqueue all packets to class `1:4` whenever the `destination IP` is encompassed by the `hosts` field (see [this documentation](/docs/network_disruption/hosts.md) for more details). In this case, a filter is applied for `10.0.1.254/32` and another for `10.0.1.255/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0` and no traffic is ends up in class `2:1`.
 
 ## More documentation about `tc`
 

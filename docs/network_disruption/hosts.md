@@ -66,7 +66,7 @@ For diagrams in this documentation, arrows represent traffic flow from a particu
     <img src="../docs/img/network_hosts/notation_targets.png" height=100 width=570 />
 </kbd></p>
 
-Note also that the `flow` (`ingress` vs `egress`) for a disruption should be selected deliberately. Check out [this documentation](/docs/network_disruption_flow.md) for more details!
+Note also that the `flow` (`ingress` vs `egress`) for a disruption should be selected deliberately. Check out [this documentation](/docs/network_disruption/flow.md) for more details!
 
 <p align="center"><kbd>
     <img src="../docs/img/network_hosts/notation_ingress.png" height=160 width=570 />
@@ -102,7 +102,7 @@ A pod typically has a single interface with which it interacts with the outside 
 
 If no `hosts` field is specified, all packets aside from those explicitly whitelisted in the **Assumptions** will be disrupted, in this case dropping 50% of traffic leaving (`egress`) or entering (`ingress`) the interface.
 
-Note: `ingress` traffic disruption is only guaranteed for `TCP`, not `UDP`. See [this documentation](/docs/network_disruption_flow.md) for more details. For the remainder of this documentation, we will only discuss the default flow configuration (`egress`).
+Note: `ingress` traffic disruption is only guaranteed for `TCP`, not `UDP`. See [this documentation](/docs/network_disruption/flow.md) for more details. For the remainder of this documentation, we will only discuss the default flow configuration (`egress`).
 
 ### Case 2: IP address specified
 
@@ -141,7 +141,7 @@ Cluster IPs can also be specified to target the relevant pods.
     <img src="../docs/img/network_hosts/pods_cluster_ip.png" height=330 width=600/>
 </kbd></p>
 
-All of these use cases may have `port` configurations, `protocol` configurations, or both which can be applied on top of the example disruptions. Packets going through the same interface which do not meet those criteria will be delivered as if they were not targeted (some nuance on this in the [tc documentation](/docs/network_disruption_prio.md)).
+All of these use cases may have `port` configurations, `protocol` configurations, or both which can be applied on top of the example disruptions. Packets going through the same interface which do not meet those criteria will be delivered as if they were not targeted (some nuance on this in the [tc documentation](/docs/network_disruption/prio.md)).
 
 <p align="center"><kbd>
     <img src="../docs/img/network_hosts/pods_protocol_port_egress.png" height=330 width=600/>
