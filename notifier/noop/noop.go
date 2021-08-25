@@ -21,7 +21,7 @@ func New() *Notifier {
 }
 
 // Close returns nil
-func (n *Notifier) Close() error {
+func (n *Notifier) Clean() error {
 	return nil
 }
 
@@ -37,19 +37,19 @@ func (n *Notifier) NotifyInjected(dis v1beta1.Disruption) error {
 	return nil
 }
 
-// NotifyInvalidated signals a disruption was rejected by the admission controller validation
-func (n *Notifier) NotifyInvalidated(dis v1beta1.Disruption) error {
-	notify("NotifyInvalidated", dis.Name)
+// // NotifyInvalidated signals a disruption was rejected by the admission controller validation
+// func (n *Notifier) NotifyInvalidated(dis v1beta1.Disruption) error {
+// 	notify("NotifyInvalidated", dis.Name)
 
-	return nil
-}
+// 	return nil
+// }
 
-// NotifyNoTarget signals a disruption's selector found no target
-func (n *Notifier) NotifyNoTarget(dis v1beta1.Disruption) error {
-	notify("NotifyNoTarget", dis.Name)
+// // NotifyNoTarget signals a disruption's selector found no target
+// func (n *Notifier) NotifyNoTarget(dis v1beta1.Disruption) error {
+// 	notify("NotifyNoTarget", dis.Name)
 
-	return nil
-}
+// 	return nil
+// }
 
 // NotifyCleaned signals a disruption's been cleaned up suffessfully
 func (n *Notifier) NotifyCleaned(dis v1beta1.Disruption) error {
@@ -58,12 +58,12 @@ func (n *Notifier) NotifyCleaned(dis v1beta1.Disruption) error {
 	return nil
 }
 
-// NotifyNotCleaned signals a disruption's cleanup has failed
-func (n *Notifier) NotifyNotCleaned(dis v1beta1.Disruption) error {
-	notify("NotifyNotCleaned", dis.Name)
+// // NotifyNotCleaned signals a disruption's cleanup has failed
+// func (n *Notifier) NotifyNotCleaned(dis v1beta1.Disruption) error {
+// 	notify("NotifyNotCleaned", dis.Name)
 
-	return nil
-}
+// 	return nil
+// }
 
 // helper for noop notifier
 func notify(notificationName string, disName string) {
