@@ -163,6 +163,7 @@ func explainGRPC(spec v1beta1.DisruptionSpec) {
 		)
 
 		var spoof string
+
 		for altConfig, pct := range alterationToPercentAffected {
 			if altConfig.ErrorToReturn != "" {
 				spoof = fmt.Sprintf("error: %s", altConfig.ErrorToReturn)
