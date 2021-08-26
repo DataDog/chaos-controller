@@ -27,7 +27,7 @@ func AppendArgs(args []string, level chaostypes.DisruptionLevel, kind chaostypes
 		// basic args
 		"--metrics-sink", sink,
 		"--level", string(level),
-		"--target-containers-id", strings.Join(targetContainerIDs, ","),
+		"--target-container-ids", strings.Join(targetContainerIDs, ","),
 		"--target-pod-ip", targetPodIP,
 
 		// log context args
