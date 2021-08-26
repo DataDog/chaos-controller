@@ -75,7 +75,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Enable dry-run mode")
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
-	rootCmd.PersistentFlags().StringSliceVar(&targetContainerIDs, "target-containers-id", []string{}, "Targeted containers ID")
+	rootCmd.PersistentFlags().StringSliceVar(&targetContainerIDs, "target-container-ids", []string{}, "Targeted containers ID")
 	rootCmd.PersistentFlags().StringVar(&targetPodIP, "target-pod-ip", "", "Pod IP of targeted pod")
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
 	rootCmd.PersistentFlags().StringVar(&dnsServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
@@ -157,7 +157,7 @@ func initConfig() {
 	case chaostypes.DisruptionLevelPod:
 		// check for container ID flag
 		if len(targetContainerIDs) == 0 {
-			log.Error("--target-containers-id flag must be passed when --level=pod")
+			log.Error("--target-container-ids flag must be passed when --level=pod")
 
 			return
 		}

@@ -115,7 +115,7 @@ func expectChaosInjectors(instance *chaosv1beta1.Disruption, count int) error {
 	for _, p := range l.Items {
 		args := p.Spec.Containers[0].Args
 		for i, arg := range args {
-			if arg == "--target-containers-id" {
+			if arg == "--target-container-ids" {
 				containers := strings.Split(args[i+1], ",")
 				if len(containers) != count {
 					return fmt.Errorf("incorrect number of targeted containers in spec")

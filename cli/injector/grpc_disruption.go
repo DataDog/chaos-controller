@@ -87,4 +87,6 @@ func init() {
 	// We must use a StringArray rather than StringSlice here, because our ip values can contain commas. StringSlice will split on commas.
 	grpcDisruptionCmd.Flags().StringArray("endpoint-alterations", []string{}, "list of endpoint,alteration_type,alteration_value,optional_query_percent tuples as strings") // `/chaos_dogfood.ChaosDogfood/order;override;{}`
 	grpcDisruptionCmd.Flags().Int("port", 0, "port to disrupt on target pod")
+
+	_ = cobra.MarkFlagRequired(grpcDisruptionCmd.PersistentFlags(), "port")
 }

@@ -188,8 +188,6 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 
 			log.Error("Endpoint %s should define either an ErrorToReturn or OverrideToReturn but does not", endptConfig.TargetEndpoint)
 		}
-
-		return handler(ctx, req)
 	}
 
 	return handler(ctx, req)
@@ -235,7 +233,7 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 
 	if len(unquantifiedAlts) > 0 {
 		if pctClaimed == 100 {
-			log.Debug("Alterations with specified percentQuery sum to cover all of the queries; "+
+			log.Info("Alterations with specified percentQuery sum to cover all of the queries; "+
 				"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
 				len(unquantifiedAlts), targeted,
 			)
@@ -244,7 +242,7 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 		// add all endpoints where queryPercent is not specified by splitting the remaining queries equally by alteration
 		pctPerAlt := (100 - pctClaimed) / len(unquantifiedAlts)
 		if pctPerAlt < 1 {
-			log.Debug("Alterations with specified percentQuery sum to cover almost all queries; "+
+			log.Info("Alterations with specified percentQuery sum to cover almost all queries; "+
 				"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
 				len(unquantifiedAlts)-1, targeted,
 			)
