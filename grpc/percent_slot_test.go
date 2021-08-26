@@ -20,7 +20,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 	BeforeEach(func() {
 		altCfgs = []AlterationConfiguration{
 			{
-				ErrorToReturn:    "CANCELED",
+				ErrorToReturn:    "CANCELLED",
 				OverrideToReturn: "",
 			},
 			{
@@ -54,12 +54,12 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 		It("should create 15 Slot Percents which are configured to the single alteration", func() {
 			altCfg_0, ok_0 := percentSlotToAlteration[PercentSlot(0)]
 			Expect(ok_0).To(BeTrue())
-			Expect(altCfg_0.ErrorToReturn).To(Equal("CANCELED"))
+			Expect(altCfg_0.ErrorToReturn).To(Equal("CANCELLED"))
 			Expect(altCfg_0.OverrideToReturn).To(Equal(""))
 
 			altCfg_14, ok_14 := percentSlotToAlteration[PercentSlot(14)]
 			Expect(ok_14).To(BeTrue())
-			Expect(altCfg_14.ErrorToReturn).To(Equal("CANCELED"))
+			Expect(altCfg_14.ErrorToReturn).To(Equal("CANCELLED"))
 			Expect(altCfg_14.OverrideToReturn).To(Equal(""))
 		})
 	})
@@ -85,12 +85,12 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 		It("should create 15 Slot Percents which are configured to the first alteration", func() {
 			altCfg_0, ok_0 := percentSlotToAlteration[PercentSlot(0)]
 			Expect(ok_0).To(BeTrue())
-			Expect(altCfg_0.ErrorToReturn).To(Equal("CANCELED"))
+			Expect(altCfg_0.ErrorToReturn).To(Equal("CANCELLED"))
 			Expect(altCfg_0.OverrideToReturn).To(Equal(""))
 
 			altCfg_14, ok_14 := percentSlotToAlteration[PercentSlot(0)]
 			Expect(ok_14).To(BeTrue())
-			Expect(altCfg_14.ErrorToReturn).To(Equal("CANCELED"))
+			Expect(altCfg_14.ErrorToReturn).To(Equal("CANCELLED"))
 			Expect(altCfg_14.OverrideToReturn).To(Equal(""))
 		})
 
@@ -139,7 +139,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 		It("should create Slot Percents which are configured to the right alterations", func() {
 			altCfg_35, ok_35 := percentSlotToAlteration[PercentSlot(35)]
 			Expect(ok_35).To(BeTrue())
-			Expect(altCfg_35.ErrorToReturn).To(Equal("CANCELED"))
+			Expect(altCfg_35.ErrorToReturn).To(Equal("CANCELLED"))
 			Expect(altCfg_35.OverrideToReturn).To(Equal(""))
 
 			altCfg_60, ok_60 := percentSlotToAlteration[PercentSlot(60)]

@@ -145,7 +145,7 @@ PercentSlotToAlteration {
 
 ### Setting 0 as queryPercent
 
-Users should not set `queryPercent: 0`. Because the Kubebuilder infers 0 for omitted of time `int`, this configuration is synonymous for the chaos-controller to not setting a `querypercent` at all. This means that the alteration with this `queryPercent` setting would actually be applied to the remaining queries that have not yet be claimed by another alteration. There isn't a straight forward way to chaos-controller to catch this for users.
+Users are prevented from setting `queryPercent: 0`. Because the Kubebuilder infers 0 for omitted `int`s, this configuration is synonymous for the chaos-controller to not setting a `querypercent` at all. This means that the alteration with this `queryPercent` setting would actually be applied to the remaining queries that have not yet be claimed by another alteration. There isn't a straight forward way to chaos-controller to catch this for users so we validate inputs to be between 1 and 100.
 
 ### Many errors, but very few slots remaining
 

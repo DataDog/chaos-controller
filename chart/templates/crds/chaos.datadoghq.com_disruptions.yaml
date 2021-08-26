@@ -143,7 +143,7 @@ spec:
                       error:
                         enum:
                         - OK
-                        - CANCELED
+                        - CANCELLED
                         - UNKNOWN
                         - INVALID_ARGUMENT
                         - DEADLINE_EXCEEDED

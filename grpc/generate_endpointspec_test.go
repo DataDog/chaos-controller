@@ -20,30 +20,30 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 		endpointSpec        []*pb.EndpointSpec
 	)
 
-	Context("with three alterations which add up to less than 100", func() {
+	Context("with five alterations which add up to less than 100", func() {
 		BeforeEach(func() {
 			endpointAlterations = []chaosv1beta1.EndpointAlteration{
 				{
 					TargetEndpoint:   "service/api_1",
-					ErrorToReturn:    "Canceled",
+					ErrorToReturn:    "CANCELLED",
 					OverrideToReturn: "",
 					QueryPercent:     25,
 				},
 				{
 					TargetEndpoint:   "service/api_2",
-					ErrorToReturn:    "PermissionDenied",
+					ErrorToReturn:    "PERMISSION_DENIED",
 					OverrideToReturn: "",
 					QueryPercent:     50,
 				},
 				{
 					TargetEndpoint:   "service/api_1",
-					ErrorToReturn:    "AlreadyExists",
+					ErrorToReturn:    "ALREADY_EXISTS",
 					OverrideToReturn: "",
 					QueryPercent:     20,
 				},
 				{
 					TargetEndpoint:   "service/api_2",
-					ErrorToReturn:    "NotFound",
+					ErrorToReturn:    "NOT_FOUND",
 					OverrideToReturn: "",
 					QueryPercent:     0,
 				},
@@ -68,11 +68,11 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 			Expect(len(endpointSpec[0].TargetEndpoint)).To(Equal("service/api_1"))
 			Expect(len(endpointSpec[0].Alterations)).To(Equal(3))
 
-			Expect(endpointSpec[0].Alterations[0].ErrorToReturn).To(Equal("Canceled"))
+			Expect(endpointSpec[0].Alterations[0].ErrorToReturn).To(Equal("CANCELLED"))
 			Expect(endpointSpec[0].Alterations[0].OverrideToReturn).To(Equal(""))
 			Expect(endpointSpec[0].Alterations[0].QueryPercent).To(Equal(25))
 
-			Expect(endpointSpec[0].Alterations[1].ErrorToReturn).To(Equal("AlreadyExists"))
+			Expect(endpointSpec[0].Alterations[1].ErrorToReturn).To(Equal("ALREADY_EXISTS"))
 			Expect(endpointSpec[0].Alterations[1].OverrideToReturn).To(Equal(""))
 			Expect(endpointSpec[0].Alterations[1].QueryPercent).To(Equal(20))
 
@@ -85,11 +85,11 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 			Expect(len(endpointSpec[0].TargetEndpoint)).To(Equal("service/api_2"))
 			Expect(len(endpointSpec[1].Alterations)).To(Equal(2))
 
-			Expect(endpointSpec[1].Alterations[0].ErrorToReturn).To(Equal("PermissionDenied"))
+			Expect(endpointSpec[1].Alterations[0].ErrorToReturn).To(Equal("PERMISSION_DENIED"))
 			Expect(endpointSpec[1].Alterations[0].OverrideToReturn).To(Equal(""))
 			Expect(endpointSpec[1].Alterations[0].QueryPercent).To(Equal(50))
 
-			Expect(endpointSpec[1].Alterations[1].ErrorToReturn).To(Equal("NotFound"))
+			Expect(endpointSpec[1].Alterations[1].ErrorToReturn).To(Equal("NOT_FOUND"))
 			Expect(endpointSpec[1].Alterations[1].OverrideToReturn).To(Equal(""))
 			Expect(endpointSpec[1].Alterations[1].QueryPercent).To(Equal(0))
 		})

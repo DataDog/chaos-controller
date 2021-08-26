@@ -22,7 +22,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 		BeforeEach(func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
-					ErrorToReturn:    "CANCELED",
+					ErrorToReturn:    "CANCELLED",
 					OverrideToReturn: "",
 					QueryPercent:     int32(20),
 				},
@@ -51,7 +51,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			var altCfg AlterationConfiguration
 
 			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "CANCELED",
+				ErrorToReturn:    "CANCELLED",
 				OverrideToReturn: "",
 			}
 			pct_cancelled, ok_cancelled := mapping[altCfg]
@@ -82,7 +82,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 		BeforeEach(func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
-					ErrorToReturn:    "CANCELED",
+					ErrorToReturn:    "CANCELLED",
 					OverrideToReturn: "{}",
 				},
 			}
@@ -118,7 +118,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 		BeforeEach(func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
-					ErrorToReturn:    "CANCELED",
+					ErrorToReturn:    "CANCELLED",
 					OverrideToReturn: "",
 					QueryPercent:     int32(50),
 				},
@@ -147,7 +147,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			var altCfg AlterationConfiguration
 
 			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "CANCELED",
+				ErrorToReturn:    "CANCELLED",
 				OverrideToReturn: "",
 			}
 			pct_cancelled, ok_cancelled := mapping[altCfg]
@@ -179,7 +179,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 		BeforeEach(func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
-					ErrorToReturn:    "CANCELED",
+					ErrorToReturn:    "CANCELLED",
 					OverrideToReturn: "",
 					QueryPercent:     int32(40),
 				},
@@ -197,7 +197,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			var altCfg AlterationConfiguration
 
 			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "CANCELED",
+				ErrorToReturn:    "CANCELLED",
 				OverrideToReturn: "",
 			}
 			pct_cancelled, ok_cancelled := mapping[altCfg]
@@ -210,7 +210,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 		BeforeEach(func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
-					ErrorToReturn:    "CANCELED",
+					ErrorToReturn:    "CANCELLED",
 					OverrideToReturn: "",
 					QueryPercent:     0,
 				},
@@ -228,7 +228,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			var altCfg AlterationConfiguration
 
 			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "CANCELED",
+				ErrorToReturn:    "CANCELLED",
 				OverrideToReturn: "",
 			}
 			pct_cancelled, ok_cancelled := mapping[altCfg]
@@ -241,7 +241,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 		BeforeEach(func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
-					ErrorToReturn:    "CANCELED",
+					ErrorToReturn:    "CANCELLED",
 					OverrideToReturn: "",
 					QueryPercent:     0,
 				},
@@ -269,7 +269,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			var altCfg AlterationConfiguration
 
 			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "CANCELED",
+				ErrorToReturn:    "CANCELLED",
 				OverrideToReturn: "",
 			}
 			pct_cancelled, ok_cancelled := mapping[altCfg]
@@ -297,7 +297,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 		BeforeEach(func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
-					ErrorToReturn:    "CANCELED",
+					ErrorToReturn:    "CANCELLED",
 					OverrideToReturn: "",
 					QueryPercent:     int32(50),
 				},
@@ -349,7 +349,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			)
 
 			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "CANCELED",
+				ErrorToReturn:    "CANCELLED",
 				OverrideToReturn: "",
 			}
 			pct, ok = mapping[altCfg]
@@ -410,7 +410,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 		BeforeEach(func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
-					ErrorToReturn:    "CANCELED",
+					ErrorToReturn:    "CANCELLED",
 					OverrideToReturn: "",
 					QueryPercent:     int32(50),
 				},
@@ -488,7 +488,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			)
 
 			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "CANCELED",
+				ErrorToReturn:    "CANCELLED",
 				OverrideToReturn: "",
 			}
 			pct, ok = mapping[altCfg]

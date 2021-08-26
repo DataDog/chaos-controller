@@ -1,10 +1,10 @@
 # GRPC disruption
 
-The `grpc` field offers a way to inject spoofed gRPC responses on the server-side. To get this disruption to work, you must apply some code changes to the instantiation of your gRPC server.
+The `grpc` field offers a way to inject spoofed gRPC responses ont he server-side. To get this disruption to work, you must apply some code changes to the instantiation of your gRPC server.
 
 * `port` is the port exposed on target pods (the target pods are specified in `spec.selector`)
 * `endpoints` is a list of endpoints to alter (a spoof configuration is referred to as an `alteration`)
-  * `<endpoints[i]>.endpoint` indicates the fully qualified api endpoint to override (ex: `/chaos_dogfood.ChaosDogfood/getCatalog`)
+  * `<endpoints[i]>.endpoint` indicates the fully qualified api endpoint to override (ex: `/<package>.<service>/<method>`)
   * Exactly one of `<endpoints[i]>.error` or `<endpoints[i]>.override` should be defined per endpoint alteration, and the only override currently supported is `{}` which returnes `emptypb.Empty`
   * `<endpoints[i]>.query_pct` defines (out of 100) how frequently this alteration should occur; you may have multiple alterations per endpoint, but you cannot specify a sum total of more than 100 percent for any given endpoint
 
@@ -16,7 +16,7 @@ Note: At this time, Chaos Controller does not support:
 
 ## Current User Features
 
-You can disrupt any number of endpoints on a server through this disruption. You can also apply up to 100 disruptions (not recommended as this isn't a realistic usecase), and you can specify what percentage of the requests should be affected by each alteration. You cannot configure the disruption to have percentage requirements which total over 100%, and if you do not include percentages, the Chaos Controller does its best to split the unclaimed portion of requests equally across your different desired alterations.
+You can disrupt any number of endpoints on a server through this disruption. You can also apply up to 100 disruptions per endpoint (not recommended as this isn't a realistic usecase) and specify what percentage of the requests should be affected by each alteration. You cannot configure the disruption to have percentage requirements which total over 100%, and if you do not include percentages, the Chaos Controller does its best to split the unclaimed portion of requests equally across your different desired alterations.
 
 ## Motivation
 
@@ -62,7 +62,7 @@ For a single endpoint, there are many things that can go wrong. The below table 
     </kbd>
 </p>
 
-Note that if the code either returns the expected response when it should not, or the client has no way of knowing it is incorrect, all of those queries will show up as healthy on an alerting dashboard. Clients must also be able to handle expected and unexpected errors well. Finally, if a team decides to deploy a backwards incompatible change and the client never actioned this update, the server may intentionally return an error to signal that the migration has taken place even if the client had the correct response structure.
+**Note:** if the code either returns the expected response when it should not, or the client has no way of knowing it is incorrect, all of those queries will show up as healthy on an alerting dashboard. Clients must also be able to handle expected and unexpected errors well. Finally, if a team decides to deploy a backwards incompatible change and the client never actioned this update, the server may intentionally return an error to signal that the migration has taken place even if the client had the correct response structure.
 
 ## Disruption Design OVerview
 
@@ -86,8 +86,9 @@ You can configure an interceptor function when you bring up the server to handle
     </kbd>
 </p>
 
-In our case, we do not make a service call if the request is one which the disruption_listener is configured to spoof, and instead return a canned response. To eliminate performance concerns, we recommend you put this interceptor behind a feature flag to (see FAQs for more information).
+In our case, we do not make a service call if the request is one which the disruption_listener is configured to spoof, and instead return a canned response. The disruption begins when you apply a manifest to Kuberenetes with a gRPC disruption for this particular service. The disruption_listener is always checking for requests to disrupt the server to which it is registered. By creating an injector pod that acts as a client on the disruption_listener, Chaos Controller sends its expectations to the server and the server configures the interceptor to spoof requests. The disruption stops when you delete this manifest through the same communication channel (a kill signal to the injector executes its clean command which resets the interceptor to let all queries pass through).
 
+**Note:** To eliminate performance concerns, we recommend you put this interceptor behind a feature flag to (see FAQs for more information).
 
 # FAQs
 

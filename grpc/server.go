@@ -22,7 +22,7 @@ import (
 /*
  * When a random integer from 0 to 100 is randomly selected, the PercentSlotToAlteration mapping is referenced to
  * identify the disruption to apply to a query. The mapping represents user preference the proportion of queries
- * affected by each alteration. See ALGORITHM.md for examples.
+ * affected by each alteration. See docs/grpc_disruption/interceptor_algorithm.md for examples.
  */
 
 // DisruptionListener is a gRPC Service that can disrupt endpoints of a gRPC server.
