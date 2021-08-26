@@ -1,6 +1,6 @@
 # GRPC disruption
 
-The `grpc` field offers a way to inject spoofed gRPC responses ont he server-side. To get this disruption to work, you must apply some code changes to the instantiation of your gRPC server.
+The `grpc` field offers a way to inject spoofed gRPC responses on the server-side. To get this disruption to work, you must apply some code changes to the instantiation of your gRPC server.
 
 * `port` is the port exposed on target pods (the target pods are specified in `spec.selector`)
 * `endpoints` is a list of endpoints to alter (a spoof configuration is referred to as an `alteration`)
