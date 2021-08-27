@@ -294,12 +294,23 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 			}
 
 			targetNodeName = pod.Spec.NodeName
-
 			// get IDs of targeted containers or all containers
 			containerIDs, err = getContainerIDs(&pod, instance.Spec.Containers)
 			if err != nil {
 				return fmt.Errorf("error getting target pod container ID: %w", err)
 			}
+
+			// filter containers
+			removed := []string{}
+			reasoning := []string{}
+
+			containerIDs, removed, reasoning = filterContainerIDs(&pod, containerIDs, instance.Spec)
+			if len(removed) != 0 {
+				for i, item := range removed {
+					r.Recorder.Event(instance, "Warning", "Incompatible Container", fmt.Sprintf("We could not apply the disruption on container %s; %s", item, reasoning[i]))
+				}
+			}
+
 		case chaostypes.DisruptionLevelNode:
 			targetNodeName = target
 		}

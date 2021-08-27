@@ -36,6 +36,68 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+// filterContainerIDs filters out any containers that may not be intended for disruption in a multi-container disruption
+func filterContainerIDs(pod *corev1.Pod, containers []string, spec v1beta1.DisruptionSpec) ([]string, []string, []string) {
+	removed := []string{}
+	reasoning := []string{}
+
+	if spec.DiskPressure != nil {
+		// validate that each container has the volume to be disrupted
+		removed, reasoning = getNoValidVolumeCtns(pod, containers, spec)
+		containers = removeCtnsFromConsideration(pod, removed, containers)
+	}
+
+	return containers, removed, reasoning
+}
+
+// removeCtnsFromConsideration removes containers from the removal list that do not comply with multi-container
+// disruption rules. Returns the updated list of containers
+func removeCtnsFromConsideration (pod *corev1.Pod, removal []string, containers []string ) []string {
+	if len(removal) == 0 {
+		return containers
+	}
+	for _, ctn := range pod.Status.ContainerStatuses {
+		for _, remove := range removal {
+			if ctn.Name == remove {
+				for i, id := range containers {
+					if id == ctn.ContainerID {
+						containers[i] = containers[len(containers)-1]
+						containers = containers[:len(containers)-1]
+						break
+					}
+				}
+				break
+			}
+		}
+	}
+
+	return containers
+}
+
+// getNoValidVolumeCtns returns a list of containers that do not have valid volumes according to the disruption spec
+func getNoValidVolumeCtns(pod *corev1.Pod, containers []string, spec v1beta1.DisruptionSpec) ([]string, []string) {
+	removal := []string{}
+	reasoning := []string{}
+	for _, ctn := range pod.Spec.Containers {
+		if len(ctn.VolumeMounts) == 0 {
+			removal = append(removal, ctn.Name)
+		} else {
+			found := false
+			for _, volume := range ctn.VolumeMounts {
+				if volume.MountPath == spec.DiskPressure.Path {
+					found = true
+					break
+				}
+			}
+			if !found {
+				removal = append(removal, ctn.Name)
+				reasoning = append(reasoning, "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.")
+			}
+		}
+	}
+	return removal, reasoning
+}
+
 // getContainerIDs gets the IDs of the targeted containers or all container IDs found in a Pod
 func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
