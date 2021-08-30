@@ -125,7 +125,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
 		r.log.Errorw("error handling chaos pods termination", "error", err)
-
 		return ctrl.Result{}, err
 	}
 
@@ -144,7 +143,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
 
 				r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
-
 				return ctrl.Result{
 					Requeue:      true,
 					RequeueAfter: requeueAfter,
@@ -168,13 +166,25 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, nil
 		}
 	} else {
+
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
+
+		// TODO DELETE AND REQUEUE IF WE'RE OUT OF TIME
+		r.log.Infow("CHECKING DURATION", "DURATION", calculateRemainingDurationSeconds(*instance))
+		if calculateRemainingDurationSeconds(*instance) <= -180 {
+			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "durationSeconds", instance.Spec.DurationSeconds)
+			r.Recorder.Event(instance, "Normal", "DurationOver", "The disruption has lived longer than its specified duration, and will be deleted.")
+			var err error
+			if err = r.Client.Delete(context.Background(), instance); err != nil {
+				r.log.Errorw("error deleting myself", "error", err)
+			}
+			return ctrl.Result{Requeue: true}, err
+		}
 
 		// retrieve targets from label selector
 		if err := r.selectTargets(instance); err != nil {
 			r.log.Errorw("error selecting targets", "error", err)
-
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 		}
 
@@ -185,7 +195,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// start injections
 		if err := r.startInjection(instance); err != nil {
 			r.log.Errorw("error injecting the disruption", "error", err)
-
 			return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
 		}
 
@@ -199,13 +208,10 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
 			r.log.Infow("disruption is not fully injected yet, requeuing")
-
 			return ctrl.Result{Requeue: true}, nil
 		}
-
-		return ctrl.Result{}, r.Update(context.Background(), instance)
+		return ctrl.Result{Requeue: true, RequeueAfter: time.Duration(calculateRemainingDurationSeconds(*instance)) * time.Second}, r.Update(context.Background(), instance)
 	}
-
 	// stop the reconcile loop, there's nothing else to do
 	return ctrl.Result{}, nil
 }
@@ -424,6 +430,7 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 // as stuck on removal and the pod finalizer won't be removed unless someone does it manually
 // the pod target will be moved to ignored targets so it is not picked up by the next reconcile loop
 func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1.Disruption) error {
+	// TODO CHECK FOR COMPLETED PODS
 	// get already existing chaos pods for the given disruption
 	chaosPods, err := r.getChaosPods(instance, nil)
 	if err != nil {
@@ -726,7 +733,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
 	terminationGracePeriod := int64(60)
 
-	activeDeadlineSeconds := calculateDeadlineSeconds(instance.Spec.DurationSeconds, instance.ObjectMeta.CreationTimestamp.Time)
+	activeDeadlineSeconds := calculateRemainingDurationSeconds(*instance)
 
 	podSpec := corev1.PodSpec{
 		HostPID:                       true,                      // enable host pid
