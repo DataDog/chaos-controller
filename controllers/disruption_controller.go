@@ -487,6 +487,10 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 				removeFinalizer = true
 			}
 
+			if chaosPod.Status.Reason == "DeadlineExceeded" {
+				removeFinalizer = true
+			}
+
 			// check if the container was able to start or not
 			// if not, we can safely delete the pod since the disruption was not injected
 			for _, cs := range chaosPod.Status.ContainerStatuses {
@@ -559,6 +563,7 @@ func (r *DisruptionReconciler) ignoreTarget(instance *chaosv1beta1.Disruption, t
 // the chosen targets names will be reflected in the intance status
 // subsequent calls to this function will always return the same targets as the first call
 func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
+	//TODO fimd completed pods
 	matchingTargets := []string{}
 
 	// exit early if we already have targets selected for the given instance
