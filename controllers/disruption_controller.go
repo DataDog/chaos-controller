@@ -170,15 +170,16 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 
-		// TODO DELETE AND REQUEUE IF WE'RE OUT OF TIME
-		r.log.Infow("CHECKING DURATION", "DURATION", calculateRemainingDurationSeconds(*instance))
 		if calculateRemainingDurationSeconds(*instance) <= -180 {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "durationSeconds", instance.Spec.DurationSeconds)
 			r.Recorder.Event(instance, "Normal", "DurationOver", "The disruption has lived longer than its specified duration, and will be deleted.")
+
 			var err error
+
 			if err = r.Client.Delete(context.Background(), instance); err != nil {
-				r.log.Errorw("error deleting myself", "error", err)
+				r.log.Errorw("error deleting disruption after its duration expired", "error", err)
 			}
+
 			return ctrl.Result{Requeue: true}, err
 		}
 
@@ -435,7 +436,6 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 // as stuck on removal and the pod finalizer won't be removed unless someone does it manually
 // the pod target will be moved to ignored targets so it is not picked up by the next reconcile loop
 func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1.Disruption) error {
-	// TODO CHECK FOR COMPLETED PODS
 	// get already existing chaos pods for the given disruption
 	chaosPods, err := r.getChaosPods(instance, nil)
 	if err != nil {
@@ -568,7 +568,6 @@ func (r *DisruptionReconciler) ignoreTarget(instance *chaosv1beta1.Disruption, t
 // the chosen targets names will be reflected in the intance status
 // subsequent calls to this function will always return the same targets as the first call
 func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
-	//TODO fimd completed pods
 	matchingTargets := []string{}
 
 	// exit early if we already have targets selected for the given instance
