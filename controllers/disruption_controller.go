@@ -173,7 +173,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 		if calculateRemainingDurationSeconds(*instance) <= ExpiredDisruptionGCDelay {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "durationSeconds", instance.Spec.DurationSeconds)
-			r.Recorder.Event(instance, "Normal", "DurationOver", "The disruption has lived longer than its specified duration, and will be deleted.")
+			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %d seconds longer than its specified duration, and will now be deleted.", ExpiredDisruptionGCDelay))
 
 			var err error
 
@@ -493,6 +493,7 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 				removeFinalizer = true
 			}
 
+			// if the pod died only because it exceeded its activeDeadlineSeconds, we can remove the finalizer
 			if chaosPod.Status.Reason == "DeadlineExceeded" {
 				removeFinalizer = true
 			}
