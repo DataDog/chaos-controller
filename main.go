@@ -245,6 +245,7 @@ func main() {
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
+		ExpiredDisruptionGCDelay:              -900, // 15 minutes, measured in seconds
 	}
 
 	if err := r.SetupWithManager(mgr); err != nil {
