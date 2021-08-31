@@ -52,7 +52,8 @@ import (
 )
 
 const (
-	finalizerPrefix = "finalizer.chaos.datadoghq.com"
+	finalizerPrefix          = "finalizer.chaos.datadoghq.com"
+	ExpiredDisruptionGCDelay = -900 // 15 minutes, measured in seconds
 )
 
 var (
@@ -170,7 +171,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 
-		if calculateRemainingDurationSeconds(*instance) <= -180 {
+		if calculateRemainingDurationSeconds(*instance) <= ExpiredDisruptionGCDelay {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "durationSeconds", instance.Spec.DurationSeconds)
 			r.Recorder.Event(instance, "Normal", "DurationOver", "The disruption has lived longer than its specified duration, and will be deleted.")
 
