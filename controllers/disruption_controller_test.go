@@ -244,6 +244,27 @@ var _ = Describe("Disruption Controller", func() {
 		})
 	})
 
+	Context("disruption expires naturally", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+			disruption.Spec.DurationSeconds = 5
+		})
+
+		It("should target all the selected pods", func() {
+			By("Ensuring that the chaos pods have been created")
+			Eventually(func() error { return expectChaosPod(disruption, 24) }, timeout).Should(Succeed())
+
+			By("Ensuring that the chaos pods have correct number of targeted containers")
+			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
+
+			By("Waiting for the disruption to expire naturally")
+			Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout).Should(Succeed())
+
+			By("Waiting for disruption to be removed")
+			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
+		})
+	})
+
 	Context("target one pod and one container only", func() {
 		It("should target all the selected pods", func() {
 			By("Ensuring that the inject pod has been created")
