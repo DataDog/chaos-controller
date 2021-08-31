@@ -210,7 +210,11 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			r.log.Infow("disruption is not fully injected yet, requeuing")
 			return ctrl.Result{Requeue: true}, nil
 		}
-		return ctrl.Result{Requeue: true, RequeueAfter: time.Duration(calculateRemainingDurationSeconds(*instance)) * time.Second}, r.Update(context.Background(), instance)
+		return ctrl.Result{
+				Requeue:      true,
+				RequeueAfter: time.Duration(math.Max(float64(calculateRemainingDurationSeconds(*instance)), 5)) * time.Second,
+			},
+			r.Update(context.Background(), instance)
 	}
 	// stop the reconcile loop, there's nothing else to do
 	return ctrl.Result{}, nil
@@ -232,8 +236,12 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		return false, fmt.Errorf("error getting instance chaos pods: %w", err)
 	}
 
+	if calculateRemainingDurationSeconds(*instance) < 0 {
+		status = chaostypes.DisruptionInjectionStatusPreviouslyInjected
+	}
+
 	// consider a disruption not injected if no chaos pods are existing
-	if len(chaosPods) > 0 {
+	if status == chaostypes.DisruptionInjectionStatusNotInjected && len(chaosPods) > 0 {
 		// check the chaos pods conditions looking for the ready condition
 		for _, chaosPod := range chaosPods {
 			podReady := false
@@ -272,13 +280,10 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		return false, err
 	}
 
-	// requeue the request if the disruption is not fully injected so we can
+	// requeue the request if the disruption is not fully injected yet, so we can
 	// eventually catch pods that are not ready yet but will be in the future
-	if status != chaostypes.DisruptionInjectionStatusInjected {
-		return false, nil
-	}
 
-	return true, nil
+	return status == chaostypes.DisruptionInjectionStatusInjected || status == chaostypes.DisruptionInjectionStatusPreviouslyInjected, nil
 }
 
 // startInjection creates non-existing chaos pod for the given disruption
