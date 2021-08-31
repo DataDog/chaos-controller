@@ -159,10 +159,10 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		return errors.New("cannot execute a container failure because the level configuration is set to node")
 	}
 
-	// Rule: must have a durationSeconds // Cant implement until we are a v1 CRD because you cant default in v1beta1
-	//if s.DurationSeconds == 0 {
-	//	return errors.New("must have durationSeconds set in your disruption spec")
-	//}
+	// Rule: must have a durationSeconds // Can't implement until we are a v1 CRD because you can't default in v1beta1
+	// if s.DurationSeconds == 0 {
+	//	 return errors.New("must have durationSeconds set in your disruption spec")
+	// }
 
 	// Rule: at least one disruption field
 	if s.DNS == nil &&

@@ -144,6 +144,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
 
 				r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
+
 				return ctrl.Result{
 					Requeue:      true,
 					RequeueAfter: requeueAfter,
@@ -167,7 +168,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, nil
 		}
 	} else {
-
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 
