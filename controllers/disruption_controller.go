@@ -77,7 +77,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionDNSServer        string
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
-	ExpiredDisruptionGCDelay              int64
+	ExpiredDisruptionGCDelay              int
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -171,7 +171,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 
-		if calculateRemainingDurationSeconds(*instance) <= r.ExpiredDisruptionGCDelay {
+		if calculateRemainingDurationSeconds(*instance) <= (-1 * int64(r.ExpiredDisruptionGCDelay)) {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "durationSeconds", instance.Spec.DurationSeconds)
 			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %d seconds longer than its specified duration, and will now be deleted.", r.ExpiredDisruptionGCDelay))
 
@@ -212,9 +212,14 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			r.log.Infow("disruption is not fully injected yet, requeuing")
 			return ctrl.Result{Requeue: true}, nil
 		}
+
+		requeueDelay := time.Duration(math.Max(float64(calculateRemainingDurationSeconds(*instance)), float64(r.ExpiredDisruptionGCDelay))) * time.Second
+
+		r.log.Infow("requeuing disruption", "requeueDelay", requeueDelay.String())
+
 		return ctrl.Result{
 				Requeue:      true,
-				RequeueAfter: time.Duration(math.Max(float64(calculateRemainingDurationSeconds(*instance)), 5)) * time.Second,
+				RequeueAfter: requeueDelay,
 			},
 			r.Update(context.Background(), instance)
 	}
