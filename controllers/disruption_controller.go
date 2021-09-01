@@ -175,8 +175,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 		}
 
-		err := r.validateDisruptionSpec(instance)
-		if err != nil {
+		if err := r.validateDisruptionSpec(instance); err != nil {
 			return ctrl.Result{Requeue: false}, err
 		}
 
@@ -342,7 +341,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-				r.recordEventOnTarget(instance, target, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resourcer for injection", chaosPod.Name, instance.Name))
+				r.recordEventOnTarget(instance, target, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resource for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 			} else {
 				var chaosPodNames []string
@@ -955,6 +954,8 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		// append pod to chaos pods
 		*pods = append(*pods, r.generatePod(instance, targetName, targetNodeName, args, kind))
 	}
+
+	r.log.Infow("chaos pods have been generated (not necessarily created yet)", "count", len(*pods))
 }
 
 // recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
