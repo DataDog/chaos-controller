@@ -20,7 +20,7 @@ import (
 )
 
 /*
- * When a random integer from 0 to 100 is randomly selected, the PercentSlotToAlteration mapping is referenced to
+ * When a random integer from 0 to 100 is randomly selected, the PercentToAlteration mapping is referenced to
  * identify the disruption to apply to a query. The mapping represents user preference the proportion of queries
  * affected by each alteration. See docs/grpc_disruption/interceptor_algorithm.md for examples.
  */
@@ -39,7 +39,7 @@ type DisruptionConfiguration map[TargetEndpoint]EndpointConfiguration
 type EndpointConfiguration struct {
 	TargetEndpoint TargetEndpoint
 	Alterations    map[AlterationConfiguration]PercentAffected
-	AlterationHash map[PercentSlot]AlterationConfiguration
+	AlterationHash []AlterationConfiguration
 }
 
 // AlterationConfiguration contains either an ErrorToReturn or an OverrideToReturn for a given
@@ -52,10 +52,6 @@ type AlterationConfiguration struct {
 // PercentAffected is an integer represented the number of queries out of 100 queries which should
 // be affected by a certain endpoint alteration.
 type PercentAffected int
-
-// PercentSlot is an integer used to make a random, weighted assignment to an endpoint based on the
-// configured PercentAffected per endpoint in a GrpcDisruptionConfiguration.
-type PercentSlot int
 
 // TargetEndpoint is a string of the format /package.service/method.
 type TargetEndpoint string
@@ -86,11 +82,16 @@ var (
 	mutex sync.Mutex
 )
 
-// SendDisruption makes a gRPC call to DisruptionListener.
+// SendDisruption receives a disruption specfication and configures the interceptor to spoof responses to specified endpoints.
 func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.DisruptionSpec) (*emptypb.Empty, error) {
 	if ds == nil {
 		log.Error("Cannot execute SendDisruption when DisruptionSpec is nil")
 		return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption when DisruptionSpec is nil")
+	}
+
+	if len(d.Configuration) > 0 {
+		log.Error("Cannot apply new DisruptionSpec when DisruptionListener is already configured")
+		return nil, status.Error(codes.AlreadyExists, "annot apply new DisruptionSpec when DisruptionListener is already configured")
 	}
 
 	config := DisruptionConfiguration{}
@@ -108,16 +109,13 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 			return nil, err
 		}
 
-		percentSlotToAlteration, err := GetPercentSlotToAlteration(alterationToPercentAffected)
-		if err != nil {
-			return nil, err
-		}
+		percentToAlteration := GetPercentToAlteration(alterationToPercentAffected)
 
 		// add endpoint to main configuration
 		config[targeted] = EndpointConfiguration{
 			TargetEndpoint: targeted,
 			Alterations:    alterationToPercentAffected,
-			AlterationHash: percentSlotToAlteration,
+			AlterationHash: percentToAlteration,
 		}
 	}
 
@@ -171,7 +169,11 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 
 	// FullMethod is the full RPC method string, i.e., /package.service/method.
 	if endptConfig, ok := d.Configuration[TargetEndpoint(info.FullMethod)]; ok {
-		if altConfig, ok := endptConfig.AlterationHash[PercentSlot(rand.Intn(100))]; ok {
+		randomPercent := rand.Intn(100)
+
+		if len(endptConfig.AlterationHash) > randomPercent {
+			altConfig := endptConfig.AlterationHash[randomPercent]
+
 			if altConfig.ErrorToReturn != "" {
 				log.Debug("Error Code: %s", errorMap[altConfig.ErrorToReturn])
 
@@ -261,16 +263,16 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 	return mapping, nil
 }
 
-// GetPercentSlotToAlteration Converts a mapping from alterationConfiguration to the percentage of requests which should return this altered response
-func GetPercentSlotToAlteration(endpointSpecList map[AlterationConfiguration]PercentAffected) (map[PercentSlot]AlterationConfiguration, error) {
-	hashMap := make(map[PercentSlot]AlterationConfiguration)
+// GetPercentToAlteration Converts a mapping from alterationConfiguration to the percentage of requests which should return this altered response
+func GetPercentToAlteration(endpointSpecList map[AlterationConfiguration]PercentAffected) []AlterationConfiguration {
+	hashMap := make([]AlterationConfiguration, 0, 100)
 	currPct := 0
 
 	log.Debug("configuring percentile map")
 
 	for altConfig, pct := range endpointSpecList {
 		for i := 0; i < int(pct); i++ {
-			hashMap[PercentSlot(currPct)] = altConfig
+			hashMap[currPct] = altConfig
 
 			// log as we go
 			if altConfig.ErrorToReturn != "" {
@@ -282,5 +284,5 @@ func GetPercentSlotToAlteration(endpointSpecList map[AlterationConfiguration]Per
 		}
 	}
 
-	return hashMap, nil
+	return hashMap
 }

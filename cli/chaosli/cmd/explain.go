@@ -10,10 +10,9 @@ import (
 	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	grpc_api "github.com/DataDog/chaos-controller/grpc"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/spf13/cobra"
-
-	grpc_api "github.com/DataDog/chaos-controller/grpc"
 )
 
 func explainMetaSpec(spec v1beta1.DisruptionSpec) {

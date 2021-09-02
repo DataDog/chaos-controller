@@ -79,4 +79,4 @@ spec:
         queryPercent: 50 # percentage to affect (1-100); multiple alterations allowed for single endpoint, but sum should not exceed 100%
       - endpoint: /chaos_dogfood.ChaosDogfood/order # gRPC service endpoint to disrupt
         error: PERMISSION_DENIED # gRPC error code to return instead computed response
-        # unspecified queryPercent: an endpoint with Y[1], Y[2],...Y[X] explicit queryPercents and N other alterations defaults to (100 - SUM(Y[1] +..+ Y[X])) / N %
+        # unspecified queryPercent: an endpoint with Y[1], Y[2],...Y[X] explicit queryPercents and Y[X+1],...Y[X+N] other alterations defaults to (100 - SUM(Y[1] +..+ Y[X])) / N %

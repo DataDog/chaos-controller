@@ -161,14 +161,8 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 	}
 
 	// Rule: at least one disruption field
-	if s.Network == nil &&
-		s.CPUPressure == nil &&
-		s.DiskPressure == nil &&
-		s.NodeFailure == nil &&
-		s.ContainerFailure == nil &&
-		s.DNS == nil &&
-		s.GRPC == nil {
-		return errors.New("cannot apply an empty disruption - at least one of Network, CPUPressure, DiskPressure, NodeFailure, Container Failure, DNS, GRPC fields is needed")
+	if len(s.GetKindNames()) == 0 {
+		return errors.New("cannot apply an empty disruption - at least one disruption kind (e.g. 'network', 'grpc', 'cpuessure') required")
 	}
 
 	// Rule: on init compatibility

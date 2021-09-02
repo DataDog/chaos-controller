@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("get mapping from PercentSlot to Alteration based on AlterationToPercentAffected", func() {
+var _ = Describe("get mapping from randomly generated Percent to Alteration based on AlterationToPercentAffected", func() {
 	var (
 		alterationSpecs []*pb.AlterationSpec
 		mapping         map[AlterationConfiguration]PercentAffected
@@ -56,7 +56,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct_cancelled, ok_cancelled := mapping[altCfg]
 			Expect(ok_cancelled).To(BeTrue())
-			Expect(pct_cancelled).To(Equal(PercentSlot(20)))
+			Expect(pct_cancelled).To(Equal(20))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "ALREADY_EXISTS",
@@ -64,7 +64,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct_exists, ok_exists := mapping[altCfg]
 			Expect(ok_exists).To(BeTrue())
-			Expect(pct_exists).To(Equal(PercentSlot(30)))
+			Expect(pct_exists).To(Equal(30))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "",
@@ -72,7 +72,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct_emptyret, ok_emptyret := mapping[altCfg]
 			Expect(ok_emptyret).To(BeTrue())
-			Expect(pct_emptyret).To(Equal(PercentSlot(40)))
+			Expect(pct_emptyret).To(Equal(40))
 		})
 	})
 
@@ -152,7 +152,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct_cancelled, ok_cancelled := mapping[altCfg]
 			Expect(ok_cancelled).To(BeTrue())
-			Expect(pct_cancelled).To(Equal(PercentSlot(50)))
+			Expect(pct_cancelled).To(Equal(50))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "ALREADY_EXISTS",
@@ -160,7 +160,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct_exists, ok_exists := mapping[altCfg]
 			Expect(ok_exists).To(BeTrue())
-			Expect(pct_exists).To(Equal(PercentSlot(50)))
+			Expect(pct_exists).To(Equal(50))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "",
@@ -171,7 +171,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			// so this return value never gets triggered, but the function does not error out
 			pct_emptyret, ok_emptyret := mapping[altCfg]
 			Expect(ok_emptyret).To(BeTrue())
-			Expect(pct_emptyret).To(Equal(PercentSlot(50)))
+			Expect(pct_emptyret).To(Equal(50))
 		})
 	})
 
@@ -202,7 +202,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct_cancelled, ok_cancelled := mapping[altCfg]
 			Expect(ok_cancelled).To(BeTrue())
-			Expect(pct_cancelled).To(Equal(PercentSlot(40)))
+			Expect(pct_cancelled).To(Equal(40))
 		})
 	})
 
@@ -233,7 +233,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct_cancelled, ok_cancelled := mapping[altCfg]
 			Expect(ok_cancelled).To(BeTrue())
-			Expect(pct_cancelled).To(Equal(PercentSlot(100)))
+			Expect(pct_cancelled).To(Equal(100))
 		})
 	})
 
@@ -274,7 +274,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct_cancelled, ok_cancelled := mapping[altCfg]
 			Expect(ok_cancelled).To(BeTrue())
-			Expect(pct_cancelled).To(Equal(PercentSlot(25)))
+			Expect(pct_cancelled).To(Equal(25))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "ALREADY_EXISTS",
@@ -282,7 +282,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct_exists, ok_exists := mapping[altCfg]
 			Expect(ok_exists).To(BeTrue())
-			Expect(pct_exists).To(Equal(PercentSlot(25)))
+			Expect(pct_exists).To(Equal(25))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "",
@@ -290,7 +290,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct_emptyret, ok_emptyret := mapping[altCfg]
 			Expect(ok_emptyret).To(BeTrue())
-			Expect(pct_emptyret).To(Equal(PercentSlot(50)))
+			Expect(pct_emptyret).To(Equal(50))
 		})
 	})
 	Context("with three alterations, two of which lack a queryPercent", func() {
@@ -354,7 +354,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(90)))
+			Expect(pct).To(Equal(90))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "ALREADY_EXISTS",
@@ -362,7 +362,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(1)))
+			Expect(pct).To(Equal(1))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "UNKNOWN",
@@ -370,7 +370,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(1)))
+			Expect(pct).To(Equal(1))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "INVALID_ARGUMENT",
@@ -378,7 +378,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(1)))
+			Expect(pct).To(Equal(1))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "DEADLINE_EXCEEDED",
@@ -386,7 +386,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(1)))
+			Expect(pct).To(Equal(1))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "NOT_FOUND",
@@ -394,7 +394,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(1)))
+			Expect(pct).To(Equal(1))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "PERMISSION_DENIED",
@@ -402,7 +402,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(5)))
+			Expect(pct).To(Equal(5))
 		})
 	})
 
@@ -493,7 +493,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(90)))
+			Expect(pct).To(Equal(90))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "ALREADY_EXISTS",
@@ -501,7 +501,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(0)))
+			Expect(pct).To(Equal(0))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "UNKNOWN",
@@ -509,7 +509,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(0)))
+			Expect(pct).To(Equal(0))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "INVALID_ARGUMENT",
@@ -517,7 +517,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(0)))
+			Expect(pct).To(Equal(0))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "DEADLINE_EXCEEDED",
@@ -525,7 +525,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(0)))
+			Expect(pct).To(Equal(0))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "NOT_FOUND",
@@ -533,7 +533,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(0)))
+			Expect(pct).To(Equal(0))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "PERMISSION_DENIED",
@@ -541,7 +541,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(0)))
+			Expect(pct).To(Equal(0))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "RESOURCE_EXHAUSTED",
@@ -549,7 +549,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(0)))
+			Expect(pct).To(Equal(0))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "FAILED_PRECONDITION",
@@ -557,7 +557,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(0)))
+			Expect(pct).To(Equal(0))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "ABORTED",
@@ -565,7 +565,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(0)))
+			Expect(pct).To(Equal(0))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "OUT_OF_RANGE",
@@ -573,7 +573,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(0)))
+			Expect(pct).To(Equal(0))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "UNIMPLEMENTED",
@@ -581,7 +581,7 @@ var _ = Describe("get mapping from PercentSlot to Alteration based on Alteration
 			}
 			pct, ok = mapping[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentSlot(10)))
+			Expect(pct).To(Equal(10))
 		})
 	})
 })

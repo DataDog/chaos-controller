@@ -1,8 +1,8 @@
 # gRPC Disruption Inceptor
 
-When the interceptor recognizes a query's endpoint as one which is actively getting disrupted, the interceptor generates a random integer from `0` to `100`, and consults a hashmap caching the `PercentSlotToAlteration` mapping. Provided the random integer, this hasmap identifies the disruption to apply to a query. The mapping represents user preference the proportion of queries affected by each alteration. The user cannot sepcify queryPercents for a single endpoint which sum to over `100%`.
+When the interceptor recognizes a query's endpoint as one which is actively getting disrupted, the interceptor generates a random integer from `0` to `100`, and consults an array caching the `PercentToAlteration` mapping. Provided the random integer, this hasmap identifies the disruption to apply to a query. The mapping represents user preference the proportion of queries affected by each alteration. The user cannot sepcify queryPercents for a single endpoint which sum to over `100%`. You can see an example below of an array that does not define all 100% of possible requests. You can see the next section for an example of a mapping which only has 25 entires.
 
-## gRPC Hashmap Algorithm Examples
+## gRPC Array Algorithm Examples
 
 ### Multiple alterations with defined queryPercent
 
@@ -23,10 +23,10 @@ spec:
         queryPercent: 15
 ```
 
-For the above specs, the calculated `PercentSlotToAlteration` would look something like:
+For the above specs, the calculated `PercentToAlteration` would look something like:
 
 ```
-PercentSlotToAlteration {
+PercentToAlteration {
     0  -> Override: {}
     1  -> Override: {}
     2  -> Override: {}
@@ -70,7 +70,7 @@ spec:
 As in the previous case, all alterations with a defined `queryPercent` are allocated upfront. The algorithm keeps track of alterations which do not yet have `queryPercent`s assigned, and splits the remaining (unconfigured) queries equally amongst these unassigned alterations.
 
 ```
-PercentSlotToAlteration {
+PercentToAlteration {
     0   -> Override: {}
     1   -> Override: {}
     2   -> Override: {}
@@ -114,7 +114,7 @@ spec:
 Rather than constraining the user in how they mix and match this simple configuration style with the explicit `spec.gprc.endpoints[x].queryPercent` field, the current implementation would simply do its best to apply of the configurations.
 
 ```
-PercentSlotToAlteration {
+PercentToAlteration {
     0   -> Override: {}
     1   -> Override: {}
     2   -> Override: {}
@@ -166,4 +166,4 @@ When an even split across remaining points is not possible. For example, if 9% o
 	100 -> ERROR_6
 }
 ```
-Note that the final alteration (in this case `ERROR_6`, always covers the remaining `PercentSlot`s up to and including 100. This can result in a very weird proportions where there are not a lot of `PercentSlot`s left. Although these outcomes are unintuitive and therefore not very user-friendly, the common usecase for these disruptions is so 
+Note that the final alteration (in this case `ERROR_6`, always covers the remaining `Percent`s up to and including 100. This can result in a very weird proportions where there are not a lot of `Percent`s left. Although these outcomes are unintuitive and therefore not very user-friendly, the common usecase for these disruptions is so 
