@@ -15,9 +15,13 @@ endif
 
 all: manager injector handler
 
-# Run tests
+# Run unit tests
 test: generate manifests
-	go test ./... -coverprofile cover.out
+	go test $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
+
+# Run e2e tests (against a real cluster)
+e2e-test: generate manifests
+	USE_EXISTING_CLUSTER=true go test ./controllers/... -coverprofile cover.out
 
 # Build manager binary
 manager: generate
