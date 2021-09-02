@@ -97,7 +97,10 @@ func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int,
 }
 
 func calculateRemainingDurationSeconds(instance v1beta1.Disruption) int64 {
-	return calculateDeadlineSeconds(instance.Spec.Duration, instance.ObjectMeta.CreationTimestamp.Time)
+	return calculateDeadlineSeconds(
+		time.Duration(instance.Spec.DurationSeconds)*time.Second,
+		instance.ObjectMeta.CreationTimestamp.Time,
+	)
 }
 
 // returned value can be negative if deadline is in the past

@@ -171,8 +171,11 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 
+		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
+		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the durations deadline. We compare it to negative ExpiredDisruptionGCDelay,
+		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
 		if calculateRemainingDurationSeconds(*instance) <= (-1 * int64(r.ExpiredDisruptionGCDelay.Seconds())) {
-			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
+			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "durationSeconds", instance.Spec.DurationSeconds)
 			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", r.ExpiredDisruptionGCDelay))
 
 			var err error
@@ -213,7 +216,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{Requeue: true}, nil
 		}
 
-		requeueDelay := time.Duration(math.Max(float64(calculateRemainingDurationSeconds(*instance)), float64(r.ExpiredDisruptionGCDelay))) * time.Second
+		requeueDelay := time.Duration(math.Max(float64(calculateRemainingDurationSeconds(*instance)), r.ExpiredDisruptionGCDelay.Seconds())) * time.Second
 
 		r.log.Infow("requeuing disruption", "requeueDelay", requeueDelay.String())
 
@@ -223,6 +226,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			},
 			r.Update(context.Background(), instance)
 	}
+
 	// stop the reconcile loop, there's nothing else to do
 	return ctrl.Result{}, nil
 }

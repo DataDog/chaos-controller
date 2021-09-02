@@ -48,9 +48,9 @@ func (m *DefaultMutator) Handle(ctx context.Context, req admission.Request) admi
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	if dis.Spec.Duration == 0 {
+	if dis.Spec.DurationSeconds == 0 {
 		m.Log.Infow(fmt.Sprintf("setting default duration of %s in disruption", m.DefaultDuration), "name", dis.Name, "namespace", dis.Namespace)
-		dis.Spec.Duration = m.DefaultDuration
+		dis.Spec.DurationSeconds = int64(m.DefaultDuration.Seconds())
 	}
 
 	marshaled, err := json.Marshal(dis)
