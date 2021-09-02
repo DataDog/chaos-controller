@@ -163,6 +163,7 @@ var _ = Describe("Disruption Controller", func() {
 					BandwidthLimit: 10000,
 				},
 				CPUPressure: &chaosv1beta1.CPUPressureSpec{},
+				// TODO: add a mount to target pods created in the suite setup
 				//DiskPressure: &chaosv1beta1.DiskPressureSpec{
 				//	Path: "/mnt/foo",
 				//	Throttling: chaosv1beta1.DiskPressureThrottlingSpec{
