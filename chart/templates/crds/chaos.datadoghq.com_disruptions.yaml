@@ -129,7 +129,10 @@ spec:
               type: array
             dryRun:
               type: boolean
-            durationSeconds:
+            duration:
+              description: A Duration represents the elapsed time between two instants
+                as an int64 nanosecond count. The representation limits the largest
+                representable duration to approximately 290 years.
               format: int64
               type: integer
             level:
@@ -244,7 +247,6 @@ spec:
               type: object
           required:
           - count
-          - durationSeconds
           type: object
         status:
           description: DisruptionStatus defines the observed state of Disruption

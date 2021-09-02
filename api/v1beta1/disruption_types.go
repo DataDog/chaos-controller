@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -49,7 +50,7 @@ type DisruptionSpec struct {
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
 	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
-	DurationSeconds  int64                             `json:"durationSeconds"`            // time from disruption creation until chaos pods are deleted and no more are created
+	Duration         time.Duration                     `json:"duration,omitempty"`         // time from disruption creation until chaos pods are deleted and no more are created
 	// +kubebuilder:validation:Enum=pod;node;""
 	// +ddmark:validation:Enum=pod;node;""
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
@@ -158,11 +159,6 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 	if s.ContainerFailure != nil && s.Level == chaostypes.DisruptionLevelNode {
 		return errors.New("cannot execute a container failure because the level configuration is set to node")
 	}
-
-	// Rule: must have a durationSeconds // Can't implement until we are a v1 CRD because you can't default in v1beta1
-	// if s.DurationSeconds == 0 {
-	//	 return errors.New("must have durationSeconds set in your disruption spec")
-	// }
 
 	// Rule: at least one disruption field
 	if s.DNS == nil &&

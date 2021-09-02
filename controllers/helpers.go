@@ -97,13 +97,13 @@ func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int,
 }
 
 func calculateRemainingDurationSeconds(instance v1beta1.Disruption) int64 {
-	return calculateDeadlineSeconds(instance.Spec.DurationSeconds, instance.ObjectMeta.CreationTimestamp.Time)
+	return calculateDeadlineSeconds(instance.Spec.Duration, instance.ObjectMeta.CreationTimestamp.Time)
 }
 
 // returned value can be negative if deadline is in the past
-func calculateDeadlineSeconds(durationSeconds int64, creationTime time.Time) int64 {
+func calculateDeadlineSeconds(duration time.Duration, creationTime time.Time) int64 {
 	// first we must calculate the timout from when the disruption was created, not from now
-	timeout := creationTime.Add(time.Second * time.Duration(durationSeconds))
+	timeout := creationTime.Add(duration)
 	now := time.Now() // rather not take the risk that the time changes by a second during this function
 
 	// return the number of seconds between now and the deadline

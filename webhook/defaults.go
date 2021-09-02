@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
@@ -46,10 +47,10 @@ func (m *DefaultMutator) Handle(ctx context.Context, req admission.Request) admi
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	if dis.Spec.DurationSeconds == 0 {
-		defaultDuration := int64(3600)
-		m.Log.Infow(fmt.Sprintf("setting default duration of %d seconds in disruption", defaultDuration), "name", dis.Name, "namespace", dis.Namespace)
-		dis.Spec.DurationSeconds = defaultDuration
+	if dis.Spec.Duration == 0 {
+		defaultDuration := time.Hour
+		m.Log.Infow(fmt.Sprintf("setting default duration of %s in disruption", defaultDuration), "name", dis.Name, "namespace", dis.Namespace)
+		dis.Spec.Duration = defaultDuration
 	}
 
 	marshaled, err := json.Marshal(dis)
