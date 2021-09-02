@@ -77,7 +77,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionDNSServer        string
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
-	ExpiredDisruptionGCDelay              int
+	ExpiredDisruptionGCDelay              time.Duration
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -171,9 +171,9 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 
-		if calculateRemainingDurationSeconds(*instance) <= (-1 * int64(r.ExpiredDisruptionGCDelay)) {
+		if calculateRemainingDurationSeconds(*instance) <= (-1 * int64(r.ExpiredDisruptionGCDelay.Seconds())) {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
-			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %d seconds longer than its specified duration, and will now be deleted.", r.ExpiredDisruptionGCDelay))
+			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", r.ExpiredDisruptionGCDelay))
 
 			var err error
 

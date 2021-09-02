@@ -16,6 +16,8 @@ data:
       metricsSink: {{ .Values.controller.metricsSink | quote }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
+      defaultDuration: {{ .Values.controller.defaultDuration }}
+      expiredDisruptionGCDelay: {{ .Values.controller.expiredDisruptionGCDelay }}
       webhook:
         {{- if .Values.controller.webhook.generateCert }}
         certDir: /tmp/k8s-webhook-server/serving-certs

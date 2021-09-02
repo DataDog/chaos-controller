@@ -64,7 +64,8 @@ type controllerConfig struct {
 	MetricsAddr              string                  `json:"metricsAddr"`
 	MetricsSink              string                  `json:"metricsSink"`
 	ImagePullSecrets         string                  `json:"imagePullSecrets"`
-	ExpiredDisruptionGCDelay int                     `json:"expiredDisruptionGCDelay"`
+	ExpiredDisruptionGCDelay time.Duration           `json:"expiredDisruptionGCDelay"`
+	DefaultDuration          time.Duration           `json:"defaultDuration"`
 	DeleteOnly               bool                    `json:"deleteOnly"`
 	LeaderElection           bool                    `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig `json:"webhook"`
@@ -126,8 +127,11 @@ func main() {
 	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
 
-	pflag.IntVar(&cfg.Controller.ExpiredDisruptionGCDelay, "expired-disruption-gc-delay", 300, "Seconds after a disruption expires before being automatically deleted")
+	pflag.DurationVar(&cfg.Controller.ExpiredDisruptionGCDelay, "expired-disruption-gc-delay", time.Minute*15, "Seconds after a disruption expires before being automatically deleted")
 	handleFatalError(viper.BindPFlag("controller.expiredDisruptionGCDelay", pflag.Lookup("expired-disruption-gc-delay")))
+
+	pflag.DurationVar(&cfg.Controller.DefaultDuration, "default-duration", time.Hour, "Default duration for a disruption with none specified")
+	handleFatalError(viper.BindPFlag("controller.defaultDuration", pflag.Lookup("default-duration")))
 
 	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
@@ -286,8 +290,9 @@ func main() {
 	// register spec default mutating webhook
 	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-spec-defaults", &webhook.Admission{
 		Handler: &chaoswebhook.DefaultMutator{
-			Client: mgr.GetClient(),
-			Log:    logger,
+			DefaultDuration: cfg.Controller.DefaultDuration,
+			Client:          mgr.GetClient(),
+			Log:             logger,
 		},
 	})
 

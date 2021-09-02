@@ -19,9 +19,10 @@ import (
 )
 
 type DefaultMutator struct {
-	Client  client.Client
-	Log     *zap.SugaredLogger
-	decoder *admission.Decoder
+	Client          client.Client
+	Log             *zap.SugaredLogger
+	decoder         *admission.Decoder
+	DefaultDuration time.Duration
 }
 
 func (m *DefaultMutator) InjectDecoder(d *admission.Decoder) error {
@@ -48,9 +49,8 @@ func (m *DefaultMutator) Handle(ctx context.Context, req admission.Request) admi
 	}
 
 	if dis.Spec.Duration == 0 {
-		defaultDuration := time.Hour
-		m.Log.Infow(fmt.Sprintf("setting default duration of %s in disruption", defaultDuration), "name", dis.Name, "namespace", dis.Namespace)
-		dis.Spec.Duration = defaultDuration
+		m.Log.Infow(fmt.Sprintf("setting default duration of %s in disruption", m.DefaultDuration), "name", dis.Name, "namespace", dis.Namespace)
+		dis.Spec.Duration = m.DefaultDuration
 	}
 
 	marshaled, err := json.Marshal(dis)
