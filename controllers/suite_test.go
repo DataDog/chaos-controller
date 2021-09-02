@@ -71,12 +71,6 @@ func TestAPIs(t *testing.T) {
 var _ = BeforeSuite(func(done Done) {
 	var err error
 
-	//	logger, err := log.NewZapLogger()
-	//	if err != nil {
-	//		logf.Log.Error(err, "error creating logger")
-	//		GinkgoT().Fail()
-	//	}
-
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{filepath.Join("..", "chart", "templates", "crds")},
