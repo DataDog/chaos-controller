@@ -3,22 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
-/*
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-package controllers
+package targetselector
 
 import (
 	"context"
@@ -28,6 +13,9 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -161,4 +149,66 @@ func (r RunningTargetSelector) TargetIsHealthy(target string, c client.Client, i
 	}
 
 	return nil
+}
+
+// getLabelSelectorFromInstance crafts a label selector made of requirements from the given disruption instance
+func getLabelSelectorFromInstance(instance *chaosv1beta1.Disruption) (labels.Selector, error) {
+	// we want to ensure we never run into the possibility of using an empty label selector
+	if (len(instance.Spec.Selector) == 0 || instance.Spec.Selector == nil) && (len(instance.Spec.AdvancedSelector) == 0 || instance.Spec.AdvancedSelector == nil) {
+		return nil, errors.New("selector can't be an empty set")
+	}
+
+	selector := labels.NewSelector()
+
+	// add simple selectors by parsing them
+	if instance.Spec.Selector != nil {
+		req, err := labels.ParseToRequirements(instance.Spec.Selector.AsSelector().String())
+		if err != nil {
+			return nil, fmt.Errorf("error parsing given selector to requirements: %w", err)
+		}
+
+		selector = selector.Add(req...)
+	}
+
+	// add advanced selectors
+	if instance.Spec.AdvancedSelector != nil {
+		for _, req := range instance.Spec.AdvancedSelector {
+			var op selection.Operator
+
+			// parse the operator to convert it from one package to another
+			switch req.Operator {
+			case metav1.LabelSelectorOpIn:
+				op = selection.In
+			case metav1.LabelSelectorOpNotIn:
+				op = selection.NotIn
+			case metav1.LabelSelectorOpExists:
+				op = selection.Exists
+			case metav1.LabelSelectorOpDoesNotExist:
+				op = selection.DoesNotExist
+			default:
+				return nil, fmt.Errorf("error parsing advanced selector operator %s: must be either In, NotIn, Exists or DoesNotExist", req.Operator)
+			}
+
+			// generate and add the requirement to the selector
+			parsedReq, err := labels.NewRequirement(req.Key, op, req.Values)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
+			}
+
+			selector = selector.Add(*parsedReq)
+		}
+	}
+
+	// if the disruption is supposed to be injected on pod init
+	// then let's add a requirement to get pods having the matching label only
+	if instance.Spec.OnInit {
+		onInitRequirement, err := labels.NewRequirement(chaostypes.DisruptOnInitLabel, selection.Exists, []string{})
+		if err != nil {
+			return nil, fmt.Errorf("error adding the disrupt-on-init label requirement: %w", err)
+		}
+
+		selector.Add(*onInitRequirement)
+	}
+
+	return selector, nil
 }

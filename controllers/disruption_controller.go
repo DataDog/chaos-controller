@@ -47,6 +47,7 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
@@ -66,7 +67,7 @@ type DisruptionReconciler struct {
 	Scheme                                *runtime.Scheme
 	Recorder                              record.EventRecorder
 	MetricsSink                           metrics.Sink
-	TargetSelector                        TargetSelector
+	TargetSelector                        targetselector.TargetSelector
 	InjectorAnnotations                   map[string]string
 	InjectorServiceAccount                string
 	InjectorImage                         string
@@ -175,8 +176,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 		}
 
-		err := r.validateDisruptionSpec(instance)
-		if err != nil {
+		if err := r.validateDisruptionSpec(instance); err != nil {
 			return ctrl.Result{Requeue: false}, err
 		}
 
@@ -342,7 +342,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 				// send metrics and events
 				r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-				r.recordEventOnTarget(instance, target, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resourcer for injection", chaosPod.Name, instance.Name))
+				r.recordEventOnTarget(instance, target, "Warning", "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resource for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 			} else {
 				var chaosPodNames []string
