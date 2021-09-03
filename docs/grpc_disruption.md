@@ -46,7 +46,7 @@ Now consider this gRPC call which returns an error:
 * A gRPC client makes call to `/chaos_dogfood.ChaosDogfood/FoodOrder` over the gRPC connection with message `FoodOrder { animal: “cat” }`.
 * A gRPC server returns an error with code `INVALID_ARGUMENT`
 
-Here, it is also unclear from the outside if the error code returned is the correct error or if it's masking a an underlying issue. It is also not immediately clear which side produced the error.
+Here, it is also unclear from the outside if the error code returned is the correct error or if it's masking an underlying issue. It is also not immediately clear which side produced the error.
 
 <p align="center">
     <kbd>
