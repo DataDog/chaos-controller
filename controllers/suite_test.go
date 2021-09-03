@@ -119,10 +119,30 @@ var _ = BeforeSuite(func(done Done) {
 				{
 					Image: "k8s.gcr.io/pause:3.4.1",
 					Name:  "ctn1",
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "foo",
+							MountPath: "/mnt/foo",
+						},
+					},
 				},
 				{
 					Image: "k8s.gcr.io/pause:3.4.1",
 					Name:  "ctn2",
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "foo",
+							MountPath: "/mnt/foo",
+						},
+					},
+				},
+			},
+			Volumes: []corev1.Volume{
+				{
+					Name: "foo",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
 				},
 			},
 		},
@@ -140,6 +160,20 @@ var _ = BeforeSuite(func(done Done) {
 				{
 					Image: "k8s.gcr.io/pause:3.4.1",
 					Name:  "ctn1",
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "foo",
+							MountPath: "/mnt/foo",
+						},
+					},
+				},
+			},
+			Volumes: []corev1.Volume{
+				{
+					Name: "foo",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
 				},
 			},
 		},
