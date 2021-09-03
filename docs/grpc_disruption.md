@@ -5,7 +5,7 @@ The `grpc` field offers a way to inject spoofed gRPC responses ont he server-sid
 * `port` is the port exposed on target pods (the target pods are specified in `spec.selector`)
 * `endpoints` is a list of endpoints to alter (a spoof configuration is referred to as an `alteration`)
   * `<endpoints[i]>.endpoint` indicates the fully qualified api endpoint to override (ex: `/<package>.<service>/<method>`)
-  * Exactly one of `<endpoints[i]>.error` or `<endpoints[i]>.override` should be defined per endpoint alteration, and the only override currently supported is `{}` which returnes `emptypb.Empty`
+  * Exactly one of `<endpoints[i]>.error` or `<endpoints[i]>.override` should be defined per endpoint alteration, and the only override currently supported is `{}` which returns `emptypb.Empty`
   * `<endpoints[i]>.query_pct` defines (out of 100) how frequently this alteration should occur; you may have multiple alterations per endpoint, but you cannot specify a sum total of more than 100 percent for any given endpoint
 
 Note: At this time, Chaos Controller does not support:
