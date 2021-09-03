@@ -1,6 +1,6 @@
 # gRPC Disruption Inceptor
 
-When the interceptor recognizes a query's endpoint as one which is actively getting disrupted, the interceptor generates a random integer from `0` to `100`, and consults a hasmap for the `PercentToAlteration` mapping. The hashmap is represented as an array of 100 or less items, and provided the random integer, it identifies the disruption to apply to a query. The user cannot sepcify queryPercents for a single endpoint which sum to over `100%`. You can see an example below of a hashmap that does not define all 100% of possible requests. You can see the next section for an example of a mapping which only has 25 entires.
+When the interceptor recognizes a query's endpoint as one which is actively getting disrupted, the interceptor generates a random integer from `0` to `100`, and consults a hasmap for the `PercentToAlteration` mapping. The hashmap is represented as an array of 100 or less items, and provided the random integer, it identifies the disruption to apply to a query. The user cannot sepcify queryPercents for a single endpoint which sum to over `100%`. You can see an example below of a hashmap that does not define all 100% of possible requests below.
 
 ## gRPC Disruption - Algorithm Examples
 
