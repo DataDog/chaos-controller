@@ -20,7 +20,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 	BeforeEach(func() {
 		altCfgs = []AlterationConfiguration{
 			{
-				ErrorToReturn:    "CANCELLED",
+				ErrorToReturn:    "CANCELED",
 				OverrideToReturn: "",
 			},
 			{
@@ -48,11 +48,11 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 
 		It("should create 15 Slot Percents which are configured to the single alteration", func() {
 			altCfg_0 := percentToAlteration[0]
-			Expect(altCfg_0.ErrorToReturn).To(Equal("CANCELLED"))
+			Expect(altCfg_0.ErrorToReturn).To(Equal("CANCELED"))
 			Expect(altCfg_0.OverrideToReturn).To(Equal(""))
 
 			altCfg_14 := percentToAlteration[14]
-			Expect(altCfg_14.ErrorToReturn).To(Equal("CANCELLED"))
+			Expect(altCfg_14.ErrorToReturn).To(Equal("CANCELED"))
 			Expect(altCfg_14.OverrideToReturn).To(Equal(""))
 		})
 	})
@@ -72,11 +72,11 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 
 		It("should create 15 Slot Percents which are configured to the first alteration", func() {
 			altCfg_0 := percentToAlteration[0]
-			Expect(altCfg_0.ErrorToReturn).To(Equal("CANCELLED"))
+			Expect(altCfg_0.ErrorToReturn).To(Equal("CANCELED"))
 			Expect(altCfg_0.OverrideToReturn).To(Equal(""))
 
 			altCfg_14 := percentToAlteration[0]
-			Expect(altCfg_14.ErrorToReturn).To(Equal("CANCELLED"))
+			Expect(altCfg_14.ErrorToReturn).To(Equal("CANCELED"))
 			Expect(altCfg_14.OverrideToReturn).To(Equal(""))
 		})
 
@@ -115,7 +115,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 
 		It("should create Slot Percents which are configured to the right alterations", func() {
 			altCfg_35 := percentToAlteration[35]
-			Expect(altCfg_35.ErrorToReturn).To(Equal("CANCELLED"))
+			Expect(altCfg_35.ErrorToReturn).To(Equal("CANCELED"))
 			Expect(altCfg_35.OverrideToReturn).To(Equal(""))
 
 			altCfg_60 := percentToAlteration[60]

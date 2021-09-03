@@ -22,7 +22,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 		BeforeEach(func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
-					ErrorToReturn:    "CANCELLED",
+					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "",
 					QueryPercent:     int32(20),
 				},
@@ -51,12 +51,12 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			var altCfg AlterationConfiguration
 
 			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "CANCELLED",
+				ErrorToReturn:    "CANCELED",
 				OverrideToReturn: "",
 			}
-			pct_cancelled, ok_cancelled := mapping[altCfg]
-			Expect(ok_cancelled).To(BeTrue())
-			Expect(pct_cancelled).To(Equal(20))
+			pct_canceled, ok_canceled := mapping[altCfg]
+			Expect(ok_canceled).To(BeTrue())
+			Expect(pct_canceled).To(Equal(20))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "ALREADY_EXISTS",
@@ -82,7 +82,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 		BeforeEach(func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
-					ErrorToReturn:    "CANCELLED",
+					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "{}",
 				},
 			}
@@ -118,7 +118,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 		BeforeEach(func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
-					ErrorToReturn:    "CANCELLED",
+					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "",
 					QueryPercent:     int32(50),
 				},

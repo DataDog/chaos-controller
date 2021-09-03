@@ -61,7 +61,7 @@ var (
 
 	errorMap = map[string]codes.Code{
 		"OK":                  codes.OK,
-		"CANCELLED":           codes.Canceled,
+		"CANCELED":            codes.Canceled,
 		"UNKNOWN":             codes.Unknown,
 		"INVALID_ARGUMENT":    codes.InvalidArgument,
 		"DEADLINE_EXCEEDED":   codes.DeadlineExceeded,
