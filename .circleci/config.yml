@@ -59,6 +59,9 @@ executors:
     <<: *working_directory
     docker:
       - image: bash:5.0
+  ubuntu:
+    machine:
+      image: ubuntu-2004:202107-02
 
 jobs:
   # prepares the CI environment by checking out the code,
@@ -138,6 +141,40 @@ jobs:
     steps:
       - go_restore_cache
       - run: make test
+  # run e2e tests
+  e2e-test:
+    executor: ubuntu
+    steps:
+      - run:
+          name: Create missing cache directories
+          command: |
+            sudo mkdir -p /go /usr/local/bin /usr/local/kubebuilder
+            sudo chown circleci:circleci /go /usr/local/bin /usr/local/kubebuilder
+      - go_restore_cache
+      - run:
+          name: Configure Minikube
+          command: |
+            curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
+            sudo dpkg -i minikube_latest_amd64.deb
+            minikube start --vm-driver=docker --container-runtime=containerd --kubernetes-version=v1.19.14
+            minikube status
+      - run:
+          name: Install requirements
+          command: minikube kubectl -- apply -f https://github.com/jetstack/cert-manager/releases/download/v1.3.0/cert-manager.yaml
+      - run:
+          name: Build and load images
+          <<: *working_directory
+          environment:
+            GOBIN: /home/circleci/.go_workspace/bin
+          command: make minikube-build
+      - run:
+          name: Deploy controller chart
+          <<: *working_directory
+          command: make install
+      - run:
+          name: Run e2e tests
+          <<: *working_directory
+          command: make e2e-test
   # ensures that the file containing 3rd-party licenses is up-to-date
   third-party-licenses:
     executor: python
@@ -181,6 +218,9 @@ workflows:
           requires:
             - prepare-env
       - test:
+          requires:
+            - prepare-env
+      - e2e-test:
           requires:
             - prepare-env
       - third-party-licenses
