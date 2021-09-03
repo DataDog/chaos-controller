@@ -68,13 +68,7 @@ func TestSendAndCleaDisruption(t *testing.T) {
 			},
 		},
 	}
-	/*
-		config := GRPCDisruptionInjectorConfig{
-			Config: Config{
-				Log: log,
-			},
-		}
-	*/
+
 	disruptionListenerClient := &DisruptionListenerClientMock{}
 
 	// define expectations

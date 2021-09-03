@@ -17,10 +17,8 @@ import (
 
 // GRPCDisruptionInjector describes a grpc disruption
 type GRPCDisruptionInjector struct {
-	spec   v1beta1.GRPCDisruptionSpec
-	config GRPCDisruptionInjectorConfig
-	//	client     pb.DisruptionListenerClient
-	//	conn   *grpc.ClientConn
+	spec       v1beta1.GRPCDisruptionSpec
+	config     GRPCDisruptionInjectorConfig
 	serverAddr string
 }
 
@@ -43,14 +41,10 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 func (i GRPCDisruptionInjector) Inject() error {
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	opts = append(opts, grpc.WithBlock())
-
-	conn, err := grpc.Dial(i.serverAddr, opts...)
+	conn, err := connectToServer(i.serverAddr)
 	if err != nil {
-		i.config.Log.Fatalf("fail to dial: %v", err)
-		return errors.New("fail to dial: " + i.serverAddr)
+		i.config.Log.Fatalf(err.Error())
+		return err
 	}
 
 	defer func() {
@@ -71,14 +65,10 @@ func (i GRPCDisruptionInjector) Inject() error {
 func (i GRPCDisruptionInjector) Clean() error {
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
-	opts = append(opts, grpc.WithBlock())
-
-	conn, err := grpc.Dial(i.serverAddr, opts...)
+	conn, err := connectToServer(i.serverAddr)
 	if err != nil {
-		i.config.Log.Fatalf("fail to dial: %v", err)
-		return errors.New("fail to dial: " + i.serverAddr)
+		i.config.Log.Fatalf(err.Error())
+		return err
 	}
 
 	defer func() {
@@ -93,4 +83,17 @@ func (i GRPCDisruptionInjector) Clean() error {
 	chaos_grpc.ExecuteCleanDisruption(client)
 
 	return nil
+}
+
+func connectToServer(serverAddr string) (*grpc.ClientConn, error) {
+	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithBlock())
+
+	conn, err := grpc.Dial(serverAddr, opts...)
+	if err != nil {
+		return nil, errors.New("fail to dial: " + serverAddr)
+	}
+
+	return conn, nil
 }
