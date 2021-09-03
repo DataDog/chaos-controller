@@ -63,12 +63,16 @@ func (s GRPCDisruptionSpec) Validate() error {
 		// check that endpoint is not already configured such that the sum of mangled queryPercents total to more than 100%
 		if totalQueryPercent, ok := queryPctByEndpoint[alteration.TargetEndpoint]; ok {
 			if alteration.QueryPercent > 0 {
-				if totalQueryPercent+alteration.QueryPercent >= 100 {
+				if totalQueryPercent+alteration.QueryPercent > 100 {
 					return errors.New("total queryPercent of all alterations applied to endpoint %s is over 100%; modify them to so their total is 100% or less")
 				}
-
 				queryPctByEndpoint[alteration.TargetEndpoint] += alteration.QueryPercent
 			}
+		} else {
+			if alteration.QueryPercent > 100 {
+				return errors.New("total queryPercent of all alterations applied to endpoint %s is over 100%; modify them to so their total is 100% or less")
+			}
+			queryPctByEndpoint[alteration.TargetEndpoint] = alteration.QueryPercent
 		}
 
 		// check that exactly one of ErrorToReturn or OverrideToReturn is configured
