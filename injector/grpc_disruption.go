@@ -47,18 +47,14 @@ func (i GRPCDisruptionInjector) Inject() error {
 		return err
 	}
 
-	defer func() {
-		i.config.Log.Infow("closing connection...")
-		conn.Close()
-	}()
-
-	client := pb.NewDisruptionListenerClient(conn)
-
 	i.config.Log.Infow("adding grpc disruption", "spec", i.spec)
 
-	chaos_grpc.ExecuteSendDisruption(client, i.spec)
+	chaos_grpc.ExecuteSendDisruption(
+		pb.NewDisruptionListenerClient(conn),
+		i.spec,
+	)
 
-	return nil
+	return conn.Close()
 }
 
 // Clean removes the injected disruption from the given container
@@ -71,18 +67,11 @@ func (i GRPCDisruptionInjector) Clean() error {
 		return err
 	}
 
-	defer func() {
-		i.config.Log.Infow("closing connection...")
-		conn.Close()
-	}()
-
-	client := pb.NewDisruptionListenerClient(conn)
-
 	i.config.Log.Infow("removing grpc disruption", "spec", i.spec)
 
-	chaos_grpc.ExecuteCleanDisruption(client)
+	chaos_grpc.ExecuteCleanDisruption(pb.NewDisruptionListenerClient(conn))
 
-	return nil
+	return conn.Close()
 }
 
 func connectToServer(serverAddr string) (*grpc.ClientConn, error) {

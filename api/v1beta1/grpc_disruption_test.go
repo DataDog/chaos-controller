@@ -159,4 +159,20 @@ var _ = Describe("QueryPercent Validation", func() {
 
 		Expect(spec.Validate()).ToNot(BeNil())
 	})
+
+	It("Query percent which sums to more than 100 on two endpoints does validate", func() {
+		spec := v1beta1.GRPCDisruptionSpec{
+			Port: 50051,
+			Endpoints: []v1beta1.EndpointAlteration{
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "MEOW",
+					OverrideToReturn: "{}",
+					QueryPercent:     50,
+				},
+			},
+		}
+
+		Expect(spec.Validate()).ToNot(BeNil())
+	})
 })
