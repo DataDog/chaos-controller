@@ -191,11 +191,12 @@ func podsAreRunning(pods ...*corev1.Pod) (bool, error) {
 			return false, nil
 		}
 
-		// check the pod containers statuses (phase can be running while all pods are not running)
-		running := false
+		// check the pod containers statuses (pod phase can be running while all containers are not running)
+		// we return false if at least one container in the pod is not running
+		running := true
 		for _, status := range p.Status.ContainerStatuses {
-			if status.State.Running != nil {
-				running = true
+			if status.State.Running == nil {
+				running = false
 
 				break
 			}

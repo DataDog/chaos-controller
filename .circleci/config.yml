@@ -220,9 +220,6 @@ workflows:
       - test:
           requires:
             - prepare-env
-      - test:
-          requires:
-            - prepare-env
       - e2e-test:
           requires:
             - prepare-env
