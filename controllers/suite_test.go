@@ -180,8 +180,8 @@ var _ = BeforeSuite(func(done Done) {
 	}
 
 	By("Creating target pods")
-	Expect(k8sClient.Create(context.Background(), targetPodA)).ToNot(HaveOccurred())
-	Expect(k8sClient.Create(context.Background(), targetPodB)).ToNot(HaveOccurred())
+	Expect(k8sClient.Create(context.Background(), targetPodA)).To(BeNil())
+	Expect(k8sClient.Create(context.Background(), targetPodB)).To(BeNil())
 
 	By("Waiting for target pods to be ready")
 	Eventually(func() error {
@@ -206,8 +206,7 @@ var _ = AfterSuite(func() {
 	_ = k8sClient.Delete(context.Background(), targetPodA)
 	_ = k8sClient.Delete(context.Background(), targetPodB)
 
-	err := testEnv.Stop()
-	Expect(err).ToNot(HaveOccurred())
+	Expect(testEnv.Stop()).To(BeNil())
 })
 
 // podsAreRunning returns true when all the given pods have all their containers running
