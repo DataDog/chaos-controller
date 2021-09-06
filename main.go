@@ -26,14 +26,17 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
+	"github.com/DataDog/chaos-controller/eventsinks"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
@@ -247,14 +250,21 @@ func main() {
 		}
 	}()
 
+	co := record.CorrelatorOptions{
+		// MaxIntervalInSeconds: 60,
+	}
+	bdc := record.NewBroadcasterWithCorrelatorOptions(co)
+	newRecorder := bdc.NewRecorder(mgr.GetScheme(), v1.EventSource{Component: "chaos-controller"})
+	sink := &eventsinks.EventSink{}
+	bdc.StartRecordingToSink(sink)
+
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:                                mgr.GetClient(),
 		BaseLog:                               logger,
 		Scheme:                                mgr.GetScheme(),
-		Recorder:                              mgr.GetEventRecorderFor("disruption-controller"),
+		Recorder:                              newRecorder,
 		MetricsSink:                           ms,
-		NotifierClient:                        notifier,
 		TargetSelector:                        controllers.RunningTargetSelector{},
 		InjectorAnnotations:                   cfg.Injector.Annotations,
 		InjectorServiceAccount:                cfg.Injector.ServiceAccount.Name,
