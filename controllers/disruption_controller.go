@@ -121,7 +121,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	if err := r.Get(context.Background(), req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	r.Recorder.Event(instance, "Normal", "Reconcile Loop Test", "Loop Just Reconciled")
+	r.Recorder.Event(instance, "Normal", "Reconciled", "Loop Just Reconciled")
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
@@ -132,7 +132,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	// check whether the object is being deleted or not
 	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
-		// the instance is being deleted, clean it if the finalizer is still present
+		// the instance is being deleted, clean it if the finalizer is still pr esent
 		if controllerutil.ContainsFinalizer(instance, disruptionFinalizer) {
 			isCleaned, err := r.cleanDisruption(instance)
 			if err != nil {
