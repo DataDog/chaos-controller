@@ -18,6 +18,11 @@ To apply the throttle, the injector will:
 
 **Note: the throttle will be applied to the whole device (for the pod only) and not only to the partition handling the path.**
 
+### Container Filtering
+
+There may be the scenario where a user wants to run a disk disruption but only on specific containers which have specific volume's set up, leaving the other containers to be unaffected.
+This is possible at no additional expense to the user as the disk disruption will filter out all containers which do not carry the volume's specified in the user's disk disruption configuration.
+
 ### Known issues
 
 TL;DR: the limit will only applies on direct read and write operations (using the `O_DIRECT` flag) because of cgroups v1. We can't use cgroups v2 for now because [containerd doesn't support it yet](https://github.com/opencontainers/runc/issues/2315).
