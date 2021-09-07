@@ -52,10 +52,10 @@ func removeCtnsFromConsideration(pod *corev1.Pod, removal []string, containers [
 	if len(removal) == 0 {
 		return containers
 	}
+
 	for _, ctn := range pod.Status.ContainerStatuses {
 		for _, remove := range removal {
 			if ctn.Name == remove {
-
 				for i, id := range containers {
 					if id == ctn.ContainerID {
 						containers[i] = containers[len(containers)-1]

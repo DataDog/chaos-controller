@@ -302,6 +302,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 			// filter containers
 			var removed []string
+
 			var reasoning []string
 
 			containerIDs, removed, reasoning = filterContainerIDs(&pod, containerIDs, instance.Spec)
