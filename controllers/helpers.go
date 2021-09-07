@@ -48,20 +48,23 @@ func filterContainerIDs(pod *corev1.Pod, containers []string, spec v1beta1.Disru
 
 // removeCtnsFromConsideration removes containers from the removal list that do not comply with multi-container
 // disruption rules. Returns the updated list of containers
-func removeCtnsFromConsideration (pod *corev1.Pod, removal []string, containers []string ) []string {
+func removeCtnsFromConsideration(pod *corev1.Pod, removal []string, containers []string) []string {
 	if len(removal) == 0 {
 		return containers
 	}
 	for _, ctn := range pod.Status.ContainerStatuses {
 		for _, remove := range removal {
 			if ctn.Name == remove {
+
 				for i, id := range containers {
 					if id == ctn.ContainerID {
 						containers[i] = containers[len(containers)-1]
 						containers = containers[:len(containers)-1]
+
 						break
 					}
 				}
+
 				break
 			}
 		}
@@ -74,6 +77,7 @@ func removeCtnsFromConsideration (pod *corev1.Pod, removal []string, containers 
 func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec) ([]string, []string) {
 	removal := []string{}
 	reasoning := []string{}
+
 	for _, ctn := range pod.Spec.Containers {
 		if len(ctn.VolumeMounts) == 0 {
 			removal = append(removal, ctn.Name)
@@ -92,6 +96,7 @@ func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec) ([]strin
 			}
 		}
 	}
+
 	return removal, reasoning
 }
 
