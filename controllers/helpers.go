@@ -43,7 +43,7 @@ func filterContainerIDs(pod *corev1.Pod, containers []string, spec v1beta1.Disru
 
 	if spec.DiskPressure != nil {
 		// validate that each container has the volume to be disrupted
-		removed, reasoning = getNoValidVolumeCtns(pod, containers, spec)
+		removed, reasoning = getNoValidVolumeCtns(pod, spec)
 		containers = removeCtnsFromConsideration(pod, removed, containers)
 	}
 
@@ -75,12 +75,13 @@ func removeCtnsFromConsideration (pod *corev1.Pod, removal []string, containers 
 }
 
 // getNoValidVolumeCtns returns a list of containers that do not have valid volumes according to the disruption spec
-func getNoValidVolumeCtns(pod *corev1.Pod, containers []string, spec v1beta1.DisruptionSpec) ([]string, []string) {
+func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec) ([]string, []string) {
 	removal := []string{}
 	reasoning := []string{}
 	for _, ctn := range pod.Spec.Containers {
 		if len(ctn.VolumeMounts) == 0 {
 			removal = append(removal, ctn.Name)
+			reasoning = append(reasoning, "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.")
 		} else {
 			found := false
 			for _, volume := range ctn.VolumeMounts {

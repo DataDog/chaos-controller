@@ -200,6 +200,15 @@ var _ = BeforeSuite(func(done Done) {
 
 var _ = BeforeEach(func() {
 	instanceKey = types.NamespacedName{Name: "foo", Namespace: "default"}
+	commonVolumeMount := []corev1.VolumeMount {
+		corev1.VolumeMount{
+			Name: "testmount",
+			MountPath: "/mnt/foo",
+		},
+	}
+	commonVolume := corev1.Volume{
+		Name: "testmount",
+	}
 	targetPodA = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -213,16 +222,20 @@ var _ = BeforeEach(func() {
 				{
 					Image: "foo",
 					Name:  "ctn1",
+					VolumeMounts: commonVolumeMount,
 				},
 				{
 					Image: "foo",
 					Name:  "ctn2",
+					VolumeMounts: commonVolumeMount,
 				},
 				{
 					Image: "foo",
 					Name:  "ctn3",
+					VolumeMounts: commonVolumeMount,
 				},
 			},
+			Volumes: []corev1.Volume{commonVolume},
 		},
 	}
 	targetPodB = &corev1.Pod{
@@ -238,16 +251,20 @@ var _ = BeforeEach(func() {
 				{
 					Image: "bar",
 					Name:  "ctn1",
+					VolumeMounts: commonVolumeMount,
 				},
 				{
 					Image: "bar",
 					Name:  "ctn2",
+					VolumeMounts: commonVolumeMount,
 				},
 				{
 					Image: "bar",
 					Name:  "ctn3",
+					VolumeMounts: commonVolumeMount,
 				},
 			},
+			Volumes: []corev1.Volume{commonVolume},
 		},
 	}
 	targetPodC = &corev1.Pod{
@@ -263,16 +280,20 @@ var _ = BeforeEach(func() {
 				{
 					Image: "car",
 					Name:  "ctn1",
+					VolumeMounts: commonVolumeMount,
 				},
 				{
 					Image: "car",
 					Name:  "ctn2",
+					VolumeMounts: commonVolumeMount,
 				},
 				{
 					Image: "car",
 					Name:  "ctn3",
+					VolumeMounts: commonVolumeMount,
 				},
 			},
+			Volumes: []corev1.Volume{commonVolume},
 		},
 	}
 	targetPodD = &corev1.Pod{
@@ -288,19 +309,22 @@ var _ = BeforeEach(func() {
 				{
 					Image: "far",
 					Name:  "ctn1",
+					VolumeMounts: commonVolumeMount,
 				},
 				{
 					Image: "far",
 					Name:  "ctn2",
+					VolumeMounts: commonVolumeMount,
 				},
 				{
 					Image: "far",
 					Name:  "ctn3",
+					VolumeMounts: commonVolumeMount,
 				},
 			},
+			Volumes: []corev1.Volume{commonVolume},
 		},
 	}
-
 	By("Creating target pod")
 	err := k8sClient.Create(context.Background(), targetPodA)
 	if apierrors.IsInvalid(err) {
