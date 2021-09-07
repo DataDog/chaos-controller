@@ -102,6 +102,10 @@ spec:
         volumeMounts:
         - mountPath: /mnt/data
           name: data
+      - name: novolumehere
+        image: ubuntu:bionic
+        command: ["/bin/bash"]
+        args: ["-c", "while true; do sleep 1; done"]
       volumes:
       - name: data
         persistentVolumeClaim:
