@@ -31,13 +31,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/chaos-controller/metrics"
-	metricstypes "github.com/DataDog/chaos-controller/metrics/types"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -45,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -53,7 +47,7 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const (
-	timeout = time.Second * 15
+	timeout = time.Second * 30
 )
 
 var (
@@ -64,62 +58,7 @@ var (
 	instanceKey types.NamespacedName
 	targetPodA  *corev1.Pod
 	targetPodB  *corev1.Pod
-	targetPodC  *corev1.Pod
-	targetPodD  *corev1.Pod
 )
-
-type fakeK8sClient struct {
-	realClient client.Client
-}
-
-// Get adds a fake container ID to retrieved pods so injection and cleanup can be done
-func (f fakeK8sClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
-	// load object
-	err := f.realClient.Get(ctx, key, obj)
-	if err != nil {
-		return err
-	}
-
-	// try to convert given object into a pod
-	if pod, ok := obj.(*corev1.Pod); ok {
-		pod.Status.ContainerStatuses = []corev1.ContainerStatus{}
-
-		for i := 0; i < len(pod.Spec.Containers); i++ {
-			name := fmt.Sprintf("ctn%d", i+1)
-			ctnID := fmt.Sprintf("id%d", i+1)
-			pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, corev1.ContainerStatus{
-				Name:        name,
-				ContainerID: ctnID,
-				State: corev1.ContainerState{
-					Running: &corev1.ContainerStateRunning{},
-				},
-			})
-		}
-	}
-
-	return nil
-}
-func (f fakeK8sClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
-	return f.realClient.List(ctx, list, opts...)
-}
-func (f fakeK8sClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
-	return f.realClient.Create(ctx, obj, opts...)
-}
-func (f fakeK8sClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
-	return f.realClient.Delete(ctx, obj, opts...)
-}
-func (f fakeK8sClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
-	return f.realClient.Update(ctx, obj, opts...)
-}
-func (f fakeK8sClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
-	return f.realClient.Patch(ctx, obj, patch, opts...)
-}
-func (f fakeK8sClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
-	return f.realClient.DeleteAllOf(ctx, obj, opts...)
-}
-func (f fakeK8sClient) Status() client.StatusWriter {
-	return f.realClient.Status()
-}
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -132,16 +71,9 @@ func TestAPIs(t *testing.T) {
 var _ = BeforeSuite(func(done Done) {
 	var err error
 
-	logger, err := log.NewZapLogger()
-	if err != nil {
-		logf.Log.Error(err, "error creating logger")
-		GinkgoT().Fail()
-	}
-
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:  []string{filepath.Join("..", "chart", "templates", "crds")},
-		KubeAPIServerFlags: append(envtest.DefaultKubeAPIServerFlags, "--allow-privileged"),
+		CRDDirectoryPaths: []string{filepath.Join("..", "chart", "templates", "crds")},
 	}
 
 	cfg, err = testEnv.Start()
@@ -162,53 +94,18 @@ var _ = BeforeSuite(func(done Done) {
 
 	// +kubebuilder:scaffold:scheme
 
+	// prepare and start manager
 	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 	})
 	Expect(err).ToNot(HaveOccurred())
-
-	k8sClient = fakeK8sClient{
-		realClient: k8sManager.GetClient(),
-	}
-
-	ms, err := metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = (&DisruptionReconciler{
-		Client:                          k8sClient,
-		BaseLog:                         logger,
-		Recorder:                        k8sManager.GetEventRecorderFor("disruption-controller"),
-		MetricsSink:                     ms,
-		Scheme:                          scheme.Scheme,
-		TargetSelector:                  MockTargetSelector{},
-		InjectorImage:                   "chaos-injector",
-		InjectorServiceAccount:          "chaos-injector",
-		InjectorServiceAccountNamespace: "default",
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-
-	// start the manager and wait for a few seconds for it
-	// to be ready to deal with watched resources
+	k8sClient = k8sManager.GetClient()
 	go func() {
 		err = k8sManager.Start(ctrl.SetupSignalHandler())
 		Expect(err).ToNot(HaveOccurred())
 	}()
-	time.Sleep(5 * time.Second)
 
-	close(done)
-}, 60)
-
-var _ = BeforeEach(func() {
 	instanceKey = types.NamespacedName{Name: "foo", Namespace: "default"}
-	commonVolumeMount := []corev1.VolumeMount {
-		corev1.VolumeMount{
-			Name: "testmount",
-			MountPath: "/mnt/foo",
-		},
-	}
-	commonVolume := corev1.Volume{
-		Name: "testmount",
-	}
 	targetPodA = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -220,22 +117,34 @@ var _ = BeforeEach(func() {
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Image: "foo",
+					Image: "k8s.gcr.io/pause:3.4.1",
 					Name:  "ctn1",
-					VolumeMounts: commonVolumeMount,
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "foo",
+							MountPath: "/mnt/foo",
+						},
+					},
 				},
 				{
-					Image: "foo",
+					Image: "k8s.gcr.io/pause:3.4.1",
 					Name:  "ctn2",
-					VolumeMounts: commonVolumeMount,
-				},
-				{
-					Image: "foo",
-					Name:  "ctn3",
-					VolumeMounts: commonVolumeMount,
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "foo",
+							MountPath: "/mnt/foo",
+						},
+					},
 				},
 			},
-			Volumes: []corev1.Volume{commonVolume},
+			Volumes: []corev1.Volume{
+				{
+					Name: "foo",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			},
 		},
 	}
 	targetPodB = &corev1.Pod{
@@ -249,121 +158,87 @@ var _ = BeforeEach(func() {
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Image: "bar",
+					Image: "k8s.gcr.io/pause:3.4.1",
 					Name:  "ctn1",
-					VolumeMounts: commonVolumeMount,
-				},
-				{
-					Image: "bar",
-					Name:  "ctn2",
-					VolumeMounts: commonVolumeMount,
-				},
-				{
-					Image: "bar",
-					Name:  "ctn3",
-					VolumeMounts: commonVolumeMount,
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "foo",
+							MountPath: "/mnt/foo",
+						},
+					},
 				},
 			},
-			Volumes: []corev1.Volume{commonVolume},
+			Volumes: []corev1.Volume{
+				{
+					Name: "foo",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			},
 		},
 	}
-	targetPodC = &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "car",
-			Namespace: "default",
-			Labels: map[string]string{
-				"foo": "bar",
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Image: "car",
-					Name:  "ctn1",
-					VolumeMounts: commonVolumeMount,
-				},
-				{
-					Image: "car",
-					Name:  "ctn2",
-					VolumeMounts: commonVolumeMount,
-				},
-				{
-					Image: "car",
-					Name:  "ctn3",
-					VolumeMounts: commonVolumeMount,
-				},
-			},
-			Volumes: []corev1.Volume{commonVolume},
-		},
-	}
-	targetPodD = &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "far",
-			Namespace: "default",
-			Labels: map[string]string{
-				"foo": "bar",
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Image: "far",
-					Name:  "ctn1",
-					VolumeMounts: commonVolumeMount,
-				},
-				{
-					Image: "far",
-					Name:  "ctn2",
-					VolumeMounts: commonVolumeMount,
-				},
-				{
-					Image: "far",
-					Name:  "ctn3",
-					VolumeMounts: commonVolumeMount,
-				},
-			},
-			Volumes: []corev1.Volume{commonVolume},
-		},
-	}
-	By("Creating target pod")
-	err := k8sClient.Create(context.Background(), targetPodA)
-	if apierrors.IsInvalid(err) {
-		logf.Log.Error(err, "failed to create object, got an invalid object error")
-		return
-	}
-	Expect(err).NotTo(HaveOccurred())
 
-	err = k8sClient.Create(context.Background(), targetPodB)
-	if apierrors.IsInvalid(err) {
-		logf.Log.Error(err, "failed to create object, got an invalid object error")
-		return
-	}
-	Expect(err).NotTo(HaveOccurred())
+	By("Creating target pods")
+	Expect(k8sClient.Create(context.Background(), targetPodA)).To(BeNil())
+	Expect(k8sClient.Create(context.Background(), targetPodB)).To(BeNil())
 
-	err = k8sClient.Create(context.Background(), targetPodC)
-	if apierrors.IsInvalid(err) {
-		logf.Log.Error(err, "failed to create object, got an invalid object error")
-		return
-	}
-	Expect(err).NotTo(HaveOccurred())
+	By("Waiting for target pods to be ready")
+	Eventually(func() error {
+		running, err := podsAreRunning(targetPodA, targetPodB)
+		if err != nil {
+			return err
+		}
 
-	err = k8sClient.Create(context.Background(), targetPodD)
-	if apierrors.IsInvalid(err) {
-		logf.Log.Error(err, "failed to create object, got an invalid object error")
-		return
-	}
-	Expect(err).NotTo(HaveOccurred())
-})
+		if !running {
+			return fmt.Errorf("target pods are not running")
+		}
+
+		return nil
+	}, timeout).Should(Succeed())
+
+	close(done)
+}, 60)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
-	err := testEnv.Stop()
-	Expect(err).ToNot(HaveOccurred())
-})
 
-var _ = AfterEach(func() {
 	_ = k8sClient.Delete(context.Background(), targetPodA)
 	_ = k8sClient.Delete(context.Background(), targetPodB)
-	_ = k8sClient.Delete(context.Background(), targetPodC)
-	_ = k8sClient.Delete(context.Background(), targetPodD)
+
+	Expect(testEnv.Stop()).To(BeNil())
 })
+
+// podsAreRunning returns true when all the given pods have all their containers running
+func podsAreRunning(pods ...*corev1.Pod) (bool, error) {
+	for _, pod := range pods {
+		var p corev1.Pod
+
+		// retrieve pod
+		if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &p); err != nil {
+			return false, fmt.Errorf("error getting pod: %w", err)
+		}
+
+		// check the pod phase
+		if p.Status.Phase != corev1.PodRunning {
+			return false, nil
+		}
+
+		// check the pod containers statuses (pod phase can be running while all containers are not running)
+		// we return false if at least one container in the pod is not running
+		running := true
+		for _, status := range p.Status.ContainerStatuses {
+			if status.State.Running == nil {
+				running = false
+
+				break
+			}
+		}
+
+		if !running {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}

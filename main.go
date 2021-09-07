@@ -37,6 +37,7 @@ import (
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
+	"github.com/DataDog/chaos-controller/targetselector"
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 	"github.com/spf13/viper"
 	// +kubebuilder:scaffold:imports
@@ -223,7 +224,7 @@ func main() {
 		Scheme:                                mgr.GetScheme(),
 		Recorder:                              mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:                           ms,
-		TargetSelector:                        controllers.RunningTargetSelector{},
+		TargetSelector:                        targetselector.RunningTargetSelector{},
 		InjectorAnnotations:                   cfg.Injector.Annotations,
 		InjectorServiceAccount:                cfg.Injector.ServiceAccount.Name,
 		InjectorImage:                         cfg.Injector.Image,
