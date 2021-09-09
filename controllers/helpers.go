@@ -33,6 +33,10 @@ import (
 )
 
 // filterContainerIDs filters out any containers that may not be intended for disruption in a multi-container disruption
+// this function returns 3 string slices:
+// containers: The updated list of containers with the filtered out containers removed
+// removed: The list of containers that were removed from the list containers, used later for logging purposes
+// reasoning: A list of strings used later for logging the reason as to why the corresponding container in removed was removed
 func filterContainerIDs(pod *corev1.Pod, containers []string, spec v1beta1.DisruptionSpec) ([]string, []string, []string) {
 	removed := []string{}
 	reasoning := []string{}
