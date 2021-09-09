@@ -6,12 +6,13 @@
 package container_test
 
 import (
+	"github.com/DataDog/chaos-controller/container"
+	. "github.com/DataDog/chaos-controller/container"
+	logger "github.com/DataDog/chaos-controller/log"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
-
-	"github.com/DataDog/chaos-controller/container"
-	. "github.com/DataDog/chaos-controller/container"
 )
 
 var _ = Describe("Container", func() {
@@ -36,7 +37,8 @@ var _ = Describe("Container", func() {
 
 	JustBeforeEach(func() {
 		var err error
-		ctn, err = NewWithConfig("containerd://fake", config)
+		log, _ := logger.NewZapLogger()
+		ctn, err = NewWithConfig("containerd://fake", config, log)
 		Expect(err).To(BeNil())
 	})
 
