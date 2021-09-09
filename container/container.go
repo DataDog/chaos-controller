@@ -8,6 +8,8 @@ package container
 import (
 	"fmt"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 // Container describes a container
@@ -33,13 +35,13 @@ type container struct {
 }
 
 // New creates a new container object with default config
-func New(id string) (Container, error) {
-	return NewWithConfig(id, Config{})
+func New(id string, log *zap.SugaredLogger) (Container, error) {
+	return NewWithConfig(id, Config{}, log)
 }
 
 // NewWithConfig creates a new container object with the given config
 // nil fields are defaulted
-func NewWithConfig(id string, config Config) (Container, error) {
+func NewWithConfig(id string, config Config, log *zap.SugaredLogger) (Container, error) {
 	// parse container id
 	rawID := strings.Split(id, "://")
 	if len(rawID) != 2 {
@@ -52,7 +54,7 @@ func NewWithConfig(id string, config Config) (Container, error) {
 
 		switch {
 		case strings.HasPrefix(id, "containerd://"):
-			config.Runtime, err = newContainerdRuntime()
+			config.Runtime, err = newContainerdRuntime(log)
 		case strings.HasPrefix(id, "docker://"):
 			config.Runtime, err = newDockerRuntime()
 		default:

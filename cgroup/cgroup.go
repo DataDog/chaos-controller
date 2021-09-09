@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/DataDog/chaos-controller/env"
+	"go.uber.org/zap"
 )
 
 // Manager represents a cgroup manager able to join the given cgroup
@@ -29,10 +30,11 @@ type manager struct {
 	dryRun bool
 	path   string
 	mount  string
+	log    *zap.SugaredLogger
 }
 
 // NewManager creates a new cgroup manager from the given cgroup root path
-func NewManager(dryRun bool, path string) (Manager, error) {
+func NewManager(dryRun bool, path string, log *zap.SugaredLogger) (Manager, error) {
 	mount, ok := os.LookupEnv(env.InjectorMountCgroup)
 	if !ok {
 		return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountCgroup)
@@ -42,11 +44,13 @@ func NewManager(dryRun bool, path string) (Manager, error) {
 		dryRun: dryRun,
 		path:   path,
 		mount:  mount,
+		log:    log,
 	}, nil
 }
 
 // read reads the given cgroup file data and returns it as a string, truncating leading \n char
 func (m manager) read(path string) (string, error) {
+	m.log.Infow("reading from cgroup file", "path", path)
 	//nolint:gosec
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -59,6 +63,7 @@ func (m manager) read(path string) (string, error) {
 // write appends the given data to the given cgroup file path
 // NOTE: depending on the cgroup file, the append will result in an overwrite
 func (m manager) write(path, data string) error {
+	m.log.Infow("writing to cgroup file", "path", path, "data", data)
 	// early exit if dry-run mode is enabled
 	if m.dryRun {
 		return nil

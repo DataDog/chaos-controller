@@ -155,7 +155,7 @@ func initConfig() {
 
 		for _, containerID := range containerIDs {
 			// retrieve container info
-			ctn, err := container.New(containerID)
+			ctn, err := container.New(containerID, log)
 			if err != nil {
 				log.Errorw("can't create container object", "error", err)
 
@@ -189,7 +189,8 @@ func initConfig() {
 
 	// create cgroup managers
 	for _, cgroupPath := range cgroupPaths {
-		cgroupMgr, err := cgroup.NewManager(dryRun, cgroupPath)
+		log.Infow("creating a new cgroup manager", "cgroupPath", cgroupPath)
+		cgroupMgr, err := cgroup.NewManager(dryRun, cgroupPath, log)
 		if err != nil {
 			log.Errorw("error creating cgroup manager", "error", err)
 
