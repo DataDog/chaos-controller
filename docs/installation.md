@@ -44,6 +44,22 @@ As explained [in the network disruption documentation](../docs/network_disruptio
 --injector-network-disruption-allowed-hosts 10.0.0.1;53;udp
 ```
 
+### DNS resolution
+As part of a DNS disruption any requests that do not match the attacked hostname are forwarded to the upstream DNS server. By default the controller uses the Google Public DNS at 8.8.8.8.
+
+You can change the preferred DNS by setting the following flag:
+
+```
+--injector-dns-disruption-dns-server <dns-server-ip>
+```
+
+Depending on your DNS setup, you might need to set the flag below:
+```
+--injector-dns-disruption-kube-dns
+```
+
+By doing so any requests to local domains (".local.", ".internal.") will be forwarded to kube-dns instead.
+
 ### Image Pull Secrets
 
 To [pull the Docker images from a private registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry) which is behind authentication you can create a Kubernetes Secret and set the flag below:

@@ -529,6 +529,8 @@ class RuleEngine2:
         self.match_history = {}
 
         self.rule_list = []
+        if args.kubedns:
+            self.kube_dns_ip = get_kube_dns_ip()
 
         # A lol.com IP1,IP2,IP3,IP4,IP5,IP6 rebind_threshold%Rebind_IP1,Rebind_IP2
         with open(file_, 'r') as rulefile:
@@ -638,7 +640,11 @@ class RuleEngine2:
         try:
             s = socket.socket(type=socket.SOCK_DGRAM)
             s.settimeout(3.0)
-            addr = ('%s' % (args.dns), 53)
+
+            if args.kubedns and is_local_domain(query.domain):
+                addr = ('%s' % self.kube_dns_ip, 53)
+            else:
+                addr = ('%s' % args.dns, 53)
             s.sendto(query.data, addr)
             data = s.recv(1024)
             s.close()
@@ -650,6 +656,19 @@ class RuleEngine2:
             print(">> Error was handled by sending NONEFOUND")
             print(e)
             return NONEFOUND(query).make_packet()
+
+
+# Check if it is a local domain
+def is_local_domain(domain):
+    return domain.decode().endswith(('.local.', '.internal.'))
+
+
+# Retrieve the kube-dns IP address
+def get_kube_dns_ip():
+    with open('/etc/resolv.conf', 'r') as f:
+        for line in f.readlines():
+            if line.startswith("nameserver"):
+                return line.split(' ')[1].strip()
 
 
 # Convenience method for threading.
@@ -685,6 +704,9 @@ if __name__ == '__main__':
         '--dns', dest='dns', action='store', default='8.8.8.8', required=False,
         help='IP address of the upstream dns server - default 8.8.8.8'
     )
+    parser.add_argument(
+        '--kube-dns', dest='kubedns', action='store_true', required=False,
+        default=False, help="Use kube-dns for local DNS resolution")
     parser.add_argument(
         '--noforward', dest='noforward', action='store_true', default=False, required=False,
         help='Sets if FakeDNS should forward any non-matching requests'

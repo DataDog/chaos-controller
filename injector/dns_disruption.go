@@ -79,7 +79,11 @@ func (i DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to write resolver config: %w", err)
 	}
 
-	_, _, err := i.config.PythonRunner.RunPython("/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf")
+	cmd := []string{"/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf", "--dns", i.config.Dns.DnsServer}
+	if i.config.Dns.KubeDns {
+		cmd = append(cmd, "--kube-dns")
+	}
+	_, _, err := i.config.PythonRunner.RunPython(cmd...)
 	if err != nil {
 		return fmt.Errorf("unable to run resolver: %w", err)
 	}

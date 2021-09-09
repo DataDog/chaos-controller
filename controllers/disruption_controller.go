@@ -74,6 +74,8 @@ type DisruptionReconciler struct {
 	ImagePullSecrets                      string
 	log                                   *zap.SugaredLogger
 	InjectorServiceAccountNamespace       string
+	InjectorDnsDisruptionDnsServer 		  string
+	InjectorDnsDisruptionKubeDns 		  bool
 	InjectorNetworkDisruptionAllowedHosts []string
 }
 
@@ -950,7 +952,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		// generate args for pod
 		args := chaosapi.AppendArgs(subspec.GenerateArgs(),
 			level, kind, containerIDs, r.MetricsSink.GetSinkName(), instance.Spec.DryRun,
-			instance.Name, instance.Namespace, targetName, instance.Spec.OnInit, r.InjectorNetworkDisruptionAllowedHosts)
+			instance.Name, instance.Namespace, targetName, instance.Spec.OnInit, r.InjectorNetworkDisruptionAllowedHosts, r.InjectorDnsDisruptionDnsServer, r.InjectorDnsDisruptionKubeDns)
 
 		// append pod to chaos pods
 		*pods = append(*pods, r.generatePod(instance, targetName, targetNodeName, args, kind))

@@ -70,18 +70,29 @@ lint:
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
-# Build the docker images
-minikube-build-manager: manager
+minikube-build-manager: minikube-ssh-host manager
+	mkdir -p out
 	docker build -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
-	minikube image load ${MANAGER_IMAGE}
+	rm -f out/manager.tar
+	docker save -o out/manager.tar ${MANAGER_IMAGE}
+	scp -o IdentitiesOnly=yes -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/manager.tar docker@$$(minikube ip):/tmp
+	minikube ssh -- sudo ctr -n=k8s.io images import /tmp/manager.tar
 
-minikube-build-injector: injector
+minikube-build-injector: minikube-ssh-host injector
+	mkdir -p out
 	docker build -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
-	minikube image load ${INJECTOR_IMAGE}
+	rm -f out/injector.tar
+	docker save -o out/injector.tar ${INJECTOR_IMAGE}
+	scp -o IdentitiesOnly=yes -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/injector.tar docker@$$(minikube ip):/tmp
+	minikube ssh -- sudo ctr -n=k8s.io images import /tmp/injector.tar
 
-minikube-build-handler: handler
+minikube-build-handler: minikube-ssh-host handler
+	mkdir -p out
 	docker build -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
-	minikube image load ${HANDLER_IMAGE}
+	rm -f out/handler.tar
+	docker save -o out/handler.tar ${HANDLER_IMAGE}
+	scp -o IdentitiesOnly=yes -i $$(minikube ssh-key) -o StrictHostKeyChecking=no out/handler.tar docker@$$(minikube ip):/tmp
+	minikube ssh -- sudo ctr -n=k8s.io images import /tmp/handler.tar
 
 minikube-build: minikube-build-manager minikube-build-injector minikube-build-handler
 
@@ -117,6 +128,17 @@ minikube-start:
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
 		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2021-01-18.iso
 
+minikube-start-docker:
+	minikube start \
+		--vm-driver=virtualbox \
+		--container-runtime=docker \
+		--memory=${minikube-memory} \
+		--cpus=4 \
+		--kubernetes-version=1.19.14 \
+		--disk-size=50GB \
+		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
+		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2021-01-18.iso
+
 venv:
 	test -d .venv || python3 -m venv .venv
 	source .venv/bin/activate; pip install -qr tasks/requirements.txt
@@ -129,3 +151,6 @@ license-check: venv
 
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
+
+minikube-ssh-host:
+	ssh-keygen -R $(shell minikube ip)

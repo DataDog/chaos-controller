@@ -23,6 +23,9 @@ injector:
   annotations: {} # extra annotations passed to the chaos injector pods
   serviceAccount: chaos-injector # service account to use for the chaos injector pods
   serviceAccountNamespace: chaos-engineering # namespace where the service account can be found (NOTE: changing this will change the namespace in which the chaos pods are created)
+  dnsDisruption:
+    dnsServer: 8.8.8.8
+    kubeDns: true
   networkDisruption: # network disruption general configuration
     allowedHosts: [] # list of always allowed hosts (even if explicitly blocked by a network disruption)
     # (here's the expected format, all fields are optional)
