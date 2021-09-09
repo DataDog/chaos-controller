@@ -20,7 +20,7 @@ To apply the throttle, the injector will:
 
 ### Container Filtering
 
-There may be the scenario where a user wants to run a disk disruption but only on specific containers which have specific volume's set up, leaving the other containers to be unaffected.
+There may be a scenario where a user wants to run a disk disruption but only on specific containers which have specific volumes set up, leaving the other containers to be unaffected.
 This is possible with no additional configuration for the user as the disk disruption will filter out all containers which do not carry the volumes specified in the user's disk disruption configuration.
 
 ### Known issues
