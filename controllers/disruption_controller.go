@@ -121,7 +121,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	if err := r.Get(context.Background(), req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	r.Recorder.Event(instance, corev1.EventTypeNormal, "Reconciled", "Loop Just Reconciled")
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
@@ -165,6 +164,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.emitKindCountMetrics(instance)
+			r.Recorder.Event(instance, corev1.EventTypeNormal, "CleanedUp", "Disruption has been cleaned up")
 
 			return ctrl.Result{}, nil
 		}
@@ -240,6 +240,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 					if cond.Status == corev1.ConditionTrue {
 						podReady = true
 						status = chaostypes.DisruptionInjectionStatusPartiallyInjected
+						// r.Recorder.Event(instance, corev1.EventTypeNormal, string(status), "Disruption is partially injected")
 
 						break
 					}
@@ -257,11 +258,13 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		// consider the disruption as fully injected when all pods are ready
 		if allReady {
 			status = chaostypes.DisruptionInjectionStatusInjected
+			// r.Recorder.Event(instance, corev1.EventTypeNormal, string(status), "Disruption is injected")
 		}
 	}
 
 	// update instance status
 	instance.Status.InjectionStatus = status
+	r.Recorder.Event(instance, corev1.EventTypeNormal, string(status), "Disruption is "+string(status))
 
 	if err := r.Client.Update(context.Background(), instance); err != nil {
 		return false, err

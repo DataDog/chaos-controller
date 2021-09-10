@@ -29,13 +29,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
-	"github.com/DataDog/chaos-controller/eventsinks"
+	"github.com/DataDog/chaos-controller/eventbroadcaster"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
@@ -204,19 +203,12 @@ func main() {
 		})
 	}
 
-	co := record.CorrelatorOptions{
-		MaxIntervalInSeconds: 10,
-	}
-	bdc := record.NewBroadcasterWithCorrelatorOptions(co)
-	noopSink := &eventsinks.EventSink{}
-	bdc.StartRecordingToSink(noopSink)
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: cfg.Controller.MetricsAddr,
 		LeaderElection:     cfg.Controller.LeaderElection,
 		LeaderElectionID:   "75ec2fa4.datadoghq.com",
-		EventBroadcaster:   bdc,
+		EventBroadcaster:   eventbroadcaster.EventBroadcaster(),
 		Host:               cfg.Controller.Webhook.Host,
 		Port:               cfg.Controller.Webhook.Port,
 		CertDir:            cfg.Controller.Webhook.CertDir,
