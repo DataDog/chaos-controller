@@ -57,8 +57,8 @@ var (
 	signals             chan os.Signal
 	injectors           []injector.Injector
 	readyToInject       bool
-	dnsServer			string
-	kubeDns				string
+	dnsServer           string
+	kubeDns             string
 )
 
 func init() {
@@ -243,7 +243,7 @@ func initConfig() {
 			Cgroup:      cgroupMgrs[i],
 			Netns:       netnsMgrs[i],
 			K8sClient:   clientset,
-			Dns:		 dnsConfig,
+			Dns:         dnsConfig,
 		}
 
 		configs = append(configs, config)

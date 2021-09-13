@@ -117,17 +117,6 @@ minikube-start:
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
 		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2021-01-18.iso
 
-minikube-start-docker:
-	minikube start \
-		--vm-driver=virtualbox \
-		--container-runtime=docker \
-		--memory=${minikube-memory} \
-		--cpus=4 \
-		--kubernetes-version=1.19.14 \
-		--disk-size=50GB \
-		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
-		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2021-01-18.iso
-
 venv:
 	test -d .venv || python3 -m venv .venv
 	source .venv/bin/activate; pip install -qr tasks/requirements.txt
@@ -140,6 +129,3 @@ license-check: venv
 
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
-
-minikube-ssh-host:
-	ssh-keygen -R $(shell minikube ip)

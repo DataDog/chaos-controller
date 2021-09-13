@@ -14,8 +14,8 @@ import (
 )
 
 type DnsConfig struct {
-	DnsServer   string
-	KubeDns 	string
+	DnsServer string
+	KubeDns   string
 }
 
 // DNSClient is a client being able to resolve the given host

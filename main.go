@@ -79,7 +79,7 @@ type injectorConfig struct {
 	Image             string                          `json:"image"`
 	Annotations       map[string]string               `json:"annotations"`
 	ServiceAccount    injectorServiceAccountConfig    `json:"serviceAccount"`
-	DnsDisruption	  injectorDnsDisruptionConfig     `json:"dnsDisruption"`
+	DnsDisruption     injectorDnsDisruptionConfig     `json:"dnsDisruption"`
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
 }
 
@@ -90,7 +90,7 @@ type injectorServiceAccountConfig struct {
 
 type injectorDnsDisruptionConfig struct {
 	DnsServer string `json:"dnsServer"`
-	KubeDns	  string `json:"kubeDns"`
+	KubeDns   string `json:"kubeDns"`
 }
 
 type injectorNetworkDisruptionConfig struct {
