@@ -198,8 +198,8 @@ func initConfig() {
 	// create cgroup managers
 	for i, cgroupPath := range cgroupPaths {
 
-		rawID := strings.Split(containerIDs[i], "://") // This is "guaranteed" to work because it was already validated when we called container.New(containerID) earlier
-		foundCgroup, ok := cgroups[rawID[1]]
+		rawContainerID := strings.Split(containerIDs[i], "://") // This is "guaranteed" to work because it was already validated when we called container.New(containerID) earlier
+		foundCgroup, ok := cgroups[rawContainerID[1]]
 		if !ok {
 			log.Errorf("could not find cgroup paths for containerID %s", containerIDs[i])
 
