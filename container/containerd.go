@@ -10,20 +10,18 @@ import (
 	"fmt"
 
 	containerdlib "github.com/containerd/containerd"
-	"go.uber.org/zap"
 )
 
 type containerdRuntime struct {
 	client *containerdlib.Client
-	log    *zap.SugaredLogger
 }
 
-func newContainerdRuntime(log *zap.SugaredLogger) (Runtime, error) {
+func newContainerdRuntime() (Runtime, error) {
 	c, err := containerdlib.New("/run/containerd/containerd.sock", containerdlib.WithDefaultNamespace("k8s.io"))
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the containerd socket: %w", err)
 	}
-	return &containerdRuntime{client: c, log: log}, nil
+	return &containerdRuntime{client: c}, nil
 }
 
 func (c containerdRuntime) Name(id string) (string, error) {
@@ -69,8 +67,6 @@ func (c containerdRuntime) CgroupPath(id string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error retrieving the given container spec: %w", err)
 	}
-
-	c.log.Infow("getting cgroup path from container spec", "spec.Linux", spec.Linux)
 
 	return spec.Linux.CgroupsPath, nil
 }

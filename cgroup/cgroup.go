@@ -30,11 +30,12 @@ type manager struct {
 	dryRun bool
 	path   string
 	mount  string
+	cgroup *ContainerCgroup
 	log    *zap.SugaredLogger
 }
 
 // NewManager creates a new cgroup manager from the given cgroup root path
-func NewManager(dryRun bool, path string, log *zap.SugaredLogger) (Manager, error) {
+func NewManager(dryRun bool, cgroup *ContainerCgroup, path string, log *zap.SugaredLogger) (Manager, error) {
 	mount, ok := os.LookupEnv(env.InjectorMountCgroup)
 	if !ok {
 		return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountCgroup)
@@ -42,6 +43,7 @@ func NewManager(dryRun bool, path string, log *zap.SugaredLogger) (Manager, erro
 
 	return manager{
 		dryRun: dryRun,
+		cgroup: cgroup,
 		path:   path,
 		mount:  mount,
 		log:    log,
@@ -87,7 +89,26 @@ func (m manager) write(path, data string) error {
 
 // generatePath generates a path within the cgroup like /<mount>/<kind>/<path (kubepods)>
 func (m manager) generatePath(kind string) string {
-	return fmt.Sprintf("%s%s/%s", m.mount, kind, m.path)
+	generatedPath := fmt.Sprintf("%s%s/%s", m.mount, kind, m.path)
+	foundPath := fmt.Sprintf("%s%s/%s", m.mount, kind, m.cgroup.Paths[kind])
+
+	if generatedPath != foundPath {
+		m.log.Infow("containerd generated path does not match found cgroup path",
+			"generatedPath", generatedPath,
+			"foundPath", foundPath,
+		)
+	}
+
+	if _, err := os.Stat(generatedPath); os.IsNotExist(err) {
+		m.log.Infow("containerd generated path does not exist, using found path instead",
+			"generatedPath", generatedPath,
+			"foundPath", foundPath,
+		)
+
+		return foundPath
+	}
+
+	return generatedPath
 }
 
 // Read reads the given cgroup file data and returns the content as a string
