@@ -90,7 +90,7 @@ type injectorServiceAccountConfig struct {
 
 type injectorDnsDisruptionConfig struct {
 	DnsServer string `json:"dnsServer"`
-	KubeDns	  bool 	 `json:"kubeDns"`
+	KubeDns	  string `json:"kubeDns"`
 }
 
 type injectorNetworkDisruptionConfig struct {
@@ -143,7 +143,7 @@ func main() {
 	pflag.StringVar(&cfg.Injector.DnsDisruption.DnsServer, "injector-dns-disruption-dns-server", "8.8.8.8", "IP address of the upstream DNS server")
 	handleFatalError(viper.BindPFlag("injector.dnsDisruption.dnsServer", pflag.Lookup("injector-dns-disruption-dns-server")))
 
-	pflag.BoolVar(&cfg.Injector.DnsDisruption.KubeDns, "injector-dns-disruption-kube-dns", false, "Use kube-dns for local DNS resolution")
+	pflag.StringVar(&cfg.Injector.DnsDisruption.KubeDns, "injector-dns-disruption-kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
 	handleFatalError(viper.BindPFlag("injector.dnsDisruption.kubeDns", pflag.Lookup("injector-dns-disruption-kube-dns")))
 
 	pflag.StringSliceVar(&cfg.Injector.NetworkDisruption.AllowedHosts, "injector-network-disruption-allowed-hosts", []string{}, "List of hosts always allowed by network disruptions (format: <host>;<port>;<protocol>)")

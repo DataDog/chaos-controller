@@ -13,3 +13,7 @@ In order to ensure the target receives the configured records from DNS queries, 
 First, it sets up and runs a man-in-the-middle DNS resolver on the chaos pod, which you can find at `./bin/injector/dns_disruption_resolver.py`. This resolver intercepts DNS queries, checks the queried hostname against a local config file, and returns any present record overrides. If the resolver has no matching record for the hostname, it proxies the DNS query to the normal DNS resolver configured for the chaos pod.
 
 Second, in order for the target's DNS queries to end up at the injector's DNS resolver instead of the intended resolver, we use `iptables` nat rules. All port 53 udp traffic is redirected to the chaos pod, rather than the intended destination.
+
+## Forwarding non-matched requests
+
+Depending on your DNS setup you might need to override the DNS server and/or instruct the controller to forward requests to kube-dns. See the [advanced installation guide](installation.md#dns-resolution).

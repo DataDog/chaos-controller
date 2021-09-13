@@ -529,7 +529,7 @@ class RuleEngine2:
         self.match_history = {}
 
         self.rule_list = []
-        if args.kubedns:
+        if args.kubedns != 'off':
             self.kube_dns_ip = get_kube_dns_ip()
 
         # A lol.com IP1,IP2,IP3,IP4,IP5,IP6 rebind_threshold%Rebind_IP1,Rebind_IP2
@@ -641,7 +641,10 @@ class RuleEngine2:
             s = socket.socket(type=socket.SOCK_DGRAM)
             s.settimeout(3.0)
 
-            if args.kubedns and is_local_domain(query.domain):
+            # depending on whether/how kube-dns is used we forward to the appropriate DNS server
+            if args.kubedns == 'all':
+                addr = ('%s' % self.kube_dns_ip, 53)
+            elif args.kubedns == 'internal' and is_internal_domain(query.domain):
                 addr = ('%s' % self.kube_dns_ip, 53)
             else:
                 addr = ('%s' % args.dns, 53)
@@ -658,8 +661,8 @@ class RuleEngine2:
             return NONEFOUND(query).make_packet()
 
 
-# Check if it is a local domain
-def is_local_domain(domain):
+# Check if it is an internal domain
+def is_internal_domain(domain):
     return domain.decode().endswith(('.local.', '.internal.'))
 
 
@@ -705,8 +708,8 @@ if __name__ == '__main__':
         help='IP address of the upstream dns server - default 8.8.8.8'
     )
     parser.add_argument(
-        '--kube-dns', dest='kubedns', action='store_true', required=False,
-        default=False, help="Use kube-dns for local DNS resolution")
+        '--kube-dns', dest='kubedns', action='store', default='off', required=False,
+        help="Whether to use kube-dns for DNS resolution (off, internal, all) - default off")
     parser.add_argument(
         '--noforward', dest='noforward', action='store_true', default=False, required=False,
         help='Sets if FakeDNS should forward any non-matching requests'

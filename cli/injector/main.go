@@ -58,7 +58,7 @@ var (
 	injectors           []injector.Injector
 	readyToInject       bool
 	dnsServer			string
-	kubeDns				bool
+	kubeDns				string
 )
 
 func init() {
@@ -76,7 +76,7 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceVar(&containerIDs, "containers-id", []string{}, "Targeted containers ID")
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
 	rootCmd.PersistentFlags().StringVar(&dnsServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
-	rootCmd.PersistentFlags().BoolVar(&kubeDns, "kube-dns", false, "Use kube-dns for local DNS resolution")
+	rootCmd.PersistentFlags().StringVar(&kubeDns, "kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
 
 	// log context args
 	rootCmd.PersistentFlags().StringVar(&disruptionName, "log-context-disruption-name", "", "Log value: current disruption name")

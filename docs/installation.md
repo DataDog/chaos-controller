@@ -45,9 +45,9 @@ As explained [in the network disruption documentation](../docs/network_disruptio
 ```
 
 ### DNS resolution
-As part of a DNS disruption any requests that do not match the attacked hostname are forwarded to the upstream DNS server. By default the controller uses the Google Public DNS at 8.8.8.8.
+As part of a DNS disruption any requests that do not match the attacked hostname are forwarded to the upstream DNS server. By default the controller uses Google Public DNS at 8.8.8.8.
 
-You can change the preferred DNS by setting the following flag:
+You can change this by setting the following flag:
 
 ```
 --injector-dns-disruption-dns-server <dns-server-ip>
@@ -55,10 +55,14 @@ You can change the preferred DNS by setting the following flag:
 
 Depending on your DNS setup, you might need to set the flag below:
 ```
---injector-dns-disruption-kube-dns
+--injector-dns-disruption-kube-dns <kube-dns-resolution-mode>
 ```
 
-By doing so any requests to local domains (".local.", ".internal.") will be forwarded to kube-dns instead.
+Valid options for this flag are:
+
+- `off`: do not use kube-dns and forward all requests to the upstream DNS server
+- `internal`: forward only requests from internal domains (ending with ".local." or ".internal.") to kube-dns
+- `all`: forward both internal and external requests to kube-dns
 
 ### Image Pull Secrets
 
