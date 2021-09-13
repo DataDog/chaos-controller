@@ -256,7 +256,7 @@ func main() {
 		Scheme:                                mgr.GetScheme(),
 		Recorder:                              mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:                           ms,
-		TargetSelector:                        controllers.RunningTargetSelector{},
+		TargetSelector:                        targetselector.RunningTargetSelector{},
 		InjectorAnnotations:                   cfg.Injector.Annotations,
 		InjectorServiceAccount:                cfg.Injector.ServiceAccount.Name,
 		InjectorImage:                         cfg.Injector.Image,
