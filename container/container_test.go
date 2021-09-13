@@ -8,8 +8,6 @@ package container_test
 import (
 	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/container"
-	logger "github.com/DataDog/chaos-controller/log"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -37,8 +35,7 @@ var _ = Describe("Container", func() {
 
 	JustBeforeEach(func() {
 		var err error
-		log, _ := logger.NewZapLogger()
-		ctn, err = NewWithConfig("containerd://fake", config, log)
+		ctn, err = NewWithConfig("containerd://fake", config)
 		Expect(err).To(BeNil())
 	})
 
