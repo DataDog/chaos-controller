@@ -247,7 +247,7 @@ var _ = Describe("Disruption Controller", func() {
 		})
 	})
 
-	Context("target all pods and all containers by default", func() {
+	Context("target all pods and all relevant containers by default", func() {
 		BeforeEach(func() {
 			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
 			disruption.Spec.Containers = []string{}
@@ -257,8 +257,8 @@ var _ = Describe("Disruption Controller", func() {
 			By("Ensuring that the chaos pods have been created")
 			Eventually(func() error { return expectChaosPod(disruption, 12) }, timeout).Should(Succeed())
 
-			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Expect(expectChaosInjectors(disruption, 18)).To(BeNil())
+			By("Ensuring that the chaos pods have correct number of targeted containers excluding filtered out containers.")
+			Expect(expectChaosInjectors(disruption, 12)).To(BeNil())
 		})
 	})
 
