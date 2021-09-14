@@ -6,7 +6,6 @@
 package eventbroadcaster
 
 import (
-	"github.com/DataDog/chaos-controller/eventbroadcaster/noop"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 )
@@ -17,15 +16,13 @@ func eventMessageAggregator(event *v1.Event) string {
 
 func EventBroadcaster() record.EventBroadcaster {
 	correlator := record.CorrelatorOptions{
-		MaxEvents:            1,
+		MaxEvents:            2,
 		MaxIntervalInSeconds: 60,
 		// BurstSize:            10,
 		// QPS:                  0.1,
 		MessageFunc: eventMessageAggregator,
 	}
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(correlator)
-	noopSink := &noop.NoopSink{}
-	eventBroadcaster.StartRecordingToSink(noopSink)
 
 	return eventBroadcaster
 }

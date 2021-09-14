@@ -35,6 +35,7 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
+	"github.com/DataDog/chaos-controller/eventbroadcaster/noop"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
@@ -203,12 +204,13 @@ func main() {
 		})
 	}
 
+	broadcaster := eventbroadcaster.EventBroadcaster()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: cfg.Controller.MetricsAddr,
 		LeaderElection:     cfg.Controller.LeaderElection,
 		LeaderElectionID:   "75ec2fa4.datadoghq.com",
-		EventBroadcaster:   eventbroadcaster.EventBroadcaster(),
+		EventBroadcaster:   broadcaster,
 		Host:               cfg.Controller.Webhook.Host,
 		Port:               cfg.Controller.Webhook.Port,
 		CertDir:            cfg.Controller.Webhook.CertDir,
@@ -217,6 +219,8 @@ func main() {
 		logger.Errorw("unable to start manager", "error", err)
 		os.Exit(1)
 	}
+
+	broadcaster.StartRecordingToSink(&noop.NoopSink{Client: mgr.GetClient()})
 
 	// metrics sink
 	ms, err := metrics.GetSink(types.SinkDriver(cfg.Controller.MetricsSink), types.SinkAppController)
