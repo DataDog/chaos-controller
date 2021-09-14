@@ -52,7 +52,12 @@ func readCgroupsForPath(pidCgroupPath string, log *zap.SugaredLogger) (string, m
 		log.Debugf("cgroup path '%s' could not be read: %s", pidCgroupPath, err)
 		return "", nil, err
 	}
-	defer f.Close() //nolint:gosec
+
+	defer func() {
+		if err := f.Close(); err != nil { //nolint:gosec
+			log.Errorw("error closing cgroup path", "error", err)
+		}
+	}()
 
 	return parseCgroupPaths(f, log)
 }
@@ -155,7 +160,12 @@ func ScrapeAllCgroups(log *zap.SugaredLogger) (map[string]*ContainerCgroup, erro
 		return cgs, err
 	}
 
-	defer procDir.Close() //nolint:gosec
+	defer func() {
+		if err := procDir.Close(); err != nil { //nolint:gosec
+			log.Errorw("error closing procfs dir", "error", err)
+		}
+	}()
+
 	dirNames, err := procDir.Readdirnames(-1)
 
 	if err != nil {
