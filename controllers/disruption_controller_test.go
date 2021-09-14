@@ -33,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -229,20 +230,21 @@ var _ = Describe("Disruption Controller", func() {
 			By("Ensuring that the chaos pods have correct number of targeted containers")
 			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
 
-		Eventually(func() error {
-			// retrieve the previously created disruption
-			d := chaosv1beta1.Disruption{}
-			if err := k8sClient.Get(context.Background(), instanceKey, &d); err != nil {
-				return err
-			}
+			Eventually(func() error {
+				// retrieve the previously created disruption
+				d := chaosv1beta1.Disruption{}
+				if err := k8sClient.Get(context.Background(), instanceKey, &d); err != nil {
+					return err
+				}
 
-			// check disruption injection status
-			if d.Status.InjectionStatus != chaostypes.DisruptionInjectionStatusInjected {
-				return fmt.Errorf("disruptions is not injected, current status is %s", d.Status.InjectionStatus)
-			}
+				// check disruption injection status
+				if d.Status.InjectionStatus != chaostypes.DisruptionInjectionStatusInjected {
+					return fmt.Errorf("disruptions is not injected, current status is %s", d.Status.InjectionStatus)
+				}
 
-			return nil
-		}, timeout).Should(Succeed())
+				return nil
+			}, timeout).Should(Succeed())
+		})
 	})
 
 	Context("a node level test should pass", func() {

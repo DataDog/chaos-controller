@@ -179,7 +179,7 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 
 				return nil, status.Error(
 					errorMap[altConfig.ErrorToReturn],
-					// Future Work: interview users about this message
+					// Future Work: interview users about this message //nolint:golint
 					fmt.Sprintf("Chaos-Controller injected this error: %s", altConfig.ErrorToReturn),
 				)
 			} else if altConfig.OverrideToReturn != "" {

@@ -4,13 +4,10 @@
 // Copyright 2021 Datadog, Inc.
 
 /*
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -102,94 +99,33 @@ func TestSendAndCleaDisruption(t *testing.T) {
 				{
 					ErrorToReturn:    "",
 					OverrideToReturn: "{}",
-					QueryPercent:     0,
 				},
-				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
-					ErrorToReturn:    "",
-					OverrideToReturn: "{}",
-					QueryPercent:     50,
-				},
-			},
-		}
-	})
+			}
 
-	JustBeforeEach(func() {
-		var err error
-		inj, err = NewGRPCDisruptionInjector(spec, config, disruptionListenerClient)
-		Expect(err).To(BeNil())
-	})
-	Describe("inj.Inject", func() {
-		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(BeNil())
-		})
+			if endpts[0].TargetEndpoint == "/chaos_dogfood.ChaosDogfood/order" {
+				return specsAreEqual(endpts[0].Alterations[0], altSpecForOrder[0]) &&
+					specsAreEqual(endpts[1].Alterations[0], altSpecForGetCatalog[0]) &&
+					specsAreEqual(endpts[1].Alterations[1], altSpecForGetCatalog[1]) &&
+					specsAreEqual(endpts[1].Alterations[2], altSpecForGetCatalog[2])
+			}
+			return specsAreEqual(endpts[1].Alterations[0], altSpecForOrder[0]) &&
+				specsAreEqual(endpts[0].Alterations[0], altSpecForGetCatalog[0]) &&
+				specsAreEqual(endpts[0].Alterations[1], altSpecForGetCatalog[1]) &&
+				specsAreEqual(endpts[0].Alterations[2], altSpecForGetCatalog[2])
+		}),
+	).Return(&emptypb.Empty{}, nil)
 
-		It("should make a sendDisruption call to the disruption_listener on target service", func() {
-			disruptionListenerSpecMatcher := mock.MatchedBy(func(spec *pb.DisruptionSpec) bool {
-				endpts := spec.Endpoints
-				if len(endpts) != 2 {
-					return false
-				}
+	disruptionListenerClient.On("CleanDisruption",
+		mock.Anything,
+		&emptypb.Empty{},
+	).Return(&emptypb.Empty{}, nil)
 
-				altSpecForOrder := []*pb.AlterationSpec{
-					{
-						ErrorToReturn:    "",
-						OverrideToReturn: "{}",
-						QueryPercent:     int32(50),
-					},
-				}
+	grpc.ExecuteSendDisruption(disruptionListenerClient, spec)
+	grpc.ExecuteCleanDisruption(disruptionListenerClient)
 
-				altSpecForGetCatalog := []*pb.AlterationSpec{
-					{
-						ErrorToReturn:    "NOT_FOUND",
-						OverrideToReturn: "",
-						QueryPercent:     int32(25),
-					},
-					{
-						ErrorToReturn:    "ALREADY_EXISTS",
-						OverrideToReturn: "",
-						QueryPercent:     int32(50),
-					},
-					{
-						ErrorToReturn:    "",
-						OverrideToReturn: "{}",
-					},
-				}
-
-				if endpts[0].TargetEndpoint == "/chaos_dogfood.ChaosDogfood/order" {
-					return specsAreEqual(endpts[0].Alterations[0], altSpecForOrder[0]) &&
-						specsAreEqual(endpts[1].Alterations[0], altSpecForGetCatalog[0]) &&
-						specsAreEqual(endpts[1].Alterations[1], altSpecForGetCatalog[1]) &&
-						specsAreEqual(endpts[1].Alterations[2], altSpecForGetCatalog[2])
-				}
-				return specsAreEqual(endpts[1].Alterations[0], altSpecForOrder[0]) &&
-					specsAreEqual(endpts[0].Alterations[0], altSpecForGetCatalog[0]) &&
-					specsAreEqual(endpts[0].Alterations[1], altSpecForGetCatalog[1]) &&
-					specsAreEqual(endpts[0].Alterations[2], altSpecForGetCatalog[2])
-			})
-
-			disruptionListenerClient.AssertCalled(
-				GinkgoT(),
-				"SendDisruption",
-				disruptionListenerSpecMatcher,
-			)
-		})
-	})
-
-	Describe("inj.Clean", func() {
-		JustBeforeEach(func() {
-			Expect(inj.Clean()).To(BeNil())
-		})
-
-		It("should make a cleanDisruption call to the disruption_listener on target service", func() {
-			disruptionListenerClient.AssertCalled(
-				GinkgoT(),
-				"CleanDisruption",
-				&emptypb.Empty{},
-			)
-		})
-	})
-})
+	// run test
+	disruptionListenerClient.AssertExpectations(t)
+}
 
 func specsAreEqual(actual *pb.AlterationSpec, expected *pb.AlterationSpec) bool {
 	return actual.ErrorToReturn == expected.ErrorToReturn &&

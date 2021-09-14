@@ -76,7 +76,7 @@ func (i GRPCDisruptionInjector) Clean() error {
 
 func connectToServer(serverAddr string) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithInsecure()) // Future Work: make secure
 	opts = append(opts, grpc.WithBlock())
 
 	conn, err := grpc.Dial(serverAddr, opts...)
