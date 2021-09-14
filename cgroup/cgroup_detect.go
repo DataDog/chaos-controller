@@ -43,7 +43,7 @@ func hostProc(procRoot string, combineWith ...string) string {
 
 // readCgroupsForPath reads the cgroups from a /proc/$pid/cgroup path.
 func readCgroupsForPath(pidCgroupPath string, log *zap.SugaredLogger) (string, map[string]string, error) {
-	f, err := os.Open(pidCgroupPath)
+	f, err := os.Open(pidCgroupPath) //nolint:gosec
 
 	if os.IsNotExist(err) {
 		log.Debugf("cgroup path '%s' could not be read: %s", pidCgroupPath, err)
@@ -52,7 +52,7 @@ func readCgroupsForPath(pidCgroupPath string, log *zap.SugaredLogger) (string, m
 		log.Debugf("cgroup path '%s' could not be read: %s", pidCgroupPath, err)
 		return "", nil, err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:gosec
 
 	return parseCgroupPaths(f, log)
 }
@@ -85,30 +85,38 @@ func containerIDFromCgroup(cgroup string) (string, bool) {
 // If any line doesn't have a valid container ID we will return an empty string and an empty slice of paths
 func parseCgroupPaths(r io.Reader, log *zap.SugaredLogger) (string, map[string]string, error) {
 	var containerID string
+
 	paths := make(map[string]string)
 	scanner := bufio.NewScanner(r)
+
 	for scanner.Scan() {
 		l := scanner.Text()
 		cID, ok := containerIDFromCgroup(l)
+
 		if !ok {
 			log.Debugf("could not parse container id from path '%s'", l)
 		}
+
 		if containerID == "" {
 			// Take the first valid containerID
 			containerID = cID
 		}
+
 		sp := strings.SplitN(l, ":", 3)
+
 		if len(sp) < 3 {
 			continue
 		}
 		// Target can be comma-separate values like cpu,cpuacct
 		tsp := strings.Split(sp[1], ",")
+
 		for _, target := range tsp {
 			if len(sp[2]) > 1 && sp[2] != "/docker" { // if the path is only one character it's the root cgroup
 				paths[target] = sp[2]
 			}
 		}
 	}
+
 	if err := scanner.Err(); err != nil {
 		return "", nil, err
 	}
@@ -121,6 +129,7 @@ func parseCgroupPaths(r io.Reader, log *zap.SugaredLogger) (string, map[string]s
 	// In Ubuntu Xenial, we've encountered containers with no `cpu`
 	_, cpuok := paths["cpu"]
 	cpuacct, cpuacctok := paths["cpuacct"]
+
 	if !cpuok && cpuacctok {
 		paths["cpu"] = cpuacct
 	}
@@ -141,20 +150,25 @@ func ScrapeAllCgroups(log *zap.SugaredLogger) (map[string]*ContainerCgroup, erro
 	}
 
 	procDir, err := os.Open(hostProc(procMount))
+
 	if err != nil {
 		return cgs, err
 	}
-	defer procDir.Close()
+
+	defer procDir.Close() //nolint:gosec
 	dirNames, err := procDir.Readdirnames(-1)
+
 	if err != nil {
 		return cgs, err
 	}
 
 	for _, dirName := range dirNames {
 		pid, err := strconv.ParseInt(dirName, 10, 32)
+
 		if err != nil {
 			continue
 		}
+
 		cgPath := hostProc(procMount, dirName, "cgroup")
 		containerID, paths, err := readCgroupsForPath(cgPath, log)
 
@@ -169,6 +183,7 @@ func ScrapeAllCgroups(log *zap.SugaredLogger) (map[string]*ContainerCgroup, erro
 
 		mP, mFound := paths["memory"]
 		fP, fFound := paths["freezer"]
+
 		if !fFound || !mFound || mP != fP {
 			log.Debugf("skipping cgroup from pid: %d - does not appear to be a container: memory path: %s, freezer path: %s", pid, mP, fP)
 			continue
@@ -178,6 +193,7 @@ func ScrapeAllCgroups(log *zap.SugaredLogger) (map[string]*ContainerCgroup, erro
 			log.Infof("error reading cgroup paths %s: %s", cgPath, err)
 			continue
 		}
+
 		if cg, ok := cgs[containerID]; ok {
 			cg.Pids = append(cg.Pids, int32(pid))
 		} else {
@@ -188,5 +204,6 @@ func ScrapeAllCgroups(log *zap.SugaredLogger) (map[string]*ContainerCgroup, erro
 			}
 		}
 	}
+
 	return cgs, nil
 }

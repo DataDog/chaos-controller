@@ -21,6 +21,7 @@ func newContainerdRuntime() (Runtime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the containerd socket: %w", err)
 	}
+
 	return &containerdRuntime{client: c}, nil
 }
 
