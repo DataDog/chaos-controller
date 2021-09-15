@@ -315,3 +315,4 @@ var _ = Describe("Disruption Controller", func() {
 	// 		Eventually(func() error { return k8sClient.Get(context.Background(), chaosPodKey, &chaosPod) }, timeout).Should(MatchError(fmt.Sprintf("Pod \"%s\" not found", chaosPod.Name)))
 	// 	})
 	// })
+})
