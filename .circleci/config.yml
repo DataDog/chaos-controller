@@ -204,6 +204,7 @@ jobs:
       - run:
           command: |
             cd grpc/disruption_listener
+            apt-get upgrade
             apt-get install unzip
             PROTOC_ZIP=protoc-3.14.0-linux-x86_64.zip
             curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.14.0/$PROTOC_ZIP
