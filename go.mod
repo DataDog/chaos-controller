@@ -40,6 +40,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.uber.org/zap v1.10.0
+	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
 	golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744
 	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/grpc v1.39.0
