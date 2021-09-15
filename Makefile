@@ -132,5 +132,11 @@ header-check: venv
 license-check: venv
 	source .venv/bin/activate; inv license-check
 
+generate-protobuf:
+	cd grpc/disruption_listener && \
+	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1 && \
+	go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
+	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative disruption_listener.proto
+
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
