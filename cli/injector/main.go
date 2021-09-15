@@ -187,9 +187,28 @@ func initConfig() {
 		return
 	}
 
+	cgroups, err := cgroup.ScrapeAllCgroups(log)
+
+	if err != nil {
+		log.Errorw("can't find cgroups paths", "error", err)
+
+		return
+	}
+
 	// create cgroup managers
-	for _, cgroupPath := range cgroupPaths {
-		cgroupMgr, err := cgroup.NewManager(dryRun, cgroupPath)
+	for i, cgroupPath := range cgroupPaths {
+		rawContainerID := strings.Split(containerIDs[i], "://") // This is "guaranteed" to work because it was already validated when we called container.New(containerID) earlier
+		foundCgroup, ok := cgroups[rawContainerID[1]]
+
+		if !ok {
+			log.Errorf("could not find cgroup paths for containerID %s", containerIDs[i])
+
+			return
+		}
+
+		log.Infow("creating a new cgroup manager", "cgroupPath", cgroupPath)
+		cgroupMgr, err := cgroup.NewManager(dryRun, foundCgroup, cgroupPath, log)
+
 		if err != nil {
 			log.Errorw("error creating cgroup manager", "error", err)
 
