@@ -23,7 +23,6 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
 	github.com/gogo/googleapis v1.4.0 // indirect
-	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/miekg/dns v1.1.31
 	github.com/mitchellh/go-homedir v1.1.0
@@ -44,7 +43,7 @@ require (
 	golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744
 	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/grpc v1.39.0
-	google.golang.org/protobuf v1.25.0
+	google.golang.org/protobuf v1.27.1
 	gotest.tools/v3 v3.0.2 // indirect
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6
