@@ -43,7 +43,6 @@ require (
 	golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744
 	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/grpc v1.39.0
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0 // indirect
 	google.golang.org/protobuf v1.27.1
 	gotest.tools/v3 v3.0.2 // indirect
 	k8s.io/api v0.18.6
