@@ -32,22 +32,30 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+// filtering container meta data containing a list of filtered out containers and the reasoning for the
+// the filter.
+type filteringContMeta struct {
+	removed []string
+	reasoning []string
+}
+
 // filterContainerIDs filters out any containers that may not be intended for disruption in a multi-container disruption
 // this function returns 3 string slices:
 // containers: The updated list of containers with the filtered out containers removed
 // removed: The list of containers that were removed from the list containers, used later for logging purposes
 // reasoning: A list of strings used later for logging the reason as to why the corresponding container in removed was removed
-func filterContainerIDs(pod *corev1.Pod, containers []string, spec v1beta1.DisruptionSpec) ([]string, []string, []string) {
-	removed := []string{}
-	reasoning := []string{}
+func filterContainerIDs(pod *corev1.Pod, containers []string, spec v1beta1.DisruptionSpec) ([]string, filteringContMeta) {
+	var meta filteringContMeta
+	meta.removed = []string{}
+	meta.reasoning = []string{}
 
 	if spec.DiskPressure != nil {
 		// validate that each container has the volume to be disrupted
-		removed, reasoning = getNoValidVolumeCtns(pod, spec)
-		containers = removeCtnsFromConsideration(pod, removed, containers)
+		getNoValidVolumeCtns(pod, spec, meta)
+		containers = removeCtnsFromConsideration(pod, meta.removed, containers)
 	}
 
-	return containers, removed, reasoning
+	return containers, meta
 }
 
 // removeCtnsFromConsideration removes containers from the removal list that do not comply with multi-container
@@ -78,14 +86,11 @@ func removeCtnsFromConsideration(pod *corev1.Pod, removal []string, containers [
 }
 
 // getNoValidVolumeCtns returns a list of containers that do not have valid volumes according to the disruption spec
-func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec) ([]string, []string) {
-	removal := []string{}
-	reasoning := []string{}
-
+func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec, meta filteringContMeta) {
 	for _, ctn := range pod.Spec.Containers {
 		if len(ctn.VolumeMounts) == 0 {
-			removal = append(removal, ctn.Name)
-			reasoning = append(reasoning, "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.")
+			meta.removed = append(meta.removed, ctn.Name)
+			meta.reasoning = append(meta.reasoning, "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.")
 		} else {
 			found := false
 			for _, volume := range ctn.VolumeMounts {
@@ -95,13 +100,13 @@ func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec) ([]strin
 				}
 			}
 			if !found {
-				removal = append(removal, ctn.Name)
-				reasoning = append(reasoning, "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.")
+				meta.removed = append(meta.removed, ctn.Name)
+				meta.reasoning = append(meta.reasoning, "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.")
 			}
 		}
 	}
 
-	return removal, reasoning
+	return
 }
 
 // getContainerIDs gets the IDs of the targeted containers or all container IDs found in a Pod
