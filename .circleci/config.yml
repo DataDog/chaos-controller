@@ -238,3 +238,4 @@ workflows:
             - prepare-env
       - third-party-licenses
       - license-header
+      - protobuf
