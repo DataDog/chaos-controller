@@ -35,7 +35,7 @@ import (
 // filtering container meta data containing a list of filtered out containers and the reasoning for the
 // the filter.
 type filteringContMeta struct {
-	removed []string
+	removed   []string
 	reasoning []string
 }
 
@@ -105,8 +105,6 @@ func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec, meta fil
 			}
 		}
 	}
-
-	return
 }
 
 // getContainerIDs gets the IDs of the targeted containers or all container IDs found in a Pod
