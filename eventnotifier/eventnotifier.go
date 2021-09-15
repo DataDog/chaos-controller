@@ -3,14 +3,14 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
-package notifier
+package eventnotifier
 
 import (
 	"fmt"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/notifier/noop"
-	"github.com/DataDog/chaos-controller/notifier/types"
+	"github.com/DataDog/chaos-controller/eventnotifier/noop"
+	"github.com/DataDog/chaos-controller/eventnotifier/types"
 )
 
 type Context struct {
@@ -21,14 +21,9 @@ type Notifier interface {
 	GetNotifierName() string
 	Clean() error
 
+	NotifyNotInjected(v1beta1.Disruption) error
 	NotifyInjected(v1beta1.Disruption) error
-	NotifyCleaned(v1beta1.Disruption) error
-	// NotifyInvalidated(v1beta1.Disruption) error
-	// NotifyNoTarget(v1beta1.Disruption) error
-	// NotifyNotCleaned(v1beta1.Disruption) error
-
-	// IDEAS:
-	// CleanedAfterTimeout(v1beta1.Disruption) error
+	NotifyCleanedUp(v1beta1.Disruption) error
 }
 
 // GetNotifier returns an initiated Notifier instance

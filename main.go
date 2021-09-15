@@ -35,12 +35,11 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
-	"github.com/DataDog/chaos-controller/eventbroadcaster/noop"
+	broadcasternoop "github.com/DataDog/chaos-controller/eventbroadcaster/noop"
+	notifiernoop "github.com/DataDog/chaos-controller/eventnotifier/noop"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
-	"github.com/DataDog/chaos-controller/notifier"
-	notifiertypes "github.com/DataDog/chaos-controller/notifier/types"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 	"github.com/spf13/viper"
@@ -220,7 +219,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	broadcaster.StartRecordingToSink(&noop.NoopSink{Client: mgr.GetClient()})
+	broadcaster.StartRecordingToSink(&broadcasternoop.Sink{Client: mgr.GetClient(), Notifier: notifiernoop.New()})
 
 	// metrics sink
 	ms, err := metrics.GetSink(types.SinkDriver(cfg.Controller.MetricsSink), types.SinkAppController)
@@ -232,24 +231,12 @@ func main() {
 		logger.Errorw("error sending MetricRestart", "sink", ms.GetSinkName())
 	}
 
-	// notifier driver setup
-	notifier, err := notifier.GetNotifier(notifiertypes.NotifierDriver(cfg.Controller.NotifierDriver))
-	if err != nil {
-		logger.Errorw("error while creating notifier", "error", err)
-	}
-
 	// handle metrics sink client close on exit
 	defer func() {
 		logger.Infow("closing metrics sink client before exiting", "sink", ms.GetSinkName())
 
 		if err := ms.Close(); err != nil {
 			logger.Errorw("error closing metrics sink client", "sink", ms.GetSinkName(), "error", err)
-		}
-
-		logger.Infow("closing notifier client before exiting", "notifier", notifier.GetNotifierName())
-
-		if err := notifier.Clean(); err != nil {
-			logger.Errorw("error closing notifier client", "notifier", notifier.GetNotifierName(), "error", err)
 		}
 	}()
 

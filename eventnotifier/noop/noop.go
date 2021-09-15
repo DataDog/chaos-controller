@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/notifier/types"
+	"github.com/DataDog/chaos-controller/eventnotifier/types"
 )
 
 // Notifier describes a NOOP notifier
@@ -30,6 +30,13 @@ func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverNoop)
 }
 
+// NotifyNotInjected signals a disruption was injected successfully
+func (n *Notifier) NotifyNotInjected(dis v1beta1.Disruption) error {
+	notify("NotifyNotInjected", dis.Name)
+
+	return nil
+}
+
 // NotifyInjected signals a disruption was injected successfully
 func (n *Notifier) NotifyInjected(dis v1beta1.Disruption) error {
 	notify("NotifyInjected", dis.Name)
@@ -37,33 +44,12 @@ func (n *Notifier) NotifyInjected(dis v1beta1.Disruption) error {
 	return nil
 }
 
-// // NotifyInvalidated signals a disruption was rejected by the admission controller validation
-// func (n *Notifier) NotifyInvalidated(dis v1beta1.Disruption) error {
-// 	notify("NotifyInvalidated", dis.Name)
-
-// 	return nil
-// }
-
-// // NotifyNoTarget signals a disruption's selector found no target
-// func (n *Notifier) NotifyNoTarget(dis v1beta1.Disruption) error {
-// 	notify("NotifyNoTarget", dis.Name)
-
-// 	return nil
-// }
-
-// NotifyCleaned signals a disruption's been cleaned up suffessfully
-func (n *Notifier) NotifyCleaned(dis v1beta1.Disruption) error {
-	notify("NotifyCleaned", dis.Name)
+// NotifyCleanedUp signals a disruption's been cleaned up successfully
+func (n *Notifier) NotifyCleanedUp(dis v1beta1.Disruption) error {
+	notify("NotifyCleanedUp", dis.Name)
 
 	return nil
 }
-
-// // NotifyNotCleaned signals a disruption's cleanup has failed
-// func (n *Notifier) NotifyNotCleaned(dis v1beta1.Disruption) error {
-// 	notify("NotifyNotCleaned", dis.Name)
-
-// 	return nil
-// }
 
 // helper for noop notifier
 func notify(notificationName string, disName string) {
