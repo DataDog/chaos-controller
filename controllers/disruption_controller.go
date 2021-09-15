@@ -736,7 +736,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 			{
 				Name:            "injector",        // container name
 				Image:           r.InjectorImage,   // container image gathered from controller flags
-				ImagePullPolicy: corev1.PullAlways, // pull the image only when it is not present
+				ImagePullPolicy: corev1.PullIfNotPresent, // pull the image only when it is not present
 				Args:            args,              // pass disruption arguments
 				SecurityContext: &corev1.SecurityContext{
 					Privileged: func() *bool { b := true; return &b }(), // enable privileged mode
