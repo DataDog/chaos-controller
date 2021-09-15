@@ -202,12 +202,12 @@ jobs:
     steps:
       - checkout
       - run:
-        command: |
-          cd grpc/disruption_listener
-          apt install -y protobuf-compiler
-          go get google.golang.org/protobuf/cmd/protoc-gen-go@latest
-          go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-          protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative disruption_listener.proto
+          command: |
+            cd grpc/disruption_listener
+            apt install -y protobuf-compiler
+            go get google.golang.org/protobuf/cmd/protoc-gen-go@latest
+            go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+            protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative disruption_listener.proto
       - run: git diff --exit-code
 
 workflows:
