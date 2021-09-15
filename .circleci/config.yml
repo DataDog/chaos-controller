@@ -204,7 +204,7 @@ jobs:
       - run:
           command: |
             cd grpc/disruption_listener
-            apt get update
+            apt-get upgrade
             apt install -y protobuf-compiler
             go get google.golang.org/protobuf/cmd/protoc-gen-go@latest
             go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
