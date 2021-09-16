@@ -32,41 +32,40 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// filtering container meta data containing a list of filtered out containers and the reasoning for the
+// filtering container meta data containing a list of filtered out containers (by name) and the reasoning for
 // the filter.
-type filteringContMeta struct {
-	removed   []string
-	reasoning []string
+type filteredContainer struct {
+	removed   string
+	reasoning string
 }
 
 // filterContainerIDs filters out any containers that may not be intended for disruption in a multi-container disruption
 // this function returns 3 string slices:
 // containers: The updated list of containers with the filtered out containers removed
-// removed: The list of containers that were removed from the list containers, used later for logging purposes
+// removed: The list of container names that were removed from the list containers, used later for logging purposes
 // reasoning: A list of strings used later for logging the reason as to why the corresponding container in removed was removed
-func filterContainerIDs(pod *corev1.Pod, containers []string, spec v1beta1.DisruptionSpec) ([]string, filteringContMeta) {
-	var meta filteringContMeta
-	meta.removed = []string{}
-	meta.reasoning = []string{}
+func filterContainerIDs(pod *corev1.Pod, containers []string, spec v1beta1.DisruptionSpec) ([]string, []filteredContainer) {
+	var fContainers []filteredContainer
 
 	if spec.DiskPressure != nil {
 		// validate that each container has the volume to be disrupted
-		getNoValidVolumeCtns(pod, spec, meta)
-		containers = removeCtnsFromConsideration(pod, meta.removed, containers)
+		getNoValidVolumeCtns(pod, spec, fContainers)
+		containers = removeCtnsFromConsideration(pod, fContainers, containers)
 	}
 
-	return containers, meta
+	return containers, fContainers
 }
 
 // removeCtnsFromConsideration removes containers from the removal list that do not comply with multi-container
 // disruption rules. Returns the updated list of containers
-func removeCtnsFromConsideration(pod *corev1.Pod, removal []string, containers []string) []string {
-	if len(removal) == 0 {
+func removeCtnsFromConsideration(pod *corev1.Pod, fContainers []filteredContainer, containers []string) []string {
+	if len(fContainers) == 0 {
 		return containers
 	}
 
 	for _, ctn := range pod.Status.ContainerStatuses {
-		for _, remove := range removal {
+		for _, fcont := range fContainers {
+			remove := fcont.removed
 			if ctn.Name == remove {
 				for i, id := range containers {
 					if id == ctn.ContainerID {
@@ -86,11 +85,14 @@ func removeCtnsFromConsideration(pod *corev1.Pod, removal []string, containers [
 }
 
 // getNoValidVolumeCtns returns a list of containers that do not have valid volumes according to the disruption spec
-func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec, meta filteringContMeta) {
+func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec, fContainers []filteredContainer) {
 	for _, ctn := range pod.Spec.Containers {
 		if len(ctn.VolumeMounts) == 0 {
-			meta.removed = append(meta.removed, ctn.Name)
-			meta.reasoning = append(meta.reasoning, "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.")
+			newfcont := filteredContainer{
+				removed: ctn.Name,
+				reasoning: "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.",
+			}
+			fContainers = append(fContainers, newfcont)
 		} else {
 			found := false
 			for _, volume := range ctn.VolumeMounts {
@@ -100,8 +102,11 @@ func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec, meta fil
 				}
 			}
 			if !found {
-				meta.removed = append(meta.removed, ctn.Name)
-				meta.reasoning = append(meta.reasoning, "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.")
+				newfcont := filteredContainer{
+					removed: ctn.Name,
+					reasoning: "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.",
+				}
+				fContainers = append(fContainers, newfcont)
 			}
 		}
 	}

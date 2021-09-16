@@ -301,12 +301,12 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 			}
 
 			// filter containers
-			var filterMeta filteringContMeta
+			var fContainers []filteredContainer
 
-			containerIDs, filterMeta = filterContainerIDs(&pod, containerIDs, instance.Spec)
-			if len(filterMeta.removed) != 0 {
-				for i, item := range filterMeta.removed {
-					r.Recorder.Event(instance, "Warning", "Incompatible Container", fmt.Sprintf("We could not apply the disruption on container %s; %s", item, filterMeta.reasoning[i]))
+			containerIDs, fContainers = filterContainerIDs(&pod, containerIDs, instance.Spec)
+			if len(fContainers) != 0 {
+				for _, item := range fContainers {
+					r.Recorder.Event(instance, "Warning", "Incompatible Container", fmt.Sprintf("We could not apply the disruption on container %s; %s", item.removed, item.reasoning))
 				}
 			}
 
