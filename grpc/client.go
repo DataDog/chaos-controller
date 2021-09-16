@@ -11,8 +11,11 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+var log *zap.SugaredLogger
 
 // ExecuteSendDisruption takes in a CRD specification for GRPC disruptions and
 // executes a SendDisruption call on the provided DisruptionListenerClient
@@ -56,7 +59,7 @@ func GenerateEndpointSpecs(endpoints []chaosv1beta1.EndpointAlteration) []*pb.En
 			existingEndptSpec.Alterations = append(existingEndptSpec.Alterations, altSpec)
 		} else {
 			targetToEndpointSpec[targeted] = &pb.EndpointSpec{
-				TargetEndpoint: endptAlt.TargetEndpoint,
+				TargetEndpoint: targeted,
 				Alterations: []*pb.AlterationSpec{
 					{
 						ErrorToReturn:    endptAlt.ErrorToReturn,

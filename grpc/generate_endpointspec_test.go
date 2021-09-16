@@ -7,9 +7,8 @@ package grpc_test
 
 import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
-
 	. "github.com/DataDog/chaos-controller/grpc"
+	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -49,8 +48,8 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 				},
 				{
 					TargetEndpoint:   "service/api_1",
-					ErrorToReturn:    "{}}",
-					OverrideToReturn: "",
+					ErrorToReturn:    "",
+					OverrideToReturn: "{}",
 					QueryPercent:     0,
 				},
 			}
@@ -65,33 +64,70 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 		})
 
 		It("should create and endpointSpec for api_1 with 3 elements", func() {
-			Expect(len(endpointSpec[0].TargetEndpoint)).To(Equal("service/api_1"))
-			Expect(len(endpointSpec[0].Alterations)).To(Equal(3))
+			var endpointSpec_1 *pb.EndpointSpec
+			if endpointSpec[0].TargetEndpoint == "service/api_1" {
+				endpointSpec_1 = endpointSpec[0]
+			} else {
+				endpointSpec_1 = endpointSpec[1]
+			}
 
-			Expect(endpointSpec[0].Alterations[0].ErrorToReturn).To(Equal("CANCELLED"))
-			Expect(endpointSpec[0].Alterations[0].OverrideToReturn).To(Equal(""))
-			Expect(endpointSpec[0].Alterations[0].QueryPercent).To(Equal(25))
+			Expect(endpointSpec_1).ToNot(BeNil())
+			Expect(len(endpointSpec_1.Alterations)).To(Equal(3))
 
-			Expect(endpointSpec[0].Alterations[1].ErrorToReturn).To(Equal("ALREADY_EXISTS"))
-			Expect(endpointSpec[0].Alterations[1].OverrideToReturn).To(Equal(""))
-			Expect(endpointSpec[0].Alterations[1].QueryPercent).To(Equal(20))
+			canceled_found := false
+			already_exists_found := false
+			empty_response_found := false
 
-			Expect(endpointSpec[0].Alterations[2].ErrorToReturn).To(Equal(""))
-			Expect(endpointSpec[0].Alterations[2].OverrideToReturn).To(Equal("{}"))
-			Expect(endpointSpec[0].Alterations[2].QueryPercent).To(Equal(0))
+			for _, alteration := range endpointSpec_1.Alterations {
+				if alteration.ErrorToReturn == "CANCELLED" {
+					canceled_found = true
+					Expect(alteration.OverrideToReturn).To(Equal(""))
+					Expect(alteration.QueryPercent).To(Equal(int32(25)))
+				} else if alteration.ErrorToReturn == "ALREADY_EXISTS" {
+					already_exists_found = true
+					Expect(alteration.OverrideToReturn).To(Equal(""))
+					Expect(alteration.QueryPercent).To(Equal(int32(20)))
+				} else {
+					Expect(alteration.ErrorToReturn).To(Equal(""))
+					Expect(alteration.OverrideToReturn).To(Equal("{}"))
+					Expect(alteration.QueryPercent).To(Equal(int32(0)))
+					empty_response_found = true
+				}
+			}
+
+			Expect(canceled_found).To(BeTrue())
+			Expect(already_exists_found).To(BeTrue())
+			Expect(empty_response_found).To(BeTrue())
 		})
 
 		It("should create and endpointSpec for api_2 with 2 elements", func() {
-			Expect(len(endpointSpec[0].TargetEndpoint)).To(Equal("service/api_2"))
-			Expect(len(endpointSpec[1].Alterations)).To(Equal(2))
+			var endpointSpec_2 *pb.EndpointSpec
+			if endpointSpec[0].TargetEndpoint == "service/api_2" {
+				endpointSpec_2 = endpointSpec[0]
+			} else {
+				endpointSpec_2 = endpointSpec[1]
+			}
 
-			Expect(endpointSpec[1].Alterations[0].ErrorToReturn).To(Equal("PERMISSION_DENIED"))
-			Expect(endpointSpec[1].Alterations[0].OverrideToReturn).To(Equal(""))
-			Expect(endpointSpec[1].Alterations[0].QueryPercent).To(Equal(50))
+			Expect(endpointSpec_2).ToNot(BeNil())
+			Expect(len(endpointSpec_2.Alterations)).To(Equal(2))
 
-			Expect(endpointSpec[1].Alterations[1].ErrorToReturn).To(Equal("NOT_FOUND"))
-			Expect(endpointSpec[1].Alterations[1].OverrideToReturn).To(Equal(""))
-			Expect(endpointSpec[1].Alterations[1].QueryPercent).To(Equal(0))
+			permission_denied_found := false
+			not_found_found := false
+
+			for _, alteration := range endpointSpec_2.Alterations {
+				if alteration.ErrorToReturn == "PERMISSION_DENIED" {
+					permission_denied_found = true
+					Expect(alteration.OverrideToReturn).To(Equal(""))
+					Expect(alteration.QueryPercent).To(Equal(int32(50)))
+				} else {
+					not_found_found = true
+					Expect(alteration.ErrorToReturn).To(Equal("NOT_FOUND"))
+					Expect(alteration.OverrideToReturn).To(Equal(""))
+					Expect(alteration.QueryPercent).To(Equal(int32(0)))
+				}
+			}
+			Expect(permission_denied_found).To(BeTrue())
+			Expect(not_found_found).To(BeTrue())
 		})
 	})
 })

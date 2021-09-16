@@ -23,6 +23,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
 	github.com/gogo/googleapis v1.4.0 // indirect
+	github.com/google/martian v2.1.0+incompatible
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/miekg/dns v1.1.31
 	github.com/mitchellh/go-homedir v1.1.0

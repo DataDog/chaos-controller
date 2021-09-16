@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -57,8 +56,6 @@ type PercentAffected int
 type TargetEndpoint string
 
 var (
-	log *zap.SugaredLogger
-
 	errorMap = map[string]codes.Code{
 		"OK":                  codes.OK,
 		"CANCELED":            codes.Canceled,
@@ -207,12 +204,12 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 
 	for _, altSpec := range endpointSpecList {
 		if altSpec.ErrorToReturn == "" && altSpec.OverrideToReturn == "" {
-			log.Error("For endpoint %s, neither ErrorToReturn nor OverrideToReturn are specified which is not allowed", targeted)
+			// log.Error("For endpoint %s, neither ErrorToReturn nor OverrideToReturn are specified which is not allowed", targeted) // HELP
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying either ErrorToReturn or OverrideToReturn for all target endpoints")
 		}
 
 		if altSpec.ErrorToReturn != "" && altSpec.OverrideToReturn != "" {
-			log.Error("For endpoint %s, both ErrorToReturn and OverrideToReturn are specified which is not allowed", targeted)
+			// log.Error("For endpoint %s, both ErrorToReturn and OverrideToReturn are specified which is not allowed", targeted) // HELP
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption where ErrorToReturn or OverrideToReturn are both specified for a target endpoints")
 		}
 
@@ -235,19 +232,25 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 
 	if len(unquantifiedAlts) > 0 {
 		if pctClaimed == 100 {
-			log.Info("Alterations with specified percentQuery sum to cover all of the queries; "+
-				"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
-				len(unquantifiedAlts), targeted,
-			)
+			/*
+				log.Info("Alterations with specified percentQuery sum to cover all of the queries; "+
+					"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
+					len(unquantifiedAlts), targeted,
+				)
+			*/
+			// HELP
 		}
 
 		// add all endpoints where queryPercent is not specified by splitting the remaining queries equally by alteration
 		pctPerAlt := (100 - pctClaimed) / len(unquantifiedAlts)
 		if pctPerAlt < 1 {
-			log.Info("Alterations with specified percentQuery sum to cover almost all queries; "+
-				"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
-				len(unquantifiedAlts)-1, targeted,
-			)
+			/*
+				log.Info("Alterations with specified percentQuery sum to cover almost all queries; "+
+					"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
+					len(unquantifiedAlts)-1, targeted,
+				)
+			*/
+			// HELP
 		}
 
 		for i, altConfig := range unquantifiedAlts {
@@ -266,21 +269,12 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 // GetPercentToAlteration Converts a mapping from alterationConfiguration to the percentage of requests which should return this altered response
 func GetPercentToAlteration(endpointSpecList map[AlterationConfiguration]PercentAffected) []AlterationConfiguration {
 	hashMap := make([]AlterationConfiguration, 0, 100)
-	currPct := 0
 
-	log.Debug("configuring percentile map")
+	// log.Debug("configuring percentile map") // HELP
 
 	for altConfig, pct := range endpointSpecList {
 		for i := 0; i < int(pct); i++ {
-			hashMap[currPct] = altConfig
-
-			// log as we go
-			if altConfig.ErrorToReturn != "" {
-				log.Debug("%d: %s", currPct, altConfig.ErrorToReturn)
-			} else {
-				log.Debug("%d: %s", currPct, altConfig.OverrideToReturn)
-			}
-			currPct++
+			hashMap = append(hashMap, altConfig)
 		}
 	}
 
