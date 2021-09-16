@@ -24,7 +24,6 @@ type DisruptionNotifierSink struct {
 }
 
 func (s *DisruptionNotifierSink) Create(event *v1.Event) (*v1.Event, error) {
-	fmt.Printf("%v - %v - %v - %v\n", "NOOPEVENTSINK CALLED CREATE", event.Reason, event.Count, event.Message)
 	dis, err := s.getDisruption(event)
 
 	if err != nil {
@@ -41,13 +40,10 @@ func (s *DisruptionNotifierSink) Create(event *v1.Event) (*v1.Event, error) {
 }
 
 func (s *DisruptionNotifierSink) Update(event *v1.Event) (*v1.Event, error) {
-	fmt.Println("NOOPEVENTSINK CALLED UPDATE")
 	return event, nil
 }
 
 func (s *DisruptionNotifierSink) Patch(oldEvent *v1.Event, data []byte) (*v1.Event, error) {
-	fmt.Printf("%v - %v - %v - %v\n", "NOOPEVENTSINK CALLED PATCH", oldEvent.Reason, oldEvent.Count, oldEvent.Message)
-	fmt.Printf("\t%v\n", data)
 	return oldEvent, nil
 }
 
