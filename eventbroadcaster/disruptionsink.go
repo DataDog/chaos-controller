@@ -18,6 +18,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// DisruptionEventStatus represents all possible values for an event notification
+type DisruptionEventStatus string
+
+const (
+	DisruptionEventReasonInjected       string = string(chaostypes.DisruptionInjectionStatusInjected)
+	DisruptionEventReasonNotInjected    string = string(chaostypes.DisruptionInjectionStatusNotInjected)
+	DisruptionEventReasonStuckOnRemoval string = "StuckOnRemoval"
+	DisruptionEventReasonCleanedUp      string = "CleanedUp"
+	DisruptionEventReasonNoTarget       string = "NoTarget"
+)
+
 type DisruptionNotifierSink struct {
 	Client   client.Client
 	Notifier eventnotifier.Notifier
@@ -48,8 +59,11 @@ func (s *DisruptionNotifierSink) Patch(oldEvent *v1.Event, data []byte) (*v1.Eve
 }
 
 func (s *DisruptionNotifierSink) getDisruption(event *v1.Event) (v1beta1.Disruption, error) {
-
 	dis := v1beta1.Disruption{}
+	if event.InvolvedObject.Kind != "Disruption" {
+		return v1beta1.Disruption{}, nil
+	}
+
 	err := s.Client.Get(context.Background(), types.NamespacedName{Namespace: event.InvolvedObject.Namespace, Name: event.InvolvedObject.Name}, &dis)
 	if err != nil {
 		return v1beta1.Disruption{}, err
@@ -65,15 +79,15 @@ func (s *DisruptionNotifierSink) getDisruption(event *v1.Event) (v1beta1.Disrupt
 
 func (s *DisruptionNotifierSink) parseEvent(event *v1.Event, dis v1beta1.Disruption) error {
 	switch event.Reason {
-	case string(chaostypes.DisruptionInjectionStatusNotInjected):
+	case DisruptionEventReasonNotInjected:
 		s.Notifier.NotifyNotInjected(dis)
-	case string(chaostypes.DisruptionInjectionStatusInjected):
+	case DisruptionEventReasonInjected:
 		s.Notifier.NotifyInjected(dis)
-	case "CleanedUp":
+	case DisruptionEventReasonCleanedUp:
 		s.Notifier.NotifyCleanedUp(dis)
-	case "NoTarget":
+	case DisruptionEventReasonNoTarget:
 		s.Notifier.NotifyNoTarget(dis)
-	case "StuckOnRemoval":
+	case DisruptionEventReasonStuckOnRemoval:
 		s.Notifier.NotifyStuckOnRemoval(dis)
 	default:
 		return fmt.Errorf("event: not a chaos disruption event")

@@ -46,6 +46,7 @@ import (
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
+	"github.com/DataDog/chaos-controller/eventbroadcaster"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -151,6 +152,8 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				}, r.Update(context.Background(), instance)
 			}
 
+			r.Recorder.Event(instance, corev1.EventTypeNormal, eventbroadcaster.DisruptionEventReasonCleanedUp, "Disruption has been cleaned up")
+
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
 			r.log.Infow("removing finalizer")
@@ -164,8 +167,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.emitKindCountMetrics(instance)
-
-			r.Recorder.Event(instance, corev1.EventTypeNormal, "CleanedUp", "Disruption has been cleaned up")
 
 			return ctrl.Result{}, nil
 		}
@@ -516,7 +517,7 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 			// if the chaos pod finalizer must not be removed and the chaos pod must not be deleted
 			// and the cleanup status must not be ignored, we are stuck and won't be able to remove the disruption
 			r.log.Infow("instance seems stuck on removal for this target, please check manually", "target", target, "chaosPod", chaosPod.Name)
-			r.Recorder.Event(instance, corev1.EventTypeWarning, "StuckOnRemoval", "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer")
+			r.Recorder.Event(instance, corev1.EventTypeWarning, eventbroadcaster.DisruptionEventReasonStuckOnRemoval, "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer")
 
 			instance.Status.IsStuckOnRemoval = true
 		}
@@ -597,7 +598,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// return an error if the selector returned no targets
 	if len(matchingTargets) == 0 {
 		r.log.Info("the given label selector did not return any targets, skipping")
-		r.Recorder.Event(instance, corev1.EventTypeWarning, "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
+		r.Recorder.Event(instance, corev1.EventTypeWarning, eventbroadcaster.DisruptionEventReasonNoTarget, "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
 
 		return nil
 	}
@@ -626,7 +627,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	targetsCount = int(math.Min(float64(targetsCount), float64(len(eligibleTargets))))
 	if targetsCount < 1 {
 		r.log.Info("ignored targets has reached target count, skipping")
-		r.Recorder.Event(instance, corev1.EventTypeWarning, "NoTarget", "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)")
+		r.Recorder.Event(instance, corev1.EventTypeWarning, eventbroadcaster.DisruptionEventReasonNoTarget, "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)")
 
 		return nil
 	}
