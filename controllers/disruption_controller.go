@@ -131,7 +131,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 	// check whether the object is being deleted or not
 	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
-		// the instance is being deleted, clean it if the finalizer is still pr esent
+		// the instance is being deleted, clean it if the finalizer is still present
 		if controllerutil.ContainsFinalizer(instance, disruptionFinalizer) {
 			isCleaned, err := r.cleanDisruption(instance)
 			if err != nil {
@@ -241,7 +241,6 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 					if cond.Status == corev1.ConditionTrue {
 						podReady = true
 						status = chaostypes.DisruptionInjectionStatusPartiallyInjected
-						// r.Recorder.Event(instance, corev1.EventTypeNormal, string(status), "Disruption is partially injected")
 
 						break
 					}
@@ -259,7 +258,6 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		// consider the disruption as fully injected when all pods are ready
 		if allReady {
 			status = chaostypes.DisruptionInjectionStatusInjected
-			// r.Recorder.Event(instance, corev1.EventTypeNormal, string(status), "Disruption is injected")
 		}
 	}
 

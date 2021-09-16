@@ -22,6 +22,8 @@ type Notifier interface {
 	Clean() error
 
 	NotifyNotInjected(v1beta1.Disruption) error
+	NotifyNoTarget(v1beta1.Disruption) error
+	NotifyStuckOnRemoval(v1beta1.Disruption) error
 	NotifyInjected(v1beta1.Disruption) error
 	NotifyCleanedUp(v1beta1.Disruption) error
 }

@@ -51,6 +51,20 @@ func (n *Notifier) NotifyCleanedUp(dis v1beta1.Disruption) error {
 	return nil
 }
 
+// NotifyNoTarget signals a disruption's been cleaned up successfully
+func (n *Notifier) NotifyNoTarget(dis v1beta1.Disruption) error {
+	notify("NotifyNoTarget", dis.Name)
+
+	return nil
+}
+
+// NotifyStuckOnRemoval signals a disruption's been cleaned up successfully
+func (n *Notifier) NotifyStuckOnRemoval(dis v1beta1.Disruption) error {
+	notify("NotifyStuckOnRemoval", dis.Name)
+
+	return nil
+}
+
 // helper for noop notifier
 func notify(notificationName string, disName string) {
 	fmt.Printf("NOOP: %s for disruption %s\n", notificationName, disName)

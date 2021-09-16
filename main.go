@@ -35,7 +35,6 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
-	broadcasternoop "github.com/DataDog/chaos-controller/eventbroadcaster/noop"
 	notifiernoop "github.com/DataDog/chaos-controller/eventnotifier/noop"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
@@ -219,7 +218,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	broadcaster.StartRecordingToSink(&broadcasternoop.Sink{Client: mgr.GetClient(), Notifier: notifiernoop.New()})
+	broadcaster.StartRecordingToSink(&eventbroadcaster.DisruptionNotifierSink{Client: mgr.GetClient(), Notifier: notifiernoop.New()})
 
 	// metrics sink
 	ms, err := metrics.GetSink(types.SinkDriver(cfg.Controller.MetricsSink), types.SinkAppController)
