@@ -7,7 +7,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/DataDog/chaos-controller/network"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -22,6 +21,7 @@ import (
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
 	"github.com/DataDog/chaos-controller/netns"
+	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
