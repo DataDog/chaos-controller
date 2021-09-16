@@ -8,8 +8,9 @@ package injector
 import (
 	"bytes"
 	"fmt"
-	"go.uber.org/zap"
 	"os/exec"
+
+	"go.uber.org/zap"
 )
 
 // PythonRunner is an interface for executing python3 commands

@@ -74,7 +74,7 @@ type DisruptionReconciler struct {
 	ImagePullSecrets                      string
 	log                                   *zap.SugaredLogger
 	InjectorServiceAccountNamespace       string
-	InjectorDnsDisruptionDnsServer        string
+	InjectorDNSDisruptionDNSServer        string
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 }
@@ -734,10 +734,10 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 		TerminationGracePeriodSeconds: &terminationGracePeriod,
 		Containers: []corev1.Container{
 			{
-				Name:            "injector",        // container name
-				Image:           r.InjectorImage,   // container image gathered from controller flags
+				Name:            "injector",              // container name
+				Image:           r.InjectorImage,         // container image gathered from controller flags
 				ImagePullPolicy: corev1.PullIfNotPresent, // pull the image only when it is not present
-				Args:            args,              // pass disruption arguments
+				Args:            args,                    // pass disruption arguments
 				SecurityContext: &corev1.SecurityContext{
 					Privileged: func() *bool { b := true; return &b }(), // enable privileged mode
 				},
@@ -952,7 +952,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		// generate args for pod
 		args := chaosapi.AppendArgs(subspec.GenerateArgs(),
 			level, kind, containerIDs, r.MetricsSink.GetSinkName(), instance.Spec.DryRun,
-			instance.Name, instance.Namespace, targetName, instance.Spec.OnInit, r.InjectorNetworkDisruptionAllowedHosts, r.InjectorDnsDisruptionDnsServer, r.InjectorDNSDisruptionKubeDNS)
+			instance.Name, instance.Namespace, targetName, instance.Spec.OnInit, r.InjectorNetworkDisruptionAllowedHosts, r.InjectorDNSDisruptionDNSServer, r.InjectorDNSDisruptionKubeDNS)
 
 		// append pod to chaos pods
 		*pods = append(*pods, r.generatePod(instance, targetName, targetNodeName, args, kind))

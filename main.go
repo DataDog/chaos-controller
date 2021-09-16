@@ -241,7 +241,7 @@ func main() {
 		InjectorServiceAccount:                cfg.Injector.ServiceAccount.Name,
 		InjectorImage:                         cfg.Injector.Image,
 		InjectorServiceAccountNamespace:       cfg.Injector.ServiceAccount.Namespace,
-		InjectorDnsDisruptionDnsServer:        cfg.Injector.DNSDisruption.DNSServer,
+		InjectorDNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
