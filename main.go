@@ -36,6 +36,7 @@ import (
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
 	notifiernoop "github.com/DataDog/chaos-controller/eventnotifier/noop"
+	notifierslack "github.com/DataDog/chaos-controller/eventnotifier/slack"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
@@ -219,6 +220,7 @@ func main() {
 	}
 
 	broadcaster.StartRecordingToSink(&eventbroadcaster.DisruptionNotifierSink{Client: mgr.GetClient(), Notifier: notifiernoop.New()})
+	broadcaster.StartRecordingToSink(&eventbroadcaster.DisruptionNotifierSink{Client: mgr.GetClient(), Notifier: notifierslack.New()})
 
 	// metrics sink
 	ms, err := metrics.GetSink(types.SinkDriver(cfg.Controller.MetricsSink), types.SinkAppController)
