@@ -141,7 +141,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			// if not cleaned yet, requeue and reconcile again in 5s-10s
 			// the reason why we don't rely on the exponential backoff here is that it retries too fast at the beginning
 			if !isCleaned {
-				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second
+				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
 
 				r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
 
@@ -631,7 +631,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 	// randomly pick up targets from the found ones
 	for i := 0; i < targetsCount; i++ {
-		index := rand.Intn(len(eligibleTargets))
+		index := rand.Intn(len(eligibleTargets)) //nolint:gosec
 		selectedTarget := eligibleTargets[index]
 		instance.Status.Targets = append(instance.Status.Targets, selectedTarget)
 		eligibleTargets[len(eligibleTargets)-1], eligibleTargets[index] = eligibleTargets[index], eligibleTargets[len(eligibleTargets)-1]

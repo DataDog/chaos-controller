@@ -6,12 +6,11 @@
 package container_test
 
 import (
+	"github.com/DataDog/chaos-controller/container"
+	. "github.com/DataDog/chaos-controller/container"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
-
-	"github.com/DataDog/chaos-controller/container"
-	. "github.com/DataDog/chaos-controller/container"
 )
 
 var _ = Describe("Container", func() {
