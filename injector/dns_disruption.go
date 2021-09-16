@@ -80,12 +80,15 @@ func (i DNSDisruptionInjector) Inject() error {
 	}
 
 	cmd := []string{"/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf"}
-	if i.config.Dns.DnsServer != "" {
-		cmd = append(cmd, "--dns", i.config.Dns.DnsServer)
+
+	if i.config.DNS.DNSServer != "" {
+		cmd = append(cmd, "--dns", i.config.DNS.DNSServer)
 	}
-	if i.config.Dns.KubeDns != "" {
-		cmd = append(cmd, "--kube-dns", i.config.Dns.KubeDns)
+
+	if i.config.DNS.KubeDNS != "" {
+		cmd = append(cmd, "--kube-dns", i.config.DNS.KubeDNS)
 	}
+
 	_, _, err := i.config.PythonRunner.RunPython(cmd...)
 	if err != nil {
 		return fmt.Errorf("unable to run resolver: %w", err)

@@ -13,9 +13,9 @@ import (
 	"github.com/miekg/dns"
 )
 
-type DnsConfig struct {
-	DnsServer string
-	KubeDns   string
+type DNSConfig struct {
+	DNSServer string
+	KubeDNS   string
 }
 
 // DNSClient is a client being able to resolve the given host

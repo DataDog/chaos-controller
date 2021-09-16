@@ -34,5 +34,5 @@ type Config struct {
 	Cgroup      cgroup.Manager
 	Netns       netns.Manager
 	K8sClient   kubernetes.Interface
-	Dns         network.DnsConfig
+	DNS         network.DNSConfig
 }
