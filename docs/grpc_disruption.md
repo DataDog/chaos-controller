@@ -1,6 +1,6 @@
 # GRPC disruption
 
-The `grpc` field offers a way to inject spoofed gRPC responses on the server-side. To get this disruption to work, you must apply some code changes to the instantiation of your gRPC server.
+The `grpc` field offers a way to inject spoofed gRPC responses on the server-side. To get this disruption to work, you must apply some code changes to the instantiation of your gRPC server (see [how to initialize a disruption listener service in gRPC server?](/docs/grpc_disruption/setup_instructions.md)), and then apply the Disruption kind with the following additional fields in the `grpc` specifications:
 
 * `port` is the port exposed on target pods (the target pods are specified in `spec.selector`)
 * `endpoints` is a list of endpoints to alter (a spoof configuration is referred to as an `alteration`)
@@ -8,7 +8,7 @@ The `grpc` field offers a way to inject spoofed gRPC responses on the server-sid
   * Exactly one of `<endpoints[i]>.error` or `<endpoints[i]>.override` should be defined per endpoint alteration, and the only override currently supported is `{}` which returns `emptypb.Empty`
   * `<endpoints[i]>.query_pct` defines (out of 100) how frequently this alteration should occur; you may have multiple alterations per endpoint, but you cannot specify a sum total of more than 100 percent for any given endpoint
 
-Note: At this time, Chaos Controller does not support:
+Note: At this time, Chaos Controller is not guaranteed to support any of the following:
 * disrupting gRPC Streams
 * chaining the disruption interceptor on another interceptor you already have
 * adding latency

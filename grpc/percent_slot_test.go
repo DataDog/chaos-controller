@@ -37,40 +37,32 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 	})
 
 	Context("with one alteration", func() {
-		BeforeEach(func() {
+		It("should create 15 (out of 100 potential) slots with alteration configurations", func() {
 			mapping[altCfgs[0]] = PercentAffected(15)
 
 			percentToAlteration = GetPercentToAlteration(mapping)
-		})
 
-		It("should create 15 SlotPercents", func() {
 			Expect(len(percentToAlteration)).To(Equal(15))
-		})
 
-		It("should create 15 Slot Percents which are configured to the single alteration", func() {
-			altCfg_0 := percentToAlteration[0]
-			Expect(altCfg_0.ErrorToReturn).To(Equal("CANCELED"))
-			Expect(altCfg_0.OverrideToReturn).To(Equal(""))
+			altCfg := percentToAlteration[0]
+			Expect(altCfg.ErrorToReturn).To(Equal("CANCELED"))
+			Expect(altCfg.OverrideToReturn).To(Equal(""))
 
-			altCfg_14 := percentToAlteration[14]
-			Expect(altCfg_14.ErrorToReturn).To(Equal("CANCELED"))
-			Expect(altCfg_14.OverrideToReturn).To(Equal(""))
+			altCfg = percentToAlteration[14]
+			Expect(altCfg.ErrorToReturn).To(Equal("CANCELED"))
+			Expect(altCfg.OverrideToReturn).To(Equal(""))
 		})
 	})
-	Context("with three alterations", func() {
-		BeforeEach(func() {
+	Context("with three alterations that add up to less than 100 percent", func() {
+		It("should create 70 (out of 100 potential) slots with alteration configurations", func() {
 			mapping[altCfgs[0]] = PercentAffected(15)
 			mapping[altCfgs[1]] = PercentAffected(20)
 			mapping[altCfgs[2]] = PercentAffected(35)
 
 			percentToAlteration = GetPercentToAlteration(mapping)
-		})
 
-		It("should create 70 SlotPercents", func() {
 			Expect(len(percentToAlteration)).To(Equal(70))
-		})
 
-		It("should create Slot Percents which are configured to the correct alteration", func() {
 			position := 0
 			altCfg := percentToAlteration[position]
 
@@ -120,19 +112,15 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 		})
 	})
 	Context("with three alterations that add to 100", func() {
-		BeforeEach(func() {
+		It("should create 100 (out of 100 potential) slots with alteration configurations", func() {
 			mapping[altCfgs[0]] = PercentAffected(40)
 			mapping[altCfgs[1]] = PercentAffected(40)
 			mapping[altCfgs[2]] = PercentAffected(20)
 
 			percentToAlteration = GetPercentToAlteration(mapping)
-		})
 
-		It("should create 100 SlotPercents", func() {
 			Expect(len(percentToAlteration)).To(Equal(100))
-		})
 
-		It("should create Slot Percents which are configured to the right alterations", func() {
 			position := 0
 			altCfg := percentToAlteration[position]
 
