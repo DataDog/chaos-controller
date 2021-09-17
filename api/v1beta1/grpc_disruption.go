@@ -57,7 +57,7 @@ func (s GRPCDisruptionSpec) Validate() error {
 
 	for _, alteration := range s.Endpoints {
 		if alteration.TargetEndpoint == "" {
-			return errors.New("some list items in gRPC disruption are missing endpoints; specify an endpoint for each item in the list")
+			return errors.New("some list items in gRPC disruption are missing endpoints; specify a TargetEndpoint for each item in the list")
 		}
 
 		// check that endpoint is not already configured such that the sum of mangled queryPercents total to more than 100%
