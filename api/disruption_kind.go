@@ -46,8 +46,10 @@ func AppendArgs(args []string, level chaostypes.DisruptionLevel, kind chaostypes
 	}
 
 	// DNS disruption configs
-	args = append(args, "--dns-server", dnsServer)
-	args = append(args, "--kube-dns", kubeDNS)
+	if kind == chaostypes.DisruptionKindDNSDisruption {
+		args = append(args, "--dns-server", dnsServer)
+		args = append(args, "--kube-dns", kubeDNS)
+	}
 
 	// append allowed hosts for network disruptions
 	if kind == chaostypes.DisruptionKindNetworkDisruption {
