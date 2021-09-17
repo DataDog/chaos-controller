@@ -35,15 +35,13 @@ import (
 // filtering container meta data containing a list of filtered out containers (by name) and the reasoning for
 // the filter.
 type filteredContainer struct {
-	removed   string
-	reasoning string
+	removed string
 }
 
 // filterContainerIDs filters out any containers that may not be intended for disruption in a multi-container disruption
-// this function returns 3 string slices:
+// this function returns 1 string clice of containers and 1 filteredContainer slice:
 // containers: The updated list of containers with the filtered out containers removed
-// removed: The list of container names that were removed from the list containers, used later for logging purposes
-// reasoning: A list of strings used later for logging the reason as to why the corresponding container in removed was removed
+// filteredContainer.removed: A container name that was removed from the list of containers, used later for logging purposes
 func filterContainerIDs(pod *corev1.Pod, containers []string, spec v1beta1.DisruptionSpec) ([]string, []filteredContainer) {
 	var fContainers []filteredContainer
 
@@ -90,7 +88,6 @@ func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec, fContain
 		if len(ctn.VolumeMounts) == 0 {
 			newfcont := filteredContainer{
 				removed: ctn.Name,
-				reasoning: "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.",
 			}
 			fContainers = append(fContainers, newfcont)
 		} else {
@@ -104,7 +101,6 @@ func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec, fContain
 			if !found {
 				newfcont := filteredContainer{
 					removed: ctn.Name,
-					reasoning: "Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.",
 				}
 				fContainers = append(fContainers, newfcont)
 			}

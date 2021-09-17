@@ -306,7 +306,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 			containerIDs, fContainers = filterContainerIDs(&pod, containerIDs, instance.Spec)
 			if len(fContainers) != 0 {
 				for _, item := range fContainers {
-					r.Recorder.Event(instance, "Warning", "Incompatible Container", fmt.Sprintf("We could not apply the disruption on container %s; %s", item.removed, item.reasoning))
+					r.Recorder.Event(instance, "Warning", "Incompatible Container", fmt.Sprintf("We could not apply the disruption on container %s; Disk Pressure Disruption; Message: Could not find valid volume specified in disruption.", item.removed))
 				}
 			}
 
