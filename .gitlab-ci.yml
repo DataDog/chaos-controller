@@ -205,7 +205,7 @@ slack-notifier-pre-release.on-failure:
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
     - 'MESSAGE_TEXT=":siren:   | Pre-Release Pipeline Failure | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
-    - postmessage "#test-chaosnotifier" "$MESSAGE_TEXT"
+    - postmessage "#chaos-ops" "$MESSAGE_TEXT"
 
 slack-notifier-release.on-failure:
   extends: .slack-notifier-base
@@ -215,7 +215,7 @@ slack-notifier-release.on-failure:
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
     - 'MESSAGE_TEXT=":siren:   | Release Pipeline Failure | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
-    - postmessage "#test-chaosnotifier" "$MESSAGE_TEXT"
+    - postmessage "#chaos-ops" "$MESSAGE_TEXT"
 
 slack-notifier-build.on-failure:
   extends: .slack-notifier-base
@@ -228,4 +228,4 @@ slack-notifier-build.on-failure:
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
     - 'MESSAGE_TEXT=":siren:   | Build Pipeline Failure | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
-    - postmessage "#test-chaosnotifier" "$MESSAGE_TEXT"
+    - postmessage "#chaos-ops" "$MESSAGE_TEXT"
