@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
-package v1beta1_test
+package api_test
 
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -12,8 +12,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("QueryPercent Validation", func() {
-	It("Query percent of 101 does not validate", func() {
+var _ = Describe("GRPCDisruption Validation", func() {
+	It("Error and override cannot both be defined", func() {
 		spec := v1beta1.GRPCDisruptionSpec{
 			Port: 50051,
 			Endpoints: []v1beta1.EndpointAlteration{
@@ -21,6 +21,40 @@ var _ = Describe("QueryPercent Validation", func() {
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "{}",
+					QueryPercent:     100,
+				},
+			},
+		}
+
+		err := spec.Validate()
+		Expect(err.Error()).To(Equal("the gRPC disruption has ErrorToReturn and OverrideToReturn specified for endpoint /chaos_dogfood.ChaosDogfood/order, but it can only have one"))
+	})
+
+	It("Error and override cannot both be defined", func() {
+		spec := v1beta1.GRPCDisruptionSpec{
+			Port: 50051,
+			Endpoints: []v1beta1.EndpointAlteration{
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "",
+					OverrideToReturn: "",
+					QueryPercent:     100,
+				},
+			},
+		}
+
+		err := spec.Validate()
+		Expect(err.Error()).To(Equal("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint /chaos_dogfood.ChaosDogfood/order"))
+	})
+
+	It("Query percent of 101 does not validate", func() {
+		spec := v1beta1.GRPCDisruptionSpec{
+			Port: 50051,
+			Endpoints: []v1beta1.EndpointAlteration{
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "CANCELED",
+					OverrideToReturn: "",
 					QueryPercent:     101,
 				},
 			},
@@ -36,7 +70,7 @@ var _ = Describe("QueryPercent Validation", func() {
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 					ErrorToReturn:    "CANCELED",
-					OverrideToReturn: "{}",
+					OverrideToReturn: "",
 					QueryPercent:     100,
 				},
 			},
@@ -52,7 +86,7 @@ var _ = Describe("QueryPercent Validation", func() {
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 					ErrorToReturn:    "CANCELED",
-					OverrideToReturn: "{}",
+					OverrideToReturn: "",
 					QueryPercent:     99,
 				},
 			},
@@ -68,13 +102,13 @@ var _ = Describe("QueryPercent Validation", func() {
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 					ErrorToReturn:    "CANCELED",
-					OverrideToReturn: "{}",
+					OverrideToReturn: "",
 					QueryPercent:     100,
 				},
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/getCatalog",
 					ErrorToReturn:    "CANCELED",
-					OverrideToReturn: "{}",
+					OverrideToReturn: "",
 					QueryPercent:     100,
 				},
 			}}
@@ -89,13 +123,13 @@ var _ = Describe("QueryPercent Validation", func() {
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 					ErrorToReturn:    "CANCELED",
-					OverrideToReturn: "{}",
+					OverrideToReturn: "",
 					QueryPercent:     60,
 				},
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 					ErrorToReturn:    "ALREADY_EXISTS",
-					OverrideToReturn: "{}",
+					OverrideToReturn: "",
 					QueryPercent:     40,
 				},
 			}}
@@ -110,13 +144,13 @@ var _ = Describe("QueryPercent Validation", func() {
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 					ErrorToReturn:    "CANCELED",
-					OverrideToReturn: "{}",
+					OverrideToReturn: "",
 					QueryPercent:     49,
 				},
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 					ErrorToReturn:    "ALREADY_EXISTS",
-					OverrideToReturn: "{}",
+					OverrideToReturn: "",
 					QueryPercent:     49,
 				},
 			}}
@@ -131,13 +165,13 @@ var _ = Describe("QueryPercent Validation", func() {
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 					ErrorToReturn:    "CANCELED",
-					OverrideToReturn: "{}",
+					OverrideToReturn: "",
 					QueryPercent:     50,
 				},
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 					ErrorToReturn:    "ALREADY_EXISTS",
-					OverrideToReturn: "{}",
+					OverrideToReturn: "",
 					QueryPercent:     51,
 				},
 			}}
@@ -152,7 +186,7 @@ var _ = Describe("QueryPercent Validation", func() {
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 					ErrorToReturn:    "MEOW",
-					OverrideToReturn: "{}",
+					OverrideToReturn: "",
 					QueryPercent:     50,
 				},
 			},

@@ -24,7 +24,7 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 			endpointAlterations = []chaosv1beta1.EndpointAlteration{
 				{
 					TargetEndpoint:   "service/api_1",
-					ErrorToReturn:    "CANCELLED",
+					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "",
 					QueryPercent:     25,
 				},
@@ -79,7 +79,7 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 			empty_response_found := false
 
 			for _, alteration := range endpointSpec_1.Alterations {
-				if alteration.ErrorToReturn == "CANCELLED" {
+				if alteration.ErrorToReturn == "CANCELED" {
 					canceled_found = true
 					Expect(alteration.OverrideToReturn).To(Equal(""))
 					Expect(alteration.QueryPercent).To(Equal(int32(25)))

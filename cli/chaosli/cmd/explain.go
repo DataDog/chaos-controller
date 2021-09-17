@@ -156,10 +156,14 @@ func explainGRPC(spec v1beta1.DisruptionSpec) {
 	for _, endpt := range endptSpec {
 		fmt.Printf("\t\t👩‍⚕️ endpoint: %s ...\n", endpt.TargetEndpoint) //nolint:stylecheck
 
-		alterationToPercentAffected, _ := grpc_api.GetAlterationToPercentAffected(
+		alterationToPercentAffected, err := grpc_api.GetAlterationToPercentAffected(
 			endpt.Alterations,
 			grpc_api.TargetEndpoint(endpt.TargetEndpoint),
 		)
+
+		if err != nil {
+			fmt.Printf("\t\t\t💣  this disruption fails with err: %s\n", err.Error())
+		}
 
 		var spoof string
 
@@ -170,7 +174,7 @@ func explainGRPC(spec v1beta1.DisruptionSpec) {
 				spoof = fmt.Sprintf("override: %s", altConfig.OverrideToReturn)
 			}
 
-			fmt.Printf("\t\t\t💣 will be %d percent spoofed with %s\n", pct, spoof)
+			fmt.Printf("\t\t\t💣  will be %d percent spoofed with %s\n", pct, spoof)
 		}
 	}
 

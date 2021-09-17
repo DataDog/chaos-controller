@@ -83,6 +83,18 @@ func (s GRPCDisruptionSpec) Validate() error {
 		} else if alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "" {
 			return fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint)
 		}
+
+		if alteration.ErrorToReturn != "" && alteration.ErrorToReturn != "OK" &&
+			alteration.ErrorToReturn != "CANCELED" && alteration.ErrorToReturn != "ALREADY_EXISTS" &&
+			alteration.ErrorToReturn != "UNKNOWN" && alteration.ErrorToReturn != "INVALID_ARGUMENT" &&
+			alteration.ErrorToReturn != "DEADLINE_EXCEEDED" && alteration.ErrorToReturn != "NOT_FOUND" &&
+			alteration.ErrorToReturn != "PERMISSION_DENIED" && alteration.ErrorToReturn != "RESOURCE_EXHAUSTED" &&
+			alteration.ErrorToReturn != "FAILED_PRECONDITION" && alteration.ErrorToReturn != "ABORTED" &&
+			alteration.ErrorToReturn != "OUT_OF_RANGE" && alteration.ErrorToReturn != "UNIMPLEMENTED" &&
+			alteration.ErrorToReturn != "INTERNAL" && alteration.ErrorToReturn != "UNAVAILABLE" &&
+			alteration.ErrorToReturn != "DATA_LOSS" && alteration.ErrorToReturn != "UNAUTHENTICATED" {
+			return fmt.Errorf("ErrorToReturn (%s) is not a valid configuration", alteration.ErrorToReturn)
+		}
 	}
 
 	return nil
