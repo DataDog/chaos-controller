@@ -47,7 +47,7 @@ func filterContainerIDs(pod *corev1.Pod, containers []string, spec v1beta1.Disru
 
 	if spec.DiskPressure != nil {
 		// validate that each container has the volume to be disrupted
-		getNoValidVolumeCtns(pod, spec, fContainers)
+		fContainers = getNoValidVolumeCtns(pod, spec, fContainers)
 		containers = removeCtnsFromConsideration(pod, fContainers, containers)
 	}
 
@@ -83,7 +83,7 @@ func removeCtnsFromConsideration(pod *corev1.Pod, fContainers []filteredContaine
 }
 
 // getNoValidVolumeCtns returns a list of containers that do not have valid volumes according to the disruption spec
-func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec, fContainers []filteredContainer) {
+func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec, fContainers []filteredContainer) []filteredContainer {
 	for _, ctn := range pod.Spec.Containers {
 		if len(ctn.VolumeMounts) == 0 {
 			newfcont := filteredContainer{
@@ -106,6 +106,8 @@ func getNoValidVolumeCtns(pod *corev1.Pod, spec v1beta1.DisruptionSpec, fContain
 			}
 		}
 	}
+
+	return fContainers
 }
 
 // getContainerIDs gets the IDs of the targeted containers or all container IDs found in a Pod
