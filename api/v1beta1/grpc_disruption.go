@@ -10,7 +10,36 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"google.golang.org/grpc/codes"
 )
+
+// ERROR represents the type of gRPC alteration where a response is spoofed with a gRPC error code
+const ERROR = "error"
+
+// OVERRIDE represents the type of gRPC alteration where a response is spoofed with a specified return value
+const OVERRIDE = "override"
+
+// ErrorMap is a mapping from string representation of gRPC error to the offical error code
+var ErrorMap = map[string]codes.Code{
+	"OK":                  codes.OK,
+	"CANCELED":            codes.Canceled,
+	"UNKNOWN":             codes.Unknown,
+	"INVALID_ARGUMENT":    codes.InvalidArgument,
+	"DEADLINE_EXCEEDED":   codes.DeadlineExceeded,
+	"NOT_FOUND":           codes.NotFound,
+	"ALREADY_EXISTS":      codes.AlreadyExists,
+	"PERMISSION_DENIED":   codes.PermissionDenied,
+	"RESOURCE_EXHAUSTED":  codes.ResourceExhausted,
+	"FAILED_PRECONDITION": codes.FailedPrecondition,
+	"ABORTED":             codes.Aborted,
+	"OUT_OF_RANGE":        codes.OutOfRange,
+	"UNIMPLEMENTED":       codes.Unimplemented,
+	"INTERNAL":            codes.Internal,
+	"UNAVAILABLE":         codes.Unavailable,
+	"DATA_LOSS":           codes.DataLoss,
+	"UNAUTHENTICATED":     codes.Unauthenticated,
+}
 
 // GRPCDisruptionSpec represents a gRPC disruption
 type GRPCDisruptionSpec struct {
@@ -37,11 +66,6 @@ type EndpointAlteration struct {
 	// +ddmark:validation:Maximum=100
 	QueryPercent int `json:"query_pct,omitempty"`
 }
-
-const (
-	ERROR    = "error"
-	OVERRIDE = "override"
-)
 
 // Validate validates that there are no missing hostnames or records for the given grpc disruption spec
 func (s GRPCDisruptionSpec) Validate() error {
@@ -70,10 +94,6 @@ func (s GRPCDisruptionSpec) Validate() error {
 				queryPctByEndpoint[alteration.TargetEndpoint] += alteration.QueryPercent
 			}
 		} else {
-			if alteration.QueryPercent > 100 {
-				return errors.New("total queryPercent of all alterations applied to endpoint %s is over 100%; modify them to so their total is 100% or less")
-			}
-
 			queryPctByEndpoint[alteration.TargetEndpoint] = alteration.QueryPercent
 		}
 
@@ -84,15 +104,7 @@ func (s GRPCDisruptionSpec) Validate() error {
 			return fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint)
 		}
 
-		if alteration.ErrorToReturn != "" && alteration.ErrorToReturn != "OK" &&
-			alteration.ErrorToReturn != "CANCELED" && alteration.ErrorToReturn != "ALREADY_EXISTS" &&
-			alteration.ErrorToReturn != "UNKNOWN" && alteration.ErrorToReturn != "INVALID_ARGUMENT" &&
-			alteration.ErrorToReturn != "DEADLINE_EXCEEDED" && alteration.ErrorToReturn != "NOT_FOUND" &&
-			alteration.ErrorToReturn != "PERMISSION_DENIED" && alteration.ErrorToReturn != "RESOURCE_EXHAUSTED" &&
-			alteration.ErrorToReturn != "FAILED_PRECONDITION" && alteration.ErrorToReturn != "ABORTED" &&
-			alteration.ErrorToReturn != "OUT_OF_RANGE" && alteration.ErrorToReturn != "UNIMPLEMENTED" &&
-			alteration.ErrorToReturn != "INTERNAL" && alteration.ErrorToReturn != "UNAVAILABLE" &&
-			alteration.ErrorToReturn != "DATA_LOSS" && alteration.ErrorToReturn != "UNAUTHENTICATED" {
+		if _, ok := ErrorMap[alteration.ErrorToReturn]; !ok {
 			return fmt.Errorf("ErrorToReturn (%s) is not a valid configuration", alteration.ErrorToReturn)
 		}
 	}

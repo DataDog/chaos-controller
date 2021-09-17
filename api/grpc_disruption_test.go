@@ -47,22 +47,6 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		Expect(err.Error()).To(Equal("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint /chaos_dogfood.ChaosDogfood/order"))
 	})
 
-	It("Query percent of 101 does not validate", func() {
-		spec := v1beta1.GRPCDisruptionSpec{
-			Port: 50051,
-			Endpoints: []v1beta1.EndpointAlteration{
-				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
-					ErrorToReturn:    "CANCELED",
-					OverrideToReturn: "",
-					QueryPercent:     101,
-				},
-			},
-		}
-
-		Expect(spec.Validate()).ToNot(BeNil())
-	})
-
 	It("Query percent of 100 does validate", func() {
 		spec := v1beta1.GRPCDisruptionSpec{
 			Port: 50051,

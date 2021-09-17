@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"sync"
 
+	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -55,40 +56,13 @@ type PercentAffected int
 // TargetEndpoint is a string of the format /package.service/method.
 type TargetEndpoint string
 
-var (
-	errorMap = map[string]codes.Code{
-		"OK":                  codes.OK,
-		"CANCELED":            codes.Canceled,
-		"UNKNOWN":             codes.Unknown,
-		"INVALID_ARGUMENT":    codes.InvalidArgument,
-		"DEADLINE_EXCEEDED":   codes.DeadlineExceeded,
-		"NOT_FOUND":           codes.NotFound,
-		"ALREADY_EXISTS":      codes.AlreadyExists,
-		"PERMISSION_DENIED":   codes.PermissionDenied,
-		"RESOURCE_EXHAUSTED":  codes.ResourceExhausted,
-		"FAILED_PRECONDITION": codes.FailedPrecondition,
-		"ABORTED":             codes.Aborted,
-		"OUT_OF_RANGE":        codes.OutOfRange,
-		"UNIMPLEMENTED":       codes.Unimplemented,
-		"INTERNAL":            codes.Internal,
-		"UNAVAILABLE":         codes.Unavailable,
-		"DATA_LOSS":           codes.DataLoss,
-		"UNAUTHENTICATED":     codes.Unauthenticated,
-	}
-
-	mutex sync.Mutex
-)
+var mutex sync.Mutex
 
 // SendDisruption receives a disruption specfication and configures the interceptor to spoof responses to specified endpoints.
 func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.DisruptionSpec) (*emptypb.Empty, error) {
 	if ds == nil {
 		log.Error("Cannot execute SendDisruption when DisruptionSpec is nil")
 		return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption when DisruptionSpec is nil")
-	}
-
-	if len(d.Configuration) > 0 {
-		log.Error("Cannot apply new DisruptionSpec when DisruptionListener is already configured")
-		return nil, status.Error(codes.AlreadyExists, "annot apply new DisruptionSpec when DisruptionListener is already configured")
 	}
 
 	config := DisruptionConfiguration{}
@@ -117,6 +91,11 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 	}
 
 	mutex.Lock()
+	if len(d.Configuration) > 0 {
+		log.Error("Cannot apply new DisruptionSpec when DisruptionListener is already configured")
+		return nil, status.Error(codes.AlreadyExists, "annot apply new DisruptionSpec when DisruptionListener is already configured")
+	}
+
 	d.Configuration = config
 	mutex.Unlock()
 
@@ -172,10 +151,10 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 			altConfig := endptConfig.AlterationHash[randomPercent]
 
 			if altConfig.ErrorToReturn != "" {
-				log.Debug("Error Code: %s", errorMap[altConfig.ErrorToReturn])
+				log.Debug("Error Code: %s", v1beta1.ErrorMap[altConfig.ErrorToReturn])
 
 				return nil, status.Error(
-					errorMap[altConfig.ErrorToReturn],
+					v1beta1.ErrorMap[altConfig.ErrorToReturn],
 					// Future Work: interview users about this message //nolint:golint
 					fmt.Sprintf("Chaos-Controller injected this error: %s", altConfig.ErrorToReturn),
 				)
