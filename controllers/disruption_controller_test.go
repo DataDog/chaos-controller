@@ -44,7 +44,7 @@ func listChaosPods(instance *chaosv1beta1.Disruption) (corev1.PodList, error) {
 	ls := labels.NewSelector()
 
 	// create requirements
-	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "bar"})
+	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "bar", "minikube"})
 	disruptionNameRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNameLabel, selection.Equals, []string{instance.Name})
 	disruptionNamespaceRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNamespaceLabel, selection.Equals, []string{instance.Namespace})
 
@@ -207,6 +207,40 @@ var _ = Describe("Disruption Controller", func() {
 
 			return nil
 		}, timeout).Should(Succeed())
+	})
+
+	Context("a node level test should pass", func() {
+		BeforeEach(func() {
+			disruption = &chaosv1beta1.Disruption{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "default",
+				},
+				Spec: chaosv1beta1.DisruptionSpec{
+					DryRun:   false,
+					Count:    &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+					Selector: map[string]string{"kubernetes.io/hostname": "minikube"},
+					Level:    chaostypes.DisruptionLevelNode,
+					Network: &chaosv1beta1.NetworkDisruptionSpec{
+						Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
+							{
+								Host:     "127.0.0.1",
+								Port:     80,
+								Protocol: "tcp",
+							},
+						},
+						Drop:    0,
+						Corrupt: 0,
+						Delay:   1,
+					},
+				},
+			}
+		})
+
+		It("should target the node", func() {
+			By("Ensuring that the inject pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, 1) }, timeout).Should(Succeed())
+		})
 	})
 
 	Context("target one pod and one container only", func() {
