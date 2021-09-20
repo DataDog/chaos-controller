@@ -40,7 +40,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 		It("should create 15 (out of 100 potential) slots with alteration configurations", func() {
 			mapping[altCfgs[0]] = PercentAffected(15)
 
-			percentToAlteration = GetPercentToAlteration(mapping)
+			percentToAlteration = GetPercentToAlteration(mapping, logger)
 
 			Expect(len(percentToAlteration)).To(Equal(15))
 
@@ -59,7 +59,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			mapping[altCfgs[1]] = PercentAffected(20)
 			mapping[altCfgs[2]] = PercentAffected(35)
 
-			percentToAlteration = GetPercentToAlteration(mapping)
+			percentToAlteration = GetPercentToAlteration(mapping, logger)
 
 			Expect(len(percentToAlteration)).To(Equal(70))
 
@@ -117,7 +117,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			mapping[altCfgs[1]] = PercentAffected(40)
 			mapping[altCfgs[2]] = PercentAffected(20)
 
-			percentToAlteration = GetPercentToAlteration(mapping)
+			percentToAlteration = GetPercentToAlteration(mapping, logger)
 
 			Expect(len(percentToAlteration)).To(Equal(100))
 

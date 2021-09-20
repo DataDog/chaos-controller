@@ -41,7 +41,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname")
+			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname", logger)
 			Expect(err).To(BeNil())
 		})
 
@@ -87,7 +87,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 				},
 			}
 
-			_, err := GetAlterationToPercentAffected(alterationSpecs, "endpointname")
+			_, err := GetAlterationToPercentAffected(alterationSpecs, "endpointname", logger)
 
 			fmt.Print(err.Error())
 			Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = Cannot execute SendDisruption where ErrorToReturn or OverrideToReturn are both specified for a target endpoints"))
@@ -104,7 +104,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 				},
 			}
 
-			_, err := GetAlterationToPercentAffected(alterationSpecs, "endpointname")
+			_, err := GetAlterationToPercentAffected(alterationSpecs, "endpointname", logger)
 
 			Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = Cannot execute SendDisruption without specifying either ErrorToReturn or OverrideToReturn for all target endpoints"))
 		})
@@ -130,7 +130,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname")
+			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname", logger)
 			Expect(err).To(BeNil())
 		})
 
@@ -181,7 +181,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname")
+			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname", logger)
 			Expect(err).To(BeNil())
 		})
 		It("should create a mapping with 1 element", func() {
@@ -212,7 +212,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname")
+			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname", logger)
 			Expect(err).To(BeNil())
 		})
 		It("should create a mapping with 1 element", func() {
@@ -253,7 +253,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname")
+			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname", logger)
 			Expect(err).To(BeNil())
 		})
 		It("should create a mapping with 3 elements", func() {
@@ -329,7 +329,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname")
+			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname", logger)
 			Expect(err).To(BeNil())
 		})
 		It("should create a mapping with 7 elements", func() {
@@ -467,7 +467,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname")
+			mapping, err = GetAlterationToPercentAffected(alterationSpecs, "endpointname", logger)
 			Expect(err).To(BeNil())
 		})
 

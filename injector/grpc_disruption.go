@@ -52,6 +52,7 @@ func (i GRPCDisruptionInjector) Inject() error {
 	chaos_grpc.ExecuteSendDisruption(
 		pb.NewDisruptionListenerClient(conn),
 		i.spec,
+		i.config.Log,
 	)
 
 	return conn.Close()
@@ -69,7 +70,10 @@ func (i GRPCDisruptionInjector) Clean() error {
 
 	i.config.Log.Infow("removing grpc disruption", "spec", i.spec)
 
-	chaos_grpc.ExecuteCleanDisruption(pb.NewDisruptionListenerClient(conn))
+	chaos_grpc.ExecuteCleanDisruption(
+		pb.NewDisruptionListenerClient(conn),
+		i.config.Log,
+	)
 
 	return conn.Close()
 }

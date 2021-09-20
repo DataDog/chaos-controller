@@ -13,6 +13,8 @@ import (
 
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
+	"github.com/DataDog/chaos-controller/log"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -29,6 +31,7 @@ import (
 type DisruptionListener struct {
 	pb.UnimplementedDisruptionListenerServer
 	Configuration DisruptionConfiguration
+	Logger        *zap.SugaredLogger
 }
 
 // DisruptionConfiguration configures the DisruptionListener to chaos test endpoints of a gRPC server.
@@ -58,10 +61,22 @@ type TargetEndpoint string
 
 var mutex sync.Mutex
 
+// NewDisruptionListener creates a new DisruptionListener Service with the logger instantiated and DisruptionConfiguration set to be empty
+func NewDisruptionListener() (*DisruptionListener, error) {
+	d := DisruptionListener{}
+
+	var err error
+	d.Logger, err = log.NewZapLogger()
+
+	d.Configuration = DisruptionConfiguration{}
+
+	return &d, err
+}
+
 // SendDisruption receives a disruption specfication and configures the interceptor to spoof responses to specified endpoints.
 func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.DisruptionSpec) (*emptypb.Empty, error) {
 	if ds == nil {
-		log.Error("Cannot execute SendDisruption when DisruptionSpec is nil")
+		d.Logger.Error("Cannot execute SendDisruption when DisruptionSpec is nil")
 		return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption when DisruptionSpec is nil")
 	}
 
@@ -71,16 +86,16 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 		targeted := TargetEndpoint(endpointSpec.TargetEndpoint)
 
 		if endpointSpec.TargetEndpoint == "" {
-			log.Error("DisruptionSpec does not specify TargetEndpoint for at least one endpointAlteration")
+			d.Logger.Error("DisruptionSpec does not specify TargetEndpoint for at least one endpointAlteration")
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying TargetEndpoint for all endpointAlterations")
 		}
 
-		alterationToPercentAffected, err := GetAlterationToPercentAffected(endpointSpec.Alterations, targeted)
+		alterationToPercentAffected, err := GetAlterationToPercentAffected(endpointSpec.Alterations, targeted, d.Logger)
 		if err != nil {
 			return nil, err
 		}
 
-		percentToAlteration := GetPercentToAlteration(alterationToPercentAffected)
+		percentToAlteration := GetPercentToAlteration(alterationToPercentAffected, d.Logger)
 
 		// add endpoint to main configuration
 		config[targeted] = EndpointConfiguration{
@@ -92,7 +107,7 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 
 	mutex.Lock()
 	if len(d.Configuration) > 0 {
-		log.Error("Cannot apply new DisruptionSpec when DisruptionListener is already configured")
+		d.Logger.Error("Cannot apply new DisruptionSpec when DisruptionListener is already configured")
 		return nil, status.Error(codes.AlreadyExists, "annot apply new DisruptionSpec when DisruptionListener is already configured")
 	}
 
@@ -141,7 +156,7 @@ func (d *DisruptionListener) CleanDisruption(context.Context, *emptypb.Empty) (*
 // to intercept all traffic to the server and crosscheck their endpoints to disrupt them.
 func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req interface{},
 	info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (response interface{}, err error) {
-	log.Debug("comparing with %s with %d endpoints", info.FullMethod, len(d.Configuration))
+	d.Logger.Debug("comparing with %s with %d endpoints", info.FullMethod, len(d.Configuration))
 
 	// FullMethod is the full RPC method string, i.e., /package.service/method.
 	if endptConfig, ok := d.Configuration[TargetEndpoint(info.FullMethod)]; ok {
@@ -151,7 +166,7 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 			altConfig := endptConfig.AlterationHash[randomPercent]
 
 			if altConfig.ErrorToReturn != "" {
-				log.Debug("Error Code: %s", v1beta1.ErrorMap[altConfig.ErrorToReturn])
+				d.Logger.Debug("Error Code: %s", v1beta1.ErrorMap[altConfig.ErrorToReturn])
 
 				return nil, status.Error(
 					v1beta1.ErrorMap[altConfig.ErrorToReturn],
@@ -159,12 +174,12 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 					fmt.Sprintf("Chaos-Controller injected this error: %s", altConfig.ErrorToReturn),
 				)
 			} else if altConfig.OverrideToReturn != "" {
-				log.Debug("OverrideToReturn: %s", altConfig.OverrideToReturn)
+				d.Logger.Debug("OverrideToReturn: %s", altConfig.OverrideToReturn)
 
 				return &emptypb.Empty{}, nil
 			}
 
-			log.Error("Endpoint %s should define either an ErrorToReturn or OverrideToReturn but does not", endptConfig.TargetEndpoint)
+			d.Logger.Error("Endpoint %s should define either an ErrorToReturn or OverrideToReturn but does not", endptConfig.TargetEndpoint)
 		}
 	}
 
@@ -172,7 +187,7 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 }
 
 // GetAlterationToPercentAffected takes a series of alterations configured for a Spec and maps them to the percentage of queries which should be affected
-func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targeted TargetEndpoint) (map[AlterationConfiguration]PercentAffected, error) {
+func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targeted TargetEndpoint, logger *zap.SugaredLogger) (map[AlterationConfiguration]PercentAffected, error) {
 	// object returned indicates, for a particular AlterationConfiguration, what percentage of queries to which it should apply
 	mapping := make(map[AlterationConfiguration]PercentAffected)
 
@@ -183,12 +198,12 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 
 	for _, altSpec := range endpointSpecList {
 		if altSpec.ErrorToReturn == "" && altSpec.OverrideToReturn == "" {
-			// log.Error("For endpoint %s, neither ErrorToReturn nor OverrideToReturn are specified which is not allowed", targeted) // HELP
+			logger.Error("For endpoint %s, neither ErrorToReturn nor OverrideToReturn are specified which is not allowed", targeted) // HELP
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying either ErrorToReturn or OverrideToReturn for all target endpoints")
 		}
 
 		if altSpec.ErrorToReturn != "" && altSpec.OverrideToReturn != "" {
-			// log.Error("For endpoint %s, both ErrorToReturn and OverrideToReturn are specified which is not allowed", targeted) // HELP
+			logger.Error("For endpoint %s, both ErrorToReturn and OverrideToReturn are specified which is not allowed", targeted) // HELP
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption where ErrorToReturn or OverrideToReturn are both specified for a target endpoints")
 		}
 
@@ -211,25 +226,19 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 
 	if len(unquantifiedAlts) > 0 {
 		if pctClaimed == 100 {
-			/*
-				log.Info("Alterations with specified percentQuery sum to cover all of the queries; "+
-					"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
-					len(unquantifiedAlts), targeted,
-				)
-			*/
-			// HELP
+			logger.Info("Alterations with specified percentQuery sum to cover all of the queries; "+
+				"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
+				len(unquantifiedAlts), targeted,
+			)
 		}
 
 		// add all endpoints where queryPercent is not specified by splitting the remaining queries equally by alteration
 		pctPerAlt := (100 - pctClaimed) / len(unquantifiedAlts)
 		if pctPerAlt < 1 {
-			/*
-				log.Info("Alterations with specified percentQuery sum to cover almost all queries; "+
-					"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
-					len(unquantifiedAlts)-1, targeted,
-				)
-			*/
-			// HELP
+			logger.Info("Alterations with specified percentQuery sum to cover almost all queries; "+
+				"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
+				len(unquantifiedAlts)-1, targeted,
+			)
 		}
 
 		for i, altConfig := range unquantifiedAlts {
@@ -246,10 +255,8 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 }
 
 // GetPercentToAlteration Converts a mapping from alterationConfiguration to the percentage of requests which should return this altered response
-func GetPercentToAlteration(endpointSpecList map[AlterationConfiguration]PercentAffected) []AlterationConfiguration {
+func GetPercentToAlteration(endpointSpecList map[AlterationConfiguration]PercentAffected, logger *zap.SugaredLogger) []AlterationConfiguration {
 	hashMap := make([]AlterationConfiguration, 0, 100)
-
-	// log.Debug("configuring percentile map") // HELP
 
 	for altConfig, pct := range endpointSpecList {
 		for i := 0; i < int(pct); i++ {

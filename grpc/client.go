@@ -15,11 +15,9 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-var log *zap.SugaredLogger
-
 // ExecuteSendDisruption takes in a CRD specification for GRPC disruptions and
 // executes a SendDisruption call on the provided DisruptionListenerClient
-func ExecuteSendDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1.GRPCDisruptionSpec) {
+func ExecuteSendDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1.GRPCDisruptionSpec, logger *zap.SugaredLogger) {
 	endpointSpecs := GenerateEndpointSpecs(spec.Endpoints)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -27,18 +25,18 @@ func ExecuteSendDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1
 
 	_, err := client.SendDisruption(ctx, &pb.DisruptionSpec{Endpoints: endpointSpecs})
 	if err != nil {
-		log.Error("Received an error: %v", err)
+		logger.Error("Received an error: %v", err)
 	}
 }
 
 // ExecuteCleanDisruption executes a CleanDisruption call on the provided DisruptionListenerClient
-func ExecuteCleanDisruption(client pb.DisruptionListenerClient) {
+func ExecuteCleanDisruption(client pb.DisruptionListenerClient, logger *zap.SugaredLogger) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	_, err := client.CleanDisruption(ctx, &emptypb.Empty{})
 	if err != nil {
-		log.Error("Received an error: %v", err)
+		logger.Error("Received an error: %v", err)
 	}
 }
 

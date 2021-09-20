@@ -120,8 +120,8 @@ func TestSendAndCleaDisruption(t *testing.T) {
 		&emptypb.Empty{},
 	).Return(&emptypb.Empty{}, nil)
 
-	grpc.ExecuteSendDisruption(disruptionListenerClient, spec)
-	grpc.ExecuteCleanDisruption(disruptionListenerClient)
+	grpc.ExecuteSendDisruption(disruptionListenerClient, spec, log)
+	grpc.ExecuteCleanDisruption(disruptionListenerClient, log)
 
 	// run test
 	disruptionListenerClient.AssertExpectations(t)

@@ -6,9 +6,9 @@
 package grpc_test
 
 import (
-	"os"
 	"testing"
 
+	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
 	. "github.com/onsi/ginkgo"
@@ -16,19 +16,23 @@ import (
 	"go.uber.org/zap"
 )
 
-var log *zap.SugaredLogger
-var ms metrics.Sink
+var (
+	logger *zap.SugaredLogger
+	ms     metrics.Sink
+)
 
 var _ = BeforeSuite(func() {
-	z, _ := zap.NewDevelopment()
-	log = z.Sugar()
-	os.Setenv("STATSD_URL", "localhost:54321")
+	logger, _ = log.NewZapLogger()
+
+	//	os.Setenv("STATSD_URL", "localhost:54321")
 	ms, _ = metrics.GetSink(types.SinkDriverNoop, types.SinkAppInjector)
 })
 
+/*
 var _ = AfterSuite(func() {
 	os.Unsetenv("STATSD_URL")
 })
+*/
 
 func TestGrpc(t *testing.T) {
 	RegisterFailHandler(Fail)
