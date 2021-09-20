@@ -197,6 +197,13 @@ release-docker-hub-tag:
   variables:
     TAG: "${CI_COMMIT_TAG}"
 
+.slack-notifier-script: &slack-notifier-script
+  script:
+    - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
+    - 'MESSAGE_TEXT=":siren: | $CI_PIPELINE_NAME Pipeline Failure | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
+    - postmessage "#test-chaosnotifier" "$MESSAGE_TEXT"
+
+
 slack-notifier-pre-release.on-failure:
   extends: .slack-notifier-base
   when: on_failure
@@ -219,13 +226,16 @@ slack-notifier-release.on-failure:
 
 slack-notifier-build.on-failure:
   extends: .slack-notifier-base
-  when: on_failure
+  variables:
+    CI_PIPELINE_NAME: "Build"
+  when: on_success
   stage: build
   allow_failure: true
-  only:
-    - main
-    - tags
-  script:
-    - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
-    - 'MESSAGE_TEXT=":siren:   | Build Pipeline Failure | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
-    - postmessage "#chaos-ops" "$MESSAGE_TEXT"
+  #only:
+  #  - main
+  #  - tags
+  <<: *slack-notifier-script
+  #script:
+  #  - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
+  #  - 'MESSAGE_TEXT=":siren:   | Build Pipeline Failure | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
+  #  - postmessage "#chaos-ops" "$MESSAGE_TEXT"
