@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"golang.org/x/net/context"
@@ -176,6 +177,17 @@ var _ = Describe("Disruption Controller", func() {
 						},
 					},
 				},
+				GRPC: &v1beta1.GRPCDisruptionSpec{
+					Port: 2000,
+					Endpoints: []v1beta1.EndpointAlteration{
+						{
+							TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+							ErrorToReturn:    "",
+							OverrideToReturn: "{}",
+							QueryPercent:     50,
+						},
+					},
+				},
 			},
 		}
 	})
@@ -244,10 +256,10 @@ var _ = Describe("Disruption Controller", func() {
 	Context("target one pod and one container only", func() {
 		It("should target all the selected pods", func() {
 			By("Ensuring that the inject pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, 6) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 7) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Expect(expectChaosInjectors(disruption, 6)).To(BeNil())
+			Expect(expectChaosInjectors(disruption, 7)).To(BeNil())
 		})
 	})
 
@@ -258,10 +270,10 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the chaos pods have been created")
-			Eventually(func() error { return expectChaosPod(disruption, 12) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 14) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Expect(expectChaosInjectors(disruption, 12)).To(BeNil())
+			Expect(expectChaosInjectors(disruption, 14)).To(BeNil())
 		})
 	})
 
@@ -272,10 +284,10 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the inject pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, 6) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 7) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Expect(expectChaosInjectors(disruption, 6)).To(BeNil())
+			Expect(expectChaosInjectors(disruption, 7)).To(BeNil())
 		})
 	})
 
@@ -287,10 +299,10 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the chaos pods have been created")
-			Eventually(func() error { return expectChaosPod(disruption, 12) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 14) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Expect(expectChaosInjectors(disruption, 18)).To(BeNil())
+			Expect(expectChaosInjectors(disruption, 21)).To(BeNil())
 		})
 	})
 
