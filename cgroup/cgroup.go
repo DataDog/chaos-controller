@@ -93,14 +93,14 @@ func (m manager) generatePath(kind string) string {
 	foundPath := fmt.Sprintf("%s%s/%s", m.mount, kind, m.cgroup.Paths[kind])
 
 	if generatedPath != foundPath {
-		m.log.Infow("containerd generated path does not match found cgroup path",
+		m.log.Infow("container runtime generated path does not match found cgroup path",
 			"generatedPath", generatedPath,
 			"foundPath", foundPath,
 		)
 	}
 
 	if _, err := os.Stat(generatedPath); os.IsNotExist(err) {
-		m.log.Infow("containerd generated path does not exist, using found path instead",
+		m.log.Infow("container runtime generated path does not exist, using found path instead",
 			"generatedPath", generatedPath,
 			"foundPath", foundPath,
 		)
