@@ -90,21 +90,34 @@ func (n *Notifier) NotifyCleanedUp(dis v1beta1.Disruption) error {
 
 // NotifyNoTarget signals a disruption's been cleaned up successfully
 func (n *Notifier) NotifyNoTarget(dis v1beta1.Disruption) error {
-	n.notifySlack("has no target", dis)
+	headerText := "> Disruption `" + dis.Name + "` found no target."
 
-	return nil
+	blocks := []slack.Block{
+		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", headerText, false, false), nil, nil),
+	}
+
+	err := n.notifySlack("has no target", dis, blocks...)
+
+	return err
 }
 
 // NotifyStuckOnRemoval signals a disruption's been cleaned up successfully
 func (n *Notifier) NotifyStuckOnRemoval(dis v1beta1.Disruption) error {
-	n.notifySlack("is stuck on removal. Please check the logs !", dis)
 
-	return nil
+	headerText := "> Disruption `" + dis.Name + "` is stuck on removal. Please check the logs."
+
+	blocks := []slack.Block{
+		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", headerText, false, false), nil, nil),
+	}
+
+	err := n.notifySlack("is stuck on removal. Please check the logs !", dis, blocks...)
+
+	return err
 }
 
 // helper for Slack notifier
-func (n *Notifier) notifySlack(notificationName string, dis v1beta1.Disruption, blocks ...slack.Block) error {
-	fmt.Printf("SLACK: %s for disruption %s - user %s\n", notificationName, dis.Name, dis.Status.UserInfo.Username)
+func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
+	fmt.Printf("SLACK: %s for disruption %s - user %s\n", notificationText, dis.Name, dis.Status.UserInfo.Username)
 
 	p1, err := n.client.GetUserByEmail("nathan.tournant@datadoghq.com")
 	if err != nil {
@@ -112,7 +125,7 @@ func (n *Notifier) notifySlack(notificationName string, dis v1beta1.Disruption, 
 	}
 
 	_, _, err = n.client.PostMessage(p1.ID,
-		slack.MsgOptionText("Disruption "+dis.Name+" "+notificationName, false),
+		slack.MsgOptionText("Disruption "+dis.Name+" "+notificationText, false),
 		slack.MsgOptionUsername("Disruption Status Bot"),
 		slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
 		slack.MsgOptionBlocks(blocks...),
