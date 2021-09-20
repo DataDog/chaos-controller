@@ -105,6 +105,7 @@ func expectChaosInjectors(instance *chaosv1beta1.Disruption, count int) error {
 
 	// get chaos pods
 	l, err := listChaosPods(instance)
+
 	if err != nil {
 		return err
 	}
@@ -113,7 +114,7 @@ func expectChaosInjectors(instance *chaosv1beta1.Disruption, count int) error {
 	for _, p := range l.Items {
 		args := p.Spec.Containers[0].Args
 		for i, arg := range args {
-			if arg == "--containers-id" {
+			if arg == "--target-container-ids" {
 				injectors += len(strings.Split(args[i+1], ","))
 			}
 		}
