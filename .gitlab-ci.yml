@@ -228,7 +228,7 @@ slack-notifier-build.on-failure:
   extends: .slack-notifier-base
   variables:
     CI_PIPELINE_NAME: "Build"
-  when: on_success
+  when: on_failure
   stage: build
   allow_failure: true
   #only:
