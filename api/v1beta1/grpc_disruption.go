@@ -78,6 +78,7 @@ func (s GRPCDisruptionSpec) Validate() error {
 	}
 
 	queryPctByEndpoint := make(map[string]int)
+	unquantifiedAlts := make(map[string]int)
 
 	for _, alteration := range s.Endpoints {
 		if alteration.TargetEndpoint == "" {
@@ -85,27 +86,40 @@ func (s GRPCDisruptionSpec) Validate() error {
 		}
 
 		// check that endpoint is not already configured such that the sum of mangled queryPercents total to more than 100%
-		if totalQueryPercent, ok := queryPctByEndpoint[alteration.TargetEndpoint]; ok {
-			if alteration.QueryPercent > 0 {
-				if totalQueryPercent+alteration.QueryPercent > 100 {
-					return errors.New("total queryPercent of all alterations applied to endpoint %s is over 100%; modify them to so their total is 100% or less")
+		if alteration.QueryPercent == 0 {
+			if count, ok := unquantifiedAlts[alteration.TargetEndpoint]; ok {
+				unquantifiedAlts[alteration.TargetEndpoint] = count + 1
+				pctClaimed := 100 - queryPctByEndpoint[alteration.TargetEndpoint]
+				if pctClaimed < count+1 {
+					return fmt.Errorf("%s will never return some alterations because alterations exceed 100%% of possible queries", alteration.TargetEndpoint)
 				}
-
-				queryPctByEndpoint[alteration.TargetEndpoint] += alteration.QueryPercent
+			} else {
+				unquantifiedAlts[alteration.TargetEndpoint] = 1
 			}
 		} else {
-			queryPctByEndpoint[alteration.TargetEndpoint] = alteration.QueryPercent
+			if totalQueryPercent, ok := queryPctByEndpoint[alteration.TargetEndpoint]; ok {
+				if alteration.QueryPercent > 0 {
+					queryPctByEndpoint[alteration.TargetEndpoint] = totalQueryPercent + alteration.QueryPercent
+					if queryPctByEndpoint[alteration.TargetEndpoint] > 100 {
+						return errors.New("total queryPercent of all alterations applied to endpoint %s is over 100%; modify them to so their total is 100% or less")
+					}
+				}
+			} else {
+				queryPctByEndpoint[alteration.TargetEndpoint] = alteration.QueryPercent
+			}
 		}
 
 		// check that exactly one of ErrorToReturn or OverrideToReturn is configured
-		if alteration.ErrorToReturn != "" && alteration.OverrideToReturn != "" {
-			return fmt.Errorf("the gRPC disruption has ErrorToReturn and OverrideToReturn specified for endpoint %s, but it can only have one", alteration.TargetEndpoint)
+		if alteration.ErrorToReturn != "" {
+			if alteration.OverrideToReturn == "" {
+				if _, ok := ErrorMap[alteration.ErrorToReturn]; !ok {
+					return fmt.Errorf("ErrorToReturn (%s) is not a valid configuration", alteration.ErrorToReturn)
+				}
+			} else {
+				return fmt.Errorf("the gRPC disruption has ErrorToReturn and OverrideToReturn specified for endpoint %s, but it can only have one", alteration.TargetEndpoint)
+			}
 		} else if alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "" {
 			return fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint)
-		}
-
-		if _, ok := ErrorMap[alteration.ErrorToReturn]; !ok {
-			return fmt.Errorf("ErrorToReturn (%s) is not a valid configuration", alteration.ErrorToReturn)
 		}
 	}
 

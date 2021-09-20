@@ -260,4 +260,86 @@ var _ = Describe("GRPCDisruption Validation", func() {
 
 		Expect(spec.Validate()).To(BeNil())
 	})
+
+	It("Good errors but 1 too many unquantified errors returns error because some errors will never get returned", func() {
+		spec := v1beta1.GRPCDisruptionSpec{
+			Port: 50051,
+			Endpoints: []v1beta1.EndpointAlteration{
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "CANCELED",
+					OverrideToReturn: "",
+					QueryPercent:     90,
+				},
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "ALREADY_EXISTS",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "UNKNOWN",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "INVALID_ARGUMENT",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "DEADLINE_EXCEEDED",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "NOT_FOUND",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "PERMISSION_DENIED",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "RESOURCE_EXHAUSTED",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "FAILED_PRECONDITION",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "ABORTED",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "OUT_OF_RANGE",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+				{
+					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					ErrorToReturn:    "UNIMPLEMENTED",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+			},
+		}
+
+		Expect(spec.Validate()).ToNot(BeNil())
+	})
 })

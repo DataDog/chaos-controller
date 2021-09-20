@@ -83,14 +83,12 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 	config := DisruptionConfiguration{}
 
 	for _, endpointSpec := range ds.Endpoints {
-		targeted := TargetEndpoint(endpointSpec.TargetEndpoint)
-
 		if endpointSpec.TargetEndpoint == "" {
 			d.Logger.Error("DisruptionSpec does not specify TargetEndpoint for at least one endpointAlteration")
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying TargetEndpoint for all endpointAlterations")
 		}
 
-		alterationToPercentAffected, err := GetAlterationToPercentAffected(endpointSpec.Alterations, targeted)
+		alterationToPercentAffected, err := GetAlterationToPercentAffected(endpointSpec.Alterations)
 		if err != nil {
 			return nil, err
 		}
@@ -98,8 +96,8 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 		percentToAlteration := GetPercentToAlteration(alterationToPercentAffected, d.Logger)
 
 		// add endpoint to main configuration
-		config[targeted] = EndpointConfiguration{
-			TargetEndpoint: targeted,
+		config[TargetEndpoint(endpointSpec.TargetEndpoint)] = EndpointConfiguration{
+			TargetEndpoint: TargetEndpoint(endpointSpec.TargetEndpoint),
 			Alterations:    alterationToPercentAffected,
 			AlterationHash: percentToAlteration,
 		}
@@ -187,7 +185,7 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 }
 
 // GetAlterationToPercentAffected takes a series of alterations configured for a Spec and maps them to the percentage of queries which should be affected
-func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targeted TargetEndpoint) (map[AlterationConfiguration]PercentAffected, error) {
+func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec) (map[AlterationConfiguration]PercentAffected, error) {
 	// object returned indicates, for a particular AlterationConfiguration, what percentage of queries to which it should apply
 	mapping := make(map[AlterationConfiguration]PercentAffected)
 
@@ -222,18 +220,9 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 		}
 	}
 
+	// add all endpoints where queryPercent is not specified by splitting the remaining queries equally by alteration
 	if len(unquantifiedAlts) > 0 {
-
-		// add all endpoints where queryPercent is not specified by splitting the remaining queries equally by alteration
 		pctPerAlt := (100 - pctClaimed) / len(unquantifiedAlts)
-		if pctPerAlt < 1 {
-			/*
-				logger.Info("Alterations with specified percentQuery sum to cover almost all queries; "+
-					"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
-					len(unquantifiedAlts)-1, targeted,
-				)
-			*/
-		}
 
 		for i, altConfig := range unquantifiedAlts {
 			if i == len(unquantifiedAlts)-1 {

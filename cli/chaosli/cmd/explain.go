@@ -156,10 +156,7 @@ func explainGRPC(spec v1beta1.DisruptionSpec) {
 	for _, endpt := range endptSpec {
 		fmt.Printf("\t\t👩‍⚕️ endpoint: %s ...\n", endpt.TargetEndpoint) //nolint:stylecheck
 
-		alterationToPercentAffected, err := grpc_api.GetAlterationToPercentAffected(
-			endpt.Alterations,
-			grpc_api.TargetEndpoint(endpt.TargetEndpoint),
-		)
+		alterationToPercentAffected, err := grpc_api.GetAlterationToPercentAffected(endpt.Alterations)
 
 		if err != nil {
 			fmt.Printf("\t\t\t💣  this disruption fails with err: %s\n", err.Error())
