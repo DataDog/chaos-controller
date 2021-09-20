@@ -20,7 +20,7 @@ const ERROR = "error"
 // OVERRIDE represents the type of gRPC alteration where a response is spoofed with a specified return value
 const OVERRIDE = "override"
 
-// ErrorMap is a mapping from string representation of gRPC error to the offical error code
+// ErrorMap is a mapping from string representation of gRPC error to the official error code
 var ErrorMap = map[string]codes.Code{
 	"OK":                  codes.OK,
 	"CANCELED":            codes.Canceled,
@@ -89,6 +89,7 @@ func (s GRPCDisruptionSpec) Validate() error {
 		if alteration.QueryPercent == 0 {
 			if count, ok := unquantifiedAlts[alteration.TargetEndpoint]; ok {
 				unquantifiedAlts[alteration.TargetEndpoint] = count + 1
+
 				pctClaimed := 100 - queryPctByEndpoint[alteration.TargetEndpoint]
 				if pctClaimed < count+1 {
 					return fmt.Errorf("%s will never return some alterations because alterations exceed 100%% of possible queries", alteration.TargetEndpoint)
