@@ -90,7 +90,7 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying TargetEndpoint for all endpointAlterations")
 		}
 
-		alterationToPercentAffected, err := GetAlterationToPercentAffected(endpointSpec.Alterations, targeted, d.Logger)
+		alterationToPercentAffected, err := GetAlterationToPercentAffected(endpointSpec.Alterations, targeted)
 		if err != nil {
 			return nil, err
 		}
@@ -187,7 +187,7 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 }
 
 // GetAlterationToPercentAffected takes a series of alterations configured for a Spec and maps them to the percentage of queries which should be affected
-func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targeted TargetEndpoint, logger *zap.SugaredLogger) (map[AlterationConfiguration]PercentAffected, error) {
+func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targeted TargetEndpoint) (map[AlterationConfiguration]PercentAffected, error) {
 	// object returned indicates, for a particular AlterationConfiguration, what percentage of queries to which it should apply
 	mapping := make(map[AlterationConfiguration]PercentAffected)
 
@@ -198,12 +198,10 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 
 	for _, altSpec := range endpointSpecList {
 		if altSpec.ErrorToReturn == "" && altSpec.OverrideToReturn == "" {
-			logger.Error("For endpoint %s, neither ErrorToReturn nor OverrideToReturn are specified which is not allowed", targeted) // HELP
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying either ErrorToReturn or OverrideToReturn for all target endpoints")
 		}
 
 		if altSpec.ErrorToReturn != "" && altSpec.OverrideToReturn != "" {
-			logger.Error("For endpoint %s, both ErrorToReturn and OverrideToReturn are specified which is not allowed", targeted) // HELP
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption where ErrorToReturn or OverrideToReturn are both specified for a target endpoints")
 		}
 
@@ -225,20 +223,16 @@ func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec, targe
 	}
 
 	if len(unquantifiedAlts) > 0 {
-		if pctClaimed == 100 {
-			logger.Info("Alterations with specified percentQuery sum to cover all of the queries; "+
-				"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
-				len(unquantifiedAlts), targeted,
-			)
-		}
 
 		// add all endpoints where queryPercent is not specified by splitting the remaining queries equally by alteration
 		pctPerAlt := (100 - pctClaimed) / len(unquantifiedAlts)
 		if pctPerAlt < 1 {
-			logger.Info("Alterations with specified percentQuery sum to cover almost all queries; "+
-				"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
-				len(unquantifiedAlts)-1, targeted,
-			)
+			/*
+				logger.Info("Alterations with specified percentQuery sum to cover almost all queries; "+
+					"%d alterations that do not specify queryPercent will not get applied at all for endpoint %s",
+					len(unquantifiedAlts)-1, targeted,
+				)
+			*/
 		}
 
 		for i, altConfig := range unquantifiedAlts {
