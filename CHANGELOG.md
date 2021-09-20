@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.4.0](https://github.com/DataDog/chaos-controller/tree/4.4.0) (2021-09-16)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.3.0...4.4.0)
+
+**Merged pull requests:**
+
+- minikube-docker [\#404](https://github.com/DataDog/chaos-controller/pull/404) ([HoChristinaWuiYan](https://github.com/HoChristinaWuiYan))
+- CHAOS-142: Dont rely on containerd reported cgroup path [\#403](https://github.com/DataDog/chaos-controller/pull/403) ([ptnapoleon](https://github.com/ptnapoleon))
+- End-to-end/integration tests running against a real Kubernetes cluster [\#401](https://github.com/DataDog/chaos-controller/pull/401) ([Devatoria](https://github.com/Devatoria))
+- Allow to release a reference in all internal registries [\#399](https://github.com/DataDog/chaos-controller/pull/399) ([Devatoria](https://github.com/Devatoria))
+- Add additional contextual tags to metrics sent from the admission [\#398](https://github.com/DataDog/chaos-controller/pull/398) ([Devatoria](https://github.com/Devatoria))
+- Update container release\_changelog\_dd922cc6fe195a354c084675a9e8df925941ecaa [\#397](https://github.com/DataDog/chaos-controller/pull/397) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [4.3.0](https://github.com/DataDog/chaos-controller/tree/4.3.0) (2021-08-18)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.2.1...4.3.0)
@@ -19,7 +32,7 @@
 - Bump expected chaos pods in test now that we have more disruption kinds [\#385](https://github.com/DataDog/chaos-controller/pull/385) ([ptnapoleon](https://github.com/ptnapoleon))
 - Update container release\_changelog\_11ed7b00584ba915140983bb3e0a762f6b211473 [\#384](https://github.com/DataDog/chaos-controller/pull/384) ([github-actions[bot]](https://github.com/apps/github-actions))
 - Adding context feature to chaosli [\#364](https://github.com/DataDog/chaos-controller/pull/364) ([Azoam](https://github.com/Azoam))
-- DDMark - CRD validation code integration [\#362](https://github.com/DataDog/chaos-controller/pull/362) ([nathan-tournant](https://github.com/nathan-tournant))
+- DDMark - CRD validation code integration [\#362](https://github.com/DataDog/chaos-controller/pull/362) ([nathantournant](https://github.com/nathantournant))
 - CHAOS-121: Handle deleting chaos pods before they finish injecting [\#361](https://github.com/DataDog/chaos-controller/pull/361) ([ptnapoleon](https://github.com/ptnapoleon))
 
 ## [4.2.1](https://github.com/DataDog/chaos-controller/tree/4.2.1) (2021-08-03)
@@ -128,7 +141,7 @@
 - Generalize cgroup path construction [\#323](https://github.com/DataDog/chaos-controller/pull/323) ([blazebissar](https://github.com/blazebissar))
 - Increment a metric when a disruption fails ValidateCreate [\#322](https://github.com/DataDog/chaos-controller/pull/322) ([ptnapoleon](https://github.com/ptnapoleon))
 - Temporarily make validateServices conditional, to help CLIs [\#321](https://github.com/DataDog/chaos-controller/pull/321) ([ptnapoleon](https://github.com/ptnapoleon))
-- CORE-702: Validation call from CLI PR [\#320](https://github.com/DataDog/chaos-controller/pull/320) ([nathan-tournant](https://github.com/nathan-tournant))
+- CORE-702: Validation call from CLI PR [\#320](https://github.com/DataDog/chaos-controller/pull/320) ([nathantournant](https://github.com/nathantournant))
 - Tweak configs for Fedora/Podman compatibility [\#319](https://github.com/DataDog/chaos-controller/pull/319) ([blazebissar](https://github.com/blazebissar))
 - CHAOS-43: Yaml to English Feature [\#318](https://github.com/DataDog/chaos-controller/pull/318) ([Azoam](https://github.com/Azoam))
 - scope netowrkdisruption.port to hosts in error msg [\#316](https://github.com/DataDog/chaos-controller/pull/316) ([takakonishimura](https://github.com/takakonishimura))
@@ -138,7 +151,7 @@
 - Increase the amount of documentation on how to use the new services f… [\#312](https://github.com/DataDog/chaos-controller/pull/312) ([ptnapoleon](https://github.com/ptnapoleon))
 - Add the basic structure for the new CLI [\#311](https://github.com/DataDog/chaos-controller/pull/311) ([ptnapoleon](https://github.com/ptnapoleon))
 - Rename master to main for branch ref in release action [\#310](https://github.com/DataDog/chaos-controller/pull/310) ([Devatoria](https://github.com/Devatoria))
-- Validate Update: global disruption scope [\#309](https://github.com/DataDog/chaos-controller/pull/309) ([nathan-tournant](https://github.com/nathan-tournant))
+- Validate Update: global disruption scope [\#309](https://github.com/DataDog/chaos-controller/pull/309) ([nathantournant](https://github.com/nathantournant))
 - CHAOS-51: Implement the "create" command of chaosli; Help users build a disruption spec [\#307](https://github.com/DataDog/chaos-controller/pull/307) ([ptnapoleon](https://github.com/ptnapoleon))
 - Better handle the case where count is set to -1 [\#305](https://github.com/DataDog/chaos-controller/pull/305) ([ptnapoleon](https://github.com/ptnapoleon))
 - Upgrade to cobra v1.1.3 from v0.0.5 [\#302](https://github.com/DataDog/chaos-controller/pull/302) ([ptnapoleon](https://github.com/ptnapoleon))
@@ -182,7 +195,7 @@
 **Merged pull requests:**
 
 - Allow to specify cert dir for admission webhook [\#293](https://github.com/DataDog/chaos-controller/pull/293) ([Devatoria](https://github.com/Devatoria))
-- CORE-540: Bugfix: DNS Disruption on one container within a pod only disrupts targeted container [\#292](https://github.com/DataDog/chaos-controller/pull/292) ([nathan-tournant](https://github.com/nathan-tournant))
+- CORE-540: Bugfix: DNS Disruption on one container within a pod only disrupts targeted container [\#292](https://github.com/DataDog/chaos-controller/pull/292) ([nathantournant](https://github.com/nathantournant))
 - Bootstrap the admission controller [\#291](https://github.com/DataDog/chaos-controller/pull/291) ([Devatoria](https://github.com/Devatoria))
 - Exclude export comment rule from linting [\#290](https://github.com/DataDog/chaos-controller/pull/290) ([ptnapoleon](https://github.com/ptnapoleon))
 - Update container release\_changelog\_5fcdae27a69f4626fa35fb33f878dbb13b775a3b [\#289](https://github.com/DataDog/chaos-controller/pull/289) ([github-actions[bot]](https://github.com/apps/github-actions))
@@ -197,7 +210,7 @@
 - Apply tc rules and filters to all interfaces instead of trying to guess the one to choose [\#286](https://github.com/DataDog/chaos-controller/pull/286) ([Devatoria](https://github.com/Devatoria))
 - Ignore invalid link index when applying a network disruption [\#285](https://github.com/DataDog/chaos-controller/pull/285) ([Devatoria](https://github.com/Devatoria))
 - Improve targeting documentation [\#284](https://github.com/DataDog/chaos-controller/pull/284) ([ptnapoleon](https://github.com/ptnapoleon))
-- CORE-623: use zap logger after logger init [\#283](https://github.com/DataDog/chaos-controller/pull/283) ([nathan-tournant](https://github.com/nathan-tournant))
+- CORE-623: use zap logger after logger init [\#283](https://github.com/DataDog/chaos-controller/pull/283) ([nathantournant](https://github.com/nathantournant))
 - Fix interface txqlen not being cleared on network disruption apply error [\#282](https://github.com/DataDog/chaos-controller/pull/282) ([Devatoria](https://github.com/Devatoria))
 - CORE-586: Fix the local Kubernetes version to 1.19 [\#281](https://github.com/DataDog/chaos-controller/pull/281) ([Devatoria](https://github.com/Devatoria))
 - Update container release\_changelog\_12b93b1a36e3872a4a705d28f78f0ba15f3f34f3 [\#280](https://github.com/DataDog/chaos-controller/pull/280) ([github-actions[bot]](https://github.com/apps/github-actions))
@@ -209,11 +222,11 @@
 
 **Merged pull requests:**
 
-- CORE-497: add context to injector logger through injector CLI and its chaos-controller controller [\#279](https://github.com/DataDog/chaos-controller/pull/279) ([nathan-tournant](https://github.com/nathan-tournant))
+- CORE-497: add context to injector logger through injector CLI and its chaos-controller controller [\#279](https://github.com/DataDog/chaos-controller/pull/279) ([nathantournant](https://github.com/nathantournant))
 - Explain in the README how to target a specific pod by name [\#277](https://github.com/DataDog/chaos-controller/pull/277) ([ptnapoleon](https://github.com/ptnapoleon))
-- CORE-507: Single entry point for injector CLI common args [\#276](https://github.com/DataDog/chaos-controller/pull/276) ([nathan-tournant](https://github.com/nathan-tournant))
+- CORE-507: Single entry point for injector CLI common args [\#276](https://github.com/DataDog/chaos-controller/pull/276) ([nathantournant](https://github.com/nathantournant))
 - Revamp samples [\#275](https://github.com/DataDog/chaos-controller/pull/275) ([Devatoria](https://github.com/Devatoria))
-- CORE-528 - add MetricRestart on chaos-controller [\#274](https://github.com/DataDog/chaos-controller/pull/274) ([nathan-tournant](https://github.com/nathan-tournant))
+- CORE-528 - add MetricRestart on chaos-controller [\#274](https://github.com/DataDog/chaos-controller/pull/274) ([nathantournant](https://github.com/nathantournant))
 - Update container release\_changelog\_8bf23cad59208194fdef5c75ef7cb9a96803d0a1 [\#272](https://github.com/DataDog/chaos-controller/pull/272) ([github-actions[bot]](https://github.com/apps/github-actions))
 - CORE-371: Network Disruption Documentation Revamp [\#254](https://github.com/DataDog/chaos-controller/pull/254) ([takakonishimura](https://github.com/takakonishimura))
 
