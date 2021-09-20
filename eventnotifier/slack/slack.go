@@ -39,11 +39,11 @@ func (n *Notifier) GetNotifierName() string {
 
 // NotifyNotInjected signals a disruption was injected successfully
 func (n *Notifier) NotifyNotInjected(dis v1beta1.Disruption) error {
-	a := len(dis.Status.Targets)
-	headerText := "You started a disruption. Waiting for " + fmt.Sprint(a) + " injections."
+	headerText := "New Disruption: " + dis.Name
+	bodyText := "> You started the disruption `" + dis.Name + "`. Waiting for " + fmt.Sprint(len(dis.Status.Targets)) + " injection(s)."
 
 	blocks := []slack.Block{
-		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", headerText, false, false), nil, nil),
+		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, false, false)),
 		slack.NewDividerBlock(),
 		slack.NewSectionBlock(nil, []*slack.TextBlockObject{
 			slack.NewTextBlockObject("mrkdwn", "*Kind:*\n"+dis.Kind, false, false),
@@ -53,25 +53,39 @@ func (n *Notifier) NotifyNotInjected(dis v1beta1.Disruption) error {
 			slack.NewTextBlockObject("mrkdwn", "*Targets:*\n"+fmt.Sprint(len(dis.Status.Targets)), false, false),
 		}, nil),
 		slack.NewDividerBlock(),
+		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", bodyText, false, false), nil, nil),
 	}
 
-	err := n.notifySlack("NotifyNotInjected", dis, blocks...)
+	err := n.notifySlack("isn't injected", dis, blocks...)
 
 	return err
 }
 
 // NotifyInjected signals a disruption was injected successfully
 func (n *Notifier) NotifyInjected(dis v1beta1.Disruption) error {
-	n.notifySlack("is injected", dis)
+	headerText := "> Disruption `" + dis.Name + "` has been fully injected. Waiting for deletion."
 
-	return nil
+	blocks := []slack.Block{
+		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", headerText, false, false), nil, nil),
+	}
+
+	err := n.notifySlack("is injected", dis, blocks...)
+
+	return err
 }
 
 // NotifyCleanedUp signals a disruption's been cleaned up successfully
 func (n *Notifier) NotifyCleanedUp(dis v1beta1.Disruption) error {
-	n.notifySlack("has been cleaned up", dis)
+	headerText := "> Disruption `" + dis.Name + "` has been cleaned up."
 
-	return nil
+	blocks := []slack.Block{
+		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", headerText, false, false), nil, nil),
+		slack.NewContextBlock("", slack.NewTextBlockObject("mrkdwn", "from #chaos-engineering", false, false)),
+	}
+
+	err := n.notifySlack("has been cleaned up", dis, blocks...)
+
+	return err
 }
 
 // NotifyNoTarget signals a disruption's been cleaned up successfully
@@ -90,7 +104,7 @@ func (n *Notifier) NotifyStuckOnRemoval(dis v1beta1.Disruption) error {
 
 // helper for Slack notifier
 func (n *Notifier) notifySlack(notificationName string, dis v1beta1.Disruption, blocks ...slack.Block) error {
-	fmt.Printf("SLACK: %s for disruption %s\n", notificationName, dis.Name)
+	fmt.Printf("SLACK: %s for disruption %s - user %s\n", notificationName, dis.Name, dis.Status.UserInfo.Username)
 
 	p1, err := n.client.GetUserByEmail("nathan.tournant@datadoghq.com")
 	if err != nil {
@@ -98,7 +112,7 @@ func (n *Notifier) notifySlack(notificationName string, dis v1beta1.Disruption, 
 	}
 
 	_, _, err = n.client.PostMessage(p1.ID,
-		slack.MsgOptionText(dis.Name+" "+notificationName, false),
+		slack.MsgOptionText("Disruption "+dis.Name+" "+notificationName, false),
 		slack.MsgOptionUsername("Disruption Status Bot"),
 		slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
 		slack.MsgOptionBlocks(blocks...),

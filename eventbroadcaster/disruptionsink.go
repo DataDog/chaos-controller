@@ -44,6 +44,7 @@ func (s *DisruptionNotifierSink) Create(event *v1.Event) (*v1.Event, error) {
 	err = s.parseEvent(event, dis)
 
 	if err != nil {
+		fmt.Println(err)
 		return event, nil
 	}
 
@@ -78,20 +79,22 @@ func (s *DisruptionNotifierSink) getDisruption(event *v1.Event) (v1beta1.Disrupt
 }
 
 func (s *DisruptionNotifierSink) parseEvent(event *v1.Event, dis v1beta1.Disruption) error {
+	var err error = nil
+
 	switch event.Reason {
 	case DisruptionEventReasonNotInjected:
-		s.Notifier.NotifyNotInjected(dis)
+		err = s.Notifier.NotifyNotInjected(dis)
 	case DisruptionEventReasonInjected:
-		s.Notifier.NotifyInjected(dis)
+		err = s.Notifier.NotifyInjected(dis)
 	case DisruptionEventReasonCleanedUp:
-		s.Notifier.NotifyCleanedUp(dis)
+		err = s.Notifier.NotifyCleanedUp(dis)
 	case DisruptionEventReasonNoTarget:
-		s.Notifier.NotifyNoTarget(dis)
+		err = s.Notifier.NotifyNoTarget(dis)
 	case DisruptionEventReasonStuckOnRemoval:
-		s.Notifier.NotifyStuckOnRemoval(dis)
+		err = s.Notifier.NotifyStuckOnRemoval(dis)
 	default:
-		return fmt.Errorf("event: not a chaos disruption event")
+		err = fmt.Errorf("event: not a chaos disruption event")
 	}
 
-	return nil
+	return err
 }
