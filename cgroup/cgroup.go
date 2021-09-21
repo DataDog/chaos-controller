@@ -92,6 +92,7 @@ func (m manager) generatePath(kind string) string {
 	var foundPath string
 
 	generatedPath := fmt.Sprintf("%s%s/%s", m.mount, kind, m.path)
+
 	if m.cgroup != nil {
 		foundPath = fmt.Sprintf("%s%s/%s", m.mount, kind, m.cgroup.Paths[kind])
 	} else {
