@@ -10,8 +10,9 @@ Please briefly describe your changes as well as the motivation behind them:
 
 ## Testing
 
-- [ ] I dependend on existing unit tests
-- [ ] I added new unit tests
+- [ ] I leveraged continuous integration testing
+    - [ ] by depending on existing unit tests or end-to-end (e2e) tests
+    - [ ] by adding new unit tests or end-to-end (e2e) tests
 - [ ] I manually tested these steps locally:
     - `x`
 - [ ] I plan to manually test these steps in a canary deployment:
@@ -20,5 +21,5 @@ Please briefly describe your changes as well as the motivation behind them:
 ## Code Quality Checklist
 
 - [ ] The documentation is up to date
-- [ ] My code is sufficiently commented
+- [ ] My code is sufficiently commented and passes continuous integration checks
 - [ ] I have signed my commit (see [Contributing Docs](../CONTRIBUTING.md))
