@@ -3,25 +3,23 @@
 - [ ] Adds new functionality
 - [ ] Alters existing functionality
 - [ ] Fixes a bug
-- [ ] Improves Documentation
+- [ ] Improves documentation or testing
 
-A brief description of changes to implementation or controller behavior:
+Please briefly describe your changes as well as the motivation behind them:
+- `x`
 
-Motivation for change:
+## Code Quality Checklist
 
-## Code Quality
+- [ ] The documentation is up to date.
+- [ ] My code is sufficiently commented and passes continuous integration checks.
+- [ ] I have signed my commit (see [Contributing Docs](../CONTRIBUTING.md)).
 
-### Testing
+## Testing
 
-- [ ] I used existing unit tests
-- [ ] I manually tested locally
-- [ ] I will manually test in a canary deployment
-
-Please list your manual testing steps (sample `yaml` file, commands, important checks):
-
-### Checklist
-
-- [ ] The documentation is up to date
-- [ ] My code is sufficiently commented
-- [ ] I have tested to the best of my ability
-- [ ] I have signed my commit (see [Contributing Docs](../CONTRIBUTING.md))
+- [ ] I leveraged continuous integration testing
+    - [ ] by depending on existing `unit` tests or `end-to-end` tests.
+    - [ ] by adding new `unit` tests or `end-to-end` tests.
+- [ ] I manually tested the following steps:
+    - `x`
+    - [ ] locally.
+    - [ ] as a canary deployment to a cluster.
