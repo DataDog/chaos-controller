@@ -10,6 +10,7 @@ import (
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/netns"
+	"github.com/DataDog/chaos-controller/network"
 	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
@@ -33,4 +34,5 @@ type Config struct {
 	Cgroup      cgroup.Manager
 	Netns       netns.Manager
 	K8sClient   kubernetes.Interface
+	DNS         network.DNSConfig
 }

@@ -13,6 +13,11 @@ import (
 	"github.com/miekg/dns"
 )
 
+type DNSConfig struct {
+	DNSServer string
+	KubeDNS   string
+}
+
 // DNSClient is a client being able to resolve the given host
 type DNSClient interface {
 	Resolve(host string) ([]net.IP, error)

@@ -35,6 +35,9 @@ data:
       serviceAccount:
         name: {{ .Values.injector.serviceAccount | quote }}
         namespace: {{ .Values.injector.serviceAccountNamespace | quote }}
+      dnsDisruption:
+        dnsServer: {{ .Values.injector.dnsDisruption.dnsServer | quote }}
+        kubeDns: {{ .Values.injector.dnsDisruption.kubeDns | quote }}
       {{- if .Values.injector.networkDisruption.allowedHosts }}
       networkDisruption:
         allowedHosts:
