@@ -15,7 +15,7 @@ This document explains how to install and run the project on a local minikube cl
 To get started, we need to have the following software installed:
 
 * [docker](https://docs.docker.com/get-docker/)
-* [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) (1: Installation)
+* [minikube >=1.21](https://kubernetes.io/docs/tasks/tools/install-minikube/) (1: Installation)
 * [golangci-lint](https://github.com/golangci/golangci-lint)
 * [Kubebuilder Prerequisites](https://book.kubebuilder.io/quick-start.html#prerequisites) (go, docker, kubectl, kubebuilder, controller-gen)
 * [helm](https://helm.sh/docs/intro/quickstart/)
