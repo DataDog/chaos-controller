@@ -14,10 +14,10 @@ Please briefly describe your changes as well as the motivation behind them:
     - [ ] by depending on existing tests
     - [ ] by adding new `unit` tests
     - [ ] by adding new `end-to-end` (`e2e`) tests
-- [ ] I am manually tested the following steps
-    - `x`
+- [ ] I am manually tested the following steps:
     - [ ] locally
     - [ ] as a canary deployment
+1. `x`
 
 ## Code Quality Checklist
 
