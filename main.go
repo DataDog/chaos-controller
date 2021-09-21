@@ -79,12 +79,18 @@ type injectorConfig struct {
 	Image             string                          `json:"image"`
 	Annotations       map[string]string               `json:"annotations"`
 	ServiceAccount    injectorServiceAccountConfig    `json:"serviceAccount"`
+	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
 }
 
 type injectorServiceAccountConfig struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+}
+
+type injectorDNSDisruptionConfig struct {
+	DNSServer string `json:"dnsServer"`
+	KubeDNS   string `json:"kubeDns"`
 }
 
 type injectorNetworkDisruptionConfig struct {
@@ -133,6 +139,12 @@ func main() {
 
 	pflag.StringVar(&cfg.Injector.Image, "injector-image", "chaos-injector", "Image to pull for the injector pods")
 	handleFatalError(viper.BindPFlag("injector.image", pflag.Lookup("injector-image")))
+
+	pflag.StringVar(&cfg.Injector.DNSDisruption.DNSServer, "injector-dns-disruption-dns-server", "8.8.8.8", "IP address of the upstream DNS server")
+	handleFatalError(viper.BindPFlag("injector.dnsDisruption.dnsServer", pflag.Lookup("injector-dns-disruption-dns-server")))
+
+	pflag.StringVar(&cfg.Injector.DNSDisruption.KubeDNS, "injector-dns-disruption-kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
+	handleFatalError(viper.BindPFlag("injector.dnsDisruption.kubeDns", pflag.Lookup("injector-dns-disruption-kube-dns")))
 
 	pflag.StringSliceVar(&cfg.Injector.NetworkDisruption.AllowedHosts, "injector-network-disruption-allowed-hosts", []string{}, "List of hosts always allowed by network disruptions (format: <host>;<port>;<protocol>)")
 	handleFatalError(viper.BindPFlag("injector.networkDisruption.allowedHosts", pflag.Lookup("injector-network-disruption-allowed-hosts")))
@@ -229,6 +241,8 @@ func main() {
 		InjectorServiceAccount:                cfg.Injector.ServiceAccount.Name,
 		InjectorImage:                         cfg.Injector.Image,
 		InjectorServiceAccountNamespace:       cfg.Injector.ServiceAccount.Namespace,
+		InjectorDNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
+		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
 	}

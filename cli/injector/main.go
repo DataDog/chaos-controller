@@ -21,6 +21,7 @@ import (
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
 	"github.com/DataDog/chaos-controller/netns"
+	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
@@ -56,6 +57,8 @@ var (
 	signals             chan os.Signal
 	injectors           []injector.Injector
 	readyToInject       bool
+	dnsServer           string
+	kubeDNS             string
 )
 
 func init() {
@@ -72,6 +75,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
 	rootCmd.PersistentFlags().StringSliceVar(&containerIDs, "containers-id", []string{}, "Targeted containers ID")
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
+	rootCmd.PersistentFlags().StringVar(&dnsServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
+	rootCmd.PersistentFlags().StringVar(&kubeDNS, "kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
 
 	// log context args
 	rootCmd.PersistentFlags().StringVar(&disruptionName, "log-context-disruption-name", "", "Log value: current disruption name")
@@ -138,6 +143,7 @@ func initConfig() {
 	ctns := []container.Container{}
 	cgroupMgrs := []cgroup.Manager{}
 	netnsMgrs := []netns.Manager{}
+	dnsConfig := network.DNSConfig{DNSServer: dnsServer, KubeDNS: kubeDNS}
 
 	// log when dry-run mode is enabled
 	if dryRun {
@@ -262,6 +268,7 @@ func initConfig() {
 			Cgroup:      cgroupMgrs[i],
 			Netns:       netnsMgrs[i],
 			K8sClient:   clientset,
+			DNS:         dnsConfig,
 		}
 
 		configs = append(configs, config)
