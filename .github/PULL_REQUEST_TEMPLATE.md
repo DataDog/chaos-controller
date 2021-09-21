@@ -20,6 +20,8 @@ Please briefly describe your changes as well as the motivation behind them:
     - [ ] by depending on existing tests
     - [ ] by adding new `unit` tests
     - [ ] by adding new `end-to-end` (`e2e`) tests
-- [ ] I manually tested the following steps [ ] locally or [ ] as a canary deployment to a cluster:
+- [ ] I manually tested the following steps
     - `x`
     - `y`
+    - [ ] locally
+    - [ ] as a canary deployment to a cluster:
