@@ -89,8 +89,15 @@ func (m manager) write(path, data string) error {
 
 // generatePath generates a path within the cgroup like /<mount>/<kind>/<path (kubepods)>
 func (m manager) generatePath(kind string) string {
+	var foundPath string
+
 	generatedPath := fmt.Sprintf("%s%s/%s", m.mount, kind, m.path)
-	foundPath := fmt.Sprintf("%s%s/%s", m.mount, kind, m.cgroup.Paths[kind])
+
+	if m.cgroup != nil {
+		foundPath = fmt.Sprintf("%s%s/%s", m.mount, kind, m.cgroup.Paths[kind])
+	} else {
+		foundPath = fmt.Sprintf("%s%s/", m.mount, kind)
+	}
 
 	if generatedPath != foundPath {
 		m.log.Infow("container runtime generated path does not match found cgroup path",
