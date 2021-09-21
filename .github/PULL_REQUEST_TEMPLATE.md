@@ -7,6 +7,7 @@
 - [ ] Improves testing
 
 Please briefly describe your changes as well as the motivation behind them:
+`x`
 
 ## Code Quality Checklist
 
@@ -21,6 +22,5 @@ Please briefly describe your changes as well as the motivation behind them:
     - [ ] by adding new `unit` tests or `end-to-end` tests.
 - [ ] I manually tested the following steps:
     - `x`
-    - `y`
     - [ ] locally.
     - [ ] as a canary deployment to a cluster.
