@@ -219,11 +219,11 @@ func initConfig() {
 		if level == chaostypes.DisruptionLevelPod {
 			var ok bool
 
-			rawContainerID := strings.Split(containerIDs[i], "://") // This is "guaranteed" to work because it was already validated when we called container.New(containerID) earlier
+			rawContainerID := strings.Split(targetContainerIDs[i], "://") // This is "guaranteed" to work because it was already validated when we called container.New(containerID) earlier
 			foundCgroup, ok = cgroups[rawContainerID[1]]
 
 			if !ok {
-				log.Errorf("could not find cgroup paths for containerID %s", containerIDs[i])
+				log.Errorf("could not find cgroup paths for containerID %s", targetContainerIDs[i])
 
 				return
 			}
