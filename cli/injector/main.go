@@ -203,13 +203,19 @@ func initConfig() {
 
 	// create cgroup managers
 	for i, cgroupPath := range cgroupPaths {
-		rawContainerID := strings.Split(containerIDs[i], "://") // This is "guaranteed" to work because it was already validated when we called container.New(containerID) earlier
-		foundCgroup, ok := cgroups[rawContainerID[1]]
+		var foundCgroup *cgroup.ContainerCgroup // We want to pass nil for a node level disruption, as we arent targeting a container
 
-		if !ok {
-			log.Errorf("could not find cgroup paths for containerID %s", containerIDs[i])
+		if level == chaostypes.DisruptionLevelPod {
+			var ok bool
 
-			return
+			rawContainerID := strings.Split(containerIDs[i], "://") // This is "guaranteed" to work because it was already validated when we called container.New(containerID) earlier
+			foundCgroup, ok = cgroups[rawContainerID[1]]
+
+			if !ok {
+				log.Errorf("could not find cgroup paths for containerID %s", containerIDs[i])
+
+				return
+			}
 		}
 
 		log.Infow("creating a new cgroup manager", "cgroupPath", cgroupPath)

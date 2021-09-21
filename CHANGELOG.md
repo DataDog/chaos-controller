@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.4.1](https://github.com/DataDog/chaos-controller/tree/4.4.1) (2021-09-21)
+
+[Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.4.0...4.4.1)
+
+**Closed issues:**
+
+- User Issue: injector panics due to cgroupPaths containing an empty string [\#409](https://github.com/DataDog/chaos-controller/issues/409)
+
+**Merged pull requests:**
+
+- CHAOS-142: Fix cgroup fetching during node level disruptions [\#410](https://github.com/DataDog/chaos-controller/pull/410) ([ptnapoleon](https://github.com/ptnapoleon))
+- Correct log message that was too specific to containerd [\#408](https://github.com/DataDog/chaos-controller/pull/408) ([ptnapoleon](https://github.com/ptnapoleon))
+- \[CHAOS-20\] Alert on Build. Pre-Release, and Release failure pipelines [\#407](https://github.com/DataDog/chaos-controller/pull/407) ([Azoam](https://github.com/Azoam))
+- Update container release\_changelog\_9bf88a0530a0ee197a3fc43a372a87382e61778d [\#406](https://github.com/DataDog/chaos-controller/pull/406) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [4.4.0](https://github.com/DataDog/chaos-controller/tree/4.4.0) (2021-09-16)
 
 [Full Changelog](https://github.com/DataDog/chaos-controller/compare/4.3.0...4.4.0)
