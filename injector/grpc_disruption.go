@@ -7,6 +7,7 @@ package injector
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -39,7 +40,14 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 
 // Inject injects the given dns disruption into the given container
 func (i GRPCDisruptionInjector) Inject() error {
+	i.config.Log.Infow(fmt.Sprintf("%t", i.config.DryRun))
+
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
+
+	if i.config.DryRun {
+		i.config.Log.Infow("adding dry run mode grpc disruption", "spec", i.spec)
+		return nil
+	}
 
 	conn, err := connectToServer(i.serverAddr)
 	if err != nil {
@@ -61,6 +69,11 @@ func (i GRPCDisruptionInjector) Inject() error {
 // Clean removes the injected disruption from the given container
 func (i GRPCDisruptionInjector) Clean() error {
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
+
+	if i.config.DryRun {
+		i.config.Log.Infow("removing dry run mode grpc disruption", "spec", i.spec)
+		return nil
+	}
 
 	conn, err := connectToServer(i.serverAddr)
 	if err != nil {
