@@ -3,8 +3,7 @@
 - [ ] Adds new functionality
 - [ ] Alters existing functionality
 - [ ] Fixes a bug
-- [ ] Improves documentation
-- [ ] Improves testing
+- [ ] Improves documentation or testing
 
 Please briefly describe your changes as well as the motivation behind them:
 - `x`
