@@ -16,10 +16,9 @@ Please briefly describe your changes as well as the motivation behind them:
 
 ## Testing
 
-- [ ] I leveraged continuous integration (`unit` or `end-to-end`) testing
-    - [ ] by depending on existing tests.
-    - [ ] by adding new `unit` tests.
-    - [ ] by adding new `end-to-end` (`e2e`) tests.
+- [ ] I leveraged continuous integration testing
+    - [ ] by depending on existing `unit` tests or `end-to-end` tests.
+    - [ ] by adding new `unit` tests or `end-to-end` tests.
 - [ ] I manually tested the following steps:
     - `x`
     - `y`
