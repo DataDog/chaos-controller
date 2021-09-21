@@ -23,5 +23,5 @@ Please briefly describe your changes as well as the motivation behind them:
 - [ ] I am manually tested the following steps:
     - [ ] locally
     - [ ] as a canary deployment
-    1. `x`
-    2. `x`
+    - `x`
+    - `y`
