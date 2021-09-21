@@ -7,7 +7,7 @@
 - [ ] Improves testing
 
 Please briefly describe your changes as well as the motivation behind them:
-`x`
+- `x`
 
 ## Code Quality Checklist
 
