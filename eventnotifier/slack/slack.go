@@ -20,17 +20,17 @@ type Notifier struct {
 }
 
 // New Slack Notifier
-func New() (*Notifier, error) {
+func New() *Notifier {
 
 	not := &Notifier{}
 	not.client = *slack.New("")
 
 	_, err := not.client.AuthTest()
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
-	return not, nil
+	return not
 }
 
 // Close returns nil
