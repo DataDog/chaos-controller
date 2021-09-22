@@ -10,6 +10,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Notifier describes a NOOP notifier
@@ -30,23 +31,8 @@ func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverNoop)
 }
 
-// NotifyNotInjected signals a disruption was injected successfully
-func (n *Notifier) NotifyNotInjected(dis v1beta1.Disruption) error {
-	notify("NotifyNotInjected", dis.Name)
-
-	return nil
-}
-
-// NotifyInjected signals a disruption was injected successfully
-func (n *Notifier) NotifyInjected(dis v1beta1.Disruption) error {
-	notify("NotifyInjected", dis.Name)
-
-	return nil
-}
-
-// NotifyCleanedUp signals a disruption's been cleaned up successfully
-func (n *Notifier) NotifyCleanedUp(dis v1beta1.Disruption) error {
-	notify("NotifyCleanedUp", dis.Name)
+func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
+	notify("warning: "+event.Name+" - "+event.Message, dis.Name)
 
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/slack-go/slack"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Notifier describes a Slack notifier
@@ -37,10 +38,9 @@ func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverSlack)
 }
 
-// NotifyNotInjected signals a disruption was injected successfully
-func (n *Notifier) NotifyNotInjected(dis v1beta1.Disruption) error {
-	headerText := "New Disruption: " + dis.Name
-	bodyText := "> You started the disruption `" + dis.Name + "`. Waiting for " + fmt.Sprint(len(dis.Status.Targets)) + " injection(s)."
+func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
+	headerText := "Disruption `" + dis.Name + "` encountered an issue."
+	bodyText := "> Disruption `" + dis.Name + "` emitted the event " + event.Reason + ": " + event.Message
 
 	blocks := []slack.Block{
 		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, false, false)),
@@ -56,34 +56,7 @@ func (n *Notifier) NotifyNotInjected(dis v1beta1.Disruption) error {
 		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", bodyText, false, false), nil, nil),
 	}
 
-	err := n.notifySlack("isn't injected", dis, blocks...)
-
-	return err
-}
-
-// NotifyInjected signals a disruption was injected successfully
-func (n *Notifier) NotifyInjected(dis v1beta1.Disruption) error {
-	headerText := "> Disruption `" + dis.Name + "` has been fully injected. Waiting for deletion."
-
-	blocks := []slack.Block{
-		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", headerText, false, false), nil, nil),
-	}
-
-	err := n.notifySlack("is injected", dis, blocks...)
-
-	return err
-}
-
-// NotifyCleanedUp signals a disruption's been cleaned up successfully
-func (n *Notifier) NotifyCleanedUp(dis v1beta1.Disruption) error {
-	headerText := "> Disruption `" + dis.Name + "` has been cleaned up."
-
-	blocks := []slack.Block{
-		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", headerText, false, false), nil, nil),
-		slack.NewContextBlock("", slack.NewTextBlockObject("mrkdwn", "from #chaos-engineering", false, false)),
-	}
-
-	err := n.notifySlack("has been cleaned up", dis, blocks...)
+	err := n.notifySlack("emitted a warning", dis, blocks...)
 
 	return err
 }

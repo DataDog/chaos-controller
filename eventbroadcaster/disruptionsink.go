@@ -13,6 +13,7 @@ import (
 	"github.com/DataDog/chaos-controller/eventnotifier"
 
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -78,22 +79,16 @@ func (s *DisruptionNotifierSink) getDisruption(event *v1.Event) (v1beta1.Disrupt
 	return dis, nil
 }
 
-func (s *DisruptionNotifierSink) parseEvent(event *v1.Event, dis v1beta1.Disruption) error {
+func (s *DisruptionNotifierSink) parseEvent(event *corev1.Event, dis v1beta1.Disruption) error {
 	var err error = nil
 
 	switch event.Reason {
-	case DisruptionEventReasonNotInjected:
-		err = s.Notifier.NotifyNotInjected(dis)
-	case DisruptionEventReasonInjected:
-		err = s.Notifier.NotifyInjected(dis)
-	case DisruptionEventReasonCleanedUp:
-		err = s.Notifier.NotifyCleanedUp(dis)
-	case DisruptionEventReasonNoTarget:
-		err = s.Notifier.NotifyNoTarget(dis)
-	case DisruptionEventReasonStuckOnRemoval:
-		err = s.Notifier.NotifyStuckOnRemoval(dis)
+	case corev1.EventTypeWarning:
+		err = s.Notifier.NotifyWarning(dis, *event)
+	case corev1.EventTypeNormal:
+		err = nil
 	default:
-		err = fmt.Errorf("event: not a chaos disruption event")
+		err = fmt.Errorf("event: not a correct event type")
 	}
 
 	return err
