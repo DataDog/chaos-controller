@@ -46,7 +46,6 @@ import (
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
-	"github.com/DataDog/chaos-controller/eventbroadcaster"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -151,8 +150,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 					RequeueAfter: requeueAfter,
 				}, r.Update(context.Background(), instance)
 			}
-
-			r.Recorder.Event(instance, corev1.EventTypeNormal, eventbroadcaster.DisruptionEventReasonCleanedUp, "Disruption has been cleaned up")
 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
@@ -264,7 +261,6 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 	// update instance status
 	instance.Status.InjectionStatus = status
-	r.Recorder.Event(instance, corev1.EventTypeNormal, string(status), "Disruption is "+string(status))
 
 	if err := r.Client.Update(context.Background(), instance); err != nil {
 		return false, err
@@ -314,7 +310,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		r.generateChaosPods(instance, &chaosPods, target, targetNodeName, containerIDs)
 
 		if len(chaosPods) == 0 {
-			r.Recorder.Event(instance, corev1.EventTypeWarning, "Empty Disruption", fmt.Sprintf("No disruption recognized for \"%s\" therefore no disruption applied.", instance.Name))
+			r.Recorder.Event(instance, corev1.EventTypeWarning, "EmptyDisruption", fmt.Sprintf("No disruption recognized for \"%s\" therefore no disruption applied.", instance.Name))
 			return nil
 		}
 
@@ -332,7 +328,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 				// create the pod
 				if err = r.Create(context.Background(), chaosPod); err != nil {
-					r.Recorder.Event(instance, corev1.EventTypeWarning, "Create failed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
+					r.Recorder.Event(instance, corev1.EventTypeWarning, "CreateFailed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
 					r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, false))
 
 					return fmt.Errorf("error creating chaos pod: %w", err)
@@ -517,7 +513,7 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 			// if the chaos pod finalizer must not be removed and the chaos pod must not be deleted
 			// and the cleanup status must not be ignored, we are stuck and won't be able to remove the disruption
 			r.log.Infow("instance seems stuck on removal for this target, please check manually", "target", target, "chaosPod", chaosPod.Name)
-			r.Recorder.Event(instance, corev1.EventTypeWarning, eventbroadcaster.DisruptionEventReasonStuckOnRemoval, "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer")
+			r.Recorder.Event(instance, corev1.EventTypeWarning, "StuckOnRemoval", "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer")
 
 			instance.Status.IsStuckOnRemoval = true
 		}
@@ -598,7 +594,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// return an error if the selector returned no targets
 	if len(matchingTargets) == 0 {
 		r.log.Info("the given label selector did not return any targets, skipping")
-		r.Recorder.Event(instance, corev1.EventTypeWarning, eventbroadcaster.DisruptionEventReasonNoTarget, "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
+		r.Recorder.Event(instance, corev1.EventTypeWarning, "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
 
 		return nil
 	}
@@ -627,7 +623,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	targetsCount = int(math.Min(float64(targetsCount), float64(len(eligibleTargets))))
 	if targetsCount < 1 {
 		r.log.Info("ignored targets has reached target count, skipping")
-		r.Recorder.Event(instance, corev1.EventTypeWarning, eventbroadcaster.DisruptionEventReasonNoTarget, "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)")
+		r.Recorder.Event(instance, corev1.EventTypeWarning, "NoTarget", "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)")
 
 		return nil
 	}

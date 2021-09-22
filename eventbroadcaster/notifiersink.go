@@ -11,31 +11,27 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier"
+	notifiertypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 
-	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// DisruptionEventStatus represents all possible values for an event notification
-type DisruptionEventStatus string
-
-const (
-	DisruptionEventReasonInjected       string = string(chaostypes.DisruptionInjectionStatusInjected)
-	DisruptionEventReasonNotInjected    string = string(chaostypes.DisruptionInjectionStatusNotInjected)
-	DisruptionEventReasonStuckOnRemoval string = "StuckOnRemoval"
-	DisruptionEventReasonCleanedUp      string = "CleanedUp"
-	DisruptionEventReasonNoTarget       string = "NoTarget"
-)
-
-type DisruptionNotifierSink struct {
+type NotifierSink struct {
 	Client   client.Client
 	Notifier eventnotifier.Notifier
 }
 
-func (s *DisruptionNotifierSink) Create(event *v1.Event) (*v1.Event, error) {
+func NewNotifierSink(client client.Client, driver notifiertypes.NotifierDriver) (*NotifierSink, error) {
+	notifier, err := eventnotifier.GetNotifier(driver)
+	if err != nil {
+		return nil, err
+	}
+	return &NotifierSink{Client: client, Notifier: notifier}, nil
+}
+
+func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 	dis, err := s.getDisruption(event)
 
 	if err != nil {
@@ -52,15 +48,15 @@ func (s *DisruptionNotifierSink) Create(event *v1.Event) (*v1.Event, error) {
 	return event, nil
 }
 
-func (s *DisruptionNotifierSink) Update(event *v1.Event) (*v1.Event, error) {
+func (s *NotifierSink) Update(event *corev1.Event) (*corev1.Event, error) {
 	return event, nil
 }
 
-func (s *DisruptionNotifierSink) Patch(oldEvent *v1.Event, data []byte) (*v1.Event, error) {
+func (s *NotifierSink) Patch(oldEvent *corev1.Event, data []byte) (*corev1.Event, error) {
 	return oldEvent, nil
 }
 
-func (s *DisruptionNotifierSink) getDisruption(event *v1.Event) (v1beta1.Disruption, error) {
+func (s *NotifierSink) getDisruption(event *corev1.Event) (v1beta1.Disruption, error) {
 	dis := v1beta1.Disruption{}
 	if event.InvolvedObject.Kind != "Disruption" {
 		return v1beta1.Disruption{}, nil
@@ -79,10 +75,10 @@ func (s *DisruptionNotifierSink) getDisruption(event *v1.Event) (v1beta1.Disrupt
 	return dis, nil
 }
 
-func (s *DisruptionNotifierSink) parseEvent(event *corev1.Event, dis v1beta1.Disruption) error {
+func (s *NotifierSink) parseEvent(event *corev1.Event, dis v1beta1.Disruption) error {
 	var err error = nil
 
-	switch event.Reason {
+	switch event.Type {
 	case corev1.EventTypeWarning:
 		err = s.Notifier.NotifyWarning(dis, *event)
 	case corev1.EventTypeNormal:

@@ -35,8 +35,7 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
-	notifiernoop "github.com/DataDog/chaos-controller/eventnotifier/noop"
-	notifierslack "github.com/DataDog/chaos-controller/eventnotifier/slack"
+	notifiertypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
@@ -219,8 +218,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	broadcaster.StartRecordingToSink(&eventbroadcaster.DisruptionNotifierSink{Client: mgr.GetClient(), Notifier: notifiernoop.New()})
-	broadcaster.StartRecordingToSink(&eventbroadcaster.DisruptionNotifierSink{Client: mgr.GetClient(), Notifier: notifierslack.New()})
+	noopSink, err := eventbroadcaster.NewNotifierSink(mgr.GetClient(), notifiertypes.NotifierDriverNoop)
+	if err != nil {
+		logger.Errorw("error while creating noop notifier sink", "error", err)
+	}
+	broadcaster.StartRecordingToSink(noopSink)
+
+	slackSink, err := eventbroadcaster.NewNotifierSink(mgr.GetClient(), notifiertypes.NotifierDriverSlack)
+	if err != nil {
+		logger.Errorw("error while creating slack notifier sink", "error", err)
+	}
+	broadcaster.StartRecordingToSink(slackSink)
 
 	// metrics sink
 	ms, err := metrics.GetSink(types.SinkDriver(cfg.Controller.MetricsSink), types.SinkAppController)

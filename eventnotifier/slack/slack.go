@@ -20,12 +20,17 @@ type Notifier struct {
 }
 
 // New Slack Notifier
-func New() *Notifier {
+func New() (*Notifier, error) {
 
 	not := &Notifier{}
 	not.client = *slack.New("")
 
-	return not
+	_, err := not.client.AuthTest()
+	if err != nil {
+		return nil, err
+	}
+
+	return not, nil
 }
 
 // Close returns nil
@@ -90,8 +95,6 @@ func (n *Notifier) NotifyStuckOnRemoval(dis v1beta1.Disruption) error {
 
 // helper for Slack notifier
 func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
-	fmt.Printf("SLACK: %s for disruption %s - user %s\n", notificationText, dis.Name, dis.Status.UserInfo.Username)
-
 	p1, err := n.client.GetUserByEmail("nathan.tournant@datadoghq.com")
 	if err != nil {
 		return err

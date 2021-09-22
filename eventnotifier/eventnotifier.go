@@ -35,7 +35,7 @@ func GetNotifier(driver types.NotifierDriver) (Notifier, error) {
 	case types.NotifierDriverNoop:
 		return noop.New(), nil
 	case types.NotifierDriverSlack:
-		return slack.New(), nil
+		return slack.New()
 	default:
 		return nil, fmt.Errorf("unsupported notifier driver: %s", driver)
 	}
