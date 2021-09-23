@@ -25,7 +25,6 @@ import (
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"golang.org/x/net/context"
@@ -177,9 +176,9 @@ var _ = Describe("Disruption Controller", func() {
 						},
 					},
 				},
-				GRPC: &v1beta1.GRPCDisruptionSpec{
+				GRPC: &chaosv1beta1.GRPCDisruptionSpec{
 					Port: 2000,
-					Endpoints: []v1beta1.EndpointAlteration{
+					Endpoints: []chaosv1beta1.EndpointAlteration{
 						{
 							TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
 							ErrorToReturn:    "",

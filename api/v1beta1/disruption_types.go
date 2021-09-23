@@ -170,7 +170,8 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		if s.CPUPressure != nil ||
 			s.NodeFailure != nil ||
 			s.ContainerFailure != nil ||
-			s.DiskPressure != nil {
+			s.DiskPressure != nil ||
+			s.GRPC != nil {
 			return errors.New("OnInit is only compatible with network and dns disruptions")
 		}
 
@@ -181,6 +182,10 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		if len(s.Containers) > 0 {
 			return errors.New("OnInit is not compatible with containers scoping")
 		}
+	}
+
+	if s.GRPC != nil && s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
+		return errors.New("GRPC disruptions can only be applied at the pod level")
 	}
 
 	// Rule: count must be valid

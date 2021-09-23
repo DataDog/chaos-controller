@@ -92,18 +92,17 @@ func (s GRPCDisruptionSpec) Validate() error {
 
 				pctClaimed := 100 - queryPctByEndpoint[alteration.TargetEndpoint]
 				if pctClaimed < count+1 {
-					return fmt.Errorf("%s will never return some alterations because alterations exceed 100%% of possible queries", alteration.TargetEndpoint)
+					return fmt.Errorf("alterations must have at least 1%% chance of occurring; %s will never return some alterations because alterations exceed 100%% of possible queries", alteration.TargetEndpoint)
 				}
 			} else {
 				unquantifiedAlts[alteration.TargetEndpoint] = 1
 			}
 		} else {
 			if totalQueryPercent, ok := queryPctByEndpoint[alteration.TargetEndpoint]; ok {
-				if alteration.QueryPercent > 0 {
-					queryPctByEndpoint[alteration.TargetEndpoint] = totalQueryPercent + alteration.QueryPercent
-					if queryPctByEndpoint[alteration.TargetEndpoint] > 100 {
-						return errors.New("total queryPercent of all alterations applied to endpoint %s is over 100%; modify them to so their total is 100% or less")
-					}
+				// always positive because of CRD limitations
+				queryPctByEndpoint[alteration.TargetEndpoint] = totalQueryPercent + alteration.QueryPercent
+				if queryPctByEndpoint[alteration.TargetEndpoint] > 100 {
+					return errors.New("total queryPercent of all alterations applied to endpoint %s is over 100%")
 				}
 			} else {
 				queryPctByEndpoint[alteration.TargetEndpoint] = alteration.QueryPercent
