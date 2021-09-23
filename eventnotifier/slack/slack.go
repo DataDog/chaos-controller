@@ -7,6 +7,7 @@ package slack
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
@@ -20,13 +21,19 @@ type Notifier struct {
 }
 
 // New Slack Notifier
-func New() *Notifier {
+func New(tokenFilePath string) *Notifier {
 
 	not := &Notifier{}
-	not.client = *slack.New("")
-
-	_, err := not.client.AuthTest()
+	token, err := os.ReadFile(tokenFilePath)
 	if err != nil {
+		fmt.Println("Slack File not found")
+		return nil
+	}
+	not.client = *slack.New(string(token))
+
+	_, err = not.client.AuthTest()
+	if err != nil {
+		fmt.Println("Slack Auth Failed")
 		return nil
 	}
 

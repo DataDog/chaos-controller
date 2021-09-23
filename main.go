@@ -64,13 +64,14 @@ type config struct {
 }
 
 type controllerConfig struct {
-	MetricsAddr      string                  `json:"metricsAddr"`
-	MetricsSink      string                  `json:"metricsSink"`
-	NotifierDriver   string                  `json:"notifierDriver"`
-	ImagePullSecrets string                  `json:"imagePullSecrets"`
-	DeleteOnly       bool                    `json:"deleteOnly"`
-	LeaderElection   bool                    `json:"leaderElection"`
-	Webhook          controllerWebhookConfig `json:"webhook"`
+	MetricsAddr        string                  `json:"metricsAddr"`
+	MetricsSink        string                  `json:"metricsSink"`
+	NotifierDriver     string                  `json:"notifierDriver"`
+	SlackTokenFilePath string                  `json:"slackTokenFilePath"`
+	ImagePullSecrets   string                  `json:"imagePullSecrets"`
+	DeleteOnly         bool                    `json:"deleteOnly"`
+	LeaderElection     bool                    `json:"leaderElection"`
+	Webhook            controllerWebhookConfig `json:"webhook"`
 }
 
 type controllerWebhookConfig struct {
@@ -132,8 +133,8 @@ func main() {
 	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
 
-	pflag.StringVar(&cfg.Controller.NotifierDriver, "notifier-driver", "noop", "Driver for notification system (noop or slack)")
-	handleFatalError(viper.BindPFlag("controller.NotifierDriver", pflag.Lookup("notifier-driver")))
+	pflag.StringVar(&cfg.Controller.SlackTokenFilePath, "notifier-slack-token-file-path", "/etc/chaos-slack-token", "Path for token file for slack notifier system")
+	handleFatalError(viper.BindPFlag("controller.SlackTokenFilePath", pflag.Lookup("notifier-slack-token-file-path")))
 
 	pflag.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.annotations", pflag.Lookup("injector-annotations")))
@@ -220,7 +221,7 @@ func main() {
 	}
 
 	broadcaster.StartRecordingToSink(&eventbroadcaster.NotifierSink{Client: mgr.GetClient(), Notifier: notifiernoop.New()})
-	broadcaster.StartRecordingToSink(&eventbroadcaster.NotifierSink{Client: mgr.GetClient(), Notifier: notifierslack.New()})
+	broadcaster.StartRecordingToSink(&eventbroadcaster.NotifierSink{Client: mgr.GetClient(), Notifier: notifierslack.New(cfg.Controller.SlackTokenFilePath)})
 
 	// metrics sink
 	ms, err := metrics.GetSink(types.SinkDriver(cfg.Controller.MetricsSink), types.SinkAppController)
