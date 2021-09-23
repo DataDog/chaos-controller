@@ -15,6 +15,7 @@ data:
       leaderElection: true
       metricsSink: {{ .Values.controller.metricsSink | quote }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
+      slackTokenFilePath: {{ .Values.controller.slackTokenFilePath | quote }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       webhook:
         {{- if .Values.controller.webhook.generateCert }}

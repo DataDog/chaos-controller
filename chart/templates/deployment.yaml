@@ -55,6 +55,9 @@ spec:
         - mountPath: /etc/chaos-controller
           name: config
           readOnly: true
+        - mountPath: /etc/chaos-slack-token
+          name: slack-token
+          readOnly: true
       {{- if .Values.images.pullSecrets }}
       imagePullSecrets:
         - name: {{ .Values.images.pullSecrets }}
@@ -68,3 +71,7 @@ spec:
       - name: config
         configMap:
           name: chaos-controller-config
+      - name: slack-token
+        hostPath:
+          path: 
+          type: FileOrCreate
