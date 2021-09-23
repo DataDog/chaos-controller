@@ -46,6 +46,11 @@ func NewDiskPressureInjector(spec v1beta1.DiskPressureSpec, config DiskPressureI
 		if err != nil {
 			return nil, fmt.Errorf("error initializing disk informer: %w", err)
 		}
+
+		if err == nil && len(path) == 0 {
+			config.Log.Infow(fmt.Sprintf("Could not apply injector on container: %s; %s not found on this targeted container.", config.Container.Name(), spec.Path))
+			return nil,nil
+		}
 	}
 
 	if config.Informer == nil {
