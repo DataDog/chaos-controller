@@ -37,6 +37,8 @@ import (
 
 // DisruptionSpec defines the desired state of Disruption
 // +ddmark:validation:ExclusiveFields={Network,DNS}
+// +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS}
+// +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS}
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
