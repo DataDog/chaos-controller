@@ -11,6 +11,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	grpc_api "github.com/DataDog/chaos-controller/grpc"
+	grpc_calc_api "github.com/DataDog/chaos-controller/grpc/calculations"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/spf13/cobra"
 )
@@ -156,7 +157,7 @@ func explainGRPC(spec v1beta1.DisruptionSpec) {
 	for _, endpt := range endptSpec {
 		fmt.Printf("\t\t👩‍⚕️ endpoint: %s ...\n", endpt.TargetEndpoint) //nolint:stylecheck
 
-		alterationToPercentAffected, err := grpc_api.GetAlterationToPercentAffected(endpt.Alterations)
+		alterationToQueryPercent, err := grpc_calc_api.ConvertAltSpecToQueryPercentByAltConfig(endpt.Alterations)
 
 		if err != nil {
 			fmt.Printf("\t\t\t💣  this disruption fails with err: %s\n", err.Error())
@@ -164,7 +165,7 @@ func explainGRPC(spec v1beta1.DisruptionSpec) {
 
 		var spoof string
 
-		for altConfig, pct := range alterationToPercentAffected {
+		for altConfig, pct := range alterationToQueryPercent {
 			if altConfig.ErrorToReturn != "" {
 				spoof = fmt.Sprintf("error: %s", altConfig.ErrorToReturn)
 			} else {

@@ -3,21 +3,21 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
-package grpc_test
+package calculations_test
 
 import (
 	"fmt"
 
-	. "github.com/DataDog/chaos-controller/grpc"
+	. "github.com/DataDog/chaos-controller/grpc/calculations"
 	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("get mapping from randomly generated Percent to Alteration based on AlterationToPercentAffected", func() {
+var _ = Describe("get mapping from randomly generated Percent to Alteration based on GetMappingFromAlterationToQueryPercent", func() {
 	var (
-		alterationSpecs []*pb.AlterationSpec
-		mapping         map[AlterationConfiguration]PercentAffected
+		alterationSpecs         []*pb.AlterationSpec
+		QueryPercentByAltConfig map[AlterationConfiguration]QueryPercent
 	)
 
 	Context("with three alterations which add up to less than 100", func() {
@@ -41,40 +41,40 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs)
+			QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
 			Expect(err).To(BeNil())
 		})
 
-		It("should create a mapping with 3 elements", func() {
-			Expect(len(mapping)).To(Equal(3))
+		It("should create a QueryPercentByAltConfig with 3 elements", func() {
+			Expect(len(QueryPercentByAltConfig)).To(Equal(3))
 		})
 
-		It("should create a mapping with correct configs", func() {
+		It("should create a QueryPercentByAltConfig with correct configs", func() {
 			var altCfg AlterationConfiguration
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "CANCELED",
 				OverrideToReturn: "",
 			}
-			pct_canceled, ok_canceled := mapping[altCfg]
+			pct_canceled, ok_canceled := QueryPercentByAltConfig[altCfg]
 			Expect(ok_canceled).To(BeTrue())
-			Expect(pct_canceled).To(Equal(PercentAffected(20)))
+			Expect(pct_canceled).To(Equal(QueryPercent(20)))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "ALREADY_EXISTS",
 				OverrideToReturn: "",
 			}
-			pct_exists, ok_exists := mapping[altCfg]
+			pct_exists, ok_exists := QueryPercentByAltConfig[altCfg]
 			Expect(ok_exists).To(BeTrue())
-			Expect(pct_exists).To(Equal(PercentAffected(30)))
+			Expect(pct_exists).To(Equal(QueryPercent(30)))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "",
 				OverrideToReturn: "{}",
 			}
-			pct_emptyret, ok_emptyret := mapping[altCfg]
+			pct_emptyret, ok_emptyret := QueryPercentByAltConfig[altCfg]
 			Expect(ok_emptyret).To(BeTrue())
-			Expect(pct_emptyret).To(Equal(PercentAffected(40)))
+			Expect(pct_emptyret).To(Equal(QueryPercent(40)))
 		})
 	})
 
@@ -87,10 +87,10 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 				},
 			}
 
-			_, err := GetAlterationToPercentAffected(alterationSpecs)
+			_, err := ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
 
 			fmt.Print(err.Error())
-			Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = Cannot execute SendDisruption where ErrorToReturn or OverrideToReturn are both specified for a target endpoints"))
+			Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = cannot map alteration to assigned percentage when ErrorToReturn and OverrideToReturn are both specified for a target endpoint"))
 		})
 	})
 
@@ -104,13 +104,14 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 				},
 			}
 
-			_, err := GetAlterationToPercentAffected(alterationSpecs)
+			_, err := ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
 
-			Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = Cannot execute SendDisruption without specifying either ErrorToReturn or OverrideToReturn for all target endpoints"))
+			Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = cannot map alteration to assigned percentage without specifying either ErrorToReturn or OverrideToReturn for a target endpoint"))
 		})
 	})
+
 	Context("with three alterations which are more than 100", func() {
-		BeforeEach(func() {
+		It("should fail", func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
 					ErrorToReturn:    "CANCELED",
@@ -130,44 +131,8 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs)
-			Expect(err).To(BeNil())
-		})
-
-		It("should create a mapping with 3 elements", func() {
-			Expect(len(mapping)).To(Equal(3))
-		})
-
-		It("should create a mapping with correct configs", func() {
-			var altCfg AlterationConfiguration
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "CANCELED",
-				OverrideToReturn: "",
-			}
-			pct_canceled, ok_canceled := mapping[altCfg]
-			Expect(ok_canceled).To(BeTrue())
-			Expect(pct_canceled).To(Equal(PercentAffected(50)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "ALREADY_EXISTS",
-				OverrideToReturn: "",
-			}
-
-			pct_exists, ok_exists := mapping[altCfg]
-			Expect(ok_exists).To(BeTrue())
-			Expect(pct_exists).To(Equal(PercentAffected(50)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "",
-				OverrideToReturn: "{}",
-			}
-
-			// intuition here as that the service will never pick a number larger than 100 randomly
-			// so this return value never gets triggered, but the function does not error out
-			pct_emptyret, ok_emptyret := mapping[altCfg]
-			Expect(ok_emptyret).To(BeTrue())
-			Expect(pct_emptyret).To(Equal(PercentAffected(50)))
+			QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
+			Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = assigned percentage for this endpoint exceeds 100% of possible queries"))
 		})
 	})
 	Context("with one alteration less than 100", func() {
@@ -181,23 +146,23 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs)
+			QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
 			Expect(err).To(BeNil())
 		})
-		It("should create a mapping with 1 element", func() {
-			Expect(len(mapping)).To(Equal(1))
+		It("should create a QueryPercentByAltConfig with 1 element", func() {
+			Expect(len(QueryPercentByAltConfig)).To(Equal(1))
 		})
 
-		It("should create a mapping with correct configs", func() {
+		It("should create a QueryPercentByAltConfig with correct configs", func() {
 			var altCfg AlterationConfiguration
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "CANCELED",
 				OverrideToReturn: "",
 			}
-			pct_canceled, ok_canceled := mapping[altCfg]
+			pct_canceled, ok_canceled := QueryPercentByAltConfig[altCfg]
 			Expect(ok_canceled).To(BeTrue())
-			Expect(pct_canceled).To(Equal(PercentAffected(40)))
+			Expect(pct_canceled).To(Equal(QueryPercent(40)))
 		})
 	})
 
@@ -212,23 +177,23 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs)
+			QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
 			Expect(err).To(BeNil())
 		})
-		It("should create a mapping with 1 element", func() {
-			Expect(len(mapping)).To(Equal(1))
+		It("should create a QueryPercentByAltConfig with 1 element", func() {
+			Expect(len(QueryPercentByAltConfig)).To(Equal(1))
 		})
 
-		It("should create a mapping with correct configs", func() {
+		It("should create a alterationToQueryPercent with correct configs", func() {
 			var altCfg AlterationConfiguration
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "CANCELED",
 				OverrideToReturn: "",
 			}
-			pct_canceled, ok_canceled := mapping[altCfg]
+			pct_canceled, ok_canceled := QueryPercentByAltConfig[altCfg]
 			Expect(ok_canceled).To(BeTrue())
-			Expect(pct_canceled).To(Equal(PercentAffected(100)))
+			Expect(pct_canceled).To(Equal(QueryPercent(100)))
 		})
 	})
 
@@ -253,39 +218,39 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs)
+			QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
 			Expect(err).To(BeNil())
 		})
-		It("should create a mapping with 3 elements", func() {
-			Expect(len(mapping)).To(Equal(3))
+		It("should create a QueryPercentByAltConfig with 3 elements", func() {
+			Expect(len(QueryPercentByAltConfig)).To(Equal(3))
 		})
 
-		It("should create a mapping with correct configs", func() {
+		It("should create a QueryPercentByAltConfig with correct configs", func() {
 			var altCfg AlterationConfiguration
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "CANCELED",
 				OverrideToReturn: "",
 			}
-			pct_canceled, ok_canceled := mapping[altCfg]
+			pct_canceled, ok_canceled := QueryPercentByAltConfig[altCfg]
 			Expect(ok_canceled).To(BeTrue())
-			Expect(pct_canceled).To(Equal(PercentAffected(25)))
+			Expect(pct_canceled).To(Equal(QueryPercent(25)))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "ALREADY_EXISTS",
 				OverrideToReturn: "",
 			}
-			pct_exists, ok_exists := mapping[altCfg]
+			pct_exists, ok_exists := QueryPercentByAltConfig[altCfg]
 			Expect(ok_exists).To(BeTrue())
-			Expect(pct_exists).To(Equal(PercentAffected(25)))
+			Expect(pct_exists).To(Equal(QueryPercent(25)))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "",
 				OverrideToReturn: "{}",
 			}
-			pct_emptyret, ok_emptyret := mapping[altCfg]
+			pct_emptyret, ok_emptyret := QueryPercentByAltConfig[altCfg]
 			Expect(ok_emptyret).To(BeTrue())
-			Expect(pct_emptyret).To(Equal(PercentAffected(50)))
+			Expect(pct_emptyret).To(Equal(QueryPercent(50)))
 		})
 	})
 	Context("with seven alterations, six of which lack a queryPercent", func() {
@@ -329,17 +294,17 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs)
+			QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
 			Expect(err).To(BeNil())
 		})
-		It("should create a mapping with 7 elements", func() {
-			Expect(len(mapping)).To(Equal(7))
+		It("should create a QueryPercentByAltConfig with 7 elements", func() {
+			Expect(len(QueryPercentByAltConfig)).To(Equal(7))
 		})
 
-		It("should create a mapping with correct configs", func() {
+		It("should create a QueryPercentByAltConfig with correct configs", func() {
 			var (
 				altCfg AlterationConfiguration
-				pct    PercentAffected
+				pct    QueryPercent
 				ok     bool
 			)
 
@@ -347,62 +312,62 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 				ErrorToReturn:    "CANCELED",
 				OverrideToReturn: "",
 			}
-			pct, ok = mapping[altCfg]
+			pct, ok = QueryPercentByAltConfig[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(90)))
+			Expect(pct).To(Equal(QueryPercent(90)))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "ALREADY_EXISTS",
 				OverrideToReturn: "",
 			}
-			pct, ok = mapping[altCfg]
+			pct, ok = QueryPercentByAltConfig[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(1)))
+			Expect(pct).To(Equal(QueryPercent(1)))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "UNKNOWN",
 				OverrideToReturn: "",
 			}
-			pct, ok = mapping[altCfg]
+			pct, ok = QueryPercentByAltConfig[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(1)))
+			Expect(pct).To(Equal(QueryPercent(1)))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "INVALID_ARGUMENT",
 				OverrideToReturn: "",
 			}
-			pct, ok = mapping[altCfg]
+			pct, ok = QueryPercentByAltConfig[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(1)))
+			Expect(pct).To(Equal(QueryPercent(1)))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "DEADLINE_EXCEEDED",
 				OverrideToReturn: "",
 			}
-			pct, ok = mapping[altCfg]
+			pct, ok = QueryPercentByAltConfig[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(1)))
+			Expect(pct).To(Equal(QueryPercent(1)))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "NOT_FOUND",
 				OverrideToReturn: "",
 			}
-			pct, ok = mapping[altCfg]
+			pct, ok = QueryPercentByAltConfig[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(1)))
+			Expect(pct).To(Equal(QueryPercent(1)))
 
 			altCfg = AlterationConfiguration{
 				ErrorToReturn:    "PERMISSION_DENIED",
 				OverrideToReturn: "",
 			}
-			pct, ok = mapping[altCfg]
+			pct, ok = QueryPercentByAltConfig[altCfg]
 			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(5)))
+			Expect(pct).To(Equal(QueryPercent(5)))
 		})
 	})
 
 	Context("with twelve alterations, eleven of which lack a queryPercent", func() {
-		BeforeEach(func() {
+		It("should fail", func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
 					ErrorToReturn:    "CANCELED",
@@ -467,116 +432,8 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			}
 
 			var err error
-			mapping, err = GetAlterationToPercentAffected(alterationSpecs)
-			Expect(err).To(BeNil())
-		})
-
-		It("should create a mapping with 12 elements", func() {
-			Expect(len(mapping)).To(Equal(12))
-		})
-
-		It("should create a mapping with correct configs", func() {
-			var (
-				altCfg AlterationConfiguration
-				pct    PercentAffected
-				ok     bool
-			)
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "CANCELED",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(90)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "ALREADY_EXISTS",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(0)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "UNKNOWN",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(0)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "INVALID_ARGUMENT",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(0)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "DEADLINE_EXCEEDED",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(0)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "NOT_FOUND",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(0)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "PERMISSION_DENIED",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(0)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "RESOURCE_EXHAUSTED",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(0)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "FAILED_PRECONDITION",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(0)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "ABORTED",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(0)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "OUT_OF_RANGE",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(0)))
-
-			altCfg = AlterationConfiguration{
-				ErrorToReturn:    "UNIMPLEMENTED",
-				OverrideToReturn: "",
-			}
-			pct, ok = mapping[altCfg]
-			Expect(ok).To(BeTrue())
-			Expect(pct).To(Equal(PercentAffected(10)))
+			QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
+			Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = alterations must have at least 1% chance of occurring; endpoint has too many alterations configured so its total configurations exceed 100%"))
 		})
 	})
 })

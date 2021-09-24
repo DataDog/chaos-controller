@@ -28,13 +28,6 @@ func (d *DisruptionListenerClientMock) SendDisruption(ctx context.Context, spec 
 }
 
 //nolint:golint
-func (d *DisruptionListenerClientMock) DisruptionStatus(ctx context.Context, empty *emptypb.Empty, opts ...grpc.CallOption) (*pb.DisruptionSpec, error) {
-	mockArgs := d.Called(ctx, empty)
-
-	return mockArgs.Get(0).(*pb.DisruptionSpec), mockArgs.Error(1)
-}
-
-//nolint:golint
 func (d *DisruptionListenerClientMock) CleanDisruption(ctx context.Context, empty *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	mockArgs := d.Called(ctx, empty)
 

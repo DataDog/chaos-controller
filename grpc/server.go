@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	. "github.com/DataDog/chaos-controller/grpc/calculations"
 	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
 	"github.com/DataDog/chaos-controller/log"
 	"go.uber.org/zap"
@@ -33,31 +34,6 @@ type DisruptionListener struct {
 	Configuration DisruptionConfiguration
 	Logger        *zap.SugaredLogger
 }
-
-// DisruptionConfiguration configures the DisruptionListener to chaos test endpoints of a gRPC server.
-type DisruptionConfiguration map[TargetEndpoint]EndpointConfiguration
-
-// EndpointConfiguration configures endpoints that the DisruptionListener chaos tests on a gRPC server.
-// The AlterationHash maps integers from 0 to 100 to alteration configurations.
-type EndpointConfiguration struct {
-	TargetEndpoint TargetEndpoint
-	Alterations    map[AlterationConfiguration]PercentAffected
-	AlterationHash []AlterationConfiguration
-}
-
-// AlterationConfiguration contains either an ErrorToReturn or an OverrideToReturn for a given
-// gRPC query to the disrupted service.
-type AlterationConfiguration struct {
-	ErrorToReturn    string
-	OverrideToReturn string
-}
-
-// PercentAffected is an integer represented the number of queries out of 100 queries which should
-// be affected by a certain endpoint alteration.
-type PercentAffected int
-
-// TargetEndpoint is a string of the format /package.service/method.
-type TargetEndpoint string
 
 var mutex sync.Mutex
 
@@ -88,18 +64,15 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying TargetEndpoint for all endpointAlterations")
 		}
 
-		alterationToPercentAffected, err := GetAlterationToPercentAffected(endpointSpec.Alterations)
+		alterationMap, err := GetAlterationMapFromAlterationSpec(endpointSpec.Alterations)
 		if err != nil {
 			return nil, err
 		}
 
-		percentToAlteration := GetPercentToAlteration(alterationToPercentAffected, d.Logger)
-
 		// add endpoint to main configuration
 		config[TargetEndpoint(endpointSpec.TargetEndpoint)] = EndpointConfiguration{
 			TargetEndpoint: TargetEndpoint(endpointSpec.TargetEndpoint),
-			Alterations:    alterationToPercentAffected,
-			AlterationHash: percentToAlteration,
+			AlterationMap:  alterationMap,
 		}
 	}
 
@@ -113,32 +86,6 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 	mutex.Unlock()
 
 	return &emptypb.Empty{}, nil
-}
-
-// DisruptionStatus lists all configured endpoint alterations for DisruptionListener.
-func (d *DisruptionListener) DisruptionStatus(context.Context, *emptypb.Empty) (*pb.DisruptionSpec, error) {
-	ds := pb.DisruptionSpec{Endpoints: []*pb.EndpointSpec{}}
-
-	for _, endptConfig := range d.Configuration {
-		endptSpec := &pb.EndpointSpec{
-			TargetEndpoint: string(endptConfig.TargetEndpoint),
-			Alterations:    make([]*pb.AlterationSpec, 0),
-		}
-
-		for altConfig, pctAffected := range endptConfig.Alterations {
-			altSpec := &pb.AlterationSpec{
-				ErrorToReturn:    altConfig.ErrorToReturn,
-				OverrideToReturn: altConfig.OverrideToReturn,
-				QueryPercent:     int32(pctAffected),
-			}
-
-			endptSpec.Alterations = append(endptSpec.Alterations, altSpec)
-		}
-
-		ds.Endpoints = append(ds.Endpoints, endptSpec)
-	}
-
-	return &ds, nil
 }
 
 // CleanDisruption removes all configured endpoint alterations for DisruptionListener.
@@ -160,8 +107,8 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 	if endptConfig, ok := d.Configuration[TargetEndpoint(info.FullMethod)]; ok {
 		randomPercent := rand.Intn(100)
 
-		if len(endptConfig.AlterationHash) > randomPercent {
-			altConfig := endptConfig.AlterationHash[randomPercent]
+		if len(endptConfig.AlterationMap) > randomPercent {
+			altConfig := endptConfig.AlterationMap[randomPercent]
 
 			if altConfig.ErrorToReturn != "" {
 				d.Logger.Debug("Error Code: %s", v1beta1.ErrorMap[altConfig.ErrorToReturn])
@@ -182,70 +129,4 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 	}
 
 	return handler(ctx, req)
-}
-
-// GetAlterationToPercentAffected takes a series of alterations configured for a Spec and maps them to the percentage of queries which should be affected
-func GetAlterationToPercentAffected(endpointSpecList []*pb.AlterationSpec) (map[AlterationConfiguration]PercentAffected, error) {
-	// object returned indicates, for a particular AlterationConfiguration, what percentage of queries to which it should apply
-	mapping := make(map[AlterationConfiguration]PercentAffected)
-
-	// unquantified is a holding variable used later to calculate and assign percentages to alterations which do not specify queryPercent
-	unquantifiedAlts := make([]AlterationConfiguration, 0)
-
-	pctClaimed := 0
-
-	for _, altSpec := range endpointSpecList {
-		if altSpec.ErrorToReturn == "" && altSpec.OverrideToReturn == "" {
-			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying either ErrorToReturn or OverrideToReturn for all target endpoints")
-		}
-
-		if altSpec.ErrorToReturn != "" && altSpec.OverrideToReturn != "" {
-			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption where ErrorToReturn or OverrideToReturn are both specified for a target endpoints")
-		}
-
-		alterationConfig := AlterationConfiguration{
-			ErrorToReturn:    altSpec.ErrorToReturn,
-			OverrideToReturn: altSpec.OverrideToReturn,
-		}
-
-		// Intuition:
-		// (1) add all endpoints where queryPercent is specified
-		// (2) track percentage of queries already claimed by an endpointConfiguration
-		// (3) track endpoints where queryPercent is missing and calculate them later
-		if altSpec.QueryPercent > 0 {
-			mapping[alterationConfig] = PercentAffected(altSpec.QueryPercent)
-			pctClaimed += int(altSpec.QueryPercent)
-		} else {
-			unquantifiedAlts = append(unquantifiedAlts, alterationConfig)
-		}
-	}
-
-	// add all endpoints where queryPercent is not specified by splitting the remaining queries equally by alteration
-	if len(unquantifiedAlts) > 0 {
-		pctPerAlt := (100 - pctClaimed) / len(unquantifiedAlts)
-
-		for i, altConfig := range unquantifiedAlts {
-			if i == len(unquantifiedAlts)-1 {
-				mapping[altConfig] = PercentAffected(100 - pctClaimed) // grab the remaining
-			} else {
-				mapping[altConfig] = PercentAffected(pctPerAlt)
-				pctClaimed += pctPerAlt
-			}
-		}
-	}
-
-	return mapping, nil
-}
-
-// GetPercentToAlteration Converts a mapping from alterationConfiguration to the percentage of requests which should return this altered response
-func GetPercentToAlteration(endpointSpecList map[AlterationConfiguration]PercentAffected, logger *zap.SugaredLogger) []AlterationConfiguration {
-	hashMap := make([]AlterationConfiguration, 0, 100)
-
-	for altConfig, pct := range endpointSpecList {
-		for i := 0; i < int(pct); i++ {
-			hashMap = append(hashMap, altConfig)
-		}
-	}
-
-	return hashMap
 }

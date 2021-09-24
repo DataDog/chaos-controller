@@ -13,7 +13,6 @@ import "google/protobuf/empty.proto";
 
 service DisruptionListener {
   rpc SendDisruption(DisruptionSpec) returns (google.protobuf.Empty) {}
-  rpc DisruptionStatus(google.protobuf.Empty) returns (DisruptionSpec) {}
   rpc CleanDisruption(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 

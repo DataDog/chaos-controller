@@ -20,7 +20,6 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DisruptionListenerClient interface {
 	SendDisruption(ctx context.Context, in *DisruptionSpec, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	DisruptionStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DisruptionSpec, error)
 	CleanDisruption(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -41,15 +40,6 @@ func (c *disruptionListenerClient) SendDisruption(ctx context.Context, in *Disru
 	return out, nil
 }
 
-func (c *disruptionListenerClient) DisruptionStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DisruptionSpec, error) {
-	out := new(DisruptionSpec)
-	err := c.cc.Invoke(ctx, "/disruption_listener.DisruptionListener/DisruptionStatus", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *disruptionListenerClient) CleanDisruption(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/disruption_listener.DisruptionListener/CleanDisruption", in, out, opts...)
@@ -64,7 +54,6 @@ func (c *disruptionListenerClient) CleanDisruption(ctx context.Context, in *empt
 // for forward compatibility
 type DisruptionListenerServer interface {
 	SendDisruption(context.Context, *DisruptionSpec) (*emptypb.Empty, error)
-	DisruptionStatus(context.Context, *emptypb.Empty) (*DisruptionSpec, error)
 	CleanDisruption(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDisruptionListenerServer()
 }
@@ -75,9 +64,6 @@ type UnimplementedDisruptionListenerServer struct {
 
 func (UnimplementedDisruptionListenerServer) SendDisruption(context.Context, *DisruptionSpec) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendDisruption not implemented")
-}
-func (UnimplementedDisruptionListenerServer) DisruptionStatus(context.Context, *emptypb.Empty) (*DisruptionSpec, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DisruptionStatus not implemented")
 }
 func (UnimplementedDisruptionListenerServer) CleanDisruption(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CleanDisruption not implemented")
@@ -113,24 +99,6 @@ func _DisruptionListener_SendDisruption_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DisruptionListener_DisruptionStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DisruptionListenerServer).DisruptionStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/disruption_listener.DisruptionListener/DisruptionStatus",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DisruptionListenerServer).DisruptionStatus(ctx, req.(*emptypb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _DisruptionListener_CleanDisruption_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -159,10 +127,6 @@ var DisruptionListener_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendDisruption",
 			Handler:    _DisruptionListener_SendDisruption_Handler,
-		},
-		{
-			MethodName: "DisruptionStatus",
-			Handler:    _DisruptionListener_DisruptionStatus_Handler,
 		},
 		{
 			MethodName: "CleanDisruption",
