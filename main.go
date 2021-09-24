@@ -133,7 +133,7 @@ func main() {
 	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
 
-	pflag.StringVar(&cfg.Controller.SlackTokenFilePath, "notifier-slack-token-file-path", "/etc/chaos-slack-token", "Path for token file for slack notifier system")
+	pflag.StringVar(&cfg.Controller.SlackTokenFilePath, "notifier-slack-token-file-path", "/etc/chaos-controller/slack/token", "Path for token file for slack notifier system")
 	handleFatalError(viper.BindPFlag("controller.SlackTokenFilePath", pflag.Lookup("notifier-slack-token-file-path")))
 
 	pflag.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")

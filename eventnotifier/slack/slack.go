@@ -7,7 +7,10 @@ package slack
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
@@ -24,16 +27,30 @@ type Notifier struct {
 func New(tokenFilePath string) *Notifier {
 
 	not := &Notifier{}
-	token, err := os.ReadFile(tokenFilePath)
+	tokenfile, err := os.Open(filepath.Clean(tokenFilePath))
 	if err != nil {
-		fmt.Println("Slack File not found")
+		fmt.Println("Slack File not found: " + err.Error())
 		return nil
 	}
-	not.client = *slack.New(string(token))
+	token, err := ioutil.ReadAll(tokenfile)
+	if err != nil {
+		fmt.Println("Slack File could not be read: " + err.Error())
+		return nil
+	}
+
+	stoken := string(token)
+
+	if stoken == "" {
+		fmt.Println("Slack file is read, but seemingly empty")
+		return nil
+	}
+
+	stoken = strings.Fields(stoken)[0]
+	not.client = *slack.New(stoken)
 
 	_, err = not.client.AuthTest()
 	if err != nil {
-		fmt.Println("Slack Auth Failed")
+		fmt.Printf("Slack Auth Failed: %+v\n", err)
 		return nil
 	}
 
@@ -103,6 +120,7 @@ func (n *Notifier) NotifyStuckOnRemoval(dis v1beta1.Disruption) error {
 // helper for Slack notifier
 func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
 	p1, err := n.client.GetUserByEmail("nathan.tournant@datadoghq.com")
+	// p1, err := n.client.GetUserByEmail(dis.Status.UserInfo.Username)
 	if err != nil {
 		return err
 	}
@@ -112,7 +130,7 @@ func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, 
 		slack.MsgOptionUsername("Disruption Status Bot"),
 		slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
 		slack.MsgOptionBlocks(blocks...),
-		slack.MsgOptionAsUser(false),
+		slack.MsgOptionAsUser(true),
 	)
 
 	return err
