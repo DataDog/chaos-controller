@@ -152,6 +152,19 @@ jobs:
             sudo chown circleci:circleci /go /usr/local/bin /usr/local/kubebuilder
       - go_restore_cache
       - run:
+          name: Wait for Docker Daemon to be up and running
+          command: |
+            for i in 0..9; do
+              docker version
+
+              ret=$?
+              if [ $ret -eq 0 ]; then
+                exit 0
+              fi
+
+              sleep 5
+            done
+      - run:
           name: Configure Minikube
           command: |
             curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
