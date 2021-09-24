@@ -15,12 +15,15 @@ type Teststruct struct {
 }
 
 // +ddmark:validation:ExclusiveFields={PIntField,PStrField}
+// +ddmark:validation:ExclusiveFields={PIntField,BField,CField}
 // +ddmark:validation:ExclusiveFields={IntField,StrField}
 type ExclusiveFieldsTestStruct struct {
 	IntField  int
 	PIntField *int
 	StrField  string
 	PStrField *string
+	BField    int
+	CField    int
 }
 
 type MinMaxTestStruct struct {
