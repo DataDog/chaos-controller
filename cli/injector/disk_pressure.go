@@ -47,7 +47,7 @@ var diskPressureCmd = &cobra.Command{
 			}
 
 			if inj == nil {
-				log.Infow("Skipping current injector...")
+				// skipping this injector due because path cannot be found on specified container
 				continue
 			}
 
