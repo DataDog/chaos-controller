@@ -13,21 +13,22 @@ variables:
 stages:
   - ci-image
   - build
+  - notify-build-fail
   - pre-release
+  - notify-pre-release-fail
   - release
+  - notify-release-fail
   - release-public
-  - notify
 
 # Slack Notify Base
 .slack-notifier-base:
   tags: [ "runner:main", "size:large" ]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/slack-notifier:latest
   allow_failure: true
-  when: on_failure
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
     - 'MESSAGE_TEXT=":siren: | $CI_PIPELINE_NAME Pipeline Failure | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
-    - postmessage "#chaos-ops" "$MESSAGE_TEXT"
+    - postmessage "#test-chaosnotifier2" "$MESSAGE_TEXT"
 
 # CI image
 .docker-runner: &docker-runner
@@ -207,19 +208,25 @@ slack-notifier-pre-release.on-failure:
   extends: .slack-notifier-base
   variables:
     CI_PIPELINE_NAME: "Pre-Release"
-  stage: pre-release
+  needs: ["pre-release"]
+  when: on_failure
+  stage: notify-pre-release-fail
 
 slack-notifier-release.on-failure:
   extends: .slack-notifier-base
   variables:
     CI_PIPELINE_NAME: "Release"
-  stage: release
+  needs: ["release"]
+  when: on_failure
+  stage: notify-relase-fail
 
 slack-notifier-build.on-failure:
   extends: .slack-notifier-base
   variables:
     CI_PIPELINE_NAME: "Build"
-  stage: build
+  stage: notify-build-fail
+  when: on_success
+  needs: ["build:make"]
   only:
     - main
     - tags
