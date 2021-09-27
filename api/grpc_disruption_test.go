@@ -179,7 +179,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		Expect(spec.Validate()).ToNot(BeNil())
 	})
 
-	It("Good errors to return", func() {
+	It("All standard grpc errors validate", func() {
 		spec := v1beta1.GRPCDisruptionSpec{
 			Port: 50051,
 			Endpoints: []v1beta1.EndpointAlteration{
