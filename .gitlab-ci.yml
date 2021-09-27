@@ -54,11 +54,9 @@ ci-image:
 build:make:
   <<: *common
   stage: build
-  allow_failure: true
   when: always
   script:
-    - exit 1
-    #- make
+     - make
   artifacts:
     paths:
       - bin/injector/injector
@@ -84,6 +82,7 @@ build:make:
 .pre-release: &pre-release
   <<: *meta-release
   stage: pre-release
+  allow_failure: false
   script:
     - exit -1
     #- release.sh --build-from=./bin/manager/Dockerfile --build-context=./bin/manager/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
@@ -117,6 +116,7 @@ pre-release-tag:
 .release: &release
   <<: *meta-release
   stage: release
+  allow_failure: false
   script:
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-staging/${IMAGE} ${TAG}
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-prod/${IMAGE} ${TAG}
