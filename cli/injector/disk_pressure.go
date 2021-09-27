@@ -46,6 +46,11 @@ var diskPressureCmd = &cobra.Command{
 				log.Fatalw("error initializing the disk pressure injector", "error", err)
 			}
 
+			if inj == nil {
+				// skipping this injector because path cannot be found on specified container
+				continue
+			}
+
 			injectors = append(injectors, inj)
 		}
 	},

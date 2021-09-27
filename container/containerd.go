@@ -96,9 +96,9 @@ func (c containerdRuntime) HostPath(id, path string) (string, error) {
 		hostPath = mount.Source
 	}
 
-	// error if no matching path found
+	// ignore if no matching path found
 	if hostPath == "" {
-		return "", fmt.Errorf("no matching mount found for path %s, the given path must be a container mount", path)
+		return "", nil
 	}
 
 	return hostPath, nil
