@@ -119,8 +119,7 @@ func (n *Notifier) NotifyStuckOnRemoval(dis v1beta1.Disruption) error {
 
 // helper for Slack notifier
 func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
-	p1, err := n.client.GetUserByEmail("nathan.tournant@datadoghq.com")
-	// p1, err := n.client.GetUserByEmail(dis.Status.UserInfo.Username)
+	p1, err := n.client.GetUserByEmail(dis.Status.UserInfo.Username)
 	if err != nil {
 		return err
 	}
