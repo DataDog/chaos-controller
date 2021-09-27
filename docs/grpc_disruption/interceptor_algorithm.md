@@ -1,10 +1,15 @@
 # gRPC Disruption Inceptor
 
-When the interceptor recognizes a query's endpoint as one which is actively getting disrupted, the interceptor generates a random integer from `0` to `100`, and consults a hashmap for the `PercentToAlteration` mapping. The hashmap is represented as an array of 100 or less items, and provided the random integer, it identifies the disruption to apply to a query. The user cannot specify queryPercents for a single endpoint which sum to over `100%`. You can see an example below of a hashmap that does not define all 100% of possible requests below.
+When the interceptor recognizes a query's endpoint as one which is actively getting disrupted, the interceptor generates a random integer from `0` to `100`, and consults a `PercentToAlteration` mapping to figure out what `alteration` to apply to a query response. This mapping is populated by the percentage odds a user configured for each alteration. Currently, we support two `alteration`s:
+
+1. return a gRPC error code (such as `NotFound` or `PermissionDenied`)
+2. return an empty response (`emptypb.Empty`)
+
+You can see an example below of a mapping that does not define all 100% of possible requests below.
 
 ## gRPC Disruption - Algorithm Examples
 
-### Multiple alterations with defined queryPercent
+### Multiple alterations with defined query percentages
 
 The following is a complex example to illustrate the algorithm's behavior.
 
@@ -14,13 +19,13 @@ spec:
     endpoints:
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         override: "{}"
-        queryPercent: 5
+        query_pct: 5
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         error: NOT_FOUND
-        queryPercent: 5
+        query_pct: 5
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         error: PERMISSION_DENIED
-        queryPercent: 15
+        query_pct: 15
 ```
 
 For the above specs, the calculated `PercentToAlteration` would look something like:
@@ -50,9 +55,11 @@ PercentToAlteration {
 
 In this case, we would return an Override with empty results for 5% of queries, a `NOT_FOUND` error for 5% of queries, and return `PERMISSION_DENIED` for 15% of queries.
 
-### Multiple alterations with some undefined queryPercents
+:warning: If you are a maintainer looking at the source code, the "mapping" is represented as a golang slice with length <= 100.
 
-We may also be provided with a configuration where some set of `queryPercent`s are defined, but not all..
+### Multiple alterations with some undefined query percentages
+
+We may also be provided with a configuration where some set of `query_pct`s (query percentages) are defined, but not all..
 
 ```
 spec:
@@ -60,14 +67,14 @@ spec:
     endpoints:
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         override: "{}"
-        queryPercent: 25
+        query_pct: 25
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         error: NOT_FOUND
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         error: PERMISSION_DENIED
 ```
 
-As in the previous case, all alterations with a defined `queryPercent` are allocated upfront. The algorithm keeps track of alterations which do not yet have `queryPercent`s assigned, and splits the remaining (unconfigured) queries equally amongst these unassigned alterations.
+As in the previous case, all alterations with a defined `query_pct` are allocated upfront. The algorithm keeps track of alterations which do not yet have `query_pct`s assigned, and splits the remaining (unconfigured) queries equally amongst these unassigned alterations.
 
 ```
 PercentToAlteration {
@@ -97,7 +104,9 @@ PercentToAlteration {
 }
 ```
 
-### Simpler case of undefined queryPercents
+You cannot specify query percentages for a single endpoint which sum to over `100%`.
+
+### Simpler case of undefined query percentages
 
 You may have noted that the second example appears a tad complex. The intuition behind this design is to support the case where a user wants to quickly define a disruption which errors on all queries (replicating a bad roll out). For one error, the algorithm returns an error every time. For two errors, the algorithm returns half of the queries with the first error and half with the other.
 
@@ -143,13 +152,13 @@ PercentToAlteration {
 
 ## Design Implications
 
-### Setting 0 as queryPercent
+### Setting 0 as query percentage
 
-Users are prevented from setting `queryPercent: 0`. Because the Kubebuilder infers 0 for omitted `int`s, this configuration is synonymous for the chaos-controller to not setting a `querypercent` at all. This means that the alteration with this `queryPercent` setting would actually be applied to the remaining queries that have not yet be claimed by another alteration. There isn't a straight forward way to chaos-controller to catch this for users so we validate inputs to be between 1 and 100.
+Users are prevented from explicitly setting `query_pct: 0`. Because the Kubebuilder infers 0 for omitted `int`s, this configuration is synonymous for the chaos-controller to not setting a `query_pct` at all. This means that the alteration with this `query_pct` setting would actually be applied to the remaining queries that have not yet be claimed by another alteration. There isn't a straight forward way to chaos-controller to discriminate an unset `query_pct` from one set to `0`, so we prevent users from inputting the value `0` explicitly (more precisely, we limit user input on this field to an integer between `1` and `100`).
 
 ### Many errors, but very few slots remaining
 
-When an even split across remaining points is not possible. For example, if 9% of queries are unaccounted for, and there are 6 different errors to assign to the hashmap, the `pctPerAlt` (describing the hashmap each query should be assign) would be `9 / 6` which is `1` in integer division. The final mapping would look like:
+When an even split across remaining points is not possible. For example, if 9% of queries are unaccounted for, and there are 6 different errors to assign to the mapping, the `pctPerAlt` (describing the mapping each query should be assign) would be `9 / 6` which is `1` in integer division. The final mapping would look like:
 ```
 {
 	..  -> ...
@@ -166,4 +175,6 @@ When an even split across remaining points is not possible. For example, if 9% o
 	100 -> ERROR_6
 }
 ```
-Note that the final alteration (in this case `ERROR_6`, always covers the remaining `Percent`s up to and including 100. This can result in a very weird proportions where there are not a lot of `Percent`s left. Although these outcomes are unintuitive and therefore not very user-friendly, the common usecase for these disruptions is so 
+Note that the final alteration (in this case `ERROR_6`, always covers the remaining `Percent`s up to and including 100. This can result in a very weird proportions where there are not a lot of `Percent`s left.
+
+Although these outcomes are unintuitive and therefore not very user-friendly, these disruptions are typically used to return a maximum of two or three alterations at a time (to simulate an already degraded state), so we designed the algorithm such that those common cases are intuitive and only reject configurations where the implementation definitely goes against the users' intentions (such as alterations that are defined but never apply).
