@@ -79,7 +79,7 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 	mutex.Lock()
 	if len(d.Configuration) > 0 {
 		d.Logger.Error("Cannot apply new DisruptionSpec when DisruptionListener is already configured")
-		return nil, status.Error(codes.AlreadyExists, "annot apply new DisruptionSpec when DisruptionListener is already configured")
+		return nil, status.Error(codes.AlreadyExists, "Cannot apply new DisruptionSpec when DisruptionListener is already configured")
 	}
 
 	d.Configuration = config
