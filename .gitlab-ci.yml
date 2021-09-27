@@ -84,6 +84,7 @@ build:make:
   <<: *meta-release
   stage: pre-release
   script:
+    - exit -1
     #- release.sh --build-from=./bin/manager/Dockerfile --build-context=./bin/manager/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
     #- release.sh --build-from=./bin/injector/Dockerfile --build-context=./bin/injector/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME} ${TAG}
     #- release.sh --build-from=./bin/handler/Dockerfile --build-context=./bin/handler/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME} ${TAG}
