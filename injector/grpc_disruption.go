@@ -30,12 +30,12 @@ type GRPCDisruptionInjectorConfig struct {
 
 // NewGRPCDisruptionInjector creates a GRPCDisruptionInjector object with the given config,
 // missing fields are initialized with the defaults
-func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisruptionInjectorConfig) (Injector, error) {
+func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisruptionInjectorConfig) Injector {
 	return GRPCDisruptionInjector{
 		spec:       spec,
 		config:     config,
 		serverAddr: config.TargetPodIP + ":" + strconv.Itoa(spec.Port),
-	}, nil
+	}
 }
 
 // Inject injects the given dns disruption into the given container
@@ -51,7 +51,7 @@ func (i GRPCDisruptionInjector) Inject() error {
 
 	conn, err := connectToServer(i.serverAddr)
 	if err != nil {
-		i.config.Log.Fatalf(err.Error())
+		i.config.Log.Errorf(err.Error())
 		return err
 	}
 
@@ -77,7 +77,7 @@ func (i GRPCDisruptionInjector) Clean() error {
 
 	conn, err := connectToServer(i.serverAddr)
 	if err != nil {
-		i.config.Log.Fatalf(err.Error())
+		i.config.Log.Errorf(err.Error())
 		return err
 	}
 
