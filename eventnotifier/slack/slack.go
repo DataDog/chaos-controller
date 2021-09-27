@@ -20,29 +20,26 @@ import (
 
 // Notifier describes a Slack notifier
 type Notifier struct {
-	client slack.Client
+	client  slack.Client
+	context string
 }
 
 // New Slack Notifier
-func New(tokenFilePath string) *Notifier {
-
+func New(tokenFilePath string) (*Notifier, error) {
 	not := &Notifier{}
 	tokenfile, err := os.Open(filepath.Clean(tokenFilePath))
 	if err != nil {
-		fmt.Println("Slack File not found: " + err.Error())
-		return nil
+		return nil, fmt.Errorf("slack file not found: %+v", err)
 	}
 	token, err := ioutil.ReadAll(tokenfile)
 	if err != nil {
-		fmt.Println("Slack File could not be read: " + err.Error())
-		return nil
+		return nil, fmt.Errorf("slack file could not be read: %+v", err)
 	}
 
 	stoken := string(token)
 
 	if stoken == "" {
-		fmt.Println("Slack file is read, but seemingly empty")
-		return nil
+		return nil, fmt.Errorf("slack file is read, but seemingly empty")
 	}
 
 	stoken = strings.Fields(stoken)[0]
@@ -50,11 +47,10 @@ func New(tokenFilePath string) *Notifier {
 
 	_, err = not.client.AuthTest()
 	if err != nil {
-		fmt.Printf("Slack Auth Failed: %+v\n", err)
-		return nil
+		return nil, fmt.Errorf("slack auth failed: %+v", err)
 	}
 
-	return not
+	return not, nil
 }
 
 // Close returns nil
@@ -77,7 +73,7 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 		slack.NewSectionBlock(nil, []*slack.TextBlockObject{
 			slack.NewTextBlockObject("mrkdwn", "*Kind:*\n"+dis.Kind, false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Name:*\n"+dis.Name, false, false),
-			slack.NewTextBlockObject("mrkdwn", "*Cluster:*\nminikube", false, false),
+			slack.NewTextBlockObject("mrkdwn", "*Cluster:*\n"+dis.ClusterName, false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Namespace:*\n"+dis.Namespace, false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Targets:*\n"+fmt.Sprint(len(dis.Status.Targets)), false, false),
 		}, nil),

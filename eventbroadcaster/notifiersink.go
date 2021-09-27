@@ -12,9 +12,11 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier"
 	notifiertypes "github.com/DataDog/chaos-controller/eventnotifier/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -23,12 +25,19 @@ type NotifierSink struct {
 	Notifier eventnotifier.Notifier
 }
 
-func NewNotifierSink(client client.Client, driver notifiertypes.NotifierDriver) (*NotifierSink, error) {
-	notifier, err := eventnotifier.GetNotifier(driver)
-	if err != nil {
-		return nil, err
+func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, filePath string, driverTypes ...notifiertypes.NotifierDriver) error {
+	var resError error = nil
+	client := mgr.GetClient()
+
+	for _, driver := range driverTypes {
+		notifier, err := eventnotifier.GetNotifier(driver, filePath)
+		if err != nil {
+			resError = fmt.Errorf("%w; "+err.Error(), resError)
+		}
+		broadcaster.StartRecordingToSink(&NotifierSink{Client: client, Notifier: notifier})
 	}
-	return &NotifierSink{Client: client, Notifier: notifier}, nil
+
+	return resError
 }
 
 func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {

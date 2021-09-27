@@ -10,6 +10,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/noop"
+	"github.com/DataDog/chaos-controller/eventnotifier/slack"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -29,13 +30,15 @@ type Notifier interface {
 }
 
 // GetNotifier returns an initiated Notifier instance
-func GetNotifier(driver types.NotifierDriver) (Notifier, error) {
+func GetNotifier(driver types.NotifierDriver, filePath string) (notifier Notifier, err error) {
 	switch driver {
 	case types.NotifierDriverNoop:
-		return noop.New(), nil
+		notifier, err = noop.New(), nil
 	case types.NotifierDriverSlack:
-		return nil, nil
+		notifier, err = slack.New(filePath)
 	default:
-		return nil, fmt.Errorf("unsupported notifier driver: %s", driver)
+		notifier, err = nil, fmt.Errorf("unsupported notifier driver: %s", driver)
 	}
+
+	return
 }

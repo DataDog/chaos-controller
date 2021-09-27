@@ -35,8 +35,6 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
-	notifiernoop "github.com/DataDog/chaos-controller/eventnotifier/noop"
-	notifierslack "github.com/DataDog/chaos-controller/eventnotifier/slack"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
@@ -220,8 +218,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	broadcaster.StartRecordingToSink(&eventbroadcaster.NotifierSink{Client: mgr.GetClient(), Notifier: notifiernoop.New()})
-	broadcaster.StartRecordingToSink(&eventbroadcaster.NotifierSink{Client: mgr.GetClient(), Notifier: notifierslack.New(cfg.Controller.SlackTokenFilePath)})
+	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.SlackTokenFilePath, "noop", "slack")
+	if err != nil {
+		logger.Errorw("error(s) while creating notifiers", "error", err)
+	}
 
 	// metrics sink
 	ms, err := metrics.GetSink(types.SinkDriver(cfg.Controller.MetricsSink), types.SinkAppController)
