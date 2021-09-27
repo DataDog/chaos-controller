@@ -52,7 +52,7 @@ func NewDisruptionListener() (*DisruptionListener, error) {
 // SendDisruption receives a disruption specfication and configures the interceptor to spoof responses to specified endpoints.
 func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.DisruptionSpec) (*emptypb.Empty, error) {
 	if ds == nil {
-		d.Logger.Error("Cannot execute SendDisruption when DisruptionSpec is nil")
+		d.Logger.Error("cannot execute SendDisruption when DisruptionSpec is nil")
 		return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption when DisruptionSpec is nil")
 	}
 
@@ -78,7 +78,7 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 
 	mutex.Lock()
 	if len(d.Configuration) > 0 {
-		d.Logger.Error("Cannot apply new DisruptionSpec when DisruptionListener is already configured")
+		d.Logger.Error("cannot apply new DisruptionSpec when DisruptionListener is already configured")
 		return nil, status.Error(codes.AlreadyExists, "Cannot apply new DisruptionSpec when DisruptionListener is already configured")
 	}
 
@@ -111,20 +111,20 @@ func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req int
 			altConfig := endptConfig.AlterationMap[randomPercent]
 
 			if altConfig.ErrorToReturn != "" {
-				d.Logger.Debug("Error Code: %s", v1beta1.ErrorMap[altConfig.ErrorToReturn])
+				d.Logger.Debug("error code to return: %s", v1beta1.ErrorMap[altConfig.ErrorToReturn])
 
 				return nil, status.Error(
 					v1beta1.ErrorMap[altConfig.ErrorToReturn],
 					// Future Work: interview users about this message //nolint:golint
-					fmt.Sprintf("Chaos-Controller injected this error: %s", altConfig.ErrorToReturn),
+					fmt.Sprintf("Chaos Controller injected this error: %s", altConfig.ErrorToReturn),
 				)
 			} else if altConfig.OverrideToReturn != "" {
-				d.Logger.Debug("OverrideToReturn: %s", altConfig.OverrideToReturn)
+				d.Logger.Debug("override to return: %s", altConfig.OverrideToReturn)
 
 				return &emptypb.Empty{}, nil
 			}
 
-			d.Logger.Error("Endpoint %s should define either an ErrorToReturn or OverrideToReturn but does not", endptConfig.TargetEndpoint)
+			d.Logger.Error("endpoint %s should define either an ErrorToReturn or OverrideToReturn but does not", endptConfig.TargetEndpoint)
 		}
 	}
 
