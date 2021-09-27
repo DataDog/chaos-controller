@@ -54,9 +54,11 @@ ci-image:
 build:make:
   <<: *common
   stage: build
+  allow_failure: true
   when: always
   script:
-    - make
+    - exit 1
+    #- make
   artifacts:
     paths:
       - bin/injector/injector
