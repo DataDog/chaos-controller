@@ -56,7 +56,8 @@ build:make:
   stage: build
   when: always
   script:
-    - make
+    - exit -1
+    #- make
   artifacts:
     paths:
       - bin/injector/injector
@@ -71,9 +72,10 @@ build:make:
     - "runner:docker"
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2875076-79d562c-1.4.0
   before_script:
-    - echo "Logging into the Docker Hub"
-    - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
-    - aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_pwd --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin docker.io
+    - exit -1
+    #- echo "Logging into the Docker Hub"
+    #- DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
+    #- aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_pwd --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin docker.io
 
 # pre-release
 # build the target from the local Dockerfile and push it to
@@ -82,9 +84,9 @@ build:make:
   <<: *meta-release
   stage: pre-release
   script:
-    - release.sh --build-from=./bin/manager/Dockerfile --build-context=./bin/manager/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
-    - release.sh --build-from=./bin/injector/Dockerfile --build-context=./bin/injector/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME} ${TAG}
-    - release.sh --build-from=./bin/handler/Dockerfile --build-context=./bin/handler/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME} ${TAG}
+    #- release.sh --build-from=./bin/manager/Dockerfile --build-context=./bin/manager/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
+    #- release.sh --build-from=./bin/injector/Dockerfile --build-context=./bin/injector/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME} ${TAG}
+    #- release.sh --build-from=./bin/handler/Dockerfile --build-context=./bin/handler/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME} ${TAG}
   dependencies:
     - build:make
 
@@ -204,12 +206,14 @@ release-docker-hub-tag:
   variables:
     TAG: "${CI_COMMIT_TAG}"
 
+# notify slack when the pre-release job fails
 slack-notifier-pre-release.on-failure:
   extends: .slack-notifier-base
   variables:
     CI_PIPELINE_NAME: "Pre-Release"
   needs: ["pre-release-ref"]
 
+# notify slack when the release related jobs fail
 slack-notifier-release-controller.on-failure:
   extends: .slack-notifier-base
   variables:
@@ -228,6 +232,7 @@ slack-notifier-release-injector.on-failure:
     CI_PIPELINE_NAME: "Release"
   needs: ["release-injector-ref"]
 
+# notify slack when the build job fails ONLY on the main and tags branches
 slack-notifier-build.on-failure:
   extends: .slack-notifier-base
   variables:
