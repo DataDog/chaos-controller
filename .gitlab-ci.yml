@@ -27,7 +27,7 @@ stages:
   when: on_failure
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
-    - 'MESSAGE_TEXT=":siren: | The $CI_JOB_STAGE Job Failed in the Pipeline CI_PIPELINE_NAME Failed | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
+    - 'MESSAGE_TEXT=":siren: | The $CI_JOB_NAME Job Failed in the Pipeline $CI_PIPELINE_NAME Failed | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
     - postmessage "#test-chaosnotifier2" "$MESSAGE_TEXT"
 
 # CI image
