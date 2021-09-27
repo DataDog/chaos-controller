@@ -20,11 +20,11 @@ stages:
 
 # Slack Notify Base
 .slack-notifier-base:
+  stage: notify
   tags: [ "runner:main", "size:large" ]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/slack-notifier:latest
   allow_failure: true
   when: on_failure
-  stage: notify
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
     - 'MESSAGE_TEXT=":siren: | The $CI_JOB_STAGE Job Failed in the Pipeline CI_PIPELINE_NAME Failed | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
@@ -239,6 +239,6 @@ slack-notifier-build.on-failure:
   variables:
     CI_PIPELINE_NAME: "Build"
   needs: ["build:make"]
-  only:
-    - main
-    - tags
+  #only:
+  #  - main
+  #  - tags
