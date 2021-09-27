@@ -30,7 +30,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		Expect(err.Error()).To(Equal("the gRPC disruption has ErrorToReturn and OverrideToReturn specified for endpoint /chaos_dogfood.ChaosDogfood/order, but it can only have one"))
 	})
 
-	It("Error and override cannot both be defined", func() {
+	It("Error and override cannot both be undefined", func() {
 		spec := v1beta1.GRPCDisruptionSpec{
 			Port: 50051,
 			Endpoints: []v1beta1.EndpointAlteration{
