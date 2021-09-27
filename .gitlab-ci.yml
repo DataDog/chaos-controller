@@ -13,21 +13,21 @@ variables:
 stages:
   - ci-image
   - build
-  - notify-build-fail
   - pre-release
-  - notify-pre-release-fail
   - release
-  - notify-release-fail
   - release-public
+  - notify
 
 # Slack Notify Base
 .slack-notifier-base:
   tags: [ "runner:main", "size:large" ]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/slack-notifier:latest
   allow_failure: true
+  when: on_failure
+  stage: notify
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
-    - 'MESSAGE_TEXT=":siren: | $CI_PIPELINE_NAME Pipeline Failure | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
+    - 'MESSAGE_TEXT=":siren: | The $CI_JOB_STAGE Job Failed in the Pipeline CI_PIPELINE_NAME Failed | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
     - postmessage "#test-chaosnotifier2" "$MESSAGE_TEXT"
 
 # CI image
@@ -208,24 +208,30 @@ slack-notifier-pre-release.on-failure:
   extends: .slack-notifier-base
   variables:
     CI_PIPELINE_NAME: "Pre-Release"
-  needs: ["pre-release"]
-  when: on_failure
-  stage: notify-pre-release-fail
+  needs: ["pre-release-ref"]
 
-slack-notifier-release.on-failure:
+slack-notifier-release-controller.on-failure:
   extends: .slack-notifier-base
   variables:
     CI_PIPELINE_NAME: "Release"
-  needs: ["release"]
-  when: on_failure
-  stage: notify-relase-fail
+  needs: ["release-controller-ref"]
+
+slack-notifier-release-handler.on-failure:
+  extends: .slack-notifier-base
+  variables:
+    CI_PIPELINE_NAME: "Release"
+  needs: ["release-handler-ref"]
+
+slack-notifier-release-injector.on-failure:
+  extends: .slack-notifier-base
+  variables:
+    CI_PIPELINE_NAME: "Release"
+  needs: ["release-injector-ref"]
 
 slack-notifier-build.on-failure:
   extends: .slack-notifier-base
   variables:
     CI_PIPELINE_NAME: "Build"
-  stage: notify-build-fail
-  when: on_success
   needs: ["build:make"]
   only:
     - main
