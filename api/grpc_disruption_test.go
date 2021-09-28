@@ -79,7 +79,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		Expect(spec.Validate()).To(BeNil())
 	})
 
-	It("Query percent of 100 on two endpoints does validate", func() {
+	It("Query percent of 100 on two separate endpoints does validate", func() {
 		spec := v1beta1.GRPCDisruptionSpec{
 			Port: 50051,
 			Endpoints: []v1beta1.EndpointAlteration{
@@ -100,7 +100,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		Expect(spec.Validate()).To(BeNil())
 	})
 
-	It("Query percent which sums to 100 on two endpoints does validate", func() {
+	It("Query percents which sum to exactly 100 on one endpoint does validate", func() {
 		spec := v1beta1.GRPCDisruptionSpec{
 			Port: 50051,
 			Endpoints: []v1beta1.EndpointAlteration{
@@ -121,7 +121,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		Expect(spec.Validate()).To(BeNil())
 	})
 
-	It("Query percent which sums to less than 100 on two endpoints does validate", func() {
+	It("Query percents which sum to less than 100 on one endpoint does validate", func() {
 		spec := v1beta1.GRPCDisruptionSpec{
 			Port: 50051,
 			Endpoints: []v1beta1.EndpointAlteration{
@@ -142,7 +142,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		Expect(spec.Validate()).To(BeNil())
 	})
 
-	It("Query percent which sums to more than 100 on two endpoints does not validate", func() {
+	It("Query percents which sum to more than 100 on one endpoint does not validate", func() {
 		spec := v1beta1.GRPCDisruptionSpec{
 			Port: 50051,
 			Endpoints: []v1beta1.EndpointAlteration{
