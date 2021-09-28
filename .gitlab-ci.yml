@@ -28,7 +28,7 @@ stages:
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
     - 'MESSAGE_TEXT=":siren: | A Job in the $CI_PIPELINE_NAME Pipeline Failed | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
-    - postmessage "#test-chaosnotifier2" "$MESSAGE_TEXT"
+    - postmessage "#chaos-ops" "$MESSAGE_TEXT"
 
 # CI image
 .docker-runner: &docker-runner
@@ -71,10 +71,9 @@ build:make:
     - "runner:docker"
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2875076-79d562c-1.4.0
   before_script:
-    - exit -1
-    #- echo "Logging into the Docker Hub"
-    #- DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
-    #- aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_pwd --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin docker.io
+    - echo "Logging into the Docker Hub"
+    - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
+    - aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_pwd --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin docker.io
 
 # pre-release
 # build the target from the local Dockerfile and push it to
@@ -84,10 +83,9 @@ build:make:
   stage: pre-release
   allow_failure: false
   script:
-    - exit -1
-    #- release.sh --build-from=./bin/manager/Dockerfile --build-context=./bin/manager/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
-    #- release.sh --build-from=./bin/injector/Dockerfile --build-context=./bin/injector/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME} ${TAG}
-    #- release.sh --build-from=./bin/handler/Dockerfile --build-context=./bin/handler/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME} ${TAG}
+    - release.sh --build-from=./bin/manager/Dockerfile --build-context=./bin/manager/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
+    - release.sh --build-from=./bin/injector/Dockerfile --build-context=./bin/injector/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME} ${TAG}
+    - release.sh --build-from=./bin/handler/Dockerfile --build-context=./bin/handler/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME} ${TAG}
   dependencies:
     - build:make
 
@@ -240,6 +238,6 @@ slack-notifier-build.on-failure:
   variables:
     CI_PIPELINE_NAME: "Build"
   needs: ["build:make"]
-  #only:
-  #  - main
-  #  - tags
+  only:
+    - main
+    - tags
