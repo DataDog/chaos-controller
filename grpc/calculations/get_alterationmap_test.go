@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("get mapping from randomly generated Percent to Alteration based on GetMappingFromIndividualalterationMap", func() {
+var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationMap using ConvertQueryPercentByAltConfigToAlterationMap", func() {
 	var (
 		altCfgs                        []AlterationConfiguration
 		alterationConfigToQueryPercent map[AlterationConfiguration]QueryPercent
@@ -53,6 +53,7 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 			Expect(altCfg.OverrideToReturn).To(Equal(""))
 		})
 	})
+
 	Context("with three alterations that add up to less than 100 percent", func() {
 		It("should create 70 (out of 100 potential) slots with alteration configurations", func() {
 			alterationConfigToQueryPercent[altCfgs[0]] = QueryPercent(15)
@@ -61,56 +62,37 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 
 			alterationMap = ConvertQueryPercentByAltConfigToAlterationMap(alterationConfigToQueryPercent)
 
-			Expect(len(alterationMap)).To(Equal(70))
+			By("having 70 entries", func() {
+				Expect(len(alterationMap)).To(Equal(70))
+			})
 
-			position := 0
-			altCfg := alterationMap[position]
+			By("having three alteration types each with the righ number of configurations", func() {
+				canceled_cnt := 0
+				already_exists_cnt := 0
+				empty_cnt := 0
 
-			for i := 0; i < 3; i++ {
-				if altCfg.ErrorToReturn == "CANCELED" {
-					Expect(altCfg.OverrideToReturn).To(Equal(""))
-
-					position = position + 14
-					altCfg = alterationMap[position]
-					Expect(altCfg.ErrorToReturn).To(Equal("CANCELED"))
-					Expect(altCfg.OverrideToReturn).To(Equal(""))
-
-					position = position + 1
-
-					if position < 70 {
-						altCfg = alterationMap[position]
-					}
-				} else if altCfg.ErrorToReturn == "ALREADY_EXISTS" {
-					Expect(altCfg.OverrideToReturn).To(Equal(""))
-
-					position = position + 19
-					altCfg = alterationMap[position]
-					Expect(altCfg.ErrorToReturn).To(Equal("ALREADY_EXISTS"))
-					Expect(altCfg.OverrideToReturn).To(Equal(""))
-
-					position = position + 1
-
-					if position < 70 {
-						altCfg = alterationMap[position]
-					}
-				} else {
-					Expect(altCfg.ErrorToReturn).To(Equal(""))
-					Expect(altCfg.OverrideToReturn).To(Equal("{}"))
-
-					position = position + 34
-					altCfg = alterationMap[position]
-					Expect(altCfg.ErrorToReturn).To(Equal(""))
-					Expect(altCfg.OverrideToReturn).To(Equal("{}"))
-
-					position = position + 1
-
-					if position < 70 {
-						altCfg = alterationMap[position]
+				for _, altCfg := range alterationMap {
+					switch altCfg.ErrorToReturn {
+					case "CANCELED":
+						Expect(altCfg.OverrideToReturn).To(Equal(""))
+						canceled_cnt++
+					case "ALREADY_EXISTS":
+						Expect(altCfg.OverrideToReturn).To(Equal(""))
+						already_exists_cnt++
+					default:
+						Expect(altCfg.OverrideToReturn).To(Equal("{}"))
+						Expect(altCfg.ErrorToReturn).To(Equal(""))
+						empty_cnt++
 					}
 				}
-			}
+
+				Expect(canceled_cnt).To(Equal(15))
+				Expect(already_exists_cnt).To(Equal(20))
+				Expect(empty_cnt).To(Equal(35))
+			})
 		})
 	})
+
 	Context("with three alterations that add to 100", func() {
 		It("should create 100 (out of 100 potential) slots with alteration configurations", func() {
 			alterationConfigToQueryPercent[altCfgs[0]] = QueryPercent(40)
@@ -119,54 +101,34 @@ var _ = Describe("get mapping from randomly generated Percent to Alteration base
 
 			alterationMap = ConvertQueryPercentByAltConfigToAlterationMap(alterationConfigToQueryPercent)
 
-			Expect(len(alterationMap)).To(Equal(100))
+			By("having 70 entries", func() {
+				Expect(len(alterationMap)).To(Equal(100))
+			})
 
-			position := 0
-			altCfg := alterationMap[position]
+			By("having three alteration types each with the righ number of configurations", func() {
+				canceled_cnt := 0
+				already_exists_cnt := 0
+				empty_cnt := 0
 
-			for i := 0; i < 3; i++ {
-				if altCfg.ErrorToReturn == "CANCELED" {
-					Expect(altCfg.OverrideToReturn).To(Equal(""))
-
-					position = position + 39
-					altCfg = alterationMap[position]
-					Expect(altCfg.ErrorToReturn).To(Equal("CANCELED"))
-					Expect(altCfg.OverrideToReturn).To(Equal(""))
-
-					position = position + 1
-
-					if position < 100 {
-						altCfg = alterationMap[position]
-					}
-				} else if altCfg.ErrorToReturn == "ALREADY_EXISTS" {
-					Expect(altCfg.OverrideToReturn).To(Equal(""))
-
-					position = position + 39
-					altCfg = alterationMap[position]
-					Expect(altCfg.ErrorToReturn).To(Equal("ALREADY_EXISTS"))
-					Expect(altCfg.OverrideToReturn).To(Equal(""))
-
-					position = position + 1
-
-					if position < 100 {
-						altCfg = alterationMap[position]
-					}
-				} else {
-					Expect(altCfg.ErrorToReturn).To(Equal(""))
-					Expect(altCfg.OverrideToReturn).To(Equal("{}"))
-
-					position = position + 19
-					altCfg = alterationMap[position]
-					Expect(altCfg.ErrorToReturn).To(Equal(""))
-					Expect(altCfg.OverrideToReturn).To(Equal("{}"))
-
-					position = position + 1
-
-					if position < 100 {
-						altCfg = alterationMap[position]
+				for _, altCfg := range alterationMap {
+					switch altCfg.ErrorToReturn {
+					case "CANCELED":
+						Expect(altCfg.OverrideToReturn).To(Equal(""))
+						canceled_cnt++
+					case "ALREADY_EXISTS":
+						Expect(altCfg.OverrideToReturn).To(Equal(""))
+						already_exists_cnt++
+					default:
+						Expect(altCfg.OverrideToReturn).To(Equal("{}"))
+						Expect(altCfg.ErrorToReturn).To(Equal(""))
+						empty_cnt++
 					}
 				}
-			}
+
+				Expect(canceled_cnt).To(Equal(40))
+				Expect(already_exists_cnt).To(Equal(40))
+				Expect(empty_cnt).To(Equal(20))
+			})
 		})
 	})
 })

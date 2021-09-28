@@ -64,6 +64,7 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 		})
 
 		It("should create and endpointSpec for api_1 with 3 elements", func() {
+			// handling that the results of `endpointSpec` is indeterminate
 			var endpointSpec_1 *pb.EndpointSpec
 			if endpointSpec[0].TargetEndpoint == "service/api_1" {
 				endpointSpec_1 = endpointSpec[0]
@@ -101,6 +102,7 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 		})
 
 		It("should create and endpointSpec for api_2 with 2 elements", func() {
+			// handling that the results of `endpointSpec` is indeterminate
 			var endpointSpec_2 *pb.EndpointSpec
 			if endpointSpec[0].TargetEndpoint == "service/api_2" {
 				endpointSpec_2 = endpointSpec[0]

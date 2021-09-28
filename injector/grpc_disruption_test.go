@@ -102,6 +102,7 @@ func TestSendAndCleaDisruption(t *testing.T) {
 				},
 			}
 
+			// handling that the results of `endpts` is indeterminate
 			if endpts[0].TargetEndpoint == "/chaos_dogfood.ChaosDogfood/order" {
 				return specsAreEqual(endpts[0].Alterations[0], altSpecForOrder[0]) &&
 					specsAreEqual(endpts[1].Alterations[0], altSpecForGetCatalog[0]) &&
