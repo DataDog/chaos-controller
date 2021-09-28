@@ -56,7 +56,7 @@ build:make:
   stage: build
   when: always
   script:
-     - make
+    - make
   artifacts:
     paths:
       - bin/injector/injector
