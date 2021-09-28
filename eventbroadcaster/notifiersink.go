@@ -21,10 +21,11 @@ import (
 )
 
 type NotifierSink struct {
-	Client   client.Client
-	Notifier eventnotifier.Notifier
+	client   client.Client
+	notifier eventnotifier.Notifier
 }
 
+// RegisterNotifierSinks builds notifiers sinks and registers them on the given broadcaster
 func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, filePath string, driverTypes ...notifiertypes.NotifierDriver) error {
 	var resError error = nil
 	client := mgr.GetClient()
@@ -34,7 +35,7 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 		if err != nil {
 			resError = fmt.Errorf("%w; "+err.Error(), resError)
 		}
-		broadcaster.StartRecordingToSink(&NotifierSink{Client: client, Notifier: notifier})
+		broadcaster.StartRecordingToSink(&NotifierSink{client: client, notifier: notifier})
 	}
 
 	return resError
@@ -47,7 +48,7 @@ func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 		return event, nil
 	}
 
-	err = s.parseEvent(event, dis)
+	err = s.parseEventToNotifier(event, dis)
 
 	if err != nil {
 		fmt.Println(err)
@@ -65,36 +66,35 @@ func (s *NotifierSink) Patch(oldEvent *corev1.Event, data []byte) (*corev1.Event
 	return oldEvent, nil
 }
 
+// getDisruption fetches the disruption object of the event from the controller-runtime client
 func (s *NotifierSink) getDisruption(event *corev1.Event) (v1beta1.Disruption, error) {
 	dis := v1beta1.Disruption{}
 	if event.InvolvedObject.Kind != "Disruption" {
 		return v1beta1.Disruption{}, fmt.Errorf("eventnotifier: not a disruption")
 	}
 
-	err := s.Client.Get(context.Background(), types.NamespacedName{Namespace: event.InvolvedObject.Namespace, Name: event.InvolvedObject.Name}, &dis)
+	err := s.client.Get(context.Background(), types.NamespacedName{Namespace: event.InvolvedObject.Namespace, Name: event.InvolvedObject.Name}, &dis)
 	if err != nil {
 		return v1beta1.Disruption{}, err
 	}
 
-	_, err = fmt.Printf("Userinfo: %v\n", dis.Status.UserInfo)
-	if err != nil {
-		return v1beta1.Disruption{}, err
+	if dis.Status.UserInfo == nil {
+		return v1beta1.Disruption{}, fmt.Errorf("eventnotifier: no userinfo in disruption %v", dis)
 	}
 
 	return dis, nil
 }
 
-func (s *NotifierSink) parseEvent(event *corev1.Event, dis v1beta1.Disruption) error {
-	var err error = nil
-
+// parseEventToNotifier contains the event parsing and notification logic
+func (s *NotifierSink) parseEventToNotifier(event *corev1.Event, dis v1beta1.Disruption) (err error) {
 	switch event.Type {
 	case corev1.EventTypeWarning:
-		err = s.Notifier.NotifyWarning(dis, *event)
+		err = s.notifier.NotifyWarning(dis, *event)
 	case corev1.EventTypeNormal:
 		err = nil
 	default:
-		err = fmt.Errorf("event: not a correct event type")
+		err = fmt.Errorf("event: not a notifiable event")
 	}
 
-	return err
+	return
 }

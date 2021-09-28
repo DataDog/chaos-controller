@@ -218,6 +218,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// event notifiers
 	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.SlackTokenFilePath, "noop", "slack")
 	if err != nil {
 		logger.Errorw("error(s) while creating notifiers", "error", err)
