@@ -33,9 +33,14 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 	for _, driver := range driverTypes {
 		notifier, err := eventnotifier.GetNotifier(driver, filePath)
 		if err != nil {
-			resError = fmt.Errorf("%w; "+err.Error(), resError)
+			if resError == nil {
+				resError = err
+			} else {
+				resError = fmt.Errorf("%w; "+err.Error(), resError)
+			}
+		} else {
+			broadcaster.StartRecordingToSink(&NotifierSink{client: client, notifier: notifier})
 		}
-		broadcaster.StartRecordingToSink(&NotifierSink{client: client, notifier: notifier})
 	}
 
 	return resError
