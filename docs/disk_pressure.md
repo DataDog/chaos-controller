@@ -16,7 +16,11 @@ To apply the throttle, the injector will:
   * it is done by using the `ls` command on the device path (eg. `/dev/sda1`) which will print out the major and minor identifiers of the device
 * write the throttle using the major identifier of the device
 
-**Note: the throttle will be applied to the whole device (for the pod only) and not only to the partition handling the path.**
+### Notes
+
+The throttle will be applied to the whole device (for the pod only) and not only to the partition handling the path.
+
+When running a disk disruption on a pod with multiple containers, if a specified path to disrupt does not exist on any of the existing containers, those containers will be skipped and not disrupted.
 
 ### Known issues
 
