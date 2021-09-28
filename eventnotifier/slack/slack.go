@@ -20,8 +20,7 @@ import (
 
 // Notifier describes a Slack notifier
 type Notifier struct {
-	client  slack.Client
-	context string
+	client slack.Client
 }
 
 // New Slack Notifier
@@ -29,40 +28,36 @@ func New(tokenFilePath string) (*Notifier, error) {
 	not := &Notifier{}
 	tokenfile, err := os.Open(filepath.Clean(tokenFilePath))
 	if err != nil {
-		return nil, fmt.Errorf("slack file not found: %+v", err)
+		return nil, fmt.Errorf("slack token file not found: %w", err)
 	}
 	token, err := ioutil.ReadAll(tokenfile)
 	if err != nil {
-		return nil, fmt.Errorf("slack file could not be read: %+v", err)
+		return nil, fmt.Errorf("slack token file could not be read: %w", err)
 	}
 
 	stoken := string(token)
 
 	if stoken == "" {
-		return nil, fmt.Errorf("slack file is read, but seemingly empty")
+		return nil, fmt.Errorf("slack token file is read, but seemingly empty")
 	}
 
-	stoken = strings.Fields(stoken)[0]
+	stoken = strings.Fields(stoken)[0] //removes eventual \n at the end of the file
 	not.client = *slack.New(stoken)
 
 	_, err = not.client.AuthTest()
 	if err != nil {
-		return nil, fmt.Errorf("slack auth failed: %+v", err)
+		return nil, fmt.Errorf("slack auth failed: %w", err)
 	}
 
 	return not, nil
 }
 
-// Close returns nil
-func (n *Notifier) Clean() error {
-	return nil
-}
-
-// GetNotifierName returns Slack
+// GetNotifierName returns the driver's name
 func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverSlack)
 }
 
+// NotifyWarning generates a notification for generic k8s Warning events
 func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
 	headerText := "Disruption `" + dis.Name + "` encountered an issue."
 	bodyText := "> Disruption `" + dis.Name + "` emitted the event " + event.Reason + ": " + event.Message
@@ -82,33 +77,6 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 	}
 
 	err := n.notifySlack("emitted a warning", dis, blocks...)
-
-	return err
-}
-
-// NotifyNoTarget signals a disruption's been cleaned up successfully
-func (n *Notifier) NotifyNoTarget(dis v1beta1.Disruption) error {
-	headerText := "> Disruption `" + dis.Name + "` found no target."
-
-	blocks := []slack.Block{
-		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", headerText, false, false), nil, nil),
-	}
-
-	err := n.notifySlack("has no target", dis, blocks...)
-
-	return err
-}
-
-// NotifyStuckOnRemoval signals a disruption's been cleaned up successfully
-func (n *Notifier) NotifyStuckOnRemoval(dis v1beta1.Disruption) error {
-
-	headerText := "> Disruption `" + dis.Name + "` is stuck on removal. Please check the logs."
-
-	blocks := []slack.Block{
-		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", headerText, false, false), nil, nil),
-	}
-
-	err := n.notifySlack("is stuck on removal. Please check the logs !", dis, blocks...)
 
 	return err
 }

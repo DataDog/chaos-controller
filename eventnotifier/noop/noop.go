@@ -21,32 +21,14 @@ func New() *Notifier {
 	return &Notifier{}
 }
 
-// Close returns nil
-func (n *Notifier) Clean() error {
-	return nil
-}
-
-// GetNotifierName returns NOOP
+// GetNotifierName returns the driver's name
 func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverNoop)
 }
 
+// NotifyWarning generates a notification for generiv k8s Warning events
 func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
 	notify("warning: "+event.Name+" - "+event.Message, dis.Name)
-
-	return nil
-}
-
-// NotifyNoTarget signals a disruption's been cleaned up successfully
-func (n *Notifier) NotifyNoTarget(dis v1beta1.Disruption) error {
-	notify("NotifyNoTarget", dis.Name)
-
-	return nil
-}
-
-// NotifyStuckOnRemoval signals a disruption's been cleaned up successfully
-func (n *Notifier) NotifyStuckOnRemoval(dis v1beta1.Disruption) error {
-	notify("NotifyStuckOnRemoval", dis.Name)
 
 	return nil
 }

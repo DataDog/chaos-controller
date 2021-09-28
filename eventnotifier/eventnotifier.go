@@ -21,12 +21,7 @@ type Context struct {
 
 type Notifier interface {
 	GetNotifierName() string
-	Clean() error
-
 	NotifyWarning(v1beta1.Disruption, corev1.Event) error
-
-	// NotifyNoTarget(v1beta1.Disruption) error
-	// NotifyStuckOnRemoval(v1beta1.Disruption) error
 }
 
 // GetNotifier returns an initiated Notifier instance
