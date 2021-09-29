@@ -107,6 +107,37 @@ webhooks:
     resources:
     - disruptions
 ---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+  {{- if not .Values.controller.webhook.generateCert }}
+    cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+  {{- end }}
+  name: chaos-controller-disruption-spec-defaults
+webhooks:
+  - clientConfig:
+    {{- if not .Values.controller.webhook.generateCert }}
+      caBundle: Cg==
+    {{- else }}
+      caBundle: {{ b64enc $ca.Cert }}
+    {{- end }}
+      service:
+        name: chaos-controller-webhook-service
+        namespace: chaos-engineering
+        path: /mutate-chaos-datadoghq-com-v1beta1-disruption-spec-defaults
+    failurePolicy: Fail
+    name: chaos-controller-admission-webhook.chaos-engineering.svc
+    rules:
+      - apiGroups:
+          - "chaos.datadoghq.com"
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+        resources:
+          - disruptions
+---
 {{- if not .Values.controller.webhook.generateCert }}
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate

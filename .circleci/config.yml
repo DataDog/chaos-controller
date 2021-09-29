@@ -152,6 +152,12 @@ jobs:
             sudo chown circleci:circleci /go /usr/local/bin /usr/local/kubebuilder
       - go_restore_cache
       - run:
+          name: Edit controller chart
+          <<: *working_directory
+          command: |
+            sudo snap install yq
+            yq e '.controller.expiredDisruptionGCDelay = "3s"' -i chart/values.yaml
+      - run:
           name: Wait for Docker Daemon to be up and running
           command: |
             for i in 0..9; do
