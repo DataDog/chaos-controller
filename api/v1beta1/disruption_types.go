@@ -184,7 +184,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		}
 	}
 
-	if s.GRPC != nil && s.Level != chaostypes.DisruptionLevelPod {
+	if s.GRPC != nil && s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
 		return errors.New("GRPC disruptions can only be applied at the pod level")
 	}
 
