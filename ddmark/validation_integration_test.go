@@ -154,6 +154,15 @@ exclusivefieldstest:
 			errorList := validateString(exclusivefieldsValidYaml)
 			Expect(errorList).To(HaveLen(0))
 		})
+		It("allows latter fields to be set freely", func() {
+			var exclusivefieldsValidYaml = `
+exclusivefieldstest:
+  bfield: 1
+  cfield: 1
+`
+			errorList := validateString(exclusivefieldsValidYaml)
+			Expect(errorList).To(HaveLen(0))
+		})
 	})
 })
 

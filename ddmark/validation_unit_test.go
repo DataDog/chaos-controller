@@ -173,5 +173,10 @@ var _ = Describe("Validation Rules Cases", func() {
 			fakeObj.Field3 = 0
 			Expect(excl.ApplyRule(ValueOf(fakeObj))).To(BeNil())
 		})
+
+		It("accepts object with all fields but first set", func() {
+			fakeObj.Field1 = ""
+			Expect(excl.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+		})
 	})
 })

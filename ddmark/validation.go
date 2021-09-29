@@ -38,7 +38,7 @@ type Enum []interface{}
 // Required can be applied to any field, and asserts this field will return an error if not provided
 type Required bool
 
-// ExclusiveFields can be applied to structs, and asserts that at most one of the specified fields is set
+// ExclusiveFields can be applied to structs, and asserts if the first field is set, none of the others are
 type ExclusiveFields []string
 
 func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
@@ -74,21 +74,23 @@ func (m Minimum) ApplyRule(fieldvalue reflect.Value) error {
 func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 
-	var matchCount int = 0
+	matchCount := 0
 
 	structMap, ok := structValueToMap(fieldvalue)
 	if !ok {
 		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(e), fieldvalue.Type(), "struct")
 	}
 
-	for _, item := range e {
-		if structMap[item] != nil {
-			matchCount++
+	if structMap[e[0]] != nil {
+		for _, item := range e[1:] {
+			if structMap[item] != nil {
+				matchCount++
+			}
 		}
 	}
 
-	if matchCount > 1 {
-		return fmt.Errorf("%v: some fields are incompatible, there can only be one of %v", ruleName(e), e)
+	if matchCount >= 1 {
+		return fmt.Errorf("%v: some fields are incompatible, %s can't be set alongside any of %v", ruleName(e), e[0], e[1:])
 	}
 
 	return nil
