@@ -46,18 +46,23 @@ data:
       metricsSink: "noop"
       deleteOnly: false
       imagePullSecrets: false
+      defaultDuration: 1h
+      expiredDisruptionGCDelay: 15m
       webhook:
         certDir: ""
         host: ""
         port: 9443
     injector:
-      image: "datadog/chaos-injector:4.4.1"
+      image: "datadog/chaos-injector:4.5.0"
       serviceAccount:
         name: "chaos-injector"
         namespace: "chaos-engineering"
+      dnsDisruption:
+        dnsServer: "8.8.8.8"
+        kubeDns: "off"
     handler:
       enabled: true
-      image: "datadog/chaos-handler:4.4.1"
+      image: "datadog/chaos-handler:4.5.0"
       timeout: "1m"
 ---
 # Source: chaos-controller/templates/crds/chaos.datadoghq.com_disruptions.yaml
@@ -190,6 +195,9 @@ spec:
               type: array
             dryRun:
               type: boolean
+            durationSeconds:
+              format: int64
+              type: integer
             level:
               description: DisruptionLevel represents which level the disruption should
                 be injected at
@@ -650,7 +658,7 @@ spec:
         - containerPort: 8443
           name: https
       - name: manager
-        image: datadog/chaos-controller:4.4.1
+        image: datadog/chaos-controller:4.5.0
         imagePullPolicy: IfNotPresent
         command:
         - /usr/local/bin/manager
