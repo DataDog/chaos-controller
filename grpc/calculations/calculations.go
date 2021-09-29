@@ -80,7 +80,7 @@ func ConvertAltSpecToQueryPercentByAltConfig(endpointSpecList []*pb.AlterationSp
 			mapping[alterationConfig] = QueryPercent(altSpec.QueryPercent)
 			pctClaimed += int(altSpec.QueryPercent)
 			if pctClaimed > 100 {
-				return nil, status.Error(codes.InvalidArgument, "assigned percentage for this endpoint exceeds 100% of possible queries")
+				return nil, status.Error(codes.InvalidArgument, "assigned query percentages for this endpoint exceeds 100% of possible queries")
 			}
 		} else {
 			unquantifiedAlts = append(unquantifiedAlts, alterationConfig)
@@ -113,10 +113,10 @@ func ConvertAltSpecToQueryPercentByAltConfig(endpointSpecList []*pb.AlterationSp
 
 // ConvertQueryPercentByAltConfigToAlterationMap takes a mapping from alterationConfiguration to the percentage of requests
 // and returns a mapping from integers between 0 and some number less than 100 to Alterations assigned to them
-func ConvertQueryPercentByAltConfigToAlterationMap(endpointSpecList map[AlterationConfiguration]QueryPercent) []AlterationConfiguration {
+func ConvertQueryPercentByAltConfigToAlterationMap(alterationToQueryPercent map[AlterationConfiguration]QueryPercent) []AlterationConfiguration {
 	mapping := make([]AlterationConfiguration, 0, 100)
 
-	for altConfig, pct := range endpointSpecList {
+	for altConfig, pct := range alterationToQueryPercent {
 		for i := 0; i < int(pct); i++ {
 			mapping = append(mapping, altConfig)
 		}
