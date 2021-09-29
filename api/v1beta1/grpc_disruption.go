@@ -91,6 +91,7 @@ func (s GRPCDisruptionSpec) Validate() error {
 				unquantifiedAlts[alteration.TargetEndpoint] = count + 1
 
 				pctClaimed := 100 - queryPctByEndpoint[alteration.TargetEndpoint]
+
 				if pctClaimed < count+1 {
 					return fmt.Errorf("alterations must have at least 1%% chance of occurring; %s will never return some alterations because alterations exceed 100%% of possible queries", alteration.TargetEndpoint)
 				}
