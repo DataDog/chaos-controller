@@ -7,6 +7,7 @@ package api_test
 
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/ddmark"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -265,7 +266,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					},
 				}
 
-				Expect(spec.Validate()).To(BeNil())
+				Expect(ddmark.ValidateStruct(spec, "test_suite", "github.com/DataDog/chaos-controller/api/v1beta1")).To(BeNil())
 			})
 		})
 
@@ -346,7 +347,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					},
 				}
 
-				Expect(spec.Validate()).ToNot(BeNil())
+				Expect(ddmark.ValidateStruct(spec, "test_suite", "github.com/DataDog/chaos-controller/api/v1beta1")).ToNot(BeNil())
 			})
 		})
 	})
