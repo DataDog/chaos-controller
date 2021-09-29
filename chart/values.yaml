@@ -13,6 +13,8 @@ images: # images and tag to pull for each component of the stack
 controller:
   deleteOnly: false # enable delete-only mode
   metricsSink: noop # metrics driver (noop or datadog)
+  defaultDuration: 1h # default spec.duration for a disruption with none specified
+  expiredDisruptionGCDelay: 15m # time after a disruption expires before deleting it
   webhook: # admission webhook configuration
     generateCert: false # if you want Helm to generate certificates (e.g. in case the cert-manager is not installed in the cluster) set this to true
     certDir: "" # certificate directory (must contain tls.crt and tls.key files)

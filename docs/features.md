@@ -18,6 +18,17 @@ Let's imagine a node with two pods running: `foo` and `bar` and a disruption dro
 * Applying this disruption at the `pod` level and with a selector targeting the `foo` pod will result with the `foo` pod not being able to send any packets, but the `bar` pod will still be able to send packets, as well as other processes on the node.
 * Applying this disruption at the `node` level and with a selector targeting the node itself, both `foo` and `bar` pods won't be able to send network packets anymore, as well as all the other processes running on the node.
 
+## Duration
+
+The `Disruption` spec takes a `durationSeconds` field. This field represents the number of seconds after the disruption's creation before 
+all chaos pods automatically terminate and the disruption stops injecting new ones.
+
+If a `durationSeconds` is not specified, then a disruption will receive the default duration, which is configured at the controller level by setting 
+`controller.defaultDuration` in the controller's config map, and this value defaults to 1 hour.
+
+After a disruption's duration expires, the disruption resource will live in k8s for a default of 15 minutes. This can be configured by altering 
+`controller.expiredDisruptionGCDelay` in the controller's config map.
+
 ## Targeting
 
 The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the given label selector and will randomly select a number (defined in the `count` field) of matching targets. It's possible to specify multiple label selectors, in which case the controller will select from targets that match all of them. Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.

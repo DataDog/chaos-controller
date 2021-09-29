@@ -47,7 +47,7 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const (
-	timeout = time.Second * 30
+	timeout = time.Second * 45
 )
 
 var (
@@ -131,8 +131,8 @@ var _ = BeforeSuite(func(done Done) {
 					Name:  "ctn2",
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      "foo",
-							MountPath: "/mnt/foo",
+							Name:      "bar",
+							MountPath: "/mnt/bar",
 						},
 					},
 				},
@@ -140,6 +140,12 @@ var _ = BeforeSuite(func(done Done) {
 			Volumes: []corev1.Volume{
 				{
 					Name: "foo",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: "bar",
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
