@@ -71,8 +71,8 @@ type controllerConfig struct {
 	DeleteOnly               bool                    `json:"deleteOnly"`
 	LeaderElection           bool                    `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig `json:"webhook"`
-	NotifierSinks      []string                `json:"notifierDriver"`
-	SlackTokenFilePath string                  `json:"slackTokenFilePath"`
+	NotifierSinks            []string                `json:"notifierDriver"`
+	SlackTokenFilePath       string                  `json:"slackTokenFilePath"`
 }
 
 type controllerWebhookConfig struct {
@@ -225,6 +225,7 @@ func main() {
 		Port:               cfg.Controller.Webhook.Port,
 		CertDir:            cfg.Controller.Webhook.CertDir,
 	})
+
 	if err != nil {
 		logger.Errorw("unable to start manager", "error", err)
 		os.Exit(1)

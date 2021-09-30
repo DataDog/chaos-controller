@@ -28,11 +28,13 @@ type NotifierSink struct {
 // RegisterNotifierSinks builds notifiers sinks and registers them on the given broadcaster
 func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, filePath string, driverTypes ...string) error {
 	var resError error = nil
+
 	client := mgr.GetClient()
 
 	for _, driver := range driverTypes {
 		ndriver := notifiertypes.NotifierDriver(driver)
 		notifier, err := eventnotifier.GetNotifier(ndriver, filePath)
+
 		if err != nil {
 			if resError == nil {
 				resError = err
@@ -75,6 +77,7 @@ func (s *NotifierSink) Patch(oldEvent *corev1.Event, data []byte) (*corev1.Event
 // getDisruption fetches the disruption object of the event from the controller-runtime client
 func (s *NotifierSink) getDisruption(event *corev1.Event) (v1beta1.Disruption, error) {
 	dis := v1beta1.Disruption{}
+
 	if event.InvolvedObject.Kind != "Disruption" {
 		return v1beta1.Disruption{}, fmt.Errorf("eventnotifier: not a disruption")
 	}

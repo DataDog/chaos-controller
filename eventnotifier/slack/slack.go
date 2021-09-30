@@ -27,10 +27,13 @@ type Notifier struct {
 func New(tokenFilePath string) (*Notifier, error) {
 	not := &Notifier{}
 	tokenfile, err := os.Open(filepath.Clean(tokenFilePath))
+
 	if err != nil {
 		return nil, fmt.Errorf("slack token file not found: %w", err)
 	}
+
 	token, err := ioutil.ReadAll(tokenfile)
+
 	if err != nil {
 		return nil, fmt.Errorf("slack token file could not be read: %w", err)
 	}
@@ -41,7 +44,7 @@ func New(tokenFilePath string) (*Notifier, error) {
 		return nil, fmt.Errorf("slack token file is read, but seemingly empty")
 	}
 
-	stoken = strings.Fields(stoken)[0] //removes eventual \n at the end of the file
+	stoken = strings.Fields(stoken)[0] // removes eventual \n at the end of the file
 	not.client = *slack.New(stoken)
 
 	_, err = not.client.AuthTest()
