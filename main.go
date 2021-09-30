@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -64,7 +65,7 @@ type config struct {
 type controllerConfig struct {
 	MetricsAddr        string                  `json:"metricsAddr"`
 	MetricsSink        string                  `json:"metricsSink"`
-	NotifierDriver     string                  `json:"notifierDriver"`
+	NotifierSinks      []string                `json:"notifierDriver"`
 	SlackTokenFilePath string                  `json:"slackTokenFilePath"`
 	ImagePullSecrets   string                  `json:"imagePullSecrets"`
 	DeleteOnly         bool                    `json:"deleteOnly"`
@@ -130,6 +131,9 @@ func main() {
 
 	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
+
+	pflag.StringSliceVar(&cfg.Controller.NotifierSinks, "notifier-sinks", []string{"noop"}, "List of activated notifier sinks: noop, slack, or both")
+	handleFatalError(viper.BindPFlag("controller.NotifierSinks", pflag.Lookup("notifier-sinks")))
 
 	pflag.StringVar(&cfg.Controller.SlackTokenFilePath, "notifier-slack-token-file-path", "/etc/chaos-controller/slack/token", "Path for token file for slack notifier system")
 	handleFatalError(viper.BindPFlag("controller.SlackTokenFilePath", pflag.Lookup("notifier-slack-token-file-path")))
@@ -219,7 +223,7 @@ func main() {
 	}
 
 	// event notifiers
-	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.SlackTokenFilePath, "noop", "slack")
+	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.SlackTokenFilePath, cfg.Controller.NotifierSinks...)
 	if err != nil {
 		logger.Errorw("error(s) while creating notifiers", "error", err)
 	}

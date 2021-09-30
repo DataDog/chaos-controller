@@ -26,12 +26,13 @@ type NotifierSink struct {
 }
 
 // RegisterNotifierSinks builds notifiers sinks and registers them on the given broadcaster
-func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, filePath string, driverTypes ...notifiertypes.NotifierDriver) error {
+func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, filePath string, driverTypes ...string) error {
 	var resError error = nil
 	client := mgr.GetClient()
 
 	for _, driver := range driverTypes {
-		notifier, err := eventnotifier.GetNotifier(driver, filePath)
+		ndriver := notifiertypes.NotifierDriver(driver)
+		notifier, err := eventnotifier.GetNotifier(ndriver, filePath)
 		if err != nil {
 			if resError == nil {
 				resError = err
