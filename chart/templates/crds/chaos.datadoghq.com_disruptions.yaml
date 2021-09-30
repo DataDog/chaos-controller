@@ -164,7 +164,7 @@ spec:
                         type: string
                       query_pct:
                         maximum: 100
-                        minimum: 1
+                        minimum: 0
                         type: integer
                     type: object
                   type: array

@@ -186,30 +186,34 @@ var _ = Describe("GRPCDisruption Validation", func() {
 				}
 
 				err := ddmark.ValidateStruct(spec, "grpc_test_suite", "github.com/DataDog/chaos-controller/api/v1beta1")
-				Expect(err).ToNot(BeNil())
+				Expect(len(err)).To(Equal(1))
 				Expect(err[0].Error()).To(Equal("grpc_test_suite>Endpoints>>ErrorToReturn - ddmark:validation:Enum: field needs to be one of [OK CANCELED UNKNOWN INVALID_ARGUMENT DEADLINE_EXCEEDED NOT_FOUND ALREADY_EXISTS PERMISSION_DENIED RESOURCE_EXHAUSTED FAILED_PRECONDITION ABORTED OUT_OF_RANGE UNIMPLEMENTED INTERNAL UNAVAILABLE DATA_LOSS UNAUTHENTICATED], currently \"MEOW\""))
 			})
 		})
 
-		Context("with QueryPercent 0 in CRD", func() {
-			It("Do not validate with ddmark when `0` is explicitly assigned", func() {
-				spec.Endpoints = []v1beta1.EndpointAlteration{
-					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
-						ErrorToReturn:    "CANCELED",
-						OverrideToReturn: "",
-						QueryPercent:     0,
-					},
+		Context("which are in the standard grpc errors", func() {
+			It("Do validate with ddmarks", func() {
+				spec.Endpoints = []v1beta1.EndpointAlteration{}
+
+				for errorString := range v1beta1.ErrorMap {
+					spec.Endpoints = append(
+						spec.Endpoints,
+						v1beta1.EndpointAlteration{
+							TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+							ErrorToReturn:    errorString,
+							OverrideToReturn: "",
+							QueryPercent:     1,
+						},
+					)
 				}
 
-				err := ddmark.ValidateStruct(spec, "grpc_test_suite", "github.com/DataDog/chaos-controller/api/v1beta1")
-				Expect(err).ToNot(BeNil())
-				Expect(err[0].Error()).To(Equal("grpc_test_suite>Endpoints>>QueryPercent - ddmark:validation:Minimum: field has value 0, min is 1 (included)"))
-			})
-		})
+				Expect(len(spec.Endpoints)).To(Equal(17))
 
-		Context("which are in the standard grpc errors", func() {
-			It("Do validate (note: this validate function will eventually be deprecated)", func() {
+				err := ddmark.ValidateStruct(spec, "grpc_test_suite", "github.com/DataDog/chaos-controller/api/v1beta1")
+				Expect(len(err)).To(Equal(0))
+			})
+
+			It("Do validate", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
 						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
@@ -290,7 +294,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		})
 
 		Context("In the standard grpc errors but which in total exceed 100%", func() {
-			It("Do not validate (note: this validate function will eventually be deprecated)", func() {
+			It("Do not validate", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
 						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",

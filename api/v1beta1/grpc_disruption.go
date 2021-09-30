@@ -60,9 +60,9 @@ type EndpointAlteration struct {
 	// +kubebuilder:validation:Enum={}
 	// +ddmark:validation:Enum="{}"
 	OverrideToReturn string `json:"override,omitempty"`
-	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=1
+	// +ddmark:validation:Minimum=0
 	// +ddmark:validation:Maximum=100
 	QueryPercent int `json:"query_pct,omitempty"`
 }
