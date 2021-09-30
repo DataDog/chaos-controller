@@ -58,7 +58,7 @@ type EndpointAlteration struct {
 	// +ddmark:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
 	ErrorToReturn string `json:"error,omitempty"`
 	// +kubebuilder:validation:Enum={}
-	// +ddmark:validation:Enum={}
+	// +ddmark:validation:Enum="{}"
 	OverrideToReturn string `json:"override,omitempty"`
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
@@ -111,14 +111,8 @@ func (s GRPCDisruptionSpec) Validate() error {
 		}
 
 		// check that exactly one of ErrorToReturn or OverrideToReturn is configured
-		if alteration.ErrorToReturn != "" {
-			if alteration.OverrideToReturn == "" {
-				if _, ok := ErrorMap[alteration.ErrorToReturn]; !ok {
-					return fmt.Errorf("ErrorToReturn (%s) is not a valid configuration", alteration.ErrorToReturn)
-				}
-			} else {
-				return fmt.Errorf("the gRPC disruption has ErrorToReturn and OverrideToReturn specified for endpoint %s, but it can only have one", alteration.TargetEndpoint)
-			}
+		if alteration.ErrorToReturn != "" && alteration.OverrideToReturn != "" {
+			return fmt.Errorf("the gRPC disruption has ErrorToReturn and OverrideToReturn specified for endpoint %s, but it can only have one", alteration.TargetEndpoint)
 		} else if alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "" {
 			return fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint)
 		}
