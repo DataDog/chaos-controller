@@ -63,14 +63,16 @@ type config struct {
 }
 
 type controllerConfig struct {
-	MetricsAddr        string                  `json:"metricsAddr"`
-	MetricsSink        string                  `json:"metricsSink"`
+	MetricsAddr              string                  `json:"metricsAddr"`
+	MetricsSink              string                  `json:"metricsSink"`
+	ImagePullSecrets         string                  `json:"imagePullSecrets"`
+	ExpiredDisruptionGCDelay time.Duration           `json:"expiredDisruptionGCDelay"`
+	DefaultDuration          time.Duration           `json:"defaultDuration"`
+	DeleteOnly               bool                    `json:"deleteOnly"`
+	LeaderElection           bool                    `json:"leaderElection"`
+	Webhook                  controllerWebhookConfig `json:"webhook"`
 	NotifierSinks      []string                `json:"notifierDriver"`
 	SlackTokenFilePath string                  `json:"slackTokenFilePath"`
-	ImagePullSecrets   string                  `json:"imagePullSecrets"`
-	DeleteOnly         bool                    `json:"deleteOnly"`
-	LeaderElection     bool                    `json:"leaderElection"`
-	Webhook            controllerWebhookConfig `json:"webhook"`
 }
 
 type controllerWebhookConfig struct {
@@ -128,6 +130,12 @@ func main() {
 
 	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
+
+	pflag.DurationVar(&cfg.Controller.ExpiredDisruptionGCDelay, "expired-disruption-gc-delay", time.Minute*15, "Seconds after a disruption expires before being automatically deleted")
+	handleFatalError(viper.BindPFlag("controller.expiredDisruptionGCDelay", pflag.Lookup("expired-disruption-gc-delay")))
+
+	pflag.DurationVar(&cfg.Controller.DefaultDuration, "default-duration", time.Hour, "Default duration for a disruption with none specified")
+	handleFatalError(viper.BindPFlag("controller.defaultDuration", pflag.Lookup("default-duration")))
 
 	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
@@ -263,6 +271,7 @@ func main() {
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
+		ExpiredDisruptionGCDelay:              cfg.Controller.ExpiredDisruptionGCDelay,
 	}
 
 	if err := r.SetupWithManager(mgr); err != nil {
@@ -293,6 +302,15 @@ func main() {
 		Handler: &chaoswebhook.UserInfoMutator{
 			Client: mgr.GetClient(),
 			Log:    logger,
+		},
+	})
+
+	// register spec default mutating webhook
+	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-spec-defaults", &webhook.Admission{
+		Handler: &chaoswebhook.DefaultMutator{
+			DefaultDuration: cfg.Controller.DefaultDuration,
+			Client:          mgr.GetClient(),
+			Log:             logger,
 		},
 	})
 

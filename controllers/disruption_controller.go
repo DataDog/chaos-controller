@@ -77,6 +77,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionDNSServer        string
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
+	ExpiredDisruptionGCDelay              time.Duration
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -125,7 +126,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
 		r.log.Errorw("error handling chaos pods termination", "error", err)
-
 		return ctrl.Result{}, err
 	}
 
@@ -171,10 +171,25 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 
+		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
+		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the durations deadline. We compare it to negative ExpiredDisruptionGCDelay,
+		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
+		if calculateRemainingDurationSeconds(*instance) <= (-1 * int64(r.ExpiredDisruptionGCDelay.Seconds())) {
+			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "durationSeconds", instance.Spec.DurationSeconds)
+			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", r.ExpiredDisruptionGCDelay))
+
+			var err error
+
+			if err = r.Client.Delete(context.Background(), instance); err != nil {
+				r.log.Errorw("error deleting disruption after its duration expired", "error", err)
+			}
+
+			return ctrl.Result{Requeue: true}, err
+		}
+
 		// retrieve targets from label selector
 		if err := r.selectTargets(instance); err != nil {
 			r.log.Errorw("error selecting targets", "error", err)
-
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 		}
 
@@ -185,7 +200,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// start injections
 		if err := r.startInjection(instance); err != nil {
 			r.log.Errorw("error injecting the disruption", "error", err)
-
 			return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
 		}
 
@@ -199,11 +213,18 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
 			r.log.Infow("disruption is not fully injected yet, requeuing")
-
 			return ctrl.Result{Requeue: true}, nil
 		}
 
-		return ctrl.Result{}, r.Update(context.Background(), instance)
+		requeueDelay := time.Duration(math.Max(float64(calculateRemainingDurationSeconds(*instance)), r.ExpiredDisruptionGCDelay.Seconds())) * time.Second
+
+		r.log.Infow("requeuing disruption", "requeueDelay", requeueDelay.String())
+
+		return ctrl.Result{
+				Requeue:      true,
+				RequeueAfter: requeueDelay,
+			},
+			r.Update(context.Background(), instance)
 	}
 
 	// stop the reconcile loop, there's nothing else to do
@@ -226,8 +247,12 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		return false, fmt.Errorf("error getting instance chaos pods: %w", err)
 	}
 
+	if calculateRemainingDurationSeconds(*instance) < 0 {
+		status = chaostypes.DisruptionInjectionStatusPreviouslyInjected
+	}
+
 	// consider a disruption not injected if no chaos pods are existing
-	if len(chaosPods) > 0 {
+	if status == chaostypes.DisruptionInjectionStatusNotInjected && len(chaosPods) > 0 {
 		// check the chaos pods conditions looking for the ready condition
 		for _, chaosPod := range chaosPods {
 			podReady := false
@@ -266,13 +291,10 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		return false, err
 	}
 
-	// requeue the request if the disruption is not fully injected so we can
+	// requeue the request if the disruption is not fully injected yet, so we can
 	// eventually catch pods that are not ready yet but will be in the future
-	if status != chaostypes.DisruptionInjectionStatusInjected {
-		return false, nil
-	}
 
-	return true, nil
+	return status == chaostypes.DisruptionInjectionStatusInjected || status == chaostypes.DisruptionInjectionStatusPreviouslyInjected, nil
 }
 
 // startInjection creates non-existing chaos pod for the given disruption
@@ -476,6 +498,11 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 			// we need to determine if we can remove it safely or if we need to block disruption deletion
 			// check if a container has been created (if not, the disruption was not injected)
 			if len(chaosPod.Status.ContainerStatuses) == 0 {
+				removeFinalizer = true
+			}
+
+			// if the pod died only because it exceeded its activeDeadlineSeconds, we can remove the finalizer
+			if chaosPod.Status.Reason == "DeadlineExceeded" {
 				removeFinalizer = true
 			}
 
@@ -725,12 +752,15 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
 	terminationGracePeriod := int64(60)
 
+	activeDeadlineSeconds := calculateRemainingDurationSeconds(*instance)
+
 	podSpec := corev1.PodSpec{
 		HostPID:                       true,                      // enable host pid
 		RestartPolicy:                 corev1.RestartPolicyNever, // do not restart the pod on fail or completion
 		NodeName:                      targetNodeName,            // specify node name to schedule the pod
 		ServiceAccountName:            r.InjectorServiceAccount,  // service account to use
 		TerminationGracePeriodSeconds: &terminationGracePeriod,
+		ActiveDeadlineSeconds:         &activeDeadlineSeconds,
 		Containers: []corev1.Container{
 			{
 				Name:            "injector",              // container name

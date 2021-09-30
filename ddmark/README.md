@@ -30,7 +30,7 @@ It also allows us to define custom rules to apply to our structures, and focus t
 - ExclusiveFields:
   - `// +ddmark:validation:ExclusiveFields={<fieldName1>,<fieldName2>,...}`
   - Applies to: `<struct>` type
-  - Asserts only one of the given fieldnames isn’t `nil`
+  - Asserts that if `<fieldname1>` can only be non-nil iff all of the other fields are `nil`
 - Maximum:
   - `// +ddmark:validation:Maximum=<int/uint>`
   - Applies to: `int/uint` field
