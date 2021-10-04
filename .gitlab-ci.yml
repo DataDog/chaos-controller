@@ -203,18 +203,6 @@ release-docker-hub-tag:
   variables:
     TAG: "${CI_COMMIT_TAG}"
 
-slack-notifier-pre-release.on-failure:
-  extends: .slack-notifier-base
-  variables:
-    CI_PIPELINE_NAME: "Pre-Release"
-  stage: pre-release
-
-slack-notifier-release.on-failure:
-  extends: .slack-notifier-base
-  variables:
-    CI_PIPELINE_NAME: "Release"
-  stage: release
-
 slack-notifier-build.on-failure:
   extends: .slack-notifier-base
   variables:
