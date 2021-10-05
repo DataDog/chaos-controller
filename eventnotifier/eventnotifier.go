@@ -28,7 +28,7 @@ func GetNotifiers(config types.NotifiersConfig) (notifiers []Notifier, err error
 	}
 
 	if config.Slack.Enabled {
-		not, slackErr := slack.New(config.Slack.Filepath)
+		not, slackErr := slack.New(config.Common, config.Slack)
 		if slackErr != nil {
 			err = slackErr
 		} else {

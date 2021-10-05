@@ -21,12 +21,18 @@ import (
 // Notifier describes a Slack notifier
 type Notifier struct {
 	client slack.Client
+	common types.NotifiersCommonConfig
+	config types.NotifierSlackConfig
 }
 
 // New Slack Notifier
-func New(tokenFilePath string) (*Notifier, error) {
-	not := &Notifier{}
-	tokenfile, err := os.Open(filepath.Clean(tokenFilePath))
+func New(commonConfig types.NotifiersCommonConfig, slackConfig types.NotifierSlackConfig) (*Notifier, error) {
+	not := &Notifier{
+		common: commonConfig,
+		config: slackConfig,
+	}
+
+	tokenfile, err := os.Open(filepath.Clean(not.config.TokenFilepath))
 
 	if err != nil {
 		return nil, fmt.Errorf("slack token file not found: %w", err)
@@ -65,13 +71,18 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 	headerText := "Disruption `" + dis.Name + "` encountered an issue."
 	bodyText := "> Disruption `" + dis.Name + "` emitted the event " + event.Reason + ": " + event.Message
 
+	var clusterNameBlock *slack.TextBlockObject = nil
+	if n.common.ClusterName != "" {
+		clusterNameBlock = slack.NewTextBlockObject("mrkdwn", "*Cluster:*\n"+n.common.ClusterName, false, false)
+	}
+
 	blocks := []slack.Block{
 		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, false, false)),
 		slack.NewDividerBlock(),
 		slack.NewSectionBlock(nil, []*slack.TextBlockObject{
 			slack.NewTextBlockObject("mrkdwn", "*Kind:*\n"+dis.Kind, false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Name:*\n"+dis.Name, false, false),
-			slack.NewTextBlockObject("mrkdwn", "*Cluster:*\n"+dis.ClusterName, false, false),
+			clusterNameBlock,
 			slack.NewTextBlockObject("mrkdwn", "*Namespace:*\n"+dis.Namespace, false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Targets:*\n"+fmt.Sprint(len(dis.Status.Targets)), false, false),
 		}, nil),
