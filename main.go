@@ -21,7 +21,6 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -239,7 +238,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("NOTIFIERS: %+v\n", cfg.Controller.Notifiers)
 	// event notifiers
 	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.Notifiers)
 	if err != nil {
