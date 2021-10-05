@@ -36,7 +36,7 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
-	eventnotifiertypes "github.com/DataDog/chaos-controller/eventnotifier/types"
+	"github.com/DataDog/chaos-controller/eventnotifier"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
@@ -64,16 +64,16 @@ type config struct {
 }
 
 type controllerConfig struct {
-	MetricsAddr              string                             `json:"metricsAddr"`
-	MetricsSink              string                             `json:"metricsSink"`
-	ImagePullSecrets         string                             `json:"imagePullSecrets"`
-	ExpiredDisruptionGCDelay time.Duration                      `json:"expiredDisruptionGCDelay"`
-	DefaultDuration          time.Duration                      `json:"defaultDuration"`
-	DeleteOnly               bool                               `json:"deleteOnly"`
-	LeaderElection           bool                               `json:"leaderElection"`
-	Webhook                  controllerWebhookConfig            `json:"webhook"`
-	Notifiers                eventnotifiertypes.NotifiersConfig `json:"notifiersConfig"`
-	SlackTokenFilePath       string                             `json:"slackTokenFilePath"`
+	MetricsAddr              string                        `json:"metricsAddr"`
+	MetricsSink              string                        `json:"metricsSink"`
+	ImagePullSecrets         string                        `json:"imagePullSecrets"`
+	ExpiredDisruptionGCDelay time.Duration                 `json:"expiredDisruptionGCDelay"`
+	DefaultDuration          time.Duration                 `json:"defaultDuration"`
+	DeleteOnly               bool                          `json:"deleteOnly"`
+	LeaderElection           bool                          `json:"leaderElection"`
+	Webhook                  controllerWebhookConfig       `json:"webhook"`
+	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
+	SlackTokenFilePath       string                        `json:"slackTokenFilePath"`
 }
 
 type controllerWebhookConfig struct {

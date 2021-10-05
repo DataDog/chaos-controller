@@ -18,15 +18,20 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+type NotifierSlackConfig struct {
+	Enabled       bool
+	TokenFilepath string
+}
+
 // Notifier describes a Slack notifier
 type Notifier struct {
 	client slack.Client
 	common types.NotifiersCommonConfig
-	config types.NotifierSlackConfig
+	config NotifierSlackConfig
 }
 
 // New Slack Notifier
-func New(commonConfig types.NotifiersCommonConfig, slackConfig types.NotifierSlackConfig) (*Notifier, error) {
+func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConfig) (*Notifier, error) {
 	not := &Notifier{
 		common: commonConfig,
 		config: slackConfig,
@@ -53,8 +58,7 @@ func New(commonConfig types.NotifiersCommonConfig, slackConfig types.NotifierSla
 	stoken = strings.Fields(stoken)[0] // removes eventual \n at the end of the file
 	not.client = *slack.New(stoken)
 
-	_, err = not.client.AuthTest()
-	if err != nil {
+	if _, err = not.client.AuthTest(); err != nil {
 		return nil, fmt.Errorf("slack auth failed: %w", err)
 	}
 
@@ -68,12 +72,15 @@ func (n *Notifier) GetNotifierName() string {
 
 // NotifyWarning generates a notification for generic k8s Warning events
 func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
-	headerText := "Disruption `" + dis.Name + "` encountered an issue."
+	headerText := "Disruption '" + dis.Name + "' encountered an issue."
 	bodyText := "> Disruption `" + dis.Name + "` emitted the event " + event.Reason + ": " + event.Message
 
-	var clusterNameBlock *slack.TextBlockObject = nil
-	if n.common.ClusterName != "" {
-		clusterNameBlock = slack.NewTextBlockObject("mrkdwn", "*Cluster:*\n"+n.common.ClusterName, false, false)
+	if n.common.ClusterName == "" {
+		if dis.ClusterName != "" {
+			n.common.ClusterName = dis.ClusterName
+		} else {
+			n.common.ClusterName = "n/a"
+		}
 	}
 
 	blocks := []slack.Block{
@@ -82,7 +89,7 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 		slack.NewSectionBlock(nil, []*slack.TextBlockObject{
 			slack.NewTextBlockObject("mrkdwn", "*Kind:*\n"+dis.Kind, false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Name:*\n"+dis.Name, false, false),
-			clusterNameBlock,
+			slack.NewTextBlockObject("mrkdwn", "*Cluster:*\n"+n.common.ClusterName, false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Namespace:*\n"+dis.Namespace, false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Targets:*\n"+fmt.Sprint(len(dis.Status.Targets)), false, false),
 		}, nil),

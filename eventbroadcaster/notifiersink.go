@@ -11,7 +11,6 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier"
-	eventnotifiertypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -27,7 +26,7 @@ type NotifierSink struct {
 }
 
 // RegisterNotifierSinks builds notifiers sinks and registers them on the given broadcaster
-func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, notifiersConfig eventnotifiertypes.NotifiersConfig) (err error) {
+func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, notifiersConfig eventnotifier.NotifiersConfig) (err error) {
 	err = nil
 
 	client := mgr.GetClient()
@@ -48,9 +47,7 @@ func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 		return event, nil
 	}
 
-	err = s.parseEventToNotifier(event, dis)
-
-	if err != nil {
+	if err = s.parseEventToNotifier(event, dis); err != nil {
 		fmt.Println(err)
 		return event, nil
 	}
@@ -74,8 +71,7 @@ func (s *NotifierSink) getDisruption(event *corev1.Event) (v1beta1.Disruption, e
 		return v1beta1.Disruption{}, fmt.Errorf("eventnotifier: not a disruption")
 	}
 
-	err := s.client.Get(context.Background(), types.NamespacedName{Namespace: event.InvolvedObject.Namespace, Name: event.InvolvedObject.Name}, &dis)
-	if err != nil {
+	if err := s.client.Get(context.Background(), types.NamespacedName{Namespace: event.InvolvedObject.Namespace, Name: event.InvolvedObject.Name}, &dis); err != nil {
 		return v1beta1.Disruption{}, err
 	}
 

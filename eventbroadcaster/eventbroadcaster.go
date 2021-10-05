@@ -18,9 +18,7 @@ func EventBroadcaster() record.EventBroadcaster {
 	correlator := record.CorrelatorOptions{
 		MaxEvents:            2,
 		MaxIntervalInSeconds: 60,
-		// BurstSize:            10,
-		// QPS:                  0.1,
-		MessageFunc: eventMessageAggregator,
+		MessageFunc:          eventMessageAggregator,
 	}
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(correlator)
 

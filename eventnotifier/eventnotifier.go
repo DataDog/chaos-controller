@@ -13,13 +13,19 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+type NotifiersConfig struct {
+	Common types.NotifiersCommonConfig `json:"notifiersCommonConfig"`
+	Noop   noop.NotifierNoopConfig     `json:"notifierNoopConfig"`
+	Slack  slack.NotifierSlackConfig   `json:"notifierSlackConfig"`
+}
+
 type Notifier interface {
 	GetNotifierName() string
 	NotifyWarning(v1beta1.Disruption, corev1.Event) error
 }
 
 // GetNotifier returns an initiated Notifier instance
-func GetNotifiers(config types.NotifiersConfig) (notifiers []Notifier, err error) {
+func GetNotifiers(config NotifiersConfig) (notifiers []Notifier, err error) {
 	err = nil
 
 	if config.Noop.Enabled {

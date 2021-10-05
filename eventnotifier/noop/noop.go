@@ -13,6 +13,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+type NotifierNoopConfig struct {
+	Enabled bool
+}
+
 // Notifier describes a NOOP notifier
 type Notifier struct{}
 
