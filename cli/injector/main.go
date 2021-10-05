@@ -194,12 +194,13 @@ func initConfig() {
 	}
 
 	cgroups, err := cgroup.ScrapeAllCgroups(log)
-
 	if err != nil {
 		log.Errorw("can't find cgroups paths", "error", err)
 
 		return
 	}
+
+	log.Infow("found cgroups paths", "cgroups", cgroups)
 
 	// create cgroup managers
 	for i, cgroupPath := range cgroupPaths {

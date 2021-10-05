@@ -155,7 +155,6 @@ func ScrapeAllCgroups(log *zap.SugaredLogger) (map[string]*ContainerCgroup, erro
 	}
 
 	procDir, err := os.Open(hostProc(procMount))
-
 	if err != nil {
 		return cgs, err
 	}
@@ -167,7 +166,6 @@ func ScrapeAllCgroups(log *zap.SugaredLogger) (map[string]*ContainerCgroup, erro
 	}()
 
 	dirNames, err := procDir.Readdirnames(-1)
-
 	if err != nil {
 		return cgs, err
 	}
@@ -191,16 +189,17 @@ func ScrapeAllCgroups(log *zap.SugaredLogger) (map[string]*ContainerCgroup, erro
 			continue
 		}
 
-		mP, mFound := paths["memory"]
-		fP, fFound := paths["freezer"]
-
-		if !fFound || !mFound || mP != fP {
-			log.Debugf("skipping cgroup from pid: %d - does not appear to be a container: memory path: %s, freezer path: %s", pid, mP, fP)
-			continue
-		}
+		// FIXME: memory and freezer paths can be different
+		//	mP, mFound := paths["memory"]
+		//	fP, fFound := paths["freezer"]
+		//
+		//	if !fFound || !mFound || mP != fP {
+		//		log.Warnf("skipping cgroup from pid: %d - does not appear to be a container: memory path: %s, freezer path: %s", pid, mP, fP)
+		//		continue
+		//	}
 
 		if err != nil {
-			log.Infof("error reading cgroup paths %s: %s", cgPath, err)
+			log.Warnf("error reading cgroup paths %s: %s", cgPath, err)
 			continue
 		}
 
