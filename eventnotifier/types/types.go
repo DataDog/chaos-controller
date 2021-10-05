@@ -5,6 +5,25 @@
 
 package types
 
+type NotifiersConfig struct {
+	Common notifiersCommonConfig `json:"notifiersCommonConfig"`
+	Noop   notifierNoopConfig    `json:"notifierNoopConfig"`
+	Slack  notifierSlackConfig   `json:"notifierSlackConfig"`
+}
+
+type notifiersCommonConfig struct {
+	ClusterName string
+}
+
+type notifierSlackConfig struct {
+	Enabled  bool
+	Filepath string
+}
+
+type notifierNoopConfig struct {
+	Enabled bool
+}
+
 type NotifierDriver string
 
 const (

@@ -21,6 +21,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -36,6 +37,7 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
+	eventnotifiertypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
@@ -63,16 +65,16 @@ type config struct {
 }
 
 type controllerConfig struct {
-	MetricsAddr              string                  `json:"metricsAddr"`
-	MetricsSink              string                  `json:"metricsSink"`
-	ImagePullSecrets         string                  `json:"imagePullSecrets"`
-	ExpiredDisruptionGCDelay time.Duration           `json:"expiredDisruptionGCDelay"`
-	DefaultDuration          time.Duration           `json:"defaultDuration"`
-	DeleteOnly               bool                    `json:"deleteOnly"`
-	LeaderElection           bool                    `json:"leaderElection"`
-	Webhook                  controllerWebhookConfig `json:"webhook"`
-	NotifierSinks            []string                `json:"notifierDriver"`
-	SlackTokenFilePath       string                  `json:"slackTokenFilePath"`
+	MetricsAddr              string                             `json:"metricsAddr"`
+	MetricsSink              string                             `json:"metricsSink"`
+	ImagePullSecrets         string                             `json:"imagePullSecrets"`
+	ExpiredDisruptionGCDelay time.Duration                      `json:"expiredDisruptionGCDelay"`
+	DefaultDuration          time.Duration                      `json:"defaultDuration"`
+	DeleteOnly               bool                               `json:"deleteOnly"`
+	LeaderElection           bool                               `json:"leaderElection"`
+	Webhook                  controllerWebhookConfig            `json:"webhook"`
+	Notifiers                eventnotifiertypes.NotifiersConfig `json:"notifiersConfig"`
+	SlackTokenFilePath       string                             `json:"slackTokenFilePath"`
 }
 
 type controllerWebhookConfig struct {
@@ -140,11 +142,17 @@ func main() {
 	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
 
-	pflag.StringSliceVar(&cfg.Controller.NotifierSinks, "notifier-sinks", []string{"noop"}, "List of activated notifier sinks: noop, slack, or both")
-	handleFatalError(viper.BindPFlag("controller.NotifierSinks", pflag.Lookup("notifier-sinks")))
+	pflag.StringVar(&cfg.Controller.Notifiers.Common.ClusterName, "notifiers-common-clustername", "", "Cluster Name for notifiers output")
+	handleFatalError(viper.BindPFlag("controller.notifiers.common.clustername", pflag.Lookup("notifiers-common-clustername")))
 
-	pflag.StringVar(&cfg.Controller.SlackTokenFilePath, "notifier-slack-token-file-path", "/etc/chaos-controller/slack/token", "Path for token file for slack notifier system")
-	handleFatalError(viper.BindPFlag("controller.SlackTokenFilePath", pflag.Lookup("notifier-slack-token-file-path")))
+	pflag.BoolVar(&cfg.Controller.Notifiers.Noop.Enabled, "notifiers-noop-enabled", true, "Enabler toggle for the NOOP notifier (defaulted to true)")
+	handleFatalError(viper.BindPFlag("controller.notifiers.noop.enabled", pflag.Lookup("notifiers-noop-enabled")))
+
+	pflag.BoolVar(&cfg.Controller.Notifiers.Slack.Enabled, "notifiers-slack-enabled", false, "Enabler toggle for the Slack notifier (defaulted to false)")
+	handleFatalError(viper.BindPFlag("controller.notifiers.slack.enabled", pflag.Lookup("notifiers-slack-enabled")))
+
+	pflag.StringVar(&cfg.Controller.Notifiers.Slack.Filepath, "notifiers-slack-filepath", "", "File path of the API token for the Slack notifier (defaulted to false)")
+	handleFatalError(viper.BindPFlag("controller.notifiers.slack.filepath", pflag.Lookup("notifiers-slack-filepath")))
 
 	pflag.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.annotations", pflag.Lookup("injector-annotations")))
@@ -231,8 +239,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Printf("NOTIFIERS: %+v\n", cfg.Controller.Notifiers)
 	// event notifiers
-	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.SlackTokenFilePath, cfg.Controller.NotifierSinks...)
+	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.Notifiers)
 	if err != nil {
 		logger.Errorw("error(s) while creating notifiers", "error", err)
 	}

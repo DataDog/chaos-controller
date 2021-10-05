@@ -14,7 +14,14 @@ data:
       metricsAddr: "127.0.0.1:8080"
       leaderElection: true
       metricsSink: {{ .Values.controller.metricsSink | quote }}
-      notifierSinks: {{ .Values.controller.notifierSinks }}
+      notifiers:
+        common:
+          clustername: {{ .Values.controller.notifiers.common.clustername | quote }}
+        noop:
+          enabled: {{ .Values.controller.notifiers.noop.enabled }}
+        slack:
+          enabled: {{ .Values.controller.notifiers.slack.enabled }}
+          filepath: {{ .Values.controller.notifiers.slack.filepath | quote }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}

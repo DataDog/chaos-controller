@@ -6,8 +6,6 @@
 package eventnotifier
 
 import (
-	"fmt"
-
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/noop"
 	"github.com/DataDog/chaos-controller/eventnotifier/slack"
@@ -15,24 +13,27 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-type Context struct {
-	Cluster string
-}
-
 type Notifier interface {
 	GetNotifierName() string
 	NotifyWarning(v1beta1.Disruption, corev1.Event) error
 }
 
 // GetNotifier returns an initiated Notifier instance
-func GetNotifier(driver types.NotifierDriver, filePath string) (notifier Notifier, err error) {
-	switch driver {
-	case types.NotifierDriverNoop:
-		notifier, err = noop.New(), nil
-	case types.NotifierDriverSlack:
-		notifier, err = slack.New(filePath)
-	default:
-		notifier, err = nil, fmt.Errorf("unsupported notifier driver: %s", driver)
+func GetNotifiers(config types.NotifiersConfig) (notifiers []Notifier, err error) {
+	err = nil
+
+	if config.Noop.Enabled {
+		not := noop.New()
+		notifiers = append(notifiers, not)
+	}
+
+	if config.Slack.Enabled {
+		not, slackErr := slack.New(config.Slack.Filepath)
+		if slackErr != nil {
+			err = slackErr
+		} else {
+			notifiers = append(notifiers, not)
+		}
 	}
 
 	return

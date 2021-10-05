@@ -11,7 +11,8 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier"
-	notifiertypes "github.com/DataDog/chaos-controller/eventnotifier/types"
+	eventnotifiertypes "github.com/DataDog/chaos-controller/eventnotifier/types"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	corev1 "k8s.io/api/core/v1"
@@ -26,27 +27,18 @@ type NotifierSink struct {
 }
 
 // RegisterNotifierSinks builds notifiers sinks and registers them on the given broadcaster
-func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, filePath string, driverTypes ...string) error {
-	var resError error = nil
+func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, notifiersConfig eventnotifiertypes.NotifiersConfig) (err error) {
+	err = nil
 
 	client := mgr.GetClient()
 
-	for _, driver := range driverTypes {
-		ndriver := notifiertypes.NotifierDriver(driver)
-		notifier, err := eventnotifier.GetNotifier(ndriver, filePath)
+	notifiers, err := eventnotifier.GetNotifiers(notifiersConfig)
 
-		if err != nil {
-			if resError == nil {
-				resError = err
-			} else {
-				resError = fmt.Errorf("%w; "+err.Error(), resError)
-			}
-		} else {
-			broadcaster.StartRecordingToSink(&NotifierSink{client: client, notifier: notifier})
-		}
+	for _, notifier := range notifiers {
+		broadcaster.StartRecordingToSink(&NotifierSink{client: client, notifier: notifier})
 	}
 
-	return resError
+	return
 }
 
 func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {

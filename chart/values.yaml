@@ -13,7 +13,14 @@ images: # images and tag to pull for each component of the stack
 controller:
   deleteOnly: false # enable delete-only mode
   metricsSink: noop # metrics driver (noop or datadog)
-  notifierSinks: noop # notifier sinks list (slack, noop, both) - ex: "slack,noop"
+  notifiers:
+    common:
+      clustername: "minikube"
+    noop:
+      enabled: true
+    slack:
+      enabled: false
+      filepath: ""
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   expiredDisruptionGCDelay: 15m # time after a disruption expires before deleting it
   webhook: # admission webhook configuration
