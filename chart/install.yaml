@@ -44,7 +44,9 @@ data:
       metricsAddr: "127.0.0.1:8080"
       leaderElection: true
       metricsSink: "noop"
-      slackTokenFilePath: "/etc/chaos-slack-token"
+      notifiers:
+        noop:
+          enabled: true
       deleteOnly: false
       imagePullSecrets: false
       defaultDuration: 1h

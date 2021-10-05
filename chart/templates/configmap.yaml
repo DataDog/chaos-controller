@@ -16,12 +16,12 @@ data:
       metricsSink: {{ .Values.controller.metricsSink | quote }}
       notifiers:
         common:
-          clustername: {{ .Values.controller.notifiers.common.clustername | quote }}
+          clustername: {{ .Values.controller.notifiers.common.clusterName | quote }}
         noop:
           enabled: {{ .Values.controller.notifiers.noop.enabled }}
         slack:
           enabled: {{ .Values.controller.notifiers.slack.enabled }}
-          filepath: {{ .Values.controller.notifiers.slack.filepath | quote }}
+          tokenFilepath: {{ .Values.controller.notifiers.slack.tokenFilepath | quote }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}

@@ -15,12 +15,12 @@ controller:
   metricsSink: noop # metrics driver (noop or datadog)
   notifiers:
     common:
-      clustername: "minikube"
+      clusterName: "minikube"
     noop:
       enabled: true
     slack:
       enabled: false
-      filepath: ""
+      tokenFilepath: ""
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   expiredDisruptionGCDelay: 15m # time after a disruption expires before deleting it
   webhook: # admission webhook configuration

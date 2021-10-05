@@ -151,8 +151,8 @@ func main() {
 	pflag.BoolVar(&cfg.Controller.Notifiers.Slack.Enabled, "notifiers-slack-enabled", false, "Enabler toggle for the Slack notifier (defaulted to false)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.slack.enabled", pflag.Lookup("notifiers-slack-enabled")))
 
-	pflag.StringVar(&cfg.Controller.Notifiers.Slack.TokenFilepath, "notifiers-slack-filepath", "", "File path of the API token for the Slack notifier (defaulted to false)")
-	handleFatalError(viper.BindPFlag("controller.notifiers.slack.filepath", pflag.Lookup("notifiers-slack-filepath")))
+	pflag.StringVar(&cfg.Controller.Notifiers.Slack.TokenFilepath, "notifiers-slack-tokenfilepath", "", "File path of the API token for the Slack notifier (defaulted to empty string)")
+	handleFatalError(viper.BindPFlag("controller.notifiers.slack.tokenFilepath", pflag.Lookup("notifiers-slack-tokenfilepath")))
 
 	pflag.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.annotations", pflag.Lookup("injector-annotations")))
