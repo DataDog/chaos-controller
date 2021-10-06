@@ -9,7 +9,6 @@ package container
 // being able to return a container PID from its ID
 type Runtime interface {
 	PID(id string) (uint32, error)
-	CgroupPath(id string) (string, error)
 	HostPath(id, path string) (string, error)
 	Name(id string) (string, error)
 }

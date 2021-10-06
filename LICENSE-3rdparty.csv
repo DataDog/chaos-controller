@@ -88,6 +88,8 @@ github.com/containerd/fifo,github.com/containerd/fifo,Apache-2.0
 github.com/containerd/ttrpc,github.com/containerd/ttrpc,Apache-2.0
 github.com/containerd/typeurl,github.com/containerd/typeurl,Apache-2.0
 github.com/coreos/go-iptables,github.com/coreos/go-iptables/iptables,Apache-2.0
+github.com/coreos/go-systemd/v22,github.com/coreos/go-systemd/v22/dbus,Apache-2.0
+github.com/cyphar/filepath-securejoin,github.com/cyphar/filepath-securejoin,BSD-3-Clause
 github.com/davecgh/go-spew,github.com/davecgh/go-spew/spew,ISC
 github.com/docker/distribution,github.com/docker/distribution/digestset,Apache-2.0
 github.com/docker/distribution,github.com/docker/distribution/reference,Apache-2.0
@@ -119,6 +121,7 @@ github.com/evanphx/json-patch,github.com/evanphx/json-patch,BSD-3-Clause
 github.com/fsnotify/fsnotify,github.com/fsnotify/fsnotify,BSD-3-Clause
 github.com/ghodss/yaml,github.com/ghodss/yaml,MIT
 github.com/go-logr/logr,github.com/go-logr/logr,Apache-2.0
+github.com/godbus/dbus/v5,github.com/godbus/dbus/v5,BSD-2-Clause
 github.com/gogo/googleapis,github.com/gogo/googleapis/google/rpc,Apache-2.0
 github.com/gogo/protobuf,github.com/gogo/protobuf/gogoproto,BSD-3-Clause
 github.com/gogo/protobuf,github.com/gogo/protobuf/proto,BSD-3-Clause
@@ -165,6 +168,7 @@ github.com/mgutz/ansi,github.com/mgutz/ansi,MIT
 github.com/miekg/dns,github.com/miekg/dns,BSD-3-Clause
 github.com/mitchellh/go-homedir,github.com/mitchellh/go-homedir,MIT
 github.com/mitchellh/mapstructure,github.com/mitchellh/mapstructure,MIT
+github.com/moby/sys/mountinfo,github.com/moby/sys/mountinfo,Apache-2.0
 github.com/modern-go/concurrent,github.com/modern-go/concurrent,Apache-2.0
 github.com/modern-go/reflect2,github.com/modern-go/reflect2,Apache-2.0
 github.com/nxadm/tail,github.com/nxadm/tail,MIT
@@ -208,7 +212,12 @@ github.com/opencontainers/go-digest,github.com/opencontainers/go-digest,Apache-2
 github.com/opencontainers/image-spec,github.com/opencontainers/image-spec/identity,Apache-2.0
 github.com/opencontainers/image-spec,github.com/opencontainers/image-spec/specs-go,Apache-2.0
 github.com/opencontainers/image-spec,github.com/opencontainers/image-spec/specs-go/v1,Apache-2.0
+github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/cgroups,Apache-2.0
+github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/cgroups/fscommon,Apache-2.0
+github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/configs,Apache-2.0
+github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/devices,Apache-2.0
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/user,Apache-2.0
+github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/userns,Apache-2.0
 github.com/opencontainers/runtime-spec,github.com/opencontainers/runtime-spec/specs-go,Apache-2.0
 github.com/opencontainers/selinux,github.com/opencontainers/selinux/go-selinux,Apache-2.0
 github.com/opencontainers/selinux,github.com/opencontainers/selinux/go-selinux/label,Apache-2.0
