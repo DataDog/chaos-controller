@@ -8,7 +8,6 @@ package container
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	dockerlib "github.com/docker/docker/client"
 )
@@ -44,31 +43,6 @@ func (d dockerRuntime) PID(id string) (uint32, error) {
 	}
 
 	return uint32(ci.State.Pid), nil
-}
-
-func (d dockerRuntime) CgroupPath(id string) (string, error) {
-	// inspect container
-	ci, err := d.client.ContainerInspect(context.Background(), id)
-	if err != nil {
-		return "", fmt.Errorf("error while loading given container: %w", err)
-	}
-
-	// Assumes default cgroupfs cgroup driver, looks like: /kubepods/burstable/pod89987a43-773a-48a6-8fbd-6464c8d84d13
-	path := ci.HostConfig.CgroupParent
-
-	// systemd cgroup driver, looks like: kubepods-besteffort-pod6c35b3b9_e1cf_491e_a79e_c1e756bc34c7.slice
-	if !strings.Contains(path, "/") {
-		// parse cgroup parent
-		parts := strings.Split(ci.HostConfig.CgroupParent, "-")
-		if len(parts) != 3 {
-			return "", fmt.Errorf("unexpected cgroup format: %s", path)
-		}
-
-		// path is like: kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod6c35b3b9_e1cf_491e_a79e_c1e756bc34c7.slice
-		path = fmt.Sprintf("kubepods.slice/%s-%s.slice/%s", parts[0], parts[1], path)
-	}
-
-	return path, nil
 }
 
 func (d dockerRuntime) HostPath(id, path string) (string, error) {
