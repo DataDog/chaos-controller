@@ -38,7 +38,6 @@ archives:
     - LICENSE
     - LICENSE-3rdparty.csv
     - NOTICE
-    - CHANGELOG.md
     - README.md
     - docs/*
   - id: chaosli
