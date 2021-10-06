@@ -73,7 +73,6 @@ type controllerConfig struct {
 	LeaderElection           bool                          `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
-	SlackTokenFilePath       string                        `json:"slackTokenFilePath"`
 }
 
 type controllerWebhookConfig struct {
