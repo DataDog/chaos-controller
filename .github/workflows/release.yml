@@ -24,31 +24,3 @@ jobs:
           args: release --rm-dist --skip-sign
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  changelog:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          ref: main
-          fetch-depth: 0
-      - name: Generate changelog
-        uses: charmixer/auto-changelog-action@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Commit changelog
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git commit -m "Update CHANGELOG" -a
-      - name: Push changelog
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: release_changelog_${{ github.sha }}
-      - name: Open changelog pull request
-        uses: vsoch/pull-request-action@1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PULL_REQUEST_FROM_BRANCH: release_changelog_${{ github.sha }}
-          PULL_REQUEST_BRANCH: main

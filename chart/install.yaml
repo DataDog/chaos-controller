@@ -53,7 +53,7 @@ data:
         host: ""
         port: 9443
     injector:
-      image: "datadog/chaos-injector:4.5.0"
+      image: "datadog/chaos-injector:4.5.1"
       serviceAccount:
         name: "chaos-injector"
         namespace: "chaos-engineering"
@@ -62,7 +62,7 @@ data:
         kubeDns: "off"
     handler:
       enabled: true
-      image: "datadog/chaos-handler:4.5.0"
+      image: "datadog/chaos-handler:4.5.1"
       timeout: "1m"
 ---
 # Source: chaos-controller/templates/crds/chaos.datadoghq.com_disruptions.yaml
@@ -658,7 +658,7 @@ spec:
         - containerPort: 8443
           name: https
       - name: manager
-        image: datadog/chaos-controller:4.5.0
+        image: datadog/chaos-controller:4.5.1
         imagePullPolicy: IfNotPresent
         command:
         - /usr/local/bin/manager

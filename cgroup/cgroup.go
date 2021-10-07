@@ -28,23 +28,27 @@ type Manager interface {
 
 type manager struct {
 	dryRun bool
-	path   string
+	paths  map[string]string
 	mount  string
-	cgroup *ContainerCgroup
 	log    *zap.SugaredLogger
 }
 
 // NewManager creates a new cgroup manager from the given cgroup root path
-func NewManager(dryRun bool, cgroup *ContainerCgroup, path string, log *zap.SugaredLogger) (Manager, error) {
+func NewManager(dryRun bool, pid uint32, log *zap.SugaredLogger) (Manager, error) {
 	mount, ok := os.LookupEnv(env.InjectorMountCgroup)
 	if !ok {
 		return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountCgroup)
 	}
 
+	// create cgroups manager
+	cgroupPaths, err := parse(fmt.Sprintf("/proc/%d/cgroup", pid))
+	if err != nil {
+		return nil, err
+	}
+
 	return manager{
 		dryRun: dryRun,
-		cgroup: cgroup,
-		path:   path,
+		paths:  cgroupPaths,
 		mount:  mount,
 		log:    log,
 	}, nil
@@ -88,53 +92,49 @@ func (m manager) write(path, data string) error {
 }
 
 // generatePath generates a path within the cgroup like /<mount>/<kind>/<path (kubepods)>
-func (m manager) generatePath(kind string) string {
-	var foundPath string
-
-	generatedPath := fmt.Sprintf("%s%s/%s", m.mount, kind, m.path)
-
-	if m.cgroup != nil {
-		foundPath = fmt.Sprintf("%s%s/%s", m.mount, kind, m.cgroup.Paths[kind])
-	} else {
-		foundPath = fmt.Sprintf("%s%s/", m.mount, kind)
+func (m manager) generatePath(kind string) (string, error) {
+	kindPath, found := m.paths[kind]
+	if !found {
+		return "", fmt.Errorf("cgroup path not found for kind %s", kind)
 	}
 
-	if generatedPath != foundPath {
-		m.log.Infow("container runtime generated path does not match found cgroup path",
-			"generatedPath", generatedPath,
-			"foundPath", foundPath,
-		)
-	}
+	generatedPath := fmt.Sprintf("%s%s/%s", m.mount, kind, kindPath)
 
-	if _, err := os.Stat(generatedPath); os.IsNotExist(err) {
-		m.log.Infow("container runtime generated path does not exist, using found path instead",
-			"generatedPath", generatedPath,
-			"foundPath", foundPath,
-		)
-
-		return foundPath
-	}
-
-	return generatedPath
+	return generatedPath, nil
 }
 
 // Read reads the given cgroup file data and returns the content as a string
 func (m manager) Read(kind, file string) (string, error) {
-	path := fmt.Sprintf("%s/%s", m.generatePath(kind), file)
+	kindPath, err := m.generatePath(kind)
+	if err != nil {
+		return "", err
+	}
+
+	path := fmt.Sprintf("%s/%s", kindPath, file)
 
 	return m.read(path)
 }
 
 // Write writes the given data to the given cgroup kind
 func (m manager) Write(kind, file, data string) error {
-	path := fmt.Sprintf("%s/%s", m.generatePath(kind), file)
+	kindPath, err := m.generatePath(kind)
+	if err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("%s/%s", kindPath, file)
 
 	return m.write(path, data)
 }
 
 // Exists returns true if the given cgroup exists, false otherwise
 func (m manager) Exists(kind string) (bool, error) {
-	path := fmt.Sprintf("%s/cgroup.procs", m.generatePath(kind))
+	kindPath, err := m.generatePath(kind)
+	if err != nil {
+		return false, err
+	}
+
+	path := fmt.Sprintf("%s/cgroup.procs", kindPath)
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -156,7 +156,12 @@ func (m manager) Join(kind string, pid int, inherit bool) error {
 		file = "cgroup.procs"
 	}
 
-	path := fmt.Sprintf("%s/%s", m.generatePath(kind), file)
+	kindPath, err := m.generatePath(kind)
+	if err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("%s/%s", kindPath, file)
 
 	return m.write(path, strconv.Itoa(pid))
 }
@@ -170,14 +175,24 @@ func (m manager) diskThrottle(path string, identifier, bps int) error {
 
 // DiskThrottleRead adds a disk throttle on read operations to the given disk identifier
 func (m manager) DiskThrottleRead(identifier, bps int) error {
-	path := fmt.Sprintf("%s/blkio.throttle.read_bps_device", m.generatePath("blkio"))
+	kindPath, err := m.generatePath("blkio")
+	if err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("%s/blkio.throttle.read_bps_device", kindPath)
 
 	return m.diskThrottle(path, identifier, bps)
 }
 
 // DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
 func (m manager) DiskThrottleWrite(identifier, bps int) error {
-	path := fmt.Sprintf("%s/blkio.throttle.write_bps_device", m.generatePath("blkio"))
+	kindPath, err := m.generatePath("blkio")
+	if err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf("%s/blkio.throttle.write_bps_device", kindPath)
 
 	return m.diskThrottle(path, identifier, bps)
 }
