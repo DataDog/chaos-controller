@@ -49,7 +49,7 @@ func NewDisruptionListener() (*DisruptionListener, error) {
 	return &d, err
 }
 
-// SendDisruption receives a disruption specfication and configures the interceptor to spoof responses to specified endpoints.
+// SendDisruption receives a disruption specification and configures the interceptor to spoof responses to specified endpoints.
 func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.DisruptionSpec) (*emptypb.Empty, error) {
 	if ds == nil {
 		d.Logger.Error("cannot execute SendDisruption when DisruptionSpec is nil")

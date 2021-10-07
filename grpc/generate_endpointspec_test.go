@@ -20,42 +20,43 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 	)
 
 	Context("with five alterations which add up to less than 100", func() {
-		BeforeEach(func() {
-			endpointAlterations = []chaosv1beta1.EndpointAlteration{
-				{
-					TargetEndpoint:   "service/api_1",
-					ErrorToReturn:    "CANCELED",
-					OverrideToReturn: "",
-					QueryPercent:     25,
-				},
-				{
-					TargetEndpoint:   "service/api_2",
-					ErrorToReturn:    "PERMISSION_DENIED",
-					OverrideToReturn: "",
-					QueryPercent:     50,
-				},
-				{
-					TargetEndpoint:   "service/api_1",
-					ErrorToReturn:    "ALREADY_EXISTS",
-					OverrideToReturn: "",
-					QueryPercent:     20,
-				},
-				{
-					TargetEndpoint:   "service/api_2",
-					ErrorToReturn:    "NOT_FOUND",
-					OverrideToReturn: "",
-					QueryPercent:     0,
-				},
-				{
-					TargetEndpoint:   "service/api_1",
-					ErrorToReturn:    "",
-					OverrideToReturn: "{}",
-					QueryPercent:     0,
-				},
-			}
+		endpointAlterations = []chaosv1beta1.EndpointAlteration{
+			{
+				TargetEndpoint:   "service/api_1",
+				ErrorToReturn:    "CANCELED",
+				OverrideToReturn: "",
+				QueryPercent:     25,
+			},
+			{
+				TargetEndpoint:   "service/api_2",
+				ErrorToReturn:    "PERMISSION_DENIED",
+				OverrideToReturn: "",
+				QueryPercent:     50,
+			},
+			{
+				TargetEndpoint:   "service/api_1",
+				ErrorToReturn:    "ALREADY_EXISTS",
+				OverrideToReturn: "",
+				QueryPercent:     20,
+			},
+			{
+				TargetEndpoint:   "service/api_2",
+				ErrorToReturn:    "NOT_FOUND",
+				OverrideToReturn: "",
+				QueryPercent:     0,
+			},
+			{
+				TargetEndpoint:   "service/api_1",
+				ErrorToReturn:    "",
+				OverrideToReturn: "{}",
+				QueryPercent:     0,
+			},
+		}
 
-			var err error
-			endpointSpec = GenerateEndpointSpecs(endpointAlterations)
+		var err error
+		endpointSpec = GenerateEndpointSpecs(endpointAlterations)
+
+		JustBeforeEach(func() {
 			Expect(err).To(BeNil())
 		})
 
@@ -64,7 +65,7 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 		})
 
 		It("should create and endpointSpec for api_1 with 3 elements", func() {
-			// handling that the results of `endpointSpec` is indeterminate
+			// handling that the order of `endpointSpec` is indeterminate
 			var endpointSpec_1 *pb.EndpointSpec
 			if endpointSpec[0].TargetEndpoint == "service/api_1" {
 				endpointSpec_1 = endpointSpec[0]
@@ -102,7 +103,7 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 		})
 
 		It("should create and endpointSpec for api_2 with 2 elements", func() {
-			// handling that the results of `endpointSpec` is indeterminate
+			// handling that the order of `endpointSpec` is indeterminate
 			var endpointSpec_2 *pb.EndpointSpec
 			if endpointSpec[0].TargetEndpoint == "service/api_2" {
 				endpointSpec_2 = endpointSpec[0]

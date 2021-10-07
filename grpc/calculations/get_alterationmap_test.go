@@ -18,21 +18,22 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationM
 		alterationMap                  []AlterationConfiguration
 	)
 
+	altCfgs = []AlterationConfiguration{
+		{
+			ErrorToReturn:    "CANCELED",
+			OverrideToReturn: "",
+		},
+		{
+			ErrorToReturn:    "ALREADY_EXISTS",
+			OverrideToReturn: "",
+		},
+		{
+			ErrorToReturn:    "",
+			OverrideToReturn: "{}",
+		},
+	}
+
 	BeforeEach(func() {
-		altCfgs = []AlterationConfiguration{
-			{
-				ErrorToReturn:    "CANCELED",
-				OverrideToReturn: "",
-			},
-			{
-				ErrorToReturn:    "ALREADY_EXISTS",
-				OverrideToReturn: "",
-			},
-			{
-				ErrorToReturn:    "",
-				OverrideToReturn: "{}",
-			},
-		}
 		alterationConfigToQueryPercent = make(map[AlterationConfiguration]QueryPercent)
 	})
 
@@ -66,7 +67,7 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationM
 				Expect(len(alterationMap)).To(Equal(70))
 			})
 
-			By("having three alteration types each with the righ number of configurations", func() {
+			By("having three alteration types each with the right number of configurations", func() {
 				canceled_cnt := 0
 				already_exists_cnt := 0
 				empty_cnt := 0
@@ -101,11 +102,11 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationM
 
 			alterationMap = ConvertQueryPercentByAltConfigToAlterationMap(alterationConfigToQueryPercent)
 
-			By("having 70 entries", func() {
+			By("having 100 entries", func() {
 				Expect(len(alterationMap)).To(Equal(100))
 			})
 
-			By("having three alteration types each with the righ number of configurations", func() {
+			By("having three alteration types each with the right number of configurations", func() {
 				canceled_cnt := 0
 				already_exists_cnt := 0
 				empty_cnt := 0

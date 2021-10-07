@@ -24,7 +24,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 	})
 
 	Context("Error and override are both defined", func() {
-		It("errors becuase exactly one of error or override must be defined for an alteration", func() {
+		It("errors because exactly one of error or override must be defined for an alteration", func() {
 			spec.Endpoints = []v1beta1.EndpointAlteration{
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
@@ -40,7 +40,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 	})
 
 	Context("Error and override are both undefined", func() {
-		It("errors becuase exactly one of error or override must be defined for an alteration", func() {
+		It("errors because exactly one of error or override must be defined for an alteration", func() {
 			spec.Endpoints = []v1beta1.EndpointAlteration{
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
@@ -57,7 +57,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 
 	Describe("One target endpoint", func() {
 		Context("with query percentage 100", func() {
-			It("Does validate", func() {
+			It("Passes validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
 						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
@@ -72,7 +72,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		})
 
 		Context("with query percentage 99", func() {
-			It("Does validate", func() {
+			It("Passes validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
 						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
@@ -88,7 +88,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 	})
 
 	Context("Two separate target endpoints each have query percentage 100", func() {
-		It("Does validate", func() {
+		It("Passes validation", func() {
 			spec.Endpoints = []v1beta1.EndpointAlteration{
 				{
 					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
@@ -110,7 +110,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 
 	Describe("One target endpoint with two alterations", func() {
 		Context("which in total have query percentage 100", func() {
-			It("Does validate", func() {
+			It("Passes validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
 						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
@@ -131,7 +131,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		})
 
 		Context("which in total have query percentage less than 100", func() {
-			It("Does validate", func() {
+			It("Passes validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
 						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
@@ -152,7 +152,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		})
 
 		Context("which in total have query percentage greater than 100", func() {
-			It("Does not validate", func() {
+			It("Fails validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
 						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
@@ -175,7 +175,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 
 	Describe("Alterations with ErrorToReturn", func() {
 		Context("which are not in the standard grpc errors", func() {
-			It("Do not validate with ddmark", func() {
+			It("Fails ddmark validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
 						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
@@ -192,7 +192,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		})
 
 		Context("which are in the standard grpc errors", func() {
-			It("Do validate with ddmarks", func() {
+			It("Passes ddmark validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{}
 
 				for errorString := range v1beta1.ErrorMap {
@@ -213,7 +213,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 				Expect(len(err)).To(Equal(0))
 			})
 
-			It("Do validate", func() {
+			It("Passes validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
 						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
@@ -294,7 +294,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		})
 
 		Context("In the standard grpc errors but which in total exceed 100%", func() {
-			It("Do not validate", func() {
+			It("Fails validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
 						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
