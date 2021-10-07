@@ -104,6 +104,10 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 
 // helper for Slack notifier
 func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
+	if dis.Status.UserInfo == nil {
+		return fmt.Errorf("slack notifier: no userinfo in disruption %+v", dis.Status)
+	}
+
 	p1, err := n.client.GetUserByEmail(dis.Status.UserInfo.Username)
 	if err != nil {
 		return err

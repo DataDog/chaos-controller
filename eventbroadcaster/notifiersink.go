@@ -11,6 +11,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier"
+	"go.uber.org/zap"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -23,10 +24,11 @@ import (
 type NotifierSink struct {
 	client   client.Client
 	notifier eventnotifier.Notifier
+	logger   *zap.SugaredLogger
 }
 
 // RegisterNotifierSinks builds notifiers sinks and registers them on the given broadcaster
-func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, notifiersConfig eventnotifier.NotifiersConfig) (err error) {
+func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, notifiersConfig eventnotifier.NotifiersConfig, logger *zap.SugaredLogger) (err error) {
 	err = nil
 
 	client := mgr.GetClient()
@@ -34,7 +36,7 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 	notifiers, err := eventnotifier.GetNotifiers(notifiersConfig)
 
 	for _, notifier := range notifiers {
-		broadcaster.StartRecordingToSink(&NotifierSink{client: client, notifier: notifier})
+		broadcaster.StartRecordingToSink(&NotifierSink{client: client, notifier: notifier, logger: logger})
 	}
 
 	return
@@ -48,7 +50,7 @@ func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 	}
 
 	if err = s.parseEventToNotifier(event, dis); err != nil {
-		fmt.Println(err)
+		s.logger.Error(err)
 		return event, nil
 	}
 
@@ -75,10 +77,6 @@ func (s *NotifierSink) getDisruption(event *corev1.Event) (v1beta1.Disruption, e
 		return v1beta1.Disruption{}, err
 	}
 
-	if dis.Status.UserInfo == nil {
-		return v1beta1.Disruption{}, fmt.Errorf("eventnotifier: no userinfo in disruption %v", dis)
-	}
-
 	return dis, nil
 }
 
@@ -90,7 +88,7 @@ func (s *NotifierSink) parseEventToNotifier(event *corev1.Event, dis v1beta1.Dis
 	case corev1.EventTypeNormal:
 		err = nil
 	default:
-		err = fmt.Errorf("event: not a notifiable event")
+		err = fmt.Errorf("notifier: not a notifiable event")
 	}
 
 	return
