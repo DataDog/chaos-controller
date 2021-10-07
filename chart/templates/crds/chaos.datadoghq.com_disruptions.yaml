@@ -17,6 +17,8 @@ spec:
     - dis
     singular: disruption
   scope: Namespaced
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       description: Disruption is the Schema for the disruptions API

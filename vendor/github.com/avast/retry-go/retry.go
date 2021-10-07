@@ -43,7 +43,13 @@ SEE ALSO
 
 * [matryer/try](https://github.com/matryer/try) - very popular package, nonintuitive interface (for me)
 
+
 BREAKING CHANGES
+
+3.0.0
+
+* `DelayTypeFunc` accepts a new parameter `err` - this breaking change affects only your custom Delay Functions. This change allow [make delay functions based on error](examples/delay_based_on_error_test.go).
+
 
 1.0.2 -> 2.0.0
 
@@ -65,6 +71,7 @@ BREAKING CHANGES
 package retry
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -81,6 +88,7 @@ var (
 	DefaultRetryIf       = IsRecoverable
 	DefaultDelayType     = CombineDelay(BackOffDelay, RandomDelay)
 	DefaultLastErrorOnly = false
+	DefaultContext       = context.Background()
 )
 
 func Do(retryableFunc RetryableFunc, opts ...Option) error {
@@ -95,11 +103,16 @@ func Do(retryableFunc RetryableFunc, opts ...Option) error {
 		retryIf:       DefaultRetryIf,
 		delayType:     DefaultDelayType,
 		lastErrorOnly: DefaultLastErrorOnly,
+		context:       DefaultContext,
 	}
 
 	//apply opts
 	for _, opt := range opts {
 		opt(config)
+	}
+
+	if err := config.context.Err(); err != nil {
+		return err
 	}
 
 	var errorLog Error
@@ -127,11 +140,17 @@ func Do(retryableFunc RetryableFunc, opts ...Option) error {
 				break
 			}
 
-			delayTime := config.delayType(n, config)
+			delayTime := config.delayType(n, err, config)
 			if config.maxDelay > 0 && delayTime > config.maxDelay {
 				delayTime = config.maxDelay
 			}
-			time.Sleep(delayTime)
+
+			select {
+			case <-time.After(delayTime):
+			case <-config.context.Done():
+				return config.context.Err()
+			}
+
 		} else {
 			return nil
 		}

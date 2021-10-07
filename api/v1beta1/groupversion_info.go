@@ -1,9 +1,5 @@
-// Unless explicitly stated otherwise all files in this repository are licensed
-// under the Apache License Version 2.0.
-// This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
-
 /*
+Copyright 2021.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,8 +15,8 @@ limitations under the License.
 */
 
 // Package v1beta1 contains API Schema definitions for the chaos v1beta1 API group
-// +kubebuilder:object:generate=true
-// +groupName=chaos.datadoghq.com
+//+kubebuilder:object:generate=true
+//+groupName=chaos.datadoghq.com
 package v1beta1
 
 import (

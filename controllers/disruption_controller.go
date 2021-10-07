@@ -1,9 +1,5 @@
-// Unless explicitly stated otherwise all files in this repository are licensed
-// under the Apache License Version 2.0.
-// This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
-
 /*
+Copyright 2021.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,6 +25,10 @@ import (
 	"strings"
 	"time"
 
+	chaosapi "github.com/DataDog/chaos-controller/api"
+	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/targetselector"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/cenkalti/backoff"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -43,19 +43,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
-	"github.com/DataDog/chaos-controller/metrics"
-	"github.com/DataDog/chaos-controller/targetselector"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 const (
-	finalizerPrefix = "finalizer.chaos.datadoghq.com"
-)
-
-var (
+	finalizerPrefix     = "finalizer.chaos.datadoghq.com"
 	disruptionFinalizer = finalizerPrefix
 	chaosPodFinalizer   = finalizerPrefix + "/chaos-pod"
 )
@@ -80,16 +73,21 @@ type DisruptionReconciler struct {
 	ExpiredDisruptionGCDelay              time.Duration
 }
 
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
-// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
-// +kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
+//+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
+//+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
+//+kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
 
-// Reconcile loop
-func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+//
+// For more details, check Reconcile and its Result here:
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
+func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
@@ -126,6 +124,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
 		r.log.Errorw("error handling chaos pods termination", "error", err)
+
 		return ctrl.Result{}, err
 	}
 
@@ -190,6 +189,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// retrieve targets from label selector
 		if err := r.selectTargets(instance); err != nil {
 			r.log.Errorw("error selecting targets", "error", err)
+
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 		}
 
@@ -200,6 +200,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// start injections
 		if err := r.startInjection(instance); err != nil {
 			r.log.Errorw("error injecting the disruption", "error", err)
+
 			return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
 		}
 
@@ -213,9 +214,9 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
 			r.log.Infow("disruption is not fully injected yet, requeuing")
+
 			return ctrl.Result{Requeue: true}, nil
 		}
-
 		requeueDelay := time.Duration(math.Max(float64(calculateRemainingDurationSeconds(*instance)), r.ExpiredDisruptionGCDelay.Seconds())) * time.Second
 
 		r.log.Infow("requeuing disruption", "requeueDelay", requeueDelay.String())
@@ -291,8 +292,11 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		return false, err
 	}
 
-	// requeue the request if the disruption is not fully injected yet, so we can
+	// requeue the request if the disruption is not fully injected so we can
 	// eventually catch pods that are not ready yet but will be in the future
+	if status != chaostypes.DisruptionInjectionStatusInjected {
+		return false, nil
+	}
 
 	return status == chaostypes.DisruptionInjectionStatusInjected || status == chaostypes.DisruptionInjectionStatusPreviouslyInjected, nil
 }
@@ -755,7 +759,6 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// the signal sent to a pod becomes SIGKILL, which will interrupt any in-progress cleaning. By double this to 1 minute in the pod spec itself,
 	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
 	terminationGracePeriod := int64(60)
-
 	activeDeadlineSeconds := calculateRemainingDurationSeconds(*instance)
 
 	podSpec := corev1.PodSpec{
