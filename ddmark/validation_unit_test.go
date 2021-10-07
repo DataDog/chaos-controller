@@ -140,18 +140,21 @@ var _ = Describe("Validation Rules Cases", func() {
 	})
 
 	Context("ExclusiveFields test", func() {
+		type dummyStruct struct {
+			Field1 string
+			Field2 int
+			Field3 int
+		}
+
 		arr := []string{"Field1", "Field2", "Field3"}
 		excl := ExclusiveFields(arr)
 		var fakeObj dummyStruct
 
 		BeforeEach(func() {
-			i := 3
-			var pi *int = &i
-
 			fakeObj = dummyStruct{
 				Field1: "a",
 				Field2: 2,
-				Field3: pi,
+				Field3: 3,
 			}
 		})
 
@@ -171,12 +174,9 @@ var _ = Describe("Validation Rules Cases", func() {
 		})
 
 		It("accepts object with 0 fields", func() {
-			i := 0
-			var pi *int = &i
-
 			fakeObj.Field1 = ""
 			fakeObj.Field2 = 0
-			fakeObj.Field3 = pi
+			fakeObj.Field3 = 0
 			Expect(excl.ApplyRule(ValueOf(fakeObj))).To(BeNil())
 		})
 
