@@ -10,6 +10,7 @@ import (
 	"github.com/DataDog/chaos-controller/eventnotifier/noop"
 	"github.com/DataDog/chaos-controller/eventnotifier/slack"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -25,7 +26,7 @@ type Notifier interface {
 }
 
 // GetNotifier returns an initiated Notifier instance
-func GetNotifiers(config NotifiersConfig) (notifiers []Notifier, err error) {
+func GetNotifiers(config NotifiersConfig, logger *zap.SugaredLogger) (notifiers []Notifier, err error) {
 	err = nil
 
 	if config.Noop.Enabled {
@@ -34,7 +35,7 @@ func GetNotifiers(config NotifiersConfig) (notifiers []Notifier, err error) {
 	}
 
 	if config.Slack.Enabled {
-		not, slackErr := slack.New(config.Common, config.Slack)
+		not, slackErr := slack.New(config.Common, config.Slack, logger)
 		if slackErr != nil {
 			err = slackErr
 		} else {

@@ -8,6 +8,7 @@ package slack
 import (
 	"fmt"
 	"io/ioutil"
+	"net/mail"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/slack-go/slack"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -28,13 +30,15 @@ type Notifier struct {
 	client slack.Client
 	common types.NotifiersCommonConfig
 	config NotifierSlackConfig
+	logger *zap.SugaredLogger
 }
 
 // New Slack Notifier
-func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConfig) (*Notifier, error) {
+func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConfig, logger *zap.SugaredLogger) (*Notifier, error) {
 	not := &Notifier{
 		common: commonConfig,
 		config: slackConfig,
+		logger: logger,
 	}
 
 	tokenfile, err := os.Open(filepath.Clean(not.config.TokenFilepath))
@@ -108,9 +112,14 @@ func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, 
 		return fmt.Errorf("slack notifier: no userinfo in disruption %+v", dis.Name)
 	}
 
+	if _, err := mail.ParseAddress(dis.Status.UserInfo.Username); err != nil {
+		return nil
+	}
+
 	p1, err := n.client.GetUserByEmail(dis.Status.UserInfo.Username)
 	if err != nil {
-		return fmt.Errorf("slack notifier: %w", err)
+		n.logger.Warn(fmt.Errorf("slack notifier: user %s not found: %w", dis.Status.UserInfo.Username, err))
+		return nil
 	}
 
 	_, _, err = n.client.PostMessage(p1.ID,

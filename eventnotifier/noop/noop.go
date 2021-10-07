@@ -32,7 +32,7 @@ func (n *Notifier) GetNotifierName() string {
 
 // NotifyWarning generates a notification for generiv k8s Warning events
 func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
-	notify("warning: "+event.Name+" - "+event.Message, dis.Name)
+	notify("Notifier Warning: "+event.Reason+" - "+event.Message, dis.Name)
 
 	return nil
 }

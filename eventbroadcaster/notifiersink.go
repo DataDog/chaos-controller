@@ -33,7 +33,7 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 
 	client := mgr.GetClient()
 
-	notifiers, err := eventnotifier.GetNotifiers(notifiersConfig)
+	notifiers, err := eventnotifier.GetNotifiers(notifiersConfig, logger)
 
 	for _, notifier := range notifiers {
 		broadcaster.StartRecordingToSink(&NotifierSink{client: client, notifier: notifier, logger: logger})
