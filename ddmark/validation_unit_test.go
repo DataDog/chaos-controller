@@ -14,12 +14,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-type dummyStruct struct {
-	Field1 string
-	Field2 int
-	Field3 *int
-}
-
 var _ = Describe("Validation Rules Cases", func() {
 
 	Context("Maximum test", func() {
@@ -187,6 +181,12 @@ var _ = Describe("Validation Rules Cases", func() {
 	})
 
 	Context("LinkedFields test", func() {
+		type dummyStruct struct {
+			Field1 string
+			Field2 int
+			Field3 *int
+		}
+
 		arr := []string{"Field1", "Field2", "Field3"}
 		linked := LinkedFields(arr)
 		var fakeObj dummyStruct
