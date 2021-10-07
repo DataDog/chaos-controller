@@ -16,7 +16,7 @@ data:
       metricsSink: {{ .Values.controller.metricsSink | quote }}
       notifiers:
         common:
-          clustername: {{ .Values.controller.notifiers.common.clusterName | quote }}
+          clusterName: {{ .Values.controller.notifiers.common.clusterName | quote }}
         noop:
           enabled: {{ .Values.controller.notifiers.noop.enabled }}
         slack:

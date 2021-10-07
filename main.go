@@ -141,7 +141,7 @@ func main() {
 	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
 
 	pflag.StringVar(&cfg.Controller.Notifiers.Common.ClusterName, "notifiers-common-clustername", "", "Cluster Name for notifiers output")
-	handleFatalError(viper.BindPFlag("controller.notifiers.common.clustername", pflag.Lookup("notifiers-common-clustername")))
+	handleFatalError(viper.BindPFlag("controller.notifiers.common.clusterName", pflag.Lookup("notifiers-common-clustername")))
 
 	pflag.BoolVar(&cfg.Controller.Notifiers.Noop.Enabled, "notifiers-noop-enabled", true, "Enabler toggle for the NOOP notifier (defaulted to true)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.noop.enabled", pflag.Lookup("notifiers-noop-enabled")))
