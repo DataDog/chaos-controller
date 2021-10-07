@@ -16,6 +16,7 @@ spec:
     shortNames:
     - dis
     singular: disruption
+  preserveUnknownFields: false
   scope: Namespaced
   subresources:
     status: {}
