@@ -238,7 +238,7 @@ func main() {
 	}
 
 	// event notifiers
-	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.Notifiers)
+	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.Notifiers, logger)
 	if err != nil {
 		logger.Errorw("error(s) while creating notifiers", "error", err)
 	}
