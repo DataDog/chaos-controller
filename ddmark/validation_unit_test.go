@@ -201,35 +201,38 @@ var _ = Describe("Validation Rules Cases", func() {
 				Field3: pi,
 			}
 		})
+		It("validates object with all non-nil fields", func() {
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+		})
 
-		It("validates object with all fields (0 pointer not nil)", func() {
+		It("validates object with all nil fields", func() {
+			fakeObj.Field1 = ""
+			fakeObj.Field2 = 0
+			fakeObj.Field3 = nil
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+		})
+
+		It("validates object with all non-nil fields (0-value pointer int is not-nil)", func() {
 			i := 0
 			var pi *int = &i
 
-			fakeObj.Field1 = "a"
-			fakeObj.Field2 = 1
 			fakeObj.Field3 = pi
 			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
 		})
 
-		It("rejects object with one missing field (0 int is nil)", func() {
-			i := 1
-			var pi *int = &i
-
-			fakeObj.Field1 = "a"
-			fakeObj.Field2 = 0
-			fakeObj.Field3 = pi
+		It("rejects object with nil pointer value (nil-value pointer int is nil)", func() {
+			fakeObj.Field3 = nil
 			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
 		})
 
-		It("validates object with nul Field1", func() {
-			i := 1
-			var pi *int = &i
-
+		It("rejects object with empty string value (empty-value string is nil)", func() {
 			fakeObj.Field1 = ""
-			fakeObj.Field2 = 1
-			fakeObj.Field3 = pi
-			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+		})
+
+		It("rejects object with one missing field (0-value int is nil)", func() {
+			fakeObj.Field2 = 0
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
 		})
 	})
 })

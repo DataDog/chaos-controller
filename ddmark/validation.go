@@ -152,8 +152,8 @@ func (l LinkedFields) ApplyRule(fieldvalue reflect.Value) error {
 		}
 	}
 
-	if structMap[l[0]] != nil && matchCount != len(l) {
-		return fmt.Errorf("%v: if field %v isn't nil, all of the following field need to be defined: %v", ruleName(l), l[0], l)
+	if matchCount != 0 && matchCount != len(l) {
+		return fmt.Errorf("%v: all of the following fields need to be either nil of non-nil (currently unmatched): %v", ruleName(l), l)
 	}
 
 	return nil

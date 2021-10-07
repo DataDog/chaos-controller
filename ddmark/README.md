@@ -22,15 +22,11 @@ It also allows us to define custom rules to apply to our structures, and focus t
 * Call the `ValidateStruct` function, with the unmarshalled struct, the file path, and the full path of the packages containing the included structs definition (with markers embedded). Check `cli/chaosli/cmd/validate.go` for a functioning example.
 
 ## Markers Documentation
-
+### Field Markers (within structs)
 - Enum:
   - `// +ddmark:validation:Enum={<any>,<any>,...}`
   - Applies to: `<any>` field
   - Asserts field value is one of the given values of the Enum list
-- ExclusiveFields:
-  - `// +ddmark:validation:ExclusiveFields={<fieldName1>,<fieldName2>,...}`
-  - Applies to: `<struct>` type
-  - Asserts that if `<fieldname1>` can only be non-nil iff all of the other fields are `nil`
 - Maximum:
   - `// +ddmark:validation:Maximum=<int/uint>`
   - Applies to: `int/uint` field
@@ -43,3 +39,14 @@ It also allows us to define custom rules to apply to our structures, and focus t
   - `// +ddmark:validation:Required=<bool>`
   - Applies to: `<any>` field
   - Asserts the concerned field isn’t `nil` (or 0, “”, or other null value)
+
+### Type Markers (outside structs)
+- ExclusiveFields:
+  - `// +ddmark:validation:ExclusiveFields={<fieldName1>,<fieldName2>,...}`
+  - Applies to: any `<struct>` type
+  - Asserts that `<fieldname1>` can only be non-nil iff all of the other fields are `nil`
+- LinkedFields:
+  - `// +ddmark:validation:LinkedFields={<fieldName1>,<fieldName2>,...}`
+  - Applies to: any `<struct>` type
+  - Asserts the fields in the list are either all `nil` or all non-`nil`
+

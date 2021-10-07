@@ -166,7 +166,7 @@ exclusivefieldstest:
 	})
 
 	Context("LinkedFields Marker", func() {
-		It("checks out valid values", func() {
+		It("checks out valid all-non-nil values", func() {
 			var linkedfieldsValidYaml = `
 linkedfieldstest:
   strfield: aa
@@ -178,7 +178,19 @@ linkedfieldstest:
 			errorList := validateString(linkedfieldsValidYaml)
 			Expect(errorList).To(HaveLen(0))
 		})
-		It("rejects both errors", func() {
+		It("checks out valid all-nil values", func() {
+			var linkedfieldsValidYaml = `
+linkedfieldstest:
+  strfield:
+  pstrfield:
+  intfield: 0 # is nil
+  pintfield:  # is nil
+  aintfield:
+`
+			errorList := validateString(linkedfieldsValidYaml)
+			Expect(errorList).To(HaveLen(0))
+		})
+		It("rejects both errors - first fields", func() {
 			var linkedfieldsInvalidYaml = `
 linkedfieldstest:
   strfield: aa
@@ -190,13 +202,25 @@ linkedfieldstest:
 			errorList := validateString(linkedfieldsInvalidYaml)
 			Expect(errorList).To(HaveLen(2))
 		})
-		It("rejects one error, 0 value is nil on pointer", func() {
+		It("rejects both errors - second fields", func() {
+			var linkedfieldsInvalidYaml = `
+linkedfieldstest:
+  strfield: 
+  pstrfield: 
+  intfield: 1  # is non-nil
+  pintfield: 0 # is non-nil
+  aintfield:
+`
+			errorList := validateString(linkedfieldsInvalidYaml)
+			Expect(errorList).To(HaveLen(2))
+		})
+		It("rejects one error - 0 value is nil on pointer", func() {
 			var linkedfieldsInvalidYaml = `
 linkedfieldstest:
   strfield: aa
   pstrfield: aa
-  intfield: 0
-  pintfield: 0
+  intfield: 0 	# is nil
+  pintfield: 0  # is non-nil
   aintfield: [1,2]
 `
 			errorList := validateString(linkedfieldsInvalidYaml)
