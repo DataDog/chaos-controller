@@ -20,7 +20,6 @@ const (
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
-// +ddmark:validation:LinkedFields={Delay,DelayJitter}
 type NetworkDisruptionSpec struct {
 	// +nullable
 	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
