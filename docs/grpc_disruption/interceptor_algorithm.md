@@ -154,7 +154,7 @@ PercentToAlteration {
 
 ### Setting 0 as query percentage
 
-Users should avoid explicitly setting `query_pct: 0`. Because the Kubebuilder infers 0 for omitted `int`s, this configuration is synonymous for the chaos-controller to not setting a `query_pct` at all. This means that the alteration with this `query_pct` setting would actually be applied to the remaining queries that have not yet be claimed by another alteration. There isn't a straight forward way to chaos-controller to discriminate an unset `query_pct` from one explicitly set to `0`, so users may be surprised by inputting the value `0` and receving many of errors with that input.
+It does not make sense for a user to set `query_pct: 0`, and if a user tries to do so, they will see the error applied to all unclaimed queries. This is because Kubebuilder sets ommitted `int`s to `0`, but chaos-controller interprets an omitted `query_pct` to mean "apply all".
 
 ### Many errors, but very few slots remaining
 
