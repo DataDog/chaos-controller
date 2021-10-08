@@ -39,10 +39,10 @@ type Enum []interface{}
 // Required can be applied to any field, and asserts this field will return an error if not provided
 type Required bool
 
-// ExclusiveFields can be applied to structs, and asserts if the first field is set, none of the others are
+// ExclusiveFields can be applied to structs, and asserts that the first field can only be non-'nil' iff all of the other fields are 'nil'
 type ExclusiveFields []string
 
-// LinkedFields can be applied to structs, and asserts that if the first field isn't nil, then non of the others are either
+// LinkedFields can be applied to structs, and asserts the fields in the list are either all 'nil' or all non-'nil'
 type LinkedFields []string
 
 func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
