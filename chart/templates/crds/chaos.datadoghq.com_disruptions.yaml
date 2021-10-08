@@ -162,7 +162,7 @@ spec:
                         type: string
                       override:
                         type: string
-                      query_pct:
+                      queryPercent:
                         maximum: 100
                         minimum: 0
                         type: integer

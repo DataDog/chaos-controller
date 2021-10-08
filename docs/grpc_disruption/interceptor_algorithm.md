@@ -19,13 +19,13 @@ spec:
     endpoints:
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         override: "{}"
-        query_pct: 5
+        queryPercent: 5
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         error: NOT_FOUND
-        query_pct: 5
+        queryPercent: 5
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         error: PERMISSION_DENIED
-        query_pct: 15
+        queryPercent: 15
 ```
 
 For the above specs, the calculated `PercentToAlteration` would look something like:

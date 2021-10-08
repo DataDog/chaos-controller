@@ -6,7 +6,7 @@ The `grpc` field offers a way to inject spoofed gRPC responses on the server-sid
 * `endpoints` is a list of endpoints to alter (a spoof configuration is referred to as an `alteration`)
   * `<endpoints[i]>.endpoint` indicates the fully qualified api endpoint to override (ex: `/<package>.<service>/<method>`)
   * Exactly one of `<endpoints[i]>.error` or `<endpoints[i]>.override` should be defined per endpoint alteration, and the only override currently supported is `{}` which returns `emptypb.Empty`
-  * `<endpoints[i]>.query_pct` defines (out of 100) how frequently this alteration should occur; you may have multiple alterations per endpoint, but you cannot specify a sum total of more than 100 percent for any given endpoint
+  * `<endpoints[i]>.queryPercent` defines (out of 100) how frequently this alteration should occur; you may have multiple alterations per endpoint, but you cannot specify a sum total of more than 100 percent for any given endpoint
 
 :warning: At this time, the gRPC disruption is still being BETA-tested.
 * The disruption is not guaranteed to support disrupting gRPC Streams or chaining the disruptionlistener interceptor on an existing interceptor.

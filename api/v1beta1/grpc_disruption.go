@@ -64,7 +64,7 @@ type EndpointAlteration struct {
 	// +kubebuilder:validation:Maximum=100
 	// +ddmark:validation:Minimum=0
 	// +ddmark:validation:Maximum=100
-	QueryPercent int `json:"query_pct,omitempty"`
+	QueryPercent int `json:"queryPercent,omitempty"`
 }
 
 // Validate validates that there are no missing hostnames or records for the given grpc disruption spec
@@ -85,7 +85,7 @@ func (s GRPCDisruptionSpec) Validate() error {
 			return errors.New("some list items in gRPC disruption are missing endpoints; specify a TargetEndpoint for each item in the list")
 		}
 
-		// check that endpoint is not already configured such that the sum of mangled queryPercents total to more than 100%
+		// check that endpoint is not already configured such that the sum of the queryPercents total to more than 100%
 		if alteration.QueryPercent == 0 {
 			if count, ok := unquantifiedAlts[alteration.TargetEndpoint]; ok {
 				unquantifiedAlts[alteration.TargetEndpoint] = count + 1
