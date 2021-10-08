@@ -77,7 +77,12 @@ func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.Dis
 		return nil, status.Error(codes.AlreadyExists, "Cannot apply new DisruptionSpec when DisruptionListener is already configured")
 	}
 
-	d.Configuration = config
+	select {
+	case <-ctx.Done():
+		d.Logger.Error("cannot apply new DisruptionSpec, gRPC request was canceled")
+	default:
+		d.Configuration = config
+	}
 
 	mutex.Unlock()
 
