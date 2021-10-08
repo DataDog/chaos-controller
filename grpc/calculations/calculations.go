@@ -18,21 +18,21 @@ import (
  * affected by each alteration. See docs/grpc_disruption/interceptor_algorithm.md for examples.
  */
 
-// GetAlterationMapFromAlterationSpec takes a series of alterations configured for a target endpoint where
+// FlattenAlterationSpec takes a series of alterations configured for a target endpoint where
 // assignments are distributed based on percentage odds (QueryPercent) expected for different return alterations and
 // returns a mapping from integers between 0 and some number less than 100 to the Alterations assigned to them
-func GetAlterationMapFromAlterationSpec(endpointSpecList []*pb.AlterationSpec) ([]AlterationConfiguration, error) {
-	alterationToQueryPercent, err := ConvertAltSpecToQueryPercentByAltConfig(endpointSpecList)
+func FlattenAlterationSpec(endpointSpecList []*pb.AlterationSpec) ([]AlterationConfiguration, error) {
+	alterationToQueryPercent, err := GetPercentagePerAlteration(endpointSpecList)
 	if err != nil {
 		return nil, err
 	}
 
-	return ConvertQueryPercentByAltConfigToAlterationMap(alterationToQueryPercent), nil
+	return FlattenAlterationMap(alterationToQueryPercent), nil
 }
 
-// ConvertAltSpecToQueryPercentByAltConfig takes a series of alterations configured for a target endpoint
+// GetPercentagePerAlteration takes a series of alterations configured for a target endpoint
 // and maps them to the percentage of queries which will be altered by it
-func ConvertAltSpecToQueryPercentByAltConfig(endpointSpecList []*pb.AlterationSpec) (map[AlterationConfiguration]QueryPercent, error) {
+func GetPercentagePerAlteration(endpointSpecList []*pb.AlterationSpec) (map[AlterationConfiguration]QueryPercent, error) {
 	// object returned indicates, for a particular AlterationConfiguration, what percentage of queries to which it should apply
 	mapping := make(map[AlterationConfiguration]QueryPercent)
 
@@ -96,9 +96,9 @@ func ConvertAltSpecToQueryPercentByAltConfig(endpointSpecList []*pb.AlterationSp
 	return mapping, nil
 }
 
-// ConvertQueryPercentByAltConfigToAlterationMap takes a mapping from alterationConfiguration to the percentage of requests
+// FlattenAlterationMap takes a mapping from alterationConfiguration to the percentage of requests
 // and returns a mapping from integers between 0 and some number less than 100 to Alterations assigned to them
-func ConvertQueryPercentByAltConfigToAlterationMap(alterationToQueryPercent map[AlterationConfiguration]QueryPercent) []AlterationConfiguration {
+func FlattenAlterationMap(alterationToQueryPercent map[AlterationConfiguration]QueryPercent) []AlterationConfiguration {
 	mapping := make([]AlterationConfiguration, 0, 100)
 
 	for altConfig, pct := range alterationToQueryPercent {

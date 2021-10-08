@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationMap using ConvertQueryPercentByAltConfigToAlterationMap", func() {
+var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationMap using FlattenAlterationMap", func() {
 	var (
 		altCfgs                        []AlterationConfiguration
 		alterationConfigToQueryPercent map[AlterationConfiguration]QueryPercent
@@ -41,7 +41,7 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationM
 		It("should create 15 (out of 100 potential) slots with alteration configurations", func() {
 			alterationConfigToQueryPercent[altCfgs[0]] = QueryPercent(15)
 
-			alterationMap = ConvertQueryPercentByAltConfigToAlterationMap(alterationConfigToQueryPercent)
+			alterationMap = FlattenAlterationMap(alterationConfigToQueryPercent)
 
 			Expect(len(alterationMap)).To(Equal(15))
 
@@ -61,7 +61,7 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationM
 			alterationConfigToQueryPercent[altCfgs[1]] = QueryPercent(20)
 			alterationConfigToQueryPercent[altCfgs[2]] = QueryPercent(35)
 
-			alterationMap = ConvertQueryPercentByAltConfigToAlterationMap(alterationConfigToQueryPercent)
+			alterationMap = FlattenAlterationMap(alterationConfigToQueryPercent)
 
 			By("having 70 entries", func() {
 				Expect(len(alterationMap)).To(Equal(70))
@@ -100,7 +100,7 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationM
 			alterationConfigToQueryPercent[altCfgs[1]] = QueryPercent(40)
 			alterationConfigToQueryPercent[altCfgs[2]] = QueryPercent(20)
 
-			alterationMap = ConvertQueryPercentByAltConfigToAlterationMap(alterationConfigToQueryPercent)
+			alterationMap = FlattenAlterationMap(alterationConfigToQueryPercent)
 
 			By("having 100 entries", func() {
 				Expect(len(alterationMap)).To(Equal(100))

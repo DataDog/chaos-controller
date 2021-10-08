@@ -57,7 +57,7 @@ In this case, we would return an Override with empty results for 5% of queries, 
 
 ### Multiple alterations with some undefined query percentages
 
-We may also be provided with a configuration where some set of `query_pct`s (query percentages) are defined, but not all..
+We may also be provided with a configuration where some set of `queryPercent`s (query percentages) are defined, but not all..
 
 ```
 spec:
@@ -65,14 +65,14 @@ spec:
     endpoints:
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         override: "{}"
-        query_pct: 25
+        queryPercent: 25
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         error: NOT_FOUND
       - endpoint: /chaos_dogfood.ChaosDogfood/order
         error: PERMISSION_DENIED
 ```
 
-As in the previous case, all alterations with a defined `query_pct` are allocated upfront. The algorithm keeps track of alterations which do not yet have `query_pct`s assigned, and splits the remaining (unconfigured) queries equally amongst these unassigned alterations.
+As in the previous case, all alterations with a defined `queryPercent` are allocated upfront. The algorithm keeps track of alterations which do not yet have `queryPercent`s assigned, and splits the remaining (unconfigured) queries equally amongst these unassigned alterations.
 
 ```
 PercentToAlteration {
@@ -152,7 +152,7 @@ PercentToAlteration {
 
 ### Setting 0 as query percentage
 
-It does not make sense for a user to set `query_pct: 0`, and if a user tries to do so, they will see the error applied to all unclaimed queries. This is because Kubebuilder sets ommitted `int`s to `0`, but chaos-controller interprets an omitted `query_pct` to mean "apply all".
+It does not make sense for a user to set `queryPercent: 0`, and if a user tries to do so, they will see the error applied to all unclaimed queries. This is because Kubebuilder sets ommitted `int`s to `0`, but chaos-controller interprets an omitted `queryPercent` to mean "apply all".
 
 ### Many errors, but very few slots remaining
 

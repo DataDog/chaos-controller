@@ -40,7 +40,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning no errors", func() {
 				var err error
-				QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
+				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err).To(BeNil())
 			})
 
@@ -93,7 +93,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 			}
 
 			By("returning an InvalidArgument error", func() {
-				_, err := ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
+				_, err := GetPercentagePerAlteration(alterationSpecs)
 				Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = cannot map alteration to assigned query percentage when ErrorToReturn and OverrideToReturn are both specified for a target endpoint"))
 			})
 		})
@@ -110,7 +110,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 			}
 
 			By("returning an InvalidArgument error", func() {
-				_, err := ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
+				_, err := GetPercentagePerAlteration(alterationSpecs)
 				Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = cannot map alteration to assigned query percentage without specifying either ErrorToReturn or OverrideToReturn for a target endpoint"))
 			})
 		})
@@ -138,7 +138,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning an Invalid Argument error", func() {
 				var err error
-				QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
+				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = assigned query percentages for this endpoint exceeds 100% of possible queries"))
 			})
 		})
@@ -155,7 +155,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning no errors", func() {
 				var err error
-				QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
+				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
 
 				Expect(err).To(BeNil())
 			})
@@ -189,7 +189,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning no errors", func() {
 				var err error
-				QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
+				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err).To(BeNil())
 			})
 
@@ -232,7 +232,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning no errors", func() {
 				var err error
-				QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
+				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err).To(BeNil())
 			})
 
@@ -317,7 +317,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning no errors", func() {
 				var err error
-				QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
+				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err).To(BeNil())
 			})
 		})
@@ -473,7 +473,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning an InvalidArgument error", func() {
 				var err error
-				QueryPercentByAltConfig, err = ConvertAltSpecToQueryPercentByAltConfig(alterationSpecs)
+				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = alterations must have at least 1% chance of occurring; endpoint has too many alterations configured so its total configurations exceed 100%"))
 			})
 		})
