@@ -13,8 +13,7 @@ import (
 
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	grpc_calcapi "github.com/DataDog/chaos-controller/grpc/calculations"
-	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
-	"github.com/DataDog/chaos-controller/log"
+	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -22,14 +21,9 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-/*
- * When a random integer from 0 to 100 is randomly selected, the PercentToAlteration mapping is referenced to
- * identify the disruption to apply to a query. The mapping represents user preference the proportion of queries
- * affected by each alteration. See docs/grpc_disruption/interceptor_algorithm.md for examples.
- */
-
 // DisruptionListener is a gRPC Service that can disrupt endpoints of a gRPC server.
-type DisruptionListener struct {
+// The interface it is implementing was generated in the grpc/disruptionlistener package.
+type ChaosDisruptionListener struct {
 	pb.UnimplementedDisruptionListenerServer
 	Configuration grpc_calcapi.DisruptionConfiguration
 	Logger        *zap.SugaredLogger
@@ -38,19 +32,17 @@ type DisruptionListener struct {
 var mutex sync.Mutex
 
 // NewDisruptionListener creates a new DisruptionListener Service with the logger instantiated and DisruptionConfiguration set to be empty
-func NewDisruptionListener() (*DisruptionListener, error) {
-	d := DisruptionListener{}
+func NewDisruptionListener(logger *zap.SugaredLogger) *ChaosDisruptionListener {
+	d := ChaosDisruptionListener{}
 
-	var err error
-	d.Logger, err = log.NewZapLogger()
-
+	d.Logger = logger
 	d.Configuration = grpc_calcapi.DisruptionConfiguration{}
 
-	return &d, err
+	return &d
 }
 
 // SendDisruption receives a disruption specification and configures the interceptor to spoof responses to specified endpoints.
-func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.DisruptionSpec) (*emptypb.Empty, error) {
+func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.DisruptionSpec) (*emptypb.Empty, error) {
 	if ds == nil {
 		d.Logger.Error("cannot execute SendDisruption when DisruptionSpec is nil")
 		return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption when DisruptionSpec is nil")
@@ -91,7 +83,7 @@ func (d *DisruptionListener) SendDisruption(ctx context.Context, ds *pb.Disrupti
 }
 
 // CleanDisruption removes all configured endpoint alterations for DisruptionListener.
-func (d *DisruptionListener) CleanDisruption(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+func (d *ChaosDisruptionListener) CleanDisruption(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	mutex.Lock()
 	d.Configuration = make(map[grpc_calcapi.TargetEndpoint]grpc_calcapi.EndpointConfiguration)
 	mutex.Unlock()
@@ -101,7 +93,7 @@ func (d *DisruptionListener) CleanDisruption(context.Context, *emptypb.Empty) (*
 
 // ChaosServerInterceptor is a function which can be registered on instantiation of a gRPC server
 // to intercept all traffic to the server and crosscheck their endpoints to disrupt them.
-func (d *DisruptionListener) ChaosServerInterceptor(ctx context.Context, req interface{},
+func (d *ChaosDisruptionListener) ChaosServerInterceptor(ctx context.Context, req interface{},
 	info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (response interface{}, err error) {
 	d.Logger.Debug("comparing with %s with %d endpoints", info.FullMethod, len(d.Configuration))
 

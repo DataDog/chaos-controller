@@ -1,6 +1,6 @@
 # gRPC Disruption Inceptor
 
-When the interceptor recognizes a query's endpoint as one which is actively getting disrupted, the interceptor generates a random integer from `0` to `100`, and consults a `PercentToAlteration` mapping to figure out what `alteration` to apply to a query response. This mapping is populated by the percentage odds a user configured for each alteration. Currently, we support two `alteration`s:
+When the interceptor recognizes a query's endpoint as one which is actively getting disrupted, the interceptor generates a random integer from `0` to `100`, and consults a `PercentToAlteration` mapping (represented underneath the hood as a golang slice with length <= 100) to figure out what `alteration` to apply to a query response. This mapping is populated by the percentage odds a user configured for each alteration. Currently, we support two `alteration`s:
 
 1. return a gRPC error code (such as `NotFound` or `PermissionDenied`)
 2. return an empty response (`emptypb.Empty`)
@@ -54,8 +54,6 @@ PercentToAlteration {
 ```
 
 In this case, we would return an Override with empty results for 5% of queries, a `NOT_FOUND` error for 5% of queries, and return `PERMISSION_DENIED` for 15% of queries.
-
-:warning: If you are a maintainer looking at the source code, the "mapping" is represented as a golang slice with length <= 100.
 
 ### Multiple alterations with some undefined query percentages
 

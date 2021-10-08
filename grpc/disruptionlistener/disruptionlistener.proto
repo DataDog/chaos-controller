@@ -5,9 +5,9 @@
 
 syntax = "proto3";
 
-package disruption_listener;
+package disruptionlistener;
 
-option go_package = "./disruption_listener";
+option go_package = "./disruptionlistener";
 
 import "google/protobuf/empty.proto";
 

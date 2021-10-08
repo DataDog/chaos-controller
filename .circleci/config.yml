@@ -196,14 +196,14 @@ jobs:
       - run:
           name: Ensure license header is present
           command: inv header-check
-  # ensures that the grpc protobuf files genereated by disruption_listener.proto are up to date
+  # ensures that the grpc protobuf files genereated by disruptionlistener.proto are up to date
   protobuf:
     executor: golang
     steps:
       - checkout
       - run:
           command: |
-            cd grpc/disruption_listener
+            cd grpc/disruptionlistener
             apt-get update
             apt-get install unzip -y
             PROTOC_ZIP=protoc-3.17.3-linux-x86_64.zip
@@ -213,7 +213,7 @@ jobs:
             rm -f $PROTOC_ZIP
             go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1
             go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
-            protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative disruption_listener.proto
+            protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative disruptionlistener.proto
       - run: git diff --exit-code ':!go.*'
 
 workflows:

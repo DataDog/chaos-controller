@@ -9,8 +9,14 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
+	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 )
+
+/*
+ * When a random integer from 0 to 100 is randomly selected, the PercentToAlteration mapping is referenced to
+ * identify the disruption to apply to a query. The mapping represents user preference the proportion of queries
+ * affected by each alteration. See docs/grpc_disruption/interceptor_algorithm.md for examples.
+ */
 
 // GetAlterationMapFromAlterationSpec takes a series of alterations configured for a target endpoint where
 // assignments are distributed based on percentage odds (QueryPercent) expected for different return alterations and

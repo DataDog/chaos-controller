@@ -9,7 +9,7 @@ The `grpc` field offers a way to inject spoofed gRPC responses on the server-sid
   * `<endpoints[i]>.query_pct` defines (out of 100) how frequently this alteration should occur; you may have multiple alterations per endpoint, but you cannot specify a sum total of more than 100 percent for any given endpoint
 
 :warning: At this time, the gRPC disruption is still being BETA-tested.
-* The disruption is not guaranteed to support disrupting gRPC Streams or chaining the disruption_listener interceptor on an existing interceptor.
+* The disruption is not guaranteed to support disrupting gRPC Streams or chaining the disruptionlistener interceptor on an existing interceptor.
 * Features such as adding latency to requests or returning a valid response other than `emptypb.Empty` are under consideration but currently unsupported.
 * To eliminate performance concerns until we have benchmarked this capability, we recommend you put the interceptor behind a feature flag if you are not regularly applying it (see FAQs for more information).
 
@@ -85,7 +85,7 @@ You can configure an interceptor function when you bring up the server to handle
     </kbd>
 </p>
 
-In our case, we do not make a service call if the request is one which the disruption_listener is configured to spoof, and instead return a canned response. The disruption begins when you apply a manifest to Kuberenetes with a gRPC disruption for this particular service. The disruption_listener is always checking for requests to disrupt the server to which it is registered. By creating an injector pod that acts as a client on the disruption_listener, Chaos Controller sends its expectations to the server and the server configures the interceptor to spoof requests. The disruption stops when you delete this manifest through the same communication channel (a kill signal to the injector executes its clean command which resets the interceptor to let all queries pass through).
+In our case, we do not make a service call if the request is one which the disruptionlistener is configured to spoof, and instead return a canned response. The disruption begins when you apply a manifest to Kuberenetes with a gRPC disruption for this particular service. The disruptionlistener is always checking for requests to disrupt the server to which it is registered. By creating an injector pod that acts as a client on the disruptionlistener, Chaos Controller sends its expectations to the server and the server configures the interceptor to spoof requests. The disruption stops when you delete this manifest through the same communication channel (a kill signal to the injector executes its clean command which resets the interceptor to let all queries pass through).
 
 # FAQs
 

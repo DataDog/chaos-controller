@@ -12,7 +12,7 @@ import (
 	"github.com/DataDog/chaos-controller/grpc"
 	. "github.com/DataDog/chaos-controller/injector"
 
-	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
+	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -109,8 +109,8 @@ func TestSendAndCleaDisruption(t *testing.T) {
 		&emptypb.Empty{},
 	).Return(&emptypb.Empty{}, nil)
 
-	grpc.ExecuteSendDisruption(disruptionListenerClient, spec, log)
-	grpc.ExecuteCleanDisruption(disruptionListenerClient, log)
+	grpc.ExecuteSendDisruption(disruptionListenerClient, spec)
+	grpc.ExecuteCleanDisruption(disruptionListenerClient)
 
 	// run test
 	disruptionListenerClient.AssertExpectations(t)

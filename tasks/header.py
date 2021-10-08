@@ -30,8 +30,8 @@ files_to_skip = [
     "chart/templates/crds/chaos.datadoghq.com_disruptions.yaml",
     "chart/templates/role.yaml",
     "chart/install.yaml",
-    "grpc/disruption_listener/disruption_listener_grpc.pb.go",
-    "grpc/disruption_listener/disruption_listener.pb.go",
+    "grpc/disruptionlistener/disruptionlistener_grpc.pb.go",
+    "grpc/disruptionlistener/disruptionlistener.pb.go",
 ]
 
 # generates the header with the given comment tag

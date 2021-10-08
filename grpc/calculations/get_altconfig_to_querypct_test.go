@@ -7,7 +7,7 @@ package calculations_test
 
 import (
 	. "github.com/DataDog/chaos-controller/grpc/calculations"
-	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
+	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -48,7 +48,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 				Expect(len(QueryPercentByAltConfig)).To(Equal(3))
 			})
 
-			By("by assigning a query percentage of 20 to CANCELLED error", func() {
+			By("by assigning a query percentage of 20 to CANCELED error", func() {
 				altCfg := AlterationConfiguration{
 					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "",

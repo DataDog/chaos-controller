@@ -7,12 +7,11 @@ package injector
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaos_grpc "github.com/DataDog/chaos-controller/grpc"
-	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
+	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	"google.golang.org/grpc"
 )
 
@@ -40,8 +39,6 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 
 // Inject injects the given dns disruption into the given container
 func (i GRPCDisruptionInjector) Inject() error {
-	i.config.Log.Infow(fmt.Sprintf("%t", i.config.DryRun))
-
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
 	if i.config.DryRun {
@@ -57,11 +54,11 @@ func (i GRPCDisruptionInjector) Inject() error {
 
 	i.config.Log.Infow("adding grpc disruption", "spec", i.spec)
 
-	chaos_grpc.ExecuteSendDisruption(
-		pb.NewDisruptionListenerClient(conn),
-		i.spec,
-		i.config.Log,
-	)
+	err = chaos_grpc.ExecuteSendDisruption(pb.NewDisruptionListenerClient(conn), i.spec)
+
+	if err != nil {
+		i.config.Log.Error("Received an error: %v", err)
+	}
 
 	return conn.Close()
 }
@@ -83,10 +80,11 @@ func (i GRPCDisruptionInjector) Clean() error {
 
 	i.config.Log.Infow("removing grpc disruption", "spec", i.spec)
 
-	chaos_grpc.ExecuteCleanDisruption(
-		pb.NewDisruptionListenerClient(conn),
-		i.config.Log,
-	)
+	err = chaos_grpc.ExecuteCleanDisruption(pb.NewDisruptionListenerClient(conn))
+
+	if err != nil {
+		i.config.Log.Error("Received an error: %v", err)
+	}
 
 	return conn.Close()
 }

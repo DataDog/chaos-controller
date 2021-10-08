@@ -10,37 +10,34 @@ import (
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
-	"go.uber.org/zap"
+	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // ExecuteSendDisruption takes in a CRD specification for GRPC disruptions and
 // executes a SendDisruption call on the provided DisruptionListenerClient
-func ExecuteSendDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1.GRPCDisruptionSpec, logger *zap.SugaredLogger) {
+func ExecuteSendDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1.GRPCDisruptionSpec) error {
 	endpointSpecs := GenerateEndpointSpecs(spec.Endpoints)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	_, err := client.SendDisruption(ctx, &pb.DisruptionSpec{Endpoints: endpointSpecs})
-	if err != nil {
-		logger.Error("Received an error: %v", err)
-	}
+
+	return err
 }
 
 // ExecuteCleanDisruption executes a CleanDisruption call on the provided DisruptionListenerClient
-func ExecuteCleanDisruption(client pb.DisruptionListenerClient, logger *zap.SugaredLogger) {
+func ExecuteCleanDisruption(client pb.DisruptionListenerClient) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	_, err := client.CleanDisruption(ctx, &emptypb.Empty{})
-	if err != nil {
-		logger.Error("Received an error: %v", err)
-	}
+
+	return err
 }
 
-// GenerateEndpointSpecs converts an EndpointAlteration into a list of EndpointSpecs which
+// GenerateEndpointSpecs converts a slice of EndpointAlterations into a list of EndpointSpecs which
 // can be sent through gRPC call to disruptionListener
 func GenerateEndpointSpecs(endpoints []chaosv1beta1.EndpointAlteration) []*pb.EndpointSpec {
 	targetToEndpointSpec := make(map[string]*pb.EndpointSpec)

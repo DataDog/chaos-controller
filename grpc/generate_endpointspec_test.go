@@ -8,7 +8,7 @@ package grpc_test
 import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	. "github.com/DataDog/chaos-controller/grpc"
-	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
+	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

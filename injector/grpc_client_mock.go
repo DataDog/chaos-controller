@@ -8,10 +8,11 @@ package injector
 import (
 	"context"
 
-	pb "github.com/DataDog/chaos-controller/grpc/disruption_listener"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 )
 
 // DisruptionListenerClientMock is a mock implementation of the DisruptionListenerClient interface
