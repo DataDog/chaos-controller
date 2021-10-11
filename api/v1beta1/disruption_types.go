@@ -39,6 +39,7 @@ import (
 // +ddmark:validation:ExclusiveFields={Network,DNS}
 // +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS}
 // +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS}
+// +ddmark:validation:RequireOneOf={DNS,CPUPressure,Network,NodeFailure,ContainerFailure,DiskPressure}
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
