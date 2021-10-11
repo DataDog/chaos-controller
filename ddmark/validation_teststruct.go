@@ -13,6 +13,7 @@ type Teststruct struct {
 	EnumTest            EnumTestStruct
 	ExclusiveFieldsTest ExclusiveFieldsTestStruct
 	LinkedFieldsTest    LinkedFieldsTestStruct
+	RequireOneOfTest    RequireOneOfTestStruct
 }
 
 // +ddmark:validation:ExclusiveFields={PIntField,PStrField}
@@ -69,9 +70,21 @@ type EnumTestStruct struct {
 // +ddmark:validation:LinkedFields={StrField,IntField}
 // +ddmark:validation:LinkedFields={PStrField,PIntField,AIntField}
 type LinkedFieldsTestStruct struct {
-	StrField  string
-	PStrField *string
-	IntField  int
-	PIntField *int
-	AIntField []int
+	RandomIntField int // allows to actually check all-empty structs
+	StrField       string
+	PStrField      *string
+	IntField       int
+	PIntField      *int
+	AIntField      []int
+}
+
+// +ddmark:validation:RequireOneOf={StrField,IntField}
+// +ddmark:validation:RequireOneOf={PStrField,PIntField,AIntField}
+type RequireOneOfTestStruct struct {
+	RandomIntField int // allows to actually check all-empty structs
+	StrField       string
+	PStrField      *string
+	IntField       int
+	PIntField      *int
+	AIntField      []int
 }

@@ -181,6 +181,7 @@ linkedfieldstest:
 		It("checks out valid all-nil values", func() {
 			var linkedfieldsValidYaml = `
 linkedfieldstest:
+  randomintfield: 1
   strfield:
   pstrfield:
   intfield: 0 # is nil
@@ -225,6 +226,58 @@ linkedfieldstest:
 `
 			errorList := validateString(linkedfieldsInvalidYaml)
 			Expect(errorList).To(HaveLen(1))
+		})
+	})
+
+	Context("RequireOneOf Marker", func() {
+		It("rejects out all-nil values twice", func() {
+			var requireOneOfInvalidYaml = `
+requireoneoftest:
+  randomintfield: 1
+  strfield:
+  pstrfield:
+  intfield: 0 # is nil
+  pintfield:  # is nil
+  aintfield:
+`
+			errorList := validateString(requireOneOfInvalidYaml)
+			Expect(errorList).To(HaveLen(2))
+		})
+		It("rejects almost-all-nil values once", func() {
+			var requireOneOfInvalidYaml = `
+requireoneoftest:
+  strfield:
+  pstrfield:
+  intfield: 1 # is not-nil
+  pintfield:  # is nil
+  aintfield:
+`
+			errorList := validateString(requireOneOfInvalidYaml)
+			Expect(errorList).To(HaveLen(1))
+		})
+		It("accepts both valid value groups", func() {
+			var requireOneOfInvalidYaml = `
+requireoneoftest:
+  strfield:
+  pstrfield: a
+  intfield: 1 # is not-nil
+  pintfield:  # is nil
+  aintfield:
+`
+			errorList := validateString(requireOneOfInvalidYaml)
+			Expect(errorList).To(HaveLen(0))
+		})
+		It("accepts both valid value groups", func() {
+			var requireOneOfInvalidYaml = `
+requireoneoftest:
+  strfield: a
+  pstrfield: 
+  intfield: # is nil
+  pintfield:  # is nil
+  aintfield: []
+`
+			errorList := validateString(requireOneOfInvalidYaml)
+			Expect(errorList).To(HaveLen(0))
 		})
 	})
 })
