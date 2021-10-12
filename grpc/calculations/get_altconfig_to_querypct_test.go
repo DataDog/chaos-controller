@@ -12,14 +12,14 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig based on GetMappingFromAlterationToQueryPercent", func() {
+var _ = Describe("get mapping from alterationSpecs to config based on GetPercentagePerAlteration", func() {
 	var (
-		alterationSpecs         []*pb.AlterationSpec
-		QueryPercentByAltConfig map[AlterationConfiguration]QueryPercent
+		alterationSpecs []*pb.AlterationSpec
+		config          map[AlterationConfiguration]QueryPercent
 	)
 
 	Context("with three alterations which add up to less than 100", func() {
-		It("should create a QueryPercentByAltConfig with correct configs", func() {
+		It("should create a config with correct configs", func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
 					ErrorToReturn:    "CANCELED",
@@ -40,12 +40,12 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning no errors", func() {
 				var err error
-				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
+				config, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err).To(BeNil())
 			})
 
 			By("returning 3 elements", func() {
-				Expect(len(QueryPercentByAltConfig)).To(Equal(3))
+				Expect(len(config)).To(Equal(3))
 			})
 
 			By("by assigning a query percentage of 20 to CANCELED error", func() {
@@ -54,7 +54,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					OverrideToReturn: "",
 				}
 
-				pct_canceled, ok_canceled := QueryPercentByAltConfig[altCfg]
+				pct_canceled, ok_canceled := config[altCfg]
 				Expect(ok_canceled).To(BeTrue())
 				Expect(pct_canceled).To(Equal(QueryPercent(20)))
 			})
@@ -64,7 +64,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "ALREADY_EXISTS",
 					OverrideToReturn: "",
 				}
-				pct_exists, ok_exists := QueryPercentByAltConfig[altCfg]
+				pct_exists, ok_exists := config[altCfg]
 
 				Expect(ok_exists).To(BeTrue())
 				Expect(pct_exists).To(Equal(QueryPercent(30)))
@@ -75,7 +75,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "",
 					OverrideToReturn: "{}",
 				}
-				pct_emptyret, ok_emptyret := QueryPercentByAltConfig[altCfg]
+				pct_emptyret, ok_emptyret := config[altCfg]
 
 				Expect(ok_emptyret).To(BeTrue())
 				Expect(pct_emptyret).To(Equal(QueryPercent(40)))
@@ -138,13 +138,13 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning an Invalid Argument error", func() {
 				var err error
-				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
+				config, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = assigned query percentages for this endpoint exceeds 100% of possible queries"))
 			})
 		})
 	})
 	Context("with one alteration less than 100", func() {
-		It("should create a QueryPercentByAltConfig with correct configs", func() {
+		It("should create a config with correct configs", func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
 					ErrorToReturn:    "CANCELED",
@@ -155,13 +155,13 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning no errors", func() {
 				var err error
-				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
+				config, err = GetPercentagePerAlteration(alterationSpecs)
 
 				Expect(err).To(BeNil())
 			})
 
 			By("returning 1 element", func() {
-				Expect(len(QueryPercentByAltConfig)).To(Equal(1))
+				Expect(len(config)).To(Equal(1))
 			})
 
 			By("by assigning a query percentage of 40 to CANCELED error", func() {
@@ -169,7 +169,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "",
 				}
-				pct_canceled, ok_canceled := QueryPercentByAltConfig[altCfg]
+				pct_canceled, ok_canceled := config[altCfg]
 
 				Expect(ok_canceled).To(BeTrue())
 				Expect(pct_canceled).To(Equal(QueryPercent(40)))
@@ -178,7 +178,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 	})
 
 	Context("with one alteration lacking query percent", func() {
-		It("should create a QueryPercentByAltConfig with correct configs", func() {
+		It("should create a config with correct configs", func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
 					ErrorToReturn:    "CANCELED",
@@ -189,12 +189,12 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning no errors", func() {
 				var err error
-				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
+				config, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err).To(BeNil())
 			})
 
 			By("returning 1 element", func() {
-				Expect(len(QueryPercentByAltConfig)).To(Equal(1))
+				Expect(len(config)).To(Equal(1))
 			})
 
 			By("by assigning a query percentage of 100 to CANCELED error", func() {
@@ -202,7 +202,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "",
 				}
-				pct_canceled, ok_canceled := QueryPercentByAltConfig[altCfg]
+				pct_canceled, ok_canceled := config[altCfg]
 
 				Expect(ok_canceled).To(BeTrue())
 				Expect(pct_canceled).To(Equal(QueryPercent(100)))
@@ -211,7 +211,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 	})
 
 	Context("with three alterations, two of which lack a queryPercent", func() {
-		It("should create a QueryPercentByAltConfig with correct configs", func() {
+		It("should create a config with correct configs", func() {
 			alterationSpecs = []*pb.AlterationSpec{
 				{
 					ErrorToReturn:    "CANCELED",
@@ -232,12 +232,12 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning no errors", func() {
 				var err error
-				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
+				config, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err).To(BeNil())
 			})
 
 			By("returning 3 elements", func() {
-				Expect(len(QueryPercentByAltConfig)).To(Equal(3))
+				Expect(len(config)).To(Equal(3))
 			})
 
 			By("by assigning a query percentage of 25 to CANCELED error", func() {
@@ -245,7 +245,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "",
 				}
-				pct_canceled, ok_canceled := QueryPercentByAltConfig[altCfg]
+				pct_canceled, ok_canceled := config[altCfg]
 
 				Expect(ok_canceled).To(BeTrue())
 				Expect(pct_canceled).To(Equal(QueryPercent(25)))
@@ -256,7 +256,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "ALREADY_EXISTS",
 					OverrideToReturn: "",
 				}
-				pct_exists, ok_exists := QueryPercentByAltConfig[altCfg]
+				pct_exists, ok_exists := config[altCfg]
 
 				Expect(ok_exists).To(BeTrue())
 				Expect(pct_exists).To(Equal(QueryPercent(25)))
@@ -267,7 +267,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "",
 					OverrideToReturn: "{}",
 				}
-				pct_emptyret, ok_emptyret := QueryPercentByAltConfig[altCfg]
+				pct_emptyret, ok_emptyret := config[altCfg]
 
 				Expect(ok_emptyret).To(BeTrue())
 				Expect(pct_emptyret).To(Equal(QueryPercent(50)))
@@ -317,14 +317,14 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning no errors", func() {
 				var err error
-				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
+				config, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err).To(BeNil())
 			})
 		})
 
-		It("should create a QueryPercentByAltConfig with correct configs", func() {
+		It("should create a config with correct configs", func() {
 			By("returning 7 elements", func() {
-				Expect(len(QueryPercentByAltConfig)).To(Equal(7))
+				Expect(len(config)).To(Equal(7))
 			})
 
 			By("by assigning a query percentage of 90 to CANCELED error", func() {
@@ -332,7 +332,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "",
 				}
-				pct, ok := QueryPercentByAltConfig[altCfg]
+				pct, ok := config[altCfg]
 
 				Expect(ok).To(BeTrue())
 				Expect(pct).To(Equal(QueryPercent(90)))
@@ -343,7 +343,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "ALREADY_EXISTS",
 					OverrideToReturn: "",
 				}
-				pct, ok := QueryPercentByAltConfig[altCfg]
+				pct, ok := config[altCfg]
 
 				Expect(ok).To(BeTrue())
 				Expect(pct).To(Equal(QueryPercent(1)))
@@ -354,7 +354,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "UNKNOWN",
 					OverrideToReturn: "",
 				}
-				pct, ok := QueryPercentByAltConfig[altCfg]
+				pct, ok := config[altCfg]
 
 				Expect(ok).To(BeTrue())
 				Expect(pct).To(Equal(QueryPercent(1)))
@@ -365,7 +365,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "INVALID_ARGUMENT",
 					OverrideToReturn: "",
 				}
-				pct, ok := QueryPercentByAltConfig[altCfg]
+				pct, ok := config[altCfg]
 
 				Expect(ok).To(BeTrue())
 				Expect(pct).To(Equal(QueryPercent(1)))
@@ -376,7 +376,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "DEADLINE_EXCEEDED",
 					OverrideToReturn: "",
 				}
-				pct, ok := QueryPercentByAltConfig[altCfg]
+				pct, ok := config[altCfg]
 
 				Expect(ok).To(BeTrue())
 				Expect(pct).To(Equal(QueryPercent(1)))
@@ -387,18 +387,18 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 					ErrorToReturn:    "NOT_FOUND",
 					OverrideToReturn: "",
 				}
-				pct, ok := QueryPercentByAltConfig[altCfg]
+				pct, ok := config[altCfg]
 
 				Expect(ok).To(BeTrue())
 				Expect(pct).To(Equal(QueryPercent(1)))
 			})
 
-			By("by assigning a query percentage of 1 to PERMISSION_DENIED error", func() {
+			By("by assigning rest of query percentages (5) to PERMISSION_DENIED error", func() {
 				altCfg := AlterationConfiguration{
 					ErrorToReturn:    "PERMISSION_DENIED",
 					OverrideToReturn: "",
 				}
-				pct, ok := QueryPercentByAltConfig[altCfg]
+				pct, ok := config[altCfg]
 
 				Expect(ok).To(BeTrue())
 				Expect(pct).To(Equal(QueryPercent(5)))
@@ -473,7 +473,7 @@ var _ = Describe("get mapping from AlterationSpecs to QueryPercentByAltConfig ba
 
 			By("returning an InvalidArgument error", func() {
 				var err error
-				QueryPercentByAltConfig, err = GetPercentagePerAlteration(alterationSpecs)
+				config, err = GetPercentagePerAlteration(alterationSpecs)
 				Expect(err.Error()).To(Equal("rpc error: code = InvalidArgument desc = alterations must have at least 1% chance of occurring; endpoint has too many alterations configured so its total configurations exceed 100%"))
 			})
 		})
