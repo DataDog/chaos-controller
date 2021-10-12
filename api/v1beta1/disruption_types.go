@@ -124,10 +124,9 @@ func (s *DisruptionSpec) Hash() (string, error) {
 
 // Validate applies rules for disruption global scope and all subsequent disruption specifications
 func (s *DisruptionSpec) Validate() error {
-	err := s.validateGlobalDisruptionScope()
-	if err != nil {
-		return err
-	}
+	var errorList = []error{}
+
+	errorList = append(errorList, s.validateGlobalDisruptionScope()...)
 
 	for _, kind := range chaostypes.DisruptionKindNames {
 		disruptionKind := s.DisruptionKindPicker(kind)
@@ -135,30 +134,29 @@ func (s *DisruptionSpec) Validate() error {
 			continue
 		}
 
-		err := disruptionKind.Validate()
-		if err != nil {
-			return err
-		}
+		errorList = append(errorList, disruptionKind.Validate()...)
 	}
 
-	return nil
+	return concatErrors(errorList)
 }
 
 // Validate applies rules for disruption global scope
-func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
+func (s *DisruptionSpec) validateGlobalDisruptionScope() []error {
+	errorList := []error{}
+
 	// Rule: at least one kind of selector is set
 	if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
-		return errors.New("either selector or advancedSelector field must be set")
+		errorList = append(errorList, errors.New("either selector or advancedSelector field must be set"))
 	}
 
 	// Rule: no targeted container if disruption is node-level
 	if len(s.Containers) > 0 && s.Level == chaostypes.DisruptionLevelNode {
-		return errors.New("cannot target specific containers because the level configuration is set to node")
+		errorList = append(errorList, errors.New("cannot target specific containers because the level configuration is set to node"))
 	}
 
 	// Rule: container failure not possible if disruption is node-level
 	if s.ContainerFailure != nil && s.Level == chaostypes.DisruptionLevelNode {
-		return errors.New("cannot execute a container failure because the level configuration is set to node")
+		errorList = append(errorList, errors.New("cannot execute a container failure because the level configuration is set to node"))
 	}
 
 	// Rule: at least one disruption field
@@ -168,7 +166,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		s.NodeFailure == nil &&
 		s.ContainerFailure == nil &&
 		s.DiskPressure == nil {
-		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, ContainerFailure, CPUPressure fields is needed")
+		errorList = append(errorList, errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, ContainerFailure, CPUPressure fields is needed"))
 	}
 
 	// Rule: on init compatibility
@@ -177,24 +175,24 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 			s.NodeFailure != nil ||
 			s.ContainerFailure != nil ||
 			s.DiskPressure != nil {
-			return errors.New("OnInit is only compatible with network and dns disruptions")
+			errorList = append(errorList, errors.New("OnInit is only compatible with network and dns disruptions"))
 		}
 
 		if s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
-			return errors.New("OnInit is only compatible with pod level disruptions")
+			errorList = append(errorList, errors.New("OnInit is only compatible with pod level disruptions"))
 		}
 
 		if len(s.Containers) > 0 {
-			return errors.New("OnInit is not compatible with containers scoping")
+			errorList = append(errorList, errors.New("OnInit is not compatible with containers scoping"))
 		}
 	}
 
 	// Rule: count must be valid
 	if err := ValidateCount(s.Count); err != nil {
-		return err
+		errorList = append(errorList, err)
 	}
 
-	return nil
+	return errorList
 }
 
 // DisruptionKindPicker returns this DisruptionSpec's instance of a DisruptionKind based on given kind name
@@ -233,4 +231,22 @@ func (s *DisruptionSpec) GetKindNames() []chaostypes.DisruptionKindName {
 	}
 
 	return kinds
+}
+
+// concatErrors returns a list of errors compiled into one
+func concatErrors(errorList []error) error {
+	var retErr error = nil
+	if len(errorList) == 0 {
+		return retErr
+	}
+
+	for _, err := range errorList {
+		if retErr == nil {
+			retErr = err
+		} else {
+			retErr = fmt.Errorf("%w\n - %v", retErr, err)
+		}
+	}
+
+	return retErr
 }

@@ -84,36 +84,37 @@ type NetworkDisruptionServiceSpec struct {
 }
 
 // Validate validates args for the given disruption
-func (s *NetworkDisruptionSpec) Validate() error {
+func (s *NetworkDisruptionSpec) Validate() []error {
+	var errorList = []error{}
 	// check that at least one network disruption is set
 	if s.BandwidthLimit == 0 &&
 		s.Drop == 0 &&
 		s.Delay == 0 &&
 		s.Corrupt == 0 &&
 		s.Duplicate == 0 {
-		return errors.New("the network disruption was selected, but no disruption type was specified. Please set at least one of: drop, delay, bandwidthLimit, corrupt, or duplicate. No injection will occur")
+		errorList = append(errorList, errors.New("the network disruption was selected, but no disruption type was specified. Please set at least one of: drop, delay, bandwidthLimit, corrupt, or duplicate. No injection will occur"))
 	}
 
 	// ensure spec filters on something if ingress mode is enabled
 	if s.Flow == FlowIngress {
 		if len(s.Hosts) == 0 && len(s.Services) == 0 {
-			return errors.New("the network disruption has ingress flow enabled but no hosts or services are provided, which is required for it to work")
+			errorList = append(errorList, errors.New("the network disruption has ingress flow enabled but no hosts or services are provided, which is required for it to work"))
 		}
 	}
 
 	if k8sClient != nil {
 		err := validateServices(k8sClient, s.Services)
 		if err != nil {
-			return err
+			errorList = append(errorList, err)
 		}
 	}
 
 	// ensure deprecated fields are not used
 	if s.DeprecatedPort != nil {
-		return fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts instead")
+		errorList = append(errorList, fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
 	}
 
-	return nil
+	return errorList
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec

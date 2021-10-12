@@ -17,7 +17,7 @@ type DisruptionKind interface {
 	GenerateArgs() []string
 
 	// validates schema for the given disruption sub-specification
-	Validate() error
+	Validate() []error
 }
 
 // AppendArgs is a helper function generating common and global args and appending them to the given args array

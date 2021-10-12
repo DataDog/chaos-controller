@@ -23,12 +23,14 @@ type DiskPressureThrottlingSpec struct {
 }
 
 // Validate validates args for the given disruption
-func (s *DiskPressureSpec) Validate() error {
+func (s *DiskPressureSpec) Validate() []error {
+	var errorList = []error{}
+
 	if s.Throttling.ReadBytesPerSec == nil && s.Throttling.WriteBytesPerSec == nil {
-		return errors.New("the disk pressure disruption was selected, but no throttling values were set. Please set at least one of: readBytesPerSec, or writeBytesPerSec. No injection will occur")
+		errorList = append(errorList, errors.New("the disk pressure disruption was selected, but no throttling values were set. Please set at least one of: readBytesPerSec, or writeBytesPerSec. No injection will occur"))
 	}
 
-	return nil
+	return errorList
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec

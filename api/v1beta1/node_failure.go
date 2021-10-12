@@ -11,8 +11,8 @@ type NodeFailureSpec struct {
 }
 
 // Validate validates args for the given disruption
-func (s *NodeFailureSpec) Validate() error {
-	return nil
+func (s *NodeFailureSpec) Validate() []error {
+	return []error{}
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec

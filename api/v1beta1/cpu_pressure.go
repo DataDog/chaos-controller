@@ -10,8 +10,8 @@ type CPUPressureSpec struct {
 }
 
 // Validate validates args for the given disruption
-func (s *CPUPressureSpec) Validate() error {
-	return nil
+func (s *CPUPressureSpec) Validate() []error {
+	return []error{}
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec

@@ -17,12 +17,12 @@ import (
 
 var _ = Describe("Validator", func() {
 	var (
-		err       error
+		errList   []error
 		validator DisruptionKind
 	)
 
 	JustBeforeEach(func() {
-		err = validator.Validate()
+		errList = validator.Validate()
 	})
 
 	Describe("validating network spec", func() {
@@ -35,7 +35,7 @@ var _ = Describe("Validator", func() {
 
 		Context("with an empty disruption", func() {
 			It("should not validate", func() {
-				Expect(err).To(Not(BeNil()))
+				Expect(errList).To(Not(HaveLen(0)))
 			})
 		})
 
@@ -49,7 +49,7 @@ var _ = Describe("Validator", func() {
 			})
 
 			It("should validate", func() {
-				Expect(err).To(BeNil())
+				Expect(errList).To(HaveLen(0))
 			})
 		})
 	})
@@ -64,7 +64,7 @@ var _ = Describe("Validator", func() {
 
 		Context("with an empty disruption", func() {
 			It("should not validate", func() {
-				Expect(err).To(Not(BeNil()))
+				Expect(errList).To(Not(HaveLen(0)))
 			})
 		})
 
@@ -75,7 +75,7 @@ var _ = Describe("Validator", func() {
 			})
 
 			It("should validate", func() {
-				Expect(err).To(BeNil())
+				Expect(errList).To(HaveLen(0))
 			})
 		})
 	})

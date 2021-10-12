@@ -11,8 +11,8 @@ type ContainerFailureSpec struct {
 }
 
 // Validate validates args for the given disruption
-func (s *ContainerFailureSpec) Validate() error {
-	return nil
+func (s *ContainerFailureSpec) Validate() []error {
+	return []error{}
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
