@@ -17,7 +17,6 @@ type DiskPressureSpec struct {
 }
 
 // DiskPressureThrottlingSpec represents a throttle on read and write disk operations
-// +ddmark:validation:RequireOneOf={ReadBytesPerSec,WriteBytesPerSec}
 type DiskPressureThrottlingSpec struct {
 	ReadBytesPerSec  *int `json:"readBytesPerSec,omitempty"`
 	WriteBytesPerSec *int `json:"writeBytesPerSec,omitempty"`
