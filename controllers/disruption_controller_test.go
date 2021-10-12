@@ -181,7 +181,6 @@ var _ = Describe("Disruption Controller", func() {
 					Endpoints: []chaosv1beta1.EndpointAlteration{
 						{
 							TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
-							ErrorToReturn:    "",
 							OverrideToReturn: "{}",
 							QueryPercent:     50,
 						},
