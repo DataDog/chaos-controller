@@ -166,12 +166,19 @@ spec:
                         maximum: 100
                         minimum: 0
                         type: integer
+                    required:
+                    - endpoint
+                    - error
+                    - override
                     type: object
                   type: array
                 port:
                   maximum: 65535
                   minimum: 1
                   type: integer
+              required:
+              - endpoints
+              - port
               type: object
             level:
               description: DisruptionLevel represents which level the disruption should

@@ -47,19 +47,20 @@ type GRPCDisruptionSpec struct {
 	// +kubebuilder:validation:Maximum=65535
 	// +ddmark:validation:Minimum=1
 	// +ddmark:validation:Maximum=65535
-	Port      int                  `json:"port,omitempty"`
-	Endpoints []EndpointAlteration `json:"endpoints,omitempty"`
+	Port      int                  `json:"port"`
+	Endpoints []EndpointAlteration `json:"endpoints"`
 }
 
 // EndpointAlteration represents an endpoint to disrupt and the corresponding error to return
+// +ddmark:validation:ExclusiveFields={ErrorToReturn,OverrideToReturn}
 type EndpointAlteration struct {
-	TargetEndpoint string `json:"endpoint,omitempty"`
+	TargetEndpoint string `json:"endpoint"`
 	// +kubebuilder:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
 	// +ddmark:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
-	ErrorToReturn string `json:"error,omitempty"`
+	ErrorToReturn string `json:"error"`
 	// +kubebuilder:validation:Enum={}
 	// +ddmark:validation:Enum="{}"
-	OverrideToReturn string `json:"override,omitempty"`
+	OverrideToReturn string `json:"override"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	// +ddmark:validation:Minimum=0
@@ -81,10 +82,6 @@ func (s GRPCDisruptionSpec) Validate() error {
 	unquantifiedAlts := make(map[string]int)
 
 	for _, alteration := range s.Endpoints {
-		if alteration.TargetEndpoint == "" {
-			return errors.New("some list items in gRPC disruption are missing endpoints; specify a TargetEndpoint for each item in the list")
-		}
-
 		// check that endpoint is not already configured such that the sum of the queryPercents total to more than 100%
 		if alteration.QueryPercent == 0 {
 			if count, ok := unquantifiedAlts[alteration.TargetEndpoint]; ok {
@@ -103,7 +100,7 @@ func (s GRPCDisruptionSpec) Validate() error {
 				// always positive because of CRD limitations
 				queryPctByEndpoint[alteration.TargetEndpoint] = totalQueryPercent + alteration.QueryPercent
 				if queryPctByEndpoint[alteration.TargetEndpoint] > 100 {
-					return errors.New("total queryPercent of all alterations applied to endpoint %s is over 100%")
+					return fmt.Errorf("total queryPercent of all alterations applied to endpoint %s is over 100%%", alteration.TargetEndpoint)
 				}
 			} else {
 				queryPctByEndpoint[alteration.TargetEndpoint] = alteration.QueryPercent
@@ -111,9 +108,8 @@ func (s GRPCDisruptionSpec) Validate() error {
 		}
 
 		// check that exactly one of ErrorToReturn or OverrideToReturn is configured
-		if alteration.ErrorToReturn != "" && alteration.OverrideToReturn != "" {
-			return fmt.Errorf("the gRPC disruption has ErrorToReturn and OverrideToReturn specified for endpoint %s, but it can only have one", alteration.TargetEndpoint)
-		} else if alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "" {
+		// (ddmark already prevents both from being configured)
+		if alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "" {
 			return fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint)
 		}
 	}

@@ -37,7 +37,7 @@ func ExecuteCleanDisruption(client pb.DisruptionListenerClient) error {
 	return err
 }
 
-// GenerateEndpointSpecs converts a slice of EndpointAlterations into a list of EndpointSpecs which
+// GenerateEndpointSpecs converts a slice of EndpointAlterations into a slice of EndpointSpecs which
 // can be sent through gRPC call to disruptionListener
 func GenerateEndpointSpecs(endpoints []chaosv1beta1.EndpointAlteration) []*pb.EndpointSpec {
 	targetToEndpointSpec := make(map[string]*pb.EndpointSpec)

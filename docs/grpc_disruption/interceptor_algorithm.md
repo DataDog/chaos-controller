@@ -152,7 +152,7 @@ PercentToAlteration {
 
 ### Setting 0 as query percentage
 
-It does not make sense for a user to set `queryPercent: 0`, and if a user tries to do so, they will see the error applied to all unclaimed queries. This is because Kubebuilder sets ommitted `int`s to `0`, but chaos-controller interprets an omitted `queryPercent` to mean "apply all".
+It does not make sense for a user to set `queryPercent: 0`, and if a user tries to do so, they will see the error applied to all unclaimed queries. This is because Kubebuilder sets omitted `int`s to `0`, but chaos-controller interprets an omitted `queryPercent` to mean "apply all".
 
 ### Many errors, but very few slots remaining
 

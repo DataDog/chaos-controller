@@ -23,22 +23,6 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		}
 	})
 
-	Context("Error and override are both defined", func() {
-		It("errors because exactly one of error or override must be defined for an alteration", func() {
-			spec.Endpoints = []v1beta1.EndpointAlteration{
-				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
-					ErrorToReturn:    "CANCELED",
-					OverrideToReturn: "{}",
-					QueryPercent:     100,
-				},
-			}
-
-			err := spec.Validate()
-			Expect(err.Error()).To(Equal("the gRPC disruption has ErrorToReturn and OverrideToReturn specified for endpoint /chaos_dogfood.ChaosDogfood/order, but it can only have one"))
-		})
-	})
-
 	Context("Error and override are both undefined", func() {
 		It("errors because exactly one of error or override must be defined for an alteration", func() {
 			spec.Endpoints = []v1beta1.EndpointAlteration{
@@ -193,8 +177,6 @@ var _ = Describe("GRPCDisruption Validation", func() {
 
 		Context("which are in the standard grpc errors", func() {
 			It("Passes ddmark validation", func() {
-				spec.Endpoints = []v1beta1.EndpointAlteration{}
-
 				for errorString := range v1beta1.ErrorMap {
 					spec.Endpoints = append(
 						spec.Endpoints,

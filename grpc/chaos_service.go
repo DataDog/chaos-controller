@@ -56,7 +56,7 @@ func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.Dis
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying TargetEndpoint for all endpointAlterations")
 		}
 
-		alterationMap, err := grpc_calcapi.FlattenAlterationSpec(endpointSpec.Alterations)
+		alterationMap, err := grpc_calcapi.ConvertSpecifications(endpointSpec.Alterations)
 		if err != nil {
 			return nil, err
 		}

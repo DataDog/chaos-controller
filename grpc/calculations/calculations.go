@@ -13,15 +13,16 @@ import (
 )
 
 /*
- * When a random integer from 0 to 100 is randomly selected, the PercentToAlteration mapping is referenced to
- * identify the disruption to apply to a query. The mapping represents user preference the proportion of queries
+ * When an integer from 0 to 100 is randomly selected, the PercentToAlteration slice is referenced to
+ * identify the disruption to apply to a query. The slice represents user preference the proportion of queries
  * affected by each alteration. See docs/grpc_disruption/interceptor_algorithm.md for examples.
  */
 
-// FlattenAlterationSpec takes a series of alterations configured for a target endpoint where
-// assignments are distributed based on percentage odds (QueryPercent) expected for different return alterations and
-// returns a mapping from integers between 0 and some number less than 100 to the Alterations assigned to them
-func FlattenAlterationSpec(endpointSpecList []*pb.AlterationSpec) ([]AlterationConfiguration, error) {
+// ConvertSpecifications takes a series of alterations configured for a target endpoint where
+// assignments are distributed based on percentage odds (QueryPercent) expected for different return alterations
+// and returns a slice where the slice's "index" between 0 and some number less than 100 are assigned
+// Alterations which reappear as many times as the requested query percentage
+func ConvertSpecifications(endpointSpecList []*pb.AlterationSpec) ([]AlterationConfiguration, error) {
 	alterationToQueryPercent, err := GetPercentagePerAlteration(endpointSpecList)
 	if err != nil {
 		return nil, err
@@ -36,7 +37,7 @@ func GetPercentagePerAlteration(endpointSpecList []*pb.AlterationSpec) (map[Alte
 	// object returned indicates, for a particular AlterationConfiguration, what percentage of queries to which it should apply
 	mapping := make(map[AlterationConfiguration]QueryPercent)
 
-	// unquantified is a holding variable used later to calculate and assign percentages to alterations which do not specify queryPercent
+	// unquantifiedAlts is a holding variable used later to calculate and assign percentages to alterations which do not specify queryPercent
 	unquantifiedAlts := make([]AlterationConfiguration, 0)
 
 	pctClaimed := 0
@@ -97,15 +98,16 @@ func GetPercentagePerAlteration(endpointSpecList []*pb.AlterationSpec) (map[Alte
 }
 
 // FlattenAlterationMap takes a mapping from alterationConfiguration to the percentage of requests
-// and returns a mapping from integers between 0 and some number less than 100 to Alterations assigned to them
+// and returns a slice where the slice's "index" between 0 and some number less than 100 are assigned
+// Alterations which reappear as many times as the requested query percentage
 func FlattenAlterationMap(alterationToQueryPercent map[AlterationConfiguration]QueryPercent) []AlterationConfiguration {
-	mapping := make([]AlterationConfiguration, 0, 100)
+	slice := make([]AlterationConfiguration, 0, 100)
 
 	for altConfig, pct := range alterationToQueryPercent {
 		for i := 0; i < int(pct); i++ {
-			mapping = append(mapping, altConfig)
+			slice = append(slice, altConfig)
 		}
 	}
 
-	return mapping
+	return slice
 }
