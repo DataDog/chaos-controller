@@ -49,4 +49,8 @@ It also allows us to define custom rules to apply to our structures, and focus t
   - `// +ddmark:validation:LinkedFields={<fieldName1>,<fieldName2>,...}`
   - Applies to: any `<struct>` type
   - Asserts the fields in the list are either all `nil` or all non-`nil`
+- RequireOneOf:
+  - `// +ddmark:validation:RequireOneOf={<fieldName1>,<fieldName2>,...}`
+  - Applies to: any `<struct>` type
+  - Asserts at least one of the fields in the list is non-`nil`
 
