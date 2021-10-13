@@ -180,9 +180,9 @@ var _ = Describe("Disruption Controller", func() {
 					Port: 2000,
 					Endpoints: []chaosv1beta1.EndpointAlteration{
 						{
-							TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
-							OverrideToReturn: "{}",
-							QueryPercent:     50,
+							TargetEndpoint: "/chaos_dogfood.ChaosDogfood/order",
+							ErrorToReturn:  "CANCELED",
+							QueryPercent:   50,
 						},
 					},
 				},
