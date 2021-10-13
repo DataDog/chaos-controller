@@ -57,10 +57,10 @@ type EndpointAlteration struct {
 	TargetEndpoint string `json:"endpoint"`
 	// +kubebuilder:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
 	// +ddmark:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
-	ErrorToReturn string `json:"error"`
+	ErrorToReturn string `json:"error,omitempty"`
 	// +kubebuilder:validation:Enum={}
 	// +ddmark:validation:Enum="{}"
-	OverrideToReturn string `json:"override"`
+	OverrideToReturn string `json:"override,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	// +ddmark:validation:Minimum=0

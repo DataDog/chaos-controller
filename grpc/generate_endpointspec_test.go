@@ -22,28 +22,33 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 	Context("with five alterations which add up to less than 100", func() {
 		endpointAlterations = []chaosv1beta1.EndpointAlteration{
 			{
-				TargetEndpoint: "service/api_1",
-				ErrorToReturn:  "CANCELED",
-				QueryPercent:   25,
+				TargetEndpoint:   "service/api_1",
+				OverrideToReturn: "",
+				ErrorToReturn:    "CANCELED",
+				QueryPercent:     25,
 			},
 			{
-				TargetEndpoint: "service/api_2",
-				ErrorToReturn:  "PERMISSION_DENIED",
-				QueryPercent:   50,
+				TargetEndpoint:   "service/api_2",
+				OverrideToReturn: "",
+				ErrorToReturn:    "PERMISSION_DENIED",
+				QueryPercent:     50,
 			},
 			{
-				TargetEndpoint: "service/api_1",
-				ErrorToReturn:  "ALREADY_EXISTS",
-				QueryPercent:   20,
+				TargetEndpoint:   "service/api_1",
+				OverrideToReturn: "",
+				ErrorToReturn:    "ALREADY_EXISTS",
+				QueryPercent:     20,
 			},
 			{
-				TargetEndpoint: "service/api_2",
-				ErrorToReturn:  "NOT_FOUND",
-				QueryPercent:   0,
+				TargetEndpoint:   "service/api_2",
+				OverrideToReturn: "",
+				ErrorToReturn:    "NOT_FOUND",
+				QueryPercent:     0,
 			},
 			{
 				TargetEndpoint:   "service/api_1",
 				OverrideToReturn: "{}",
+				ErrorToReturn:    "",
 				QueryPercent:     0,
 			},
 		}
