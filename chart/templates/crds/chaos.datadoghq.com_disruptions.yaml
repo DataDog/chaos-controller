@@ -168,8 +168,6 @@ spec:
                         type: integer
                     required:
                     - endpoint
-                    - error
-                    - override
                     type: object
                   type: array
                 port:
