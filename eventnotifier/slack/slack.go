@@ -66,6 +66,8 @@ func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConf
 		return nil, fmt.Errorf("slack auth failed: %w", err)
 	}
 
+	not.logger.Info("notifier: slack notifier connected to workspace")
+
 	return not, nil
 }
 

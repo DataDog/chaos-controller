@@ -73,7 +73,32 @@ It can be handy to disrupt packets on pod initialization, meaning before contain
 
 Note that in this mode, only pending pods with a running `chaos-handler` init container and matching your labels + the special label specified above will be targeted. The `chaos-handler` init container will automatically exit and fail if no signal is received within the specified timeout (default is 1 minute).
 
-## Examples
+## Notifier
+
+When creating a disruption, you may wish to be alerted of important lifecycle warnings (disruption found no target, chaos pod is stuck on removal, etc. ) through the Notifier module of the chaos-controller. On each occurence, these events will be propagated through the different set up notifiers (currently `noop/console` and `slack` are implemented).
+
+Any setup/config error will be logged at controller startup.
+
+### Slack
+
+The `slack` notifier requires a slack API Token to connect to your org's slack workspace. It will use the disruption's creator username in kubernetes as an email address to send a DM on slack as 'Disruption Status Bot'. **The email address used to authentify on the kubernetes cluster and create the disruption needs to be the same used on the slack workspace.**
+
+### Configuration
+
+Please setup the following fields to `chart/templates/configmap.yaml - data - config.yaml - controller` pre-controller installation: 
+
+```yaml
+notifiers:
+  common:
+  	clusterName: <cluster name> # will be n/a otherwise
+  noop:
+  	enabled: true/false # enables the noop notifier
+  slack:
+  	enabled: true/false # enables the slack notifier
+  	tokenFilepath: <slack token file path> # path to a file containing an API token for your slack workspace
+```
+
+## Disruption Examples
 
 Please take a look at the different disruptions documentation linked in the table of content for more information about what they can do and how to use them.
 
