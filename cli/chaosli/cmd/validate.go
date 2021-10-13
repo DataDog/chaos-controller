@@ -40,7 +40,7 @@ func ValidateDisruption(path string) error {
 	// this part of the code is redundant after DisruptionFromFile, but will stay as a reference of how to use ddmark.
 	errorList := RunAllValidation(disruption, path)
 
-	fmt.Printf("errors found:\n%v", ddmark.GetErrorList(errorList))
+	fmt.Println(ddmark.GetErrorList(errorList))
 
 	return nil
 }
