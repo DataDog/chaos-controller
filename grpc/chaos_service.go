@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	grpc_calcapi "github.com/DataDog/chaos-controller/grpc/calculations"
+	grpccalc "github.com/DataDog/chaos-controller/grpc/calculations"
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -25,7 +25,7 @@ import (
 // The interface it is implementing was generated in the grpc/disruptionlistener package.
 type ChaosDisruptionListener struct {
 	pb.UnimplementedDisruptionListenerServer
-	Configuration grpc_calcapi.DisruptionConfiguration
+	Configuration grpccalc.DisruptionConfiguration
 	Logger        *zap.SugaredLogger
 }
 
@@ -36,7 +36,7 @@ func NewDisruptionListener(logger *zap.SugaredLogger) *ChaosDisruptionListener {
 	d := ChaosDisruptionListener{}
 
 	d.Logger = logger
-	d.Configuration = grpc_calcapi.DisruptionConfiguration{}
+	d.Configuration = grpccalc.DisruptionConfiguration{}
 
 	return &d
 }
@@ -48,7 +48,7 @@ func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.Dis
 		return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption when DisruptionSpec is nil")
 	}
 
-	config := grpc_calcapi.DisruptionConfiguration{}
+	config := grpccalc.DisruptionConfiguration{}
 
 	for _, endpointSpec := range ds.Endpoints {
 		if endpointSpec.TargetEndpoint == "" {
@@ -56,15 +56,15 @@ func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.Dis
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying TargetEndpoint for all endpointAlterations")
 		}
 
-		alterationMap, err := grpc_calcapi.ConvertSpecifications(endpointSpec.Alterations)
+		alterationMap, err := grpccalc.ConvertSpecifications(endpointSpec.Alterations)
 		if err != nil {
 			return nil, err
 		}
 
 		// add endpoint to main configuration
-		targetEndpoint := grpc_calcapi.TargetEndpoint(endpointSpec.TargetEndpoint)
+		targetEndpoint := grpccalc.TargetEndpoint(endpointSpec.TargetEndpoint)
 
-		config[targetEndpoint] = grpc_calcapi.EndpointConfiguration{
+		config[targetEndpoint] = grpccalc.EndpointConfiguration{
 			TargetEndpoint: targetEndpoint,
 			AlterationMap:  alterationMap,
 		}
@@ -92,7 +92,7 @@ func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.Dis
 // CleanDisruption removes all configured endpoint alterations for DisruptionListener.
 func (d *ChaosDisruptionListener) CleanDisruption(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	mutex.Lock()
-	d.Configuration = make(map[grpc_calcapi.TargetEndpoint]grpc_calcapi.EndpointConfiguration)
+	d.Configuration = make(map[grpccalc.TargetEndpoint]grpccalc.EndpointConfiguration)
 	mutex.Unlock()
 
 	return &emptypb.Empty{}, nil
@@ -105,7 +105,7 @@ func (d *ChaosDisruptionListener) ChaosServerInterceptor(ctx context.Context, re
 	d.Logger.Debug("comparing with %s with %d endpoints", info.FullMethod, len(d.Configuration))
 
 	// FullMethod is the full RPC method string, i.e., /package.service/method.
-	targetEndpoint := grpc_calcapi.TargetEndpoint(info.FullMethod)
+	targetEndpoint := grpccalc.TargetEndpoint(info.FullMethod)
 
 	if endptConfig, ok := d.Configuration[targetEndpoint]; ok {
 		randomPercent := rand.Intn(100)
