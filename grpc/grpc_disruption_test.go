@@ -3,14 +3,13 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
-package injector_test
+package grpc_test
 
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/grpc"
-	. "github.com/DataDog/chaos-controller/injector"
-
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
+
 	. "github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -49,7 +48,7 @@ var _ = Describe("Test send and clean disruption", func() {
 			},
 		}
 
-		disruptionListenerClient := &DisruptionListenerClientMock{}
+		disruptionListenerClient := &grpc.DisruptionListenerClientMock{}
 
 		Specify("calls SendDisruption and CleanDisruption with expected parameters", func() {
 			// define expectations

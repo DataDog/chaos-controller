@@ -21,22 +21,21 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// DisruptionListener is a gRPC Service that can disrupt endpoints of a gRPC server.
+// ChaosDisruptionListener is a gRPC Service that can disrupt endpoints of a gRPC server.
 // The interface it is implementing was generated in the grpc/disruptionlistener package.
 type ChaosDisruptionListener struct {
 	pb.UnimplementedDisruptionListenerServer
-	Configuration grpccalc.DisruptionConfiguration
-	Logger        *zap.SugaredLogger
+	configuration grpccalc.DisruptionConfiguration
+	mutex         sync.Mutex
+	logger        *zap.SugaredLogger
 }
-
-var mutex sync.Mutex
 
 // NewDisruptionListener creates a new DisruptionListener Service with the logger instantiated and DisruptionConfiguration set to be empty
 func NewDisruptionListener(logger *zap.SugaredLogger) *ChaosDisruptionListener {
 	d := ChaosDisruptionListener{}
 
-	d.Logger = logger
-	d.Configuration = grpccalc.DisruptionConfiguration{}
+	d.logger = logger
+	d.configuration = grpccalc.DisruptionConfiguration{}
 
 	return &d
 }
@@ -44,7 +43,7 @@ func NewDisruptionListener(logger *zap.SugaredLogger) *ChaosDisruptionListener {
 // SendDisruption receives a disruption specification and configures the interceptor to spoof responses to specified endpoints.
 func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.DisruptionSpec) (*emptypb.Empty, error) {
 	if ds == nil {
-		d.Logger.Error("cannot execute SendDisruption when DisruptionSpec is nil")
+		d.logger.Error("cannot execute SendDisruption when DisruptionSpec is nil")
 		return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption when DisruptionSpec is nil")
 	}
 
@@ -52,7 +51,7 @@ func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.Dis
 
 	for _, endpointSpec := range ds.Endpoints {
 		if endpointSpec.TargetEndpoint == "" {
-			d.Logger.Error("DisruptionSpec does not specify TargetEndpoint for at least one endpointAlteration")
+			d.logger.Error("DisruptionSpec does not specify TargetEndpoint for at least one endpointAlteration")
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying TargetEndpoint for all endpointAlterations")
 		}
 
@@ -70,30 +69,30 @@ func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.Dis
 		}
 	}
 
-	mutex.Lock()
+	d.mutex.Lock()
 
-	if len(d.Configuration) > 0 {
-		d.Logger.Error("cannot apply new DisruptionSpec when DisruptionListener is already configured")
+	if len(d.configuration) > 0 {
+		d.logger.Error("cannot apply new DisruptionSpec when DisruptionListener is already configured")
 		return nil, status.Error(codes.AlreadyExists, "Cannot apply new DisruptionSpec when DisruptionListener is already configured")
 	}
 
 	select {
 	case <-ctx.Done():
-		d.Logger.Error("cannot apply new DisruptionSpec, gRPC request was canceled")
+		d.logger.Error("cannot apply new DisruptionSpec, gRPC request was canceled")
 	default:
-		d.Configuration = config
+		d.configuration = config
 	}
 
-	mutex.Unlock()
+	d.mutex.Unlock()
 
 	return &emptypb.Empty{}, nil
 }
 
 // CleanDisruption removes all configured endpoint alterations for DisruptionListener.
 func (d *ChaosDisruptionListener) CleanDisruption(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	mutex.Lock()
-	d.Configuration = make(map[grpccalc.TargetEndpoint]grpccalc.EndpointConfiguration)
-	mutex.Unlock()
+	d.mutex.Lock()
+	d.configuration = map[grpccalc.TargetEndpoint]grpccalc.EndpointConfiguration{}
+	d.mutex.Unlock()
 
 	return &emptypb.Empty{}, nil
 }
@@ -102,19 +101,19 @@ func (d *ChaosDisruptionListener) CleanDisruption(context.Context, *emptypb.Empt
 // to intercept all traffic to the server and crosscheck their endpoints to disrupt them.
 func (d *ChaosDisruptionListener) ChaosServerInterceptor(ctx context.Context, req interface{},
 	info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (response interface{}, err error) {
-	d.Logger.Debug("comparing with %s with %d endpoints", info.FullMethod, len(d.Configuration))
+	d.logger.Debug("comparing with %s with %d endpoints", info.FullMethod, len(d.configuration))
 
 	// FullMethod is the full RPC method string, i.e., /package.service/method.
 	targetEndpoint := grpccalc.TargetEndpoint(info.FullMethod)
 
-	if endptConfig, ok := d.Configuration[targetEndpoint]; ok {
+	if endptConfig, ok := d.configuration[targetEndpoint]; ok {
 		randomPercent := rand.Intn(100)
 
 		if len(endptConfig.AlterationMap) > randomPercent {
 			altConfig := endptConfig.AlterationMap[randomPercent]
 
 			if altConfig.ErrorToReturn != "" {
-				d.Logger.Debug("error code to return: %s", v1beta1.ErrorMap[altConfig.ErrorToReturn])
+				d.logger.Debug("error code to return: %s", v1beta1.ErrorMap[altConfig.ErrorToReturn])
 
 				return nil, status.Error(
 					v1beta1.ErrorMap[altConfig.ErrorToReturn],
@@ -122,12 +121,12 @@ func (d *ChaosDisruptionListener) ChaosServerInterceptor(ctx context.Context, re
 					fmt.Sprintf("Chaos Controller injected this error: %s", altConfig.ErrorToReturn),
 				)
 			} else if altConfig.OverrideToReturn != "" {
-				d.Logger.Debug("override to return: %s", altConfig.OverrideToReturn)
+				d.logger.Debug("override to return: %s", altConfig.OverrideToReturn)
 
 				return &emptypb.Empty{}, nil
 			}
 
-			d.Logger.Error("endpoint %s should define either an ErrorToReturn or OverrideToReturn but does not", endptConfig.TargetEndpoint)
+			d.logger.Error("endpoint %s should define either an ErrorToReturn or OverrideToReturn but does not", endptConfig.TargetEndpoint)
 		}
 	}
 
