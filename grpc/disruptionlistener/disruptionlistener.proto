@@ -12,8 +12,8 @@ option go_package = "./disruptionlistener";
 import "google/protobuf/empty.proto";
 
 service DisruptionListener {
-  rpc SendDisruption(DisruptionSpec) returns (google.protobuf.Empty) {}
-  rpc CleanDisruption(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc Disrupt(DisruptionSpec) returns (google.protobuf.Empty) {}
+  rpc ResetDisruptions(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 message DisruptionSpec {

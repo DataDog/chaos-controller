@@ -40,11 +40,11 @@ func NewDisruptionListener(logger *zap.SugaredLogger) *ChaosDisruptionListener {
 	return &d
 }
 
-// SendDisruption receives a disruption specification and configures the interceptor to spoof responses to specified endpoints.
-func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.DisruptionSpec) (*emptypb.Empty, error) {
+// Disrupt receives a disruption specification and configures the interceptor to spoof responses to specified endpoints.
+func (d *ChaosDisruptionListener) Disrupt(ctx context.Context, ds *pb.DisruptionSpec) (*emptypb.Empty, error) {
 	if ds == nil {
-		d.logger.Error("cannot execute SendDisruption when DisruptionSpec is nil")
-		return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption when DisruptionSpec is nil")
+		d.logger.Error("cannot execute Disrupt when DisruptionSpec is nil")
+		return nil, status.Error(codes.InvalidArgument, "Cannot execute Disrupt when DisruptionSpec is nil")
 	}
 
 	config := grpccalc.DisruptionConfiguration{}
@@ -52,7 +52,7 @@ func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.Dis
 	for _, endpointSpec := range ds.Endpoints {
 		if endpointSpec.TargetEndpoint == "" {
 			d.logger.Error("DisruptionSpec does not specify TargetEndpoint for at least one endpointAlteration")
-			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying TargetEndpoint for all endpointAlterations")
+			return nil, status.Error(codes.InvalidArgument, "Cannot execute Disrupt without specifying TargetEndpoint for all endpointAlterations")
 		}
 
 		Alterations, err := grpccalc.ConvertSpecifications(endpointSpec.Alterations)
@@ -88,8 +88,8 @@ func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.Dis
 	return &emptypb.Empty{}, nil
 }
 
-// CleanDisruption removes all configured endpoint alterations for DisruptionListener.
-func (d *ChaosDisruptionListener) CleanDisruption(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+// ResetDisruptions removes all configured endpoint alterations for DisruptionListener.
+func (d *ChaosDisruptionListener) ResetDisruptions(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	d.mutex.Lock()
 	d.configuration = map[grpccalc.TargetEndpoint]grpccalc.EndpointConfiguration{}
 	d.mutex.Unlock()

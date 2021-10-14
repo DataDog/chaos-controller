@@ -22,14 +22,14 @@ type DisruptionListenerClientMock struct {
 }
 
 //nolint:golint
-func (d *DisruptionListenerClientMock) SendDisruption(ctx context.Context, spec *pb.DisruptionSpec, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (d *DisruptionListenerClientMock) Disrupt(ctx context.Context, spec *pb.DisruptionSpec, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	mockArgs := d.Called(ctx, spec)
 
 	return mockArgs.Get(0).(*emptypb.Empty), mockArgs.Error(1)
 }
 
 //nolint:golint
-func (d *DisruptionListenerClientMock) CleanDisruption(ctx context.Context, empty *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (d *DisruptionListenerClientMock) ResetDisruptions(ctx context.Context, empty *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	mockArgs := d.Called(ctx, empty)
 
 	return mockArgs.Get(0).(*emptypb.Empty), mockArgs.Error(1)

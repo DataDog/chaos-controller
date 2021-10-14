@@ -14,25 +14,25 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// ExecuteSendDisruption takes in a CRD specification for GRPC disruptions and
-// executes a SendDisruption call on the provided DisruptionListenerClient
-func ExecuteSendDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1.GRPCDisruptionSpec) error {
+// SendGrpcDisruption takes in a CRD specification for GRPC disruptions and
+// executes a Disrupt call on the provided DisruptionListenerClient
+func SendGrpcDisruption(client pb.DisruptionListenerClient, spec chaosv1beta1.GRPCDisruptionSpec) error {
 	endpointSpecs := GenerateEndpointSpecs(spec.Endpoints)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := client.SendDisruption(ctx, &pb.DisruptionSpec{Endpoints: endpointSpecs})
+	_, err := client.Disrupt(ctx, &pb.DisruptionSpec{Endpoints: endpointSpecs})
 
 	return err
 }
 
-// ExecuteCleanDisruption executes a CleanDisruption call on the provided DisruptionListenerClient
-func ExecuteCleanDisruption(client pb.DisruptionListenerClient) error {
+// ClearGrpcDisruptions executes a ResetDisruptions call on the provided DisruptionListenerClient
+func ClearGrpcDisruptions(client pb.DisruptionListenerClient) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := client.CleanDisruption(ctx, &emptypb.Empty{})
+	_, err := client.ResetDisruptions(ctx, &emptypb.Empty{})
 
 	return err
 }

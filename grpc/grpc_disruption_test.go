@@ -50,9 +50,9 @@ var _ = Describe("Test send and clean disruption", func() {
 
 		disruptionListenerClient := &grpc.DisruptionListenerClientMock{}
 
-		Specify("calls SendDisruption and CleanDisruption with expected parameters", func() {
+		Specify("calls Disrupt and ResetDisruptions with expected parameters", func() {
 			// define expectations
-			disruptionListenerClient.On("SendDisruption",
+			disruptionListenerClient.On("Disrupt",
 				mock.Anything,
 				mock.MatchedBy(func(spec *pb.DisruptionSpec) bool {
 					endpts := spec.Endpoints
@@ -99,13 +99,13 @@ var _ = Describe("Test send and clean disruption", func() {
 				}),
 			).Return(&emptypb.Empty{}, nil)
 
-			disruptionListenerClient.On("CleanDisruption",
+			disruptionListenerClient.On("ResetDisruptions",
 				mock.Anything,
 				&emptypb.Empty{},
 			).Return(&emptypb.Empty{}, nil)
 
-			grpc.ExecuteSendDisruption(disruptionListenerClient, spec)
-			grpc.ExecuteCleanDisruption(disruptionListenerClient)
+			grpc.SendGrpcDisruption(disruptionListenerClient, spec)
+			grpc.ClearGrpcDisruptions(disruptionListenerClient)
 
 			// run test
 			disruptionListenerClient.AssertExpectations(GinkgoT())

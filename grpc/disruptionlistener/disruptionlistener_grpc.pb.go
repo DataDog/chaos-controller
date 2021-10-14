@@ -19,8 +19,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DisruptionListenerClient interface {
-	SendDisruption(ctx context.Context, in *DisruptionSpec, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	CleanDisruption(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Disrupt(ctx context.Context, in *DisruptionSpec, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ResetDisruptions(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type disruptionListenerClient struct {
@@ -31,18 +31,18 @@ func NewDisruptionListenerClient(cc grpc.ClientConnInterface) DisruptionListener
 	return &disruptionListenerClient{cc}
 }
 
-func (c *disruptionListenerClient) SendDisruption(ctx context.Context, in *DisruptionSpec, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *disruptionListenerClient) Disrupt(ctx context.Context, in *DisruptionSpec, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/disruptionlistener.DisruptionListener/SendDisruption", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/disruptionlistener.DisruptionListener/Disrupt", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *disruptionListenerClient) CleanDisruption(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *disruptionListenerClient) ResetDisruptions(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/disruptionlistener.DisruptionListener/CleanDisruption", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/disruptionlistener.DisruptionListener/ResetDisruptions", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -53,8 +53,8 @@ func (c *disruptionListenerClient) CleanDisruption(ctx context.Context, in *empt
 // All implementations must embed UnimplementedDisruptionListenerServer
 // for forward compatibility
 type DisruptionListenerServer interface {
-	SendDisruption(context.Context, *DisruptionSpec) (*emptypb.Empty, error)
-	CleanDisruption(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	Disrupt(context.Context, *DisruptionSpec) (*emptypb.Empty, error)
+	ResetDisruptions(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDisruptionListenerServer()
 }
 
@@ -62,11 +62,11 @@ type DisruptionListenerServer interface {
 type UnimplementedDisruptionListenerServer struct {
 }
 
-func (UnimplementedDisruptionListenerServer) SendDisruption(context.Context, *DisruptionSpec) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendDisruption not implemented")
+func (UnimplementedDisruptionListenerServer) Disrupt(context.Context, *DisruptionSpec) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Disrupt not implemented")
 }
-func (UnimplementedDisruptionListenerServer) CleanDisruption(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CleanDisruption not implemented")
+func (UnimplementedDisruptionListenerServer) ResetDisruptions(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResetDisruptions not implemented")
 }
 func (UnimplementedDisruptionListenerServer) mustEmbedUnimplementedDisruptionListenerServer() {}
 
@@ -81,38 +81,38 @@ func RegisterDisruptionListenerServer(s grpc.ServiceRegistrar, srv DisruptionLis
 	s.RegisterService(&DisruptionListener_ServiceDesc, srv)
 }
 
-func _DisruptionListener_SendDisruption_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DisruptionListener_Disrupt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DisruptionSpec)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DisruptionListenerServer).SendDisruption(ctx, in)
+		return srv.(DisruptionListenerServer).Disrupt(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/disruptionlistener.DisruptionListener/SendDisruption",
+		FullMethod: "/disruptionlistener.DisruptionListener/Disrupt",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DisruptionListenerServer).SendDisruption(ctx, req.(*DisruptionSpec))
+		return srv.(DisruptionListenerServer).Disrupt(ctx, req.(*DisruptionSpec))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DisruptionListener_CleanDisruption_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DisruptionListener_ResetDisruptions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DisruptionListenerServer).CleanDisruption(ctx, in)
+		return srv.(DisruptionListenerServer).ResetDisruptions(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/disruptionlistener.DisruptionListener/CleanDisruption",
+		FullMethod: "/disruptionlistener.DisruptionListener/ResetDisruptions",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DisruptionListenerServer).CleanDisruption(ctx, req.(*emptypb.Empty))
+		return srv.(DisruptionListenerServer).ResetDisruptions(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -125,12 +125,12 @@ var DisruptionListener_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*DisruptionListenerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SendDisruption",
-			Handler:    _DisruptionListener_SendDisruption_Handler,
+			MethodName: "Disrupt",
+			Handler:    _DisruptionListener_Disrupt_Handler,
 		},
 		{
-			MethodName: "CleanDisruption",
-			Handler:    _DisruptionListener_CleanDisruption_Handler,
+			MethodName: "ResetDisruptions",
+			Handler:    _DisruptionListener_ResetDisruptions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

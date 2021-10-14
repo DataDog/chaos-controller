@@ -54,7 +54,7 @@ func (i GRPCDisruptionInjector) Inject() error {
 
 	i.config.Log.Infow("adding grpc disruption", "spec", i.spec)
 
-	err = chaos_grpc.ExecuteSendDisruption(pb.NewDisruptionListenerClient(conn), i.spec)
+	err = chaos_grpc.SendGrpcDisruption(pb.NewDisruptionListenerClient(conn), i.spec)
 
 	if err != nil {
 		i.config.Log.Error("Received an error: %v", err)
@@ -80,7 +80,7 @@ func (i GRPCDisruptionInjector) Clean() error {
 
 	i.config.Log.Infow("removing grpc disruption", "spec", i.spec)
 
-	err = chaos_grpc.ExecuteCleanDisruption(pb.NewDisruptionListenerClient(conn))
+	err = chaos_grpc.ClearGrpcDisruptions(pb.NewDisruptionListenerClient(conn))
 
 	if err != nil {
 		i.config.Log.Error("Received an error: %v", err)
