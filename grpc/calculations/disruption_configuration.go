@@ -9,10 +9,10 @@ package calculations
 type DisruptionConfiguration map[TargetEndpoint]EndpointConfiguration
 
 // EndpointConfiguration configures endpoints that the DisruptionListener chaos tests on a gRPC server.
-// The AlterationMap maps integers from 0 to 100 to alteration configurations.
+// The Alterations maps integers from 0 to 100 to alteration configurations.
 type EndpointConfiguration struct {
 	TargetEndpoint TargetEndpoint
-	AlterationMap  []AlterationConfiguration
+	Alterations    []AlterationConfiguration
 }
 
 // AlterationConfiguration contains either an ErrorToReturn or an OverrideToReturn for a given

@@ -55,7 +55,7 @@ func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.Dis
 			return nil, status.Error(codes.InvalidArgument, "Cannot execute SendDisruption without specifying TargetEndpoint for all endpointAlterations")
 		}
 
-		alterationMap, err := grpccalc.ConvertSpecifications(endpointSpec.Alterations)
+		Alterations, err := grpccalc.ConvertSpecifications(endpointSpec.Alterations)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +65,7 @@ func (d *ChaosDisruptionListener) SendDisruption(ctx context.Context, ds *pb.Dis
 
 		config[targetEndpoint] = grpccalc.EndpointConfiguration{
 			TargetEndpoint: targetEndpoint,
-			AlterationMap:  alterationMap,
+			Alterations:    Alterations,
 		}
 	}
 
@@ -109,8 +109,8 @@ func (d *ChaosDisruptionListener) ChaosServerInterceptor(ctx context.Context, re
 	if endptConfig, ok := d.configuration[targetEndpoint]; ok {
 		randomPercent := rand.Intn(100)
 
-		if len(endptConfig.AlterationMap) > randomPercent {
-			altConfig := endptConfig.AlterationMap[randomPercent]
+		if len(endptConfig.Alterations) > randomPercent {
+			altConfig := endptConfig.Alterations[randomPercent]
 
 			if altConfig.ErrorToReturn != "" {
 				d.logger.Debug("error code to return: %s", v1beta1.ErrorMap[altConfig.ErrorToReturn])

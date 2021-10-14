@@ -11,11 +11,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationMap using FlattenAlterationMap", func() {
+var _ = Describe("get mapping from alterationConfigToQueryPercent to Alterations using FlattenAlterationMap", func() {
 	var (
 		altCfgs                        []AlterationConfiguration
 		alterationConfigToQueryPercent map[AlterationConfiguration]QueryPercent
-		alterationMap                  []AlterationConfiguration
+		alterations                    []AlterationConfiguration
 	)
 
 	altCfgs = []AlterationConfiguration{
@@ -41,15 +41,15 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationM
 		It("should create 15 (out of 100 potential) slots with alteration configurations", func() {
 			alterationConfigToQueryPercent[altCfgs[0]] = QueryPercent(15)
 
-			alterationMap = FlattenAlterationMap(alterationConfigToQueryPercent)
+			alterations = FlattenAlterationMap(alterationConfigToQueryPercent)
 
-			Expect(len(alterationMap)).To(Equal(15))
+			Expect(len(alterations)).To(Equal(15))
 
-			altCfg := alterationMap[0]
+			altCfg := alterations[0]
 			Expect(altCfg.ErrorToReturn).To(Equal("CANCELED"))
 			Expect(altCfg.OverrideToReturn).To(Equal(""))
 
-			altCfg = alterationMap[14]
+			altCfg = alterations[14]
 			Expect(altCfg.ErrorToReturn).To(Equal("CANCELED"))
 			Expect(altCfg.OverrideToReturn).To(Equal(""))
 		})
@@ -61,10 +61,10 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationM
 			alterationConfigToQueryPercent[altCfgs[1]] = QueryPercent(20)
 			alterationConfigToQueryPercent[altCfgs[2]] = QueryPercent(35)
 
-			alterationMap = FlattenAlterationMap(alterationConfigToQueryPercent)
+			alterations = FlattenAlterationMap(alterationConfigToQueryPercent)
 
 			By("having 70 entries", func() {
-				Expect(len(alterationMap)).To(Equal(70))
+				Expect(len(alterations)).To(Equal(70))
 			})
 
 			By("having three alteration types each with the right number of configurations", func() {
@@ -72,7 +72,7 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationM
 				already_exists_cnt := 0
 				empty_cnt := 0
 
-				for _, altCfg := range alterationMap {
+				for _, altCfg := range alterations {
 					switch altCfg.ErrorToReturn {
 					case "CANCELED":
 						Expect(altCfg.OverrideToReturn).To(Equal(""))
@@ -100,10 +100,10 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationM
 			alterationConfigToQueryPercent[altCfgs[1]] = QueryPercent(40)
 			alterationConfigToQueryPercent[altCfgs[2]] = QueryPercent(20)
 
-			alterationMap = FlattenAlterationMap(alterationConfigToQueryPercent)
+			alterations = FlattenAlterationMap(alterationConfigToQueryPercent)
 
 			By("having 100 entries", func() {
-				Expect(len(alterationMap)).To(Equal(100))
+				Expect(len(alterations)).To(Equal(100))
 			})
 
 			By("having three alteration types each with the right number of configurations", func() {
@@ -111,7 +111,7 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to alterationM
 				already_exists_cnt := 0
 				empty_cnt := 0
 
-				for _, altCfg := range alterationMap {
+				for _, altCfg := range alterations {
 					switch altCfg.ErrorToReturn {
 					case "CANCELED":
 						Expect(altCfg.OverrideToReturn).To(Equal(""))
