@@ -16,7 +16,7 @@ var networkDisruptionCmd = &cobra.Command{
 	Short: "Network disruption subcommand",
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		hosts, _ := cmd.Flags().GetStringSlice("hosts")
+		hosts, _ := cmd.Flags().GetStringArray("hosts")
 		allowedHosts, _ := cmd.Flags().GetStringSlice("allowed-hosts")
 		services, _ := cmd.Flags().GetStringSlice("services")
 		flow, _ := cmd.Flags().GetString("flow")
@@ -72,7 +72,7 @@ var networkDisruptionCmd = &cobra.Command{
 }
 
 func init() {
-	networkDisruptionCmd.Flags().StringSlice("hosts", []string{}, "List of hosts (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>)")
+	networkDisruptionCmd.Flags().StringArray("hosts", []string{}, "List of hosts (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host|selector>;<port>;<protocol>)")
 	networkDisruptionCmd.Flags().StringSlice("allowed-hosts", []string{}, "List of allowed hosts not being impacted by the disruption (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>)")
 	networkDisruptionCmd.Flags().StringSlice("services", []string{}, "List of services to apply disruptions to (format: <name>;<namespace>)")
 	networkDisruptionCmd.Flags().String("flow", "egress", "Flow direction to filter on (either egress or ingress)")

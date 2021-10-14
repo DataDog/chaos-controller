@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -66,8 +68,10 @@ type NetworkDisruptionSpec struct {
 	DeprecatedPort *int `json:"port,omitempty"`
 }
 
+// +ddmark:validation:ExclusiveFields={Host,Selector}
 type NetworkDisruptionHostSpec struct {
-	Host string `json:"host,omitempty"`
+	Host     string     `json:"host,omitempty"`
+	Selector labels.Set `json:"selector,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
 	// +ddmark:validation:Minimum=0
@@ -136,7 +140,14 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 
 	// append hosts
 	for _, host := range s.Hosts {
-		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s", host.Host, host.Port, host.Protocol))
+		hosts := ""
+		if host.Host != "" {
+			hosts = host.Host
+		} else {
+			hosts = host.Selector.String()
+		}
+
+		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s", hosts, host.Port, host.Protocol))
 	}
 
 	// append allowed hosts
@@ -165,19 +176,37 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 	// parse given hosts
 	for _, host := range hosts {
 		// parse host with format <host>;<port>;<protocol>
-		parsedHost := strings.SplitN(host, ";", 3)
+		hostParts := strings.SplitN(host, ";", 3)
+
+		// parse host, either a selector (foo=bar) or a hostname/IP/CIDR
+		parsedHost := ""
+		selector := map[string]string{}
+
+		// convert host part to a label set if it contains the equal sign
+		// otherwise consider it as something else (hostname, IP, CIDR)
+		if strings.Contains(hostParts[0], "=") {
+			set, err := labels.ConvertSelectorToLabelsMap(hostParts[0])
+			if err != nil {
+				return nil, fmt.Errorf("unexpected selector format (%s): %w", hostParts[0], err)
+			}
+
+			selector = set
+		} else {
+			parsedHost = hostParts[0]
+		}
 
 		// cast port to int
-		port, err := strconv.Atoi(parsedHost[1])
+		port, err := strconv.Atoi(hostParts[1])
 		if err != nil {
 			return nil, fmt.Errorf("unexpected port parameter in %s: %v", host, err)
 		}
 
 		// generate host spec
 		parsedHosts = append(parsedHosts, NetworkDisruptionHostSpec{
-			Host:     parsedHost[0],
+			Host:     parsedHost,
+			Selector: selector,
 			Port:     port,
-			Protocol: parsedHost[2],
+			Protocol: hostParts[2],
 		})
 	}
 

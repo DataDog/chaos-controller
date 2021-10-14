@@ -159,6 +159,11 @@ spec:
                         - udp
                         - ""
                         type: string
+                      selector:
+                        additionalProperties:
+                          type: string
+                        description: Set is a map of label:value. It implements Labels.
+                        type: object
                     type: object
                   nullable: true
                   type: array
@@ -205,6 +210,11 @@ spec:
                         - udp
                         - ""
                         type: string
+                      selector:
+                        additionalProperties:
+                          type: string
+                        description: Set is a map of label:value. It implements Labels.
+                        type: object
                     type: object
                   nullable: true
                   type: array
