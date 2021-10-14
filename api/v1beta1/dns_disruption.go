@@ -29,6 +29,7 @@ type DNSRecord struct {
 // Validate validates that there are no missing hostnames or records for the given dns disruption spec
 func (s DNSDisruptionSpec) Validate() []error {
 	var errorList = []error{}
+
 	for _, pair := range s {
 		if pair.Hostname == "" {
 			errorList = append(errorList, errors.New("no hostname specified in dns disruption"))

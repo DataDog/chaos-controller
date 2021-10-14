@@ -195,6 +195,7 @@ func GetErrorList(errorList []error) string {
 		res.WriteString("file is valid !")
 	default:
 		res.WriteString("errors:")
+
 		for _, err := range errorList {
 			res.WriteString(fmt.Sprintf("\n - %v", err))
 		}

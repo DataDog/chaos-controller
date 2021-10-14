@@ -236,6 +236,7 @@ func (s *DisruptionSpec) GetKindNames() []chaostypes.DisruptionKindName {
 // concatErrors returns a list of errors compiled into one
 func concatErrors(errorList []error) error {
 	var retErr error = nil
+
 	if len(errorList) == 0 {
 		return retErr
 	}
