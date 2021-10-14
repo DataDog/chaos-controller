@@ -6,7 +6,6 @@
 package v1beta1
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -68,21 +67,13 @@ type EndpointAlteration struct {
 	QueryPercent int `json:"queryPercent,omitempty"`
 }
 
-// Validate validates that there are no missing hostnames or records for the given grpc disruption spec
+// Validate validates that all alterations have either either an error or override to return and at least 1% chance of occuring,
+// as well as that the sum of query percentages of all alterations assigned to a target endpoint do not exceed 100%
 func (s GRPCDisruptionSpec) Validate() error {
-	if s.Port == 0 {
-		return errors.New("the gRPC disruption does not specify the port which the target service exposes, but port must be specified")
-	}
-
-	if len(s.Endpoints) == 0 {
-		return errors.New("the gRPC disruption was selected with no endpoints specified, but endpoints must be specified")
-	}
-
-	queryPctByEndpoint := make(map[string]int)
-	unquantifiedAlts := make(map[string]int)
+	queryPctByEndpoint := map[string]int{}
+	unquantifiedAlts := map[string]int{}
 
 	for _, alteration := range s.Endpoints {
-		// check that endpoint is not already configured such that the sum of the queryPercents total to more than 100%
 		if alteration.QueryPercent == 0 {
 			if count, ok := unquantifiedAlts[alteration.TargetEndpoint]; ok {
 				unquantifiedAlts[alteration.TargetEndpoint] = count + 1
@@ -96,6 +87,7 @@ func (s GRPCDisruptionSpec) Validate() error {
 				unquantifiedAlts[alteration.TargetEndpoint] = 1
 			}
 		} else {
+			// check that endpoint is not already configured such that the sum of the queryPercents total to more than 100%
 			if totalQueryPercent, ok := queryPctByEndpoint[alteration.TargetEndpoint]; ok {
 				// always positive because of CRD limitations
 				queryPctByEndpoint[alteration.TargetEndpoint] = totalQueryPercent + alteration.QueryPercent

@@ -37,7 +37,7 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 	}
 }
 
-// Inject injects the given dns disruption into the given container
+// Inject injects the given grpc disruption into the given container
 func (i GRPCDisruptionInjector) Inject() error {
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 

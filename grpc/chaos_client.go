@@ -66,7 +66,7 @@ func GenerateEndpointSpecs(endpoints []chaosv1beta1.EndpointAlteration) []*pb.En
 		}
 	}
 
-	endpointSpecs := make([]*pb.EndpointSpec, 0)
+	endpointSpecs := []*pb.EndpointSpec{}
 	for _, endptSpec := range targetToEndpointSpec {
 		endpointSpecs = append(endpointSpecs, endptSpec)
 	}

@@ -13,9 +13,9 @@ import (
 )
 
 /*
- * When an integer from 0 to 100 is randomly selected, the PercentToAlteration slice is referenced to
- * identify the disruption to apply to a query. The slice represents user preference the proportion of queries
- * affected by each alteration. See docs/grpc_disruption/interceptor_algorithm.md for examples.
+ * When an integer from 0 to 100 is randomly selected, a slice is referenced to identify the disruption to apply
+ * to a query. The slice represents the user's preference for the proportion of queries affected by each alteration.
+ * See docs/grpc_disruption/interceptor_algorithm.md for examples.
  */
 
 // ConvertSpecifications takes a series of alterations configured for a target endpoint where
@@ -31,14 +31,13 @@ func ConvertSpecifications(endpointSpecList []*pb.AlterationSpec) ([]AlterationC
 	return FlattenAlterationMap(alterationToQueryPercent), nil
 }
 
-// GetPercentagePerAlteration takes a series of alterations configured for a target endpoint
-// and maps them to the percentage of queries which will be altered by it
+// GetPercentagePerAlteration takes a series of alterations configured for a target endpoint and returns a mapping
+// from the alteration to the percentage of queries which will be altered by it
 func GetPercentagePerAlteration(endpointSpecList []*pb.AlterationSpec) (map[AlterationConfiguration]QueryPercent, error) {
-	// object returned indicates, for a particular AlterationConfiguration, what percentage of queries to which it should apply
 	mapping := make(map[AlterationConfiguration]QueryPercent)
 
 	// unquantifiedAlts is a holding variable used later to calculate and assign percentages to alterations which do not specify queryPercent
-	unquantifiedAlts := make([]AlterationConfiguration, 0)
+	unquantifiedAlts := []AlterationConfiguration{}
 
 	pctClaimed := 0
 

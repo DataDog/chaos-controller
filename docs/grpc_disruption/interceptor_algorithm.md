@@ -1,6 +1,6 @@
-# gRPC Disruption Inceptor
+# gRPC Disruption Interceptor
 
-When the interceptor recognizes a query's endpoint as one which is actively getting disrupted, the interceptor generates a random integer from `0` to `100`, and consults a `PercentToAlteration` mapping (represented underneath the hood as a golang slice with length <= 100) to figure out what `alteration` to apply to a query response. This mapping is populated by the percentage odds a user configured for each alteration. Currently, we support two `alteration`s:
+When the interceptor recognizes a query's endpoint as one which is actively getting disrupted, the interceptor generates a random integer from `0` to `100`, and consults a slice with length <= 100 to figure out what `alteration` to apply to a query response. This mapping is populated by the percentage odds a user configured for each alteration. Currently, we support two `alteration`s:
 
 1. return a gRPC error code (such as `NotFound` or `PermissionDenied`)
 2. return an empty response (`emptypb.Empty`)
@@ -28,10 +28,10 @@ spec:
         queryPercent: 15
 ```
 
-For the above specs, the calculated `PercentToAlteration` would look something like:
+For the above specs, the calculated slice would look something like:
 
 ```
-PercentToAlteration {
+[
     0  -> Override: {}
     1  -> Override: {}
     2  -> Override: {}
@@ -50,7 +50,7 @@ PercentToAlteration {
     22 -> Error: PERMISSION_DENIED
     23 -> Error: PERMISSION_DENIED
     24 -> Error: PERMISSION_DENIED
-}
+]
 ```
 
 In this case, we would return an Override with empty results for 5% of queries, a `NOT_FOUND` error for 5% of queries, and return `PERMISSION_DENIED` for 15% of queries.
@@ -75,7 +75,7 @@ spec:
 As in the previous case, all alterations with a defined `queryPercent` are allocated upfront. The algorithm keeps track of alterations which do not yet have `queryPercent`s assigned, and splits the remaining (unconfigured) queries equally amongst these unassigned alterations.
 
 ```
-PercentToAlteration {
+[
     0   -> Override: {}
     1   -> Override: {}
     2   -> Override: {}
@@ -99,7 +99,7 @@ PercentToAlteration {
     ..  -> Error: ...
     99  -> Error: PERMISSION_DENIED
     100 -> Error: PERMISSION_DENIED
-}
+]
 ```
 
 You cannot specify query percentages for a single endpoint which sum to over `100%`.
@@ -121,7 +121,7 @@ spec:
 Rather than constraining the user in how they mix and match this simple configuration style with the explicit `spec.gprc.endpoints[x].queryPercent` field, the current implementation would simply do its best to apply of the configurations.
 
 ```
-PercentToAlteration {
+[
     0   -> Override: {}
     1   -> Override: {}
     2   -> Override: {}
@@ -145,7 +145,7 @@ PercentToAlteration {
     ..  -> Error: ...
     99  -> Error: PERMISSION_DENIED
     100 -> Error: PERMISSION_DENIED
-}
+]
 ```
 
 ## Design Implications
