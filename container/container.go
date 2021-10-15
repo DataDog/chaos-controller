@@ -14,7 +14,6 @@ import (
 type Container interface {
 	ID() string
 	Runtime() Runtime
-	CgroupPath() string
 	PID() uint32
 	Name() string
 }
@@ -25,11 +24,10 @@ type Config struct {
 }
 
 type container struct {
-	config     Config
-	id         string
-	cgroupPath string
-	pid        uint32
-	name       string
+	config Config
+	id     string
+	pid    uint32
+	name   string
 }
 
 // New creates a new container object with default config
@@ -64,12 +62,6 @@ func NewWithConfig(id string, config Config) (Container, error) {
 		}
 	}
 
-	// retrieve cgroup path from container info
-	cgroupPath, err := config.Runtime.CgroupPath(rawID[1])
-	if err != nil {
-		return nil, fmt.Errorf("error getting cgroup path: %w", err)
-	}
-
 	// retrieve pid from container info
 	pid, err := config.Runtime.PID(rawID[1])
 	if err != nil {
@@ -82,11 +74,10 @@ func NewWithConfig(id string, config Config) (Container, error) {
 	}
 
 	return container{
-		config:     config,
-		id:         rawID[1],
-		cgroupPath: cgroupPath,
-		pid:        pid,
-		name:       name,
+		config: config,
+		id:     rawID[1],
+		pid:    pid,
+		name:   name,
 	}, nil
 }
 
@@ -96,10 +87,6 @@ func (c container) ID() string {
 
 func (c container) Runtime() Runtime {
 	return c.config.Runtime
-}
-
-func (c container) CgroupPath() string {
-	return c.cgroupPath
 }
 
 func (c container) PID() uint32 {

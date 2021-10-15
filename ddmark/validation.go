@@ -23,6 +23,7 @@ func init() {
 	addDefinition(Required(true), k8smarkers.DescribesField)
 
 	addDefinition(ExclusiveFields(nil), k8smarkers.DescribesType)
+	addDefinition(LinkedFields(nil), k8smarkers.DescribesType)
 }
 
 // Maximum can applied to an int field and provides a (non-strict) maximum value for that field
@@ -38,8 +39,11 @@ type Enum []interface{}
 // Required can be applied to any field, and asserts this field will return an error if not provided
 type Required bool
 
-// ExclusiveFields can be applied to structs, and asserts that at most one of the specified fields is set
+// ExclusiveFields can be applied to structs, and asserts that the first field can only be non-'nil' iff all of the other fields are 'nil'
 type ExclusiveFields []string
+
+// LinkedFields can be applied to structs, and asserts the fields in the list are either all 'nil' or all non-'nil'
+type LinkedFields []string
 
 func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
@@ -74,21 +78,23 @@ func (m Minimum) ApplyRule(fieldvalue reflect.Value) error {
 func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 
-	var matchCount int = 0
+	matchCount := 0
 
 	structMap, ok := structValueToMap(fieldvalue)
 	if !ok {
 		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(e), fieldvalue.Type(), "struct")
 	}
 
-	for _, item := range e {
-		if structMap[item] != nil {
-			matchCount++
+	if structMap[e[0]] != nil {
+		for _, item := range e[1:] {
+			if structMap[item] != nil {
+				matchCount++
+			}
 		}
 	}
 
-	if matchCount > 1 {
-		return fmt.Errorf("%v: some fields are incompatible, there can only be one of %v", ruleName(e), e)
+	if matchCount >= 1 {
+		return fmt.Errorf("%v: some fields are incompatible, %s can't be set alongside any of %v", ruleName(e), e[0], e[1:])
 	}
 
 	return nil
@@ -125,6 +131,29 @@ func (r Required) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 	if !fieldvalue.IsValid() || fieldvalue.IsZero() {
 		return fmt.Errorf("%v: field is required: currently missing", ruleName(r))
+	}
+
+	return nil
+}
+
+func (l LinkedFields) ApplyRule(fieldvalue reflect.Value) error {
+	fieldvalue = reflect.Indirect(fieldvalue)
+
+	var matchCount int = 0
+
+	structMap, ok := structValueToMap(fieldvalue)
+	if !ok {
+		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(l), fieldvalue.Type(), "struct")
+	}
+
+	for _, item := range l {
+		if structMap[item] != nil {
+			matchCount++
+		}
+	}
+
+	if matchCount != 0 && matchCount != len(l) {
+		return fmt.Errorf("%v: all of the following fields need to be either nil of non-nil (currently unmatched): %v", ruleName(l), l)
 	}
 
 	return nil

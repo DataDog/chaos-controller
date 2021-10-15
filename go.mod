@@ -10,7 +10,7 @@ require (
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/containerd/cgroups v0.0.0-20200817152742-7a3c009711fb // indirect
-	github.com/containerd/containerd v1.4.8
+	github.com/containerd/containerd v1.4.11
 	github.com/containerd/continuity v0.0.0-20200710164510-efbc4488d8fe // indirect
 	github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b // indirect
 	github.com/containerd/go-runc v0.0.0-20200707131846-23d84c510c41 // indirect
@@ -31,7 +31,7 @@ require (
 	github.com/onsi/gomega v1.10.1
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/opencontainers/runc v1.0.0-rc95 // indirect
+	github.com/opencontainers/runc v1.0.0-rc95
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0

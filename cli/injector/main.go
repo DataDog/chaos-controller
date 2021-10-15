@@ -141,11 +141,8 @@ func initMetricsSink() {
 
 // initConfig initializes the injector config and main components from the given flags
 func initConfig() {
-	cgroupPaths := []string{}
 	pids := []uint32{}
 	ctns := []container.Container{}
-	cgroupMgrs := []cgroup.Manager{}
-	netnsMgrs := []netns.Manager{}
 	dnsConfig := network.DNSConfig{DNSServer: dnsServer, KubeDNS: kubeDNS}
 
 	// log when dry-run mode is enabled
@@ -173,7 +170,6 @@ func initConfig() {
 
 			log.Infow("injector targeting container", "containerID", containerID, "container name", ctn.Name())
 
-			cgroupPath := ctn.CgroupPath()
 			pid := ctn.PID()
 
 			// keep pid for later if this is a chaos handler container
@@ -182,7 +178,6 @@ func initConfig() {
 			}
 
 			ctns = append(ctns, ctn)
-			cgroupPaths = append(cgroupPaths, cgroupPath)
 			pids = append(pids, pid)
 		}
 
@@ -194,63 +189,12 @@ func initConfig() {
 		}
 
 	case chaostypes.DisruptionLevelNode:
-		cgroupPaths = []string{""}
 		pids = []uint32{1}
-
-		ctns = append(ctns, nil)
+		ctns = []container.Container{nil}
 	default:
 		log.Errorf("unknown level: %s", level)
 
 		return
-	}
-
-	cgroups, err := cgroup.ScrapeAllCgroups(log)
-
-	if err != nil {
-		log.Errorw("can't find cgroups paths", "error", err)
-
-		return
-	}
-
-	// create cgroup managers
-	for i, cgroupPath := range cgroupPaths {
-		var foundCgroup *cgroup.ContainerCgroup // We want to pass nil for a node level disruption, as we arent targeting a container
-
-		if level == chaostypes.DisruptionLevelPod {
-			var ok bool
-
-			rawContainerID := strings.Split(targetContainerIDs[i], "://") // This is "guaranteed" to work because it was already validated when we called container.New(containerID) earlier
-			foundCgroup, ok = cgroups[rawContainerID[1]]
-
-			if !ok {
-				log.Errorf("could not find cgroup paths for containerID %s", targetContainerIDs[i])
-
-				return
-			}
-		}
-
-		log.Infow("creating a new cgroup manager", "cgroupPath", cgroupPath)
-		cgroupMgr, err := cgroup.NewManager(dryRun, foundCgroup, cgroupPath, log)
-
-		if err != nil {
-			log.Errorw("error creating cgroup manager", "error", err)
-
-			return
-		}
-
-		cgroupMgrs = append(cgroupMgrs, cgroupMgr)
-	}
-
-	// create network namespace manager
-	for _, pid := range pids {
-		netnsMgr, err := netns.NewManager(pid)
-		if err != nil {
-			log.Errorw("error creating network namespace manager", "error", err)
-
-			return
-		}
-
-		netnsMgrs = append(netnsMgrs, netnsMgr)
 	}
 
 	// create kubernetes clientset
@@ -268,7 +212,25 @@ func initConfig() {
 		return
 	}
 
-	for i, ctn := range ctns {
+	// create injector configs
+	for i, pid := range pids {
+		// create network namespace manager
+		netnsMgr, err := netns.NewManager(pid)
+		if err != nil {
+			log.Errorw("error creating network namespace manager", "error", err, "pid", pid)
+
+			return
+		}
+
+		// create cgroups manager
+		cgroupMgr, err := cgroup.NewManager(dryRun, pid, log)
+		if err != nil {
+			log.Errorw("error creating cgroup manager", "error", err, "pid", pid)
+
+			return
+		}
+
+		// generate injector config
 		config := injector.Config{
 			DryRun:          dryRun,
 			OnInit:          onInit,
@@ -277,8 +239,8 @@ func initConfig() {
 			Level:           chaostypes.DisruptionLevel(level),
 			TargetContainer: ctn,
 			TargetPodIP:     targetPodIP,
-			Cgroup:          cgroupMgrs[i],
-			Netns:           netnsMgrs[i],
+			Cgroup:          cgroupMgr,
+			Netns:           netnsMgr,
 			K8sClient:       clientset,
 			DNS:             dnsConfig,
 		}

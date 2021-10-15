@@ -20,7 +20,7 @@ spec:
       serviceAccount: chaos-controller
       containers:
       - name: kube-rbac-proxy
-        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.4.1
+        image: {{ .Values.images.proxy }}
         imagePullPolicy: IfNotPresent
         args:
         - --secure-listen-address=0.0.0.0:8443
@@ -31,7 +31,7 @@ spec:
         - containerPort: 8443
           name: https
       - name: manager
-        image: {{ .Values.images.controller }}:{{ .Values.images.tag }}
+        image: {{ .Values.images.controller }}
         imagePullPolicy: IfNotPresent
         command:
         - /usr/local/bin/manager

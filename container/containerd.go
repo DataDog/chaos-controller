@@ -56,22 +56,6 @@ func (c containerdRuntime) PID(id string) (uint32, error) {
 	return task.Pid(), nil
 }
 
-func (c containerdRuntime) CgroupPath(id string) (string, error) {
-	// load container structure
-	container, err := c.client.LoadContainer(context.Background(), id)
-	if err != nil {
-		return "", fmt.Errorf("error while loading the given container: %w", err)
-	}
-
-	// retrieve container spec
-	spec, err := container.Spec(context.Background())
-	if err != nil {
-		return "", fmt.Errorf("error retrieving the given container spec: %w", err)
-	}
-
-	return spec.Linux.CgroupsPath, nil
-}
-
 func (c containerdRuntime) HostPath(id, path string) (string, error) {
 	var hostPath string
 
@@ -96,9 +80,9 @@ func (c containerdRuntime) HostPath(id, path string) (string, error) {
 		hostPath = mount.Source
 	}
 
-	// error if no matching path found
+	// ignore if no matching path found
 	if hostPath == "" {
-		return "", fmt.Errorf("no matching mount found for path %s, the given path must be a container mount", path)
+		return "", nil
 	}
 
 	return hostPath, nil

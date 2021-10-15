@@ -16,6 +16,8 @@ data:
       metricsSink: {{ .Values.controller.metricsSink | quote }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
+      defaultDuration: {{ .Values.controller.defaultDuration }}
+      expiredDisruptionGCDelay: {{ .Values.controller.expiredDisruptionGCDelay }}
       webhook:
         {{- if .Values.controller.webhook.generateCert }}
         certDir: /tmp/k8s-webhook-server/serving-certs
@@ -25,7 +27,7 @@ data:
         host: {{ .Values.controller.webhook.host | quote }}
         port: {{ .Values.controller.webhook.port }}
     injector:
-      image: {{ printf "%s:%s" .Values.images.injector .Values.images.tag | quote }}
+      image: {{ .Values.images.injector | quote }}
       {{- if .Values.injector.annotations }}
       annotations:
         {{- range $key, $val := .Values.injector.annotations }}
@@ -47,5 +49,5 @@ data:
       {{- end }}
     handler:
       enabled: {{ .Values.handler.enabled }}
-      image: {{ printf "%s:%s" .Values.images.handler .Values.images.tag | quote }}
+      image: {{ .Values.images.handler | quote }}
       timeout: {{ .Values.handler.timeout | quote }}

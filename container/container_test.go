@@ -24,7 +24,6 @@ var _ = Describe("Container", func() {
 		// runtime
 		runtime = &container.RuntimeMock{}
 		runtime.On("PID", mock.Anything).Return(uint32(666), nil)
-		runtime.On("CgroupPath", mock.Anything).Return("/fake/cgroup/path", nil)
 		runtime.On("Name", mock.Anything).Return("", nil)
 
 		// config
@@ -43,7 +42,6 @@ var _ = Describe("Container", func() {
 		It("should return a container object with parsed info", func() {
 			Expect(ctn.ID()).To(Equal("fake"))
 			Expect(ctn.PID()).To(Equal(uint32(666)))
-			Expect(ctn.CgroupPath()).To(Equal("/fake/cgroup/path"))
 		})
 	})
 })

@@ -97,6 +97,7 @@ Internal error occurred: failed calling webhook "chaos-controller-webhook-servic
 You can try disabling the Istio injection on the chaos controller pods. This can be done by adding the following annotation to the Deployment:
 ```
 sidecar.istio.io/inject: "false"
+```
 
 ### Handler
 

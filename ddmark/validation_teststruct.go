@@ -12,15 +12,19 @@ type Teststruct struct {
 	RequiredTest        RequiredTestStruct
 	EnumTest            EnumTestStruct
 	ExclusiveFieldsTest ExclusiveFieldsTestStruct
+	LinkedFieldsTest    LinkedFieldsTestStruct
 }
 
 // +ddmark:validation:ExclusiveFields={PIntField,PStrField}
+// +ddmark:validation:ExclusiveFields={PIntField,BField,CField}
 // +ddmark:validation:ExclusiveFields={IntField,StrField}
 type ExclusiveFieldsTestStruct struct {
 	IntField  int
 	PIntField *int
 	StrField  string
 	PStrField *string
+	BField    int
+	CField    int
 }
 
 type MinMaxTestStruct struct {
@@ -59,5 +63,15 @@ type EnumTestStruct struct {
 	// +ddmark:validation:Enum={1,2,3}
 	IntField int
 	// +ddmark:validation:Enum={1,2,3}
-	PIntField int
+	PIntField *int
+}
+
+// +ddmark:validation:LinkedFields={StrField,IntField}
+// +ddmark:validation:LinkedFields={PStrField,PIntField,AIntField}
+type LinkedFieldsTestStruct struct {
+	StrField  string
+	PStrField *string
+	IntField  int
+	PIntField *int
+	AIntField []int
 }
