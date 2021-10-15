@@ -67,7 +67,7 @@ type EndpointAlteration struct {
 	QueryPercent int `json:"queryPercent,omitempty"`
 }
 
-// Validate validates that all alterations have either either an error or override to return and at least 1% chance of occuring,
+// Validate validates that all alterations have either either an error or override to return and at least 1% chance of occurring,
 // as well as that the sum of query percentages of all alterations assigned to a target endpoint do not exceed 100%
 func (s GRPCDisruptionSpec) Validate() error {
 	queryPctByEndpoint := map[string]int{}
