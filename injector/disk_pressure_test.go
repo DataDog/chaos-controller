@@ -49,10 +49,10 @@ var _ = Describe("Failure", func() {
 		//config
 		config = DiskPressureInjectorConfig{
 			Config: Config{
-				Container:   ctn,
-				Log:         log,
-				MetricsSink: ms,
-				Cgroup:      cgroupManager,
+				TargetContainer: ctn,
+				Log:             log,
+				MetricsSink:     ms,
+				Cgroup:          cgroupManager,
 			},
 			Informer: informer,
 		}

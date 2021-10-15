@@ -44,7 +44,7 @@ func NewContainerFailureInjector(spec v1beta1.ContainerFailureSpec, config Conta
 func (i containerFailureInjector) Inject() error {
 	var err error
 
-	containerPid := int(i.config.Container.PID())
+	containerPid := int(i.config.TargetContainer.PID())
 	proc, err := i.config.ProcessManager.Find(containerPid)
 
 	if err != nil {

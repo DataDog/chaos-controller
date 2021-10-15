@@ -31,9 +31,9 @@ If your team has specific disruption requirements around what `protocol` to disr
 
 ## FAQs:
 
-* [How do I decide my traffic flow? (Ingress vs Egress)](/docs/network_disruption_flow.md)
-* [What should I specify in hosts vs services?](/docs/network_disruption_hosts.md)
-* [What are `prio` qdiscs and how does chaos-controller use them?](/docs/network_disruption_prio.md)
+* [How do I decide my traffic flow? (Ingress vs Egress)](/docs/network_disruption/flow.md)
+* [What should I specify in hosts vs services?](/docs/network_disruption/hosts.md)
+* [What are `prio` qdiscs and how does chaos-controller use them?](/docs/network_disruption/prio.md)
 
 Still have questions? Reach out to the contributors to explore our options!
 

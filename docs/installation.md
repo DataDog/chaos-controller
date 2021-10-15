@@ -38,7 +38,7 @@ The injector image to use can be specified via this flag and can be useful in ca
 
 ### Injector network disruption allowed hosts
 
-As explained [in the network disruption documentation](../docs/network_disruption_hosts.md), you can globally (for all network disruptions) exclude some hosts from network disruptions. This list of hosts can be specified with the `--injector-network-disruption-allowed-hosts` flag:
+As explained [in the network disruption documentation](../docs/network_disruption/hosts.md), you can globally (for all network disruptions) exclude some hosts from network disruptions. This list of hosts can be specified with the `--injector-network-disruption-allowed-hosts` flag:
 
 ```
 --injector-network-disruption-allowed-hosts 10.0.0.1;53;udp
