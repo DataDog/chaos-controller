@@ -48,7 +48,7 @@ func NewDiskPressureInjector(spec v1beta1.DiskPressureSpec, config DiskPressureI
 		}
 
 		if err == nil && len(path) == 0 {
-			config.Log.Warnf("could not apply injector on container: %s; %s not found on this targeted container.", config.Container.Name(), spec.Path)
+			config.Log.Warnf("could not apply injector on container: %s; %s not found on this targeted container.", config.TargetContainer.Name(), spec.Path)
 			return nil, nil
 		}
 	}

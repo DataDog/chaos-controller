@@ -237,7 +237,7 @@ func initConfig() {
 			Log:             log,
 			MetricsSink:     ms,
 			Level:           chaostypes.DisruptionLevel(level),
-			TargetContainer: ctn,
+			TargetContainer: ctns[i],
 			TargetPodIP:     targetPodIP,
 			Cgroup:          cgroupMgr,
 			Netns:           netnsMgr,
