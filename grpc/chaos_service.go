@@ -69,12 +69,12 @@ func (d *ChaosDisruptionListener) Disrupt(ctx context.Context, ds *pb.Disruption
 		}
 	}
 
-	d.mutex.Lock()
-
 	if len(d.configuration) > 0 {
 		d.logger.Error("cannot apply new DisruptionSpec when DisruptionListener is already configured")
 		return nil, status.Error(codes.AlreadyExists, "Cannot apply new DisruptionSpec when DisruptionListener is already configured")
 	}
+
+	d.mutex.Lock()
 
 	select {
 	case <-ctx.Done():
