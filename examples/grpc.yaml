@@ -1,0 +1,29 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: grpc
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    app: chaos-dogfood-server
+  count: 100%
+  grpc:
+    port: 50051
+    endpoints:
+      - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
+        error: NOT_FOUND # gRPC error code to return instead computed response
+        queryPercent: 25 # percentage to affect
+      - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
+        error: ALREADY_EXISTS # gRPC error code to return instead computed response
+        queryPercent: 50 # percentage to affect
+      - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
+        override: "{}" # response structure to return instead of computed response - currently only returns emptypb.Empty
+      - endpoint: /chaos_dogfood.ChaosDogfood/order # gRPC service endpoint to disrupt
+        override: "{}" # response structure to return instead of computed response - currently only returns emptypb.Empty
+        queryPercent: 50 # percentage to affect

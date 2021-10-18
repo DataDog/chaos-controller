@@ -68,6 +68,8 @@ type DisruptionSpec struct {
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
 	// +nullable
 	DNS DNSDisruptionSpec `json:"dns,omitempty"`
+	// +nullable
+	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
 }
 
 // DisruptionStatus defines the observed state of Disruption
@@ -162,13 +164,8 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 	}
 
 	// Rule: at least one disruption field
-	if s.DNS == nil &&
-		s.CPUPressure == nil &&
-		s.Network == nil &&
-		s.NodeFailure == nil &&
-		s.ContainerFailure == nil &&
-		s.DiskPressure == nil {
-		return errors.New("cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, ContainerFailure, CPUPressure fields is needed")
+	if len(s.GetKindNames()) == 0 {
+		return errors.New("cannot apply an empty disruption - at least one disruption kind (e.g. 'network', 'grpc', 'cpuPressure') required")
 	}
 
 	// Rule: on init compatibility
@@ -176,7 +173,8 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		if s.CPUPressure != nil ||
 			s.NodeFailure != nil ||
 			s.ContainerFailure != nil ||
-			s.DiskPressure != nil {
+			s.DiskPressure != nil ||
+			s.GRPC != nil {
 			return errors.New("OnInit is only compatible with network and dns disruptions")
 		}
 
@@ -187,6 +185,10 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 		if len(s.Containers) > 0 {
 			return errors.New("OnInit is not compatible with containers scoping")
 		}
+	}
+
+	if s.GRPC != nil && s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
+		return errors.New("GRPC disruptions can only be applied at the pod level")
 	}
 
 	// Rule: count must be valid
@@ -208,12 +210,14 @@ func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName
 		disruptionKind = s.ContainerFailure
 	case chaostypes.DisruptionKindNetworkDisruption:
 		disruptionKind = s.Network
-	case chaostypes.DisruptionKindDNSDisruption:
-		disruptionKind = s.DNS
 	case chaostypes.DisruptionKindCPUPressure:
 		disruptionKind = s.CPUPressure
 	case chaostypes.DisruptionKindDiskPressure:
 		disruptionKind = s.DiskPressure
+	case chaostypes.DisruptionKindDNSDisruption:
+		disruptionKind = s.DNS
+	case chaostypes.DisruptionKindGRPCDisruption:
+		disruptionKind = s.GRPC
 	}
 
 	return disruptionKind

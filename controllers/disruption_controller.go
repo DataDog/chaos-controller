@@ -305,7 +305,8 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 	for _, target := range instance.Status.Targets {
 		targetNodeName := ""
-		containerIDs := []string{}
+		targetContainerIDs := []string{}
+		targetPodIP := ""
 		chaosPods := []*corev1.Pod{}
 
 		// retrieve target
@@ -320,16 +321,19 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 			targetNodeName = pod.Spec.NodeName
 
 			// get IDs of targeted containers or all containers
-			containerIDs, err = getContainerIDs(&pod, instance.Spec.Containers)
+			targetContainerIDs, err = getContainerIDs(&pod, instance.Spec.Containers)
 			if err != nil {
 				return fmt.Errorf("error getting target pod container ID: %w", err)
 			}
+
+			// get IP of targeted pod
+			targetPodIP = pod.Status.PodIP
 		case chaostypes.DisruptionLevelNode:
 			targetNodeName = target
 		}
 
 		// generate injection pods specs
-		r.generateChaosPods(instance, &chaosPods, target, targetNodeName, containerIDs)
+		r.generateChaosPods(instance, &chaosPods, target, targetNodeName, targetContainerIDs, targetPodIP)
 
 		if len(chaosPods) == 0 {
 			r.Recorder.Event(instance, corev1.EventTypeWarning, "EmptyDisruption", fmt.Sprintf("No disruption recognized for \"%s\" therefore no disruption applied.", instance.Name))
@@ -964,7 +968,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 }
 
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
-func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, containerIDs []string) {
+func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, targetContainerIDs []string, targetPodIP string) {
 	// generate chaos pods for each possible disruptions
 	for _, kind := range chaostypes.DisruptionKindNames {
 		subspec := instance.Spec.DisruptionKindPicker(kind)
@@ -980,7 +984,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 
 		// generate args for pod
 		args := chaosapi.AppendArgs(subspec.GenerateArgs(),
-			level, kind, containerIDs, r.MetricsSink.GetSinkName(), instance.Spec.DryRun,
+			level, kind, targetContainerIDs, targetPodIP, r.MetricsSink.GetSinkName(), instance.Spec.DryRun,
 			instance.Name, instance.Namespace, targetName, instance.Spec.OnInit, r.InjectorNetworkDisruptionAllowedHosts, r.InjectorDNSDisruptionDNSServer, r.InjectorDNSDisruptionKubeDNS)
 
 		// append pod to chaos pods

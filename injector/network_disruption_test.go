@@ -151,13 +151,13 @@ var _ = Describe("Failure", func() {
 		// config
 		config = NetworkDisruptionInjectorConfig{
 			Config: Config{
-				Container:   ctn,
-				Log:         log,
-				MetricsSink: ms,
-				Netns:       netnsManager,
-				Cgroup:      cgroupManager,
-				Level:       chaostypes.DisruptionLevelPod,
-				K8sClient:   k8sClient,
+				TargetContainer: ctn,
+				Log:             log,
+				MetricsSink:     ms,
+				Netns:           netnsManager,
+				Cgroup:          cgroupManager,
+				Level:           chaostypes.DisruptionLevelPod,
+				K8sClient:       k8sClient,
 			},
 			TrafficController: tc,
 			NetlinkAdapter:    nl,

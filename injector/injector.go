@@ -24,15 +24,16 @@ type Injector interface {
 
 // Config represents a generic injector config
 type Config struct {
-	DryRun      bool
-	OnInit      bool
-	Log         *zap.SugaredLogger
-	MetricsSink metrics.Sink
-	Kind        types.DisruptionKindName
-	Level       types.DisruptionLevel
-	Container   container.Container
-	Cgroup      cgroup.Manager
-	Netns       netns.Manager
-	K8sClient   kubernetes.Interface
-	DNS         network.DNSConfig
+	DryRun          bool
+	OnInit          bool
+	Log             *zap.SugaredLogger
+	MetricsSink     metrics.Sink
+	Kind            types.DisruptionKindName
+	Level           types.DisruptionLevel
+	TargetContainer container.Container
+	TargetPodIP     string
+	Cgroup          cgroup.Manager
+	Netns           netns.Manager
+	K8sClient       kubernetes.Interface
+	DNS             network.DNSConfig
 }

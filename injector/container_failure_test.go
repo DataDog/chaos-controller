@@ -6,10 +6,11 @@
 package injector_test
 
 import (
-	"github.com/DataDog/chaos-controller/container"
-	"github.com/DataDog/chaos-controller/process"
 	"os"
 	"syscall"
+
+	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/process"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -45,9 +46,9 @@ var _ = Describe("Failure", func() {
 
 		config = ContainerFailureInjectorConfig{
 			Config: Config{
-				Log:         log,
-				MetricsSink: ms,
-				Container:   ctn,
+				Log:             log,
+				MetricsSink:     ms,
+				TargetContainer: ctn,
 			},
 			ProcessManager: manager,
 		}
