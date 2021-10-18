@@ -218,11 +218,10 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		Mask: net.CIDRMask(32, 32),
 	}
 
-	// allow kubelet -> apiserver communications
-	// resolve the kubernetes.default service created at cluster bootstrap and owning the apiserver cluster IP
-	apiserverIPs, err := resolveHost(i.config.DNSClient, "kubernetes.default")
-	if err != nil {
-		return fmt.Errorf("error resolving apiservers service IP: %w", err)
+	// create cloud provider metadata service ipnet
+	metadataIPNet := &net.IPNet{
+		IP:   net.ParseIP("169.254.169.254"),
+		Mask: net.CIDRMask(32, 32),
 	}
 
 	// set the tx qlen if not already set as it is required to create a prio qdisc without dropping
@@ -336,21 +335,21 @@ func (i *networkDisruptionInjector) applyOperations() error {
 			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 		}
 	} else if i.config.Level == chaostypes.DisruptionLevelNode {
+		// GENERIC SAFEGUARDS
 		// allow SSH connections on all interfaces (port 22/tcp)
 		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
 		}
 
+		// CLOUD PROVIDER SPECIFIC SAFEGUARDS
 		// allow cloud provider health checks on all interfaces(arp)
 		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
 		}
 
-		// allow requests to the Kubernetes apiserver (so kubelet does not declare the node as not ready)
-		for _, apiserverIP := range apiserverIPs {
-			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, apiserverIP, 0, 0, "", "1:1"); err != nil {
-				return fmt.Errorf("error adding filter allowing apiserver communications: %w", err)
-			}
+		// allow cloud provider metadata service communication
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, metadataIPNet, 0, 0, "", "1:1"); err != nil {
+			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
 		}
 	}
 

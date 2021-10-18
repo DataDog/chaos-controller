@@ -52,6 +52,21 @@ You can pass a flag to the controller to specify hosts which would be excluded f
 
 It can be configured easily [in the chart values.yaml file](../../chart/values.yaml).
 
+## Q: What are the default excluded hosts?
+
+### Pod level network disruptions
+
+Both of the following safeguards are used to allow the node to communicate with the pod for things like liveness probes.
+
+* to default routes gateways
+* to node IP
+
+### Node level network disruptions
+
+* ARP packets (for cloud providers health checks)
+* SSH packets
+* metadata service (packets going to `169.254.169.154`)
+
 ## Notation
 
 Although the `hosts` field is handled in the same way for both pod and node level disruptions, different network interfaces may be targeted based node configurations. For example, pods that have their own networking interface work differently than pods that use their hosts' networking directly:

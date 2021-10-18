@@ -8,6 +8,7 @@ package network
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
@@ -65,31 +66,6 @@ func (a netlinkAdapter) listRoutes() ([]netlink.Route, error) {
 	return allRoutes, nil
 }
 
-func (a netlinkAdapter) getBridgeLinks(bridge netlink.Link) ([]netlink.Link, error) {
-	bridgeLinks := []netlink.Link{}
-
-	// get the netlink handler
-	handler, err := netlink.NewHandle()
-	if err != nil {
-		return nil, err
-	}
-
-	// list all links links
-	links, err := handler.LinkList()
-	if err != nil {
-		return nil, err
-	}
-
-	// get links having the given bridge link as master
-	for _, link := range links {
-		if link.Attrs().MasterIndex == bridge.Attrs().Index {
-			bridgeLinks = append(bridgeLinks, link)
-		}
-	}
-
-	return bridgeLinks, nil
-}
-
 // NewNetlinkAdapter returns a standard netlink adapter
 func NewNetlinkAdapter() NetlinkAdapter {
 	return netlinkAdapter{}
@@ -97,48 +73,27 @@ func NewNetlinkAdapter() NetlinkAdapter {
 
 // LinkList lists links used in the routing tables for IPv4 only
 func (a netlinkAdapter) LinkList() ([]NetlinkLink, error) {
-	// get routes
-	routes, err := a.listRoutes()
-	if err != nil {
-		return nil, fmt.Errorf("error listing routes: %w", err)
-	}
-
-	// store links indexes
-	linksIndexes := map[int]struct{}{}
-
-	for _, route := range routes {
-		if _, found := linksIndexes[route.LinkIndex]; !found {
-			// ignore any "invalid" link index
-			// the link index can be 0 for blackhole routes for instance (eq. "*" interface in the routing table)
-			if route.LinkIndex > 0 {
-				linksIndexes[route.LinkIndex] = struct{}{}
-			}
-		}
-	}
-
 	// retrieve links from indexes and cast them
+	links, err := netlink.LinkList()
+	if err != nil {
+		return nil, fmt.Errorf("error listing links: %w", err)
+	}
+
 	nlinks := []NetlinkLink{}
 
-	for linkIndex := range linksIndexes {
-		// get link from the link index found in the route
-		link, err := netlink.LinkByIndex(linkIndex)
-		if err != nil {
-			return nil, fmt.Errorf("error getting link with index %d: %w", linkIndex, err)
+	for _, link := range links {
+		// ignore non local ethernet interfaces according to
+		// the v197 systemd/udev naming standards
+		// https://systemd.io/PREDICTABLE_INTERFACE_NAMES/
+		if !strings.HasPrefix(link.Attrs().Name, "eno") &&
+			!strings.HasPrefix(link.Attrs().Name, "ens") &&
+			!strings.HasPrefix(link.Attrs().Name, "enp") &&
+			!strings.HasPrefix(link.Attrs().Name, "enx") &&
+			!strings.HasPrefix(link.Attrs().Name, "eth") {
+			continue
 		}
 
 		nlinks = append(nlinks, newNetlinkLink(link))
-
-		// for any bridge link, get bridge slaves (interfaces for which the bridge link is considered as master)
-		if link.Type() == "bridge" {
-			bridgeLinks, err := a.getBridgeLinks(link)
-			if err != nil {
-				return nil, fmt.Errorf("error getting bridge links for interface %s: %w", link.Attrs().Name, err)
-			}
-
-			for _, bridgeLink := range bridgeLinks {
-				nlinks = append(nlinks, newNetlinkLink(bridgeLink))
-			}
-		}
 	}
 
 	return nlinks, nil
