@@ -143,7 +143,7 @@ func main() {
 	pflag.StringVar(&cfg.Controller.Notifiers.Common.ClusterName, "notifiers-common-clustername", "", "Cluster Name for notifiers output")
 	handleFatalError(viper.BindPFlag("controller.notifiers.common.clusterName", pflag.Lookup("notifiers-common-clustername")))
 
-	pflag.BoolVar(&cfg.Controller.Notifiers.Noop.Enabled, "notifiers-noop-enabled", true, "Enabler toggle for the NOOP notifier (defaulted to true)")
+	pflag.BoolVar(&cfg.Controller.Notifiers.Noop.Enabled, "notifiers-noop-enabled", false, "Enabler toggle for the NOOP notifier (defaulted to false)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.noop.enabled", pflag.Lookup("notifiers-noop-enabled")))
 
 	pflag.BoolVar(&cfg.Controller.Notifiers.Slack.Enabled, "notifiers-slack-enabled", false, "Enabler toggle for the Slack notifier (defaulted to false)")
