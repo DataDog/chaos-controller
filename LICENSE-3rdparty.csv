@@ -144,6 +144,7 @@ github.com/google/uuid,github.com/google/uuid,BSD-3-Clause
 github.com/googleapis/gnostic,github.com/googleapis/gnostic/OpenAPIv2,Apache-2.0
 github.com/googleapis/gnostic,github.com/googleapis/gnostic/compiler,Apache-2.0
 github.com/googleapis/gnostic,github.com/googleapis/gnostic/extensions,Apache-2.0
+github.com/gorilla/websocket,github.com/gorilla/websocket,BSD-2-Clause
 github.com/hashicorp/golang-lru,github.com/hashicorp/golang-lru,MPL-2.0
 github.com/hashicorp/golang-lru,github.com/hashicorp/golang-lru/simplelru,MPL-2.0
 github.com/hashicorp/hcl,github.com/hashicorp/hcl,MPL-2.0
@@ -236,6 +237,12 @@ github.com/prometheus/procfs,github.com/prometheus/procfs,Apache-2.0
 github.com/prometheus/procfs,github.com/prometheus/procfs/internal/fs,Apache-2.0
 github.com/prometheus/procfs,github.com/prometheus/procfs/internal/util,Apache-2.0
 github.com/sirupsen/logrus,github.com/sirupsen/logrus,MIT
+github.com/slack-go/slack,github.com/slack-go/slack,BSD-2-Clause
+github.com/slack-go/slack,github.com/slack-go/slack/internal/backoff,BSD-2-Clause
+github.com/slack-go/slack,github.com/slack-go/slack/internal/errorsx,BSD-2-Clause
+github.com/slack-go/slack,github.com/slack-go/slack/internal/misc,BSD-2-Clause
+github.com/slack-go/slack,github.com/slack-go/slack/internal/timex,BSD-2-Clause
+github.com/slack-go/slack,github.com/slack-go/slack/slackutilsx,BSD-2-Clause
 github.com/spf13/afero,github.com/spf13/afero,Apache-2.0
 github.com/spf13/afero,github.com/spf13/afero/mem,Apache-2.0
 github.com/spf13/cast,github.com/spf13/cast,MIT
