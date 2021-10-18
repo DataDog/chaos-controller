@@ -62,13 +62,13 @@ var _ = Describe("Validator", func() {
 			yamlDisruptionSpec.WriteString("\ndiskPressure:")
 		})
 
-		Context("with an empy disruption", func() {
+		Context("with an empty disruption", func() {
 			It("should not validate", func() {
 				Expect(errList).To(HaveLen(1))
 			})
 		})
 
-		Context("with a non-mepty disruption", func() {
+		Context("with a non-empty disruption", func() {
 			BeforeEach(func() {
 				yamlDisruptionSpec.WriteString("\n  throttling:")
 				yamlDisruptionSpec.WriteString("\n    writeBytesPerSec: 1024")
