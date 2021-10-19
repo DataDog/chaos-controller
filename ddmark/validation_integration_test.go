@@ -230,6 +230,18 @@ linkedfieldstest:
 	})
 
 	Context("AtLeastOneOf Marker", func() {
+		It("no error on all-nil sub-fields (marker not run)", func() {
+			var atLeastOneOfInvalidYaml = `
+atleastoneoftest:
+  strfield: "" # is nil
+  pstrfield:   # is nil
+  intfield: 0  # is nil
+  pintfield:   # is nil
+  aintfield:   # is nil
+`
+			errorList := validateString(atLeastOneOfInvalidYaml)
+			Expect(errorList).To(HaveLen(0))
+		})
 		It("rejects out all-nil values twice", func() {
 			var atLeastOneOfInvalidYaml = `
 atleastoneoftest:
