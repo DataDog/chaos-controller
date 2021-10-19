@@ -143,7 +143,7 @@ func (r Required) ApplyRule(fieldvalue reflect.Value) error {
 func (l LinkedFields) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 
-	var matchCount int = 0
+	var matchCount = 0
 
 	structMap, ok := structValueToMap(fieldvalue)
 	if !ok {
