@@ -20,7 +20,7 @@ const (
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
-// +ddmark:validation:RequireOneOf={BandwidthLimit,Drop,Delay,Corrupt,Duplicate}
+// +ddmark:validation:AtLeastOneOf={BandwidthLimit,Drop,Delay,Corrupt,Duplicate}
 type NetworkDisruptionSpec struct {
 	// +nullable
 	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`

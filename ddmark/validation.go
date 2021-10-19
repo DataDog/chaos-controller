@@ -24,7 +24,7 @@ func init() {
 
 	addDefinition(ExclusiveFields(nil), k8smarkers.DescribesType)
 	addDefinition(LinkedFields(nil), k8smarkers.DescribesType)
-	addDefinition(RequireOneOf(nil), k8smarkers.DescribesType)
+	addDefinition(AtLeastOneOf(nil), k8smarkers.DescribesType)
 }
 
 // Maximum can applied to an int field and provides a (non-strict) maximum value for that field
@@ -46,8 +46,8 @@ type ExclusiveFields []string
 // LinkedFields can be applied to structs, and asserts the fields in the list are either all 'nil' or all non-'nil'
 type LinkedFields []string
 
-// RequireOneOf can be applied to structs, and asserts at least one of the following fields is non-'nil'
-type RequireOneOf []string
+// AtLeastOneOf can be applied to structs, and asserts at least one of the following fields is non-'nil'
+type AtLeastOneOf []string
 
 func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
@@ -163,7 +163,7 @@ func (l LinkedFields) ApplyRule(fieldvalue reflect.Value) error {
 	return nil
 }
 
-func (r RequireOneOf) ApplyRule(fieldvalue reflect.Value) error {
+func (r AtLeastOneOf) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 
 	structMap, ok := structValueToMap(fieldvalue)

@@ -236,7 +236,7 @@ var _ = Describe("Validation Rules Cases", func() {
 		})
 	})
 
-	Context("RequireOneOf test", func() {
+	Context("AtLeastOneOf test", func() {
 		type dummyStruct struct {
 			Field1 string
 			Field2 int
@@ -244,7 +244,7 @@ var _ = Describe("Validation Rules Cases", func() {
 		}
 
 		arr := []string{"Field1", "Field2", "Field3"}
-		linked := RequireOneOf(arr)
+		linked := AtLeastOneOf(arr)
 		var fakeObj dummyStruct
 
 		BeforeEach(func() {
