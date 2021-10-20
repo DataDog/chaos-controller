@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -86,26 +88,26 @@ type NetworkDisruptionServiceSpec struct {
 
 // Validate validates args for the given disruption
 func (s *NetworkDisruptionSpec) Validate() error {
+	var retErr error = nil
 	// ensure spec filters on something if ingress mode is enabled
 	if s.Flow == FlowIngress {
 		if len(s.Hosts) == 0 && len(s.Services) == 0 {
-			return errors.New("the network disruption has ingress flow enabled but no hosts or services are provided, which is required for it to work")
+			retErr = multierror.Append(retErr, errors.New("the network disruption has ingress flow enabled but no hosts or services are provided, which is required for it to work"))
 		}
 	}
 
 	if k8sClient != nil {
-		err := validateServices(k8sClient, s.Services)
-		if err != nil {
-			return err
+		if err := validateServices(k8sClient, s.Services); err != nil {
+			retErr = multierror.Append(retErr, err)
 		}
 	}
 
 	// ensure deprecated fields are not used
 	if s.DeprecatedPort != nil {
-		return fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts instead")
+		retErr = multierror.Append(retErr, fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
 	}
 
-	return nil
+	return retErr
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
