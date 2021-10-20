@@ -108,7 +108,7 @@ func (s GRPCDisruptionSpec) Validate() error {
 		}
 	}
 
-	return retErr
+	return multierror.Prefix(retErr, "GRPC:")
 }
 
 // GenerateArgs generates injection pod arguments for the given spec

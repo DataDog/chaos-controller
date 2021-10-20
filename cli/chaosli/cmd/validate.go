@@ -55,10 +55,10 @@ func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
 	)
 
 	retErr = multierror.Append(retErr, errorList...)
-	retErr = multierror.Prefix(retErr, "ddmark:   ")
+	retErr = multierror.Prefix(retErr, "ddmark:  ")
 
 	if err := disruption.Spec.Validate(); err != nil {
-		retErr = multierror.Append(retErr, multierror.Prefix(err, "validate: "))
+		retErr = multierror.Append(retErr, multierror.Prefix(err, "validate:"))
 	}
 
 	return retErr

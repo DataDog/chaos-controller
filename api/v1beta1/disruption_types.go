@@ -144,7 +144,7 @@ func (s *DisruptionSpec) Validate() error {
 		}
 	}
 
-	return retErr
+	return multierror.Prefix(retErr, "Spec:")
 }
 
 // Validate applies rules for disruption global scope

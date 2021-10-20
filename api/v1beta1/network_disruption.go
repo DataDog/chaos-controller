@@ -107,7 +107,7 @@ func (s *NetworkDisruptionSpec) Validate() error {
 		retErr = multierror.Append(retErr, fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
 	}
 
-	return retErr
+	return multierror.Prefix(retErr, "Network:")
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec

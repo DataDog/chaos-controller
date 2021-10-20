@@ -45,7 +45,7 @@ func (s DNSDisruptionSpec) Validate() error {
 		}
 	}
 
-	return retErr
+	return multierror.Prefix(retErr, "DNS:")
 }
 
 // GenerateArgs generates injection pod arguments for the given spec
