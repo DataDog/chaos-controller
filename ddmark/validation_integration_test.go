@@ -246,11 +246,11 @@ atleastoneoftest:
 			var atLeastOneOfYaml = `
 atleastoneoftest:
   randomintfield: 1
-  strfield:
-  pstrfield:
-  intfield: 0 # is nil
-  pintfield:  # is nil
-  aintfield:
+  strfield: "" # is nil
+  pstrfield:   # is nil
+  intfield: 0  # is nil
+  pintfield:   # is nil
+  aintfield:   # is nil
 `
 			errorList := validateString(atLeastOneOfYaml)
 			Expect(errorList).To(HaveLen(2))
