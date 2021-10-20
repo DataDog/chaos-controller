@@ -8,6 +8,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	ddmark "github.com/DataDog/chaos-controller/ddmark"
 	"github.com/spf13/cobra"
 )
@@ -31,21 +32,29 @@ func init() {
 }
 
 func ValidateDisruption(path string) error {
-	marshalledStruct, err := DisruptionFromFile(path)
+	disruption, err := DisruptionFromFile(path)
 	if err != nil {
 		return fmt.Errorf("error reading from disruption at %v: %v", path, err)
 	}
 
-	errorList := ddmark.ValidateStruct(marshalledStruct, path,
+	// this part of the code is redundant after DisruptionFromFile, but will stay as a reference of how to use ddmark.
+	errorList := RunAllValidation(disruption, path)
+
+	fmt.Println(ddmark.GetErrorList(errorList))
+
+	return nil
+}
+
+// RunAllValidation runs and concatenate the ddmark validation and the regular api validation
+func RunAllValidation(disruption v1beta1.Disruption, rootPath string) []error {
+	errorList := ddmark.ValidateStruct(disruption, rootPath,
 		"github.com/DataDog/chaos-controller/api/v1beta1",
 	)
 
-	err = marshalledStruct.Spec.Validate()
+	err := disruption.Spec.Validate()
 	if err != nil {
 		errorList = append(errorList, err)
 	}
 
-	ddmark.PrintErrorList(errorList)
-
-	return nil
+	return errorList
 }

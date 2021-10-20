@@ -8,6 +8,7 @@ package ddmark
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	k8sloader "sigs.k8s.io/controller-tools/pkg/loader"
 	k8smarkers "sigs.k8s.io/controller-tools/pkg/markers"
@@ -185,16 +186,20 @@ func getAllPackageTypes(packages []*k8sloader.Package, col *k8smarkers.Collector
 
 // HELPERS
 
-// PrintErrorList prints a list of errors returned by the markers validation process
-func PrintErrorList(errorList []error) {
+// GetErrorList returns a list of errors as a string
+func GetErrorList(errorList []error) string {
+	var res strings.Builder
+
 	switch a := len(errorList); {
 	case a == 0:
-		fmt.Println("file is valid !")
+		res.WriteString("file is valid !")
 	default:
-		fmt.Println("errors found:")
+		res.WriteString("errors:")
 
 		for _, err := range errorList {
-			fmt.Println(err)
+			res.WriteString(fmt.Sprintf("\n - %v", err))
 		}
 	}
+
+	return res.String()
 }

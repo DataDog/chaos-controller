@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/ddmark"
 	goyaml "sigs.k8s.io/yaml"
 
 	"github.com/spf13/cobra"
@@ -125,10 +126,10 @@ func ReadUnmarshalValidate(path string) v1beta1.Disruption {
 		log.Fatalf("unmarshal: %v", err)
 	}
 
-	err = parsedSpec.Spec.Validate()
+	errList := RunAllValidation(parsedSpec, path)
 
-	if err != nil {
-		log.Fatalf("there were some problems when validating your disruption: %v", err)
+	if len(errList) != 0 {
+		log.Fatalf("there were some problems when validating your disruption:\n%v", ddmark.GetErrorList(errList))
 	}
 
 	return parsedSpec
