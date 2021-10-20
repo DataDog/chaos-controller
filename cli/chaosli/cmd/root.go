@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/ddmark"
 	goyaml "sigs.k8s.io/yaml"
 
 	"github.com/spf13/cobra"
@@ -120,16 +119,13 @@ func ReadUnmarshalValidate(path string) v1beta1.Disruption {
 	}
 
 	parsedSpec := v1beta1.Disruption{}
-	err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec)
 
-	if err != nil {
+	if err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec); err != nil {
 		log.Fatalf("unmarshal: %v", err)
 	}
 
-	errList := RunAllValidation(parsedSpec, path)
-
-	if len(errList) != 0 {
-		log.Fatalf("there were some problems when validating your disruption:\n%v", ddmark.GetErrorList(errList))
+	if err = RunAllValidation(parsedSpec, path); err != nil {
+		log.Fatalf("there were some problems when validating your disruption:\n%v", err)
 	}
 
 	return parsedSpec
