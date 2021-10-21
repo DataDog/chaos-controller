@@ -21,7 +21,7 @@ minmaxtest:
   intfield: 6
   pintfield: 6
 `
-			err := validateString(minmaxValidYaml)
+			err := validateString(minmaxYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects empty pointer value", func() {
@@ -30,7 +30,7 @@ minmaxtest:
   intfield: 6
   pintfield: 
 `
-			err := validateString(minmaxValidYaml)
+			err := validateString(minmaxYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("checks out valid values", func() {
@@ -39,7 +39,7 @@ minmaxtest:
   intfield: 5
   pintfield: 10
 `
-			err := validateString(minmaxValidYaml)
+			err := validateString(minmaxYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects invalid values", func() {
@@ -48,7 +48,7 @@ minmaxtest:
   intfield: 4
   pintfield: 11
 `
-			err := validateString(minmaxInvalidYaml)
+			err := validateString(minmaxYaml)
 			Expect(err.Errors).To(HaveLen(2))
 		})
 	})
@@ -59,7 +59,7 @@ minmaxtest:
 requiredtest:
   intfield: 1
 `
-			err := validateString(requiredOneFieldYaml)
+			err := validateString(requiredYaml)
 			Expect(err.Errors).To(HaveLen(5))
 		})
 		It("rejects on all but one missing fields", func() {
@@ -68,7 +68,7 @@ requiredtest:
   intfield: 1
   pintfield: 
 `
-			err := validateString(requiredOneFieldYaml)
+			err := validateString(requiredYaml)
 			Expect(err.Errors).To(HaveLen(5))
 		})
 		It("rejects and counts all 4 missing fields", func() {
@@ -77,7 +77,7 @@ requiredtest:
   intfield: 1
   pintfield: 0
 `
-			err := validateString(requiredNoFieldYaml)
+			err := validateString(requiredYaml)
 			Expect(err.Errors).To(HaveLen(4))
 		})
 		It("rejects and counts all 5 missing fields", func() {
@@ -87,7 +87,7 @@ requiredtest:
   pstructfield:
     a:
 `
-			err := validateString(requiredNoField2Yaml)
+			err := validateString(requiredYaml)
 			Expect(err.Errors).To(HaveLen(4))
 		})
 		It("checks out on valid file", func() {
@@ -102,7 +102,7 @@ requiredtest:
   pstructfield:
     a: 1
 `
-			err := validateString(requiredValidYaml)
+			err := validateString(requiredYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 	})
@@ -141,7 +141,7 @@ exclusivefieldstest:
   strfield: aa
   pstrfield: aa
 `
-			err := validateString(exclusivefieldsInvalidYaml)
+			err := validateString(exclusivefieldsYaml)
 			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("checks out valid values", func() {
@@ -152,7 +152,7 @@ exclusivefieldstest:
   strfield: aa
   pstrfield: 
 `
-			err := validateString(exclusivefieldsValidYaml)
+			err := validateString(exclusivefieldsYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("allows latter fields to be set freely", func() {
@@ -161,7 +161,7 @@ exclusivefieldstest:
   bfield: 1
   cfield: 1
 `
-			err := validateString(exclusivefieldsValidYaml)
+			err := validateString(exclusivefieldsYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 	})
@@ -176,7 +176,7 @@ linkedfieldstest:
   pintfield: 1
   aintfield: [1,2]
 `
-			err := validateString(linkedfieldsValidYaml)
+			err := validateString(linkedfieldsYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("checks out valid all-nil values", func() {
@@ -189,7 +189,7 @@ linkedfieldstest:
   pintfield:  # is nil
   aintfield:
 `
-			err := validateString(linkedfieldsValidYaml)
+			err := validateString(linkedfieldsYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects both errors - first fields", func() {
@@ -201,7 +201,7 @@ linkedfieldstest:
   pintfield:
   aintfield:
 `
-			err := validateString(linkedfieldsInvalidYaml)
+			err := validateString(linkedfieldsYaml)
 			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects both errors - second fields", func() {
@@ -213,7 +213,7 @@ linkedfieldstest:
   pintfield: 0 # is non-nil
   aintfield:
 `
-			err := validateString(linkedfieldsInvalidYaml)
+			err := validateString(linkedfieldsYaml)
 			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects one error - 0 value is nil on pointer", func() {
@@ -225,7 +225,7 @@ linkedfieldstest:
   pintfield: 0  # is non-nil
   aintfield: [1,2]
 `
-			err := validateString(linkedfieldsInvalidYaml)
+			err := validateString(linkedfieldsYaml)
 			Expect(err.Errors).To(HaveLen(1))
 		})
 	})
@@ -240,8 +240,8 @@ atleastoneoftest:
   pintfield:   # is nil
   aintfield:   # is nil
 `
-			errorList := validateString(atLeastOneOfYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(atLeastOneOfYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects out all-nil values twice", func() {
 			var atLeastOneOfYaml = `
@@ -253,8 +253,8 @@ atleastoneoftest:
   pintfield:   # is nil
   aintfield:   # is nil
 `
-			errorList := validateString(atLeastOneOfYaml)
-			Expect(errorList).To(HaveLen(2))
+			err := validateString(atLeastOneOfYaml)
+			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects almost-all-nil values once", func() {
 			var atLeastOneOfYaml = `
@@ -265,8 +265,8 @@ atleastoneoftest:
   pintfield:  # is nil
   aintfield:
 `
-			errorList := validateString(atLeastOneOfYaml)
-			Expect(errorList).To(HaveLen(1))
+			err := validateString(atLeastOneOfYaml)
+			Expect(err.Errors).To(HaveLen(1))
 		})
 		It("accepts both valid value groups", func() {
 			var atLeastOneOfYaml = `
@@ -277,8 +277,8 @@ atleastoneoftest:
   pintfield:  # is nil
   aintfield:
 `
-			errorList := validateString(atLeastOneOfYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(atLeastOneOfYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("accepts both valid value groups", func() {
 			var atLeastOneOfYaml = `
@@ -289,8 +289,8 @@ atleastoneoftest:
   pintfield:  # is nil
   aintfield: []
 `
-			errorList := validateString(atLeastOneOfYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(atLeastOneOfYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 	})
 })

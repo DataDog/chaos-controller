@@ -7,8 +7,6 @@ package v1beta1
 
 import (
 	"strconv"
-
-	"github.com/hashicorp/go-multierror"
 )
 
 // DiskPressureSpec represents a disk pressure disruption
