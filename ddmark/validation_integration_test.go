@@ -7,6 +7,7 @@ package ddmark_test
 
 import (
 	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/hashicorp/go-multierror"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	k8syaml "sigs.k8s.io/yaml"
@@ -306,16 +307,18 @@ func testStructFromYaml(yamlBytes []byte) (ddmark.Teststruct, error) {
 	return parsedSpec, nil
 }
 
-func validateString(yamlStr string) []error {
+func validateString(yamlStr string) error {
+	var retErr error = nil
+
 	// Teststruct is a test-dedicated struct built strictly for these integration tests
 	var marshalledStruct ddmark.Teststruct
 
 	marshalledStruct, err := testStructFromYaml([]byte(yamlStr))
-	errorList := ddmark.ValidateStruct(marshalledStruct, "test_suite",
+	retErr = ddmark.ValidateStruct(marshalledStruct, "test_suite",
 		"github.com/DataDog/chaos-controller/ddmark",
 	)
 	if err != nil {
-		errorList = append(errorList, err)
+		retErr = multierror.Append(retErr, err)
 	}
-	return errorList
+	return retErr
 }
