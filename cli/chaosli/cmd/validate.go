@@ -54,7 +54,7 @@ func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
 		"github.com/DataDog/chaos-controller/api/v1beta1",
 	)
 
-	retErr = multierror.Append(retErr, errorList...)
+	retErr = multierror.Append(retErr, errorList)
 	retErr = multierror.Prefix(retErr, "ddmark:  ")
 
 	if err := disruption.Spec.Validate(); err != nil {
