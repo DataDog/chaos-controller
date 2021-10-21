@@ -33,33 +33,25 @@ func init() {
 }
 
 func ValidateDisruption(path string) error {
-	disruption, err := DisruptionFromFile(path)
+	_, err := DisruptionFromFile(path)
 	if err != nil {
 		return fmt.Errorf("error reading from disruption at %v: %v", path, err)
 	}
 
-	// this part of the code is redundant after DisruptionFromFile, but will stay as a reference of how to use ddmark.
-	err = RunAllValidation(disruption, path)
-
-	fmt.Println(err)
+	fmt.Println("file is valid !")
 
 	return nil
 }
 
 // RunAllValidation runs and concatenate the ddmark validation and the regular api validation
 func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
-	var retErr error = nil
+	var retErr *multierror.Error
 
-	errorList := ddmark.ValidateStructMultierror(disruption, rootPath,
-		"github.com/DataDog/chaos-controller/api/v1beta1",
-	)
-
-	retErr = multierror.Append(retErr, errorList)
-	retErr = multierror.Prefix(retErr, "ddmark:  ")
+	retErr = multierror.Append(retErr, multierror.Prefix(ddmark.ValidateStructMultierror(disruption, rootPath, "github.com/DataDog/chaos-controller/api/v1beta1"), "ddmark:  "))
 
 	if err := disruption.Spec.Validate(); err != nil {
 		retErr = multierror.Append(retErr, multierror.Prefix(err, "validate:"))
 	}
 
-	return retErr
+	return retErr.ErrorOrNil()
 }
