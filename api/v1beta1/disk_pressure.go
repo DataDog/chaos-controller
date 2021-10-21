@@ -6,13 +6,13 @@
 package v1beta1
 
 import (
-	"errors"
 	"strconv"
 )
 
 // DiskPressureSpec represents a disk pressure disruption
 type DiskPressureSpec struct {
-	Path       string                     `json:"path"`
+	Path string `json:"path"`
+	// +ddmark:validation:Required=true
 	Throttling DiskPressureThrottlingSpec `json:"throttling"`
 }
 
@@ -24,10 +24,6 @@ type DiskPressureThrottlingSpec struct {
 
 // Validate validates args for the given disruption
 func (s *DiskPressureSpec) Validate() error {
-	if s.Throttling.ReadBytesPerSec == nil && s.Throttling.WriteBytesPerSec == nil {
-		return errors.New("the disk pressure disruption was selected, but no throttling values were set. Please set at least one of: readBytesPerSec, or writeBytesPerSec. No injection will occur")
-	}
-
 	return nil
 }
 

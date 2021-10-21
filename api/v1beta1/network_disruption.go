@@ -20,6 +20,7 @@ const (
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
+// +ddmark:validation:AtLeastOneOf={BandwidthLimit,Drop,Delay,Corrupt,Duplicate}
 type NetworkDisruptionSpec struct {
 	// +nullable
 	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
@@ -85,15 +86,6 @@ type NetworkDisruptionServiceSpec struct {
 
 // Validate validates args for the given disruption
 func (s *NetworkDisruptionSpec) Validate() error {
-	// check that at least one network disruption is set
-	if s.BandwidthLimit == 0 &&
-		s.Drop == 0 &&
-		s.Delay == 0 &&
-		s.Corrupt == 0 &&
-		s.Duplicate == 0 {
-		return errors.New("the network disruption was selected, but no disruption type was specified. Please set at least one of: drop, delay, bandwidthLimit, corrupt, or duplicate. No injection will occur")
-	}
-
 	// ensure spec filters on something if ingress mode is enabled
 	if s.Flow == FlowIngress {
 		if len(s.Hosts) == 0 && len(s.Services) == 0 {

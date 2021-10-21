@@ -13,18 +13,7 @@ type Teststruct struct {
 	EnumTest            EnumTestStruct
 	ExclusiveFieldsTest ExclusiveFieldsTestStruct
 	LinkedFieldsTest    LinkedFieldsTestStruct
-}
-
-// +ddmark:validation:ExclusiveFields={PIntField,PStrField}
-// +ddmark:validation:ExclusiveFields={PIntField,BField,CField}
-// +ddmark:validation:ExclusiveFields={IntField,StrField}
-type ExclusiveFieldsTestStruct struct {
-	IntField  int
-	PIntField *int
-	StrField  string
-	PStrField *string
-	BField    int
-	CField    int
+	AtLeastOneOfTest    AtLeastOneOfTestStruct
 }
 
 type MinMaxTestStruct struct {
@@ -66,12 +55,36 @@ type EnumTestStruct struct {
 	PIntField *int
 }
 
+// +ddmark:validation:ExclusiveFields={PIntField,PStrField}
+// +ddmark:validation:ExclusiveFields={PIntField,BField,CField}
+// +ddmark:validation:ExclusiveFields={IntField,StrField}
+type ExclusiveFieldsTestStruct struct {
+	IntField  int
+	PIntField *int
+	StrField  string
+	PStrField *string
+	BField    int
+	CField    int
+}
+
 // +ddmark:validation:LinkedFields={StrField,IntField}
 // +ddmark:validation:LinkedFields={PStrField,PIntField,AIntField}
 type LinkedFieldsTestStruct struct {
-	StrField  string
-	PStrField *string
-	IntField  int
-	PIntField *int
-	AIntField []int
+	RandomIntField int // allows to actually check all-empty structs
+	StrField       string
+	PStrField      *string
+	IntField       int
+	PIntField      *int
+	AIntField      []int
+}
+
+// +ddmark:validation:AtLeastOneOf={StrField,IntField}
+// +ddmark:validation:AtLeastOneOf={PStrField,PIntField,AIntField}
+type AtLeastOneOfTestStruct struct {
+	RandomIntField int // allows to actually check all-empty structs
+	StrField       string
+	PStrField      *string
+	IntField       int
+	PIntField      *int
+	AIntField      []int
 }

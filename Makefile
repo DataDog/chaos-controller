@@ -64,7 +64,7 @@ vet:
 
 # Run golangci-lint against code
 lint:
-	golangci-lint run
+	golangci-lint run --timeout 2m0s
 
 # Generate code
 generate: controller-gen

@@ -39,6 +39,7 @@ import (
 // +ddmark:validation:ExclusiveFields={Network,DNS}
 // +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS}
 // +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS}
+// +ddmark:validation:AtLeastOneOf={DNS,CPUPressure,Network,NodeFailure,ContainerFailure,DiskPressure,GRPC}
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
@@ -161,11 +162,6 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
 	// Rule: container failure not possible if disruption is node-level
 	if s.ContainerFailure != nil && s.Level == chaostypes.DisruptionLevelNode {
 		return errors.New("cannot execute a container failure because the level configuration is set to node")
-	}
-
-	// Rule: at least one disruption field
-	if len(s.GetKindNames()) == 0 {
-		return errors.New("cannot apply an empty disruption - at least one disruption kind (e.g. 'network', 'grpc', 'cpuPressure') required")
 	}
 
 	// Rule: on init compatibility

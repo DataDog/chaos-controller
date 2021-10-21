@@ -36,7 +36,7 @@ func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ..
 
 	var err error
 
-	var errorList []error = make([]error, 0)
+	var errorList = make([]error, 0)
 
 	var pkgs []*k8sloader.Package
 
@@ -164,7 +164,7 @@ func getAllPackageTypes(packages []*k8sloader.Package, col *k8smarkers.Collector
 	var typesMap = map[string]*k8smarkers.TypeInfo{}
 
 	for _, pkg := range packages {
-		var isEmpty bool = true
+		var isEmpty = true
 
 		err := k8smarkers.EachType(col, pkg, func(info *k8smarkers.TypeInfo) {
 			isEmpty = false
