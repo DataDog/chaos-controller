@@ -72,6 +72,7 @@ type EndpointAlteration struct {
 // as well as that the sum of query percentages of all alterations assigned to a target endpoint do not exceed 100%
 func (s GRPCDisruptionSpec) Validate() error {
 	var retErr error = nil
+
 	queryPctByEndpoint := map[string]int{}
 	unquantifiedAlts := map[string]int{}
 
