@@ -50,7 +50,7 @@ func ValidateDisruption(path string) error {
 func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
 	var retErr error = nil
 
-	errorList := ddmark.ValidateStruct(disruption, rootPath,
+	errorList := ddmark.ValidateStructMultierror(disruption, rootPath,
 		"github.com/DataDog/chaos-controller/api/v1beta1",
 	)
 

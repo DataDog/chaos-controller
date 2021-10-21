@@ -33,8 +33,12 @@ func InitializeMarkers() *k8smarkers.Collector {
 
 // ValidateStruct applies struct markers found in structPkgs struct definitions to a marshalledStruct object.
 // It allows to enforce markers rule onto that object, according to the constraints defined in structPkgs
-func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) error {
-	var retErr error = nil
+func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error {
+	return ValidateStructMultierror(marshalledStruct, filePath, structPkgs...).Errors
+}
+
+func ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) *multierror.Error {
+	var retErr *multierror.Error = nil
 
 	col := InitializeMarkers()
 
