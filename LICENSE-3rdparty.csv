@@ -145,6 +145,8 @@ github.com/googleapis/gnostic,github.com/googleapis/gnostic/OpenAPIv2,Apache-2.0
 github.com/googleapis/gnostic,github.com/googleapis/gnostic/compiler,Apache-2.0
 github.com/googleapis/gnostic,github.com/googleapis/gnostic/extensions,Apache-2.0
 github.com/gorilla/websocket,github.com/gorilla/websocket,BSD-2-Clause
+github.com/hashicorp/errwrap,github.com/hashicorp/errwrap,MPL-2.0
+github.com/hashicorp/go-multierror,github.com/hashicorp/go-multierror,MPL-2.0
 github.com/hashicorp/golang-lru,github.com/hashicorp/golang-lru,MPL-2.0
 github.com/hashicorp/golang-lru,github.com/hashicorp/golang-lru/simplelru,MPL-2.0
 github.com/hashicorp/hcl,github.com/hashicorp/hcl,MPL-2.0
