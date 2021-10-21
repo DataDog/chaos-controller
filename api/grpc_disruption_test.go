@@ -8,6 +8,7 @@ package api_test
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/hashicorp/go-multierror"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -33,9 +34,9 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					QueryPercent:     100,
 				},
 			}
-
-			err := spec.Validate()
-			Expect(err.Error()).To(Equal("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint /chaos_dogfood.ChaosDogfood/order"))
+			err := spec.Validate().(*multierror.Error)
+			Expect(err.Len()).To(Equal(1))
+			Expect(err.Errors[0].Error()).To(Equal("GRPC: the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint /chaos_dogfood.ChaosDogfood/order"))
 		})
 	})
 
