@@ -8,7 +8,6 @@ package ddmark
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	k8sloader "sigs.k8s.io/controller-tools/pkg/loader"
@@ -200,18 +199,5 @@ func getAllPackageTypes(packages []*k8sloader.Package, col *k8smarkers.Collector
 
 // GetErrorList returns a list of errors as a string
 func GetErrorList(errorList []error) string {
-	var res strings.Builder
-
-	switch a := len(errorList); {
-	case a == 0:
-		res.WriteString("file is valid !")
-	default:
-		res.WriteString("errors:")
-
-		for _, err := range errorList {
-			res.WriteString(fmt.Sprintf("\n - %v", err))
-		}
-	}
-
-	return res.String()
+	return multierror.ListFormatFunc(errorList)
 }
