@@ -21,8 +21,8 @@ minmaxtest:
   intfield: 6
   pintfield: 6
 `
-			errorList := validateString(minmaxYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(minmaxValidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects empty pointer value", func() {
 			var minmaxYaml string = `
@@ -30,8 +30,8 @@ minmaxtest:
   intfield: 6
   pintfield: 
 `
-			errorList := validateString(minmaxYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(minmaxValidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("checks out valid values", func() {
 			var minmaxYaml string = `
@@ -39,8 +39,8 @@ minmaxtest:
   intfield: 5
   pintfield: 10
 `
-			errorList := validateString(minmaxYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(minmaxValidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects invalid values", func() {
 			var minmaxYaml string = `
@@ -48,8 +48,8 @@ minmaxtest:
   intfield: 4
   pintfield: 11
 `
-			errorList := validateString(minmaxYaml)
-			Expect(errorList).To(HaveLen(2))
+			err := validateString(minmaxInvalidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(2))
 		})
 	})
 
@@ -59,8 +59,8 @@ minmaxtest:
 requiredtest:
   intfield: 1
 `
-			errorList := validateString(requiredYaml)
-			Expect(errorList).To(HaveLen(5))
+			err := validateString(requiredOneFieldYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(5))
 		})
 		It("rejects on all but one missing fields", func() {
 			var requiredYaml string = `
@@ -68,8 +68,8 @@ requiredtest:
   intfield: 1
   pintfield: 
 `
-			errorList := validateString(requiredYaml)
-			Expect(errorList).To(HaveLen(5))
+			err := validateString(requiredOneFieldYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(5))
 		})
 		It("rejects and counts all 4 missing fields", func() {
 			var requiredYaml string = `
@@ -77,8 +77,8 @@ requiredtest:
   intfield: 1
   pintfield: 0
 `
-			errorList := validateString(requiredYaml)
-			Expect(errorList).To(HaveLen(4))
+			err := validateString(requiredNoFieldYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(4))
 		})
 		It("rejects and counts all 5 missing fields", func() {
 			var requiredYaml string = `
@@ -87,8 +87,8 @@ requiredtest:
   pstructfield:
     a:
 `
-			errorList := validateString(requiredYaml)
-			Expect(errorList).To(HaveLen(4))
+			err := validateString(requiredNoField2Yaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(4))
 		})
 		It("checks out on valid file", func() {
 			var requiredYaml string = `
@@ -102,8 +102,8 @@ requiredtest:
   pstructfield:
     a: 1
 `
-			errorList := validateString(requiredYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(requiredValidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 	})
 
@@ -116,8 +116,8 @@ enumtest:
   intfield: 1
   pintfield: 2
 `
-			errorList := validateString(enumCorrectYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(enumCorrectYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects invalid values", func() {
 			var enumCorrectYaml string = `
@@ -127,8 +127,8 @@ enumtest:
   intfield: 4
   pintfield: 4
 `
-			errorList := validateString(enumCorrectYaml)
-			Expect(errorList).To(HaveLen(4))
+			err := validateString(enumCorrectYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(4))
 		})
 	})
 
@@ -141,8 +141,8 @@ exclusivefieldstest:
   strfield: aa
   pstrfield: aa
 `
-			errorList := validateString(exclusivefieldsYaml)
-			Expect(errorList).To(HaveLen(2))
+			err := validateString(exclusivefieldsInvalidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("checks out valid values", func() {
 			var exclusivefieldsYaml = `
@@ -152,8 +152,8 @@ exclusivefieldstest:
   strfield: aa
   pstrfield: 
 `
-			errorList := validateString(exclusivefieldsYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(exclusivefieldsValidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("allows latter fields to be set freely", func() {
 			var exclusivefieldsYaml = `
@@ -161,8 +161,8 @@ exclusivefieldstest:
   bfield: 1
   cfield: 1
 `
-			errorList := validateString(exclusivefieldsYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(exclusivefieldsValidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 	})
 
@@ -176,8 +176,8 @@ linkedfieldstest:
   pintfield: 1
   aintfield: [1,2]
 `
-			errorList := validateString(linkedfieldsYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(linkedfieldsValidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("checks out valid all-nil values", func() {
 			var linkedfieldsYaml = `
@@ -189,8 +189,8 @@ linkedfieldstest:
   pintfield:  # is nil
   aintfield:
 `
-			errorList := validateString(linkedfieldsYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(linkedfieldsValidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects both errors - first fields", func() {
 			var linkedfieldsYaml = `
@@ -201,8 +201,8 @@ linkedfieldstest:
   pintfield:
   aintfield:
 `
-			errorList := validateString(linkedfieldsYaml)
-			Expect(errorList).To(HaveLen(2))
+			err := validateString(linkedfieldsInvalidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects both errors - second fields", func() {
 			var linkedfieldsYaml = `
@@ -213,8 +213,8 @@ linkedfieldstest:
   pintfield: 0 # is non-nil
   aintfield:
 `
-			errorList := validateString(linkedfieldsYaml)
-			Expect(errorList).To(HaveLen(2))
+			err := validateString(linkedfieldsInvalidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects one error - 0 value is nil on pointer", func() {
 			var linkedfieldsYaml = `
@@ -225,8 +225,8 @@ linkedfieldstest:
   pintfield: 0  # is non-nil
   aintfield: [1,2]
 `
-			errorList := validateString(linkedfieldsYaml)
-			Expect(errorList).To(HaveLen(1))
+			err := validateString(linkedfieldsInvalidYaml).(*multierror.Error)
+			Expect(err.Errors).To(HaveLen(1))
 		})
 	})
 
