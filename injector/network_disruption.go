@@ -375,7 +375,7 @@ func (i *networkDisruptionInjector) getServices() ([]networkDisruptionService, e
 
 		// retrieve endpoints from selector
 		endpoints, err := i.config.K8sClient.CoreV1().Pods(service.Namespace).List(context.Background(), metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(k8sService.Spec.Selector).String(),
+			LabelSelector: labels.SelectorFromValidatedSet(k8sService.Spec.Selector).String(),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s) endpoints: %w", service.Namespace, service.Name, err)
