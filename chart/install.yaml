@@ -44,6 +44,14 @@ data:
       metricsAddr: "127.0.0.1:8080"
       leaderElection: true
       metricsSink: "noop"
+      notifiers:
+        common:
+          clusterName: "minikube"
+        noop:
+          enabled: true
+        slack:
+          enabled: false
+          tokenFilepath: ""
       deleteOnly: false
       imagePullSecrets: false
       defaultDuration: 1h
@@ -53,7 +61,7 @@ data:
         host: ""
         port: 9443
     injector:
-      image: "datadog/chaos-injector:4.5.1"
+      image: "datadog/chaos-injector:4.6.0"
       serviceAccount:
         name: "chaos-injector"
         namespace: "chaos-engineering"
@@ -62,7 +70,7 @@ data:
         kubeDns: "off"
     handler:
       enabled: true
-      image: "datadog/chaos-handler:4.5.1"
+      image: "datadog/chaos-handler:4.6.0"
       timeout: "1m"
 ---
 # Source: chaos-controller/templates/crds/chaos.datadoghq.com_disruptions.yaml
@@ -198,6 +206,55 @@ spec:
             durationSeconds:
               format: int64
               type: integer
+            grpc:
+              description: GRPCDisruptionSpec represents a gRPC disruption
+              nullable: true
+              properties:
+                endpoints:
+                  items:
+                    description: EndpointAlteration represents an endpoint to disrupt
+                      and the corresponding error to return
+                    properties:
+                      endpoint:
+                        type: string
+                      error:
+                        enum:
+                        - OK
+                        - CANCELED
+                        - UNKNOWN
+                        - INVALID_ARGUMENT
+                        - DEADLINE_EXCEEDED
+                        - NOT_FOUND
+                        - ALREADY_EXISTS
+                        - PERMISSION_DENIED
+                        - RESOURCE_EXHAUSTED
+                        - FAILED_PRECONDITION
+                        - ABORTED
+                        - OUT_OF_RANGE
+                        - UNIMPLEMENTED
+                        - INTERNAL
+                        - UNAVAILABLE
+                        - DATA_LOSS
+                        - UNAUTHENTICATED
+                        type: string
+                      override:
+                        type: string
+                      queryPercent:
+                        maximum: 100
+                        minimum: 0
+                        type: integer
+                    required:
+                    - endpoint
+                    type: object
+                  type: array
+                port:
+                  maximum: 65535
+                  minimum: 1
+                  type: integer
+              required:
+              - endpoints
+              - port
+              type: object
             level:
               description: DisruptionLevel represents which level the disruption should
                 be injected at
@@ -658,7 +715,7 @@ spec:
         - containerPort: 8443
           name: https
       - name: manager
-        image: datadog/chaos-controller:4.5.1
+        image: datadog/chaos-controller:4.6.0
         imagePullPolicy: IfNotPresent
         command:
         - /usr/local/bin/manager
