@@ -722,15 +722,10 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 		ls = make(map[string]string)
 	}
 
-	// if these aren't valid labels, we will instead list ALL pods
+	// add instance specific labels if provided
 	if instance != nil {
 		ls[chaostypes.DisruptionNameLabel] = instance.Name
 		ls[chaostypes.DisruptionNamespaceLabel] = instance.Namespace
-	}
-
-	// ensure that generated selector is still valid to avoid listing all pods or unexpected pods
-	if _, err := labels.Parse(ls.String()); err != nil {
-		return nil, fmt.Errorf("error validating generated chaos pods selector: %w", err)
 	}
 
 	r.log.Infow("searching for chaos pods with label selector...", "labels", ls.String())
@@ -738,7 +733,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 	// list pods in the defined namespace and for the given target
 	listOptions := &client.ListOptions{
 		Namespace:     r.InjectorServiceAccountNamespace,
-		LabelSelector: labels.SelectorFromSet(ls),
+		LabelSelector: labels.SelectorFromValidatedSet(ls),
 	}
 
 	err := r.Client.List(context.Background(), pods, listOptions)
