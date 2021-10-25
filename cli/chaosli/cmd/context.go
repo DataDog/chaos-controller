@@ -182,7 +182,7 @@ func getTargetSize(disruption v1beta1.Disruption) (int, error) {
 
 func getPods(disruption v1beta1.Disruption) (v1.PodList, error) {
 	options := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
+		LabelSelector: labels.SelectorFromValidatedSet(disruption.Spec.Selector).String(),
 	}
 	pods, err := clientset.CoreV1().Pods(disruption.ObjectMeta.Namespace).List(context.TODO(), options)
 
@@ -195,7 +195,7 @@ func getPods(disruption v1beta1.Disruption) (v1.PodList, error) {
 
 func getNodes(disruption v1beta1.Disruption) (v1.NodeList, error) {
 	options := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(disruption.Spec.Selector).String(),
+		LabelSelector: labels.SelectorFromValidatedSet(disruption.Spec.Selector).String(),
 	}
 	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
 

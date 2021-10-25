@@ -11,6 +11,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,8 +43,15 @@ var _ webhook.Validator = &Disruption{}
 func (r *Disruption) ValidateCreate() error {
 	logger.Infow("validating created disruption", "instance", r.Name, "namespace", r.Namespace)
 
+	// delete-only mode, reject everything trying to be created
 	if deleteOnly {
 		return errors.New("the controller is currently in delete-only mode, you can't create new disruptions for now")
+	}
+
+	// reject disrputions with a name which would not be a valid label value
+	// according to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
+	if _, err := labels.Parse(fmt.Sprintf("name=%s", r.Name)); err != nil {
+		return fmt.Errorf("invalid disruption name: %w", err)
 	}
 
 	// handle a disruption using the onInit feature without the handler being enabled
