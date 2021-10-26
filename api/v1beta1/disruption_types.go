@@ -127,9 +127,9 @@ func (s *DisruptionSpec) Hash() (string, error) {
 }
 
 // Validate applies rules for disruption global scope and all subsequent disruption specifications
-func (s *DisruptionSpec) Validate() (returnError error) {
+func (s *DisruptionSpec) Validate() (retErr error) {
 	if err := s.validateGlobalDisruptionScope(); err != nil {
-		returnError = multierror.Append(returnError, err)
+		retErr = multierror.Append(retErr, err)
 	}
 
 	for _, kind := range chaostypes.DisruptionKindNames {
@@ -139,28 +139,28 @@ func (s *DisruptionSpec) Validate() (returnError error) {
 		}
 
 		if err := disruptionKind.Validate(); err != nil {
-			returnError = multierror.Append(returnError, err)
+			retErr = multierror.Append(retErr, err)
 		}
 	}
 
-	return multierror.Prefix(returnError, "Spec:")
+	return multierror.Prefix(retErr, "Spec:")
 }
 
 // Validate applies rules for disruption global scope
-func (s *DisruptionSpec) validateGlobalDisruptionScope() (returnError error) {
+func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 	// Rule: at least one kind of selector is set
 	if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
-		returnError = multierror.Append(returnError, errors.New("either selector or advancedSelector field must be set"))
+		retErr = multierror.Append(retErr, errors.New("either selector or advancedSelector field must be set"))
 	}
 
 	// Rule: no targeted container if disruption is node-level
 	if len(s.Containers) > 0 && s.Level == chaostypes.DisruptionLevelNode {
-		returnError = multierror.Append(returnError, errors.New("cannot target specific containers because the level configuration is set to node"))
+		retErr = multierror.Append(retErr, errors.New("cannot target specific containers because the level configuration is set to node"))
 	}
 
 	// Rule: container failure not possible if disruption is node-level
 	if s.ContainerFailure != nil && s.Level == chaostypes.DisruptionLevelNode {
-		returnError = multierror.Append(returnError, errors.New("cannot execute a container failure because the level configuration is set to node"))
+		retErr = multierror.Append(retErr, errors.New("cannot execute a container failure because the level configuration is set to node"))
 	}
 
 	// Rule: on init compatibility
@@ -170,28 +170,28 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (returnError error) {
 			s.ContainerFailure != nil ||
 			s.DiskPressure != nil ||
 			s.GRPC != nil {
-			returnError = multierror.Append(returnError, errors.New("OnInit is only compatible with network and dns disruptions"))
+			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible with network and dns disruptions"))
 		}
 
 		if s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
-			returnError = multierror.Append(returnError, errors.New("OnInit is only compatible with pod level disruptions"))
+			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible with pod level disruptions"))
 		}
 
 		if len(s.Containers) > 0 {
-			returnError = multierror.Append(returnError, errors.New("OnInit is not compatible with containers scoping"))
+			retErr = multierror.Append(retErr, errors.New("OnInit is not compatible with containers scoping"))
 		}
 	}
 
 	if s.GRPC != nil && s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
-		returnError = multierror.Append(returnError, errors.New("GRPC disruptions can only be applied at the pod level"))
+		retErr = multierror.Append(retErr, errors.New("GRPC disruptions can only be applied at the pod level"))
 	}
 
 	// Rule: count must be valid
 	if err := ValidateCount(s.Count); err != nil {
-		returnError = multierror.Append(returnError, err)
+		retErr = multierror.Append(retErr, err)
 	}
 
-	return returnError
+	return retErr
 }
 
 // DisruptionKindPicker returns this DisruptionSpec's instance of a DisruptionKind based on given kind name

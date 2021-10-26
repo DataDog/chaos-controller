@@ -70,7 +70,7 @@ type EndpointAlteration struct {
 
 // Validate validates that all alterations have either an error or override to return and at least 1% chance of occurring,
 // as well as that the sum of query percentages of all alterations assigned to a target endpoint do not exceed 100%
-func (s GRPCDisruptionSpec) Validate() (returnError error) {
+func (s GRPCDisruptionSpec) Validate() (retErr error) {
 	queryPctByEndpoint := map[string]int{}
 	unquantifiedAlts := map[string]int{}
 
@@ -82,7 +82,7 @@ func (s GRPCDisruptionSpec) Validate() (returnError error) {
 				pctClaimed := 100 - queryPctByEndpoint[alteration.TargetEndpoint]
 
 				if pctClaimed < count+1 {
-					returnError = multierror.Append(returnError, fmt.Errorf("alterations must have at least 1%% chance of occurring; %s will never return some alterations because alterations exceed 100%% of possible queries", alteration.TargetEndpoint))
+					retErr = multierror.Append(retErr, fmt.Errorf("alterations must have at least 1%% chance of occurring; %s will never return some alterations because alterations exceed 100%% of possible queries", alteration.TargetEndpoint))
 				}
 			} else {
 				unquantifiedAlts[alteration.TargetEndpoint] = 1
@@ -93,7 +93,7 @@ func (s GRPCDisruptionSpec) Validate() (returnError error) {
 				// always positive because of CRD limitations
 				queryPctByEndpoint[alteration.TargetEndpoint] = totalQueryPercent + alteration.QueryPercent
 				if queryPctByEndpoint[alteration.TargetEndpoint] > 100 {
-					returnError = multierror.Append(returnError, fmt.Errorf("total queryPercent of all alterations applied to endpoint %s is over 100%%", alteration.TargetEndpoint))
+					retErr = multierror.Append(retErr, fmt.Errorf("total queryPercent of all alterations applied to endpoint %s is over 100%%", alteration.TargetEndpoint))
 				}
 			} else {
 				queryPctByEndpoint[alteration.TargetEndpoint] = alteration.QueryPercent
@@ -103,11 +103,11 @@ func (s GRPCDisruptionSpec) Validate() (returnError error) {
 		// check that exactly one of ErrorToReturn or OverrideToReturn is configured
 		// (ddmark already prevents both from being configured)
 		if alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "" {
-			returnError = multierror.Append(returnError, fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint))
+			retErr = multierror.Append(retErr, fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint))
 		}
 	}
 
-	return multierror.Prefix(returnError, "GRPC:")
+	return multierror.Prefix(retErr, "GRPC:")
 }
 
 // GenerateArgs generates injection pod arguments for the given spec

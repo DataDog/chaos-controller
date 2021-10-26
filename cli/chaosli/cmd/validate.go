@@ -45,13 +45,13 @@ func ValidateDisruption(path string) error {
 
 // RunAllValidation runs and concatenate the ddmark validation and the regular api validation
 func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
-	var returnError *multierror.Error
+	var retErr *multierror.Error
 
-	returnError = multierror.Append(returnError, multierror.Prefix(ddmark.ValidateStructMultierror(disruption, rootPath, "github.com/DataDog/chaos-controller/api/v1beta1"), "ddmark:  "))
+	retErr = multierror.Append(retErr, multierror.Prefix(ddmark.ValidateStructMultierror(disruption, rootPath, "github.com/DataDog/chaos-controller/api/v1beta1"), "ddmark:  "))
 
 	if err := disruption.Spec.Validate(); err != nil {
-		returnError = multierror.Append(returnError, multierror.Prefix(err, "validate:"))
+		retErr = multierror.Append(retErr, multierror.Prefix(err, "validate:"))
 	}
 
-	return returnError.ErrorOrNil()
+	return retErr.ErrorOrNil()
 }
