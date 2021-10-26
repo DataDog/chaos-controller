@@ -36,9 +36,7 @@ func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ..
 	return ValidateStructMultierror(marshalledStruct, filePath, structPkgs...).Errors
 }
 
-func ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) *multierror.Error {
-	var retErr *multierror.Error = nil
-
+func ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error) {
 	col := InitializeMarkers()
 
 	var err error
