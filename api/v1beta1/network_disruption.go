@@ -87,8 +87,7 @@ type NetworkDisruptionServiceSpec struct {
 }
 
 // Validate validates args for the given disruption
-func (s *NetworkDisruptionSpec) Validate() error {
-	var retErr error = nil
+func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 	// ensure spec filters on something if ingress mode is enabled
 	if s.Flow == FlowIngress {
 		if len(s.Hosts) == 0 && len(s.Services) == 0 {

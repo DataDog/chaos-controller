@@ -70,9 +70,7 @@ type EndpointAlteration struct {
 
 // Validate validates that all alterations have either an error or override to return and at least 1% chance of occurring,
 // as well as that the sum of query percentages of all alterations assigned to a target endpoint do not exceed 100%
-func (s GRPCDisruptionSpec) Validate() error {
-	var retErr error = nil
-
+func (s GRPCDisruptionSpec) Validate() (retErr error) {
 	queryPctByEndpoint := map[string]int{}
 	unquantifiedAlts := map[string]int{}
 

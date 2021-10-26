@@ -62,9 +62,7 @@ func ValidateStructMultierror(marshalledStruct interface{}, filePath string, str
 }
 
 // validateStruct is an internal recursive function that recursively applies markers rules to types and fields
-func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarkers.TypeInfo, markerValues k8smarkers.MarkerValues, fieldName string, col *k8smarkers.Collector) error {
-	var retErr error = nil
-
+func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarkers.TypeInfo, markerValues k8smarkers.MarkerValues, fieldName string, col *k8smarkers.Collector) (retErr error) {
 	value := reflect.ValueOf(marshalledStruct)
 	unpointedValue := reflect.Indirect(value) // dereferences pointer value if there is one
 
@@ -102,9 +100,7 @@ func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarker
 }
 
 // applyMarkers applies all markers found in the markers arg to a given type/field
-func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, fieldName string, targetType k8smarkers.TargetType, col *k8smarkers.Collector) error {
-	var retErr error = nil
-
+func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, fieldName string, targetType k8smarkers.TargetType, col *k8smarkers.Collector) (retErr error) {
 	// if value is Invalid, field is most likely absent -- needs to add an error if Required is found true
 	if !reflect.Indirect(value).IsValid() {
 		isRequired := markers.Get("ddmark:validation:Required")

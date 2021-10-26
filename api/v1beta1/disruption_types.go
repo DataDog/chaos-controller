@@ -127,8 +127,7 @@ func (s *DisruptionSpec) Hash() (string, error) {
 }
 
 // Validate applies rules for disruption global scope and all subsequent disruption specifications
-func (s *DisruptionSpec) Validate() error {
-	var retErr error = nil
+func (s *DisruptionSpec) Validate() (retErr error) {
 	if err := s.validateGlobalDisruptionScope(); err != nil {
 		retErr = multierror.Append(retErr, err)
 	}
@@ -148,9 +147,7 @@ func (s *DisruptionSpec) Validate() error {
 }
 
 // Validate applies rules for disruption global scope
-func (s *DisruptionSpec) validateGlobalDisruptionScope() error {
-	var retErr error = nil
-
+func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 	// Rule: at least one kind of selector is set
 	if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
 		retErr = multierror.Append(retErr, errors.New("either selector or advancedSelector field must be set"))
