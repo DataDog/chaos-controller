@@ -8,6 +8,7 @@ package api_test
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/hashicorp/go-multierror"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -33,9 +34,9 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					QueryPercent:     100,
 				},
 			}
-
-			err := spec.Validate()
-			Expect(err.Error()).To(Equal("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint /chaos_dogfood.ChaosDogfood/order"))
+			err := spec.Validate().(*multierror.Error)
+			Expect(err.Len()).To(Equal(1))
+			Expect(err.Errors[0].Error()).To(Equal("GRPC: the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint /chaos_dogfood.ChaosDogfood/order"))
 		})
 	})
 
@@ -169,9 +170,9 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					},
 				}
 
-				err := ddmark.ValidateStruct(spec, "grpc_test_suite", "github.com/DataDog/chaos-controller/api/v1beta1")
-				Expect(len(err)).To(Equal(1))
-				Expect(err[0].Error()).To(Equal("grpc_test_suite>Endpoints>>ErrorToReturn - ddmark:validation:Enum: field needs to be one of [OK CANCELED UNKNOWN INVALID_ARGUMENT DEADLINE_EXCEEDED NOT_FOUND ALREADY_EXISTS PERMISSION_DENIED RESOURCE_EXHAUSTED FAILED_PRECONDITION ABORTED OUT_OF_RANGE UNIMPLEMENTED INTERNAL UNAVAILABLE DATA_LOSS UNAUTHENTICATED], currently \"MEOW\""))
+				err := ddmark.ValidateStructMultierror(spec, "grpc_test_suite", "github.com/DataDog/chaos-controller/api/v1beta1")
+				Expect(err.Errors).To(HaveLen(1))
+				Expect(err.Errors[0].Error()).To(Equal("grpc_test_suite>Endpoints>>ErrorToReturn - ddmark:validation:Enum: field needs to be one of [OK CANCELED UNKNOWN INVALID_ARGUMENT DEADLINE_EXCEEDED NOT_FOUND ALREADY_EXISTS PERMISSION_DENIED RESOURCE_EXHAUSTED FAILED_PRECONDITION ABORTED OUT_OF_RANGE UNIMPLEMENTED INTERNAL UNAVAILABLE DATA_LOSS UNAUTHENTICATED], currently \"MEOW\""))
 			})
 		})
 
@@ -191,8 +192,9 @@ var _ = Describe("GRPCDisruption Validation", func() {
 
 				Expect(len(spec.Endpoints)).To(Equal(17))
 
-				err := ddmark.ValidateStruct(spec, "grpc_test_suite", "github.com/DataDog/chaos-controller/api/v1beta1")
-				Expect(len(err)).To(Equal(0))
+				err := ddmark.ValidateStructMultierror(spec, "grpc_test_suite", "github.com/DataDog/chaos-controller/api/v1beta1")
+				Expect(err.ErrorOrNil()).To(BeNil())
+				Expect(err.Errors).To(HaveLen(0))
 			})
 
 			It("Passes validation", func() {

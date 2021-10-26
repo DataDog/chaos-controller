@@ -24,6 +24,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/gogo/googleapis v1.4.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/hashicorp/go-multierror v1.0.0
 	github.com/miekg/dns v1.1.31
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/morikuni/aec v1.0.0 // indirect

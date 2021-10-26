@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 // DNSDisruptionSpec represents a dns disruption
@@ -27,22 +29,22 @@ type DNSRecord struct {
 }
 
 // Validate validates that there are no missing hostnames or records for the given dns disruption spec
-func (s DNSDisruptionSpec) Validate() error {
+func (s DNSDisruptionSpec) Validate() (retErr error) {
 	for _, pair := range s {
 		if pair.Hostname == "" {
-			return errors.New("no hostname specified in dns disruption")
+			retErr = multierror.Append(retErr, errors.New("no hostname specified in dns disruption"))
 		}
 
 		if pair.Record.Type != "A" && pair.Record.Type != "CNAME" {
-			return fmt.Errorf("invalid record type specified in dns disruption, must be A or CNAME but found: %s", pair.Record.Type)
+			retErr = multierror.Append(retErr, fmt.Errorf("invalid record type specified in dns disruption, must be A or CNAME but found: %s", pair.Record.Type))
 		}
 
 		if pair.Record.Value == "" {
-			return errors.New("no value specified for dns record in dns disruption")
+			retErr = multierror.Append(retErr, errors.New("no value specified for dns record in dns disruption"))
 		}
 	}
 
-	return nil
+	return multierror.Prefix(retErr, "DNS:")
 }
 
 // GenerateArgs generates injection pod arguments for the given spec

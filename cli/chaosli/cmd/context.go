@@ -404,6 +404,10 @@ var contextCmd = &cobra.Command{
 	Use:   "context",
 	Short: "contextualizes disruption config",
 	Long:  `makes use of kubectl to give a better idea of how big the scope of the disruption will be.`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		fmt.Println("This command requires that you are connected to a kubernetes cluster. All the results of this command will be based on your current kubectx.")
+		PrintSeparator()
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("path")
 		kubeconfig, _ = cmd.Flags().GetString("kubeconfig")
@@ -447,7 +451,4 @@ func init() {
 	if err != nil {
 		return
 	}
-
-	contextCmd.Println("This command requires that you are connected to a kubernetes cluster. All the results of this command will be based on your current kubectx.")
-	PrintSeparator()
 }

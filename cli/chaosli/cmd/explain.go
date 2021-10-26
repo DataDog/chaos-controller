@@ -152,7 +152,7 @@ func explainGRPC(spec v1beta1.DisruptionSpec) {
 	fmt.Printf("💉 injects a gRPC disruption on port %d ...\n", grpc.Port)
 	fmt.Println("\t🥸  to spoof the following endpoints...")
 
-	endptSpec := grpcapi.GenerateEndpointSpecs(grpc.Endpoints) //[]*pb.EndpointSpec
+	endptSpec := grpcapi.GenerateEndpointSpecs(grpc.Endpoints) // []*pb.EndpointSpec
 
 	for _, endpt := range endptSpec {
 		fmt.Printf("\t\t👩‍⚕️ endpoint: %s ...\n", endpt.TargetEndpoint) //nolint:stylecheck

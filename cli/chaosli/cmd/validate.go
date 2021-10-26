@@ -8,7 +8,9 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	ddmark "github.com/DataDog/chaos-controller/ddmark"
+	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
 )
 
@@ -31,21 +33,25 @@ func init() {
 }
 
 func ValidateDisruption(path string) error {
-	marshalledStruct, err := DisruptionFromFile(path)
+	_, err := DisruptionFromFile(path)
 	if err != nil {
 		return fmt.Errorf("error reading from disruption at %v: %v", path, err)
 	}
 
-	errorList := ddmark.ValidateStruct(marshalledStruct, path,
-		"github.com/DataDog/chaos-controller/api/v1beta1",
-	)
-
-	err = marshalledStruct.Spec.Validate()
-	if err != nil {
-		errorList = append(errorList, err)
-	}
-
-	ddmark.PrintErrorList(errorList)
+	fmt.Println("file is valid !")
 
 	return nil
+}
+
+// RunAllValidation runs and concatenate the ddmark validation and the regular api validation
+func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
+	var retErr *multierror.Error
+
+	retErr = multierror.Append(retErr, multierror.Prefix(ddmark.ValidateStructMultierror(disruption, rootPath, "github.com/DataDog/chaos-controller/api/v1beta1"), "ddmark:  "))
+
+	if err := disruption.Spec.Validate(); err != nil {
+		retErr = multierror.Append(retErr, multierror.Prefix(err, "validate:"))
+	}
+
+	return retErr.ErrorOrNil()
 }

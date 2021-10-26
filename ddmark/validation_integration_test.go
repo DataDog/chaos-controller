@@ -7,6 +7,7 @@ package ddmark_test
 
 import (
 	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/hashicorp/go-multierror"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	k8syaml "sigs.k8s.io/yaml"
@@ -20,8 +21,8 @@ minmaxtest:
   intfield: 6
   pintfield: 6
 `
-			errorList := validateString(minmaxYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(minmaxYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects empty pointer value", func() {
 			var minmaxYaml string = `
@@ -29,8 +30,8 @@ minmaxtest:
   intfield: 6
   pintfield: 
 `
-			errorList := validateString(minmaxYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(minmaxYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("checks out valid values", func() {
 			var minmaxYaml string = `
@@ -38,8 +39,8 @@ minmaxtest:
   intfield: 5
   pintfield: 10
 `
-			errorList := validateString(minmaxYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(minmaxYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects invalid values", func() {
 			var minmaxYaml string = `
@@ -47,8 +48,8 @@ minmaxtest:
   intfield: 4
   pintfield: 11
 `
-			errorList := validateString(minmaxYaml)
-			Expect(errorList).To(HaveLen(2))
+			err := validateString(minmaxYaml)
+			Expect(err.Errors).To(HaveLen(2))
 		})
 	})
 
@@ -58,8 +59,8 @@ minmaxtest:
 requiredtest:
   intfield: 1
 `
-			errorList := validateString(requiredYaml)
-			Expect(errorList).To(HaveLen(5))
+			err := validateString(requiredYaml)
+			Expect(err.Errors).To(HaveLen(5))
 		})
 		It("rejects on all but one missing fields", func() {
 			var requiredYaml string = `
@@ -67,8 +68,8 @@ requiredtest:
   intfield: 1
   pintfield: 
 `
-			errorList := validateString(requiredYaml)
-			Expect(errorList).To(HaveLen(5))
+			err := validateString(requiredYaml)
+			Expect(err.Errors).To(HaveLen(5))
 		})
 		It("rejects and counts all 4 missing fields", func() {
 			var requiredYaml string = `
@@ -76,8 +77,8 @@ requiredtest:
   intfield: 1
   pintfield: 0
 `
-			errorList := validateString(requiredYaml)
-			Expect(errorList).To(HaveLen(4))
+			err := validateString(requiredYaml)
+			Expect(err.Errors).To(HaveLen(4))
 		})
 		It("rejects and counts all 5 missing fields", func() {
 			var requiredYaml string = `
@@ -86,8 +87,8 @@ requiredtest:
   pstructfield:
     a:
 `
-			errorList := validateString(requiredYaml)
-			Expect(errorList).To(HaveLen(4))
+			err := validateString(requiredYaml)
+			Expect(err.Errors).To(HaveLen(4))
 		})
 		It("checks out on valid file", func() {
 			var requiredYaml string = `
@@ -101,8 +102,8 @@ requiredtest:
   pstructfield:
     a: 1
 `
-			errorList := validateString(requiredYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(requiredYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 	})
 
@@ -115,8 +116,8 @@ enumtest:
   intfield: 1
   pintfield: 2
 `
-			errorList := validateString(enumCorrectYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(enumCorrectYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects invalid values", func() {
 			var enumCorrectYaml string = `
@@ -126,8 +127,8 @@ enumtest:
   intfield: 4
   pintfield: 4
 `
-			errorList := validateString(enumCorrectYaml)
-			Expect(errorList).To(HaveLen(4))
+			err := validateString(enumCorrectYaml)
+			Expect(err.Errors).To(HaveLen(4))
 		})
 	})
 
@@ -140,8 +141,8 @@ exclusivefieldstest:
   strfield: aa
   pstrfield: aa
 `
-			errorList := validateString(exclusivefieldsYaml)
-			Expect(errorList).To(HaveLen(2))
+			err := validateString(exclusivefieldsYaml)
+			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("checks out valid values", func() {
 			var exclusivefieldsYaml = `
@@ -151,8 +152,8 @@ exclusivefieldstest:
   strfield: aa
   pstrfield: 
 `
-			errorList := validateString(exclusivefieldsYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(exclusivefieldsYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("allows latter fields to be set freely", func() {
 			var exclusivefieldsYaml = `
@@ -160,8 +161,8 @@ exclusivefieldstest:
   bfield: 1
   cfield: 1
 `
-			errorList := validateString(exclusivefieldsYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(exclusivefieldsYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 	})
 
@@ -175,8 +176,8 @@ linkedfieldstest:
   pintfield: 1
   aintfield: [1,2]
 `
-			errorList := validateString(linkedfieldsYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(linkedfieldsYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("checks out valid all-nil values", func() {
 			var linkedfieldsYaml = `
@@ -188,8 +189,8 @@ linkedfieldstest:
   pintfield:  # is nil
   aintfield:
 `
-			errorList := validateString(linkedfieldsYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(linkedfieldsYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects both errors - first fields", func() {
 			var linkedfieldsYaml = `
@@ -200,8 +201,8 @@ linkedfieldstest:
   pintfield:
   aintfield:
 `
-			errorList := validateString(linkedfieldsYaml)
-			Expect(errorList).To(HaveLen(2))
+			err := validateString(linkedfieldsYaml)
+			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects both errors - second fields", func() {
 			var linkedfieldsYaml = `
@@ -212,8 +213,8 @@ linkedfieldstest:
   pintfield: 0 # is non-nil
   aintfield:
 `
-			errorList := validateString(linkedfieldsYaml)
-			Expect(errorList).To(HaveLen(2))
+			err := validateString(linkedfieldsYaml)
+			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects one error - 0 value is nil on pointer", func() {
 			var linkedfieldsYaml = `
@@ -224,8 +225,8 @@ linkedfieldstest:
   pintfield: 0  # is non-nil
   aintfield: [1,2]
 `
-			errorList := validateString(linkedfieldsYaml)
-			Expect(errorList).To(HaveLen(1))
+			err := validateString(linkedfieldsYaml)
+			Expect(err.Errors).To(HaveLen(1))
 		})
 	})
 
@@ -239,8 +240,8 @@ atleastoneoftest:
   pintfield:   # is nil
   aintfield:   # is nil
 `
-			errorList := validateString(atLeastOneOfYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(atLeastOneOfYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects out all-nil values twice", func() {
 			var atLeastOneOfYaml = `
@@ -252,8 +253,8 @@ atleastoneoftest:
   pintfield:   # is nil
   aintfield:   # is nil
 `
-			errorList := validateString(atLeastOneOfYaml)
-			Expect(errorList).To(HaveLen(2))
+			err := validateString(atLeastOneOfYaml)
+			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects almost-all-nil values once", func() {
 			var atLeastOneOfYaml = `
@@ -264,8 +265,8 @@ atleastoneoftest:
   pintfield:  # is nil
   aintfield:
 `
-			errorList := validateString(atLeastOneOfYaml)
-			Expect(errorList).To(HaveLen(1))
+			err := validateString(atLeastOneOfYaml)
+			Expect(err.Errors).To(HaveLen(1))
 		})
 		It("accepts both valid value groups", func() {
 			var atLeastOneOfYaml = `
@@ -276,8 +277,8 @@ atleastoneoftest:
   pintfield:  # is nil
   aintfield:
 `
-			errorList := validateString(atLeastOneOfYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(atLeastOneOfYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("accepts both valid value groups", func() {
 			var atLeastOneOfYaml = `
@@ -288,8 +289,8 @@ atleastoneoftest:
   pintfield:  # is nil
   aintfield: []
 `
-			errorList := validateString(atLeastOneOfYaml)
-			Expect(errorList).To(HaveLen(0))
+			err := validateString(atLeastOneOfYaml)
+			Expect(err.Errors).To(HaveLen(0))
 		})
 	})
 })
@@ -306,16 +307,18 @@ func testStructFromYaml(yamlBytes []byte) (ddmark.Teststruct, error) {
 	return parsedSpec, nil
 }
 
-func validateString(yamlStr string) []error {
+func validateString(yamlStr string) *multierror.Error {
+
 	// Teststruct is a test-dedicated struct built strictly for these integration tests
 	var marshalledStruct ddmark.Teststruct
 
 	marshalledStruct, err := testStructFromYaml([]byte(yamlStr))
-	errorList := ddmark.ValidateStruct(marshalledStruct, "test_suite",
+	retErr := ddmark.ValidateStructMultierror(marshalledStruct, "test_suite",
 		"github.com/DataDog/chaos-controller/ddmark",
 	)
 	if err != nil {
-		errorList = append(errorList, err)
+		retErr = multierror.Append(retErr, err)
 	}
-	return errorList
+
+	return retErr
 }

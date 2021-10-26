@@ -119,16 +119,13 @@ func ReadUnmarshalValidate(path string) v1beta1.Disruption {
 	}
 
 	parsedSpec := v1beta1.Disruption{}
-	err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec)
 
-	if err != nil {
+	if err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec); err != nil {
 		log.Fatalf("unmarshal: %v", err)
 	}
 
-	err = parsedSpec.Spec.Validate()
-
-	if err != nil {
-		log.Fatalf("there were some problems when validating your disruption: %v", err)
+	if err = RunAllValidation(parsedSpec, path); err != nil {
+		log.Fatalf("there were some problems when validating your disruption:\n%v", err)
 	}
 
 	return parsedSpec
