@@ -18,8 +18,6 @@ spec:
     singular: disruption
   preserveUnknownFields: false
   scope: Namespaced
-  subresources:
-    status: {}
   validation:
     openAPIV3Schema:
       description: Disruption is the Schema for the disruptions API

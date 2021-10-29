@@ -86,7 +86,6 @@ type DisruptionStatus struct {
 }
 
 //+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
 
 // Disruption is the Schema for the disruptions API
 // +kubebuilder:resource:shortName=dis
