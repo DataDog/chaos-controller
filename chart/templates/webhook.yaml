@@ -105,7 +105,6 @@ webhooks:
     scope: "Namespaced"
     operations:
     - CREATE
-    - UPDATE
     resources:
     - disruptions
     - disruptions/status
@@ -132,14 +131,15 @@ webhooks:
     failurePolicy: Fail
     name: chaos-controller-admission-webhook.chaos-engineering.svc
     rules:
-      - apiGroups:
-          - "chaos.datadoghq.com"
-        apiVersions:
-          - v1beta1
-        operations:
-          - CREATE
-        resources:
-          - disruptions
+    - apiGroups:
+        - "chaos.datadoghq.com"
+      apiVersions:
+        - v1beta1
+      scope: "Namespaced"
+      operations:
+        - CREATE
+      resources:
+        - disruptions
 ---
 {{- if not .Values.controller.webhook.generateCert }}
 apiVersion: cert-manager.io/v1alpha2
