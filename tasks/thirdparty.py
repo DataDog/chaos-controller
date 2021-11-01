@@ -23,7 +23,9 @@ def license_check(ctx):
     with open('vendor/modules.txt', 'r') as modules:
         parent = ''
         for line in modules.readlines():
-            if line.startswith('#'):
+            if line.startswith('##'):
+                continue
+            elif line.startswith('#'):
                 parent = line.split()[1]
             else:
                 if parent not in deps:
@@ -81,11 +83,10 @@ def license_check(ctx):
                         existing_license_type))
                     license_type = existing_license_type
                 elif str(existing_license_type) != str(license_type):
-                    print('error: license is outdated for package {} (actual: {}, detected: {})'.format(
+                    print('warning: license may be outdated for package {} (actual: {}, detected: {})'.format(
                         parent,
                         existing_license_type,
                         license_type))
-                    sys.exit(1)
             elif error is not None:
                 print(error)
                 sys.exit(2)
