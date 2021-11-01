@@ -8,6 +8,7 @@ package v1beta1
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
@@ -23,14 +24,16 @@ var k8sClient client.Client
 var metricsSink metrics.Sink
 var deleteOnly bool
 var handlerEnabled bool
+var defaultDuration time.Duration
 
-func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, deleteOnlyFlag, handlerEnabledFlag bool) error {
+func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, deleteOnlyFlag, handlerEnabledFlag bool, defaultDurationFlag time.Duration) error {
 	logger = &zap.SugaredLogger{}
 	*logger = *l.With("source", "admission-controller")
 	k8sClient = mgr.GetClient()
 	metricsSink = ms
 	deleteOnly = deleteOnlyFlag
 	handlerEnabled = handlerEnabledFlag
+	defaultDuration = defaultDurationFlag
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
@@ -45,10 +48,12 @@ var _ webhook.Defaulter = &Disruption{}
 func (r *Disruption) Default() {
 	logger.Infow("default", "name", r.Name)
 
-	// TODO(user): fill in your defaulting logic.
+	if r.Spec.DurationSeconds == 0 {
+		logger.Infow(fmt.Sprintf("setting default duration of %s in disruption", defaultDuration), "instance", r.Name, "namespace", r.Namespace)
+		r.Spec.DurationSeconds = int64(defaultDuration.Seconds())
+	}
 }
 
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //+kubebuilder:webhook:webhookVersions={v1beta1},path=/validate-chaos-datadoghq-com-v1beta1-disruption,mutating=false,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptions,verbs=create;update;delete,versions=v1beta1,name=vdisruption.kb.io,admissionReviewVersions={v1,v1beta1}
 
 var _ webhook.Validator = &Disruption{}

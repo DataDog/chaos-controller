@@ -289,7 +289,7 @@ func main() {
 	go r.ReportMetrics()
 
 	// register disruption validating webhook
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DeleteOnly, cfg.Handler.Enabled); err != nil {
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
 		os.Exit(1) //nolint:gocritic
 	}
@@ -309,15 +309,6 @@ func main() {
 		Handler: &chaoswebhook.UserInfoMutator{
 			Client: mgr.GetClient(),
 			Log:    logger,
-		},
-	})
-
-	// register spec default mutating webhook
-	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-spec-defaults", &webhook.Admission{
-		Handler: &chaoswebhook.DefaultMutator{
-			DefaultDuration: cfg.Controller.DefaultDuration,
-			Client:          mgr.GetClient(),
-			Log:             logger,
 		},
 	})
 
