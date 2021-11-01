@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,7 +30,7 @@ type fakeClient struct {
 	ListOptions []*client.ListOptions
 }
 
-func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
 	if key.Name == "runningPod" {
 		objVal := reflect.ValueOf(obj)
 		nodeVal := reflect.ValueOf(runningPod1)
@@ -55,7 +56,7 @@ func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.
 	return nil
 }
 
-func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+func (f *fakeClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 	for _, opt := range opts {
 		if o, ok := opt.(*client.ListOptions); ok {
 			f.ListOptions = append(f.ListOptions, o)
@@ -71,27 +72,35 @@ func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...clie
 	return nil
 }
 
-func (f fakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+func (f fakeClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	return nil
 }
 
-func (f fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
+func (f fakeClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	return nil
 }
 
-func (f fakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+func (f fakeClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	return nil
 }
 
-func (f fakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (f fakeClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return nil
 }
 
-func (f fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+func (f fakeClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
 	return nil
 }
 
 func (f fakeClient) Status() client.StatusWriter {
+	return nil
+}
+
+func (f fakeClient) Scheme() *runtime.Scheme {
+	return nil
+}
+
+func (f fakeClient) RESTMapper() meta.RESTMapper {
 	return nil
 }
 
