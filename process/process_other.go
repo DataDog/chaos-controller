@@ -4,6 +4,7 @@
 // Copyright 2021 Datadog, Inc.
 
 //go:build !linux
+// +build !linux
 
 package process
 
