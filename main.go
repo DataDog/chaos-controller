@@ -283,7 +283,7 @@ func main() {
 
 	if err := r.SetupWithManager(mgr); err != nil {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 
 	go r.ReportMetrics()
@@ -291,7 +291,7 @@ func main() {
 	// register disruption validating webhook
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DeleteOnly, cfg.Handler.Enabled); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 
 	// register chaos handler init container mutating webhook
@@ -327,7 +327,7 @@ func main() {
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		logger.Errorw("problem running manager", "error", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 }
 

@@ -42,7 +42,7 @@ func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 	containersNameID := map[string]string{}
 	containerIDs := []string{}
 
-	ctns := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...)
+	ctns := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) //nolint:gocritic
 
 	if len(targets) == 0 {
 		// get all running containers ID

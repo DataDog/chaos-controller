@@ -25,8 +25,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DataDog/chaos-controller/metrics/noop"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	uberzap "go.uber.org/zap"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	//+kubebuilder:scaffold:imports
@@ -99,7 +101,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&Disruption{}).SetupWebhookWithManager(mgr)
+	err = (&Disruption{}).SetupWebhookWithManager(mgr, &uberzap.SugaredLogger{}, noop.New(), false, false)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:webhook
