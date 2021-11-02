@@ -827,13 +827,15 @@ webhooks:
   name: chaos-controller-admission-webhook.chaos-engineering.svc
   rules:
   - apiGroups:
-    - "chaos.datadoghq.com"
+      - "chaos.datadoghq.com"
     apiVersions:
-    - v1beta1
+      - v1beta1
+    scope: "Namespaced"
     operations:
-    - CREATE
+      - CREATE
     resources:
-    - disruptions
+      - disruptions
+      - disruptions/status
 ---
 # Source: chaos-controller/templates/webhook.yaml
 apiVersion: admissionregistration.k8s.io/v1beta1

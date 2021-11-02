@@ -162,8 +162,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
 		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the durations deadline. We compare it to negative ExpiredDisruptionGCDelay,
 		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
-		if calculateRemainingDurationSeconds(*instance) <= (-1 * int64(r.ExpiredDisruptionGCDelay.Seconds())) {
-			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "durationSeconds", instance.Spec.DurationSeconds)
+		if calculateRemainingDuration(*instance) <= (-1 * r.ExpiredDisruptionGCDelay) {
+			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
 			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", r.ExpiredDisruptionGCDelay))
 
 			var err error
@@ -206,7 +206,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 			return ctrl.Result{Requeue: true}, nil
 		}
-		requeueDelay := time.Duration(math.Max(float64(calculateRemainingDurationSeconds(*instance)), r.ExpiredDisruptionGCDelay.Seconds())) * time.Second
+		requeueDelay := time.Duration(math.Max(calculateRemainingDuration(*instance).Seconds(), r.ExpiredDisruptionGCDelay.Seconds())) * time.Second
 
 		r.log.Infow("requeuing disruption", "requeueDelay", requeueDelay.String())
 
@@ -237,7 +237,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		return false, fmt.Errorf("error getting instance chaos pods: %w", err)
 	}
 
-	if calculateRemainingDurationSeconds(*instance) < 0 {
+	if calculateRemainingDuration(*instance) < 0 {
 		status = chaostypes.DisruptionInjectionStatusPreviouslyInjected
 	}
 
@@ -748,7 +748,8 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// the signal sent to a pod becomes SIGKILL, which will interrupt any in-progress cleaning. By double this to 1 minute in the pod spec itself,
 	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
 	terminationGracePeriod := int64(60)
-	activeDeadlineSeconds := calculateRemainingDurationSeconds(*instance)
+	r.log.Infow("GOTTA SOLVE THE BUGS", "duration", instance.Spec.Duration, "creation", instance.ObjectMeta.CreationTimestamp.Time)
+	activeDeadlineSeconds := int64(calculateRemainingDuration(*instance).Seconds())
 
 	podSpec := corev1.PodSpec{
 		HostPID:                       true,                      // enable host pid

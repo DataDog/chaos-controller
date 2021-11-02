@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -38,7 +39,7 @@ type DisruptionSpec struct {
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
 	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
-	DurationSeconds  int64                             `json:"durationSeconds,omitempty"`  // seconds from disruption creation until chaos pods are deleted and no more are created
+	Duration         DisruptionDuration                `json:"duration,omitempty"`         // time from disruption creation until chaos pods are deleted and no more are created
 	// +kubebuilder:validation:Enum=pod;node;""
 	// +ddmark:validation:Enum=pod;node;""
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
@@ -57,6 +58,47 @@ type DisruptionSpec struct {
 	DNS DNSDisruptionSpec `json:"dns,omitempty"`
 	// +nullable
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
+}
+
+type DisruptionDuration string
+
+func (dd DisruptionDuration) MarshalJSON() ([]byte, error) {
+	if dd == "" {
+		return json.Marshal("")
+	}
+	d, err := time.ParseDuration(string(dd))
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(d.String())
+}
+
+func (dd *DisruptionDuration) UnmarshalJSON(data []byte) error {
+	var v interface{}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	switch value := v.(type) {
+	case float64:
+		*dd = DisruptionDuration(time.Duration(value).String())
+		return nil
+	case string:
+		d, err := time.ParseDuration(value)
+		*dd = DisruptionDuration(d.String())
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		return errors.New("invalid duration")
+	}
+}
+
+func (dd DisruptionDuration) Duration() time.Duration {
+	// This was validated at unmarshal time, so we can ignore the error
+	d, _ := time.ParseDuration(string(dd))
+
+	return d
 }
 
 // DisruptionStatus defines the observed state of Disruption
