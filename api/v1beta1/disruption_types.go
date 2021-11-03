@@ -66,18 +66,23 @@ func (dd DisruptionDuration) MarshalJSON() ([]byte, error) {
 	if dd == "" {
 		return json.Marshal("")
 	}
+
 	d, err := time.ParseDuration(string(dd))
+
 	if err != nil {
 		return nil, err
 	}
+
 	return json.Marshal(d.String())
 }
 
 func (dd *DisruptionDuration) UnmarshalJSON(data []byte) error {
 	var v interface{}
+
 	if err := json.Unmarshal(data, &v); err != nil {
 		return err
 	}
+
 	switch value := v.(type) {
 	case float64:
 		*dd = DisruptionDuration(time.Duration(value).String())
@@ -85,9 +90,11 @@ func (dd *DisruptionDuration) UnmarshalJSON(data []byte) error {
 	case string:
 		d, err := time.ParseDuration(value)
 		*dd = DisruptionDuration(d.String())
+
 		if err != nil {
 			return err
 		}
+
 		return nil
 	default:
 		return errors.New("invalid duration")

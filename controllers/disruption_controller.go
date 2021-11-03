@@ -748,7 +748,6 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// the signal sent to a pod becomes SIGKILL, which will interrupt any in-progress cleaning. By double this to 1 minute in the pod spec itself,
 	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
 	terminationGracePeriod := int64(60)
-	r.log.Infow("GOTTA SOLVE THE BUGS", "duration", instance.Spec.Duration, "creation", instance.ObjectMeta.CreationTimestamp.Time)
 	activeDeadlineSeconds := int64(calculateRemainingDuration(*instance).Seconds())
 
 	podSpec := corev1.PodSpec{
