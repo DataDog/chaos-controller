@@ -76,9 +76,17 @@ jobs:
           name: Install kubebuilder
           command: |
             cd /usr/local
+            mkdir -p "/usr/local/kubebuilder/bin"
             curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}"
-            mv kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH} kubebuilder
+            mv kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH} kubebuilder/bin/
             export PATH="/usr/local/kubebuilder/bin:${PATH}"
+      - run:
+          name: Install envtest
+          command: |
+            export ENVTEST_ASSETS_DIR="/usr/local/kubebuilder"
+            mkdir -p ${ENVTEST_ASSETS_DIR}
+            test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.8.3/hack/setup-envtest.sh
+            source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools ${ENVTEST_ASSETS_DIR}; setup_envtest_env ${ENVTEST_ASSETS_DIR};
       - run:
           name: Install golangci-lint tool
           command: |
