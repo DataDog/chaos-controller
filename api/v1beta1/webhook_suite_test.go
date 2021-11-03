@@ -87,7 +87,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&Disruption{}).SetupWebhookWithManager(mgr, &uberzap.SugaredLogger{}, noop.New(), false, false)
+	err = (&Disruption{}).SetupWebhookWithManager(mgr, &uberzap.SugaredLogger{}, noop.New(), false, false, time.Minute)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:webhook

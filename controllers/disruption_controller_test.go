@@ -137,11 +137,11 @@ var _ = Describe("Disruption Controller", func() {
 				Namespace: "default",
 			},
 			Spec: chaosv1beta1.DisruptionSpec{
-				DryRun:          true,
-				Count:           &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-				Selector:        map[string]string{"foo": "bar"},
-				Containers:      []string{"ctn1"},
-				DurationSeconds: int64(3600),
+				DryRun:     true,
+				Count:      &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+				Selector:   map[string]string{"foo": "bar"},
+				Containers: []string{"ctn1"},
+				Duration:   "10m",
 				NodeFailure: &chaosv1beta1.NodeFailureSpec{
 					Shutdown: false,
 				},
@@ -256,7 +256,7 @@ var _ = Describe("Disruption Controller", func() {
 	Context("disruption expires naturally", func() {
 		BeforeEach(func() {
 			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
-			disruption.Spec.DurationSeconds = int64(timeout.Seconds()) + 5
+			disruption.Spec.Duration = "5s"
 		})
 
 		It("should target all the selected pods", func() {
