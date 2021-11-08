@@ -256,7 +256,7 @@ var _ = Describe("Disruption Controller", func() {
 	Context("disruption expires naturally", func() {
 		BeforeEach(func() {
 			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
-			disruption.Spec.Duration = "5s"
+			disruption.Spec.Duration = "30s"
 		})
 
 		It("should target all the selected pods", func() {

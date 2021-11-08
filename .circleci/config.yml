@@ -201,6 +201,7 @@ jobs:
           name: Run e2e tests
           <<: *working_directory
           command: make e2e-test
+          no_output_timeout: 15m
   # ensures that the file containing 3rd-party licenses is up-to-date
   third-party-licenses:
     executor: python
