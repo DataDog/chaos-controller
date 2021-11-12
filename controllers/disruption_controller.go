@@ -51,15 +51,6 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
-const (
-	finalizerPrefix = "finalizer.chaos.datadoghq.com"
-)
-
-var (
-	disruptionFinalizer = finalizerPrefix
-	chaosPodFinalizer   = finalizerPrefix + "/chaos-pod"
-)
-
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	client.Client
@@ -132,7 +123,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// check whether the object is being deleted or not
 	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// the instance is being deleted, clean it if the finalizer is still present
-		if controllerutil.ContainsFinalizer(instance, disruptionFinalizer) {
+		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
 			isCleaned, err := r.cleanDisruption(instance)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -154,7 +145,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
 			r.log.Infow("removing finalizer")
-			controllerutil.RemoveFinalizer(instance, disruptionFinalizer)
+			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 			if err := r.Update(context.Background(), instance); err != nil {
 				return ctrl.Result{}, err
@@ -169,7 +160,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 	} else {
 		// the injection is being created or modified, apply needed actions
-		controllerutil.AddFinalizer(instance, disruptionFinalizer)
+		controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
 		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the durations deadline. We compare it to negative ExpiredDisruptionGCDelay,
@@ -461,7 +452,7 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 		target := chaosPod.Labels[chaostypes.TargetLabel]
 
 		// ignore chaos pods not being deleted or not having the finalizer anymore
-		if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.IsZero() || !controllerutil.ContainsFinalizer(&chaosPod, chaosPodFinalizer) {
+		if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.IsZero() || !controllerutil.ContainsFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer) {
 			continue
 		}
 
@@ -533,7 +524,7 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 		if removeFinalizer || ignoreStatus {
 			r.log.Infow("chaos pod completed, removing finalizer", "target", target, "chaosPod", chaosPod.Name)
 
-			controllerutil.RemoveFinalizer(&chaosPod, chaosPodFinalizer)
+			controllerutil.RemoveFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer)
 
 			if err := r.Client.Update(context.Background(), &chaosPod); err != nil {
 				r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
@@ -939,7 +930,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	}
 
 	// add finalizer to the pod so it is not deleted before we can control its exit status
-	controllerutil.AddFinalizer(&pod, chaosPodFinalizer)
+	controllerutil.AddFinalizer(&pod, chaostypes.ChaosPodFinalizer)
 
 	return &pod
 }
