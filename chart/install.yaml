@@ -41,7 +41,7 @@ metadata:
 data:
   config.yaml: |
     controller:
-      metricsAddr: "127.0.0.1:8080"
+      metricsBindAddr: "127.0.0.1:8080"
       leaderElection: true
       metricsSink: "noop"
       notifiers:

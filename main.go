@@ -64,7 +64,7 @@ type config struct {
 }
 
 type controllerConfig struct {
-	MetricsAddr              string                        `json:"metricsAddr"`
+	MetricsBindAddr          string                        `json:"metricsBindAddr"`
 	MetricsSink              string                        `json:"metricsSink"`
 	ImagePullSecrets         string                        `json:"imagePullSecrets"`
 	ExpiredDisruptionGCDelay time.Duration                 `json:"expiredDisruptionGCDelay"`
@@ -118,7 +118,7 @@ func main() {
 	// parse flags
 	pflag.StringVar(&configPath, "config", "", "Configuration file path")
 
-	pflag.StringVar(&cfg.Controller.MetricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	pflag.StringVar(&cfg.Controller.MetricsBindAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	handleFatalError(viper.BindPFlag("controller.metrics.addr", pflag.Lookup("metrics-bind-address")))
 
 	pflag.BoolVar(&cfg.Controller.LeaderElection, "leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
@@ -223,7 +223,7 @@ func main() {
 	broadcaster := eventbroadcaster.EventBroadcaster()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
-		MetricsBindAddress: cfg.Controller.MetricsAddr,
+		MetricsBindAddress: cfg.Controller.MetricsBindAddr,
 		LeaderElection:     cfg.Controller.LeaderElection,
 		LeaderElectionID:   "75ec2fa4.datadoghq.com",
 		EventBroadcaster:   broadcaster,
