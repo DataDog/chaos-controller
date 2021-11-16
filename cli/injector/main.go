@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/injector"
 	logger "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
@@ -26,8 +28,10 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -51,6 +55,7 @@ var (
 	targetPodIP         string
 	disruptionName      string
 	disruptionNamespace string
+	chaosNamespace      string
 	targetName          string
 	onInit              bool
 	handlerPID          uint32
@@ -80,6 +85,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
 	rootCmd.PersistentFlags().StringVar(&dnsServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
 	rootCmd.PersistentFlags().StringVar(&kubeDNS, "kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
+	rootCmd.PersistentFlags().StringVar(&chaosNamespace, "chaos-namespace", "chaos-engineering", "Namespace that contains this chaos pod")
 
 	// log context args
 	rootCmd.PersistentFlags().StringVar(&disruptionName, "log-context-disruption-name", "", "Log value: current disruption name")
@@ -353,6 +359,14 @@ func cleanAndExit(cmd *cobra.Command, args []string) {
 
 		log.Fatalw(fmt.Sprintf("disruption cleanup failed on %d injectors (comma separated errors)", len(errs)), "errors", combined.String())
 	}
+
+	pod, err := configs[0].K8sClient.CoreV1().Pods(chaosNamespace).Get(context.Background(), os.Getenv(env.Hostname), metav1.GetOptions{})
+	if err != nil {
+		log.Errorw("couldn't clean myself up?", "err", err)
+	}
+
+	controllerutil.RemoveFinalizer(pod, chaostypes.ChaosPodFinalizer)
+	configs[0].K8sClient.CoreV1().Pods(disruptionNamespace).Update(context.Background(), pod, metav1.UpdateOptions{})
 
 	log.Info("disruption cleaned, now exiting")
 }
