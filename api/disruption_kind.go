@@ -21,20 +21,20 @@ type DisruptionKind interface {
 }
 
 type DisruptionArgs struct {
+	AllowedHosts                    []string
+	TargetContainerIDs              []string
 	Level                           chaostypes.DisruptionLevel
 	Kind                            chaostypes.DisruptionKindName
-	TargetContainerIDs              []string
 	TargetPodIP                     string
 	MetricsSink                     string
-	DryRun                          bool
 	DisruptionName                  string
 	DisruptionNamespace             string
 	TargetName                      string
-	OnInit                          bool
-	AllowedHosts                    []string
-	DnsServer                       string
+	DNSServer                       string
 	KubeDNS                         string
 	InjectorServiceAccountNamespace string
+	DryRun                          bool
+	OnInit                          bool
 }
 
 // AppendArgs is a helper function generating common and global args and appending them to the given args array
@@ -65,7 +65,7 @@ func AppendArgs(args []string, xargs DisruptionArgs) []string {
 
 	// DNS disruption configs
 	if xargs.Kind == chaostypes.DisruptionKindDNSDisruption {
-		args = append(args, "--dns-server", xargs.DnsServer)
+		args = append(args, "--dns-server", xargs.DNSServer)
 		args = append(args, "--kube-dns", xargs.KubeDNS)
 	}
 

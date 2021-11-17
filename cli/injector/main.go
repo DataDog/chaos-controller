@@ -366,6 +366,7 @@ func cleanAndExit(cmd *cobra.Command, args []string) {
 	}
 
 	controllerutil.RemoveFinalizer(pod, chaostypes.ChaosPodFinalizer)
+
 	_, err = configs[0].K8sClient.CoreV1().Pods(disruptionNamespace).Update(context.Background(), pod, metav1.UpdateOptions{})
 	if err != nil {
 		log.Errorw("couldn't remove this pod's finalizer", "pod", os.Getenv(env.Hostname), "err", err)

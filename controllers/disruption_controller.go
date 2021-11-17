@@ -985,7 +985,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			OnInit:                          instance.Spec.OnInit,
 			MetricsSink:                     r.MetricsSink.GetSinkName(),
 			AllowedHosts:                    r.InjectorNetworkDisruptionAllowedHosts,
-			DnsServer:                       r.InjectorDNSDisruptionDNSServer,
+			DNSServer:                       r.InjectorDNSDisruptionDNSServer,
 			KubeDNS:                         r.InjectorDNSDisruptionKubeDNS,
 			InjectorServiceAccountNamespace: r.InjectorServiceAccountNamespace,
 		}
