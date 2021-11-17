@@ -362,11 +362,14 @@ func cleanAndExit(cmd *cobra.Command, args []string) {
 
 	pod, err := configs[0].K8sClient.CoreV1().Pods(chaosNamespace).Get(context.Background(), os.Getenv(env.Hostname), metav1.GetOptions{})
 	if err != nil {
-		log.Errorw("couldn't clean myself up?", "err", err)
+		log.Errorw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.Hostname), "err", err)
 	}
 
 	controllerutil.RemoveFinalizer(pod, chaostypes.ChaosPodFinalizer)
-	configs[0].K8sClient.CoreV1().Pods(disruptionNamespace).Update(context.Background(), pod, metav1.UpdateOptions{})
+	_, err = configs[0].K8sClient.CoreV1().Pods(disruptionNamespace).Update(context.Background(), pod, metav1.UpdateOptions{})
+	if err != nil {
+		log.Errorw("couldn't remove this pod's finalizer", "pod", os.Getenv(env.Hostname), "err", err)
+	}
 
 	log.Info("disruption cleaned, now exiting")
 }
