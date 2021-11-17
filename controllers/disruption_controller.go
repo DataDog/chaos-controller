@@ -360,7 +360,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 				// send metrics and events
 				r.Recorder.Event(instance, corev1.EventTypeNormal, "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-				r.recordEventOnTarget(instance, target, corev1.EventTypeWarning, "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resourcer for injection", chaosPod.Name, instance.Name))
+				r.recordEventOnTarget(instance, target, corev1.EventTypeWarning, "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resource for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 			} else {
 				var chaosPodNames []string
@@ -431,11 +431,11 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 }
 
 // handleChaosPodsTermination looks at the given instance chaos pods status to handle any terminated pods
-// such pods will have their finalizer removed so they can be garbage collected by Kubernetes
+// such pods will ha ve their finalizer removed so they can be garbage collected by Kubernetes
 // the finalizer is removed if:
 //   - the pod is pending
 //   - the pod is succeeded (exit code == 0)
-//   - the pod target is not heatlhy (not existing anymore for instance)
+//   - the pod target is not healthy (not existing anymore for instance)
 // if a finalizer can't be removed because none of the conditions above are fulfilled, the instance is flagged
 // as stuck on removal and the pod finalizer won't be removed unless someone does it manually
 // the pod target will be moved to ignored targets so it is not picked up by the next reconcile loop
