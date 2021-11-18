@@ -194,8 +194,13 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
+			requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
 			r.log.Infow("disruption is not fully injected yet, requeuing", "injectionStatus", instance.Status.InjectionStatus)
-			return ctrl.Result{Requeue: true}, nil
+
+			return ctrl.Result{
+				Requeue:      true,
+				RequeueAfter: requeueAfter,
+			}, nil
 		}
 		requeueDelay := time.Duration(math.Max(calculateRemainingDuration(*instance).Seconds(), r.ExpiredDisruptionGCDelay.Seconds())) * time.Second
 
