@@ -431,7 +431,7 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 }
 
 // handleChaosPodsTermination looks at the given instance chaos pods status to handle any terminated pods
-// such pods will ha ve their finalizer removed so they can be garbage collected by Kubernetes
+// such pods will have their finalizer removed so they can be garbage collected by Kubernetes
 // the finalizer is removed if:
 //   - the pod is pending
 //   - the pod is succeeded (exit code == 0)
