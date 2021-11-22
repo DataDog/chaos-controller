@@ -73,6 +73,7 @@ func (i nodeFailureInjector) Inject() error {
 	// Trigger kernel panic
 	i.config.Log.Infow("the injector is about to write to the sysrq trigger file")
 	i.config.Log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
+	i.config.Log.Sync()
 
 	if i.spec.Shutdown {
 		err = i.config.FileWriter.Write(i.sysrqTriggerPath, 0200, "o")
