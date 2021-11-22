@@ -15,7 +15,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/hashicorp/go-multierror v1.0.0
-	github.com/miekg/dns v1.1.4
+	github.com/miekg/dns v1.1.25
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.14.0
