@@ -42,7 +42,7 @@ func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 	containersNameID := map[string]string{}
 	containerIDs := []string{}
 
-	ctns := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...)
+	ctns := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) //nolint:gocritic
 
 	if len(targets) == 0 {
 		// get all running containers ID
@@ -96,21 +96,21 @@ func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int,
 	return value, nil
 }
 
-func calculateRemainingDurationSeconds(instance v1beta1.Disruption) int64 {
-	return calculateDeadlineSeconds(
-		time.Duration(instance.Spec.DurationSeconds)*time.Second,
+func calculateRemainingDuration(instance v1beta1.Disruption) time.Duration {
+	return calculateDeadline(
+		instance.Spec.Duration.Duration(),
 		instance.ObjectMeta.CreationTimestamp.Time,
 	)
 }
 
 // returned value can be negative if deadline is in the past
-func calculateDeadlineSeconds(duration time.Duration, creationTime time.Time) int64 {
+func calculateDeadline(duration time.Duration, creationTime time.Time) time.Duration {
 	// first we must calculate the timout from when the disruption was created, not from now
 	timeout := creationTime.Add(duration)
 	now := time.Now() // rather not take the risk that the time changes by a second during this function
 
 	// return the number of seconds between now and the deadline
-	return int64(timeout.Sub(now).Seconds())
+	return timeout.Sub(now)
 }
 
 // assert label selector matches valid grammar, avoids CORE-414

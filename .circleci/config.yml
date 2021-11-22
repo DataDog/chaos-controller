@@ -45,9 +45,9 @@ executors:
     docker:
       # TODO: Publicize the chaos controller ci image to the datadog docker registry
       #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
-      - image: golang:1.15-buster
+      - image: golang:1.16-buster
     environment:
-      KUBEBUILDER_VERSION: 2.3.1
+      KUBEBUILDER_VERSION: 3.1.0
       KUBEBUILDER_ARCH: amd64
       GOLANGCI_LINT_VERSION: 1.25.1
       HELM_VERSION: 3.5.4
@@ -76,10 +76,17 @@ jobs:
           name: Install kubebuilder
           command: |
             cd /usr/local
-            curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz"
-            tar -zxvf kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}.tar.gz
-            mv kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH} kubebuilder
+            mkdir -p "/usr/local/kubebuilder/bin"
+            curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}"
+            mv kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH} kubebuilder/bin/
             export PATH="/usr/local/kubebuilder/bin:${PATH}"
+      - run:
+          name: Install envtest
+          command: |
+            export ENVTEST_ASSETS_DIR="/usr/local/kubebuilder"
+            mkdir -p ${ENVTEST_ASSETS_DIR}
+            test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.8.3/hack/setup-envtest.sh
+            source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools ${ENVTEST_ASSETS_DIR}; setup_envtest_env ${ENVTEST_ASSETS_DIR};
       - run:
           name: Install golangci-lint tool
           command: |
@@ -194,6 +201,7 @@ jobs:
           name: Run e2e tests
           <<: *working_directory
           command: make e2e-test
+          no_output_timeout: 15m
   # ensures that the file containing 3rd-party licenses is up-to-date
   third-party-licenses:
     executor: python

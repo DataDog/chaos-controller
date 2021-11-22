@@ -64,7 +64,7 @@ type config struct {
 }
 
 type controllerConfig struct {
-	MetricsAddr              string                        `json:"metricsAddr"`
+	MetricsBindAddr          string                        `json:"metricsBindAddr"`
 	MetricsSink              string                        `json:"metricsSink"`
 	ImagePullSecrets         string                        `json:"imagePullSecrets"`
 	ExpiredDisruptionGCDelay time.Duration                 `json:"expiredDisruptionGCDelay"`
@@ -118,11 +118,11 @@ func main() {
 	// parse flags
 	pflag.StringVar(&configPath, "config", "", "Configuration file path")
 
-	pflag.StringVar(&cfg.Controller.MetricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	handleFatalError(viper.BindPFlag("controller.metrics.addr", pflag.Lookup("metrics-addr")))
+	pflag.StringVar(&cfg.Controller.MetricsBindAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	handleFatalError(viper.BindPFlag("controller.metrics.addr", pflag.Lookup("metrics-bind-address")))
 
-	pflag.BoolVar(&cfg.Controller.LeaderElection, "enable-leader-election", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	handleFatalError(viper.BindPFlag("controller.leaderElection", pflag.Lookup("enable-leader-election")))
+	pflag.BoolVar(&cfg.Controller.LeaderElection, "leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	handleFatalError(viper.BindPFlag("controller.leaderElection", pflag.Lookup("leader-elect")))
 
 	pflag.BoolVar(&cfg.Controller.DeleteOnly, "delete-only", false,
 		"Enable delete only mode which will not allow new disruption to start and will only continue to clean up and remove existing disruptions.")
@@ -223,7 +223,7 @@ func main() {
 	broadcaster := eventbroadcaster.EventBroadcaster()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
-		MetricsBindAddress: cfg.Controller.MetricsAddr,
+		MetricsBindAddress: cfg.Controller.MetricsBindAddr,
 		LeaderElection:     cfg.Controller.LeaderElection,
 		LeaderElectionID:   "75ec2fa4.datadoghq.com",
 		EventBroadcaster:   broadcaster,
@@ -283,15 +283,15 @@ func main() {
 
 	if err := r.SetupWithManager(mgr); err != nil {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 
 	go r.ReportMetrics()
 
 	// register disruption validating webhook
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DeleteOnly, cfg.Handler.Enabled); err != nil {
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 
 	// register chaos handler init container mutating webhook
@@ -312,22 +312,13 @@ func main() {
 		},
 	})
 
-	// register spec default mutating webhook
-	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-spec-defaults", &webhook.Admission{
-		Handler: &chaoswebhook.DefaultMutator{
-			DefaultDuration: cfg.Controller.DefaultDuration,
-			Client:          mgr.GetClient(),
-			Log:             logger,
-		},
-	})
-
 	// +kubebuilder:scaffold:builder
 
 	logger.Infow("restarting chaos-controller")
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		logger.Errorw("problem running manager", "error", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 }
 

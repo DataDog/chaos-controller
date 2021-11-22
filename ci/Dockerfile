@@ -1,4 +1,4 @@
-FROM golang:1.15.0-buster
+FROM golang:1.16.0-buster
 
 # kubebuilder
 ARG version=2.3.1

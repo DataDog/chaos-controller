@@ -60,7 +60,7 @@ spec:
   selector: # a label selector used to target resources
     app: demo-curl
   count: 1 # the number of resources to target
-  durationSeconds: 3600 # the amount of time before your disruption automatically terminates itself
+  duration: 1h # the amount of time before your disruption automatically terminates itself
   nodeFailure:
     shutdown: false # trigger a kernel panic on the target node
 ```

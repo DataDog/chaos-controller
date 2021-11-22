@@ -17,6 +17,9 @@ dist
 # Test binary, build with `go test -c`
 *.test
 
+# Test dir, autocreated for envtest
+testbin/
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 

@@ -1,6 +1,8 @@
 package retry
 
 import (
+	"context"
+	"math"
 	"math/rand"
 	"time"
 )
@@ -12,7 +14,8 @@ type RetryIfFunc func(error) bool
 // n = count of attempts
 type OnRetryFunc func(n uint, err error)
 
-type DelayTypeFunc func(n uint, config *Config) time.Duration
+// DelayTypeFunc is called to return the next delay to wait after the retriable function fails on `err` after `n` attempts.
+type DelayTypeFunc func(n uint, err error, config *Config) time.Duration
 
 type Config struct {
 	attempts      uint
@@ -23,6 +26,9 @@ type Config struct {
 	retryIf       RetryIfFunc
 	delayType     DelayTypeFunc
 	lastErrorOnly bool
+	context       context.Context
+
+	maxBackOffN uint
 }
 
 // Option represents an option for retry.
@@ -76,28 +82,49 @@ func DelayType(delayType DelayTypeFunc) Option {
 }
 
 // BackOffDelay is a DelayType which increases delay between consecutive retries
-func BackOffDelay(n uint, config *Config) time.Duration {
-	return config.delay * (1 << n)
+func BackOffDelay(n uint, _ error, config *Config) time.Duration {
+	// 1 << 63 would overflow signed int64 (time.Duration), thus 62.
+	const max uint = 62
+
+	if config.maxBackOffN == 0 {
+		if config.delay <= 0 {
+			config.delay = 1
+		}
+
+		config.maxBackOffN = max - uint(math.Floor(math.Log2(float64(config.delay))))
+	}
+
+	if n > config.maxBackOffN {
+		n = config.maxBackOffN
+	}
+
+	return config.delay << n
 }
 
 // FixedDelay is a DelayType which keeps delay the same through all iterations
-func FixedDelay(_ uint, config *Config) time.Duration {
+func FixedDelay(_ uint, _ error, config *Config) time.Duration {
 	return config.delay
 }
 
 // RandomDelay is a DelayType which picks a random delay up to config.maxJitter
-func RandomDelay(_ uint, config *Config) time.Duration {
+func RandomDelay(_ uint, _ error, config *Config) time.Duration {
 	return time.Duration(rand.Int63n(int64(config.maxJitter)))
 }
 
 // CombineDelay is a DelayType the combines all of the specified delays into a new DelayTypeFunc
 func CombineDelay(delays ...DelayTypeFunc) DelayTypeFunc {
-	return func(n uint, config *Config) time.Duration {
-		var total time.Duration
+	const maxInt64 = uint64(math.MaxInt64)
+
+	return func(n uint, err error, config *Config) time.Duration {
+		var total uint64
 		for _, delay := range delays {
-			total += delay(n, config)
+			total += uint64(delay(n, err, config))
+			if total > maxInt64 {
+				total = maxInt64
+			}
 		}
-		return total
+
+		return time.Duration(total)
 	}
 }
 
@@ -147,5 +174,25 @@ func OnRetry(onRetry OnRetryFunc) Option {
 func RetryIf(retryIf RetryIfFunc) Option {
 	return func(c *Config) {
 		c.retryIf = retryIf
+	}
+}
+
+// Context allow to set context of retry
+// default are Background context
+//
+// example of immediately cancellation (maybe it isn't the best example, but it describes behavior enough; I hope)
+//
+//	ctx, cancel := context.WithCancel(context.Background())
+//	cancel()
+//
+//	retry.Do(
+//		func() error {
+//			...
+//		},
+//		retry.Context(ctx),
+//	)
+func Context(ctx context.Context) Option {
+	return func(c *Config) {
+		c.context = ctx
 	}
 }

@@ -137,11 +137,11 @@ var _ = Describe("Disruption Controller", func() {
 				Namespace: "default",
 			},
 			Spec: chaosv1beta1.DisruptionSpec{
-				DryRun:          true,
-				Count:           &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-				Selector:        map[string]string{"foo": "bar"},
-				Containers:      []string{"ctn1"},
-				DurationSeconds: int64(3600),
+				DryRun:     true,
+				Count:      &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+				Selector:   map[string]string{"foo": "bar"},
+				Containers: []string{"ctn1"},
+				Duration:   "10m",
 				NodeFailure: &chaosv1beta1.NodeFailureSpec{
 					Shutdown: false,
 				},
@@ -255,16 +255,34 @@ var _ = Describe("Disruption Controller", func() {
 
 	Context("disruption expires naturally", func() {
 		BeforeEach(func() {
-			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
-			disruption.Spec.DurationSeconds = int64(timeout.Seconds()) + 5
+			disruption.Spec = chaosv1beta1.DisruptionSpec{
+				DryRun:     true,
+				Count:      &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				Selector:   map[string]string{"foo": "bar"},
+				Containers: []string{"ctn1"},
+				Duration:   "30s",
+				Network: &chaosv1beta1.NetworkDisruptionSpec{
+					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
+						{
+							Host:     "127.0.0.1",
+							Port:     80,
+							Protocol: "tcp",
+						},
+					},
+					Drop:           0,
+					Corrupt:        0,
+					Delay:          1000,
+					BandwidthLimit: 10000,
+				},
+			}
 		})
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the chaos pods have been created")
-			Eventually(func() error { return expectChaosPod(disruption, 12) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 2) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Expect(expectChaosInjectors(disruption, 12)).To(BeNil())
+			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
 
 			By("Waiting for the disruption to expire naturally")
 			Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout*2).Should(Succeed())
