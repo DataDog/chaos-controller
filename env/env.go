@@ -14,5 +14,5 @@ const (
 	InjectorMountSysrqTrigger = "CHAOS_INJECTOR_MOUNT_SYSRQ_TRIGGER"
 	InjectorTargetPodHostIP   = "TARGET_POD_HOST_IP"
 	InjectorChaosPodIP        = "CHAOS_POD_IP"
-	Hostname                  = "HOSTNAME"
+	MyPodName                 = "MY_POD_NAME"
 )
