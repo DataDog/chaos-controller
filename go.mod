@@ -8,7 +8,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/containerd/containerd v1.5.7
+	github.com/containerd/containerd v1.5.8
 	github.com/coreos/go-iptables v0.6.0
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200916142827-bd33bbf0497b+incompatible
 	github.com/fsnotify/fsnotify v1.4.9
@@ -31,7 +31,7 @@ require (
 	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781
 	golang.org/x/sys v0.0.0-20210510120138-977fb7262007
 	google.golang.org/grpc v1.40.0
-	google.golang.org/protobuf v1.26.0
+	google.golang.org/protobuf v1.27.1
 	k8s.io/api v0.22.2
 	k8s.io/apimachinery v0.22.2
 	k8s.io/client-go v0.20.6
