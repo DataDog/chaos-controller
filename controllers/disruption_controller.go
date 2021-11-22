@@ -160,7 +160,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
-		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the durations deadline. We compare it to negative ExpiredDisruptionGCDelay,
+		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the duration's deadline. We compare it to negative ExpiredDisruptionGCDelay,
 		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
 		if calculateRemainingDuration(*instance) <= (-1 * r.ExpiredDisruptionGCDelay) {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
@@ -750,6 +750,10 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	terminationGracePeriod := int64(60)
 	activeDeadlineSeconds := int64(calculateRemainingDuration(*instance).Seconds())
 
+	if activeDeadlineSeconds < 1 {
+		return nil
+	}
+
 	podSpec := corev1.PodSpec{
 		HostPID:                       true,                      // enable host pid
 		RestartPolicy:                 corev1.RestartPolicyNever, // do not restart the pod on fail or completion
@@ -980,7 +984,10 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			instance.Name, instance.Namespace, targetName, instance.Spec.OnInit, r.InjectorNetworkDisruptionAllowedHosts, r.InjectorDNSDisruptionDNSServer, r.InjectorDNSDisruptionKubeDNS)
 
 		// append pod to chaos pods
-		*pods = append(*pods, r.generatePod(instance, targetName, targetNodeName, args, kind))
+		pod := r.generatePod(instance, targetName, targetNodeName, args, kind)
+		if pod != nil {
+			*pods = append(*pods, pod)
+		}
 	}
 }
 
