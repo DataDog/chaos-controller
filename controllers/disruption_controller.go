@@ -3,21 +3,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
-/*
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package controllers
 
 import (
@@ -29,6 +14,10 @@ import (
 	"strings"
 	"time"
 
+	chaosapi "github.com/DataDog/chaos-controller/api"
+	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/targetselector"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/cenkalti/backoff"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -43,12 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
-	"github.com/DataDog/chaos-controller/metrics"
-	"github.com/DataDog/chaos-controller/targetselector"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // DisruptionReconciler reconciles a Disruption object
@@ -71,16 +56,21 @@ type DisruptionReconciler struct {
 	ExpiredDisruptionGCDelay              time.Duration
 }
 
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
-// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
-// +kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
+//+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
+//+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
+//+kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
 
-// Reconcile loop
-func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+//
+// For more details, check Reconcile and its Result here:
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
+func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
@@ -117,6 +107,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
 		r.log.Errorw("error handling chaos pods termination", "error", err)
+
 		return ctrl.Result{}, err
 	}
 
@@ -165,8 +156,8 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
 		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the durations deadline. We compare it to negative ExpiredDisruptionGCDelay,
 		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
-		if calculateRemainingDurationSeconds(*instance) <= (-1 * int64(r.ExpiredDisruptionGCDelay.Seconds())) {
-			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "durationSeconds", instance.Spec.DurationSeconds)
+		if calculateRemainingDuration(*instance) <= (-1 * r.ExpiredDisruptionGCDelay) {
+			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
 			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", r.ExpiredDisruptionGCDelay))
 
 			var err error
@@ -181,6 +172,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// retrieve targets from label selector
 		if err := r.selectTargets(instance); err != nil {
 			r.log.Errorw("error selecting targets", "error", err)
+
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 		}
 
@@ -191,6 +183,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// start injections
 		if err := r.startInjection(instance); err != nil {
 			r.log.Errorw("error injecting the disruption", "error", err)
+
 			return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
 		}
 
@@ -204,10 +197,10 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
 			r.log.Infow("disruption is not fully injected yet, requeuing")
+
 			return ctrl.Result{Requeue: true}, nil
 		}
-
-		requeueDelay := time.Duration(math.Max(float64(calculateRemainingDurationSeconds(*instance)), r.ExpiredDisruptionGCDelay.Seconds())) * time.Second
+		requeueDelay := time.Duration(math.Max(calculateRemainingDuration(*instance).Seconds(), r.ExpiredDisruptionGCDelay.Seconds())) * time.Second
 
 		r.log.Infow("requeuing disruption", "requeueDelay", requeueDelay.String())
 
@@ -238,7 +231,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		return false, fmt.Errorf("error getting instance chaos pods: %w", err)
 	}
 
-	if calculateRemainingDurationSeconds(*instance) < 0 {
+	if calculateRemainingDuration(*instance) < 0 {
 		status = chaostypes.DisruptionInjectionStatusPreviouslyInjected
 	}
 
@@ -282,8 +275,11 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		return false, err
 	}
 
-	// requeue the request if the disruption is not fully injected yet, so we can
+	// requeue the request if the disruption is not fully injected so we can
 	// eventually catch pods that are not ready yet but will be in the future
+	if status != chaostypes.DisruptionInjectionStatusInjected {
+		return false, nil
+	}
 
 	return status == chaostypes.DisruptionInjectionStatusInjected || status == chaostypes.DisruptionInjectionStatusPreviouslyInjected, nil
 }
@@ -746,8 +742,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// the signal sent to a pod becomes SIGKILL, which will interrupt any in-progress cleaning. By double this to 1 minute in the pod spec itself,
 	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
 	terminationGracePeriod := int64(60)
-
-	activeDeadlineSeconds := calculateRemainingDurationSeconds(*instance)
+	activeDeadlineSeconds := int64(calculateRemainingDuration(*instance).Seconds())
 
 	podSpec := corev1.PodSpec{
 		HostPID:                       true,                      // enable host pid

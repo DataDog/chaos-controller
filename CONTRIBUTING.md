@@ -19,6 +19,17 @@ To get started, we need to have the following software installed:
 * [golangci-lint](https://github.com/golangci/golangci-lint)
 * [Kubebuilder Prerequisites](https://book.kubebuilder.io/quick-start.html#prerequisites) (go, docker, kubectl, kubebuilder, controller-gen)
 * [helm](https://helm.sh/docs/intro/quickstart/)
+* [envtest](#Installing-envtest)
+
+## Installing Envtest
+
+In order to run `make test` to run the unit tests, you'll need to install envtest with the following commands:
+```
+export ENVTEST_ASSETS_DIR="/usr/local/kubebuilder"
+mkdir -p ${ENVTEST_ASSETS_DIR}
+test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.8.3/hack/setup-envtest.sh
+source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools ${ENVTEST_ASSETS_DIR}; setup_envtest_env ${ENVTEST_ASSETS_DIR};
+```
 
 # Developing Locally
 

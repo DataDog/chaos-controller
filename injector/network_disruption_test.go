@@ -306,8 +306,8 @@ var _ = Describe("Failure", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "nil", 0, 0, "arp", "1:1")
 			})
 
-			It("should add a filter to apiserver traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "192.168.0.254/32", 0, 0, "", "1:1")
+			It("should add a filter to redirect metadata service traffic on a non-disrupted band", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "169.254.169.254/32", 0, 0, "", "1:1")
 			})
 		})
 

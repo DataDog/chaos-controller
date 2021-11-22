@@ -3,18 +3,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
-/*
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package v1beta1
 
 import (
@@ -23,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -32,9 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
-
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // DisruptionSpec defines the desired state of Disruption
 // +ddmark:validation:ExclusiveFields={Network,DNS}
@@ -53,7 +39,7 @@ type DisruptionSpec struct {
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
 	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
-	DurationSeconds  int64                             `json:"durationSeconds,omitempty"`  // seconds from disruption creation until chaos pods are deleted and no more are created
+	Duration         DisruptionDuration                `json:"duration,omitempty"`         // time from disruption creation until chaos pods are deleted and no more are created
 	// +kubebuilder:validation:Enum=pod;node;""
 	// +ddmark:validation:Enum=pod;node;""
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
@@ -74,6 +60,54 @@ type DisruptionSpec struct {
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
 }
 
+type DisruptionDuration string
+
+func (dd DisruptionDuration) MarshalJSON() ([]byte, error) {
+	if dd == "" {
+		return json.Marshal("")
+	}
+
+	d, err := time.ParseDuration(string(dd))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(d.String())
+}
+
+func (dd *DisruptionDuration) UnmarshalJSON(data []byte) error {
+	var v interface{}
+
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	switch value := v.(type) {
+	case float64:
+		*dd = DisruptionDuration(time.Duration(value).String())
+		return nil
+	case string:
+		d, err := time.ParseDuration(value)
+		*dd = DisruptionDuration(d.String())
+
+		if err != nil {
+			return err
+		}
+
+		return nil
+	default:
+		return errors.New("invalid duration")
+	}
+}
+
+func (dd DisruptionDuration) Duration() time.Duration {
+	// This was validated at unmarshal time, so we can ignore the error
+	d, _ := time.ParseDuration(string(dd))
+
+	return d
+}
+
 // DisruptionStatus defines the observed state of Disruption
 type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
@@ -89,7 +123,7 @@ type DisruptionStatus struct {
 	UserInfo *authv1.UserInfo `json:"userInfo,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+//+kubebuilder:object:root=true
 
 // Disruption is the Schema for the disruptions API
 // +kubebuilder:resource:shortName=dis

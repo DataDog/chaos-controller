@@ -153,24 +153,36 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 // NetworkDisruptionHostSpecFromString parses the given hosts to host specs
 // The expected format for hosts is <host>;<port>;<protocol>
 func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHostSpec, error) {
+	var err error
+
 	parsedHosts := []NetworkDisruptionHostSpec{}
 
 	// parse given hosts
 	for _, host := range hosts {
+		port := 0
+		protocol := ""
+
 		// parse host with format <host>;<port>;<protocol>
 		parsedHost := strings.SplitN(host, ";", 3)
 
-		// cast port to int
-		port, err := strconv.Atoi(parsedHost[1])
-		if err != nil {
-			return nil, fmt.Errorf("unexpected port parameter in %s: %v", host, err)
+		// cast port to int if specified
+		if len(parsedHost) > 1 {
+			port, err = strconv.Atoi(parsedHost[1])
+			if err != nil {
+				return nil, fmt.Errorf("unexpected port parameter in %s: %v", host, err)
+			}
+		}
+
+		// get protocol if specified
+		if len(parsedHost) > 2 {
+			protocol = parsedHost[2]
 		}
 
 		// generate host spec
 		parsedHosts = append(parsedHosts, NetworkDisruptionHostSpec{
 			Host:     parsedHost[0],
 			Port:     port,
-			Protocol: parsedHost[2],
+			Protocol: protocol,
 		})
 	}
 

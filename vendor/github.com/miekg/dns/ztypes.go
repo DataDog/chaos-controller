@@ -13,7 +13,6 @@ var TypeToRR = map[uint16]func() RR{
 	TypeAAAA:       func() RR { return new(AAAA) },
 	TypeAFSDB:      func() RR { return new(AFSDB) },
 	TypeANY:        func() RR { return new(ANY) },
-	TypeAPL:        func() RR { return new(APL) },
 	TypeAVC:        func() RR { return new(AVC) },
 	TypeCAA:        func() RR { return new(CAA) },
 	TypeCDNSKEY:    func() RR { return new(CDNSKEY) },
@@ -88,7 +87,6 @@ var TypeToString = map[uint16]string{
 	TypeAAAA:       "AAAA",
 	TypeAFSDB:      "AFSDB",
 	TypeANY:        "ANY",
-	TypeAPL:        "APL",
 	TypeATMA:       "ATMA",
 	TypeAVC:        "AVC",
 	TypeAXFR:       "AXFR",
@@ -171,7 +169,6 @@ func (rr *A) Header() *RR_Header          { return &rr.Hdr }
 func (rr *AAAA) Header() *RR_Header       { return &rr.Hdr }
 func (rr *AFSDB) Header() *RR_Header      { return &rr.Hdr }
 func (rr *ANY) Header() *RR_Header        { return &rr.Hdr }
-func (rr *APL) Header() *RR_Header        { return &rr.Hdr }
 func (rr *AVC) Header() *RR_Header        { return &rr.Hdr }
 func (rr *CAA) Header() *RR_Header        { return &rr.Hdr }
 func (rr *CDNSKEY) Header() *RR_Header    { return &rr.Hdr }
@@ -243,16 +240,12 @@ func (rr *X25) Header() *RR_Header        { return &rr.Hdr }
 // len() functions
 func (rr *A) len(off int, compression map[string]struct{}) int {
 	l := rr.Hdr.len(off, compression)
-	if len(rr.A) != 0 {
-		l += net.IPv4len
-	}
+	l += net.IPv4len // A
 	return l
 }
 func (rr *AAAA) len(off int, compression map[string]struct{}) int {
 	l := rr.Hdr.len(off, compression)
-	if len(rr.AAAA) != 0 {
-		l += net.IPv6len
-	}
+	l += net.IPv6len // AAAA
 	return l
 }
 func (rr *AFSDB) len(off int, compression map[string]struct{}) int {
@@ -263,13 +256,6 @@ func (rr *AFSDB) len(off int, compression map[string]struct{}) int {
 }
 func (rr *ANY) len(off int, compression map[string]struct{}) int {
 	l := rr.Hdr.len(off, compression)
-	return l
-}
-func (rr *APL) len(off int, compression map[string]struct{}) int {
-	l := rr.Hdr.len(off, compression)
-	for _, x := range rr.Prefixes {
-		l += x.len()
-	}
 	return l
 }
 func (rr *AVC) len(off int, compression map[string]struct{}) int {
@@ -322,12 +308,12 @@ func (rr *DS) len(off int, compression map[string]struct{}) int {
 	l += 2 // KeyTag
 	l++    // Algorithm
 	l++    // DigestType
-	l += len(rr.Digest) / 2
+	l += len(rr.Digest)/2 + 1
 	return l
 }
 func (rr *EID) len(off int, compression map[string]struct{}) int {
 	l := rr.Hdr.len(off, compression)
-	l += len(rr.Endpoint) / 2
+	l += len(rr.Endpoint)/2 + 1
 	return l
 }
 func (rr *EUI48) len(off int, compression map[string]struct{}) int {
@@ -378,10 +364,8 @@ func (rr *KX) len(off int, compression map[string]struct{}) int {
 }
 func (rr *L32) len(off int, compression map[string]struct{}) int {
 	l := rr.Hdr.len(off, compression)
-	l += 2 // Preference
-	if len(rr.Locator32) != 0 {
-		l += net.IPv4len
-	}
+	l += 2           // Preference
+	l += net.IPv4len // Locator32
 	return l
 }
 func (rr *L64) len(off int, compression map[string]struct{}) int {
@@ -462,7 +446,7 @@ func (rr *NID) len(off int, compression map[string]struct{}) int {
 }
 func (rr *NIMLOC) len(off int, compression map[string]struct{}) int {
 	l := rr.Hdr.len(off, compression)
-	l += len(rr.Locator) / 2
+	l += len(rr.Locator)/2 + 1
 	return l
 }
 func (rr *NINFO) len(off int, compression map[string]struct{}) int {
@@ -515,7 +499,7 @@ func (rr *PX) len(off int, compression map[string]struct{}) int {
 }
 func (rr *RFC3597) len(off int, compression map[string]struct{}) int {
 	l := rr.Hdr.len(off, compression)
-	l += len(rr.Rdata) / 2
+	l += len(rr.Rdata)/2 + 1
 	return l
 }
 func (rr *RKEY) len(off int, compression map[string]struct{}) int {
@@ -556,7 +540,7 @@ func (rr *SMIMEA) len(off int, compression map[string]struct{}) int {
 	l++ // Usage
 	l++ // Selector
 	l++ // MatchingType
-	l += len(rr.Certificate) / 2
+	l += len(rr.Certificate)/2 + 1
 	return l
 }
 func (rr *SOA) len(off int, compression map[string]struct{}) int {
@@ -589,7 +573,7 @@ func (rr *SSHFP) len(off int, compression map[string]struct{}) int {
 	l := rr.Hdr.len(off, compression)
 	l++ // Algorithm
 	l++ // Type
-	l += len(rr.FingerPrint) / 2
+	l += len(rr.FingerPrint)/2 + 1
 	return l
 }
 func (rr *TA) len(off int, compression map[string]struct{}) int {
@@ -597,7 +581,7 @@ func (rr *TA) len(off int, compression map[string]struct{}) int {
 	l += 2 // KeyTag
 	l++    // Algorithm
 	l++    // DigestType
-	l += len(rr.Digest) / 2
+	l += len(rr.Digest)/2 + 1
 	return l
 }
 func (rr *TALINK) len(off int, compression map[string]struct{}) int {
@@ -624,7 +608,7 @@ func (rr *TLSA) len(off int, compression map[string]struct{}) int {
 	l++ // Usage
 	l++ // Selector
 	l++ // MatchingType
-	l += len(rr.Certificate) / 2
+	l += len(rr.Certificate)/2 + 1
 	return l
 }
 func (rr *TSIG) len(off int, compression map[string]struct{}) int {
@@ -683,13 +667,6 @@ func (rr *AFSDB) copy() RR {
 func (rr *ANY) copy() RR {
 	return &ANY{rr.Hdr}
 }
-func (rr *APL) copy() RR {
-	Prefixes := make([]APLPrefix, len(rr.Prefixes))
-	for i, e := range rr.Prefixes {
-		Prefixes[i] = e.copy()
-	}
-	return &APL{rr.Hdr, Prefixes}
-}
 func (rr *AVC) copy() RR {
 	Txt := make([]string, len(rr.Txt))
 	copy(Txt, rr.Txt)
@@ -697,12 +674,6 @@ func (rr *AVC) copy() RR {
 }
 func (rr *CAA) copy() RR {
 	return &CAA{rr.Hdr, rr.Flag, rr.Tag, rr.Value}
-}
-func (rr *CDNSKEY) copy() RR {
-	return &CDNSKEY{*rr.DNSKEY.copy().(*DNSKEY)}
-}
-func (rr *CDS) copy() RR {
-	return &CDS{*rr.DS.copy().(*DS)}
 }
 func (rr *CERT) copy() RR {
 	return &CERT{rr.Hdr, rr.Type, rr.KeyTag, rr.Algorithm, rr.Certificate}
@@ -717,9 +688,6 @@ func (rr *CSYNC) copy() RR {
 }
 func (rr *DHCID) copy() RR {
 	return &DHCID{rr.Hdr, rr.Digest}
-}
-func (rr *DLV) copy() RR {
-	return &DLV{*rr.DS.copy().(*DS)}
 }
 func (rr *DNAME) copy() RR {
 	return &DNAME{rr.Hdr, rr.Target}
@@ -752,9 +720,6 @@ func (rr *HIP) copy() RR {
 	RendezvousServers := make([]string, len(rr.RendezvousServers))
 	copy(RendezvousServers, rr.RendezvousServers)
 	return &HIP{rr.Hdr, rr.HitLength, rr.PublicKeyAlgorithm, rr.PublicKeyLength, rr.Hit, rr.PublicKey, RendezvousServers}
-}
-func (rr *KEY) copy() RR {
-	return &KEY{*rr.DNSKEY.copy().(*DNSKEY)}
 }
 func (rr *KX) copy() RR {
 	return &KX{rr.Hdr, rr.Preference, rr.Exchanger}
@@ -858,9 +823,6 @@ func (rr *RRSIG) copy() RR {
 }
 func (rr *RT) copy() RR {
 	return &RT{rr.Hdr, rr.Preference, rr.Host}
-}
-func (rr *SIG) copy() RR {
-	return &SIG{*rr.RRSIG.copy().(*RRSIG)}
 }
 func (rr *SMIMEA) copy() RR {
 	return &SMIMEA{rr.Hdr, rr.Usage, rr.Selector, rr.MatchingType, rr.Certificate}

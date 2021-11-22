@@ -16,6 +16,7 @@ spec:
     shortNames:
     - dis
     singular: disruption
+  preserveUnknownFields: false
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -129,9 +130,8 @@ spec:
               type: array
             dryRun:
               type: boolean
-            durationSeconds:
-              format: int64
-              type: integer
+            duration:
+              type: string
             grpc:
               description: GRPCDisruptionSpec represents a gRPC disruption
               nullable: true
