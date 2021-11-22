@@ -360,19 +360,29 @@ func cleanAndExit(cmd *cobra.Command, args []string) {
 		log.Fatalw(fmt.Sprintf("disruption cleanup failed on %d injectors (comma separated errors)", len(errs)), "errors", combined.String())
 	}
 
+	if err := backoff.RetryNotify(cleanFinalizer, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
+		log.Errorw("couldn't safely remove this pod's finalizer", "err", err)
+	}
+
+	log.Info("disruption cleaned, now exiting")
+}
+
+func cleanFinalizer() error {
 	pod, err := configs[0].K8sClient.CoreV1().Pods(chaosNamespace).Get(context.Background(), os.Getenv(env.MyPodName), metav1.GetOptions{})
 	if err != nil {
-		log.Errorw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.MyPodName), "err", err)
+		log.Warnw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.MyPodName), "err", err)
+		return err
 	}
 
 	controllerutil.RemoveFinalizer(pod, chaostypes.ChaosPodFinalizer)
 
 	_, err = configs[0].K8sClient.CoreV1().Pods(disruptionNamespace).Update(context.Background(), pod, metav1.UpdateOptions{})
 	if err != nil {
-		log.Errorw("couldn't remove this pod's finalizer", "pod", os.Getenv(env.MyPodName), "err", err)
+		log.Warnw("couldn't remove this pod's finalizer", "pod", os.Getenv(env.MyPodName), "err", err)
+		return err
 	}
 
-	log.Info("disruption cleaned, now exiting")
+	return nil
 }
 
 // handleMetricError logs the given error if not nil
