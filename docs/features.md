@@ -22,7 +22,9 @@ Let's imagine a node with two pods running: `foo` and `bar` and a disruption dro
 
 The `Disruption` spec takes a `duration` field. This field represents amount of time after the disruption's creation before 
 all chaos pods automatically terminate and the disruption stops injecting new ones. This field takes a string, which is meant to conform to 
-golang's time.Duration's [string format, e.g., "45s", "15m30s", "4h30m".](https://pkg.go.dev/time#ParseDuration)
+golang's time.Duration's [string format, e.g., "45s", "15m30s", "4h30m".](https://pkg.go.dev/time#ParseDuration) This time is measured from the moment 
+that the Disruption resource is created, not from when the injection of the actual failure occurs. It functions as a strict maximum for the lifetime of the Disruption, 
+not a guarantee of how long the failure will persist for.
 
 If a `duration` is not specified, then a disruption will receive the default duration, which is configured at the controller level by setting 
 `controller.defaultDuration` in the controller's config map, and this value defaults to 1 hour.
