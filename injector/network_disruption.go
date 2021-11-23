@@ -36,6 +36,7 @@ func (n networkDisruptionService) String() string {
 	if n.ip != nil {
 		ip = n.ip.String()
 	}
+
 	return fmt.Sprintf("ip=%s; port=%d; protocol=%s", ip, n.port, n.protocol)
 }
 
@@ -416,6 +417,7 @@ func (i *networkDisruptionInjector) getServices() ([]networkDisruptionService, e
 		}
 
 		endpointInfo := ""
+
 		for _, service := range services {
 			allServices = append(allServices, service)
 			endpointInfo = fmt.Sprintf("%s{%s}, ", endpointInfo, service)

@@ -338,7 +338,8 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 			}
 
 			// create injection pods if none have been found
-			if len(found) == 0 {
+			switch len(found) {
+			case 0:
 				r.log.Infow("creating chaos pod", "target", target)
 
 				// create the pod
@@ -360,13 +361,14 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 				r.Recorder.Event(instance, corev1.EventTypeNormal, "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
 				r.recordEventOnTarget(instance, target, corev1.EventTypeWarning, "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resourcer for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
-			} else if len(found) == 1 {
+			case 1:
 				r.log.Infow("an injection pod is already existing for the selected target", "target", target, "chaosPod", found[0].Name)
-			} else if len(found) > 1 {
+			default:
 				var chaosPodNames []string
 				for _, pod := range found {
 					chaosPodNames = append(chaosPodNames, pod.Name)
 				}
+
 				r.log.Errorw("multiple injection pods for one target found", "target", target, "chaosPods", strings.Join(chaosPodNames, ","), "chaosPodLabels", chaosPod.Labels)
 			}
 		}
