@@ -8,6 +8,7 @@ package injector
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
@@ -73,7 +74,10 @@ func (i nodeFailureInjector) Inject() error {
 	// Trigger kernel panic
 	i.config.Log.Infow("the injector is about to write to the sysrq trigger file")
 	i.config.Log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
-	i.config.Log.Sync()
+	_ = i.config.Log.Sync() // If we can't flush the logger, why would logging the error help? so we just ignore
+
+	// Wait ten seconds for the logs to be flushed and collected, as the shutdown will be immediate
+	time.Sleep(time.Second * 10)
 
 	if i.spec.Shutdown {
 		err = i.config.FileWriter.Write(i.sysrqTriggerPath, 0200, "o")
