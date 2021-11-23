@@ -13,6 +13,6 @@ spec:
   selector:
     app: demo-curl
   count: 1
-  duration: 15s # Disruption will time out after 1800s (30m)
+  duration: 15s # Disruption will time out after 15 seconds
   network:
     delay: 300
