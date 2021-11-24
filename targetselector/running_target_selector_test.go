@@ -366,7 +366,6 @@ var _ = Describe("Helpers", func() {
 		Context("with controller safeguards enabled", func() {
 			BeforeEach(func() {
 				targetSelector = NewRunningTargetSelector(true, "runningNode")
-				runningPod1.Spec.NodeName = "runningNode"
 			})
 
 			It("should exclude the pods running on the same node as the controller from targets", func() {
