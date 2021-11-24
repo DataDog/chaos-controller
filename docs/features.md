@@ -36,6 +36,13 @@ The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/conc
 
 **NOTE:** If you are targeting pods, the disruption must be created in the same namespace as the targeted pods.
 
+### Targeting safeguards
+
+When enabled [in the configuration](../chart/values.yaml) (`controller.enableSafeguards` field), safeguards will exclude some targets from the selection to avoid unexpected issues:
+
+* if the disruption is applied at the node level, the node where the controller is running on can't be selected
+* if the disruption is applied at the pod level with a node disruption, the node where the controller is running on can't be selected
+
 ### Advanced targeting
 
 In addition to the simple `selector` field matching an exact key/value label, one can do some more advanced targeting with the `advancedSelector` field. It uses the [label selector requirements mechanism](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#LabelSelectorRequirement) allowing to match labels with the following operator:
