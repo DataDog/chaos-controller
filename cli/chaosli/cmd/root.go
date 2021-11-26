@@ -7,6 +7,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/markbates/pkger"
 	goyaml "sigs.k8s.io/yaml"
 
 	"github.com/spf13/cobra"
@@ -21,6 +23,8 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
+
+const APILIBPATH string = "chaosli-api-lib/v1beta1"
 
 var cfgFile string
 
@@ -45,6 +49,38 @@ func Execute() {
 }
 
 func init() {
+	pkger.Walk("github.com/DataDog/chaos-controller:/api/v1beta1", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		fin, err := pkger.Open(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer fin.Close()
+
+		folderPath := os.Getenv("GOPATH") + "/src/" + APILIBPATH + "/"
+		err = os.MkdirAll(folderPath, 0777)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fout, err := os.Create(folderPath + info.Name())
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer fout.Close()
+
+		_, _ = io.Copy(fout, fin)
+
+		return nil
+	})
+
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
