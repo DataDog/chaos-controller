@@ -49,9 +49,9 @@ func Execute() {
 }
 
 func init() {
-	os.Setenv("GOROOT", "/usr/local/go")
+	os.Setenv("GO111MODULE", "off")
 
-	folderPath := os.Getenv("GOROOT") + "/src/" + APILIBPATH + "/"
+	folderPath := os.Getenv("GOPATH") + "/src/" + APILIBPATH + "/"
 	err := os.MkdirAll(folderPath, 0777)
 	if err != nil {
 		log.Fatal(err)

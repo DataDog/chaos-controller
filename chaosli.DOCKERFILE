@@ -1,5 +1,5 @@
 # ---------------------------------------
-FROM amd64/golang:1.16 as build
+FROM amd64/golang:1.16-alpine as build
 
 ENV GOARCH=amd64 
 ENV CGO_ENABLED=0
@@ -18,11 +18,14 @@ RUN go build \
     ./cli/chaosli
 
 # ---------------------------------------
-FROM amd64/golang:1.16 as bin
+FROM amd64/golang:1.16-alpine as bin
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
 
 WORKDIR /app
 
 COPY --from=build /app/bin/chaosli/chaosli_bin ./chaosli_bin
 COPY --from=build /app/examples ./examples
 
-CMD ./chaosli_bin validate --path ./examples/complete.yaml
+RUN ./chaosli_bin validate --path ./examples/complete.yaml 
