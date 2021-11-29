@@ -44,6 +44,7 @@ data:
       metricsBindAddr: "127.0.0.1:8080"
       leaderElection: true
       metricsSink: "noop"
+      enableSafeguards: true
       notifiers:
         common:
           clusterName: "minikube"
@@ -61,7 +62,7 @@ data:
         host: ""
         port: 9443
     injector:
-      image: "datadog/chaos-injector:4.6.0"
+      image: "datadog/chaos-injector:5.0.0"
       serviceAccount:
         name: "chaos-injector"
         namespace: "chaos-engineering"
@@ -70,7 +71,7 @@ data:
         kubeDns: "off"
     handler:
       enabled: true
-      image: "datadog/chaos-handler:4.6.0"
+      image: "datadog/chaos-handler:5.0.0"
       timeout: "1m"
 ---
 # Source: chaos-controller/templates/crds/chaos.datadoghq.com_disruptions.yaml
@@ -88,7 +89,7 @@ spec:
     listKind: DisruptionList
     plural: disruptions
     shortNames:
-      - dis
+    - dis
     singular: disruption
   preserveUnknownFields: false
   scope: Namespaced
@@ -132,8 +133,8 @@ spec:
                       type: string
                     type: array
                 required:
-                  - key
-                  - operator
+                - key
+                - operator
                 type: object
               nullable: true
               type: array
@@ -150,8 +151,8 @@ spec:
               type: array
             count:
               anyOf:
-                - type: integer
-                - type: string
+              - type: integer
+              - type: string
               x-kubernetes-int-or-string: true
             cpuPressure:
               description: CPUPressureSpec represents a cpu pressure disruption
@@ -173,8 +174,8 @@ spec:
                       type: integer
                   type: object
               required:
-                - path
-                - throttling
+              - path
+              - throttling
               type: object
             dns:
               description: DNSDisruptionSpec represents a dns disruption
@@ -193,12 +194,12 @@ spec:
                       value:
                         type: string
                     required:
-                      - type
-                      - value
+                    - type
+                    - value
                     type: object
                 required:
-                  - hostname
-                  - record
+                - hostname
+                - record
                 type: object
               nullable: true
               type: array
@@ -219,23 +220,23 @@ spec:
                         type: string
                       error:
                         enum:
-                          - OK
-                          - CANCELED
-                          - UNKNOWN
-                          - INVALID_ARGUMENT
-                          - DEADLINE_EXCEEDED
-                          - NOT_FOUND
-                          - ALREADY_EXISTS
-                          - PERMISSION_DENIED
-                          - RESOURCE_EXHAUSTED
-                          - FAILED_PRECONDITION
-                          - ABORTED
-                          - OUT_OF_RANGE
-                          - UNIMPLEMENTED
-                          - INTERNAL
-                          - UNAVAILABLE
-                          - DATA_LOSS
-                          - UNAUTHENTICATED
+                        - OK
+                        - CANCELED
+                        - UNKNOWN
+                        - INVALID_ARGUMENT
+                        - DEADLINE_EXCEEDED
+                        - NOT_FOUND
+                        - ALREADY_EXISTS
+                        - PERMISSION_DENIED
+                        - RESOURCE_EXHAUSTED
+                        - FAILED_PRECONDITION
+                        - ABORTED
+                        - OUT_OF_RANGE
+                        - UNIMPLEMENTED
+                        - INTERNAL
+                        - UNAVAILABLE
+                        - DATA_LOSS
+                        - UNAUTHENTICATED
                         type: string
                       override:
                         type: string
@@ -244,7 +245,7 @@ spec:
                         minimum: 0
                         type: integer
                     required:
-                      - endpoint
+                    - endpoint
                     type: object
                   type: array
                 port:
@@ -252,16 +253,16 @@ spec:
                   minimum: 1
                   type: integer
               required:
-                - endpoints
-                - port
+              - endpoints
+              - port
               type: object
             level:
               description: DisruptionLevel represents which level the disruption should
                 be injected at
               enum:
-                - pod
-                - node
-                - ""
+              - pod
+              - node
+              - ""
               type: string
             network:
               description: NetworkDisruptionSpec represents a network disruption injection
@@ -278,9 +279,9 @@ spec:
                         type: integer
                       protocol:
                         enum:
-                          - tcp
-                          - udp
-                          - ""
+                        - tcp
+                        - udp
+                        - ""
                         type: string
                     type: object
                   nullable: true
@@ -310,8 +311,8 @@ spec:
                   type: integer
                 flow:
                   enum:
-                    - egress
-                    - ingress
+                  - egress
+                  - ingress
                   type: string
                 hosts:
                   items:
@@ -324,9 +325,9 @@ spec:
                         type: integer
                       protocol:
                         enum:
-                          - tcp
-                          - udp
-                          - ""
+                        - tcp
+                        - udp
+                        - ""
                         type: string
                     type: object
                   nullable: true
@@ -344,8 +345,8 @@ spec:
                       namespace:
                         type: string
                     required:
-                      - name
-                      - namespace
+                    - name
+                    - namespace
                     type: object
                   nullable: true
                   type: array
@@ -366,7 +367,7 @@ spec:
               nullable: true
               type: object
           required:
-            - count
+          - count
           type: object
         status:
           description: DisruptionStatus defines the observed state of Disruption
@@ -380,9 +381,9 @@ spec:
               description: DisruptionInjectionStatus represents the injection status
                 of a disruption
               enum:
-                - NotInjected
-                - PartiallyInjected
-                - Injected
+              - NotInjected
+              - PartiallyInjected
+              - Injected
               type: string
             isInjected:
               type: boolean
@@ -425,9 +426,9 @@ spec:
       type: object
   version: v1beta1
   versions:
-    - name: v1beta1
-      served: true
-      storage: true
+  - name: v1beta1
+    served: true
+    storage: true
 status:
   acceptedNames:
     kind: ""
@@ -452,6 +453,8 @@ rules:
   - pods
   verbs:
   - list
+  - get
+  - update
 - apiGroups:
   - ""
   resources:
@@ -501,6 +504,12 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - chaos.datadoghq.com
+  resources:
+  - disruptions/finalizers
+  verbs:
+  - update
 - apiGroups:
   - chaos.datadoghq.com
   resources:
@@ -617,6 +626,18 @@ rules:
   - patch
   - delete
 - apiGroups:
+    - "coordination.k8s.io"
+  resources:
+    - leases
+  verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - patch
+    - delete
+- apiGroups:
   - ""
   resources:
   - configmaps/status
@@ -715,12 +736,17 @@ spec:
         - containerPort: 8443
           name: https
       - name: manager
-        image: datadog/chaos-controller:4.6.0
+        image: datadog/chaos-controller:5.0.0
         imagePullPolicy: IfNotPresent
         command:
         - /usr/local/bin/manager
         args:
         - --config=/etc/chaos-controller/config.yaml
+        env:
+          - name: CONTROLLER_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         ports:
         - containerPort: 9443
           name: webhook-server
@@ -785,6 +811,32 @@ kind: MutatingWebhookConfiguration
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+  name: chaos-controller
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: chaos-controller-webhook-service
+      namespace: chaos-engineering
+      path: /mutate-chaos-datadoghq-com-v1beta1-disruption
+  failurePolicy: Fail
+  name: chaos-controller-webhook-service.chaos-engineering.svc
+  rules:
+  - apiGroups:
+      - chaos.datadoghq.com
+    apiVersions:
+      - v1beta1
+    operations:
+      - CREATE
+    resources:
+      - disruptions
+---
+# Source: chaos-controller/templates/webhook.yaml
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
   name: chaos-controller-pod-chaos-handler
 webhooks:
 - clientConfig:
@@ -827,15 +879,15 @@ webhooks:
   name: chaos-controller-admission-webhook.chaos-engineering.svc
   rules:
   - apiGroups:
-      - "chaos.datadoghq.com"
+    - "chaos.datadoghq.com"
     apiVersions:
-      - v1beta1
+    - v1beta1
     scope: "Namespaced"
     operations:
-      - CREATE
+    - CREATE
     resources:
-      - disruptions
-      - disruptions/status
+    - disruptions
+    - disruptions/status
 ---
 # Source: chaos-controller/templates/webhook.yaml
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -864,35 +916,3 @@ webhooks:
     - DELETE
     resources:
     - disruptions
----
-# Source: chaos-controller/templates/webhook.yaml
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
-metadata:
-  annotations:
-  {{- if not .Values.controller.webhook.generateCert }}
-  cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
-  {{- end }}
-  name: chaos-controller
-webhooks:
-  - clientConfig:
-    {{- if not .Values.controller.webhook.generateCert }}
-    caBundle: Cg==
-    {{- else }}
-    caBundle: {{ b64enc $ca.Cert }}
-    {{- end }}
-    service:
-      name: chaos-controller-webhook-service
-      namespace: chaos-engineering
-      path: /mutate-chaos-datadoghq-com-v1beta1-disruption
-    failurePolicy: Fail
-    name: chaos-controller-webhook-service.chaos-engineering.svc
-    rules:
-      - apiGroups:
-          - chaos.datadoghq.com
-        apiVersions:
-          - v1beta1
-        operations:
-          - CREATE
-        resources:
-          - disruptions
