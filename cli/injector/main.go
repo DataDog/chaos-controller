@@ -376,7 +376,7 @@ func cleanFinalizer() error {
 
 	controllerutil.RemoveFinalizer(pod, chaostypes.ChaosPodFinalizer)
 
-	_, err = configs[0].K8sClient.CoreV1().Pods(disruptionNamespace).Update(context.Background(), pod, metav1.UpdateOptions{})
+	_, err = configs[0].K8sClient.CoreV1().Pods(chaosNamespace).Update(context.Background(), pod, metav1.UpdateOptions{})
 	if err != nil {
 		log.Warnw("couldn't remove this pod's finalizer", "pod", os.Getenv(env.InjectorPodName), "err", err)
 		return err
