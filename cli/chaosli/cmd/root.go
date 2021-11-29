@@ -125,20 +125,26 @@ func initLibrary() {
 
 		fin, err := pkger.Open(path)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		fout, err := os.Create(folderPath + info.Name())
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		_, err = io.Copy(fout, fin)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
-		fout.Close()
-		fin.Close()
+
+		if fout.Close() != nil {
+			return err
+		}
+		if fin.Close() != nil {
+			return err
+		}
+
 		return nil
 	})
 
@@ -149,7 +155,7 @@ func initLibrary() {
 
 func cleanupLibrary() {
 	cleanupPath := fmt.Sprintf("%v/src/chaosli-api-lib", os.Getenv("GOPATH"))
-	if err := os.RemoveAll(cleanupPath); err != nil {
+	if os.RemoveAll(cleanupPath) != nil {
 		log.Println("couldn't clean up API located at " + fmt.Sprintf("%v/src/chaosli-api-lib", os.Getenv("GOPATH")))
 	}
 }
