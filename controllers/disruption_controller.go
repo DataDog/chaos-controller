@@ -36,12 +36,6 @@ import (
 	"github.com/DataDog/chaos-controller/env"
 )
 
-const (
-	finalizerPrefix     = "finalizer.chaos.datadoghq.com"
-	disruptionFinalizer = finalizerPrefix
-	chaosPodFinalizer   = finalizerPrefix + "/chaos-pod"
-)
-
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	client.Client
@@ -120,7 +114,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// check whether the object is being deleted or not
 	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// the instance is being deleted, clean it if the finalizer is still present
-		if controllerutil.ContainsFinalizer(instance, disruptionFinalizer) {
+		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
 			isCleaned, err := r.cleanDisruption(instance)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -142,7 +136,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
 			r.log.Infow("removing finalizer")
-			controllerutil.RemoveFinalizer(instance, disruptionFinalizer)
+			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 			if err := r.Update(context.Background(), instance); err != nil {
 				return ctrl.Result{}, err
@@ -157,7 +151,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	} else {
 		// the injection is being created or modified, apply needed actions
-		controllerutil.AddFinalizer(instance, disruptionFinalizer)
+		controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
 		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the duration's deadline. We compare it to negative ExpiredDisruptionGCDelay,
@@ -362,7 +356,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 				// send metrics and events
 				r.Recorder.Event(instance, corev1.EventTypeNormal, "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-				r.recordEventOnTarget(instance, target, corev1.EventTypeWarning, "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resourcer for injection", chaosPod.Name, instance.Name))
+				r.recordEventOnTarget(instance, target, corev1.EventTypeWarning, "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resource for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 			} else {
 				var chaosPodNames []string
@@ -437,7 +431,7 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 // the finalizer is removed if:
 //   - the pod is pending
 //   - the pod is succeeded (exit code == 0)
-//   - the pod target is not heatlhy (not existing anymore for instance)
+//   - the pod target is not healthy (not existing anymore for instance)
 // if a finalizer can't be removed because none of the conditions above are fulfilled, the instance is flagged
 // as stuck on removal and the pod finalizer won't be removed unless someone does it manually
 // the pod target will be moved to ignored targets so it is not picked up by the next reconcile loop
@@ -454,7 +448,7 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 		target := chaosPod.Labels[chaostypes.TargetLabel]
 
 		// ignore chaos pods not being deleted or not having the finalizer anymore
-		if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.IsZero() || !controllerutil.ContainsFinalizer(&chaosPod, chaosPodFinalizer) {
+		if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.IsZero() || !controllerutil.ContainsFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer) {
 			continue
 		}
 
@@ -526,7 +520,7 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 		if removeFinalizer || ignoreStatus {
 			r.log.Infow("chaos pod completed, removing finalizer", "target", target, "chaosPod", chaosPod.Name)
 
-			controllerutil.RemoveFinalizer(&chaosPod, chaosPodFinalizer)
+			controllerutil.RemoveFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer)
 
 			if err := r.Client.Update(context.Background(), &chaosPod); err != nil {
 				r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
@@ -807,6 +801,14 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 						},
 					},
 					{
+						Name: env.InjectorPodName,
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "metadata.name",
+							},
+						},
+					},
+					{
 						Name:  env.InjectorMountHost,
 						Value: "/mnt/host/",
 					},
@@ -935,7 +937,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	}
 
 	// add finalizer to the pod so it is not deleted before we can control its exit status
-	controllerutil.AddFinalizer(&pod, chaosPodFinalizer)
+	controllerutil.AddFinalizer(&pod, chaostypes.ChaosPodFinalizer)
 
 	return &pod
 }
@@ -978,10 +980,25 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			level = chaostypes.DisruptionLevelPod
 		}
 
+		xargs := chaosapi.DisruptionArgs{
+			Level:                           level,
+			Kind:                            kind,
+			TargetContainerIDs:              targetContainerIDs,
+			TargetName:                      targetName,
+			TargetPodIP:                     targetPodIP,
+			DryRun:                          instance.Spec.DryRun,
+			DisruptionName:                  instance.Name,
+			DisruptionNamespace:             instance.Namespace,
+			OnInit:                          instance.Spec.OnInit,
+			MetricsSink:                     r.MetricsSink.GetSinkName(),
+			AllowedHosts:                    r.InjectorNetworkDisruptionAllowedHosts,
+			DNSServer:                       r.InjectorDNSDisruptionDNSServer,
+			KubeDNS:                         r.InjectorDNSDisruptionKubeDNS,
+			InjectorServiceAccountNamespace: r.InjectorServiceAccountNamespace,
+		}
+
 		// generate args for pod
-		args := chaosapi.AppendArgs(subspec.GenerateArgs(),
-			level, kind, targetContainerIDs, targetPodIP, r.MetricsSink.GetSinkName(), instance.Spec.DryRun,
-			instance.Name, instance.Namespace, targetName, instance.Spec.OnInit, r.InjectorNetworkDisruptionAllowedHosts, r.InjectorDNSDisruptionDNSServer, r.InjectorDNSDisruptionKubeDNS)
+		args := chaosapi.AppendArgs(subspec.GenerateArgs(), xargs)
 
 		// append pod to chaos pods
 		pod := r.generatePod(instance, targetName, targetNodeName, args, kind)
