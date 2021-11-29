@@ -423,7 +423,7 @@ func (i *networkDisruptionInjector) getServices() ([]networkDisruptionService, e
 			endpointInfo = fmt.Sprintf("%s{%s}, ", endpointInfo, service)
 		}
 
-		i.config.Log.Infow("found serviceSpec endpoints", "serviceSpec", serviceSpec.Name, "endpoints", endpointInfo)
+		i.config.Log.Infow("found service endpoints", "service", serviceSpec.Name, "endpoints", endpointInfo)
 	}
 
 	return allServices, nil
