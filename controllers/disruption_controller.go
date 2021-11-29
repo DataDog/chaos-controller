@@ -23,6 +23,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/DataDog/chaos-controller/safemode"
 	"math"
 	"math/rand"
 	"reflect"
@@ -78,6 +79,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 	ExpiredDisruptionGCDelay              time.Duration
+	SafetyNets							  []safemode.Safemode
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -168,6 +170,37 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, nil
 		}
 	} else {
+		// handle generic safety nets if safemode is enabled
+		if instance.Spec.Safemode {
+			// initialize all relevant safety nets for the first time
+			if len(r.SafetyNets) == 0 {
+				r.SafetyNets = []safemode.Safemode{}
+				r.SafetyNets = safemode.AddAllSafemodeObjects(*instance, r.Client)
+			}
+
+			responses := []string{}
+
+			for _, safetyNet := range r.SafetyNets {
+				response, err := safetyNet.CheckTypeSafetyNets()
+				fmt.Printf("Response: %s\n",response)
+				if err != nil {
+					r.log.Errorw("error checking for safety nets", "error", err)
+				}
+
+				for _, each := range response {
+					responses = append(responses, each)
+				}
+			}
+
+			if len(responses) != 0 {
+				r.Recorder.Event(instance, "Normal", "SafetyNet Catch", "SafetyNet Caught Something")
+				// TODO: stop this disruption until the user gets through all safety nets or turns safemode off. Print responses out before this.
+				return ctrl.Result{}, nil
+				//return fmt.Errorf("one or more safety checks failed, please check logs for more info. Safemode can be disabled in your Disruption config")
+			}
+		}
+
+
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)
 

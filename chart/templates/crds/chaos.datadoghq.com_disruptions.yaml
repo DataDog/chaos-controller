@@ -285,6 +285,8 @@ spec:
               type: object
             onInit:
               type: boolean
+            safeMode:
+              type: boolean
             selector:
               additionalProperties:
                 type: string
