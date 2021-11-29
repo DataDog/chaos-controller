@@ -20,41 +20,58 @@ type DisruptionKind interface {
 	Validate() error
 }
 
+type DisruptionArgs struct {
+	AllowedHosts                    []string
+	TargetContainerIDs              []string
+	Level                           chaostypes.DisruptionLevel
+	Kind                            chaostypes.DisruptionKindName
+	TargetPodIP                     string
+	MetricsSink                     string
+	DisruptionName                  string
+	DisruptionNamespace             string
+	TargetName                      string
+	DNSServer                       string
+	KubeDNS                         string
+	InjectorServiceAccountNamespace string
+	DryRun                          bool
+	OnInit                          bool
+}
+
 // AppendArgs is a helper function generating common and global args and appending them to the given args array
-func AppendArgs(args []string, level chaostypes.DisruptionLevel, kind chaostypes.DisruptionKindName, targetContainerIDs []string, targetPodIP string, sink string, dryRun bool,
-	disruptionName string, disruptionNamespace string, targetName string, onInit bool, allowedHosts []string, dnsServer string, kubeDNS string) []string {
+func AppendArgs(args []string, xargs DisruptionArgs) []string {
 	args = append(args,
 		// basic args
-		"--metrics-sink", sink,
-		"--level", string(level),
-		"--target-container-ids", strings.Join(targetContainerIDs, ","),
-		"--target-pod-ip", targetPodIP,
+		"--metrics-sink", xargs.MetricsSink,
+		"--level", string(xargs.Level),
+		"--target-container-ids", strings.Join(xargs.TargetContainerIDs, ","),
+		"--target-pod-ip", xargs.TargetPodIP,
+		"--chaos-namespace", xargs.InjectorServiceAccountNamespace,
 
 		// log context args
-		"--log-context-disruption-name", disruptionName,
-		"--log-context-disruption-namespace", disruptionNamespace,
-		"--log-context-target-name", targetName,
+		"--log-context-disruption-name", xargs.DisruptionName,
+		"--log-context-disruption-namespace", xargs.DisruptionNamespace,
+		"--log-context-target-name", xargs.TargetName,
 	)
 
 	// enable dry-run mode
-	if dryRun {
+	if xargs.DryRun {
 		args = append(args, "--dry-run")
 	}
 
 	// enable chaos handler init container notification
-	if onInit {
+	if xargs.OnInit {
 		args = append(args, "--on-init")
 	}
 
 	// DNS disruption configs
-	if kind == chaostypes.DisruptionKindDNSDisruption {
-		args = append(args, "--dns-server", dnsServer)
-		args = append(args, "--kube-dns", kubeDNS)
+	if xargs.Kind == chaostypes.DisruptionKindDNSDisruption {
+		args = append(args, "--dns-server", xargs.DNSServer)
+		args = append(args, "--kube-dns", xargs.KubeDNS)
 	}
 
 	// append allowed hosts for network disruptions
-	if kind == chaostypes.DisruptionKindNetworkDisruption {
-		for _, host := range allowedHosts {
+	if xargs.Kind == chaostypes.DisruptionKindNetworkDisruption {
+		for _, host := range xargs.AllowedHosts {
 			args = append(args, "--allowed-hosts", host)
 		}
 	}

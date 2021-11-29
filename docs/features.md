@@ -22,7 +22,8 @@ Let's imagine a node with two pods running: `foo` and `bar` and a disruption dro
 
 The `Disruption` spec takes a `duration` field. This field represents amount of time after the disruption's creation before 
 all chaos pods automatically terminate and the disruption stops injecting new ones. This field takes a string, which is meant to conform to 
-golang's time.Duration's [string format, e.g., "45s", "15m30s", "4h30m".](https://pkg.go.dev/time#ParseDuration)
+golang's time.Duration's [string format, e.g., "45s", "15m30s", "4h30m".](https://pkg.go.dev/time#ParseDuration) This time is measured from the moment 
+that the Disruption resource is created, not from when the injection of the actual failure occurs. It functions as a strict maximum for the lifetime of the Disruption, not a guarantee of how long the failure will persist for.
 
 If a `duration` is not specified, then a disruption will receive the default duration, which is configured at the controller level by setting 
 `controller.defaultDuration` in the controller's config map, and this value defaults to 1 hour.
@@ -35,6 +36,13 @@ After a disruption's duration expires, the disruption resource will live in k8s 
 The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the given label selector and will randomly select a number (defined in the `count` field) of matching targets. It's possible to specify multiple label selectors, in which case the controller will select from targets that match all of them. Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.
 
 **NOTE:** If you are targeting pods, the disruption must be created in the same namespace as the targeted pods.
+
+### Targeting safeguards
+
+When enabled [in the configuration](../chart/values.yaml) (`controller.enableSafeguards` field), safeguards will exclude some targets from the selection to avoid unexpected issues:
+
+* if the disruption is applied at the node level, the node where the controller is running on can't be selected
+* if the disruption is applied at the pod level with a node disruption, the node where the controller is running on can't be selected
 
 ### Advanced targeting
 

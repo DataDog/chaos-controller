@@ -122,10 +122,10 @@ var _ = Describe("Helpers", func() {
 	var c fakeClient
 	var image string
 	var disruption *chaosv1beta1.Disruption
-	var targetSelector RunningTargetSelector
+	var targetSelector TargetSelector
 
 	BeforeEach(func() {
-		targetSelector = RunningTargetSelector{}
+		targetSelector = NewRunningTargetSelector(false, "foo")
 
 		c = fakeClient{}
 
@@ -133,6 +133,9 @@ var _ = Describe("Helpers", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "runningPod",
 				Namespace: "bar",
+			},
+			Spec: corev1.PodSpec{
+				NodeName: "runningNode",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
@@ -359,6 +362,19 @@ var _ = Describe("Helpers", func() {
 				Expect(r.Items[0]).To(Equal(*pendingPod))
 			})
 		})
+
+		Context("with controller safeguards enabled", func() {
+			BeforeEach(func() {
+				targetSelector = NewRunningTargetSelector(true, "runningNode")
+			})
+
+			It("should exclude the pods running on the same node as the controller from targets", func() {
+				r, err := targetSelector.GetMatchingPods(&c, disruption)
+
+				Expect(err).To(BeNil())
+				Expect(len(r.Items)).To(Equal(1)) // only the pod not running on the same node as the controller
+			})
+		})
 	})
 
 	Describe("GetMatchingNodes", func() {
@@ -409,6 +425,19 @@ var _ = Describe("Helpers", func() {
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(len(justRunningNodes)))
 				Expect(r.Items[0].Name).To(Equal("runningNode"))
+			})
+		})
+
+		Context("with controller safeguards enabled", func() {
+			BeforeEach(func() {
+				targetSelector = NewRunningTargetSelector(true, "runningNode")
+			})
+
+			It("should exclude the controller node from targets", func() {
+				r, err := targetSelector.GetMatchingNodes(&c, disruption)
+
+				Expect(err).To(BeNil())
+				Expect(len(r.Items)).To(Equal(0))
 			})
 		})
 	})

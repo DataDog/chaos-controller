@@ -57,6 +57,10 @@ const (
 	DisruptionNameLabel = "chaos.datadoghq.com/disruption-name"
 	// DisruptionNamespaceLabel is the label used to identify the disruption namespace for a chaos pod. This is used to determine pod ownership.
 	DisruptionNamespaceLabel = "chaos.datadoghq.com/disruption-namespace"
+
+	finalizerPrefix     = "finalizer.chaos.datadoghq.com"
+	DisruptionFinalizer = finalizerPrefix
+	ChaosPodFinalizer   = finalizerPrefix + "/chaos-pod"
 )
 
 var (
