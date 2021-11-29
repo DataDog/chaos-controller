@@ -13,6 +13,9 @@ The Chaos Controller CLI, `chaosli`, is meant to help create a more user friendl
 
 Download the `chaosli` binary for your operating system and architecture [from the latest release](https://github.com/DataDog/chaos-controller/releases/latest).
 
+##### Requirements (important):
+- Have `go` installed (v. 1.11 or greater) and the local `$GOPATH` environment variable setup
+
 #### Validate
 ---
 Usage: `chaosli validate --path <path to disruption file>`
