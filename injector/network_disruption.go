@@ -386,7 +386,7 @@ func (i *networkDisruptionInjector) getServices() ([]networkDisruptionService, e
 			LabelSelector: labels.SelectorFromValidatedSet(k8sService.Spec.Selector).String(),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("error getting the given kubernetes serviceSpec (%s/%s) endpoints: %w", serviceSpec.Namespace, serviceSpec.Name, err)
+			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s) endpoints: %w", serviceSpec.Namespace, serviceSpec.Name, err)
 		}
 
 		services := []networkDisruptionService{}
