@@ -72,7 +72,7 @@ func (i nodeFailureInjector) Inject() error {
 	}
 
 	// Trigger kernel panic
-	i.config.Log.Infow("the injector is about to write to the sysrq trigger file")
+	i.config.Log.Infow("the injector will write to the sysrq trigger file in 10s")
 	i.config.Log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
 	_ = i.config.Log.Sync() // If we can't flush the logger, why would logging the error help? so we just ignore
 
