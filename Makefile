@@ -41,7 +41,7 @@ chaosli:
 
 # Install CRDs and controller into a cluster
 install: manifests
-	helm template ./chart | minikube kubectl -- apply -f -
+	helm template --set controller.enableSafeguards=false ./chart | minikube kubectl -- apply -f -
 
 # Uninstall CRDs and controller from a cluster
 uninstall: manifests

@@ -37,6 +37,11 @@ spec:
         - /usr/local/bin/manager
         args:
         - --config=/etc/chaos-controller/config.yaml
+        env:
+          - name: CONTROLLER_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         ports:
         - containerPort: 9443
           name: webhook-server
