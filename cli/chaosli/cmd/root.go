@@ -127,19 +127,18 @@ func initLibrary() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer fin.Close()
 
 		fout, err := os.Create(folderPath + info.Name())
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer fout.Close()
 
 		_, err = io.Copy(fout, fin)
 		if err != nil {
 			log.Fatal(err)
 		}
-
+		fout.Close()
+		fin.Close()
 		return nil
 	})
 
