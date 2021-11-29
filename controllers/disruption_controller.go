@@ -801,7 +801,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 						},
 					},
 					{
-						Name: env.MyPodName,
+						Name: env.InjectorPodName,
 						ValueFrom: &corev1.EnvVarSource{
 							FieldRef: &corev1.ObjectFieldSelector{
 								FieldPath: "metadata.name",

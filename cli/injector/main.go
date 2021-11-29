@@ -368,9 +368,9 @@ func cleanAndExit(cmd *cobra.Command, args []string) {
 }
 
 func cleanFinalizer() error {
-	pod, err := configs[0].K8sClient.CoreV1().Pods(chaosNamespace).Get(context.Background(), os.Getenv(env.MyPodName), metav1.GetOptions{})
+	pod, err := configs[0].K8sClient.CoreV1().Pods(chaosNamespace).Get(context.Background(), os.Getenv(env.InjectorPodName), metav1.GetOptions{})
 	if err != nil {
-		log.Warnw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.MyPodName), "err", err)
+		log.Warnw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.InjectorPodName), "err", err)
 		return err
 	}
 
@@ -378,7 +378,7 @@ func cleanFinalizer() error {
 
 	_, err = configs[0].K8sClient.CoreV1().Pods(disruptionNamespace).Update(context.Background(), pod, metav1.UpdateOptions{})
 	if err != nil {
-		log.Warnw("couldn't remove this pod's finalizer", "pod", os.Getenv(env.MyPodName), "err", err)
+		log.Warnw("couldn't remove this pod's finalizer", "pod", os.Getenv(env.InjectorPodName), "err", err)
 		return err
 	}
 
