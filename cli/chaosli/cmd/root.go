@@ -49,6 +49,14 @@ func Execute() {
 }
 
 func init() {
+	os.Setenv("GOROOT", "/usr/local/go")
+
+	folderPath := os.Getenv("GOROOT") + "/src/" + APILIBPATH + "/"
+	err := os.MkdirAll(folderPath, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	pkger.Walk("github.com/DataDog/chaos-controller:/api/v1beta1", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -64,19 +72,16 @@ func init() {
 		}
 		defer fin.Close()
 
-		folderPath := os.Getenv("GOPATH") + "/src/" + APILIBPATH + "/"
-		err = os.MkdirAll(folderPath, 0777)
-		if err != nil {
-			log.Fatal(err)
-		}
-
 		fout, err := os.Create(folderPath + info.Name())
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer fout.Close()
 
-		_, _ = io.Copy(fout, fin)
+		_, err = io.Copy(fout, fin)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		return nil
 	})

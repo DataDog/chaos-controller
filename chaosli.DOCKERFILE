@@ -1,5 +1,5 @@
 # ---------------------------------------
-FROM amd64/golang:1.13 as build
+FROM amd64/golang:1.16 as build
 
 ENV GOARCH=amd64 
 ENV CGO_ENABLED=0
@@ -18,7 +18,7 @@ RUN go build \
     ./cli/chaosli
 
 # ---------------------------------------
-FROM amd64/golang:1.13 as bin
+FROM amd64/golang:1.16 as bin
 
 WORKDIR /app
 
