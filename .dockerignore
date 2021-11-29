@@ -3,4 +3,4 @@
 vendor/
 minikube/
 out/
-chaosli.DOCKERFILE
+cli/chaosli/chaosli.DOCKERFILE
