@@ -70,6 +70,7 @@ type controllerConfig struct {
 	ExpiredDisruptionGCDelay time.Duration                 `json:"expiredDisruptionGCDelay"`
 	DefaultDuration          time.Duration                 `json:"defaultDuration"`
 	DeleteOnly               bool                          `json:"deleteOnly"`
+	EnableSafeguards         bool                          `json:"enableSafeguards"`
 	LeaderElection           bool                          `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
@@ -127,6 +128,9 @@ func main() {
 	pflag.BoolVar(&cfg.Controller.DeleteOnly, "delete-only", false,
 		"Enable delete only mode which will not allow new disruption to start and will only continue to clean up and remove existing disruptions.")
 	handleFatalError(viper.BindPFlag("controller.deleteOnly", pflag.Lookup("delete-only")))
+
+	pflag.BoolVar(&cfg.Controller.EnableSafeguards, "enable-safeguards", true, "Enable safeguards on target selection")
+	handleFatalError(viper.BindPFlag("controller.enableSafeguards", pflag.Lookup("enable-safeguards")))
 
 	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
@@ -199,6 +203,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// get controller node name
+	controllerNodeName, exists := os.LookupEnv("CONTROLLER_NODE_NAME")
+	if !exists {
+		logger.Fatal("missing required CONTROLLER_NODE_NAME environment variable")
+	}
+
 	// load configuration file if present
 	if configPath != "" {
 		logger.Infow("loading configuration file", "config", configPath)
@@ -262,6 +272,9 @@ func main() {
 		}
 	}()
 
+	// target selector
+	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName)
+
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:                                mgr.GetClient(),
@@ -269,7 +282,7 @@ func main() {
 		Scheme:                                mgr.GetScheme(),
 		Recorder:                              mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:                           ms,
-		TargetSelector:                        targetselector.RunningTargetSelector{},
+		TargetSelector:                        targetSelector,
 		InjectorAnnotations:                   cfg.Injector.Annotations,
 		InjectorServiceAccount:                cfg.Injector.ServiceAccount.Name,
 		InjectorImage:                         cfg.Injector.Image,
