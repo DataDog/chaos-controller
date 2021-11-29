@@ -151,6 +151,7 @@ github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/flags,BSD-3-Claus
 github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/function,BSD-3-Clause
 github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/value,BSD-3-Clause
 github.com/google/gofuzz,github.com/google/gofuzz,Apache-2.0
+github.com/google/gofuzz,github.com/google/gofuzz/bytesource,Apache-2.0
 github.com/google/uuid,github.com/google/uuid,BSD-3-Clause
 github.com/googleapis/gnostic,github.com/googleapis/gnostic/compiler,Apache-2.0
 github.com/googleapis/gnostic,github.com/googleapis/gnostic/extensions,Apache-2.0

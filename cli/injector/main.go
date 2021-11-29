@@ -277,7 +277,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	log.Info("injecting the disruption")
+	log.Infow("injecting the disruption", "kind", cmd.Name())
 
 	errOnInject := false
 
@@ -333,8 +333,6 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 // cleanAndExit cleans the disruption with the configured injector and exits nicely
 func cleanAndExit(cmd *cobra.Command, args []string) {
-	log.Info("cleaning the disruption")
-
 	errs := []error{}
 
 	for _, inj := range injectors {
