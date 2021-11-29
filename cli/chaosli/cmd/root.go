@@ -24,8 +24,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-const APILIBPATH string = "chaosli-api-lib/v1beta1"
-
+var VERSION string
+var APILIBPATH string = fmt.Sprintf("chaosli-api-lib/%v/v1beta1", VERSION)
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
@@ -46,6 +46,8 @@ in english for better understanding, and more.`,
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	_ = rootCmd.Execute()
+
+	defer cleanupLibrary()
 }
 
 func init() {
@@ -99,15 +101,20 @@ func initLibrary() {
 		log.Fatal("Setup error: please make sure go (1.11 or higher) is installed and the GOPATH is set")
 	}
 
-	os.Setenv("GO111MODULE", "off")
+	err := os.Setenv("GO111MODULE", "off")
 
-	folderPath := os.Getenv("GOPATH") + "/src/" + APILIBPATH + "/"
-	err := os.MkdirAll(folderPath, 0777)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pkger.Walk("github.com/DataDog/chaos-controller:/api/v1beta1", func(path string, info os.FileInfo, err error) error {
+	folderPath := fmt.Sprintf("%v/src/%v/", os.Getenv("GOPATH"), APILIBPATH)
+	err = os.MkdirAll(folderPath, 0750)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = pkger.Walk("github.com/DataDog/chaos-controller:/api/v1beta1", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -135,6 +142,17 @@ func initLibrary() {
 
 		return nil
 	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func cleanupLibrary() {
+	cleanupPath := fmt.Sprintf("%v/src/chaosli-api-lib", os.Getenv("GOPATH"))
+	if err := os.RemoveAll(cleanupPath); err != nil {
+		log.Println("couldn't clean up API located at " + fmt.Sprintf("%v/src/chaosli-api-lib", os.Getenv("GOPATH")))
+	}
 }
 
 func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
