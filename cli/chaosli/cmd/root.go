@@ -49,6 +49,10 @@ func Execute() {
 }
 
 func init() {
+	if _, isGoInstalled := os.LookupEnv("GOPATH"); !isGoInstalled {
+		log.Fatal("please make sure go (1.11 or higher) is installed and the GOPATH is set")
+	}
+
 	os.Setenv("GO111MODULE", "off")
 
 	folderPath := os.Getenv("GOPATH") + "/src/" + APILIBPATH + "/"
