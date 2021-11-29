@@ -49,48 +49,7 @@ func Execute() {
 }
 
 func init() {
-	if _, isGoInstalled := os.LookupEnv("GOPATH"); !isGoInstalled {
-		log.Fatal("Setup error: please make sure go (1.11 or higher) is installed and the GOPATH is set")
-	}
-
-	os.Setenv("GO111MODULE", "off")
-
-	folderPath := os.Getenv("GOPATH") + "/src/" + APILIBPATH + "/"
-	err := os.MkdirAll(folderPath, 0777)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pkger.Walk("github.com/DataDog/chaos-controller:/api/v1beta1", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		fin, err := pkger.Open(path)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer fin.Close()
-
-		fout, err := os.Create(folderPath + info.Name())
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer fout.Close()
-
-		_, err = io.Copy(fout, fin)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		return nil
-	})
-
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(initConfig, initLibrary)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -132,6 +91,50 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+// initLibrary copies the binary-embedded disruption API into a custom folder in GOPATH
+func initLibrary() {
+	if _, isGoInstalled := os.LookupEnv("GOPATH"); !isGoInstalled {
+		log.Fatal("Setup error: please make sure go (1.11 or higher) is installed and the GOPATH is set")
+	}
+
+	os.Setenv("GO111MODULE", "off")
+
+	folderPath := os.Getenv("GOPATH") + "/src/" + APILIBPATH + "/"
+	err := os.MkdirAll(folderPath, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pkger.Walk("github.com/DataDog/chaos-controller:/api/v1beta1", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		fin, err := pkger.Open(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer fin.Close()
+
+		fout, err := os.Create(folderPath + info.Name())
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer fout.Close()
+
+		_, err = io.Copy(fout, fin)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		return nil
+	})
 }
 
 func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
