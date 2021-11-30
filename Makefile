@@ -38,7 +38,7 @@ handler:
 # Build chaosli
 chaosli:
 	pkger -o cli/chaosli/cmd
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.VERSION=$(VERSION)" -o bin/chaosli/chaosli_darwin_amd64 ./cli/chaosli/
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_amd64 ./cli/chaosli/
 
 # Test chaosli API portability
 chaosli-test:
