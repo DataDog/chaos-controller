@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// VERSION will be set with the -ldflags option at compile time
 var VERSION string
 var API_LIB_PATH string = fmt.Sprintf("chaosli-api-lib/v1beta1/%v", VERSION)
 var cfgFile string
