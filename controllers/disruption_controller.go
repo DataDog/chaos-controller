@@ -31,6 +31,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
@@ -1047,9 +1050,24 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 
 // SetupWithManager setups the current reconciler with the given manager
 func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	podToDisruption := func(c client.Object) []reconcile.Request {
+		disruption := []reconcile.Request{}
+
+		labels := c.GetLabels()
+		name := labels[chaostypes.DisruptionNameLabel]
+		namespace := labels[chaostypes.DisruptionNamespaceLabel]
+
+		if name != "" && namespace != "" {
+			disruption = append(disruption, reconcile.Request{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}})
+		}
+
+		return disruption
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
 		Owns(&corev1.Pod{}).
+		Watches(&source.Kind{Type: &corev1.Pod{}}, handler.EnqueueRequestsFromMapFunc(podToDisruption)).
 		Complete(r)
 }
 
