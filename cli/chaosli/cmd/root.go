@@ -25,7 +25,7 @@ import (
 )
 
 var VERSION string
-var APILIBPATH string = fmt.Sprintf("chaosli-api-lib/%v/v1beta1", VERSION)
+var API_LIB_PATH string = fmt.Sprintf("chaosli-api-lib/v1beta1/%v", VERSION)
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
@@ -107,7 +107,7 @@ func initLibrary() {
 		log.Fatal(err)
 	}
 
-	folderPath := fmt.Sprintf("%v/src/%v/", os.Getenv("GOPATH"), APILIBPATH)
+	folderPath := fmt.Sprintf("%v/src/%v/", os.Getenv("GOPATH"), API_LIB_PATH)
 	err = os.MkdirAll(folderPath, 0750)
 
 	if err != nil {
