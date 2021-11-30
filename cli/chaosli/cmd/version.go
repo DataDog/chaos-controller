@@ -16,9 +16,9 @@ var versionCmd = &cobra.Command{
 	Short: "display chaosli version",
 	Long:  `shows the currently used version of the chaosli - upgrade with brew if necessary`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if VERSION == "" {
-			VERSION = "version unspecified"
+		if Version == "v0" {
+			Version = "version unspecified"
 		}
-		fmt.Println("chaosli", VERSION)
+		fmt.Println("chaosli", Version)
 	},
 }

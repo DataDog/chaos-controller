@@ -24,9 +24,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-// VERSION will be set with the -ldflags option at compile time
-var VERSION string
-var API_LIB_PATH string = fmt.Sprintf("chaosli-api-lib/v1beta1/%v", VERSION)
+// Version will be set with the -ldflags option at compile time
+var Version string = "v0"
+var ApiLibPath string = fmt.Sprintf("chaosli-api-lib/v1beta1/%v", Version)
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
@@ -102,52 +102,51 @@ func initLibrary() {
 		log.Fatal("Setup error: please make sure go (1.11 or higher) is installed and the GOPATH is set")
 	}
 
-	err := os.Setenv("GO111MODULE", "off")
-
-	if err != nil {
+	if err := os.Setenv("GO111MODULE", "off"); err != nil {
 		log.Fatal(err)
 	}
 
-	folderPath := fmt.Sprintf("%v/src/%v/", os.Getenv("GOPATH"), API_LIB_PATH)
-	err = os.MkdirAll(folderPath, 0750)
+	folderPath := fmt.Sprintf("%v/src/%v/", os.Getenv("GOPATH"), ApiLibPath)
 
-	if err != nil {
+	if err := os.MkdirAll(folderPath, 0750); err != nil {
 		log.Fatal(err)
 	}
 
-	err = pkger.Walk("github.com/DataDog/chaos-controller:/api/v1beta1", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	err := pkger.Walk("github.com/DataDog/chaos-controller:/api/v1beta1",
+		// this function is executed for every file found within the binary-embedded folder
+		// it copies every files to another location on the computer through io.Copy
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
 
-		if info.IsDir() {
+			if info.IsDir() {
+				return nil
+			}
+
+			fin, err := pkger.Open(path)
+			if err != nil {
+				return err
+			}
+
+			fout, err := os.Create(folderPath + info.Name())
+			if err != nil {
+				return err
+			}
+
+			if _, err = io.Copy(fout, fin); err != nil {
+				return err
+			}
+
+			if err = fout.Close(); err != nil {
+				return err
+			}
+			if err = fin.Close(); err != nil {
+				return err
+			}
+
 			return nil
-		}
-
-		fin, err := pkger.Open(path)
-		if err != nil {
-			return err
-		}
-
-		fout, err := os.Create(folderPath + info.Name())
-		if err != nil {
-			return err
-		}
-
-		_, err = io.Copy(fout, fin)
-		if err != nil {
-			return err
-		}
-
-		if fout.Close() != nil {
-			return err
-		}
-		if fin.Close() != nil {
-			return err
-		}
-
-		return nil
-	})
+		})
 
 	if err != nil {
 		log.Fatal(err)
