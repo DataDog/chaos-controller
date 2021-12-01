@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -1051,11 +1050,12 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 }
 
 // SetupWithManager setups the current reconciler with the given manager
-func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, informerClient *kubernetes.Clientset) error {
+func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) error {
 	podToDisruption := func(c client.Object) []reconcile.Request {
 		disruption := []reconcile.Request{}
-		if r != nil && r.log != nil {
-			r.log.Infow("IM CHECKING A THING", "name", c.GetName(), "namespace", c.GetNamespace())
+
+		if r.log != nil {
+			r.log.Infow("watching event from pod", "name", c.GetName(), "namespace", c.GetNamespace())
 		}
 
 		labels := c.GetLabels()
@@ -1069,9 +1069,7 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, informerClient
 		return disruption
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Second*30, kubeinformers.WithNamespace("chaos-engineering"))
 	informer := kubeInformerFactory.Core().V1().Pods().Informer()
-	go func() { informer.Run(make(chan struct{})) }()
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
