@@ -132,6 +132,11 @@ header-check: venv
 license-check: venv
 	source .venv/bin/activate; inv license-check
 
+godeps:
+	go mod tidy; go mod vendor
+
+deps: godeps license-check
+
 generate-protobuf:
 	cd grpc/disruptionlistener && \
 	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1 && \
