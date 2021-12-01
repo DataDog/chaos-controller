@@ -27,6 +27,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
@@ -294,7 +295,9 @@ func main() {
 		ExpiredDisruptionGCDelay:              cfg.Controller.ExpiredDisruptionGCDelay,
 	}
 
-	if err := r.SetupWithManager(mgr); err != nil {
+	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
+
+	if err := r.SetupWithManager(mgr, informerClient); err != nil {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
