@@ -194,10 +194,6 @@ jobs:
             GOBIN: /home/circleci/.go_workspace/bin
           command: make minikube-build
       - run:
-          name: Deploy controller chart
-          <<: *working_directory
-          command: make install
-      - run:
           name: Run e2e tests
           <<: *working_directory
           command: make e2e-test
