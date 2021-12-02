@@ -23,7 +23,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -69,9 +68,7 @@ var _ = BeforeSuite(func(done Done) {
 	var err error
 
 	By("bootstrapping test environment")
-	testEnv = &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "chart", "templates", "crds")},
-	}
+	testEnv = &envtest.Environment{}
 
 	cfg, err = testEnv.Start()
 	Expect(err).ToNot(HaveOccurred())

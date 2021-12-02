@@ -20,7 +20,7 @@ test: generate manifests
 	go test $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
 
 # Run e2e tests (against a real cluster)
-e2e-test: generate manifests
+e2e-test: generate install
 	USE_EXISTING_CLUSTER=true go test ./controllers/... -coverprofile cover.out
 
 # Build manager binary
