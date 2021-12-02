@@ -5,7 +5,7 @@
 
 ---
 variables:
-  CURRENT_CI_IMAGE: 0.4.0
+  CURRENT_CI_IMAGE: 0.4.1
   CONTROLLER_IMAGE_NAME: chaos-controller
   INJECTOR_IMAGE_NAME: chaos-injector
   HANDLER_IMAGE_NAME: chaos-handler
