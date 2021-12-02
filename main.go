@@ -85,14 +85,10 @@ type controllerWebhookConfig struct {
 type injectorConfig struct {
 	Image             string                          `json:"image"`
 	Annotations       map[string]string               `json:"annotations"`
-	ServiceAccount    injectorServiceAccountConfig    `json:"serviceAccount"`
+	ChaosNamespace    string                          `json:"namespace"`
+	ServiceAccount    string                          `json:"serviceAccount"`
 	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
-}
-
-type injectorServiceAccountConfig struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
 }
 
 type injectorDNSDisruptionConfig struct {
@@ -286,7 +282,7 @@ func main() {
 		InjectorAnnotations:                   cfg.Injector.Annotations,
 		InjectorServiceAccount:                cfg.Injector.ServiceAccount.Name,
 		InjectorImage:                         cfg.Injector.Image,
-		InjectorServiceAccountNamespace:       cfg.Injector.ServiceAccount.Namespace,
+		ChaosNamespace:                        cfg.Injector.ServiceAccount.Namespace,
 		InjectorDNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
