@@ -3,7 +3,7 @@
 ## Where can I find the chaos pods for my disruption?
 
 In order to ensure that chaos pods have access to the ClusterRole they need, all chaos pods are created in the same namespace as the `chaos-injector`
- service account. This is configured with a flag when starting the chaos-controller. By default, this is the "chaos-engineering" namespace.
+ service account. This is configured with the `--chaos-namespace` flag when starting the chaos-controller, or by setting `injector.chaosNamespace` in the controller's config map. By default, this is the "chaos-engineering" namespace.
 
 ## Is there any specific tooling that can help me create/understand my disruptions?
 
@@ -23,7 +23,7 @@ A disruption has an `Injection Status` field in its status that you can see by d
 
 ## How can I debug a disruption?
 
-Applying a disruption creates a bunch of pods to inject and clean it. Those are typically created in the same namespace as the chaos-controller. You can look at the logs of those pods to understand what happened.
+Applying a disruption creates a bunch of pods to inject and clean it. Those must be in the same namespace as the chaos-controller. You can look at the logs of those pods to understand what happened.
 
 ```sh
 kubectl -n <NAMESPACE> get pods -l chaos.datadoghq.com/disruption-name=<DISRUPTION_NAME> -l chaos.datadoghq.com/disruption-namespace=<DISRUPTION_NAMESPACE>
