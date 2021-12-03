@@ -30,6 +30,7 @@ type DisruptionArgs struct {
 	DisruptionName                  string
 	DisruptionNamespace             string
 	TargetName                      string
+	TargetNodeName                  string
 	DNSServer                       string
 	KubeDNS                         string
 	InjectorServiceAccountNamespace string
@@ -51,6 +52,7 @@ func AppendArgs(args []string, xargs DisruptionArgs) []string {
 		"--log-context-disruption-name", xargs.DisruptionName,
 		"--log-context-disruption-namespace", xargs.DisruptionNamespace,
 		"--log-context-target-name", xargs.TargetName,
+		"--log-context-target-node-name", xargs.TargetNodeName,
 	)
 
 	// enable dry-run mode
