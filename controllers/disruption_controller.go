@@ -990,20 +990,20 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		}
 
 		xargs := chaosapi.DisruptionArgs{
-			Level:                           level,
-			Kind:                            kind,
-			TargetContainerIDs:              targetContainerIDs,
-			TargetName:                      targetName,
-			TargetPodIP:                     targetPodIP,
-			DryRun:                          instance.Spec.DryRun,
-			DisruptionName:                  instance.Name,
-			DisruptionNamespace:             instance.Namespace,
-			OnInit:                          instance.Spec.OnInit,
-			MetricsSink:                     r.MetricsSink.GetSinkName(),
-			AllowedHosts:                    r.InjectorNetworkDisruptionAllowedHosts,
-			DNSServer:                       r.InjectorDNSDisruptionDNSServer,
-			KubeDNS:                         r.InjectorDNSDisruptionKubeDNS,
-			InjectorServiceAccountNamespace: r.ChaosNamespace,
+			Level:               level,
+			Kind:                kind,
+			TargetContainerIDs:  targetContainerIDs,
+			TargetName:          targetName,
+			TargetPodIP:         targetPodIP,
+			DryRun:              instance.Spec.DryRun,
+			DisruptionName:      instance.Name,
+			DisruptionNamespace: instance.Namespace,
+			OnInit:              instance.Spec.OnInit,
+			MetricsSink:         r.MetricsSink.GetSinkName(),
+			AllowedHosts:        r.InjectorNetworkDisruptionAllowedHosts,
+			DNSServer:           r.InjectorDNSDisruptionDNSServer,
+			KubeDNS:             r.InjectorDNSDisruptionKubeDNS,
+			ChaosNamespace:      r.ChaosNamespace,
 		}
 
 		// generate args for pod

@@ -43,9 +43,8 @@ data:
         {{ $key }}: {{ $val | quote }}
         {{- end }}
       {{- end }}
-      serviceAccount:
-        name: {{ .Values.injector.serviceAccount | quote }}
-        namespace: {{ .Values.injector.serviceAccountNamespace | quote }}
+      serviceAccount: {{ .Values.injector.serviceAccount | quote }}
+      chaosNamespace: {{ .Values.injector.chaosNamespace | quote }}
       dnsDisruption:
         dnsServer: {{ .Values.injector.dnsDisruption.dnsServer | quote }}
         kubeDns: {{ .Values.injector.dnsDisruption.kubeDns | quote }}
