@@ -297,7 +297,7 @@ func main() {
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Second*180, kubeinformers.WithNamespace(cfg.Injector.ServiceAccount.Namespace))
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Minute*5, kubeinformers.WithNamespace(cfg.Injector.ServiceAccount.Namespace))
 
 	if err := r.SetupWithManager(mgr, kubeInformerFactory); err != nil {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
