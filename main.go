@@ -338,7 +338,8 @@ func main() {
 	logger.Infow("restarting chaos-controller")
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		stopCh <- struct{}{}
+		stopCh <- struct{}{} // stop the informer
+
 		logger.Errorw("problem running manager", "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
