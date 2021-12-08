@@ -48,6 +48,8 @@ issues:
     - Blocklisted import `crypto/md5`
     - weak cryptographic primitive
     - weak random number generator
+    - memory aliasing in for loop
+    - file inclusion via variable
     # stylecheck
     - at least one file in a package should have a package comment
     # golint
