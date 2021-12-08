@@ -56,7 +56,7 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 
 	// compute possible names to resolve
 	names := append([]string{}, podDNSConfig.NameList(host)...)
-	names = append([]string{}, nodeDNSConfig.NameList(host)...)
+	names = append(names, nodeDNSConfig.NameList(host)...)
 
 	// do the request on the first configured dns resolver
 	dnsClient := dns.Client{}
