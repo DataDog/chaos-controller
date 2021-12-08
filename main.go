@@ -27,6 +27,8 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
@@ -294,10 +296,16 @@ func main() {
 		ExpiredDisruptionGCDelay:              cfg.Controller.ExpiredDisruptionGCDelay,
 	}
 
-	if err := r.SetupWithManager(mgr); err != nil {
+	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Minute*5, kubeinformers.WithNamespace(cfg.Injector.ServiceAccount.Namespace))
+
+	if err := r.SetupWithManager(mgr, kubeInformerFactory); err != nil {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
+
+	stopCh := make(chan struct{})
+	kubeInformerFactory.Start(stopCh)
 
 	go r.ReportMetrics()
 
@@ -330,6 +338,8 @@ func main() {
 	logger.Infow("restarting chaos-controller")
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		stopCh <- struct{}{} // stop the informer
+
 		logger.Errorw("problem running manager", "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
