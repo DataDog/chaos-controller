@@ -26,14 +26,12 @@ linters:
     - godox
     - gofmt
     - goimports
-    - golint
     - goprintffuncname
     - gosec
-    - interfacer
-    - maligned
     - misspell
     - nakedret
     - prealloc
+    - revive
     - rowserrcheck
     - stylecheck
     - unconvert
