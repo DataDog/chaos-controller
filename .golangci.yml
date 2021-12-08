@@ -52,3 +52,5 @@ issues:
     - at least one file in a package should have a package comment
     # golint
     - (comment on exported (method|function|type|const)|should have( a package)? comment|comment should be of the form)
+    # revive
+    - and that stutters
