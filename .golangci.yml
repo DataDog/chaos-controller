@@ -45,8 +45,9 @@ issues:
     # gosec
     - Subprocess launch(ed with variable|ing should be audited)
     - Expect file permissions to be 0600 or less
-    - Blacklisted import `crypto/md5`
-    - Use of weak cryptographic primitive
+    - Blocklisted import `crypto/md5`
+    - weak cryptographic primitive
+    - weak random number generator
     # stylecheck
     - at least one file in a package should have a package comment
     # golint
