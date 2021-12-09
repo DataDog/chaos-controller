@@ -13,7 +13,6 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -159,9 +158,7 @@ func (r runningTargetSelector) TargetIsHealthy(target string, c client.Client, i
 		if instance.Spec.NodeFailure != nil {
 			var n corev1.Node
 			if err := c.Get(context.Background(), client.ObjectKey{Name: p.Spec.NodeName}, &n); err != nil {
-				if apierrors.IsNotFound(err) {
-					return err
-				}
+				return err
 			}
 		}
 	case chaostypes.DisruptionLevelNode:
