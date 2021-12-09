@@ -15,13 +15,14 @@ To locally run the dogfood client, call `go run grpcdogfood/client/dogfood_clien
 
 Expected output:
 ```
-connecting to localhost:50051...
+connecting to chaos-dogfood-server.chaos-demo.svc.cluster.local:50051...
+x
 | got catalog: 0 items returned
 | ordered: Mock Reply
+x
 | got catalog: 0 items returned
 | ordered: Mock Reply
-| got catalog: 0 items returned
-| ordered: Mock Reply
+x
 | got catalog: 0 items returned
 | ordered: Mock Reply
 ```
@@ -29,15 +30,19 @@ connecting to localhost:50051...
 If the client is connected to the correct server, your server should output corresponding updates:
 
 ```
-listening on localhost:50051...
-* catalog delivered
-* cat food ordered
-* catalog delivered
-* cat food ordered
-* catalog delivered
-* cat food ordered
-* catalog delivered
-* cat food ordered
+listening on port :50051...
+x
+| cat food ordered
+x
+| catalog delivered
+x
+| cat food ordered
+x
+| catalog delivered
+x
+| cat food ordered
+x
+| catalog delivered
 ```
 
 # Running containerized chaos dogfood server & client

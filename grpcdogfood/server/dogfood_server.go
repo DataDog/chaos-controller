@@ -16,26 +16,26 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-const serverAddr = "localhost:50051"
+const port = ":50051"
 
 type chaosDogfoodServer struct {
 	pb.UnimplementedChaosDogfoodServer
 }
 
 func (s *chaosDogfoodServer) Order(ctx context.Context, req *pb.FoodRequest) (*pb.FoodReply, error) {
-	fmt.Printf("* %v food ordered\n", req.Animal)
+	fmt.Printf("x\n| %v food ordered\n", req.Animal)
 	return &pb.FoodReply{Message: "Mock Reply", ConfirmationId: 1}, nil
 }
 
 func (s *chaosDogfoodServer) GetCatalog(ctx context.Context, req *emptypb.Empty) (*pb.CatalogReply, error) {
-	fmt.Println("* catalog delivered")
+	fmt.Println("x\n| catalog delivered")
 	return &pb.CatalogReply{Items: []*pb.CatalogItem{}}, nil
 }
 
 func main() {
-	fmt.Printf("listening on %v...\n", serverAddr)
+	fmt.Printf("listening on port %v...\n", port)
 
-	lis, err := net.Listen("tcp", serverAddr)
+	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}

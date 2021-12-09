@@ -17,7 +17,7 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-const serverAddr = "localhost:50051"
+const serverAddr = "chaos-dogfood-server.chaos-demo.svc.cluster.local:50051"
 
 func orderWithTimeout(client pb.ChaosDogfoodClient, animal string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -66,6 +66,9 @@ func main() {
 	client := pb.NewChaosDogfoodClient(conn)
 
 	for {
+		fmt.Println("x")
+
+		// create and eventually close connection
 		items, err := getCatalogWithTimeout(client)
 		if err != nil {
 			fmt.Printf("| ERROR getting catalog:%v\n", err.Error())
