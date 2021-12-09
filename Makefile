@@ -142,11 +142,25 @@ godeps:
 
 deps: godeps license-check
 
-generate-protobuf:
+install-protobuf-macos:
+	PROTOC_VERSION=3.17.3
+	PROTOC_ZIP=protoc-$PROTOC_VERSION-osx-x86_64.zip
+	curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP
+	sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+	sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+	rm -f $PROTOC_ZIP
+
+generate-disruptionlistener-protobuf:
 	cd grpc/disruptionlistener && \
-	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1 && \
-	go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1 && \
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
 	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative disruptionlistener.proto
+
+generate-chaosdogfood-protobuf:
+	cd grpcdogfood/chaosdogfood && \
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1 && \
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
+	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
 
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
