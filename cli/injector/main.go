@@ -111,7 +111,7 @@ func main() {
 
 	// execute command
 	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 }
 

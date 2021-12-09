@@ -25,8 +25,8 @@ import (
 )
 
 // Version will be set with the -ldflags option at compile time
-var Version string = "v0"
-var APILibPath string = fmt.Sprintf("chaosli-api-lib/v1beta1/%v", Version)
+var Version = "v0"
+var APILibPath = fmt.Sprintf("chaosli-api-lib/v1beta1/%v", Version)
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
