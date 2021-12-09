@@ -14,7 +14,7 @@ import (
 
 // AllDefinitions contains all marker definitions for this package.
 var AllDefinitions []*k8smarkers.Definition
-var rulePrefix string = "ddmark:validation:"
+var rulePrefix = "ddmark:validation:"
 
 func init() {
 	addDefinition(Maximum(0), k8smarkers.DescribesField)
