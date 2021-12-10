@@ -53,7 +53,7 @@ type DisruptionReconciler struct {
 	InjectorImage                         string
 	ImagePullSecrets                      string
 	log                                   *zap.SugaredLogger
-	InjectorServiceAccountNamespace       string
+	ChaosNamespace                        string
 	InjectorDNSDisruptionDNSServer        string
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
@@ -725,7 +725,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 
 	// list pods in the defined namespace and for the given target
 	listOptions := &client.ListOptions{
-		Namespace:     r.InjectorServiceAccountNamespace,
+		Namespace:     r.ChaosNamespace,
 		LabelSelector: labels.SelectorFromValidatedSet(ls),
 	}
 
@@ -937,7 +937,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("chaos-%s-", instance.Name), // generate the pod name automatically with a prefix
-			Namespace:    r.InjectorServiceAccountNamespace,       // chaos pods need to be in the same namespace as their service account to run
+			Namespace:    r.ChaosNamespace,                        // chaos pods need to be in the same namespace as their service account to run
 			Annotations:  r.InjectorAnnotations,                   // add extra annotations passed to the controller
 			Labels: map[string]string{
 				chaostypes.TargetLabel:              targetName,         // target name label
@@ -994,21 +994,21 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		}
 
 		xargs := chaosapi.DisruptionArgs{
-			Level:                           level,
-			Kind:                            kind,
-			TargetContainerIDs:              targetContainerIDs,
-			TargetName:                      targetName,
-			TargetNodeName:                  targetNodeName,
-			TargetPodIP:                     targetPodIP,
-			DryRun:                          instance.Spec.DryRun,
-			DisruptionName:                  instance.Name,
-			DisruptionNamespace:             instance.Namespace,
-			OnInit:                          instance.Spec.OnInit,
-			MetricsSink:                     r.MetricsSink.GetSinkName(),
-			AllowedHosts:                    r.InjectorNetworkDisruptionAllowedHosts,
-			DNSServer:                       r.InjectorDNSDisruptionDNSServer,
-			KubeDNS:                         r.InjectorDNSDisruptionKubeDNS,
-			InjectorServiceAccountNamespace: r.InjectorServiceAccountNamespace,
+			Level:               level,
+			Kind:                kind,
+			TargetContainerIDs:  targetContainerIDs,
+			TargetName:          targetName,
+			TargetNodeName:      targetNodeName,
+			TargetPodIP:         targetPodIP,
+			DryRun:              instance.Spec.DryRun,
+			DisruptionName:      instance.Name,
+			DisruptionNamespace: instance.Namespace,
+			OnInit:              instance.Spec.OnInit,
+			MetricsSink:         r.MetricsSink.GetSinkName(),
+			AllowedHosts:        r.InjectorNetworkDisruptionAllowedHosts,
+			DNSServer:           r.InjectorDNSDisruptionDNSServer,
+			KubeDNS:             r.InjectorDNSDisruptionKubeDNS,
+			ChaosNamespace:      r.ChaosNamespace,
 		}
 
 		// generate args for pod

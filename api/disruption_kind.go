@@ -21,21 +21,21 @@ type DisruptionKind interface {
 }
 
 type DisruptionArgs struct {
-	AllowedHosts                    []string
-	TargetContainerIDs              []string
-	Level                           chaostypes.DisruptionLevel
-	Kind                            chaostypes.DisruptionKindName
-	TargetPodIP                     string
-	MetricsSink                     string
-	DisruptionName                  string
-	DisruptionNamespace             string
-	TargetName                      string
-	TargetNodeName                  string
-	DNSServer                       string
-	KubeDNS                         string
-	InjectorServiceAccountNamespace string
-	DryRun                          bool
-	OnInit                          bool
+	AllowedHosts        []string
+	TargetContainerIDs  []string
+	Level               chaostypes.DisruptionLevel
+	Kind                chaostypes.DisruptionKindName
+	TargetPodIP         string
+	MetricsSink         string
+	DisruptionName      string
+	DisruptionNamespace string
+	TargetName          string
+	TargetNodeName      string
+	DNSServer           string
+	KubeDNS             string
+	ChaosNamespace      string
+	DryRun              bool
+	OnInit              bool
 }
 
 // AppendArgs is a helper function generating common and global args and appending them to the given args array
@@ -46,7 +46,7 @@ func AppendArgs(args []string, xargs DisruptionArgs) []string {
 		"--level", string(xargs.Level),
 		"--target-container-ids", strings.Join(xargs.TargetContainerIDs, ","),
 		"--target-pod-ip", xargs.TargetPodIP,
-		"--chaos-namespace", xargs.InjectorServiceAccountNamespace,
+		"--chaos-namespace", xargs.ChaosNamespace,
 
 		// log context args
 		"--log-context-disruption-name", xargs.DisruptionName,

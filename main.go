@@ -87,14 +87,10 @@ type controllerWebhookConfig struct {
 type injectorConfig struct {
 	Image             string                          `json:"image"`
 	Annotations       map[string]string               `json:"annotations"`
-	ServiceAccount    injectorServiceAccountConfig    `json:"serviceAccount"`
+	ChaosNamespace    string                          `json:"namespace"`
+	ServiceAccount    string                          `json:"serviceAccount"`
 	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
-}
-
-type injectorServiceAccountConfig struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
 }
 
 type injectorDNSDisruptionConfig struct {
@@ -161,11 +157,11 @@ func main() {
 	pflag.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.annotations", pflag.Lookup("injector-annotations")))
 
-	pflag.StringVar(&cfg.Injector.ServiceAccount.Name, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
+	pflag.StringVar(&cfg.Injector.ServiceAccount, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.serviceAccount.name", pflag.Lookup("injector-service-account")))
 
-	pflag.StringVar(&cfg.Injector.ServiceAccount.Namespace, "injector-service-account-namespace", "chaos-engineering", "Namespace of the service account to use for the generated injector pods. Should also host the controller.")
-	handleFatalError(viper.BindPFlag("injector.serviceAccount.namespace", pflag.Lookup("injector-service-account-namespace")))
+	pflag.StringVar(&cfg.Injector.ChaosNamespace, "chaos-namespace", "chaos-engineering", "Namespace of the service account to use for the generated injector pods. Must also host the controller.")
+	handleFatalError(viper.BindPFlag("injector.chaosNamespace", pflag.Lookup("chaos-namespace")))
 
 	pflag.StringVar(&cfg.Injector.Image, "injector-image", "chaos-injector", "Image to pull for the injector pods")
 	handleFatalError(viper.BindPFlag("injector.image", pflag.Lookup("injector-image")))
@@ -286,9 +282,9 @@ func main() {
 		MetricsSink:                           ms,
 		TargetSelector:                        targetSelector,
 		InjectorAnnotations:                   cfg.Injector.Annotations,
-		InjectorServiceAccount:                cfg.Injector.ServiceAccount.Name,
+		InjectorServiceAccount:                cfg.Injector.ServiceAccount,
 		InjectorImage:                         cfg.Injector.Image,
-		InjectorServiceAccountNamespace:       cfg.Injector.ServiceAccount.Namespace,
+		ChaosNamespace:                        cfg.Injector.ChaosNamespace,
 		InjectorDNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
@@ -297,7 +293,7 @@ func main() {
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Minute*5, kubeinformers.WithNamespace(cfg.Injector.ServiceAccount.Namespace))
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Minute*5, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
 
 	if err := r.SetupWithManager(mgr, kubeInformerFactory); err != nil {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
