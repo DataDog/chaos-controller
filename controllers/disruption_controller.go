@@ -998,6 +998,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			Kind:                            kind,
 			TargetContainerIDs:              targetContainerIDs,
 			TargetName:                      targetName,
+			TargetNodeName:                  targetNodeName,
 			TargetPodIP:                     targetPodIP,
 			DryRun:                          instance.Spec.DryRun,
 			DisruptionName:                  instance.Name,

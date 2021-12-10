@@ -153,6 +153,14 @@ func (r runningTargetSelector) TargetIsHealthy(target string, c client.Client, i
 		if p.Status.Phase != corev1.PodRunning {
 			return errors.New("pod is not Running")
 		}
+
+		// check if pod's node is gone in the case that this was a node failure
+		if instance.Spec.NodeFailure != nil {
+			var n corev1.Node
+			if err := c.Get(context.Background(), client.ObjectKey{Name: p.Spec.NodeName}, &n); err != nil {
+				return err
+			}
+		}
 	case chaostypes.DisruptionLevelNode:
 		var n corev1.Node
 		if err := c.Get(context.Background(), client.ObjectKey{Name: target}, &n); err != nil {
