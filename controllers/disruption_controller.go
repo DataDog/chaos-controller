@@ -27,10 +27,14 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
@@ -994,6 +998,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			Kind:                kind,
 			TargetContainerIDs:  targetContainerIDs,
 			TargetName:          targetName,
+			TargetNodeName:      targetNodeName,
 			TargetPodIP:         targetPodIP,
 			DryRun:              instance.Spec.DryRun,
 			DisruptionName:      instance.Name,
@@ -1046,10 +1051,35 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 }
 
 // SetupWithManager setups the current reconciler with the given manager
-func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) error {
+	podToDisruption := func(c client.Object) []reconcile.Request {
+		// podtoDisruption is a function that maps pods to disruptions. it is meant to be used as an event handler on a pod informer
+		// this function should safely return an empty list of requests to reconcile if the object we receive is not actually a chaos pod
+		// which we determine by checking the object labels for the name and namespace labels that we add to all injector pods
+		disruption := []reconcile.Request{}
+
+		if r.log != nil {
+			r.log.Infow("watching event from pod", "podName", c.GetName(), "podNamespace", c.GetNamespace())
+		}
+
+		r.handleMetricSinkError(r.MetricsSink.MetricInformed([]string{"podName:" + c.GetName(), "podNamespace:" + c.GetNamespace()}))
+
+		labels := c.GetLabels()
+		name := labels[chaostypes.DisruptionNameLabel]
+		namespace := labels[chaostypes.DisruptionNamespaceLabel]
+
+		if name != "" && namespace != "" {
+			disruption = append(disruption, reconcile.Request{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}})
+		}
+
+		return disruption
+	}
+
+	informer := kubeInformerFactory.Core().V1().Pods().Informer()
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
-		Owns(&corev1.Pod{}).
+		Watches(&source.Informer{Informer: informer}, handler.EnqueueRequestsFromMapFunc(podToDisruption)).
 		Complete(r)
 }
 

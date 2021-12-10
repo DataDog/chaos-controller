@@ -57,6 +57,7 @@ var (
 	disruptionNamespace string
 	chaosNamespace      string
 	targetName          string
+	targetNodeName      string
 	onInit              bool
 	handlerPID          uint32
 	configs             []injector.Config
@@ -91,6 +92,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&disruptionName, "log-context-disruption-name", "", "Log value: current disruption name")
 	rootCmd.PersistentFlags().StringVar(&disruptionNamespace, "log-context-disruption-namespace", "", "Log value: current disruption namespace")
 	rootCmd.PersistentFlags().StringVar(&targetName, "log-context-target-name", "", "Log value: current target name")
+	rootCmd.PersistentFlags().StringVar(&targetNodeName, "log-context-target-node-name", "", "Log value: node hosting the current target pod")
 
 	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "level")
 	cobra.OnInitialize(initLogger)
@@ -111,7 +113,7 @@ func main() {
 
 	// execute command
 	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 }
 
@@ -130,6 +132,7 @@ func initLogger() {
 		"disruptionName", disruptionName,
 		"disruptionNamespace", disruptionNamespace,
 		"targetName", targetName,
+		"targetNodeName", targetNodeName,
 	)
 }
 
@@ -245,6 +248,7 @@ func initConfig() {
 			Level:           chaostypes.DisruptionLevel(level),
 			TargetContainer: ctns[i],
 			TargetPodIP:     targetPodIP,
+			TargetNodeName:  targetNodeName,
 			Cgroup:          cgroupMgr,
 			Netns:           netnsMgr,
 			K8sClient:       clientset,

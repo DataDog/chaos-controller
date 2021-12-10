@@ -235,7 +235,7 @@ func buildCmd(module string, iface string, parent string, handle uint32, kind st
 
 	// parent
 	if parent == "root" {
-		cmd += fmt.Sprintf(" root")
+		cmd += " root"
 	} else {
 		cmd += fmt.Sprintf(" parent %s", parent)
 	}

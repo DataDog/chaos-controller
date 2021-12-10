@@ -32,6 +32,7 @@ type Config struct {
 	Level           types.DisruptionLevel
 	TargetContainer container.Container
 	TargetPodIP     string
+	TargetNodeName  string
 	Cgroup          cgroup.Manager
 	Netns           netns.Manager
 	K8sClient       kubernetes.Interface
