@@ -681,11 +681,16 @@ func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disrupt
 			continue
 		}
 
+		labels := map[string]string{
+			chaostypes.TargetLabel: target, // filter with target name
+		}
+
+		if instance.Spec.Level == chaostypes.DisruptionLevelPod { // nodes aren't namespaced and thus should only check by target name
+			labels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // filter with current instance namespace (to avoid getting pods having the same name but living in different namespaces)
+		}
+
 		// skip targets already targeted by a chaos pod from another disruption
-		chaosPods, err := r.getChaosPods(nil, map[string]string{
-			chaostypes.TargetLabel:              target,             // filter with target name
-			chaostypes.DisruptionNamespaceLabel: instance.Namespace, // filter with current instance namespace (to avoid getting targets having the same name but living in different namespaces)
-		})
+		chaosPods, err := r.getChaosPods(nil, labels)
 		if err != nil {
 			return nil, fmt.Errorf("error getting chaos pods targeting the given target (%s): %w", target, err)
 		}
