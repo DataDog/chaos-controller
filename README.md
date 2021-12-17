@@ -25,6 +25,8 @@ Chaos Engineering is necessarily different from system to system. We encourage y
 
 ## Quick Installation
 
+> :mega: _**Datadog engineers:** please reach out to Chaos Engineering before deploying to a new cluster! :pray: :bow:_
+
 If you do not plan to alter source code, you can install **Chaos Controller** to your existing Kubernetes environments by running:
 
 ```
