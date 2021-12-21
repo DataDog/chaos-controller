@@ -15,7 +15,7 @@ To locally run the dogfood client, call `go run grpcdogfood/client/dogfood_clien
 
 Expected output:
 ```
-connecting to localhost:50051...
+listening on localhost:50051...
 | got catalog: 0 items returned
 | ordered: Mock Reply
 | got catalog: 0 items returned

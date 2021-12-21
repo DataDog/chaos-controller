@@ -45,7 +45,7 @@ func getCatalogWithTimeout(client pb.ChaosDogfoodClient) ([]*pb.CatalogItem, err
 
 func main() {
 	// create and eventually close connection
-	fmt.Println("connecting to " + serverAddr + "...")
+	fmt.Printf("connecting to %v...\n", serverAddr)
 
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
@@ -68,18 +68,18 @@ func main() {
 	for {
 		items, err := getCatalogWithTimeout(client)
 		if err != nil {
-			fmt.Println("| ERROR getting catalog: " + err.Error())
+			fmt.Printf("| ERROR getting catalog:%v\n", err.Error())
 		}
 
-		fmt.Println("| got catalog: " + strconv.Itoa(len(items)) + " items returned")
+		fmt.Printf("| got catalog: %v items returned\n", strconv.Itoa(len(items)))
 		time.Sleep(time.Second)
 
 		order, err := orderWithTimeout(client, "cat")
 		if err != nil {
-			fmt.Println("| ERROR ordering food: " + err.Error())
+			fmt.Printf("| ERROR ordering food: %v\n", err.Error())
 		}
 
-		fmt.Println("| ordered: " + order)
+		fmt.Printf("| ordered: %v\n", order)
 		time.Sleep(time.Second)
 	}
 }
