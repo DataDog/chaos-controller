@@ -51,6 +51,18 @@ executors:
       KUBEBUILDER_ARCH: amd64
       GOLANGCI_LINT_VERSION: 1.43.0
       HELM_VERSION: 3.5.4
+  golang_large:
+    <<: *working_directory
+    docker:
+      # TODO: Publicize the chaos controller ci image to the datadog docker registry
+      #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
+      - image: golang:1.16-buster
+    resource_class: medium+
+    environment:
+      KUBEBUILDER_VERSION: 3.1.0
+      KUBEBUILDER_ARCH: amd64
+      GOLANGCI_LINT_VERSION: 1.43.0
+      HELM_VERSION: 3.5.4
   python:
     <<: *working_directory
     docker:
@@ -138,7 +150,7 @@ jobs:
       - run: make fmt
   # runs the golangci-lint linters
   lint:
-    executor: golang
+    executor: golang_large
     steps:
       - go_restore_cache
       - run: make lint
