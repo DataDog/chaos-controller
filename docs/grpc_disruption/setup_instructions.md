@@ -8,24 +8,36 @@ To locally run the dogfood server, call `go run grpcdogfood/server/dogfood_serve
 
 Expected output:
 ```
-connecting to localhost:50051...
+listening on localhost:50051...
 ```
 
 To locally run the dogfood client, call `go run grpcdogfood/client/dogfood_client.go` from the root directory of this project.
 
 Expected output:
 ```
+connecting to localhost:50051...
+| got catalog: 0 items returned
+| ordered: Mock Reply
+| got catalog: 0 items returned
+| ordered: Mock Reply
+| got catalog: 0 items returned
+| ordered: Mock Reply
+| got catalog: 0 items returned
+| ordered: Mock Reply
+```
+
+If the client is connected to the correct server, your server should output corresponding updates:
+
+```
 listening on localhost:50051...
-| got catalog: 0 items returned
-| ordered: Mock Reply
-| got catalog: 0 items returned
-| ordered: Mock Reply
-| got catalog: 0 items returned
-| ordered: Mock Reply
-| got catalog: 0 items returned
-| ordered: Mock Reply
-| got catalog: 0 items returned
-| ordered: Mock Reply
+* catalog delivered
+* cat food ordered
+* catalog delivered
+* cat food ordered
+* catalog delivered
+* cat food ordered
+* catalog delivered
+* cat food ordered
 ```
 
 # Running containerized chaos dogfood server & client
