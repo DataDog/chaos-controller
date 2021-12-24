@@ -66,9 +66,9 @@ func main() {
 	client := pb.NewChaosDogfoodClient(conn)
 
 	for {
+		// visually mark a new loop in logs
 		fmt.Println("x")
 
-		// create and eventually close connection
 		items, err := getCatalogWithTimeout(client)
 		if err != nil {
 			fmt.Printf("| ERROR getting catalog:%v\n", err.Error())
