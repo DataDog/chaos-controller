@@ -2,18 +2,39 @@
 
 Run `brew install protobuf` or `make install-protobuf-macos`
 
-# Running chaos dogfood server & client in order to test gRPC disruption
+# Running the chaos dogfood server & client locally using Minikube
 
-To locally run the dogfood server, call `go run grpcdogfood/server/dogfood_server.go` from the root directory of this project.
+## Setup
 
-Expected output:
-```
-listening on localhost:50051...
-```
+### (0) Ensure Minikube is running
 
-To locally run the dogfood client, call `go run grpcdogfood/client/dogfood_client.go` from the root directory of this project.
+From the root directory, make sure you have already setup Minikube:
+`chaos-controller >>  make minikube-start`
 
-Expected output:
+### (1) Build the gRPC client and server images
+
+Go into the `grpcdogfood` directory to use its `Makefile`, and build the two images:
+`chaos-controller >>  cd grpcdogfood`
+`chaos-controller/grpcdogfood >>  make minikube-build-dogfood`
+
+They will be pushed your local docker repository as `docker.io/library/chaos-dogfood-client` & `docker.io/library/chaos-dogfood-server`.
+
+### (2) Deploy a gRPC client and server to Minikube
+
+Create the `chaos-demo` namespace (if necessary) and `kubectl apply` both Helm charts with this target:
+`chaos-controller/grpcdogfood >>  make install`
+
+## Development
+
+### (1) See your pods
+
+Get pod name (such as `chaos-dogfood-client-84596b6c5-8kdxl` or `chaos-dogfood-server-5fdcff889f-hblj2`):
+`chaos-controller/grpcdogfood >>  kubectl -n chaos-demo get pods -o wide`
+
+#### Sample client output:
+`chaos-controller/grpcdogfood >>  kubectl -n chaos-demo logs chaos-dogfood-client-84596b6c5-8kdxl`
+
+Might output:
 ```
 connecting to chaos-dogfood-server.chaos-demo.svc.cluster.local:50051...
 x
@@ -25,28 +46,49 @@ x
 x
 | got catalog: 0 items returned
 | ordered: Mock Reply
-```
-
-If the client is connected to the correct server, your server should output corresponding updates:
-
-```
-listening on port :50051...
 x
+```
+#### Sample client output:
+`chaos-controller/grpcdogfood >>  kubectl -n chaos-demo logs chaos-dogfood-server-5fdcff889f-hblj2`
+Might output:
+```
+listening on port:50051...
+x
+| catalog delivered
 | cat food ordered
 x
 | catalog delivered
-x
 | cat food ordered
 x
 | catalog delivered
-x
 | cat food ordered
 x
-| catalog delivered
 ```
 
-# Running containerized chaos dogfood server & client
-Coming soon
+## Clean up
+* Run `make uninstall` to `kubectl delete` both charts as well as remove the namespace.
+
+## Advanced
+
+### Testing code changes
+
+* `make minikube-build-dogfood` to rebuild both client and server iamges.
+  * `make minikube-build-dogfood-client` to just build client.
+  * `make minikube-build-dogfood-server` to just build server.
+ 
+* `make install` to apply recent code changes or Helm chart changes.
+* `make restart` to pick up changes by recreating the pods.
+  * `make restart-client` to only recreate the client pod.
+  * `make restart-server` to only recreate the server pod.
+
+### Testing Helm chart changes
+
+* `make install` to apply recent code changes or Helm chart changes.
+* `make restart` to pick up changes by recreating the pods.
+
+If problem persists:
+* `make uninstall`
+* `make install`
 
 # Applying gRPC disruption
 Coming soon

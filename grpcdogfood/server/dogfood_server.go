@@ -23,7 +23,7 @@ type chaosDogfoodServer struct {
 }
 
 func (s *chaosDogfoodServer) Order(ctx context.Context, req *pb.FoodRequest) (*pb.FoodReply, error) {
-	fmt.Printf("x\n| %v food ordered\n", req.Animal)
+	fmt.Printf("| %v food ordered\n", req.Animal)
 	return &pb.FoodReply{Message: "Mock Reply", ConfirmationId: 1}, nil
 }
 
@@ -33,7 +33,7 @@ func (s *chaosDogfoodServer) GetCatalog(ctx context.Context, req *emptypb.Empty)
 }
 
 func main() {
-	fmt.Printf("listening on port %v...\n", port)
+	fmt.Printf("listening on port%v...\n", port)
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {

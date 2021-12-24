@@ -1,4 +1,4 @@
-.PHONY: dogfood_client dogfood_server
+.PHONY: dogfood-go-client dogfood-go-server
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -18,17 +18,17 @@ minikube-ssh-host:
 	ssh-keygen -R $(shell minikube ip)
 
 dogfood-go-client:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/dogfood_client/built_go_client ./client
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/client/built_go_client ./client
 
 minikube-build-dogfood-client: dogfood-go-client
-	docker build -t ${CLIENT_IMAGE} -f bin/dogfood_client/Dockerfile ./bin/dogfood_client/
+	docker build -t ${CLIENT_IMAGE} -f bin/client/Dockerfile ./bin/client/
 	minikube image load --daemon=false --overwrite=true ${CLIENT_IMAGE}
 
-dogfood-g-server:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/dogfood_server/built_go_server ./server
+dogfood-go-server:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/server/built_go_server ./server
 
 minikube-build-dogfood-server: dogfood-go-server
-	docker build -t ${SERVER_IMAGE} -f bin/dogfood_server/Dockerfile ./bin/dogfood_server/
+	docker build -t ${SERVER_IMAGE} -f bin/server/Dockerfile ./bin/server/
 	minikube image load --daemon=false --overwrite=true ${SERVER_IMAGE}
 
 # INSTALL

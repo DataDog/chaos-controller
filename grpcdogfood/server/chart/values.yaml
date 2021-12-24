@@ -1,13 +1,13 @@
-# Default values for deploy.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
 
 replicaCount: 1
 
 image:
   repository: "docker.io/chaos-dogfood-server"
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
 
 imagePullSecrets: []
@@ -21,7 +21,6 @@ securityContext: {}
 service:
   type: ClusterIP
   port: 50051
-  name: "chaos-dogfood-server-service"
 
 resources: {}
 
