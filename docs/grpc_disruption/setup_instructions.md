@@ -52,7 +52,7 @@ x
 `chaos-controller/grpcdogfood >>  kubectl -n chaos-demo logs chaos-dogfood-server-5fdcff889f-hblj2`
 Might output:
 ```
-listening on port:50051...
+listening on :50051...
 x
 | catalog delivered
 | cat food ordered
