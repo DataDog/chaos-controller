@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"strconv"
@@ -17,7 +18,19 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-const serverAddr = "chaos-dogfood-server.chaos-demo.svc.cluster.local:50051"
+var serverAddr string
+
+func init() {
+	var serverPort int
+
+	var serverHostname string
+
+	flag.StringVar(&serverHostname, "server_hostname", "<service>.<namespace>.svc.cluster.local", "Hostname of dogfood server")
+	flag.IntVar(&serverPort, "server_port", 50000, "Port where gRPC server is running")
+	flag.Parse()
+
+	serverAddr = fmt.Sprintf("%s:%d", serverHostname, serverPort)
+}
 
 func orderWithTimeout(client pb.ChaosDogfoodClient, animal string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

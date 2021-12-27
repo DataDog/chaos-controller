@@ -14,16 +14,15 @@ imagePullSecrets: []
 fullname: "chaos-dogfood-server"
 namespace: "chaos-demo"
 
-podSecurityContext: {}
-
-securityContext: {}
-
 service:
   type: ClusterIP
   port: 50051
 
-resources: {}
+server:
+  port: 50050
 
-nodeSelector: {}
+podSecurityContext: {}
 
-tolerations: []
+securityContext: {}
+
+resource: {}

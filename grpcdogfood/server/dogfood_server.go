@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -16,7 +17,19 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-const port = ":50051"
+var serverAddr string
+
+func init() {
+	var serverPort int
+
+	var serverIP string
+
+	flag.IntVar(&serverPort, "server_port", 50000, "Port where gRPC server is running")
+	flag.StringVar(&serverIP, "server_ip", "", "IP address where gRPC server is hosted")
+	flag.Parse()
+
+	serverAddr = fmt.Sprintf("%s:%d", serverIP, serverPort)
+}
 
 type chaosDogfoodServer struct {
 	pb.UnimplementedChaosDogfoodServer
@@ -33,9 +46,9 @@ func (s *chaosDogfoodServer) GetCatalog(ctx context.Context, req *emptypb.Empty)
 }
 
 func main() {
-	fmt.Printf("listening on port%v...\n", port)
+	fmt.Printf("listening on %v...\n", serverAddr)
 
-	lis, err := net.Listen("tcp", port)
+	lis, err := net.Listen("tcp", serverAddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}

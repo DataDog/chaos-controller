@@ -18,17 +18,17 @@ minikube-ssh-host:
 	ssh-keygen -R $(shell minikube ip)
 
 dogfood-go-client:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/client/built_go_client ./client
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/built_go_client ./client
 
 minikube-build-dogfood-client: dogfood-go-client
-	docker build -t ${CLIENT_IMAGE} -f bin/client/Dockerfile ./bin/client/
+	docker build -t ${CLIENT_IMAGE} -f client/Dockerfile ./bin/
 	minikube image load --daemon=false --overwrite=true ${CLIENT_IMAGE}
 
 dogfood-go-server:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/server/built_go_server ./server
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/built_go_server ./server
 
 minikube-build-dogfood-server: dogfood-go-server
-	docker build -t ${SERVER_IMAGE} -f bin/server/Dockerfile ./bin/server/
+	docker build -t ${SERVER_IMAGE} -f server/Dockerfile ./bin/
 	minikube image load --daemon=false --overwrite=true ${SERVER_IMAGE}
 
 # INSTALL

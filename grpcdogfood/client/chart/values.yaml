@@ -14,12 +14,13 @@ imagePullSecrets: []
 fullname: "chaos-dogfood-client"
 namespace: "chaos-demo"
 
+server:
+  hostname: "chaos-dogfood-server.chaos-demo.svc.cluster.local"
+  port: 50051
+
+client:
+  port: 50052
+
 podSecurityContext: {}
 
 securityContext: {}
-
-resources: {}
-
-nodeSelector: {}
-
-tolerations: []
