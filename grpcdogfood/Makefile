@@ -34,14 +34,14 @@ minikube-build-dogfood-server: dogfood-go-server
 # INSTALL
 
 install:
-	kubectl apply -f chaos-demo-namespace.yaml
+	kubectl apply -f ../examples/namespace.yaml
 	helm template ./client/chart | kubectl apply -f -
 	helm template ./server/chart | kubectl apply -f -
 
 uninstall:
 	helm template ./client/chart | kubectl delete -f -
 	helm template ./server/chart | kubectl delete -f -
-	kubectl delete -f chaos-demo-namespace.yaml
+	kubectl delete -f ../examples/namespace.yaml
 
 restart-client:
 	kubectl -n chaos-demo rollout restart deployment chaos-dogfood-client
