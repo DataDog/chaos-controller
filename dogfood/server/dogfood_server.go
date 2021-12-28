@@ -12,7 +12,7 @@ import (
 	"log"
 	"net"
 
-	pb "github.com/DataDog/chaos-controller/grpcdogfood/chaosdogfood"
+	pb "github.com/DataDog/chaos-controller/dogfood/chaosdogfood"
 	"google.golang.org/grpc"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )

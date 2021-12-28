@@ -32,8 +32,8 @@ files_to_skip = [
     "chart/install.yaml",
     "grpc/disruptionlistener/disruptionlistener_grpc.pb.go",
     "grpc/disruptionlistener/disruptionlistener.pb.go",
-    "grpcdogfood/chaosdogfood/chaosdogfood_grpc.pb.go",
-    "grpcdogfood/chaosdogfood/chaosdogfood.pb.go",
+    "dogfood/chaosdogfood/chaosdogfood_grpc.pb.go",
+    "dogfood/chaosdogfood/chaosdogfood.pb.go",
 ]
 
 # generates the header with the given comment tag

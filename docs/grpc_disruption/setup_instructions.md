@@ -13,26 +13,26 @@ From the root directory, make sure you have already setup Minikube:
 
 ### (1) Build the gRPC client and server images
 
-Go into the `grpcdogfood` directory to use its `Makefile`, and build the two images:
-`chaos-controller >>  cd grpcdogfood`
-`chaos-controller/grpcdogfood >>  make minikube-build-dogfood`
+Go into the `dogfood` directory to use its `Makefile`, and build the two images:
+`chaos-controller >>  cd dogfood`
+`chaos-controller/dogfood >>  make minikube-build-dogfood`
 
 They will be pushed your local docker repository as `docker.io/library/chaos-dogfood-client` & `docker.io/library/chaos-dogfood-server`.
 
 ### (2) Deploy a gRPC client and server to Minikube
 
 Create the `chaos-demo` namespace (if necessary) and `kubectl apply` both Helm charts with this target:
-`chaos-controller/grpcdogfood >>  make install`
+`chaos-controller/dogfood >>  make install`
 
 ## Development
 
 ### (1) See your pods
 
 Get pod name (such as `chaos-dogfood-client-84596b6c5-8kdxl` or `chaos-dogfood-server-5fdcff889f-hblj2`):
-`chaos-controller/grpcdogfood >>  kubectl -n chaos-demo get pods -o wide`
+`chaos-controller/dogfood >>  kubectl -n chaos-demo get pods -o wide`
 
 #### Sample client output:
-`chaos-controller/grpcdogfood >>  kubectl -n chaos-demo logs chaos-dogfood-client-84596b6c5-8kdxl`
+`chaos-controller/dogfood >>  kubectl -n chaos-demo logs chaos-dogfood-client-84596b6c5-8kdxl`
 
 Might output:
 ```
@@ -49,7 +49,7 @@ x
 x
 ```
 #### Sample client output:
-`chaos-controller/grpcdogfood >>  kubectl -n chaos-demo logs chaos-dogfood-server-5fdcff889f-hblj2`
+`chaos-controller/dogfood >>  kubectl -n chaos-demo logs chaos-dogfood-server-5fdcff889f-hblj2`
 Might output:
 ```
 listening on :50051...
