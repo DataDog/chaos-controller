@@ -63,7 +63,8 @@ To deploy a new version of the CRD by modifying your local `api/v1beta1/disrupti
 
 The [samples](examples/) contains sample data which can be used to test your changes.
 
-[demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster in whatever namespace you choose (`chaos-demo` by default) by running:
+[demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster. First, create the `chaos-demo` namespace, then bring up the demo pods:
+  * `minikube kubectl -- apply -f examples/namespace.yaml`
   * `minikube kubectl -- apply -f examples/demo.yaml`
 
 To see whether curls are succeeding, by using kubectl to tail the pod's logs, run:

@@ -7,17 +7,30 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"strconv"
 	"time"
 
-	pb "github.com/DataDog/chaos-controller/grpcdogfood/chaosdogfood"
+	pb "github.com/DataDog/chaos-controller/dogfood/chaosdogfood"
 	"google.golang.org/grpc"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-const serverAddr = "localhost:50051"
+var serverAddr string
+
+func init() {
+	var serverPort int
+
+	var serverHostname string
+
+	flag.StringVar(&serverHostname, "server_hostname", "<service>.<namespace>.svc.cluster.local", "Hostname of dogfood server")
+	flag.IntVar(&serverPort, "server_port", 50000, "Port where gRPC server is running")
+	flag.Parse()
+
+	serverAddr = fmt.Sprintf("%s:%d", serverHostname, serverPort)
+}
 
 func orderWithTimeout(client pb.ChaosDogfoodClient, animal string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -66,6 +79,9 @@ func main() {
 	client := pb.NewChaosDogfoodClient(conn)
 
 	for {
+		// visually mark a new loop in logs
+		fmt.Println("x")
+
 		items, err := getCatalogWithTimeout(client)
 		if err != nil {
 			fmt.Printf("| ERROR getting catalog:%v\n", err.Error())

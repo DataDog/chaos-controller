@@ -13,6 +13,7 @@ bin/chaosli/chaosli_darwin_amd64
 bin/chaosli/chaosli_darwin_amd64.sha256sum
 chart/install.yaml
 cli/chaosli/cmd/pkged.go
+dogfood/bin
 out
 dist
 
