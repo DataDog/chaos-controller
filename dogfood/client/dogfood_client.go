@@ -56,6 +56,54 @@ func getCatalogWithTimeout(client pb.ChaosDogfoodClient) ([]*pb.CatalogItem, err
 	return res.Items, nil
 }
 
+// regularly order food for different aniamls
+// note: mouse should return error because food for mice is not in the catalog
+func sendsLotsOfRequests(client pb.ChaosDogfoodClient) {
+	animals := []string{"dog", "cat", "mouse"}
+
+	// iterator for animals
+	i := 0
+
+	for {
+		// visually mark a new loop in logs
+		fmt.Println("x")
+
+		// grab catalog
+		items, err := getCatalogWithTimeout(client)
+		if err != nil {
+			fmt.Printf("| ERROR getting catalog:%v\n", err.Error())
+		}
+
+		fmt.Printf("| catalog: %v items returned %s\n", strconv.Itoa(len(items)), stringifyCatalogItems(items))
+		time.Sleep(time.Second)
+
+		// make an order
+		order, err := orderWithTimeout(client, animals[i])
+		if err != nil {
+			fmt.Printf("| ERROR ordering food: %v\n", err.Error())
+		}
+
+		fmt.Printf("| ordered: %v\n", order)
+		time.Sleep(time.Second)
+
+		// iterate
+		i = (i + 1) % len(animals)
+	}
+}
+
+func stringifyCatalogItems(items []*pb.CatalogItem) string {
+	if len(items) < 1 {
+		return "()"
+	}
+
+	printable := items[0].Animal
+	for _, item := range items[1:] {
+		printable = fmt.Sprintf("%s, %s", printable, item.Animal)
+	}
+
+	return fmt.Sprintf("(%s)", printable)
+}
+
 func main() {
 	// create and eventually close connection
 	fmt.Printf("connecting to %v...\n", serverAddr)
@@ -78,24 +126,5 @@ func main() {
 	// generate and use client
 	client := pb.NewChaosDogfoodClient(conn)
 
-	for {
-		// visually mark a new loop in logs
-		fmt.Println("x")
-
-		items, err := getCatalogWithTimeout(client)
-		if err != nil {
-			fmt.Printf("| ERROR getting catalog:%v\n", err.Error())
-		}
-
-		fmt.Printf("| got catalog: %v items returned\n", strconv.Itoa(len(items)))
-		time.Sleep(time.Second)
-
-		order, err := orderWithTimeout(client, "cat")
-		if err != nil {
-			fmt.Printf("| ERROR ordering food: %v\n", err.Error())
-		}
-
-		fmt.Printf("| ordered: %v\n", order)
-		time.Sleep(time.Second)
-	}
+	sendsLotsOfRequests(client)
 }
