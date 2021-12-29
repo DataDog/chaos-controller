@@ -61,7 +61,7 @@ func (s *chaosDogfoodServer) Order(ctx context.Context, req *pb.FoodRequest) (*p
 }
 
 func (s *chaosDogfoodServer) GetCatalog(ctx context.Context, req *emptypb.Empty) (*pb.CatalogReply, error) {
-	fmt.Println("| returned catalog")
+	fmt.Println("x\n| returned catalog")
 
 	items := make([]*pb.CatalogItem, 0, len(catalog))
 
