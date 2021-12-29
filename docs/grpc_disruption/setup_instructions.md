@@ -36,33 +36,51 @@ Get pod name (such as `chaos-dogfood-client-84596b6c5-8kdxl` or `chaos-dogfood-s
 
 Might output:
 ```
-connecting to chaos-dogfood-server.chaos-demo.svc.cluster.local:50051...
+connecting to localhost:50051...
 x
-| got catalog: 0 items returned
-| ordered: Mock Reply
+| catalog: 3 items returned (cat, dog, cow)
+| ordered: Chewey is on its way!
 x
-| got catalog: 0 items returned
-| ordered: Mock Reply
+| catalog: 3 items returned (cat, dog, cow)
+| ordered: Meowmix is on its way!
 x
-| got catalog: 0 items returned
-| ordered: Mock Reply
+| catalog: 3 items returned (cat, dog, cow)
+| ERROR ordering food: rpc error: code = Unknown desc = Sorry, we don't deliver food for: mouse :(
+| ordered: 
 x
+| catalog: 3 items returned (cat, dog, cow)
+| ordered: Chewey is on its way!
+x
+| catalog: 3 items returned (cat, dog, cow)
+| ordered: Meowmix is on its way!
+x
+| catalog: 3 items returned (cat, dog, cow)
+| ERROR ordering food: rpc error: code = Unknown desc = Sorry, we don't deliver food for: mouse :(
+| ordered: 
 ```
 #### Sample client output:
 `chaos-controller/dogfood >>  kubectl -n chaos-demo logs chaos-dogfood-server-5fdcff889f-hblj2`
 Might output:
 ```
-listening on :50051...
+listening on localhost:50051...
 x
-| catalog delivered
-| cat food ordered
+| returned catalog
+| proccessed order - animal:"dog"
 x
-| catalog delivered
-| cat food ordered
+| returned catalog
+| proccessed order - animal:"cat"
 x
-| catalog delivered
-| cat food ordered
+| returned catalog
+| * DECLINED ORDER - animal:"mouse"
 x
+| returned catalog
+| proccessed order - animal:"dog"
+x
+| returned catalog
+| proccessed order - animal:"cat"
+x
+| returned catalog
+| * DECLINED ORDER - animal:"mouse"
 ```
 
 ## Clean up

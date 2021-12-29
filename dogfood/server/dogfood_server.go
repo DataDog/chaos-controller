@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -31,18 +32,47 @@ func init() {
 	serverAddr = fmt.Sprintf("%s:%d", serverIP, serverPort)
 }
 
+var catalog = map[string]string{
+	"cat": "Meowmix",
+	"dog": "Chewey",
+	"cow": "Grassfed",
+}
+
 type chaosDogfoodServer struct {
 	pb.UnimplementedChaosDogfoodServer
+	replyCounter int32
 }
 
 func (s *chaosDogfoodServer) Order(ctx context.Context, req *pb.FoodRequest) (*pb.FoodReply, error) {
-	fmt.Printf("| %v food ordered\n", req.Animal)
-	return &pb.FoodReply{Message: "Mock Reply", ConfirmationId: 1}, nil
+	s.replyCounter++
+
+	if food, ok := catalog[req.Animal]; ok {
+		fmt.Printf("| proccessed order - %s\n", req.String())
+
+		return &pb.FoodReply{
+			Message:        fmt.Sprintf("%s is on its way!", food),
+			ConfirmationId: s.replyCounter,
+		}, nil
+	}
+
+	fmt.Printf("| * DECLINED ORDER - %s\n", req.String())
+
+	return nil, errors.New("Sorry, we don't deliver food for your " + req.Animal + " =(")
 }
 
 func (s *chaosDogfoodServer) GetCatalog(ctx context.Context, req *emptypb.Empty) (*pb.CatalogReply, error) {
-	fmt.Println("x\n| catalog delivered")
-	return &pb.CatalogReply{Items: []*pb.CatalogItem{}}, nil
+	fmt.Println("| returned catalog")
+
+	items := make([]*pb.CatalogItem, 0, len(catalog))
+
+	for animal, food := range catalog {
+		items = append(items, &pb.CatalogItem{
+			Animal: animal,
+			Food:   food,
+		})
+	}
+
+	return &pb.CatalogReply{Items: items}, nil
 }
 
 func main() {
