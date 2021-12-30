@@ -16,14 +16,14 @@ spec:
   grpc:
     port: 50051
     endpoints:
-      - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
+      - endpoint: /chaosdogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
         error: NOT_FOUND # gRPC error code to return instead computed response
         queryPercent: 25 # percentage to affect
-      - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
+      - endpoint: /chaosdogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
         error: ALREADY_EXISTS # gRPC error code to return instead computed response
         queryPercent: 50 # percentage to affect
-      - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
+      - endpoint: /chaosdogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
         override: "{}" # response structure to return instead of computed response - currently only returns emptypb.Empty
-      - endpoint: /chaos_dogfood.ChaosDogfood/order # gRPC service endpoint to disrupt
+      - endpoint: /chaosdogfood.ChaosDogfood/order # gRPC service endpoint to disrupt
         override: "{}" # response structure to return instead of computed response - currently only returns emptypb.Empty
         queryPercent: 50 # percentage to affect
