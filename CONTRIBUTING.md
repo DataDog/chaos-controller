@@ -78,6 +78,10 @@ To remove the disruption, run:
 
 See [development guide](docs/development.md) for more robust documentation and tips!
 
+### Testing gRPC disruption manually
+
+The [gRPC disruption](docs/grpc_disruption.md) cannot be tested on the nginx client/server pods. To modify and test gRPC disruption [code](grpc/), visit the dogfood [README.md](dogfood/README.md) and the dogfood [CONTRIBUTING.md](dogfood/CONTRIBUTING.md) documents.
+
 ### Testing with end-to-end tests
 
 The project contains end-to-end test which are meant to run against a real Kubernetes cluster. You can run them easily with the `make e2e-test` command. Please ensure that the following requirements are met before running the command:
