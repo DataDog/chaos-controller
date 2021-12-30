@@ -1,5 +1,7 @@
 # Contributing to Chaos Dogfood Application
 
+See [dogfood instructions](README.md) to get the dogfood application running locally.
+
 ### Testing code changes
 
 * `make minikube-build-dogfood` to rebuild both client and server iamges.
@@ -16,6 +18,7 @@
 * `make install` to apply recent code changes or Helm chart changes.
 * `make restart` to pick up changes by recreating the pods.
 
-If problem persists:
-* `make uninstall`
-* `make install`
+If your changes don't seem to propagate, you can:
+* `make uninstall` and `make install`
+or
+* `minikube delete` and `make minikube-start` and redo [dogfood instructions](README.md)

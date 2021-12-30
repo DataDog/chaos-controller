@@ -7,15 +7,22 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 
-	pb "github.com/DataDog/chaos-controller/dogfood/chaosdogfood"
 	"google.golang.org/grpc"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+
+	df_pb "github.com/DataDog/chaos-controller/dogfood/chaosdogfood"
+	disruption_service "github.com/DataDog/chaos-controller/grpc"
+	dl_pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
+	zaplog "github.com/DataDog/chaos-controller/log"
 )
+
+const chaosEnabled = true // In your application, make this a feature flag
 
 var serverAddr string
 
@@ -31,18 +38,47 @@ func init() {
 	serverAddr = fmt.Sprintf("%s:%d", serverIP, serverPort)
 }
 
-type chaosDogfoodServer struct {
-	pb.UnimplementedChaosDogfoodServer
+var catalog = map[string]string{
+	"cat": "Meowmix",
+	"dog": "Chewey",
+	"cow": "Grassfed",
 }
 
-func (s *chaosDogfoodServer) Order(ctx context.Context, req *pb.FoodRequest) (*pb.FoodReply, error) {
-	fmt.Printf("| %v food ordered\n", req.Animal)
-	return &pb.FoodReply{Message: "Mock Reply", ConfirmationId: 1}, nil
+type chaosDogfoodService struct {
+	df_pb.UnimplementedChaosDogfoodServer
+	replyCounter int32
 }
 
-func (s *chaosDogfoodServer) GetCatalog(ctx context.Context, req *emptypb.Empty) (*pb.CatalogReply, error) {
-	fmt.Println("x\n| catalog delivered")
-	return &pb.CatalogReply{Items: []*pb.CatalogItem{}}, nil
+func (s *chaosDogfoodService) Order(ctx context.Context, req *df_pb.FoodRequest) (*df_pb.FoodReply, error) {
+	s.replyCounter++
+
+	if food, ok := catalog[req.Animal]; ok {
+		fmt.Printf("| proccessed order - %s\n", req.String())
+
+		return &df_pb.FoodReply{
+			Message:        fmt.Sprintf("%s is on its way!", food),
+			ConfirmationId: s.replyCounter,
+		}, nil
+	}
+
+	fmt.Printf("| * DECLINED ORDER - %s\n", req.String())
+
+	return nil, errors.New("Sorry, we don't deliver food for your " + req.Animal + " =(")
+}
+
+func (s *chaosDogfoodService) GetCatalog(ctx context.Context, req *emptypb.Empty) (*df_pb.CatalogReply, error) {
+	fmt.Println("x\n| returned catalog")
+
+	items := make([]*df_pb.CatalogItem, 0, len(catalog))
+
+	for animal, food := range catalog {
+		items = append(items, &df_pb.CatalogItem{
+			Animal: animal,
+			Food:   food,
+		})
+	}
+
+	return &df_pb.CatalogReply{Items: items}, nil
 }
 
 func main() {
@@ -50,14 +86,36 @@ func main() {
 
 	lis, err := net.Listen("tcp", serverAddr)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("failed to listen: %s\n", err)
 	}
 
-	s := grpc.NewServer()
+	var dogfoodServer *grpc.Server
 
-	pb.RegisterChaosDogfoodServer(s, &chaosDogfoodServer{})
+	// In your application, check the feature flag to decide if the interceptor should be used
+	if chaosEnabled == true {
+		fmt.Println("CHAOS ENABLED")
 
-	if err := s.Serve(lis); err != nil {
+		disruptionLogger, error := zaplog.NewZapLogger()
+		if error != nil {
+			log.Fatal("error creating controller logger")
+			return
+		}
+
+		disruptionListener := disruption_service.NewDisruptionListener(disruptionLogger)
+
+		dogfoodServer = grpc.NewServer(
+			grpc.UnaryInterceptor(disruptionListener.ChaosServerInterceptor),
+		)
+
+		df_pb.RegisterChaosDogfoodServer(dogfoodServer, &chaosDogfoodService{})
+		dl_pb.RegisterDisruptionListenerServer(dogfoodServer, disruptionListener)
+	} else {
+		dogfoodServer = grpc.NewServer()
+
+		df_pb.RegisterChaosDogfoodServer(dogfoodServer, &chaosDogfoodService{})
+	}
+
+	if err := dogfoodServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
 }
