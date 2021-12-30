@@ -23,8 +23,8 @@ var grpcDisruptionCmd = &cobra.Command{
 		port, _ := cmd.Flags().GetInt("port")
 
 		// Each value passed to --endpoint-alterations should be of the form `endpoint;alterationtype;alterationvalue`, e.g.
-		// `/chaos_dogfood.ChaosDogfood/order;error;ALREADY_EXISTS`
-		// `/chaos_dogfood.ChaosDogfood/order;override;{}`
+		// `/chaosdogfood.ChaosDogfood/order;error;ALREADY_EXISTS`
+		// `/chaosdogfood.ChaosDogfood/order;override;{}`
 
 		log.Infow("arguments to grpcDisruptionCmd", "endpoint-alterations", rawEndpointAlterations)
 
@@ -79,7 +79,7 @@ var grpcDisruptionCmd = &cobra.Command{
 }
 
 func init() {
-	grpcDisruptionCmd.Flags().StringArray("endpoint-alterations", []string{}, "list of endpoint;alteration_type;alteration_value;optional_query_percent tuples as strings") // `/chaos_dogfood.ChaosDogfood/order;override;{}`
+	grpcDisruptionCmd.Flags().StringArray("endpoint-alterations", []string{}, "list of endpoint;alteration_type;alteration_value;optional_query_percent tuples as strings") // `/chaosdogfood.ChaosDogfood/order;override;{}`
 	grpcDisruptionCmd.Flags().Int("port", 0, "port to disrupt on target pod")
 
 	_ = cobra.MarkFlagRequired(grpcDisruptionCmd.PersistentFlags(), "port")
