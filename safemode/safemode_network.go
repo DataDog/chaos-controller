@@ -6,60 +6,58 @@
 package safemode
 
 import (
-	"fmt"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Network struct {
-	dis         *v1beta1.Disruption
-	networkSpec *v1beta1.NetworkDisruptionSpec
-	client      *client.Client
+	dis         v1beta1.Disruption
+	client      client.Client
 }
 
-// CheckTypeSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm Network) CheckTypeSafetyNets() ([]string, error) {
-	responses := []string{}
+// CreationSafetyNets Refer to safemode.Safemode interface for documentation
+func (sm *Network) CreationSafetyNets() ([]string, error) {
+	safetyNetResponses := []string{}
 	// run through the list of safety nets
-	caught, err := sm.safetyNetNoHostNoPort()
-	if err != nil {
-		return nil, fmt.Errorf("failed to check safetyNetNoHostNoPort")
+	if caught, err := sm.safetyNetNoHostNoPort(); err != nil {
+		return nil, err
+	} else {
+		if caught {
+			safetyNetResponses = append(safetyNetResponses, " The specified disruption contains a Host which only has either a port or a host. The more ambiguous, the larger the blast radius. ")
+		}
 	}
-	if caught {
-		responses = append(responses, "There exist a host with either no port or not hostname leading to ambiguity and larger scope of failure.")
-	}
-	return nil, nil
+	return safetyNetResponses, nil
 }
 
 // GetTypeSpec Refer to safemode.Safemode interface for documentation
-func (sm Network) GetTypeSpec(disruption v1beta1.Disruption) {
-	sm.networkSpec = disruption.Spec.Network
-	sm.dis = &disruption
+func (sm *Network) GetTypeSpec(disruption v1beta1.Disruption) {
+	sm.dis = disruption
 }
 
 // GetKubeClient Refer to safemode.Safemode interface for documentation
-func (sm Network) GetKubeClient(client client.Client) {
-	sm.client = &client
+func (sm *Network) GetKubeClient(client client.Client) {
+	sm.client = client
 }
 
-// GenerateSafetyNetOutput Refer to safemode.Safemode interface for documentation
-func (sm Network) GenerateSafetyNetOutput(spec v1beta1.DisruptionSpec) {
-	return
+// Init Refer to safemode.Safemode interface for documentation
+func (sm *Network) Init(disruption v1beta1.Disruption, client client.Client) {
+	sm.GetTypeSpec(disruption)
+	sm.GetKubeClient(client)
 }
 
 // safetyNetNoHostNoPort is the safety net regarding missing host or port values.
 // it will check against all defined hosts in the network disruption spec to see if any of them have a host or
 // port missing. The more generic a hosts tuple is (Omitting fields such as port), the bigger the blast radius.
-func (sm Network) safetyNetNoHostNoPort() (bool, error) {
-	if sm.networkSpec == nil {
-		return false, fmt.Errorf("network spec has not been set.")
+func (sm *Network) safetyNetNoHostNoPort() (bool, error) {
+	if sm.dis.Spec.Safemode.IgnoreNoPortOrHost {
+		return false,nil
 	}
 
-	for _, host := range sm.networkSpec.Hosts {
+	for _, host := range sm.dis.Spec.Network.Hosts {
 		if host.Port == 0 || host.Host == "" {
-			return false, nil
+			return true, nil
 		}
 	}
 
-	return true, nil
+	return false, nil
 }

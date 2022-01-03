@@ -171,7 +171,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 	} else {
 		// handle generic safety nets if safemode is enabled
-		if instance.Spec.Safemode {
+		if !instance.Spec.Safemode.IgnoreAll {
 			// initialize all relevant safety nets for the first time
 			if len(r.SafetyNets) == 0 {
 				r.SafetyNets = []safemode.Safemode{}
@@ -181,8 +181,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			responses := []string{}
 
 			for _, safetyNet := range r.SafetyNets {
-				response, err := safetyNet.CheckTypeSafetyNets()
-				fmt.Printf("Response: %s\n",response)
+				response, err := safetyNet.CreationSafetyNets()
 				if err != nil {
 					r.log.Errorw("error checking for safety nets", "error", err)
 				}
@@ -193,10 +192,11 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			}
 
 			if len(responses) != 0 {
-				r.Recorder.Event(instance, "Normal", "SafetyNet Catch", "SafetyNet Caught Something")
-				// TODO: stop this disruption until the user gets through all safety nets or turns safemode off. Print responses out before this.
+				for _, response := range responses {
+					r.Recorder.Event(instance, corev1.EventTypeWarning, "SafetyNet Catch", response)
+				}
+				// stop the reconcile loop if a safetynet was caught.
 				return ctrl.Result{}, nil
-				//return fmt.Errorf("one or more safety checks failed, please check logs for more info. Safemode can be disabled in your Disruption config")
 			}
 		}
 

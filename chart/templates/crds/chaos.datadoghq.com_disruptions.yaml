@@ -286,7 +286,24 @@ spec:
             onInit:
               type: boolean
             safeMode:
-              type: boolean
+              description: SafemodeSpec represents a spec with a switch turning safemode
+                on and all safety net switches to turn off IgnoreAll, by default,
+                is defined by the cluster the controller is running on If the use
+                is running on a cluster that has IgnoreAll as false, they will have
+                to manually ignore the other safety nets they do not want considered
+                If IgnoreAll is true by default, the user can change its value
+              properties:
+                ignoreCountToLarge:
+                  type: boolean
+                ignoreNoPortOrHost:
+                  type: boolean
+                ignoreSpecificContainDisk:
+                  type: boolean
+                ignoreSporadicTargets:
+                  type: boolean
+                "on":
+                  type: boolean
+              type: object
             selector:
               additionalProperties:
                 type: string
