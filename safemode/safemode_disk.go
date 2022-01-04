@@ -59,7 +59,7 @@ func (sm *Disk) safetyNetSpecificContainDisk() (bool, error) {
 	}
 
 	if sm.dis.Spec.Level != chaostypes.DisruptionLevelPod {
-		// Node level disruption should be clear that choose specific containers has a null affect
+		// Node level disruption should be clear because choosing specific containers has a null affect
 		return false, nil
 	}
 
@@ -77,6 +77,7 @@ func (sm *Disk) safetyNetSpecificContainDisk() (bool, error) {
 		return false, fmt.Errorf("error listing target pods: %w", err)
 	}
 
+	// if the number of containers in the targets != the number of containers described in the spec, safety net goes off
 	for _, pod := range pods.Items {
 		if len(pod.Spec.Containers) != len(sm.dis.Spec.Containers){
 			return true, nil

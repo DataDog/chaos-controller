@@ -181,6 +181,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			responses := []string{}
 
 			for _, safetyNet := range r.SafetyNets {
+				// safety nets may occur throughout the reconciler, the safety nets used at creation are done here
 				response, err := safetyNet.CreationSafetyNets()
 				if err != nil {
 					r.log.Errorw("error checking for safety nets", "error", err)

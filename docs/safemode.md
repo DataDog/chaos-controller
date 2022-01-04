@@ -5,17 +5,17 @@ Safemode represents a number of safety nets we have implemented into the chaos c
 The Chaos Controller can be scary to use in production environments, but we learn a lot more running chaos experiments in our production environments. Considering this, having safety nets in place makes the entire process of running chaos experiments in high value environments a little safer.
 
 The disruption config has a parameter appropriately named `safeMode` which represents a spec containing several boolean fields.
-One of the fields, `IgnoreAll` overrides the rest if set to true. It will ignore every safety net to be considered in the case the user is very confident with their disruption strategy.
-We recommend that `IgnoreAll` by set on the cluster level by default, so maintainers of the controller can turn it on by default in production and maybe off in staging environments.
+One of the fields, `IgnoreAll` overrides the rest if set to true. It will ignore every safety net.
+We recommend that `IgnoreAll` be set on the cluster level by default, so maintainers of the controller can turn it on by default in production and maybe off in staging environments.
 When `IgnoreAll` is turned off, the user will have the ability to turn specific safety nets off if they are confident that specific ones are not needed for their use case.
-Please take a look at the example below to see how to format safeMode in your next disruption.
+Please take a look at the example below to see how to format Safemode in your next disruption.
 
 ## Ignoring Safety Nets
 
 Because the list of safety nets to be implemented will grow in the future, there will surely be overlap with safety nets which will make it difficult for a user who is confident a specific safety net is not necessary but unsure if others will be.
-Therefore the controller allows for you to ignore specific safety nets in the Safemode Spec. Checkout our example below to see how to remove certain safety nets.
+Therefore the controller allows for you to ignore specific safety nets in the Safemode Spec. Checkout out example below to see how to remove certain safety nets.
 Remember that these fields to turn off specific safety nets is only accessible to the user if the `IgnoreAll` field is false. Otherwise it overrides all other safety nets and turns them off.
-Keep in mind that all safety nets are turned on by default when safemode is on, so all that is necessary to ignore safety nets.
+Keep in mind that all safety nets are turned on by default when safemode is on (`IgnoreAll` set to False), so all that is necessary to ignore safety nets.
 
 ### Safety Nets
 
@@ -40,8 +40,8 @@ spec:
   selector:
     app: demo-curl
   safeMode:
-    on: true
-    ignoreNoPortOrHost: false
+    ignoreAll: false
+    ignoreNoPortOrHost: true
   count: 1
   network:
     drop: 10

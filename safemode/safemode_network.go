@@ -18,7 +18,7 @@ type Network struct {
 // CreationSafetyNets Refer to safemode.Safemode interface for documentation
 func (sm *Network) CreationSafetyNets() ([]string, error) {
 	safetyNetResponses := []string{}
-	// run through the list of safety nets
+	// run through the list of initial safety nets
 	if caught, err := sm.safetyNetNoHostNoPort(); err != nil {
 		return nil, err
 	} else {

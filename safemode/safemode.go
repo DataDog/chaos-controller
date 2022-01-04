@@ -90,8 +90,7 @@ func (sm *Generic) Init(disruption v1beta1.Disruption, client client.Client) {
 	sm.GetKubeClient(client)
 }
 
-// CreationSafetyNets will apply generic safety net rules (rules on values not related specifically to any one type
-// of disruption such as count).
+// CreationSafetyNets Refer to safemode.Safemode interface for documentation
 func (sm *Generic) CreationSafetyNets() ([]string, error) {
 	safetyNetResponses := []string{}
 	if caught, err := sm.safetyNetCountNotTooLarge(); err != nil {
@@ -227,8 +226,8 @@ func (sm *Generic) safetyNetCountNotTooLarge() (bool,error) {
 	}
 
 	// we check to see if the count represents > 80 percent of all pods in the existing namepsace
-	// and if the count represents > 70 percent of all pods in the cluster
-	if float64(userCountVal)/float64(namespaceCount) > 0.4 {
+	// and if the count represents > 66 percent of all pods in the cluster (2/3s)
+	if float64(userCountVal)/float64(namespaceCount) > 0.8 {
 		return true, nil
 	}
 	if float64(userCountVal)/float64(totalCount) > 0.66 {
