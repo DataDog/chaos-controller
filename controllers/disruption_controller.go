@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DataDog/chaos-controller/safemode"
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/safemode"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/cenkalti/backoff"
@@ -148,7 +148,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, nil
 		}
 	} else {
-
 		if err := r.validateDisruptionSpec(instance); err != nil {
 			return ctrl.Result{Requeue: false}, err
 		}
