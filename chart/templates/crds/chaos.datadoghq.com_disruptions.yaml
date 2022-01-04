@@ -293,15 +293,15 @@ spec:
                 to manually ignore the other safety nets they do not want considered
                 If IgnoreAll is true by default, the user can change its value
               properties:
-                ignoreCountToLarge:
+                ignoreAll:
+                  type: boolean
+                ignoreCountNotToLarge:
                   type: boolean
                 ignoreNoPortOrHost:
                   type: boolean
                 ignoreSpecificContainDisk:
                   type: boolean
                 ignoreSporadicTargets:
-                  type: boolean
-                "on":
                   type: boolean
               type: object
             selector:
