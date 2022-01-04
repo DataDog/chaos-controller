@@ -20,7 +20,7 @@ test: generate manifests
 	go test $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
 
 # Run e2e tests (against a real cluster)
-e2e-test: generate manifests
+e2e-test: generate install
 	USE_EXISTING_CLUSTER=true go test ./controllers/... -coverprofile cover.out
 
 # Build manager binary
@@ -37,11 +37,16 @@ handler:
 
 # Build chaosli
 chaosli:
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o bin/chaosli/chaosli_darwin_amd64 ./cli/chaosli/
+	pkger -o cli/chaosli/cmd
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_amd64 ./cli/chaosli/
+
+# Test chaosli API portability
+chaosli-test:
+	docker build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
 
 # Install CRDs and controller into a cluster
 install: manifests
-	helm template ./chart | minikube kubectl -- apply -f -
+	helm template --set controller.enableSafeguards=false ./chart | minikube kubectl -- apply -f -
 
 # Uninstall CRDs and controller from a cluster
 uninstall: manifests
@@ -52,7 +57,7 @@ restart:
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:trivialVersions=true paths="./..." output:crd:dir=./chart/templates/crds/ output:rbac:dir=./chart/templates/
+	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:trivialVersions=true,preserveUnknownFields=false,crdVersions=v1beta1 paths="./..." output:crd:dir=./chart/templates/crds/ output:rbac:dir=./chart/templates/
 
 # Run go fmt against code
 fmt:
@@ -64,7 +69,7 @@ vet:
 
 # Run golangci-lint against code
 lint:
-	golangci-lint run --timeout 2m0s
+	golangci-lint run --timeout 3m0s
 
 # Generate code
 generate: controller-gen
@@ -94,7 +99,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.4 ;\
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.2 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen
@@ -131,6 +136,11 @@ header-check: venv
 
 license-check: venv
 	source .venv/bin/activate; inv license-check
+
+godeps:
+	go mod tidy; go mod vendor
+
+deps: godeps license-check
 
 generate-protobuf:
 	cd grpc/disruptionlistener && \

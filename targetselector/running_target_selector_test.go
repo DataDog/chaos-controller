@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,7 +30,7 @@ type fakeClient struct {
 	ListOptions []*client.ListOptions
 }
 
-func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
 	if key.Name == "runningPod" {
 		objVal := reflect.ValueOf(obj)
 		nodeVal := reflect.ValueOf(runningPod1)
@@ -55,7 +56,7 @@ func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.
 	return nil
 }
 
-func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+func (f *fakeClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 	for _, opt := range opts {
 		if o, ok := opt.(*client.ListOptions); ok {
 			f.ListOptions = append(f.ListOptions, o)
@@ -71,27 +72,35 @@ func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...clie
 	return nil
 }
 
-func (f fakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+func (f fakeClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	return nil
 }
 
-func (f fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
+func (f fakeClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	return nil
 }
 
-func (f fakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+func (f fakeClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	return nil
 }
 
-func (f fakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (f fakeClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return nil
 }
 
-func (f fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+func (f fakeClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
 	return nil
 }
 
 func (f fakeClient) Status() client.StatusWriter {
+	return nil
+}
+
+func (f fakeClient) Scheme() *runtime.Scheme {
+	return nil
+}
+
+func (f fakeClient) RESTMapper() meta.RESTMapper {
 	return nil
 }
 
@@ -113,10 +122,10 @@ var _ = Describe("Helpers", func() {
 	var c fakeClient
 	var image string
 	var disruption *chaosv1beta1.Disruption
-	var targetSelector RunningTargetSelector
+	var targetSelector TargetSelector
 
 	BeforeEach(func() {
-		targetSelector = RunningTargetSelector{}
+		targetSelector = NewRunningTargetSelector(false, "foo")
 
 		c = fakeClient{}
 
@@ -124,6 +133,9 @@ var _ = Describe("Helpers", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "runningPod",
 				Namespace: "bar",
+			},
+			Spec: corev1.PodSpec{
+				NodeName: "runningNode",
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
@@ -350,6 +362,19 @@ var _ = Describe("Helpers", func() {
 				Expect(r.Items[0]).To(Equal(*pendingPod))
 			})
 		})
+
+		Context("with controller safeguards enabled", func() {
+			BeforeEach(func() {
+				targetSelector = NewRunningTargetSelector(true, "runningNode")
+			})
+
+			It("should exclude the pods running on the same node as the controller from targets", func() {
+				r, err := targetSelector.GetMatchingPods(&c, disruption)
+
+				Expect(err).To(BeNil())
+				Expect(len(r.Items)).To(Equal(1)) // only the pod not running on the same node as the controller
+			})
+		})
 	})
 
 	Describe("GetMatchingNodes", func() {
@@ -400,6 +425,19 @@ var _ = Describe("Helpers", func() {
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(len(justRunningNodes)))
 				Expect(r.Items[0].Name).To(Equal("runningNode"))
+			})
+		})
+
+		Context("with controller safeguards enabled", func() {
+			BeforeEach(func() {
+				targetSelector = NewRunningTargetSelector(true, "runningNode")
+			})
+
+			It("should exclude the controller node from targets", func() {
+				r, err := targetSelector.GetMatchingNodes(&c, disruption)
+
+				Expect(err).To(BeNil())
+				Expect(len(r.Items)).To(Equal(0))
 			})
 		})
 	})

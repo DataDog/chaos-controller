@@ -31,7 +31,7 @@ spec:
     - demo
     - demo2
   count: 1 # number of pods to target or a percentage (1% - 100%)
-  durationSeconds: 2700 # the number of seconds before the disruption terminates itself
+  duration: 30m # the amount of time before the disruption terminates itself, must be a valid time.Duration string, e.g. (300s, 15m25s, 4h)
   nodeFailure: # node kernel panic or shutdown
     shutdown: true # optional, shutdown the host instead of triggering a stack dump (defaults to false)
   containerFailure: # terminating a pod's containers gracefully or non-gracefully

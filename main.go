@@ -27,6 +27,8 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
@@ -64,12 +66,13 @@ type config struct {
 }
 
 type controllerConfig struct {
-	MetricsAddr              string                        `json:"metricsAddr"`
+	MetricsBindAddr          string                        `json:"metricsBindAddr"`
 	MetricsSink              string                        `json:"metricsSink"`
 	ImagePullSecrets         string                        `json:"imagePullSecrets"`
 	ExpiredDisruptionGCDelay time.Duration                 `json:"expiredDisruptionGCDelay"`
 	DefaultDuration          time.Duration                 `json:"defaultDuration"`
 	DeleteOnly               bool                          `json:"deleteOnly"`
+	EnableSafeguards         bool                          `json:"enableSafeguards"`
 	LeaderElection           bool                          `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
@@ -84,14 +87,10 @@ type controllerWebhookConfig struct {
 type injectorConfig struct {
 	Image             string                          `json:"image"`
 	Annotations       map[string]string               `json:"annotations"`
-	ServiceAccount    injectorServiceAccountConfig    `json:"serviceAccount"`
+	ChaosNamespace    string                          `json:"namespace"`
+	ServiceAccount    string                          `json:"serviceAccount"`
 	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
-}
-
-type injectorServiceAccountConfig struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
 }
 
 type injectorDNSDisruptionConfig struct {
@@ -118,15 +117,18 @@ func main() {
 	// parse flags
 	pflag.StringVar(&configPath, "config", "", "Configuration file path")
 
-	pflag.StringVar(&cfg.Controller.MetricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	handleFatalError(viper.BindPFlag("controller.metrics.addr", pflag.Lookup("metrics-addr")))
+	pflag.StringVar(&cfg.Controller.MetricsBindAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	handleFatalError(viper.BindPFlag("controller.metrics.addr", pflag.Lookup("metrics-bind-address")))
 
-	pflag.BoolVar(&cfg.Controller.LeaderElection, "enable-leader-election", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	handleFatalError(viper.BindPFlag("controller.leaderElection", pflag.Lookup("enable-leader-election")))
+	pflag.BoolVar(&cfg.Controller.LeaderElection, "leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	handleFatalError(viper.BindPFlag("controller.leaderElection", pflag.Lookup("leader-elect")))
 
 	pflag.BoolVar(&cfg.Controller.DeleteOnly, "delete-only", false,
 		"Enable delete only mode which will not allow new disruption to start and will only continue to clean up and remove existing disruptions.")
 	handleFatalError(viper.BindPFlag("controller.deleteOnly", pflag.Lookup("delete-only")))
+
+	pflag.BoolVar(&cfg.Controller.EnableSafeguards, "enable-safeguards", true, "Enable safeguards on target selection")
+	handleFatalError(viper.BindPFlag("controller.enableSafeguards", pflag.Lookup("enable-safeguards")))
 
 	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
@@ -155,11 +157,11 @@ func main() {
 	pflag.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.annotations", pflag.Lookup("injector-annotations")))
 
-	pflag.StringVar(&cfg.Injector.ServiceAccount.Name, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
+	pflag.StringVar(&cfg.Injector.ServiceAccount, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.serviceAccount.name", pflag.Lookup("injector-service-account")))
 
-	pflag.StringVar(&cfg.Injector.ServiceAccount.Namespace, "injector-service-account-namespace", "chaos-engineering", "Namespace of the service account to use for the generated injector pods. Should also host the controller.")
-	handleFatalError(viper.BindPFlag("injector.serviceAccount.namespace", pflag.Lookup("injector-service-account-namespace")))
+	pflag.StringVar(&cfg.Injector.ChaosNamespace, "chaos-namespace", "chaos-engineering", "Namespace of the service account to use for the generated injector pods. Must also host the controller.")
+	handleFatalError(viper.BindPFlag("injector.chaosNamespace", pflag.Lookup("chaos-namespace")))
 
 	pflag.StringVar(&cfg.Injector.Image, "injector-image", "chaos-injector", "Image to pull for the injector pods")
 	handleFatalError(viper.BindPFlag("injector.image", pflag.Lookup("injector-image")))
@@ -199,6 +201,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// get controller node name
+	controllerNodeName, exists := os.LookupEnv("CONTROLLER_NODE_NAME")
+	if !exists {
+		logger.Fatal("missing required CONTROLLER_NODE_NAME environment variable")
+	}
+
 	// load configuration file if present
 	if configPath != "" {
 		logger.Infow("loading configuration file", "config", configPath)
@@ -223,7 +231,7 @@ func main() {
 	broadcaster := eventbroadcaster.EventBroadcaster()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
-		MetricsBindAddress: cfg.Controller.MetricsAddr,
+		MetricsBindAddress: cfg.Controller.MetricsBindAddr,
 		LeaderElection:     cfg.Controller.LeaderElection,
 		LeaderElectionID:   "75ec2fa4.datadoghq.com",
 		EventBroadcaster:   broadcaster,
@@ -262,6 +270,9 @@ func main() {
 		}
 	}()
 
+	// target selector
+	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName)
+
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:                                mgr.GetClient(),
@@ -269,11 +280,11 @@ func main() {
 		Scheme:                                mgr.GetScheme(),
 		Recorder:                              mgr.GetEventRecorderFor("disruption-controller"),
 		MetricsSink:                           ms,
-		TargetSelector:                        targetselector.RunningTargetSelector{},
+		TargetSelector:                        targetSelector,
 		InjectorAnnotations:                   cfg.Injector.Annotations,
-		InjectorServiceAccount:                cfg.Injector.ServiceAccount.Name,
+		InjectorServiceAccount:                cfg.Injector.ServiceAccount,
 		InjectorImage:                         cfg.Injector.Image,
-		InjectorServiceAccountNamespace:       cfg.Injector.ServiceAccount.Namespace,
+		ChaosNamespace:                        cfg.Injector.ChaosNamespace,
 		InjectorDNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
@@ -281,17 +292,23 @@ func main() {
 		ExpiredDisruptionGCDelay:              cfg.Controller.ExpiredDisruptionGCDelay,
 	}
 
-	if err := r.SetupWithManager(mgr); err != nil {
+	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Minute*5, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
+
+	if err := r.SetupWithManager(mgr, kubeInformerFactory); err != nil {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
+
+	stopCh := make(chan struct{})
+	kubeInformerFactory.Start(stopCh)
 
 	go r.ReportMetrics()
 
 	// register disruption validating webhook
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DeleteOnly, cfg.Handler.Enabled); err != nil {
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 
 	// register chaos handler init container mutating webhook
@@ -312,22 +329,15 @@ func main() {
 		},
 	})
 
-	// register spec default mutating webhook
-	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-spec-defaults", &webhook.Admission{
-		Handler: &chaoswebhook.DefaultMutator{
-			DefaultDuration: cfg.Controller.DefaultDuration,
-			Client:          mgr.GetClient(),
-			Log:             logger,
-		},
-	})
-
 	// +kubebuilder:scaffold:builder
 
 	logger.Infow("restarting chaos-controller")
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		stopCh <- struct{}{} // stop the informer
+
 		logger.Errorw("problem running manager", "error", err)
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 }
 

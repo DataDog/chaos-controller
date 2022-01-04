@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/injector"
 	logger "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/metrics"
@@ -26,8 +28,10 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -51,7 +55,9 @@ var (
 	targetPodIP         string
 	disruptionName      string
 	disruptionNamespace string
+	chaosNamespace      string
 	targetName          string
+	targetNodeName      string
 	onInit              bool
 	handlerPID          uint32
 	configs             []injector.Config
@@ -80,11 +86,13 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
 	rootCmd.PersistentFlags().StringVar(&dnsServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
 	rootCmd.PersistentFlags().StringVar(&kubeDNS, "kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
+	rootCmd.PersistentFlags().StringVar(&chaosNamespace, "chaos-namespace", "chaos-engineering", "Namespace that contains this chaos pod")
 
 	// log context args
 	rootCmd.PersistentFlags().StringVar(&disruptionName, "log-context-disruption-name", "", "Log value: current disruption name")
 	rootCmd.PersistentFlags().StringVar(&disruptionNamespace, "log-context-disruption-namespace", "", "Log value: current disruption namespace")
 	rootCmd.PersistentFlags().StringVar(&targetName, "log-context-target-name", "", "Log value: current target name")
+	rootCmd.PersistentFlags().StringVar(&targetNodeName, "log-context-target-node-name", "", "Log value: node hosting the current target pod")
 
 	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "level")
 	cobra.OnInitialize(initLogger)
@@ -105,7 +113,7 @@ func main() {
 
 	// execute command
 	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 }
 
@@ -124,6 +132,7 @@ func initLogger() {
 		"disruptionName", disruptionName,
 		"disruptionNamespace", disruptionNamespace,
 		"targetName", targetName,
+		"targetNodeName", targetNodeName,
 	)
 }
 
@@ -239,6 +248,7 @@ func initConfig() {
 			Level:           chaostypes.DisruptionLevel(level),
 			TargetContainer: ctns[i],
 			TargetPodIP:     targetPodIP,
+			TargetNodeName:  targetNodeName,
 			Cgroup:          cgroupMgr,
 			Netns:           netnsMgr,
 			K8sClient:       clientset,
@@ -271,7 +281,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	log.Info("injecting the disruption")
+	log.Infow("injecting the disruption", "kind", cmd.Name())
 
 	errOnInject := false
 
@@ -327,8 +337,6 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 // cleanAndExit cleans the disruption with the configured injector and exits nicely
 func cleanAndExit(cmd *cobra.Command, args []string) {
-	log.Info("cleaning the disruption")
-
 	errs := []error{}
 
 	for _, inj := range injectors {
@@ -354,7 +362,29 @@ func cleanAndExit(cmd *cobra.Command, args []string) {
 		log.Fatalw(fmt.Sprintf("disruption cleanup failed on %d injectors (comma separated errors)", len(errs)), "errors", combined.String())
 	}
 
+	if err := backoff.RetryNotify(cleanFinalizer, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
+		log.Errorw("couldn't safely remove this pod's finalizer", "err", err)
+	}
+
 	log.Info("disruption cleaned, now exiting")
+}
+
+func cleanFinalizer() error {
+	pod, err := configs[0].K8sClient.CoreV1().Pods(chaosNamespace).Get(context.Background(), os.Getenv(env.InjectorPodName), metav1.GetOptions{})
+	if err != nil {
+		log.Warnw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.InjectorPodName), "err", err)
+		return err
+	}
+
+	controllerutil.RemoveFinalizer(pod, chaostypes.ChaosPodFinalizer)
+
+	_, err = configs[0].K8sClient.CoreV1().Pods(chaosNamespace).Update(context.Background(), pod, metav1.UpdateOptions{})
+	if err != nil {
+		log.Warnw("couldn't remove this pod's finalizer", "pod", os.Getenv(env.InjectorPodName), "err", err)
+		return err
+	}
+
+	return nil
 }
 
 // handleMetricError logs the given error if not nil

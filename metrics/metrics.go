@@ -38,6 +38,7 @@ type Sink interface {
 	MetricValidationCreated(tags []string) error
 	MetricValidationUpdated(tags []string) error
 	MetricValidationDeleted(tags []string) error
+	MetricInformed(tags []string) error
 }
 
 // GetSink returns an initiated sink

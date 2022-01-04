@@ -20,11 +20,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// RunningTargetSelector finds pods in Running Phase for applying network disruptions to a Kubernetes Cluster
-type RunningTargetSelector struct{}
+// runningTargetSelector finds pods in Running Phase for applying network disruptions to a Kubernetes Cluster
+type runningTargetSelector struct {
+	controllerEnableSafeguards bool
+	controllerNodeName         string
+}
+
+func NewRunningTargetSelector(controllerEnableSafeguards bool, controllerNodeName string) TargetSelector {
+	return runningTargetSelector{
+		controllerEnableSafeguards: controllerEnableSafeguards,
+		controllerNodeName:         controllerNodeName,
+	}
+}
 
 // GetMatchingPods returns a pods list containing all running pods matching the given label selector and namespace
-func (r RunningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, error) {
+func (r runningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, error) {
 	// get parsed selector
 	selector, err := getLabelSelectorFromInstance(instance)
 	if err != nil {
@@ -46,6 +56,14 @@ func (r RunningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv
 	runningPods := &corev1.PodList{}
 
 	for _, pod := range pods.Items {
+		// apply controller safeguards if enabled
+		if r.controllerEnableSafeguards {
+			// skip the node running the controller if the disruption has a node failure in its spec
+			if instance.Spec.NodeFailure != nil && pod.Spec.NodeName == r.controllerNodeName {
+				continue
+			}
+		}
+
 		// if the disruption is applied on init, we only target pending pods with a running
 		// chaos handler init container
 		// otherwise, we only target running pods
@@ -73,7 +91,7 @@ func (r RunningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv
 }
 
 // GetMatchingNodes returns a nodes list containing all nodes matching the given label selector
-func (r RunningTargetSelector) GetMatchingNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, error) {
+func (r runningTargetSelector) GetMatchingNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, error) {
 	// get parsed selector
 	selector, err := getLabelSelectorFromInstance(instance)
 	if err != nil {
@@ -94,6 +112,14 @@ func (r RunningTargetSelector) GetMatchingNodes(c client.Client, instance *chaos
 	runningNodes := &corev1.NodeList{}
 
 	for _, node := range nodes.Items {
+		// apply controller safeguards if enabled
+		if r.controllerEnableSafeguards {
+			// skip the node running the controller
+			if node.Name == r.controllerNodeName {
+				continue
+			}
+		}
+
 		// check if node is ready
 		ready := false
 
@@ -113,7 +139,7 @@ func (r RunningTargetSelector) GetMatchingNodes(c client.Client, instance *chaos
 }
 
 // TargetIsHealthy returns an error if the given target is unhealthy or does not exist
-func (r RunningTargetSelector) TargetIsHealthy(target string, c client.Client, instance *chaosv1beta1.Disruption) error {
+func (r runningTargetSelector) TargetIsHealthy(target string, c client.Client, instance *chaosv1beta1.Disruption) error {
 	switch instance.Spec.Level {
 	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
 		var p corev1.Pod
@@ -126,6 +152,14 @@ func (r RunningTargetSelector) TargetIsHealthy(target string, c client.Client, i
 		// check if pod is running
 		if p.Status.Phase != corev1.PodRunning {
 			return errors.New("pod is not Running")
+		}
+
+		// check if pod's node is gone in the case that this was a node failure
+		if instance.Spec.NodeFailure != nil {
+			var n corev1.Node
+			if err := c.Get(context.Background(), client.ObjectKey{Name: p.Spec.NodeName}, &n); err != nil {
+				return err
+			}
 		}
 	case chaostypes.DisruptionLevelNode:
 		var n corev1.Node

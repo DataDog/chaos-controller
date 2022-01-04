@@ -1,58 +1,72 @@
 module github.com/DataDog/chaos-controller
 
-go 1.13
+go 1.16
 
 require (
-	github.com/AlecAivazis/survey/v2 v2.2.12
-	github.com/DataDog/datadog-go v4.0.0+incompatible
-	github.com/Microsoft/hcsshim v0.8.9 // indirect
-	github.com/Microsoft/hcsshim/test v0.0.0-20200818230740-94556e86d3db // indirect
-	github.com/avast/retry-go v2.6.0+incompatible
+	github.com/AlecAivazis/survey/v2 v2.3.2
+	github.com/DataDog/datadog-go v4.8.2+incompatible
+	github.com/Microsoft/go-winio v0.5.0 // indirect
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/containerd/cgroups v0.0.0-20200817152742-7a3c009711fb // indirect
-	github.com/containerd/containerd v1.4.11
-	github.com/containerd/continuity v0.0.0-20200710164510-efbc4488d8fe // indirect
-	github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b // indirect
-	github.com/containerd/go-runc v0.0.0-20200707131846-23d84c510c41 // indirect
-	github.com/containerd/ttrpc v1.0.1 // indirect
-	github.com/containerd/typeurl v1.0.1 // indirect
-	github.com/coreos/go-iptables v0.5.0
-	github.com/docker/distribution v2.7.1+incompatible // indirect
-	github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
-	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/containerd/containerd v1.5.8
+	github.com/coreos/go-iptables v0.6.0
+	github.com/docker/docker v17.12.0-ce-rc1.0.20200916142827-bd33bbf0497b+incompatible
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/ghodss/yaml v1.0.0
-	github.com/gogo/googleapis v1.4.0 // indirect
-	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/gogo/googleapis v1.4.1 // indirect
+	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/go-multierror v1.0.0
-	github.com/miekg/dns v1.1.31
+	github.com/markbates/pkger v0.17.1
+	github.com/miekg/dns v1.1.25
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/onsi/ginkgo v1.12.1
-	github.com/onsi/gomega v1.10.1
-	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/opencontainers/runc v1.0.0-rc95
+	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/gomega v1.15.0
+	github.com/opencontainers/runc v1.0.2
 	github.com/slack-go/slack v0.9.5
-	github.com/spf13/cobra v1.1.3
+	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.7.0
-	github.com/stretchr/testify v1.5.1
-	github.com/vishvananda/netlink v1.1.0
+	github.com/spf13/viper v1.8.1
+	github.com/stretchr/testify v1.7.0
+	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
-	go.etcd.io/bbolt v1.3.5 // indirect
-	go.uber.org/zap v1.10.0
-	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
-	golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744
-	golang.org/x/text v0.3.6 // indirect
-	google.golang.org/grpc v1.39.0
+	go.uber.org/zap v1.19.0
+	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
+	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2
+	google.golang.org/grpc v1.40.0
 	google.golang.org/protobuf v1.27.1
-	gotest.tools/v3 v3.0.2 // indirect
-	k8s.io/api v0.18.6
-	k8s.io/apimachinery v0.18.6
-	k8s.io/client-go v0.18.6
-	k8s.io/kubernetes v1.13.0
-	sigs.k8s.io/controller-runtime v0.6.2
-	sigs.k8s.io/controller-tools v0.4.1
+	k8s.io/api v0.22.2
+	k8s.io/apimachinery v0.22.2
+	k8s.io/client-go v0.22.2
+	k8s.io/kubernetes v1.20.2
+	sigs.k8s.io/controller-runtime v0.10.3
+	sigs.k8s.io/controller-tools v0.7.0
 	sigs.k8s.io/yaml v1.2.0
+)
+
+replace (
+	k8s.io/api => k8s.io/api v0.22.2
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.22.2
+	k8s.io/apimachinery => k8s.io/apimachinery v0.22.2
+	k8s.io/apiserver => k8s.io/apiserver v0.22.2
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.22.2
+	k8s.io/client-go => k8s.io/client-go v0.22.2
+	k8s.io/cloud-provider => k8s.io/cloud-provider v0.22.2
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.22.2
+	k8s.io/code-generator => k8s.io/code-generator v0.22.2
+	k8s.io/component-base => k8s.io/component-base v0.22.2
+	k8s.io/component-helpers => k8s.io/component-helpers v0.22.2
+	k8s.io/controller-manager => k8s.io/controller-manager v0.22.2
+	k8s.io/cri-api => k8s.io/cri-api v0.22.2
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.22.2
+	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.22.2
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.22.2
+	k8s.io/kube-proxy => k8s.io/kube-proxy v0.22.2
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.22.2
+	k8s.io/kubectl => k8s.io/kubectl v0.22.2
+	k8s.io/kubelet => k8s.io/kubelet v0.22.2
+	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.22.2
+	k8s.io/metrics => k8s.io/metrics v0.22.2
+	k8s.io/mount-utils => k8s.io/mount-utils v0.22.2
+	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.22.2
 )

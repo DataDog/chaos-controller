@@ -21,6 +21,12 @@ rules:
 - apiGroups:
   - chaos.datadoghq.com
   resources:
+  - disruptions/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - chaos.datadoghq.com
+  resources:
   - disruptions/status
   verbs:
   - get

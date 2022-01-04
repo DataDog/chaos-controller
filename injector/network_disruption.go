@@ -31,6 +31,15 @@ type networkDisruptionService struct {
 	protocol string
 }
 
+func (n networkDisruptionService) String() string {
+	ip := ""
+	if n.ip != nil {
+		ip = n.ip.String()
+	}
+
+	return fmt.Sprintf("ip=%s; port=%d; protocol=%s", ip, n.port, n.protocol)
+}
+
 // networkDisruptionInjector describes a network disruption
 type networkDisruptionInjector struct {
 	spec       v1beta1.NetworkDisruptionSpec
@@ -218,11 +227,10 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		Mask: net.CIDRMask(32, 32),
 	}
 
-	// allow kubelet -> apiserver communications
-	// resolve the kubernetes.default service created at cluster bootstrap and owning the apiserver cluster IP
-	apiserverIPs, err := resolveHost(i.config.DNSClient, "kubernetes.default")
-	if err != nil {
-		return fmt.Errorf("error resolving apiservers service IP: %w", err)
+	// create cloud provider metadata service ipnet
+	metadataIPNet := &net.IPNet{
+		IP:   net.ParseIP("169.254.169.254"),
+		Mask: net.CIDRMask(32, 32),
 	}
 
 	// set the tx qlen if not already set as it is required to create a prio qdisc without dropping
@@ -336,21 +344,21 @@ func (i *networkDisruptionInjector) applyOperations() error {
 			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 		}
 	} else if i.config.Level == chaostypes.DisruptionLevelNode {
+		// GENERIC SAFEGUARDS
 		// allow SSH connections on all interfaces (port 22/tcp)
 		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
 		}
 
+		// CLOUD PROVIDER SPECIFIC SAFEGUARDS
 		// allow cloud provider health checks on all interfaces(arp)
 		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
 		}
 
-		// allow requests to the Kubernetes apiserver (so kubelet does not declare the node as not ready)
-		for _, apiserverIP := range apiserverIPs {
-			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, apiserverIP, 0, 0, "", "1:1"); err != nil {
-				return fmt.Errorf("error adding filter allowing apiserver communications: %w", err)
-			}
+		// allow cloud provider metadata service communication
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, metadataIPNet, 0, 0, "", "1:1"); err != nil {
+			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
 		}
 	}
 
@@ -364,24 +372,24 @@ func (i *networkDisruptionInjector) applyOperations() error {
 
 // getServices parses the Kubernetes services in the disruption spec and returns a set of (ip, port, protocol) tuples
 func (i *networkDisruptionInjector) getServices() ([]networkDisruptionService, error) {
-	services := []networkDisruptionService{}
+	allServices := []networkDisruptionService{}
 
-	for _, service := range i.spec.Services {
-		// retrieve service
-		k8sService, err := i.config.K8sClient.CoreV1().Services(service.Namespace).Get(context.Background(), service.Name, metav1.GetOptions{})
+	for _, serviceSpec := range i.spec.Services {
+		// retrieve serviceSpec
+		k8sService, err := i.config.K8sClient.CoreV1().Services(serviceSpec.Namespace).Get(context.Background(), serviceSpec.Name, metav1.GetOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s): %w", service.Namespace, service.Name, err)
+			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s): %w", serviceSpec.Namespace, serviceSpec.Name, err)
 		}
 
 		// retrieve endpoints from selector
-		endpoints, err := i.config.K8sClient.CoreV1().Pods(service.Namespace).List(context.Background(), metav1.ListOptions{
+		endpoints, err := i.config.K8sClient.CoreV1().Pods(serviceSpec.Namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: labels.SelectorFromValidatedSet(k8sService.Spec.Selector).String(),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s) endpoints: %w", service.Namespace, service.Name, err)
+			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s) endpoints: %w", serviceSpec.Namespace, serviceSpec.Name, err)
 		}
 
-		i.config.Log.Infow("found service endpoints", "service", service.Name, "endpoints", len(endpoints.Items))
+		services := []networkDisruptionService{}
 
 		// retrieve endpoints IPs
 		for _, endpoint := range endpoints.Items {
@@ -407,9 +415,18 @@ func (i *networkDisruptionInjector) getServices() ([]networkDisruptionService, e
 				protocol: string(port.Protocol),
 			})
 		}
+
+		endpointInfo := ""
+
+		for _, service := range services {
+			allServices = append(allServices, service)
+			endpointInfo = fmt.Sprintf("%s{%s}, ", endpointInfo, service)
+		}
+
+		i.config.Log.Infow("found service endpoints", "service", serviceSpec.Name, "endpoints", endpointInfo)
 	}
 
-	return services, nil
+	return allServices, nil
 }
 
 // addFiltersForServices creates tc filters on given interfaces for services in disruption spec classifying matching packets in the given flowid

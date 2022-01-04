@@ -131,7 +131,7 @@ func (d *Sink) MetricPodsGauge(gauge float64) error {
 	return d.client.Gauge(metricPrefixController+"pods.gauge", gauge, []string{}, 1)
 }
 
-// MetricRestart sends an increment of the
+// MetricRestart sends an increment of the controller restart metric
 func (d *Sink) MetricRestart() error {
 	return d.metricWithStatus(metricPrefixController+"restart", []string{})
 }
@@ -141,19 +141,24 @@ func (d *Sink) MetricValidationFailed(tags []string) error {
 	return d.metricWithStatus(metricPrefixController+"validation.failed", tags)
 }
 
-// MetricValidationCreated increments the failed validation metric
+// MetricValidationCreated increments the created validation metric
 func (d *Sink) MetricValidationCreated(tags []string) error {
 	return d.metricWithStatus(metricPrefixController+"validation.created", tags)
 }
 
-// MetricValidationUpdated increments the failed validation metric
+// MetricValidationUpdated increments the updated validation metric
 func (d *Sink) MetricValidationUpdated(tags []string) error {
 	return d.metricWithStatus(metricPrefixController+"validation.updated", tags)
 }
 
-// MetricValidationDeleted increments the failed validation metric
+// MetricValidationDeleted increments the deleted validation metric
 func (d *Sink) MetricValidationDeleted(tags []string) error {
 	return d.metricWithStatus(metricPrefixController+"validation.deleted", tags)
+}
+
+// MetricInformed increments when the pod informer receives an event to process before reconciliation
+func (d *Sink) MetricInformed(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"informed", tags)
 }
 
 func boolToStatus(succeed bool) string {

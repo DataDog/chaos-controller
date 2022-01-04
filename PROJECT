@@ -1,7 +1,20 @@
 domain: datadoghq.com
 repo: github.com/DataDog/chaos-controller
+projectName: chaos-controller
+layout:
+- go.kubebuilder.io/v3
 resources:
-- group: chaos
+- api:
+    crdVersion: v1beta1
+    namespaced: true
+  controller: true
+  domain: datadoghq.com
+  group: chaos
   kind: Disruption
+  path: github.com/DataDog/chaos-controller/api/v1beta1
   version: v1beta1
-version: "2"
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1beta1
+version: "3"

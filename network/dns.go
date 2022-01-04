@@ -33,12 +33,30 @@ func NewDNSClient() DNSClient {
 func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	ips := []net.IP{}
 
-	// read resolv conf file to get search domain
+	// NOTE: we read both the pod and the node DNS configurations here
+	// in case some of the given hosts are not resolvable from a pod
+
+	// read the pod resolv conf file to get search domain
 	// and other dns configurations
-	dnsConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+	podDNSConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
 	if err != nil {
 		return nil, fmt.Errorf("can't read resolve.conf file: %w", err)
 	}
+
+	// also read the node resolv conf file to get search domain
+	// and other dns configurations
+	nodeDNSConfig, err := dns.ClientConfigFromFile("/mnt/host/etc/resolv.conf")
+	if err != nil {
+		return nil, fmt.Errorf("can't read resolve.conf file: %w", err)
+	}
+
+	// compute resolvers list
+	resolvers := append([]string{}, podDNSConfig.Servers...)
+	resolvers = append(resolvers, nodeDNSConfig.Servers...)
+
+	// compute possible names to resolve
+	names := append([]string{}, podDNSConfig.NameList(host)...)
+	names = append(names, nodeDNSConfig.NameList(host)...)
 
 	// do the request on the first configured dns resolver
 	dnsClient := dns.Client{}
@@ -46,11 +64,11 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 
 	err = retry.Do(func() error {
 		// query possible resolvers and fqdn based on servers and search domains specified in the dns configuration
-		for _, name := range dnsConfig.NameList(host) {
+		for _, name := range names {
 			dnsMessage := dns.Msg{}
 			dnsMessage.SetQuestion(name, dns.TypeA)
 
-			for _, server := range dnsConfig.Servers {
+			for _, server := range resolvers {
 				response, _, err = dnsClient.Exchange(&dnsMessage, fmt.Sprintf("%s:53", server))
 				if response != nil && len(response.Answer) > 0 {
 					return nil

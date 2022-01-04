@@ -160,3 +160,9 @@ func (n *Sink) MetricValidationDeleted(tags []string) error {
 
 	return nil
 }
+
+func (n *Sink) MetricInformed(tags []string) error {
+	fmt.Printf("NOOP: MetricInformed %s\n", tags)
+
+	return nil
+}

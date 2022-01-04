@@ -11,11 +11,15 @@ bin/handler/handler
 bin/chaosli/chaosli.tar.gz
 bin/chaosli/chaosli_darwin_amd64
 bin/chaosli/chaosli_darwin_amd64.sha256sum
+cli/chaosli/cmd/pkged.go
 out
 dist
 
 # Test binary, build with `go test -c`
 *.test
+
+# Test dir, autocreated for envtest
+testbin/
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
