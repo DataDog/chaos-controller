@@ -23,12 +23,13 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/DataDog/chaos-controller/safemode"
 	"math"
 	"math/rand"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/DataDog/chaos-controller/safemode"
 
 	"github.com/cenkalti/backoff"
 	"go.uber.org/zap"
@@ -79,7 +80,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 	ExpiredDisruptionGCDelay              time.Duration
-	SafetyNets							  []safemode.Safemode
+	SafetyNets                            []safemode.Safemode
 }
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -187,9 +188,7 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 					r.log.Errorw("error checking for safety nets", "error", err)
 				}
 
-				for _, each := range response {
-					responses = append(responses, each)
-				}
+				responses = append(responses, response...)
 			}
 
 			if len(responses) != 0 {
@@ -200,7 +199,6 @@ func (r *DisruptionReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				return ctrl.Result{}, nil
 			}
 		}
-
 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, disruptionFinalizer)

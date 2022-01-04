@@ -8,6 +8,7 @@ package safemode
 import (
 	"context"
 	"fmt"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
@@ -16,8 +17,8 @@ import (
 )
 
 type Disk struct {
-	dis         v1beta1.Disruption
-	client      client.Client
+	dis    v1beta1.Disruption
+	client client.Client
 }
 
 // CreationSafetyNets Refer to safemode.Safemode interface for documentation
@@ -26,11 +27,10 @@ func (sm *Disk) CreationSafetyNets() ([]string, error) {
 	// run through the list of safety nets
 	if caught, err := sm.safetyNetSpecificContainDisk(); err != nil {
 		return nil, err
-	} else {
-		if caught {
-			safetyNetResponses = append(safetyNetResponses, " The specified disruption specifies containers to target on a disk disruption which will target ALL containers, not just the ones specified.")
-		}
+	} else if caught {
+		safetyNetResponses = append(safetyNetResponses, " The specified disruption specifies containers to target on a disk disruption which will target ALL containers, not just the ones specified.")
 	}
+
 	return safetyNetResponses, nil
 }
 
@@ -64,14 +64,15 @@ func (sm *Disk) safetyNetSpecificContainDisk() (bool, error) {
 	}
 
 	if sm.dis.Spec.Safemode.IgnoreSpecificContainDisk {
-		return false,nil
+		return false, nil
 	}
 
 	pods := &corev1.PodList{}
 	listOptions := &client.ListOptions{
-		Namespace: sm.dis.ObjectMeta.Namespace,
+		Namespace:     sm.dis.ObjectMeta.Namespace,
 		LabelSelector: labels.SelectorFromValidatedSet(sm.dis.Spec.Selector),
 	}
+
 	err := sm.client.List(context.Background(), pods, listOptions)
 	if err != nil {
 		return false, fmt.Errorf("error listing target pods: %w", err)
@@ -79,11 +80,10 @@ func (sm *Disk) safetyNetSpecificContainDisk() (bool, error) {
 
 	// if the number of containers in the targets != the number of containers described in the spec, safety net goes off
 	for _, pod := range pods.Items {
-		if len(pod.Spec.Containers) != len(sm.dis.Spec.Containers){
+		if len(pod.Spec.Containers) != len(sm.dis.Spec.Containers) {
 			return true, nil
 		}
 	}
-
 
 	return false, nil
 }
