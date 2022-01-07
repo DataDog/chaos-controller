@@ -57,7 +57,7 @@ restart:
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:trivialVersions=true,preserveUnknownFields=false,crdVersions=v1beta1 paths="./..." output:crd:dir=./chart/templates/crds/ output:rbac:dir=./chart/templates/
+	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:trivialVersions=true,preserveUnknownFields=false,crdVersions=v1 paths="./..." output:crd:dir=./chart/templates/crds/ output:rbac:dir=./chart/templates/
 
 # Run go fmt against code
 fmt:
@@ -121,7 +121,7 @@ minikube-start:
 		--container-runtime=${container-runtime} \
 		--memory=${minikube-memory} \
 		--cpus=4 \
-		--kubernetes-version=1.19.14 \
+		--kubernetes-version=1.22.5 \
 		--disk-size=50GB \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
 		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2021-01-18.iso

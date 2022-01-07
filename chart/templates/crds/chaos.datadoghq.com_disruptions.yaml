@@ -1,10 +1,10 @@
 
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.2
+    controller-gen.kubebuilder.io/version: v0.2.4
   creationTimestamp: null
   name: disruptions.chaos.datadoghq.com
 spec:
@@ -16,342 +16,343 @@ spec:
     shortNames:
     - dis
     singular: disruption
-  preserveUnknownFields: false
   scope: Namespaced
-  validation:
-    openAPIV3Schema:
-      description: Disruption is the Schema for the disruptions API
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          description: DisruptionSpec defines the desired state of Disruption
-          properties:
-            advancedSelector:
-              items:
-                description: A label selector requirement is a selector that contains
-                  values, a key, and an operator that relates the key and values.
-                properties:
-                  key:
-                    description: key is the label key that the selector applies to.
-                    type: string
-                  operator:
-                    description: operator represents a key's relationship to a set
-                      of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-                    type: string
-                  values:
-                    description: values is an array of string values. If the operator
-                      is In or NotIn, the values array must be non-empty. If the operator
-                      is Exists or DoesNotExist, the values array must be empty. This
-                      array is replaced during a strategic merge patch.
-                    items:
-                      type: string
-                    type: array
-                required:
-                - key
-                - operator
-                type: object
-              nullable: true
-              type: array
-            containerFailure:
-              description: ContainerFailureSpec represents a container failure injection
-              nullable: true
-              properties:
-                forced:
-                  type: boolean
-              type: object
-            containers:
-              items:
-                type: string
-              type: array
-            count:
-              anyOf:
-              - type: integer
-              - type: string
-              x-kubernetes-int-or-string: true
-            cpuPressure:
-              description: CPUPressureSpec represents a cpu pressure disruption
-              nullable: true
-              type: object
-            diskPressure:
-              description: DiskPressureSpec represents a disk pressure disruption
-              nullable: true
-              properties:
-                path:
-                  type: string
-                throttling:
-                  description: DiskPressureThrottlingSpec represents a throttle on
-                    read and write disk operations
-                  properties:
-                    readBytesPerSec:
-                      type: integer
-                    writeBytesPerSec:
-                      type: integer
-                  type: object
-              required:
-              - path
-              - throttling
-              type: object
-            dns:
-              description: DNSDisruptionSpec represents a dns disruption
-              items:
-                description: HostRecordPair represents a hostname and a corresponding
-                  dns record override
-                properties:
-                  hostname:
-                    type: string
-                  record:
-                    description: DNSRecord represents a type of DNS Record, such as
-                      A or CNAME, and the value of that record
-                    properties:
-                      type:
-                        type: string
-                      value:
-                        type: string
-                    required:
-                    - type
-                    - value
-                    type: object
-                required:
-                - hostname
-                - record
-                type: object
-              nullable: true
-              type: array
-            dryRun:
-              type: boolean
-            duration:
-              type: string
-            grpc:
-              description: GRPCDisruptionSpec represents a gRPC disruption
-              nullable: true
-              properties:
-                endpoints:
-                  items:
-                    description: EndpointAlteration represents an endpoint to disrupt
-                      and the corresponding error to return
-                    properties:
-                      endpoint:
-                        type: string
-                      error:
-                        enum:
-                        - OK
-                        - CANCELED
-                        - UNKNOWN
-                        - INVALID_ARGUMENT
-                        - DEADLINE_EXCEEDED
-                        - NOT_FOUND
-                        - ALREADY_EXISTS
-                        - PERMISSION_DENIED
-                        - RESOURCE_EXHAUSTED
-                        - FAILED_PRECONDITION
-                        - ABORTED
-                        - OUT_OF_RANGE
-                        - UNIMPLEMENTED
-                        - INTERNAL
-                        - UNAVAILABLE
-                        - DATA_LOSS
-                        - UNAUTHENTICATED
-                        type: string
-                      override:
-                        type: string
-                      queryPercent:
-                        maximum: 100
-                        minimum: 0
-                        type: integer
-                    required:
-                    - endpoint
-                    type: object
-                  type: array
-                port:
-                  maximum: 65535
-                  minimum: 1
-                  type: integer
-              required:
-              - endpoints
-              - port
-              type: object
-            level:
-              description: DisruptionLevel represents which level the disruption should
-                be injected at
-              enum:
-              - pod
-              - node
-              - ""
-              type: string
-            network:
-              description: NetworkDisruptionSpec represents a network disruption injection
-              nullable: true
-              properties:
-                allowedHosts:
-                  items:
-                    properties:
-                      host:
-                        type: string
-                      port:
-                        maximum: 65535
-                        minimum: 0
-                        type: integer
-                      protocol:
-                        enum:
-                        - tcp
-                        - udp
-                        - ""
-                        type: string
-                    type: object
-                  nullable: true
-                  type: array
-                bandwidthLimit:
-                  minimum: 0
-                  type: integer
-                corrupt:
-                  maximum: 100
-                  minimum: 0
-                  type: integer
-                delay:
-                  maximum: 60000
-                  minimum: 0
-                  type: integer
-                delayJitter:
-                  maximum: 100
-                  minimum: 0
-                  type: integer
-                drop:
-                  maximum: 100
-                  minimum: 0
-                  type: integer
-                duplicate:
-                  maximum: 100
-                  minimum: 0
-                  type: integer
-                flow:
-                  enum:
-                  - egress
-                  - ingress
-                  type: string
-                hosts:
-                  items:
-                    properties:
-                      host:
-                        type: string
-                      port:
-                        maximum: 65535
-                        minimum: 0
-                        type: integer
-                      protocol:
-                        enum:
-                        - tcp
-                        - udp
-                        - ""
-                        type: string
-                    type: object
-                  nullable: true
-                  type: array
-                port:
-                  maximum: 65535
-                  minimum: 0
-                  nullable: true
-                  type: integer
-                services:
-                  items:
-                    properties:
-                      name:
-                        type: string
-                      namespace:
-                        type: string
-                    required:
-                    - name
-                    - namespace
-                    type: object
-                  nullable: true
-                  type: array
-              type: object
-            nodeFailure:
-              description: NodeFailureSpec represents a node failure injection
-              nullable: true
-              properties:
-                shutdown:
-                  type: boolean
-              type: object
-            onInit:
-              type: boolean
-            selector:
-              additionalProperties:
-                type: string
-              description: Set is a map of label:value. It implements Labels.
-              nullable: true
-              type: object
-          required:
-          - count
-          type: object
-        status:
-          description: DisruptionStatus defines the observed state of Disruption
-          properties:
-            ignoredTargets:
-              items:
-                type: string
-              nullable: true
-              type: array
-            injectionStatus:
-              description: DisruptionInjectionStatus represents the injection status
-                of a disruption
-              enum:
-              - NotInjected
-              - PartiallyInjected
-              - Injected
-              type: string
-            isInjected:
-              type: boolean
-            isStuckOnRemoval:
-              type: boolean
-            targets:
-              items:
-                type: string
-              nullable: true
-              type: array
-            userInfo:
-              description: UserInfo holds the information about the user needed to
-                implement the user.Info interface.
-              nullable: true
-              properties:
-                extra:
-                  additionalProperties:
-                    description: ExtraValue masks the value so protobuf can generate
-                    items:
-                      type: string
-                    type: array
-                  description: Any additional information provided by the authenticator.
-                  type: object
-                groups:
-                  description: The names of groups this user is a part of.
-                  items:
-                    type: string
-                  type: array
-                uid:
-                  description: A unique value that identifies this user across time.
-                    If this user is deleted and another user by the same name is added,
-                    they will have different UIDs.
-                  type: string
-                username:
-                  description: The name that uniquely identifies this user among all
-                    active users.
-                  type: string
-              type: object
-          type: object
-      type: object
-  version: v1beta1
   versions:
   - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: Disruption is the Schema for the disruptions API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DisruptionSpec defines the desired state of Disruption
+            properties:
+              advancedSelector:
+                items:
+                  description: A label selector requirement is a selector that contains
+                    values, a key, and an operator that relates the key and values.
+                  properties:
+                    key:
+                      description: key is the label key that the selector applies
+                        to.
+                      type: string
+                    operator:
+                      description: operator represents a key's relationship to a set
+                        of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                      type: string
+                    values:
+                      description: values is an array of string values. If the operator
+                        is In or NotIn, the values array must be non-empty. If the
+                        operator is Exists or DoesNotExist, the values array must
+                        be empty. This array is replaced during a strategic merge
+                        patch.
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - key
+                  - operator
+                  type: object
+                nullable: true
+                type: array
+              containerFailure:
+                description: ContainerFailureSpec represents a container failure injection
+                nullable: true
+                properties:
+                  forced:
+                    type: boolean
+                type: object
+              containers:
+                items:
+                  type: string
+                type: array
+              count:
+                anyOf:
+                - type: integer
+                - type: string
+                x-kubernetes-int-or-string: true
+              cpuPressure:
+                description: CPUPressureSpec represents a cpu pressure disruption
+                nullable: true
+                type: object
+              diskPressure:
+                description: DiskPressureSpec represents a disk pressure disruption
+                nullable: true
+                properties:
+                  path:
+                    type: string
+                  throttling:
+                    description: DiskPressureThrottlingSpec represents a throttle
+                      on read and write disk operations
+                    properties:
+                      readBytesPerSec:
+                        type: integer
+                      writeBytesPerSec:
+                        type: integer
+                    type: object
+                required:
+                - path
+                - throttling
+                type: object
+              dns:
+                description: DNSDisruptionSpec represents a dns disruption
+                items:
+                  description: HostRecordPair represents a hostname and a corresponding
+                    dns record override
+                  properties:
+                    hostname:
+                      type: string
+                    record:
+                      description: DNSRecord represents a type of DNS Record, such
+                        as A or CNAME, and the value of that record
+                      properties:
+                        type:
+                          type: string
+                        value:
+                          type: string
+                      required:
+                      - type
+                      - value
+                      type: object
+                  required:
+                  - hostname
+                  - record
+                  type: object
+                nullable: true
+                type: array
+              dryRun:
+                type: boolean
+              duration:
+                type: string
+              grpc:
+                description: GRPCDisruptionSpec represents a gRPC disruption
+                nullable: true
+                properties:
+                  endpoints:
+                    items:
+                      description: EndpointAlteration represents an endpoint to disrupt
+                        and the corresponding error to return
+                      properties:
+                        endpoint:
+                          type: string
+                        error:
+                          enum:
+                          - OK
+                          - CANCELED
+                          - UNKNOWN
+                          - INVALID_ARGUMENT
+                          - DEADLINE_EXCEEDED
+                          - NOT_FOUND
+                          - ALREADY_EXISTS
+                          - PERMISSION_DENIED
+                          - RESOURCE_EXHAUSTED
+                          - FAILED_PRECONDITION
+                          - ABORTED
+                          - OUT_OF_RANGE
+                          - UNIMPLEMENTED
+                          - INTERNAL
+                          - UNAVAILABLE
+                          - DATA_LOSS
+                          - UNAUTHENTICATED
+                          type: string
+                        override:
+                          type: string
+                        queryPercent:
+                          maximum: 100
+                          minimum: 0
+                          type: integer
+                      required:
+                      - endpoint
+                      type: object
+                    type: array
+                  port:
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                required:
+                - endpoints
+                - port
+                type: object
+              level:
+                description: DisruptionLevel represents which level the disruption
+                  should be injected at
+                enum:
+                - pod
+                - node
+                - ""
+                type: string
+              network:
+                description: NetworkDisruptionSpec represents a network disruption
+                  injection
+                nullable: true
+                properties:
+                  allowedHosts:
+                    items:
+                      properties:
+                        host:
+                          type: string
+                        port:
+                          maximum: 65535
+                          minimum: 0
+                          type: integer
+                        protocol:
+                          enum:
+                          - tcp
+                          - udp
+                          - ""
+                          type: string
+                      type: object
+                    nullable: true
+                    type: array
+                  bandwidthLimit:
+                    minimum: 0
+                    type: integer
+                  corrupt:
+                    maximum: 100
+                    minimum: 0
+                    type: integer
+                  delay:
+                    maximum: 60000
+                    minimum: 0
+                    type: integer
+                  delayJitter:
+                    maximum: 100
+                    minimum: 0
+                    type: integer
+                  drop:
+                    maximum: 100
+                    minimum: 0
+                    type: integer
+                  duplicate:
+                    maximum: 100
+                    minimum: 0
+                    type: integer
+                  flow:
+                    enum:
+                    - egress
+                    - ingress
+                    type: string
+                  hosts:
+                    items:
+                      properties:
+                        host:
+                          type: string
+                        port:
+                          maximum: 65535
+                          minimum: 0
+                          type: integer
+                        protocol:
+                          enum:
+                          - tcp
+                          - udp
+                          - ""
+                          type: string
+                      type: object
+                    nullable: true
+                    type: array
+                  port:
+                    maximum: 65535
+                    minimum: 0
+                    nullable: true
+                    type: integer
+                  services:
+                    items:
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                    nullable: true
+                    type: array
+                type: object
+              nodeFailure:
+                description: NodeFailureSpec represents a node failure injection
+                nullable: true
+                properties:
+                  shutdown:
+                    type: boolean
+                type: object
+              onInit:
+                type: boolean
+              selector:
+                additionalProperties:
+                  type: string
+                description: Set is a map of label:value. It implements Labels.
+                nullable: true
+                type: object
+            required:
+            - count
+            type: object
+          status:
+            description: DisruptionStatus defines the observed state of Disruption
+            properties:
+              ignoredTargets:
+                items:
+                  type: string
+                nullable: true
+                type: array
+              injectionStatus:
+                description: DisruptionInjectionStatus represents the injection status
+                  of a disruption
+                enum:
+                - NotInjected
+                - PartiallyInjected
+                - Injected
+                type: string
+              isInjected:
+                type: boolean
+              isStuckOnRemoval:
+                type: boolean
+              targets:
+                items:
+                  type: string
+                nullable: true
+                type: array
+              userInfo:
+                description: UserInfo holds the information about the user needed
+                  to implement the user.Info interface.
+                nullable: true
+                properties:
+                  extra:
+                    additionalProperties:
+                      description: ExtraValue masks the value so protobuf can generate
+                      items:
+                        type: string
+                      type: array
+                    description: Any additional information provided by the authenticator.
+                    type: object
+                  groups:
+                    description: The names of groups this user is a part of.
+                    items:
+                      type: string
+                    type: array
+                  uid:
+                    description: A unique value that identifies this user across time.
+                      If this user is deleted and another user by the same name is
+                      added, they will have different UIDs.
+                    type: string
+                  username:
+                    description: The name that uniquely identifies this user among
+                      all active users.
+                    type: string
+                type: object
+            type: object
+        type: object
     served: true
     storage: true
 status:
