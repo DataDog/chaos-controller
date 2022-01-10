@@ -1,4 +1,4 @@
-**Oldest Kubernetes version supported: 1.15**
+**Oldest Kubernetes version supported: 1.16**
 
 > :warning: **Kubernetes version 1.20.x is not supported!** _This [Kubernetes issue](https://github.com/kubernetes/kubernetes/issues/97288) prevents the controller from running properly on Kubernetes 1.20.0-1.20.4. Earlier versions of Kubernetes as well as 1.20.5 and later are still supported._
 
