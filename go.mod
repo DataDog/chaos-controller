@@ -8,7 +8,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/containerd/containerd v1.5.8
+	github.com/containerd/containerd v1.5.9
 	github.com/coreos/go-iptables v0.6.0
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200916142827-bd33bbf0497b+incompatible
 	github.com/fsnotify/fsnotify v1.4.9
