@@ -148,99 +148,99 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, nil
 		}
 	} else {
-			if err := r.validateDisruptionSpec(instance); err != nil {
-				return ctrl.Result{Requeue: false}, err
+		if err := r.validateDisruptionSpec(instance); err != nil {
+			return ctrl.Result{Requeue: false}, err
+		}
+
+		// handle generic safety nets if safemode is enabled
+		if !instance.Spec.Safemode.IgnoreAll {
+			// initialize all relevant safety nets for the first time
+			if len(r.SafetyNets) == 0 {
+				r.SafetyNets = []safemode.Safemode{}
+				r.SafetyNets = safemode.AddAllSafemodeObjects(*instance, r.Client)
 			}
 
-			// handle generic safety nets if safemode is enabled
-			if !instance.Spec.Safemode.IgnoreAll {
-				// initialize all relevant safety nets for the first time
-				if len(r.SafetyNets) == 0 {
-					r.SafetyNets = []safemode.Safemode{}
-					r.SafetyNets = safemode.AddAllSafemodeObjects(*instance, r.Client)
+			responses := []string{}
+
+			for _, safetyNet := range r.SafetyNets {
+				// safety nets may occur throughout the reconciler, the safety nets used at creation are done here
+				response, err := safetyNet.CreationSafetyNets()
+				if err != nil {
+					r.log.Errorw("error checking for safety nets", "error", err)
 				}
 
-				responses := []string{}
+				responses = append(responses, response...)
+			}
 
-				for _, safetyNet := range r.SafetyNets {
-					// safety nets may occur throughout the reconciler, the safety nets used at creation are done here
-					response, err := safetyNet.CreationSafetyNets()
-					if err != nil {
-						r.log.Errorw("error checking for safety nets", "error", err)
-					}
-
-					responses = append(responses, response...)
+			if len(responses) != 0 {
+				for _, response := range responses {
+					r.Recorder.Event(instance, corev1.EventTypeWarning, "SafetyNet Catch", response)
 				}
+				// stop the reconcile loop if a safetynet was caught.
+				return ctrl.Result{}, nil
+			}
+		}
 
-				if len(responses) != 0 {
-					for _, response := range responses {
-						r.Recorder.Event(instance, corev1.EventTypeWarning, "SafetyNet Catch", response)
-					}
-					// stop the reconcile loop if a safetynet was caught.
-					return ctrl.Result{}, nil
-				}
+		// the injection is being created or modified, apply needed actions
+		controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
+
+		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
+		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the duration's deadline. We compare it to negative ExpiredDisruptionGCDelay,
+		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
+		if calculateRemainingDuration(*instance) <= (-1 * r.ExpiredDisruptionGCDelay) {
+			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
+			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", r.ExpiredDisruptionGCDelay))
+
+			var err error
+
+			if err = r.Client.Delete(context.Background(), instance); err != nil {
+				r.log.Errorw("error deleting disruption after its duration expired", "error", err)
 			}
 
-			// the injection is being created or modified, apply needed actions
-			controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
+			return ctrl.Result{Requeue: true}, err
+		}
 
-			// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
-			// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the duration's deadline. We compare it to negative ExpiredDisruptionGCDelay,
-			// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
-			if calculateRemainingDuration(*instance) <= (-1 * r.ExpiredDisruptionGCDelay) {
-				r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
-				r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", r.ExpiredDisruptionGCDelay))
+		// retrieve targets from label selector
+		if err := r.selectTargets(instance); err != nil {
+			r.log.Errorw("error selecting targets", "error", err)
 
-				var err error
+			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
+		}
 
-				if err = r.Client.Delete(context.Background(), instance); err != nil {
-					r.log.Errorw("error deleting disruption after its duration expired", "error", err)
-				}
+		// start injections
+		if err := r.startInjection(instance); err != nil {
+			r.log.Errorw("error injecting the disruption", "error", err)
 
-				return ctrl.Result{Requeue: true}, err
-			}
+			return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
+		}
 
-			// retrieve targets from label selector
-			if err := r.selectTargets(instance); err != nil {
-				r.log.Errorw("error selecting targets", "error", err)
+		// send injection duration metric representing the time it took to fully inject the disruption until its creation
+		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
 
-				return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
-			}
-
-			// start injections
-			if err := r.startInjection(instance); err != nil {
-				r.log.Errorw("error injecting the disruption", "error", err)
-
-				return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
-			}
-
-			// send injection duration metric representing the time it took to fully inject the disruption until its creation
-			r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
-
-			// update resource status injection
-			// requeue the request if the disruption is not fully injected yet
-			injected, err := r.updateInjectionStatus(instance)
-			if err != nil {
-				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
-			} else if !injected {
-				// requeue after 5-10 seconds, as default 1m is too quick here
-				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
-				r.log.Infow("disruption is not fully injected yet, requeuing", "injectionStatus", instance.Status.InjectionStatus)
-
-				return ctrl.Result{
-					Requeue:      true,
-					RequeueAfter: requeueAfter,
-				}, nil
-			}
-			requeueDelay := time.Duration(math.Max(calculateRemainingDuration(*instance).Seconds(), r.ExpiredDisruptionGCDelay.Seconds())) * time.Second
-
-			r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
+		// update resource status injection
+		// requeue the request if the disruption is not fully injected yet
+		injected, err := r.updateInjectionStatus(instance)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
+		} else if !injected {
+			// requeue after 5-10 seconds, as default 1m is too quick here
+			requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
+			r.log.Infow("disruption is not fully injected yet, requeuing", "injectionStatus", instance.Status.InjectionStatus)
 
 			return ctrl.Result{
-					Requeue:      true,
-					RequeueAfter: requeueDelay,
-				},
-				r.Update(context.Background(), instance)
+				Requeue:      true,
+				RequeueAfter: requeueAfter,
+			}, nil
+		}
+		requeueDelay := time.Duration(math.Max(calculateRemainingDuration(*instance).Seconds(), r.ExpiredDisruptionGCDelay.Seconds())) * time.Second
+
+		r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
+
+		return ctrl.Result{
+				Requeue:      true,
+				RequeueAfter: requeueDelay,
+			},
+			r.Update(context.Background(), instance)
 	}
 	// stop the reconcile loop, there's nothing else to do
 	return ctrl.Result{}, nil
