@@ -139,6 +139,9 @@ var _ = Describe("Disruption Controller", func() {
 			Spec: chaosv1beta1.DisruptionSpec{
 				DryRun:     true,
 				Count:      &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+				Safemode:   &chaosv1beta1.SafemodeSpec{
+					IgnoreAll: true,
+				},
 				Selector:   map[string]string{"foo": "bar"},
 				Containers: []string{"ctn1"},
 				Duration:   "10m",
@@ -229,6 +232,9 @@ var _ = Describe("Disruption Controller", func() {
 				Spec: chaosv1beta1.DisruptionSpec{
 					DryRun:   false,
 					Count:    &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+					Safemode:   &chaosv1beta1.SafemodeSpec{
+						IgnoreAll: true,
+					},
 					Selector: map[string]string{"kubernetes.io/hostname": "minikube"},
 					Level:    chaostypes.DisruptionLevelNode,
 					Network: &chaosv1beta1.NetworkDisruptionSpec{
@@ -258,6 +264,9 @@ var _ = Describe("Disruption Controller", func() {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				DryRun:     true,
 				Count:      &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				Safemode:   &chaosv1beta1.SafemodeSpec{
+					IgnoreAll: true,
+				},
 				Selector:   map[string]string{"foo": "bar"},
 				Containers: []string{"ctn1"},
 				Duration:   "30s",

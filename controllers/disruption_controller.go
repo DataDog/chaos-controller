@@ -148,36 +148,37 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, nil
 		}
 	} else {
-		if err := r.validateDisruptionSpec(instance); err != nil {
-			return ctrl.Result{Requeue: false}, err
-		}
-
-		// handle generic safety nets if safemode is enabled
-		if !instance.Spec.Safemode.IgnoreAll {
-			// initialize all relevant safety nets for the first time
-			if len(r.SafetyNets) == 0 {
-				r.SafetyNets = []safemode.Safemode{}
-				r.SafetyNets = safemode.AddAllSafemodeObjects(*instance, r.Client)
+			if err := r.validateDisruptionSpec(instance); err != nil {
+				return ctrl.Result{Requeue: false}, err
 			}
 
-			responses := []string{}
-
-			for _, safetyNet := range r.SafetyNets {
-				// safety nets may occur throughout the reconciler, the safety nets used at creation are done here
-				response, err := safetyNet.CreationSafetyNets()
-				if err != nil {
-					r.log.Errorw("error checking for safety nets", "error", err)
+			// handle generic safety nets if safemode is enabled
+			if !instance.Spec.Safemode.IgnoreAll {
+				// initialize all relevant safety nets for the first time
+				if len(r.SafetyNets) == 0 {
+					r.SafetyNets = []safemode.Safemode{}
+					r.SafetyNets = safemode.AddAllSafemodeObjects(*instance, r.Client)
 				}
 
-				responses = append(responses, response...)
-			}
+				responses := []string{}
 
-			if len(responses) != 0 {
-				for _, response := range responses {
-					r.Recorder.Event(instance, corev1.EventTypeWarning, "SafetyNet Catch", response)
+				for _, safetyNet := range r.SafetyNets {
+					// safety nets may occur throughout the reconciler, the safety nets used at creation are done here
+					response, err := safetyNet.CreationSafetyNets()
+					if err != nil {
+						r.log.Errorw("error checking for safety nets", "error", err)
+					}
+
+					responses = append(responses, response...)
 				}
-				// stop the reconcile loop if a safetynet was caught.
-				return ctrl.Result{}, nil
+
+				if len(responses) != 0 {
+					for _, response := range responses {
+						r.Recorder.Event(instance, corev1.EventTypeWarning, "SafetyNet Catch", response)
+					}
+					// stop the reconcile loop if a safetynet was caught.
+					return ctrl.Result{}, nil
+				}
 			}
 
 			// the injection is being created or modified, apply needed actions
@@ -240,7 +241,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 					RequeueAfter: requeueDelay,
 				},
 				r.Update(context.Background(), instance)
-		}
 	}
 	// stop the reconcile loop, there's nothing else to do
 	return ctrl.Result{}, nil
