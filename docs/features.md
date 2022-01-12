@@ -31,6 +31,16 @@ If a `duration` is not specified, then a disruption will receive the default dur
 After a disruption's duration expires, the disruption resource will live in k8s for a default of 15 minutes. This can be configured by altering 
 `controller.expiredDisruptionGCDelay` in the controller's config map.
 
+## Pulse
+
+The `Disruption` spec takes a `pulsingDuration` field. It defines the pulsing duration of a disruption of type `cpu_pressure`, `disk_pressure`, `dns_disruption`, `grpc_disruption` or `network_disruption`.
+This field takes a string, which is meant to conform to 
+golang's time.Duration's [string format, e.g., "45s", "15m30s", "4h30m".](https://pkg.go.dev/time#ParseDuration) and have to be greater than 10 milliseconds.
+The disruption will be injected, then sleep for `pulsingDuration`, then be cleaned, then sleep for `pulsingDuration`, and so on until the end of the disruption.
+
+If a `pulsingDuration` is not specified, then a disruption will not be pulsing.
+
+
 ## Targeting
 
 The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the given label selector and will randomly select a number (defined in the `count` field) of matching targets. It's possible to specify multiple label selectors, in which case the controller will select from targets that match all of them. Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.

@@ -285,6 +285,19 @@ spec:
               type: object
             onInit:
               type: boolean
+            pulse:
+              description: DisruptionPulse contains the active disruption duration
+                and the dormant disruption duration
+              nullable: true
+              properties:
+                activeDuration:
+                  type: string
+                dormantDuration:
+                  type: string
+              required:
+              - activeDuration
+              - dormantDuration
+              type: object
             selector:
               additionalProperties:
                 type: string

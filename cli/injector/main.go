@@ -46,26 +46,28 @@ var rootCmd = &cobra.Command{
 }
 
 var (
-	log                 *zap.SugaredLogger
-	dryRun              bool
-	ms                  metrics.Sink
-	sink                string
-	level               string
-	targetContainerIDs  []string
-	targetPodIP         string
-	disruptionName      string
-	disruptionNamespace string
-	chaosNamespace      string
-	targetName          string
-	targetNodeName      string
-	onInit              bool
-	handlerPID          uint32
-	configs             []injector.Config
-	signals             chan os.Signal
-	injectors           []injector.Injector
-	readyToInject       bool
-	dnsServer           string
-	kubeDNS             string
+	log                  *zap.SugaredLogger
+	dryRun               bool
+	ms                   metrics.Sink
+	sink                 string
+	level                string
+	targetContainerIDs   []string
+	targetPodIP          string
+	disruptionName       string
+	disruptionNamespace  string
+	chaosNamespace       string
+	targetName           string
+	targetNodeName       string
+	onInit               bool
+	pulseActiveDuration  time.Duration
+	pulseDormantDuration time.Duration
+	handlerPID           uint32
+	configs              []injector.Config
+	signals              chan os.Signal
+	injectors            []injector.Injector
+	readyToInject        bool
+	dnsServer            string
+	kubeDNS              string
 )
 
 func init() {
@@ -84,6 +86,8 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceVar(&targetContainerIDs, "target-container-ids", []string{}, "Targeted containers ID")
 	rootCmd.PersistentFlags().StringVar(&targetPodIP, "target-pod-ip", "", "Pod IP of targeted pod")
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
+	rootCmd.PersistentFlags().DurationVar(&pulseActiveDuration, "pulse-active-duration", time.Duration(0), "Duration of the pulse in a pulsing disruption (empty if the disruption is not pulsing)")
+	rootCmd.PersistentFlags().DurationVar(&pulseDormantDuration, "pulse-dormant-duration", time.Duration(0), "Duration of the pulse in a pulsing disruption (empty if the disruption is not pulsing)")
 	rootCmd.PersistentFlags().StringVar(&dnsServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
 	rootCmd.PersistentFlags().StringVar(&kubeDNS, "kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
 	rootCmd.PersistentFlags().StringVar(&chaosNamespace, "chaos-namespace", "chaos-engineering", "Namespace that contains this chaos pod")
@@ -271,6 +275,28 @@ func initExitSignalsHandler() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 }
 
+// inject inject all the disruptions from the list of injectors provided and return whether or not there was an error
+func inject(kind string, toInject []injector.Injector) bool {
+	log.Infow("injecting the disruption", "kind", kind)
+	errOnInject := false
+
+	for _, inj := range toInject {
+		// start injection, do not fatal on error so we keep the pod
+		// running, allowing the cleanup to happen
+		if err := inj.Inject(); err != nil {
+			errOnInject = true
+
+			handleMetricError(ms.MetricInjected(false, kind, nil))
+			log.Errorw("disruption injection failed", "error", err)
+		} else {
+			handleMetricError(ms.MetricInjected(true, kind, nil))
+			log.Info("disruption injected, now waiting for an exit signal")
+		}
+	}
+
+	return errOnInject
+}
+
 // injectAndWait injects the disruption with the configured injector and waits
 // for an exit signal to be sent
 func injectAndWait(cmd *cobra.Command, args []string) {
@@ -281,23 +307,8 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	log.Infow("injecting the disruption", "kind", cmd.Name())
-
-	errOnInject := false
-
-	for _, inj := range injectors {
-		// start injection, do not fatal on error so we keep the pod
-		// running, allowing the cleanup to happen
-		if err := inj.Inject(); err != nil {
-			errOnInject = true
-
-			handleMetricError(ms.MetricInjected(false, cmd.Name(), nil))
-			log.Errorw("disruption injection failed", "error", err)
-		} else {
-			handleMetricError(ms.MetricInjected(true, cmd.Name(), nil))
-			log.Info("disruption injected, now waiting for an exit signal")
-		}
-	}
+	// inject all of the injectors
+	errOnInject := inject(cmd.Name(), injectors)
 
 	// create and write readiness probe file if injection succeeded so the pod is marked as ready
 	if !errOnInject {
@@ -329,26 +340,78 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	// if pulsing is enabled, we build the pulsing injectors and we loop until we receive a signal
+	if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
+		pulsingInjectors := []injector.Injector{}
+
+		// build pulsing disruptions
+		for idx, inj := range injectors {
+			if configs[idx].Kind == chaostypes.DisruptionKindContainerFailure || configs[idx].Kind == chaostypes.DisruptionKindNodeFailure {
+				continue
+			}
+			log.Infow("activating pulsing disruption", "kind", cmd.Name(), "disruption_type", configs[idx].Kind)
+			pulsingInjectors = append(pulsingInjectors, inj)
+		}
+
+		if len(pulsingInjectors) > 0 {
+			isInjected := true
+			lastOperationTime := time.Now()
+
+			for {
+				// Check if a signal has been emitted
+				select {
+				case sig := <-signals:
+					log.Infow("an exit signal has been received", "signal", sig.String())
+					return
+				default:
+					// if it has been more than pulseDormantDuration, we inject it again
+					if time.Now().Sub(lastOperationTime) >= pulseDormantDuration && !isInjected {
+						if inject(cmd.Name(), pulsingInjectors) {
+							log.Error("an injector could not inject the disruption successfully, please look at the logs above for more details")
+						}
+						isInjected = !isInjected
+						lastOperationTime = time.Now()
+						// if it has been more than pulseActiveDuration, we clean it again
+					} else if time.Now().Sub(lastOperationTime) >= pulseActiveDuration && isInjected {
+						if errs := clean(cmd.Name(), pulsingInjectors); len(errs) > 0 {
+							log.Error("an injector could not clean the disruption successfully, please look at the logs above for more details")
+						}
+						isInjected = !isInjected
+						lastOperationTime = time.Now()
+					}
+				}
+			}
+		}
+	}
+
 	// wait for an exit signal, this is a blocking call
 	sig := <-signals
 
 	log.Infow("an exit signal has been received", "signal", sig.String())
 }
 
-// cleanAndExit cleans the disruption with the configured injector and exits nicely
-func cleanAndExit(cmd *cobra.Command, args []string) {
+// clean clean all the disruptions from the list of injectors and return the list of errors
+func clean(kind string, toClean []injector.Injector) []error {
+	log.Infow("cleaning the disruption", "kind", kind)
 	errs := []error{}
 
-	for _, inj := range injectors {
+	for _, inj := range toClean {
 		// start cleanup which is retried up to 3 times using an exponential backoff algorithm
 		if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
-			handleMetricError(ms.MetricCleaned(false, cmd.Name(), nil))
+			handleMetricError(ms.MetricCleaned(false, kind, nil))
 
 			errs = append(errs, err)
 		}
 
-		handleMetricError(ms.MetricCleaned(true, cmd.Name(), nil))
+		handleMetricError(ms.MetricCleaned(true, kind, nil))
 	}
+
+	return errs
+}
+
+// cleanAndExit cleans the disruption with the configured injector and exits nicely
+func cleanAndExit(cmd *cobra.Command, args []string) {
+	errs := clean(cmd.Name(), injectors)
 
 	// 1 or more injectors failed to clean, log and fatal
 	if len(errs) != 0 {

@@ -7,6 +7,7 @@ package api
 
 import (
 	"strings"
+	"time"
 
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
@@ -21,21 +22,23 @@ type DisruptionKind interface {
 }
 
 type DisruptionArgs struct {
-	AllowedHosts        []string
-	TargetContainerIDs  []string
-	Level               chaostypes.DisruptionLevel
-	Kind                chaostypes.DisruptionKindName
-	TargetPodIP         string
-	MetricsSink         string
-	DisruptionName      string
-	DisruptionNamespace string
-	TargetName          string
-	TargetNodeName      string
-	DNSServer           string
-	KubeDNS             string
-	ChaosNamespace      string
-	DryRun              bool
-	OnInit              bool
+	AllowedHosts         []string
+	TargetContainerIDs   []string
+	Level                chaostypes.DisruptionLevel
+	Kind                 chaostypes.DisruptionKindName
+	TargetPodIP          string
+	MetricsSink          string
+	DisruptionName       string
+	DisruptionNamespace  string
+	TargetName           string
+	TargetNodeName       string
+	DNSServer            string
+	KubeDNS              string
+	ChaosNamespace       string
+	DryRun               bool
+	OnInit               bool
+	PulseActiveDuration  time.Duration
+	PulseDormantDuration time.Duration
 }
 
 // AppendArgs is a helper function generating common and global args and appending them to the given args array
@@ -63,6 +66,11 @@ func AppendArgs(args []string, xargs DisruptionArgs) []string {
 	// enable chaos handler init container notification
 	if xargs.OnInit {
 		args = append(args, "--on-init")
+	}
+
+	if xargs.PulseActiveDuration > 0 && xargs.PulseDormantDuration > 0 {
+		args = append(args, "--pulse-active-duration", xargs.PulseActiveDuration.String())
+		args = append(args, "--pulse-dormant-duration", xargs.PulseDormantDuration.String())
 	}
 
 	// DNS disruption configs

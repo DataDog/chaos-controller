@@ -83,6 +83,9 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 	spec.Selector = getSelectors()
 	spec.Count = getCount()
 
+	// TODO: Add pulsing
+	spec.Pulse = getPulse()
+
 	if spec.Level == types.DisruptionLevelPod {
 		spec.Containers = getContainers()
 	}
@@ -558,6 +561,13 @@ func getCount() *intstr.IntOrString {
 	wrappedResult := intstr.FromString(result)
 
 	return &wrappedResult
+}
+
+func getPulse() *v1beta1.DisruptionPulse {
+	return &v1beta1.DisruptionPulse{
+		ActiveDuration:  v1beta1.DisruptionDuration("10ms"),
+		DormantDuration: v1beta1.DisruptionDuration("10ms"),
+	}
 }
 
 func getSelectors() labels.Set {
