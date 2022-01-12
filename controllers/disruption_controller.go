@@ -1064,7 +1064,7 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 		disruption := []reconcile.Request{}
 
 		if r.log != nil {
-			r.log.Infow("watching event from pod", "podName", c.GetName(), "podNamespace", c.GetNamespace())
+			r.log.Debugw("watching event from pod", "podName", c.GetName(), "podNamespace", c.GetNamespace())
 		}
 
 		r.handleMetricSinkError(r.MetricsSink.MetricInformed([]string{"podName:" + c.GetName(), "podNamespace:" + c.GetNamespace()}))
