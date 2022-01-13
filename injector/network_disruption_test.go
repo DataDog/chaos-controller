@@ -21,6 +21,7 @@ import (
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -180,6 +181,12 @@ var _ = Describe("Failure", func() {
 
 	JustBeforeEach(func() {
 		inj = NewNetworkDisruptionInjector(spec, config)
+	})
+
+	Describe("getDisruptionKind", func() {
+		It("should return network-disruption", func() {
+			Expect(inj.GetDisruptionKind()).To(Equal(types.DisruptionKindNetworkDisruption))
+		})
 	})
 
 	Describe("inj.Inject", func() {

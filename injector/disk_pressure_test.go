@@ -17,6 +17,7 @@ import (
 	"github.com/DataDog/chaos-controller/disk"
 	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/types"
 )
 
 var _ = Describe("Failure", func() {
@@ -76,6 +77,12 @@ var _ = Describe("Failure", func() {
 		var err error
 		inj, err = NewDiskPressureInjector(spec, config)
 		Expect(err).To(BeNil())
+	})
+
+	Describe("getDisruptionKind", func() {
+		It("should return disk-pressure", func() {
+			Expect(inj.GetDisruptionKind()).To(Equal(types.DisruptionKindDiskPressure))
+		})
 	})
 
 	Describe("injection", func() {

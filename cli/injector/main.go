@@ -275,28 +275,6 @@ func initExitSignalsHandler() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 }
 
-// inject inject all the disruptions from the list of injectors provided and return whether or not there was an error
-func inject(kind string, toInject []injector.Injector) bool {
-	log.Infow("injecting the disruption", "kind", kind)
-	errOnInject := false
-
-	for _, inj := range toInject {
-		// start injection, do not fatal on error so we keep the pod
-		// running, allowing the cleanup to happen
-		if err := inj.Inject(); err != nil {
-			errOnInject = true
-
-			handleMetricError(ms.MetricInjected(false, kind, nil))
-			log.Errorw("disruption injection failed", "error", err)
-		} else {
-			handleMetricError(ms.MetricInjected(true, kind, nil))
-			log.Info("disruption injected, now waiting for an exit signal")
-		}
-	}
-
-	return errOnInject
-}
-
 // injectAndWait injects the disruption with the configured injector and waits
 // for an exit signal to be sent
 func injectAndWait(cmd *cobra.Command, args []string) {
@@ -308,7 +286,22 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	}
 
 	// inject all of the injectors
-	errOnInject := inject(cmd.Name(), injectors)
+	log.Infow("injecting the disruption", "kind", cmd.Name())
+	errOnInject := false
+
+	for _, inj := range injectors {
+		// start injection, do not fatal on error so we keep the pod
+		// running, allowing the cleanup to happen
+		if err := inj.Inject(); err != nil {
+			errOnInject = true
+
+			handleMetricError(ms.MetricInjected(false, cmd.Name(), nil))
+			log.Errorw("disruption injection failed", "error", err)
+		} else {
+			handleMetricError(ms.MetricInjected(true, cmd.Name(), nil))
+			log.Info("disruption injected, now waiting for an exit signal")
+		}
+	}
 
 	// create and write readiness probe file if injection succeeded so the pod is marked as ready
 	if !errOnInject {
@@ -345,11 +338,16 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		pulsingInjectors := []injector.Injector{}
 
 		// build pulsing disruptions
-		for idx, inj := range injectors {
-			if configs[idx].Kind == chaostypes.DisruptionKindContainerFailure || configs[idx].Kind == chaostypes.DisruptionKindNodeFailure {
+		for _, inj := range injectors {
+			discruptionKind := inj.GetDisruptionKind()
+			log.Info("%s", discruptionKind)
+
+			// ContainerFailure and NodeFailure can't be pulsing disruptions.
+			if discruptionKind == chaostypes.DisruptionKindContainerFailure || discruptionKind == chaostypes.DisruptionKindNodeFailure {
 				continue
 			}
-			log.Infow("activating pulsing disruption", "kind", cmd.Name(), "disruption_type", configs[idx].Kind)
+
+			log.Infow("activating pulsing disruption", "kind", cmd.Name(), "disruption_kind", discruptionKind)
 			pulsingInjectors = append(pulsingInjectors, inj)
 		}
 
@@ -362,23 +360,32 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 				select {
 				case sig := <-signals:
 					log.Infow("an exit signal has been received", "signal", sig.String())
+
 					return
 				default:
-					// if it has been more than pulseDormantDuration, we inject it again
 					if time.Now().Sub(lastOperationTime) >= pulseDormantDuration && !isInjected {
-						if inject(cmd.Name(), pulsingInjectors) {
-							log.Error("an injector could not inject the disruption successfully, please look at the logs above for more details")
+						for _, inj := range pulsingInjectors {
+							if err := inj.Inject(); err != nil {
+								log.Errorw("pulsing disruption injection failed", "error", err)
+							} else {
+								log.Info("pulsing disruption injected")
+							}
 						}
-						isInjected = !isInjected
-						lastOperationTime = time.Now()
-						// if it has been more than pulseActiveDuration, we clean it again
 					} else if time.Now().Sub(lastOperationTime) >= pulseActiveDuration && isInjected {
-						if errs := clean(cmd.Name(), pulsingInjectors); len(errs) > 0 {
-							log.Error("an injector could not clean the disruption successfully, please look at the logs above for more details")
+						for _, inj := range pulsingInjectors {
+							// start cleanup which is retried up to 3 times using an exponential backoff algorithm
+							if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
+								log.Errorw("pulsing disruption clean failed", "error", err)
+							} else {
+								log.Info("pulsing disruption cleaned")
+							}
 						}
-						isInjected = !isInjected
-						lastOperationTime = time.Now()
+					} else {
+						continue
 					}
+
+					isInjected = !isInjected
+					lastOperationTime = time.Now()
 				}
 			}
 		}
@@ -390,28 +397,21 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	log.Infow("an exit signal has been received", "signal", sig.String())
 }
 
-// clean clean all the disruptions from the list of injectors and return the list of errors
-func clean(kind string, toClean []injector.Injector) []error {
-	log.Infow("cleaning the disruption", "kind", kind)
+// cleanAndExit cleans the disruption with the configured injector and exits nicely
+func cleanAndExit(cmd *cobra.Command, args []string) {
+	log.Infow("cleaning the disruption", "kind", cmd.Name())
 	errs := []error{}
 
-	for _, inj := range toClean {
+	for _, inj := range injectors {
 		// start cleanup which is retried up to 3 times using an exponential backoff algorithm
 		if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
-			handleMetricError(ms.MetricCleaned(false, kind, nil))
+			handleMetricError(ms.MetricCleaned(false, cmd.Name(), nil))
 
 			errs = append(errs, err)
 		}
 
-		handleMetricError(ms.MetricCleaned(true, kind, nil))
+		handleMetricError(ms.MetricCleaned(true, cmd.Name(), nil))
 	}
-
-	return errs
-}
-
-// cleanAndExit cleans the disruption with the configured injector and exits nicely
-func cleanAndExit(cmd *cobra.Command, args []string) {
-	errs := clean(cmd.Name(), injectors)
 
 	// 1 or more injectors failed to clean, log and fatal
 	if len(errs) != 0 {

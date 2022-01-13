@@ -998,6 +998,13 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			level = chaostypes.DisruptionLevelPod
 		}
 
+		pulseActiveDuration := time.Duration(0)
+		pulseDormantDuration := time.Duration(0)
+		if instance.Spec.Pulse != nil {
+			pulseActiveDuration = instance.Spec.Pulse.ActiveDuration.Duration()
+			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
+		}
+
 		xargs := chaosapi.DisruptionArgs{
 			Level:                level,
 			Kind:                 kind,
@@ -1009,8 +1016,8 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			DisruptionName:       instance.Name,
 			DisruptionNamespace:  instance.Namespace,
 			OnInit:               instance.Spec.OnInit,
-			PulseActiveDuration:  instance.Spec.Pulse.ActiveDuration.Duration(),
-			PulseDormantDuration: instance.Spec.Pulse.DormantDuration.Duration(),
+			PulseActiveDuration:  pulseActiveDuration,
+			PulseDormantDuration: pulseDormantDuration,
 			MetricsSink:          r.MetricsSink.GetSinkName(),
 			AllowedHosts:         r.InjectorNetworkDisruptionAllowedHosts,
 			DNSServer:            r.InjectorDNSDisruptionDNSServer,

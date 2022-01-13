@@ -16,6 +16,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -75,6 +76,10 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 		config:     config,
 		operations: []linkOperation{},
 	}
+}
+
+func (i networkDisruptionInjector) GetDisruptionKind() types.DisruptionKindName {
+	return types.DisruptionKindNetworkDisruption
 }
 
 // Inject injects the given network disruption into the given container

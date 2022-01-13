@@ -13,6 +13,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
@@ -57,6 +58,10 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 		spec:   spec,
 		config: config,
 	}, err
+}
+
+func (i DNSDisruptionInjector) GetDisruptionKind() types.DisruptionKindName {
+	return types.DisruptionKindDNSDisruption
 }
 
 // Inject injects the given dns disruption into the given container

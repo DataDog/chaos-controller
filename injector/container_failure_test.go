@@ -11,6 +11,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/process"
+	"github.com/DataDog/chaos-controller/types"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -58,6 +59,12 @@ var _ = Describe("Failure", func() {
 
 	JustBeforeEach(func() {
 		inj = NewContainerFailureInjector(spec, config)
+	})
+
+	Describe("getDisruptionKind", func() {
+		It("should return container-failure", func() {
+			Expect(inj.GetDisruptionKind()).To(Equal(types.DisruptionKindContainerFailure))
+		})
 	})
 
 	Describe("injection", func() {

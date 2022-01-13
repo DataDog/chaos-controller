@@ -68,6 +68,10 @@ func NewDiskPressureInjector(spec v1beta1.DiskPressureSpec, config DiskPressureI
 	}, nil
 }
 
+func (i diskPressureInjector) GetDisruptionKind() types.DisruptionKindName {
+	return types.DisruptionKindDiskPressure
+}
+
 func (i diskPressureInjector) Inject() error {
 	// add read throttle
 	if i.spec.Throttling.ReadBytesPerSec != nil {

@@ -15,6 +15,7 @@ import (
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -84,6 +85,13 @@ var _ = Describe("Failure", func() {
 		inj, err = NewDNSDisruptionInjector(spec, config)
 		Expect(err).To(BeNil())
 	})
+
+	Describe("getDisruptionKind", func() {
+		It("should return dns-disruption", func() {
+			Expect(inj.GetDisruptionKind()).To(Equal(types.DisruptionKindDNSDisruption))
+		})
+	})
+
 	Describe("inj.Inject", func() {
 		JustBeforeEach(func() {
 			Expect(inj.Inject()).To(BeNil())
