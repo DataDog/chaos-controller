@@ -5,6 +5,7 @@
 If you do not plan to alter source code, you can install **Chaos Controller** to your existing Kubernetes environments by running:
 
 ```
+git pull -t
 make oss-install
 kubectl apply -f https://raw.githubusercontent.com/DataDog/chaos-controller/main/chart/install.yaml
 ```
