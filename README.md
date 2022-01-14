@@ -23,29 +23,6 @@ The Chaos Controller allows us to simulate a variety of small and large scenario
 
 Chaos Engineering is necessarily different from system to system. We encourage you to try out this tool, and extend it for your own use cases. If you want to run the source code locally to make and test implementation changes, visit the [Contributing Docs](CONTRIBUTING.md) which explain how to spin up chaos-controller source code on Minikube. By the way, we welcome Pull Requests.
 
-## Quick Installation
-
-> :mega: _**Datadog engineers:** please reach out to Chaos Engineering before deploying to a new cluster! :pray: :bow:_
-
-If you do not plan to alter source code, you can install **Chaos Controller** to your existing Kubernetes environments by running:
-
-```
-kubectl apply -f https://raw.githubusercontent.com/DataDog/chaos-controller/main/chart/install.yaml
-```
-
-This `install.yaml` is generated for each new release and will always point to the latest stable version of the controller in Docker Hub.
-
-If you use Helm you can install all the resources as follows:
-```
-helm install -f values.yaml chaos-controller ./chart
-```
-
-> :mega: _**Datadog engineers:** please reach out to Chaos Engineering before deploying to a new cluster! :pray: :bow:_
-
-> :warning: _[cert-manager](https://cert-manager.io/docs/installation/kubernetes/) must be installed for the admission controller to get a self-signed certificate._
-
-> :open_book: _The [Advanced Installation Docs](docs/installation.md) contain flags to customize webhooks, annotate injector pods, etc._
-
 ## Getting Started
 
 Disruptions are built as short-living resources which should be manually created and removed once your experiments are done. They should not be part of any application deployment. The `Disruption` resource is **immutable**. Once applied, you can't edit it. If you need to change the disruption definition, you need to delete the existing resource and to re-create it.
