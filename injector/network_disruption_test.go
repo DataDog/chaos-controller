@@ -185,7 +185,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("getDisruptionKind", func() {
 		It("should return network-disruption", func() {
-			Expect(inj.GetDisruptionKind()).To(Equal(types.DisruptionKindNetworkDisruption))
+			Expect(string(inj.GetDisruptionKind())).To(Equal(types.DisruptionKindNetworkDisruption))
 		})
 	})
 

@@ -63,7 +63,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("getDisruptionKind", func() {
 		It("should return container-failure", func() {
-			Expect(inj.GetDisruptionKind()).To(Equal(types.DisruptionKindContainerFailure))
+			Expect(string(inj.GetDisruptionKind())).To(Equal(types.DisruptionKindContainerFailure))
 		})
 	})
 

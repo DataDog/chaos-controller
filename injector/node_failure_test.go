@@ -54,7 +54,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("getDisruptionKind", func() {
 		It("should return node-failure", func() {
-			Expect(inj.GetDisruptionKind()).To(Equal(types.DisruptionKindNodeFailure))
+			Expect(string(inj.GetDisruptionKind())).To(Equal(types.DisruptionKindNodeFailure))
 		})
 	})
 

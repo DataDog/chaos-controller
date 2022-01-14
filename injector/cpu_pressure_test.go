@@ -74,7 +74,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("getDisruptionKind", func() {
 		It("should return cpu-pressure", func() {
-			Expect(inj.GetDisruptionKind()).To(Equal(types.DisruptionKindCPUPressure))
+			Expect(string(inj.GetDisruptionKind())).To(Equal(types.DisruptionKindCPUPressure))
 		})
 	})
 

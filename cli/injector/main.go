@@ -285,9 +285,9 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// inject all of the injectors
 	log.Infow("injecting the disruption", "kind", cmd.Name())
 	errOnInject := false
+	pulsingInjectors := []injector.Injector{} // We keep in a list the injectors for disruptions compatible with pulsing
 
 	for _, inj := range injectors {
 		// start injection, do not fatal on error so we keep the pod
@@ -298,6 +298,11 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 			handleMetricError(ms.MetricInjected(false, cmd.Name(), nil))
 			log.Errorw("disruption injection failed", "error", err)
 		} else {
+			// build compatible disruptions with pulsing
+			if pulseActiveDuration > 0 && pulseDormantDuration > 0 && inj.GetDisruptionKind() != chaostypes.DisruptionKindContainerFailure && inj.GetDisruptionKind() != chaostypes.DisruptionKindNodeFailure {
+				pulsingInjectors = append(pulsingInjectors, inj)
+			}
+
 			handleMetricError(ms.MetricInjected(true, cmd.Name(), nil))
 			log.Info("disruption injected, now waiting for an exit signal")
 		}
@@ -333,62 +338,49 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// if pulsing is enabled, we build the pulsing injectors and we loop until we receive a signal
-	if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
-		pulsingInjectors := []injector.Injector{}
+	if len(pulsingInjectors) > 0 {
+		isInjected := true
+		lastOperationTime := time.Now()
 
-		// build pulsing disruptions
-		for _, inj := range injectors {
-			discruptionKind := inj.GetDisruptionKind()
-			log.Info("%s", discruptionKind)
-
-			// ContainerFailure and NodeFailure can't be pulsing disruptions.
-			if discruptionKind == chaostypes.DisruptionKindContainerFailure || discruptionKind == chaostypes.DisruptionKindNodeFailure {
-				continue
-			}
-
-			log.Infow("activating pulsing disruption", "kind", cmd.Name(), "disruption_kind", discruptionKind)
-			pulsingInjectors = append(pulsingInjectors, inj)
-		}
-
-		if len(pulsingInjectors) > 0 {
-			isInjected := true
-			lastOperationTime := time.Now()
-
-			for {
-				// Check if a signal has been emitted
-				select {
-				case sig := <-signals:
-					log.Infow("an exit signal has been received", "signal", sig.String())
-
-					return
-				default:
-					if time.Now().Sub(lastOperationTime) >= pulseDormantDuration && !isInjected {
-						for _, inj := range pulsingInjectors {
-							if err := inj.Inject(); err != nil {
-								log.Errorw("pulsing disruption injection failed", "error", err)
-							} else {
-								log.Info("pulsing disruption injected")
-							}
-						}
-					} else if time.Now().Sub(lastOperationTime) >= pulseActiveDuration && isInjected {
-						for _, inj := range pulsingInjectors {
-							// start cleanup which is retried up to 3 times using an exponential backoff algorithm
-							if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
-								log.Errorw("pulsing disruption clean failed", "error", err)
-							} else {
-								log.Info("pulsing disruption cleaned")
-							}
-						}
-					} else {
-						continue
+		for { // This loop will inject, wait, clean, wait until a signal is received
+			// Inject all the pulsing disruptions
+			if time.Since(lastOperationTime) >= pulseDormantDuration && !isInjected {
+				for _, inj := range pulsingInjectors {
+					if err := inj.Inject(); err != nil {
+						log.Errorw("pulsing disruption injection failed", "error", err)
 					}
-
-					isInjected = !isInjected
-					lastOperationTime = time.Now()
 				}
+
+				isInjected = !isInjected
+				lastOperationTime = time.Now()
+
+				log.Info("pulsing disruption(s) are active")
+				// Clean all the pulsing disruptions
+			} else if time.Since(lastOperationTime) >= pulseActiveDuration && isInjected {
+				for _, inj := range pulsingInjectors {
+					// start cleanup which is retried up to 3 times using an exponential backoff algorithm
+					if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
+						log.Errorw("pulsing disruption clean failed", "error", err)
+					}
+				}
+
+				isInjected = !isInjected
+				lastOperationTime = time.Now()
+
+				log.Info("pulsing disruption(s) are dormant")
+			}
+
+			// Non blocking call, we check if a signal has been emitted
+			select {
+			case sig := <-signals:
+				log.Infow("an exit signal has been received", "signal", sig.String())
+
+				return
+			default:
 			}
 		}
+	} else if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
+		log.Error("the --pulse-active-duration and --pulse-dormant-duration flag were provided but no compatible disruption to pulsing could be found")
 	}
 
 	// wait for an exit signal, this is a blocking call
@@ -399,7 +391,6 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 // cleanAndExit cleans the disruption with the configured injector and exits nicely
 func cleanAndExit(cmd *cobra.Command, args []string) {
-	log.Infow("cleaning the disruption", "kind", cmd.Name())
 	errs := []error{}
 
 	for _, inj := range injectors {

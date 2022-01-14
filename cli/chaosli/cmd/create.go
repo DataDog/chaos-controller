@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -83,8 +84,18 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 	spec.Selector = getSelectors()
 	spec.Count = getCount()
 
-	// TODO: Add pulsing
-	spec.Pulse = getPulse()
+	isPulsingCompatible := true
+
+	for _, disruptionKind := range spec.GetKindNames() {
+		if disruptionKind == types.DisruptionKindContainerFailure || disruptionKind == types.DisruptionKindNodeFailure {
+			isPulsingCompatible = false
+			break
+		}
+	}
+
+	if isPulsingCompatible {
+		spec.Pulse = getPulse()
+	}
 
 	if spec.Level == types.DisruptionLevelPod {
 		spec.Containers = getContainers()
@@ -564,9 +575,45 @@ func getCount() *intstr.IntOrString {
 }
 
 func getPulse() *v1beta1.DisruptionPulse {
+	validator := func(val interface{}) error {
+		if str, ok := val.(string); ok {
+			_, err := time.ParseDuration(str)
+			if err != nil {
+				return err
+			}
+
+			duration := v1beta1.DisruptionDuration(str)
+			if duration.Duration().Milliseconds() < 10 {
+				return fmt.Errorf("duration must be greather than 10ms")
+			}
+
+			return nil
+		}
+
+		return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
+	}
+
+	if !confirmOption("Would you like your disruptions to be pulsing?", "The default is non pulsing disruptions.") {
+		return nil
+	}
+
+	activeDuration := v1beta1.DisruptionDuration(getInput(
+		"What would be the duration of the disruption in an active state during the pulse? This can be a golang's time.Duration.",
+		"Please specify a golang's time.Duration's >10ms, e.g., \"45s\", \"15m30s\", \"4h30m\".",
+		survey.WithValidator(survey.Required),
+		survey.WithValidator(validator),
+	))
+
+	dormantDuration := v1beta1.DisruptionDuration(getInput(
+		"What would be the duration of the disruption in a dormant state during the pulse? This can be a golang's time.Duration.",
+		"Please specify a golang's time.Duration's >10ms, e.g., \"45s\", \"15m30s\", \"4h30m\".",
+		survey.WithValidator(survey.Required),
+		survey.WithValidator(validator),
+	))
+
 	return &v1beta1.DisruptionPulse{
-		ActiveDuration:  v1beta1.DisruptionDuration("10ms"),
-		DormantDuration: v1beta1.DisruptionDuration("10ms"),
+		ActiveDuration:  activeDuration,
+		DormantDuration: dormantDuration,
 	}
 }
 

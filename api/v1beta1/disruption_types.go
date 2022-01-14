@@ -230,6 +230,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 		if s.Pulse.ActiveDuration.Duration().Milliseconds() < 10 {
 			retErr = multierror.Append(retErr, errors.New("pulse activeDuration should be greater than 10 milliseconds"))
 		}
+
 		if s.Pulse.DormantDuration.Duration().Milliseconds() < 10 {
 			retErr = multierror.Append(retErr, errors.New("pulse dormantDuration should be greater than 10 milliseconds"))
 		}

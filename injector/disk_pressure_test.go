@@ -81,7 +81,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("getDisruptionKind", func() {
 		It("should return disk-pressure", func() {
-			Expect(inj.GetDisruptionKind()).To(Equal(types.DisruptionKindDiskPressure))
+			Expect(string(inj.GetDisruptionKind())).To(Equal(types.DisruptionKindDiskPressure))
 		})
 	})
 
