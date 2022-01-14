@@ -286,6 +286,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	}
 
 	log.Infow("injecting the disruption", "kind", cmd.Name())
+
 	errOnInject := false
 	pulsingInjectors := []injector.Injector{} // We keep in a list the injectors for disruptions compatible with pulsing
 
@@ -355,8 +356,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 				lastOperationTime = time.Now()
 
 				log.Info("pulsing disruption(s) are active")
-				// Clean all the pulsing disruptions
-			} else if time.Since(lastOperationTime) >= pulseActiveDuration && isInjected {
+			} else if time.Since(lastOperationTime) >= pulseActiveDuration && isInjected { // Clean all the pulsing disruptions
 				for _, inj := range pulsingInjectors {
 					// start cleanup which is retried up to 3 times using an exponential backoff algorithm
 					if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
