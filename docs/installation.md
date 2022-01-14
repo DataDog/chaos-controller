@@ -5,10 +5,11 @@
 If you do not plan to alter source code, you can install **Chaos Controller** to your existing Kubernetes environments by running:
 
 ```
+make oss-install
 kubectl apply -f https://raw.githubusercontent.com/DataDog/chaos-controller/main/chart/install.yaml
 ```
 
-This `install.yaml` is generated for each new release and will always point to the latest stable version of the controller in Docker Hub.
+This `install.yaml` will always point to the latest stable version of the controller in Docker Hub.
 
 If you use Helm you can install all the resources as follows:
 ```

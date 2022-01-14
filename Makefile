@@ -20,7 +20,7 @@ test: generate manifests
 	go test $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
 
 # Run e2e tests (against a real cluster)
-e2e-test: generate install
+e2e-test: generate minikube-install
 	USE_EXISTING_CLUSTER=true go test ./controllers/... -coverprofile cover.out
 
 # Build manager binary
@@ -44,12 +44,12 @@ chaosli:
 chaosli-test:
 	docker build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
 
-# Install CRDs and controller into a cluster
-install: manifests
+# Install CRDs and controller into a minikube cluster
+minikube-install: manifests
 	helm template --set controller.enableSafeguards=false ./chart | minikube kubectl -- apply -f -
 
-# Uninstall CRDs and controller from a cluster
-uninstall: manifests
+# Uninstall CRDs and controller from a minikube cluster
+minikube-uninstall: manifests
 	helm template ./chart | minikube kubectl -- delete -f -
 
 restart:
@@ -150,3 +150,6 @@ generate-protobuf:
 
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
+
+oss-install:
+	VERSION=$(git describe --abbrev=0 --tags); helm template ./chart/ --set images.controller=datadog/chaos-controller:${VERSION} --set images.injector=datadog/chaos-injector:${VERSION} --set images.handler=datadog/chaos-handler:${VERSION} > ./chart/install.yaml
