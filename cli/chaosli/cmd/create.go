@@ -583,8 +583,8 @@ func getPulse() *v1beta1.DisruptionPulse {
 			}
 
 			duration := v1beta1.DisruptionDuration(str)
-			if duration.Duration().Milliseconds() < 10 {
-				return fmt.Errorf("duration must be greather than 10ms")
+			if duration.Duration().Milliseconds() < 500 {
+				return fmt.Errorf("duration must be greater than 500ms")
 			}
 
 			return nil
@@ -593,20 +593,20 @@ func getPulse() *v1beta1.DisruptionPulse {
 		return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
 	}
 
-	if !confirmOption("Would you like your disruptions to be pulsing?", "The default is non pulsing disruptions.") {
+	if !confirmOption("A pulsing disruption is a disruption which will be injected and active for a certain amount of time, then cleaned and dormant for a certain amount of time, and so on until it is removed. Would you like your disruptions to be pulsing?", "The default is non pulsing disruptions.") {
 		return nil
 	}
 
 	activeDuration := v1beta1.DisruptionDuration(getInput(
 		"What would be the duration of the disruption in an active state during the pulse? This can be a golang's time.Duration.",
-		"Please specify a golang's time.Duration's >10ms, e.g., \"45s\", \"15m30s\", \"4h30m\".",
+		"Please specify a golang's time.Duration's >500ms, e.g., \"45s\", \"15m30s\", \"4h30m\".",
 		survey.WithValidator(survey.Required),
 		survey.WithValidator(validator),
 	))
 
 	dormantDuration := v1beta1.DisruptionDuration(getInput(
 		"What would be the duration of the disruption in a dormant state during the pulse? This can be a golang's time.Duration.",
-		"Please specify a golang's time.Duration's >10ms, e.g., \"45s\", \"15m30s\", \"4h30m\".",
+		"Please specify a golang's time.Duration's >500ms, e.g., \"45s\", \"15m30s\", \"4h30m\".",
 		survey.WithValidator(survey.Required),
 		survey.WithValidator(validator),
 	))

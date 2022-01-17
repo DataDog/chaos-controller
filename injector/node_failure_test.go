@@ -15,7 +15,6 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/types"
 )
 
 var _ = Describe("Failure", func() {
@@ -50,12 +49,6 @@ var _ = Describe("Failure", func() {
 		inj, err = NewNodeFailureInjector(spec, config)
 
 		Expect(err).To(BeNil())
-	})
-
-	Describe("getDisruptionKind", func() {
-		It("should return node-failure", func() {
-			Expect(string(inj.GetDisruptionKind())).To(Equal(types.DisruptionKindNodeFailure))
-		})
 	})
 
 	Describe("injection", func() {

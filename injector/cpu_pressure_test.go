@@ -15,7 +15,6 @@ import (
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/stress"
-	"github.com/DataDog/chaos-controller/types"
 )
 
 var _ = Describe("Failure", func() {
@@ -70,12 +69,6 @@ var _ = Describe("Failure", func() {
 
 	JustBeforeEach(func() {
 		inj = NewCPUPressureInjector(spec, config)
-	})
-
-	Describe("getDisruptionKind", func() {
-		It("should return cpu-pressure", func() {
-			Expect(string(inj.GetDisruptionKind())).To(Equal(types.DisruptionKindCPUPressure))
-		})
 	})
 
 	Describe("injection", func() {

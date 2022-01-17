@@ -40,7 +40,7 @@ type DisruptionSpec struct {
 	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
 	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
 	// +nullable
-	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // duration of a pulse
+	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
 	// +kubebuilder:validation:Enum=pod;node;""
 	// +ddmark:validation:Enum=pod;node;""
@@ -224,15 +224,19 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 		}
 	}
 
-	// Rule: pulsing duration
+	// Rule: pulse compatibility
 	if s.Pulse != nil {
-		// Pulsing disruptions should not be pulsing less than every 10 milliseconds
-		if s.Pulse.ActiveDuration.Duration().Milliseconds() < 10 {
-			retErr = multierror.Append(retErr, errors.New("pulse activeDuration should be greater than 10 milliseconds"))
+		if s.CPUPressure == nil && s.DiskPressure == nil && s.Network == nil && s.DNS == nil && s.GRPC == nil {
+			retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
 		}
 
-		if s.Pulse.DormantDuration.Duration().Milliseconds() < 10 {
-			retErr = multierror.Append(retErr, errors.New("pulse dormantDuration should be greater than 10 milliseconds"))
+		// Pulsing disruptions should not be pulsing less than every 500 milliseconds
+		if s.Pulse.ActiveDuration.Duration().Milliseconds() < 500 {
+			retErr = multierror.Append(retErr, errors.New("pulse activeDuration should be greater than 500 milliseconds"))
+		}
+
+		if s.Pulse.DormantDuration.Duration().Milliseconds() < 500 {
+			retErr = multierror.Append(retErr, errors.New("pulse dormantDuration should be greater than 500 milliseconds"))
 		}
 	}
 
