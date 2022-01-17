@@ -44,17 +44,17 @@ Once you have installed the above requirements, run the following commands:
 * build the new image of the controller with your local files
   * `make minikube-build`
 * deploy the CRD and the controller on the minikube cluster
-  * `make install`
+  * `make minikube-install`
 
 ## Deploying Local Changes to Minikube
 
 To deploy a new version of your local controller code when a version is already deployed, run:
 * `make minikube-build`
-* `make install`
+* `make minikube-install`
 * `make restart`
 
 To deploy a new version of the CRD by modifying your local `api/v1beta1/disruption_types.go` (or a particular Subspec by modifying `api/v1beta1/disruption_types.go`), run:
-* `make install`
+* `make minikube-install`
 * `make restart`
 
 ## Testing Local Changes in Minikube
@@ -92,9 +92,9 @@ The end-to-end tests will create a set of dummy pods in the `default` namespace 
 ### Running, installing & generating
 
 * `make generate`: generate boilerplate code.
-* `make install`: install CRDs and controller into a cluster
+* `make minikube-install`: install CRDs and controller into a cluster
 * `make manifests`: generate manifests e.g. CRD, RBAC etc.
-* `make uninstall`: uninstall CRDs and controller from a cluster
+* `make minikube-uninstall`: uninstall CRDs and controller from a cluster
 * `make restart`: restart the controller
 
 ### Building
