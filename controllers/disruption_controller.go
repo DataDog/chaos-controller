@@ -30,12 +30,15 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 )
@@ -59,6 +62,39 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 	ExpiredDisruptionGCDelay              *time.Duration
+	CachesCancel                          map[types.NamespacedName]context.CancelFunc
+	Controller                            controller.Controller
+}
+
+type SelectorPodsHandler struct {
+	disruption *v1beta1.Disruption
+}
+
+func (h SelectorPodsHandler) OnAdd(obj interface{}) {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		fmt.Printf("watcher addfunc: not a *corev1.Pod, it's a %v\n", reflect.TypeOf(obj))
+	} else {
+		fmt.Printf("watcher addfunc: for disruption %v: pod %v\n", h.disruption.Name, pod.Name)
+	}
+}
+
+func (h SelectorPodsHandler) OnDelete(obj interface{}) {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		fmt.Printf("watcher deletefunc: not a *corev1.Pod, it's a %v\n", reflect.TypeOf(obj))
+	} else {
+		fmt.Printf("watcher deletefunc: for disruption %v: pod %v\n", h.disruption.Name, pod.Name)
+	}
+}
+
+func (h SelectorPodsHandler) OnUpdate(oldObj, newObj interface{}) {
+	oldPod, ok := oldObj.(*corev1.Pod)
+	if !ok {
+		fmt.Printf("watcher updatefunc: not a *corev1.Pod, it's a %v\n", reflect.TypeOf(oldObj))
+	} else {
+		fmt.Printf("watcher updatefunc: for disruption %v: pod %v\n", h.disruption.Name, oldPod.Name)
+	}
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -71,6 +107,7 @@ type DisruptionReconciler struct {
 //+kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
 
 func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	fmt.Printf("\n\nreconcile started\n")
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
@@ -105,6 +142,38 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// if it doesn't exist, create the cache context to re-trigger the disruption
+	if r.CachesCancel[req.NamespacedName] == nil {
+		c, err := k8scache.New(
+			ctrl.GetConfigOrDie(),
+			k8scache.Options{
+				SelectorsByObject: k8scache.SelectorsByObject{
+					&corev1.Pod{}: {Label: instance.Spec.Selector.AsSelector()},
+				},
+				Namespace: instance.Namespace,
+			},
+		)
+		if err != nil {
+			fmt.Println("cache gen error:", err)
+		}
+
+		info, err := c.GetInformer(context.Background(), &corev1.Pod{})
+		if err != nil {
+			fmt.Println("cache gen error:", err)
+		}
+		info.AddEventHandler(SelectorPodsHandler{disruption: instance})
+
+		ch := make(chan error)
+		cacheCtx, cacheCancelFunc := context.WithCancel(context.TODO())
+		go func() { ch <- c.Start(cacheCtx) }()
+		r.CachesCancel[req.NamespacedName] = cacheCancelFunc
+
+		cacheSource := source.NewKindWithCache(&corev1.Pod{}, c)
+		r.Controller.Watch(cacheSource, handler.EnqueueRequestsFromMapFunc(func(c client.Object) []reconcile.Request {
+			return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}}}
+		}))
 	}
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
@@ -158,6 +227,10 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 				return ctrl.Result{}, err
 			}
+
+			// close the context for the disruption-related cache and clear the cache
+			r.CachesCancel[req.NamespacedName]()
+			delete(r.CachesCancel, req.NamespacedName)
 
 			// send reconciling duration metric
 			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
@@ -693,12 +766,13 @@ func (r *DisruptionReconciler) ignoreTarget(instance *chaosv1beta1.Disruption, t
 // the chosen targets names will be reflected in the instance status
 // subsequent calls to this function will always return the same targets as the first call
 func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
+	fmt.Println("selecting targets")
 	matchingTargets := []string{}
 
 	// exit early if we already have targets selected for the given instance
-	if len(instance.Status.Targets) > 0 {
-		return nil
-	}
+	// if len(instance.Status.Targets) > 0 {
+	// 	return nil
+	// }
 
 	r.log.Infow("selecting targets to inject disruption to", "selector", instance.Spec.Selector.String())
 
@@ -762,7 +836,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	}
 
 	// if the asked targets count is greater than the amount of found targets, we take all of them
-	targetsCount = int(math.Min(float64(targetsCount), float64(len(eligibleTargets))))
+	targetsCount = int(math.Min(float64(targetsCount), float64(len(instance.Status.Targets)+len(eligibleTargets))))
 	if targetsCount < 1 {
 		r.log.Info("ignored targets has reached target count, skipping")
 		r.Recorder.Event(instance, corev1.EventTypeWarning, "NoTarget", "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)")
@@ -770,13 +844,20 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		return nil
 	}
 
-	// randomly pick up targets from the found ones
-	for i := 0; i < targetsCount; i++ {
-		index := rand.Intn(len(eligibleTargets)) //nolint:gosec
-		selectedTarget := eligibleTargets[index]
-		instance.Status.Targets = append(instance.Status.Targets, selectedTarget)
-		eligibleTargets[len(eligibleTargets)-1], eligibleTargets[index] = eligibleTargets[index], eligibleTargets[len(eligibleTargets)-1]
-		eligibleTargets = eligibleTargets[:len(eligibleTargets)-1]
+	cTargetsCount := len(instance.Status.Targets)
+	dTargetsCount := targetsCount
+	fmt.Printf("Current vs Desired targets: %v => %v\n", cTargetsCount, dTargetsCount)
+
+	if cTargetsCount < dTargetsCount {
+		fmt.Println("Targets:", instance.Status.Targets)
+		fmt.Println("EligibleTargets:", eligibleTargets)
+		// not enough targets: pick more targets from eligibleTargets
+		newTargetsCount := dTargetsCount - cTargetsCount
+
+		addTargetsToDis(instance, newTargetsCount, eligibleTargets)
+
+	} else if cTargetsCount > dTargetsCount && false {
+		// too many targets: remove a few targets from cTargets
 	}
 
 	r.log.Infow("updating instance status with targets selected for injection")
@@ -784,16 +865,41 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	return r.Status().Update(context.Background(), instance)
 }
 
+func addTargetsToDis(instance *chaosv1beta1.Disruption, newTargetsCount int, eligibleTargets []string) {
+	for i := 0; i < newTargetsCount; i++ {
+		index := rand.Intn(len(eligibleTargets)) //nolint:gosec
+		selectedTarget := eligibleTargets[index]
+		instance.Status.Targets = append(instance.Status.Targets, selectedTarget)
+		eligibleTargets[len(eligibleTargets)-1], eligibleTargets[index] = eligibleTargets[index], eligibleTargets[len(eligibleTargets)-1]
+		eligibleTargets = eligibleTargets[:len(eligibleTargets)-1]
+	}
+}
+
+func removeTargetsFromDis(toRemoveTargetsCount int) {
+	// make list of chaos pods to remove
+	//  1. check all targets that are dead, remove their chaos-pod ?
+	//  2.
+	var toRemovePods []corev1.Pod = []corev1.Pod{}
+
+	// terminate running chaos pods
+	for _, chaosPod := range toRemovePods {
+		// delete the chaos pod only if it has not been deleted already
+		if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
+			//FIXME
+		}
+	}
+}
+
 // getEligibleTargets returns targets which can be targeted by the given instance from the given targets pool
 // it skips ignored targets and targets being already targeted by another disruption
-func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disruption, targets []string) ([]string, error) {
+func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disruption, potentialTargets []string) ([]string, error) {
 	r.log.Debug("getting eligible targets for disruption injection")
 
 	eligibleTargets := []string{}
 
-	for _, target := range targets {
+	for _, target := range potentialTargets {
 		// skip ignored targets
-		if contains(instance.Status.IgnoredTargets, target) {
+		if contains(instance.Status.Targets, target) || contains(instance.Status.IgnoredTargets, target) {
 			continue
 		}
 
@@ -1189,7 +1295,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 }
 
 // SetupWithManager setups the current reconciler with the given manager
-func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) error {
+func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) (controller.Controller, error) {
 	podToDisruption := func(c client.Object) []reconcile.Request {
 		// podtoDisruption is a function that maps pods to disruptions. it is meant to be used as an event handler on a pod informer
 		// this function should safely return an empty list of requests to reconcile if the object we receive is not actually a chaos pod
@@ -1218,7 +1324,7 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
 		Watches(&source.Informer{Informer: informer}, handler.EnqueueRequestsFromMapFunc(podToDisruption)).
-		Complete(r)
+		Build(r)
 }
 
 // ReportMetrics reports some controller metrics every minute:

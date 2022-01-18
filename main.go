@@ -21,6 +21,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -45,6 +46,7 @@ import (
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 	"github.com/spf13/viper"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -308,15 +310,18 @@ func main() {
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
 		ExpiredDisruptionGCDelay:              gcPtr,
+		CachesCancel:                          make(map[k8stypes.NamespacedName]context.CancelFunc),
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Minute*5, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
 
-	if err := r.SetupWithManager(mgr, kubeInformerFactory); err != nil {
+	cont, err := r.SetupWithManager(mgr, kubeInformerFactory)
+	if err != nil {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
+	r.Controller = cont
 
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
@@ -350,6 +355,13 @@ func main() {
 			},
 		})
 	}
+
+	// erase/close caches contexts
+	defer func() {
+		for _, cancelFunc := range r.CachesCancel {
+			cancelFunc()
+		}
+	}()
 
 	// +kubebuilder:scaffold:builder
 
