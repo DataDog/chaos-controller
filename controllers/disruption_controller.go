@@ -22,18 +22,15 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -61,7 +58,6 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 	ExpiredDisruptionGCDelay              time.Duration
-	ChaosControllerInstance               controller.Controller
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -116,41 +112,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		return ctrl.Result{}, err
 	}
-
-	watchClient, err := client.NewWithWatch(
-		&rest.Config{},
-		client.Options{
-			Mapper: meta.NewDefaultRESTMapper(nil),
-			Scheme: r.Scheme,
-		},
-	)
-
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	wat, err := watchClient.Watch(
-		context.Background(),
-		&chaosv1beta1.DisruptionList{},
-		&client.ListOptions{
-			LabelSelector: instance.Spec.Selector.AsSelector(),
-		},
-	)
-
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	watchEvent, ok := <-wat.ResultChan()
-
-	// r.ChaosControllerInstance.Watch(
-	// 	&source.Kind{Type: &corev1.Pod{}},
-	// 	handler.EnqueueRequestsFromMapFunc(
-	// 		func(o client.Object) []reconcile.Request {
-	// 			return nil
-	// 		},
-	// 	),
-	// )
 
 	// check whether the object is being deleted or not
 	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -1161,7 +1122,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 }
 
 // SetupWithManager setups the current reconciler with the given manager
-func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) (controller.Controller, error) {
+func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) error {
 	podToDisruption := func(c client.Object) []reconcile.Request {
 		// podtoDisruption is a function that maps pods to disruptions. it is meant to be used as an event handler on a pod informer
 		// this function should safely return an empty list of requests to reconcile if the object we receive is not actually a chaos pod
@@ -1190,8 +1151,7 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
 		Watches(&source.Informer{Informer: informer}, handler.EnqueueRequestsFromMapFunc(podToDisruption)).
-		Build(r)
-	// Complete(r)
+		Complete(r)
 }
 
 // ReportMetrics reports some controller metrics every minute:
