@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	toolscache "k8s.io/client-go/tools/cache"
+
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/targetselector"
@@ -30,6 +32,8 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/cache/internal"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -58,6 +62,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 	ExpiredDisruptionGCDelay              time.Duration
+	caches                                map[types.NamespacedName]cache.Cache
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -104,6 +109,31 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	type DisWatchEventHandler struct {
+		instance chaosv1beta1.Disruption
+	}
+
+	if /* disruption cache is not found */ true {
+		b, _ := cache.New(
+			ctrl.GetConfigOrDie(),
+			cache.Options{
+				SelectorsByObject: cache.SelectorsByObject{
+					&corev1.Pod{}: internal.Selector{Label: instance.Spec.Selector.AsSelector()},
+				},
+				Namespace: instance.Namespace,
+			},
+		)
+		info, _ := b.GetInformer(context.Background(), &corev1.Pod{})
+
+		resHandler := toolscache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				fmt.Println("addfunc")
+			},
+		}
+
+		info.AddEventHandler(resHandler)
 	}
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
