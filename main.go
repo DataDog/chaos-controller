@@ -295,13 +295,15 @@ func main() {
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Minute*5, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
 
-	if err := r.SetupWithManager(mgr, kubeInformerFactory); err != nil {
+	controller, err := r.SetupWithManager(mgr, kubeInformerFactory)
+	if err != nil {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
 
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
+	r.ChaosControllerInstance = controller
 
 	go r.ReportMetrics()
 
