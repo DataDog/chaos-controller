@@ -358,6 +358,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 					}
 
 					log.Info("pulsing disruption(s) are in active mode")
+
 					sleepDuration = pulseActiveDuration
 				} else {
 					for _, inj := range pulsingInjectors {
@@ -367,6 +368,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 					}
 
 					log.Info("pulsing disruption(s) are in dormant mode")
+
 					sleepDuration = pulseDormantDuration
 				}
 
