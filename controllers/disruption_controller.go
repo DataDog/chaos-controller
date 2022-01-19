@@ -32,8 +32,7 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/cache/internal"
+	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -62,7 +61,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 	ExpiredDisruptionGCDelay              time.Duration
-	caches                                map[types.NamespacedName]cache.Cache
+	Caches                                map[types.NamespacedName]k8scache.Cache
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -111,29 +110,25 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	type DisWatchEventHandler struct {
-		instance chaosv1beta1.Disruption
-	}
-
-	if /* disruption cache is not found */ true {
-		b, _ := cache.New(
+	if r.Caches[req.NamespacedName] == nil {
+		c, _ := k8scache.New(
 			ctrl.GetConfigOrDie(),
-			cache.Options{
-				SelectorsByObject: cache.SelectorsByObject{
-					&corev1.Pod{}: internal.Selector{Label: instance.Spec.Selector.AsSelector()},
+			k8scache.Options{
+				SelectorsByObject: k8scache.SelectorsByObject{
+					&corev1.Pod{}: {Label: instance.Spec.Selector.AsSelector()},
 				},
 				Namespace: instance.Namespace,
 			},
 		)
-		info, _ := b.GetInformer(context.Background(), &corev1.Pod{})
+		info, _ := c.GetInformer(context.Background(), &corev1.Pod{})
 
-		resHandler := toolscache.ResourceEventHandlerFuncs{
+		info.AddEventHandler(toolscache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				fmt.Println("addfunc")
 			},
-		}
+		})
 
-		info.AddEventHandler(resHandler)
+		r.Caches[req.NamespacedName] = c
 	}
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
