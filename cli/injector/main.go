@@ -352,8 +352,10 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 			case <-time.After(sleepDuration):
 				if !isInjected {
 					for _, inj := range pulsingInjectors {
-						if err := inj.Inject(); err != nil {
+						if err := backoff.RetryNotify(inj.Inject, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
 							log.Errorw("pulsing disruption injection failed", "error", err)
+
+							return
 						}
 					}
 
@@ -377,7 +379,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 				isInjected = !isInjected
 			}
 		}
-	} else if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
+	} else if pulseActiveDuration > 0 && pulseDormantDuration > 0 && !errOnInject {
 		log.Error("the --pulse-active-duration and --pulse-dormant-duration flag were provided but no compatible disruption to pulsing could be found")
 	}
 
