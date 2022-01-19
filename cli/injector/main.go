@@ -341,42 +341,36 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 	if len(pulsingInjectors) > 0 {
 		isInjected := true
-		lastOperationTime := time.Now()
+		sleepDuration := pulseActiveDuration
 
 		for { // This loop will inject, wait, clean, wait until a signal is received
-			// Inject all the pulsing disruptions
-			if time.Since(lastOperationTime) >= pulseDormantDuration && !isInjected {
-				for _, inj := range pulsingInjectors {
-					if err := inj.Inject(); err != nil {
-						log.Errorw("pulsing disruption injection failed", "error", err)
-					}
-				}
-
-				isInjected = !isInjected
-				lastOperationTime = time.Now()
-
-				log.Info("pulsing disruption(s) are active")
-			} else if time.Since(lastOperationTime) >= pulseActiveDuration && isInjected { // Clean all the pulsing disruptions
-				for _, inj := range pulsingInjectors {
-					// start cleanup which is retried up to 3 times using an exponential backoff algorithm
-					if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
-						log.Errorw("pulsing disruption clean failed", "error", err)
-					}
-				}
-
-				isInjected = !isInjected
-				lastOperationTime = time.Now()
-
-				log.Info("pulsing disruption(s) are dormant")
-			}
-
-			// Non blocking call, we check if a signal has been emitted
-			select {
+			select { // Quit on signal reception or sleep and injects / cleans the disruptions
 			case sig := <-signals:
 				log.Infow("an exit signal has been received", "signal", sig.String())
 
 				return
-			default:
+			case <-time.After(sleepDuration):
+				if !isInjected {
+					for _, inj := range pulsingInjectors {
+						if err := inj.Inject(); err != nil {
+							log.Errorw("pulsing disruption injection failed", "error", err)
+						}
+					}
+
+					log.Info("pulsing disruption(s) are in active mode")
+					sleepDuration = pulseActiveDuration
+				} else {
+					for _, inj := range pulsingInjectors {
+						if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
+							log.Errorw("pulsing disruption clean failed", "error", err)
+						}
+					}
+
+					log.Info("pulsing disruption(s) are in dormant mode")
+					sleepDuration = pulseDormantDuration
+				}
+
+				isInjected = !isInjected
 			}
 		}
 	} else if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
