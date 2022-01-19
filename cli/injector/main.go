@@ -364,6 +364,8 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 					for _, inj := range pulsingInjectors {
 						if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
 							log.Errorw("pulsing disruption clean failed", "error", err)
+
+							return
 						}
 					}
 
