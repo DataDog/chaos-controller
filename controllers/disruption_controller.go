@@ -198,7 +198,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
-			// requeue after 5-10 seconds, as default 1m is too quick here
+			// requeue after 5-10 seconds, as default 1ms is too quick here
 			requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
 			r.log.Infow("disruption is not fully injected yet, requeuing", "injectionStatus", instance.Status.InjectionStatus)
 
