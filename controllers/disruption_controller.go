@@ -295,7 +295,9 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption) error {
 	var err error
 
-	r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
+	if len(instance.Status.Targets) > 0 {
+		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
+	}
 
 	for _, target := range instance.Status.Targets {
 		targetNodeName := ""
