@@ -453,13 +453,13 @@ func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
 	for _, chaosPod := range chaosPods {
 		r.handleMetricSinkError(r.MetricsSink.MetricOrphanFound([]string{"disruption:" + req.Name, "chaosPod:" + chaosPod.Name, "namespace:" + req.Namespace}))
 		target := chaosPod.Labels[chaostypes.TargetLabel]
+
 		var p corev1.Pod
 
 		r.log.Infow("checking if we can clean up orphaned chaos pod", "chaosPod", chaosPod.Name, "target", target)
 
 		// if target doesn't exist, we can try to clean up the chaos pod
 		if err := r.Client.Get(context.Background(), types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); errors.IsNotFound(err) {
-
 			r.log.Warnw("orphaned chaos pod detected, will attempt to delete", "chaosPod", chaosPod.Name)
 			controllerutil.RemoveFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer)
 
@@ -476,7 +476,6 @@ func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
 				continue
 			}
 		}
-
 	}
 
 	return nil
