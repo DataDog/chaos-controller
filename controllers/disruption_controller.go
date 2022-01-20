@@ -113,6 +113,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
 			isCleaned, err := r.cleanDisruption(instance)
 			if err != nil {
+				r.log.Errorw("error cleaning disruption", "error", err)
+
 				return ctrl.Result{}, err
 			}
 
@@ -135,6 +137,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 			if err := r.Update(context.Background(), instance); err != nil {
+				r.log.Errorw("error removing disruption finalizer", "error", err)
+
 				return ctrl.Result{}, err
 			}
 
@@ -190,6 +194,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// requeue the request if the disruption is not fully injected yet
 		injected, err := r.updateInjectionStatus(instance)
 		if err != nil {
+			r.log.Errorw("error updating injection status", "error", err)
+
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
 			// requeue after 5-10 seconds, as default 1m is too quick here
