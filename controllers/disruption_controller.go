@@ -182,6 +182,37 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 
 			return ctrl.Result{Requeue: true}, err
+		} else if calculateRemainingDuration(*instance) <= 0 {
+			if _, err := r.updateInjectionStatus(instance); err != nil {
+				r.log.Errorw("error updating disruption injection status", "error", err)
+
+				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
+			}
+
+			isCleaned, err := r.cleanDisruption(instance)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			if !isCleaned {
+				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
+
+				r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
+
+				return ctrl.Result{
+					Requeue:      true,
+					RequeueAfter: requeueAfter,
+				}, r.Update(context.Background(), instance)
+			}
+
+			requeueDelay := r.ExpiredDisruptionGCDelay
+
+			r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
+
+			return ctrl.Result{
+				Requeue:      true,
+				RequeueAfter: requeueDelay,
+			}, nil
 		}
 
 		// retrieve targets from label selector
@@ -218,7 +249,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				RequeueAfter: requeueAfter,
 			}, nil
 		}
-		requeueDelay := time.Duration(math.Max(calculateRemainingDuration(*instance).Seconds(), r.ExpiredDisruptionGCDelay.Seconds())) * time.Second
+		requeueDelay := calculateRemainingDuration(*instance)
 
 		r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
 
