@@ -275,6 +275,73 @@ func initExitSignalsHandler() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 }
 
+// inject inject all the disruptions using the list of injectors
+func inject(kind string, sendToMetrics bool) (int, string) {
+	errs := []error{}
+
+	for _, inj := range injectors {
+		// start injection, do not fatal on error so we keep the pod
+		// running, allowing the cleanup to happen
+		if err := inj.Inject(); err != nil {
+			errs = append(errs, err)
+
+			if sendToMetrics {
+				handleMetricError(ms.MetricInjected(false, kind, nil))
+			}
+
+			log.Errorw("disruption injection failed", "error", err)
+		} else {
+			if sendToMetrics {
+				handleMetricError(ms.MetricInjected(true, kind, nil))
+			}
+
+			log.Infof("disruption %s injected", inj.GetDisruptionKind())
+		}
+	}
+
+	var combined strings.Builder
+
+	for _, err := range errs {
+		combined.WriteString(err.Error())
+		combined.WriteString(",")
+	}
+
+	return len(errs), combined.String()
+}
+
+// clean clean all the disruptions using the list of injectors
+func clean(kind string, sendToMetrics bool) (int, string) {
+	errs := []error{}
+
+	for _, inj := range injectors {
+		// start cleanup which is retried up to 3 times using an exponential backoff algorithm
+		if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
+			errs = append(errs, err)
+
+			if sendToMetrics {
+				handleMetricError(ms.MetricCleaned(false, kind, nil))
+			}
+
+			log.Errorw("disruption cleaning failed", "error", err)
+		} else {
+			log.Infof("disruption %s cleaned", inj.GetDisruptionKind())
+		}
+
+		if sendToMetrics {
+			handleMetricError(ms.MetricCleaned(true, kind, nil))
+		}
+	}
+
+	var combined strings.Builder
+
+	for _, err := range errs {
+		combined.WriteString(err.Error())
+		combined.WriteString(",")
+	}
+
+	return len(errs), combined.String()
+}
+
 // injectAndWait injects the disruption with the configured injector and waits
 // for an exit signal to be sent
 func injectAndWait(cmd *cobra.Command, args []string) {
@@ -287,35 +354,17 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 	log.Infow("injecting the disruption", "kind", cmd.Name())
 
-	errOnInject := false
-	pulsingInjectors := []injector.Injector{} // We keep in a list the injectors for disruptions compatible with pulsing
-
-	for _, inj := range injectors {
-		// start injection, do not fatal on error so we keep the pod
-		// running, allowing the cleanup to happen
-		if err := inj.Inject(); err != nil {
-			errOnInject = true
-
-			handleMetricError(ms.MetricInjected(false, cmd.Name(), nil))
-			log.Errorw("disruption injection failed", "error", err)
-		} else {
-			// build compatible disruptions with pulsing
-			if pulseActiveDuration > 0 && pulseDormantDuration > 0 && inj.GetDisruptionKind() != chaostypes.DisruptionKindContainerFailure && inj.GetDisruptionKind() != chaostypes.DisruptionKindNodeFailure {
-				pulsingInjectors = append(pulsingInjectors, inj)
-			}
-
-			handleMetricError(ms.MetricInjected(true, cmd.Name(), nil))
-			log.Info("disruption injected, now waiting for an exit signal")
-		}
-	}
+	nbErrorsOnInject, reason := inject(cmd.Name(), true)
 
 	// create and write readiness probe file if injection succeeded so the pod is marked as ready
-	if !errOnInject {
+	if nbErrorsOnInject == 0 {
+		log.Infof("disruption(s) injected, now waiting for an exit signal")
+
 		if err := ioutil.WriteFile(readinessProbeFile, []byte("1"), 0400); err != nil {
 			log.Errorw("error writing readiness probe file", "error", err)
 		}
 	} else {
-		log.Error("an injector could not inject the disruption successfully, please look at the logs above for more details")
+		log.Errorf("disruption injection failed on %d injectors (comma separated errors)", nbErrorsOnInject, "errors", reason)
 	}
 
 	// once injected, send a signal to the handler container so it can exit and let other containers go on
@@ -339,11 +388,11 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if len(pulsingInjectors) > 0 {
+	if nbErrorsOnInject == 0 {
 		isInjected := true
 		sleepDuration := pulseActiveDuration
 
-		for { // This loop will inject, wait, clean, wait until a signal is received
+		for { // This loop will wait, clean, wait, inject until a signal is received
 			select { // Quit on signal reception or sleep and injects / cleans the disruptions
 			case sig := <-signals:
 				log.Infow("an exit signal has been received", "signal", sig.String())
@@ -351,36 +400,26 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 				return
 			case <-time.After(sleepDuration):
 				if !isInjected {
-					for _, inj := range pulsingInjectors {
-						if err := backoff.RetryNotify(inj.Inject, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
-							log.Errorw("pulsing disruption injection failed", "error", err)
+					if nbErrorsOnInject, reason := inject(cmd.Name(), false); nbErrorsOnInject > 0 {
+						log.Errorf("disruption injection failed on %d injectors (comma separated errors)", nbErrorsOnInject, "errors", reason)
 
-							return
-						}
+						return
 					}
-
-					log.Info("pulsing disruption(s) are in active mode")
-
-					sleepDuration = pulseActiveDuration
-				} else {
-					for _, inj := range pulsingInjectors {
-						if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
-							log.Errorw("pulsing disruption clean failed", "error", err)
-
-							return
-						}
-					}
-
-					log.Info("pulsing disruption(s) are in dormant mode")
 
 					sleepDuration = pulseDormantDuration
+				} else {
+					if nbErrorsOnClean, reason := clean(cmd.Name(), false); nbErrorsOnClean > 0 {
+						log.Errorf("disruption clean failed on %d injectors (comma separated errors)", nbErrorsOnClean, "errors", reason)
+
+						return
+					}
+
+					sleepDuration = pulseActiveDuration
 				}
 
 				isInjected = !isInjected
 			}
 		}
-	} else if pulseActiveDuration > 0 && pulseDormantDuration > 0 && !errOnInject {
-		log.Error("the --pulse-active-duration and --pulse-dormant-duration flag were provided but no compatible disruption to pulsing could be found")
 	}
 
 	// wait for an exit signal, this is a blocking call
@@ -391,36 +430,18 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 // cleanAndExit cleans the disruption with the configured injector and exits nicely
 func cleanAndExit(cmd *cobra.Command, args []string) {
-	errs := []error{}
-
-	for _, inj := range injectors {
-		// start cleanup which is retried up to 3 times using an exponential backoff algorithm
-		if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
-			handleMetricError(ms.MetricCleaned(false, cmd.Name(), nil))
-
-			errs = append(errs, err)
-		}
-
-		handleMetricError(ms.MetricCleaned(true, cmd.Name(), nil))
-	}
+	nbErrorsOnClean, reason := clean(cmd.Name(), true)
 
 	// 1 or more injectors failed to clean, log and fatal
-	if len(errs) != 0 {
-		var combined strings.Builder
-
-		for _, err := range errs {
-			combined.WriteString(err.Error())
-			combined.WriteString(",")
-		}
-
-		log.Fatalw(fmt.Sprintf("disruption cleanup failed on %d injectors (comma separated errors)", len(errs)), "errors", combined.String())
+	if nbErrorsOnClean > 0 {
+		log.Fatalw(fmt.Sprintf("disruption cleanup failed on %d injectors (comma separated errors)", nbErrorsOnClean), "errors", reason)
 	}
 
 	if err := backoff.RetryNotify(cleanFinalizer, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
 		log.Errorw("couldn't safely remove this pod's finalizer", "err", err)
 	}
 
-	log.Info("disruption cleaned, now exiting")
+	log.Info("disruption(s) cleaned, now exiting")
 }
 
 func cleanFinalizer() error {

@@ -5,6 +5,8 @@
 
 package types
 
+import "time"
+
 // DisruptionKindName represents a disruption kind
 type DisruptionKindName string
 
@@ -61,6 +63,8 @@ const (
 	finalizerPrefix     = "finalizer.chaos.datadoghq.com"
 	DisruptionFinalizer = finalizerPrefix
 	ChaosPodFinalizer   = finalizerPrefix + "/chaos-pod"
+
+	PulsingDisruptionMinimumDuration = time.Duration(500 * time.Millisecond)
 )
 
 var (

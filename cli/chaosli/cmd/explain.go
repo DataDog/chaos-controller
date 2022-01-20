@@ -48,6 +48,10 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\tℹ️  will target the following containers when targeting on the pod level\n\t\t🎯  %s\n", strings.Join(spec.Containers, ","))
 	}
 
+	if spec.Pulse != nil {
+		fmt.Printf("\tℹ️  has the pulse mode activated meaning the disruptions will alternate between an active injected state with a duration of %s, and an inactive dormant state with a duration of %s.\n", spec.Pulse.ActiveDuration.Duration().String(), spec.Pulse.DormantDuration.Duration().String())
+	}
+
 	fmt.Printf("\tℹ️  is going to target %s %s(s) (either described as a percentage of total %ss or actual number of them).\n", spec.Count, spec.Level, spec.Level)
 	PrintSeparator()
 }

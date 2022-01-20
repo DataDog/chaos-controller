@@ -226,17 +226,16 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 
 	// Rule: pulse compatibility
 	if s.Pulse != nil {
-		if s.CPUPressure == nil && s.DiskPressure == nil && s.Network == nil && s.DNS == nil && s.GRPC == nil {
+		if s.NodeFailure != nil || s.ContainerFailure != nil {
 			retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
 		}
 
-		// Pulsing disruptions should not be pulsing less than every 500 milliseconds
-		if s.Pulse.ActiveDuration.Duration().Milliseconds() < 500 {
-			retErr = multierror.Append(retErr, errors.New("pulse activeDuration should be greater than 500 milliseconds"))
+		if s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse activeDuration should be greater than %d milliseconds", chaostypes.PulsingDisruptionMinimumDuration.Milliseconds()))
 		}
 
-		if s.Pulse.DormantDuration.Duration().Milliseconds() < 500 {
-			retErr = multierror.Append(retErr, errors.New("pulse dormantDuration should be greater than 500 milliseconds"))
+		if s.Pulse.DormantDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse dormantDuration should be greater than %d milliseconds", chaostypes.PulsingDisruptionMinimumDuration.Milliseconds()))
 		}
 	}
 
