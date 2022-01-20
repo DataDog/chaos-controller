@@ -1,26 +1,3 @@
-## Quick Installation
-
-> :mega: _**Datadog engineers:** please reach out to Chaos Engineering before deploying to a new cluster! :pray: :bow:_
-
-If you do not plan to alter source code, you can install **Chaos Controller** to your existing Kubernetes environments by running:
-
-```
-git pull -t
-make oss-install
-kubectl apply -f https://raw.githubusercontent.com/DataDog/chaos-controller/main/chart/install.yaml
-```
-
-This `install.yaml` will always point to the latest stable version of the controller in Docker Hub.
-
-If you use Helm you can install all the resources as follows:
-```
-helm install -f values.yaml chaos-controller ./chart
-```
-
-> :mega: _**Datadog engineers:** please reach out to Chaos Engineering before deploying to a new cluster! :pray: :bow:_
-
-> :warning: _[cert-manager](https://cert-manager.io/docs/installation/kubernetes/) must be installed for the admission controller to get a self-signed certificate._
-
 # Chaos Controller Advanced Installation Guide
 
 If you do not plan to use the generated manifests because you need some specific configurations, please read this documentation.
