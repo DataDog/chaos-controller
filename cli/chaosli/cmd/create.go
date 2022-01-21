@@ -584,7 +584,7 @@ func getPulse() *v1beta1.DisruptionPulse {
 
 			duration := v1beta1.DisruptionDuration(str)
 			if duration.Duration() < types.PulsingDisruptionMinimumDuration {
-				return fmt.Errorf("duration must be greater than %d milliseconds", types.PulsingDisruptionMinimumDuration.Milliseconds())
+				return fmt.Errorf("duration must be greater than %s", types.PulsingDisruptionMinimumDuration)
 			}
 
 			return nil
@@ -599,14 +599,14 @@ func getPulse() *v1beta1.DisruptionPulse {
 
 	activeDuration := v1beta1.DisruptionDuration(getInput(
 		"What would be the duration of the disruption in an active state during the pulse? This can be a golang's time.Duration.",
-		fmt.Sprintf("Please specify a golang's time.Duration's >%dms, e.g., \"45s\", \"15m30s\", \"4h30m\".", types.PulsingDisruptionMinimumDuration.Milliseconds()),
+		fmt.Sprintf("Please specify a golang's time.Duration's >%s, e.g., \"45s\", \"15m30s\", \"4h30m\".", types.PulsingDisruptionMinimumDuration),
 		survey.WithValidator(survey.Required),
 		survey.WithValidator(validator),
 	))
 
 	dormantDuration := v1beta1.DisruptionDuration(getInput(
 		"What would be the duration of the disruption in a dormant state during the pulse? This can be a golang's time.Duration.",
-		fmt.Sprintf("Please specify a golang's time.Duration's >%dms, e.g., \"45s\", \"15m30s\", \"4h30m\".", types.PulsingDisruptionMinimumDuration.Milliseconds()),
+		fmt.Sprintf("Please specify a golang's time.Duration's >%s, e.g., \"45s\", \"15m30s\", \"4h30m\".", types.PulsingDisruptionMinimumDuration),
 		survey.WithValidator(survey.Required),
 		survey.WithValidator(validator),
 	))

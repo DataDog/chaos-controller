@@ -231,11 +231,11 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 		}
 
 		if s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
-			retErr = multierror.Append(retErr, fmt.Errorf("pulse activeDuration should be greater than %d milliseconds", chaostypes.PulsingDisruptionMinimumDuration.Milliseconds()))
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse activeDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
 		}
 
 		if s.Pulse.DormantDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
-			retErr = multierror.Append(retErr, fmt.Errorf("pulse dormantDuration should be greater than %d milliseconds", chaostypes.PulsingDisruptionMinimumDuration.Milliseconds()))
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse dormantDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
 		}
 	}
 

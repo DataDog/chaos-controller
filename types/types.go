@@ -64,7 +64,7 @@ const (
 	DisruptionFinalizer = finalizerPrefix
 	ChaosPodFinalizer   = finalizerPrefix + "/chaos-pod"
 
-	PulsingDisruptionMinimumDuration = time.Duration(500 * time.Millisecond)
+	PulsingDisruptionMinimumDuration = 500 * time.Millisecond
 )
 
 var (

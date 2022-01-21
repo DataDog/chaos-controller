@@ -276,7 +276,7 @@ func initExitSignalsHandler() {
 }
 
 // inject inject all the disruptions using the list of injectors
-func inject(kind string, sendToMetrics bool) (int, string) {
+func inject(kind string, sendToMetrics bool) bool {
 	errs := []error{}
 
 	for _, inj := range injectors {
@@ -306,11 +306,15 @@ func inject(kind string, sendToMetrics bool) (int, string) {
 		combined.WriteString(",")
 	}
 
-	return len(errs), combined.String()
+	if len(errs) > 0 {
+		log.Errorw(fmt.Sprintf("disruption injection failed on %d injectors (comma separated errors)", len(errs)), "errors", combined.String())
+	}
+
+	return len(errs) > 0
 }
 
 // clean clean all the disruptions using the list of injectors
-func clean(kind string, sendToMetrics bool) (int, string) {
+func clean(kind string, sendToMetrics bool) bool {
 	errs := []error{}
 
 	for _, inj := range injectors {
@@ -339,7 +343,11 @@ func clean(kind string, sendToMetrics bool) (int, string) {
 		combined.WriteString(",")
 	}
 
-	return len(errs), combined.String()
+	if len(errs) > 0 {
+		log.Errorw(fmt.Sprintf("disruption cleanup failed on %d injectors (comma separated errors)", len(errs)), "errors", combined.String())
+	}
+
+	return len(errs) > 0
 }
 
 // injectAndWait injects the disruption with the configured injector and waits
@@ -354,17 +362,15 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 	log.Infow("injecting the disruption", "kind", cmd.Name())
 
-	nbErrorsOnInject, reason := inject(cmd.Name(), true)
+	errOnInject := inject(cmd.Name(), true)
 
 	// create and write readiness probe file if injection succeeded so the pod is marked as ready
-	if nbErrorsOnInject == 0 {
+	if !errOnInject {
 		log.Infof("disruption(s) injected, now waiting for an exit signal")
 
 		if err := ioutil.WriteFile(readinessProbeFile, []byte("1"), 0400); err != nil {
 			log.Errorw("error writing readiness probe file", "error", err)
 		}
-	} else {
-		log.Errorf("disruption injection failed on %d injectors (comma separated errors)", nbErrorsOnInject, "errors", reason)
 	}
 
 	// once injected, send a signal to the handler container so it can exit and let other containers go on
@@ -388,8 +394,9 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if nbErrorsOnInject == 0 {
+	if !errOnInject && pulseActiveDuration > 0 && pulseDormantDuration > 0 {
 		isInjected := true
+		action := inject
 		sleepDuration := pulseActiveDuration
 
 		for { // This loop will wait, clean, wait, inject until a signal is received
@@ -400,21 +407,15 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 				return
 			case <-time.After(sleepDuration):
 				if !isInjected {
-					if nbErrorsOnInject, reason := inject(cmd.Name(), false); nbErrorsOnInject > 0 {
-						log.Errorf("disruption injection failed on %d injectors (comma separated errors)", nbErrorsOnInject, "errors", reason)
-
-						return
-					}
-
+					action = inject
 					sleepDuration = pulseDormantDuration
 				} else {
-					if nbErrorsOnClean, reason := clean(cmd.Name(), false); nbErrorsOnClean > 0 {
-						log.Errorf("disruption clean failed on %d injectors (comma separated errors)", nbErrorsOnClean, "errors", reason)
-
-						return
-					}
-
+					action = clean
 					sleepDuration = pulseActiveDuration
+				}
+
+				if errOnClean := action(cmd.Name(), false); errOnClean {
+					return
 				}
 
 				isInjected = !isInjected
@@ -430,11 +431,9 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 // cleanAndExit cleans the disruption with the configured injector and exits nicely
 func cleanAndExit(cmd *cobra.Command, args []string) {
-	nbErrorsOnClean, reason := clean(cmd.Name(), true)
-
-	// 1 or more injectors failed to clean, log and fatal
-	if nbErrorsOnClean > 0 {
-		log.Fatalw(fmt.Sprintf("disruption cleanup failed on %d injectors (comma separated errors)", nbErrorsOnClean), "errors", reason)
+	// 1 or more injectors failed to clean, we exit
+	if errOnClean := clean(cmd.Name(), true); errOnClean {
+		os.Exit(1)
 	}
 
 	if err := backoff.RetryNotify(cleanFinalizer, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
