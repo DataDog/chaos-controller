@@ -49,8 +49,8 @@ spec:
 ```
 
 To break this down:
-* `app: chaos-dogfood-server` - a selctor identifying which pods to disrupt (in this case, `chaos-dogfood-server-5fdcff889f-hblj2`).
-* `port: 50050` - port to connect to the gRPC application on your pod (it distinct from the port you expose on the Kubernetes `Service` which in this case would be `50051`, not `50050`).
+* `app: chaos-dogfood-server` - a selector identifying which pods to disrupt (in this case, `chaos-dogfood-server-5fdcff889f-hblj2`).
+* `port: 50050` - port to connect to the gRPC application on your pod (it's distinct from the port you expose on the Kubernetes `Service` which in this case would be `50051`, not `50050`).
 * Since the `endpoints` do not have `query_percent`s specified, the assigned errors will be applied to all queries for the respective endpoints.
 
 The sample client logs might look like in the moment the disruption is applied:
@@ -83,7 +83,7 @@ x
 x
 ```
 
-The first three groups of logs (where a "group" is demarkated by an `x`) are healthy responses, and second three groups are each returning the configured errors for both requests types.
+The first three groups of logs (where a "group" is demarkated by an `x`) are healthy responses, and second three groups are each returning the configured errors for both requests' types.
 
 Run `kubectl delete -f examples/grpc_error.yaml` to remove the disruption. You should see the logs you are following revert back to the original responses which successfully fill orders for `dog` and `cat` but not `mouse`.
 
@@ -131,7 +131,7 @@ x
 x
 ```
 
-For now, the only override available is and empty protobuf message denoted by `"{}"`. Run `kubectl delete -f examples/grpc_override.yaml` to remove the disruption. You should see the logs you are following revert back to the original responses which successfully fill orders for `dog` and `cat` but not `mouse`.
+For now, the only override available is an empty protobuf message denoted by `"{}"`. Run `kubectl delete -f examples/grpc_override.yaml` to remove the disruption. You should see the logs you are following revert back to the original responses which successfully fill orders for `dog` and `cat` but not `mouse`.
 
 ### (4) Complex gRPC disruptions on dogfood application
 
