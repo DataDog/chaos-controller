@@ -382,8 +382,9 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	}
 
 	if !errOnInject && pulseActiveDuration > 0 && pulseDormantDuration > 0 {
+		var action func(string, bool) bool
+
 		isInjected := true
-		action := inject
 		sleepDuration := pulseActiveDuration
 
 		for { // This loop will wait, clean, wait, inject until a signal is received
