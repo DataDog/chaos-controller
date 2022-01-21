@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	toolscache "k8s.io/client-go/tools/cache"
-
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/targetselector"
@@ -30,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
+	toolscache "k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
@@ -64,6 +63,20 @@ type DisruptionReconciler struct {
 	Caches                                map[types.NamespacedName]*k8scache.Cache
 }
 
+type CustomPodHandler struct{}
+
+func (ch CustomPodHandler) OnAdd(pod corev1.Pod) {
+	fmt.Println("watcher: addfunc for pod", pod.Name)
+}
+
+func (ch CustomPodHandler) OnDelete(pod corev1.Pod) {
+	fmt.Println("watcher: deletefunc for pod", pod.Name)
+}
+
+func (ch CustomPodHandler) OnUpdate(oldPod, newPod corev1.Pod) {
+	fmt.Printf("watcher: update pod %v for pod %v", oldPod.Name, newPod.Name)
+}
+
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers,verbs=update
@@ -74,6 +87,7 @@ type DisruptionReconciler struct {
 //+kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
 
 func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	fmt.Printf("reconcile started\n\n")
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
@@ -110,6 +124,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	fmt.Println("cache:", r.Caches[req.NamespacedName])
 	if r.Caches[req.NamespacedName] == nil {
 		c, _ := k8scache.New(
 			ctrl.GetConfigOrDie(),
@@ -124,20 +139,27 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		info.AddEventHandler(toolscache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				fmt.Println("addfunc")
+				fmt.Println("watcher addfunc:", obj)
+			},
+			DeleteFunc: func(obj interface{}) {
+				fmt.Println("watcher deletefunc:", obj)
 			},
 		})
 
-		c.Start(context.Background())
+		err := c.Start(context.Background())
+		if err != nil {
+			fmt.Println("error:", err)
+		}
 		r.Caches[req.NamespacedName] = &c
+		fmt.Println("added cache to list:", req.NamespacedName)
 
 		a := *r.Caches[req.NamespacedName]
 		list := &corev1.PodList{}
-		err := a.List(context.Background(), list)
+		err = a.List(context.Background(), list)
 		if err != nil {
 			fmt.Println("error:", err)
 		} else {
-			fmt.Println(list.Items)
+			fmt.Println("list:", list.Items)
 		}
 	}
 
