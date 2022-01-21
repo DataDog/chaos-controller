@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -276,14 +275,15 @@ func initExitSignalsHandler() {
 }
 
 // inject inject all the disruptions using the list of injectors
+// returns true if injection succeeded, false otherwise
 func inject(kind string, sendToMetrics bool) bool {
-	errs := []error{}
+	errOnInject := false
 
 	for _, inj := range injectors {
 		// start injection, do not fatal on error so we keep the pod
 		// running, allowing the cleanup to happen
 		if err := inj.Inject(); err != nil {
-			errs = append(errs, err)
+			errOnInject = true
 
 			if sendToMetrics {
 				handleMetricError(ms.MetricInjected(false, kind, nil))
@@ -299,28 +299,22 @@ func inject(kind string, sendToMetrics bool) bool {
 		}
 	}
 
-	var combined strings.Builder
-
-	for _, err := range errs {
-		combined.WriteString(err.Error())
-		combined.WriteString(",")
+	if errOnInject {
+		log.Errorf("an injector could not inject the disruption successfully, please look at the logs above for more details")
 	}
 
-	if len(errs) > 0 {
-		log.Errorw(fmt.Sprintf("disruption injection failed on %d injectors (comma separated errors)", len(errs)), "errors", combined.String())
-	}
-
-	return len(errs) > 0
+	return errOnInject
 }
 
 // clean clean all the disruptions using the list of injectors
+// returns true if cleanup succeeded, false otherwise
 func clean(kind string, sendToMetrics bool) bool {
-	errs := []error{}
+	errOnClean := false
 
 	for _, inj := range injectors {
 		// start cleanup which is retried up to 3 times using an exponential backoff algorithm
 		if err := backoff.RetryNotify(inj.Clean, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
-			errs = append(errs, err)
+			errOnClean = true
 
 			if sendToMetrics {
 				handleMetricError(ms.MetricCleaned(false, kind, nil))
@@ -336,18 +330,11 @@ func clean(kind string, sendToMetrics bool) bool {
 		}
 	}
 
-	var combined strings.Builder
-
-	for _, err := range errs {
-		combined.WriteString(err.Error())
-		combined.WriteString(",")
+	if errOnClean {
+		log.Errorw("an injector could not clean the disruption successfully, please look at the logs above for more details")
 	}
 
-	if len(errs) > 0 {
-		log.Errorw(fmt.Sprintf("disruption cleanup failed on %d injectors (comma separated errors)", len(errs)), "errors", combined.String())
-	}
-
-	return len(errs) > 0
+	return errOnClean
 }
 
 // injectAndWait injects the disruption with the configured injector and waits
