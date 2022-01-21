@@ -61,7 +61,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 	ExpiredDisruptionGCDelay              time.Duration
-	Caches                                map[types.NamespacedName]k8scache.Cache
+	Caches                                map[types.NamespacedName]*k8scache.Cache
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -128,7 +128,17 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			},
 		})
 
-		r.Caches[req.NamespacedName] = c
+		c.Start(context.Background())
+		r.Caches[req.NamespacedName] = &c
+
+		a := *r.Caches[req.NamespacedName]
+		list := &corev1.PodList{}
+		err := a.List(context.Background(), list)
+		if err != nil {
+			fmt.Println("error:", err)
+		} else {
+			fmt.Println(list.Items)
+		}
 	}
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
