@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
-	toolscache "k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
@@ -38,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 )
@@ -60,21 +60,38 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 	ExpiredDisruptionGCDelay              time.Duration
-	Caches                                map[types.NamespacedName]*k8scache.Cache
+	Caches                                map[types.NamespacedName]chan error
 }
 
-type CustomPodHandler struct{}
-
-func (ch CustomPodHandler) OnAdd(pod corev1.Pod) {
-	fmt.Println("watcher: addfunc for pod", pod.Name)
+type CustomPodHandler struct {
+	disruption *v1beta1.Disruption
 }
 
-func (ch CustomPodHandler) OnDelete(pod corev1.Pod) {
-	fmt.Println("watcher: deletefunc for pod", pod.Name)
+func (ch CustomPodHandler) OnAdd(obj interface{}) {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		fmt.Printf("watcher addfunc: not a *corev1.Pod, it's a %v\n", reflect.TypeOf(obj))
+	} else {
+		fmt.Printf("watcher addfunc: for disruption %v: pod %v\n", ch.disruption.Name, pod.Name)
+	}
 }
 
-func (ch CustomPodHandler) OnUpdate(oldPod, newPod corev1.Pod) {
-	fmt.Printf("watcher: update pod %v for pod %v", oldPod.Name, newPod.Name)
+func (ch CustomPodHandler) OnDelete(obj interface{}) {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		fmt.Printf("watcher deletefunc: not a *corev1.Pod, it's a %v\n", reflect.TypeOf(obj))
+	} else {
+		fmt.Printf("watcher deletefunc: for disruption %v: pod %v\n", ch.disruption.Name, pod.Name)
+	}
+}
+
+func (ch CustomPodHandler) OnUpdate(oldObj, newObj interface{}) {
+	oldPod, ok := oldObj.(*corev1.Pod)
+	if !ok {
+		fmt.Printf("watcher updatefunc: not a *corev1.Pod, it's a %v\n", reflect.TypeOf(oldObj))
+	} else {
+		fmt.Printf("watcher updatefunc: for disruption %v: pod %v\n", ch.disruption.Name, oldPod.Name)
+	}
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -124,9 +141,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	fmt.Printf("\npre cache gen\n")
 	fmt.Println("cache:", r.Caches[req.NamespacedName])
 	if r.Caches[req.NamespacedName] == nil {
-		c, _ := k8scache.New(
+		fmt.Println("entering cache gen")
+		c, err := k8scache.New(
 			ctrl.GetConfigOrDie(),
 			k8scache.Options{
 				SelectorsByObject: k8scache.SelectorsByObject{
@@ -135,33 +154,32 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				Namespace: instance.Namespace,
 			},
 		)
-		info, _ := c.GetInformer(context.Background(), &corev1.Pod{})
-
-		info.AddEventHandler(toolscache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				fmt.Println("watcher addfunc:", obj)
-			},
-			DeleteFunc: func(obj interface{}) {
-				fmt.Println("watcher deletefunc:", obj)
-			},
-		})
-
-		err := c.Start(context.Background())
 		if err != nil {
-			fmt.Println("error:", err)
-		}
-		r.Caches[req.NamespacedName] = &c
-		fmt.Println("added cache to list:", req.NamespacedName)
-
-		a := *r.Caches[req.NamespacedName]
-		list := &corev1.PodList{}
-		err = a.List(context.Background(), list)
-		if err != nil {
-			fmt.Println("error:", err)
+			fmt.Println("cache gen error:", err)
 		} else {
-			fmt.Println("list:", list.Items)
+			fmt.Println("cache gen: cache created")
 		}
+
+		info, err := c.GetInformer(context.Background(), &corev1.Pod{})
+		if err != nil {
+			fmt.Println("cache gen error:", err)
+		} else {
+			fmt.Println("cache gen: informer extracted")
+		}
+
+		info.AddEventHandler(CustomPodHandler{disruption: instance})
+		fmt.Println("cache gen: event handler added")
+
+		ch := make(chan error)
+		go func() { ch <- c.Start(context.Background()) }()
+		fmt.Printf("sent cache to channel: %v, %+v\n", req.NamespacedName, r.Caches)
+
+		r.Caches[req.NamespacedName] = ch
+		fmt.Printf("added cache to list: %v, %+v\n", req.NamespacedName, r.Caches)
+
+		fmt.Println("exiting cache gen")
 	}
+	fmt.Printf("post cache gen\n\n")
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
@@ -204,6 +222,12 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 				return ctrl.Result{}, err
 			}
+
+			fmt.Printf("deletion of cache channel: r.Caches = %v\n", r.Caches)
+			close(r.Caches[req.NamespacedName])
+			fmt.Printf("closed cache channel: r.Caches = %v\n", r.Caches)
+			delete(r.Caches, req.NamespacedName)
+			fmt.Printf("deleted cache channel: r.Caches = %v\n", r.Caches)
 
 			// send reconciling duration metric
 			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
