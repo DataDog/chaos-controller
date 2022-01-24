@@ -244,17 +244,17 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 	// consider a disruption not injected if no chaos pods are existing
 	if status == chaostypes.DisruptionInjectionStatusNotInjected && len(chaosPods) > 0 {
+		// consider the disruption "partially injected" if we found at least one ready pod
+		status = chaostypes.DisruptionInjectionStatusPartiallyInjected
 		// check the chaos pods conditions looking for the ready condition
 		for _, chaosPod := range chaosPods {
 			podReady := false
 
 			// search for the "Ready" condition in the pod conditions
-			// consider the disruption "partially injected" if we found at least one ready pod
 			for _, cond := range chaosPod.Status.Conditions {
 				if cond.Type == corev1.PodReady {
 					if cond.Status == corev1.ConditionTrue {
 						podReady = true
-						status = chaostypes.DisruptionInjectionStatusPartiallyInjected
 
 						break
 					}
