@@ -303,7 +303,7 @@ func inject(kind string, sendToMetrics bool) bool {
 		log.Errorf("an injector could not inject the disruption successfully, please look at the logs above for more details")
 	}
 
-	return errOnInject
+	return !errOnInject
 }
 
 // clean clean all the disruptions using the list of injectors
@@ -334,7 +334,7 @@ func clean(kind string, sendToMetrics bool) bool {
 		log.Errorw("an injector could not clean the disruption successfully, please look at the logs above for more details")
 	}
 
-	return errOnClean
+	return !errOnClean
 }
 
 // injectAndWait injects the disruption with the configured injector and waits
@@ -349,10 +349,10 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 	log.Infow("injecting the disruption", "kind", cmd.Name())
 
-	errOnInject := inject(cmd.Name(), true)
+	injectSuccess := inject(cmd.Name(), true)
 
 	// create and write readiness probe file if injection succeeded so the pod is marked as ready
-	if !errOnInject {
+	if injectSuccess {
 		log.Infof("disruption(s) injected, now waiting for an exit signal")
 
 		if err := ioutil.WriteFile(readinessProbeFile, []byte("1"), 0400); err != nil {
@@ -381,7 +381,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if !errOnInject && pulseActiveDuration > 0 && pulseDormantDuration > 0 {
+	if injectSuccess && pulseActiveDuration > 0 && pulseDormantDuration > 0 {
 		var action func(string, bool) bool
 
 		isInjected := true
@@ -402,7 +402,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 					sleepDuration = pulseActiveDuration
 				}
 
-				if errOnClean := action(cmd.Name(), false); errOnClean {
+				if ok := action(cmd.Name(), false); !ok {
 					return
 				}
 
@@ -420,7 +420,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 // cleanAndExit cleans the disruption with the configured injector and exits nicely
 func cleanAndExit(cmd *cobra.Command, args []string) {
 	// 1 or more injectors failed to clean, we exit
-	if errOnClean := clean(cmd.Name(), true); errOnClean {
+	if ok := clean(cmd.Name(), true); !ok {
 		os.Exit(1)
 	}
 
