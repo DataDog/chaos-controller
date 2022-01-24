@@ -166,3 +166,9 @@ func (n *Sink) MetricInformed(tags []string) error {
 
 	return nil
 }
+
+func (n *Sink) MetricOrphanFound(tags []string) error {
+	fmt.Printf("NOOP: MetricOrphanFound %s\n", tags)
+
+	return nil
+}
