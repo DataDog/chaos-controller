@@ -52,7 +52,7 @@ data:
       networkDisruption:
         allowedHosts:
           {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}
-          - {{ printf "%s;%v;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") | quote }}
+          - {{ printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") | quote }}
           {{- end }}
       {{- end }}
     handler:
