@@ -1,6 +1,6 @@
 # GRPC disruption
 
-The `grpc` field offers a way to inject spoofed gRPC responses on the server-side. To get this disruption to work, you must apply some code changes to the instantiation of your gRPC server (see [how to initialize a disruption listener service in gRPC server?](/docs/grpc_disruption/setup_instructions.md)), and then apply the Disruption kind with the following additional fields in the `grpc` specifications:
+The `grpc` field offers a way to inject spoofed gRPC responses on the server-side. To get this disruption to work, you must apply some code changes to the instantiation of your gRPC server (see [how to initialize a disruption listener service in gRPC server?](/docs/grpc_disruption/instructions.md)), and then apply the Disruption kind with the following additional fields in the `grpc` specifications:
 
 * `port` is the port exposed on target pods (the target pods are specified in `spec.selector`)
 * `endpoints` is a list of endpoints to alter (a spoof configuration is referred to as an `alteration`)
@@ -89,5 +89,5 @@ In our case, we do not make a service call if the request is one which the disru
 
 # FAQs
 
-* [How do I setup a disruption listener service on my gRPC server?](/docs/grpc_disruption/setup_instructions.md)
+* [How do I setup a disruption listener service on my gRPC server?](/docs/grpc_disruption/instructions.md)
 * [How does the disruption listener service configure the interceptor?](/docs/grpc_disruption/interceptor_algorithm.md)

@@ -26,7 +26,7 @@ Create the `chaos-demo` namespace (if necessary) and `kubectl apply` both Helm c
 
 ## Development
 
-### (1) See your pods
+### (3) See your pods
 
 Get pod name (such as `chaos-dogfood-client-84596b6c5-8kdxl` or `chaos-dogfood-server-5fdcff889f-hblj2`):
 `chaos-controller/dogfood >>  kubectl -n chaos-demo get pods -o wide`
@@ -92,6 +92,11 @@ x
 | proccessed order - animal:"dog"
 x
 ```
+
+### (4) Apply your disruptions
+
+You can `kubectl apply -f examples/<disruption.yaml>` for any `example/` disruption files.
+For gRPC disruption, you can follow these [detailed steps](../docs/grpc_disruption/demo_instructions.md).
 
 ## Clean up
 * Run `make uninstall` to `kubectl delete` both charts as well as remove the namespace.

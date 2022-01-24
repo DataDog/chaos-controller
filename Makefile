@@ -164,3 +164,6 @@ generate-chaosdogfood-protobuf:
 
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
+
+oss-install:
+	VERSION=$(git describe --abbrev=0 --tags); helm template ./chart/ --set images.controller=datadog/chaos-controller:${VERSION} --set images.injector=datadog/chaos-injector:${VERSION} --set images.handler=datadog/chaos-handler:${VERSION} > ./chart/install.yaml

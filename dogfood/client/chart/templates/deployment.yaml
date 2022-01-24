@@ -12,11 +12,11 @@ spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "deploy.selectorLabels" . | nindent 6 }}
+      app: {{ .Values.fullname }}
   template:
     metadata:
       labels:
-        {{- include "deploy.selectorLabels" . | nindent 8 }}
+        app: {{ .Values.fullname }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
