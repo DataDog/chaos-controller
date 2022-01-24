@@ -332,6 +332,13 @@ func main() {
 		},
 	})
 
+	// erase/close caches contexts
+	defer func() {
+		for _, cFunc := range r.Caches {
+			cFunc()
+		}
+	}()
+
 	// +kubebuilder:scaffold:builder
 
 	logger.Infow("restarting chaos-controller")
