@@ -21,6 +21,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -291,7 +292,7 @@ func main() {
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
 		ExpiredDisruptionGCDelay:              cfg.Controller.ExpiredDisruptionGCDelay,
-		Caches:                                make(map[k8stypes.NamespacedName]chan error),
+		Caches:                                make(map[k8stypes.NamespacedName]context.CancelFunc),
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())

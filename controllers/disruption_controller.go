@@ -60,7 +60,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 	ExpiredDisruptionGCDelay              time.Duration
-	Caches                                map[types.NamespacedName]chan error
+	Caches                                map[types.NamespacedName]context.CancelFunc
 }
 
 type CustomPodHandler struct {
@@ -141,8 +141,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	fmt.Printf("\npre cache gen\n")
-	fmt.Println("cache:", r.Caches[req.NamespacedName])
 	if r.Caches[req.NamespacedName] == nil {
 		fmt.Println("entering cache gen")
 		c, err := k8scache.New(
@@ -171,15 +169,16 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		fmt.Println("cache gen: event handler added")
 
 		ch := make(chan error)
-		go func() { ch <- c.Start(context.Background()) }()
+		cacheCtx, cacheCancelFunc := context.WithCancel(context.TODO())
+
+		go func() { ch <- c.Start(cacheCtx) }()
 		fmt.Printf("sent cache to channel: %v, %+v\n", req.NamespacedName, r.Caches)
 
-		r.Caches[req.NamespacedName] = ch
+		r.Caches[req.NamespacedName] = cacheCancelFunc
 		fmt.Printf("added cache to list: %v, %+v\n", req.NamespacedName, r.Caches)
 
 		fmt.Println("exiting cache gen")
 	}
-	fmt.Printf("post cache gen\n\n")
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
@@ -223,11 +222,10 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				return ctrl.Result{}, err
 			}
 
-			fmt.Printf("deletion of cache channel: r.Caches = %v\n", r.Caches)
-			close(r.Caches[req.NamespacedName])
-			fmt.Printf("closed cache channel: r.Caches = %v\n", r.Caches)
+			// close the context for the disruption-related cache and clear the cache
+			cancelFunc := (r.Caches[req.NamespacedName])
+			cancelFunc()
 			delete(r.Caches, req.NamespacedName)
-			fmt.Printf("deleted cache channel: r.Caches = %v\n", r.Caches)
 
 			// send reconciling duration metric
 			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
