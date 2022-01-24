@@ -210,6 +210,12 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 		} else {
 			fmt.Println("\t\t\t🧾 Protocol: All Protocols")
 		}
+
+		if data.Flow == v1beta1.FlowIngress {
+			fmt.Println("\t💥 applies network failures on incoming traffic instead of outgoing.")
+		} else {
+			fmt.Println("\t💥 applies network failures on outgoing traffic.")
+		}
 	}
 
 	if len(network.Services) != 0 {
@@ -219,12 +225,6 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	for _, data := range network.Services {
 		fmt.Printf("\t\t🎯 Service: %s\n", data.Name)
 		fmt.Printf("\t\t\t⛵️ Namespace: %s\n", data.Namespace)
-	}
-
-	if network.Flow == v1beta1.FlowIngress {
-		fmt.Println("\t💥 applies network failures on incoming traffic instead of outgoing.")
-	} else {
-		fmt.Println("\t💥 applies network failures on outgoing traffic.")
 	}
 
 	if network.Drop != 0 {

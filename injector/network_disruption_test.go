@@ -174,7 +174,6 @@ var _ = Describe("Failure", func() {
 			Delay:          1000,
 			DelayJitter:    100,
 			BandwidthLimit: 10000,
-			Flow:           "egress",
 		}
 	})
 
@@ -313,10 +312,10 @@ var _ = Describe("Failure", func() {
 
 		Context("with ingress flow", func() {
 			BeforeEach(func() {
-				spec.Flow = "ingress"
 				spec.Hosts = []v1beta1.NetworkDisruptionHostSpec{
 					{
 						Port: 80,
+						Flow: "ingress",
 					},
 				}
 			})

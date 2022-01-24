@@ -41,14 +41,15 @@ spec:
       - host: 10.0.0.0/8 # optional, IP, CIDR or hostname to filter on
         port: 80 # optional, port to drop packets on
         protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+        flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
     allowedHosts: # optional, list of excluded hosts which would not be disrupted
       - host: 10.0.0.1 # optional, IP, CIDR or hostname to filter on
         port: 80 # optional, port to filter on
         protocol: tcp # optional, protocol to filter on (can be tcp or udp, defaults to both)
+        flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
     services: # optional, list of destination Kubernetes services to filter on
       - name: foo # service name
         namespace: bar # service namespace
-    flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
     drop: 10 # "mandatory", at least one of `bandwidthLimit`, `delay`, `drop`, `corrupt`, or `duplicate` must be specified; probability to drop packets (between 0 and 100)
     corrupt: 5 # probability to corrupt packets (between 0 and 100)
     delay: 1000 # latency to apply to packets in ms
