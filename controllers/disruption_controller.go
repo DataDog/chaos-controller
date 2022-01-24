@@ -119,6 +119,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
 			isCleaned, err := r.cleanDisruption(instance)
 			if err != nil {
+				r.log.Errorw("error cleaning disruption", "error", err)
+
 				return ctrl.Result{}, err
 			}
 
@@ -141,6 +143,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 			if err := r.Update(context.Background(), instance); err != nil {
+				r.log.Errorw("error removing disruption finalizer", "error", err)
+
 				return ctrl.Result{}, err
 			}
 
@@ -201,9 +205,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// requeue the request if the disruption is not fully injected yet
 		injected, err := r.updateInjectionStatus(instance)
 		if err != nil {
+			r.log.Errorw("error updating injection status", "error", err)
+
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
-			// requeue after 5-10 seconds, as default 1m is too quick here
+			// requeue after 5-10 seconds, as default 1ms is too quick here
 			requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
 			r.log.Infow("disruption is not fully injected yet, requeuing", "injectionStatus", instance.Status.InjectionStatus)
 
@@ -249,17 +255,17 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 	// consider a disruption not injected if no chaos pods are existing
 	if status == chaostypes.DisruptionInjectionStatusNotInjected && len(chaosPods) > 0 {
+		// consider the disruption "partially injected" if we found at least one ready pod
+		status = chaostypes.DisruptionInjectionStatusPartiallyInjected
 		// check the chaos pods conditions looking for the ready condition
 		for _, chaosPod := range chaosPods {
 			podReady := false
 
 			// search for the "Ready" condition in the pod conditions
-			// consider the disruption "partially injected" if we found at least one ready pod
 			for _, cond := range chaosPod.Status.Conditions {
 				if cond.Type == corev1.PodReady {
 					if cond.Status == corev1.ConditionTrue {
 						podReady = true
-						status = chaostypes.DisruptionInjectionStatusPartiallyInjected
 
 						break
 					}
@@ -300,7 +306,9 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption) error {
 	var err error
 
-	r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
+	if len(instance.Status.Targets) > 0 {
+		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
+	}
 
 	for _, target := range instance.Status.Targets {
 		targetNodeName := ""
