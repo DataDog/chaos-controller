@@ -97,6 +97,12 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}()()
 
 	if err := r.Get(context.Background(), req.NamespacedName, instance); err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			// If we're reconciling but without an instance, then we must have been triggered by the pod informer
+			// We should check for and delete any orphaned chaos pods
+			err = r.handleOrphanedChaosPods(req)
+		}
+
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -156,6 +162,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
+		if err := r.Update(context.Background(), instance); err != nil {
+			r.log.Errorw("error adding disruption finalizer", "error", err)
+
+			return ctrl.Result{Requeue: true}, err
+		}
 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
 		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the duration's deadline. We compare it to negative ExpiredDisruptionGCDelay,
@@ -434,6 +445,48 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 	}
 
 	return cleaned, nil
+}
+
+func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
+	ls := make(map[string]string)
+
+	ls[chaostypes.DisruptionNameLabel] = req.Name
+	ls[chaostypes.DisruptionNamespaceLabel] = req.Namespace
+
+	chaosPods, err := r.getChaosPods(nil, ls)
+	if err != nil {
+		return err
+	}
+
+	for _, chaosPod := range chaosPods {
+		r.handleMetricSinkError(r.MetricsSink.MetricOrphanFound([]string{"disruption:" + req.Name, "chaosPod:" + chaosPod.Name, "namespace:" + req.Namespace}))
+		target := chaosPod.Labels[chaostypes.TargetLabel]
+
+		var p corev1.Pod
+
+		r.log.Infow("checking if we can clean up orphaned chaos pod", "chaosPod", chaosPod.Name, "target", target)
+
+		// if target doesn't exist, we can try to clean up the chaos pod
+		if err := r.Client.Get(context.Background(), types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); errors.IsNotFound(err) {
+			r.log.Warnw("orphaned chaos pod detected, will attempt to delete", "chaosPod", chaosPod.Name)
+			controllerutil.RemoveFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer)
+
+			if err := r.Client.Update(context.Background(), &chaosPod); err != nil {
+				r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+
+				continue
+			}
+
+			// if the chaos pod still exists after having its finalizer removed, delete it
+			if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
+				r.log.Errorw("error deleting orphaned chaos pod", "error", err, "chaosPod", chaosPod.Name)
+
+				continue
+			}
+		}
+	}
+
+	return nil
 }
 
 // handleChaosPodsTermination looks at the given instance chaos pods status to handle any terminated pods
