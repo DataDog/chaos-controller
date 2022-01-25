@@ -21,12 +21,9 @@ import (
 type Safemode interface {
 	// CreationSafetyNets will look at all the specific safety nets corresponding to the creation of a new disruption
 	CreationSafetyNets() ([]string, error)
-	// GetTypeSpec will grab the necessary spec depending on the type (e.g. SafemodeNetwork will grab NetworkDisruptionSpec)
+	// Init will grab the necessary spec depending on the type (e.g. SafemodeNetwork will grab NetworkDisruptionSpec)
 	// and grab the disruption itself for data such as the kubernetes namespace the disruption is running on
-	GetTypeSpec(disruption v1beta1.Disruption)
-	// GetKubeClient grab the kube client for functions that require state information from k8s system
-	GetKubeClient(client client.Client)
-	// Init will run GetTypeSpec and GetKubeClient together to cimplify further code
+	// It will also grab the kube client for functions that require state information from k8s system
 	Init(disruption v1beta1.Disruption, client client.Client)
 }
 
@@ -91,20 +88,10 @@ type Generic struct {
 	client client.Client
 }
 
-// GetTypeSpec Refer to safemode.Safemode interface for documentation
-func (sm *Generic) GetTypeSpec(disruption v1beta1.Disruption) {
-	sm.dis = disruption
-}
-
-// GetTypeSpec Refer to safemode.Safemode interface for documentation
-func (sm *Generic) GetKubeClient(client client.Client) {
-	sm.client = client
-}
-
 // Init Refer to safemode.Safemode interface for documentation
 func (sm *Generic) Init(disruption v1beta1.Disruption, client client.Client) {
-	sm.GetTypeSpec(disruption)
-	sm.GetKubeClient(client)
+	sm.dis = disruption
+	sm.client = client
 }
 
 // CreationSafetyNets Refer to safemode.Safemode interface for documentation
@@ -133,7 +120,7 @@ func (sm *Generic) CreationSafetyNets() ([]string, error) {
 // In this function we run a check against the count of the target environment 3 times. If the count is different each of those
 // 3 times, we assume sporadic behaviour of the target environment and raise a flag.
 func (sm *Generic) safetyNetSporadicTargets() (bool, error) {
-	if sm.dis.Spec.Safemode.IgnoreSporadicTargets {
+	if sm.dis.Spec.Unsafemode.DisableSporadicTargets {
 		return false, nil
 	}
 
@@ -185,10 +172,10 @@ func (sm *Generic) safetyNetSporadicTargets() (bool, error) {
 // safetyNetCountNotTooLarge is the safety net regarding the count of targets
 // it will check against the number of targets being targeted and the number of targets in the k8s system
 // > 66% of the k8s system being targeted warrants a safety check if we assume each of our targets are replicated
-// at least twice. > 80% in a namespace also warrants a safety check as typically namespaces are shared between services.
+// at least twice. > 80% in a namespace also warrants a safety check as namespaces may be shared between services.
 // returning true indicates the safety net caught something
 func (sm *Generic) safetyNetCountNotTooLarge() (bool, error) {
-	if sm.dis.Spec.Safemode.IgnoreCountNotTooLarge {
+	if sm.dis.Spec.Unsafemode.DisableCountTooLarge {
 		return false, nil
 	}
 

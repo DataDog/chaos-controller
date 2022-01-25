@@ -153,7 +153,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// handle generic safety nets if safemode is enabled
-		if !instance.Spec.Safemode.IgnoreAll {
+		if !instance.Spec.Unsafemode.DisableAll {
 			// initialize all relevant safety nets for the first time
 			if len(r.SafetyNets) == 0 {
 				r.SafetyNets = []safemode.Safemode{}

@@ -34,20 +34,10 @@ func (sm *Disk) CreationSafetyNets() ([]string, error) {
 	return safetyNetResponses, nil
 }
 
-// GetTypeSpec Refer to safemode.Safemode interface for documentation
-func (sm *Disk) GetTypeSpec(disruption v1beta1.Disruption) {
-	sm.dis = disruption
-}
-
-// GetKubeClient Refer to safemode.Safemode interface for documentation
-func (sm *Disk) GetKubeClient(client client.Client) {
-	sm.client = client
-}
-
 // Init Refer to safemode.Safemode interface for documentation
 func (sm *Disk) Init(disruption v1beta1.Disruption, client client.Client) {
-	sm.GetTypeSpec(disruption)
-	sm.GetKubeClient(client)
+	sm.dis = disruption
+	sm.client = client
 }
 
 // safetyNetSpecificContainDisk is the safety net regarding running a disk disruption (which hits all containers) while a user targets specific containers.
@@ -63,7 +53,7 @@ func (sm *Disk) safetyNetSpecificContainDisk() (bool, error) {
 		return false, nil
 	}
 
-	if sm.dis.Spec.Safemode.IgnoreSpecificContainDisk {
+	if sm.dis.Spec.Unsafemode.DisableSpecificContainDisk {
 		return false, nil
 	}
 

@@ -137,10 +137,10 @@ var _ = Describe("Disruption Controller", func() {
 				Namespace: "default",
 			},
 			Spec: chaosv1beta1.DisruptionSpec{
-				DryRun:     true,
-				Count:      &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-				Safemode:   &chaosv1beta1.SafemodeSpec{
-					IgnoreAll: true,
+				DryRun: true,
+				Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+					DisableAll: true,
 				},
 				Selector:   map[string]string{"foo": "bar"},
 				Containers: []string{"ctn1"},
@@ -230,10 +230,10 @@ var _ = Describe("Disruption Controller", func() {
 					Namespace: "default",
 				},
 				Spec: chaosv1beta1.DisruptionSpec{
-					DryRun:   false,
-					Count:    &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-					Safemode:   &chaosv1beta1.SafemodeSpec{
-						IgnoreAll: true,
+					DryRun: false,
+					Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+					Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+						DisableAll: true,
 					},
 					Selector: map[string]string{"kubernetes.io/hostname": "minikube"},
 					Level:    chaostypes.DisruptionLevelNode,
@@ -262,10 +262,10 @@ var _ = Describe("Disruption Controller", func() {
 	Context("disruption expires naturally", func() {
 		BeforeEach(func() {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
-				DryRun:     true,
-				Count:      &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
-				Safemode:   &chaosv1beta1.SafemodeSpec{
-					IgnoreAll: true,
+				DryRun: true,
+				Count:  &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+					DisableAll: true,
 				},
 				Selector:   map[string]string{"foo": "bar"},
 				Containers: []string{"ctn1"},

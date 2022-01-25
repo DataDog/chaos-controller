@@ -22,18 +22,8 @@ func (sm *Node) CreationSafetyNets() ([]string, error) {
 	return safetyNetResponses, nil
 }
 
-// GetTypeSpec Refer to safemode.Safemode interface for documentation
-func (sm *Node) GetTypeSpec(disruption v1beta1.Disruption) {
-	sm.dis = disruption
-}
-
-// GetKubeClient Refer to safemode.Safemode interface for documentation
-func (sm *Node) GetKubeClient(client client.Client) {
-	sm.client = client
-}
-
 // Init Refer to safemode.Safemode interface for documentation
 func (sm *Node) Init(disruption v1beta1.Disruption, client client.Client) {
-	sm.GetTypeSpec(disruption)
-	sm.GetKubeClient(client)
+	sm.dis = disruption
+	sm.client = client
 }

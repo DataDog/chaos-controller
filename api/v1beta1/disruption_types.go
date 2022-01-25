@@ -39,7 +39,7 @@ type DisruptionSpec struct {
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
 	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
-	Safemode         *SafemodeSpec                     `json:"safeMode,omitempty"`         // safemode spec used to turn on safemode and specify safety nets or add all of them
+	Unsafemode       *UnsafemodeSpec                   `json:"unsafeMode,omitempty"`       // unsafemode spec used to turn off safemode safety nets
 	Duration         DisruptionDuration                `json:"duration,omitempty"`         // time from disruption creation until chaos pods are deleted and no more are created
 	// +kubebuilder:validation:Enum=pod;node;""
 	// +ddmark:validation:Enum=pod;node;""

@@ -5,14 +5,12 @@
 
 package v1beta1
 
-// SafemodeSpec represents a spec with a switch turning safemode on and all safety net switches to turn off
-// IgnoreAll, by default, is defined by the cluster the controller is running on
-// If the use is running on a cluster that has IgnoreAll as false, they will have to manually ignore the other safety nets they do not want considered
-// If IgnoreAll is true by default, the user can change its value
-type SafemodeSpec struct {
-	IgnoreAll                 bool `json:"ignoreAll,omitempty"`
-	IgnoreCountNotTooLarge    bool `json:"ignoreCountNotToLarge,omitempty"`
-	IgnoreNoPortOrHost        bool `json:"ignoreNoPortOrHost,omitempty"`
-	IgnoreSporadicTargets     bool `json:"ignoreSporadicTargets,omitempty"`
-	IgnoreSpecificContainDisk bool `json:"ignoreSpecificContainDisk,omitempty"`
+// UnsafemodeSpec represents a spec with paramters to turn off specific safety nets designed to catch common traps or issues running a disruption
+// All of these are turned off by default, so disabling safety nets requires manually changing these booleans to true
+type UnsafemodeSpec struct {
+	DisableAll                 bool `json:"disableAll,omitempty"`
+	DisableCountTooLarge       bool `json:"disableCountTooLarge,omitempty"`
+	DisableNeitherHostNorPort  bool `json:"disableNeitherHostNorPort,omitempty"`
+	DisableSporadicTargets     bool `json:"disableSporadicTargets,omitempty"`
+	DisableSpecificContainDisk bool `json:"disableSpecificContainDisk,omitempty"`
 }
