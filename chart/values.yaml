@@ -44,6 +44,7 @@ injector:
     #   - host: 10.0.0.0/8
     #     port: 80
     #     protocol: tcp
+    #     flow: egress
 
 handler:
   enabled: true # enable the chaos handler (required to use the onInit disruption feature)

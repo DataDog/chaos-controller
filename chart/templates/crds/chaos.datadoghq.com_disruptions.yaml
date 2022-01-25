@@ -196,6 +196,12 @@ spec:
                 allowedHosts:
                   items:
                     properties:
+                      flow:
+                        enum:
+                        - ingress
+                        - egress
+                        - ""
+                        type: string
                       host:
                         type: string
                       port:
@@ -242,6 +248,12 @@ spec:
                 hosts:
                   items:
                     properties:
+                      flow:
+                        enum:
+                        - ingress
+                        - egress
+                        - ""
+                        type: string
                       host:
                         type: string
                       port:

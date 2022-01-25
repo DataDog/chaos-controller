@@ -458,6 +458,13 @@ func getHosts() []v1beta1.NetworkDisruptionHostSpec {
 			host.Protocol, _ = selectInput("Please choose then (or ctrl+c to go back)", []string{"tcp", "udp"}, "This will cause only the traffic using this protocol to be affected.")
 		}
 
+		host.Flow, _ = selectInput(
+			"Choose a flow direction",
+			[]string{v1beta1.FlowEgress, v1beta1.FlowIngress},
+			fmt.Sprintf("%s will affect traffic leaving the target. %s will not really affect traffic entering the target, but actually will affect replies to the inbound traffic.",
+				v1beta1.FlowEgress, v1beta1.FlowIngress),
+		)
+
 		return host
 	}
 
@@ -508,13 +515,6 @@ func getNetwork() *v1beta1.NetworkDisruptionSpec {
 
 	spec.Hosts = getHosts()
 	spec.Services = getServices()
-
-	spec.Flow, _ = selectInput(
-		"Choose a flow direction",
-		[]string{v1beta1.FlowEgress, v1beta1.FlowIngress},
-		fmt.Sprintf("%s will affect traffic leaving the target. %s will not really affect traffic entering the target, but actually will affect replies to the inbound traffic.",
-			v1beta1.FlowEgress, v1beta1.FlowIngress),
-	)
 
 	if confirmOption("Would you like to drop packets?", "Packets will be dropped before leaving the target") {
 		spec.Drop, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", survey.WithValidator(survey.Required), survey.WithValidator(percentageValidator)))

@@ -19,7 +19,6 @@ var networkDisruptionCmd = &cobra.Command{
 		hosts, _ := cmd.Flags().GetStringSlice("hosts")
 		allowedHosts, _ := cmd.Flags().GetStringSlice("allowed-hosts")
 		services, _ := cmd.Flags().GetStringSlice("services")
-		flow, _ := cmd.Flags().GetString("flow")
 		drop, _ := cmd.Flags().GetInt("drop")
 		duplicate, _ := cmd.Flags().GetInt("duplicate")
 		corrupt, _ := cmd.Flags().GetInt("corrupt")
@@ -55,7 +54,6 @@ var networkDisruptionCmd = &cobra.Command{
 					Hosts:          parsedHosts,
 					AllowedHosts:   parsedAllowedHosts,
 					Services:       parsedServices,
-					Flow:           flow,
 					Drop:           drop,
 					Duplicate:      duplicate,
 					Corrupt:        corrupt,
@@ -72,10 +70,9 @@ var networkDisruptionCmd = &cobra.Command{
 }
 
 func init() {
-	networkDisruptionCmd.Flags().StringSlice("hosts", []string{}, "List of hosts (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>)")
-	networkDisruptionCmd.Flags().StringSlice("allowed-hosts", []string{}, "List of allowed hosts not being impacted by the disruption (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>)")
+	networkDisruptionCmd.Flags().StringSlice("hosts", []string{}, "List of hosts (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>;<flow>)")
+	networkDisruptionCmd.Flags().StringSlice("allowed-hosts", []string{}, "List of allowed hosts not being impacted by the disruption (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>;<flow>)")
 	networkDisruptionCmd.Flags().StringSlice("services", []string{}, "List of services to apply disruptions to (format: <name>;<namespace>)")
-	networkDisruptionCmd.Flags().String("flow", "egress", "Flow direction to filter on (either egress or ingress)")
 	networkDisruptionCmd.Flags().Int("drop", 100, "Percentage to drop packets (100 is a total drop)")
 	networkDisruptionCmd.Flags().Int("duplicate", 100, "Percentage to duplicate packets (100 is duplicating each packet)")
 	networkDisruptionCmd.Flags().Int("corrupt", 100, "Percentage to corrupt packets (100 is a total corruption)")
