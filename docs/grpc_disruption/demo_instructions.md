@@ -14,7 +14,9 @@ var serverAddr string
 func init() {
 ```
 
-If it is false, set it to true and go through the build, install, and restart instructions in [dogfood/CONTRIBUTING.md](../../dogfood/CONTRIBUTING.md).
+Make sure you have already setup chaos-controller on your local minikube by following the main [CONTRIBUTING.md](../../CONTRIBUTING.md) guidelines.
+
+To run the dogfood application, go through the `build` and `install` instructions in [dogfood/CONTRIBUTING.md](../../dogfood/CONTRIBUTING.md). If you already have the application running, `restart` it.
 
 ### (1) Follow client logs
 

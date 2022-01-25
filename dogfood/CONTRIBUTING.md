@@ -1,6 +1,7 @@
 # Contributing to Chaos Dogfood Application
 
 See [dogfood instructions](README.md) to get the dogfood application running locally.
+This tutorial assumes you are in the [dogfood/](/dogfood) directory.
 
 ### Testing code changes
 
