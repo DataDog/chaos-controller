@@ -425,12 +425,9 @@ func (r *DisruptionReconciler) waitForPodCreation(pod *corev1.Pod) error {
 }
 
 // cleanDisruption triggers the cleanup of the given instance
-// for each target and existing chaos pod, it'll take actions depending on the chaos pod status:
-//   - a running chaos pod will be deleted (triggering the cleanup phase)
-//   - a succeeded chaos pod (which has been deleted and has finished correctly) will see its finalizer removed (and then garbage collected)
-//   - a failed chaos pod will trigger the "stuck on removal" status of the disruption instance and will block its deletion
-// the function returns true when (and only when) all chaos pods have been successfully removed
-// if all pods have completed but are still present (because the finalizer has not been removed yet), it'll still return false
+// for each existing chaos pod for the given instance, the function will delete the chaos pod to trigger its cleanup phase
+// the function returns true when no more chaos pods are existing (meaning that it keeps returning false if some pods
+// are deleted but still present)
 func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption) (bool, error) {
 	cleaned := true
 
@@ -1094,7 +1091,7 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 		disruption := []reconcile.Request{}
 
 		if r.log != nil {
-			r.log.Infow("watching event from pod", "podName", c.GetName(), "podNamespace", c.GetNamespace())
+			r.log.Debugw("watching event from pod", "podName", c.GetName(), "podNamespace", c.GetNamespace())
 		}
 
 		r.handleMetricSinkError(r.MetricsSink.MetricInformed([]string{"podName:" + c.GetName(), "podNamespace:" + c.GetNamespace()}))
