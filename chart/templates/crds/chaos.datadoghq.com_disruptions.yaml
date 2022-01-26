@@ -334,6 +334,7 @@ spec:
               - NotInjected
               - PartiallyInjected
               - Injected
+              - PreviouslyInjected
               type: string
             isInjected:
               type: boolean
