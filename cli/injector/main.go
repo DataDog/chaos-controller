@@ -341,7 +341,7 @@ func clean(kind string, sendToMetrics bool) bool {
 // for an exit signal to be sent
 func injectAndWait(cmd *cobra.Command, args []string) {
 	// early exit if an injector configuration failed to be generated during initialization
-	if !readyToInject {
+	if !readyToInject || len(injectors) == 0 {
 		log.Error("an injector could not be configured successfully during initialization, aborting the injection now")
 
 		return

@@ -8,6 +8,7 @@ package disk
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -27,6 +28,11 @@ type disk struct {
 
 // FromPath returns a disk informer from the given path
 func FromPath(path string) (Informer, error) {
+	// ensure the file exists before going further
+	if _, err := os.Stat(path); err != nil {
+		return nil, err
+	}
+
 	// get host path device
 	df := exec.Command("df", "--output=source", path)
 
