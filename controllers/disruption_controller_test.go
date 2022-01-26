@@ -295,7 +295,7 @@ var _ = Describe("Disruption Controller", func() {
 
 				// check disruption injection status
 				if disruption.Status.InjectionStatus != chaostypes.DisruptionInjectionStatusPreviouslyInjected {
-					return fmt.Errorf("disruptions is not injected, current status is %s", disruption.Status.InjectionStatus)
+					return fmt.Errorf("unexpected disruption status, current status is %s (expected PreviouslyInjected)", disruption.Status.InjectionStatus)
 				}
 
 				return nil
