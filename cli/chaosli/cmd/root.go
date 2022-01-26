@@ -141,11 +141,7 @@ func initLibrary() {
 			if err = fout.Close(); err != nil {
 				return err
 			}
-			if err = fin.Close(); err != nil {
-				return err
-			}
-
-			return nil
+			return fin.Close()
 		})
 
 	if err != nil {

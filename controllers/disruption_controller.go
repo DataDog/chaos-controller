@@ -1056,22 +1056,30 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			level = chaostypes.DisruptionLevelPod
 		}
 
+		pulseActiveDuration, pulseDormantDuration := time.Duration(0), time.Duration(0)
+		if instance.Spec.Pulse != nil {
+			pulseActiveDuration = instance.Spec.Pulse.ActiveDuration.Duration()
+			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
+		}
+
 		xargs := chaosapi.DisruptionArgs{
-			Level:               level,
-			Kind:                kind,
-			TargetContainerIDs:  targetContainerIDs,
-			TargetName:          targetName,
-			TargetNodeName:      targetNodeName,
-			TargetPodIP:         targetPodIP,
-			DryRun:              instance.Spec.DryRun,
-			DisruptionName:      instance.Name,
-			DisruptionNamespace: instance.Namespace,
-			OnInit:              instance.Spec.OnInit,
-			MetricsSink:         r.MetricsSink.GetSinkName(),
-			AllowedHosts:        r.InjectorNetworkDisruptionAllowedHosts,
-			DNSServer:           r.InjectorDNSDisruptionDNSServer,
-			KubeDNS:             r.InjectorDNSDisruptionKubeDNS,
-			ChaosNamespace:      r.ChaosNamespace,
+			Level:                level,
+			Kind:                 kind,
+			TargetContainerIDs:   targetContainerIDs,
+			TargetName:           targetName,
+			TargetNodeName:       targetNodeName,
+			TargetPodIP:          targetPodIP,
+			DryRun:               instance.Spec.DryRun,
+			DisruptionName:       instance.Name,
+			DisruptionNamespace:  instance.Namespace,
+			OnInit:               instance.Spec.OnInit,
+			PulseActiveDuration:  pulseActiveDuration,
+			PulseDormantDuration: pulseDormantDuration,
+			MetricsSink:          r.MetricsSink.GetSinkName(),
+			AllowedHosts:         r.InjectorNetworkDisruptionAllowedHosts,
+			DNSServer:            r.InjectorDNSDisruptionDNSServer,
+			KubeDNS:              r.InjectorDNSDisruptionKubeDNS,
+			ChaosNamespace:       r.ChaosNamespace,
 		}
 
 		// generate args for pod

@@ -39,7 +39,9 @@ type DisruptionSpec struct {
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
 	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
-	Duration         DisruptionDuration                `json:"duration,omitempty"`         // time from disruption creation until chaos pods are deleted and no more are created
+	// +nullable
+	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
+	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
 	// +kubebuilder:validation:Enum=pod;node;""
 	// +ddmark:validation:Enum=pod;node;""
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
@@ -144,6 +146,12 @@ type DisruptionList struct {
 	Items           []Disruption `json:"items"`
 }
 
+// DisruptionPulse contains the active disruption duration and the dormant disruption duration
+type DisruptionPulse struct {
+	ActiveDuration  DisruptionDuration `json:"activeDuration"`
+	DormantDuration DisruptionDuration `json:"dormantDuration"`
+}
+
 func init() {
 	SchemeBuilder.Register(&Disruption{}, &DisruptionList{})
 }
@@ -213,6 +221,21 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 
 		if len(s.Containers) > 0 {
 			retErr = multierror.Append(retErr, errors.New("OnInit is not compatible with containers scoping"))
+		}
+	}
+
+	// Rule: pulse compatibility
+	if s.Pulse != nil {
+		if s.NodeFailure != nil || s.ContainerFailure != nil {
+			retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
+		}
+
+		if s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse activeDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
+		}
+
+		if s.Pulse.DormantDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse dormantDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
 		}
 	}
 

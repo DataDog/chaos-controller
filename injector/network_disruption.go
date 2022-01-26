@@ -77,6 +77,10 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 	}
 }
 
+func (i networkDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
+	return chaostypes.DisruptionKindNetworkDisruption
+}
+
 // Inject injects the given network disruption into the given container
 func (i networkDisruptionInjector) Inject() error {
 	// enter target network namespace

@@ -31,6 +31,9 @@ spec:
     - demo
     - demo2
   count: 1 # number of pods to target or a percentage (1% - 100%)
+  pulse: # optional, activate pulsing disruptions. Available for any disruptions except nodeFailure and containerFailure
+    activeDuration: 60s # this is the duration of the disruption in an active state, must be a valid time.Duration string, e.g. (300s, 15m25s, 4h) and must be greater than 500ms
+    dormantDuration: 30s # this is the duration of the disruption in a dormant state, must be a valid time.Duration string, e.g. (300s, 15m25s, 4h) and must be greater than 500ms
   duration: 30m # the amount of time before the disruption terminates itself, must be a valid time.Duration string, e.g. (300s, 15m25s, 4h)
   nodeFailure: # node kernel panic or shutdown
     shutdown: true # optional, shutdown the host instead of triggering a stack dump (defaults to false)
