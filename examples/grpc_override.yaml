@@ -6,7 +6,7 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: grpc
+  name: grpc-override
   namespace: chaos-demo
 spec:
   level: pod
@@ -17,13 +17,6 @@ spec:
     port: 50050
     endpoints:
       - endpoint: /chaosdogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
-        error: NOT_FOUND # gRPC error code to return instead computed response
-        queryPercent: 25 # percentage to affect
-      - endpoint: /chaosdogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
-        error: ALREADY_EXISTS # gRPC error code to return instead computed response
-        queryPercent: 50 # percentage to affect
-      - endpoint: /chaosdogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
         override: "{}" # response structure to return instead of computed response - currently only returns emptypb.Empty
       - endpoint: /chaosdogfood.ChaosDogfood/order # gRPC service endpoint to disrupt
         override: "{}" # response structure to return instead of computed response - currently only returns emptypb.Empty
-        queryPercent: 50 # percentage to affect

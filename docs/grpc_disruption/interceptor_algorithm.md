@@ -17,13 +17,13 @@ The following is a complex example to illustrate the algorithm's behavior.
 spec:
   grpc:
     endpoints:
-      - endpoint: /chaos_dogfood.ChaosDogfood/order
+      - endpoint: /chaosdogfood.ChaosDogfood/order
         override: "{}"
         queryPercent: 5
-      - endpoint: /chaos_dogfood.ChaosDogfood/order
+      - endpoint: /chaosdogfood.ChaosDogfood/order
         error: NOT_FOUND
         queryPercent: 5
-      - endpoint: /chaos_dogfood.ChaosDogfood/order
+      - endpoint: /chaosdogfood.ChaosDogfood/order
         error: PERMISSION_DENIED
         queryPercent: 15
 ```
@@ -63,12 +63,12 @@ We may also be provided with a configuration where some set of `queryPercent`s (
 spec:
   grpc:
     endpoints:
-      - endpoint: /chaos_dogfood.ChaosDogfood/order
+      - endpoint: /chaosdogfood.ChaosDogfood/order
         override: "{}"
         queryPercent: 25
-      - endpoint: /chaos_dogfood.ChaosDogfood/order
+      - endpoint: /chaosdogfood.ChaosDogfood/order
         error: NOT_FOUND
-      - endpoint: /chaos_dogfood.ChaosDogfood/order
+      - endpoint: /chaosdogfood.ChaosDogfood/order
         error: PERMISSION_DENIED
 ```
 
@@ -112,9 +112,9 @@ You may have noted that the second example appears a tad complex. The intuition 
 spec:
   grpc:
     endpoints:
-      - endpoint: /chaos_dogfood.ChaosDogfood/order
+      - endpoint: /chaosdogfood.ChaosDogfood/order
         error: NOT_FOUND
-      - endpoint: /chaos_dogfood.ChaosDogfood/order
+      - endpoint: /chaosdogfood.ChaosDogfood/order
         error: PERMISSION_DENIED
 ```
 
