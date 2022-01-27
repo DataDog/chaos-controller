@@ -174,7 +174,7 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 		parsedHost := strings.SplitN(host, ";", 4)
 
 		// cast port to int if specified
-		if len(parsedHost) > 1 {
+		if len(parsedHost) > 1 && parsedHost[1] != "" {
 			port, err = strconv.Atoi(parsedHost[1])
 			if err != nil {
 				return nil, fmt.Errorf("unexpected port parameter in %s: %v", host, err)
