@@ -11,35 +11,6 @@ metadata:
   labels:
     name: chaos-demo
 ---
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: demo
-  namespace: chaos-demo
-  labels:
-    type: local
-spec:
-  storageClassName: manual
-  capacity:
-    storage: 5Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/data"
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: demo
-  namespace: chaos-demo
-spec:
-  storageClassName: manual
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -57,6 +28,18 @@ spec:
       labels:
         app: demo-nginx
     spec:
+      tolerations:
+        - effect: NoSchedule
+          key: node
+          operator: Equal
+          value: nodeless
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: "node-role.kubernetes.io/nodeless"
+                    operator: Exists
       containers:
         - name: nginx
           image: nginx
@@ -64,8 +47,8 @@ spec:
             httpGet:
               path: /
               port: 80
-            initialDelaySeconds: 10
-            periodSeconds: 50
+            initialDelaySeconds: 3
+            periodSeconds: 40
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -84,6 +67,18 @@ spec:
       labels:
         app: demo-curl
     spec:
+      tolerations:
+        - effect: NoSchedule
+          key: node
+          operator: Equal
+          value: nodeless
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: "node-role.kubernetes.io/nodeless"
+                    operator: Exists
       containers:
         - name: curl
           image: appropriate/curl
@@ -91,25 +86,12 @@ spec:
           args:
             [
               "-c",
-              "while true; do curl -vvv http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; done",
+              "while true; do curl -vvv http://10.129.148.87:8080; sleep 1; done",
             ]
-          volumeMounts:
-            - mountPath: /mnt/data
-              name: data
-          resources:
-            limits:
-              cpu: 1
         - name: dummy
           image: ubuntu:bionic
           command: ["/bin/bash"]
           args: ["-c", "while true; do sleep 1; done"]
-          volumeMounts:
-            - mountPath: /mnt/data
-              name: data
-      volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: demo
 ---
 apiVersion: v1
 kind: Service

@@ -16,9 +16,14 @@ rules:
   - list
   - get
   - update
+  - watch
 - apiGroups:
   - ""
   resources:
   - services
+  - namespaces
   verbs:
+  - list
   - get
+  - update
+  - watch
