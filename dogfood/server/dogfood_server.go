@@ -14,6 +14,8 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 
 	df_pb "github.com/DataDog/chaos-controller/dogfood/chaosdogfood"
@@ -81,6 +83,29 @@ func (s *chaosDogfoodService) GetCatalog(ctx context.Context, req *emptypb.Empty
 	return &df_pb.CatalogReply{Items: items}, nil
 }
 
+// DogfoodSpoofFunction returns a catalog with DATADOGE as the only entry and
+func DogfoodSpoofFunction(targetEndpoint string, req interface{}) (interface{}, error) {
+	if targetEndpoint == "/chaosdogfood.ChaosDogfood/getCatalog" {
+		return &df_pb.CatalogReply{
+			Items: []*df_pb.CatalogItem{
+				{
+					Animal: "SPOOFER",
+					Food:   "SPOOFER FOOD",
+				},
+			},
+		}, nil
+	} else if targetEndpoint == "/chaosdogfood.ChaosDogfood/order" {
+		foodReq := req.(*df_pb.FoodRequest)
+
+		return &df_pb.FoodReply{
+			Message:        fmt.Sprintf("WE ARE BEING SPOOFED: food is unavailable for your %s!", foodReq.Animal),
+			ConfirmationId: 0,
+		}, nil
+	}
+
+	return nil, status.Error(codes.InvalidArgument, "Spoofing not configured for this endpoint")
+}
+
 func main() {
 	fmt.Printf("listening on %v...\n", serverAddr)
 
@@ -101,8 +126,10 @@ func main() {
 			return
 		}
 
-		disruptionListener := disruption_service.NewDisruptionListener(disruptionLogger)
-
+		// If a spoof function is not necessary or `return &emptypb.Empty{}, nil` is sufficient,
+		// pass in `disruption_service.SpoofWithEmptyResponse` instead of `DogfoodSpoofFunction`
+		// as the second parameter of `NewDisruptionListener`.
+		disruptionListener := disruption_service.NewDisruptionListener(disruptionLogger, DogfoodSpoofFunction)
 		dogfoodServer = grpc.NewServer(
 			grpc.UnaryInterceptor(disruptionListener.ChaosServerInterceptor),
 		)

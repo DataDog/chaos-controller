@@ -21,6 +21,14 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+// SpoofFunction is a function signature for code run by the chaos interceptor when overrids are configured.
+type SpoofFunction func(targetEndpoint string, req interface{}) (interface{}, error)
+
+// SpoofWithEmptyResponse can be leveraged when no override is configured.
+func SpoofWithEmptyResponse(targetEndpoint string, req interface{}) (interface{}, error) {
+	return &emptypb.Empty{}, nil
+}
+
 // ChaosDisruptionListener is a gRPC Service that can disrupt endpoints of a gRPC server.
 // The interface it is implementing was generated in the grpc/disruptionlistener package.
 type ChaosDisruptionListener struct {
@@ -28,14 +36,16 @@ type ChaosDisruptionListener struct {
 	configuration grpccalc.DisruptionConfiguration
 	mutex         sync.Mutex
 	logger        *zap.SugaredLogger
+	spoofFunction SpoofFunction
 }
 
 // NewDisruptionListener creates a new DisruptionListener Service with the logger instantiated and DisruptionConfiguration set to be empty
-func NewDisruptionListener(logger *zap.SugaredLogger) *ChaosDisruptionListener {
+func NewDisruptionListener(logger *zap.SugaredLogger, spoofFunction SpoofFunction) *ChaosDisruptionListener {
 	d := ChaosDisruptionListener{}
 
-	d.logger = logger
 	d.configuration = grpccalc.DisruptionConfiguration{}
+	d.logger = logger
+	d.spoofFunction = spoofFunction
 
 	return &d
 }
@@ -123,7 +133,13 @@ func (d *ChaosDisruptionListener) ChaosServerInterceptor(ctx context.Context, re
 			} else if altConfig.OverrideToReturn != "" {
 				d.logger.Debug("override to return: %s", altConfig.OverrideToReturn)
 
-				return &emptypb.Empty{}, nil
+				response, err := d.spoofFunction(info.FullMethod, req)
+				if err != nil {
+					d.logger.Error("endpoint %s could not be overridden with configured spoof function", endptConfig.TargetEndpoint)
+					return nil, err
+				}
+
+				return response, nil
 			}
 
 			d.logger.Error("endpoint %s should define either an ErrorToReturn or OverrideToReturn but does not", endptConfig.TargetEndpoint)
