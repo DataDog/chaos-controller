@@ -830,7 +830,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 		podNames = append(podNames, pod.Name)
 	}
 
-	r.log.Infow("searching for chaos pods with label selector...", "labels", ls.String(), "foundPods", podNames)
+	r.log.Debugw("searching for chaos pods with label selector...", "labels", ls.String(), "foundPods", podNames)
 
 	return pods.Items, nil
 }
