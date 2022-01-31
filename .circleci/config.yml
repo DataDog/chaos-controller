@@ -125,6 +125,7 @@ jobs:
           name: Ensure dependencies are up-to-date
           command: |
             go mod tidy
+            go mod vendor
             git diff --exit-code
   # this will fail if changes in packages are checked into git but the updated manifests are not
   manifests:
