@@ -215,8 +215,8 @@ jobs:
   third-party-licenses:
     executor: python
     steps:
-      - checkout
       - alpine_install_git
+      - checkout
       - python_install_requirements
       - run:
           name: Ensure 3rd-party licenses are up-to-date
@@ -226,8 +226,8 @@ jobs:
   license-header:
     executor: python
     steps:
-      - checkout
       - alpine_install_git
+      - checkout
       - python_install_requirements
       - run:
           name: Ensure license header is present
