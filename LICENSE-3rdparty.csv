@@ -185,6 +185,8 @@ github.com/markbates/pkger,github.com/markbates/pkger,MIT
 github.com/markbates/pkger,github.com/markbates/pkger/here,MIT
 github.com/markbates/pkger,github.com/markbates/pkger/internal/maps,MIT
 github.com/markbates/pkger,github.com/markbates/pkger/pkging,MIT
+github.com/markbates/pkger,github.com/markbates/pkger/pkging/embed,MIT
+github.com/markbates/pkger,github.com/markbates/pkger/pkging/mem,MIT
 github.com/markbates/pkger,github.com/markbates/pkger/pkging/stdos,MIT
 github.com/mattn/go-colorable,github.com/mattn/go-colorable,MIT
 github.com/mattn/go-isatty,github.com/mattn/go-isatty,MIT
