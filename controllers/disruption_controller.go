@@ -189,20 +189,17 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 			}
 
-			isCleaned, err := r.cleanDisruption(instance)
+			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived longer than its specified duration, and will be garbage collected after %s.", r.ExpiredDisruptionGCDelay))
+
+			chaosPods, err := r.getChaosPods(instance, nil)
 			if err != nil {
+				r.log.Errorw("couldn't list instance's chaos pods", "err", err)
+
 				return ctrl.Result{}, err
 			}
 
-			if !isCleaned {
-				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
-
-				r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
-
-				return ctrl.Result{
-					Requeue:      true,
-					RequeueAfter: requeueAfter,
-				}, r.Update(context.Background(), instance)
+			for _, pod := range chaosPods {
+				r.Recorder.Event(&pod, "Normal", "DurationOver", fmt.Sprintf("The chaos pod has lived longer than the disruption duration, and will be garbage collected after %s.", r.ExpiredDisruptionGCDelay))
 			}
 
 			requeueDelay := r.ExpiredDisruptionGCDelay
@@ -411,7 +408,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 				r.recordEventOnTarget(instance, target, corev1.EventTypeWarning, "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resource for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 			case 1:
-				r.log.Infow("an injection pod is already existing for the selected target", "target", target, "chaosPod", found[0].Name)
+				r.log.Debugw("an injection pod is already existing for the selected target", "target", target, "chaosPod", found[0].Name)
 			default:
 				var chaosPodNames []string
 				for _, pod := range found {
@@ -833,7 +830,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 		podNames = append(podNames, pod.Name)
 	}
 
-	r.log.Infow("searching for chaos pods with label selector...", "labels", ls.String(), "foundPods", podNames)
+	r.log.Debugw("searching for chaos pods with label selector...", "labels", ls.String(), "foundPods", podNames)
 
 	return pods.Items, nil
 }
@@ -849,7 +846,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// the signal sent to a pod becomes SIGKILL, which will interrupt any in-progress cleaning. By double this to 1 minute in the pod spec itself,
 	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
 	terminationGracePeriod := int64(60)
-	activeDeadlineSeconds := int64(calculateRemainingDuration(*instance).Seconds())
+	activeDeadlineSeconds := int64(calculateRemainingDuration(*instance).Seconds()) + 1
 
 	if activeDeadlineSeconds < 1 {
 		return nil

@@ -28,7 +28,7 @@ that the Disruption resource is created, not from when the injection of the actu
 If a `duration` is not specified, then a disruption will receive the default duration, which is configured at the controller level by setting 
 `controller.defaultDuration` in the controller's config map, and this value defaults to 1 hour.
 
-After a disruption's duration expires, the disruption resource will live in k8s for a default of 15 minutes. This can be configured by altering 
+After a disruption's duration expires, the disruption resource will live in k8s for a default of 10 minutes. This can be configured by altering 
 `controller.expiredDisruptionGCDelay` in the controller's config map.
 
 ## Pulse
