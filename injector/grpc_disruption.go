@@ -12,6 +12,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaos_grpc "github.com/DataDog/chaos-controller/grpc"
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
+	"github.com/DataDog/chaos-controller/types"
 	"google.golang.org/grpc"
 )
 
@@ -35,6 +36,10 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 		config:     config,
 		serverAddr: config.TargetPodIP + ":" + strconv.Itoa(spec.Port),
 	}
+}
+
+func (i GRPCDisruptionInjector) GetDisruptionKind() types.DisruptionKindName {
+	return types.DisruptionKindGRPCDisruption
 }
 
 // Inject injects the given grpc disruption into the given container

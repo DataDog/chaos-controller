@@ -84,6 +84,7 @@ var _ = Describe("Failure", func() {
 		inj, err = NewDNSDisruptionInjector(spec, config)
 		Expect(err).To(BeNil())
 	})
+
 	Describe("inj.Inject", func() {
 		JustBeforeEach(func() {
 			Expect(inj.Inject()).To(BeNil())

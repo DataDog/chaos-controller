@@ -44,17 +44,17 @@ Once you have installed the above requirements, run the following commands:
 * build the new image of the controller with your local files
   * `make minikube-build`
 * deploy the CRD and the controller on the minikube cluster
-  * `make install`
+  * `make minikube-install`
 
 ## Deploying Local Changes to Minikube
 
 To deploy a new version of your local controller code when a version is already deployed, run:
 * `make minikube-build`
-* `make install`
+* `make minikube-install`
 * `make restart`
 
 To deploy a new version of the CRD by modifying your local `api/v1beta1/disruption_types.go` (or a particular Subspec by modifying `api/v1beta1/disruption_types.go`), run:
-* `make install`
+* `make minikube-install`
 * `make restart`
 
 ## Testing Local Changes in Minikube
@@ -63,7 +63,8 @@ To deploy a new version of the CRD by modifying your local `api/v1beta1/disrupti
 
 The [samples](examples/) contains sample data which can be used to test your changes.
 
-[demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster in whatever namespace you choose (`chaos-demo` by default) by running:
+[demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster. First, create the `chaos-demo` namespace, then bring up the demo pods:
+  * `minikube kubectl -- apply -f examples/namespace.yaml`
   * `minikube kubectl -- apply -f examples/demo.yaml`
 
 To see whether curls are succeeding, by using kubectl to tail the pod's logs, run:
@@ -76,6 +77,10 @@ To remove the disruption, run:
   * `minikube kubectl -- delete -f examples/<manifest>.yaml`
 
 See [development guide](docs/development.md) for more robust documentation and tips!
+
+### Testing gRPC disruption manually
+
+The [gRPC disruption](docs/grpc_disruption.md) cannot be tested on the nginx client/server pods. To modify and test gRPC disruption [code](grpc/), visit the dogfood [README.md](dogfood/README.md) and the dogfood [CONTRIBUTING.md](dogfood/CONTRIBUTING.md) documents.
 
 ### Testing with end-to-end tests
 
@@ -91,9 +96,9 @@ The end-to-end tests will create a set of dummy pods in the `default` namespace 
 ### Running, installing & generating
 
 * `make generate`: generate boilerplate code.
-* `make install`: install CRDs and controller into a cluster
+* `make minikube-install`: install CRDs and controller into a cluster
 * `make manifests`: generate manifests e.g. CRD, RBAC etc.
-* `make uninstall`: uninstall CRDs and controller from a cluster
+* `make minikube-uninstall`: uninstall CRDs and controller from a cluster
 * `make restart`: restart the controller
 
 ### Building

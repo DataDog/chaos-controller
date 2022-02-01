@@ -2,6 +2,7 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
+chaosNamespace: chaos-engineering # namespace where any resources get created.
 
 images: # images and tag to pull for each component of the stack
   controller: docker.io/library/chaos-controller:latest
@@ -23,7 +24,7 @@ controller:
       enabled: false
       tokenFilepath: ""
   defaultDuration: 1h # default spec.duration for a disruption with none specified
-  expiredDisruptionGCDelay: 15m # time after a disruption expires before deleting it
+  expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   webhook: # admission webhook configuration
     generateCert: false # if you want Helm to generate certificates (e.g. in case the cert-manager is not installed in the cluster) set this to true
     certDir: "" # certificate directory (must contain tls.crt and tls.key files)
@@ -33,7 +34,6 @@ controller:
 injector:
   annotations: {} # extra annotations passed to the chaos injector pods
   serviceAccount: chaos-injector # service account to use for the chaos injector pods
-  chaosNamespace: chaos-engineering # namespace where the service account can be found (NOTE: changing this will change the namespace in which the chaos pods are created)
   dnsDisruption: # dns disruption configuration
     dnsServer: "8.8.8.8" # IP address of the upstream dns server
     kubeDns: "off" # whether to use kube-dns for DNS resolution (off, internal, all)
@@ -44,6 +44,7 @@ injector:
     #   - host: 10.0.0.0/8
     #     port: 80
     #     protocol: tcp
+    #     flow: egress
 
 handler:
   enabled: true # enable the chaos handler (required to use the onInit disruption feature)

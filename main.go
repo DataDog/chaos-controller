@@ -172,7 +172,7 @@ func main() {
 	pflag.StringVar(&cfg.Injector.DNSDisruption.KubeDNS, "injector-dns-disruption-kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
 	handleFatalError(viper.BindPFlag("injector.dnsDisruption.kubeDns", pflag.Lookup("injector-dns-disruption-kube-dns")))
 
-	pflag.StringSliceVar(&cfg.Injector.NetworkDisruption.AllowedHosts, "injector-network-disruption-allowed-hosts", []string{}, "List of hosts always allowed by network disruptions (format: <host>;<port>;<protocol>)")
+	pflag.StringSliceVar(&cfg.Injector.NetworkDisruption.AllowedHosts, "injector-network-disruption-allowed-hosts", []string{}, "List of hosts always allowed by network disruptions (format: <host>;<port>;<protocol>;<flow>)")
 	handleFatalError(viper.BindPFlag("injector.networkDisruption.allowedHosts", pflag.Lookup("injector-network-disruption-allowed-hosts")))
 
 	pflag.BoolVar(&cfg.Handler.Enabled, "handler-enabled", false, "Enable the chaos handler for on-init disruptions")

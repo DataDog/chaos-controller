@@ -7,7 +7,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: chaos-controller-config
-  namespace: chaos-engineering
+  namespace: {{ .Values.chaosNamespace }}
 data:
   config.yaml: |
     controller:
@@ -44,7 +44,7 @@ data:
         {{- end }}
       {{- end }}
       serviceAccount: {{ .Values.injector.serviceAccount | quote }}
-      chaosNamespace: {{ .Values.injector.chaosNamespace | quote }}
+      chaosNamespace: {{ .Values.chaosNamespace | quote }}
       dnsDisruption:
         dnsServer: {{ .Values.injector.dnsDisruption.dnsServer | quote }}
         kubeDns: {{ .Values.injector.dnsDisruption.kubeDns | quote }}
@@ -52,7 +52,7 @@ data:
       networkDisruption:
         allowedHosts:
           {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}
-          - {{ printf "%s;%v;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") | quote }}
+          - {{ printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") | quote }}
           {{- end }}
       {{- end }}
     handler:

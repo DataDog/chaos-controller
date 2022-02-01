@@ -109,3 +109,32 @@ Threads fairness:
     events (avg/stddev):           1224.0000/0.00
     execution time (avg/stddev):   10.5927/0.00
 ```
+
+## Manual cleanup instructions
+
+:information_source: All those commands must be executed on the infected host (except for `kubectl`).
+
+* Identify the injector process PID
+
+```
+# ps ax | grep injector
+   4376 ?        Ssl    7:42 /app/cmd/cainjector/cainjector --v=2 --leader-election-namespace=kube-system
+1113879 ?        Ssl    0:00 /usr/local/bin/injector node-failure inject --metrics-sink noop --level pod --target-container-ids containerd://cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460,containerd://629c7da02cbcf77c6b7131a59f5be50579d9e374433a444210b6547186dd5f0d --target-pod-ip 10.244.0.8 --chaos-namespace chaos-engineering --log-context-disruption-name dry-run --log-context-disruption-namespace chaos-demo --log-context-target-name demo-curl-547bb9c686-57484 --log-context-target-node-name minikube --dry-run
+1117684 pts/0    R+     0:00 grep injector
+```
+
+* Kill the injector process
+
+```
+# kill 1113879
+```
+
+*You can SIGKILL the injector process if it is stuck but a standard kill is recommended.*
+
+* Ensure the injector process is gone
+
+```
+# ps ax | grep injector
+   4376 ?        Ssl    7:42 /app/cmd/cainjector/cainjector --v=2 --leader-election-namespace=kube-system
+1119071 pts/0    S+     0:00 grep injector
+```

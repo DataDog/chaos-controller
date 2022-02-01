@@ -2,14 +2,10 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
+
 apiVersion: v1
-kind: ServiceAccount
+kind: Namespace
 metadata:
-  name: chaos-controller
-  namespace: chaos-engineering
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ .Values.injector.serviceAccount }}
-  namespace: {{ .Values.injector.chaosNamespace }}
+  name: chaos-demo
+  labels:
+    name: chaos-demo

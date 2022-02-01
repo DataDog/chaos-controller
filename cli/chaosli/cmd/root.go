@@ -16,6 +16,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/markbates/pkger"
+	_ "github.com/markbates/pkger/pkging/mem" //nolint:revive
 	goyaml "sigs.k8s.io/yaml"
 
 	"github.com/spf13/cobra"
@@ -141,11 +142,7 @@ func initLibrary() {
 			if err = fout.Close(); err != nil {
 				return err
 			}
-			if err = fin.Close(); err != nil {
-				return err
-			}
-
-			return nil
+			return fin.Close()
 		})
 
 	if err != nil {
