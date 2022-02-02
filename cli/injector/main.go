@@ -479,8 +479,8 @@ func retryNotifyHandler(err error, delay time.Duration) {
 	log.Infof("retrying cleanup in %s", delay.String())
 }
 
-// getDuration returns 30 seconds less than duration between time.Now() and when the disruption is due to expire
+// getDuration returns the time between time.Now() and when the disruption is due to expire
 // This gives the chaos pod plenty of time to clean up before it hits activeDeadlineSeconds and becomes Failed
 func getDuration(deadline time.Time) time.Duration {
-	return deadline.Sub(time.Now()) - (time.Second * 30)
+	return deadline.Sub(time.Now())
 }
