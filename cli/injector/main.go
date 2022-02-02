@@ -386,6 +386,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	deadline, err := time.Parse(time.RFC3339, deadlineRaw)
 	if err != nil {
 		deadline = time.Now().Add(time.Hour)
+
 		log.Errorw("unable to determine disruption deadline, will self-terminate in one hour instead", "err", err)
 	}
 
@@ -430,7 +431,6 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	case <-time.After(getDuration(deadline)):
 		log.Infow("duration has expired")
 	}
-
 }
 
 // cleanAndExit cleans the disruption with the configured injector and exits nicely
@@ -482,5 +482,5 @@ func retryNotifyHandler(err error, delay time.Duration) {
 // getDuration returns the time between time.Now() and when the disruption is due to expire
 // This gives the chaos pod plenty of time to clean up before it hits activeDeadlineSeconds and becomes Failed
 func getDuration(deadline time.Time) time.Duration {
-	return deadline.Sub(time.Now())
+	return time.Until(deadline)
 }
