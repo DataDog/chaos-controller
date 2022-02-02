@@ -847,6 +847,8 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
 	terminationGracePeriod := int64(60)
 	activeDeadlineSeconds := int64(calculateRemainingDuration(*instance).Seconds()) + 1
+	args = append(args,
+		"--deadline", time.Now().Add(calculateRemainingDuration(*instance)).Format(time.Layout))
 
 	if activeDeadlineSeconds < 1 {
 		return nil
