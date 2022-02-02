@@ -60,6 +60,7 @@ var (
 	onInit               bool
 	pulseActiveDuration  time.Duration
 	pulseDormantDuration time.Duration
+	deadlineRaw          string
 	handlerPID           uint32
 	configs              []injector.Config
 	signals              chan os.Signal
@@ -87,6 +88,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
 	rootCmd.PersistentFlags().DurationVar(&pulseActiveDuration, "pulse-active-duration", time.Duration(0), "Duration of the disruption being active in a pulsing disruption (empty if the disruption is not pulsing)")
 	rootCmd.PersistentFlags().DurationVar(&pulseDormantDuration, "pulse-dormant-duration", time.Duration(0), "Duration of the disruption being dormant in a pulsing disruption (empty if the disruption is not pulsing)")
+	rootCmd.PersistentFlags().StringVar(&deadlineRaw, "deadline", "", "Timestamp at which the disruption must be over by")
 	rootCmd.PersistentFlags().StringVar(&dnsServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
 	rootCmd.PersistentFlags().StringVar(&kubeDNS, "kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
 	rootCmd.PersistentFlags().StringVar(&chaosNamespace, "chaos-namespace", "chaos-engineering", "Namespace that contains this chaos pod")
@@ -381,6 +383,12 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	deadline, err := time.Parse(time.Layout, deadlineRaw)
+	if err != nil {
+		deadline = time.Now().Add(time.Hour)
+		log.Errorw("unable to determine disruption deadline, will self-terminate in one hour instead", "err", err)
+	}
+
 	if injectSuccess && pulseActiveDuration > 0 && pulseDormantDuration > 0 {
 		var action func(string, bool) bool
 
@@ -391,6 +399,10 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 			select { // Quit on signal reception or sleep and injects / cleans the disruptions
 			case sig := <-signals:
 				log.Infow("an exit signal has been received", "signal", sig.String())
+
+				return
+			case <-time.After(getDuration(deadline)):
+				log.Infow("duration has expired")
 
 				return
 			case <-time.After(sleepDuration):
@@ -412,9 +424,13 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	}
 
 	// wait for an exit signal, this is a blocking call
-	sig := <-signals
+	select {
+	case sig := <-signals:
+		log.Infow("an exit signal has been received", "signal", sig.String())
+	case <-time.After(getDuration(deadline)):
+		log.Infow("duration has expired")
+	}
 
-	log.Infow("an exit signal has been received", "signal", sig.String())
 }
 
 // cleanAndExit cleans the disruption with the configured injector and exits nicely
@@ -461,4 +477,10 @@ func handleMetricError(err error) {
 func retryNotifyHandler(err error, delay time.Duration) {
 	log.Errorw("disruption cleanup failed", "error", err)
 	log.Infof("retrying cleanup in %s", delay.String())
+}
+
+// getDuration returns 30 seconds less than duration between time.Now() and when the disruption is due to expire
+// This gives the chaos pod plenty of time to clean up before it hits activeDeadlineSeconds and becomes Failed
+func getDuration(deadline time.Time) time.Duration {
+	return deadline.Sub(time.Now()) - (time.Second * 30)
 }
