@@ -850,7 +850,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// to give time for cleaning
 	activeDeadlineSeconds := int64(calculateRemainingDuration(*instance).Seconds()) + 10
 	args = append(args,
-		"--deadline", time.Now().Add(calculateRemainingDuration(*instance)).Format(time.Layout))
+		"--deadline", time.Now().Add(calculateRemainingDuration(*instance)).Format(time.RFC3339))
 
 	if activeDeadlineSeconds < 1 {
 		return nil

@@ -383,7 +383,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	deadline, err := time.Parse(time.Layout, deadlineRaw)
+	deadline, err := time.Parse(time.RFC3339, deadlineRaw)
 	if err != nil {
 		deadline = time.Now().Add(time.Hour)
 		log.Errorw("unable to determine disruption deadline, will self-terminate in one hour instead", "err", err)
