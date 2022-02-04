@@ -5,7 +5,7 @@
 
 package v1beta1
 
-// UnsafemodeSpec represents a spec with paramters to turn off specific safety nets designed to catch common traps or issues running a disruption
+// UnsafemodeSpec represents a spec with parameters to turn off specific safety nets designed to catch common traps or issues running a disruption
 // All of these are turned off by default, so disabling safety nets requires manually changing these booleans to true
 type UnsafemodeSpec struct {
 	DisableAll                 bool `json:"disableAll,omitempty"`
