@@ -191,17 +191,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived longer than its specified duration, and will be garbage collected after %s.", r.ExpiredDisruptionGCDelay))
 
-			chaosPods, err := r.getChaosPods(instance, nil)
-			if err != nil {
-				r.log.Errorw("couldn't list instance's chaos pods", "err", err)
-
-				return ctrl.Result{}, err
-			}
-
-			for _, pod := range chaosPods {
-				r.Recorder.Event(&pod, "Normal", "DurationOver", fmt.Sprintf("The chaos pod has lived longer than the disruption duration, and will be garbage collected after %s.", r.ExpiredDisruptionGCDelay))
-			}
-
 			requeueDelay := r.ExpiredDisruptionGCDelay
 
 			r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
