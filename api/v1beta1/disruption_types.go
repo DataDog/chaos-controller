@@ -10,6 +10,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"time"
 
@@ -20,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	goyaml "sigs.k8s.io/yaml"
 )
 
 // DisruptionSpec defines the desired state of Disruption
@@ -289,4 +293,29 @@ func (s *DisruptionSpec) GetKindNames() []chaostypes.DisruptionKindName {
 	}
 
 	return kinds
+}
+
+func ReadUnmarshal(path string) (*Disruption, error) {
+	fullPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("error finding absolute path: %v", err)
+	}
+
+	yaml, err := os.Open(filepath.Clean(fullPath))
+	if err != nil {
+		return nil, fmt.Errorf("could not open yaml file at %s: %v", fullPath, err)
+	}
+
+	yamlBytes, err := ioutil.ReadAll(yaml)
+	if err != nil {
+		return nil, fmt.Errorf("could not read yaml file: %v ", err)
+	}
+
+	parsedSpec := Disruption{}
+
+	if err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec); err != nil {
+		return nil, fmt.Errorf("could not unmarshal yaml file to Disruption: %v", err)
+	}
+
+	return &parsedSpec, nil
 }
