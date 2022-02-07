@@ -199,9 +199,9 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 					Requeue:      true,
 					RequeueAfter: requeueDelay,
 				}, nil
-			} else {
-				return ctrl.Result{Requeue: false}, nil
 			}
+
+			return ctrl.Result{Requeue: false}, nil
 		}
 
 		// retrieve targets from label selector
