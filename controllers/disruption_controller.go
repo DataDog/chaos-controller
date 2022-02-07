@@ -189,18 +189,19 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 			}
 
-			requeueDelay := time.Hour
 			if r.ExpiredDisruptionGCDelay != nil {
-				requeueDelay = *r.ExpiredDisruptionGCDelay
+				requeueDelay := *r.ExpiredDisruptionGCDelay
 				r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived longer than its specified duration, and will be garbage collected after %s.", *r.ExpiredDisruptionGCDelay))
+
+				r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
+
+				return ctrl.Result{
+					Requeue:      true,
+					RequeueAfter: requeueDelay,
+				}, nil
+			} else {
+				return ctrl.Result{Requeue: false}, nil
 			}
-
-			r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
-
-			return ctrl.Result{
-				Requeue:      true,
-				RequeueAfter: requeueDelay,
-			}, nil
 		}
 
 		// retrieve targets from label selector
