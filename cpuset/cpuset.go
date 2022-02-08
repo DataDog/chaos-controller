@@ -14,16 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+This file was copied directly from k8s.io/kubernetes v1.20.2. It is not importable in a normal way, as kubernetes/pkg/kubelet isn't meant to be imported,
+ doing so requires `replace` statements that make it difficult to import the chaos-controller from other modules.
+*/
+
 package cpuset
 
 import (
 	"bytes"
 	"fmt"
-	"k8s.io/klog/v2"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
+
+	"k8s.io/klog/v2"
 )
 
 // Builder is a mutable builder for CPUSet. Functions that mutate instances
