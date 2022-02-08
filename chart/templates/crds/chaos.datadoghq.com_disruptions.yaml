@@ -196,6 +196,12 @@ spec:
                 allowedHosts:
                   items:
                     properties:
+                      flow:
+                        enum:
+                        - ingress
+                        - egress
+                        - ""
+                        type: string
                       host:
                         type: string
                       port:
@@ -242,6 +248,12 @@ spec:
                 hosts:
                   items:
                     properties:
+                      flow:
+                        enum:
+                        - ingress
+                        - egress
+                        - ""
+                        type: string
                       host:
                         type: string
                       port:
@@ -285,6 +297,19 @@ spec:
               type: object
             onInit:
               type: boolean
+            pulse:
+              description: DisruptionPulse contains the active disruption duration
+                and the dormant disruption duration
+              nullable: true
+              properties:
+                activeDuration:
+                  type: string
+                dormantDuration:
+                  type: string
+              required:
+              - activeDuration
+              - dormantDuration
+              type: object
             selector:
               additionalProperties:
                 type: string
@@ -309,6 +334,7 @@ spec:
               - NotInjected
               - PartiallyInjected
               - Injected
+              - PreviouslyInjected
               type: string
             isInjected:
               type: boolean

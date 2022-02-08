@@ -1,0 +1,35 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2021 Datadog, Inc.
+
+syntax = "proto3";
+
+package chaosdogfood;
+
+option go_package = "./chaosdogfood";
+
+import "google/protobuf/empty.proto";
+
+service ChaosDogfood {
+    rpc order(FoodRequest) returns (FoodReply) {}
+    rpc getCatalog(google.protobuf.Empty) returns (CatalogReply) {}
+}
+
+message FoodRequest {
+    string animal = 1;
+}
+
+message FoodReply {
+    string message = 1;
+    int32 confirmation_id = 2;
+}
+
+message CatalogReply {
+    repeated CatalogItem items = 1;
+}
+
+message CatalogItem {
+    string animal = 1;
+    string food = 2;
+}

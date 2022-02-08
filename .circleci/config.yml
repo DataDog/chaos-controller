@@ -51,6 +51,18 @@ executors:
       KUBEBUILDER_ARCH: amd64
       GOLANGCI_LINT_VERSION: 1.43.0
       HELM_VERSION: 3.5.4
+  golang_large:
+    <<: *working_directory
+    docker:
+      # TODO: Publicize the chaos controller ci image to the datadog docker registry
+      #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
+      - image: golang:1.16-buster
+    resource_class: medium+
+    environment:
+      KUBEBUILDER_VERSION: 3.1.0
+      KUBEBUILDER_ARCH: amd64
+      GOLANGCI_LINT_VERSION: 1.43.0
+      HELM_VERSION: 3.5.4
   python:
     <<: *working_directory
     docker:
@@ -113,6 +125,7 @@ jobs:
           name: Ensure dependencies are up-to-date
           command: |
             go mod tidy
+            go mod vendor
             git diff --exit-code
   # this will fail if changes in packages are checked into git but the updated manifests are not
   manifests:
@@ -138,7 +151,7 @@ jobs:
       - run: make fmt
   # runs the golangci-lint linters
   lint:
-    executor: golang
+    executor: golang_large
     steps:
       - go_restore_cache
       - run: make lint
@@ -202,8 +215,8 @@ jobs:
   third-party-licenses:
     executor: python
     steps:
-      - checkout
       - alpine_install_git
+      - checkout
       - python_install_requirements
       - run:
           name: Ensure 3rd-party licenses are up-to-date
@@ -213,14 +226,14 @@ jobs:
   license-header:
     executor: python
     steps:
-      - checkout
       - alpine_install_git
+      - checkout
       - python_install_requirements
       - run:
           name: Ensure license header is present
           command: inv header-check
-  # ensures that the grpc protobuf files genereated by disruptionlistener.proto are up to date
-  protobuf:
+  # ensures that the grpc protobuf files genereated by grpc/disruptionlistener/disruptionlistener.proto are up to date
+  disruptionlistener-protobuf:
     executor: golang
     steps:
       - checkout
@@ -229,14 +242,36 @@ jobs:
             cd grpc/disruptionlistener
             apt-get update
             apt-get install unzip -y
-            PROTOC_ZIP=protoc-3.17.3-linux-x86_64.zip
-            curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.17.3/$PROTOC_ZIP
+            PROTOC_VERSION=3.17.3
+            PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
+            curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP
             unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
             unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
             rm -f $PROTOC_ZIP
-            go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1
-            go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
+            go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1
+            go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
             protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative disruptionlistener.proto
+      - run: git diff --exit-code ':!go.*'
+
+  # ensures that the grpc protobuf files genereated by dogfood/chaosdogfood/chaosdogfood.proto are up to date
+  chaosdogfood-protobuf:
+    executor: golang
+    steps:
+      - checkout
+      - run:
+          command: |
+            cd dogfood/chaosdogfood
+            apt-get update
+            apt-get install unzip -y
+            PROTOC_VERSION=3.17.3
+            PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
+            curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP
+            unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+            unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+            rm -f $PROTOC_ZIP
+            go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1
+            go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
+            protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
       - run: git diff --exit-code ':!go.*'
 
 workflows:
@@ -267,4 +302,5 @@ workflows:
             - prepare-env
       - third-party-licenses
       - license-header
-      - protobuf
+      - disruptionlistener-protobuf
+      - chaosdogfood-protobuf

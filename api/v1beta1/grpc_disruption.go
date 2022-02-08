@@ -147,8 +147,8 @@ func (s GRPCDisruptionSpec) GenerateArgs() []string {
 	// Each value passed to --endpoint-alterations should be of the form
 	// `endpoint;alteration_type;alteration_value;optional_query_percent`
 	// e.g.
-	// `/chaos_dogfood.ChaosDogfood/order;error;ALREADY_EXISTS;30`
-	// `/chaos_dogfood.ChaosDogfood/order;override;{};`
+	// `/chaosdogfood.ChaosDogfood/order;error;ALREADY_EXISTS;30`
+	// `/chaosdogfood.ChaosDogfood/order;override;{};`
 	args = append(args, "--endpoint-alterations")
 	args = append(args, strings.Split(strings.Join(endpointAlterationArgs, " --endpoint-alterations "), " ")...)
 

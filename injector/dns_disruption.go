@@ -59,6 +59,10 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 	}, err
 }
 
+func (i DNSDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
+	return chaostypes.DisruptionKindDNSDisruption
+}
+
 // Inject injects the given dns disruption into the given container
 func (i DNSDisruptionInjector) Inject() error {
 	i.config.Log.Infow("adding dns disruption", "spec", i.spec)

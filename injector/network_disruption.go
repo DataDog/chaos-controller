@@ -77,6 +77,10 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 	}
 }
 
+func (i networkDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
+	return chaostypes.DisruptionKindNetworkDisruption
+}
+
 // Inject injects the given network disruption into the given container
 func (i networkDisruptionInjector) Inject() error {
 	// enter target network namespace
@@ -438,23 +442,8 @@ func (i *networkDisruptionInjector) addFiltersForServices(interfaces []string, f
 	}
 
 	for _, service := range services {
-		// handle flow direction
-		var (
-			srcPort, dstPort int
-			srcIP, dstIP     *net.IPNet
-		)
-
-		switch i.spec.Flow {
-		case v1beta1.FlowEgress:
-			dstPort = service.port
-			dstIP = service.ip
-		case v1beta1.FlowIngress:
-			srcPort = service.port
-			srcIP = service.ip
-		}
-
 		// create tc filter
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, service.protocol, flowid); err != nil {
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, service.ip, 0, service.port, service.protocol, flowid); err != nil {
 			return fmt.Errorf("can't add a filter: %w", err)
 		}
 	}
@@ -478,18 +467,18 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 				srcIP, dstIP     *net.IPNet
 			)
 
-			switch i.spec.Flow {
-			case v1beta1.FlowEgress:
-				dstPort = host.Port
-				dstIP = ip
+			switch host.Flow {
 			case v1beta1.FlowIngress:
 				srcPort = host.Port
 				srcIP = ip
+			default:
+				dstPort = host.Port
+				dstIP = ip
 			}
 
 			// create tc filter
 			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, host.Protocol, flowid); err != nil {
-				return fmt.Errorf("error adding filte for host %s: %w", host.Host, err)
+				return fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
 			}
 		}
 	}

@@ -161,6 +161,11 @@ func (d *Sink) MetricInformed(tags []string) error {
 	return d.metricWithStatus(metricPrefixController+"informed", tags)
 }
 
+// MetricOrphanFound increments when a chaos pod without a corresponding disruption resource is found
+func (d *Sink) MetricOrphanFound(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"orphan.found", tags)
+}
+
 func boolToStatus(succeed bool) string {
 	var status string
 	if succeed {

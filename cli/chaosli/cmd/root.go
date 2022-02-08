@@ -8,16 +8,13 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/markbates/pkger"
-	goyaml "sigs.k8s.io/yaml"
-
+	_ "github.com/markbates/pkger/pkging/mem" //nolint:revive
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -141,11 +138,7 @@ func initLibrary() {
 			if err = fout.Close(); err != nil {
 				return err
 			}
-			if err = fin.Close(); err != nil {
-				return err
-			}
-
-			return nil
+			return fin.Close()
 		})
 
 	if err != nil {
@@ -175,30 +168,14 @@ func PrintSeparator() {
 }
 
 func ReadUnmarshalValidate(path string) v1beta1.Disruption {
-	fullPath, err := filepath.Abs(path)
+	parsedSpec, err := v1beta1.ReadUnmarshal(path)
 	if err != nil {
-		log.Fatalf("finding Absolute Path: %v", err)
+		log.Fatalf("there were problems reading the disruption at this path: %v", err)
 	}
 
-	yaml, err := os.Open(filepath.Clean(fullPath))
-	if err != nil {
-		log.Fatalf("could not open yaml: %v", err)
-	}
-
-	yamlBytes, err := ioutil.ReadAll(yaml)
-	if err != nil {
-		log.Fatalf("disruption.Get err   #%v ", err)
-	}
-
-	parsedSpec := v1beta1.Disruption{}
-
-	if err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec); err != nil {
-		log.Fatalf("unmarshal: %v", err)
-	}
-
-	if err = RunAllValidation(parsedSpec, path); err != nil {
+	if err = RunAllValidation(*parsedSpec, path); err != nil {
 		log.Fatalf("there were some problems when validating your disruption:\n%v", err)
 	}
 
-	return parsedSpec
+	return *parsedSpec
 }

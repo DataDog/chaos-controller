@@ -12,6 +12,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
+	"github.com/DataDog/chaos-controller/types"
 )
 
 // nodeFailureInjector describes a node failure injector
@@ -55,6 +56,10 @@ func NewNodeFailureInjector(spec v1beta1.NodeFailureSpec, config NodeFailureInje
 		sysrqPath:        sysrqPath,
 		sysrqTriggerPath: sysrqTriggerPath,
 	}, nil
+}
+
+func (i nodeFailureInjector) GetDisruptionKind() types.DisruptionKindName {
+	return types.DisruptionKindNodeFailure
 }
 
 // Inject triggers a kernel panic through the sysrq trigger

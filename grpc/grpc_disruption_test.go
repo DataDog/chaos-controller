@@ -22,25 +22,25 @@ var _ = Describe("Test send and clean disruption", func() {
 			Port: 2000,
 			Endpoints: []v1beta1.EndpointAlteration{
 				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 					ErrorToReturn:    "",
 					OverrideToReturn: "{}",
 					QueryPercent:     50,
 				},
 				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/getCatalog",
+					TargetEndpoint:   "/chaosdogfood.ChaosDogfood/getCatalog",
 					ErrorToReturn:    "NOT_FOUND",
 					OverrideToReturn: "",
 					QueryPercent:     25,
 				},
 				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/getCatalog",
+					TargetEndpoint:   "/chaosdogfood.ChaosDogfood/getCatalog",
 					ErrorToReturn:    "ALREADY_EXISTS",
 					OverrideToReturn: "",
 					QueryPercent:     50,
 				},
 				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/getCatalog",
+					TargetEndpoint:   "/chaosdogfood.ChaosDogfood/getCatalog",
 					ErrorToReturn:    "",
 					OverrideToReturn: "{}",
 					QueryPercent:     0,
@@ -86,7 +86,7 @@ var _ = Describe("Test send and clean disruption", func() {
 					}
 
 					// handling that the results of `endpts` is indeterminate
-					if endpts[0].TargetEndpoint == "/chaos_dogfood.ChaosDogfood/order" {
+					if endpts[0].TargetEndpoint == "/chaosdogfood.ChaosDogfood/order" {
 						return specsAreEqual(endpts[0].Alterations[0], altSpecForOrder[0]) &&
 							specsAreEqual(endpts[1].Alterations[0], altSpecForGetCatalog[0]) &&
 							specsAreEqual(endpts[1].Alterations[1], altSpecForGetCatalog[1]) &&

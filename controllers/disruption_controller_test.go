@@ -181,7 +181,7 @@ var _ = Describe("Disruption Controller", func() {
 					Port: 2000,
 					Endpoints: []chaosv1beta1.EndpointAlteration{
 						{
-							TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+							TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 							ErrorToReturn:    "",
 							OverrideToReturn: "{}",
 							QueryPercent:     50,
@@ -286,6 +286,20 @@ var _ = Describe("Disruption Controller", func() {
 
 			By("Waiting for the disruption to expire naturally")
 			Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout*2).Should(Succeed())
+
+			By("Waiting for the disruption to reach PreviouslyInjected")
+			Eventually(func() error {
+				if err := k8sClient.Get(context.Background(), instanceKey, disruption); err != nil {
+					return err
+				}
+
+				// check disruption injection status
+				if disruption.Status.InjectionStatus != chaostypes.DisruptionInjectionStatusPreviouslyInjected {
+					return fmt.Errorf("unexpected disruption status, current status is %s (expected PreviouslyInjected)", disruption.Status.InjectionStatus)
+				}
+
+				return nil
+			}, timeout*2).Should(Succeed())
 
 			By("Waiting for disruption to be removed")
 			Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))

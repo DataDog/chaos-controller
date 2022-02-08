@@ -20,7 +20,7 @@ test: generate manifests
 	go test $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
 
 # Run e2e tests (against a real cluster)
-e2e-test: generate install
+e2e-test: generate minikube-install
 	USE_EXISTING_CLUSTER=true go test ./controllers/... -coverprofile cover.out
 
 # Build manager binary
@@ -44,12 +44,12 @@ chaosli:
 chaosli-test:
 	docker build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
 
-# Install CRDs and controller into a cluster
-install: manifests
+# Install CRDs and controller into a minikube cluster
+minikube-install: manifests
 	helm template --set controller.enableSafeguards=false ./chart | minikube kubectl -- apply -f -
 
-# Uninstall CRDs and controller from a cluster
-uninstall: manifests
+# Uninstall CRDs and controller from a minikube cluster
+minikube-uninstall: manifests
 	helm template ./chart | minikube kubectl -- delete -f -
 
 restart:
@@ -69,7 +69,7 @@ vet:
 
 # Run golangci-lint against code
 lint:
-	golangci-lint run --timeout 3m0s
+	golangci-lint run --timeout 5m0s
 
 # Generate code
 generate: controller-gen
@@ -142,11 +142,25 @@ godeps:
 
 deps: godeps license-check
 
-generate-protobuf:
+install-protobuf-macos:
+	PROTOC_VERSION=3.17.3
+	PROTOC_ZIP=protoc-$PROTOC_VERSION-osx-x86_64.zip
+	curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP
+	sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+	sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+	rm -f $PROTOC_ZIP
+
+generate-disruptionlistener-protobuf:
 	cd grpc/disruptionlistener && \
-	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1 && \
-	go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1 && \
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
 	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative disruptionlistener.proto
+
+generate-chaosdogfood-protobuf:
+	cd dogfood/chaosdogfood && \
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1 && \
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
+	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
 
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
