@@ -395,6 +395,10 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 					continue
 				}
 
+				if err := r.ignoreTarget(instance, target); err != nil {
+					r.log.Errorw("error ignoring chaos pod target", "err", err, "target", target, "chaosPod", chaosPod.Name)
+				}
+
 				// send metrics and events
 				r.Recorder.Event(instance, corev1.EventTypeNormal, "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
 				r.recordEventOnTarget(instance, target, corev1.EventTypeWarning, "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resource for injection", chaosPod.Name, instance.Name))
