@@ -2,11 +2,11 @@
 
 Safemode represents a number of safety nets we have implemented into the chaos controller to help new and experienced users feel more confident deploying new disruptions to their environments.
 
-The Chaos Controller can be scary to use in production environments, but we learn a lot more running chaos experiments in our production environments. Considering this, having safety nets in place makes the entire process of running chaos experiments in high value environments a little safer.
+Chaos engineering can be scary to use in production environments, but we have learned a lot after using the chaos-controller for years. We've attempted to coalesce these lessons into safety nets that prevent common dangerous options.Having safety nets in place makes the entire process of running chaos experiments in high value environments a little safer.
 
-Safemoe will be added true by default and will require manual disabling of safety nets in order to bypass. In the disruption schema we have `unsafeMode` which represents ways to remove the safety nets.
-`disableAll` is self-explainatory while the other disables in the unsafe schema represent each safety net which you may disable one by one.
-Please take a look at the example below to see how to use the `unsafeMode` parameter.
+Safemode is always enabled by default and will require manual disabling of safety nets in order to bypass. In the disruption schema we have `unsafeMode` which represents ways to remove the safety nets.
+`unsafeMode.disableAll` turns off all safety nets. The other options under `unsafeMode` represent individual safety nets which can be disabled independently.
+Please take a look at the example below to see how to use `unsafeMode`.
 
 ## Ignoring Safety Nets
 
@@ -16,12 +16,12 @@ Keep in mind that all safety nets are turned on by default.
 
 ### Safety Nets
 
-| Safety Net                                                | Type | Description                                                                                                                                               | IgnoreName                 |
-|-----------------------------------------------------------| ----------- |-----------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|
-| Namespace-wide Targeting                                  | Generic | Using generical label selectors (e.x. X) that selects a majority of pods/nodes in a namespace as a target to inject a disruption into                     | DisableCountTooLarge       |
-| Sporadic Targets                                          | Generic | In a volatile environment where targets are being terminated and created sporadically, disruptions should not be allowed to continue disrupting           | DisableSporadicTargets     |
-| No Port and No Host Specified                             | Network | Running a network disruption without specifying a port and a host                                                                                         | DisableNeitherHostNorPort  |
-| Specific Container Disk Disruption on Multi Container Pod | Disk    | The disk disruption is a pod-wide disruption, if a user tries to specify a specific container, they may be unware they are affecting all other containers | DisableSpecificContainDisk |
+| Safety Net                                                | Type | Description                                                                                                                                                            | IgnoreName                 |
+|-----------------------------------------------------------| ----------- |------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|
+| Namespace-wide Targeting                                  | Generic | Running any disruption with generic label selectors that select a majority of pods/nodes in a namespace as a target to inject a disruption into                        | DisableCountTooLarge       |
+| Sporadic Targets                                          | Generic | Running any disruption in a volatile environment where targets are being terminated and created sporadically, disruptions should not be allowed to continue disrupting | DisableSporadicTargets     |
+| No Port and No Host Specified                             | Network | Running a network disruption without specifying a port and a host                                                                                                      | DisableNeitherHostNorPort  |
+| Specific Container Disk Disruption on Multi Container Pod | Disk    | Running a disk disruption, if a user tries to specify a specific container, they may be unaware they are affecting all other containers                                | DisableSpecificContainDisk |
 
 
 #### Example of Disabling Safemode
@@ -46,10 +46,3 @@ spec:
     hosts:
       drop: 100
 ```
-
-
-
-
-
-
-

@@ -13,8 +13,8 @@ spec:
   selector:
     app: demo-curl
   count: 1
-  safeMode: 
-    ignoreAll: false
+  unsafeMode:
+    disableAll: false
   containers:
     - dummy
   diskPressure:
