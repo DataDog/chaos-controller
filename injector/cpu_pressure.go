@@ -11,10 +11,10 @@ import (
 	"sync"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cpuset"
 	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/stress"
 	"github.com/DataDog/chaos-controller/types"
-	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
 )
 
 type cpuPressureInjector struct {
