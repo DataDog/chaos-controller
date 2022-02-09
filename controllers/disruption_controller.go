@@ -330,7 +330,10 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
 	}
 
-	for _, target := range instance.Status.Targets {
+	targetList := make([]string, len(instance.Status.Targets))
+	copy(targetList, instance.Status.Targets)
+
+	for _, target := range targetList {
 		targetNodeName := ""
 		targetContainerIDs := []string{}
 		targetPodIP := ""
