@@ -330,10 +330,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
 	}
 
-	targetList := make([]string, len(instance.Status.Targets))
-	copy(targetList, instance.Status.Targets)
-
-	for _, target := range targetList {
+	for _, target := range instance.Status.Targets {
 		targetNodeName := ""
 		targetContainerIDs := []string{}
 		targetPodIP := ""
@@ -396,10 +393,6 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 					r.log.Errorw("error waiting for chaos pod to be created", "error", err, "chaosPod", chaosPod.Name, "target", target)
 
 					continue
-				}
-
-				if err := r.ignoreTarget(instance, target); err != nil {
-					r.log.Errorw("error ignoring chaos pod target", "err", err, "target", target, "chaosPod", chaosPod.Name)
 				}
 
 				// send metrics and events
