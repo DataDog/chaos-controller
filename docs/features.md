@@ -31,6 +31,21 @@ If a `duration` is not specified, then a disruption will receive the default dur
 After a disruption's duration expires, the disruption resource will live in k8s for a default of 15 minutes. This can be configured by altering 
 `controller.expiredDisruptionGCDelay` in the controller's config map.
 
+## Pulse
+
+The `Disruption` spec takes a `pulse` field. It activates the pulsing mode of the disruptions of type `cpu_pressure`, `disk_pressure`, `dns_disruption`, `grpc_disruption` or `network_disruption`. A "pulsing" disruption is one that alternates between an active injected state, and an inactive dormant state. Previously, one would need to manage the Disruption lifecycle by continually re-creating and deleting a Disruption to achieve the same effect.
+
+It is composed of two subfields: `dormantDuration` and `activeDuration`, which both take a string, which is meant to conform to 
+golang's time.Duration's [string format, e.g., "45s", "15m30s", "4h30m".](https://pkg.go.dev/time#ParseDuration) and **have to be greater than 500 milliseconds**.
+
+`dormantDuration` will specify the duration of the disruption being `dormant`, meaning that the disruption will not be injected during that time.
+
+`activeDuration` will specify the duration of the disruption being `active`, meaning that the disruption will be injected during that time.
+
+The pulsing disruption will be injected for a duration of `activeDuration`, then be clean and dormant for a duration of `dormantDuration`, and so on until the end of the disruption.
+
+If a `pulse` is not specified, then a disruption will not be pulsing.
+
 ## Targeting
 
 The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the given label selector and will randomly select a number (defined in the `count` field) of matching targets. It's possible to specify multiple label selectors, in which case the controller will select from targets that match all of them. Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.

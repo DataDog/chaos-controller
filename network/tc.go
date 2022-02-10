@@ -8,7 +8,6 @@ package network
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"net"
 	"os/exec"
 	"strconv"
@@ -38,7 +37,7 @@ type TrafficController interface {
 	DeleteFilter(iface string, preference string) error
 	AddCgroupFilter(ifaces []string, parent string, handle uint32) error
 	AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error
-	ListFilters(print bool, ifaces []string) (map[string][]string, error)
+	ListFilters(ifaces []string) (map[string]string, error)
 	ClearQdisc(ifaces []string) error
 }
 
@@ -220,16 +219,25 @@ func (t tc) DeleteFilter(iface string, preference string) error {
 	return nil
 }
 
-func (t tc) ListFilters(print bool, ifaces []string) (map[string][]string, error) {
-	filtersPerInterface := make(map[string][]string)
+// ListFilters list the filters per interfaces, put it into a map of strings per interface
+func (t tc) ListFilters(ifaces []string) (map[string]string, error) {
+	filtersPerInterface := make(map[string]string)
 
 	for _, iface := range ifaces {
-		_, res, _ := t.executer.Run("filter", "show", "dev", iface)
-
-		if print {
-			log.Default().Printf("\n\nstdout: |%s|\n\n", res)
+		_, stdout, err := t.executer.Run("filter", "show", "dev", iface)
+		if err != nil {
+			return nil, err
 		}
-		filtersPerInterface[iface] = strings.Split(res, "\n")
+
+		// Example of output:
+		// filter parent 1: protocol all pref 49150 u32 chain 0
+		// filter parent 1: protocol all pref 49150 u32 chain 0 fh 802: ht divisor 1
+		// filter parent 1: protocol all pref 49150 u32 chain 0 fh 802::800 order 2048 key ht 802 bkt 0 flowid 1:4 not_in_hw
+		//  match 0a6869cf/ffffffff at 16
+		//  match 00000050/0000ffff at 20
+		//  match 00060000/00ff0000 at 8
+
+		filtersPerInterface[iface] = stdout
 	}
 	return filtersPerInterface, nil
 }

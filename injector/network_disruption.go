@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -44,39 +45,6 @@ func (n networkDisruptionService) String() string {
 	return fmt.Sprintf("ip=%s; port=%d; protocol=%s", ip, n.port, n.protocol)
 }
 
-func (n networkDisruptionService) GetInfo(flow string) string {
-	var filterInfo string
-
-	switch flow {
-	case v1beta1.FlowEgress:
-		filterInfo += fmt.Sprintf("%s %d ", n.ip, n.port)
-	case v1beta1.FlowIngress:
-		filterInfo += fmt.Sprintf("%s %d ", n.ip, n.port)
-	}
-
-	filterInfo += fmt.Sprintf("%s", n.protocol)
-
-	return filterInfo
-}
-
-func (n networkDisruptionService) GetIpsAndPorts(flow string) (*net.IPNet, *net.IPNet, int, int, string) {
-	var (
-		srcPort, dstPort int
-		srcIP, dstIP     *net.IPNet
-	)
-
-	switch flow {
-	case v1beta1.FlowEgress:
-		dstPort = n.port
-		dstIP = n.ip
-	case v1beta1.FlowIngress:
-		srcPort = n.port
-		srcIP = n.ip
-	}
-
-	return srcIP, dstIP, srcPort, dstPort, n.protocol
-}
-
 // networkDisruptionInjector describes a network disruption
 type networkDisruptionInjector struct {
 	spec       v1beta1.NetworkDisruptionSpec
@@ -97,17 +65,23 @@ type DisruptionState struct {
 	State chan INJECTOR_STATE
 }
 
-type tcFilterService struct {
+// tcFilter describes a tc filter, representing the service filtered and its preferences
+type tcFilter struct {
 	service     networkDisruptionService
-	preferences map[string][]string
+	preferences map[string][]string // identifiers used to delete the filter, a map of interfaces and preferences
 }
 
 type serviceWatcher struct {
-	EndpointsWatcher <-chan watch.Event
-	ServiceWatcher   <-chan watch.Event
-	Services         []tcFilterService
-	PodsWithoutIPs   []string
-	ServicePorts     []v1.ServicePort
+	WatchedServiceSpec   v1beta1.NetworkDisruptionServiceSpec
+	ServicePorts         []v1.ServicePort
+	LabelServiceSelector string
+
+	KubernetesPodEndpointsWatcher <-chan watch.Event
+	tcFiltersFromPodEndpoints     []tcFilter
+	PodsWithoutIPs                []string
+
+	KubernetesServiceWatcher       <-chan watch.Event
+	tcFiltersFromNamespaceServices []tcFilter
 }
 
 // NewNetworkDisruptionInjector creates a NetworkDisruptionInjector object with the given config,
@@ -134,9 +108,12 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 	}
 }
 
+func (i networkDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
+	return chaostypes.DisruptionKindNetworkDisruption
+}
+
 // Inject injects the given network disruption into the given container
 func (i networkDisruptionInjector) Inject() error {
-	log.Printf("INJECT START\n\n\n\n")
 	go func() {
 		i.config.State.State <- Injected
 	}()
@@ -432,122 +409,61 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		return fmt.Errorf("error adding filter for allowed hosts: %w", err)
 	}
 
-	i.config.TrafficController.ListFilters(true, interfaces)
-
 	return nil
-}
-
-// getServices parses the Kubernetes services in the disruption spec and returns a set of (ip, port, protocol) tuples
-func (i *networkDisruptionInjector) getServices() ([]networkDisruptionService, error) {
-	allServices := []networkDisruptionService{}
-
-	for _, serviceSpec := range i.spec.Services {
-		// retrieve serviceSpec
-		k8sService, err := i.config.K8sClient.CoreV1().Services(serviceSpec.Namespace).Get(context.Background(), serviceSpec.Name, metav1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s): %w", serviceSpec.Namespace, serviceSpec.Name, err)
-		}
-
-		// retrieve endpoints from selector
-		endpoints, err := i.config.K8sClient.CoreV1().Pods(serviceSpec.Namespace).List(context.Background(), metav1.ListOptions{
-			LabelSelector: labels.SelectorFromValidatedSet(k8sService.Spec.Selector).String(),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s) endpoints: %w", serviceSpec.Namespace, serviceSpec.Name, err)
-		}
-
-		services := []networkDisruptionService{}
-
-		// retrieve endpoints IPs
-		for _, endpoint := range endpoints.Items {
-			// compute endpoint IP (pod IP)
-			_, endpointIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", endpoint.Status.PodIP))
-
-			for _, port := range k8sService.Spec.Ports {
-				services = append(services, networkDisruptionService{
-					ip:       endpointIP,
-					port:     int(port.TargetPort.IntVal),
-					protocol: string(port.Protocol),
-				})
-			}
-		}
-
-		// compute service IP
-		_, serviceIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", k8sService.Spec.ClusterIP))
-
-		for _, port := range k8sService.Spec.Ports {
-			services = append(services, networkDisruptionService{
-				ip:       serviceIP,
-				port:     int(port.Port),
-				protocol: string(port.Protocol),
-			})
-		}
-
-		endpointInfo := ""
-
-		for _, service := range services {
-			allServices = append(allServices, service)
-			endpointInfo = fmt.Sprintf("%s{%s}, ", endpointInfo, service)
-		}
-
-		i.config.Log.Infow("found service endpoints", "service", serviceSpec.Name, "endpoints", endpointInfo)
-	}
-
-	return allServices, nil
-}
-
-// return srcIP, dstIP, srcPort, dstPort, protocol
-func (i *networkDisruptionInjector) computeServiceInformation(service networkDisruptionService) (string, *net.IPNet, *net.IPNet, int, int, string) {
-	var (
-		srcPort, dstPort int
-		srcIP, dstIP     *net.IPNet
-		filterInfo       string
-	)
-
-	switch i.spec.Flow {
-	case v1beta1.FlowEgress:
-		dstPort = service.port
-		dstIP = service.ip
-		filterInfo += fmt.Sprintf("%s %d ", dstIP, dstPort)
-	case v1beta1.FlowIngress:
-		srcPort = service.port
-		srcIP = service.ip
-		filterInfo += fmt.Sprintf("%s %d ", srcIP, srcPort)
-	}
-
-	filterInfo += fmt.Sprintf("%s", service.protocol)
-
-	return filterInfo, srcIP, dstIP, srcPort, dstPort, service.protocol
 }
 
 func (i *networkDisruptionInjector) addServiceFilter(service networkDisruptionService, interfaces []string, flowid string) (map[string][]string, error) {
 	preferences := make(map[string]bool)
 	computedPreferencesPerIface := make(map[string][]string)
-	srcIP, dstIP, srcPort, dstPort, protocol := service.GetIpsAndPorts(i.spec.Flow)
 
 	// We list filters before and after to find the new filters' preferences created. Those preferences are used to later remove those filters
-	filtersBeforeAddition, _ := i.config.TrafficController.ListFilters(false, interfaces)
-	serviceFilterError := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, protocol, flowid)
-	filtersAfterAddition, _ := i.config.TrafficController.ListFilters(false, interfaces)
+	filtersBeforeAddition, err := i.config.TrafficController.ListFilters(interfaces)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't identify tc filter created, error on tc filter listing: %v", err.Error())
+	}
+
+	err = i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, service.ip, 0, service.port, service.protocol, flowid)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create tc filter: %v", err.Error())
+	}
+
+	filtersAfterAddition, err := i.config.TrafficController.ListFilters(interfaces)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't identify tc filter created, error on tc filter listing: %v", err.Error())
+	}
 
 	for _, iface := range interfaces {
+		// To find the preferences (identifier used to remove tc filters later)
+		// we need to compare the list of tc filters before and after the addition of new filters
+		// we keep the new strings in the list of tc filters after the addition
+		// and we find the exact preference
+
 		computedPreferencesPerIface[iface] = []string{}
-		for _, befLine := range filtersBeforeAddition[iface] {
-			toRemove := -1
-			for i, afLine := range filtersAfterAddition[iface] {
+		splitOutputBeforeAddition := strings.Split(filtersBeforeAddition[iface], "\n")
+		splitOutputAfterAddition := strings.Split(filtersAfterAddition[iface], "\n")
+
+		// We remove useless strings that a similar when we list filters before and after the addition
+		for _, befLine := range splitOutputBeforeAddition {
+			toRemoveIdx := -1
+
+			for i, afLine := range splitOutputAfterAddition {
 				if befLine == afLine {
-					toRemove = i
+					toRemoveIdx = i
+
 					break
 				}
 			}
 
-			if toRemove >= 0 {
-				filtersAfterAddition[iface] = append(filtersAfterAddition[iface][:toRemove], filtersAfterAddition[iface][toRemove+1:]...)
+			if toRemoveIdx >= 0 {
+				splitOutputAfterAddition = append(splitOutputAfterAddition[:toRemoveIdx], splitOutputAfterAddition[toRemoveIdx+1:]...)
 			}
 		}
 
+		// We find the preferences
+		// Exampe of string: filter parent 1: protocol all pref 49150 u32 chain 0 fh 802: ht divisor 1
+		// We match pref 49150 and extract it
 		regex := regexp.MustCompile(`pref (?P<preference>\d*)`)
-		for _, str := range filtersAfterAddition[iface] {
+		for _, str := range splitOutputAfterAddition {
 			matches := regex.FindStringSubmatch(str)
 			if len(matches) >= 2 {
 				preferences[matches[1]] = true
@@ -559,15 +475,30 @@ func (i *networkDisruptionInjector) addServiceFilter(service networkDisruptionSe
 		}
 	}
 
-	// create tc filter
-	return computedPreferencesPerIface, serviceFilterError
+	return computedPreferencesPerIface, nil
+}
+
+// addServiceFilters adds a list of service tc filters for a list of interfaces
+func (i *networkDisruptionInjector) addServiceFilters(filters []tcFilter, interfaces []string, flowid string) ([]tcFilter, error) {
+	builtServices := []tcFilter{}
+
+	for _, filter := range filters {
+		preferences, err := i.addServiceFilter(filter.service, interfaces, flowid)
+		if err != nil {
+			return nil, err
+		}
+
+		filter.preferences = preferences
+		builtServices = append(builtServices, filter)
+	}
+
+	return builtServices, nil
 }
 
 func (i *networkDisruptionInjector) removeServiceFilter(preferencesPerIface map[string][]string) error {
 	for iface, preferences := range preferencesPerIface {
 		for _, preference := range preferences {
-			err := i.config.TrafficController.DeleteFilter(iface, preference)
-			if err != nil {
+			if err := i.config.TrafficController.DeleteFilter(iface, preference); err != nil {
 				return err
 			}
 		}
@@ -576,221 +507,371 @@ func (i *networkDisruptionInjector) removeServiceFilter(preferencesPerIface map[
 	return nil
 }
 
-func (i *networkDisruptionInjector) buildServiceEndpoints(pod v1.Pod, servicePorts []v1.ServicePort, interfaces []string, flowid string) []tcFilterService {
+// buildTcFiltersFromPod builds a list of tc filters per pod endpoint using the service ports
+func (i *networkDisruptionInjector) buildTcFiltersFromPod(pod v1.Pod, servicePorts []v1.ServicePort, interfaces []string, flowid string) []tcFilter {
 	// compute endpoint IP (pod IP)
 	_, endpointIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", pod.Status.PodIP))
 
-	endpointsToWatch := []tcFilterService{}
+	endpointsToWatch := []tcFilter{}
 	for _, port := range servicePorts {
-		service := networkDisruptionService{
-			ip:       endpointIP,
-			port:     int(port.TargetPort.IntVal),
-			protocol: string(port.Protocol),
+		filter := tcFilter{
+			service: networkDisruptionService{
+				ip:       endpointIP,
+				port:     int(port.TargetPort.IntVal),
+				protocol: string(port.Protocol),
+			},
 		}
 
-		endpointsToWatch = append(endpointsToWatch, tcFilterService{
-			service: service,
-		})
+		if i.findTcFilter(endpointsToWatch, filter) == -1 { // forbid duplication
+			endpointsToWatch = append(endpointsToWatch, filter)
+		}
+
 	}
 
 	return endpointsToWatch
 }
 
-func (i *networkDisruptionInjector) addFiltersForServiceEndpoints(services []tcFilterService, interfaces []string, flowid string) []tcFilterService {
-	for _, service := range services {
-		preferences, err := i.addServiceFilter(service.service, interfaces, flowid)
-		if err != nil {
-			log.Printf("HEYYYY ERROR: %s \n\n", err.Error())
+// buildTcFiltersFromService builds a list of tc filters per service using the service ports
+func (i *networkDisruptionInjector) buildTcFiltersFromService(service v1.Service, servicePorts []v1.ServicePort, interfaces []string, flowid string) []tcFilter {
+	// compute service IP (cluster IP)
+	_, serviceIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", service.Spec.ClusterIP))
+
+	endpointsToWatch := []tcFilter{}
+	for _, port := range servicePorts {
+		filter := tcFilter{
+			service: networkDisruptionService{
+				ip:       serviceIP,
+				port:     int(port.Port),
+				protocol: string(port.Protocol),
+			},
 		}
-		service.preferences = preferences
+
+		if i.findTcFilter(endpointsToWatch, filter) == -1 { // forbid duplication
+			endpointsToWatch = append(endpointsToWatch, filter)
+		}
 	}
 
-	return services
+	return endpointsToWatch
 }
 
-func (i *networkDisruptionInjector) listActiveFilters(services []tcFilterService) {
-	log.Print("======ACTIVE SERVICES======")
+func (i *networkDisruptionInjector) listActiveFilters(services []tcFilter, name string) {
+	log.Printf("======ACTIVE SERVICES FROM %s======", name)
 	for _, service := range services {
-		log.Printf("%s", service.service.GetInfo(i.spec.Flow))
+		preference := "pref=["
+		for iface, pref := range service.preferences {
+			preference += fmt.Sprintf("%s:%s, ", iface, pref)
+		}
+		preference += "]"
+		log.Printf("%s %s", service.service, preference)
 	}
 	log.Print("===========================")
 }
 
-func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string, flowid string) (map[string]serviceWatcher, error) {
-	endpointsWatchers := make(map[string]serviceWatcher)
-
-	for _, serviceSpec := range i.spec.Services {
-		// retrieve serviceSpec
-		k8sService, err := i.config.K8sClient.CoreV1().Services(serviceSpec.Namespace).Get(context.Background(), serviceSpec.Name, metav1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("error getting the given kubernetes service (%s/%s): %w", serviceSpec.Namespace, serviceSpec.Name, err)
-		}
-
-		servicesWatcher, err := i.config.K8sClient.CoreV1().Services(serviceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{ResourceVersion: k8sService.ResourceVersion})
-		if err != nil {
-			return nil, fmt.Errorf("error watching the changes for the given kubernetes service (%s/%s): %w", serviceSpec.Namespace, serviceSpec.Name, err)
-		}
-
-		// add a watcher on the endpoints from selector
-		podsWatcher, err := i.config.K8sClient.CoreV1().Pods(serviceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
-			LabelSelector: labels.SelectorFromValidatedSet(k8sService.Spec.Selector).String(),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", serviceSpec.Namespace, serviceSpec.Name, err)
-		}
-
-		endpointsWatchers[serviceSpec.Name] = serviceWatcher{
-			EndpointsWatcher: podsWatcher.ResultChan(),
-			ServiceWatcher:   servicesWatcher.ResultChan(),
-			Services:         []tcFilterService{},
-			PodsWithoutIPs:   []string{},
-			ServicePorts:     k8sService.Spec.Ports,
-		}
-
-		//		i.config.Log.Infow("found service endpoints", "service", serviceSpec.Name, "endpoints", endpointInfo)
+func (i *networkDisruptionInjector) handleWatchError(event watch.Event) error {
+	err, ok := event.Object.(*metav1.Status)
+	if ok {
+		return fmt.Errorf("couldn't watch service in namespace: %s", err.Message)
 	}
 
-	return endpointsWatchers, nil
+	return fmt.Errorf("couldn't watch service in namespace")
 }
 
-func (i *networkDisruptionInjector) watchServiceFilters(endpointWatcher serviceWatcher, interfaces []string, flowid string) error {
-	i.config.Log.Infof("Launching watch of pods goroutine")
-	time.Sleep(5 * time.Second)
+func (i *networkDisruptionInjector) findTcFilter(tcFilters []tcFilter, toFind tcFilter) int {
+	for idx, tcFilter := range tcFilters {
+		if tcFilter.service.String() == toFind.service.String() {
+			return idx
+		}
+	}
 
+	return -1
+}
+
+func (i *networkDisruptionInjector) deleteFilterList(tcFilters []tcFilter, tcFiltersToRemove []tcFilter) ([]tcFilter, error) {
+	for _, serviceToRemove := range tcFiltersToRemove {
+		log.Printf("\n\nto delete: %s", serviceToRemove.service)
+		if deletedIdx := i.findTcFilter(tcFilters, serviceToRemove); deletedIdx >= 0 {
+			if err := i.removeServiceFilter(tcFilters[deletedIdx].preferences); err != nil {
+				return nil, err
+			}
+
+			tcFilters = append(tcFilters[:deletedIdx], tcFilters[deletedIdx+1:]...)
+		}
+	}
+
+	return tcFilters, nil
+}
+
+func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.Event, watcher *serviceWatcher, interfaces []string, flowid string) error {
+	if event.Type == watch.Error {
+		return i.handleWatchError(event)
+	}
+
+	service, ok := event.Object.(*v1.Service)
+	if !ok {
+		return fmt.Errorf("couldn't watch service in namespace, invalid type of watched object received")
+	}
+
+	// We just watch the specified name service
+	if watcher.WatchedServiceSpec.Name != service.Name {
+		return nil
+	}
+
+	if err := i.config.Netns.Enter(); err != nil {
+		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
+	}
+
+	var err error
+	podList, err := i.config.K8sClient.CoreV1().Pods(watcher.WatchedServiceSpec.Namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: labels.SelectorFromValidatedSet(service.Spec.Selector).String(),
+	})
+	if err != nil {
+		return fmt.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", service.Namespace, service.Name, err)
+	}
+
+	// For any changes to the service, we rebuild the tc filters active on the pod endpoints to find which one we should delete or add
+	oldPodEndpointsTcFilters, newPodEndpointsTcFilters, podEndpointsTcFiltersToAdd := []tcFilter{}, []tcFilter{}, []tcFilter{}
+	// Find endpoints to delete or create
+	for _, pod := range podList.Items {
+		if pod.Status.PodIP == "" {
+			continue
+		}
+
+		newPodEndpointsTcFilters = append(newPodEndpointsTcFilters, i.buildTcFiltersFromPod(pod, service.Spec.Ports, interfaces, flowid)...)   // we build the new filters to match using the new ports from the service
+		oldPodEndpointsTcFilters = append(oldPodEndpointsTcFilters, i.buildTcFiltersFromPod(pod, watcher.ServicePorts, interfaces, flowid)...) // we build the old filters to match using the old ports from the service
+	}
+
+	// We find the tc filters to delete
+	podEndpointsTcFiltersToDelete := watcher.tcFiltersFromPodEndpoints
+	for idx, tcFilter := range newPodEndpointsTcFilters {
+		existingIdx := i.findTcFilter(podEndpointsTcFiltersToDelete, tcFilter)
+
+		if existingIdx == -1 {
+			if i.findTcFilter(podEndpointsTcFiltersToAdd, newPodEndpointsTcFilters[idx]) == -1 {
+				podEndpointsTcFiltersToAdd = append(podEndpointsTcFiltersToAdd, newPodEndpointsTcFilters[idx])
+			}
+		} else {
+			podEndpointsTcFiltersToDelete = append(podEndpointsTcFiltersToDelete[:existingIdx], podEndpointsTcFiltersToDelete[existingIdx+1:]...)
+		}
+	}
+
+	watcher.tcFiltersFromPodEndpoints, err = i.deleteFilterList(watcher.tcFiltersFromPodEndpoints, podEndpointsTcFiltersToDelete)
+	if err != nil {
+		return err
+	}
+
+	createdTcFilters, err := i.addServiceFilters(podEndpointsTcFiltersToAdd, interfaces, flowid)
+	if err != nil {
+		return err
+	}
+
+	watcher.ServicePorts = service.Spec.Ports
+	watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints, createdTcFilters...)
+
+	nsServicesTcFilters := i.buildTcFiltersFromService(*service, service.Spec.Ports, interfaces, flowid)
+
+	switch event.Type {
+	case watch.Added:
+		createdTcFilters, err := i.addServiceFilters(nsServicesTcFilters, interfaces, flowid)
+		if err != nil {
+			return err
+		}
+
+		watcher.tcFiltersFromNamespaceServices = append(watcher.tcFiltersFromNamespaceServices, createdTcFilters...)
+	case watch.Modified:
+		if _, err := i.deleteFilterList(watcher.tcFiltersFromNamespaceServices, watcher.tcFiltersFromNamespaceServices); err != nil {
+			return err
+		}
+
+		watcher.tcFiltersFromNamespaceServices, err = i.addServiceFilters(nsServicesTcFilters, interfaces, flowid)
+		if err != nil {
+			return err
+		}
+	case watch.Deleted:
+		watcher.tcFiltersFromNamespaceServices, err = i.deleteFilterList(watcher.tcFiltersFromNamespaceServices, nsServicesTcFilters)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := i.config.Netns.Exit(); err != nil {
+		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
+	}
+
+	return nil
+}
+
+func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Event, watcher *serviceWatcher, interfaces []string, flowid string) error {
+	if event.Type == watch.Error {
+		return i.handleWatchError(event)
+	}
+
+	if err := i.config.Netns.Enter(); err != nil {
+		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
+	}
+
+	pod, ok := event.Object.(*v1.Pod)
+	if !ok {
+		return fmt.Errorf("couldn't watch pods in namespace, invalid type of watched object received")
+	}
+
+	tcFiltersFromPod := i.buildTcFiltersFromPod(*pod, watcher.ServicePorts, interfaces, flowid)
+
+	switch event.Type {
+	case watch.Added:
+		// if the filter already exists, we do nothing
+		if i.findTcFilter(watcher.tcFiltersFromPodEndpoints, tcFiltersFromPod[0]) >= 0 {
+			break
+		}
+		if pod.Status.PodIP != "" {
+			createdTcFilters, err := i.addServiceFilters(tcFiltersFromPod, interfaces, flowid)
+			if err != nil {
+				return err
+			}
+
+			watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints, createdTcFilters...)
+		} else {
+			watcher.PodsWithoutIPs = append(watcher.PodsWithoutIPs, pod.Name)
+			log.Printf("Newly created pod has no IP yet. Adding to the watch list of pods...")
+		}
+	case watch.Modified:
+		toRemove := -1
+
+		for idx, podName := range watcher.PodsWithoutIPs {
+			if podName == pod.Name && pod.Status.PodIP != "" {
+				toRemove = idx
+
+				createdTcFilters, err := i.addServiceFilters(tcFiltersFromPod, interfaces, flowid)
+				if err != nil {
+					return err
+				}
+
+				watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints, createdTcFilters...)
+				break
+			}
+		}
+
+		if toRemove > -1 {
+			watcher.PodsWithoutIPs = append(watcher.PodsWithoutIPs[:toRemove], watcher.PodsWithoutIPs[toRemove+1:]...)
+		}
+	case watch.Deleted:
+		var err error
+
+		watcher.tcFiltersFromPodEndpoints, err = i.deleteFilterList(watcher.tcFiltersFromPodEndpoints, tcFiltersFromPod)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := i.config.Netns.Exit(); err != nil {
+		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
+	}
+
+	return nil
+}
+
+func (i *networkDisruptionInjector) startWatchersOnNil(watcher *serviceWatcher) error {
+	if watcher.KubernetesServiceWatcher == nil { // open channel
+		serviceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.WatchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("error watching the changes for the given kubernetes service (%s/%s): %w", watcher.WatchedServiceSpec.Namespace, watcher.WatchedServiceSpec.Name, err)
+		}
+
+		i.config.Log.Infow("starting kubernetes service watch", "serviceName", watcher.WatchedServiceSpec.Name)
+		watcher.KubernetesServiceWatcher = serviceWatcher.ResultChan()
+	}
+
+	if watcher.KubernetesPodEndpointsWatcher == nil { // open channel
+		podsWatcher, err := i.config.K8sClient.CoreV1().Pods(watcher.WatchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
+			LabelSelector: watcher.LabelServiceSelector,
+		})
+		if err != nil {
+			return fmt.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", watcher.WatchedServiceSpec.Namespace, watcher.WatchedServiceSpec.Name, err)
+		}
+
+		i.config.Log.Infow("starting kubernetes pods watch", "serviceName", watcher.WatchedServiceSpec.Name)
+		watcher.KubernetesPodEndpointsWatcher = podsWatcher.ResultChan()
+	}
+
+	return nil
+}
+
+func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, interfaces []string, flowid string) error {
 	for {
+		if err := i.startWatchersOnNil(&watcher); err != nil {
+			return nil
+		}
+
 		select {
 		case state := <-i.config.State.State: // We stop watching when the injection is cleaned
 			if state == Cleaned {
 				return nil
 			}
+		case event, ok := <-watcher.KubernetesServiceWatcher: // We have changes in the service watched
+			if !ok { // channel is closed
+				i.config.Log.Infow("kubernetes service watcher not ready...", "serviceName", watcher.WatchedServiceSpec.Name)
+				watcher.KubernetesServiceWatcher = nil
+			} else {
+				i.listActiveFilters(watcher.tcFiltersFromNamespaceServices, "CLUSTERS")
+				i.listActiveFilters(watcher.tcFiltersFromPodEndpoints, "PODS")
+				i.config.Log.Infow("editing tc filters following changes in the destination service filtered", "serviceName", watcher.WatchedServiceSpec.Name, "editType", event.Type)
+				err := i.handleKubernetesServiceChanges(event, &watcher, interfaces, flowid)
+				if err != nil {
+					i.config.Log.Errorw("couldn't apply changes to tc filters: %w", err, "name", watcher.WatchedServiceSpec.Name)
+				}
+
+				i.listActiveFilters(watcher.tcFiltersFromNamespaceServices, "CLUSTERS")
+				i.listActiveFilters(watcher.tcFiltersFromPodEndpoints, "PODS")
+			}
+		case event, ok := <-watcher.KubernetesPodEndpointsWatcher: // We have changes in the service watched
+			if !ok { // channel is closed
+				i.config.Log.Infow("kubernetes pod endpoints watcher not ready...", "serviceName", watcher.WatchedServiceSpec.Name)
+				watcher.KubernetesPodEndpointsWatcher = nil
+			} else {
+				i.listActiveFilters(watcher.tcFiltersFromNamespaceServices, "CLUSTERS")
+				i.listActiveFilters(watcher.tcFiltersFromPodEndpoints, "PODS")
+				i.config.Log.Infow("editing tc filters following changes in the destination pods filtered", "serviceName", watcher.WatchedServiceSpec.Name, "editType", event.Type)
+				err := i.handleKubernetesPodsChanges(event, &watcher, interfaces, flowid)
+				if err != nil {
+					i.config.Log.Errorw("couldn't apply changes to tc filters: %w", err, "name", watcher.WatchedServiceSpec.Name)
+				}
+
+				i.listActiveFilters(watcher.tcFiltersFromNamespaceServices, "CLUSTERS")
+				i.listActiveFilters(watcher.tcFiltersFromPodEndpoints, "PODS")
+			}
 		default:
 		}
-
-		select {
-		case event := <-endpointWatcher.ServiceWatcher:
-			if event.Type == watch.Error {
-				err, ok := event.Object.(*metav1.Status)
-				if ok {
-					return fmt.Errorf("couldn't watch service in namespace: %s", err.Message)
-				}
-
-				return fmt.Errorf("couldn't watch service in namespace")
-			}
-
-			service, ok := event.Object.(*v1.Service)
-			if !ok {
-				return fmt.Errorf("couldn't watch service in namespace, invalid type of watched object received")
-			}
-
-			log.Printf("\n\n====Event: %s====", event.Type)
-			for _, port := range service.Spec.Ports {
-				log.Printf("Port: %d protocol %s", int(port.TargetPort.IntVal), port.Protocol)
-			}
-
-			switch event.Type {
-			case watch.Added:
-			case watch.Deleted:
-			case watch.Modified:
-			}
-		default:
-		}
-
-		for event := range endpointWatcher.EndpointsWatcher { // for every event we get from the watcher
-			if event.Type == watch.Error {
-				err, ok := event.Object.(*metav1.Status)
-				if ok {
-					return fmt.Errorf("couldn't watch pods in namespace: %s", err.Message)
-				}
-
-				return fmt.Errorf("couldn't watch pods in namespace")
-			}
-			if err := i.config.Netns.Enter(); err != nil {
-				return fmt.Errorf("unable to enter the given container network namespace: %w", err)
-			}
-
-			i.config.TrafficController.ListFilters(true, interfaces)
-
-			pod, ok := event.Object.(*v1.Pod)
-			if !ok {
-				return fmt.Errorf("couldn't watch pods in namespace, invalid type of watched object received")
-			}
-
-			log.Printf("====\n\nEvent: %s\n\npodIP: %s\n\n====", event.Type, pod.Status.PodIP)
-
-			i.listActiveFilters(endpointWatcher.Services)
-			servicesFromWatchedPod := i.buildServiceEndpoints(*pod, endpointWatcher.ServicePorts, interfaces, flowid)
-
-			switch event.Type {
-			case watch.Deleted:
-				i.config.TrafficController.ListFilters(true, interfaces)
-
-				for _, serviceToRemove := range servicesFromWatchedPod {
-					removed := -1
-
-					for idx, service := range endpointWatcher.Services {
-						if serviceToRemove.service.GetInfo(i.spec.Flow) == service.service.GetInfo(i.spec.Flow) {
-							err := i.removeServiceFilter(service.preferences)
-							if err != nil {
-								log.Printf("Failed deleting endpoints for %s: %s. Error: %s", pod.Name, service.service, err.Error())
-							} else {
-								removed = idx
-								log.Printf("Success deleting endpoints for %s: %s.", pod.Name, service.service)
-							}
-							break
-						}
-					}
-
-					if removed > -1 {
-						endpointWatcher.Services = append(endpointWatcher.Services[:removed], endpointWatcher.Services[removed+1:]...)
-					}
-				}
-
-				i.config.TrafficController.ListFilters(true, interfaces)
-			case watch.Modified:
-				toRemove := -1
-
-				for idx, podName := range endpointWatcher.PodsWithoutIPs {
-					if podName == pod.Name && pod.Status.PodIP != "" {
-						toRemove = idx
-
-						endpointWatcher.Services = append(endpointWatcher.Services, i.addFiltersForServiceEndpoints(servicesFromWatchedPod, interfaces, flowid)...)
-						break
-					}
-				}
-
-				if toRemove > -1 {
-					endpointWatcher.PodsWithoutIPs = append(endpointWatcher.PodsWithoutIPs[:toRemove], endpointWatcher.PodsWithoutIPs[toRemove+1:]...)
-				}
-
-			case watch.Added:
-				if pod.Status.PodIP != "" {
-					endpointWatcher.Services = append(endpointWatcher.Services, i.addFiltersForServiceEndpoints(servicesFromWatchedPod, interfaces, flowid)...)
-				} else {
-					endpointWatcher.PodsWithoutIPs = append(endpointWatcher.PodsWithoutIPs, pod.Name)
-					log.Printf("Newly created pod has no IP yet. Adding to the watch list of pods...")
-				}
-			}
-
-			i.listActiveFilters(endpointWatcher.Services)
-
-			if err := i.config.Netns.Exit(); err != nil {
-				return fmt.Errorf("unable to exit the given container network namespace: %w", err)
-			}
-		}
-
 	}
 }
 
 // addFiltersForServices creates tc filters on given interfaces for services in disruption spec classifying matching packets in the given flowid
 func (i *networkDisruptionInjector) addFiltersForServices(interfaces []string, flowid string) error {
-	// apply filters for given services
-	endpointWatchers, err := i.handleFiltersForServices(interfaces, flowid)
-	if err != nil {
-		return fmt.Errorf("error getting services IPs and ports: %w", err)
+	// build the watchers to handle changes in services and pod endpoints
+	serviceWatchers := []serviceWatcher{}
+
+	for _, serviceSpec := range i.spec.Services {
+		// retrieve serviceSpec
+		k8sService, err := i.config.K8sClient.CoreV1().Services(serviceSpec.Namespace).Get(context.Background(), serviceSpec.Name, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("error getting the given kubernetes service (%s/%s): %w", serviceSpec.Namespace, serviceSpec.Name, err)
+		}
+
+		serviceWatcher := serviceWatcher{
+			WatchedServiceSpec:             serviceSpec,
+			KubernetesPodEndpointsWatcher:  nil,
+			KubernetesServiceWatcher:       nil,
+			tcFiltersFromNamespaceServices: []tcFilter{},
+			tcFiltersFromPodEndpoints:      []tcFilter{},
+			PodsWithoutIPs:                 []string{},
+			LabelServiceSelector:           labels.SelectorFromValidatedSet(k8sService.Spec.Selector).String(),
+			ServicePorts:                   k8sService.Spec.Ports,
+		}
+
+		serviceWatchers = append(serviceWatchers, serviceWatcher)
 	}
 
-	for _, endpointWatcher := range endpointWatchers {
-		go i.watchServiceFilters(endpointWatcher, interfaces, flowid)
+	// each service watcher will watch changes on pod endpoints and namespace service
+	for _, serviceWatcher := range serviceWatchers {
+		go i.watchServiceChanges(serviceWatcher, interfaces, flowid)
 	}
 
 	return nil
@@ -812,18 +893,18 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 				srcIP, dstIP     *net.IPNet
 			)
 
-			switch i.spec.Flow {
-			case v1beta1.FlowEgress:
-				dstPort = host.Port
-				dstIP = ip
+			switch host.Flow {
 			case v1beta1.FlowIngress:
 				srcPort = host.Port
 				srcIP = ip
+			default:
+				dstPort = host.Port
+				dstIP = ip
 			}
 
 			// create tc filter
 			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, host.Protocol, flowid); err != nil {
-				return fmt.Errorf("error adding filte for host %s: %w", host.Host, err)
+				return fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
 			}
 		}
 	}

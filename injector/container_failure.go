@@ -12,6 +12,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/process"
+	"github.com/DataDog/chaos-controller/types"
 )
 
 // containerFailureInjector describes a container failure injector
@@ -38,6 +39,10 @@ func NewContainerFailureInjector(spec v1beta1.ContainerFailureSpec, config Conta
 		spec:   spec,
 		config: config,
 	}
+}
+
+func (i containerFailureInjector) GetDisruptionKind() types.DisruptionKindName {
+	return types.DisruptionKindContainerFailure
 }
 
 // Inject sends a SIGKILL/SIGTERM signal to the container's PID
