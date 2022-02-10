@@ -28,7 +28,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		It("errors because exactly one of error or override must be defined for an alteration", func() {
 			spec.Endpoints = []v1beta1.EndpointAlteration{
 				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 					ErrorToReturn:    "",
 					OverrideToReturn: "",
 					QueryPercent:     100,
@@ -36,7 +36,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 			}
 			err := spec.Validate().(*multierror.Error)
 			Expect(err.Len()).To(Equal(1))
-			Expect(err.Errors[0].Error()).To(Equal("GRPC: the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint /chaos_dogfood.ChaosDogfood/order"))
+			Expect(err.Errors[0].Error()).To(Equal("GRPC: the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint /chaosdogfood.ChaosDogfood/order"))
 		})
 	})
 
@@ -45,7 +45,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 			It("Passes validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "CANCELED",
 						OverrideToReturn: "",
 						QueryPercent:     100,
@@ -60,7 +60,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 			It("Passes validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "CANCELED",
 						OverrideToReturn: "",
 						QueryPercent:     99,
@@ -76,13 +76,13 @@ var _ = Describe("GRPCDisruption Validation", func() {
 		It("Passes validation", func() {
 			spec.Endpoints = []v1beta1.EndpointAlteration{
 				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+					TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "",
 					QueryPercent:     100,
 				},
 				{
-					TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/getCatalog",
+					TargetEndpoint:   "/chaosdogfood.ChaosDogfood/getCatalog",
 					ErrorToReturn:    "CANCELED",
 					OverrideToReturn: "",
 					QueryPercent:     100,
@@ -98,13 +98,13 @@ var _ = Describe("GRPCDisruption Validation", func() {
 			It("Passes validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "CANCELED",
 						OverrideToReturn: "",
 						QueryPercent:     60,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "ALREADY_EXISTS",
 						OverrideToReturn: "",
 						QueryPercent:     40,
@@ -119,13 +119,13 @@ var _ = Describe("GRPCDisruption Validation", func() {
 			It("Passes validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "CANCELED",
 						OverrideToReturn: "",
 						QueryPercent:     49,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "ALREADY_EXISTS",
 						OverrideToReturn: "",
 						QueryPercent:     49,
@@ -140,13 +140,13 @@ var _ = Describe("GRPCDisruption Validation", func() {
 			It("Fails validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "CANCELED",
 						OverrideToReturn: "",
 						QueryPercent:     50,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "ALREADY_EXISTS",
 						OverrideToReturn: "",
 						QueryPercent:     51,
@@ -163,7 +163,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 			It("Fails ddmark validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "MEOW",
 						OverrideToReturn: "",
 						QueryPercent:     50,
@@ -182,7 +182,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					spec.Endpoints = append(
 						spec.Endpoints,
 						v1beta1.EndpointAlteration{
-							TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+							TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 							ErrorToReturn:    errorString,
 							OverrideToReturn: "",
 							QueryPercent:     1,
@@ -200,73 +200,73 @@ var _ = Describe("GRPCDisruption Validation", func() {
 			It("Passes validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "CANCELED",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "ALREADY_EXISTS",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "UNKNOWN",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "INVALID_ARGUMENT",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "DEADLINE_EXCEEDED",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "NOT_FOUND",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "PERMISSION_DENIED",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "RESOURCE_EXHAUSTED",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "FAILED_PRECONDITION",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "ABORTED",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "OUT_OF_RANGE",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "UNIMPLEMENTED",
 						OverrideToReturn: "",
 						QueryPercent:     0,
@@ -281,73 +281,73 @@ var _ = Describe("GRPCDisruption Validation", func() {
 			It("Fails validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "CANCELED",
 						OverrideToReturn: "",
 						QueryPercent:     90,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "ALREADY_EXISTS",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "UNKNOWN",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "INVALID_ARGUMENT",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "DEADLINE_EXCEEDED",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "NOT_FOUND",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "PERMISSION_DENIED",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "RESOURCE_EXHAUSTED",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "FAILED_PRECONDITION",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "ABORTED",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "OUT_OF_RANGE",
 						OverrideToReturn: "",
 						QueryPercent:     0,
 					},
 					{
-						TargetEndpoint:   "/chaos_dogfood.ChaosDogfood/order",
+						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
 						ErrorToReturn:    "UNIMPLEMENTED",
 						OverrideToReturn: "",
 						QueryPercent:     0,

@@ -1,0 +1,28 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+
+replicaCount: 1
+
+image:
+  repository: "docker.io/chaos-dogfood-server"
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+fullname: "chaos-dogfood-server"
+namespace: "chaos-demo"
+
+service:
+  type: ClusterIP
+  port: 50051
+
+server:
+  port: 50050
+
+podSecurityContext: {}
+
+securityContext: {}
+
+resource: {}

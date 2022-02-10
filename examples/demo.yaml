@@ -3,14 +3,6 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2021 Datadog, Inc.
 
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: chaos-demo
-  labels:
-    name: chaos-demo
----
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -59,13 +51,57 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: nginx
+          image: nginx:1.21.6
           livenessProbe:
             httpGet:
               path: /
               port: 80
-            initialDelaySeconds: 10
-            periodSeconds: 50
+            initialDelaySeconds: 3
+            periodSeconds: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-curl
+  namespace: chaos-demo
+  labels:
+    app: demo-curl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-curl
+  template:
+    metadata:
+      labels:
+        app: demo-curl
+    spec:
+      containers:
+        - name: curl
+          image: alpine/curl:3.14
+          command: ["/bin/sh"]
+          args:
+            [
+              "-c",
+              "while true; do curl -vvv http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; done",
+            ]
+          volumeMounts:
+            - mountPath: /mnt/data
+              name: data
+          resources:
+            limits:
+              cpu: 1
+        - name: dummy
+          image: ubuntu:bionic-20220128
+          command: ["/bin/bash"]
+          args: ["-c", "while true; do sleep 1; done"]
+          volumeMounts:
+            - mountPath: /mnt/data
+              name: data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: demo
 ---
 apiVersion: v1
 kind: Service

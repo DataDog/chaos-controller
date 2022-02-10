@@ -7,7 +7,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: chaos-controller-config
-  namespace: chaos-engineering
+  namespace: {{ .Values.chaosNamespace }}
 data:
   config.yaml: |
     controller:
@@ -44,7 +44,7 @@ data:
         {{- end }}
       {{- end }}
       serviceAccount: {{ .Values.injector.serviceAccount | quote }}
-      chaosNamespace: {{ .Values.injector.chaosNamespace | quote }}
+      chaosNamespace: {{ .Values.chaosNamespace | quote }}
       dnsDisruption:
         dnsServer: {{ .Values.injector.dnsDisruption.dnsServer | quote }}
         kubeDns: {{ .Values.injector.dnsDisruption.kubeDns | quote }}

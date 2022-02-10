@@ -185,6 +185,8 @@ github.com/markbates/pkger,github.com/markbates/pkger,MIT
 github.com/markbates/pkger,github.com/markbates/pkger/here,MIT
 github.com/markbates/pkger,github.com/markbates/pkger/internal/maps,MIT
 github.com/markbates/pkger,github.com/markbates/pkger/pkging,MIT
+github.com/markbates/pkger,github.com/markbates/pkger/pkging/embed,MIT
+github.com/markbates/pkger,github.com/markbates/pkger/pkging/mem,MIT
 github.com/markbates/pkger,github.com/markbates/pkger/pkging/stdos,MIT
 github.com/mattn/go-colorable,github.com/mattn/go-colorable,MIT
 github.com/mattn/go-isatty,github.com/mattn/go-isatty,MIT
@@ -825,7 +827,6 @@ k8s.io/component-base,k8s.io/component-base/config,Apache-2.0
 k8s.io/component-base,k8s.io/component-base/config/v1alpha1,Apache-2.0
 k8s.io/klog/v2,k8s.io/klog/v2,Apache-2.0
 k8s.io/kube-openapi,k8s.io/kube-openapi/pkg/util/proto,Apache-2.0
-k8s.io/kubernetes,k8s.io/kubernetes/pkg/kubelet/cm/cpuset,Apache-2.0
 k8s.io/utils,k8s.io/utils/buffer,Apache-2.0
 k8s.io/utils,k8s.io/utils/integer,Apache-2.0
 k8s.io/utils,k8s.io/utils/pointer,Apache-2.0

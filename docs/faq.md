@@ -3,7 +3,7 @@
 ## Where can I find the chaos pods for my disruption?
 
 In order to ensure that chaos pods have access to the ClusterRole they need, all chaos pods are created in the same namespace as the `chaos-injector`
- service account. This is configured with the `--chaos-namespace` flag when starting the chaos-controller, or by setting `injector.chaosNamespace` in the controller's config map. By default, this is the "chaos-engineering" namespace.
+ service account. This is configured with the `--chaos-namespace` flag when starting the chaos-controller, or by setting `chaosNamespace` in the controller's config map. By default, this is the "chaos-engineering" namespace.
 
 ## Is there any specific tooling that can help me create/understand my disruptions?
 

@@ -63,7 +63,8 @@ To deploy a new version of the CRD by modifying your local `api/v1beta1/disrupti
 
 The [samples](examples/) contains sample data which can be used to test your changes.
 
-[demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster in whatever namespace you choose (`chaos-demo` by default) by running:
+[demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster. First, create the `chaos-demo` namespace, then bring up the demo pods:
+  * `minikube kubectl -- apply -f examples/namespace.yaml`
   * `minikube kubectl -- apply -f examples/demo.yaml`
 
 To see whether curls are succeeding, by using kubectl to tail the pod's logs, run:
@@ -76,6 +77,10 @@ To remove the disruption, run:
   * `minikube kubectl -- delete -f examples/<manifest>.yaml`
 
 See [development guide](docs/development.md) for more robust documentation and tips!
+
+### Testing gRPC disruption manually
+
+The [gRPC disruption](docs/grpc_disruption.md) cannot be tested on the nginx client/server pods. To modify and test gRPC disruption [code](grpc/), visit the dogfood [README.md](dogfood/README.md) and the dogfood [CONTRIBUTING.md](dogfood/CONTRIBUTING.md) documents.
 
 ### Testing with end-to-end tests
 

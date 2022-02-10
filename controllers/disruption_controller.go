@@ -57,7 +57,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionDNSServer        string
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
-	ExpiredDisruptionGCDelay              time.Duration
+	ExpiredDisruptionGCDelay              *time.Duration
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -171,9 +171,9 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
 		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the duration's deadline. We compare it to negative ExpiredDisruptionGCDelay,
 		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
-		if calculateRemainingDuration(*instance) <= (-1 * r.ExpiredDisruptionGCDelay) {
+		if r.ExpiredDisruptionGCDelay != nil && (calculateRemainingDuration(*instance) <= (-1 * *r.ExpiredDisruptionGCDelay)) {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
-			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", r.ExpiredDisruptionGCDelay))
+			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", *r.ExpiredDisruptionGCDelay))
 
 			var err error
 
@@ -189,30 +189,19 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 			}
 
-			isCleaned, err := r.cleanDisruption(instance)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+			if r.ExpiredDisruptionGCDelay != nil {
+				requeueDelay := *r.ExpiredDisruptionGCDelay
+				r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived longer than its specified duration, and will be garbage collected after %s.", *r.ExpiredDisruptionGCDelay))
 
-			if !isCleaned {
-				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
-
-				r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
+				r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
 
 				return ctrl.Result{
 					Requeue:      true,
-					RequeueAfter: requeueAfter,
-				}, r.Update(context.Background(), instance)
+					RequeueAfter: requeueDelay,
+				}, nil
 			}
 
-			requeueDelay := r.ExpiredDisruptionGCDelay
-
-			r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
-
-			return ctrl.Result{
-				Requeue:      true,
-				RequeueAfter: requeueDelay,
-			}, nil
+			return ctrl.Result{Requeue: false}, nil
 		}
 
 		// retrieve targets from label selector
@@ -411,7 +400,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 				r.recordEventOnTarget(instance, target, corev1.EventTypeWarning, "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resource for injection", chaosPod.Name, instance.Name))
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 			case 1:
-				r.log.Infow("an injection pod is already existing for the selected target", "target", target, "chaosPod", found[0].Name)
+				r.log.Debugw("an injection pod is already existing for the selected target", "target", target, "chaosPod", found[0].Name)
 			default:
 				var chaosPodNames []string
 				for _, pod := range found {
@@ -833,7 +822,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 		podNames = append(podNames, pod.Name)
 	}
 
-	r.log.Infow("searching for chaos pods with label selector...", "labels", ls.String(), "foundPods", podNames)
+	r.log.Debugw("searching for chaos pods with label selector...", "labels", ls.String(), "foundPods", podNames)
 
 	return pods.Items, nil
 }
@@ -849,7 +838,11 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// the signal sent to a pod becomes SIGKILL, which will interrupt any in-progress cleaning. By double this to 1 minute in the pod spec itself,
 	// ensures that whether a chaos pod is deleted directly or by deleting a disruption, it will have time to finish cleaning up after itself.
 	terminationGracePeriod := int64(60)
-	activeDeadlineSeconds := int64(calculateRemainingDuration(*instance).Seconds())
+	// Chaos pods will clean themselves automatically when duration expires, so we set activeDeadlineSeconds to ten seconds after that
+	// to give time for cleaning
+	activeDeadlineSeconds := int64(calculateRemainingDuration(*instance).Seconds()) + 10
+	args = append(args,
+		"--deadline", time.Now().Add(calculateRemainingDuration(*instance)).Format(time.RFC3339))
 
 	if activeDeadlineSeconds < 1 {
 		return nil

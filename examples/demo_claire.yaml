@@ -1,0 +1,75 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: demo
+  namespace: chaos-demo
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: demo
+  namespace: chaos-demo
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-nginx
+  namespace: chaos-demo
+  labels:
+    app: demo-nginx
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: demo-nginx
+  template:
+    metadata:
+      labels:
+        app: demo-nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 50
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo
+  namespace: chaos-demo
+  labels:
+    service: demo
+spec:
+  ports:
+    - port: 8080
+      targetPort: 80
+      name: one
+  selector:
+    app: demo-nginx
