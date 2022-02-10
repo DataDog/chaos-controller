@@ -572,6 +572,13 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 			}
 		}
 
+		// It is always safe to remove a node failure chaos pod. It is usually hard to tell if a node failure chaos pod has
+		// succeeded or not, so we choose to always remove the finalizer.
+		if chaosPod.Labels[chaostypes.DisruptionKindLabel] == chaostypes.DisruptionKindNodeFailure {
+			removeFinalizer = true
+			ignoreStatus = true
+		}
+
 		// check the chaos pod status to determine if we can safely delete it or not
 		switch chaosPod.Status.Phase {
 		case corev1.PodSucceeded, corev1.PodPending:
