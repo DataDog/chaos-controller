@@ -239,6 +239,7 @@ func (t tc) ListFilters(ifaces []string) (map[string]string, error) {
 
 		filtersPerInterface[iface] = stdout
 	}
+
 	return filtersPerInterface, nil
 }
 

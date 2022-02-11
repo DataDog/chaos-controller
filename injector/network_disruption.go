@@ -172,6 +172,7 @@ func (i networkDisruptionInjector) Inject() error {
 	if err := i.config.Netns.Exit(); err != nil {
 		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
 	}
+
 	return nil
 }
 
@@ -441,7 +442,6 @@ func (i *networkDisruptionInjector) addServiceFilter(service networkDisruptionSe
 		// we need to compare the list of tc filters before and after the addition of new filters
 		// we keep the new strings in the list of tc filters after the addition
 		// and we find the exact preference
-
 		computedPreferencesPerIface[iface] = []string{}
 		splitOutputBeforeAddition := strings.Split(filtersBeforeAddition[iface], "\n")
 		splitOutputAfterAddition := strings.Split(filtersAfterAddition[iface], "\n")
@@ -480,6 +480,7 @@ func (i *networkDisruptionInjector) addServiceFilter(service networkDisruptionSe
 	}
 
 	i.config.Log.Infow(fmt.Sprintf("added a new tc filter on %s", service.String()))
+
 	return computedPreferencesPerIface, nil
 }
 
@@ -535,6 +536,7 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servi
 	_, endpointIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", pod.Status.PodIP))
 
 	endpointsToWatch := []tcServiceFilter{}
+
 	for _, port := range servicePorts {
 		filter := tcServiceFilter{
 			service: networkDisruptionService{
@@ -547,7 +549,6 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servi
 		if i.findServiceFilter(endpointsToWatch, filter) == -1 { // forbid duplication
 			endpointsToWatch = append(endpointsToWatch, filter)
 		}
-
 	}
 
 	return endpointsToWatch
@@ -559,6 +560,7 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromService(service v1.Se
 	_, serviceIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", service.Spec.ClusterIP))
 
 	endpointsToWatch := []tcServiceFilter{}
+
 	for _, port := range servicePorts {
 		filter := tcServiceFilter{
 			service: networkDisruptionService{
@@ -627,6 +629,8 @@ func (i *networkDisruptionInjector) handlePodEndpointsServiceFiltersOnKubernetes
 
 // handleKubernetesPodsChanges for every changes happening in the kubernetes service destination, we update the tc service filters
 func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.Event, watcher *serviceWatcher, interfaces []string, flowid string) error {
+	var err error
+
 	if event.Type == watch.Error {
 		return i.handleWatchError(event)
 	}
@@ -645,8 +649,6 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
-	var err error
-
 	podList, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: labels.SelectorFromValidatedSet(service.Spec.Selector).String(),
 	})
@@ -654,8 +656,11 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		return fmt.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", service.Namespace, service.Name, err)
 	}
 
-	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
 	watcher.servicePorts = service.Spec.Ports
+	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
+	if err != nil {
+		return err
+	}
 
 	nsServicesTcFilters := i.buildServiceFiltersFromService(*service, service.Spec.Ports, interfaces, flowid)
 
@@ -767,7 +772,6 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, interfaces []string, flowid string) error {
 	for {
 		// We create the watcher channels when it's closed
-
 		if watcher.kubernetesServiceWatcher == nil {
 			serviceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{})
 			if err != nil {
