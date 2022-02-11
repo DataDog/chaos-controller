@@ -69,3 +69,15 @@ func (f *TcMock) ClearQdisc(ifaces []string) error {
 
 	return args.Error(0)
 }
+
+func (f *TcMock) ListFilters(ifaces []string) (map[string]string, error) {
+	args := f.Called(ifaces)
+
+	return nil, args.Error(0)
+}
+
+func (f *TcMock) DeleteFilter(iface string, preference string) error {
+	args := f.Called(iface, preference)
+
+	return args.Error(0)
+}

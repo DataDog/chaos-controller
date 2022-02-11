@@ -4,6 +4,13 @@
 # Copyright 2021 Datadog, Inc.
 
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: "chaos-demo"
+  labels:
+    name: "chaos-demo"
+---
+apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: demo
@@ -40,7 +47,7 @@ metadata:
   labels:
     app: demo-nginx
 spec:
-  replicas: 5
+  replicas: 2
   selector:
     matchLabels:
       app: demo-nginx

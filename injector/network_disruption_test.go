@@ -64,6 +64,8 @@ var _ = Describe("Failure", func() {
 		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddCgroupFilter", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("ListFilters", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("DeleteFilters", mock.Anything, mock.Anything).Return(nil)
 		tc.On("ClearQdisc", mock.Anything).Return(nil)
 
 		// netlink
