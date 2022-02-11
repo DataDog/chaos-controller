@@ -13,7 +13,7 @@ metadata:
 spec:
   storageClassName: manual
   capacity:
-    storage: 5Gi
+    storage: 10Gi
   accessModes:
     - ReadWriteOnce
   hostPath:
@@ -30,7 +30,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi
+      storage: 3Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -40,7 +40,7 @@ metadata:
   labels:
     app: demo-nginx
 spec:
-  replicas: 5
+  replicas: 1
   selector:
     matchLabels:
       app: demo-nginx
@@ -50,14 +50,14 @@ spec:
         app: demo-nginx
     spec:
       containers:
-        - name: nginx
-          image: nginx:1.21.6
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 80
-            initialDelaySeconds: 3
-            periodSeconds: 3
+      - name: nginx
+        image: nginx:1.21.6
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 3
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -77,43 +77,36 @@ spec:
         app: demo-curl
     spec:
       containers:
-        - name: curl
-          image: alpine/curl:3.14
-          command: ["/bin/sh"]
-          args:
-            [
-              "-c",
-              "while true; do curl -vvv http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; done",
-            ]
-          volumeMounts:
-            - mountPath: /mnt/data
-              name: data
-          resources:
-            limits:
-              cpu: 1
-        - name: dummy
-          image: ubuntu:bionic-20220128
-          command: ["/bin/bash"]
-          args: ["-c", "while true; do sleep 1; done"]
-          volumeMounts:
-            - mountPath: /mnt/data
-              name: data
+      - name: curl
+        image: alpine/curl:3.14
+        command: ["/bin/sh"]
+        args: ["-c", "while true; do curl -vvv http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; done"]
+        volumeMounts:
+        - mountPath: /mnt/data
+          name: data
+        resources:
+          limits:
+            cpu: 1
+      - name: dummy
+        image: ubuntu:bionic-20220128
+        command: ["/bin/bash"]
+        args: ["-c", "while true; do sleep 1; done"]
+        volumeMounts:
+        - mountPath: /mnt/data
+          name: data
       volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: demo
+      - name: data
+        persistentVolumeClaim:
+          claimName: demo
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: demo
   namespace: chaos-demo
-  labels:
-    service: demo
 spec:
   ports:
     - port: 8080
       targetPort: 80
-      name: one
   selector:
     app: demo-nginx
