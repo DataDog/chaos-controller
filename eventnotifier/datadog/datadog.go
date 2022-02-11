@@ -14,12 +14,11 @@ import (
 	"os"
 )
 
-type NotifierSlackConfig struct {
-	Enabled       bool
-	TokenFilepath string
+type NotifierDatadogConfig struct {
+	Enabled bool
 }
 
-// Notifier describes a Slack notifier
+// Notifier describes a Datadog notifier
 type Notifier struct {
 	client *statsd.Client
 	common types.NotifiersCommonConfig
@@ -27,7 +26,7 @@ type Notifier struct {
 }
 
 // New Datadog Notifier
-func New(commonConfig types.NotifiersCommonConfig, logger *zap.SugaredLogger) (*Notifier, error) {
+func New(commonConfig types.NotifiersCommonConfig, datadogConfig NotifierDatadogConfig, logger *zap.SugaredLogger) (*Notifier, error) {
 	not := &Notifier{
 		common: commonConfig,
 		logger: logger,
@@ -40,9 +39,6 @@ func New(commonConfig types.NotifiersCommonConfig, logger *zap.SugaredLogger) (*
 	}
 
 	not.client = instance
-
-	// TODO test the token of the client to make sure that the api and app are correct
-
 	not.logger.Info("notifier: datadog notifier connected to datadog")
 
 	return not, nil
