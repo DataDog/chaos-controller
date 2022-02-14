@@ -6,6 +6,10 @@
 
 Datadog runs regular chaos experiments to test the resilience of our distributed cloud applications hosted in Kubernetes. The Chaos Controller facilitates automation of these experiments by simulating common "disruptions" including but not limited to: poor network quality, exhaustion of computational resources, or unexpected node failures. All you need to do to get started is define a `yaml` file which contains all of the specifications needed by our custom Kubernetes Resource to run the preferred disruption `Kind`.
 
+<p align="center"><kbd>
+    <img src="docs/img/architecture/chaos_controller.svg" width=700 align="center" />
+</kbd></p>
+
 ## Gamedays
 
 At Datadog, we use the Chaos Controller to run Gamedays where we intentionally introduce failures into staging and production systems to test the resilience of our critical applications.
