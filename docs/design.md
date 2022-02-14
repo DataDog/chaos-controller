@@ -10,7 +10,7 @@ The chaos-controller is made of two main components:
 * the injector, a CLI handling the disruption injection and cleanup into targets
 
 <p align="center"><kbd>
-    <img src="docs/img/architecture/chaos_controller.svg" width=700 align="center" />
+    <img src="img/architecture/chaos_controller.svg" width=700 align="center" />
 </kbd></p>
 
 ## Disruption resource lifecycle
