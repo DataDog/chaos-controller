@@ -49,6 +49,7 @@ type DisruptionReconciler struct {
 	MetricsSink                           metrics.Sink
 	TargetSelector                        targetselector.TargetSelector
 	InjectorAnnotations                   map[string]string
+	InjectorLabels                        map[string]string
 	InjectorServiceAccount                string
 	InjectorImage                         string
 	ImagePullSecrets                      string
@@ -1027,18 +1028,18 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 		}
 	}
 
+	r.InjectorLabels[chaostypes.TargetLabel] = targetName                      // target name label
+	r.InjectorLabels[chaostypes.DisruptionKindLabel] = string(kind)            // disruption kind label
+	r.InjectorLabels[chaostypes.DisruptionNameLabel] = instance.Name           // disruption name label, used to determine ownership
+	r.InjectorLabels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // disruption namespace label, used to determine ownership
+
 	// define injector pod
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("chaos-%s-", instance.Name), // generate the pod name automatically with a prefix
 			Namespace:    r.ChaosNamespace,                        // chaos pods need to be in the same namespace as their service account to run
 			Annotations:  r.InjectorAnnotations,                   // add extra annotations passed to the controller
-			Labels: map[string]string{
-				chaostypes.TargetLabel:              targetName,         // target name label
-				chaostypes.DisruptionKindLabel:      string(kind),       // disruption kind label
-				chaostypes.DisruptionNameLabel:      instance.Name,      // disruption name label, used to determine ownership
-				chaostypes.DisruptionNamespaceLabel: instance.Namespace, // disruption namespace label, used to determine ownership
-			},
+			Labels:       r.InjectorLabels,                        // add default and extra labels passed to the controller
 		},
 		Spec: podSpec,
 	}

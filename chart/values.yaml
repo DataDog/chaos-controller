@@ -33,6 +33,7 @@ controller:
 
 injector:
   annotations: {} # extra annotations passed to the chaos injector pods
+  labels: {} # extra labels passed to the chaos injector pods
   serviceAccount: chaos-injector # service account to use for the chaos injector pods
   dnsDisruption: # dns disruption configuration
     dnsServer: "8.8.8.8" # IP address of the upstream dns server

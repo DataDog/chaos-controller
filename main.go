@@ -87,6 +87,7 @@ type controllerWebhookConfig struct {
 type injectorConfig struct {
 	Image             string                          `json:"image"`
 	Annotations       map[string]string               `json:"annotations"`
+	Labels            map[string]string               `json:"labels"`
 	ChaosNamespace    string                          `json:"namespace"`
 	ServiceAccount    string                          `json:"serviceAccount"`
 	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
@@ -156,6 +157,9 @@ func main() {
 
 	pflag.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.annotations", pflag.Lookup("injector-annotations")))
+
+	pflag.StringToStringVar(&cfg.Injector.Labels, "injector-labels", map[string]string{}, "Labels added to the generated injector pods")
+	handleFatalError(viper.BindPFlag("injector.labels", pflag.Lookup("injector-labels")))
 
 	pflag.StringVar(&cfg.Injector.ServiceAccount, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.serviceAccount.name", pflag.Lookup("injector-service-account")))
@@ -287,6 +291,7 @@ func main() {
 		MetricsSink:                           ms,
 		TargetSelector:                        targetSelector,
 		InjectorAnnotations:                   cfg.Injector.Annotations,
+		InjectorLabels:                        cfg.Injector.Labels,
 		InjectorServiceAccount:                cfg.Injector.ServiceAccount,
 		InjectorImage:                         cfg.Injector.Image,
 		ChaosNamespace:                        cfg.Injector.ChaosNamespace,
