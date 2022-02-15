@@ -66,34 +66,43 @@ type DisruptionReconciler struct {
 	Controller                            controller.Controller
 }
 
-type SelectorPodsHandler struct {
+type DisruptionSelectorHandler struct {
 	disruption *v1beta1.Disruption
 }
 
-func (h SelectorPodsHandler) OnAdd(obj interface{}) {
-	pod, ok := obj.(*corev1.Pod)
-	if !ok {
-		fmt.Printf("watcher addfunc: not a *corev1.Pod, it's a %v\n", reflect.TypeOf(obj))
-	} else {
+func (h DisruptionSelectorHandler) OnAdd(obj interface{}) {
+	pod, okPod := obj.(*corev1.Pod)
+	node, okNode := obj.(*corev1.Node)
+	if !(okPod || okNode) {
+		fmt.Printf("watcher addfunc: not a *corev1.Pod or *corev1.Node, it's a %v\n", reflect.TypeOf(obj))
+	} else if okPod {
 		fmt.Printf("watcher addfunc: for disruption %v: pod %v\n", h.disruption.Name, pod.Name)
+	} else if okNode {
+		fmt.Printf("watcher addfunc: for disruption %v: node %v\n", h.disruption.Name, node.Name)
 	}
 }
 
-func (h SelectorPodsHandler) OnDelete(obj interface{}) {
-	pod, ok := obj.(*corev1.Pod)
-	if !ok {
-		fmt.Printf("watcher deletefunc: not a *corev1.Pod, it's a %v\n", reflect.TypeOf(obj))
-	} else {
+func (h DisruptionSelectorHandler) OnDelete(obj interface{}) {
+	pod, okPod := obj.(*corev1.Pod)
+	node, okNode := obj.(*corev1.Node)
+	if !(okPod || okNode) {
+		fmt.Printf("watcher deletefunc: not a *corev1.Pod or *corev1.Node, it's a %v\n", reflect.TypeOf(obj))
+	} else if okPod {
 		fmt.Printf("watcher deletefunc: for disruption %v: pod %v\n", h.disruption.Name, pod.Name)
+	} else if okNode {
+		fmt.Printf("watcher deletefunc: for disruption %v: node %v\n", h.disruption.Name, node.Name)
 	}
 }
 
-func (h SelectorPodsHandler) OnUpdate(oldObj, newObj interface{}) {
-	oldPod, ok := oldObj.(*corev1.Pod)
-	if !ok {
-		fmt.Printf("watcher updatefunc: not a *corev1.Pod, it's a %v\n", reflect.TypeOf(oldObj))
-	} else {
-		fmt.Printf("watcher updatefunc: for disruption %v: pod %v\n", h.disruption.Name, oldPod.Name)
+func (h DisruptionSelectorHandler) OnUpdate(oldObj, newObj interface{}) {
+	pod, okPod := oldObj.(*corev1.Pod)
+	node, okNode := oldObj.(*corev1.Node)
+	if !(okPod || okNode) {
+		fmt.Printf("watcher updatefunc: not a *corev1.Pod or *corev1.Node, it's a %v\n", reflect.TypeOf(oldObj))
+	} else if okPod {
+		fmt.Printf("watcher updatefunc: for disruption %v: pod %v\n", h.disruption.Name, pod.Name)
+	} else if okNode {
+		fmt.Printf("watcher updatefunc: for disruption %v: node %v\n", h.disruption.Name, node.Name)
 	}
 }
 
@@ -143,37 +152,63 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	fmt.Printf("state:\n\tdis: %v\n\tcaches: %v\n\ttargets: %v\n\tignored targets: %v\n\n", instance.Name, r.CachesCancel, instance.Status.Targets, instance.Status.IgnoredTargets)
 
 	// if it doesn't exist, create the cache context to re-trigger the disruption
 	if r.CachesCancel[req.NamespacedName] == nil {
-		c, err := k8scache.New(
-			ctrl.GetConfigOrDie(),
-			k8scache.Options{
+		cacheOptions := k8scache.Options{}
+		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
+			cacheOptions = k8scache.Options{
+				SelectorsByObject: k8scache.SelectorsByObject{
+					&corev1.Node{}: {Label: instance.Spec.Selector.AsSelector()},
+				},
+			}
+		} else {
+			cacheOptions = k8scache.Options{
 				SelectorsByObject: k8scache.SelectorsByObject{
 					&corev1.Pod{}: {Label: instance.Spec.Selector.AsSelector()},
 				},
 				Namespace: instance.Namespace,
-			},
+			}
+		}
+
+		cache, err := k8scache.New(
+			ctrl.GetConfigOrDie(),
+			cacheOptions,
 		)
 		if err != nil {
 			fmt.Println("cache gen error:", err)
 		}
 
-		info, err := c.GetInformer(context.Background(), &corev1.Pod{})
+		var info k8scache.Informer
+		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
+			info, err = cache.GetInformer(context.Background(), &corev1.Node{})
+		} else {
+			info, err = cache.GetInformer(context.Background(), &corev1.Pod{})
+		}
 		if err != nil {
 			fmt.Println("cache gen error:", err)
 		}
-		info.AddEventHandler(SelectorPodsHandler{disruption: instance})
+		info.AddEventHandler(DisruptionSelectorHandler{disruption: instance})
 
 		ch := make(chan error)
 		cacheCtx, cacheCancelFunc := context.WithCancel(context.TODO())
-		go func() { ch <- c.Start(cacheCtx) }()
+		go func() { ch <- cache.Start(cacheCtx) }()
 		r.CachesCancel[req.NamespacedName] = cacheCancelFunc
 
-		cacheSource := source.NewKindWithCache(&corev1.Pod{}, c)
-		r.Controller.Watch(cacheSource, handler.EnqueueRequestsFromMapFunc(func(c client.Object) []reconcile.Request {
-			return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}}}
-		}))
+		var cacheSource source.SyncingSource
+		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
+			cacheSource = source.NewKindWithCache(&corev1.Node{}, cache)
+		} else {
+			cacheSource = source.NewKindWithCache(&corev1.Pod{}, cache)
+		}
+		r.Controller.Watch(
+			cacheSource,
+			handler.EnqueueRequestsFromMapFunc(
+				func(c client.Object) []reconcile.Request {
+					return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}}}
+				}),
+		)
 	}
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
