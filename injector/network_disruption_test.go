@@ -299,8 +299,6 @@ var _ = Describe("Failure", func() {
 
 				// fake watchers for service handling
 				go func() {
-					modifiedFakeService := fakeService
-
 					// Set up
 					time.Sleep(300 * time.Millisecond)
 					servicesWatcher.Add(fakeService)
@@ -310,17 +308,6 @@ var _ = Describe("Failure", func() {
 					// Deleting a pod
 					time.Sleep(300 * time.Millisecond)
 					podsWatcher.Delete(fakeEndpoint)
-
-					// Modifying the service chart
-					modifiedFakeService.Spec.Ports = []corev1.ServicePort{
-						{
-							Port:       8181,
-							TargetPort: intstr.FromInt(8081),
-							Protocol:   corev1.ProtocolTCP,
-						},
-					}
-					time.Sleep(300 * time.Millisecond)
-					servicesWatcher.Modify(modifiedFakeService)
 				}()
 
 			})
@@ -335,8 +322,6 @@ var _ = Describe("Failure", func() {
 				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", "4950")
 				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", "4951")
 				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", "4952")
-
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 8181, "TCP", "1:4")
 			})
 
 			AfterEach(func() {
