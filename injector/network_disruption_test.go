@@ -25,7 +25,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/watch"
 	kubernetes "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/testing"
 )
 
 var _ = Describe("Failure", func() {
@@ -44,6 +46,8 @@ var _ = Describe("Failure", func() {
 		dns                                                     *network.DNSMock
 		netnsManager                                            *netns.ManagerMock
 		k8sClient                                               *kubernetes.Clientset
+		fakeService                                             *corev1.Service
+		fakeEndpoint                                            *corev1.Pod
 	)
 
 	BeforeEach(func() {
@@ -64,8 +68,8 @@ var _ = Describe("Failure", func() {
 		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddCgroupFilter", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("ListFilters", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("DeleteFilters", mock.Anything, mock.Anything).Return(nil)
+		//tc.On("ListFilters", mock.Anything, mock.Anything).Return(nil, nil)
+		tc.On("DeleteFilter", mock.Anything, mock.Anything).Return(nil)
 		tc.On("ClearQdisc", mock.Anything).Return(nil)
 
 		// netlink
@@ -114,7 +118,7 @@ var _ = Describe("Failure", func() {
 		Expect(os.Setenv(env.InjectorTargetPodHostIP, "10.0.0.2")).To(BeNil())
 
 		// fake kubernetes client and resources
-		fakeService := &corev1.Service{
+		fakeService = &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: "bar",
@@ -135,7 +139,7 @@ var _ = Describe("Failure", func() {
 			},
 		}
 
-		fakeEndpoint := &corev1.Pod{
+		fakeEndpoint = &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo-abcd-1234",
 				Namespace: "bar",
@@ -275,12 +279,71 @@ var _ = Describe("Failure", func() {
 						Namespace: "bar",
 					},
 				}
+
+				podsWatcher := watch.NewFake()
+				servicesWatcher := watch.NewFake()
+				listFiltersResults1 := make(map[string]string)
+				listFiltersResults2 := make(map[string]string)
+				listFiltersResults3 := make(map[string]string)
+
+				listFiltersResults2["lo"] = "pref 4950 ff"
+				listFiltersResults2["eth0"] = "pref 4951 ff"
+				listFiltersResults2["eth1"] = "pref 4952 ff"
+				listFiltersResults3["lo"] = "pref 4950 ff\npref 4953 ff"
+				listFiltersResults3["eth0"] = "pref 4951 ff\npref 4954 ff"
+				listFiltersResults3["eth1"] = "pref 4952 ff\npref 4955 ff"
+				tc.On("ListFilters", []string{"lo", "eth0", "eth1"}).Return(listFiltersResults1, listFiltersResults2, listFiltersResults2, listFiltersResults3, nil)
+
+				k8sClient.PrependWatchReactor("pods", testing.DefaultWatchReactor(podsWatcher, nil))
+				k8sClient.PrependWatchReactor("services", testing.DefaultWatchReactor(servicesWatcher, nil))
+
+				// fake watchers for service handling
+				go func() {
+					modifiedFakeService := fakeService
+
+					// Set up
+					time.Sleep(300 * time.Millisecond)
+					servicesWatcher.Add(fakeService)
+					time.Sleep(300 * time.Millisecond)
+					podsWatcher.Add(fakeEndpoint)
+
+					// Deleting a pod
+					time.Sleep(300 * time.Millisecond)
+					podsWatcher.Delete(fakeEndpoint)
+
+					// Modifying the service chart
+					modifiedFakeService.Spec.Ports = []corev1.ServicePort{
+						{
+							Port:       8181,
+							TargetPort: intstr.FromInt(8081),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					}
+					time.Sleep(300 * time.Millisecond)
+					servicesWatcher.Modify(modifiedFakeService)
+				}()
+
 			})
 
 			It("should add a filter to redirect targeted traffic on all interfaces on the disrupted band filter on given service cluster IP and endpoints IPs", func() {
+				// Wait for the changes to happen
+				time.Sleep(time.Second * 10)
+
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "1:4")
+
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", "4950")
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", "4951")
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", "4952")
+
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 8181, "TCP", "1:4")
 			})
+
+			AfterEach(func() {
+				time.Sleep(time.Second * 10)
+				inj.Clean()
+			})
+
 		})
 
 		// safeguards

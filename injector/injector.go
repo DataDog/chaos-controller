@@ -16,11 +16,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type INJECTOR_STATE string
+type InjectorState string
 
 const (
-	Injected INJECTOR_STATE = "injected"
-	Cleaned  INJECTOR_STATE = "cleaned"
+	Injected InjectorState = "injected"
+	Cleaned  InjectorState = "cleaned"
 )
 
 // Injector is an interface being able to inject or clean disruptions

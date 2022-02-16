@@ -114,7 +114,7 @@ func (t tc) AddNetem(ifaces []string, parent string, handle uint32, delay time.D
 	params = strings.TrimPrefix(params, " ")
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", "add", iface, parent, handle, "netem", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", params)...); err != nil {
 			return err
 		}
 	}
@@ -132,7 +132,7 @@ func (t tc) AddPrio(ifaces []string, parent string, handle uint32, bands uint32,
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", "add", iface, parent, handle, "prio", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "prio", params)...); err != nil {
 			return err
 		}
 	}
@@ -148,7 +148,7 @@ func (t tc) AddOutputLimit(ifaces []string, parent string, handle uint32, bytesP
 	//   - https://unix.stackexchange.com/questions/100785/bucket-size-in-tbf
 	//   - https://linux.die.net/man/8/tc-tbf
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", "add", iface, parent, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))...); err != nil {
 			return err
 		}
 	}
@@ -202,7 +202,7 @@ func (t tc) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstI
 	params += fmt.Sprintf("flowid %s", flowid)
 
 	for _, iface := range ifaces {
-		_, _, err := t.executer.Run(buildCmd("filter", "add", iface, parent, handle, "u32", params)...)
+		_, _, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "u32", params)...)
 		if err != nil {
 			return err
 		}
@@ -246,7 +246,7 @@ func (t tc) ListFilters(ifaces []string) (map[string]string, error) {
 // AddCgroupFilter generates a cgroup filter
 func (t tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error {
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", "add", iface, parent, handle, "cgroup", "")...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "cgroup", "")...); err != nil {
 			return err
 		}
 	}
@@ -265,8 +265,8 @@ func getProtocolIndentifier(protocol string) protocolIdentifier {
 	}
 }
 
-func buildCmd(module string, action string, iface string, parent string, handle uint32, kind string, parameters string) []string {
-	cmd := fmt.Sprintf("%s %s dev %s", module, action, iface)
+func buildCmd(module string, iface string, parent string, handle uint32, kind string, parameters string) []string {
+	cmd := fmt.Sprintf("%s add dev %s", module, iface)
 
 	// parent
 	if parent == "root" {

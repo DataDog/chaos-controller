@@ -35,6 +35,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
 	go.uber.org/zap v1.19.0
 	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2
 	google.golang.org/grpc v1.40.0
 	google.golang.org/protobuf v1.27.1
