@@ -1032,6 +1032,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	for k, v := range r.InjectorLabels {
 		labels[k] = v
 	}
+
 	labels[chaostypes.TargetLabel] = targetName                      // target name label
 	labels[chaostypes.DisruptionKindLabel] = string(kind)            // disruption kind label
 	labels[chaostypes.DisruptionNameLabel] = instance.Name           // disruption name label, used to determine ownership
