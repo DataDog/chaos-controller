@@ -66,7 +66,7 @@ Follow the steps below:
     ```
     kubectl config use-context <context>
     ```
-2. Create the local Certificate (e.g. `tls.crt`) and the private key (e.g. `tls.key`) files under [local/certDir](../local/certDir). These will be used for the webhook. You could generate these or get them from an existing deploy; you will find them in the `chaos-controller-webhook-secret` Secret, in base64 format.
+2. Create a `certDir` folder under the existing [local](../local) directory. Inside `certDir` create the local Certificate (e.g. `tls.crt`) and the private key (e.g. `tls.key`) files. These will be used for the webhook. You could generate these or get them from an existing deploy; you will find them in the `chaos-controller-webhook-secret` Secret, in base64 format.
 3. Set the config file in the program arguments:
     ```
     --config=local/config.yaml
