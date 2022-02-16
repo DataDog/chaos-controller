@@ -57,6 +57,24 @@ A successful delete prints:
 If your pod gets stuck in terminating, it's possible that there was an issue with the disruption. Try manually removing the finalizer:
 * ```kubectl patch pod <pod> -p '{"metadata":{"finalizers":null}}'```
 
+## Debugging the controller locally
+You can run the controller locally (e.g. in your IDE) and point it to an existing cluster.
+
+Follow the steps below:
+
+1. Set your Kubernetes context to the required cluster:
+    ```
+    kubectl config use-context <context>
+    ```
+2. Create the local Certificate (e.g. `tls.crt`) and the private key (e.g. `tls.key`) files under [local/certDir](../local/certDir). These will be used for the webhook. You could generate these or get them from an existing deploy; you will find them in the `chaos-controller-webhook-secret` Secret, in base64 format.
+3. Set the config file in the program arguments:
+    ```
+    --config=local/config.yaml
+    ```
+5. Set the environment variable below. The value does not matter as the safeguards are disabled in the local setup:
+  ```CONTROLLER_NODE_NAME=local```
+6. Make sure to delete any resource related to the controller. If the controller is already installed, you can scale its replicas down to 0. You will also need to delete the controller's `ValidatingWebhookConfigurations` and `MutatingWebhookConfigurations` resources.
+
 ## Basic Troubleshooting
 
 See the existing disruptions (corresponding to `metadata.name`):
