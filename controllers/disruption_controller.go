@@ -672,7 +672,6 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 }
 
 func (r *DisruptionReconciler) terminateChaosPod(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) error {
-	fmt.Println("deleting chaos pod", chaosPod.Name, "targeting", chaosPod.Labels[chaostypes.TargetLabel])
 	removeFinalizer := false
 	ignoreStatus := false
 	target := chaosPod.Labels[chaostypes.TargetLabel]
@@ -682,6 +681,7 @@ func (r *DisruptionReconciler) terminateChaosPod(instance *chaosv1beta1.Disrupti
 		return nil
 	}
 
+	fmt.Println("deleting chaos pod", chaosPod.Name, "targeting", chaosPod.Labels[chaostypes.TargetLabel])
 	// move chaos pods target to ignored targets, so it is not reselected after
 	if err := r.ignoreTarget(instance, target); err != nil {
 		r.log.Errorw("error ignoring chaos pod target", "error", err, "target", target, "chaosPod", chaosPod.Name)
@@ -896,7 +896,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		addTargetsToDis(instance, newTargetsCount, eligibleTargets)
 	} else if cTargetsCount > dTargetsCount {
 		// too many targets: remove a few targets from cTargets
-		r.removeTargetsFromDis(instance, matchingTargets, cTargetsCount-dTargetsCount)
+		r.removeTargetsFromDis(instance, cTargetsCount-dTargetsCount)
 	}
 
 	r.log.Infow("updating instance status with targets selected for injection")
@@ -914,8 +914,50 @@ func addTargetsToDis(instance *chaosv1beta1.Disruption, newTargetsCount int, eli
 	}
 }
 
-func (r *DisruptionReconciler) removeTargetsFromDis(instance *chaosv1beta1.Disruption, matchingTargets []string, toRemoveTargetsCount int) {
+func (r *DisruptionReconciler) removeTargetsFromDis(instance *chaosv1beta1.Disruption, toRemoveTargetsCount int) {
+	chaosPods, err := r.getChaosPods(instance, nil)
+	if err != nil {
+		fmt.Errorf("can't get all chaos pod for dis: %w", err)
+	}
 
+	fmt.Println("Pre-remove Targets:", instance.Status.Targets)
+	fmt.Println("Pre-remove Chaos Pods:", chaosPods)
+	for i := 0; i < toRemoveTargetsCount; i++ {
+		chaosIndex := rand.Intn(len(chaosPods)) //nolint:gosec
+		chaosPod := chaosPods[chaosIndex]
+		targetPod := chaosPod.Labels[chaostypes.TargetLabel]
+
+		// remove target
+		if !contains(instance.Status.Targets, targetPod) {
+			return
+		} else {
+			var targetIndex int = 0
+			for _, targetTest := range instance.Status.Targets {
+				if targetTest == targetPod {
+					continue
+				}
+				targetIndex++
+			}
+			instance.Status.Targets[len(instance.Status.Targets)-1], instance.Status.Targets[targetIndex] = instance.Status.Targets[targetIndex], instance.Status.Targets[len(instance.Status.Targets)-1]
+			instance.Status.Targets = instance.Status.Targets[:len(instance.Status.Targets)-1]
+		}
+
+		// delete chaos pod
+		if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
+			r.log.Infow("terminating chaos pod to trigger cleanup", "chaosPod", chaosPod.Name)
+			if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
+				r.log.Errorw("error terminating chaos pod", "error", err, "chaosPod", chaosPod.Name)
+			}
+			err := r.terminateChaosPod(instance, chaosPod)
+			if err != nil {
+				fmt.Errorf("error deleting chaos pod %v: %w", chaosPod.Name, err)
+			}
+		}
+		chaosPods[len(chaosPods)-1], chaosPods[chaosIndex] = chaosPods[chaosIndex], chaosPods[len(chaosPods)-1]
+		chaosPods = chaosPods[:len(chaosPods)-1]
+	}
+	fmt.Println("Post-remove Targets:", instance.Status.Targets)
+	fmt.Println("Post-remove Chaos Pods:", chaosPods)
 }
 
 func (r *DisruptionReconciler) removeDeadTargets(instance *chaosv1beta1.Disruption, matchingTargets []string) {
@@ -947,9 +989,16 @@ func (r *DisruptionReconciler) removeDeadTargets(instance *chaosv1beta1.Disrupti
 	for _, chaosPod := range chaosPods {
 		fmt.Println("Found Chaos Pod:", chaosPod.Name, "=> targeting", chaosPod.Labels[chaostypes.TargetLabel])
 		if contains(cleanUpList, chaosPod.Labels[chaostypes.TargetLabel]) {
-			err := r.terminateChaosPod(instance, chaosPod)
-			if err != nil {
-				fmt.Errorf("error deleting chaos pod %v: %w", chaosPod.Name, err)
+			// delete the chaos pod only if it has not been deleted already
+			if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
+				r.log.Infow("terminating chaos pod to trigger cleanup", "chaosPod", chaosPod.Name)
+				if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
+					r.log.Errorw("error terminating chaos pod", "error", err, "chaosPod", chaosPod.Name)
+				}
+				err := r.terminateChaosPod(instance, chaosPod)
+				if err != nil {
+					fmt.Errorf("error deleting chaos pod %v: %w", chaosPod.Name, err)
+				}
 			}
 		}
 	}
