@@ -759,18 +759,28 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 		case event, ok := <-watcher.kubernetesServiceWatcher: // We have changes in the service watched
 			if !ok { // channel is closed
 				watcher.kubernetesServiceWatcher = nil
-			} else {
-				if err := i.handleKubernetesServiceChanges(event, &watcher, interfaces, flowid); err != nil {
-					i.config.Log.Errorf("couldn't apply changes to tc filters: %w", err)
+			} else if err := i.handleKubernetesServiceChanges(event, &watcher, interfaces, flowid); err != nil {
+				i.config.Log.Errorf("couldn't apply changes to tc filters: %w... Rebuilding watcher", err)
+
+				if _, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromNamespaceServices, watcher.tcFiltersFromNamespaceServices); err != nil {
+					i.config.Log.Errorf("couldn't clean list of tc filters: %w", err)
 				}
+
+				watcher.kubernetesServiceWatcher = nil // restart the watcher in case of error
+				watcher.tcFiltersFromNamespaceServices = []tcServiceFilter{}
 			}
 		case event, ok := <-watcher.kubernetesPodEndpointsWatcher: // We have changes in the pods watched
 			if !ok { // channel is closed
 				watcher.kubernetesPodEndpointsWatcher = nil
-			} else {
-				if err := i.handleKubernetesPodsChanges(event, &watcher, interfaces, flowid); err != nil {
-					i.config.Log.Errorf("couldn't apply changes to tc filters: %w", err)
+			} else if err := i.handleKubernetesPodsChanges(event, &watcher, interfaces, flowid); err != nil {
+				i.config.Log.Errorf("couldn't apply changes to tc filters: %w... Rebuilding watcher", err)
+
+				if _, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromPodEndpoints, watcher.tcFiltersFromPodEndpoints); err != nil {
+					i.config.Log.Errorf("couldn't clean list of tc filters: %w", err)
 				}
+
+				watcher.kubernetesPodEndpointsWatcher = nil // restart the watcher in case of error
+				watcher.tcFiltersFromPodEndpoints = []tcServiceFilter{}
 			}
 		}
 	}

@@ -210,7 +210,7 @@ func (t tc) AddFilter(ifaces []string, parent string, priority uint32, handle ui
 }
 
 func (t tc) DeleteFilter(iface string, priority uint32) error {
-	if _, _, err := t.executer.Run("filter", "delete", "dev", iface, "pref", fmt.Sprintf("%d", priority)); err != nil {
+	if _, _, err := t.executer.Run("filter", "delete", "dev", iface, "priority", fmt.Sprintf("%d", priority)); err != nil {
 		return err
 	}
 

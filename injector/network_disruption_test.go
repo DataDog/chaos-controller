@@ -301,17 +301,26 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter for every service and pods filtered on", func() {
-				// Wait for the changes to happen
-				time.Sleep(time.Second * 10)
-
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "1:4")
-
+				// wait for all the addFilters at the beginning of injection to complete
+				time.Sleep(5 * time.Second)
 				priority := uint32(49153)
 
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
+				Eventually(func() bool {
+					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "1:4")
+				}, time.Second*5, time.Second).Should(BeTrue())
+				Eventually(func() bool {
+					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "1:4")
+				}, time.Second*5, time.Second).Should(BeTrue())
+
+				Eventually(func() bool {
+					return tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
+				}, time.Second*5, time.Second).Should(BeTrue())
+				Eventually(func() bool {
+					return tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
+				}, time.Second*5, time.Second).Should(BeTrue())
+				Eventually(func() bool {
+					return tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
+				}, time.Second*5, time.Second).Should(BeTrue())
 			})
 
 			AfterEach(func() {
