@@ -19,6 +19,7 @@ import (
 type InjectorState string
 
 const (
+	Created  InjectorState = "created"
 	Injected InjectorState = "injected"
 	Cleaned  InjectorState = "cleaned"
 )

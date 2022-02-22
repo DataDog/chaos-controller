@@ -6,8 +6,6 @@
 package network
 
 import (
-	"fmt"
-	"log"
 	"net"
 	"time"
 
@@ -17,7 +15,6 @@ import (
 // TcMock is a mock implementation of the Tc interface
 type TcMock struct {
 	mock.Mock
-	ListFiltersCallNumber int
 }
 
 //nolint:golint
@@ -35,7 +32,7 @@ func (f *TcMock) AddPrio(ifaces []string, parent string, handle uint32, bands ui
 }
 
 //nolint:golint
-func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
+func (f *TcMock) AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
 	srcIPs := "nil"
 	dstIPs := "nil"
 
@@ -47,9 +44,7 @@ func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP,
 		dstIPs = dstIP.String()
 	}
 
-	log.Printf("%s %s", srcIPs, dstIPs)
-
-	args := f.Called(ifaces, parent, handle, srcIPs, dstIPs, srcPort, dstPort, protocol, flowid)
+	args := f.Called(ifaces, parent, priority, handle, srcIPs, dstIPs, srcPort, dstPort, protocol, flowid)
 
 	return args.Error(0)
 }
@@ -75,27 +70,8 @@ func (f *TcMock) ClearQdisc(ifaces []string) error {
 	return args.Error(0)
 }
 
-// ListFilters is called multiple times in inj.Inject and needs to have different return values
-// depending on the number of the call.
-func (f *TcMock) ListFilters(ifaces []string) (map[string]string, error) {
-	args := f.Called(ifaces)
-
-	if args.Get(f.ListFiltersCallNumber) == nil {
-		return nil, fmt.Errorf("argument %d doesn't exist", f.ListFiltersCallNumber)
-	}
-
-	arg, ok := args.Get(f.ListFiltersCallNumber).(map[string]string)
-	if !ok {
-		return nil, fmt.Errorf("argument %d is of the wrong type", f.ListFiltersCallNumber)
-	}
-	// count the number of calls to return the argument of the number of the call in order to return different values
-	f.ListFiltersCallNumber++
-
-	return arg, nil
-}
-
-func (f *TcMock) DeleteFilter(iface string, preference string) error {
-	args := f.Called(iface, preference)
+func (f *TcMock) DeleteFilter(iface string, priority uint32) error {
+	args := f.Called(iface, priority)
 
 	return args.Error(0)
 }

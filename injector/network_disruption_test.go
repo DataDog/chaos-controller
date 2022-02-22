@@ -65,10 +65,9 @@ var _ = Describe("Failure", func() {
 		tc = &network.TcMock{}
 		tc.On("AddNetem", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddCgroupFilter", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		//tc.On("ListFilters", mock.Anything, mock.Anything).Return(nil, nil)
 		tc.On("DeleteFilter", mock.Anything, mock.Anything).Return(nil)
 		tc.On("ClearQdisc", mock.Anything).Return(nil)
 
@@ -245,7 +244,7 @@ var _ = Describe("Failure", func() {
 		// hosts and services filtering cases
 		Context("with no hosts specified", func() {
 			It("should add a filter to redirect all traffic on main interfaces on the disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "0.0.0.0/0", 0, 0, "", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "0.0.0.0/0", 0, 0, "", "1:4")
 			})
 		})
 
@@ -266,8 +265,8 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter to redirect targeted traffic on all interfaces on the disrupted band filter on given hosts as destination IP", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "1.1.1.1/32", 0, 80, "tcp", "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "2.2.2.2/32", 0, 443, "tcp", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "1.1.1.1/32", 0, 80, "tcp", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "2.2.2.2/32", 0, 443, "tcp", "1:4")
 			})
 		})
 
@@ -282,17 +281,6 @@ var _ = Describe("Failure", func() {
 
 				podsWatcher := watch.NewFake()
 				servicesWatcher := watch.NewFake()
-				listFiltersResults1 := make(map[string]string)
-				listFiltersResults2 := make(map[string]string)
-				listFiltersResults3 := make(map[string]string)
-
-				listFiltersResults2["lo"] = "pref 4950 ff"
-				listFiltersResults2["eth0"] = "pref 4951 ff"
-				listFiltersResults2["eth1"] = "pref 4952 ff"
-				listFiltersResults3["lo"] = "pref 4950 ff\npref 4953 ff"
-				listFiltersResults3["eth0"] = "pref 4951 ff\npref 4954 ff"
-				listFiltersResults3["eth1"] = "pref 4952 ff\npref 4955 ff"
-				tc.On("ListFilters", []string{"lo", "eth0", "eth1"}).Return(listFiltersResults1, listFiltersResults2, listFiltersResults2, listFiltersResults3, nil)
 
 				k8sClient.PrependWatchReactor("pods", testing.DefaultWatchReactor(podsWatcher, nil))
 				k8sClient.PrependWatchReactor("services", testing.DefaultWatchReactor(servicesWatcher, nil))
@@ -312,20 +300,21 @@ var _ = Describe("Failure", func() {
 
 			})
 
-			It("should add a filter to redirect targeted traffic on all interfaces on the disrupted band filter on given service cluster IP and endpoints IPs", func() {
+			It("should add a filter for every service and pods filtered on", func() {
 				// Wait for the changes to happen
 				time.Sleep(time.Second * 10)
 
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "1:4")
 
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", "4950")
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", "4951")
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", "4952")
+				priority := uint32(49153)
+
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
 			})
 
 			AfterEach(func() {
-				time.Sleep(time.Second * 10)
 				inj.Clean()
 			})
 
@@ -334,11 +323,11 @@ var _ = Describe("Failure", func() {
 		// safeguards
 		Context("pod level safeguards", func() {
 			It("should add a filter to redirect default gateway IP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"eth0"}, "1:0", mock.Anything, "nil", "192.168.0.1/32", 0, 0, "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"eth0"}, "1:0", mock.Anything, mock.Anything, "nil", "192.168.0.1/32", 0, 0, "", "1:1")
 			})
 
 			It("should add a filter to redirect node IP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.0.0.2/32", 0, 0, "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "10.0.0.2/32", 0, 0, "", "1:1")
 			})
 		})
 
@@ -348,15 +337,15 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter to redirect SSH traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "nil", 22, 0, "tcp", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "nil", 22, 0, "tcp", "1:1")
 			})
 
 			It("should add a filter to redirect ARP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "nil", 0, 0, "arp", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "nil", 0, 0, "arp", "1:1")
 			})
 
 			It("should add a filter to redirect metadata service traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "169.254.169.254/32", 0, 0, "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "169.254.169.254/32", 0, 0, "", "1:1")
 			})
 		})
 
@@ -371,7 +360,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter to redirect all traffic on main interfaces on the disrupted band with specified port as source port", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "0.0.0.0/0", "nil", 80, 0, "", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "0.0.0.0/0", "nil", 80, 0, "", "1:4")
 			})
 		})
 
@@ -397,7 +386,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter to redirect traffic going to 8.8.8.8/32 on port 53 on the not disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "8.8.8.8/32", 0, 53, "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "8.8.8.8/32", 0, 53, "", "1:1")
 			})
 		})
 	})

@@ -11,8 +11,7 @@ import (
 	"math"
 	"net"
 	"os"
-	"regexp"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -49,6 +48,9 @@ type networkDisruptionInjector struct {
 	spec       v1beta1.NetworkDisruptionSpec
 	config     NetworkDisruptionInjectorConfig
 	operations []linkOperation
+
+	tcFilterPriority uint32     // keep track of the highest tc filter priority
+	tcFilterMutex    sync.Mutex // since we increment tcFilterPriority in goroutines we use a mutex to lock and unlock
 }
 
 // NetworkDisruptionInjectorConfig contains all needed drivers to create a network disruption using `tc`
@@ -64,10 +66,10 @@ type DisruptionState struct {
 	State chan InjectorState
 }
 
-// tcServiceFilter describes a tc filter, representing the service filtered and its preferences
+// tcServiceFilter describes a tc filter, representing the service filtered and its priority
 type tcServiceFilter struct {
-	service     networkDisruptionService
-	preferences map[string][]string // identifiers used to delete the filter, a map of interfaces and preferences
+	service  networkDisruptionService
+	priority uint32 // one priority per tc filters applied, the priority is the same for all interfaces
 }
 
 // serviceWatcher
@@ -104,21 +106,21 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 
 	config.State = DisruptionState{}
 
-	return networkDisruptionInjector{
+	return &networkDisruptionInjector{
 		spec:       spec,
 		config:     config,
 		operations: []linkOperation{},
 	}
 }
 
-func (i networkDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
+func (i *networkDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
 	return chaostypes.DisruptionKindNetworkDisruption
 }
 
 // Inject injects the given network disruption into the given container
-func (i networkDisruptionInjector) Inject() error {
+func (i *networkDisruptionInjector) Inject() error {
 	go func() {
-		i.config.State.State <- Injected
+		i.config.State.State <- Created
 	}()
 
 	// enter target network namespace
@@ -173,11 +175,15 @@ func (i networkDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
 	}
 
+	go func() {
+		i.config.State.State <- Injected
+	}()
+
 	return nil
 }
 
 // Clean removes all the injected disruption in the given container
-func (i networkDisruptionInjector) Clean() error {
+func (i *networkDisruptionInjector) Clean() error {
 	go func() {
 		i.config.State.State <- Cleaned
 	}()
@@ -240,6 +246,8 @@ func (i networkDisruptionInjector) Clean() error {
 //           |- (4:) <-- second operation
 //             ...
 func (i *networkDisruptionInjector) applyOperations() error {
+	i.tcFilterPriority = 49150
+
 	// get interfaces
 	links, err := i.config.NetlinkAdapter.LinkList()
 	if err != nil {
@@ -353,7 +361,8 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// redirect all packets of all interfaces if no host is given
 	if len(i.spec.Hosts) == 0 && len(i.spec.Services) == 0 {
 		_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nullIP, 0, 0, "", "1:4"); err != nil {
+
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nullIP, 0, 0, "", "1:4"); err != nil {
 			return fmt.Errorf("can't add a filter: %w", err)
 		}
 	} else {
@@ -380,30 +389,30 @@ func (i *networkDisruptionInjector) applyOperations() error {
 				Mask: net.CIDRMask(32, 32),
 			}
 
-			if err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
+			if err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", i.getNewPriority(), 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
 				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
 			}
 		}
 
 		// this filter allows the pod to communicate with the node IP
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nodeIPNet, 0, 0, "", "1:1"); err != nil {
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nodeIPNet, 0, 0, "", "1:1"); err != nil {
 			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 		}
 	} else if i.config.Level == chaostypes.DisruptionLevelNode {
 		// GENERIC SAFEGUARDS
 		// allow SSH connections on all interfaces (port 22/tcp)
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
 		}
 
 		// CLOUD PROVIDER SPECIFIC SAFEGUARDS
 		// allow cloud provider health checks on all interfaces(arp)
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
 		}
 
 		// allow cloud provider metadata service communication
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, metadataIPNet, 0, 0, "", "1:1"); err != nil {
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, metadataIPNet, 0, 0, "", "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
 		}
 	}
@@ -416,73 +425,15 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	return nil
 }
 
-// addServiceFilter add a tc service filter on a list of interfaces
-func (i *networkDisruptionInjector) addServiceFilter(service networkDisruptionService, interfaces []string, flowid string) (map[string][]string, error) {
-	computedPreferencesPerIface := make(map[string][]string)
+func (i *networkDisruptionInjector) getNewPriority() uint32 {
+	priority := uint32(0)
 
-	// We list filters before and after to find the new filters' preferences created. Those preferences are used to later remove those filters
-	filtersBeforeAddition, err := i.config.TrafficController.ListFilters(interfaces)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't identify tc filter created, error on tc filter listing: %v", err.Error())
-	}
+	i.tcFilterMutex.Lock()
+	i.tcFilterPriority++
+	priority = i.tcFilterPriority
+	i.tcFilterMutex.Unlock()
 
-	err = i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, service.ip, 0, service.port, service.protocol, flowid)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create tc filter: %v", err.Error())
-	}
-
-	filtersAfterAddition, err := i.config.TrafficController.ListFilters(interfaces)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't identify tc filter created, error on tc filter listing: %v", err.Error())
-	}
-
-	for _, iface := range interfaces {
-		preferences := make(map[string]bool)
-
-		// To find the preferences (identifier used to remove tc filters later)
-		// we need to compare the list of tc filters before and after the addition of new filters
-		// we keep the new strings in the list of tc filters after the addition
-		// and we find the exact preference
-		computedPreferencesPerIface[iface] = []string{}
-		splitOutputBeforeAddition := strings.Split(filtersBeforeAddition[iface], "\n")
-		splitOutputAfterAddition := strings.Split(filtersAfterAddition[iface], "\n")
-
-		// We remove useless strings that a similar when we list filters before and after the addition
-		for _, befLine := range splitOutputBeforeAddition {
-			toRemoveIdx := -1
-
-			for i, afLine := range splitOutputAfterAddition {
-				if befLine == afLine {
-					toRemoveIdx = i
-
-					break
-				}
-			}
-
-			if toRemoveIdx >= 0 {
-				splitOutputAfterAddition = append(splitOutputAfterAddition[:toRemoveIdx], splitOutputAfterAddition[toRemoveIdx+1:]...)
-			}
-		}
-
-		// We find the preferences
-		// Exampe of string: filter parent 1: protocol all pref 49150 u32 chain 0 fh 802: ht divisor 1
-		// We match pref 49150 and extract it
-		regex := regexp.MustCompile(`pref (?P<preference>\d*)`)
-		for _, str := range splitOutputAfterAddition {
-			matches := regex.FindStringSubmatch(str)
-			if len(matches) >= 2 {
-				preferences[matches[1]] = true
-			}
-		}
-
-		for pref := range preferences {
-			computedPreferencesPerIface[iface] = append(computedPreferencesPerIface[iface], pref)
-		}
-	}
-
-	i.config.Log.Infow(fmt.Sprintf("added a new tc filter on %s", service.String()))
-
-	return computedPreferencesPerIface, nil
+	return priority
 }
 
 // addServiceFilters adds a list of service tc filters on a list of interfaces
@@ -490,25 +441,24 @@ func (i *networkDisruptionInjector) addServiceFilters(filters []tcServiceFilter,
 	builtServices := []tcServiceFilter{}
 
 	for _, filter := range filters {
-		preferences, err := i.addServiceFilter(filter.service, interfaces, flowid)
+		filter.priority = i.getNewPriority()
+
+		err := i.config.TrafficController.AddFilter(interfaces, "1:0", filter.priority, 0, nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, flowid)
 		if err != nil {
 			return nil, err
 		}
 
-		filter.preferences = preferences
 		builtServices = append(builtServices, filter)
 	}
 
 	return builtServices, nil
 }
 
-// removeServiceFilter delete tc filters using its preference
-func (i *networkDisruptionInjector) removeServiceFilter(tcFilter tcServiceFilter) error {
-	for iface, preferences := range tcFilter.preferences {
-		for _, preference := range preferences {
-			if err := i.config.TrafficController.DeleteFilter(iface, preference); err != nil {
-				return err
-			}
+// removeServiceFilter delete tc filters using its priority
+func (i *networkDisruptionInjector) removeServiceFilter(interfaces []string, tcFilter tcServiceFilter) error {
+	for _, iface := range interfaces {
+		if err := i.config.TrafficController.DeleteFilter(iface, tcFilter.priority); err != nil {
+			return err
 		}
 	}
 
@@ -518,10 +468,10 @@ func (i *networkDisruptionInjector) removeServiceFilter(tcFilter tcServiceFilter
 }
 
 // removeServiceFiltersInList delete a list of tc filters inside of another list of tc filters
-func (i *networkDisruptionInjector) removeServiceFiltersInList(tcFilters []tcServiceFilter, tcFiltersToRemove []tcServiceFilter) ([]tcServiceFilter, error) {
+func (i *networkDisruptionInjector) removeServiceFiltersInList(interfaces []string, tcFilters []tcServiceFilter, tcFiltersToRemove []tcServiceFilter) ([]tcServiceFilter, error) {
 	for _, serviceToRemove := range tcFiltersToRemove {
 		if deletedIdx := i.findServiceFilter(tcFilters, serviceToRemove); deletedIdx >= 0 {
-			if err := i.removeServiceFilter(tcFilters[deletedIdx]); err != nil {
+			if err := i.removeServiceFilter(interfaces, tcFilters[deletedIdx]); err != nil {
 				return nil, err
 			}
 
@@ -615,7 +565,7 @@ func (i *networkDisruptionInjector) handlePodEndpointsServiceFiltersOnKubernetes
 			finalTcFilters = append(finalTcFilters, oldFilter)
 			tcFiltersToCreate = append(tcFiltersToCreate[:idx], tcFiltersToCreate[idx+1:]...)
 		} else { // delete tc filters which are not in the updated list of tc filters
-			if err := i.removeServiceFilter(oldFilter); err != nil {
+			if err := i.removeServiceFilter(interfaces, oldFilter); err != nil {
 				return nil, err
 			}
 		}
@@ -676,7 +626,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 
 		watcher.tcFiltersFromNamespaceServices = append(watcher.tcFiltersFromNamespaceServices, createdTcFilters...)
 	case watch.Modified:
-		if _, err := i.removeServiceFiltersInList(watcher.tcFiltersFromNamespaceServices, watcher.tcFiltersFromNamespaceServices); err != nil {
+		if _, err := i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromNamespaceServices, watcher.tcFiltersFromNamespaceServices); err != nil {
 			return err
 		}
 
@@ -685,7 +635,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 			return err
 		}
 	case watch.Deleted:
-		watcher.tcFiltersFromNamespaceServices, err = i.removeServiceFiltersInList(watcher.tcFiltersFromNamespaceServices, nsServicesTcFilters)
+		watcher.tcFiltersFromNamespaceServices, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromNamespaceServices, nsServicesTcFilters)
 		if err != nil {
 			return err
 		}
@@ -758,7 +708,7 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 			watcher.podsWithoutIPs = append(watcher.podsWithoutIPs[:podToCreateIdx], watcher.podsWithoutIPs[podToCreateIdx+1:]...)
 		}
 	case watch.Deleted:
-		watcher.tcFiltersFromPodEndpoints, err = i.removeServiceFiltersInList(watcher.tcFiltersFromPodEndpoints, tcFiltersFromPod)
+		watcher.tcFiltersFromPodEndpoints, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromPodEndpoints, tcFiltersFromPod)
 		if err != nil {
 			return err
 		}
@@ -772,13 +722,15 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 }
 
 // watchServiceChanges for every changes happening in the kubernetes service destination or in the pods related to the kubernetes service destination, we update the tc service filters
-func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, interfaces []string, flowid string) error {
+func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, interfaces []string, flowid string) {
 	for {
 		// We create the watcher channels when it's closed
 		if watcher.kubernetesServiceWatcher == nil {
 			serviceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{})
 			if err != nil {
-				return fmt.Errorf("error watching the changes for the given kubernetes service (%s/%s): %w", watcher.watchedServiceSpec.Namespace, watcher.watchedServiceSpec.Name, err)
+				i.config.Log.Errorf("error watching the changes for the given kubernetes service (%s/%s): %w", watcher.watchedServiceSpec.Namespace, watcher.watchedServiceSpec.Name, err)
+
+				return
 			}
 
 			i.config.Log.Infow("starting kubernetes service watch", "serviceName", watcher.watchedServiceSpec.Name)
@@ -790,7 +742,9 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 				LabelSelector: watcher.labelServiceSelector,
 			})
 			if err != nil {
-				return fmt.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", watcher.watchedServiceSpec.Namespace, watcher.watchedServiceSpec.Name, err)
+				i.config.Log.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", watcher.watchedServiceSpec.Namespace, watcher.watchedServiceSpec.Name, err)
+
+				return
 			}
 
 			i.config.Log.Infow("starting kubernetes pods watch", "serviceName", watcher.watchedServiceSpec.Name)
@@ -798,24 +752,24 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 		}
 
 		select {
-		case state := <-i.config.State.State: // We stop watching when the injection is cleaned
+		case state := <-i.config.State.State:
 			if state == Cleaned {
-				return nil
+				return
 			}
 		case event, ok := <-watcher.kubernetesServiceWatcher: // We have changes in the service watched
 			if !ok { // channel is closed
 				watcher.kubernetesServiceWatcher = nil
 			} else {
 				if err := i.handleKubernetesServiceChanges(event, &watcher, interfaces, flowid); err != nil {
-					return fmt.Errorf("couldn't apply changes to tc filters: %w", err)
+					i.config.Log.Errorf("couldn't apply changes to tc filters: %w", err)
 				}
 			}
-		case event, ok := <-watcher.kubernetesPodEndpointsWatcher: // We have changes in the service watched
+		case event, ok := <-watcher.kubernetesPodEndpointsWatcher: // We have changes in the pods watched
 			if !ok { // channel is closed
 				watcher.kubernetesPodEndpointsWatcher = nil
 			} else {
 				if err := i.handleKubernetesPodsChanges(event, &watcher, interfaces, flowid); err != nil {
-					return fmt.Errorf("couldn't apply changes to tc filters: %w", err)
+					i.config.Log.Errorf("couldn't apply changes to tc filters: %w", err)
 				}
 			}
 		}
@@ -883,7 +837,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 			}
 
 			// create tc filter
-			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, host.Protocol, flowid); err != nil {
+			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, srcIP, dstIP, srcPort, dstPort, host.Protocol, flowid); err != nil {
 				return fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
 			}
 		}
