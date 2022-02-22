@@ -43,6 +43,12 @@ data:
         {{ $key }}: {{ $val | quote }}
         {{- end }}
       {{- end }}
+      {{- if .Values.injector.labels }}
+      labels:
+        {{- range $key, $val := .Values.injector.labels }}
+        {{ $key }}: {{ $val | quote }}
+        {{- end }}
+      {{- end }}
       serviceAccount: {{ .Values.injector.serviceAccount | quote }}
       chaosNamespace: {{ .Values.chaosNamespace | quote }}
       dnsDisruption:
