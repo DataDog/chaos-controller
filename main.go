@@ -76,6 +76,7 @@ type controllerConfig struct {
 	LeaderElection           bool                          `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
+	UserInfoHook             bool                          `json:"userInfoHook"`
 }
 
 type controllerWebhookConfig struct {
@@ -196,6 +197,9 @@ func main() {
 
 	pflag.IntVar(&cfg.Controller.Webhook.Port, "admission-webhook-port", 9443, "Port used by the admission controller to serve requests")
 	handleFatalError(viper.BindPFlag("controller.webhook.port", pflag.Lookup("admission-webhook-port")))
+
+	pflag.BoolVar(&cfg.Controller.UserInfoHook, "user-info-webhook", true, "Enable the mutating webhook to inject user info into disruption status")
+	handleFatalError(viper.BindPFlag("controller.userInfoHook", pflag.Lookup("user-info-webhook")))
 
 	pflag.Parse()
 
@@ -321,23 +325,27 @@ func main() {
 		os.Exit(1) //nolint:gocritic
 	}
 
-	// register chaos handler init container mutating webhook
-	mgr.GetWebhookServer().Register("/mutate-v1-pod-chaos-handler-init-container", &webhook.Admission{
-		Handler: &chaoswebhook.ChaosHandlerMutator{
-			Client:  mgr.GetClient(),
-			Log:     logger,
-			Image:   cfg.Handler.Image,
-			Timeout: cfg.Handler.Timeout,
-		},
-	})
+	if cfg.Handler.Enabled {
+		// register chaos handler init container mutating webhook
+		mgr.GetWebhookServer().Register("/mutate-v1-pod-chaos-handler-init-container", &webhook.Admission{
+			Handler: &chaoswebhook.ChaosHandlerMutator{
+				Client:  mgr.GetClient(),
+				Log:     logger,
+				Image:   cfg.Handler.Image,
+				Timeout: cfg.Handler.Timeout,
+			},
+		})
+	}
 
-	// register user info mutating webhook
-	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info", &webhook.Admission{
-		Handler: &chaoswebhook.UserInfoMutator{
-			Client: mgr.GetClient(),
-			Log:    logger,
-		},
-	})
+	if cfg.Controller.UserInfoHook {
+		// register user info mutating webhook
+		mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info", &webhook.Admission{
+			Handler: &chaoswebhook.UserInfoMutator{
+				Client: mgr.GetClient(),
+				Log:    logger,
+			},
+		})
+	}
 
 	// +kubebuilder:scaffold:builder
 
