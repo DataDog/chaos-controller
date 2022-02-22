@@ -17,7 +17,7 @@ spec:
   count: 1
   network:
     drop: 100 # percentage of outgoing packets to drop
-    *ervices: # optional, list of destination Kubernetes services to filter on
+    services: # optional, list of destination Kubernetes services to filter on
       - name: demo # service name
         namespace: chaos-demo # service namespace
 ```
