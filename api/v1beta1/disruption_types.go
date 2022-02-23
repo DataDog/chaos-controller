@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -316,4 +317,53 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 	}
 
 	return &parsedSpec, nil
+}
+
+// RemoveDeadTargets removes targets not found in matchingTargets from the targets list
+func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
+	// clean up IgnoredTargets
+	for index := 0; index < len(status.IgnoredTargets); index++ {
+		if !contains(matchingTargets, status.IgnoredTargets[index]) {
+			status.IgnoredTargets[len(status.IgnoredTargets)-1], status.IgnoredTargets[index] = status.IgnoredTargets[index], status.IgnoredTargets[len(status.IgnoredTargets)-1]
+			status.IgnoredTargets = status.IgnoredTargets[:len(status.IgnoredTargets)-1]
+		}
+	}
+	for index := 0; index < len(status.Targets); index++ {
+		if !contains(matchingTargets, status.Targets[index]) {
+			status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
+			status.Targets = status.Targets[:len(status.Targets)-1]
+		}
+	}
+}
+
+// AddTargets adds newTargetsCount random targets from the eligibleTargets list to the Target List
+func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets []string) {
+	for i := 0; i < newTargetsCount; i++ {
+		index := rand.Intn(len(eligibleTargets)) //nolint:gosec
+		status.Targets = append(status.Targets, eligibleTargets[index])
+		eligibleTargets[len(eligibleTargets)-1], eligibleTargets[index] = eligibleTargets[index], eligibleTargets[len(eligibleTargets)-1]
+		eligibleTargets = eligibleTargets[:len(eligibleTargets)-1]
+	}
+}
+
+// RemoveTargets removes toRemoveTargetsCount random targets from the Target List
+func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
+	fmt.Println("Pre-remove Targets:", status.Targets)
+	for i := 0; i < toRemoveTargetsCount; i++ {
+		index := rand.Intn(len(status.Targets)) //nolint:gosec
+		status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
+		status.Targets = status.Targets[:len(status.Targets)-1]
+	}
+	fmt.Println("Post-remove Targets:", status.Targets)
+}
+
+// contains returns true when the given string is present in the given slice
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }

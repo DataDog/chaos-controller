@@ -156,6 +156,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// if it doesn't exist, create the cache context to re-trigger the disruption
 	if r.CachesCancel[req.NamespacedName] == nil {
+		// create the cache/watcher with its options
 		cacheOptions := k8scache.Options{}
 		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
 			cacheOptions = k8scache.Options{
@@ -171,7 +172,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				Namespace: instance.Namespace,
 			}
 		}
-
 		cache, err := k8scache.New(
 			ctrl.GetConfigOrDie(),
 			cacheOptions,
@@ -180,6 +180,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			fmt.Println("cache gen error:", err)
 		}
 
+		// attach handler to cache in order to monitor the cache activity
 		var info k8scache.Informer
 		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
 			info, err = cache.GetInformer(context.Background(), &corev1.Node{})
@@ -191,6 +192,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 		info.AddEventHandler(DisruptionSelectorHandler{disruption: instance})
 
+		// start the cache with a cancelable context and attach it to the controller as a watch source
 		ch := make(chan error)
 		cacheCtx, cacheCancelFunc := context.WithCancel(context.TODO())
 		go func() { ch <- cache.Start(cacheCtx) }()
@@ -328,7 +330,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// retrieve targets from label selector
-		if err := r.selectTargets(instance); err != nil {
+		err := r.selectTargets(instance)
+		if err != nil {
 			r.log.Errorw("error selecting targets", "error", err)
 
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
@@ -581,14 +584,7 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 
 	// terminate running chaos pods to trigger cleanup
 	for _, chaosPod := range chaosPods {
-		// delete the chaos pod only if it has not been deleted already
-		if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
-			r.log.Infow("terminating chaos pod to trigger cleanup", "chaosPod", chaosPod.Name)
-
-			if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
-				r.log.Errorw("error terminating chaos pod", "error", err, "chaosPod", chaosPod.Name)
-			}
-		}
+		r.deleteChaosPod(instance, chaosPod)
 	}
 
 	return cleaned, nil
@@ -803,14 +799,6 @@ func (r *DisruptionReconciler) ignoreTarget(instance *chaosv1beta1.Disruption, t
 // the chosen targets names will be reflected in the instance status
 // subsequent calls to this function will always return the same targets as the first call
 func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
-	fmt.Println("selecting targets")
-	matchingTargets := []string{}
-
-	// exit early if we already have targets selected for the given instance
-	// if len(instance.Status.Targets) > 0 {
-	// 	return nil
-	// }
-
 	r.log.Infow("selecting targets to inject disruption to", "selector", instance.Spec.Selector.String())
 
 	// validate the given label selector to avoid any formatting issues due to special chars
@@ -822,43 +810,18 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		}
 	}
 
-	// select either pods or nodes depending on the disruption level
-	switch instance.Spec.Level {
-	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
-		pods, err := r.TargetSelector.GetMatchingPods(r.Client, instance)
-		if err != nil {
-			return fmt.Errorf("can't get pods matching the given label selector: %w", err)
-		}
-
-		for _, pod := range pods.Items {
-			matchingTargets = append(matchingTargets, pod.Name)
-		}
-	case chaostypes.DisruptionLevelNode:
-		nodes, err := r.TargetSelector.GetMatchingNodes(r.Client, instance)
-		if err != nil {
-			return fmt.Errorf("can't get pods matching the given label selector: %w", err)
-		}
-
-		for _, node := range nodes.Items {
-			matchingTargets = append(matchingTargets, node.Name)
-		}
+	matchingTargets, err := r.getMatchingTargets(instance)
+	if err != nil {
+		r.log.Errorw("error getting matching targets", "error", err)
 	}
 
-	// return an error if the selector returned no targets
-	if len(matchingTargets) == 0 {
-		r.log.Infow("the given label selector did not return any targets, skipping", "selector", instance.Spec.Selector)
-		r.Recorder.Event(instance, corev1.EventTypeWarning, "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
-
-		return nil
-	}
+	instance.Status.RemoveDeadTargets(matchingTargets)
 
 	// instance.Spec.Count is a string that either represents a percentage or a value, we do the translation here
 	targetsCount, err := getScaledValueFromIntOrPercent(instance.Spec.Count, len(matchingTargets), true)
 	if err != nil {
 		targetsCount = instance.Spec.Count.IntValue()
 	}
-
-	r.removeDeadTargets(instance, matchingTargets)
 
 	// subtract already ignored targets from the targets count to avoid going through all the
 	// eligible targets with a disruption having a chaos pod failing everytime
@@ -883,20 +846,20 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		return nil
 	}
 
+	// Current and Desired targets count
 	cTargetsCount := len(instance.Status.Targets)
 	dTargetsCount := targetsCount
 	fmt.Printf("Current vs Desired targets: %v => %v\n", cTargetsCount, dTargetsCount)
 
 	if cTargetsCount < dTargetsCount {
+		// not enough targets: pick more targets from eligibleTargets
 		fmt.Println("Targets:", instance.Status.Targets)
 		fmt.Println("EligibleTargets:", eligibleTargets)
-		// not enough targets: pick more targets from eligibleTargets
-		newTargetsCount := dTargetsCount - cTargetsCount
 
-		addTargetsToDis(instance, newTargetsCount, eligibleTargets)
+		instance.Status.AddTargets(dTargetsCount-cTargetsCount, eligibleTargets)
 	} else if cTargetsCount > dTargetsCount {
-		// too many targets: remove a few targets from cTargets
-		r.removeTargetsFromDis(instance, cTargetsCount-dTargetsCount)
+		// too many targets: remove extra targets from cTargets
+		instance.Status.RemoveTargets(cTargetsCount - dTargetsCount)
 	}
 
 	r.log.Infow("updating instance status with targets selected for injection")
@@ -904,104 +867,56 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	return r.Status().Update(context.Background(), instance)
 }
 
-func addTargetsToDis(instance *chaosv1beta1.Disruption, newTargetsCount int, eligibleTargets []string) {
-	for i := 0; i < newTargetsCount; i++ {
-		index := rand.Intn(len(eligibleTargets)) //nolint:gosec
-		selectedTarget := eligibleTargets[index]
-		instance.Status.Targets = append(instance.Status.Targets, selectedTarget)
-		eligibleTargets[len(eligibleTargets)-1], eligibleTargets[index] = eligibleTargets[index], eligibleTargets[len(eligibleTargets)-1]
-		eligibleTargets = eligibleTargets[:len(eligibleTargets)-1]
+// getMatchingTargets fetches all existing target fitting the disruption's selector
+func (r *DisruptionReconciler) getMatchingTargets(instance *chaosv1beta1.Disruption) ([]string, error) {
+	matchingTargets := []string{}
+
+	// select either pods or nodes depending on the disruption level
+	switch instance.Spec.Level {
+	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
+		pods, err := r.TargetSelector.GetMatchingPods(r.Client, instance)
+		if err != nil {
+			return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
+		}
+
+		for _, pod := range pods.Items {
+			matchingTargets = append(matchingTargets, pod.Name)
+		}
+	case chaostypes.DisruptionLevelNode:
+		nodes, err := r.TargetSelector.GetMatchingNodes(r.Client, instance)
+		if err != nil {
+			return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
+		}
+
+		for _, node := range nodes.Items {
+			matchingTargets = append(matchingTargets, node.Name)
+		}
 	}
+
+	// return an error if the selector returned no targets
+	if len(matchingTargets) == 0 {
+		r.log.Infow("the given label selector did not return any targets, skipping", "selector", instance.Spec.Selector)
+		r.Recorder.Event(instance, corev1.EventTypeWarning, "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
+
+		return nil, nil
+	}
+	return matchingTargets, nil
 }
 
-func (r *DisruptionReconciler) removeTargetsFromDis(instance *chaosv1beta1.Disruption, toRemoveTargetsCount int) {
-	chaosPods, err := r.getChaosPods(instance, nil)
-	if err != nil {
-		fmt.Errorf("can't get all chaos pod for dis: %w", err)
-	}
-
-	fmt.Println("Pre-remove Targets:", instance.Status.Targets)
-	fmt.Println("Pre-remove Chaos Pods:", chaosPods)
-	for i := 0; i < toRemoveTargetsCount; i++ {
-		chaosIndex := rand.Intn(len(chaosPods)) //nolint:gosec
-		chaosPod := chaosPods[chaosIndex]
-		targetPod := chaosPod.Labels[chaostypes.TargetLabel]
-
-		// remove target
-		if !contains(instance.Status.Targets, targetPod) {
-			return
-		} else {
-			var targetIndex int = 0
-			for _, targetTest := range instance.Status.Targets {
-				if targetTest == targetPod {
-					continue
-				}
-				targetIndex++
-			}
-			instance.Status.Targets[len(instance.Status.Targets)-1], instance.Status.Targets[targetIndex] = instance.Status.Targets[targetIndex], instance.Status.Targets[len(instance.Status.Targets)-1]
-			instance.Status.Targets = instance.Status.Targets[:len(instance.Status.Targets)-1]
+// deleteChaosPods deletes a chaos pod using the client
+func (r *DisruptionReconciler) deleteChaosPod(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) error {
+	// delete the chaos pod only if it has not been deleted already
+	if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
+		r.log.Infow("terminating chaos pod to trigger cleanup", "chaosPod", chaosPod.Name)
+		if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
+			r.log.Errorw("error terminating chaos pod", "error", err, "chaosPod", chaosPod.Name)
 		}
-
-		// delete chaos pod
-		if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
-			r.log.Infow("terminating chaos pod to trigger cleanup", "chaosPod", chaosPod.Name)
-			if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
-				r.log.Errorw("error terminating chaos pod", "error", err, "chaosPod", chaosPod.Name)
-			}
-			err := r.terminateChaosPod(instance, chaosPod)
-			if err != nil {
-				fmt.Errorf("error deleting chaos pod %v: %w", chaosPod.Name, err)
-			}
-		}
-		chaosPods[len(chaosPods)-1], chaosPods[chaosIndex] = chaosPods[chaosIndex], chaosPods[len(chaosPods)-1]
-		chaosPods = chaosPods[:len(chaosPods)-1]
-	}
-	fmt.Println("Post-remove Targets:", instance.Status.Targets)
-	fmt.Println("Post-remove Chaos Pods:", chaosPods)
-}
-
-func (r *DisruptionReconciler) removeDeadTargets(instance *chaosv1beta1.Disruption, matchingTargets []string) {
-	// clean up IgnoredTargets
-	for index := 0; index < len(instance.Status.IgnoredTargets); index++ {
-		if !contains(matchingTargets, instance.Status.IgnoredTargets[index]) {
-			instance.Status.IgnoredTargets[len(instance.Status.IgnoredTargets)-1], instance.Status.IgnoredTargets[index] = instance.Status.IgnoredTargets[index], instance.Status.IgnoredTargets[len(instance.Status.IgnoredTargets)-1]
-			instance.Status.IgnoredTargets = instance.Status.IgnoredTargets[:len(instance.Status.IgnoredTargets)-1]
+		err := r.terminateChaosPod(instance, chaosPod)
+		if err != nil {
+			return fmt.Errorf("error terminating chaos pod %v: %w", chaosPod.Name, err)
 		}
 	}
-	// clean up dead Targets and then their chaos pods
-	var cleanUpList []string = []string{}
-
-	fmt.Println("Pre-clean Targets:", instance.Status.Targets)
-	for index := 0; index < len(instance.Status.Targets); index++ {
-		if !contains(matchingTargets, instance.Status.Targets[index]) {
-			cleanUpList = append(cleanUpList, instance.Status.Targets[index])
-			instance.Status.Targets[len(instance.Status.Targets)-1], instance.Status.Targets[index] = instance.Status.Targets[index], instance.Status.Targets[len(instance.Status.Targets)-1]
-			instance.Status.Targets = instance.Status.Targets[:len(instance.Status.Targets)-1]
-		}
-	}
-	fmt.Println("Post-clean Targets:", instance.Status.Targets)
-
-	chaosPods, err := r.getChaosPods(instance, nil)
-	if err != nil {
-		fmt.Errorf("can't get all chaos pod for dis: %w", err)
-	}
-	fmt.Printf("clean up list %v\n", cleanUpList)
-	for _, chaosPod := range chaosPods {
-		fmt.Println("Found Chaos Pod:", chaosPod.Name, "=> targeting", chaosPod.Labels[chaostypes.TargetLabel])
-		if contains(cleanUpList, chaosPod.Labels[chaostypes.TargetLabel]) {
-			// delete the chaos pod only if it has not been deleted already
-			if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
-				r.log.Infow("terminating chaos pod to trigger cleanup", "chaosPod", chaosPod.Name)
-				if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
-					r.log.Errorw("error terminating chaos pod", "error", err, "chaosPod", chaosPod.Name)
-				}
-				err := r.terminateChaosPod(instance, chaosPod)
-				if err != nil {
-					fmt.Errorf("error deleting chaos pod %v: %w", chaosPod.Name, err)
-				}
-			}
-		}
-	}
+	return nil
 }
 
 // getEligibleTargets returns targets which can be targeted by the given instance from the given targets pool
