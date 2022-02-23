@@ -27,6 +27,9 @@ import (
 // linkOperation represents a tc operation on a set of network interfaces combined with the parent to bind to and the handle identifier to use
 type linkOperation func([]string, string, uint32) error
 
+// tcPriority the lowest priority set by tc automatically when adding a tc filter
+var tcPriority = uint32(49149)
+
 // networkDisruptionService describes a parsed Kubernetes service, representing an (ip, port, protocol) tuple
 type networkDisruptionService struct {
 	ip       *net.IPNet
@@ -106,6 +109,10 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 
 	config.State = DisruptionState{}
 
+	go func() {
+		config.State.State <- Created
+	}()
+
 	return &networkDisruptionInjector{
 		spec:       spec,
 		config:     config,
@@ -119,10 +126,6 @@ func (i *networkDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKin
 
 // Inject injects the given network disruption into the given container
 func (i *networkDisruptionInjector) Inject() error {
-	go func() {
-		i.config.State.State <- Created
-	}()
-
 	// enter target network namespace
 	if err := i.config.Netns.Enter(); err != nil {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
@@ -184,8 +187,10 @@ func (i *networkDisruptionInjector) Inject() error {
 
 // Clean removes all the injected disruption in the given container
 func (i *networkDisruptionInjector) Clean() error {
-	go func() {
-		i.config.State.State <- Cleaned
+	defer func() {
+		go func() {
+			i.config.State.State <- Cleaned
+		}()
 	}()
 
 	// enter container network namespace
@@ -246,7 +251,7 @@ func (i *networkDisruptionInjector) Clean() error {
 //           |- (4:) <-- second operation
 //             ...
 func (i *networkDisruptionInjector) applyOperations() error {
-	i.tcFilterPriority = 49150
+	i.tcFilterPriority = tcPriority
 
 	// get interfaces
 	links, err := i.config.NetlinkAdapter.LinkList()
