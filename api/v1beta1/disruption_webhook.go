@@ -6,8 +6,10 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	v1 "k8s.io/api/authentication/v1"
 	"time"
 
 	"github.com/DataDog/chaos-controller/metrics"
@@ -137,11 +139,17 @@ func (r *Disruption) getMetricsTags() []string {
 	tags := []string{
 		"name:" + r.Name,
 		"namespace:" + r.Namespace,
-		"username:" + r.Status.UserInfo.Username,
 	}
 
-	// add groups
-	for _, group := range r.Status.UserInfo.Groups {
+	var annotation v1.UserInfo
+	err := json.Unmarshal([]byte(r.Annotations["UserInfo"]), &annotation)
+	if err != nil {
+		logger.Errorw("Error decoding annotation", err)
+	}
+	tags = append(tags, "username:"+annotation.Username)
+
+	//add groups
+	for _, group := range annotation.Groups {
 		tags = append(tags, "group:"+group)
 	}
 

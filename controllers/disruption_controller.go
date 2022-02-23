@@ -322,7 +322,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 	// update instance status
 	instance.Status.InjectionStatus = status
 
-	if err := r.Client.Update(context.Background(), instance); err != nil {
+	if err := r.Client.Status().Update(context.Background(), instance); err != nil {
 		return false, err
 	}
 
@@ -656,7 +656,7 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 		}
 	}
 
-	return r.Update(context.Background(), instance)
+	return r.Status().Update(context.Background(), instance)
 }
 
 // ignoreTarget moves the given target from the list of targets to the list of ignored targets
@@ -678,7 +678,7 @@ func (r *DisruptionReconciler) ignoreTarget(instance *chaosv1beta1.Disruption, t
 		instance.Status.IgnoredTargets = append(instance.Status.IgnoredTargets, target)
 	}
 
-	return r.Update(context.Background(), instance)
+	return r.Status().Update(context.Background(), instance)
 }
 
 // selectTargets will select min(count, all matching targets) random targets (pods or nodes depending on the disruption level)
@@ -775,7 +775,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 	r.log.Infow("updating instance status with targets selected for injection")
 
-	return r.Update(context.Background(), instance)
+	return r.Status().Update(context.Background(), instance)
 }
 
 // getEligibleTargets returns targets which can be targeted by the given instance from the given targets pool
