@@ -152,7 +152,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	fmt.Printf("state:\n\tdis: %v\n\tcaches[%v]: %v\n\ttargets[%v]: %v\n\tignored targets[%v]: %v\n\n", instance.Name, len(r.CachesCancel), r.CachesCancel, len(instance.Status.Targets), instance.Status.Targets, len(instance.Status.IgnoredTargets), instance.Status.IgnoredTargets)
+	fmt.Printf("state:\n\tdis: %v\n\tcaches[%v]: %v\n\ttargets[%v]: %v\n\n", instance.Name, len(r.CachesCancel), r.CachesCancel, len(instance.Status.Targets), instance.Status.Targets)
 
 	// if it doesn't exist, create the cache context to re-trigger the disruption
 	if r.CachesCancel[req.NamespacedName] == nil {
@@ -708,11 +708,11 @@ func (r *DisruptionReconciler) terminateChaosPod(instance *chaosv1beta1.Disrupti
 
 	fmt.Println("deleting chaos pod", chaosPod.Name, "targeting", chaosPod.Labels[chaostypes.TargetLabel])
 	// move chaos pods target to ignored targets, so it is not reselected after
-	if err := r.ignoreTarget(instance, target); err != nil {
-		r.log.Errorw("error ignoring chaos pod target", "error", err, "target", target, "chaosPod", chaosPod.Name)
+	// if err := r.ignoreTarget(instance, target); err != nil {
+	// 	r.log.Errorw("error ignoring chaos pod target", "error", err, "target", target, "chaosPod", chaosPod.Name)
 
-		return nil
-	}
+	// 	return nil
+	// }
 
 	// check target readiness for cleanup
 	// ignore it if it is not ready anymore
@@ -800,28 +800,6 @@ func (r *DisruptionReconciler) terminateChaosPod(instance *chaosv1beta1.Disrupti
 	return nil
 }
 
-// ignoreTarget moves the given target from the list of targets to the list of ignored targets
-// so it is not picked up during targets selection
-func (r *DisruptionReconciler) ignoreTarget(instance *chaosv1beta1.Disruption, target string) error {
-	// remove target from targets list
-	for i, t := range instance.Status.Targets {
-		if t == target {
-			instance.Status.Targets[len(instance.Status.Targets)-1], instance.Status.Targets[i] = instance.Status.Targets[i], instance.Status.Targets[len(instance.Status.Targets)-1]
-			instance.Status.Targets = instance.Status.Targets[:len(instance.Status.Targets)-1]
-
-			break
-		}
-	}
-
-	// add target to ignored targets list
-	if !contains(instance.Status.IgnoredTargets, target) {
-		r.log.Infow("adding the target to ignored targets", "target", target)
-		instance.Status.IgnoredTargets = append(instance.Status.IgnoredTargets, target)
-	}
-
-	return r.Status().Update(context.Background(), instance)
-}
-
 // selectTargets will select min(count, all matching targets) random targets (pods or nodes depending on the disruption level)
 // from the targets matching the instance label selector
 // targets will only be selected once per instance
@@ -851,12 +829,6 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	if err != nil {
 		targetsCount = instance.Spec.Count.IntValue()
 	}
-
-	// subtract already ignored targets from the targets count to avoid going through all the
-	// eligible targets with a disruption having a chaos pod failing everytime
-	// so a disruption having a count of 1 with an already ignored target (because the chaos pod has been removed)
-	// won't pick up another one
-	targetsCount -= len(instance.Status.IgnoredTargets)
 
 	// filter matching targets to only get eligible ones
 	eligibleTargets, err := r.getEligibleTargets(instance, matchingTargets)
@@ -957,7 +929,7 @@ func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disrupt
 
 	for _, target := range potentialTargets {
 		// skip ignored targets
-		if contains(instance.Status.Targets, target) || contains(instance.Status.IgnoredTargets, target) {
+		if contains(instance.Status.Targets, target) {
 			continue
 		}
 

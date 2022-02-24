@@ -20,6 +20,7 @@ import (
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
+	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -124,14 +125,13 @@ type DisruptionStatus struct {
 	// +nullable
 	Targets []string `json:"targets,omitempty"`
 	// +nullable
-	IgnoredTargets []string `json:"ignoredTargets,omitempty"`
+	UserInfo *authv1.UserInfo `json:"userInfo,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
 // Disruption is the Schema for the disruptions API
 // +kubebuilder:resource:shortName=dis
-// +kubebuilder:subresource:status
 type Disruption struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -321,19 +321,14 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 
 // RemoveDeadTargets removes targets not found in matchingTargets from the targets list
 func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
-	// clean up IgnoredTargets
-	for index := 0; index < len(status.IgnoredTargets); index++ {
-		if !contains(matchingTargets, status.IgnoredTargets[index]) {
-			status.IgnoredTargets[len(status.IgnoredTargets)-1], status.IgnoredTargets[index] = status.IgnoredTargets[index], status.IgnoredTargets[len(status.IgnoredTargets)-1]
-			status.IgnoredTargets = status.IgnoredTargets[:len(status.IgnoredTargets)-1]
-		}
-	}
+	fmt.Println("Pre-remove Dead Targets:", status.Targets)
 	for index := 0; index < len(status.Targets); index++ {
 		if !contains(matchingTargets, status.Targets[index]) {
 			status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
 			status.Targets = status.Targets[:len(status.Targets)-1]
 		}
 	}
+	fmt.Println("Post-remove Dead Targets:", status.Targets)
 }
 
 // AddTargets adds newTargetsCount random targets from the eligibleTargets list to the Target List

@@ -293,10 +293,10 @@ func (in *DisruptionStatus) DeepCopyInto(out *DisruptionStatus) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.IgnoredTargets != nil {
-		in, out := &in.IgnoredTargets, &out.IgnoredTargets
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+	if in.UserInfo != nil {
+		in, out := &in.UserInfo, &out.UserInfo
+		*out = new(authenticationv1.UserInfo)
+		(*in).DeepCopyInto(*out)
 	}
 }
 
