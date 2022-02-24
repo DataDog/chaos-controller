@@ -6,6 +6,7 @@
 package slack
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/mail"
@@ -17,6 +18,7 @@ import (
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/slack-go/slack"
 	"go.uber.org/zap"
+	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -110,17 +112,19 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 
 // helper for Slack notifier
 func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
-	if dis.Status.UserInfo == nil {
-		return fmt.Errorf("slack notifier: no userinfo in disruption %+v", dis.Name)
+	var annotation v1.UserInfo
+	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
+	if err != nil {
+		return fmt.Errorf("slack notifier: no userinfo in disruption %s: %v", dis.Name, err)
 	}
 
-	if _, err := mail.ParseAddress(dis.Status.UserInfo.Username); err != nil {
+	if _, err := mail.ParseAddress(annotation.Username); err != nil {
 		return nil
 	}
 
-	p1, err := n.client.GetUserByEmail(dis.Status.UserInfo.Username)
+	p1, err := n.client.GetUserByEmail(annotation.Username)
 	if err != nil {
-		n.logger.Warn(fmt.Errorf("slack notifier: user %s not found: %w", dis.Status.UserInfo.Username, err))
+		n.logger.Warn(fmt.Errorf("slack notifier: user %s not found: %w", annotation.Username, err))
 		return nil
 	}
 
