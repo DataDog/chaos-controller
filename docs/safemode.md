@@ -2,7 +2,7 @@
 
 Safemode represents a number of safety nets we have implemented into the chaos controller to help new and experienced users feel more confident deploying new disruptions to their environments.
 
-Chaos engineering can be scary to use in production environments, but we have learned a lot after using the chaos-controller for years. We've attempted to coalesce these lessons into safety nets that prevent common dangerous options.Having safety nets in place makes the entire process of running chaos experiments in high value environments a little safer.
+Chaos engineering can be scary to use in production environments, but we have learned a lot after using the chaos-controller for years. We've attempted to coalesce these lessons into safety nets that prevent common dangerous options. Having safety nets in place makes the entire process of running chaos experiments in high value environments a little safer.
 
 Safemode is always enabled by default and will require manual disabling of safety nets in order to bypass. In the disruption schema we have `unsafeMode` which represents ways to remove the safety nets.
 `unsafeMode.disableAll` turns off all safety nets. The other options under `unsafeMode` represent individual safety nets which can be disabled independently.

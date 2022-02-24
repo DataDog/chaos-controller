@@ -14,7 +14,6 @@ spec:
     app: demo-curl
   count: 1
   unsafeMode:
-    disableAll: false
     disableSpecificContainDisk: true
   containers:
     - dummy
