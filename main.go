@@ -215,6 +215,10 @@ func main() {
 		logger.Fatal("missing required CONTROLLER_NODE_NAME environment variable")
 	}
 
+	if !cfg.Controller.UserInfoHook && cfg.Controller.Notifiers.Slack.Enabled {
+		logger.Fatal("cannot enable slack notifier without enabling the user info webhook")
+	}
+
 	// load configuration file if present
 	if configPath != "" {
 		logger.Infow("loading configuration file", "config", configPath)
