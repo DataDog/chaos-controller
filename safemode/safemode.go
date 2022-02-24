@@ -120,7 +120,7 @@ func (sm *Generic) CreationSafetyNets() ([]string, error) {
 // In this function we run a check against the count of the target environment 3 times. If the count is different each of those
 // 3 times, we assume sporadic behaviour of the target environment and raise a flag.
 func (sm *Generic) safetyNetSporadicTargets() (bool, error) {
-	if sm.dis.Spec.Unsafemode.DisableSporadicTargets {
+	if sm.dis.Spec.Unsafemode != nil && sm.dis.Spec.Unsafemode.DisableSporadicTargets {
 		return false, nil
 	}
 
@@ -175,7 +175,7 @@ func (sm *Generic) safetyNetSporadicTargets() (bool, error) {
 // at least twice. > 80% in a namespace also warrants a safety check as namespaces may be shared between services.
 // returning true indicates the safety net caught something
 func (sm *Generic) safetyNetCountNotTooLarge() (bool, error) {
-	if sm.dis.Spec.Unsafemode.DisableCountTooLarge {
+	if sm.dis.Spec.Unsafemode != nil && sm.dis.Spec.Unsafemode.DisableCountTooLarge {
 		return false, nil
 	}
 

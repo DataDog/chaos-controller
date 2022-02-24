@@ -15,6 +15,7 @@ spec:
   count: 1
   unsafeMode:
     disableAll: false
+    disableSpecificContainDisk: true
   containers:
     - dummy
   diskPressure:

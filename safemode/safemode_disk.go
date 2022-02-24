@@ -53,7 +53,7 @@ func (sm *Disk) safetyNetSpecificContainDisk() (bool, error) {
 		return false, nil
 	}
 
-	if sm.dis.Spec.Unsafemode.DisableSpecificContainDisk {
+	if sm.dis.Spec.Unsafemode != nil && sm.dis.Spec.Unsafemode.DisableSpecificContainDisk {
 		return false, nil
 	}
 
