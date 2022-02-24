@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 )
@@ -63,6 +64,46 @@ type DisruptionReconciler struct {
 	ExpiredDisruptionGCDelay              *time.Duration
 	CachesCancel                          map[types.NamespacedName]context.CancelFunc
 	Controller                            controller.Controller
+}
+
+type DisruptionSelectorHandler struct {
+	disruption *v1beta1.Disruption
+}
+
+func (h DisruptionSelectorHandler) OnAdd(obj interface{}) {
+	pod, okPod := obj.(*corev1.Pod)
+	node, okNode := obj.(*corev1.Node)
+	if !(okPod || okNode) {
+		fmt.Printf("watcher addfunc: not a *corev1.Pod or *corev1.Node, it's a %v\n", reflect.TypeOf(obj))
+	} else if okPod {
+		fmt.Printf("watcher addfunc: for disruption %v: pod %v\n", h.disruption.Name, pod.Name)
+	} else if okNode {
+		fmt.Printf("watcher addfunc: for disruption %v: node %v\n", h.disruption.Name, node.Name)
+	}
+}
+
+func (h DisruptionSelectorHandler) OnDelete(obj interface{}) {
+	pod, okPod := obj.(*corev1.Pod)
+	node, okNode := obj.(*corev1.Node)
+	if !(okPod || okNode) {
+		fmt.Printf("watcher deletefunc: not a *corev1.Pod or *corev1.Node, it's a %v\n", reflect.TypeOf(obj))
+	} else if okPod {
+		fmt.Printf("watcher deletefunc: for disruption %v: pod %v\n", h.disruption.Name, pod.Name)
+	} else if okNode {
+		fmt.Printf("watcher deletefunc: for disruption %v: node %v\n", h.disruption.Name, node.Name)
+	}
+}
+
+func (h DisruptionSelectorHandler) OnUpdate(oldObj, newObj interface{}) {
+	pod, okPod := oldObj.(*corev1.Pod)
+	node, okNode := oldObj.(*corev1.Node)
+	if !(okPod || okNode) {
+		fmt.Printf("watcher updatefunc: not a *corev1.Pod or *corev1.Node, it's a %v\n", reflect.TypeOf(oldObj))
+	} else if okPod {
+		fmt.Printf("watcher updatefunc: for disruption %v: pod %v\n", h.disruption.Name, pod.Name)
+	} else if okNode {
+		fmt.Printf("watcher updatefunc: for disruption %v: node %v\n", h.disruption.Name, node.Name)
+	}
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -137,9 +178,22 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			r.log.Errorw("cache gen error:", "error", err)
 		}
 
+		// attach handler to cache in order to monitor the cache activity
+		var info k8scache.Informer
+		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
+			info, err = cache.GetInformer(context.Background(), &corev1.Node{})
+		} else {
+			info, err = cache.GetInformer(context.Background(), &corev1.Pod{})
+		}
+		if err != nil {
+			r.log.Errorw("cache gen error:", "error", err)
+		}
+		info.AddEventHandler(DisruptionSelectorHandler{disruption: instance})
+
 		// start the cache with a cancelable context and attach it to the controller as a watch source
+		ch := make(chan error)
 		cacheCtx, cacheCancelFunc := context.WithCancel(context.TODO())
-		go func() { cache.Start(cacheCtx) }()
+		go func() { ch <- cache.Start(cacheCtx) }()
 		r.CachesCancel[req.NamespacedName] = cacheCancelFunc
 
 		var cacheSource source.SyncingSource
