@@ -321,14 +321,12 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 
 // RemoveDeadTargets removes targets not found in matchingTargets from the targets list
 func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
-	fmt.Println("Pre-remove Dead Targets:", status.Targets)
 	for index := 0; index < len(status.Targets); index++ {
 		if !contains(matchingTargets, status.Targets[index]) {
 			status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
 			status.Targets = status.Targets[:len(status.Targets)-1]
 		}
 	}
-	fmt.Println("Post-remove Dead Targets:", status.Targets)
 }
 
 // AddTargets adds newTargetsCount random targets from the eligibleTargets list to the Target List
@@ -343,13 +341,11 @@ func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets 
 
 // RemoveTargets removes toRemoveTargetsCount random targets from the Target List
 func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
-	fmt.Println("Pre-remove Targets:", status.Targets)
 	for i := 0; i < toRemoveTargetsCount; i++ {
 		index := rand.Intn(len(status.Targets)) //nolint:gosec
 		status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
 		status.Targets = status.Targets[:len(status.Targets)-1]
 	}
-	fmt.Println("Post-remove Targets:", status.Targets)
 }
 
 // contains returns true when the given string is present in the given slice

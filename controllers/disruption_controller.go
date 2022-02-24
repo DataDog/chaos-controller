@@ -116,7 +116,6 @@ func (h DisruptionSelectorHandler) OnUpdate(oldObj, newObj interface{}) {
 //+kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
 
 func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	fmt.Printf("\n\nreconcile started\n")
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
@@ -152,7 +151,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	fmt.Printf("state:\n\tdis: %v\n\tcaches[%v]: %v\n\ttargets[%v]: %v\n\n", instance.Name, len(r.CachesCancel), r.CachesCancel, len(instance.Status.Targets), instance.Status.Targets)
 
 	// if it doesn't exist, create the cache context to re-trigger the disruption
 	if r.CachesCancel[req.NamespacedName] == nil {
@@ -177,7 +175,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			cacheOptions,
 		)
 		if err != nil {
-			fmt.Println("cache gen error:", err)
+			r.log.Errorw("cache gen error:", "error", err)
 		}
 
 		// attach handler to cache in order to monitor the cache activity
@@ -188,7 +186,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			info, err = cache.GetInformer(context.Background(), &corev1.Pod{})
 		}
 		if err != nil {
-			fmt.Println("cache gen error:", err)
+			r.log.Errorw("cache gen error:", "error", err)
 		}
 		info.AddEventHandler(DisruptionSelectorHandler{disruption: instance})
 
@@ -330,8 +328,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// retrieve targets from label selector
-		err := r.selectTargets(instance)
-		if err != nil {
+		if err := r.selectTargets(instance); err != nil {
 			r.log.Errorw("error selecting targets", "error", err)
 
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
@@ -706,14 +703,6 @@ func (r *DisruptionReconciler) terminateChaosPod(instance *chaosv1beta1.Disrupti
 		return nil
 	}
 
-	fmt.Println("deleting chaos pod", chaosPod.Name, "targeting", chaosPod.Labels[chaostypes.TargetLabel])
-	// move chaos pods target to ignored targets, so it is not reselected after
-	// if err := r.ignoreTarget(instance, target); err != nil {
-	// 	r.log.Errorw("error ignoring chaos pod target", "error", err, "target", target, "chaosPod", chaosPod.Name)
-
-	// 	return nil
-	// }
-
 	// check target readiness for cleanup
 	// ignore it if it is not ready anymore
 	err := r.TargetSelector.TargetIsHealthy(target, r.Client, instance)
@@ -850,13 +839,9 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// Current and Desired targets count
 	cTargetsCount := len(instance.Status.Targets)
 	dTargetsCount := targetsCount
-	fmt.Printf("Current vs Desired targets: %v => %v\n", cTargetsCount, dTargetsCount)
 
 	if cTargetsCount < dTargetsCount {
 		// not enough targets: pick more targets from eligibleTargets
-		fmt.Println("Targets:", instance.Status.Targets)
-		fmt.Println("EligibleTargets:", eligibleTargets)
-
 		instance.Status.AddTargets(dTargetsCount-cTargetsCount, eligibleTargets)
 	} else if cTargetsCount > dTargetsCount {
 		// too many targets: remove extra targets from cTargets
