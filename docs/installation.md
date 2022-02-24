@@ -95,6 +95,16 @@ If you use Helm you can set the `controller.webhook.generateCert` parameter to `
 helm install -f values.yaml chaos-controller ./
 ```
 
+### User Info Webhook
+
+The chaos controller can [grab the authentication metadata](../webhook/user_info.go) from the user applying a disruption, and store it in the Disruption's status.
+To enable this, start the controller with the following option:
+```
+--user-info-hook
+```
+
+If you use Helm, you can set the `controller.webhook.userInfoHook` parameter to `true` in the [values.yaml](../chart/values.yaml).
+
 ### Setup in a cluster with Istio Service Mesh
 
 If you use a service mesh like Istio and the Istio sidecar is installed in application pods by default you may get the following error message:
