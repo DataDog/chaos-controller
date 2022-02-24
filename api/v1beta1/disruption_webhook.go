@@ -144,13 +144,15 @@ func (r *Disruption) getMetricsTags() []string {
 
 	if _, ok := r.Annotations["UserInfo"]; ok {
 		var annotation v1.UserInfo
+
 		err := json.Unmarshal([]byte(r.Annotations["UserInfo"]), &annotation)
 		if err != nil {
 			logger.Errorw("Error decoding annotation", err)
 		}
+
 		tags = append(tags, "username:"+annotation.Username)
 
-		//add groups
+		// add groups
 		for _, group := range annotation.Groups {
 			tags = append(tags, "group:"+group)
 		}

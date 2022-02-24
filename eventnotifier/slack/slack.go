@@ -113,6 +113,7 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 // helper for Slack notifier
 func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
 	var annotation v1.UserInfo
+
 	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
 	if err != nil {
 		return fmt.Errorf("slack notifier: no userinfo in disruption %s: %v", dis.Name, err)

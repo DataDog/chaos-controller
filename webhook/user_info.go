@@ -48,7 +48,9 @@ func (m *UserInfoMutator) Handle(ctx context.Context, req admission.Request) adm
 
 	// retrieve user info
 	m.Log.Infow("storing user info in annotations", "name", dis.Name, "namespace", dis.Namespace, "req", req.UserInfo)
+
 	annotations := make(map[string]string)
+
 	for k, v := range dis.Annotations {
 		annotations[k] = v
 	}
@@ -57,6 +59,7 @@ func (m *UserInfoMutator) Handle(ctx context.Context, req admission.Request) adm
 	if err != nil {
 		m.Log.Errorw("error encoding UserInfo", "error", err)
 	}
+
 	annotations["UserInfo"] = string(marshaledUserInfo)
 
 	dis.Annotations = annotations
