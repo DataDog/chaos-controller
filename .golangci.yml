@@ -7,6 +7,7 @@ run:
   skip-files:
     - api/v1beta1/zz_generated.deepcopy.go
     - ".*_test.go"
+    - cpuset/*
 linters:
   enable:
     - deadcode

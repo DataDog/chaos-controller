@@ -7,6 +7,7 @@ package injector_test
 
 import (
 	"os"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -54,6 +55,7 @@ var _ = Describe("Failure", func() {
 	Describe("injection", func() {
 		JustBeforeEach(func() {
 			Expect(inj.Inject()).To(BeNil())
+			time.Sleep(time.Second * 11)
 		})
 
 		It("should enable the sysrq handler", func() {

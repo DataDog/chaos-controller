@@ -72,6 +72,7 @@ webhooks:
     resources:
       - disruptions
 ---
+{{- if .Values.handler.enabled }}
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
@@ -106,7 +107,9 @@ webhooks:
     - CREATE
     resources:
     - pods
+{{- end }}
 ---
+{{- if .Values.controller.userInfoHook }}
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
@@ -139,6 +142,7 @@ webhooks:
     resources:
     - disruptions
     - disruptions/status
+{{- end }}
 ---
 {{- if not .Values.controller.webhook.generateCert }}
 apiVersion: cert-manager.io/v1alpha2

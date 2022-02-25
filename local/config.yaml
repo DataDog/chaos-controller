@@ -1,0 +1,36 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2021 Datadog, Inc.
+controller:
+  metricsBindAddr: "127.0.0.1:8080"
+  leaderElection: false
+  metricsSink: "noop"
+  enableSafeguards: false
+  notifiers:
+    common:
+      clusterName: "minikube"
+    noop:
+      enabled: true
+    slack:
+      enabled: false
+      tokenFilepath: ""
+  deleteOnly: false
+  imagePullSecrets: ""
+  defaultDuration: 1h
+  expiredDisruptionGCDelay: 10m
+  webhook:
+    certDir: "local/certDir"
+    host: ""
+    port: 9443
+injector:
+  image: "docker.io/library/chaos-injector:latest"
+  serviceAccount: "chaos-injector"
+  chaosNamespace: "chaos-engineering"
+  dnsDisruption:
+    dnsServer: ""
+    kubeDns: "all"
+handler:
+  enabled: true
+  image: "docker.io/library/chaos-handler:latest"
+  timeout: "1m"
