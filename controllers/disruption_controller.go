@@ -109,6 +109,12 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
+		if isModifiedError(err) {
+			r.log.Warnw("error handling chaos pods termination", "error", err)
+
+			return ctrl.Result{}, nil
+		}
+
 		r.log.Errorw("error handling chaos pods termination", "error", err)
 
 		return ctrl.Result{}, err
