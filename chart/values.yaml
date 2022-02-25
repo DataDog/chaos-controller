@@ -25,6 +25,7 @@ controller:
       tokenFilepath: ""
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
+  userInfoHook: true
   webhook: # admission webhook configuration
     generateCert: false # if you want Helm to generate certificates (e.g. in case the cert-manager is not installed in the cluster) set this to true
     certDir: "" # certificate directory (must contain tls.crt and tls.key files)

@@ -137,12 +137,15 @@ func (r *Disruption) getMetricsTags() []string {
 	tags := []string{
 		"name:" + r.Name,
 		"namespace:" + r.Namespace,
-		"username:" + r.Status.UserInfo.Username,
 	}
 
-	// add groups
-	for _, group := range r.Status.UserInfo.Groups {
-		tags = append(tags, "group:"+group)
+	if r.Status.UserInfo != nil {
+		tags = append(tags, "username:"+r.Status.UserInfo.Username)
+
+		// add groups
+		for _, group := range r.Status.UserInfo.Groups {
+			tags = append(tags, "group:"+group)
+		}
 	}
 
 	// add selectors
