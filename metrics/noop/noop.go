@@ -172,3 +172,17 @@ func (n *Sink) MetricOrphanFound(tags []string) error {
 
 	return nil
 }
+
+// MetricCacheTriggered signals a selector cache trigger
+func (d *Sink) MetricSelectorCacheTriggered(tags []string) error {
+	fmt.Printf("NOOP: MetricCacheTriggered %s\n", tags)
+
+	return nil
+}
+
+// MetricSelectorCacheGauge reports how many caches are still in the cache array to prevent leaks
+func (d *Sink) MetricSelectorCacheGauge(gauge float64) error {
+	fmt.Printf("NOOP: MetricSelectorCacheGauge %f\n", gauge)
+
+	return nil
+}

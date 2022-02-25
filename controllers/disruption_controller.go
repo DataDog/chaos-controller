@@ -67,6 +67,7 @@ type DisruptionReconciler struct {
 }
 
 type DisruptionSelectorHandler struct {
+	reconciler *DisruptionReconciler
 	disruption *v1beta1.Disruption
 }
 
@@ -74,11 +75,11 @@ func (h DisruptionSelectorHandler) OnAdd(obj interface{}) {
 	pod, okPod := obj.(*corev1.Pod)
 	node, okNode := obj.(*corev1.Node)
 	if !(okPod || okNode) {
-		fmt.Printf("watcher addfunc: not a *corev1.Pod or *corev1.Node, it's a %v\n", reflect.TypeOf(obj))
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:object"}))
 	} else if okPod {
-		fmt.Printf("watcher addfunc: for disruption %v: pod %v\n", h.disruption.Name, pod.Name)
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:pod", "target:" + pod.Name}))
 	} else if okNode {
-		fmt.Printf("watcher addfunc: for disruption %v: node %v\n", h.disruption.Name, node.Name)
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:node", "target:" + node.Name}))
 	}
 }
 
@@ -86,11 +87,11 @@ func (h DisruptionSelectorHandler) OnDelete(obj interface{}) {
 	pod, okPod := obj.(*corev1.Pod)
 	node, okNode := obj.(*corev1.Node)
 	if !(okPod || okNode) {
-		fmt.Printf("watcher deletefunc: not a *corev1.Pod or *corev1.Node, it's a %v\n", reflect.TypeOf(obj))
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:delete", "targetKind:object"}))
 	} else if okPod {
-		fmt.Printf("watcher deletefunc: for disruption %v: pod %v\n", h.disruption.Name, pod.Name)
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:delete", "targetKind:pod", "target:" + pod.Name}))
 	} else if okNode {
-		fmt.Printf("watcher deletefunc: for disruption %v: node %v\n", h.disruption.Name, node.Name)
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:delete", "targetKind:node", "target:" + node.Name}))
 	}
 }
 
@@ -98,11 +99,11 @@ func (h DisruptionSelectorHandler) OnUpdate(oldObj, newObj interface{}) {
 	pod, okPod := oldObj.(*corev1.Pod)
 	node, okNode := oldObj.(*corev1.Node)
 	if !(okPod || okNode) {
-		fmt.Printf("watcher updatefunc: not a *corev1.Pod or *corev1.Node, it's a %v\n", reflect.TypeOf(oldObj))
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:update", "targetKind:object"}))
 	} else if okPod {
-		fmt.Printf("watcher updatefunc: for disruption %v: pod %v\n", h.disruption.Name, pod.Name)
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:update", "targetKind:pod", "target:" + pod.Name}))
 	} else if okNode {
-		fmt.Printf("watcher updatefunc: for disruption %v: node %v\n", h.disruption.Name, node.Name)
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:update", "targetKind:node", "target:" + node.Name}))
 	}
 }
 
@@ -188,7 +189,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if err != nil {
 			r.log.Errorw("cache gen error:", "error", err)
 		}
-		info.AddEventHandler(DisruptionSelectorHandler{disruption: instance})
+		info.AddEventHandler(DisruptionSelectorHandler{disruption: instance, reconciler: r})
 
 		// start the cache with a cancelable context and attach it to the controller as a watch source
 		ch := make(chan error)
@@ -1393,6 +1394,10 @@ func (r *DisruptionReconciler) ReportMetrics() {
 
 		if err := r.MetricsSink.MetricPodsGauge(float64(chaosPodsCount)); err != nil {
 			r.log.Errorw("error sending pods.gauge metric", "error", err)
+		}
+
+		if err := r.MetricsSink.MetricSelectorCacheGauge(float64(len(r.CachesCancel))); err != nil {
+			r.log.Errorw("error sending selector.cache.gauge metric", "error", err)
 		}
 	}
 }
