@@ -555,10 +555,16 @@ func (i *networkDisruptionInjector) findServiceFilter(tcFilters []tcServiceFilte
 }
 
 // handlePodEndpointsOnServicePortsChange on service changes, delete old filters with the wrong service ports and create new filters
-func (i *networkDisruptionInjector) handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(oldFilters []tcServiceFilter, pods []v1.Pod, servicePorts []v1.ServicePort, interfaces []string, flowid string) ([]tcServiceFilter, error) {
+func (i *networkDisruptionInjector) handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(namespace string, oldFilters []tcServiceFilter, pods []v1.Pod, servicePorts []v1.ServicePort, interfaces []string, flowid string) ([]tcServiceFilter, error) {
 	tcFiltersToCreate, finalTcFilters := []tcServiceFilter{}, []tcServiceFilter{}
 
 	for _, pod := range pods {
+		i.config.Log.Infow(fmt.Sprintf("Getting pod %s/%s", pod.Name, pod.Namespace))
+
+		if pod.Namespace != namespace {
+			continue
+		}
+
 		if pod.Status.PodIP != "" { // pods without ip are newly created and will be picked up in the other watcher
 			tcFiltersToCreate = append(tcFiltersToCreate, i.buildServiceFiltersFromPod(pod, servicePorts)...) // we build the updated list of tc filters
 		}
@@ -598,7 +604,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 	}
 
 	// We just watch the specified name service
-	if watcher.watchedServiceSpec.Name != service.Name {
+	if watcher.watchedServiceSpec.Name != service.Name || watcher.watchedServiceSpec.Namespace != service.Namespace {
 		return nil
 	}
 
@@ -615,7 +621,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 
 	watcher.servicePorts = service.Spec.Ports
 
-	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
+	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec.Namespace, watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
 	if err != nil {
 		return err
 	}
@@ -668,6 +674,10 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 	pod, ok := event.Object.(*v1.Pod)
 	if !ok {
 		return fmt.Errorf("couldn't watch pods in namespace, invalid type of watched object received")
+	}
+
+	if pod.Namespace != watcher.watchedServiceSpec.Namespace {
+		return nil
 	}
 
 	tcFiltersFromPod := i.buildServiceFiltersFromPod(*pod, watcher.servicePorts)
@@ -738,7 +748,7 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 				return
 			}
 
-			i.config.Log.Infow("starting kubernetes service watch", "serviceName", watcher.watchedServiceSpec.Name)
+			i.config.Log.Infow("starting kubernetes service watch", "serviceName", watcher.watchedServiceSpec.Name, "serviceNamespace", watcher.watchedServiceSpec.Namespace)
 			watcher.kubernetesServiceWatcher = serviceWatcher.ResultChan()
 		}
 
@@ -752,7 +762,7 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 				return
 			}
 
-			i.config.Log.Infow("starting kubernetes pods watch", "serviceName", watcher.watchedServiceSpec.Name)
+			i.config.Log.Infow("starting kubernetes pods watch", "serviceName", watcher.watchedServiceSpec.Name, "serviceNamespace", watcher.watchedServiceSpec.Namespace)
 			watcher.kubernetesPodEndpointsWatcher = podsWatcher.ResultChan()
 		}
 
