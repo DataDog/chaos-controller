@@ -266,8 +266,6 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		interfaces = append(interfaces, link.Name())
 	}
 
-	i.config.Log.Infow(fmt.Sprintf("detected interfaces: %s", strings.Join(interfaces, ", ")))
-
 	// retrieve the default route information
 	defaultRoutes, err := i.config.NetlinkAdapter.DefaultRoutes()
 	if err != nil {
@@ -445,11 +443,13 @@ func (i *networkDisruptionInjector) getNewPriority() uint32 {
 }
 
 // addServiceFilters adds a list of service tc filters on a list of interfaces
-func (i *networkDisruptionInjector) addServiceFilters(filters []tcServiceFilter, interfaces []string, flowid string) ([]tcServiceFilter, error) {
+func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filters []tcServiceFilter, interfaces []string, flowid string) ([]tcServiceFilter, error) {
 	builtServices := []tcServiceFilter{}
 
 	for _, filter := range filters {
 		filter.priority = i.getNewPriority()
+
+		i.config.Log.Infow("found service endpoint", "endpoint", filter.service.String(), "service", serviceName)
 
 		err := i.config.TrafficController.AddFilter(interfaces, "1:0", filter.priority, 0, nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, flowid)
 		if err != nil {
@@ -470,7 +470,7 @@ func (i *networkDisruptionInjector) removeServiceFilter(interfaces []string, tcF
 		}
 	}
 
-	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter on %s", tcFilter.service.String()))
+	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter on %s", tcFilter.service.String()), "interfaces", strings.Join(interfaces, ", "))
 
 	return nil
 }
@@ -558,12 +558,10 @@ func (i *networkDisruptionInjector) findServiceFilter(tcFilters []tcServiceFilte
 }
 
 // handlePodEndpointsOnServicePortsChange on service changes, delete old filters with the wrong service ports and create new filters
-func (i *networkDisruptionInjector) handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(oldFilters []tcServiceFilter, pods []v1.Pod, servicePorts []v1.ServicePort, interfaces []string, flowid string) ([]tcServiceFilter, error) {
+func (i *networkDisruptionInjector) handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(serviceSpec v1beta1.NetworkDisruptionServiceSpec, oldFilters []tcServiceFilter, pods []v1.Pod, servicePorts []v1.ServicePort, interfaces []string, flowid string) ([]tcServiceFilter, error) {
 	tcFiltersToCreate, finalTcFilters := []tcServiceFilter{}, []tcServiceFilter{}
 
 	for _, pod := range pods {
-		i.config.Log.Infow(fmt.Sprintf("adding filter on %s/%s %s", pod.Name, pod.Namespace, pod.Status.PodIP))
-
 		if pod.Status.PodIP != "" { // pods without ip are newly created and will be picked up in the other watcher
 			tcFiltersToCreate = append(tcFiltersToCreate, i.buildServiceFiltersFromPod(pod, servicePorts)...) // we build the updated list of tc filters
 		}
@@ -581,7 +579,7 @@ func (i *networkDisruptionInjector) handlePodEndpointsServiceFiltersOnKubernetes
 		}
 	}
 
-	createdTcFilters, err := i.addServiceFilters(tcFiltersToCreate, interfaces, flowid)
+	createdTcFilters, err := i.addServiceFilters(serviceSpec.Name, tcFiltersToCreate, interfaces, flowid)
 	if err != nil {
 		return nil, err
 	}
@@ -620,7 +618,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 
 	watcher.servicePorts = service.Spec.Ports
 
-	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
+	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
 	if err != nil {
 		return err
 	}
@@ -629,9 +627,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 
 	switch event.Type {
 	case watch.Added:
-		i.config.Log.Infow(fmt.Sprintf("adding filter on %s/%s %s", service.Name, service.Namespace, service.Spec.ClusterIP))
-
-		createdTcFilters, err := i.addServiceFilters(nsServicesTcFilters, interfaces, flowid)
+		createdTcFilters, err := i.addServiceFilters(watcher.watchedServiceSpec.Name, nsServicesTcFilters, interfaces, flowid)
 		if err != nil {
 			return err
 		}
@@ -642,7 +638,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 			return err
 		}
 
-		watcher.tcFiltersFromNamespaceServices, err = i.addServiceFilters(nsServicesTcFilters, interfaces, flowid)
+		watcher.tcFiltersFromNamespaceServices, err = i.addServiceFilters(watcher.watchedServiceSpec.Name, nsServicesTcFilters, interfaces, flowid)
 		if err != nil {
 			return err
 		}
@@ -681,15 +677,13 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 
 	switch event.Type {
 	case watch.Added:
-		i.config.Log.Infow(fmt.Sprintf("adding filter on %s/%s %s", pod.Name, pod.Namespace, pod.Status.PodIP))
-
 		// if the filter already exists, we do nothing
 		if i.findServiceFilter(watcher.tcFiltersFromPodEndpoints, tcFiltersFromPod[0]) >= 0 {
 			break
 		}
 
 		if pod.Status.PodIP != "" {
-			createdTcFilters, err := i.addServiceFilters(tcFiltersFromPod, interfaces, flowid)
+			createdTcFilters, err := i.addServiceFilters(watcher.watchedServiceSpec.Name, tcFiltersFromPod, interfaces, flowid)
 			if err != nil {
 				return err
 			}
@@ -713,9 +707,7 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 		}
 
 		if podToCreateIdx > -1 {
-			i.config.Log.Infow(fmt.Sprintf("adding filter on %s/%s %s", pod.Name, pod.Namespace, pod.Status.PodIP))
-
-			tcFilters, err := i.addServiceFilters(tcFiltersFromPod, interfaces, flowid)
+			tcFilters, err := i.addServiceFilters(watcher.watchedServiceSpec.Name, tcFiltersFromPod, interfaces, flowid)
 			if err != nil {
 				return err
 			}
