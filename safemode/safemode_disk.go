@@ -49,7 +49,7 @@ func (sm *Disk) safetyNetSpecificContainDisk() (bool, error) {
 	}
 
 	if sm.dis.Spec.Level != chaostypes.DisruptionLevelPod {
-		// Node level disruption should be clear because choosing specific containers has a null affect
+		// Node level disruption should be clear because choosing specific containers has a null effect
 		return false, nil
 	}
 
