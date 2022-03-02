@@ -153,64 +153,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// if it doesn't exist, create the cache context to re-trigger the disruption
-	if r.CachesCancel[req.NamespacedName] == nil {
-		// create the cache/watcher with its options
-		cacheOptions := k8scache.Options{}
-		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
-			cacheOptions = k8scache.Options{
-				SelectorsByObject: k8scache.SelectorsByObject{
-					&corev1.Node{}: {Label: instance.Spec.Selector.AsSelector()},
-				},
-			}
-		} else {
-			cacheOptions = k8scache.Options{
-				SelectorsByObject: k8scache.SelectorsByObject{
-					&corev1.Pod{}: {Label: instance.Spec.Selector.AsSelector()},
-				},
-				Namespace: instance.Namespace,
-			}
-		}
-		cache, err := k8scache.New(
-			ctrl.GetConfigOrDie(),
-			cacheOptions,
-		)
-		if err != nil {
-			r.log.Errorw("cache gen error:", "error", err)
-		}
-
-		// attach handler to cache in order to monitor the cache activity
-		var info k8scache.Informer
-		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
-			info, err = cache.GetInformer(context.Background(), &corev1.Node{})
-		} else {
-			info, err = cache.GetInformer(context.Background(), &corev1.Pod{})
-		}
-		if err != nil {
-			r.log.Errorw("cache gen error:", "error", err)
-		}
-		info.AddEventHandler(DisruptionSelectorHandler{disruption: instance, reconciler: r})
-
-		// start the cache with a cancelable context and attach it to the controller as a watch source
-		ch := make(chan error)
-		cacheCtx, cacheCancelFunc := context.WithCancel(context.TODO())
-		go func() { ch <- cache.Start(cacheCtx) }()
-		r.CachesCancel[req.NamespacedName] = cacheCancelFunc
-
-		var cacheSource source.SyncingSource
-		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
-			cacheSource = source.NewKindWithCache(&corev1.Node{}, cache)
-		} else {
-			cacheSource = source.NewKindWithCache(&corev1.Pod{}, cache)
-		}
-		r.Controller.Watch(
-			cacheSource,
-			handler.EnqueueRequestsFromMapFunc(
-				func(c client.Object) []reconcile.Request {
-					return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}}}
-				}),
-		)
-	}
+	r.manageInstanceSelectorCache(instance)
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
@@ -376,6 +319,69 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// stop the reconcile loop, there's nothing else to do
 	return ctrl.Result{}, nil
+}
+
+// createInstanceSelectorCache creates this instance's cache if it doesn't exist and attaches it to the controller
+func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta1.Disruption) error {
+	disNamespacedName := types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}
+	// if it doesn't exist, create the cache context to re-trigger the disruption
+	if r.CachesCancel[disNamespacedName] == nil {
+		// create the cache/watcher with its options
+		cacheOptions := k8scache.Options{}
+		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
+			cacheOptions = k8scache.Options{
+				SelectorsByObject: k8scache.SelectorsByObject{
+					&corev1.Node{}: {Label: instance.Spec.Selector.AsSelector()},
+				},
+			}
+		} else {
+			cacheOptions = k8scache.Options{
+				SelectorsByObject: k8scache.SelectorsByObject{
+					&corev1.Pod{}: {Label: instance.Spec.Selector.AsSelector()},
+				},
+				Namespace: instance.Namespace,
+			}
+		}
+		cache, err := k8scache.New(
+			ctrl.GetConfigOrDie(),
+			cacheOptions,
+		)
+		if err != nil {
+			return fmt.Errorf("cache gen error:", "error", err)
+		}
+
+		// attach handler to cache in order to monitor the cache activity
+		var info k8scache.Informer
+		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
+			info, err = cache.GetInformer(context.Background(), &corev1.Node{})
+		} else {
+			info, err = cache.GetInformer(context.Background(), &corev1.Pod{})
+		}
+		if err != nil {
+			return fmt.Errorf("cache gen error:", "error", err)
+		}
+		info.AddEventHandler(DisruptionSelectorHandler{disruption: instance, reconciler: r})
+
+		// start the cache with a cancelable context and attach it to the controller as a watch source
+		ch := make(chan error)
+		cacheCtx, cacheCancelFunc := context.WithCancel(context.TODO())
+		go func() { ch <- cache.Start(cacheCtx) }()
+		r.CachesCancel[disNamespacedName] = cacheCancelFunc
+
+		var cacheSource source.SyncingSource
+		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
+			cacheSource = source.NewKindWithCache(&corev1.Node{}, cache)
+		} else {
+			cacheSource = source.NewKindWithCache(&corev1.Pod{}, cache)
+		}
+		r.Controller.Watch(
+			cacheSource,
+			handler.EnqueueRequestsFromMapFunc(
+				func(c client.Object) []reconcile.Request {
+					return []reconcile.Request{{NamespacedName: disNamespacedName}}
+				}),
+		)
+	}
 }
 
 // clearInstanceCache closes the context for the disruption-related cache and cleans the cancelFunc array
