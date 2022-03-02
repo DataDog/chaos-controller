@@ -252,6 +252,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
 			r.log.Infow("all chaos pods are cleaned up; removing disruption finalizer")
+			r.clearInstanceSelectorCache(instance)
 			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 			if err := r.Update(context.Background(), instance); err != nil {
@@ -263,10 +264,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 				return ctrl.Result{}, err
 			}
-
-			// close the context for the disruption-related cache and clear the cache
-			r.CachesCancel[req.NamespacedName]()
-			delete(r.CachesCancel, req.NamespacedName)
 
 			// send reconciling duration metric
 			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
@@ -379,6 +376,15 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// stop the reconcile loop, there's nothing else to do
 	return ctrl.Result{}, nil
+}
+
+// clearInstanceCache closes the context for the disruption-related cache and cleans the cancelFunc array
+func (r *DisruptionReconciler) clearInstanceSelectorCache(instance *chaosv1beta1.Disruption) {
+	fCancel, ok := r.CachesCancel[types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}]
+	if ok {
+		fCancel()
+		delete(r.CachesCancel, types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name})
+	}
 }
 
 // updateInjectionStatus updates the given instance injection status depending on its chaos pods statuses
