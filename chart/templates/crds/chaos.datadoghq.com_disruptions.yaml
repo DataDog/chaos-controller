@@ -134,6 +134,8 @@ spec:
               type: boolean
             duration:
               type: string
+            dynamicTargeting:
+              type: boolean
             grpc:
               description: GRPCDisruptionSpec represents a gRPC disruption
               nullable: true

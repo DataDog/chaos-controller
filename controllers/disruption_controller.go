@@ -323,6 +323,10 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 // createInstanceSelectorCache creates this instance's cache if it doesn't exist and attaches it to the controller
 func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta1.Disruption) error {
+	if !instance.Spec.DynamicTargeting {
+		return nil
+	}
+
 	disNamespacedName := types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}
 	// if it doesn't exist, create the cache context to re-trigger the disruption
 	if r.CachesCancel[disNamespacedName] == nil {
@@ -347,7 +351,7 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 			cacheOptions,
 		)
 		if err != nil {
-			return fmt.Errorf("cache gen error:", "error", err)
+			return fmt.Errorf("cache gen error: %w", err)
 		}
 
 		// attach handler to cache in order to monitor the cache activity
@@ -358,7 +362,7 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 			info, err = cache.GetInformer(context.Background(), &corev1.Pod{})
 		}
 		if err != nil {
-			return fmt.Errorf("cache gen error:", "error", err)
+			return fmt.Errorf("cache gen error: %w", err)
 		}
 		info.AddEventHandler(DisruptionSelectorHandler{disruption: instance, reconciler: r})
 
@@ -382,9 +386,10 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 				}),
 		)
 	}
+	return nil
 }
 
-// clearInstanceCache closes the context for the disruption-related cache and cleans the cancelFunc array
+// clearInstanceCache closes the context for the disruption-related cache and cleans the cancelFunc array (if it exists)
 func (r *DisruptionReconciler) clearInstanceSelectorCache(instance *chaosv1beta1.Disruption) {
 	fCancel, ok := r.CachesCancel[types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}]
 	if ok {
@@ -808,6 +813,10 @@ func (r *DisruptionReconciler) terminateChaosPod(instance *chaosv1beta1.Disrupti
 // the chosen targets names will be reflected in the instance status
 // subsequent calls to this function will always return the same targets as the first call
 func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
+	if len(instance.Status.Targets) != 0 && !instance.Spec.DynamicTargeting {
+		return nil
+	}
+
 	r.log.Infow("selecting targets to inject disruption to", "selector", instance.Spec.Selector.String())
 
 	// validate the given label selector to avoid any formatting issues due to special chars
@@ -819,7 +828,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		}
 	}
 
-	matchingTargets, err := r.getMatchingTargets(instance)
+	matchingTargets, err := r.getSelectorMatchingTargets(instance)
 	if err != nil {
 		r.log.Errorw("error getting matching targets", "error", err)
 	}
@@ -857,7 +866,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		// not enough targets: pick more targets from eligibleTargets
 		instance.Status.AddTargets(dTargetsCount-cTargetsCount, eligibleTargets)
 	} else if cTargetsCount > dTargetsCount {
-		// too many targets: remove extra targets from cTargets
+		// too many targets: remove random extra targets
 		instance.Status.RemoveTargets(cTargetsCount - dTargetsCount)
 	}
 
@@ -867,7 +876,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 }
 
 // getMatchingTargets fetches all existing target fitting the disruption's selector
-func (r *DisruptionReconciler) getMatchingTargets(instance *chaosv1beta1.Disruption) ([]string, error) {
+func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1.Disruption) ([]string, error) {
 	matchingTargets := []string{}
 
 	// select either pods or nodes depending on the disruption level
@@ -926,7 +935,7 @@ func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disrupt
 	eligibleTargets := []string{}
 
 	for _, target := range potentialTargets {
-		// skip ignored targets
+		// skip current targets
 		if contains(instance.Status.Targets, target) {
 			continue
 		}

@@ -52,6 +52,9 @@ The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/conc
 
 **NOTE:** If you are targeting pods, the disruption must be created in the same namespace as the targeted pods.
 
+## DynamicTargeting
+[FIXME]
+
 ### Targeting safeguards
 
 When enabled [in the configuration](../chart/values.yaml) (`controller.enableSafeguards` field), safeguards will exclude some targets from the selection to avoid unexpected issues:
