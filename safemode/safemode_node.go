@@ -16,7 +16,7 @@ type Node struct {
 }
 
 // CreationSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm *Node) CreationSafetyNets() ([]string, error) {
+func (sm *Node) CheckInitialSafetyNets() ([]string, error) {
 	safetyNetResponses := []string{}
 
 	return safetyNetResponses, nil

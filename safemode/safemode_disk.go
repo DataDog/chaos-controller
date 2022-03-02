@@ -22,7 +22,7 @@ type Disk struct {
 }
 
 // CreationSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm *Disk) CreationSafetyNets() ([]string, error) {
+func (sm *Disk) CheckInitialSafetyNets() ([]string, error) {
 	safetyNetResponses := []string{}
 	// run through the list of safety nets
 	if caught, err := sm.safetyNetSpecificContainDisk(); err != nil {

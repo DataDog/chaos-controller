@@ -16,7 +16,7 @@ type ContainerFailure struct {
 }
 
 // CreationSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm *ContainerFailure) CreationSafetyNets() ([]string, error) {
+func (sm *ContainerFailure) CheckInitialSafetyNets() ([]string, error) {
 	safetyNetResponses := []string{}
 
 	return safetyNetResponses, nil

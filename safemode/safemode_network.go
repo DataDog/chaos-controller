@@ -16,7 +16,7 @@ type Network struct {
 }
 
 // CreationSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm *Network) CreationSafetyNets() ([]string, error) {
+func (sm *Network) CheckInitialSafetyNets() ([]string, error) {
 	safetyNetResponses := []string{}
 	// run through the list of initial safety nets
 	if caught := sm.safetyNetNeitherHostNorPort(); caught {

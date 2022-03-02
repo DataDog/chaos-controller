@@ -16,7 +16,7 @@ type GRPC struct {
 }
 
 // CreationSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm *GRPC) CreationSafetyNets() ([]string, error) {
+func (sm *GRPC) CheckInitialSafetyNets() ([]string, error) {
 	safetyNetResponses := []string{}
 
 	return safetyNetResponses, nil

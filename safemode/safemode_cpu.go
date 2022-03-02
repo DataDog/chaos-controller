@@ -16,7 +16,7 @@ type CPU struct {
 }
 
 // CreationSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm *CPU) CreationSafetyNets() ([]string, error) {
+func (sm *CPU) CheckInitialSafetyNets() ([]string, error) {
 	safetyNetResponses := []string{}
 
 	return safetyNetResponses, nil

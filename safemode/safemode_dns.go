@@ -16,7 +16,7 @@ type DNS struct {
 }
 
 // CreationSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm *DNS) CreationSafetyNets() ([]string, error) {
+func (sm *DNS) CheckInitialSafetyNets() ([]string, error) {
 	safetyNetResponses := []string{}
 
 	return safetyNetResponses, nil

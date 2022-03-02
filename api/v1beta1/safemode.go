@@ -11,6 +11,5 @@ type UnsafemodeSpec struct {
 	DisableAll                 bool `json:"disableAll,omitempty"`
 	DisableCountTooLarge       bool `json:"disableCountTooLarge,omitempty"`
 	DisableNeitherHostNorPort  bool `json:"disableNeitherHostNorPort,omitempty"`
-	DisableSporadicTargets     bool `json:"disableSporadicTargets,omitempty"`
 	DisableSpecificContainDisk bool `json:"disableSpecificContainDisk,omitempty"`
 }

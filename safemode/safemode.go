@@ -20,7 +20,7 @@ import (
 
 type Safemode interface {
 	// CreationSafetyNets will look at all the specific safety nets corresponding to the creation of a new disruption
-	CreationSafetyNets() ([]string, error)
+	CheckInitialSafetyNets() ([]string, error)
 	// Init will grab the necessary spec depending on the type (e.g. SafemodeNetwork will grab NetworkDisruptionSpec)
 	// and grab the disruption itself for data such as the kubernetes namespace the disruption is running on
 	// It will also grab the kube client for functions that require state information from k8s system
@@ -95,7 +95,7 @@ func (sm *Generic) Init(disruption v1beta1.Disruption, client client.Client) {
 }
 
 // CreationSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm *Generic) CreationSafetyNets() ([]string, error) {
+func (sm *Generic) CheckInitialSafetyNets() ([]string, error) {
 	safetyNetResponses := []string{}
 
 	if caught, err := sm.safetyNetCountNotTooLarge(); err != nil {
@@ -104,69 +104,7 @@ func (sm *Generic) CreationSafetyNets() ([]string, error) {
 		safetyNetResponses = append(safetyNetResponses, " The specified count represents a large percentage of targets in either the namespace or the kubernetes cluster")
 	}
 
-	if caught, err := sm.safetyNetSporadicTargets(); err != nil {
-		return nil, err
-	} else if caught {
-		safetyNetResponses = append(safetyNetResponses, " The target environment's size is changing sporadically, this is a sign of instability and applying additional disruption can be dangerous")
-	}
-
 	return safetyNetResponses, nil
-}
-
-// safetyNetSporadicTargets is the safety net regarding sporadic targets
-// in an environment which count is constantly changing, we are looking at an environment where targets are being
-// destroyed and created frequently which is a very bad sign in terms of reliability and a applying further
-// disruptions is probably not the best idea.
-// In this function we run a check against the count of the target environment 3 times. If the count is different each of those
-// 3 times, we assume sporadic behaviour of the target environment and raise a flag.
-func (sm *Generic) safetyNetSporadicTargets() (bool, error) {
-	if sm.dis.Spec.Unsafemode != nil && sm.dis.Spec.Unsafemode.DisableSporadicTargets {
-		return false, nil
-	}
-
-	failures := 0
-	oldTargetCount := -1
-
-	for i := 0; i < 4; i++ {
-		if sm.dis.Spec.Level == chaostypes.DisruptionLevelPod {
-			pods := &corev1.PodList{}
-			listOptions := &client.ListOptions{
-				Namespace: sm.dis.ObjectMeta.Namespace,
-			}
-			err := sm.client.List(context.Background(), pods, listOptions)
-
-			if err != nil {
-				return false, fmt.Errorf("error listing target pods: %w", err)
-			}
-
-			if oldTargetCount == -1 {
-				oldTargetCount = len(pods.Items)
-			} else if oldTargetCount != len(pods.Items) {
-				failures++
-				oldTargetCount = len(pods.Items)
-			}
-		} else {
-			nodes := &corev1.NodeList{}
-
-			err := sm.client.List(context.Background(), nodes)
-			if err != nil {
-				return false, fmt.Errorf("error listing target pods: %w", err)
-			}
-
-			if oldTargetCount == -1 {
-				oldTargetCount = len(nodes.Items)
-			} else if oldTargetCount != len(nodes.Items) {
-				failures++
-				oldTargetCount = len(nodes.Items)
-			}
-		}
-	}
-
-	if failures < 3 {
-		return false, nil
-	}
-
-	return true, nil
 }
 
 // safetyNetCountNotTooLarge is the safety net regarding the count of targets
