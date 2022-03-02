@@ -20,7 +20,7 @@ func (sm *Network) CreationSafetyNets() ([]string, error) {
 	safetyNetResponses := []string{}
 	// run through the list of initial safety nets
 	if caught := sm.safetyNetNeitherHostNorPort(); caught {
-		safetyNetResponses = append(safetyNetResponses, " The specified disruption either contains no Hosts or contains a Host which only has either a port or a host. The more ambiguous, the larger the blast radius. ")
+		safetyNetResponses = append(safetyNetResponses, " The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius. ")
 	}
 
 	return safetyNetResponses, nil
