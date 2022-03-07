@@ -321,6 +321,7 @@ func main() {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
+
 	r.Controller = cont
 
 	stopCh := make(chan struct{})
