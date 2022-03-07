@@ -18,8 +18,6 @@ spec:
     singular: disruption
   preserveUnknownFields: false
   scope: Namespaced
-  subresources:
-    status: {}
   validation:
     openAPIV3Schema:
       description: Disruption is the Schema for the disruptions API
@@ -344,6 +342,34 @@ spec:
                 type: string
               nullable: true
               type: array
+            userInfo:
+              description: UserInfo holds the information about the user needed to
+                implement the user.Info interface.
+              nullable: true
+              properties:
+                extra:
+                  additionalProperties:
+                    description: ExtraValue masks the value so protobuf can generate
+                    items:
+                      type: string
+                    type: array
+                  description: Any additional information provided by the authenticator.
+                  type: object
+                groups:
+                  description: The names of groups this user is a part of.
+                  items:
+                    type: string
+                  type: array
+                uid:
+                  description: A unique value that identifies this user across time.
+                    If this user is deleted and another user by the same name is added,
+                    they will have different UIDs.
+                  type: string
+                username:
+                  description: The name that uniquely identifies this user among all
+                    active users.
+                  type: string
+              type: object
           type: object
       type: object
   version: v1beta1
