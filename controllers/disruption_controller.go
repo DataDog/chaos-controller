@@ -328,6 +328,10 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 	}
 
 	disNamespacedName := types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}
+	disCompleteSelector, err := targetselector.GetLabelSelectorFromInstance(instance)
+	if err != nil {
+		return fmt.Errorf("error getting instance selector: %w", err)
+	}
 	// if it doesn't exist, create the cache context to re-trigger the disruption
 	if r.CachesCancel[disNamespacedName] == nil {
 		// create the cache/watcher with its options
@@ -335,13 +339,13 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
 			cacheOptions = k8scache.Options{
 				SelectorsByObject: k8scache.SelectorsByObject{
-					&corev1.Node{}: {Label: instance.Spec.Selector.AsSelector()},
+					&corev1.Node{}: {Label: disCompleteSelector},
 				},
 			}
 		} else {
 			cacheOptions = k8scache.Options{
 				SelectorsByObject: k8scache.SelectorsByObject{
-					&corev1.Pod{}: {Label: instance.Spec.Selector.AsSelector()},
+					&corev1.Pod{}: {Label: disCompleteSelector},
 				},
 				Namespace: instance.Namespace,
 			}
