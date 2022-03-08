@@ -134,6 +134,7 @@ func (sm *Generic) safetyNetCountNotTooLarge() (bool, error) {
 		if sm.dis.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold != 0 {
 			namespaceThreshold = float64(sm.dis.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold) / 100.0
 		}
+
 		if sm.dis.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold != 0 {
 			clusterThreshold = float64(sm.dis.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold) / 100.0
 		}
