@@ -130,6 +130,7 @@ type DisruptionStatus struct {
 
 // Disruption is the Schema for the disruptions API
 // +kubebuilder:resource:shortName=dis
+// +kubebuilder:subresource:status
 type Disruption struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
