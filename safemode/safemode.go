@@ -83,6 +83,13 @@ func AddAllSafemodeObjects(disruption v1beta1.Disruption, k8sClient client.Clien
 	return safemodeList
 }
 
+// Reinit resets the saved disruption configs for each safety net in the case where the same disruption is updated with new parameters
+func Reinit(safetyNets []Safemode, disruption v1beta1.Disruption, k8sClient client.Client) {
+	for _, safetyNet := range safetyNets {
+		safetyNet.Init(disruption, k8sClient)
+	}
+}
+
 type Generic struct {
 	dis    v1beta1.Disruption
 	client client.Client
@@ -120,6 +127,17 @@ func (sm *Generic) safetyNetCountNotTooLarge() (bool, error) {
 	userCount := sm.dis.Spec.Count
 	totalCount := 0
 	namespaceCount := 0
+	namespaceThreshold := 0.8
+	clusterThreshold := 0.66
+
+	if sm.dis.Spec.Unsafemode.Config != nil && sm.dis.Spec.Unsafemode.Config.CountTooLarge != nil {
+		if sm.dis.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold != 0 {
+			namespaceThreshold = float64(sm.dis.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold) / 100.0
+		}
+		if sm.dis.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold != 0 {
+			clusterThreshold = float64(sm.dis.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold) / 100.0
+		}
+	}
 
 	if sm.dis.Spec.Level == chaostypes.DisruptionLevelPod {
 		pods := &corev1.PodList{}
@@ -168,11 +186,11 @@ func (sm *Generic) safetyNetCountNotTooLarge() (bool, error) {
 
 	// we check to see if the count represents > 80 percent of all pods in the existing namepsace
 	// and if the count represents > 66 percent of all pods in the cluster (2/3s)
-	if userCountVal/float64(namespaceCount) > 0.8 {
+	if userCountVal/float64(namespaceCount) > namespaceThreshold {
 		return true, nil
 	}
 
-	if userCountVal/float64(totalCount) > 0.66 {
+	if userCountVal/float64(totalCount) > clusterThreshold {
 		return true, nil
 	}
 

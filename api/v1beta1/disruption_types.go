@@ -229,6 +229,11 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 		}
 	}
 
+	// Rule: No specificity of containers on a disk disruption
+	if len(s.Containers) != 0 && s.DiskPressure != nil {
+		retErr = multierror.Append(retErr, errors.New("disk pressure disruptions apply to all containers, specifying certain containers does not isolate the disruption"))
+	}
+
 	// Rule: pulse compatibility
 	if s.Pulse != nil {
 		if s.NodeFailure != nil || s.ContainerFailure != nil {

@@ -14,9 +14,11 @@ spec:
     app: demo-curl
   count: 1
   unsafeMode:
-    disableSpecificContainDisk: true
-  containers:
-    - dummy
+    disableAll: false
+    config:
+      countTooLarge:
+        namespaceThreshold: 90
+        clusterThreshold: 90
   diskPressure:
     path: /mnt/data # mount point (in the pod) to apply throttle on
     throttling:

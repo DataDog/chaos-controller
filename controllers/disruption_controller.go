@@ -179,13 +179,17 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			if len(r.SafetyNets) == 0 {
 				r.SafetyNets = []safemode.Safemode{}
 				r.SafetyNets = safemode.AddAllSafemodeObjects(*instance, r.Client)
+			} else {
+				// it is possible for a disruption to be restarted with new parameters, therefore safety nets need to be reinitialized to catch that case
+				// so that we are not using values from older versions of a disruption for safety nets
+				safemode.Reinit(r.SafetyNets, *instance, r.Client)
 			}
 
 			responses := []string{}
 
 			for _, safetyNet := range r.SafetyNets {
 				// safety nets may occur throughout the reconciler, the safety nets used at creation are done here
-				response, err := safetyNet.CreationSafetyNets()
+				response, err := safetyNet.CheckInitialSafetyNets()
 				if err != nil {
 					r.log.Errorw("error checking for safety nets", "error", err)
 				}
