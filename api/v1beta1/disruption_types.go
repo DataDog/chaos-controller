@@ -20,7 +20,6 @@ import (
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
-	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -125,8 +124,6 @@ type DisruptionStatus struct {
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
 	Targets []string `json:"targets,omitempty"`
-	// +nullable
-	UserInfo *authv1.UserInfo `json:"userInfo,omitempty"`
 }
 
 //+kubebuilder:object:root=true
