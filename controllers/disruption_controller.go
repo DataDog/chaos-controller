@@ -18,6 +18,7 @@ import (
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/utils"
 	"github.com/cenkalti/backoff"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -503,7 +504,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 	}
 
 	for _, chaosPod := range chaosPods {
-		if !contains(instance.Status.Targets, chaosPod.Labels[chaostypes.TargetLabel]) {
+		if !utils.Contains(instance.Status.Targets, chaosPod.Labels[chaostypes.TargetLabel]) {
 			r.deleteChaosPod(instance, chaosPod)
 		} else {
 			chaosPodsMap[chaosPod.Labels[chaostypes.TargetLabel]] = chaosPod
@@ -955,7 +956,7 @@ func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disrupt
 
 	for _, target := range potentialTargets {
 		// skip current targets
-		if contains(instance.Status.Targets, target) {
+		if utils.Contains(instance.Status.Targets, target) {
 			continue
 		}
 

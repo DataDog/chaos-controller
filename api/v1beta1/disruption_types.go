@@ -19,6 +19,7 @@ import (
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/utils"
 	"github.com/hashicorp/go-multierror"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -321,7 +322,7 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 // RemoveDeadTargets removes targets not found in matchingTargets from the targets list
 func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
 	for index := 0; index < len(status.Targets); index++ {
-		if !contains(matchingTargets, status.Targets[index]) {
+		if !utils.Contains(matchingTargets, status.Targets[index]) {
 			status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
 			status.Targets = status.Targets[:len(status.Targets)-1]
 		}
@@ -345,15 +346,4 @@ func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
 		status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
 		status.Targets = status.Targets[:len(status.Targets)-1]
 	}
-}
-
-// contains returns true when the given string is present in the given slice
-func contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-
-	return false
 }
