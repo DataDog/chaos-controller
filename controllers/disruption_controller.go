@@ -49,6 +49,7 @@ type DisruptionReconciler struct {
 	MetricsSink                           metrics.Sink
 	TargetSelector                        targetselector.TargetSelector
 	InjectorAnnotations                   map[string]string
+	InjectorLabels                        map[string]string
 	InjectorServiceAccount                string
 	InjectorImage                         string
 	ImagePullSecrets                      string
@@ -57,7 +58,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionDNSServer        string
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
-	ExpiredDisruptionGCDelay              time.Duration
+	ExpiredDisruptionGCDelay              *time.Duration
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -80,7 +81,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// because the logger instance is pointer, concurrent reconciling would create a race condition
 	// where the logger context would change for all ongoing reconcile loops
 	// in the case we enable concurrent reconciling, we should create one logger instance per reconciling call
-	r.log = r.BaseLog.With("instance", req.Name, "namespace", req.Namespace)
+	r.log = r.BaseLog.With("disruptionName", req.Name, "disruptionNamespace", req.Namespace)
 
 	// reconcile metrics
 	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
@@ -108,6 +109,12 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
+		if isModifiedError(err) {
+			r.log.Warnw("error handling chaos pods termination", "error", err)
+
+			return ctrl.Result{}, nil
+		}
+
 		r.log.Errorw("error handling chaos pods termination", "error", err)
 
 		return ctrl.Result{}, err
@@ -143,7 +150,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 			if err := r.Update(context.Background(), instance); err != nil {
-				r.log.Errorw("error removing disruption finalizer", "error", err)
+				if isModifiedError(err) {
+					r.log.Warnw("error removing disruption finalizer", "error", err)
+				} else {
+					r.log.Errorw("error removing disruption finalizer", "error", err)
+				}
 
 				return ctrl.Result{}, err
 			}
@@ -171,9 +182,9 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
 		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the duration's deadline. We compare it to negative ExpiredDisruptionGCDelay,
 		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
-		if calculateRemainingDuration(*instance) <= (-1 * r.ExpiredDisruptionGCDelay) {
+		if r.ExpiredDisruptionGCDelay != nil && (calculateRemainingDuration(*instance) <= (-1 * *r.ExpiredDisruptionGCDelay)) {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
-			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", r.ExpiredDisruptionGCDelay))
+			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", *r.ExpiredDisruptionGCDelay))
 
 			var err error
 
@@ -184,32 +195,28 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{Requeue: true}, err
 		} else if calculateRemainingDuration(*instance) <= 0 {
 			if _, err := r.updateInjectionStatus(instance); err != nil {
-				r.log.Errorw("error updating disruption injection status", "error", err)
+				if isModifiedError(err) {
+					r.log.Warnw("error updating disruption injection status", "error", err)
+				} else {
+					r.log.Errorw("error updating disruption injection status", "error", err)
+				}
 
 				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 			}
 
-			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived longer than its specified duration, and will be garbage collected after %s.", r.ExpiredDisruptionGCDelay))
+			if r.ExpiredDisruptionGCDelay != nil {
+				requeueDelay := *r.ExpiredDisruptionGCDelay
+				r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived longer than its specified duration, and will be garbage collected after %s.", *r.ExpiredDisruptionGCDelay))
 
-			chaosPods, err := r.getChaosPods(instance, nil)
-			if err != nil {
-				r.log.Errorw("couldn't list instance's chaos pods", "err", err)
+				r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
 
-				return ctrl.Result{}, err
+				return ctrl.Result{
+					Requeue:      true,
+					RequeueAfter: requeueDelay,
+				}, nil
 			}
 
-			for _, pod := range chaosPods {
-				r.Recorder.Event(&pod, "Normal", "DurationOver", fmt.Sprintf("The chaos pod has lived longer than the disruption duration, and will be garbage collected after %s.", r.ExpiredDisruptionGCDelay))
-			}
-
-			requeueDelay := r.ExpiredDisruptionGCDelay
-
-			r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
-
-			return ctrl.Result{
-				Requeue:      true,
-				RequeueAfter: requeueDelay,
-			}, nil
+			return ctrl.Result{Requeue: false}, nil
 		}
 
 		// retrieve targets from label selector
@@ -233,7 +240,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// requeue the request if the disruption is not fully injected yet
 		injected, err := r.updateInjectionStatus(instance)
 		if err != nil {
-			r.log.Errorw("error updating injection status", "error", err)
+			if isModifiedError(err) {
+				r.log.Warnw("error updating injection status", "error", err)
+			} else {
+				r.log.Errorw("error updating injection status", "error", err)
+			}
 
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
@@ -317,7 +328,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 	// update instance status
 	instance.Status.InjectionStatus = status
 
-	if err := r.Client.Update(context.Background(), instance); err != nil {
+	if err := r.Client.Status().Update(context.Background(), instance); err != nil {
 		return false, err
 	}
 
@@ -500,14 +511,22 @@ func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
 			controllerutil.RemoveFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer)
 
 			if err := r.Client.Update(context.Background(), &chaosPod); err != nil {
-				r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+				if isModifiedError(err) {
+					r.log.Warnw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+				} else {
+					r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+				}
 
 				continue
 			}
 
 			// if the chaos pod still exists after having its finalizer removed, delete it
 			if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
-				r.log.Errorw("error deleting orphaned chaos pod", "error", err, "chaosPod", chaosPod.Name)
+				if isModifiedError(err) {
+					r.log.Warnw("error deleting orphaned chaos pod", "error", err, "chaosPod", chaosPod.Name)
+				} else {
+					r.log.Errorw("error deleting orphaned chaos pod", "error", err, "chaosPod", chaosPod.Name)
+				}
 
 				continue
 			}
@@ -573,6 +592,13 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 			}
 		}
 
+		// It is always safe to remove a node failure chaos pod. It is usually hard to tell if a node failure chaos pod has
+		// succeeded or not, so we choose to always remove the finalizer.
+		if chaosPod.Labels[chaostypes.DisruptionKindLabel] == chaostypes.DisruptionKindNodeFailure {
+			removeFinalizer = true
+			ignoreStatus = true
+		}
+
 		// check the chaos pod status to determine if we can safely delete it or not
 		switch chaosPod.Status.Phase {
 		case corev1.PodSucceeded, corev1.PodPending:
@@ -618,7 +644,11 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 			controllerutil.RemoveFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer)
 
 			if err := r.Client.Update(context.Background(), &chaosPod); err != nil {
-				r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+				if isModifiedError(err) {
+					r.log.Warnw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+				} else {
+					r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+				}
 
 				continue
 			}
@@ -632,7 +662,7 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 		}
 	}
 
-	return r.Update(context.Background(), instance)
+	return r.Status().Update(context.Background(), instance)
 }
 
 // ignoreTarget moves the given target from the list of targets to the list of ignored targets
@@ -654,7 +684,7 @@ func (r *DisruptionReconciler) ignoreTarget(instance *chaosv1beta1.Disruption, t
 		instance.Status.IgnoredTargets = append(instance.Status.IgnoredTargets, target)
 	}
 
-	return r.Update(context.Background(), instance)
+	return r.Status().Update(context.Background(), instance)
 }
 
 // selectTargets will select min(count, all matching targets) random targets (pods or nodes depending on the disruption level)
@@ -751,7 +781,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 	r.log.Infow("updating instance status with targets selected for injection")
 
-	return r.Update(context.Background(), instance)
+	return r.Status().Update(context.Background(), instance)
 }
 
 // getEligibleTargets returns targets which can be targeted by the given instance from the given targets pool
@@ -1028,18 +1058,23 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 		}
 	}
 
+	labels := make(map[string]string)
+	for k, v := range r.InjectorLabels {
+		labels[k] = v
+	}
+
+	labels[chaostypes.TargetLabel] = targetName                      // target name label
+	labels[chaostypes.DisruptionKindLabel] = string(kind)            // disruption kind label
+	labels[chaostypes.DisruptionNameLabel] = instance.Name           // disruption name label, used to determine ownership
+	labels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // disruption namespace label, used to determine ownership
+
 	// define injector pod
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("chaos-%s-", instance.Name), // generate the pod name automatically with a prefix
 			Namespace:    r.ChaosNamespace,                        // chaos pods need to be in the same namespace as their service account to run
 			Annotations:  r.InjectorAnnotations,                   // add extra annotations passed to the controller
-			Labels: map[string]string{
-				chaostypes.TargetLabel:              targetName,         // target name label
-				chaostypes.DisruptionKindLabel:      string(kind),       // disruption kind label
-				chaostypes.DisruptionNameLabel:      instance.Name,      // disruption name label, used to determine ownership
-				chaostypes.DisruptionNamespaceLabel: instance.Namespace, // disruption namespace label, used to determine ownership
-			},
+			Labels:       labels,                                  // add default and extra labels passed to the controller
 		},
 		Spec: podSpec,
 	}

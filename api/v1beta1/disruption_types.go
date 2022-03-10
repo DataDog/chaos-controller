@@ -10,16 +10,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
-	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	goyaml "sigs.k8s.io/yaml"
 )
 
 // DisruptionSpec defines the desired state of Disruption
@@ -121,14 +124,13 @@ type DisruptionStatus struct {
 	Targets []string `json:"targets,omitempty"`
 	// +nullable
 	IgnoredTargets []string `json:"ignoredTargets,omitempty"`
-	// +nullable
-	UserInfo *authv1.UserInfo `json:"userInfo,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
 // Disruption is the Schema for the disruptions API
 // +kubebuilder:resource:shortName=dis
+// +kubebuilder:subresource:status
 type Disruption struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -289,4 +291,29 @@ func (s *DisruptionSpec) GetKindNames() []chaostypes.DisruptionKindName {
 	}
 
 	return kinds
+}
+
+func ReadUnmarshal(path string) (*Disruption, error) {
+	fullPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("error finding absolute path: %v", err)
+	}
+
+	yaml, err := os.Open(filepath.Clean(fullPath))
+	if err != nil {
+		return nil, fmt.Errorf("could not open yaml file at %s: %v", fullPath, err)
+	}
+
+	yamlBytes, err := ioutil.ReadAll(yaml)
+	if err != nil {
+		return nil, fmt.Errorf("could not read yaml file: %v ", err)
+	}
+
+	parsedSpec := Disruption{}
+
+	if err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec); err != nil {
+		return nil, fmt.Errorf("could not unmarshal yaml file to Disruption: %v", err)
+	}
+
+	return &parsedSpec, nil
 }

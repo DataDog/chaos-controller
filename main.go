@@ -76,6 +76,7 @@ type controllerConfig struct {
 	LeaderElection           bool                          `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
+	UserInfoHook             bool                          `json:"userInfoHook"`
 }
 
 type controllerWebhookConfig struct {
@@ -87,6 +88,7 @@ type controllerWebhookConfig struct {
 type injectorConfig struct {
 	Image             string                          `json:"image"`
 	Annotations       map[string]string               `json:"annotations"`
+	Labels            map[string]string               `json:"labels"`
 	ChaosNamespace    string                          `json:"namespace"`
 	ServiceAccount    string                          `json:"serviceAccount"`
 	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
@@ -133,7 +135,7 @@ func main() {
 	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
 
-	pflag.DurationVar(&cfg.Controller.ExpiredDisruptionGCDelay, "expired-disruption-gc-delay", time.Minute*15, "Seconds after a disruption expires before being automatically deleted")
+	pflag.DurationVar(&cfg.Controller.ExpiredDisruptionGCDelay, "expired-disruption-gc-delay", time.Minute*(-1), "Duration after a disruption expires before being automatically deleted, leave unset to disable")
 	handleFatalError(viper.BindPFlag("controller.expiredDisruptionGCDelay", pflag.Lookup("expired-disruption-gc-delay")))
 
 	pflag.DurationVar(&cfg.Controller.DefaultDuration, "default-duration", time.Hour, "Default duration for a disruption with none specified")
@@ -159,6 +161,9 @@ func main() {
 
 	pflag.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.annotations", pflag.Lookup("injector-annotations")))
+
+	pflag.StringToStringVar(&cfg.Injector.Labels, "injector-labels", map[string]string{}, "Labels added to the generated injector pods")
+	handleFatalError(viper.BindPFlag("injector.labels", pflag.Lookup("injector-labels")))
 
 	pflag.StringVar(&cfg.Injector.ServiceAccount, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.serviceAccount.name", pflag.Lookup("injector-service-account")))
@@ -196,6 +201,9 @@ func main() {
 	pflag.IntVar(&cfg.Controller.Webhook.Port, "admission-webhook-port", 9443, "Port used by the admission controller to serve requests")
 	handleFatalError(viper.BindPFlag("controller.webhook.port", pflag.Lookup("admission-webhook-port")))
 
+	pflag.BoolVar(&cfg.Controller.UserInfoHook, "user-info-webhook", true, "Enable the mutating webhook to inject user info into disruption status")
+	handleFatalError(viper.BindPFlag("controller.userInfoHook", pflag.Lookup("user-info-webhook")))
+
 	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
@@ -208,6 +216,10 @@ func main() {
 	controllerNodeName, exists := os.LookupEnv("CONTROLLER_NODE_NAME")
 	if !exists {
 		logger.Fatal("missing required CONTROLLER_NODE_NAME environment variable")
+	}
+
+	if !cfg.Controller.UserInfoHook && cfg.Controller.Notifiers.Slack.Enabled {
+		logger.Fatal("cannot enable slack notifier without enabling the user info webhook")
 	}
 
 	// load configuration file if present
@@ -276,6 +288,11 @@ func main() {
 	// target selector
 	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName)
 
+	var gcPtr *time.Duration
+	if cfg.Controller.ExpiredDisruptionGCDelay >= 0 {
+		gcPtr = &cfg.Controller.ExpiredDisruptionGCDelay
+	}
+
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:                                mgr.GetClient(),
@@ -285,6 +302,7 @@ func main() {
 		MetricsSink:                           ms,
 		TargetSelector:                        targetSelector,
 		InjectorAnnotations:                   cfg.Injector.Annotations,
+		InjectorLabels:                        cfg.Injector.Labels,
 		InjectorServiceAccount:                cfg.Injector.ServiceAccount,
 		InjectorImage:                         cfg.Injector.Image,
 		ChaosNamespace:                        cfg.Injector.ChaosNamespace,
@@ -292,7 +310,7 @@ func main() {
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
-		ExpiredDisruptionGCDelay:              cfg.Controller.ExpiredDisruptionGCDelay,
+		ExpiredDisruptionGCDelay:              gcPtr,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
@@ -314,23 +332,27 @@ func main() {
 		os.Exit(1) //nolint:gocritic
 	}
 
-	// register chaos handler init container mutating webhook
-	mgr.GetWebhookServer().Register("/mutate-v1-pod-chaos-handler-init-container", &webhook.Admission{
-		Handler: &chaoswebhook.ChaosHandlerMutator{
-			Client:  mgr.GetClient(),
-			Log:     logger,
-			Image:   cfg.Handler.Image,
-			Timeout: cfg.Handler.Timeout,
-		},
-	})
+	if cfg.Handler.Enabled {
+		// register chaos handler init container mutating webhook
+		mgr.GetWebhookServer().Register("/mutate-v1-pod-chaos-handler-init-container", &webhook.Admission{
+			Handler: &chaoswebhook.ChaosHandlerMutator{
+				Client:  mgr.GetClient(),
+				Log:     logger,
+				Image:   cfg.Handler.Image,
+				Timeout: cfg.Handler.Timeout,
+			},
+		})
+	}
 
-	// register user info mutating webhook
-	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info", &webhook.Admission{
-		Handler: &chaoswebhook.UserInfoMutator{
-			Client: mgr.GetClient(),
-			Log:    logger,
-		},
-	})
+	if cfg.Controller.UserInfoHook {
+		// register user info mutating webhook
+		mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info", &webhook.Admission{
+			Handler: &chaoswebhook.UserInfoMutator{
+				Client: mgr.GetClient(),
+				Log:    logger,
+			},
+		})
+	}
 
 	// +kubebuilder:scaffold:builder
 

@@ -32,7 +32,7 @@ func (f *TcMock) AddPrio(ifaces []string, parent string, handle uint32, bands ui
 }
 
 //nolint:golint
-func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
+func (f *TcMock) AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
 	srcIPs := "nil"
 	dstIPs := "nil"
 
@@ -44,7 +44,7 @@ func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP,
 		dstIPs = dstIP.String()
 	}
 
-	args := f.Called(ifaces, parent, handle, srcIPs, dstIPs, srcPort, dstPort, protocol, flowid)
+	args := f.Called(ifaces, parent, priority, handle, srcIPs, dstIPs, srcPort, dstPort, protocol, flowid)
 
 	return args.Error(0)
 }
@@ -66,6 +66,12 @@ func (f *TcMock) AddOutputLimit(ifaces []string, parent string, handle uint32, b
 //nolint:golint
 func (f *TcMock) ClearQdisc(ifaces []string) error {
 	args := f.Called(ifaces)
+
+	return args.Error(0)
+}
+
+func (f *TcMock) DeleteFilter(iface string, priority uint32) error {
+	args := f.Called(iface, priority)
 
 	return args.Error(0)
 }
