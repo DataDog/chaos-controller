@@ -62,6 +62,7 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 		}
 	}
 
+	n.logger.Info("notifier: sending notifier event to datadog")
 	n.client.SimpleEvent(headerText, bodyText)
 
 	return nil
