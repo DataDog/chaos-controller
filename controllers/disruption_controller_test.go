@@ -165,12 +165,6 @@ var _ = Describe("Disruption Controller", func() {
 					BandwidthLimit: 10000,
 				},
 				CPUPressure: &chaosv1beta1.CPUPressureSpec{},
-				DiskPressure: &chaosv1beta1.DiskPressureSpec{
-					Path: "/mnt/foo",
-					Throttling: chaosv1beta1.DiskPressureThrottlingSpec{
-						ReadBytesPerSec: func() *int { i := int(10000); return &i }(),
-					},
-				},
 				DNS: []chaosv1beta1.HostRecordPair{
 					{
 						Hostname: "ctn",
