@@ -727,13 +727,13 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 	}
 
 	for _, chaosPod := range chaosPods {
-		r.terminateChaosPod(instance, chaosPod)
+		r.handleChaosPodTermination(instance, chaosPod)
 	}
 
 	return r.Status().Update(context.Background(), instance)
 }
 
-func (r *DisruptionReconciler) terminateChaosPod(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) {
+func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) {
 	removeFinalizer := false
 	ignoreStatus := false
 	target := chaosPod.Labels[chaostypes.TargetLabel]
@@ -943,7 +943,7 @@ func (r *DisruptionReconciler) deleteChaosPod(instance *chaosv1beta1.Disruption,
 			r.log.Errorw("error terminating chaos pod", "error", err, "chaosPod", chaosPod.Name)
 		}
 
-		r.terminateChaosPod(instance, chaosPod)
+		r.handleChaosPodTermination(instance, chaosPod)
 	}
 }
 
