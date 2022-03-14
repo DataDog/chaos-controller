@@ -33,6 +33,7 @@ func New(commonConfig types.NotifiersCommonConfig, datadogConfig NotifierDatadog
 	}
 
 	url := os.Getenv("STATSD_URL")
+
 	instance, err := statsd.New(url, statsd.WithTags([]string{"app:chaos-controller"}))
 	if err != nil {
 		return nil, err
@@ -63,7 +64,11 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 	}
 
 	n.logger.Info("notifier: sending notifier event to datadog")
-	n.client.SimpleEvent(headerText, bodyText)
+
+	err := n.client.SimpleEvent(headerText, bodyText)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
