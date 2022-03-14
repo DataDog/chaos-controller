@@ -6,12 +6,13 @@
 package datadog
 
 import (
+	"os"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/datadog-go/statsd"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"os"
 )
 
 type NotifierDatadogConfig struct {
