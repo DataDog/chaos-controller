@@ -66,6 +66,14 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 
 	n.logger.Info("notifier: sending notifier event to datadog")
 
+	if team := dis.Spec.Selector.Get("team"); team != "" {
+		n.client.Tags = append(n.client.Tags, "team:"+team)
+	}
+
+	if service := dis.Spec.Selector.Get("app"); service != "" {
+		n.client.Tags = append(n.client.Tags, "service:"+service)
+	}
+
 	err := n.client.SimpleEvent(headerText, bodyText)
 	if err != nil {
 		return err
