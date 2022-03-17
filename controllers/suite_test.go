@@ -45,8 +45,8 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const (
-	timeout = time.Second * 45
-	HostTopologyKey = "kubernetes.io/hostname"
+	timeout         = time.Second * 45
+	hostTopologyKey = "kubernetes.io/hostname"
 )
 
 var (
@@ -223,7 +223,7 @@ var _ = AfterSuite(func() {
 func setupEnvironment() {
 	namespace = "chaos-engineering"
 	testPodImage = "k8s.gcr.io/pause:3.4.1"
-	nodeLabel = map[string]string{HostTopologyKey: "minikube"}
+	nodeLabel = map[string]string{hostTopologyKey: "minikube"}
 }
 
 // podsAreRunning returns true when all the given pods have all their containers running
