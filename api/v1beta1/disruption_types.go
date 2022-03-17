@@ -321,12 +321,14 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 
 // RemoveDeadTargets removes targets not found in matchingTargets from the targets list
 func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
+	var desiredTargets []string
+
 	for index := 0; index < len(status.Targets); index++ {
-		if !utils.Contains(matchingTargets, status.Targets[index]) {
-			status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
-			status.Targets = status.Targets[:len(status.Targets)-1]
+		if utils.Contains(matchingTargets, status.Targets[index]) {
+			desiredTargets = append(desiredTargets, status.Targets[index])
 		}
 	}
+	status.Targets = desiredTargets
 }
 
 // AddTargets adds newTargetsCount random targets from the eligibleTargets list to the Target List
