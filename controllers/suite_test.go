@@ -46,6 +46,7 @@ import (
 
 const (
 	timeout = time.Second * 45
+	HostTopologyKey = "kubernetes.io/hostname"
 )
 
 var (
@@ -56,6 +57,9 @@ var (
 	instanceKey types.NamespacedName
 	targetPodA  *corev1.Pod
 	targetPodB  *corev1.Pod
+	namespace    string
+	nodeLabel    map[string]string
+	testPodImage string
 )
 
 func TestAPIs(t *testing.T) {
@@ -99,11 +103,17 @@ var _ = BeforeSuite(func(done Done) {
 		Expect(err).ToNot(HaveOccurred())
 	}()
 
-	instanceKey = types.NamespacedName{Name: "foo", Namespace: "default"}
+	// wait for the cache to sync
+	time.Sleep(10 * time.Second)
+
+	// set up enviroment-specific properties
+	setupEnvironment()
+
+	instanceKey = types.NamespacedName{Name: "foo", Namespace: namespace}
 	targetPodA = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
-			Namespace: "default",
+			Namespace: namespace,
 			Labels: map[string]string{
 				"foo": "bar",
 			},
@@ -111,7 +121,7 @@ var _ = BeforeSuite(func(done Done) {
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Image: "k8s.gcr.io/pause:3.4.1",
+					Image: testPodImage,
 					Name:  "ctn1",
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -121,7 +131,7 @@ var _ = BeforeSuite(func(done Done) {
 					},
 				},
 				{
-					Image: "k8s.gcr.io/pause:3.4.1",
+					Image: testPodImage,
 					Name:  "ctn2",
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -150,7 +160,7 @@ var _ = BeforeSuite(func(done Done) {
 	targetPodB = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
-			Namespace: "default",
+			Namespace: namespace,
 			Labels: map[string]string{
 				"foo": "bar",
 			},
@@ -158,7 +168,7 @@ var _ = BeforeSuite(func(done Done) {
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Image: "k8s.gcr.io/pause:3.4.1",
+					Image: testPodImage,
 					Name:  "ctn1",
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -208,6 +218,13 @@ var _ = AfterSuite(func() {
 
 	Expect(testEnv.Stop()).To(BeNil())
 })
+
+// setupEnvironment sets up environment-specific properties
+func setupEnvironment() {
+	namespace = "chaos-engineering"
+	testPodImage = "k8s.gcr.io/pause:3.4.1"
+	nodeLabel = map[string]string{HostTopologyKey: "minikube"}
+}
 
 // podsAreRunning returns true when all the given pods have all their containers running
 func podsAreRunning(pods ...*corev1.Pod) (bool, error) {

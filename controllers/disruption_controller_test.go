@@ -41,12 +41,11 @@ func listChaosPods(instance *chaosv1beta1.Disruption) (corev1.PodList, error) {
 	ls := labels.NewSelector()
 
 	// create requirements
-	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "bar", "minikube"})
 	disruptionNameRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNameLabel, selection.Equals, []string{instance.Name})
 	disruptionNamespaceRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNamespaceLabel, selection.Equals, []string{instance.Namespace})
 
 	// add requirements to label selector
-	ls = ls.Add(*targetPodRequirement, *disruptionNamespaceRequirement, *disruptionNameRequirement)
+	ls = ls.Add(*disruptionNamespaceRequirement, *disruptionNameRequirement)
 
 	// get matching pods
 	if err := k8sClient.List(context.Background(), &l, &client.ListOptions{
@@ -134,7 +133,7 @@ var _ = Describe("Disruption Controller", func() {
 		disruption = &chaosv1beta1.Disruption{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
-				Namespace: "default",
+				Namespace: namespace,
 			},
 			Spec: chaosv1beta1.DisruptionSpec{
 				DryRun:     true,
@@ -224,7 +223,7 @@ var _ = Describe("Disruption Controller", func() {
 			disruption = &chaosv1beta1.Disruption{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
-					Namespace: "default",
+					Namespace: namespace,
 				},
 				Spec: chaosv1beta1.DisruptionSpec{
 					DryRun:   false,
