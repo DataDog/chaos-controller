@@ -271,6 +271,28 @@ spec:
                     type: object
                   nullable: true
                   type: array
+                nodes:
+                  items:
+                    properties:
+                      selector:
+                        additionalProperties:
+                          type: string
+                        description: Set is a map of label:value. It implements Labels.
+                        type: object
+                    type: object
+                  nullable: true
+                  type: array
+                pods:
+                  items:
+                    properties:
+                      selector:
+                        additionalProperties:
+                          type: string
+                        description: Set is a map of label:value. It implements Labels.
+                        type: object
+                    type: object
+                  nullable: true
+                  type: array
                 port:
                   maximum: 65535
                   minimum: 0

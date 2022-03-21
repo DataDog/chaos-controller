@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -30,6 +31,10 @@ type NetworkDisruptionSpec struct {
 	AllowedHosts []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
 	// +nullable
 	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
+	// +nullable
+	Pods []NetworkDisruptionPodSpec `json:"pods,omitempty"`
+	// +nullable
+	Nodes []NetworkDisruptionNodeSpec `json:"nodes,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	// +ddmark:validation:Minimum=0
@@ -87,6 +92,14 @@ type NetworkDisruptionHostSpec struct {
 type NetworkDisruptionServiceSpec struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+}
+
+type NetworkDisruptionPodSpec struct {
+	Selector labels.Set `json:"selector,omitempty"` // label selector
+}
+
+type NetworkDisruptionNodeSpec struct {
+	Selector labels.Set `json:"selector,omitempty"` // label selector
 }
 
 // Validate validates args for the given disruption
@@ -152,6 +165,16 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	// append services
 	for _, service := range s.Services {
 		args = append(args, "--services", fmt.Sprintf("%s;%s", service.Name, service.Namespace))
+	}
+
+	// append pods
+	for _, pod := range s.Pods {
+		args = append(args, "--pods", pod.Selector.String())
+	}
+
+	// append nodes
+	for _, node := range s.Nodes {
+		args = append(args, "--nodes", node.Selector.String())
 	}
 
 	return args
@@ -224,6 +247,42 @@ func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisrupt
 	}
 
 	return parsedServices, nil
+}
+
+func NetworkDisruptionPodsSpecFromString(pods []string) ([]NetworkDisruptionPodSpec, error) {
+	parsedPods := []NetworkDisruptionPodSpec{}
+
+	// parse given services
+	for _, pod := range pods {
+		selector, err := labels.ConvertSelectorToLabelsMap(pod)
+		if err != nil {
+			return nil, fmt.Errorf("unexpected selector format: %v", err)
+		}
+
+		parsedPods = append(parsedPods, NetworkDisruptionPodSpec{
+			Selector: selector,
+		})
+	}
+
+	return parsedPods, nil
+}
+
+func NetworkDisruptionNodesSpecFromString(nodes []string) ([]NetworkDisruptionNodeSpec, error) {
+	parsedNodes := []NetworkDisruptionNodeSpec{}
+
+	// parse given services
+	for _, node := range nodes {
+		selector, err := labels.ConvertSelectorToLabelsMap(node)
+		if err != nil {
+			return nil, fmt.Errorf("unexpected selector format: %v", err)
+		}
+
+		parsedNodes = append(parsedNodes, NetworkDisruptionNodeSpec{
+			Selector: selector,
+		})
+	}
+
+	return parsedNodes, nil
 }
 
 func (h NetworkDisruptionHostSpec) Validate() error {

@@ -121,6 +121,7 @@ minikube-start:
 		--container-runtime=${container-runtime} \
 		--memory=${minikube-memory} \
 		--cpus=4 \
+		--nodes=3 \
 		--kubernetes-version=1.19.14 \
 		--disk-size=50GB \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \

@@ -72,6 +72,7 @@ type DisruptionState struct {
 
 // tcServiceFilter describes a tc filter, representing the service filtered and its priority
 type tcServiceFilter struct {
+	kind     string
 	service  networkDisruptionService
 	priority uint32 // one priority per tc filters applied, the priority is the same for all interfaces
 }
@@ -133,6 +134,7 @@ func (i *networkDisruptionInjector) Inject() error {
 	}
 
 	i.config.Log.Infow("adding network disruptions", "drop", i.spec.Drop, "duplicate", i.spec.Duplicate, "corrupt", i.spec.Corrupt, "delay", i.spec.Delay, "delayJitter", i.spec.DelayJitter, "bandwidthLimit", i.spec.BandwidthLimit)
+	i.config.Log.Infow("adding network disrutpions on", "service", len(i.spec.Services), "hosts", len(i.spec.Hosts), "pods", len(i.spec.Pods), "nodes", len(i.spec.Nodes))
 
 	// add netem
 	if i.spec.Delay > 0 || i.spec.Drop > 0 || i.spec.Corrupt > 0 || i.spec.Duplicate > 0 {
@@ -401,6 +403,8 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		}
 
 		// this filter allows the pod to communicate with the node IP
+
+		// TODO: Add a filter for each node matching with the selector
 		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nodeIPNet, 0, 0, "", "1:1"); err != nil {
 			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 		}

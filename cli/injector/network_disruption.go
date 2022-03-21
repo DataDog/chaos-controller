@@ -19,6 +19,8 @@ var networkDisruptionCmd = &cobra.Command{
 		hosts, _ := cmd.Flags().GetStringSlice("hosts")
 		allowedHosts, _ := cmd.Flags().GetStringSlice("allowed-hosts")
 		services, _ := cmd.Flags().GetStringSlice("services")
+		pods, _ := cmd.Flags().GetStringSlice("pods")
+		nodes, _ := cmd.Flags().GetStringSlice("nodes")
 		drop, _ := cmd.Flags().GetInt("drop")
 		duplicate, _ := cmd.Flags().GetInt("duplicate")
 		corrupt, _ := cmd.Flags().GetInt("corrupt")
@@ -50,10 +52,24 @@ var networkDisruptionCmd = &cobra.Command{
 					log.Fatalw("error parsing services", "error", err)
 				}
 
+				parsedPods, err := v1beta1.NetworkDisruptionPodsSpecFromString(pods)
+				if err != nil {
+					log.Fatalw("error parsing pods", "error", err)
+				}
+
+				log.Infof("%s", pods)
+
+				parsedNodes, err := v1beta1.NetworkDisruptionNodesSpecFromString(nodes)
+				if err != nil {
+					log.Fatalw("error parsing nodes", "error", err)
+				}
+
 				spec = v1beta1.NetworkDisruptionSpec{
 					Hosts:          parsedHosts,
 					AllowedHosts:   parsedAllowedHosts,
 					Services:       parsedServices,
+					Pods:           parsedPods,
+					Nodes:          parsedNodes,
 					Drop:           drop,
 					Duplicate:      duplicate,
 					Corrupt:        corrupt,
@@ -73,6 +89,8 @@ func init() {
 	networkDisruptionCmd.Flags().StringSlice("hosts", []string{}, "List of hosts (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>;<flow>)")
 	networkDisruptionCmd.Flags().StringSlice("allowed-hosts", []string{}, "List of allowed hosts not being impacted by the disruption (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>;<flow>)")
 	networkDisruptionCmd.Flags().StringSlice("services", []string{}, "List of services to apply disruptions to (format: <name>;<namespace>)")
+	networkDisruptionCmd.Flags().StringSlice("pods", []string{}, "List of pods selectors to apply disruptions to (format: ;<namespace>)")
+	networkDisruptionCmd.Flags().StringSlice("nodes", []string{}, "List of nodes selectors to apply disruptions to (format: <name>;<namespace>)")
 	networkDisruptionCmd.Flags().Int("drop", 100, "Percentage to drop packets (100 is a total drop)")
 	networkDisruptionCmd.Flags().Int("duplicate", 100, "Percentage to duplicate packets (100 is duplicating each packet)")
 	networkDisruptionCmd.Flags().Int("corrupt", 100, "Percentage to corrupt packets (100 is a total corruption)")
