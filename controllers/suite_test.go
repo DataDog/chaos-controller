@@ -104,7 +104,7 @@ var _ = BeforeSuite(func(done Done) {
 	}()
 
 	// wait for the cache to sync
-	time.Sleep(10 * time.Second)
+	Expect(k8sManager.GetCache().WaitForCacheSync(context.Background())).To(BeTrue())
 
 	// set up enviroment-specific properties
 	setupEnvironment()
