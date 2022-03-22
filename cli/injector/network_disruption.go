@@ -57,8 +57,6 @@ var networkDisruptionCmd = &cobra.Command{
 					log.Fatalw("error parsing pods", "error", err)
 				}
 
-				log.Infof("%s", pods)
-
 				parsedNodes, err := v1beta1.NetworkDisruptionNodesSpecFromString(nodes)
 				if err != nil {
 					log.Fatalw("error parsing nodes", "error", err)

@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: minikube
+  labels:
+    name: minikube
+    topology.kubernetes.io/region: us-east-1
+    topology.kubernetes.io/zone: us-east-1a
+---
+apiVersion: v1
+kind: Node
+metadata:
+  name: minikube-m02
+  labels:
+    name: minikube-m02
+    topology.kubernetes.io/region: us-east-1
+    topology.kubernetes.io/zone: us-east-1b
+---
+apiVersion: v1
+kind: Node
+metadata:
+  name: minikube-m03
+  labels:
+    name: minikube-m03
+    topology.kubernetes.io/region: us-east-1
+    topology.kubernetes.io/zone: us-east-1c
+---
+

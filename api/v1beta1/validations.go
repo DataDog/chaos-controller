@@ -44,6 +44,36 @@ func validateServices(k8sClient client.Client, services []NetworkDisruptionServi
 	return nil
 }
 
+func validatePods(k8sClient client.Client, pods []NetworkDisruptionPodSpec) error {
+	for _, pod := range pods {
+		k8sPods := corev1.PodList{}
+		k8sClient.List(context.Background(), &k8sPods, &client.ListOptions{
+			LabelSelector: pod.Selector.AsSelector(),
+		})
+
+		if len(k8sPods.Items) == 0 {
+			return fmt.Errorf("the pods specified in the network disruption with label selector %s do not exist", pod.Selector.String())
+		}
+	}
+
+	return nil
+}
+
+func validateNodes(k8sClient client.Client, nodes []NetworkDisruptionNodeSpec) error {
+	for _, node := range nodes {
+		k8sNodes := corev1.NodeList{}
+		k8sClient.List(context.Background(), &k8sNodes, &client.ListOptions{
+			LabelSelector: node.Selector.AsSelector(),
+		})
+
+		if len(k8sNodes.Items) == 0 {
+			return fmt.Errorf("the nodes specified in the network disruption with label selector %s do not exist", node.Selector.String())
+		}
+	}
+
+	return nil
+}
+
 // GetIntOrPercentValueSafely has three return values. The first is the int value of intOrStr, and the second is
 // if that int value is a percentage (true) or simply an integer (false).
 func GetIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error) {

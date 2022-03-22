@@ -108,6 +108,14 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 		if err := validateServices(k8sClient, s.Services); err != nil {
 			retErr = multierror.Append(retErr, err)
 		}
+
+		if err := validatePods(k8sClient, s.Pods); err != nil {
+			retErr = multierror.Append(retErr, err)
+		}
+
+		if err := validateNodes(k8sClient, s.Nodes); err != nil {
+			retErr = multierror.Append(retErr, err)
+		}
 	}
 
 	for _, host := range s.Hosts {
