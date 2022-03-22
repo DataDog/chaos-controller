@@ -15,9 +15,8 @@ spec:
   count: 1
   network:
     drop: 100 # percentage of outgoing packets to drop
-    nodes:
-      - selector:
-          topology.kubernetes.io/zone: us-east-1b
     pods:
       - selector: # service name
           app: demo-nginx
+        port: 80
+        protocol: tcp

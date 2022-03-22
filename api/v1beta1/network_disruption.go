@@ -96,6 +96,14 @@ type NetworkDisruptionServiceSpec struct {
 
 type NetworkDisruptionPodSpec struct {
 	Selector labels.Set `json:"selector,omitempty"` // label selector
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
+	// +ddmark:validation:Minimum=0
+	// +ddmark:validation:Maximum=65535
+	Port int `json:"port,omitempty"`
+	// +kubebuilder:validation:Enum=tcp;udp;""
+	// +ddmark:validation:Enum=tcp;udp;""
+	Protocol string `json:"protocol,omitempty"`
 }
 
 type NetworkDisruptionNodeSpec struct {
@@ -177,7 +185,7 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 
 	// append pods
 	for _, pod := range s.Pods {
-		args = append(args, "--pods", pod.Selector.String())
+		args = append(args, "--pods", fmt.Sprintf("%s;%d;%s", pod.Selector.String(), pod.Port, pod.Protocol))
 	}
 
 	// append nodes
@@ -260,15 +268,28 @@ func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisrupt
 func NetworkDisruptionPodsSpecFromString(pods []string) ([]NetworkDisruptionPodSpec, error) {
 	parsedPods := []NetworkDisruptionPodSpec{}
 
-	// parse given services
+	// parse given pods
 	for _, pod := range pods {
-		selector, err := labels.ConvertSelectorToLabelsMap(pod)
+		// parse pods with format <selector>;<port>;<protocol>
+		parsedPod := strings.Split(pod, ";")
+		if len(parsedPod) != 3 {
+			return nil, fmt.Errorf("unexpected pod format: %s", pod)
+		}
+
+		selector, err := labels.ConvertSelectorToLabelsMap(parsedPod[0])
 		if err != nil {
-			return nil, fmt.Errorf("unexpected selector format: %v", err)
+			return nil, fmt.Errorf("unexpected selector format in pod: %v", err)
+		}
+
+		port, err := strconv.Atoi(parsedPod[1])
+		if err != nil {
+			return nil, fmt.Errorf("unexpected port format in pod: %v", err)
 		}
 
 		parsedPods = append(parsedPods, NetworkDisruptionPodSpec{
 			Selector: selector,
+			Port:     port,
+			Protocol: parsedPod[2],
 		})
 	}
 

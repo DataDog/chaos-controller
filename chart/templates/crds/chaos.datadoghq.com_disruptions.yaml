@@ -285,6 +285,16 @@ spec:
                 pods:
                   items:
                     properties:
+                      port:
+                        maximum: 65535
+                        minimum: 0
+                        type: integer
+                      protocol:
+                        enum:
+                        - tcp
+                        - udp
+                        - ""
+                        type: string
                       selector:
                         additionalProperties:
                           type: string

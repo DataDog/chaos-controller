@@ -79,7 +79,7 @@ spec:
           args:
             [
               "-c",
-              "while true; do curl -vvv http://demo.chaos-demo-1.svc.cluster.local:8080; sleep 1; done",
+              "while true; do curl -vvv http://10.244.0.3:80; sleep 1; done",
             ]
           resources:
             limits:
@@ -94,7 +94,7 @@ spec:
           args:
             [
               "-c",
-              "while true; do curl -vvv http://demo.chaos-demo-2.svc.cluster.local:8080; sleep 1; done",
+              "while true; do curl -vvv http://10.244.1.6:80; sleep 1; done",
             ]
           resources:
             limits:
@@ -109,7 +109,7 @@ spec:
           args:
             [
               "-c",
-              "while true; do curl -vvv http://demo.chaos-demo-3.svc.cluster.local:8080; sleep 1; done",
+              "while true; do curl -vvv http://10.244.2.4:80; sleep 1; done",
             ]
           resources:
             limits:
