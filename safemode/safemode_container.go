@@ -15,13 +15,6 @@ type ContainerFailure struct {
 	client client.Client
 }
 
-// CreationSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm *ContainerFailure) CheckInitialSafetyNets() ([]string, error) {
-	safetyNetResponses := []string{}
-
-	return safetyNetResponses, nil
-}
-
 // Init Refer to safemode.Safemode interface for documentation
 func (sm *ContainerFailure) Init(disruption v1beta1.Disruption, client client.Client) {
 	sm.dis = disruption

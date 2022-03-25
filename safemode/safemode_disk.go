@@ -15,13 +15,6 @@ type Disk struct {
 	client client.Client
 }
 
-// CreationSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm *Disk) CheckInitialSafetyNets() ([]string, error) {
-	safetyNetResponses := []string{}
-
-	return safetyNetResponses, nil
-}
-
 // Init Refer to safemode.Safemode interface for documentation
 func (sm *Disk) Init(disruption v1beta1.Disruption, client client.Client) {
 	sm.dis = disruption

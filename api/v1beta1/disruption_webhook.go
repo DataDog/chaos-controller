@@ -6,8 +6,15 @@
 package v1beta1
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/hashicorp/go-multierror"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/DataDog/chaos-controller/metrics"
@@ -82,6 +89,18 @@ func (r *Disruption) ValidateCreate() error {
 		}
 
 		return err
+	}
+
+	// handle initial safety nets
+	if responses, err := r.initialSafetynets(); err != nil {
+		return err
+	} else if len(responses) > 0 {
+		retErr := errors.New("Safety Net Catches")
+		retErr = multierror.Append(retErr, errors.New("at least one of the initial safety nets caught an issue:"))
+		for _, response := range responses {
+			retErr = multierror.Append(retErr, errors.New(response))
+		}
+		return retErr
 	}
 
 	// send validation metric
@@ -159,4 +178,135 @@ func (r *Disruption) getMetricsTags() []string {
 	}
 
 	return tags
+}
+
+// initialSafetynets runs the initial safety nets for any new disruption
+// returns true if any safety net were caught and returns any errors when attempting to run the safety nets
+func (r *Disruption) initialSafetynets() ([]string, error) {
+	responses := []string{}
+	// handle initial safety nets if safemode is enabled
+	if r.Spec.Unsafemode == nil || !r.Spec.Unsafemode.DisableAll {
+
+		if caught, err := safetyNetCountNotTooLarge(*r); err != nil {
+			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet", "error", err)
+		} else if caught {
+			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", r.Name, "SafetyNet Catch", "Generic")
+			responses = append(responses, "the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster")
+		}
+
+		if r.Spec.Network != nil {
+			if caught := safetyNetNeitherHostNorPort(*r); caught {
+				logger.Debugw("The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.", r.Name, "SafetyNet Catch", "Network")
+				responses = append(responses, "The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.")
+			}
+		}
+	}
+
+	return responses, nil
+}
+
+// safetyNetCountNotTooLarge is the safety net regarding the count of targets
+// it will check against the number of targets being targeted and the number of targets in the k8s system
+// > 66% of the k8s system being targeted warrants a safety check if we assume each of our targets are replicated
+// at least twice. > 80% in a namespace also warrants a safety check as namespaces may be shared between services.
+// returning true indicates the safety net caught something
+func safetyNetCountNotTooLarge(r Disruption) (bool, error) {
+	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableCountTooLarge {
+		return false, nil
+	}
+
+	userCount := r.Spec.Count
+	totalCount := 0
+	namespaceCount := 0
+	namespaceThreshold := 0.8
+	clusterThreshold := 0.66
+
+	if r.Spec.Unsafemode.Config != nil && r.Spec.Unsafemode.Config.CountTooLarge != nil {
+		if r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold != 0 {
+			namespaceThreshold = float64(r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold) / 100.0
+		}
+
+		if r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold != 0 {
+			clusterThreshold = float64(r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold) / 100.0
+		}
+	}
+
+	if r.Spec.Level == chaostypes.DisruptionLevelPod {
+		pods := &corev1.PodList{}
+		listOptions := &client.ListOptions{
+			Namespace: r.ObjectMeta.Namespace,
+		}
+
+		err := k8sClient.List(context.Background(), pods, listOptions)
+		if err != nil {
+			return false, fmt.Errorf("error listing target pods: %w", err)
+		}
+
+		namespaceCount = len(pods.Items)
+
+		err = k8sClient.List(context.Background(), pods)
+		if err != nil {
+			return false, fmt.Errorf("error listing target pods: %w", err)
+		}
+
+		totalCount = len(pods.Items)
+	} else {
+		nodes := &corev1.NodeList{}
+
+		err := k8sClient.List(context.Background(), nodes)
+		if err != nil {
+			return false, fmt.Errorf("error listing target pods: %w", err)
+		}
+
+		totalCount = len(nodes.Items)
+	}
+
+	userCountVal := float64(userCount.IntVal)
+
+	if userCount.Type != intstr.Int {
+		userCountInt, err := strconv.Atoi(strings.TrimSuffix(userCount.StrVal, "%"))
+		if err != nil {
+			return false, fmt.Errorf("failed to convert percentage to int: %w", err)
+		}
+
+		if namespaceCount != 0 {
+			userCountVal = float64(userCountInt) / 100.0 * float64(namespaceCount)
+		} else {
+			userCountVal = float64(userCountInt) / 100.0 * float64(totalCount)
+		}
+	}
+
+	// we check to see if the count represents > 80 percent of all pods in the existing namepsace
+	// and if the count represents > 66 percent of all pods in the cluster (2/3s)
+	if userCountVal/float64(namespaceCount) > namespaceThreshold {
+		return true, nil
+	}
+
+	if userCountVal/float64(totalCount) > clusterThreshold {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// safetyNetNeitherHostNorPort is the safety net regarding missing host and port values.
+// it will check against all defined hosts in the network disruption spec to see if any of them have a host and a
+// port missing. The more generic a hosts tuple is (Omitting fields such as port), the bigger the blast radius.
+func safetyNetNeitherHostNorPort(r Disruption) bool {
+	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableNeitherHostNorPort {
+		return false
+	}
+
+	// if hosts are not defined, this also falls into the safety net
+	if r.Spec.Network.Hosts == nil || len(r.Spec.Network.Hosts) == 0 {
+		return true
+	}
+
+	for _, host := range r.Spec.Network.Hosts {
+		if host.Port == 0 && host.Host == "" {
+			return true
+		}
+	}
+
+	return false
 }

@@ -15,41 +15,8 @@ type Network struct {
 	client client.Client
 }
 
-// CreationSafetyNets Refer to safemode.Safemode interface for documentation
-func (sm *Network) CheckInitialSafetyNets() ([]string, error) {
-	safetyNetResponses := []string{}
-	// run through the list of initial safety nets
-	if caught := sm.safetyNetNeitherHostNorPort(); caught {
-		safetyNetResponses = append(safetyNetResponses, " The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius. ")
-	}
-
-	return safetyNetResponses, nil
-}
-
 // Init Refer to safemode.Safemode interface for documentation
 func (sm *Network) Init(disruption v1beta1.Disruption, client client.Client) {
 	sm.dis = disruption
 	sm.client = client
-}
-
-// safetyNetNeitherHostNorPort is the safety net regarding missing host and port values.
-// it will check against all defined hosts in the network disruption spec to see if any of them have a host and a
-// port missing. The more generic a hosts tuple is (Omitting fields such as port), the bigger the blast radius.
-func (sm *Network) safetyNetNeitherHostNorPort() bool {
-	if sm.dis.Spec.Unsafemode != nil && sm.dis.Spec.Unsafemode.DisableNeitherHostNorPort {
-		return false
-	}
-
-	// if hosts are not defined, this also falls into the safety net
-	if sm.dis.Spec.Network.Hosts == nil || len(sm.dis.Spec.Network.Hosts) == 0 {
-		return true
-	}
-
-	for _, host := range sm.dis.Spec.Network.Hosts {
-		if host.Port == 0 && host.Host == "" {
-			return true
-		}
-	}
-
-	return false
 }
