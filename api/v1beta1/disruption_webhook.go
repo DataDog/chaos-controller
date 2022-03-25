@@ -9,13 +9,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
@@ -95,8 +96,8 @@ func (r *Disruption) ValidateCreate() error {
 	if responses, err := r.initialSafetynets(); err != nil {
 		return err
 	} else if len(responses) > 0 {
-		retErr := errors.New("Safety Net Catches")
-		retErr = multierror.Append(retErr, errors.New("at least one of the initial safety nets caught an issue:"))
+		retErr := errors.New("safety net catches")
+		retErr = multierror.Append(retErr, errors.New("at least one of the initial safety nets caught an issue"))
 		for _, response := range responses {
 			retErr = multierror.Append(retErr, errors.New(response))
 		}
@@ -186,17 +187,18 @@ func (r *Disruption) initialSafetynets() ([]string, error) {
 	responses := []string{}
 	// handle initial safety nets if safemode is enabled
 	if r.Spec.Unsafemode == nil || !r.Spec.Unsafemode.DisableAll {
-
 		if caught, err := safetyNetCountNotTooLarge(*r); err != nil {
-			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet", "error", err)
+			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet: %w", err)
 		} else if caught {
 			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", r.Name, "SafetyNet Catch", "Generic")
+
 			responses = append(responses, "the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster")
 		}
 
 		if r.Spec.Network != nil {
 			if caught := safetyNetNeitherHostNorPort(*r); caught {
 				logger.Debugw("The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.", r.Name, "SafetyNet Catch", "Network")
+
 				responses = append(responses, "The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.")
 			}
 		}
