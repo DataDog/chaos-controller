@@ -338,11 +338,13 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta1.Disruption) error {
 	// clean up potential expired cache contexts based on context error return
 	deletionList := []string{}
+
 	for key, contextTuple := range r.CacheContextStore {
 		if contextTuple.Ctx.Err() != nil {
 			deletionList = append(deletionList, key)
 		}
 	}
+
 	for _, key := range deletionList {
 		delete(r.CacheContextStore, key)
 	}
