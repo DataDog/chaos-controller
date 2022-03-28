@@ -21,7 +21,6 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"os"
 	"time"
 
@@ -312,7 +311,7 @@ func main() {
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
 		ExpiredDisruptionGCDelay:              gcPtr,
-		CachesCancel:                          make(map[string]context.CancelFunc),
+		CacheContextStore:                     make(map[string]controllers.CtxTuple),
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
@@ -361,8 +360,8 @@ func main() {
 
 	// erase/close caches contexts
 	defer func() {
-		for _, cancelFunc := range r.CachesCancel {
-			cancelFunc()
+		for _, contextTuple := range r.CacheContextStore {
+			contextTuple.CancelFunc()
 		}
 	}()
 

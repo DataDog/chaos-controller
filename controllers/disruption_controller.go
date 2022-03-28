@@ -62,7 +62,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 	ExpiredDisruptionGCDelay              *time.Duration
-	CachesCancel                          map[string]context.CancelFunc
+	CacheContextStore                     map[string]CtxTuple
 	Controller                            controller.Controller
 }
 
@@ -111,6 +111,11 @@ func (h DisruptionSelectorHandler) OnUpdate(oldObj, newObj interface{}) {
 	default:
 		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:update", "targetKind:object"}))
 	}
+}
+
+type CtxTuple struct {
+	Ctx        context.Context
+	CancelFunc context.CancelFunc
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -331,6 +336,17 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 // createInstanceSelectorCache creates this instance's cache if it doesn't exist and attaches it to the controller
 func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta1.Disruption) error {
+	// clean up potential expired cache contexts based on context error return
+	deletionList := []string{}
+	for key, contextTuple := range r.CacheContextStore {
+		if contextTuple.Ctx.Err() != nil {
+			deletionList = append(deletionList, key)
+		}
+	}
+	for _, key := range deletionList {
+		delete(r.CacheContextStore, key)
+	}
+
 	if !instance.Spec.DynamicTargeting {
 		return nil
 	}
@@ -349,7 +365,7 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 		return fmt.Errorf("error getting instance selector: %w", err)
 	}
 	// if it doesn't exist, create the cache context to re-trigger the disruption
-	if r.CachesCancel[disCacheHash] == nil {
+	if _, ok := r.CacheContextStore[disCacheHash]; !ok {
 		// create the cache/watcher with its options
 		var cacheOptions k8scache.Options
 		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
@@ -397,7 +413,7 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 
 		go func() { ch <- cache.Start(cacheCtx) }()
 
-		r.CachesCancel[disCacheHash] = cacheCancelFunc
+		r.CacheContextStore[disCacheHash] = CtxTuple{cacheCtx, cacheCancelFunc}
 
 		var cacheSource source.SyncingSource
 		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
@@ -429,11 +445,11 @@ func (r *DisruptionReconciler) clearInstanceSelectorCache(instance *chaosv1beta1
 	}
 
 	disCacheHash := disNamespacedName.String() + disSpecHash
-	fCancel, ok := r.CachesCancel[disCacheHash]
+	contextTuple, ok := r.CacheContextStore[disCacheHash]
 
 	if ok {
-		fCancel()
-		delete(r.CachesCancel, disCacheHash)
+		contextTuple.CancelFunc()
+		delete(r.CacheContextStore, disCacheHash)
 	}
 }
 
@@ -1462,7 +1478,7 @@ func (r *DisruptionReconciler) ReportMetrics() {
 			r.log.Errorw("error sending pods.gauge metric", "error", err)
 		}
 
-		if err := r.MetricsSink.MetricSelectorCacheGauge(float64(len(r.CachesCancel))); err != nil {
+		if err := r.MetricsSink.MetricSelectorCacheGauge(float64(len(r.CacheContextStore))); err != nil {
 			r.log.Errorw("error sending selector.cache.gauge metric", "error", err)
 		}
 	}
