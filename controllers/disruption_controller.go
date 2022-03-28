@@ -62,7 +62,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
 	ExpiredDisruptionGCDelay              *time.Duration
-	CachesCancel                          map[types.NamespacedName]context.CancelFunc
+	CachesCancel                          map[string]context.CancelFunc
 	Controller                            controller.Controller
 }
 
@@ -336,13 +336,18 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 	}
 
 	disNamespacedName := types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}
+	disSpecHash, err := instance.Spec.HashNoCount()
+	if err != nil {
+		return fmt.Errorf("error getting disruption hash")
+	}
+	disCacheHash := disNamespacedName.String() + disSpecHash
 	disCompleteSelector, err := targetselector.GetLabelSelectorFromInstance(instance)
 
 	if err != nil {
 		return fmt.Errorf("error getting instance selector: %w", err)
 	}
 	// if it doesn't exist, create the cache context to re-trigger the disruption
-	if r.CachesCancel[disNamespacedName] == nil {
+	if r.CachesCancel[disCacheHash] == nil {
 		// create the cache/watcher with its options
 		var cacheOptions k8scache.Options
 		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
@@ -390,7 +395,7 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 
 		go func() { ch <- cache.Start(cacheCtx) }()
 
-		r.CachesCancel[disNamespacedName] = cacheCancelFunc
+		r.CachesCancel[disCacheHash] = cacheCancelFunc
 
 		var cacheSource source.SyncingSource
 		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
@@ -413,10 +418,18 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 
 // clearInstanceCache closes the context for the disruption-related cache and cleans the cancelFunc array (if it exists)
 func (r *DisruptionReconciler) clearInstanceSelectorCache(instance *chaosv1beta1.Disruption) {
-	fCancel, ok := r.CachesCancel[types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}]
+	disNamespacedName := types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}
+	disSpecHash, err := instance.Spec.HashNoCount()
+	if err != nil {
+		r.log.Errorf("error getting disruption hash")
+		return
+	}
+
+	disCacheHash := disNamespacedName.String() + disSpecHash
+	fCancel, ok := r.CachesCancel[disCacheHash]
 	if ok {
 		fCancel()
-		delete(r.CachesCancel, types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name})
+		delete(r.CachesCancel, disCacheHash)
 	}
 }
 

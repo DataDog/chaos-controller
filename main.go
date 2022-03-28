@@ -46,7 +46,6 @@ import (
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 	"github.com/spf13/viper"
-	k8stypes "k8s.io/apimachinery/pkg/types"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -313,7 +312,7 @@ func main() {
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
 		ExpiredDisruptionGCDelay:              gcPtr,
-		CachesCancel:                          make(map[k8stypes.NamespacedName]context.CancelFunc),
+		CachesCancel:                          make(map[string]context.CancelFunc),
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
