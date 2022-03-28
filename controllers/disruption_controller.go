@@ -389,9 +389,9 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 
 		info.AddEventHandler(DisruptionSelectorHandler{disruption: instance, reconciler: r})
 
-		// start the cache with a cancelable context and attach it to the controller as a watch source
+		// start the cache with a cancelable context and duration, and attach it to the controller as a watch source
 		ch := make(chan error)
-		cacheCtx, cacheCancelFunc := context.WithCancel(context.TODO())
+		cacheCtx, cacheCancelFunc := context.WithTimeout(context.Background(), instance.Spec.Duration.Duration()+*r.ExpiredDisruptionGCDelay*2)
 
 		go func() { ch <- cache.Start(cacheCtx) }()
 
