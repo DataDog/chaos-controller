@@ -117,6 +117,14 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 		return fmt.Errorf("only a disruption spec's Count field can be edited, please delete and recreate it if needed")
 	}
 
+	if err := r.Spec.Validate(); err != nil {
+		if mErr := metricsSink.MetricValidationFailed(r.getMetricsTags()); mErr != nil {
+			logger.Errorw("error sending a metric", "error", mErr)
+		}
+
+		return err
+	}
+
 	// send validation metric
 	if err := metricsSink.MetricValidationUpdated(r.getMetricsTags()); err != nil {
 		logger.Errorw("error sending a metric", "error", err)
