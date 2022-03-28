@@ -337,9 +337,11 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 
 	disNamespacedName := types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}
 	disSpecHash, err := instance.Spec.HashNoCount()
+
 	if err != nil {
 		return fmt.Errorf("error getting disruption hash")
 	}
+
 	disCacheHash := disNamespacedName.String() + disSpecHash
 	disCompleteSelector, err := targetselector.GetLabelSelectorFromInstance(instance)
 
@@ -420,6 +422,7 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 func (r *DisruptionReconciler) clearInstanceSelectorCache(instance *chaosv1beta1.Disruption) {
 	disNamespacedName := types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}
 	disSpecHash, err := instance.Spec.HashNoCount()
+
 	if err != nil {
 		r.log.Errorf("error getting disruption hash")
 		return
@@ -427,6 +430,7 @@ func (r *DisruptionReconciler) clearInstanceSelectorCache(instance *chaosv1beta1
 
 	disCacheHash := disNamespacedName.String() + disSpecHash
 	fCancel, ok := r.CachesCancel[disCacheHash]
+
 	if ok {
 		fCancel()
 		delete(r.CachesCancel, disCacheHash)
@@ -530,6 +534,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 			if subspec := instance.Spec.DisruptionKindPicker(kind); reflect.ValueOf(subspec).IsNil() {
 				continue
 			}
+
 			if _, ok := chaosPodsMap[target+"-"+kind.String()]; ok {
 				continue
 			}
@@ -537,6 +542,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 			if err = r.createChaosPods(instance, target); err != nil {
 				return fmt.Errorf("error creating chaos pods: %w", err)
 			}
+
 			break
 		}
 	}

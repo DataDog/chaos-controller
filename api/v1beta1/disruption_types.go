@@ -174,6 +174,7 @@ func (s *DisruptionSpec) hash() (string, error) {
 func (s *DisruptionSpec) HashNoCount() (string, error) {
 	sCopy := s.DeepCopy()
 	sCopy.Count = nil
+
 	return sCopy.hash()
 }
 
@@ -334,6 +335,7 @@ func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
 			desiredTargets = append(desiredTargets, status.Targets[index])
 		}
 	}
+
 	status.Targets = desiredTargets
 }
 
