@@ -507,18 +507,24 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		if !utils.Contains(instance.Status.Targets, chaosPod.Labels[chaostypes.TargetLabel]) {
 			r.deleteChaosPod(instance, chaosPod)
 		} else {
-			chaosPodsMap[chaosPod.Labels[chaostypes.TargetLabel]] = chaosPod
+			chaosPodsMap[chaosPod.Labels[chaostypes.TargetLabel]+"-"+chaosPod.Labels[chaostypes.DisruptionKindLabel]] = chaosPod
 		}
 	}
 
+	// iterate through target + existing disruption kind -- to ensure all chaos pods exist
 	for _, target := range instance.Status.Targets {
-		_, ok := chaosPodsMap[target]
-		if ok {
-			continue
-		}
+		for _, kind := range chaostypes.DisruptionKindNames {
+			if subspec := instance.Spec.DisruptionKindPicker(kind); reflect.ValueOf(subspec).IsNil() {
+				continue
+			}
+			if _, ok := chaosPodsMap[target+"-"+kind.String()]; ok {
+				continue
+			}
 
-		if err = r.createChaosPods(instance, target); err != nil {
-			return fmt.Errorf("error creating chaos pods: %w", err)
+			if err = r.createChaosPods(instance, target); err != nil {
+				return fmt.Errorf("error creating chaos pods: %w", err)
+			}
+			break
 		}
 	}
 
