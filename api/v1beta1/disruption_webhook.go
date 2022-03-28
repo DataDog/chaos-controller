@@ -100,12 +100,12 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	logger.Debugw("validating updated disruption", "instance", r.Name, "namespace", r.Namespace)
 
 	// compare old and new disruption hashes and deny any spec changes
-	oldHash, err := old.(*Disruption).Spec.Hash()
+	oldHash, err := old.(*Disruption).Spec.HashNoCount()
 	if err != nil {
 		return fmt.Errorf("error getting old disruption hash: %w", err)
 	}
 
-	newHash, err := r.Spec.Hash()
+	newHash, err := r.Spec.HashNoCount()
 	if err != nil {
 		return fmt.Errorf("error getting new disruption hash: %w", err)
 	}
@@ -114,7 +114,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 
 	if oldHash != newHash {
 		logger.Errorw("error when comparing disruption spec hashes", "instance", r.Name, "namespace", r.Namespace, "oldHash", oldHash, "newHash", newHash)
-		return fmt.Errorf("a disruption spec can't be edited, please delete and recreate it if needed")
+		return fmt.Errorf("only a disruption spec's Count field can be edited, please delete and recreate it if needed")
 	}
 
 	// send validation metric
