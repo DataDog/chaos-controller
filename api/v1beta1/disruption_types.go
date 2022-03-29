@@ -160,7 +160,7 @@ func init() {
 }
 
 // Hash returns the disruption spec JSON hash
-func (s *DisruptionSpec) hash() (string, error) {
+func (s *DisruptionSpec) Hash() (string, error) {
 	// serialize instance spec to JSON
 	specBytes, err := json.Marshal(s)
 	if err != nil {
@@ -175,7 +175,7 @@ func (s *DisruptionSpec) HashNoCount() (string, error) {
 	sCopy := s.DeepCopy()
 	sCopy.Count = nil
 
-	return sCopy.hash()
+	return sCopy.Hash()
 }
 
 // Validate applies rules for disruption global scope and all subsequent disruption specifications
