@@ -134,8 +134,6 @@ spec:
               type: boolean
             duration:
               type: string
-            dynamicTargeting:
-              type: boolean
             grpc:
               description: GRPCDisruptionSpec represents a gRPC disruption
               nullable: true
@@ -320,6 +318,8 @@ spec:
               description: Set is a map of label:value. It implements Labels.
               nullable: true
               type: object
+            staticTargeting:
+              type: boolean
           required:
           - count
           type: object

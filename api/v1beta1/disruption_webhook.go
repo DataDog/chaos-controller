@@ -53,6 +53,13 @@ func (r *Disruption) Default() {
 		logger.Infow(fmt.Sprintf("setting default duration of %s in disruption", defaultDuration), "instance", r.Name, "namespace", r.Namespace)
 		r.Spec.Duration = DisruptionDuration(defaultDuration.String())
 	}
+
+	if r.Spec.StaticTargeting == nil {
+		r.Spec.StaticTargeting = func() *bool {
+			b := true
+			return &b
+		}()
+	}
 }
 
 //+kubebuilder:webhook:webhookVersions={v1beta1},path=/validate-chaos-datadoghq-com-v1beta1-disruption,mutating=false,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptions,verbs=create;update;delete,versions=v1beta1,name=vdisruption.kb.io,admissionReviewVersions={v1,v1beta1}
