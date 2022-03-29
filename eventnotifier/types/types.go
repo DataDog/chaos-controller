@@ -17,4 +17,7 @@ const (
 
 	// NotifierDriverNoop is a noop driver mainly used for testing
 	NotifierDriverNoop NotifierDriver = "noop"
+
+	// NotifierDriverDatadog is the Datadog driver
+	NotifierDriverDatadog NotifierDriver = "datadog"
 )

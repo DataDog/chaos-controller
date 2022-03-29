@@ -33,7 +33,8 @@ If your team has specific disruption requirements around what `protocol` to disr
 
 * [How do I decide my traffic flow? (Ingress vs Egress)](/docs/network_disruption/flow.md)
 * [What should I specify in hosts vs services?](/docs/network_disruption/hosts.md)
-* [What are `prio` qdiscs and how does chaos-controller use them?](/docs/network_disruption/prio.md)
+* [What are `prio` qdiscs and how does the chaos-controller use them?](/docs/network_disruption/prio.md)
+* [How are changes in destination pods and services filtered on handled by the chaos-controller?](/docs/changes_handling.md#network-disruption-dynamic-service-resolution)
 
 Still have questions? Reach out to the contributors to explore our options!
 

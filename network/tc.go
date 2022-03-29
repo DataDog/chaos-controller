@@ -33,7 +33,8 @@ type protocolIdentifier int
 type TrafficController interface {
 	AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error
 	AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
-	AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error
+	AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error
+	DeleteFilter(iface string, priority uint32) error
 	AddCgroupFilter(ifaces []string, parent string, handle uint32) error
 	AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error
 	ClearQdisc(ifaces []string) error
@@ -112,7 +113,7 @@ func (t tc) AddNetem(ifaces []string, parent string, handle uint32, delay time.D
 	params = strings.TrimPrefix(params, " ")
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "netem", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, 0, handle, "netem", params)...); err != nil {
 			return err
 		}
 	}
@@ -130,7 +131,7 @@ func (t tc) AddPrio(ifaces []string, parent string, handle uint32, bands uint32,
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "prio", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, 0, handle, "prio", params)...); err != nil {
 			return err
 		}
 	}
@@ -146,7 +147,7 @@ func (t tc) AddOutputLimit(ifaces []string, parent string, handle uint32, bytesP
 	//   - https://unix.stackexchange.com/questions/100785/bucket-size-in-tbf
 	//   - https://linux.die.net/man/8/tc-tbf
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, 0, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))...); err != nil {
 			return err
 		}
 	}
@@ -166,7 +167,7 @@ func (t tc) ClearQdisc(ifaces []string) error {
 }
 
 // AddFilter generates a filter to redirect the traffic matching the given ip, port and protocol to the given flowid
-func (t tc) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
+func (t tc) AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
 	var params string
 
 	// ensure at least an IP or a port has been specified (otherwise the filter doesn't make sense)
@@ -200,9 +201,17 @@ func (t tc) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstI
 	params += fmt.Sprintf("flowid %s", flowid)
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "u32", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, priority, handle, "u32", params)...); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (t tc) DeleteFilter(iface string, priority uint32) error {
+	if _, _, err := t.executer.Run("filter", "delete", "dev", iface, "priority", fmt.Sprintf("%d", priority)); err != nil {
+		return err
 	}
 
 	return nil
@@ -211,7 +220,7 @@ func (t tc) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstI
 // AddCgroupFilter generates a cgroup filter
 func (t tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error {
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, handle, "cgroup", "")...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, 0, handle, "cgroup", "")...); err != nil {
 			return err
 		}
 	}
@@ -230,8 +239,12 @@ func getProtocolIndentifier(protocol string) protocolIdentifier {
 	}
 }
 
-func buildCmd(module string, iface string, parent string, handle uint32, kind string, parameters string) []string {
+func buildCmd(module string, iface string, parent string, priority uint32, handle uint32, kind string, parameters string) []string {
 	cmd := fmt.Sprintf("%s add dev %s", module, iface)
+
+	if priority != 0 {
+		cmd += fmt.Sprintf(" priority %d", priority)
+	}
 
 	// parent
 	if parent == "root" {

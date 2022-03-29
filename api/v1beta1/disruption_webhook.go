@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	v1 "k8s.io/api/authentication/v1"
 
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
@@ -159,11 +161,18 @@ func (r *Disruption) getMetricsTags() []string {
 		"namespace:" + r.Namespace,
 	}
 
-	if r.Status.UserInfo != nil {
-		tags = append(tags, "username:"+r.Status.UserInfo.Username)
+	if _, ok := r.Annotations["UserInfo"]; ok {
+		var annotation v1.UserInfo
+
+		err := json.Unmarshal([]byte(r.Annotations["UserInfo"]), &annotation)
+		if err != nil {
+			logger.Errorw("Error decoding annotation", err)
+		}
+
+		tags = append(tags, "username:"+annotation.Username)
 
 		// add groups
-		for _, group := range r.Status.UserInfo.Groups {
+		for _, group := range annotation.Groups {
 			tags = append(tags, "group:"+group)
 		}
 	}

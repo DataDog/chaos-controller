@@ -19,7 +19,6 @@ import (
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
-	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -126,14 +125,13 @@ type DisruptionStatus struct {
 	Targets []string `json:"targets,omitempty"`
 	// +nullable
 	IgnoredTargets []string `json:"ignoredTargets,omitempty"`
-	// +nullable
-	UserInfo *authv1.UserInfo `json:"userInfo,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
 // Disruption is the Schema for the disruptions API
 // +kubebuilder:resource:shortName=dis
+// +kubebuilder:subresource:status
 type Disruption struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
