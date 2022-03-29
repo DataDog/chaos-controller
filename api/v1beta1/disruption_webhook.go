@@ -16,9 +16,9 @@ import (
 
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
+	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	v1 "k8s.io/api/authentication/v1"
 
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
