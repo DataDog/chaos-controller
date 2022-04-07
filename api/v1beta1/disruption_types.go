@@ -217,6 +217,10 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible with network and dns disruptions"))
 		}
 
+		if s.DNS != nil && len(s.Containers) > 0 {
+			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible on dns disruptions with no subset of targeted containers"))
+		}
+
 		if s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
 			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible with pod level disruptions"))
 		}

@@ -112,7 +112,7 @@ func (i DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
 
-	if i.config.Level == chaostypes.DisruptionLevelPod {
+	if i.config.Level == chaostypes.DisruptionLevelPod && !i.config.OnInit {
 		// write classid to container net_cls cgroup - for iptable filtering
 		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", InjectorDNSCgroupClassID); err != nil {
 			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
@@ -120,6 +120,13 @@ func (i DNSDisruptionInjector) Inject() error {
 
 		// Redirect traffic marked by targeted InjectorDNSCgroupClassID to CHAOS-DNS
 		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
+			return fmt.Errorf("unable to create new iptables rule: %w", err)
+		}
+	}
+
+	if i.config.OnInit {
+		// Redirect all dns related traffic in the pod to CHAOS-DNS
+		if err := i.config.Iptables.AddWideFilterRule("OUTPUT", "udp", "53", "CHAOS-DNS"); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 	}
