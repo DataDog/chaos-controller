@@ -106,7 +106,6 @@ func (i iptables) AddWideFilterRule(chain string, protocol string, port string, 
 	i.log.Infow("creating new iptables rule", "chain name", chain, "protocol", protocol, "port", port, "jump target", jump)
 
 	return i.ip.AppendUnique("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
-
 }
 
 func (i iptables) DeleteRule(chain string, protocol string, port string, jump string) error {
