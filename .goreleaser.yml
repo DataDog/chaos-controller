@@ -1,6 +1,8 @@
 before:
   hooks:
     - go mod download
+    - pkger -o /cli/chaosli/cmd
+
 builds:
   - id: controller
     binary: manager
@@ -28,6 +30,10 @@ builds:
     goos:
       - linux
       - darwin
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version={{ .Tag }}
 archives:
   - id: controller
     builds:
