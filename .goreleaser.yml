@@ -30,8 +30,6 @@ builds:
     goos:
       - linux
       - darwin
-    env:
-      - CGO_ENABLED=0
     ldflags:
       - -X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version={{ .Tag }}
 archives:
