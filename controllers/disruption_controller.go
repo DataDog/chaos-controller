@@ -535,30 +535,35 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
 	}
 
-	// chaosPodsMap will be used to check if a target has an existing chaos pod already or not
-	chaosPodsMap := map[string]corev1.Pod{}
+	// chaosPodsMap is used to check if a target's chaos pods already exist or not
+	chaosPodsMap := make(map[string]map[string]bool, len(instance.Status.Targets))
 
 	chaosPods, err := r.getChaosPods(instance, nil)
 	if err != nil {
 		return fmt.Errorf("error getting chaos pods: %w", err)
 	}
 
+	// init all the required maps
+	for _, target := range instance.Status.Targets {
+		chaosPodsMap[target] = make(map[string]bool)
+	}
+
 	for _, chaosPod := range chaosPods {
 		if !utils.Contains(instance.Status.Targets, chaosPod.Labels[chaostypes.TargetLabel]) {
 			r.deleteChaosPod(instance, chaosPod)
 		} else {
-			chaosPodsMap[chaosPod.Labels[chaostypes.TargetLabel]+"-"+chaosPod.Labels[chaostypes.DisruptionKindLabel]] = chaosPod
+			chaosPodsMap[chaosPod.Labels[chaostypes.TargetLabel]][chaosPod.Labels[chaostypes.DisruptionKindLabel]] = true
 		}
 	}
 
 	// iterate through target + existing disruption kind -- to ensure all chaos pods exist
 	for _, target := range instance.Status.Targets {
-		for _, kind := range chaostypes.DisruptionKindNames {
-			if subspec := instance.Spec.DisruptionKindPicker(kind); reflect.ValueOf(subspec).IsNil() {
+		for _, disKind := range chaostypes.DisruptionKindNames {
+			if subspec := instance.Spec.DisruptionKindPicker(disKind); reflect.ValueOf(subspec).IsNil() {
 				continue
 			}
 
-			if _, ok := chaosPodsMap[target+"-"+kind.String()]; ok {
+			if _, ok := chaosPodsMap[target][disKind.String()]; ok {
 				continue
 			}
 
