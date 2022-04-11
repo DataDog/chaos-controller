@@ -573,6 +573,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 	return nil
 }
 
+// createChaosPods attempts to creates all the chaos pods for a given target. If a given chaos pod already exists, it is not recreated.
 func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption, target string) error {
 	var err error
 
@@ -870,7 +871,7 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 		// if the chaos pod finalizer must not be removed and the chaos pod must not be deleted
 		// and the cleanup status must not be ignored, we are stuck and won't be able to remove the disruption
 		r.log.Infow("instance seems stuck on removal for this target, please check manually", "target", target, "chaosPod", chaosPod.Name)
-		r.Recorder.Event(instance, corev1.EventTypeWarning, "StuckOnRemoval", "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer")
+		r.Recorder.Event(instance, corev1.EventTypeWarning, "StuckOnRemoval", "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer. https://github.com/DataDog/chaos-controller/blob/main/docs/faq.md")
 
 		instance.Status.IsStuckOnRemoval = true
 	}
