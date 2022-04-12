@@ -17,6 +17,7 @@ type Iptables interface {
 	CreateChain(name string) error
 	ClearAndDeleteChain(name string) error
 	AddRuleWithIP(chain string, protocol string, port string, jump string, destinationIP string) error
+	AddWideFilterRule(chain string, protocol string, port string, jump string) error
 	AddCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error
 	PrependRule(chain string, rulespec ...string) error
 	DeleteRule(chain string, protocol string, port string, jump string) error
@@ -95,6 +96,16 @@ func (i iptables) AddCgroupFilterRule(chain string, cgroupid string, protocol st
 		"protocol", protocol, "port", port, "jump target", jump)
 
 	return i.ip.AppendUnique("nat", chain, "-m", "cgroup", "--cgroup", cgroupid, "-p", protocol, "--dport", port, "-j", jump)
+}
+
+func (i iptables) AddWideFilterRule(chain string, protocol string, port string, jump string) error {
+	if i.dryRun {
+		return nil
+	}
+
+	i.log.Infow("creating new iptables rule", "chain name", chain, "protocol", protocol, "port", port, "jump target", jump)
+
+	return i.ip.AppendUnique("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
 }
 
 func (i iptables) DeleteRule(chain string, protocol string, port string, jump string) error {

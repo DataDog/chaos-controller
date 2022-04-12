@@ -101,6 +101,10 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 		spec.Containers = getContainers()
 	}
 
+	if spec.ContainerFailure == nil && spec.CPUPressure == nil && spec.DiskPressure == nil && spec.NodeFailure == nil && spec.GRPC == nil && spec.Level == types.DisruptionLevelPod && len(spec.Containers) == 0 {
+		spec.OnInit = getOnInit()
+	}
+
 	spec.DryRun = getDryRun()
 
 	return spec, nil
@@ -572,6 +576,14 @@ func getCount() *intstr.IntOrString {
 	wrappedResult := intstr.FromString(result)
 
 	return &wrappedResult
+}
+
+func getOnInit() bool {
+	onInitExplanations := "An OnInit disruption is a disruption which will be launched on the initialization of your targeted pod(s), enabling the disruption to be working directly at the start of the disrupted pod(s).\nTo make it work, you need to add \"chaos.datadoghq.com/disrupt-on-init: \"true\"\" to the labels of your targeted pod(s) and redeploy them."
+
+	fmt.Println(onInitExplanations)
+
+	return confirmOption("Do you want to enable on initialization disruptions?", "OnInit is disabled by default")
 }
 
 func getPulse() *v1beta1.DisruptionPulse {

@@ -448,6 +448,14 @@ func cleanAndExit(cmd *cobra.Command, args []string) {
 }
 
 func cleanFinalizer() error {
+	if len(configs) == 0 {
+		err := fmt.Errorf("no configuration available for this disruption")
+
+		log.Warnw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.InjectorPodName), "err", err)
+
+		return err
+	}
+
 	pod, err := configs[0].K8sClient.CoreV1().Pods(chaosNamespace).Get(context.Background(), os.Getenv(env.InjectorPodName), metav1.GetOptions{})
 	if err != nil {
 		log.Warnw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.InjectorPodName), "err", err)
