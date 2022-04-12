@@ -344,8 +344,13 @@ func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
 }
 
 // AddTargets adds newTargetsCount random targets from the eligibleTargets list to the Target List
+// - eligibleTargets should be previously filtered to not include current targets
 func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets []string) {
-	for i := 0; i < newTargetsCount; i++ {
+	if len(eligibleTargets) == 0 || newTargetsCount <= 0 {
+		return
+	}
+
+	for i := 0; i < newTargetsCount && len(eligibleTargets) > 0; i++ {
 		index := rand.Intn(len(eligibleTargets)) //nolint:gosec
 		status.Targets = append(status.Targets, eligibleTargets[index])
 		eligibleTargets[len(eligibleTargets)-1], eligibleTargets[index] = eligibleTargets[index], eligibleTargets[len(eligibleTargets)-1]
@@ -355,7 +360,7 @@ func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets 
 
 // RemoveTargets removes toRemoveTargetsCount random targets from the Target List
 func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
-	for i := 0; i < toRemoveTargetsCount; i++ {
+	for i := 0; i < toRemoveTargetsCount && len(status.Targets) > 0; i++ {
 		index := rand.Intn(len(status.Targets)) //nolint:gosec
 		status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
 		status.Targets = status.Targets[:len(status.Targets)-1]
