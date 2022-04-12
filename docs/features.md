@@ -48,7 +48,7 @@ If a `pulse` is not specified, then a disruption will not be pulsing.
 
 ## Targeting
 
-**NEW:** StaticTargeting currently defaults to true. It will default to false after some transition time. Read StaticTargeting.
+**NEW:** StaticTargeting currently defaults to true. It will default to false after some transition time. [Read StaticTargeting](#StaticTargeting-(current-default-behaviour)).
 
 The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the given label selector and will randomly select a number (defined in the `count` field) of matching targets. It's possible to specify multiple label selectors, in which case the controller will select from targets that match all of them. Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.
 
