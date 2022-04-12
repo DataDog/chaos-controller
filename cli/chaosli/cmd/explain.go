@@ -52,6 +52,10 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\tℹ️  has the pulse mode activated meaning the disruptions will alternate between an active injected state with a duration of %s, and an inactive dormant state with a duration of %s.\n", spec.Pulse.ActiveDuration.Duration().String(), spec.Pulse.DormantDuration.Duration().String())
 	}
 
+	if spec.OnInit {
+		fmt.Printf("\tℹ️  has the onInit mode activated meaning the disruptions will be launched at the initialization of the targeted pods.\n")
+	}
+
 	fmt.Printf("\tℹ️  is going to target %s %s(s) (either described as a percentage of total %ss or actual number of them).\n", spec.Count, spec.Level, spec.Level)
 	PrintSeparator()
 }
