@@ -296,12 +296,12 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 	// we check to see if the count represents > 80 percent of all pods in the existing namepsace
 	// or if the count represents > 66 percent of all pods in the cluster
 	if userNamespacePercent := userCountVal / float64(namespaceCount); userNamespacePercent > namespaceThreshold {
-		response := fmt.Sprintf("Your target selection represents %.2f of the total pods in the namespace while the threshold is %.2f", userNamespacePercent, namespaceThreshold)
+		response := fmt.Sprintf("target selection represents %.2f %% of the total pods in the namespace while the threshold is %.2f %%", userNamespacePercent*100, namespaceThreshold*100)
 		return true, response, nil
 	}
 
 	if userTotalPercent := userCountVal / float64(totalCount); userTotalPercent > clusterThreshold {
-		response := fmt.Sprintf("Your target selection represents %.2f of the total pods in the namespace while the threshold is %.2f", userTotalPercent, namespaceThreshold)
+		response := fmt.Sprintf("target selection represents %.2f %% of the total pods in the cluster while the threshold is %.2f %%", userTotalPercent*100, clusterThreshold*100)
 		return true, response, nil
 	}
 
