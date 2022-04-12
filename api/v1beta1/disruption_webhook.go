@@ -10,18 +10,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
+	"github.com/DataDog/chaos-controller/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
 	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-
-	"github.com/DataDog/chaos-controller/metrics"
-	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -95,11 +91,10 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	// handle initial safety nets
-	if responses, err := r.initialSafetynets(); err != nil {
+	if responses, err := r.initialSafetyNets(); err != nil {
 		return err
 	} else if len(responses) > 0 {
-		retErr := errors.New("safety net catches")
-		retErr = multierror.Append(retErr, errors.New("at least one of the initial safety nets caught an issue"))
+		retErr := errors.New("at least one of the initial safety nets caught an issue")
 		for _, response := range responses {
 			retErr = multierror.Append(retErr, errors.New(response))
 		}
@@ -190,18 +185,18 @@ func (r *Disruption) getMetricsTags() []string {
 	return tags
 }
 
-// initialSafetynets runs the initial safety nets for any new disruption
-// returns true if any safety net were caught and returns any errors when attempting to run the safety nets
-func (r *Disruption) initialSafetynets() ([]string, error) {
+// initialSafetyNets runs the initial safety nets for any new disruption
+// returns a list of responses related to safety net catches if any safety net were caught and returns any errors when attempting to run the safety nets
+func (r *Disruption) initialSafetyNets() ([]string, error) {
 	responses := []string{}
 	// handle initial safety nets if safemode is enabled
 	if r.Spec.Unsafemode == nil || !r.Spec.Unsafemode.DisableAll {
-		if caught, err := safetyNetCountNotTooLarge(*r); err != nil {
+		if caught, response, err := safetyNetCountNotTooLarge(*r); err != nil {
 			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet: %w", err)
 		} else if caught {
 			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", r.Name, "SafetyNet Catch", "Generic")
 
-			responses = append(responses, "the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster")
+			responses = append(responses, response)
 		}
 
 		if r.Spec.Network != nil {
@@ -221,14 +216,15 @@ func (r *Disruption) initialSafetynets() ([]string, error) {
 // > 66% of the k8s system being targeted warrants a safety check if we assume each of our targets are replicated
 // at least twice. > 80% in a namespace also warrants a safety check as namespaces may be shared between services.
 // returning true indicates the safety net caught something
-func safetyNetCountNotTooLarge(r Disruption) (bool, error) {
+func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableCountTooLarge {
-		return false, nil
+		return false, "", nil
 	}
 
 	userCount := r.Spec.Count
 	totalCount := 0
 	namespaceCount := 0
+	targetCount := 0
 	namespaceThreshold := 0.8
 	clusterThreshold := 0.66
 
@@ -250,14 +246,26 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, error) {
 
 		err := k8sClient.List(context.Background(), pods, listOptions)
 		if err != nil {
-			return false, fmt.Errorf("error listing target pods: %w", err)
+			return false, "", fmt.Errorf("error listing namespace pods: %w", err)
 		}
 
 		namespaceCount = len(pods.Items)
 
+		listOptions = &client.ListOptions{
+			Namespace:     r.ObjectMeta.Namespace,
+			LabelSelector: labels.SelectorFromValidatedSet(r.Spec.Selector),
+		}
+
+		err = k8sClient.List(context.Background(), pods, listOptions)
+		if err != nil {
+			return false, "", fmt.Errorf("error listing target pods: %w", err)
+		}
+
+		targetCount = len(pods.Items)
+
 		err = k8sClient.List(context.Background(), pods)
 		if err != nil {
-			return false, fmt.Errorf("error listing target pods: %w", err)
+			return false, "", fmt.Errorf("error listing cluster pods: %w", err)
 		}
 
 		totalCount = len(pods.Items)
@@ -266,38 +274,38 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, error) {
 
 		err := k8sClient.List(context.Background(), nodes)
 		if err != nil {
-			return false, fmt.Errorf("error listing target pods: %w", err)
+			return false, "", fmt.Errorf("error listing target pods: %w", err)
 		}
 
 		totalCount = len(nodes.Items)
 	}
 
-	userCountVal := float64(userCount.IntVal)
+	userCountVal := 0.0
 
-	if userCount.Type != intstr.Int {
-		userCountInt, err := strconv.Atoi(strings.TrimSuffix(userCount.StrVal, "%"))
-		if err != nil {
-			return false, fmt.Errorf("failed to convert percentage to int: %w", err)
-		}
+	userCountInt, isPercent, err := GetIntOrPercentValueSafely(userCount)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to get count: %w", err)
+	}
 
-		if namespaceCount != 0 {
-			userCountVal = float64(userCountInt) / 100.0 * float64(namespaceCount)
-		} else {
-			userCountVal = float64(userCountInt) / 100.0 * float64(totalCount)
-		}
+	if isPercent {
+		userCountVal = float64(userCountInt) / 100.0 * float64(targetCount)
+	} else {
+		userCountVal = float64(userCountInt)
 	}
 
 	// we check to see if the count represents > 80 percent of all pods in the existing namepsace
-	// and if the count represents > 66 percent of all pods in the cluster (2/3s)
-	if userCountVal/float64(namespaceCount) > namespaceThreshold {
-		return true, nil
+	// or if the count represents > 66 percent of all pods in the cluster
+	if userNamespacePercent := userCountVal / float64(namespaceCount); userNamespacePercent > namespaceThreshold {
+		response := fmt.Sprintf("Your target selection represents %.2f of the total pods in the namespace while the threshold is %.2f", userNamespacePercent, namespaceThreshold)
+		return true, response, nil
 	}
 
-	if userCountVal/float64(totalCount) > clusterThreshold {
-		return true, nil
+	if userTotalPercent := userCountVal / float64(totalCount); userTotalPercent > clusterThreshold {
+		response := fmt.Sprintf("Your target selection represents %.2f of the total pods in the namespace while the threshold is %.2f", userTotalPercent, namespaceThreshold)
+		return true, response, nil
 	}
 
-	return false, nil
+	return false, "", nil
 }
 
 // safetyNetNeitherHostNorPort is the safety net regarding missing host and port values.
