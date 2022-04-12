@@ -54,6 +54,7 @@ var _ = Describe("Failure", func() {
 		iptables.On("CreateChain", mock.Anything).Return(nil)
 		iptables.On("ClearAndDeleteChain", mock.Anything).Return(nil)
 		iptables.On("AddRuleWithIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("AddWideFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("AddCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("PrependRule", mock.Anything, mock.Anything).Return(nil)
 		iptables.On("DeleteRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
