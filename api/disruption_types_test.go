@@ -46,7 +46,7 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 		})
 
 		When("matchingTargets has all current targets and more", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				matchingTargets = append(matchingTargets, "5.5.5.5")
 			})
 
@@ -96,7 +96,6 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 			Expect(status.Targets).To(HaveLen(0))
 		})
 	})
-
 })
 
 var _ = Describe("DisruptionStatus.AddTargets Test", func() {
@@ -181,7 +180,7 @@ var _ = Describe("DisruptionStatus.RemoveTargets Test", func() {
 			toRemoveTargetsCount = 0
 		})
 
-		It("expects to remove part of the targets", func() {
+		It("expects to remove none of the targets", func() {
 			status.RemoveTargets(toRemoveTargetsCount)
 			Expect(status.Targets).To(HaveLen(5))
 		})
