@@ -266,7 +266,7 @@ func (in *DisruptionSpec) DeepCopyInto(out *DisruptionSpec) {
 		in, out := &in.Unsafemode, &out.Unsafemode
 		*out = new(UnsafemodeSpec)
 		(*in).DeepCopyInto(*out)
-  }
+	}
 	if in.StaticTargeting != nil {
 		in, out := &in.StaticTargeting, &out.StaticTargeting
 		*out = new(bool)
