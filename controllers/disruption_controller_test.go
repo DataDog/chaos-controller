@@ -368,9 +368,12 @@ var _ = Describe("Disruption Controller", func() {
 				StaticTargeting: func() *bool { b := false; return &b }(),
 				DryRun:          true,
 				Count:           &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
-				Selector:        map[string]string{"foo": "bar"},
-				Containers:      []string{"ctn1"},
-				Duration:        "10m",
+				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+					DisableAll: true,
+				},
+				Selector:   map[string]string{"foo": "bar"},
+				Containers: []string{"ctn1"},
+				Duration:   "10m",
 				Network: &chaosv1beta1.NetworkDisruptionSpec{
 					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
 						{
