@@ -56,6 +56,13 @@ func (r *Disruption) Default() {
 		logger.Infow(fmt.Sprintf("setting default duration of %s in disruption", defaultDuration), "instance", r.Name, "namespace", r.Namespace)
 		r.Spec.Duration = DisruptionDuration(defaultDuration.String())
 	}
+
+	if r.Spec.StaticTargeting == nil {
+		r.Spec.StaticTargeting = func() *bool {
+			b := true
+			return &b
+		}()
+	}
 }
 
 //+kubebuilder:webhook:webhookVersions={v1beta1},path=/validate-chaos-datadoghq-com-v1beta1-disruption,mutating=false,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptions,verbs=create;update;delete,versions=v1beta1,name=vdisruption.kb.io,admissionReviewVersions={v1,v1beta1}
@@ -113,22 +120,56 @@ func (r *Disruption) ValidateCreate() error {
 func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	logger.Debugw("validating updated disruption", "instance", r.Name, "namespace", r.Namespace)
 
-	// compare old and new disruption hashes and deny any spec changes
-	oldHash, err := old.(*Disruption).Spec.Hash()
-	if err != nil {
-		return fmt.Errorf("error getting old disruption hash: %w", err)
+	// remove when StaticTargeting is defaulted to false
+	if r.Spec.StaticTargeting == nil {
+		logger.Debugw("StaticTargeting pointer is nil")
 	}
 
-	newHash, err := r.Spec.Hash()
-	if err != nil {
-		return fmt.Errorf("error getting new disruption hash: %w", err)
+	// compare old and new disruption hashes and deny any spec changes
+	var oldHash, newHash string
+
+	var err error
+
+	if r.Spec.StaticTargeting == nil || *r.Spec.StaticTargeting {
+		oldHash, err = old.(*Disruption).Spec.Hash()
+		if err != nil {
+			return fmt.Errorf("error getting old disruption hash: %w", err)
+		}
+
+		newHash, err = r.Spec.Hash()
+
+		if err != nil {
+			return fmt.Errorf("error getting new disruption hash: %w", err)
+		}
+	} else {
+		oldHash, err = old.(*Disruption).Spec.HashNoCount()
+		if err != nil {
+			return fmt.Errorf("error getting old disruption hash: %w", err)
+		}
+		newHash, err = r.Spec.HashNoCount()
+		if err != nil {
+			return fmt.Errorf("error getting new disruption hash: %w", err)
+		}
 	}
 
 	logger.Debugw("comparing disruption spec hashes", "instance", r.Name, "namespace", r.Namespace, "oldHash", oldHash, "newHash", newHash)
 
 	if oldHash != newHash {
 		logger.Errorw("error when comparing disruption spec hashes", "instance", r.Name, "namespace", r.Namespace, "oldHash", oldHash, "newHash", newHash)
-		return fmt.Errorf("a disruption spec can't be edited, please delete and recreate it if needed")
+
+		if r.Spec.StaticTargeting == nil || *r.Spec.StaticTargeting {
+			return fmt.Errorf("[StaticTargeting: true] a disruption spec cannot be updated, please delete and recreate it if needed")
+		}
+
+		return fmt.Errorf("[StaticTargeting: false] only a disruption spec's Count field can be updated, please delete and recreate it if needed")
+	}
+
+	if err := r.Spec.Validate(); err != nil {
+		if mErr := metricsSink.MetricValidationFailed(r.getMetricsTags()); mErr != nil {
+			logger.Errorw("error sending a metric", "error", mErr)
+		}
+
+		return err
 	}
 
 	// send validation metric

@@ -41,7 +41,7 @@ func listChaosPods(instance *chaosv1beta1.Disruption) (corev1.PodList, error) {
 	ls := labels.NewSelector()
 
 	// create requirements
-	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "bar", "minikube"})
+	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "foo2", "bar", "minikube"})
 	disruptionNameRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNameLabel, selection.Equals, []string{instance.Name})
 	disruptionNamespaceRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNamespaceLabel, selection.Equals, []string{instance.Namespace})
 
@@ -359,6 +359,50 @@ var _ = Describe("Disruption Controller", func() {
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
 			Expect(expectChaosInjectors(disruption, 18)).To(BeNil())
+		})
+	})
+
+	Context("Dynamic targeting", func() {
+		BeforeEach(func() {
+			disruption.Spec = chaosv1beta1.DisruptionSpec{
+				StaticTargeting: func() *bool { b := false; return &b }(),
+				DryRun:          true,
+				Count:           &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				Selector:        map[string]string{"foo": "bar"},
+				Containers:      []string{"ctn1"},
+				Duration:        "10m",
+				Network: &chaosv1beta1.NetworkDisruptionSpec{
+					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
+						{
+							Host:     "127.0.0.1",
+							Port:     80,
+							Protocol: "tcp",
+						},
+					},
+					Drop: 100,
+				},
+			}
+
+		})
+
+		It("should scale up then down properly", func() {
+			By("Ensuring that the chaos pods have been created")
+			Eventually(func() error { return expectChaosPod(disruption, 2) }, timeout).Should(Succeed())
+
+			By("Ensuring that the chaos pods have correct number of targeted containers")
+			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
+
+			By("Adding an extra target")
+			Expect(k8sClient.Create(context.Background(), targetPodA2)).To(BeNil())
+
+			By("Ensuring an extra chaos pod has been created")
+			Eventually(func() error { return expectChaosPod(disruption, 3) }, timeout).Should(Succeed())
+
+			By("Deleting the extra target")
+			Expect(k8sClient.Delete(context.Background(), targetPodA2)).To(BeNil())
+
+			By("Ensuring the extra chaos pod has been deleted")
+			Eventually(func() error { return expectChaosPod(disruption, 2) }, timeout).Should(Succeed())
 		})
 	})
 

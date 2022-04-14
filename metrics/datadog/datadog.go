@@ -166,6 +166,16 @@ func (d *Sink) MetricOrphanFound(tags []string) error {
 	return d.metricWithStatus(metricPrefixController+"orphan.found", tags)
 }
 
+// MetricCacheTriggered signals a selector cache trigger
+func (d *Sink) MetricSelectorCacheTriggered(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"selector.cache.triggered", tags)
+}
+
+// MetricSelectorCacheGauge reports how many caches are still in the cache array to prevent leaks
+func (d *Sink) MetricSelectorCacheGauge(gauge float64) error {
+	return d.client.Gauge(metricPrefixController+"selector.cache.gauge", gauge, []string{}, 1)
+}
+
 func boolToStatus(succeed bool) string {
 	var status string
 	if succeed {
