@@ -228,6 +228,11 @@ func (in *DisruptionSpec) DeepCopyInto(out *DisruptionSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.StaticTargeting != nil {
+		in, out := &in.StaticTargeting, &out.StaticTargeting
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Pulse != nil {
 		in, out := &in.Pulse, &out.Pulse
 		*out = new(DisruptionPulse)
@@ -290,11 +295,6 @@ func (in *DisruptionStatus) DeepCopyInto(out *DisruptionStatus) {
 	*out = *in
 	if in.Targets != nil {
 		in, out := &in.Targets, &out.Targets
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
-	if in.IgnoredTargets != nil {
-		in, out := &in.IgnoredTargets, &out.IgnoredTargets
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
