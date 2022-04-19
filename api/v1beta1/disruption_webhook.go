@@ -269,13 +269,15 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 	namespaceThreshold := 0.8
 	clusterThreshold := 0.66
 
-	if r.Spec.Unsafemode.Config != nil && r.Spec.Unsafemode.Config.CountTooLarge != nil {
-		if r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold != 0 {
-			namespaceThreshold = float64(r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold) / 100.0
-		}
+	if r.Spec.Unsafemode == nil {
+		if r.Spec.Unsafemode.Config != nil && r.Spec.Unsafemode.Config.CountTooLarge != nil {
+			if r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold != 0 {
+				namespaceThreshold = float64(r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold) / 100.0
+			}
 
-		if r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold != 0 {
-			clusterThreshold = float64(r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold) / 100.0
+			if r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold != 0 {
+				clusterThreshold = float64(r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold) / 100.0
+			}
 		}
 	}
 
@@ -336,9 +338,11 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 
 	// we check to see if the count represents > 80 percent of all pods in the existing namepsace
 	// or if the count represents > 66 percent of all pods in the cluster
-	if userNamespacePercent := userCountVal / float64(namespaceCount); userNamespacePercent > namespaceThreshold {
-		response := fmt.Sprintf("target selection represents %.2f %% of the total pods in the namespace while the threshold is %.2f %%", userNamespacePercent*100, namespaceThreshold*100)
-		return true, response, nil
+	if r.Spec.Level != chaostypes.DisruptionLevelNode {
+		if userNamespacePercent := userCountVal / float64(namespaceCount); userNamespacePercent > namespaceThreshold {
+			response := fmt.Sprintf("target selection represents %.2f %% of the total pods in the namespace while the threshold is %.2f %%", userNamespacePercent*100, namespaceThreshold*100)
+			return true, response, nil
+		}
 	}
 
 	if userTotalPercent := userCountVal / float64(totalCount); userTotalPercent > clusterThreshold {
