@@ -269,7 +269,7 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 	namespaceThreshold := 0.8
 	clusterThreshold := 0.66
 
-	if r.Spec.Unsafemode == nil {
+	if r.Spec.Unsafemode != nil {
 		if r.Spec.Unsafemode.Config != nil && r.Spec.Unsafemode.Config.CountTooLarge != nil {
 			if r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold != 0 {
 				namespaceThreshold = float64(r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold) / 100.0
