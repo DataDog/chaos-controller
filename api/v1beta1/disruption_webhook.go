@@ -346,7 +346,7 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 	}
 
 	if userTotalPercent := userCountVal / float64(totalCount); userTotalPercent > clusterThreshold {
-		response := fmt.Sprintf("target selection represents %.2f %% of the total pods in the cluster while the threshold is %.2f %%", userTotalPercent*100, clusterThreshold*100)
+		response := fmt.Sprintf("target selection represents %.2f %% of the total %ss in the cluster while the threshold is %.2f %%", userTotalPercent*100, r.Spec.Level, clusterThreshold*100)
 		return true, response, nil
 	}
 
