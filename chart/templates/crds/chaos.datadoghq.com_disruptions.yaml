@@ -318,17 +318,14 @@ spec:
               description: Set is a map of label:value. It implements Labels.
               nullable: true
               type: object
+            staticTargeting:
+              type: boolean
           required:
           - count
           type: object
         status:
           description: DisruptionStatus defines the observed state of Disruption
           properties:
-            ignoredTargets:
-              items:
-                type: string
-              nullable: true
-              type: array
             injectionStatus:
               description: DisruptionInjectionStatus represents the injection status
                 of a disruption

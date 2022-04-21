@@ -67,6 +67,10 @@ const (
 	PulsingDisruptionMinimumDuration = 500 * time.Millisecond
 )
 
+func (d DisruptionKindName) String() string {
+	return string(d)
+}
+
 var (
 	// DisruptionKindNames contains all existing disruption kinds that can be injected
 	DisruptionKindNames = []DisruptionKindName{

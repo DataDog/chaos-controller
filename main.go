@@ -319,15 +319,19 @@ func main() {
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
 		ExpiredDisruptionGCDelay:              gcPtr,
+		CacheContextStore:                     make(map[string]controllers.CtxTuple),
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Minute*5, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
 
-	if err := r.SetupWithManager(mgr, kubeInformerFactory); err != nil {
+	cont, err := r.SetupWithManager(mgr, kubeInformerFactory)
+	if err != nil {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
+
+	r.Controller = cont
 
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
@@ -361,6 +365,13 @@ func main() {
 			},
 		})
 	}
+
+	// erase/close caches contexts
+	defer func() {
+		for _, contextTuple := range r.CacheContextStore {
+			contextTuple.CancelFunc()
+		}
+	}()
 
 	// +kubebuilder:scaffold:builder
 

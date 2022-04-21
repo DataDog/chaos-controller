@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,6 +19,7 @@ import (
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/utils"
 	"github.com/hashicorp/go-multierror"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -42,6 +44,7 @@ type DisruptionSpec struct {
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
 	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
+	StaticTargeting  *bool                             `json:"staticTargeting,omitempty"`  // enable dynamic targeting and cluster observation
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
@@ -122,8 +125,6 @@ type DisruptionStatus struct {
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
 	Targets []string `json:"targets,omitempty"`
-	// +nullable
-	IgnoredTargets []string `json:"ignoredTargets,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -168,6 +169,13 @@ func (s *DisruptionSpec) Hash() (string, error) {
 
 	// compute bytes hash
 	return fmt.Sprintf("%x", md5.Sum(specBytes)), nil
+}
+
+func (s *DisruptionSpec) HashNoCount() (string, error) {
+	sCopy := s.DeepCopy()
+	sCopy.Count = nil
+
+	return sCopy.Hash()
 }
 
 // Validate applies rules for disruption global scope and all subsequent disruption specifications
@@ -320,4 +328,41 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 	}
 
 	return &parsedSpec, nil
+}
+
+// RemoveDeadTargets removes targets not found in matchingTargets from the targets list
+func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
+	var desiredTargets []string
+
+	for index := 0; index < len(status.Targets); index++ {
+		if utils.Contains(matchingTargets, status.Targets[index]) {
+			desiredTargets = append(desiredTargets, status.Targets[index])
+		}
+	}
+
+	status.Targets = desiredTargets
+}
+
+// AddTargets adds newTargetsCount random targets from the eligibleTargets list to the Target List
+// - eligibleTargets should be previously filtered to not include current targets
+func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets []string) {
+	if len(eligibleTargets) == 0 || newTargetsCount <= 0 {
+		return
+	}
+
+	for i := 0; i < newTargetsCount && len(eligibleTargets) > 0; i++ {
+		index := rand.Intn(len(eligibleTargets)) //nolint:gosec
+		status.Targets = append(status.Targets, eligibleTargets[index])
+		eligibleTargets[len(eligibleTargets)-1], eligibleTargets[index] = eligibleTargets[index], eligibleTargets[len(eligibleTargets)-1]
+		eligibleTargets = eligibleTargets[:len(eligibleTargets)-1]
+	}
+}
+
+// RemoveTargets removes toRemoveTargetsCount random targets from the Target List
+func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
+	for i := 0; i < toRemoveTargetsCount && len(status.Targets) > 0; i++ {
+		index := rand.Intn(len(status.Targets)) //nolint:gosec
+		status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
+		status.Targets = status.Targets[:len(status.Targets)-1]
+	}
 }
