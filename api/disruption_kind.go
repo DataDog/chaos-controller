@@ -35,6 +35,7 @@ type DisruptionArgs struct {
 	DNSServer            string
 	KubeDNS              string
 	ChaosNamespace       string
+	DebugMode            bool
 	DryRun               bool
 	OnInit               bool
 	PulseActiveDuration  time.Duration
@@ -66,6 +67,10 @@ func AppendArgs(args []string, xargs DisruptionArgs) []string {
 	// enable chaos handler init container notification
 	if xargs.OnInit {
 		args = append(args, "--on-init")
+	}
+
+	if xargs.DebugMode {
+		args = append(args, "--debug-mode")
 	}
 
 	if xargs.PulseActiveDuration > 0 && xargs.PulseDormantDuration > 0 {

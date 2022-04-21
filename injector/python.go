@@ -6,7 +6,6 @@
 package injector
 
 import (
-	"bytes"
 	"fmt"
 	"os/exec"
 
@@ -15,7 +14,7 @@ import (
 
 // PythonRunner is an interface for executing python3 commands
 type PythonRunner interface {
-	RunPython(args ...string) (int, string, error)
+	RunPython(args ...string) (int, error)
 }
 
 type standardPythonRunner struct {
@@ -25,26 +24,27 @@ type standardPythonRunner struct {
 
 // RunPython takes a list of arguments to pass to python3, and returns the exit code
 // the stdout of the command, and any errors from cmd.Start()
-func (p standardPythonRunner) RunPython(args ...string) (int, string, error) {
+func (p standardPythonRunner) RunPython(args ...string) (int, error) {
 	// parse args and execute
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
 	cmd := exec.Command("/usr/bin/python3", args...)
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-
-	// run command
-	p.log.Infof("running python3 command: %v", cmd.String())
+	//cmd.Stdout = os.Stdout
 
 	// early exit if dry-run mode is enabled
 	if p.dryRun {
-		return 0, "", nil
+		return 0, nil
 	}
 
 	err := cmd.Start()
 	if err != nil {
-		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
+		err = fmt.Errorf("encountered error (%w) using args (%s)", err, args)
 	}
 
-	return cmd.ProcessState.ExitCode(), stdout.String(), err
+	pid := 0
+	p.log.Infof("running python3 command: %v.", cmd.String())
+
+	if cmd.Process != nil {
+		pid = cmd.Process.Pid
+	}
+
+	return pid, err
 }

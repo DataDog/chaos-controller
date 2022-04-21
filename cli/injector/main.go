@@ -27,6 +27,7 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -47,6 +48,7 @@ var rootCmd = &cobra.Command{
 var (
 	log                  *zap.SugaredLogger
 	dryRun               bool
+	debugMode            bool
 	ms                   metrics.Sink
 	sink                 string
 	level                string
@@ -85,6 +87,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
 	rootCmd.PersistentFlags().StringSliceVar(&targetContainerIDs, "target-container-ids", []string{}, "Targeted containers ID")
 	rootCmd.PersistentFlags().StringVar(&targetPodIP, "target-pod-ip", "", "Pod IP of targeted pod")
+	rootCmd.PersistentFlags().BoolVar(&debugMode, "debug-mode", false, "Enable debugging logs")
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
 	rootCmd.PersistentFlags().DurationVar(&pulseActiveDuration, "pulse-active-duration", time.Duration(0), "Duration of the disruption being active in a pulsing disruption (empty if the disruption is not pulsing)")
 	rootCmd.PersistentFlags().DurationVar(&pulseDormantDuration, "pulse-dormant-duration", time.Duration(0), "Duration of the disruption being dormant in a pulsing disruption (empty if the disruption is not pulsing)")
@@ -126,8 +129,14 @@ func main() {
 func initLogger() {
 	var err error
 
+	level := zapcore.InfoLevel
+
+	if debugMode {
+		level = zapcore.DebugLevel
+	}
+
 	// prepare logger
-	log, err = logger.NewZapLogger()
+	log, err = logger.NewZapLogger(level)
 	if err != nil {
 		fmt.Printf("error while creating logger: %v", err)
 		os.Exit(2)
@@ -162,6 +171,10 @@ func initConfig() {
 	// log when dry-run mode is enabled
 	if dryRun {
 		log.Warn("dry run mode enabled, no disruption will be injected but most of the commands will still be executed to simulate it as much as possible")
+	}
+
+	if debugMode {
+		log.Warn("debug mode enabled, debug logging is activated")
 	}
 
 	switch level {
@@ -246,6 +259,7 @@ func initConfig() {
 
 		// generate injector config
 		config := injector.Config{
+			DebugMode:       debugMode,
 			DryRun:          dryRun,
 			OnInit:          onInit,
 			Log:             log,

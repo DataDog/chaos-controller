@@ -15,6 +15,7 @@ import (
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -53,7 +54,7 @@ func init() {
 func main() {
 	var err error
 
-	logger, err = log.NewZapLogger()
+	logger, err = log.NewZapLogger(zapcore.InfoLevel)
 	if err != nil {
 		fmt.Printf("error initializing logger: %v", err)
 		os.Exit(1)

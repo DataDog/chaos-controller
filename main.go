@@ -26,6 +26,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
+	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -91,6 +92,7 @@ type injectorConfig struct {
 	Labels            map[string]string               `json:"labels"`
 	ChaosNamespace    string                          `json:"namespace"`
 	ServiceAccount    string                          `json:"serviceAccount"`
+	DebugMode         bool                            `json:"debugMode"`
 	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
 }
@@ -174,6 +176,9 @@ func main() {
 	pflag.StringVar(&cfg.Injector.Image, "injector-image", "chaos-injector", "Image to pull for the injector pods")
 	handleFatalError(viper.BindPFlag("injector.image", pflag.Lookup("injector-image")))
 
+	pflag.BoolVar(&cfg.Injector.DebugMode, "injector-debug-mode", false, "Enable debug mode on chaos-injector")
+	handleFatalError(viper.BindPFlag("injector.debugMode", pflag.Lookup("injector-debug-mode")))
+
 	pflag.StringVar(&cfg.Injector.DNSDisruption.DNSServer, "injector-dns-disruption-dns-server", "8.8.8.8", "IP address of the upstream DNS server")
 	handleFatalError(viper.BindPFlag("injector.dnsDisruption.dnsServer", pflag.Lookup("injector-dns-disruption-dns-server")))
 
@@ -206,7 +211,7 @@ func main() {
 
 	pflag.Parse()
 
-	logger, err := log.NewZapLogger()
+	logger, err := log.NewZapLogger(zapcore.InfoLevel)
 	if err != nil {
 		setupLog.Error(err, "error creating controller logger")
 		os.Exit(1)
@@ -235,6 +240,8 @@ func main() {
 		if err := viper.Unmarshal(&cfg); err != nil {
 			logger.Fatalw("error unmarshaling configuration", "error", err)
 		}
+
+		logger.Infof("=====%t======\n\n", cfg.Injector.DebugMode)
 
 		viper.WatchConfig()
 		viper.OnConfigChange(func(in fsnotify.Event) {
@@ -306,6 +313,7 @@ func main() {
 		InjectorServiceAccount:                cfg.Injector.ServiceAccount,
 		InjectorImage:                         cfg.Injector.Image,
 		ChaosNamespace:                        cfg.Injector.ChaosNamespace,
+		InjectorDebugMode:                     cfg.Injector.DebugMode,
 		InjectorDNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,

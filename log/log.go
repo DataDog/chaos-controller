@@ -11,10 +11,10 @@ import (
 )
 
 // NewZapLogger returns a zap production sugared logger with pre-configured encoder settings
-func NewZapLogger() (*zap.SugaredLogger, error) {
+func NewZapLogger(level zapcore.Level) (*zap.SugaredLogger, error) {
 	// configure logger
 	loggerConfig := zap.NewProductionConfig()
-	loggerConfig.Level.SetLevel(zapcore.InfoLevel)
+	loggerConfig.Level.SetLevel(level)
 	loggerConfig.EncoderConfig.MessageKey = "message"
 	loggerConfig.EncoderConfig.EncodeTime = zapcore.EpochMillisTimeEncoder
 

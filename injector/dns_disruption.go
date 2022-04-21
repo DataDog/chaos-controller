@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
@@ -93,10 +94,18 @@ func (i DNSDisruptionInjector) Inject() error {
 		cmd = append(cmd, "--kube-dns", i.config.DNS.KubeDNS)
 	}
 
-	_, _, err := i.config.PythonRunner.RunPython(cmd...)
+	dnsResolverPID, err := i.config.PythonRunner.RunPython(cmd...)
 	if err != nil {
 		return fmt.Errorf("unable to run resolver: %w", err)
 	}
+
+	i.config.Log.Debugw("start dns disruption resolver",
+		"pid", dnsResolverPID,
+		"log_path_stdout", fmt.Sprintf("/proc/%d/fd/1", dnsResolverPID),
+		"log_path_stderr", fmt.Sprintf("/proc/%d/fd/2", dnsResolverPID),
+		"dns_server", i.config.DNS.DNSServer,
+		"kube_dns", i.config.DNS.KubeDNS,
+	)
 
 	// enter target network namespace
 	if err := i.config.Netns.Enter(); err != nil {
@@ -152,7 +161,25 @@ func (i DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
 	}
 
+	if i.config.DebugMode {
+		i.DebugMode(dnsResolverPID)
+	}
+
 	return nil
+}
+
+func (i DNSDisruptionInjector) DebugMode(dnsResolverPID int) {
+	go func() {
+		for {
+			i.config.Netns.Enter()
+
+			// Print iptable information
+			i.config.Iptables.ListChainsAndRules("nat")
+
+			i.config.Netns.Exit()
+			time.Sleep(time.Second * 10)
+		}
+	}()
 }
 
 // Clean removes the injected disruption from the given container

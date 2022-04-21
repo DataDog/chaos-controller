@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 
@@ -95,7 +96,7 @@ func main() {
 	if chaosEnabled == true {
 		fmt.Println("CHAOS ENABLED")
 
-		disruptionLogger, error := zaplog.NewZapLogger()
+		disruptionLogger, error := zaplog.NewZapLogger(zapcore.InfoLevel)
 		if error != nil {
 			log.Fatal("error creating controller logger")
 			return

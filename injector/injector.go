@@ -33,6 +33,7 @@ type Injector interface {
 
 // Config represents a generic injector config
 type Config struct {
+	DebugMode       bool
 	DryRun          bool
 	OnInit          bool
 	Log             *zap.SugaredLogger

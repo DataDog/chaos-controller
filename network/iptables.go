@@ -22,6 +22,7 @@ type Iptables interface {
 	PrependRule(chain string, rulespec ...string) error
 	DeleteRule(chain string, protocol string, port string, jump string) error
 	DeleteCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error
+	ListChainsAndRules(table string) error
 }
 
 type iptables struct {
@@ -148,4 +149,31 @@ func (i iptables) DeleteCgroupFilterRule(chain string, cgroupid string, protocol
 	}
 
 	return i.ip.DeleteIfExists("nat", chain, "-m", "cgroup", "--cgroup", cgroupid, "-p", protocol, "--dport", port, "-j", jump)
+}
+
+func (i iptables) ListChainsAndRules(table string) error {
+	chains := []string{"OUTPUT", "CHAOS-DNS"}
+
+	for _, chain := range chains {
+		stats, err := i.ip.StructuredStats(table, chain)
+		if err != nil {
+			return err
+		}
+
+		for _, stat := range stats {
+			i.log.Debugw("iptable listing",
+				"chain", chain,
+				"packets", stat.Packets,
+				"bytes", stat.Bytes,
+				"target", stat.Target,
+				"protocol", stat.Protocol,
+				"opt", stat.Opt,
+				"input", stat.Input,
+				"output", stat.Output,
+				"options", stat.Options,
+			)
+		}
+	}
+
+	return nil
 }

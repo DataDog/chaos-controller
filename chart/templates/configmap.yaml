@@ -52,6 +52,7 @@ data:
       {{- end }}
       serviceAccount: {{ .Values.injector.serviceAccount | quote }}
       chaosNamespace: {{ .Values.chaosNamespace | quote }}
+      debugMode: {{ .Values.injector.debugMode }}
       dnsDisruption:
         dnsServer: {{ .Values.injector.dnsDisruption.dnsServer | quote }}
         kubeDns: {{ .Values.injector.dnsDisruption.kubeDns | quote }}
