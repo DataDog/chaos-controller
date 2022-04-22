@@ -107,7 +107,7 @@ func initLibrary() {
 		log.Fatal(err)
 	}
 
-	err := fs.WalkDir(v1beta1.EmbededChaosAPI, ".",
+	err := fs.WalkDir(v1beta1.EmbeddedChaosAPI, ".",
 		// this function is executed for every file found within the binary-embedded folder
 		// it copies every files to another location on the computer through io.Copy
 		func(path string, d fs.DirEntry, err error) error {
@@ -119,7 +119,7 @@ func initLibrary() {
 				return nil
 			}
 
-			fin, err := fs.ReadFile(v1beta1.EmbededChaosAPI, path)
+			fin, err := fs.ReadFile(v1beta1.EmbeddedChaosAPI, path)
 			if err != nil {
 				return err
 			}
