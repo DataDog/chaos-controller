@@ -7,10 +7,8 @@ WORKDIR /app
 
 COPY go.* .
 RUN go mod download
-RUN go get github.com/markbates/pkger/cmd/pkger
 
 COPY . .
-RUN pkger -o ./cli/chaosli/cmd
 
 RUN go build \
     -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=dockertest" \
