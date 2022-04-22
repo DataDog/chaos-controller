@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"crypto/md5"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -67,6 +68,10 @@ type DisruptionSpec struct {
 	// +nullable
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
 }
+
+//go:embed *
+// EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
+var EmbeddedChaosAPI embed.FS
 
 type DisruptionDuration string
 
