@@ -137,11 +137,8 @@ var _ = Describe("Disruption Controller", func() {
 				Namespace: "default",
 			},
 			Spec: chaosv1beta1.DisruptionSpec{
-				DryRun: true,
-				Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
-					DisableAll: true,
-				},
+				DryRun:     true,
+				Count:      &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
 				Selector:   map[string]string{"foo": "bar"},
 				Containers: []string{"ctn1"},
 				Duration:   "10m",
@@ -165,6 +162,12 @@ var _ = Describe("Disruption Controller", func() {
 					BandwidthLimit: 10000,
 				},
 				CPUPressure: &chaosv1beta1.CPUPressureSpec{},
+				DiskPressure: &chaosv1beta1.DiskPressureSpec{
+					Path: "/mnt/foo",
+					Throttling: chaosv1beta1.DiskPressureThrottlingSpec{
+						ReadBytesPerSec: func() *int { i := int(10000); return &i }(),
+					},
+				},
 				DNS: []chaosv1beta1.HostRecordPair{
 					{
 						Hostname: "ctn",
@@ -224,11 +227,8 @@ var _ = Describe("Disruption Controller", func() {
 					Namespace: "default",
 				},
 				Spec: chaosv1beta1.DisruptionSpec{
-					DryRun: false,
-					Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-					Unsafemode: &chaosv1beta1.UnsafemodeSpec{
-						DisableAll: true,
-					},
+					DryRun:   false,
+					Count:    &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
 					Selector: map[string]string{"kubernetes.io/hostname": "minikube"},
 					Level:    chaostypes.DisruptionLevelNode,
 					Network: &chaosv1beta1.NetworkDisruptionSpec{
@@ -256,11 +256,8 @@ var _ = Describe("Disruption Controller", func() {
 	Context("disruption expires naturally", func() {
 		BeforeEach(func() {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
-				DryRun: true,
-				Count:  &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
-				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
-					DisableAll: true,
-				},
+				DryRun:     true,
+				Count:      &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
 				Selector:   map[string]string{"foo": "bar"},
 				Containers: []string{"ctn1"},
 				Duration:   "30s",
@@ -312,10 +309,10 @@ var _ = Describe("Disruption Controller", func() {
 	Context("target one pod and one container only", func() {
 		It("should target all the selected pods", func() {
 			By("Ensuring that the inject pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, 6) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 7) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Expect(expectChaosInjectors(disruption, 6)).To(BeNil())
+			Expect(expectChaosInjectors(disruption, 7)).To(BeNil())
 		})
 	})
 
@@ -326,10 +323,10 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the chaos pods have been created")
-			Eventually(func() error { return expectChaosPod(disruption, 12) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 14) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Expect(expectChaosInjectors(disruption, 12)).To(BeNil())
+			Expect(expectChaosInjectors(disruption, 14)).To(BeNil())
 		})
 	})
 
@@ -340,10 +337,10 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the inject pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, 6) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 7) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Expect(expectChaosInjectors(disruption, 6)).To(BeNil())
+			Expect(expectChaosInjectors(disruption, 7)).To(BeNil())
 		})
 	})
 
@@ -355,10 +352,10 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func() {
 			By("Ensuring that the chaos pods have been created")
-			Eventually(func() error { return expectChaosPod(disruption, 12) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(disruption, 14) }, timeout).Should(Succeed())
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Expect(expectChaosInjectors(disruption, 18)).To(BeNil())
+			Expect(expectChaosInjectors(disruption, 21)).To(BeNil())
 		})
 	})
 
@@ -368,12 +365,9 @@ var _ = Describe("Disruption Controller", func() {
 				StaticTargeting: func() *bool { b := false; return &b }(),
 				DryRun:          true,
 				Count:           &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
-				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
-					DisableAll: true,
-				},
-				Selector:   map[string]string{"foo": "bar"},
-				Containers: []string{"ctn1"},
-				Duration:   "10m",
+				Selector:        map[string]string{"foo": "bar"},
+				Containers:      []string{"ctn1"},
+				Duration:        "10m",
 				Network: &chaosv1beta1.NetworkDisruptionSpec{
 					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
 						{

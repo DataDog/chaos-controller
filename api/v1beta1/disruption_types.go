@@ -45,7 +45,6 @@ type DisruptionSpec struct {
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
 	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
-	Unsafemode       *UnsafemodeSpec                   `json:"unsafeMode,omitempty"`       // unsafemode spec used to turn off safemode safety nets
 	StaticTargeting  *bool                             `json:"staticTargeting,omitempty"`  // enable dynamic targeting and cluster observation
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
@@ -242,11 +241,6 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 		if len(s.Containers) > 0 {
 			retErr = multierror.Append(retErr, errors.New("OnInit is not compatible with containers scoping"))
 		}
-	}
-
-	// Rule: No specificity of containers on a disk disruption
-	if len(s.Containers) != 0 && s.DiskPressure != nil {
-		retErr = multierror.Append(retErr, errors.New("disk pressure disruptions apply to all containers, specifying certain containers does not isolate the disruption"))
 	}
 
 	// Rule: pulse compatibility

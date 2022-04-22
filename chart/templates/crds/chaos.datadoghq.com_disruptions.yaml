@@ -320,39 +320,6 @@ spec:
               type: object
             staticTargeting:
               type: boolean
-            unsafeMode:
-              description: UnsafemodeSpec represents a spec with parameters to turn
-                off specific safety nets designed to catch common traps or issues
-                running a disruption All of these are turned off by default, so disabling
-                safety nets requires manually changing these booleans to true
-              properties:
-                config:
-                  description: Config represents any configurable parameters for the
-                    safetynets, all of which have defaults
-                  properties:
-                    countTooLarge:
-                      description: CountTooLargeConfig represents the configuration
-                        for the countTooLarge safetynet
-                      properties:
-                        clusterThreshold:
-                          maximum: 100
-                          minimum: 0
-                          type: integer
-                        namespaceThreshold:
-                          maximum: 100
-                          minimum: 0
-                          type: integer
-                      type: object
-                  type: object
-                disableAll:
-                  type: boolean
-                disableCountTooLarge:
-                  type: boolean
-                disableNeitherHostNorPort:
-                  type: boolean
-                disableSpecificContainDisk:
-                  type: boolean
-              type: object
           required:
           - count
           type: object
