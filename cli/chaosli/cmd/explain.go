@@ -57,6 +57,13 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 	}
 
 	fmt.Printf("\tℹ️  is going to target %s %s(s) (either described as a percentage of total %ss or actual number of them).\n", spec.Count, spec.Level, spec.Level)
+
+	if spec.StaticTargeting == nil || *spec.StaticTargeting {
+		fmt.Printf("\tℹ️  has StaticTargeting activated, so new pods/nodes will be NOT be targeted \n")
+	} else {
+		fmt.Printf("\tℹ️  has StaticTargeting deactivated, so new pods/nodes will be targeted\n")
+	}
+
 	PrintSeparator()
 }
 
