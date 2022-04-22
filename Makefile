@@ -36,10 +36,7 @@ handler:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/handler/handler ./cli/handler/
 
 # Build chaosli
-# - please make sure to execute this command from the full path, with no alias in `pwd`. 
-#   pkger will not work properly otherwise
 chaosli:
-	pkger -o cli/chaosli/cmd
 	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_amd64 ./cli/chaosli/
 
 # Test chaosli API portability
