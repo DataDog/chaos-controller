@@ -7,14 +7,12 @@ package cmd
 
 import (
 	"fmt"
-	"io"
+	"io/fs"
 	"log"
 	"os"
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/markbates/pkger"
-	_ "github.com/markbates/pkger/pkging/mem" //nolint:revive
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -109,19 +107,24 @@ func initLibrary() {
 		log.Fatal(err)
 	}
 
-	err := pkger.Walk("github.com/DataDog/chaos-controller:/api/v1beta1",
+	err := fs.WalkDir(v1beta1.EmbededChaosApi, ".",
 		// this function is executed for every file found within the binary-embedded folder
 		// it copies every files to another location on the computer through io.Copy
-		func(path string, info os.FileInfo, err error) error {
+		func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 
-			if info.IsDir() {
+			if d.IsDir() {
 				return nil
 			}
 
-			fin, err := pkger.Open(path)
+			fin, err := fs.ReadFile(v1beta1.EmbededChaosApi, path)
+			if err != nil {
+				return err
+			}
+
+			info, err := d.Info()
 			if err != nil {
 				return err
 			}
@@ -131,14 +134,15 @@ func initLibrary() {
 				return err
 			}
 
-			if _, err = io.Copy(fout, fin); err != nil {
+			if _, err = fout.Write(fin); err != nil {
 				return err
 			}
 
 			if err = fout.Close(); err != nil {
 				return err
 			}
-			return fin.Close()
+
+			return nil
 		})
 
 	if err != nil {
