@@ -687,7 +687,7 @@ func getStaticTargeting() *bool {
 
 	fmt.Println(staticTargetingExplanations)
 
-	a := confirmOption("Would you like to enable on StaticTargeting? Blocks new pods from being targeted.", staticTargetingExplanations)
+	a := confirmOption("Would you like to enable StaticTargeting? Blocks new pods from being targeted after the initial injection.", staticTargetingExplanations)
 
 	return &a
 }
