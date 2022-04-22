@@ -16,6 +16,7 @@ import (
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/safemode"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
@@ -61,6 +62,7 @@ type DisruptionReconciler struct {
 	InjectorDNSDisruptionDNSServer        string
 	InjectorDNSDisruptionKubeDNS          string
 	InjectorNetworkDisruptionAllowedHosts []string
+	SafetyNets                            []safemode.Safemode
 	ExpiredDisruptionGCDelay              *time.Duration
 	CacheContextStore                     map[string]CtxTuple
 	Controller                            controller.Controller
@@ -233,6 +235,19 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{Requeue: false}, err
 		}
 
+		// initialize all safety nets for future use
+		if instance.Spec.Unsafemode == nil || !instance.Spec.Unsafemode.DisableAll {
+			// initialize all relevant safety nets for the first time
+			if len(r.SafetyNets) == 0 {
+				r.SafetyNets = []safemode.Safemode{}
+				r.SafetyNets = safemode.AddAllSafemodeObjects(*instance, r.Client)
+			} else {
+				// it is possible for a disruption to be restarted with new parameters, therefore safety nets need to be reinitialized to catch that case
+				// so that we are not using values from older versions of a disruption for safety nets
+				safemode.Reinit(r.SafetyNets, *instance, r.Client)
+			}
+		}
+
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
 		if err := r.Update(context.Background(), instance); err != nil {
@@ -329,7 +344,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			},
 			r.Update(context.Background(), instance)
 	}
-
 	// stop the reconcile loop, there's nothing else to do
 	return ctrl.Result{}, nil
 }
