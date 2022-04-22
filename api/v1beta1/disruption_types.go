@@ -70,7 +70,8 @@ type DisruptionSpec struct {
 }
 
 //go:embed *
-var EmbededChaosApi embed.FS
+// EmbededChaosAPI includes the library so it can be statically exported to chaosli
+var EmbededChaosAPI embed.FS
 
 type DisruptionDuration string
 
