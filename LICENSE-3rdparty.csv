@@ -132,7 +132,6 @@ github.com/evanphx/json-patch,github.com/evanphx/json-patch,BSD-3-Clause
 github.com/fsnotify/fsnotify,github.com/fsnotify/fsnotify,BSD-3-Clause
 github.com/ghodss/yaml,github.com/ghodss/yaml,MIT
 github.com/go-logr/logr,github.com/go-logr/logr,Apache-2.0
-github.com/gobuffalo/here,github.com/gobuffalo/here,MIT
 github.com/godbus/dbus/v5,github.com/godbus/dbus/v5,BSD-2-Clause
 github.com/gogo/googleapis,github.com/gogo/googleapis/google/rpc,Apache-2.0
 github.com/gogo/protobuf,github.com/gogo/protobuf/gogoproto,BSD-3-Clause
@@ -181,13 +180,6 @@ github.com/klauspost/compress,github.com/klauspost/compress/snappy,BSD-3-Clause
 github.com/klauspost/compress,github.com/klauspost/compress/zstd,BSD-3-Clause
 github.com/klauspost/compress,github.com/klauspost/compress/zstd/internal/xxhash,BSD-3-Clause
 github.com/magiconair/properties,github.com/magiconair/properties,BSD-2-Clause
-github.com/markbates/pkger,github.com/markbates/pkger,MIT
-github.com/markbates/pkger,github.com/markbates/pkger/here,MIT
-github.com/markbates/pkger,github.com/markbates/pkger/internal/maps,MIT
-github.com/markbates/pkger,github.com/markbates/pkger/pkging,MIT
-github.com/markbates/pkger,github.com/markbates/pkger/pkging/embed,MIT
-github.com/markbates/pkger,github.com/markbates/pkger/pkging/mem,MIT
-github.com/markbates/pkger,github.com/markbates/pkger/pkging/stdos,MIT
 github.com/mattn/go-colorable,github.com/mattn/go-colorable,MIT
 github.com/mattn/go-isatty,github.com/mattn/go-isatty,MIT
 github.com/matttproud/golang_protobuf_extensions,github.com/matttproud/golang_protobuf_extensions/pbutil,Apache-2.0
