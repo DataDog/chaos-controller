@@ -627,7 +627,7 @@ class RuleEngine2:
 
                 response = CASE[query.type](query, response_data)
 
-                print(">> Matched Request - " + query.domain.decode())
+                print(">> Matched Request - " + query.domain.decode() + " of " + TYPE[query.type] + " record type")
                 return response.make_packet()
 
         # if we got here, we didn't match.
@@ -651,7 +651,7 @@ class RuleEngine2:
             s.sendto(query.data, addr)
             data = s.recv(1024)
             s.close()
-            print("Unmatched Request " + query.domain.decode())
+            print("Unmatched Request " + query.domain.decode() + " of " + TYPE[query.type] + " record type")
             return data
         except socket.error as e:
             # We shouldn't wind up here but if we do, don't drop the request

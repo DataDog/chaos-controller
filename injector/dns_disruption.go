@@ -169,6 +169,12 @@ func (i DNSDisruptionInjector) Inject() error {
 }
 
 func (i DNSDisruptionInjector) DebugMode(dnsResolverPID int) {
+	if i.config.OnInit {
+		go func(pid int) {
+			i.config.PythonRunner.ReadBufferFromCommand(pid)
+		}(dnsResolverPID)
+	}
+
 	go func() {
 		for {
 			i.config.Netns.Enter()
