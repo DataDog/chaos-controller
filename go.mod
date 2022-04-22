@@ -19,7 +19,6 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/hashicorp/go-multierror v1.0.0
-	github.com/markbates/pkger v0.17.1
 	github.com/miekg/dns v1.1.25
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/morikuni/aec v1.0.0 // indirect

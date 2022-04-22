@@ -1,7 +1,6 @@
 before:
   hooks:
     - go mod download
-    - pkger -o /cli/chaosli/cmd
 
 builds:
   - id: controller
