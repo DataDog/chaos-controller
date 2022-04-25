@@ -94,7 +94,7 @@ func initConfig() {
 // initLibrary copies the binary-embedded disruption API into a custom folder in GOPATH
 func initLibrary() {
 	if _, isGoInstalled := os.LookupEnv("GOPATH"); !isGoInstalled {
-		log.Fatal("Setup error: please make sure go (1.16 or higher) is installed and the GOPATH is set")
+		log.Fatal("Setup error: please make sure go (1.18 or higher) is installed and the GOPATH is set")
 	}
 
 	if err := os.Setenv("GO111MODULE", "off"); err != nil {

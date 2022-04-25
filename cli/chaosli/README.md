@@ -14,7 +14,7 @@ The Chaos Controller CLI, `chaosli`, is meant to help create a more user friendl
 Download the `chaosli` binary for your operating system and architecture [from the latest release](https://github.com/DataDog/chaos-controller/releases/latest).
 
 ##### Requirements:
-- Have `go` installed (v. 1.16 or greater) and the local `$GOPATH` environment variable setup
+- Have `go` installed (v. 1.18 or greater) and the local `$GOPATH` environment variable setup
 
 #### Validate
 ---

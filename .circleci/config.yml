@@ -45,23 +45,23 @@ executors:
     docker:
       # TODO: Publicize the chaos controller ci image to the datadog docker registry
       #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
-      - image: golang:1.16-buster
+      - image: golang:1.18-buster
     environment:
       KUBEBUILDER_VERSION: 3.1.0
       KUBEBUILDER_ARCH: amd64
-      GOLANGCI_LINT_VERSION: 1.43.0
+      GOLANGCI_LINT_VERSION: 1.45.2
       HELM_VERSION: 3.5.4
   golang_large:
     <<: *working_directory
     docker:
       # TODO: Publicize the chaos controller ci image to the datadog docker registry
       #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
-      - image: golang:1.16-buster
+      - image: golang:1.18-buster
     resource_class: medium+
     environment:
       KUBEBUILDER_VERSION: 3.1.0
       KUBEBUILDER_ARCH: amd64
-      GOLANGCI_LINT_VERSION: 1.43.0
+      GOLANGCI_LINT_VERSION: 1.45.2
       HELM_VERSION: 3.5.4
   python:
     <<: *working_directory
