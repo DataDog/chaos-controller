@@ -77,6 +77,7 @@ type controllerConfig struct {
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
 	UserInfoHook             bool                          `json:"userInfoHook"`
+	DisableSafemode          bool                          `json:"disableSafemode"`
 }
 
 type controllerWebhookConfig struct {
@@ -203,6 +204,10 @@ func main() {
 
 	pflag.BoolVar(&cfg.Controller.UserInfoHook, "user-info-webhook", true, "Enable the mutating webhook to inject user info into disruption status")
 	handleFatalError(viper.BindPFlag("controller.userInfoHook", pflag.Lookup("user-info-webhook")))
+
+	pflag.BoolVar(&cfg.Controller.DisableSafemode, "disable-safemode", false,
+		"Disable the Safemode functionality and will not catch concerns pr")
+	handleFatalError(viper.BindPFlag("controller.disableSafemode", pflag.Lookup("disable-safemode")))
 
 	pflag.Parse()
 
@@ -331,7 +336,7 @@ func main() {
 	go r.ReportMetrics()
 
 	// register disruption validating webhook
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DisableSafemode, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
 		os.Exit(1) //nolint:gocritic
 	}

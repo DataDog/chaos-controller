@@ -29,15 +29,17 @@ var logger *zap.SugaredLogger
 var k8sClient client.Client
 var metricsSink metrics.Sink
 var deleteOnly bool
+var disableSafemode bool
 var handlerEnabled bool
 var defaultDuration time.Duration
 
-func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, deleteOnlyFlag, handlerEnabledFlag bool, defaultDurationFlag time.Duration) error {
+func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, disableSafemodeFlag, deleteOnlyFlag, handlerEnabledFlag bool, defaultDurationFlag time.Duration) error {
 	logger = &zap.SugaredLogger{}
 	*logger = *l.With("source", "admission-controller")
 	k8sClient = mgr.GetClient()
 	metricsSink = ms
 	deleteOnly = deleteOnlyFlag
+	disableSafemode = disableSafemodeFlag
 	handlerEnabled = handlerEnabledFlag
 	defaultDuration = defaultDurationFlag
 
@@ -98,14 +100,16 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	// handle initial safety nets
-	if responses, err := r.initialSafetyNets(); err != nil {
-		return err
-	} else if len(responses) > 0 {
-		retErr := errors.New("at least one of the initial safety nets caught an issue")
-		for _, response := range responses {
-			retErr = multierror.Append(retErr, errors.New(response))
+	if !disableSafemode {
+		if responses, err := r.initialSafetyNets(); err != nil {
+			return err
+		} else if len(responses) > 0 {
+			retErr := errors.New("at least one of the initial safety nets caught an issue")
+			for _, response := range responses {
+				retErr = multierror.Append(retErr, errors.New(response))
+			}
+			return retErr
 		}
-		return retErr
 	}
 
 	// send validation metric
