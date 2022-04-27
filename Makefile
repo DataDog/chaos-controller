@@ -79,15 +79,18 @@ generate: controller-gen
 
 # Build the docker images
 minikube-build-manager: manager
-	docker build -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
+	docker buildx create --use
+	docker buildx build --platform linux/amd64,linux/arm64 -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
 	minikube image load --daemon=false --overwrite=true ${MANAGER_IMAGE}
 
 minikube-build-injector: injector
-	docker build -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
+	docker buildx create --use
+	docker buildx build --platform linux/amd64,linux/arm64 -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
 	minikube image load --daemon=false --overwrite=true ${INJECTOR_IMAGE}
 
 minikube-build-handler: handler
-	docker build -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
+	docker buildx create --use
+	docker buildx build --platform linux/amd64,linux/arm64 -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
 	minikube image load --daemon=false --overwrite=true ${HANDLER_IMAGE}
 
 minikube-build: minikube-build-manager minikube-build-injector minikube-build-handler
