@@ -58,9 +58,12 @@ build:make:
     - make
   artifacts:
     paths:
-      - bin/injector/injector
-      - bin/manager/manager
-      - bin/handler/handler
+      - bin/injector/injector_amd64
+      - bin/manager/manager_amd64
+      - bin/handler/handler_amd64
+      - bin/injector/injector_arm64
+      - bin/manager/manager_arm64
+      - bin/handler/handler_arm64
 
 # meta-release
 # release image and common stuff
