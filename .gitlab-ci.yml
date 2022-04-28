@@ -45,13 +45,8 @@ ci-image:
     - docker buildx build --platform linux/amd64,linux/arm64 --tag 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/chaos-controller:$CURRENT_CI_IMAGE ci --push
 
 # main
-.common: &common
-  tags:
-    - "runner:main"
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/chaos-controller:$CURRENT_CI_IMAGE
-
 build:make:
-  <<: *common
+  <<: *docker-runner
   stage: build
   when: always
   script:
@@ -68,10 +63,7 @@ build:make:
 # meta-release
 # release image and common stuff
 .meta-release: &meta-release
-  <<: *common
-  tags:
-    - "runner:docker"
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v2875076-79d562c-1.4.0
+  <<: *docker-runner
   before_script:
     - echo "Logging into the Docker Hub"
     - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
@@ -84,9 +76,10 @@ build:make:
   <<: *meta-release
   stage: pre-release
   script:
-    - release.sh --build-from=./bin/manager/Dockerfile --build-context=./bin/manager/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME} ${TAG}
-    - release.sh --build-from=./bin/injector/Dockerfile --build-context=./bin/injector/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME} ${TAG}
-    - release.sh --build-from=./bin/handler/Dockerfile --build-context=./bin/handler/ 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME} ${TAG}
+    - docker buildx create --use
+    - docker buildx build --platform linux/amd64,linux/arm64 -t 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME}:${TAG} -f bin/manager/Dockerfile ./bin/manager/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME}:${TAG} -f bin/injector/Dockerfile ./bin/injector/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME}:${TAG} -f bin/handler/Dockerfile ./bin/handler/ --push
   dependencies:
     - build:make
 
@@ -114,8 +107,10 @@ pre-release-tag:
 # build the target from the local Dockerfile and push it unified registry
 .release: &release
   <<: *meta-release
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v3586501-4627700-1.5.3
   stage: release
   script:
+    - docker image ls 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-staging/${IMAGE} ${TAG}
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-prod/${IMAGE} ${TAG}
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
