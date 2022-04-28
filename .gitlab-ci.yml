@@ -50,7 +50,7 @@ build:make:
   stage: build
   when: always
   script:
-    - docker image ls 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push
+    - docker image ls --all 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push
     - apt-get update
     - apt-get -y install build-essential
     - curl -O https://dl.google.com/go/go1.18.1.linux-amd64.tar.gz
