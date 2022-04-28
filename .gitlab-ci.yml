@@ -50,6 +50,7 @@ build:make:
   stage: build
   when: always
   script:
+    - apt-get install make
     - make
   artifacts:
     paths:
