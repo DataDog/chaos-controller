@@ -5,7 +5,7 @@
 
 ---
 variables:
-  CURRENT_CI_IMAGE: 0.4.1
+  CURRENT_CI_IMAGE: 0.5.0
   CONTROLLER_IMAGE_NAME: chaos-controller
   INJECTOR_IMAGE_NAME: chaos-injector
   HANDLER_IMAGE_NAME: chaos-handler
@@ -31,7 +31,7 @@ stages:
 
 # CI image
 .docker-runner: &docker-runner
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker:18.03.1
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker:20.10.3
   tags:
     - "runner:docker"
 
@@ -41,8 +41,8 @@ ci-image:
   when: manual
   except: [tags, schedules]
   script:
-    - docker build --tag 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/chaos-controller:$CURRENT_CI_IMAGE ci
-    - docker push 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/chaos-controller:$CURRENT_CI_IMAGE
+    - docker buildx create --use
+    - docker buildx build --platform linux/amd64,linux/arm64 --tag 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/chaos-controller:$CURRENT_CI_IMAGE ci --push
 
 # main
 .common: &common
