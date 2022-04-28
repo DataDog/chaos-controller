@@ -31,7 +31,7 @@ stages:
 
 # CI image
 .docker-runner: &docker-runner
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v3586501-4627700-1.5.3
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v1.7.0
   tags:
     - "runner:docker"
 
@@ -50,7 +50,6 @@ build:make:
   stage: build
   when: always
   script:
-    - docker image ls --all 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push
     - apt-get update
     - apt-get -y install build-essential
     - curl -O https://dl.google.com/go/go1.18.1.linux-amd64.tar.gz
