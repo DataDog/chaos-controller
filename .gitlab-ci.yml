@@ -31,7 +31,7 @@ stages:
 
 # CI image
 .docker-runner: &docker-runner
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker:20.10.3
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v3586501-4627700-1.5.3
   tags:
     - "runner:docker"
 
@@ -50,6 +50,7 @@ build:make:
   stage: build
   when: always
   script:
+    - docker image ls 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push
     - apt-get update
     - apt-get -y install build-essential
     - curl -O https://dl.google.com/go/go1.18.1.linux-amd64.tar.gz
@@ -112,10 +113,8 @@ pre-release-tag:
 # build the target from the local Dockerfile and push it unified registry
 .release: &release
   <<: *meta-release
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v3586501-4627700-1.5.3
   stage: release
   script:
-    - docker image ls 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-staging/${IMAGE} ${TAG}
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-prod/${IMAGE} ${TAG}
     - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
