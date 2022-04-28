@@ -34,11 +34,6 @@ stages:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker:20.10.3
   tags:
     - "runner:docker"
-  script:
-    - apt-get update
-    - apt-get -y install build-essential
-    - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.1.linux-amd64.tar.gz
-    - export PATH=$PATH:/usr/local/go/bin
 
 ci-image:
   <<: *docker-runner
@@ -55,6 +50,10 @@ build:make:
   stage: build
   when: always
   script:
+    - apt-get update
+    - apt-get -y install build-essential
+    - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.1.linux-amd64.tar.gz
+    - export PATH=$PATH:/usr/local/go/bin
     - make
   artifacts:
     paths:
