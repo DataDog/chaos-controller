@@ -29,17 +29,21 @@ var logger *zap.SugaredLogger
 var k8sClient client.Client
 var metricsSink metrics.Sink
 var deleteOnly bool
-var disableSafemode bool
+var enableSafemode bool
+var namespaceThreshold float64
+var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
 
-func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, disableSafemodeFlag, deleteOnlyFlag, handlerEnabledFlag bool, defaultDurationFlag time.Duration) error {
+func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, namespaceThresholdFlag, clusterThresholdFlag int, enableSafemodeFlag, deleteOnlyFlag, handlerEnabledFlag bool, defaultDurationFlag time.Duration) error {
 	logger = &zap.SugaredLogger{}
 	*logger = *l.With("source", "admission-controller")
 	k8sClient = mgr.GetClient()
 	metricsSink = ms
 	deleteOnly = deleteOnlyFlag
-	disableSafemode = disableSafemodeFlag
+	enableSafemode = enableSafemodeFlag
+	namespaceThreshold = float64(namespaceThresholdFlag) / 100.0
+	clusterThreshold = float64(clusterThresholdFlag) / 100.0
 	handlerEnabled = handlerEnabledFlag
 	defaultDuration = defaultDurationFlag
 
@@ -100,7 +104,7 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	// handle initial safety nets
-	if !disableSafemode {
+	if enableSafemode {
 		if responses, err := r.initialSafetyNets(); err != nil {
 			return err
 		} else if len(responses) > 0 {
@@ -270,8 +274,14 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 	totalCount := 0
 	namespaceCount := 0
 	targetCount := 0
-	namespaceThreshold := 0.8
-	clusterThreshold := 0.66
+
+	if namespaceThreshold == 0 {
+		namespaceThreshold = 80
+	}
+
+	if clusterThreshold == 0 {
+		clusterThreshold = 66
+	}
 
 	if r.Spec.Unsafemode != nil {
 		if r.Spec.Unsafemode.Config != nil && r.Spec.Unsafemode.Config.CountTooLarge != nil {

@@ -77,13 +77,19 @@ type controllerConfig struct {
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
 	UserInfoHook             bool                          `json:"userInfoHook"`
-	DisableSafemode          bool                          `json:"disableSafemode"`
+	SafeMode                 safeModeConfig                `json:"safeMode"`
 }
 
 type controllerWebhookConfig struct {
 	CertDir string `json:"certDir"`
 	Host    string `json:"host"`
 	Port    int    `json:"port"`
+}
+
+type safeModeConfig struct {
+	enable             bool `json:"enable"`
+	namespaceThreshold int  `json:"namespaceThreshold"`
+	clusterThreshold   int  `json:"clusterThreshold"`
 }
 
 type injectorConfig struct {
@@ -205,9 +211,17 @@ func main() {
 	pflag.BoolVar(&cfg.Controller.UserInfoHook, "user-info-webhook", true, "Enable the mutating webhook to inject user info into disruption status")
 	handleFatalError(viper.BindPFlag("controller.userInfoHook", pflag.Lookup("user-info-webhook")))
 
-	pflag.BoolVar(&cfg.Controller.DisableSafemode, "disable-safemode", false,
-		"Disable the Safemode functionality and will not catch concerns pr")
-	handleFatalError(viper.BindPFlag("controller.disableSafemode", pflag.Lookup("disable-safemode")))
+	pflag.BoolVar(&cfg.Controller.SafeMode.enable, "safemode_enable", true,
+		"Enable or disable the safemode functionality of the chaos-controller")
+	handleFatalError(viper.BindPFlag("controller.safemode.enable", pflag.Lookup("safemode_enable")))
+
+	pflag.IntVar(&cfg.Controller.SafeMode.namespaceThreshold, "safemode_namespaceThreshold", 80,
+		"Threshold which safemode checks against to see if the number of targets is over safety measures within a namespace.")
+	handleFatalError(viper.BindPFlag("controller.safemode.namespaceThreshold", pflag.Lookup("safemode_enable")))
+
+	pflag.IntVar(&cfg.Controller.SafeMode.clusterThreshold, "safemode_clusterThreshold", 66,
+		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
+	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode_clusterThreshold")))
 
 	pflag.Parse()
 
@@ -336,7 +350,7 @@ func main() {
 	go r.ReportMetrics()
 
 	// register disruption validating webhook
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DisableSafemode, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.SafeMode.namespaceThreshold, cfg.Controller.SafeMode.clusterThreshold, cfg.Controller.SafeMode.enable, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
 		os.Exit(1) //nolint:gocritic
 	}
