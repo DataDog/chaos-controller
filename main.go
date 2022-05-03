@@ -211,17 +211,17 @@ func main() {
 	pflag.BoolVar(&cfg.Controller.UserInfoHook, "user-info-webhook", true, "Enable the mutating webhook to inject user info into disruption status")
 	handleFatalError(viper.BindPFlag("controller.userInfoHook", pflag.Lookup("user-info-webhook")))
 
-	pflag.BoolVar(&cfg.Controller.SafeMode.enable, "safemode_enable", true,
+	pflag.BoolVar(&cfg.Controller.SafeMode.enable, "safemode-enable", true,
 		"Enable or disable the safemode functionality of the chaos-controller")
-	handleFatalError(viper.BindPFlag("controller.safemode.enable", pflag.Lookup("safemode_enable")))
+	handleFatalError(viper.BindPFlag("controller.safemode.enable", pflag.Lookup("safemode-enable")))
 
-	pflag.IntVar(&cfg.Controller.SafeMode.namespaceThreshold, "safemode_namespaceThreshold", 80,
+	pflag.IntVar(&cfg.Controller.SafeMode.namespaceThreshold, "safemode-namespaceThreshold", 80,
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a namespace.")
-	handleFatalError(viper.BindPFlag("controller.safemode.namespaceThreshold", pflag.Lookup("safemode_enable")))
+	handleFatalError(viper.BindPFlag("controller.safemode.namespaceThreshold", pflag.Lookup("safemode-namespaceThreshold")))
 
-	pflag.IntVar(&cfg.Controller.SafeMode.clusterThreshold, "safemode_clusterThreshold", 66,
+	pflag.IntVar(&cfg.Controller.SafeMode.clusterThreshold, "safemode-clusterThreshold", 66,
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
-	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode_clusterThreshold")))
+	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-clusterThreshold")))
 
 	pflag.Parse()
 
