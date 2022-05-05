@@ -215,13 +215,13 @@ func main() {
 		"Enable or disable the safemode functionality of the chaos-controller")
 	handleFatalError(viper.BindPFlag("controller.safemode.enable", pflag.Lookup("safemode-enable")))
 
-	pflag.IntVar(&cfg.Controller.SafeMode.namespaceThreshold, "safemode-namespaceThreshold", 80,
+	pflag.IntVar(&cfg.Controller.SafeMode.namespaceThreshold, "safemode-namespace-threshold", 80,
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a namespace.")
-	handleFatalError(viper.BindPFlag("controller.safemode.namespaceThreshold", pflag.Lookup("safemode-namespaceThreshold")))
+	handleFatalError(viper.BindPFlag("controller.safemode.namespaceThreshold", pflag.Lookup("safemode-namespace-threshold")))
 
 	pflag.IntVar(&cfg.Controller.SafeMode.clusterThreshold, "safemode-clusterThreshold", 66,
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
-	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-clusterThreshold")))
+	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-cluster-threshold")))
 
 	pflag.Parse()
 
