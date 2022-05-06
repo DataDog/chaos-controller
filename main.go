@@ -219,7 +219,7 @@ func main() {
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a namespace.")
 	handleFatalError(viper.BindPFlag("controller.safemode.namespaceThreshold", pflag.Lookup("safemode-namespace-threshold")))
 
-	pflag.IntVar(&cfg.Controller.SafeMode.ClusterThreshold, "safemode-clusterThreshold", 66,
+	pflag.IntVar(&cfg.Controller.SafeMode.ClusterThreshold, "safemode-cluster-threshold", 66,
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
 	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-cluster-threshold")))
 
