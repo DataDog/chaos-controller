@@ -77,12 +77,19 @@ type controllerConfig struct {
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
 	UserInfoHook             bool                          `json:"userInfoHook"`
+	SafeMode                 safeModeConfig                `json:"safeMode"`
 }
 
 type controllerWebhookConfig struct {
 	CertDir string `json:"certDir"`
 	Host    string `json:"host"`
 	Port    int    `json:"port"`
+}
+
+type safeModeConfig struct {
+	Enable             bool `json:"enable"`
+	NamespaceThreshold int  `json:"namespaceThreshold"`
+	ClusterThreshold   int  `json:"clusterThreshold"`
 }
 
 type injectorConfig struct {
@@ -203,6 +210,18 @@ func main() {
 
 	pflag.BoolVar(&cfg.Controller.UserInfoHook, "user-info-webhook", true, "Enable the mutating webhook to inject user info into disruption status")
 	handleFatalError(viper.BindPFlag("controller.userInfoHook", pflag.Lookup("user-info-webhook")))
+
+	pflag.BoolVar(&cfg.Controller.SafeMode.Enable, "safemode-enable", true,
+		"Enable or disable the safemode functionality of the chaos-controller")
+	handleFatalError(viper.BindPFlag("controller.safemode.enable", pflag.Lookup("safemode-enable")))
+
+	pflag.IntVar(&cfg.Controller.SafeMode.NamespaceThreshold, "safemode-namespace-threshold", 80,
+		"Threshold which safemode checks against to see if the number of targets is over safety measures within a namespace.")
+	handleFatalError(viper.BindPFlag("controller.safemode.namespaceThreshold", pflag.Lookup("safemode-namespace-threshold")))
+
+	pflag.IntVar(&cfg.Controller.SafeMode.ClusterThreshold, "safemode-cluster-threshold", 66,
+		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
+	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-cluster-threshold")))
 
 	pflag.Parse()
 
@@ -331,7 +350,7 @@ func main() {
 	go r.ReportMetrics()
 
 	// register disruption validating webhook
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.SafeMode.NamespaceThreshold, cfg.Controller.SafeMode.ClusterThreshold, cfg.Controller.SafeMode.Enable, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
 		os.Exit(1) //nolint:gocritic
 	}
