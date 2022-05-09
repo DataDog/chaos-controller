@@ -6,19 +6,49 @@
 package eventbroadcaster
 
 import (
+	"regexp"
+	"strings"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 )
 
-func eventMessageAggregator(event *v1.Event) string {
-	return "Agg: " + event.Message
+func eventAggregatorMessage(event *v1.Event) string {
+	return "chaos-controller aggregation event: " + event.Message
+}
+
+func eventAggregatorKeyFuncForStatusChanges(event *v1.Event) (string, string) {
+	if !strings.Contains(strings.Join(v1beta1.ALL_EVENT_TYPES, ", "), event.Reason) {
+		return record.EventAggregatorByReasonFunc(event)
+	}
+
+	r, err := regexp.Compile(`(\[disruption ?P<uid>([\d]*)\]) (?P<message>.*)`)
+	if err != nil {
+		return record.EventAggregatorByReasonFunc(event)
+	}
+
+	match := r.FindStringSubmatch(event.Message)
+
+	result := make(map[string]string)
+	for i, name := range r.SubexpNames() {
+		if i != 0 && name != "" {
+			result[name] = match[i]
+		}
+	}
+
+	if result["uid"] != "" && result["message"] != "" {
+		return result["uid"], result["message"]
+	}
+	return record.EventAggregatorByReasonFunc(event)
 }
 
 func EventBroadcaster() record.EventBroadcaster {
 	correlator := record.CorrelatorOptions{
-		MaxEvents:            2,
-		MaxIntervalInSeconds: 60,
-		MessageFunc:          eventMessageAggregator,
+		MaxEvents:            1,
+		MaxIntervalInSeconds: 120,
+		MessageFunc:          eventAggregatorMessage,
+		KeyFunc:              eventAggregatorKeyFuncForStatusChanges,
 	}
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(correlator)
 

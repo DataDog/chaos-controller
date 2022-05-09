@@ -30,9 +30,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
-	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -66,53 +66,7 @@ type DisruptionReconciler struct {
 	ExpiredDisruptionGCDelay              *time.Duration
 	CacheContextStore                     map[string]CtxTuple
 	Controller                            controller.Controller
-}
-
-type DisruptionSelectorHandler struct {
-	reconciler *DisruptionReconciler
-	disruption *chaosv1beta1.Disruption
-}
-
-func (h DisruptionSelectorHandler) OnAdd(obj interface{}) {
-	pod, okPod := obj.(*corev1.Pod)
-	node, okNode := obj.(*corev1.Node)
-
-	switch {
-	case okPod:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:pod", "target:" + pod.Name}))
-	case okNode:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:node", "target:" + node.Name}))
-	default:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:object"}))
-	}
-}
-
-func (h DisruptionSelectorHandler) OnDelete(obj interface{}) {
-	pod, okPod := obj.(*corev1.Pod)
-	node, okNode := obj.(*corev1.Node)
-
-	switch {
-	case okPod:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:delete", "targetKind:pod", "target:" + pod.Name}))
-	case okNode:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:delete", "targetKind:node", "target:" + node.Name}))
-	default:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:delete", "targetKind:object"}))
-	}
-}
-
-func (h DisruptionSelectorHandler) OnUpdate(oldObj, newObj interface{}) {
-	pod, okPod := oldObj.(*corev1.Pod)
-	node, okNode := oldObj.(*corev1.Node)
-
-	switch {
-	case okPod:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:update", "targetKind:pod", "target:" + pod.Name}))
-	case okNode:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:update", "targetKind:node", "target:" + node.Name}))
-	default:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:update", "targetKind:object"}))
-	}
+	DirectClient                          *kubernetes.Clientset
 }
 
 type CtxTuple struct {
@@ -123,7 +77,7 @@ type CtxTuple struct {
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers,verbs=update
-//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
+//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch;list;watch
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
@@ -346,132 +300,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 	// stop the reconcile loop, there's nothing else to do
 	return ctrl.Result{}, nil
-}
-
-// createInstanceSelectorCache creates this instance's cache if it doesn't exist and attaches it to the controller
-func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta1.Disruption) error {
-	// clean up potential expired cache contexts based on context error return
-	deletionList := []string{}
-
-	for key, contextTuple := range r.CacheContextStore {
-		if contextTuple.Ctx.Err() != nil {
-			deletionList = append(deletionList, key)
-		}
-	}
-
-	for _, key := range deletionList {
-		delete(r.CacheContextStore, key)
-	}
-
-	// remove check when StaticTargeting is defaulted to false
-	if instance.Spec.StaticTargeting == nil {
-		r.log.Debugw("StaticTargeting pointer is nil")
-	}
-
-	if instance.Spec.StaticTargeting == nil || *instance.Spec.StaticTargeting {
-		return nil
-	}
-
-	disNamespacedName := types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}
-	disSpecHash, err := instance.Spec.HashNoCount()
-
-	if err != nil {
-		return fmt.Errorf("error getting disruption hash")
-	}
-
-	disCacheHash := disNamespacedName.String() + disSpecHash
-	disCompleteSelector, err := targetselector.GetLabelSelectorFromInstance(instance)
-
-	if err != nil {
-		return fmt.Errorf("error getting instance selector: %w", err)
-	}
-	// if it doesn't exist, create the cache context to re-trigger the disruption
-	if _, ok := r.CacheContextStore[disCacheHash]; !ok {
-		// create the cache/watcher with its options
-		var cacheOptions k8scache.Options
-		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
-			cacheOptions = k8scache.Options{
-				SelectorsByObject: k8scache.SelectorsByObject{
-					&corev1.Node{}: {Label: disCompleteSelector},
-				},
-			}
-		} else {
-			cacheOptions = k8scache.Options{
-				SelectorsByObject: k8scache.SelectorsByObject{
-					&corev1.Pod{}: {Label: disCompleteSelector},
-				},
-				Namespace: instance.Namespace,
-			}
-		}
-
-		cache, err := k8scache.New(
-			ctrl.GetConfigOrDie(),
-			cacheOptions,
-		)
-
-		if err != nil {
-			return fmt.Errorf("cache gen error: %w", err)
-		}
-
-		// attach handler to cache in order to monitor the cache activity
-		var info k8scache.Informer
-
-		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
-			info, err = cache.GetInformer(context.Background(), &corev1.Node{})
-		} else {
-			info, err = cache.GetInformer(context.Background(), &corev1.Pod{})
-		}
-
-		if err != nil {
-			return fmt.Errorf("cache gen error: %w", err)
-		}
-
-		info.AddEventHandler(DisruptionSelectorHandler{disruption: instance, reconciler: r})
-
-		// start the cache with a cancelable context and duration, and attach it to the controller as a watch source
-		ch := make(chan error)
-		cacheCtx, cacheCancelFunc := context.WithTimeout(context.Background(), instance.Spec.Duration.Duration()+*r.ExpiredDisruptionGCDelay*2)
-
-		go func() { ch <- cache.Start(cacheCtx) }()
-
-		r.CacheContextStore[disCacheHash] = CtxTuple{cacheCtx, cacheCancelFunc}
-
-		var cacheSource source.SyncingSource
-		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
-			cacheSource = source.NewKindWithCache(&corev1.Node{}, cache)
-		} else {
-			cacheSource = source.NewKindWithCache(&corev1.Pod{}, cache)
-		}
-
-		return r.Controller.Watch(
-			cacheSource,
-			handler.EnqueueRequestsFromMapFunc(
-				func(c client.Object) []reconcile.Request {
-					return []reconcile.Request{{NamespacedName: disNamespacedName}}
-				}),
-		)
-	}
-
-	return nil
-}
-
-// clearInstanceCache closes the context for the disruption-related cache and cleans the cancelFunc array (if it exists)
-func (r *DisruptionReconciler) clearInstanceSelectorCache(instance *chaosv1beta1.Disruption) {
-	disNamespacedName := types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}
-	disSpecHash, err := instance.Spec.HashNoCount()
-
-	if err != nil {
-		r.log.Errorf("error getting disruption hash")
-		return
-	}
-
-	disCacheHash := disNamespacedName.String() + disSpecHash
-	contextTuple, ok := r.CacheContextStore[disCacheHash]
-
-	if ok {
-		contextTuple.CancelFunc()
-		delete(r.CacheContextStore, disCacheHash)
-	}
 }
 
 // updateInjectionStatus updates the given instance injection status depending on its chaos pods statuses

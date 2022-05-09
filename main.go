@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/rest"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -293,6 +294,17 @@ func main() {
 		gcPtr = &cfg.Controller.ExpiredDisruptionGCDelay
 	}
 
+	// create kubernetes clientset
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		logger.Fatalw("error getting kubernetes client config", "error", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		logger.Fatalw("error creating kubernetes client", "error", err)
+	}
+
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:                                mgr.GetClient(),
@@ -312,6 +324,7 @@ func main() {
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
 		ExpiredDisruptionGCDelay:              gcPtr,
 		CacheContextStore:                     make(map[string]controllers.CtxTuple),
+		DirectClient:                          clientset,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
