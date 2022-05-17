@@ -6,13 +6,15 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: dry-run
-  namespace: chaos-demo
+  name: dry-run-node-hello
+  namespace: chaos-engineering
 spec:
   dryRun: true # enable dry-run mode (chaos pods will be created but won't inject anything)
-  level: pod
+  level: node
   selector:
-    app: demo-curl
+    kubernetes.io/os: linuxxxxx
   count: 1
-  nodeFailure:
-    shutdown: false
+  staticTargeting: false
+  network:
+    delay: 10 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
+    delayJitter: 5 # (optional) add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%

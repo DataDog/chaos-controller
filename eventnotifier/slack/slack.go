@@ -6,10 +6,9 @@
 package slack
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/mail"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,6 +82,8 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 	headerText := "Disruption '" + dis.Name + "' encountered an issue."
 	bodyText := "> Disruption `" + dis.Name + "` emitted the event " + event.Reason + ": " + event.Message
 
+	log.Printf("\n\n%s\n\n", bodyText)
+
 	if n.common.ClusterName == "" {
 		if dis.ClusterName != "" {
 			n.common.ClusterName = dis.ClusterName
@@ -114,21 +115,22 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
 	var annotation v1.UserInfo
 
-	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
-	if err != nil {
-		return fmt.Errorf("slack notifier: no userinfo in disruption %s: %v", dis.Name, err)
-	}
+	// err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
+	// if err != nil {
+	// 	return fmt.Errorf("slack notifier: no userinfo in disruption %s: %v", dis.Name, err)
+	// }
 
-	if _, err := mail.ParseAddress(annotation.Username); err != nil {
-		return nil
-	}
+	// if _, err := mail.ParseAddress(annotation.Username); err != nil {
+	// 	return nil
+	// }
 
-	p1, err := n.client.GetUserByEmail(annotation.Username)
+	p1, err := n.client.GetUserByEmail("claire.chong@datadoghq.com")
 	if err != nil {
 		n.logger.Warn(fmt.Errorf("slack notifier: user %s not found: %w", annotation.Username, err))
 		return nil
 	}
 
+	log.Printf("\n\nSent a message to %s on Slack\n\n", p1.ID)
 	_, _, err = n.client.PostMessage(p1.ID,
 		slack.MsgOptionText("Disruption "+dis.Name+" "+notificationText, false),
 		slack.MsgOptionUsername("Disruption Status Bot"),

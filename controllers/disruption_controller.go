@@ -67,6 +67,7 @@ type DisruptionReconciler struct {
 	CacheContextStore                     map[string]CtxTuple
 	Controller                            controller.Controller
 	DirectClient                          *kubernetes.Clientset
+	TargetStateWatchers                   map[string]*TargetWatcher
 }
 
 type CtxTuple struct {
@@ -77,7 +78,7 @@ type CtxTuple struct {
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers,verbs=update
-//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch;list;watch
+//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch;list;watch;get
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
@@ -119,6 +120,10 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
+	// if instance != nil && r.TargetStateWatchers[string(instance.UID)] == nil {
+	// 	r.TargetStateWatchers[string(instance.UID)] = r.watchTargetPodEvents(instance)
+	// }
 
 	if err := r.manageInstanceSelectorCache(instance); err != nil {
 		r.log.Errorw("error managing selector cache", "error", err)
@@ -620,6 +625,11 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 
 	if len(chaosPods) == 0 {
 		return nil
+	}
+
+	if r.TargetStateWatchers[string(instance.UID)] != nil {
+		r.TargetStateWatchers[string(instance.UID)].quit <- true
+		r.TargetStateWatchers[string(instance.UID)] = nil
 	}
 
 	for _, chaosPod := range chaosPods {

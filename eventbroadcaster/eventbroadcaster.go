@@ -15,15 +15,15 @@ import (
 )
 
 func eventAggregatorMessage(event *v1.Event) string {
-	return "chaos-controller aggregation event: " + event.Message
+	return event.Message
 }
 
 func eventAggregatorKeyFuncForStatusChanges(event *v1.Event) (string, string) {
-	if !strings.Contains(strings.Join(v1beta1.ALL_EVENT_TYPES, ", "), event.Reason) {
+	if v1beta1.IsDisruptionEvent(*event, "Warning") {
 		return record.EventAggregatorByReasonFunc(event)
 	}
 
-	r, err := regexp.Compile(`(\[disruption ?P<uid>([\d]*)\]) (?P<message>.*)`)
+	r, err := regexp.Compile(`(\((\w* ?)*)( (?P<disruptionName>(.*)):) (?P<message>.*)`)
 	if err != nil {
 		return record.EventAggregatorByReasonFunc(event)
 	}
@@ -32,23 +32,37 @@ func eventAggregatorKeyFuncForStatusChanges(event *v1.Event) (string, string) {
 
 	result := make(map[string]string)
 	for i, name := range r.SubexpNames() {
-		if i != 0 && name != "" {
+		if i < len(match) && name != "" {
 			result[name] = match[i]
 		}
 	}
 
-	if result["uid"] != "" && result["message"] != "" {
-		return result["uid"], result["message"]
+	if result["disruptionName"] != "" {
+		return strings.Join([]string{
+				event.Source.Component,
+				event.Source.Host,
+				event.InvolvedObject.Kind,
+				event.InvolvedObject.Namespace,
+				result["disruptionName"],
+				event.InvolvedObject.APIVersion,
+				event.Type,
+				event.Reason,
+			},
+				""), strings.Join([]string{
+				event.InvolvedObject.Name,
+				event.Message,
+			}, "")
 	}
+
 	return record.EventAggregatorByReasonFunc(event)
 }
 
 func EventBroadcaster() record.EventBroadcaster {
 	correlator := record.CorrelatorOptions{
-		MaxEvents:            1,
+		MaxEvents:            2,
 		MaxIntervalInSeconds: 120,
-		MessageFunc:          eventAggregatorMessage,
-		KeyFunc:              eventAggregatorKeyFuncForStatusChanges,
+		//		MessageFunc:          eventAggregatorMessage,
+		KeyFunc: eventAggregatorKeyFuncForStatusChanges,
 	}
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(correlator)
 

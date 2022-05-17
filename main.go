@@ -297,12 +297,16 @@ func main() {
 	// create kubernetes clientset
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		logger.Fatalw("error getting kubernetes client config", "error", err)
+		logger.Errorw("error getting kubernetes client config", "error", err)
+
+		return
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		logger.Fatalw("error creating kubernetes client", "error", err)
+		logger.Errorw("error creating kubernetes client", "error", err)
+
+		return
 	}
 
 	// create reconciler

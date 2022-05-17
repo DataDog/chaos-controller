@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"reflect"
+	"sort"
+	"strings"
+	"time"
 
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
@@ -25,12 +29,6 @@ import (
 type DisruptionSelectorHandler struct {
 	reconciler *DisruptionReconciler
 	disruption *chaosv1beta1.Disruption
-}
-
-type DisruptionEvent struct {
-	EventType string
-	Reason    string
-	Status    string
 }
 
 func (h DisruptionSelectorHandler) OnAdd(obj interface{}) {
@@ -72,7 +70,14 @@ func (h DisruptionSelectorHandler) OnChangeHandleMetricsSink(pod *corev1.Pod, no
 func (h DisruptionSelectorHandler) OnChangeHandleNotifierSink(oldPod, newPod *corev1.Pod, oldNode, newNode *corev1.Node, okOldPod, okNewPod, okOldNode, okNewNode bool) {
 	switch {
 	case okNewPod && okOldPod:
-		h.notifyOnTargetPodError(*oldPod, *newPod)
+		disruptionEvents, err := h.getPodEventsFromCurrentDisruption(*newPod)
+		if err != nil {
+			h.reconciler.log.Warnf("couldn't get the list of events from the target. Might not be able to notify on error changes: %s", err.Error())
+		}
+
+		if !h.notifyOnPodFailures(*oldPod, *newPod, getNonAnalyzedEvents(disruptionEvents, "Warning")) {
+			h.notifyOnPodSuccesses(*oldPod, *newPod, disruptionEvents)
+		}
 	case okNewNode && okOldNode:
 	default:
 		h.reconciler.log.Debugw("target observer couldn't detect what type of changes happened on the targets")
@@ -80,74 +85,205 @@ func (h DisruptionSelectorHandler) OnChangeHandleNotifierSink(oldPod, newPod *co
 
 }
 
-func (h DisruptionSelectorHandler) notifyOnTargetPodResolve(oldPod corev1.Pod, newPod corev1.Pod) {
+func getNonAnalyzedEvents(events []corev1.Event, eventType string) []corev1.Event {
+	idx := 0
+	lastWarningNotificationIsNoticed := false
+
+	for i, event := range events {
+		if event.Source.Component == "disruption-controller" && eventType != "" && event.Type == eventType {
+			idx = i
+			lastWarningNotificationIsNoticed = true
+			break
+		}
+	}
+
+	if !lastWarningNotificationIsNoticed {
+		return events
+	}
+
+	return events[:idx]
 }
 
-func (h DisruptionSelectorHandler) getPodContainerFailure(oldPod corev1.Pod, newPod corev1.Pod) map[string]DisruptionEvent {
-	failuresPerContainers := map[string]DisruptionEvent{}
+func getEventsFromEventType(events []corev1.Event, eventType string) []corev1.Event {
+	eventsFromEventType := []corev1.Event{}
+
+	for _, event := range events {
+		if event.Reason == eventType {
+			eventsFromEventType = append(eventsFromEventType, event)
+		}
+	}
+
+	return eventsFromEventType
+}
+
+func (h DisruptionSelectorHandler) getPodEventsFromCurrentDisruption(pod corev1.Pod) ([]corev1.Event, error) {
+	fieldSelector := fields.Set{
+		"involvedObject.kind": "Pod",
+		"involvedObject.name": pod.Name,
+	}
+
+	eventList, err := h.reconciler.DirectClient.CoreV1().Events(pod.Namespace).List(
+		context.Background(),
+		v1.ListOptions{
+			FieldSelector: fieldSelector.AsSelector().String(),
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(eventList.Items, func(i, j int) bool {
+		return eventList.Items[i].LastTimestamp.After(eventList.Items[j].LastTimestamp.Time)
+	})
+
+	// Get only events sent during the disruption
+	idxStartDisruption := 0
+	for i, event := range eventList.Items {
+		if event.Reason == "Disrupted" && event.Source.Component == "disruption-controller" {
+			idxStartDisruption = i
+			break
+		}
+	}
+
+	return eventList.Items[:idxStartDisruption], nil
+}
+
+func (h DisruptionSelectorHandler) notifyOnPodFailures(oldPod corev1.Pod, newPod corev1.Pod, disruptionEvents []corev1.Event) bool {
+	now := time.Now()
+	errorPerDisruptionEvent := make(map[string]bool)
+
+	// https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/events/event.go
+	// In case of new events sent from kubelet, we can determine any error event in the pod to propagate it
+	for _, event := range disruptionEvents {
+		if event.Type == "Normal" {
+			continue
+		}
+
+		switch event.Reason {
+		// Container and Image warning events which might be related to the disruption
+		case "Failed", "ErrImageNeverPull", "BackOff", "InspectFailed":
+			errorPerDisruptionEvent[chaosv1beta1.DIS_CONTAINER_WARNING_STATE] = true
+		// Pod warning events
+		case "FailedKillPod", "FailedCreatePodContainer", "NetworkNotReady":
+			errorPerDisruptionEvent[chaosv1beta1.DIS_POD_WARNING_STATE] = true
+		// Node related events
+		case "KubeletSetupFailed", "FailedAttachVolume", "FailedMountVolume", "VolumeResizeFailed", "FileSystemResizeFailed", "FailedMapVolume", "AlreadyMountedVolume", "FailedMountOnFilesystemMismatch":
+			errorPerDisruptionEvent[chaosv1beta1.DIS_POD_WARNING_STATE] = true
+		// Probe events
+		case "Unhealthy", "ProbeWarning":
+			lowerCasedMessage := strings.ToLower(event.Message)
+			switch {
+			case strings.Contains(lowerCasedMessage, "liveness probe"):
+				errorPerDisruptionEvent[chaosv1beta1.DIS_LIVENESS_PROBE_CHANGE] = true
+			case strings.Contains(lowerCasedMessage, "readiness probe"):
+				errorPerDisruptionEvent[chaosv1beta1.DIS_READINESS_PROBE_CHANGE] = true
+			default:
+				errorPerDisruptionEvent[chaosv1beta1.DIS_PROBE_CHANGE] = true
+			}
+
+		// other events
+		case "FailedSync", "FailedValidation", "FailedPostStartHook", "FailedPreStopHook":
+			errorPerDisruptionEvent[chaosv1beta1.DIS_POD_WARNING_STATE] = true
+		}
+	}
+
+	// Compare statuses between old and new pod to detect changes
+	for _, container := range newPod.Status.ContainerStatuses {
+		for _, oldContainer := range oldPod.Status.ContainerStatuses {
+			if container.Name != oldContainer.Name { // When restarting, container can change of ID, so we need to verify by name
+				continue
+			}
+
+			if container.State.Waiting != nil && container.State.Waiting.Reason != "ContainerCreating" {
+				if oldContainer.State.Waiting == nil || (oldContainer.State.Waiting != nil && oldContainer.State.Waiting != container.State.Waiting) {
+					errorPerDisruptionEvent[chaosv1beta1.DIS_CONTAINER_WARNING_STATE] = true
+				}
+			}
+
+			if container.State.Terminated != nil && container.State.Terminated.Reason != "Completed" {
+				if oldContainer.State.Terminated == nil || (oldContainer.State.Terminated != nil && container.State.Terminated.Reason != oldContainer.State.Terminated.Reason) {
+					errorPerDisruptionEvent[chaosv1beta1.DIS_POD_WARNING_STATE] = true
+				}
+			}
+
+			if container.RestartCount > (oldContainer.RestartCount + 2) {
+				errorPerDisruptionEvent[chaosv1beta1.DIS_TOO_MANY_RESTARTS] = true
+			}
+		}
+	}
+
+	// Send event to disruption to propagate with the notifier if the exact same event has been sent more than 5 min ago
+	for eventType := range errorPerDisruptionEvent {
+		// Send event to target to keep track of sent events
+		h.reconciler.Recorder.Event(&newPod, corev1.EventTypeWarning, eventType, fmt.Sprintf(chaosv1beta1.ALL_DISRUPTION_EVENTS[eventType].OnTargetTemplateMessage, h.disruption.Name))
+
+		lastEvents := getEventsFromEventType(disruptionEvents, eventType)
+		if len(lastEvents) == 0 {
+			h.reconciler.Recorder.Event(h.disruption, corev1.EventTypeWarning, eventType, fmt.Sprintf(chaosv1beta1.ALL_DISRUPTION_EVENTS[eventType].OnDisruptionTemplateMessage, newPod.Name))
+		} else if lastEvents[0].LastTimestamp.Time.Before(now.Add(time.Minute * 5)) {
+			if len(lastEvents) > 1 {
+				h.reconciler.Recorder.Event(h.disruption, corev1.EventTypeWarning, eventType, fmt.Sprintf(chaosv1beta1.ALL_DISRUPTION_EVENTS[eventType].OnDisruptionTemplateAggMessage, newPod.Name, len(lastEvents)))
+			} else {
+				h.reconciler.Recorder.Event(h.disruption, corev1.EventTypeWarning, eventType, fmt.Sprintf(chaosv1beta1.ALL_DISRUPTION_EVENTS[eventType].OnDisruptionTemplateMessage, newPod.Name))
+			}
+		}
+	}
+
+	return len(errorPerDisruptionEvent) > 0
+}
+
+func (h DisruptionSelectorHandler) notifyOnPodSuccesses(oldPod corev1.Pod, newPod corev1.Pod, disruptionEvents []corev1.Event) {
+	recover := false
+	canRecover := false
+
+	for i, event := range disruptionEvents {
+		if v1beta1.IsDisruptionEvent(event, "Warning") {
+			canRecover = true
+			disruptionEvents = disruptionEvents[:i]
+
+			break
+		}
+
+		// If there is no warning event sent before the last recovered event
+		if event.Type == chaosv1beta1.DIS_RECOVERED_STATE {
+			return
+		}
+	}
+
+	// If there is no warning event
+	if !canRecover {
+		return
+	}
+
+	for _, event := range disruptionEvents {
+		if event.Type != "Normal" {
+			return
+		}
+
+		if event.Type == "Started" {
+			recover = true
+		}
+	}
 
 	for _, container := range newPod.Status.ContainerStatuses {
 		for _, oldContainer := range oldPod.Status.ContainerStatuses {
-			if container.ContainerID != oldContainer.ContainerID {
+			if container.Name != oldContainer.Name { // When restarting, container can change of ID, so we need to verify by name
 				continue
 			}
 
-			if reflect.DeepEqual(container.State, oldContainer.State) ||
-				container.State.Running != nil ||
-				(container.State.Terminated != nil && ContainerValidReason(container.State.Terminated.Reason) == CONTAINER_COMPLETED) ||
-				(container.State.Waiting != nil && ContainerValidReason(container.State.Waiting.Reason) == CONTAINER_CREATING) {
-				continue
-			}
-
-			if container.State.Waiting != nil {
-				if !((container.State.Waiting.Reason == "ErrImagePull" && oldContainer.State.Waiting.Reason == "ImagePullBackOff") ||
-					(container.State.Waiting.Reason == "ImagePullBackOff" && oldContainer.State.Waiting.Reason == "ErrImagePull")) {
-					failuresPerContainers[container.Name] = DisruptionEvent{
-						EventType: v1beta1.DIS_CONTAINER_STATE_WAIT_CHANGE,
-						Reason:    container.State.Waiting.Reason,
-					}
-				}
-			}
-
-			if container.State.Terminated != nil {
-				failuresPerContainers[container.Name] = DisruptionEvent{
-					EventType: v1beta1.DIS_CONTAINER_STATE_TERMINATE_CHANGE,
-					Reason:    container.State.Terminated.Reason,
-				}
-			}
-
-			if container.RestartCount > oldContainer.RestartCount && container.RestartCount > 5 {
-				failuresPerContainers[container.Name] = DisruptionEvent{
-					EventType: v1beta1.DIS_TOO_MANY_RESTARTS,
-					Reason:    "Too many restart on target",
-				}
+			if container.State.Running != nil && oldContainer.State.Waiting != nil && oldContainer.State.Waiting.Reason != "ContainerCreating" {
+				recover = true
 			}
 		}
 	}
 
-	return failuresPerContainers
-}
-
-func (h DisruptionSelectorHandler) notifyOnTargetPodError(oldPod corev1.Pod, newPod corev1.Pod) {
-	//now := time.Now()
-
-	containerFailures := h.getPodContainerFailure(oldPod, newPod)
-	reason := "Pod failing mostly due to the disruption on containers: %s"
-	containers := ""
-	idx := 0
-
-	for containerName, failure := range containerFailures {
-		containers += fmt.Sprintf("%s with %s", containerName, failure.Reason)
-		if idx < len(containerFailures) {
-			containers += ", "
-		}
-		idx++
-	}
-
-	if len(containerFailures) > 0 {
-		h.PostDisruptionStateEvent(&newPod, v1beta1.DIS_CONTAINER_STATE_WAIT_CHANGE, fmt.Sprintf(reason, containers))
+	if recover {
+		eventReason := chaosv1beta1.DIS_RECOVERED_STATE
+		h.reconciler.Recorder.Event(h.disruption, corev1.EventTypeNormal, eventReason, fmt.Sprintf(chaosv1beta1.ALL_DISRUPTION_EVENTS[eventReason].OnDisruptionTemplateMessage, newPod.Name))
+		h.reconciler.Recorder.Event(h.disruption, "Recovering", eventReason, fmt.Sprintf(chaosv1beta1.ALL_DISRUPTION_EVENTS[eventReason].OnDisruptionTemplateMessage, newPod.Name))
 	}
 }
+
+// Cache life handler
 
 // createInstanceSelectorCache creates this instance's cache if it doesn't exist and attaches it to the controller
 func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta1.Disruption) error {
