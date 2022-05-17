@@ -19,6 +19,18 @@ spec:
     spec:
       serviceAccount: chaos-controller
       containers:
+      - name: curl
+        image: weibeld/ubuntu-networking
+        command: ["/bin/sh"]
+        args:
+          [
+            "-c",
+            "while true; do curl -vvv http://demo.chaos-demo.svc.cluster.local:8080; sleep 10; done",
+          ]
+        volumeMounts:
+        - name: slack-token
+          mountPath: /etc/chaos-controller/slack
+          readOnly: true
       - name: kube-rbac-proxy
         image: {{ .Values.images.proxy }}
         imagePullPolicy: IfNotPresent
@@ -60,6 +72,9 @@ spec:
         - mountPath: /etc/chaos-controller
           name: config
           readOnly: true
+        - name: slack-token
+          mountPath: /etc/chaos-controller/slack
+          readOnly: true
       {{- if .Values.images.pullSecrets }}
       imagePullSecrets:
         - name: {{ .Values.images.pullSecrets }}
@@ -71,5 +86,8 @@ spec:
           defaultMode: 420
           secretName: chaos-controller-webhook-secret
       - name: config
+        configMap:
+          name: chaos-controller-config
+      - name: slack-token
         configMap:
           name: chaos-controller-config
