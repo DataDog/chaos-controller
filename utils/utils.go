@@ -17,6 +17,14 @@ limitations under the License.
 
 package utils
 
+import (
+	"time"
+
+	"github.com/DataDog/chaos-controller/metrics"
+	"go.uber.org/zap"
+	ctrl "sigs.k8s.io/controller-runtime"
+)
+
 // Contains returns true when the given string is present in the given slice
 func Contains(s []string, str string) bool {
 	for _, v := range s {
@@ -26,4 +34,16 @@ func Contains(s []string, str string) bool {
 	}
 
 	return false
+}
+
+type SetupWebhookWithManagerConfig struct {
+	Manager                ctrl.Manager
+	Logger                 *zap.SugaredLogger
+	MetricsSink            metrics.Sink
+	NamespaceThresholdFlag int
+	ClusterThresholdFlag   int
+	EnableSafemodeFlag     bool
+	DeleteOnlyFlag         bool
+	HandlerEnabledFlag     bool
+	DefaultDurationFlag    time.Duration
 }
