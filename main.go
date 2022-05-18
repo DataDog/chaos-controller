@@ -21,6 +21,7 @@ limitations under the License.
 package main
 
 import (
+	"github.com/DataDog/chaos-controller/utils"
 	"os"
 	"time"
 
@@ -350,7 +351,18 @@ func main() {
 	go r.ReportMetrics()
 
 	// register disruption validating webhook
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.SafeMode.NamespaceThreshold, cfg.Controller.SafeMode.ClusterThreshold, cfg.Controller.SafeMode.Enable, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
+	setupWebhookConfig := utils.SetupWebhookWithManagerConfig{
+		Manager:                mgr,
+		Logger:                 logger,
+		MetricsSink:            ms,
+		NamespaceThresholdFlag: cfg.Controller.SafeMode.NamespaceThreshold,
+		ClusterThresholdFlag:   cfg.Controller.SafeMode.ClusterThreshold,
+		EnableSafemodeFlag:     cfg.Controller.SafeMode.Enable,
+		DeleteOnlyFlag:         cfg.Controller.DeleteOnly,
+		HandlerEnabledFlag:     cfg.Handler.Enabled,
+		DefaultDurationFlag:    cfg.Controller.DefaultDuration,
+	}
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
 		os.Exit(1) //nolint:gocritic
 	}

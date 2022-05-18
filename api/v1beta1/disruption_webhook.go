@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/DataDog/chaos-controller/utils"
 	"time"
 
 	"github.com/DataDog/chaos-controller/metrics"
@@ -35,19 +36,19 @@ var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
 
-func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, namespaceThresholdFlag, clusterThresholdFlag int, enableSafemodeFlag, deleteOnlyFlag, handlerEnabledFlag bool, defaultDurationFlag time.Duration) error {
+func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	logger = &zap.SugaredLogger{}
-	*logger = *l.With("source", "admission-controller")
-	k8sClient = mgr.GetClient()
-	metricsSink = ms
-	deleteOnly = deleteOnlyFlag
-	enableSafemode = enableSafemodeFlag
-	namespaceThreshold = float64(namespaceThresholdFlag) / 100.0
-	clusterThreshold = float64(clusterThresholdFlag) / 100.0
-	handlerEnabled = handlerEnabledFlag
-	defaultDuration = defaultDurationFlag
+	*logger = *setupWebhookConfig.Logger.With("source", "admission-controller")
+	k8sClient = setupWebhookConfig.Manager.GetClient()
+	metricsSink = setupWebhookConfig.MetricsSink
+	deleteOnly = setupWebhookConfig.DeleteOnlyFlag
+	enableSafemode = setupWebhookConfig.EnableSafemodeFlag
+	namespaceThreshold = float64(setupWebhookConfig.NamespaceThresholdFlag) / 100.0
+	clusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
+	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
+	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 
-	return ctrl.NewWebhookManagedBy(mgr).
+	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
 		Complete()
 }
