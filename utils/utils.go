@@ -18,10 +18,11 @@ limitations under the License.
 package utils
 
 import (
+	"time"
+
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"time"
 )
 
 // Contains returns true when the given string is present in the given slice

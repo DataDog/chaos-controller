@@ -10,8 +10,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/DataDog/chaos-controller/utils"
 	"time"
+
+	"github.com/DataDog/chaos-controller/utils"
 
 	"github.com/DataDog/chaos-controller/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"

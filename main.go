@@ -21,9 +21,10 @@ limitations under the License.
 package main
 
 import (
-	"github.com/DataDog/chaos-controller/utils"
 	"os"
 	"time"
+
+	"github.com/DataDog/chaos-controller/utils"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
