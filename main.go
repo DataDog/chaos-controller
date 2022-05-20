@@ -129,7 +129,7 @@ func main() {
 	pflag.StringVar(&configPath, "config", "", "Configuration file path")
 
 	pflag.StringVar(&cfg.Controller.MetricsBindAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	handleFatalError(viper.BindPFlag("controller.metrics.addr", pflag.Lookup("metrics-bind-address")))
+	handleFatalError(viper.BindPFlag("controller.metricsBindAddr", pflag.Lookup("metrics-bind-address")))
 
 	pflag.BoolVar(&cfg.Controller.LeaderElection, "leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	handleFatalError(viper.BindPFlag("controller.leaderElection", pflag.Lookup("leader-elect")))
