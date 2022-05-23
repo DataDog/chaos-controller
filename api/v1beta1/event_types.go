@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2021 Datadog, Inc.
+
 package v1beta1
 
 import (
@@ -32,7 +37,7 @@ const (
 	DisNodeRecoveredState string = "RecoveredWarningNodeStateChaos"
 )
 
-var ALL_DISRUPTION_EVENTS = map[string]DisruptionEvent{
+var AllDisruptionEvents = map[string]DisruptionEvent{
 	DisPodWarningState: {
 		Reason:                         DisPodWarningState,
 		OnDisruptionTemplateMessage:    "targeted pod %s is failing",
@@ -102,7 +107,7 @@ var ALL_DISRUPTION_EVENTS = map[string]DisruptionEvent{
 }
 
 func IsDisruptionEvent(event corev1.Event, eventType string) bool {
-	for _, disruptionEvent := range ALL_DISRUPTION_EVENTS {
+	for _, disruptionEvent := range AllDisruptionEvents {
 		if disruptionEvent.Reason == event.Reason && eventType == event.Type {
 			return true
 		}

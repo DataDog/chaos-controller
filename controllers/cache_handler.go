@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2021 Datadog, Inc.
+
 package controllers
 
 import (
@@ -72,9 +77,9 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleMetricsSink(pod *corev1.Po
 // OnChangeHandleNotifierSink Trigger Notifier Sink on changes in the targets
 func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPod *corev1.Pod, oldNode, newNode *corev1.Node, okOldPod, okNewPod, okOldNode, okNewNode bool) {
 	var objectToNotify runtime.Object
-	var name string
 
 	eventsToSend := make(map[string]bool)
+	name := ""
 
 	switch {
 	case okNewPod && okOldPod:
@@ -103,6 +108,7 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 
 	// Send events to notifier / to disruption
 	lastEvents, _ := h.getEventsFromCurrentDisruption("Disruption", h.disruption.ObjectMeta, h.disruption.CreationTimestamp.Time)
+
 	for eventReason, toSend := range eventsToSend {
 		if !toSend {
 			continue
@@ -114,18 +120,18 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 		}
 
 		// Send to updated target
-		h.reconciler.Recorder.Event(objectToNotify, eventType, eventReason, fmt.Sprintf(chaosv1beta1.ALL_DISRUPTION_EVENTS[eventReason].OnTargetTemplateMessage, h.disruption.Name))
+		h.reconciler.Recorder.Event(objectToNotify, eventType, eventReason, fmt.Sprintf(chaosv1beta1.AllDisruptionEvents[eventReason].OnTargetTemplateMessage, h.disruption.Name))
 
 		// Send to disruption, broadcast to notifiers
 		for _, event := range lastEvents {
 			if event.Type == eventReason {
-				h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, fmt.Sprintf(chaosv1beta1.ALL_DISRUPTION_EVENTS[eventReason].OnDisruptionTemplateMessage, name))
+				h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, fmt.Sprintf(chaosv1beta1.AllDisruptionEvents[eventReason].OnDisruptionTemplateMessage, name))
 
 				return
 			}
 		}
 
-		h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, chaosv1beta1.ALL_DISRUPTION_EVENTS[eventReason].OnDisruptionTemplateAggMessage)
+		h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, chaosv1beta1.AllDisruptionEvents[eventReason].OnDisruptionTemplateAggMessage)
 	}
 }
 
@@ -166,8 +172,7 @@ func (h DisruptionTargetWatcherHandler) getEventsFromCurrentDisruption(kind stri
 }
 
 func getContainerState(containerStatus corev1.ContainerStatus) (string, string) {
-	var state string
-	var reason string
+	var state, reason string
 
 	switch {
 	case containerStatus.State.Running != nil:
@@ -208,7 +213,7 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 				switch {
 				case strings.Contains(lowerCasedMessage, "liveness probe"):
 					eventsToSend[chaosv1beta1.DisLivenessProbeChange] = true
-				case strings.Contains(lowerCasedMessage, "liveness probe"):
+				case strings.Contains(lowerCasedMessage, "readiness probe"):
 					eventsToSend[chaosv1beta1.DisReadinessProbeChange] = true
 				default:
 					eventsToSend[chaosv1beta1.DisPodWarningState] = true
@@ -328,6 +333,7 @@ func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Nod
 					eventsToSend[chaosv1beta1.DisNodeUnavailableNetworkState] = true
 				}
 			}
+
 			break
 		}
 	}
