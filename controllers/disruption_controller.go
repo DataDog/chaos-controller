@@ -67,7 +67,6 @@ type DisruptionReconciler struct {
 	CacheContextStore                     map[string]CtxTuple
 	Controller                            controller.Controller
 	DirectClient                          *kubernetes.Clientset
-	TargetStateWatchers                   map[string]*TargetWatcher
 }
 
 type CtxTuple struct {
@@ -120,10 +119,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-
-	// if instance != nil && r.TargetStateWatchers[string(instance.UID)] == nil {
-	// 	r.TargetStateWatchers[string(instance.UID)] = r.watchTargetPodEvents(instance)
-	// }
 
 	if err := r.manageInstanceSelectorCache(instance); err != nil {
 		r.log.Errorw("error managing selector cache", "error", err)
@@ -625,11 +620,6 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 
 	if len(chaosPods) == 0 {
 		return nil
-	}
-
-	if r.TargetStateWatchers[string(instance.UID)] != nil {
-		r.TargetStateWatchers[string(instance.UID)].quit <- true
-		r.TargetStateWatchers[string(instance.UID)] = nil
 	}
 
 	for _, chaosPod := range chaosPods {

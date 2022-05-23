@@ -11,12 +11,6 @@ metadata:
 spec:
   selector:
     app: demo-curl
-  count: 50%
-  staticTargeting: false
-  unsafeMode:
-    config:
-      countTooLarge:
-        namespaceThreshold: 100 # default is 80%
-        clusterThreshold: 100 # default is 66%
+  count: 1
   containerFailure:
     forced: true # send a SIGKILL signal to all of the pod's containers

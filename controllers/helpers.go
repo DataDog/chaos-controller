@@ -34,13 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-type ContainerValidReason string
-
-const (
-	CONTAINER_CREATING  ContainerValidReason = "ContainerCreating"
-	CONTAINER_COMPLETED ContainerValidReason = "Completed"
-)
-
 // getContainerIDs gets the IDs of the targeted containers or all container IDs found in a Pod
 func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
