@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 	"time"
@@ -72,14 +71,14 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleMetricsSink(pod *corev1.Po
 
 // OnChangeHandleNotifierSink Trigger Notifier Sink on changes in the targets
 func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPod *corev1.Pod, oldNode, newNode *corev1.Node, okOldPod, okNewPod, okOldNode, okNewNode bool) {
-	eventsToSend := make(map[string]bool)
 	var objectToNotify runtime.Object
 	var name string
 
+	eventsToSend := make(map[string]bool)
+
 	switch {
 	case okNewPod && okOldPod:
-		objectToNotify = newPod
-		name = newPod.Name
+		objectToNotify, name = newPod, newPod.Name
 
 		disruptionEvents, err := h.getEventsFromCurrentDisruption("Pod", newPod.ObjectMeta, h.disruption.CreationTimestamp.Time)
 		if err != nil {
@@ -89,14 +88,15 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 		// we detect and compute the error / warning events, status changes, conditions of the updated pod
 		eventsToSend = h.buildPodEventsToSend(*oldPod, *newPod, disruptionEvents)
 	case okNewNode && okOldNode:
-		objectToNotify = newNode
-		name = newNode.Name
+		objectToNotify, name = newNode, newNode.Name
+
 		disruptionEvents, err := h.getEventsFromCurrentDisruption("Node", newNode.ObjectMeta, h.disruption.CreationTimestamp.Time)
 		if err != nil {
 			h.reconciler.log.Warnf("couldn't get the list of events from the target. Might not be able to notify on error changes: %s", err.Error())
 		}
 
-		eventsToSend = h.buildNodeEventsToSend(*oldNode, *newNode, getNonAnalyzedEvents(disruptionEvents, "Warning"))
+		// we detect and compute the error / warning events, status changes, conditions of the updated node
+		eventsToSend = h.buildNodeEventsToSend(*oldNode, *newNode, disruptionEvents)
 	default:
 		h.reconciler.log.Debugw("target observer couldn't detect what type of changes happened on the targets")
 	}
@@ -109,45 +109,24 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 		}
 
 		eventType := corev1.EventTypeWarning
-		if eventReason == chaosv1beta1.DIS_NODE_RECOVERED_STATE || eventReason == chaosv1beta1.DIS_POD_RECOVERED_STATE {
+		if eventReason == chaosv1beta1.DisNodeRecoveredState || eventReason == chaosv1beta1.DisPodRecoveredState {
 			eventType = corev1.EventTypeNormal
 		}
 
+		// Send to updated target
 		h.reconciler.Recorder.Event(objectToNotify, eventType, eventReason, fmt.Sprintf(chaosv1beta1.ALL_DISRUPTION_EVENTS[eventReason].OnTargetTemplateMessage, h.disruption.Name))
-		if hasEventOfReason(lastEvents, eventReason) {
-			h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, fmt.Sprintf(chaosv1beta1.ALL_DISRUPTION_EVENTS[eventReason].OnDisruptionTemplateMessage, name))
-		} else {
-			h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, chaosv1beta1.ALL_DISRUPTION_EVENTS[eventReason].OnDisruptionTemplateAggMessage)
+
+		// Send to disruption, broadcast to notifiers
+		for _, event := range lastEvents {
+			if event.Type == eventReason {
+				h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, fmt.Sprintf(chaosv1beta1.ALL_DISRUPTION_EVENTS[eventReason].OnDisruptionTemplateMessage, name))
+
+				return
+			}
 		}
+
+		h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, chaosv1beta1.ALL_DISRUPTION_EVENTS[eventReason].OnDisruptionTemplateAggMessage)
 	}
-}
-
-func getNonAnalyzedEvents(events []corev1.Event, eventType string) []corev1.Event {
-	idx := -1
-
-	for i, event := range events {
-		if event.Source.Component == "disruption-controller" &&
-			eventType != "" && event.Type == eventType &&
-			event.Reason != "Disrupted" {
-			idx = i
-			break
-		}
-	}
-
-	if idx == -1 {
-		return events
-	}
-	return events[:idx]
-}
-
-func hasEventOfReason(events []corev1.Event, eventReason string) bool {
-	for _, event := range events {
-		if event.Type == eventReason {
-			return true
-		}
-	}
-
-	return false
 }
 
 func (h DisruptionTargetWatcherHandler) getEventsFromCurrentDisruption(kind string, objectMeta v1.ObjectMeta, disruptionStateTime time.Time) ([]corev1.Event, error) {
@@ -170,13 +149,14 @@ func (h DisruptionTargetWatcherHandler) getEventsFromCurrentDisruption(kind stri
 		return eventList.Items[i].LastTimestamp.After(eventList.Items[j].LastTimestamp.Time)
 	})
 
+	// Keep events sent during the disruption only, no need to filter events coming from the disruption itself
 	if kind != "Disruption" {
-		// Keep events sent during the disruption only
 		for i, event := range eventList.Items {
 			if event.Type == corev1.EventTypeWarning && event.Reason == "Disrupted" || event.LastTimestamp.Time.Before(disruptionStateTime) {
 				if i == 0 {
 					return []corev1.Event{}, nil
 				}
+
 				return eventList.Items[:(i - 1)], nil
 			}
 		}
@@ -204,43 +184,40 @@ func getContainerState(containerStatus corev1.ContainerStatus) (string, string) 
 }
 
 func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod corev1.Pod, disruptionEvents []corev1.Event) map[string]bool {
-	eventToSend := make(map[string]bool)
-	cannotRecoverYet := true // know if we can send a recovering event to the disruption
+	eventsToSend, cannotRecoverYet := make(map[string]bool), false
 
 	// https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/events/event.go
 	// In case of new events sent from kubelet, we can determine any error event in the pod to propagate it
 	for _, event := range disruptionEvents {
-
 		// We stop at the last event sent by us
-		if event.Source.Component == "disruption-controller" {
+		if event.Source.Component == chaosv1beta1.SourceDisruptionComponent {
 			// if the target has not sent any warnings, we can't recover it as there is nothing to recover
 			if event.Type == corev1.EventTypeWarning {
-				log.Printf("CAN RECOVER NOW: %s %s %s %s %s", event.LastTimestamp, newPod.Name, event.Type, event.Reason, event.Message)
 				cannotRecoverYet = false
 			}
 
 			break
 		}
-		// if there is still warnings in the last events we got, the pod hasn't recovered
+
 		if event.Type == corev1.EventTypeWarning {
 			h.reconciler.log.Debugw("warning event detected on target pod", "reason", event.Reason, "message", event.Message, "timestamp", event.LastTimestamp.Time.Unix())
 
 			if event.Reason == "Unhealthy" || event.Reason == "ProbeWarning" {
 				lowerCasedMessage := strings.ToLower(event.Message)
 
-				if strings.Contains(lowerCasedMessage, "liveness probe") {
-					eventToSend[chaosv1beta1.DIS_LIVENESS_PROBE_CHANGE] = true
-				} else if strings.Contains(lowerCasedMessage, "readiness probe") {
-					eventToSend[chaosv1beta1.DIS_READINESS_PROBE_CHANGE] = true
-				} else {
-					eventToSend[chaosv1beta1.DIS_PROBE_CHANGE] = true
+				switch {
+				case strings.Contains(lowerCasedMessage, "liveness probe"):
+					eventsToSend[chaosv1beta1.DisLivenessProbeChange] = true
+				case strings.Contains(lowerCasedMessage, "liveness probe"):
+					eventsToSend[chaosv1beta1.DisReadinessProbeChange] = true
+				default:
+					eventsToSend[chaosv1beta1.DisPodWarningState] = true
 				}
 			} else {
-				eventToSend[chaosv1beta1.DIS_POD_WARNING_STATE] = true
+				eventsToSend[chaosv1beta1.DisPodWarningState] = true
 			}
 		} else if event.Reason == "Started" {
-			log.Printf("< %s - %s %s/%s: %s", event.LastTimestamp, newPod.Name, event.Type, event.Reason, event.Message)
-			eventToSend[chaosv1beta1.DIS_POD_RECOVERED_STATE] = true
+			eventsToSend[chaosv1beta1.DisPodRecoveredState] = true
 		}
 	}
 
@@ -255,20 +232,19 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 			if container.RestartCount > (oldContainer.RestartCount + 2) {
 				h.reconciler.log.Debugw("container restart detected on target pod", "pod", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name), "container", container.Name, "restarts", container.RestartCount)
 
-				eventToSend[chaosv1beta1.DIS_TOO_MANY_RESTARTS] = true
+				eventsToSend[chaosv1beta1.DisTooManyRestarts] = true
 			}
 
-			lastState, lastReason := getContainerState(oldContainer)
+			lastState, _ := getContainerState(oldContainer)
 			newState, newReason := getContainerState(container)
 
 			if lastState != newState {
 				h.reconciler.log.Debugw("container state change detected on target pod", "pod", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name), "container", container.Name, "lastState", lastState, "newState", newState)
 
 				if newState != "Running" && newReason != "ContainerCreating" && newReason != "KillingContainer" {
-					eventToSend[chaosv1beta1.DIS_CONTAINER_WARNING_STATE] = true
+					eventsToSend[chaosv1beta1.DisContainerWarningState] = true
 				} else {
-					log.Printf("< %s - %s :%s/%s %s/%s", newPod.Name, container.Name, lastState, newState, lastReason, newReason)
-					eventToSend[chaosv1beta1.DIS_POD_RECOVERED_STATE] = true
+					eventsToSend[chaosv1beta1.DisPodRecoveredState] = true
 				}
 			}
 
@@ -276,63 +252,80 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 		}
 	}
 
-	if cannotRecoverYet {
-		log.Print("CANT RECOVER")
-
-		eventToSend[chaosv1beta1.DIS_POD_RECOVERED_STATE] = false
+	if cannotRecoverYet || (eventsToSend[chaosv1beta1.DisPodRecoveredState] && len(eventsToSend) > 1) {
+		eventsToSend[chaosv1beta1.DisPodRecoveredState] = false
 	}
 
-	return eventToSend
+	return eventsToSend
 }
 
 func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Node, newNode corev1.Node, disruptionEvents []corev1.Event) map[string]bool {
-	errorPerDisruptionEvent := make(map[string]bool)
+	eventsToSend, cannotRecoverYet := make(map[string]bool), false
 
 	// https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/events/event.go
 	// In case of new events sent from kubelet, we can determine any error event in the node to propagate it
 	for _, event := range disruptionEvents {
-		if event.Type == "Normal" || event.Source.Component == "disruption-controller" {
-			continue
+		// We stop at the last event sent by us
+		if event.Source.Component == chaosv1beta1.SourceDisruptionComponent {
+			// if the target has not sent any warnings, we can't recover it as there is nothing to recover
+			if event.Type == corev1.EventTypeWarning {
+				cannotRecoverYet = false
+			}
+
+			break
 		}
 
-		errorPerDisruptionEvent[chaosv1beta1.DIS_NODE_WARNING_STATE] = true
+		if event.Type == corev1.EventTypeWarning {
+			h.reconciler.log.Debugw("warning event detected on target node", "node", fmt.Sprintf("%s/%s", newNode.Namespace, newNode.Name), "reason", event.Reason, "message", event.Message, "timestamp", event.LastTimestamp.Time.Unix())
+
+			eventsToSend[chaosv1beta1.DisNodeWarningState] = true
+		} else if event.Reason == "NodeReady" {
+			eventsToSend[chaosv1beta1.DisNodeRecoveredState] = true
+		}
 	}
 
 	// Evaluate the need to send a warning event on node condition changes
 	for _, newCondition := range newNode.Status.Conditions {
 		for _, oldCondition := range oldNode.Status.Conditions {
-			if newCondition.Type != oldCondition.Type {
+			if newCondition.Type != oldCondition.Type || !newCondition.LastTransitionTime.After(oldCondition.LastTransitionTime.Time) {
 				continue
 			}
 
-			if !newCondition.LastTransitionTime.After(oldCondition.LastTransitionTime.Time) {
-				break
+			if newCondition.Status != oldCondition.Status {
+				h.reconciler.log.Debugw("condition changed on target node",
+					"node", fmt.Sprintf("%s/%s", newNode.Namespace, newNode.Name),
+					"conditionType", newCondition.Type,
+					"newStatus", newCondition.Status,
+					"oldStatus", oldCondition.Status,
+					"timestamp", newCondition.LastTransitionTime.Unix())
 			}
 
 			if newCondition.Status == corev1.ConditionUnknown && oldCondition.Status != corev1.ConditionUnknown {
-				errorPerDisruptionEvent[chaosv1beta1.DIS_NODE_WARNING_STATE] = true
+				eventsToSend[chaosv1beta1.DisNodeWarningState] = true
 			}
 
 			switch newCondition.Type {
 			case corev1.NodeReady:
 				if newCondition.Status == corev1.ConditionFalse && oldCondition.Status == corev1.ConditionTrue {
-					errorPerDisruptionEvent[chaosv1beta1.DIS_NODE_WARNING_STATE] = true
+					eventsToSend[chaosv1beta1.DisNodeWarningState] = true
+				} else if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
+					eventsToSend[chaosv1beta1.DisNodeRecoveredState] = true
 				}
 			case corev1.NodeDiskPressure:
 				if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
-					errorPerDisruptionEvent[chaosv1beta1.DIS_NODE_DISK_PRESSURE_STATE] = true
+					eventsToSend[chaosv1beta1.DisNodeDiskPressureState] = true
 				}
 			case corev1.NodePIDPressure:
 				if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
-					errorPerDisruptionEvent[chaosv1beta1.DIS_NODE_WARNING_STATE] = true
+					eventsToSend[chaosv1beta1.DisNodeWarningState] = true
 				}
 			case corev1.NodeMemoryPressure:
 				if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
-					errorPerDisruptionEvent[chaosv1beta1.DIS_NODE_MEM_PRESSURE_STATE] = true
+					eventsToSend[chaosv1beta1.DisNodeMemPressureState] = true
 				}
 			case corev1.NodeNetworkUnavailable:
 				if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
-					errorPerDisruptionEvent[chaosv1beta1.DIS_NODE_UNAVAILABLE_NETWORK_STATE] = true
+					eventsToSend[chaosv1beta1.DisNodeUnavailableNetworkState] = true
 				}
 			}
 			break
@@ -340,17 +333,29 @@ func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Nod
 	}
 
 	switch newNode.Status.Phase {
-	case corev1.NodePending:
-		if oldNode.Status.Phase == corev1.NodeRunning {
-			errorPerDisruptionEvent[chaosv1beta1.DIS_NODE_WARNING_STATE] = true
+	case corev1.NodeRunning:
+		if oldNode.Status.Phase != corev1.NodeRunning {
+			eventsToSend[chaosv1beta1.DisNodeRecoveredState] = true
 		}
-	case corev1.NodeTerminated:
+	case corev1.NodePending, corev1.NodeTerminated:
 		if oldNode.Status.Phase == corev1.NodeRunning {
-			errorPerDisruptionEvent[chaosv1beta1.DIS_NODE_WARNING_STATE] = true
+			eventsToSend[chaosv1beta1.DisNodeWarningState] = true
 		}
 	}
 
-	return errorPerDisruptionEvent
+	if newNode.Status.Phase != oldNode.Status.Phase {
+		h.reconciler.log.Debugw("condition changed on target node",
+			"node", fmt.Sprintf("%s/%s", newNode.Namespace, newNode.Name),
+			"newPhase", newNode.Status.Phase,
+			"oldPhase", oldNode.Status.Phase,
+		)
+	}
+
+	if cannotRecoverYet || (eventsToSend[chaosv1beta1.DisNodeRecoveredState] && len(eventsToSend) > 1) {
+		eventsToSend[chaosv1beta1.DisNodeRecoveredState] = false
+	}
+
+	return eventsToSend
 }
 
 // Cache life handler
@@ -470,8 +475,8 @@ func (r *DisruptionReconciler) clearInstanceSelectorCache(instance *chaosv1beta1
 	}
 }
 
+// clearExpiredCacheContexts clean up potential expired cache contexts based on context error return
 func (r *DisruptionReconciler) clearExpiredCacheContexts() {
-	// clean up potential expired cache contexts based on context error return
 	deletionList := []string{}
 
 	for key, contextTuple := range r.CacheContextStore {

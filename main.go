@@ -335,7 +335,7 @@ func main() {
 		Client:                                mgr.GetClient(),
 		BaseLog:                               logger,
 		Scheme:                                mgr.GetScheme(),
-		Recorder:                              mgr.GetEventRecorderFor("disruption-controller"),
+		Recorder:                              mgr.GetEventRecorderFor(chaosv1beta1.SourceDisruptionComponent),
 		MetricsSink:                           ms,
 		TargetSelector:                        targetSelector,
 		InjectorAnnotations:                   cfg.Injector.Annotations,

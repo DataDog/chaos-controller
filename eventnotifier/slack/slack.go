@@ -108,6 +108,7 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 	blocks := n.buildSlackBlocks(dis, bodyText, headerText)
 
 	n.logger.Debugw("notifier: sending notifier event to slack", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+
 	return n.notifySlack("emitted a warning", dis, blocks...)
 }
 
@@ -118,6 +119,7 @@ func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) er
 	blocks := n.buildSlackBlocks(dis, bodyText, headerText)
 
 	n.logger.Debugw("notifier: sending notifier event to slack", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+
 	return n.notifySlack("emitted a notification", dis, blocks...)
 }
 
