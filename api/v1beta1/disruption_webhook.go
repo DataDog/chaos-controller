@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/DataDog/chaos-controller/utils"
+
 	"github.com/DataDog/chaos-controller/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
@@ -29,19 +31,25 @@ var logger *zap.SugaredLogger
 var k8sClient client.Client
 var metricsSink metrics.Sink
 var deleteOnly bool
+var enableSafemode bool
+var namespaceThreshold float64
+var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
 
-func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, deleteOnlyFlag, handlerEnabledFlag bool, defaultDurationFlag time.Duration) error {
+func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	logger = &zap.SugaredLogger{}
-	*logger = *l.With("source", "admission-controller")
-	k8sClient = mgr.GetClient()
-	metricsSink = ms
-	deleteOnly = deleteOnlyFlag
-	handlerEnabled = handlerEnabledFlag
-	defaultDuration = defaultDurationFlag
+	*logger = *setupWebhookConfig.Logger.With("source", "admission-controller")
+	k8sClient = setupWebhookConfig.Manager.GetClient()
+	metricsSink = setupWebhookConfig.MetricsSink
+	deleteOnly = setupWebhookConfig.DeleteOnlyFlag
+	enableSafemode = setupWebhookConfig.EnableSafemodeFlag
+	namespaceThreshold = float64(setupWebhookConfig.NamespaceThresholdFlag) / 100.0
+	clusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
+	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
+	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 
-	return ctrl.NewWebhookManagedBy(mgr).
+	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
 		Complete()
 }
@@ -98,14 +106,16 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	// handle initial safety nets
-	if responses, err := r.initialSafetyNets(); err != nil {
-		return err
-	} else if len(responses) > 0 {
-		retErr := errors.New("at least one of the initial safety nets caught an issue")
-		for _, response := range responses {
-			retErr = multierror.Append(retErr, errors.New(response))
+	if enableSafemode {
+		if responses, err := r.initialSafetyNets(); err != nil {
+			return err
+		} else if len(responses) > 0 {
+			retErr := errors.New("at least one of the initial safety nets caught an issue")
+			for _, response := range responses {
+				retErr = multierror.Append(retErr, errors.New(response))
+			}
+			return retErr
 		}
-		return retErr
 	}
 
 	// send validation metric
@@ -266,8 +276,6 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 	totalCount := 0
 	namespaceCount := 0
 	targetCount := 0
-	namespaceThreshold := 0.8
-	clusterThreshold := 0.66
 
 	if r.Spec.Unsafemode != nil {
 		if r.Spec.Unsafemode.Config != nil && r.Spec.Unsafemode.Config.CountTooLarge != nil {
