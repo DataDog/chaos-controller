@@ -6,8 +6,10 @@
 package slack
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/mail"
 	"os"
 	"path/filepath"
 	"strings"
@@ -127,16 +129,16 @@ func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) er
 func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
 	var annotation v1.UserInfo
 
-	// err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
-	// if err != nil {
-	// 	return fmt.Errorf("slack notifier: no userinfo in disruption %s: %v", dis.Name, err)
-	// }
+	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
+	if err != nil {
+		return fmt.Errorf("slack notifier: no userinfo in disruption %s: %v", dis.Name, err)
+	}
 
-	// if _, err := mail.ParseAddress(annotation.Username); err != nil {
-	// 	return nil
-	// }
+	if _, err := mail.ParseAddress(annotation.Username); err != nil {
+		return nil
+	}
 
-	p1, err := n.client.GetUserByEmail("claire.chong@datadoghq.com")
+	p1, err := n.client.GetUserByEmail(annotation.Username)
 	if err != nil {
 		n.logger.Warn(fmt.Errorf("slack notifier: user %s not found: %w", annotation.Username, err))
 		return nil
