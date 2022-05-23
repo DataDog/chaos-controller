@@ -215,7 +215,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
 		if r.ExpiredDisruptionGCDelay != nil && (calculateRemainingDuration(*instance) <= (-1 * *r.ExpiredDisruptionGCDelay)) {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
-			r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived %s longer than its specified duration, and will now be deleted.", *r.ExpiredDisruptionGCDelay))
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionDurationOver, r.ExpiredDisruptionGCDelay.String())
 
 			var err error
 
@@ -237,8 +237,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 			if r.ExpiredDisruptionGCDelay != nil {
 				requeueDelay := *r.ExpiredDisruptionGCDelay
-				r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived longer than its specified duration, and will be garbage collected after %s.", *r.ExpiredDisruptionGCDelay))
 
+				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionDurationOver, requeueDelay.String())
 				r.log.Debugw("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
 
 				return ctrl.Result{
@@ -456,7 +456,8 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	r.generateChaosPods(instance, &targetChaosPods, target, targetNodeName, targetContainerIDs, targetPodIP)
 
 	if len(targetChaosPods) == 0 {
-		r.Recorder.Event(instance, corev1.EventTypeWarning, "EmptyDisruption", fmt.Sprintf("No disruption recognized for \"%s\" therefore no disruption applied.", instance.Name))
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventEmptyDisruption, instance.Name)
+
 		return nil
 	}
 
@@ -475,7 +476,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 
 			// create the pod
 			if err = r.Create(context.Background(), chaosPod); err != nil {
-				r.Recorder.Event(instance, corev1.EventTypeWarning, "CreateFailed", fmt.Sprintf("Injection pod for disruption \"%s\" failed to be created", instance.Name))
+				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionCreationFailed, instance.Name)
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, false))
 
 				return fmt.Errorf("error creating chaos pod: %w", err)
@@ -489,8 +490,8 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 			}
 
 			// send metrics and events
-			r.Recorder.Event(instance, corev1.EventTypeNormal, "Created", fmt.Sprintf("Created disruption injection pod for \"%s\"", instance.Name))
-			r.recordEventOnTarget(instance, target, corev1.EventTypeWarning, "Disrupted", fmt.Sprintf("Pod %s from disruption %s targeted this resource for injection", chaosPod.Name, instance.Name))
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionCreated, instance.Name)
+			r.recordEventOnTarget(instance, target, chaosv1beta1.EventDisrupted, chaosPod.Name, instance.Name)
 			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 		case 1:
 			r.log.Debugw("an injection pod is already existing for the selected target", "target", target, "chaosPod", found[0].Name)
@@ -718,7 +719,7 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 		// if the chaos pod finalizer must not be removed and the chaos pod must not be deleted
 		// and the cleanup status must not be ignored, we are stuck and won't be able to remove the disruption
 		r.log.Infow("instance seems stuck on removal for this target, please check manually", "target", target, "chaosPod", chaosPod.Name)
-		r.Recorder.Event(instance, corev1.EventTypeWarning, "StuckOnRemoval", "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer. https://github.com/DataDog/chaos-controller/blob/main/docs/faq.md")
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "")
 
 		instance.Status.IsStuckOnRemoval = true
 	}
@@ -1156,6 +1157,17 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 	}
 }
 
+func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Disruption, eventReason string, optionalMessage string) {
+	disEvent := chaosv1beta1.Events[eventReason]
+	message := disEvent.OnDisruptionTemplateMessage
+
+	if optionalMessage != "" {
+		message = fmt.Sprintf(disEvent.OnDisruptionTemplateMessage, optionalMessage)
+	}
+
+	r.Recorder.Event(instance, disEvent.Type, disEvent.Reason, message)
+}
+
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
 	for _, kind := range instance.Spec.GetKindNames() {
 		r.handleMetricSinkError((r.MetricsSink.MetricDisruptionsCount(kind, []string{"name:" + instance.Name, "namespace:" + instance.Namespace})))
@@ -1225,9 +1237,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 }
 
 // recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
-func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disruption, target string, eventtype, reason, message string) {
-	r.log.Infow("registering an event on a target", "target", target, "eventtype", eventtype, "reason", reason, "message", message)
-
+func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disruption, target string, disruptionEventReason, chaosPod, optionalMessage string) {
 	var o runtime.Object
 
 	switch instance.Spec.Level {
@@ -1249,7 +1259,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 		o = n
 	}
 
-	r.Recorder.Event(o, eventtype, reason, message)
+	r.Recorder.Event(o, chaosv1beta1.Events[disruptionEventReason].Type, chaosv1beta1.Events[disruptionEventReason].Reason, fmt.Sprintf(chaosv1beta1.Events[disruptionEventReason].OnTargetTemplateMessage, chaosPod, optionalMessage))
 }
 
 // SetupWithManager setups the current reconciler with the given manager

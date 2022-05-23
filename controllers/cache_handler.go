@@ -115,23 +115,23 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 		}
 
 		eventType := corev1.EventTypeWarning
-		if eventReason == chaosv1beta1.DisNodeRecoveredState || eventReason == chaosv1beta1.DisPodRecoveredState {
+		if eventReason == chaosv1beta1.EventNodeRecoveredState || eventReason == chaosv1beta1.EventPodRecoveredState {
 			eventType = corev1.EventTypeNormal
 		}
 
 		// Send to updated target
-		h.reconciler.Recorder.Event(objectToNotify, eventType, eventReason, fmt.Sprintf(chaosv1beta1.AllDisruptionEvents[eventReason].OnTargetTemplateMessage, h.disruption.Name))
+		h.reconciler.Recorder.Event(objectToNotify, eventType, eventReason, fmt.Sprintf(chaosv1beta1.Events[eventReason].OnTargetTemplateMessage, h.disruption.Name))
 
 		// Send to disruption, broadcast to notifiers
 		for _, event := range lastEvents {
 			if event.Type == eventReason {
-				h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, fmt.Sprintf(chaosv1beta1.AllDisruptionEvents[eventReason].OnDisruptionTemplateMessage, name))
+				h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, fmt.Sprintf(chaosv1beta1.Events[eventReason].OnDisruptionTemplateMessage, name))
 
 				return
 			}
 		}
 
-		h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, chaosv1beta1.AllDisruptionEvents[eventReason].OnDisruptionTemplateAggMessage)
+		h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, chaosv1beta1.Events[eventReason].OnDisruptionTemplateAggMessage)
 	}
 }
 
@@ -158,7 +158,7 @@ func (h DisruptionTargetWatcherHandler) getEventsFromCurrentDisruption(kind stri
 	// Keep events sent during the disruption only, no need to filter events coming from the disruption itself
 	if kind != "Disruption" {
 		for i, event := range eventList.Items {
-			if event.Type == corev1.EventTypeWarning && event.Reason == "Disrupted" || event.LastTimestamp.Time.Before(disruptionStateTime) {
+			if event.Type == corev1.EventTypeWarning && event.Reason == chaosv1beta1.EventDisrupted || event.LastTimestamp.Time.Before(disruptionStateTime) {
 				if i == 0 {
 					return []corev1.Event{}, nil
 				}
@@ -212,17 +212,17 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 
 				switch {
 				case strings.Contains(lowerCasedMessage, "liveness probe"):
-					eventsToSend[chaosv1beta1.DisLivenessProbeChange] = true
+					eventsToSend[chaosv1beta1.EventLivenessProbeChange] = true
 				case strings.Contains(lowerCasedMessage, "readiness probe"):
-					eventsToSend[chaosv1beta1.DisReadinessProbeChange] = true
+					eventsToSend[chaosv1beta1.EventReadinessProbeChange] = true
 				default:
-					eventsToSend[chaosv1beta1.DisPodWarningState] = true
+					eventsToSend[chaosv1beta1.EventPodWarningState] = true
 				}
 			} else {
-				eventsToSend[chaosv1beta1.DisPodWarningState] = true
+				eventsToSend[chaosv1beta1.EventPodWarningState] = true
 			}
 		} else if event.Reason == "Started" {
-			eventsToSend[chaosv1beta1.DisPodRecoveredState] = true
+			eventsToSend[chaosv1beta1.EventPodRecoveredState] = true
 		}
 	}
 
@@ -237,7 +237,7 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 			if container.RestartCount > (oldContainer.RestartCount + 2) {
 				h.reconciler.log.Debugw("container restart detected on target pod", "pod", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name), "container", container.Name, "restarts", container.RestartCount)
 
-				eventsToSend[chaosv1beta1.DisTooManyRestarts] = true
+				eventsToSend[chaosv1beta1.EventTooManyRestarts] = true
 			}
 
 			lastState, _ := getContainerState(oldContainer)
@@ -247,9 +247,9 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 				h.reconciler.log.Debugw("container state change detected on target pod", "pod", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name), "container", container.Name, "lastState", lastState, "newState", newState)
 
 				if newState != "Running" && newReason != "ContainerCreating" && newReason != "KillingContainer" {
-					eventsToSend[chaosv1beta1.DisContainerWarningState] = true
+					eventsToSend[chaosv1beta1.EventContainerWarningState] = true
 				} else {
-					eventsToSend[chaosv1beta1.DisPodRecoveredState] = true
+					eventsToSend[chaosv1beta1.EventPodRecoveredState] = true
 				}
 			}
 
@@ -257,8 +257,8 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 		}
 	}
 
-	if cannotRecoverYet || (eventsToSend[chaosv1beta1.DisPodRecoveredState] && len(eventsToSend) > 1) {
-		eventsToSend[chaosv1beta1.DisPodRecoveredState] = false
+	if cannotRecoverYet || (eventsToSend[chaosv1beta1.EventPodRecoveredState] && len(eventsToSend) > 1) {
+		eventsToSend[chaosv1beta1.EventPodRecoveredState] = false
 	}
 
 	return eventsToSend
@@ -283,9 +283,9 @@ func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Nod
 		if event.Type == corev1.EventTypeWarning {
 			h.reconciler.log.Debugw("warning event detected on target node", "node", fmt.Sprintf("%s/%s", newNode.Namespace, newNode.Name), "reason", event.Reason, "message", event.Message, "timestamp", event.LastTimestamp.Time.Unix())
 
-			eventsToSend[chaosv1beta1.DisNodeWarningState] = true
+			eventsToSend[chaosv1beta1.EventNodeWarningState] = true
 		} else if event.Reason == "NodeReady" {
-			eventsToSend[chaosv1beta1.DisNodeRecoveredState] = true
+			eventsToSend[chaosv1beta1.EventNodeRecoveredState] = true
 		}
 	}
 
@@ -306,31 +306,31 @@ func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Nod
 			}
 
 			if newCondition.Status == corev1.ConditionUnknown && oldCondition.Status != corev1.ConditionUnknown {
-				eventsToSend[chaosv1beta1.DisNodeWarningState] = true
+				eventsToSend[chaosv1beta1.EventNodeWarningState] = true
 			}
 
 			switch newCondition.Type {
 			case corev1.NodeReady:
 				if newCondition.Status == corev1.ConditionFalse && oldCondition.Status == corev1.ConditionTrue {
-					eventsToSend[chaosv1beta1.DisNodeWarningState] = true
+					eventsToSend[chaosv1beta1.EventNodeWarningState] = true
 				} else if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
-					eventsToSend[chaosv1beta1.DisNodeRecoveredState] = true
+					eventsToSend[chaosv1beta1.EventNodeRecoveredState] = true
 				}
 			case corev1.NodeDiskPressure:
 				if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
-					eventsToSend[chaosv1beta1.DisNodeDiskPressureState] = true
+					eventsToSend[chaosv1beta1.EventNodeDiskPressureState] = true
 				}
 			case corev1.NodePIDPressure:
 				if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
-					eventsToSend[chaosv1beta1.DisNodeWarningState] = true
+					eventsToSend[chaosv1beta1.EventNodeWarningState] = true
 				}
 			case corev1.NodeMemoryPressure:
 				if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
-					eventsToSend[chaosv1beta1.DisNodeMemPressureState] = true
+					eventsToSend[chaosv1beta1.EventNodeMemPressureState] = true
 				}
 			case corev1.NodeNetworkUnavailable:
 				if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
-					eventsToSend[chaosv1beta1.DisNodeUnavailableNetworkState] = true
+					eventsToSend[chaosv1beta1.EventNodeUnavailableNetworkState] = true
 				}
 			}
 
@@ -341,11 +341,11 @@ func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Nod
 	switch newNode.Status.Phase {
 	case corev1.NodeRunning:
 		if oldNode.Status.Phase != corev1.NodeRunning {
-			eventsToSend[chaosv1beta1.DisNodeRecoveredState] = true
+			eventsToSend[chaosv1beta1.EventNodeRecoveredState] = true
 		}
 	case corev1.NodePending, corev1.NodeTerminated:
 		if oldNode.Status.Phase == corev1.NodeRunning {
-			eventsToSend[chaosv1beta1.DisNodeWarningState] = true
+			eventsToSend[chaosv1beta1.EventNodeWarningState] = true
 		}
 	}
 
@@ -357,8 +357,8 @@ func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Nod
 		)
 	}
 
-	if cannotRecoverYet || (eventsToSend[chaosv1beta1.DisNodeRecoveredState] && len(eventsToSend) > 1) {
-		eventsToSend[chaosv1beta1.DisNodeRecoveredState] = false
+	if cannotRecoverYet || (eventsToSend[chaosv1beta1.EventNodeRecoveredState] && len(eventsToSend) > 1) {
+		eventsToSend[chaosv1beta1.EventNodeRecoveredState] = false
 	}
 
 	return eventsToSend
