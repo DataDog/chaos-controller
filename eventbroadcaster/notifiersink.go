@@ -8,7 +8,6 @@ package eventbroadcaster
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier"
