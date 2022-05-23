@@ -45,15 +45,11 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 
 func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 	dis, err := s.getDisruption(event)
-
 	if err != nil {
-		log.Printf("\n\n%s\n\n", "COULDN'T SEND A NOTIFICATION")
 		return event, nil
 	}
 
 	if err = s.parseEventToNotifier(event, dis); err != nil {
-		log.Printf("\n\n%s\n\n", "COULDN'T SEND A NOTIFICATION")
-
 		s.logger.Error(err)
 		return event, nil
 	}
@@ -74,7 +70,6 @@ func (s *NotifierSink) getDisruption(event *corev1.Event) (v1beta1.Disruption, e
 	dis := v1beta1.Disruption{}
 
 	if event.InvolvedObject.Kind != "Disruption" {
-		log.Printf("\n\n%s: %s\n\n", "NOT A DISRUPTION", event.Message)
 		return v1beta1.Disruption{}, fmt.Errorf("eventnotifier: not a disruption")
 	}
 
@@ -89,10 +84,14 @@ func (s *NotifierSink) getDisruption(event *corev1.Event) (v1beta1.Disruption, e
 func (s *NotifierSink) parseEventToNotifier(event *corev1.Event, dis v1beta1.Disruption) (err error) {
 	switch event.Type {
 	case corev1.EventTypeWarning:
-		log.Printf("\n\n%s\n\n", "SEND A NOTIFICATION")
 		err = s.notifier.NotifyWarning(dis, *event)
 	case corev1.EventTypeNormal:
-		err = nil
+		// only sends recovery events: we can't create a new type of event so we need to parse the reasons
+		if v1beta1.IsDisruptionEvent(*event, "Normal") {
+			err = s.notifier.NotifyRecovery(dis, *event)
+		} else {
+			err = nil
+		}
 	default:
 		err = fmt.Errorf("notifier: not a notifiable event")
 	}

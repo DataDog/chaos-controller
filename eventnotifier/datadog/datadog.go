@@ -10,6 +10,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
+	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 	"github.com/DataDog/datadog-go/statsd"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -51,11 +52,7 @@ func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverDatadog)
 }
 
-// NotifyWarning generates a notification for generic k8s Warning events
-func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
-	headerText := "Disruption '" + dis.Name + "' encountered an issue."
-	bodyText := "> Disruption `" + dis.Name + "` emitted the event " + event.Reason + ": " + event.Message
-
+func (n *Notifier) buildDatadogEventTags(dis v1beta1.Disruption) {
 	if n.common.ClusterName == "" {
 		if dis.ClusterName != "" {
 			n.common.ClusterName = dis.ClusterName
@@ -64,8 +61,6 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 		}
 	}
 
-	n.logger.Info("notifier: sending notifier event to datadog")
-
 	if team := dis.Spec.Selector.Get("team"); team != "" {
 		n.client.Tags = append(n.client.Tags, "team:"+team)
 	}
@@ -73,11 +68,26 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 	if service := dis.Spec.Selector.Get("app"); service != "" {
 		n.client.Tags = append(n.client.Tags, "service:"+service)
 	}
+}
 
-	err := n.client.SimpleEvent(headerText, bodyText)
-	if err != nil {
-		return err
-	}
+// NotifyWarning generates a notification for generic k8s Warning events
+func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
+	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, event)
+	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event)
 
-	return nil
+	n.buildDatadogEventTags(dis)
+	n.logger.Debugw("notifier: sending notifier event to datadog", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+
+	return n.client.SimpleEvent(headerText, bodyText)
+}
+
+// NotifyRecovery generates a notification for generic k8s Normal events
+func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) error {
+	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, event)
+	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event)
+
+	n.buildDatadogEventTags(dis)
+	n.logger.Debugw("notifier: sending notifier event to datadog", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+
+	return n.client.SimpleEvent(headerText, bodyText)
 }

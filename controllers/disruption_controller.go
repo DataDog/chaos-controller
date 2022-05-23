@@ -244,7 +244,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				requeueDelay := *r.ExpiredDisruptionGCDelay
 				r.Recorder.Event(instance, "Normal", "DurationOver", fmt.Sprintf("The disruption has lived longer than its specified duration, and will be garbage collected after %s.", *r.ExpiredDisruptionGCDelay))
 
-				r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
+				r.log.Debugw("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
 
 				return ctrl.Result{
 					Requeue:      true,
@@ -295,7 +295,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 		requeueDelay := calculateRemainingDuration(*instance)
 
-		r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
+		r.log.Debugw("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
 
 		return ctrl.Result{
 				Requeue:      true,
@@ -312,7 +312,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 // - an instance with at least one chaos pod as "ready" is considered as "partially injected"
 // - an instance with no ready chaos pods is considered as "not injected"
 func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disruption) (bool, error) {
-	r.log.Infow("checking if injection status needs updated", "injectionStatus", instance.Status.InjectionStatus)
+	r.log.Debugw("checking if injection status needs to be updated", "injectionStatus", instance.Status.InjectionStatus)
 
 	status := chaostypes.DisruptionInjectionStatusNotInjected
 	allReady := true
@@ -348,7 +348,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 			// consider the disruption as not fully injected if at least one not ready pod is found
 			if !podReady {
-				r.log.Infow("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
+				r.log.Debugw("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
 
 				allReady = false
 			}
@@ -379,7 +379,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 // startInjection creates non-existing chaos pod for the given disruption
 func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption) error {
 	if len(instance.Status.Targets) > 0 {
-		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
+		r.log.Debugw("starting targets injection", "targets", instance.Status.Targets)
 	}
 
 	// chaosPodsMap is used to check if a target's chaos pods already exist or not
@@ -749,7 +749,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		return nil
 	}
 
-	r.log.Infow("selecting targets to inject disruption to", "selector", instance.Spec.Selector.String())
+	r.log.Debugw("selecting targets to inject disruption to", "selector", instance.Spec.Selector.String())
 
 	// validate the given label selector to avoid any formatting issues due to special chars
 	if instance.Spec.Selector != nil {
@@ -802,7 +802,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		instance.Status.RemoveTargets(cTargetsCount - dTargetsCount)
 	}
 
-	r.log.Infow("updating instance status with targets selected for injection")
+	r.log.Debugw("updating instance status with targets selected for injection")
 
 	return r.Status().Update(context.Background(), instance)
 }
@@ -825,7 +825,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 	case chaostypes.DisruptionLevelNode:
 		nodes, err := r.TargetSelector.GetMatchingNodes(r.Client, instance)
 		if err != nil {
-			return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
+			return nil, fmt.Errorf("can't get nodes matching the given label selector: %w", err)
 		}
 
 		for _, node := range nodes.Items {
