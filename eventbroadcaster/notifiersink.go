@@ -86,7 +86,7 @@ func (s *NotifierSink) parseEventToNotifier(event *corev1.Event, dis v1beta1.Dis
 		err = s.notifier.NotifyWarning(dis, *event)
 	case corev1.EventTypeNormal:
 		// only sends recovery events: we can't create a new type of event so we need to parse the reasons
-		if v1beta1.IsDisruptionEvent(*event, "Normal") {
+		if v1beta1.IsRecoveryEvent(*event) {
 			err = s.notifier.NotifyRecovery(dis, *event)
 		} else {
 			err = nil

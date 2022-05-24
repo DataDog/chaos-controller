@@ -70,6 +70,16 @@ func (n *Notifier) buildDatadogEventTags(dis v1beta1.Disruption) {
 	}
 }
 
+func (n *Notifier) sendEvent(headerText, bodyText string, alertType statsd.EventAlertType) error {
+	event := statsd.Event{
+		Title:     headerText,
+		Text:      bodyText,
+		AlertType: alertType,
+	}
+
+	return n.client.Event(&event)
+}
+
 // NotifyWarning generates a notification for generic k8s Warning events
 func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
 	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, event)
@@ -78,7 +88,7 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 	n.buildDatadogEventTags(dis)
 	n.logger.Debugw("notifier: sending notifier event to datadog", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
 
-	return n.client.SimpleEvent(headerText, bodyText)
+	return n.sendEvent(headerText, bodyText, statsd.Warning)
 }
 
 // NotifyRecovery generates a notification for generic k8s Normal events
@@ -89,5 +99,5 @@ func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) er
 	n.buildDatadogEventTags(dis)
 	n.logger.Debugw("notifier: sending notifier event to datadog", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
 
-	return n.client.SimpleEvent(headerText, bodyText)
+	return n.sendEvent(headerText, bodyText, statsd.Success)
 }

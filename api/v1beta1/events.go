@@ -188,3 +188,7 @@ func IsDisruptionEvent(event corev1.Event, eventType string) bool {
 
 	return false
 }
+
+func IsRecoveryEvent(event corev1.Event) bool {
+	return event.Reason == EventNodeRecoveredState || event.Reason == EventPodRecoveredState
+}
