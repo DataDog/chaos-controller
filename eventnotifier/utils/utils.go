@@ -10,8 +10,12 @@ import (
 )
 
 // BuildBodyMessageFromDisruptionEvent Templated body text to send to notifiers
-func BuildBodyMessageFromDisruptionEvent(dis v1beta1.Disruption, event corev1.Event) string {
-	return "> Disruption `" + dis.Name + "` emitted the event `" + event.Reason + "`: " + event.Message
+func BuildBodyMessageFromDisruptionEvent(dis v1beta1.Disruption, event corev1.Event, isMarkdown bool) string {
+	if isMarkdown {
+		return "> Disruption `" + dis.Name + "` emitted the event `" + event.Reason + "`: " + event.Message
+	}
+
+	return "Disruption '" + dis.Name + "' emitted the event " + event.Reason + ": " + event.Message
 }
 
 // BuildHeaderMessageFromDisruptionEvent Templated header text to send to notifiers
@@ -20,5 +24,6 @@ func BuildHeaderMessageFromDisruptionEvent(dis v1beta1.Disruption, event corev1.
 		return "Disruption '" + dis.Name + "' encountered an issue."
 	}
 
-	return "Disruption '" + dis.Name + "' an unusual event."
+	// We only send out recovery event to notifiers
+	return "Disruption '" + dis.Name + "' received a recovery notification."
 }

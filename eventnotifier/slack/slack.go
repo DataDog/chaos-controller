@@ -106,7 +106,7 @@ func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, bodyText string, hea
 // NotifyWarning generates a notification for generic k8s Warning events
 func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
 	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, event)
-	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event)
+	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, true)
 	blocks := n.buildSlackBlocks(dis, bodyText, headerText)
 
 	n.logger.Debugw("notifier: sending notifier event to slack", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
@@ -117,7 +117,7 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 // NotifyWarning generates a notification for generic k8s normal events
 func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) error {
 	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, event)
-	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event)
+	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, true)
 	blocks := n.buildSlackBlocks(dis, bodyText, headerText)
 
 	n.logger.Debugw("notifier: sending notifier event to slack", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
