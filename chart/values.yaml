@@ -21,8 +21,8 @@ controller:
     noop:
       enabled: true
     slack:
-      enabled: true
-      tokenFilepath: "/etc/chaos-controller/slack/slack_token"
+      enabled: false
+      tokenFilepath: ""
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true

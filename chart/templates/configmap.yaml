@@ -70,5 +70,3 @@ data:
       enabled: {{ .Values.handler.enabled }}
       image: {{ .Values.images.handler | quote }}
       timeout: {{ .Values.handler.timeout | quote }}
-  slack_token: |
-    dumb_token

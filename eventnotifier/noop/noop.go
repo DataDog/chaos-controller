@@ -6,7 +6,7 @@
 package noop
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
@@ -45,5 +45,5 @@ func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) er
 
 // helper for noop notifier
 func notify(notificationName string, disName string) {
-	log.Printf("\nNOOP: %s for disruption %s\n", notificationName, disName)
+	fmt.Printf("NOOP: %s for disruption %s\n", notificationName, disName)
 }

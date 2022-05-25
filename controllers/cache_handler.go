@@ -136,16 +136,16 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 }
 
 func (h DisruptionTargetWatcherHandler) getEventsFromCurrentDisruption(kind string, objectMeta v1.ObjectMeta, disruptionStateTime time.Time) ([]corev1.Event, error) {
+	eventList := &corev1.EventList{}
 	fieldSelector := fields.Set{
 		"involvedObject.kind": kind,
 		"involvedObject.name": objectMeta.Name,
 	}
 
-	eventList, err := h.reconciler.DirectClient.CoreV1().Events(objectMeta.Namespace).List(
-		context.Background(),
-		v1.ListOptions{
-			FieldSelector: fieldSelector.AsSelector().String(),
-		})
+	err := h.reconciler.Reader.List(context.Background(), eventList, &client.ListOptions{
+		FieldSelector: fieldSelector.AsSelector(),
+		Namespace:     objectMeta.GetNamespace(),
+	})
 	if err != nil {
 		return nil, err
 	}

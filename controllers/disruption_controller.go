@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -66,7 +65,7 @@ type DisruptionReconciler struct {
 	ExpiredDisruptionGCDelay              *time.Duration
 	CacheContextStore                     map[string]CtxTuple
 	Controller                            controller.Controller
-	DirectClient                          *kubernetes.Clientset
+	Reader                                client.Reader // Use the k8s API without the cache
 }
 
 type CtxTuple struct {
@@ -239,7 +238,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				requeueDelay := *r.ExpiredDisruptionGCDelay
 
 				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionDurationOver, requeueDelay.String())
-				r.log.Debugw("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
+				r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
 
 				return ctrl.Result{
 					Requeue:      true,
@@ -290,7 +289,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 		requeueDelay := calculateRemainingDuration(*instance)
 
-		r.log.Debugw("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
+		r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
 
 		return ctrl.Result{
 				Requeue:      true,
@@ -307,7 +306,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 // - an instance with at least one chaos pod as "ready" is considered as "partially injected"
 // - an instance with no ready chaos pods is considered as "not injected"
 func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disruption) (bool, error) {
-	r.log.Debugw("checking if injection status needs to be updated", "injectionStatus", instance.Status.InjectionStatus)
+	r.log.Infow("checking if injection status needs to be updated", "injectionStatus", instance.Status.InjectionStatus)
 
 	status := chaostypes.DisruptionInjectionStatusNotInjected
 	allReady := true
@@ -343,7 +342,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 			// consider the disruption as not fully injected if at least one not ready pod is found
 			if !podReady {
-				r.log.Debugw("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
+				r.log.Infow("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
 
 				allReady = false
 			}
@@ -374,7 +373,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 // startInjection creates non-existing chaos pod for the given disruption
 func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption) error {
 	if len(instance.Status.Targets) > 0 {
-		r.log.Debugw("starting targets injection", "targets", instance.Status.Targets)
+		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
 	}
 
 	// chaosPodsMap is used to check if a target's chaos pods already exist or not
@@ -740,7 +739,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		return nil
 	}
 
-	r.log.Debugw("selecting targets to inject disruption to", "selector", instance.Spec.Selector.String())
+	r.log.Infow("selecting targets to inject disruption to", "selector", instance.Spec.Selector.String())
 
 	// validate the given label selector to avoid any formatting issues due to special chars
 	if instance.Spec.Selector != nil {
@@ -793,7 +792,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		instance.Status.RemoveTargets(cTargetsCount - dTargetsCount)
 	}
 
-	r.log.Debugw("updating instance status with targets selected for injection")
+	r.log.Infow("updating instance status with targets selected for injection")
 
 	return r.Status().Update(context.Background(), instance)
 }
