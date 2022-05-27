@@ -339,7 +339,7 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 	}
 
 	if targetCount == 0 {
-		return false, " ", nil
+		return false, "", nil
 	}
 
 	if isPercent {
