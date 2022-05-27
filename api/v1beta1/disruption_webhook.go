@@ -348,10 +348,6 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 		userCountVal = float64(userCountInt)
 	}
 
-	if userCountVal == 0 {
-		return false, " ", nil
-	}
-
 	// we check to see if the count represents > 80 percent of all pods in the existing namepsace
 	// or if the count represents > 66 percent of all pods in the cluster
 	if r.Spec.Level != chaostypes.DisruptionLevelNode {
