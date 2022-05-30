@@ -20,6 +20,7 @@ type DisruptionEvent struct {
 	OnDisruptionTemplateAggMessage string
 }
 
+// Complete list of events sent out by the controller
 const (
 	// Targeted pods related
 	// Warning events
