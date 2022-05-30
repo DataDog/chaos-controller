@@ -189,7 +189,7 @@ func getContainerState(containerStatus corev1.ContainerStatus) (string, string) 
 }
 
 func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod corev1.Pod, disruptionEvents []corev1.Event) map[string]bool {
-	eventsToSend, cannotRecoverYet := make(map[string]bool), false
+	eventsToSend, cannotRecoverYet := make(map[string]bool), true
 
 	// https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/events/event.go
 	// In case of new events sent from kubelet, we can determine any error event in the pod to propagate it
@@ -197,7 +197,7 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 		// We stop at the last event sent by us
 		if event.Source.Component == chaosv1beta1.SourceDisruptionComponent {
 			// if the target has not sent any warnings, we can't recover it as there is nothing to recover
-			if event.Type == corev1.EventTypeWarning {
+			if chaosv1beta1.IsTargetEvent(event) && event.Type == corev1.EventTypeWarning {
 				cannotRecoverYet = false
 			}
 
@@ -240,15 +240,18 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 				eventsToSend[chaosv1beta1.EventTooManyRestarts] = true
 			}
 
-			lastState, _ := getContainerState(oldContainer)
+			lastState, lastReason := getContainerState(oldContainer)
 			newState, newReason := getContainerState(container)
 
 			if lastState != newState {
 				h.reconciler.log.Debugw("container state change detected on target pod", "pod", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name), "container", container.Name, "lastState", lastState, "newState", newState)
 
-				if newState != "Running" && newReason != "ContainerCreating" && newReason != "KillingContainer" {
+				// if pod is terminated in a normal way
+				if newReason == "Completed" {
+					continue
+				} else if newState != "Running" && newReason != "ContainerCreating" && newReason != "KillingContainer" {
 					eventsToSend[chaosv1beta1.EventContainerWarningState] = true
-				} else {
+				} else if !(lastState == "Waiting" && lastReason == "ContainerCreating" && newState == "Running") {
 					eventsToSend[chaosv1beta1.EventPodRecoveredState] = true
 				}
 			}
@@ -265,7 +268,7 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 }
 
 func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Node, newNode corev1.Node, disruptionEvents []corev1.Event) map[string]bool {
-	eventsToSend, cannotRecoverYet := make(map[string]bool), false
+	eventsToSend, cannotRecoverYet := make(map[string]bool), true
 
 	// https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/events/event.go
 	// In case of new events sent from kubelet, we can determine any error event in the node to propagate it
@@ -273,7 +276,7 @@ func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Nod
 		// We stop at the last event sent by us
 		if event.Source.Component == chaosv1beta1.SourceDisruptionComponent {
 			// if the target has not sent any warnings, we can't recover it as there is nothing to recover
-			if event.Type == corev1.EventTypeWarning {
+			if chaosv1beta1.IsTargetEvent(event) && event.Type == corev1.EventTypeWarning {
 				cannotRecoverYet = false
 			}
 
