@@ -338,6 +338,10 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 		return false, "", fmt.Errorf("failed to get count: %w", err)
 	}
 
+	if targetCount == 0 {
+		return false, "", nil
+	}
+
 	if isPercent {
 		userCountVal = float64(userCountInt) / 100.0 * float64(targetCount)
 	} else {
