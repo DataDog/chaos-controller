@@ -32,7 +32,6 @@ github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/osversion,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/pkg/ociwclayer,MIT
 github.com/avast/retry-go,github.com/avast/retry-go,MIT
 github.com/beorn7/perks,github.com/beorn7/perks/quantile,MIT
-github.com/bits-and-blooms/bitset,github.com/bits-and-blooms/bitset,BSD-3-Clause
 github.com/cenkalti/backoff,github.com/cenkalti/backoff,MIT
 github.com/cespare/xxhash/v2,github.com/cespare/xxhash/v2,MIT
 github.com/containerd/cgroups,github.com/containerd/cgroups/stats/v1,Apache-2.0
@@ -238,6 +237,7 @@ github.com/opencontainers/runtime-spec,github.com/opencontainers/runtime-spec/sp
 github.com/opencontainers/selinux,github.com/opencontainers/selinux/go-selinux,Apache-2.0
 github.com/opencontainers/selinux,github.com/opencontainers/selinux/go-selinux/label,Apache-2.0
 github.com/opencontainers/selinux,github.com/opencontainers/selinux/pkg/pwalk,Apache-2.0
+github.com/opencontainers/selinux,github.com/opencontainers/selinux/pkg/pwalkdir,Apache-2.0
 github.com/pelletier/go-toml,github.com/pelletier/go-toml,Apache-2.0
 github.com/pkg/errors,github.com/pkg/errors,BSD-2-Clause
 github.com/pmezard/go-difflib,github.com/pmezard/go-difflib/difflib,BSD-3-Clause
