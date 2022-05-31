@@ -8,6 +8,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -191,6 +192,58 @@ func getContainerState(containerStatus corev1.ContainerStatus) (string, string) 
 func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod corev1.Pod, disruptionEvents []corev1.Event) map[string]bool {
 	eventsToSend, cannotRecoverYet := make(map[string]bool), true
 	runningState := "Running"
+	var recoverTimestamp *time.Time
+
+	// Compare statuses between old and new pod to detect changes
+	for _, container := range newPod.Status.ContainerStatuses {
+		for _, oldContainer := range oldPod.Status.ContainerStatuses {
+			if container.Name != oldContainer.Name { // When restarting, container can change of ID, so we need to verify by name
+				continue
+			}
+
+			// Warning events
+			if container.RestartCount > (oldContainer.RestartCount + 2) {
+				h.reconciler.log.Infow("container restart detected on target",
+					"target", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
+					"container", container.Name,
+					"restarts", container.RestartCount,
+				)
+
+				eventsToSend[chaosv1beta1.EventTooManyRestarts] = true
+			}
+
+			lastState, lastReason := getContainerState(oldContainer)
+			newState, newReason := getContainerState(container)
+
+			if lastState != newState {
+				h.reconciler.log.Debugw("container state change detected on target",
+					"target", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
+					"container", container.Name,
+					"lastState", lastState,
+					"newState", newState,
+				)
+
+				log.Printf("\n> STATE %s/%s %s/%s", lastState, lastReason, newState, newReason)
+
+				switch {
+				case newReason == "Completed": // if pod is terminated in a normal way
+					continue
+				case newState != runningState && newReason != "ContainerCreating": // if pod is in Waiting or Terminated state with warning reasons
+					eventsToSend[chaosv1beta1.EventContainerWarningState] = true
+				case lastReason != "ContainerCreating" && newState == runningState: // if pod is spawned normally, it was not in a warning state before
+					cannotRecoverYet = false
+					recoverTimestamp = &container.State.Running.StartedAt.Time
+					eventsToSend[chaosv1beta1.EventPodRecoveredState] = true
+				}
+			}
+
+			break
+		}
+	}
+
+	if eventsToSend[chaosv1beta1.EventPodRecoveredState] && len(eventsToSend) > 1 {
+		eventsToSend[chaosv1beta1.EventPodRecoveredState] = false
+	}
 
 	// https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/events/event.go
 	// In case of new events sent from kubelet, we can determine any error event in the pod to propagate it
@@ -199,14 +252,27 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 		if event.Source.Component == chaosv1beta1.SourceDisruptionComponent {
 			// if the target has not sent any warnings, we can't recover it as there is nothing to recover
 			if chaosv1beta1.IsTargetEvent(event) && event.Type == corev1.EventTypeWarning {
+				h.reconciler.log.Infow("target already has a warning event",
+					"target", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
+					"reason", event.Reason,
+					"message", event.Message,
+					"timestamp", event.LastTimestamp,
+				)
+
 				cannotRecoverYet = false
 			}
 
 			break
 		}
 
-		if event.Type == corev1.EventTypeWarning {
-			h.reconciler.log.Debugw("warning event detected on target pod", "reason", event.Reason, "message", event.Message, "timestamp", event.LastTimestamp.Time.Unix())
+		// if warning event has been sent after pod recovering from status change, if there was a recover
+		if event.Type == corev1.EventTypeWarning && !(eventsToSend[chaosv1beta1.EventPodRecoveredState] && recoverTimestamp.After(event.LastTimestamp.Time)) {
+			h.reconciler.log.Infow("warning event detected on target pod",
+				"target", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
+				"reason", event.Reason,
+				"message", event.Message,
+				"timestamp", event.LastTimestamp.Time.Unix(),
+			)
 
 			if event.Reason == "Unhealthy" || event.Reason == "ProbeWarning" {
 				lowerCasedMessage := strings.ToLower(event.Message)
@@ -219,45 +285,19 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 				default:
 					eventsToSend[chaosv1beta1.EventPodWarningState] = true
 				}
-			} else {
+			} else { // if the pod changed to a Running state after the event was sent, warning is too old, pod has probably recovered
 				eventsToSend[chaosv1beta1.EventPodWarningState] = true
 			}
 		} else if event.Reason == "Started" {
+			h.reconciler.log.Infow("recovering event detected on target pod",
+				"target", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
+				"reason", event.Reason,
+				"message", event.Message,
+				"timestamp", event.LastTimestamp.Time.Unix(),
+			)
+
+			recoverTimestamp = &event.LastTimestamp.Time
 			eventsToSend[chaosv1beta1.EventPodRecoveredState] = true
-		}
-	}
-
-	// Compare statuses between old and new pod to detect changes
-	for _, container := range newPod.Status.ContainerStatuses {
-		for _, oldContainer := range oldPod.Status.ContainerStatuses {
-			if container.Name != oldContainer.Name { // When restarting, container can change of ID, so we need to verify by name
-				continue
-			}
-
-			// Warning events
-			if container.RestartCount > (oldContainer.RestartCount + 2) {
-				h.reconciler.log.Debugw("container restart detected on target pod", "pod", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name), "container", container.Name, "restarts", container.RestartCount)
-
-				eventsToSend[chaosv1beta1.EventTooManyRestarts] = true
-			}
-
-			lastState, lastReason := getContainerState(oldContainer)
-			newState, newReason := getContainerState(container)
-
-			if lastState != newState {
-				h.reconciler.log.Debugw("container state change detected on target pod", "pod", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name), "container", container.Name, "lastState", lastState, "newState", newState)
-
-				switch {
-				case newReason == "Completed": // if pod is terminated in a normal way
-					continue
-				case newState != runningState && newReason != "ContainerCreating" && newReason != "KillingContainer": // if pod is in Waiting or Terminated state with warning reasons
-					eventsToSend[chaosv1beta1.EventContainerWarningState] = true
-				case lastState != "Waiting" && lastReason != "ContainerCreating" && newState == runningState: // if pod is spawned normally, it was not in a warning state before
-					eventsToSend[chaosv1beta1.EventPodRecoveredState] = true
-				}
-			}
-
-			break
 		}
 	}
 
