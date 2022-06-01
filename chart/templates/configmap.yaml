@@ -23,6 +23,7 @@ data:
         slack:
           enabled: {{ .Values.controller.notifiers.slack.enabled }}
           tokenFilepath: {{ .Values.controller.notifiers.slack.tokenFilepath | quote }}
+          mirrorSlackChannelId: {{ .Values.controller.notifiers.slack.mirrorSlackChannelId | quote }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}

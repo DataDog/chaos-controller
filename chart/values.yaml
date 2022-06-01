@@ -23,6 +23,7 @@ controller:
     slack:
       enabled: false
       tokenFilepath: ""
+      mirrorSlackChannelId: ""
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true
@@ -35,7 +36,6 @@ controller:
     enable: false
     networkThreshold: 80
     clusterThreshold: 66
-
 
 injector:
   annotations: {} # extra annotations passed to the chaos injector pods
