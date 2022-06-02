@@ -165,7 +165,7 @@ func main() {
 	pflag.StringVar(&cfg.Controller.Notifiers.Slack.TokenFilepath, "notifiers-slack-tokenfilepath", "", "File path of the API token for the Slack notifier (defaulted to empty string)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.slack.tokenFilepath", pflag.Lookup("notifiers-slack-tokenfilepath")))
 
-	pflag.StringVar(&cfg.Controller.Notifiers.Slack.MirrorSlackChannelId, "notifiers-slack-mirrorslackchannelid", "", "Slack Channel ID to send all the slack notifier notifications in addition to the personnal messages (defaulted to empty string)")
+	pflag.StringVar(&cfg.Controller.Notifiers.Slack.MirrorSlackChannelID, "notifiers-slack-mirrorslackchannelid", "", "Slack Channel ID to send all the slack notifier notifications in addition to the personnal messages (defaulted to empty string)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.slack.mirrorSlackChannelId", pflag.Lookup("notifiers-slack-mirrorslackchannelid")))
 
 	pflag.BoolVar(&cfg.Controller.Notifiers.Datadog.Enabled, "notifiers-datadog-enabled", false, "Enabler toggle for the Datadog notifier (defaulted to false)")

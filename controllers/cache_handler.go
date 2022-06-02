@@ -212,8 +212,9 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 		}
 
 		// if warning event has been sent after target recovering
-		if event.Type == corev1.EventTypeWarning {
-			if event.InvolvedObject.Kind == "Pod" {
+		switch event.InvolvedObject.Kind {
+		case "Pod":
+			if event.Type == corev1.EventTypeWarning {
 				if event.Reason == "Unhealthy" || event.Reason == "ProbeWarning" {
 					lowerCasedMessage := strings.ToLower(event.Message)
 
@@ -228,35 +229,51 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 				} else {
 					eventsToSend[chaosv1beta1.EventPodWarningState] = true
 				}
-			} else {
+
+				h.reconciler.log.Debugw("warning event detected on target",
+					"target", targetName,
+					"reason", event.Reason,
+					"message", event.Message,
+					"timestamp", event.LastTimestamp.Time.Unix(),
+				)
+			} else if event.Reason == "Started" {
+				if recoverTimestamp == nil {
+					recoverTimestamp = &event.LastTimestamp.Time
+				}
+
+				eventsToSend[chaosv1beta1.EventPodRecoveredState] = true
+
+				h.reconciler.log.Infow("recovering event detected on target",
+					"target", targetName,
+					"reason", event.Reason,
+					"message", event.Message,
+					"timestamp", event.LastTimestamp.Time.Unix(),
+				)
+			}
+		case "Node":
+			if event.Type == corev1.EventTypeWarning {
 				eventsToSend[chaosv1beta1.EventNodeWarningState] = true
+
+				h.reconciler.log.Debugw("warning event detected on target",
+					"target", targetName,
+					"reason", event.Reason,
+					"message", event.Message,
+					"timestamp", event.LastTimestamp.Time.Unix(),
+				)
+			} else if event.Reason == "NodeReady" {
+				if recoverTimestamp == nil {
+					recoverTimestamp = &event.LastTimestamp.Time
+				}
+
+				eventsToSend[chaosv1beta1.EventNodeRecoveredState] = true
+
+				h.reconciler.log.Infow("recovering event detected on target",
+					"target", targetName,
+					"reason", event.Reason,
+					"message", event.Message,
+					"timestamp", event.LastTimestamp.Time.Unix(),
+				)
 			}
-
-			h.reconciler.log.Debugw("warning event detected on target",
-				"target", targetName,
-				"reason", event.Reason,
-				"message", event.Message,
-				"timestamp", event.LastTimestamp.Time.Unix(),
-			)
-		} else if event.InvolvedObject.Kind == "Pod" && event.Reason == "Started" {
-			h.reconciler.log.Infow("recovering event detected on target",
-				"target", targetName,
-				"reason", event.Reason,
-				"message", event.Message,
-				"timestamp", event.LastTimestamp.Time.Unix(),
-			)
-
-			if recoverTimestamp == nil {
-				recoverTimestamp = &event.LastTimestamp.Time
-			}
-
-			eventsToSend[chaosv1beta1.EventPodRecoveredState] = true
-		} else if event.InvolvedObject.Kind == "Node" && event.Reason == "NodeReady" {
-			if recoverTimestamp == nil {
-				recoverTimestamp = &event.LastTimestamp.Time
-			}
-
-			eventsToSend[chaosv1beta1.EventNodeRecoveredState] = true
 		}
 	}
 
@@ -266,7 +283,7 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod corev1.Pod, disruptionEvents []corev1.Event) map[string]bool {
 	var recoverTimestamp *time.Time // keep track of the timestamp of a recovering event / state
 
-	eventsToSend, cannotRecoverYet := make(map[string]bool), true
+	eventsToSend := make(map[string]bool)
 	runningState := "Running"
 
 	// compare statuses between old and new pod to detect changes
@@ -304,7 +321,6 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 				case newState != runningState && newReason != "ContainerCreating": // if pod is in Waiting or Terminated state with warning reasons
 					eventsToSend[chaosv1beta1.EventContainerWarningState] = true
 				case lastReason != "ContainerCreating" && newState == runningState: // if pod is spawned normally, it was not in a warning state before
-					cannotRecoverYet = false
 					if recoverTimestamp == nil {
 						recoverTimestamp = &container.State.Running.StartedAt.Time
 					}
@@ -323,7 +339,7 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 		recoverTimestamp = nil
 	}
 
-	eventsToSend, cannotRecoverYet = h.findNotifiableEvents(eventsToSend, disruptionEvents, recoverTimestamp, fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name))
+	eventsToSend, cannotRecoverYet := h.findNotifiableEvents(eventsToSend, disruptionEvents, recoverTimestamp, fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name))
 
 	// if other warning events has been detected, the target hasn't recovered
 	if cannotRecoverYet || (eventsToSend[chaosv1beta1.EventPodRecoveredState] && len(eventsToSend) > 1) {
@@ -336,7 +352,7 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Node, newNode corev1.Node, targetEvents []corev1.Event) map[string]bool {
 	var recoverTimestamp *time.Time // keep track of the timestamp of a recovering event / condition / phase
 
-	eventsToSend, cannotRecoverYet := make(map[string]bool), true
+	eventsToSend := make(map[string]bool)
 
 	// Evaluate the need to send a warning event on node condition changes
 	for _, newCondition := range newNode.Status.Conditions {
@@ -414,7 +430,7 @@ func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Nod
 		recoverTimestamp = nil
 	}
 
-	eventsToSend, cannotRecoverYet = h.findNotifiableEvents(eventsToSend, targetEvents, recoverTimestamp, newNode.Name)
+	eventsToSend, cannotRecoverYet := h.findNotifiableEvents(eventsToSend, targetEvents, recoverTimestamp, newNode.Name)
 
 	// if other warning events has been detected, the target hasn't recovered
 	if cannotRecoverYet || (eventsToSend[chaosv1beta1.EventNodeRecoveredState] && len(eventsToSend) > 1) {

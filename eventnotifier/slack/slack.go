@@ -26,7 +26,7 @@ import (
 type NotifierSlackConfig struct {
 	Enabled              bool
 	TokenFilepath        string
-	MirrorSlackChannelId string // To remove when we stop testing observer feature
+	MirrorSlackChannelID string // To remove when we stop testing observer feature
 }
 
 // Notifier describes a Slack notifier
@@ -72,8 +72,8 @@ func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConf
 
 	not.logger.Info("notifier: slack notifier connected to workspace")
 
-	if slackConfig.MirrorSlackChannelId != "" {
-		if _, _, _, err = not.client.JoinConversation(slackConfig.MirrorSlackChannelId); err != nil {
+	if slackConfig.MirrorSlackChannelID != "" {
+		if _, _, _, err = not.client.JoinConversation(slackConfig.MirrorSlackChannelID); err != nil {
 			return nil, fmt.Errorf("couldn't join slack channel for notifier: %s", err.Error())
 		}
 	}
@@ -163,8 +163,8 @@ func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, 
 	}
 
 	// To remove when we stop testing this feature
-	if n.config.MirrorSlackChannelId != "" {
-		_, _, err = n.client.PostMessage(n.config.MirrorSlackChannelId,
+	if n.config.MirrorSlackChannelID != "" {
+		_, _, err = n.client.PostMessage(n.config.MirrorSlackChannelID,
 			slack.MsgOptionText("Disruption "+dis.Name+" "+notificationText, false),
 			slack.MsgOptionUsername("Disruption Status Bot"),
 			slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
