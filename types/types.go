@@ -68,7 +68,7 @@ const (
 
 	// InjectorCgroupClassID is linked to the TC tree in the injector network disruption.
 	// Also used in the DNS Disruption to allow combined Network + DNS Disruption
-	// This value hould NEVER be changed without changing the Network Disruption TC tree.
+	// This value should NEVER be changed without changing the Network Disruption TC tree.
 	InjectorCgroupClassID = "0x00020002"
 )
 
