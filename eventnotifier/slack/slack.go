@@ -72,12 +72,6 @@ func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConf
 
 	not.logger.Info("notifier: slack notifier connected to workspace")
 
-	if slackConfig.MirrorSlackChannelID != "" {
-		if _, _, _, err = not.client.JoinConversation(slackConfig.MirrorSlackChannelID); err != nil {
-			return nil, fmt.Errorf("couldn't join slack channel for notifier: %s", err.Error())
-		}
-	}
-
 	return not, nil
 }
 
@@ -172,7 +166,7 @@ func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, 
 			slack.MsgOptionAsUser(true),
 		)
 		if err != nil {
-			return fmt.Errorf("slack notifier: %w", err)
+			n.logger.Errorw("slack notifier: couldn't send a message to the channel %s. %s", n.config.MirrorSlackChannelID, err.Error())
 		}
 	}
 
