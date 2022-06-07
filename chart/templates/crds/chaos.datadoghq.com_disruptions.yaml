@@ -359,6 +359,12 @@ spec:
         status:
           description: DisruptionStatus defines the observed state of Disruption
           properties:
+            desiredTargetsCount:
+              type: integer
+            ignoredTargetsCount:
+              type: integer
+            injectedTargetsCount:
+              type: integer
             injectionStatus:
               description: DisruptionInjectionStatus represents the injection status
                 of a disruption
@@ -372,11 +378,18 @@ spec:
               type: boolean
             isStuckOnRemoval:
               type: boolean
+            selectedTargetsCount:
+              type: integer
             targets:
               items:
                 type: string
               nullable: true
               type: array
+          required:
+          - desiredTargetsCount
+          - ignoredTargetsCount
+          - injectedTargetsCount
+          - selectedTargetsCount
           type: object
       type: object
   version: v1beta1

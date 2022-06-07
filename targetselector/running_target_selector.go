@@ -34,11 +34,11 @@ func NewRunningTargetSelector(controllerEnableSafeguards bool, controllerNodeNam
 }
 
 // GetMatchingPods returns a pods list containing all running pods matching the given label selector and namespace
-func (r runningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, error) {
+func (r runningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, int, error) {
 	// get parsed selector
 	selector, err := GetLabelSelectorFromInstance(instance)
 	if err != nil {
-		return nil, fmt.Errorf("error getting label selector from disruption: %w", err)
+		return nil, 0, fmt.Errorf("error getting label selector from disruption: %w", err)
 	}
 
 	// filter pods based on the label selector and namespace
@@ -50,7 +50,7 @@ func (r runningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv
 
 	// fetch pods from label selector
 	if err := c.List(context.Background(), pods, listOptions); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	runningPods := &corev1.PodList{}
@@ -87,15 +87,15 @@ func (r runningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv
 		}
 	}
 
-	return runningPods, nil
+	return runningPods, len(pods.Items), nil
 }
 
 // GetMatchingNodes returns a nodes list containing all nodes matching the given label selector
-func (r runningTargetSelector) GetMatchingNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, error) {
+func (r runningTargetSelector) GetMatchingNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, int, error) {
 	// get parsed selector
 	selector, err := GetLabelSelectorFromInstance(instance)
 	if err != nil {
-		return nil, fmt.Errorf("error getting label selector from disruption: %w", err)
+		return nil, 0, fmt.Errorf("error getting label selector from disruption: %w", err)
 	}
 
 	// filter nodes based on the label selector
@@ -106,7 +106,7 @@ func (r runningTargetSelector) GetMatchingNodes(c client.Client, instance *chaos
 
 	// fetch nodes from label selector
 	if err := c.List(context.Background(), nodes, listOptions); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	runningNodes := &corev1.NodeList{}
@@ -135,7 +135,7 @@ func (r runningTargetSelector) GetMatchingNodes(c client.Client, instance *chaos
 		}
 	}
 
-	return runningNodes, nil
+	return runningNodes, len(nodes.Items), nil
 }
 
 // TargetIsHealthy returns an error if the given target is unhealthy or does not exist

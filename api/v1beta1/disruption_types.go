@@ -130,7 +130,11 @@ type DisruptionStatus struct {
 	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
-	Targets []string `json:"targets,omitempty"`
+	Targets              []string `json:"targets,omitempty"`
+	SelectedTargetsCount int      `json:"selectedTargetsCount"`
+	IgnoredTargetsCount  int      `json:"ignoredTargetsCount"`
+	InjectedTargetsCount int      `json:"injectedTargetsCount"`
+	DesiredTargetsCount  int      `json:"desiredTargetsCount"`
 }
 
 //+kubebuilder:object:root=true
@@ -352,6 +356,7 @@ func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
 	}
 
 	status.Targets = desiredTargets
+	status.IgnoredTargetsCount += len(status.Targets) - len(desiredTargets)
 }
 
 // AddTargets adds newTargetsCount random targets from the eligibleTargets list to the Target List

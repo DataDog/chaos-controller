@@ -482,7 +482,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 	r.log.Infow("checking if injection status needs updated", "injectionStatus", instance.Status.InjectionStatus)
 
 	status := chaostypes.DisruptionInjectionStatusNotInjected
-	allReady := true
+	readyPodsCount := 0
 
 	// get chaos pods
 	chaosPods, err := r.getChaosPods(instance, nil)
@@ -507,6 +507,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 				if cond.Type == corev1.PodReady {
 					if cond.Status == corev1.ConditionTrue {
 						podReady = true
+						readyPodsCount++
 
 						break
 					}
@@ -516,19 +517,18 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 			// consider the disruption as not fully injected if at least one not ready pod is found
 			if !podReady {
 				r.log.Infow("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
-
-				allReady = false
 			}
 		}
 
 		// consider the disruption as fully injected when all pods are ready
-		if allReady {
+		if len(chaosPods) == readyPodsCount {
 			status = chaostypes.DisruptionInjectionStatusInjected
 		}
 	}
 
 	// update instance status
 	instance.Status.InjectionStatus = status
+	instance.Status.InjectedTargetsCount = readyPodsCount
 
 	if err := r.Client.Status().Update(context.Background(), instance); err != nil {
 		return false, err
@@ -922,7 +922,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		}
 	}
 
-	matchingTargets, err := r.getSelectorMatchingTargets(instance)
+	matchingTargets, totalAvailableTargetsCount, err := r.getSelectorMatchingTargets(instance)
 	if err != nil {
 		r.log.Errorw("error getting matching targets", "error", err)
 	}
@@ -966,44 +966,53 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 	r.log.Infow("updating instance status with targets selected for injection")
 
+	instance.Status.SelectedTargetsCount = len(instance.Status.Targets)
+	instance.Status.DesiredTargetsCount = targetsCount
+	instance.Status.IgnoredTargetsCount = totalAvailableTargetsCount - targetsCount
+
 	return r.Status().Update(context.Background(), instance)
 }
 
 // getMatchingTargets fetches all existing target fitting the disruption's selector
-func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1.Disruption) ([]string, error) {
-	matchingTargets := []string{}
+func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1.Disruption) ([]string, int, error) {
+	healthyMatchingTargets := []string{}
+	totalAvailableTargetsCount := 0
 
 	// select either pods or nodes depending on the disruption level
 	switch instance.Spec.Level {
 	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
-		pods, err := r.TargetSelector.GetMatchingPods(r.Client, instance)
+		pods, totalCount, err := r.TargetSelector.GetMatchingPods(r.Client, instance)
 		if err != nil {
-			return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
+			return nil, 0, fmt.Errorf("can't get pods matching the given label selector: %w", err)
 		}
 
 		for _, pod := range pods.Items {
-			matchingTargets = append(matchingTargets, pod.Name)
+			healthyMatchingTargets = append(healthyMatchingTargets, pod.Name)
 		}
+
+		totalAvailableTargetsCount = totalCount
 	case chaostypes.DisruptionLevelNode:
-		nodes, err := r.TargetSelector.GetMatchingNodes(r.Client, instance)
+		nodes, totalCount, err := r.TargetSelector.GetMatchingNodes(r.Client, instance)
 		if err != nil {
-			return nil, fmt.Errorf("can't get pods matching the given label selector: %w", err)
+			return nil, 0, fmt.Errorf("can't get pods matching the given label selector: %w", err)
 		}
 
 		for _, node := range nodes.Items {
-			matchingTargets = append(matchingTargets, node.Name)
+			healthyMatchingTargets = append(healthyMatchingTargets, node.Name)
 		}
+
+		totalAvailableTargetsCount = totalCount
 	}
 
 	// return an error if the selector returned no targets
-	if len(matchingTargets) == 0 {
+	if len(healthyMatchingTargets) == 0 {
 		r.log.Infow("the given label selector did not return any targets, skipping", "selector", instance.Spec.Selector)
 		r.Recorder.Event(instance, corev1.EventTypeWarning, "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
 
-		return nil, nil
+		return nil, 0, nil
 	}
 
-	return matchingTargets, nil
+	return healthyMatchingTargets, totalAvailableTargetsCount, nil
 }
 
 // deleteChaosPods deletes a chaos pod using the client
