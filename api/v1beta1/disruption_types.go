@@ -130,11 +130,15 @@ type DisruptionStatus struct {
 	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
-	Targets              []string `json:"targets,omitempty"`
-	SelectedTargetsCount int      `json:"selectedTargetsCount"`
-	IgnoredTargetsCount  int      `json:"ignoredTargetsCount"`
-	InjectedTargetsCount int      `json:"injectedTargetsCount"`
-	DesiredTargetsCount  int      `json:"desiredTargetsCount"`
+	Targets []string `json:"targets,omitempty"`
+	// Actual targets selected by the disruption
+	SelectedTargetsCount int `json:"selectedTargetsCount"`
+	// Targets ignored by the disruption, (not in a ready state, already targeted, not in the count percentage...)
+	IgnoredTargetsCount int `json:"ignoredTargetsCount"`
+	// Number of targets with a chaos pod ready
+	InjectedTargetsCount int `json:"injectedTargetsCount"`
+	// Number of targets we want to target (count)
+	DesiredTargetsCount int `json:"desiredTargetsCount"`
 }
 
 //+kubebuilder:object:root=true
@@ -356,7 +360,6 @@ func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
 	}
 
 	status.Targets = desiredTargets
-	status.IgnoredTargetsCount += len(status.Targets) - len(desiredTargets)
 }
 
 // AddTargets adds newTargetsCount random targets from the eligibleTargets list to the Target List
