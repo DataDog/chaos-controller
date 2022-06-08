@@ -67,7 +67,7 @@ func (r *Disruption) Default() {
 
 	if r.Spec.StaticTargeting == nil {
 		r.Spec.StaticTargeting = func() *bool {
-			b := true
+			b := false
 			return &b
 		}()
 	}
