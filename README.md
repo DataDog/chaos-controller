@@ -62,7 +62,7 @@ Check out [Chaosli](./cli/chaosli/README.md) if you want some help understanding
 
 ## Useful Links
 
-* [Examples](docs/features.md#examples)
+* [Examples](docs/features.md#disruption-examples)
 * [Design](docs/design.md)
 * [Metrics](docs/metrics.md)
 * [FAQ](docs/faq.md)
