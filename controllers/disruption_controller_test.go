@@ -127,6 +127,29 @@ func expectChaosInjectors(instance *chaosv1beta1.Disruption, count int) error {
 	return nil
 }
 
+func expectDisruptionStatus(instance *chaosv1beta1.Disruption, desiredTargetsCount int, ignoredTargetsCount int, selectedTargetsCount int, injectedTargetsCount int) error {
+	updatedInstance := &chaosv1beta1.Disruption{}
+
+	if err := k8sClient.Get(context.Background(), instanceKey, updatedInstance); err != nil {
+		return err
+	}
+
+	if desiredTargetsCount != updatedInstance.Status.DesiredTargetsCount {
+		return fmt.Errorf("incorred number of desired targets: expected %d, found %d", desiredTargetsCount, updatedInstance.Status.DesiredTargetsCount)
+	}
+	if ignoredTargetsCount != updatedInstance.Status.IgnoredTargetsCount {
+		return fmt.Errorf("incorred number of ignored targets: expected %d, found %d", ignoredTargetsCount, updatedInstance.Status.IgnoredTargetsCount)
+	}
+	if injectedTargetsCount != updatedInstance.Status.InjectedTargetsCount {
+		return fmt.Errorf("incorred number of injected targets: expected %d, found %d", injectedTargetsCount, updatedInstance.Status.InjectedTargetsCount)
+	}
+	if selectedTargetsCount != updatedInstance.Status.SelectedTargetsCount {
+		return fmt.Errorf("incorred number of selected targets: expected %d, found %d", selectedTargetsCount, updatedInstance.Status.SelectedTargetsCount)
+	}
+
+	return nil
+}
+
 var _ = Describe("Disruption Controller", func() {
 	var disruption *chaosv1beta1.Disruption
 
@@ -395,17 +418,26 @@ var _ = Describe("Disruption Controller", func() {
 			By("Ensuring that the chaos pods have correct number of targeted containers")
 			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
 
+			By("Ensuring that the disruption status is displaying the right number of targets")
+			Expect(expectDisruptionStatus(disruption, 2, 0, 2, 2)).To(BeNil())
+
 			By("Adding an extra target")
 			Expect(k8sClient.Create(context.Background(), targetPodA2)).To(BeNil())
 
 			By("Ensuring an extra chaos pod has been created")
 			Eventually(func() error { return expectChaosPod(disruption, 3) }, timeout).Should(Succeed())
 
+			By("Ensuring that the disruption status is displaying the right number of targets")
+			Expect(expectDisruptionStatus(disruption, 3, 0, 3, 3)).To(BeNil())
+
 			By("Deleting the extra target")
 			Expect(k8sClient.Delete(context.Background(), targetPodA2)).To(BeNil())
 
 			By("Ensuring the extra chaos pod has been deleted")
 			Eventually(func() error { return expectChaosPod(disruption, 2) }, timeout).Should(Succeed())
+
+			By("Ensuring that the disruption status is displaying the right number of targets")
+			Expect(expectDisruptionStatus(disruption, 2, 0, 2, 2)).To(BeNil())
 		})
 	})
 
