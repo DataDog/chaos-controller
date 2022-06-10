@@ -175,6 +175,15 @@ func main() {
 	pflag.BoolVar(&cfg.Controller.Notifiers.Datadog.Enabled, "notifiers-datadog-enabled", false, "Enabler toggle for the Datadog notifier (defaulted to false)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.datadog.enabled", pflag.Lookup("notifiers-datadog-enabled")))
 
+	pflag.BoolVar(&cfg.Controller.Notifiers.HTTP.Enabled, "notifiers-http-enabled", false, "Enabler toggle for the HTTP notifier (defaulted to false)")
+	handleFatalError(viper.BindPFlag("controller.notifiers.http.enabled", pflag.Lookup("notifiers-http-enabled")))
+
+	pflag.StringVar(&cfg.Controller.Notifiers.HTTP.URL, "notifiers-http-url", "", "URL to send the notification using the HTTP notifier(defaulted to \"\")")
+	handleFatalError(viper.BindPFlag("controller.notifiers.http.url", pflag.Lookup("notifiers-http-url")))
+
+	pflag.StringArrayVar(&cfg.Controller.Notifiers.HTTP.Headers, "notifiers-http-headers", []string{}, "Additional headers to add to the request when sending the notification (defaulted to empty list)")
+	handleFatalError(viper.BindPFlag("controller.notifiers.http.headers", pflag.Lookup("notifiers-http-headers")))
+
 	pflag.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.annotations", pflag.Lookup("injector-annotations")))
 

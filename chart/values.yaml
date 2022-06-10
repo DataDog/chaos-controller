@@ -25,6 +25,13 @@ controller:
       enabled: false
       tokenFilepath: ""
       mirrorSlackChannelId: ""
+    http:
+      enabled: true
+      url: "http://notifier.chaos-demo.svc.cluster.local:8080"
+      headers:
+        - "key:value"
+        - "key:value1"
+        - "key:value2"
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true
