@@ -12,6 +12,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
+	"github.com/DataDog/chaos-controller/types"
 )
 
 // nodeFailureInjector describes a node failure injector
@@ -57,6 +58,10 @@ func NewNodeFailureInjector(spec v1beta1.NodeFailureSpec, config NodeFailureInje
 	}, nil
 }
 
+func (i nodeFailureInjector) GetDisruptionKind() types.DisruptionKindName {
+	return types.DisruptionKindNodeFailure
+}
+
 // Inject triggers a kernel panic through the sysrq trigger
 func (i nodeFailureInjector) Inject() error {
 	var err error
@@ -76,18 +81,19 @@ func (i nodeFailureInjector) Inject() error {
 	i.config.Log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
 	_ = i.config.Log.Sync() // If we can't flush the logger, why would logging the error help? so we just ignore
 
-	// Wait ten seconds for the logs to be flushed and collected, as the shutdown will be immediate
-	time.Sleep(time.Second * 10)
+	go func() { // Wait ten seconds for the logs to be flushed and collected, as the shutdown will be immediate
+		time.Sleep(time.Second * 10)
 
-	if i.spec.Shutdown {
-		err = i.config.FileWriter.Write(i.sysrqTriggerPath, 0200, "o")
-	} else {
-		err = i.config.FileWriter.Write(i.sysrqTriggerPath, 0200, "c")
-	}
+		if i.spec.Shutdown {
+			err = i.config.FileWriter.Write(i.sysrqTriggerPath, 0200, "o")
+		} else {
+			err = i.config.FileWriter.Write(i.sysrqTriggerPath, 0200, "c")
+		}
 
-	if err != nil {
-		return fmt.Errorf("error while writing to the sysrq trigger file (%s): %w", i.sysrqTriggerPath, err)
-	}
+		if err != nil {
+			i.config.Log.Errorf("error while writing to the sysrq trigger file (%s): %v", i.sysrqTriggerPath, err)
+		}
+	}()
 
 	return nil
 }

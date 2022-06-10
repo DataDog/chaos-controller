@@ -11,7 +11,8 @@ bin/handler/handler
 bin/chaosli/chaosli.tar.gz
 bin/chaosli/chaosli_darwin_amd64
 bin/chaosli/chaosli_darwin_amd64.sha256sum
-cli/chaosli/cmd/pkged.go
+chart/install.yaml
+dogfood/bin
 out
 dist
 
@@ -44,3 +45,7 @@ disruption.yaml
 packer_cache/
 crash.log
 *.json-e
+
+# local certificates
+/local/certDir/*.crt
+/local/certDir/*.key

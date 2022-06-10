@@ -47,13 +47,26 @@ func (m *UserInfoMutator) Handle(ctx context.Context, req admission.Request) adm
 	}
 
 	// retrieve user info
-	m.Log.Infow("storing user info in disruption", "name", dis.Name, "namespace", dis.Namespace, "req", req.UserInfo)
+	m.Log.Infow("storing user info in annotations", "name", dis.Name, "namespace", dis.Namespace, "req", req.UserInfo)
 
-	dis.Status.UserInfo = &req.UserInfo
+	annotations := make(map[string]string)
+
+	for k, v := range dis.Annotations {
+		annotations[k] = v
+	}
+
+	marshaledUserInfo, err := json.Marshal(req.UserInfo)
+	if err != nil {
+		m.Log.Errorw("error encoding UserInfo", "error", err)
+	}
+
+	annotations["UserInfo"] = string(marshaledUserInfo)
+
+	dis.Annotations = annotations
 
 	marshaled, err := json.Marshal(dis)
 	if err != nil {
-		m.Log.Errorw("error encoding modified disruption object", "error", err, "name", dis.Name, "namespace", dis.Namespace)
+		m.Log.Errorw("error encoding modified annotations", "error", err, "name", dis.Name, "namespace", dis.Namespace)
 
 		return admission.Errored(http.StatusInternalServerError, err)
 	}

@@ -48,7 +48,22 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\tℹ️  will target the following containers when targeting on the pod level\n\t\t🎯  %s\n", strings.Join(spec.Containers, ","))
 	}
 
+	if spec.Pulse != nil {
+		fmt.Printf("\tℹ️  has the pulse mode activated meaning the disruptions will alternate between an active injected state with a duration of %s, and an inactive dormant state with a duration of %s.\n", spec.Pulse.ActiveDuration.Duration().String(), spec.Pulse.DormantDuration.Duration().String())
+	}
+
+	if spec.OnInit {
+		fmt.Printf("\tℹ️  has the onInit mode activated meaning the disruptions will be launched at the initialization of the targeted pods.\n")
+	}
+
 	fmt.Printf("\tℹ️  is going to target %s %s(s) (either described as a percentage of total %ss or actual number of them).\n", spec.Count, spec.Level, spec.Level)
+
+	if spec.StaticTargeting == nil || *spec.StaticTargeting {
+		fmt.Printf("\tℹ️  has StaticTargeting activated, so new pods/nodes will be NOT be targeted \n")
+	} else {
+		fmt.Printf("\tℹ️  has StaticTargeting deactivated, so new pods/nodes will be targeted\n")
+	}
+
 	PrintSeparator()
 }
 
@@ -210,6 +225,12 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 		} else {
 			fmt.Println("\t\t\t🧾 Protocol: All Protocols")
 		}
+
+		if data.Flow == v1beta1.FlowIngress {
+			fmt.Println("\t💥 applies network failures on incoming traffic instead of outgoing.")
+		} else {
+			fmt.Println("\t💥 applies network failures on outgoing traffic.")
+		}
 	}
 
 	if len(network.Services) != 0 {
@@ -219,12 +240,6 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	for _, data := range network.Services {
 		fmt.Printf("\t\t🎯 Service: %s\n", data.Name)
 		fmt.Printf("\t\t\t⛵️ Namespace: %s\n", data.Namespace)
-	}
-
-	if network.Flow == v1beta1.FlowIngress {
-		fmt.Println("\t💥 applies network failures on incoming traffic instead of outgoing.")
-	} else {
-		fmt.Println("\t💥 applies network failures on outgoing traffic.")
 	}
 
 	if network.Drop != 0 {

@@ -59,6 +59,10 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 	}, err
 }
 
+func (i DNSDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
+	return chaostypes.DisruptionKindDNSDisruption
+}
+
 // Inject injects the given dns disruption into the given container
 func (i DNSDisruptionInjector) Inject() error {
 	i.config.Log.Infow("adding dns disruption", "spec", i.spec)
@@ -109,14 +113,21 @@ func (i DNSDisruptionInjector) Inject() error {
 	}
 
 	if i.config.Level == chaostypes.DisruptionLevelPod {
-		// write classid to container net_cls cgroup - for iptable filtering
-		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", InjectorDNSCgroupClassID); err != nil {
-			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
-		}
+		if !i.config.OnInit {
+			// write classid to container net_cls cgroup - for iptable filtering
+			if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", InjectorDNSCgroupClassID); err != nil {
+				return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
+			}
 
-		// Redirect traffic marked by targeted InjectorDNSCgroupClassID to CHAOS-DNS
-		if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
-			return fmt.Errorf("unable to create new iptables rule: %w", err)
+			// Redirect traffic marked by targeted InjectorDNSCgroupClassID to CHAOS-DNS
+			if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
+				return fmt.Errorf("unable to create new iptables rule: %w", err)
+			}
+		} else {
+			// Redirect all dns related traffic in the pod to CHAOS-DNS
+			if err := i.config.Iptables.AddWideFilterRule("OUTPUT", "udp", "53", "CHAOS-DNS"); err != nil {
+				return fmt.Errorf("unable to create new iptables rule: %w", err)
+			}
 		}
 	}
 
@@ -152,14 +163,27 @@ func (i DNSDisruptionInjector) Clean() error {
 	}
 
 	if i.config.Level == chaostypes.DisruptionLevelPod {
-		// reset net_cls classid
-		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x0"); err != nil {
-			return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
-		}
+		if i.config.OnInit {
+			if err := i.config.Iptables.DeleteRule("OUTPUT", "udp", "53", "CHAOS-DNS"); err != nil {
+				return fmt.Errorf("unable to remove injected iptables rule: %w", err)
+			}
+		} else {
+			// write default classid to pod net_cls cgroup if it still exists
+			exists, err := i.config.Cgroup.Exists("net_cls")
+			if err != nil {
+				return fmt.Errorf("error checking if pod net_cls cgroup still exists: %w", err)
+			}
 
-		// Delete iptables rules
-		if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
-			return fmt.Errorf("unable to remove injected iptables rule: %w", err)
+			if exists {
+				if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x0"); err != nil {
+					return fmt.Errorf("error reseting classid of pod net_cls cgroup: %w", err)
+				}
+			}
+
+			// Delete iptables rules
+			if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
+				return fmt.Errorf("unable to remove injected iptables rule: %w", err)
+			}
 		}
 	}
 

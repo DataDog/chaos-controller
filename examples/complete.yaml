@@ -31,6 +31,9 @@ spec:
     - demo
     - demo2
   count: 1 # number of pods to target or a percentage (1% - 100%)
+  pulse: # optional, activate pulsing disruptions. Available for any disruptions except nodeFailure and containerFailure
+    activeDuration: 60s # this is the duration of the disruption in an active state, must be a valid time.Duration string, e.g. (300s, 15m25s, 4h) and must be greater than 500ms
+    dormantDuration: 30s # this is the duration of the disruption in a dormant state, must be a valid time.Duration string, e.g. (300s, 15m25s, 4h) and must be greater than 500ms
   duration: 30m # the amount of time before the disruption terminates itself, must be a valid time.Duration string, e.g. (300s, 15m25s, 4h)
   nodeFailure: # node kernel panic or shutdown
     shutdown: true # optional, shutdown the host instead of triggering a stack dump (defaults to false)
@@ -41,14 +44,15 @@ spec:
       - host: 10.0.0.0/8 # optional, IP, CIDR or hostname to filter on
         port: 80 # optional, port to drop packets on
         protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+        flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
     allowedHosts: # optional, list of excluded hosts which would not be disrupted
       - host: 10.0.0.1 # optional, IP, CIDR or hostname to filter on
         port: 80 # optional, port to filter on
         protocol: tcp # optional, protocol to filter on (can be tcp or udp, defaults to both)
+        flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
     services: # optional, list of destination Kubernetes services to filter on
       - name: foo # service name
         namespace: bar # service namespace
-    flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
     drop: 10 # "mandatory", at least one of `bandwidthLimit`, `delay`, `drop`, `corrupt`, or `duplicate` must be specified; probability to drop packets (between 0 and 100)
     corrupt: 5 # probability to corrupt packets (between 0 and 100)
     delay: 1000 # latency to apply to packets in ms
@@ -72,12 +76,12 @@ spec:
   grpc: # disrupt gRPC responses by faking results
     port: 50051 # port that target grpc server is listening on
     endpoints:
-      - endpoint: /chaos_dogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
+      - endpoint: /chaosdogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
         error: NOT_FOUND # gRPC error code to return instead computed response
         queryPercent: 10 # percentage to affect (1-100); multiple alterations allowed for single endpoint, but sum should not exceed 100%
-      - endpoint: /chaos_dogfood.ChaosDogfood/order # gRPC service endpoint to disrupt
+      - endpoint: /chaosdogfood.ChaosDogfood/order # gRPC service endpoint to disrupt
         override: "{}" # response structure to return instead of computed response - currently only returns emptypb.Empty
         queryPercent: 50 # percentage to affect (1-100); multiple alterations allowed for single endpoint, but sum should not exceed 100%
-      - endpoint: /chaos_dogfood.ChaosDogfood/order # gRPC service endpoint to disrupt
+      - endpoint: /chaosdogfood.ChaosDogfood/order # gRPC service endpoint to disrupt
         error: PERMISSION_DENIED # gRPC error code to return instead computed response
         # unspecified queryPercent: an endpoint with Y[1], Y[2],...Y[X] explicit queryPercent and Y[X+1],...Y[X+N] other alterations defaults to (100 - SUM(Y[1] +..+ Y[X])) / N %

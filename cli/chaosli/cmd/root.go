@@ -7,17 +7,12 @@ package cmd
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
+	"io/fs"
 	"log"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/markbates/pkger"
-	goyaml "sigs.k8s.io/yaml"
-
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -99,7 +94,7 @@ func initConfig() {
 // initLibrary copies the binary-embedded disruption API into a custom folder in GOPATH
 func initLibrary() {
 	if _, isGoInstalled := os.LookupEnv("GOPATH"); !isGoInstalled {
-		log.Fatal("Setup error: please make sure go (1.16 or higher) is installed and the GOPATH is set")
+		log.Fatal("Setup error: please make sure go (1.18 or higher) is installed and the GOPATH is set")
 	}
 
 	if err := os.Setenv("GO111MODULE", "off"); err != nil {
@@ -112,19 +107,24 @@ func initLibrary() {
 		log.Fatal(err)
 	}
 
-	err := pkger.Walk("github.com/DataDog/chaos-controller:/api/v1beta1",
+	err := fs.WalkDir(v1beta1.EmbeddedChaosAPI, ".",
 		// this function is executed for every file found within the binary-embedded folder
 		// it copies every files to another location on the computer through io.Copy
-		func(path string, info os.FileInfo, err error) error {
+		func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 
-			if info.IsDir() {
+			if d.IsDir() {
 				return nil
 			}
 
-			fin, err := pkger.Open(path)
+			fin, err := fs.ReadFile(v1beta1.EmbeddedChaosAPI, path)
+			if err != nil {
+				return err
+			}
+
+			info, err := d.Info()
 			if err != nil {
 				return err
 			}
@@ -134,14 +134,11 @@ func initLibrary() {
 				return err
 			}
 
-			if _, err = io.Copy(fout, fin); err != nil {
+			if _, err = fout.Write(fin); err != nil {
 				return err
 			}
 
 			if err = fout.Close(); err != nil {
-				return err
-			}
-			if err = fin.Close(); err != nil {
 				return err
 			}
 
@@ -175,30 +172,14 @@ func PrintSeparator() {
 }
 
 func ReadUnmarshalValidate(path string) v1beta1.Disruption {
-	fullPath, err := filepath.Abs(path)
+	parsedSpec, err := v1beta1.ReadUnmarshal(path)
 	if err != nil {
-		log.Fatalf("finding Absolute Path: %v", err)
+		log.Fatalf("there were problems reading the disruption at this path: %v", err)
 	}
 
-	yaml, err := os.Open(filepath.Clean(fullPath))
-	if err != nil {
-		log.Fatalf("could not open yaml: %v", err)
-	}
-
-	yamlBytes, err := ioutil.ReadAll(yaml)
-	if err != nil {
-		log.Fatalf("disruption.Get err   #%v ", err)
-	}
-
-	parsedSpec := v1beta1.Disruption{}
-
-	if err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec); err != nil {
-		log.Fatalf("unmarshal: %v", err)
-	}
-
-	if err = RunAllValidation(parsedSpec, path); err != nil {
+	if err = RunAllValidation(*parsedSpec, path); err != nil {
 		log.Fatalf("there were some problems when validating your disruption:\n%v", err)
 	}
 
-	return parsedSpec
+	return *parsedSpec
 }

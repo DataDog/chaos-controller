@@ -36,7 +36,7 @@ func NewRunningTargetSelector(controllerEnableSafeguards bool, controllerNodeNam
 // GetMatchingPods returns a pods list containing all running pods matching the given label selector and namespace
 func (r runningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, error) {
 	// get parsed selector
-	selector, err := getLabelSelectorFromInstance(instance)
+	selector, err := GetLabelSelectorFromInstance(instance)
 	if err != nil {
 		return nil, fmt.Errorf("error getting label selector from disruption: %w", err)
 	}
@@ -93,7 +93,7 @@ func (r runningTargetSelector) GetMatchingPods(c client.Client, instance *chaosv
 // GetMatchingNodes returns a nodes list containing all nodes matching the given label selector
 func (r runningTargetSelector) GetMatchingNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, error) {
 	// get parsed selector
-	selector, err := getLabelSelectorFromInstance(instance)
+	selector, err := GetLabelSelectorFromInstance(instance)
 	if err != nil {
 		return nil, fmt.Errorf("error getting label selector from disruption: %w", err)
 	}
@@ -185,8 +185,8 @@ func (r runningTargetSelector) TargetIsHealthy(target string, c client.Client, i
 	return nil
 }
 
-// getLabelSelectorFromInstance crafts a label selector made of requirements from the given disruption instance
-func getLabelSelectorFromInstance(instance *chaosv1beta1.Disruption) (labels.Selector, error) {
+// GetLabelSelectorFromInstance crafts a label selector made of requirements from the given disruption instance
+func GetLabelSelectorFromInstance(instance *chaosv1beta1.Disruption) (labels.Selector, error) {
 	// we want to ensure we never run into the possibility of using an empty label selector
 	if (len(instance.Spec.Selector) == 0 || instance.Spec.Selector == nil) && (len(instance.Spec.AdvancedSelector) == 0 || instance.Spec.AdvancedSelector == nil) {
 		return nil, errors.New("selector can't be an empty set")

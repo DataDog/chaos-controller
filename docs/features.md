@@ -28,14 +28,42 @@ that the Disruption resource is created, not from when the injection of the actu
 If a `duration` is not specified, then a disruption will receive the default duration, which is configured at the controller level by setting 
 `controller.defaultDuration` in the controller's config map, and this value defaults to 1 hour.
 
-After a disruption's duration expires, the disruption resource will live in k8s for a default of 15 minutes. This can be configured by altering 
+After a disruption's duration expires, the disruption resource will live in k8s for a default of 10 minutes. This can be configured by altering 
 `controller.expiredDisruptionGCDelay` in the controller's config map.
 
+## Pulse
+
+The `Disruption` spec takes a `pulse` field. It activates the pulsing mode of the disruptions of type `cpu_pressure`, `disk_pressure`, `dns_disruption`, `grpc_disruption` or `network_disruption`. A "pulsing" disruption is one that alternates between an active injected state, and an inactive dormant state. Previously, one would need to manage the Disruption lifecycle by continually re-creating and deleting a Disruption to achieve the same effect.
+
+It is composed of two subfields: `dormantDuration` and `activeDuration`, which both take a string, which is meant to conform to 
+golang's time.Duration's [string format, e.g., "45s", "15m30s", "4h30m".](https://pkg.go.dev/time#ParseDuration) and **have to be greater than 500 milliseconds**.
+
+`dormantDuration` will specify the duration of the disruption being `dormant`, meaning that the disruption will not be injected during that time.
+
+`activeDuration` will specify the duration of the disruption being `active`, meaning that the disruption will be injected during that time.
+
+The pulsing disruption will be injected for a duration of `activeDuration`, then be clean and dormant for a duration of `dormantDuration`, and so on until the end of the disruption.
+
+If a `pulse` is not specified, then a disruption will not be pulsing.
+
 ## Targeting
+
+**NEW:** StaticTargeting currently defaults to true. It will default to false after some transition time. [Read StaticTargeting](#StaticTargeting-(current-default-behaviour)).
 
 The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the given label selector and will randomly select a number (defined in the `count` field) of matching targets. It's possible to specify multiple label selectors, in which case the controller will select from targets that match all of them. Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.
 
 **NOTE:** If you are targeting pods, the disruption must be created in the same namespace as the targeted pods.
+
+### StaticTargeting (current default behaviour)
+
+When `StaticTargeting` is activated, targeting is limited to a single target selection at the disruption's creation. It allows for more controlled disruption impact and propagation, as the targets will never change and _can_ be compensated for in case they are made useless. Its major limit is not being able to follow targets through deployments/rollouts.
+By setting the `StaticTargeting` flag to `false` in the [Disruption's yaml spec](../examples/static_targeting.yaml), you activate a constant re-targeting for this disruption. This means at any given time, any target within the selector's scope will be added to the target list and be disrupted.
+This is a feature to use with care, as it can quickly get out of control: per example, a disruption targeting 100% of an application's pod will affect all existing **and** future pods which can appear once the disruption started. As long as this 100% disruption exists, there will be no spared pod.
+Even a 50%-set disruption, if the disruption gets targeted pods to die, will constantly re-target 50% of all selector-fitting pods and end up killing every pod unless they are recreated.
+
+`DynamicTargeting` behavior design choices:
+- the controller will consider as a still-alive target any pod that exists - regardless of its state.
+- the controller will reconcile/update its targets list on any chaos pod or selector movement (create, update, delete)
 
 ### Targeting safeguards
 

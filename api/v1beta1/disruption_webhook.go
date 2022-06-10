@@ -6,12 +6,20 @@
 package v1beta1
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/DataDog/chaos-controller/utils"
+
 	"github.com/DataDog/chaos-controller/metrics"
+	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
+	v1 "k8s.io/api/authentication/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -23,19 +31,25 @@ var logger *zap.SugaredLogger
 var k8sClient client.Client
 var metricsSink metrics.Sink
 var deleteOnly bool
+var enableSafemode bool
+var namespaceThreshold float64
+var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
 
-func (r *Disruption) SetupWebhookWithManager(mgr ctrl.Manager, l *zap.SugaredLogger, ms metrics.Sink, deleteOnlyFlag, handlerEnabledFlag bool, defaultDurationFlag time.Duration) error {
+func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	logger = &zap.SugaredLogger{}
-	*logger = *l.With("source", "admission-controller")
-	k8sClient = mgr.GetClient()
-	metricsSink = ms
-	deleteOnly = deleteOnlyFlag
-	handlerEnabled = handlerEnabledFlag
-	defaultDuration = defaultDurationFlag
+	*logger = *setupWebhookConfig.Logger.With("source", "admission-controller")
+	k8sClient = setupWebhookConfig.Manager.GetClient()
+	metricsSink = setupWebhookConfig.MetricsSink
+	deleteOnly = setupWebhookConfig.DeleteOnlyFlag
+	enableSafemode = setupWebhookConfig.EnableSafemodeFlag
+	namespaceThreshold = float64(setupWebhookConfig.NamespaceThresholdFlag) / 100.0
+	clusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
+	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
+	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 
-	return ctrl.NewWebhookManagedBy(mgr).
+	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
 		Complete()
 }
@@ -49,6 +63,13 @@ func (r *Disruption) Default() {
 	if r.Spec.Duration.Duration() == 0 {
 		logger.Infow(fmt.Sprintf("setting default duration of %s in disruption", defaultDuration), "instance", r.Name, "namespace", r.Namespace)
 		r.Spec.Duration = DisruptionDuration(defaultDuration.String())
+	}
+
+	if r.Spec.StaticTargeting == nil {
+		r.Spec.StaticTargeting = func() *bool {
+			b := true
+			return &b
+		}()
 	}
 }
 
@@ -84,6 +105,19 @@ func (r *Disruption) ValidateCreate() error {
 		return err
 	}
 
+	// handle initial safety nets
+	if enableSafemode {
+		if responses, err := r.initialSafetyNets(); err != nil {
+			return err
+		} else if len(responses) > 0 {
+			retErr := errors.New("at least one of the initial safety nets caught an issue")
+			for _, response := range responses {
+				retErr = multierror.Append(retErr, errors.New(response))
+			}
+			return retErr
+		}
+	}
+
 	// send validation metric
 	if err := metricsSink.MetricValidationCreated(r.getMetricsTags()); err != nil {
 		logger.Errorw("error sending a metric", "error", err)
@@ -96,22 +130,56 @@ func (r *Disruption) ValidateCreate() error {
 func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	logger.Debugw("validating updated disruption", "instance", r.Name, "namespace", r.Namespace)
 
-	// compare old and new disruption hashes and deny any spec changes
-	oldHash, err := old.(*Disruption).Spec.Hash()
-	if err != nil {
-		return fmt.Errorf("error getting old disruption hash: %w", err)
+	// remove when StaticTargeting is defaulted to false
+	if r.Spec.StaticTargeting == nil {
+		logger.Debugw("StaticTargeting pointer is nil")
 	}
 
-	newHash, err := r.Spec.Hash()
-	if err != nil {
-		return fmt.Errorf("error getting new disruption hash: %w", err)
+	// compare old and new disruption hashes and deny any spec changes
+	var oldHash, newHash string
+
+	var err error
+
+	if r.Spec.StaticTargeting == nil || *r.Spec.StaticTargeting {
+		oldHash, err = old.(*Disruption).Spec.Hash()
+		if err != nil {
+			return fmt.Errorf("error getting old disruption hash: %w", err)
+		}
+
+		newHash, err = r.Spec.Hash()
+
+		if err != nil {
+			return fmt.Errorf("error getting new disruption hash: %w", err)
+		}
+	} else {
+		oldHash, err = old.(*Disruption).Spec.HashNoCount()
+		if err != nil {
+			return fmt.Errorf("error getting old disruption hash: %w", err)
+		}
+		newHash, err = r.Spec.HashNoCount()
+		if err != nil {
+			return fmt.Errorf("error getting new disruption hash: %w", err)
+		}
 	}
 
 	logger.Debugw("comparing disruption spec hashes", "instance", r.Name, "namespace", r.Namespace, "oldHash", oldHash, "newHash", newHash)
 
 	if oldHash != newHash {
 		logger.Errorw("error when comparing disruption spec hashes", "instance", r.Name, "namespace", r.Namespace, "oldHash", oldHash, "newHash", newHash)
-		return fmt.Errorf("a disruption spec can't be edited, please delete and recreate it if needed")
+
+		if r.Spec.StaticTargeting == nil || *r.Spec.StaticTargeting {
+			return fmt.Errorf("[StaticTargeting: true] a disruption spec cannot be updated, please delete and recreate it if needed")
+		}
+
+		return fmt.Errorf("[StaticTargeting: false] only a disruption spec's Count field can be updated, please delete and recreate it if needed")
+	}
+
+	if err := r.Spec.Validate(); err != nil {
+		if mErr := metricsSink.MetricValidationFailed(r.getMetricsTags()); mErr != nil {
+			logger.Errorw("error sending a metric", "error", mErr)
+		}
+
+		return err
 	}
 
 	// send validation metric
@@ -137,12 +205,22 @@ func (r *Disruption) getMetricsTags() []string {
 	tags := []string{
 		"name:" + r.Name,
 		"namespace:" + r.Namespace,
-		"username:" + r.Status.UserInfo.Username,
 	}
 
-	// add groups
-	for _, group := range r.Status.UserInfo.Groups {
-		tags = append(tags, "group:"+group)
+	if _, ok := r.Annotations["UserInfo"]; ok {
+		var annotation v1.UserInfo
+
+		err := json.Unmarshal([]byte(r.Annotations["UserInfo"]), &annotation)
+		if err != nil {
+			logger.Errorw("Error decoding annotation", err)
+		}
+
+		tags = append(tags, "username:"+annotation.Username)
+
+		// add groups
+		for _, group := range annotation.Groups {
+			tags = append(tags, "group:"+group)
+		}
 	}
 
 	// add selectors
@@ -156,4 +234,155 @@ func (r *Disruption) getMetricsTags() []string {
 	}
 
 	return tags
+}
+
+// initialSafetyNets runs the initial safety nets for any new disruption
+// returns a list of responses related to safety net catches if any safety net were caught and returns any errors when attempting to run the safety nets
+func (r *Disruption) initialSafetyNets() ([]string, error) {
+	responses := []string{}
+	// handle initial safety nets if safemode is enabled
+	if r.Spec.Unsafemode == nil || !r.Spec.Unsafemode.DisableAll {
+		if caught, response, err := safetyNetCountNotTooLarge(*r); err != nil {
+			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet: %w", err)
+		} else if caught {
+			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", r.Name, "SafetyNet Catch", "Generic")
+
+			responses = append(responses, response)
+		}
+
+		if r.Spec.Network != nil {
+			if caught := safetyNetNeitherHostNorPort(*r); caught {
+				logger.Debugw("The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.", r.Name, "SafetyNet Catch", "Network")
+
+				responses = append(responses, "The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.")
+			}
+		}
+	}
+
+	return responses, nil
+}
+
+// safetyNetCountNotTooLarge is the safety net regarding the count of targets
+// it will check against the number of targets being targeted and the number of targets in the k8s system
+// > 66% of the k8s system being targeted warrants a safety check if we assume each of our targets are replicated
+// at least twice. > 80% in a namespace also warrants a safety check as namespaces may be shared between services.
+// returning true indicates the safety net caught something
+func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
+	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableCountTooLarge {
+		return false, "", nil
+	}
+
+	userCount := r.Spec.Count
+	totalCount := 0
+	namespaceCount := 0
+	targetCount := 0
+
+	if r.Spec.Unsafemode != nil {
+		if r.Spec.Unsafemode.Config != nil && r.Spec.Unsafemode.Config.CountTooLarge != nil {
+			if r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold != 0 {
+				namespaceThreshold = float64(r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold) / 100.0
+			}
+
+			if r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold != 0 {
+				clusterThreshold = float64(r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold) / 100.0
+			}
+		}
+	}
+
+	if r.Spec.Level == chaostypes.DisruptionLevelPod {
+		pods := &corev1.PodList{}
+		listOptions := &client.ListOptions{
+			Namespace: r.ObjectMeta.Namespace,
+		}
+
+		err := k8sClient.List(context.Background(), pods, listOptions)
+		if err != nil {
+			return false, "", fmt.Errorf("error listing namespace pods: %w", err)
+		}
+
+		namespaceCount = len(pods.Items)
+
+		listOptions = &client.ListOptions{
+			Namespace:     r.ObjectMeta.Namespace,
+			LabelSelector: labels.SelectorFromValidatedSet(r.Spec.Selector),
+		}
+
+		err = k8sClient.List(context.Background(), pods, listOptions)
+		if err != nil {
+			return false, "", fmt.Errorf("error listing target pods: %w", err)
+		}
+
+		targetCount = len(pods.Items)
+
+		err = k8sClient.List(context.Background(), pods)
+		if err != nil {
+			return false, "", fmt.Errorf("error listing cluster pods: %w", err)
+		}
+
+		totalCount = len(pods.Items)
+	} else {
+		nodes := &corev1.NodeList{}
+
+		err := k8sClient.List(context.Background(), nodes)
+		if err != nil {
+			return false, "", fmt.Errorf("error listing target pods: %w", err)
+		}
+
+		totalCount = len(nodes.Items)
+	}
+
+	userCountVal := 0.0
+
+	userCountInt, isPercent, err := GetIntOrPercentValueSafely(userCount)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to get count: %w", err)
+	}
+
+	if targetCount == 0 {
+		return false, "", nil
+	}
+
+	if isPercent {
+		userCountVal = float64(userCountInt) / 100.0 * float64(targetCount)
+	} else {
+		userCountVal = float64(userCountInt)
+	}
+
+	// we check to see if the count represents > 80 percent of all pods in the existing namepsace
+	// or if the count represents > 66 percent of all pods in the cluster
+	if r.Spec.Level != chaostypes.DisruptionLevelNode {
+		if userNamespacePercent := userCountVal / float64(namespaceCount); userNamespacePercent > namespaceThreshold {
+			response := fmt.Sprintf("target selection represents %.2f %% of the total pods in the namespace while the threshold is %.2f %%", userNamespacePercent*100, namespaceThreshold*100)
+			return true, response, nil
+		}
+	}
+
+	if userTotalPercent := userCountVal / float64(totalCount); userTotalPercent > clusterThreshold {
+		response := fmt.Sprintf("target selection represents %.2f %% of the total %ss in the cluster while the threshold is %.2f %%", userTotalPercent*100, r.Spec.Level, clusterThreshold*100)
+		return true, response, nil
+	}
+
+	return false, "", nil
+}
+
+// safetyNetNeitherHostNorPort is the safety net regarding missing host and port values.
+// it will check against all defined hosts in the network disruption spec to see if any of them have a host and a
+// port missing. The more generic a hosts tuple is (Omitting fields such as port), the bigger the blast radius.
+func safetyNetNeitherHostNorPort(r Disruption) bool {
+	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableNeitherHostNorPort {
+		return false
+	}
+
+	// if hosts are not defined, this also falls into the safety net
+	if r.Spec.Network.Hosts == nil || len(r.Spec.Network.Hosts) == 0 {
+		return true
+	}
+
+	for _, host := range r.Spec.Network.Hosts {
+		if host.Port == 0 && host.Host == "" {
+			return true
+		}
+	}
+
+	return false
 }

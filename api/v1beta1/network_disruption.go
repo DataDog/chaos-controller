@@ -30,9 +30,6 @@ type NetworkDisruptionSpec struct {
 	AllowedHosts []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
 	// +nullable
 	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
-	// +kubebuilder:validation:Enum=egress;ingress
-	// +ddmark:validation:Enum=egress;ingress
-	Flow string `json:"flow,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	// +ddmark:validation:Minimum=0
@@ -67,6 +64,9 @@ type NetworkDisruptionSpec struct {
 	// +ddmark:validation:Maximum=65535
 	// +nullable
 	DeprecatedPort *int `json:"port,omitempty"`
+	// +kubebuilder:validation:Enum=egress;ingress
+	// +ddmark:validation:Enum=egress;ingress
+	DeprecatedFlow string `json:"flow,omitempty"`
 }
 
 type NetworkDisruptionHostSpec struct {
@@ -79,6 +79,9 @@ type NetworkDisruptionHostSpec struct {
 	// +kubebuilder:validation:Enum=tcp;udp;""
 	// +ddmark:validation:Enum=tcp;udp;""
 	Protocol string `json:"protocol,omitempty"`
+	// +kubebuilder:validation:Enum=ingress;egress;""
+	// +ddmark:validation:Enum=ingress;egress;""
+	Flow string `json:"flow,omitempty"`
 }
 
 type NetworkDisruptionServiceSpec struct {
@@ -88,15 +91,20 @@ type NetworkDisruptionServiceSpec struct {
 
 // Validate validates args for the given disruption
 func (s *NetworkDisruptionSpec) Validate() (retErr error) {
-	// ensure spec filters on something if ingress mode is enabled
-	if s.Flow == FlowIngress {
-		if len(s.Hosts) == 0 && len(s.Services) == 0 {
-			retErr = multierror.Append(retErr, errors.New("the network disruption has ingress flow enabled but no hosts or services are provided, which is required for it to work"))
+	if k8sClient != nil {
+		if err := validateServices(k8sClient, s.Services); err != nil {
+			retErr = multierror.Append(retErr, err)
 		}
 	}
 
-	if k8sClient != nil {
-		if err := validateServices(k8sClient, s.Services); err != nil {
+	for _, host := range s.Hosts {
+		if err := host.Validate(); err != nil {
+			retErr = multierror.Append(retErr, err)
+		}
+	}
+
+	for _, host := range s.AllowedHosts {
+		if err := host.Validate(); err != nil {
 			retErr = multierror.Append(retErr, err)
 		}
 	}
@@ -104,6 +112,10 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 	// ensure deprecated fields are not used
 	if s.DeprecatedPort != nil {
 		retErr = multierror.Append(retErr, fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
+	}
+
+	if s.DeprecatedFlow != "" {
+		retErr = multierror.Append(retErr, fmt.Errorf("the flow specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
 	}
 
 	return multierror.Prefix(retErr, "Network:")
@@ -129,12 +141,12 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 
 	// append hosts
 	for _, host := range s.Hosts {
-		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s", host.Host, host.Port, host.Protocol))
+		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s;%s", host.Host, host.Port, host.Protocol, host.Flow))
 	}
 
 	// append allowed hosts
 	for _, host := range s.AllowedHosts {
-		args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s", host.Host, host.Port, host.Protocol))
+		args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s;%s", host.Host, host.Port, host.Protocol, host.Flow))
 	}
 
 	// append services
@@ -142,16 +154,11 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 		args = append(args, "--services", fmt.Sprintf("%s;%s", service.Name, service.Namespace))
 	}
 
-	// append flow
-	if s.Flow != "" {
-		args = append(args, "--flow", s.Flow)
-	}
-
 	return args
 }
 
 // NetworkDisruptionHostSpecFromString parses the given hosts to host specs
-// The expected format for hosts is <host>;<port>;<protocol>
+// The expected format for hosts is <host>;<port>;<protocol>;<flow>
 func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHostSpec, error) {
 	var err error
 
@@ -161,12 +168,13 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 	for _, host := range hosts {
 		port := 0
 		protocol := ""
+		flow := ""
 
-		// parse host with format <host>;<port>;<protocol>
-		parsedHost := strings.SplitN(host, ";", 3)
+		// parse host with format <host>;<port>;<protocol>;<flow>
+		parsedHost := strings.SplitN(host, ";", 4)
 
 		// cast port to int if specified
-		if len(parsedHost) > 1 {
+		if len(parsedHost) > 1 && parsedHost[1] != "" {
 			port, err = strconv.Atoi(parsedHost[1])
 			if err != nil {
 				return nil, fmt.Errorf("unexpected port parameter in %s: %v", host, err)
@@ -178,11 +186,17 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 			protocol = parsedHost[2]
 		}
 
+		// get flow if specified
+		if len(parsedHost) > 3 && parsedHost[3] != "" {
+			flow = parsedHost[3]
+		}
+
 		// generate host spec
 		parsedHosts = append(parsedHosts, NetworkDisruptionHostSpec{
 			Host:     parsedHost[0],
 			Port:     port,
 			Protocol: protocol,
+			Flow:     flow,
 		})
 	}
 
@@ -210,4 +224,14 @@ func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisrupt
 	}
 
 	return parsedServices, nil
+}
+
+func (h NetworkDisruptionHostSpec) Validate() error {
+	if h.Flow != "" {
+		if h.Host == "" && h.Port == 0 {
+			return errors.New("host or port fields must be set when the flow field is set")
+		}
+	}
+
+	return nil
 }

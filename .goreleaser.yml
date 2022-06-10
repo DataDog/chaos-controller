@@ -1,6 +1,7 @@
 before:
   hooks:
     - go mod download
+
 builds:
   - id: controller
     binary: manager
@@ -28,6 +29,8 @@ builds:
     goos:
       - linux
       - darwin
+    ldflags:
+      - -X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version={{ .Tag }}
 archives:
   - id: controller
     builds:
@@ -44,3 +47,20 @@ archives:
     builds:
       - chaosli
     format: binary
+release:
+  extra_files:
+    - glob: ./chart/install.yaml
+  header: |
+    ## Quick Installation
+
+    > :mega: _**Datadog engineers:** please reach out to Chaos Engineering before deploying to a new cluster! :pray: :bow:_
+
+    > :warning: _[cert-manager](https://cert-manager.io/docs/installation/kubernetes/) must be installed for the admission controller to get a self-signed certificate._
+
+    If you do not plan to alter source code, you can install **Chaos Controller** to your existing Kubernetes environments by running:
+
+    > :mega: _**Datadog engineers:** please reach out to Chaos Engineering before deploying to a new cluster! :pray: :bow:_
+
+    ```
+    kubectl apply -f https://github.com/DataDog/chaos-controller/releases/download/{{ .Tag }}/install.yaml
+    ```

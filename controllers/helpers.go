@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -125,13 +126,10 @@ func validateLabelSelector(selector labels.Selector) error {
 	return nil
 }
 
-// contains returns true when the given string is present in the given slice
-func contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-
-	return false
+// isModifiedError tells us if this error is of the form:
+// "Operation cannot be fulfilled on disruptions.chaos.datadoghq.com "chaos-network-drop": the object has been modified; please apply your changes to the latest version and try again"
+// Sadly this doesn't seem to be one of the errors checkable with a function from "k8s.io/apimachinery/pkg/api/errors"
+// So we parse the error message directly
+func isModifiedError(err error) bool {
+	return strings.Contains(err.Error(), "please apply your changes to the latest version and try again")
 }

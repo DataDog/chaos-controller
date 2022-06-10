@@ -55,6 +55,7 @@ var (
 	testEnv     *envtest.Environment
 	instanceKey types.NamespacedName
 	targetPodA  *corev1.Pod
+	targetPodA2 *corev1.Pod
 	targetPodB  *corev1.Pod
 )
 
@@ -147,6 +148,8 @@ var _ = BeforeSuite(func(done Done) {
 			},
 		},
 	}
+	targetPodA2 = targetPodA.DeepCopy()
+	targetPodA2.ObjectMeta.Name = "foo2"
 	targetPodB = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",

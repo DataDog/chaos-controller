@@ -32,7 +32,6 @@ github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/osversion,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/pkg/ociwclayer,MIT
 github.com/avast/retry-go,github.com/avast/retry-go,MIT
 github.com/beorn7/perks,github.com/beorn7/perks/quantile,MIT
-github.com/bits-and-blooms/bitset,github.com/bits-and-blooms/bitset,BSD-3-Clause
 github.com/cenkalti/backoff,github.com/cenkalti/backoff,MIT
 github.com/cespare/xxhash/v2,github.com/cespare/xxhash/v2,MIT
 github.com/containerd/cgroups,github.com/containerd/cgroups/stats/v1,Apache-2.0
@@ -132,7 +131,6 @@ github.com/evanphx/json-patch,github.com/evanphx/json-patch,BSD-3-Clause
 github.com/fsnotify/fsnotify,github.com/fsnotify/fsnotify,BSD-3-Clause
 github.com/ghodss/yaml,github.com/ghodss/yaml,MIT
 github.com/go-logr/logr,github.com/go-logr/logr,Apache-2.0
-github.com/gobuffalo/here,github.com/gobuffalo/here,MIT
 github.com/godbus/dbus/v5,github.com/godbus/dbus/v5,BSD-2-Clause
 github.com/gogo/googleapis,github.com/gogo/googleapis/google/rpc,Apache-2.0
 github.com/gogo/protobuf,github.com/gogo/protobuf/gogoproto,BSD-3-Clause
@@ -181,11 +179,6 @@ github.com/klauspost/compress,github.com/klauspost/compress/snappy,BSD-3-Clause
 github.com/klauspost/compress,github.com/klauspost/compress/zstd,BSD-3-Clause
 github.com/klauspost/compress,github.com/klauspost/compress/zstd/internal/xxhash,BSD-3-Clause
 github.com/magiconair/properties,github.com/magiconair/properties,BSD-2-Clause
-github.com/markbates/pkger,github.com/markbates/pkger,MIT
-github.com/markbates/pkger,github.com/markbates/pkger/here,MIT
-github.com/markbates/pkger,github.com/markbates/pkger/internal/maps,MIT
-github.com/markbates/pkger,github.com/markbates/pkger/pkging,MIT
-github.com/markbates/pkger,github.com/markbates/pkger/pkging/stdos,MIT
 github.com/mattn/go-colorable,github.com/mattn/go-colorable,MIT
 github.com/mattn/go-isatty,github.com/mattn/go-isatty,MIT
 github.com/matttproud/golang_protobuf_extensions,github.com/matttproud/golang_protobuf_extensions/pbutil,Apache-2.0
@@ -244,6 +237,7 @@ github.com/opencontainers/runtime-spec,github.com/opencontainers/runtime-spec/sp
 github.com/opencontainers/selinux,github.com/opencontainers/selinux/go-selinux,Apache-2.0
 github.com/opencontainers/selinux,github.com/opencontainers/selinux/go-selinux/label,Apache-2.0
 github.com/opencontainers/selinux,github.com/opencontainers/selinux/pkg/pwalk,Apache-2.0
+github.com/opencontainers/selinux,github.com/opencontainers/selinux/pkg/pwalkdir,Apache-2.0
 github.com/pelletier/go-toml,github.com/pelletier/go-toml,Apache-2.0
 github.com/pkg/errors,github.com/pkg/errors,BSD-2-Clause
 github.com/pmezard/go-difflib,github.com/pmezard/go-difflib/difflib,BSD-3-Clause
@@ -825,7 +819,6 @@ k8s.io/component-base,k8s.io/component-base/config,Apache-2.0
 k8s.io/component-base,k8s.io/component-base/config/v1alpha1,Apache-2.0
 k8s.io/klog/v2,k8s.io/klog/v2,Apache-2.0
 k8s.io/kube-openapi,k8s.io/kube-openapi/pkg/util/proto,Apache-2.0
-k8s.io/kubernetes,k8s.io/kubernetes/pkg/kubelet/cm/cpuset,Apache-2.0
 k8s.io/utils,k8s.io/utils/buffer,Apache-2.0
 k8s.io/utils,k8s.io/utils/integer,Apache-2.0
 k8s.io/utils,k8s.io/utils/pointer,Apache-2.0

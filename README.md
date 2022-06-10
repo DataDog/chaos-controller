@@ -6,6 +6,10 @@
 
 Datadog runs regular chaos experiments to test the resilience of our distributed cloud applications hosted in Kubernetes. The Chaos Controller facilitates automation of these experiments by simulating common "disruptions" including but not limited to: poor network quality, exhaustion of computational resources, or unexpected node failures. All you need to do to get started is define a `yaml` file which contains all of the specifications needed by our custom Kubernetes Resource to run the preferred disruption `Kind`.
 
+<p align="center"><kbd>
+    <img src="docs/img/architecture/chaos_controller.svg" width=700 align="center" />
+</kbd></p>
+
 ## Gamedays
 
 At Datadog, we use the Chaos Controller to run Gamedays where we intentionally introduce failures into staging and production systems to test the resilience of our critical applications.
@@ -22,29 +26,6 @@ The Chaos Controller allows us to simulate a variety of small and large scenario
 ## Local Development
 
 Chaos Engineering is necessarily different from system to system. We encourage you to try out this tool, and extend it for your own use cases. If you want to run the source code locally to make and test implementation changes, visit the [Contributing Docs](CONTRIBUTING.md) which explain how to spin up chaos-controller source code on Minikube. By the way, we welcome Pull Requests.
-
-## Quick Installation
-
-> :mega: _**Datadog engineers:** please reach out to Chaos Engineering before deploying to a new cluster! :pray: :bow:_
-
-If you do not plan to alter source code, you can install **Chaos Controller** to your existing Kubernetes environments by running:
-
-```
-kubectl apply -f https://raw.githubusercontent.com/DataDog/chaos-controller/main/chart/install.yaml
-```
-
-This `install.yaml` is generated for each new release and will always point to the latest stable version of the controller in Docker Hub.
-
-If you use Helm you can install all the resources as follows:
-```
-helm install -f values.yaml chaos-controller ./chart
-```
-
-> :mega: _**Datadog engineers:** please reach out to Chaos Engineering before deploying to a new cluster! :pray: :bow:_
-
-> :warning: _[cert-manager](https://cert-manager.io/docs/installation/kubernetes/) must be installed for the admission controller to get a self-signed certificate._
-
-> :open_book: _The [Advanced Installation Docs](docs/installation.md) contain flags to customize webhooks, annotate injector pods, etc._
 
 ## Getting Started
 

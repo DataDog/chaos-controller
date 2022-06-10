@@ -200,6 +200,12 @@ spec:
                   allowedHosts:
                     items:
                       properties:
+                        flow:
+                          enum:
+                          - ingress
+                          - egress
+                          - ""
+                          type: string
                         host:
                           type: string
                         port:
@@ -246,6 +252,12 @@ spec:
                   hosts:
                     items:
                       properties:
+                        flow:
+                          enum:
+                          - ingress
+                          - egress
+                          - ""
+                          type: string
                         host:
                           type: string
                         port:
@@ -289,11 +301,60 @@ spec:
                 type: object
               onInit:
                 type: boolean
+              pulse:
+                description: DisruptionPulse contains the active disruption duration
+                  and the dormant disruption duration
+                nullable: true
+                properties:
+                  activeDuration:
+                    type: string
+                  dormantDuration:
+                    type: string
+                required:
+                - activeDuration
+                - dormantDuration
+                type: object
               selector:
                 additionalProperties:
                   type: string
                 description: Set is a map of label:value. It implements Labels.
                 nullable: true
+                type: object
+              staticTargeting:
+                type: boolean
+              unsafeMode:
+                description: UnsafemodeSpec represents a spec with parameters to turn
+                  off specific safety nets designed to catch common traps or issues
+                  running a disruption All of these are turned off by default, so
+                  disabling safety nets requires manually changing these booleans
+                  to true
+                properties:
+                  config:
+                    description: Config represents any configurable parameters for
+                      the safetynets, all of which have defaults
+                    properties:
+                      countTooLarge:
+                        description: CountTooLargeConfig represents the configuration
+                          for the countTooLarge safetynet
+                        properties:
+                          clusterThreshold:
+                            maximum: 100
+                            minimum: 0
+                            type: integer
+                          namespaceThreshold:
+                            maximum: 100
+                            minimum: 0
+                            type: integer
+                        type: object
+                    type: object
+                  disableAll:
+                    type: boolean
+                  disableCountTooLarge:
+                    type: boolean
+                  disableNeitherHostNorPort:
+                    type: boolean
+                  disableSpecificContainDisk:
+                    type: boolean
                 type: object
             required:
             - count
@@ -301,11 +362,6 @@ spec:
           status:
             description: DisruptionStatus defines the observed state of Disruption
             properties:
-              ignoredTargets:
-                items:
-                  type: string
-                nullable: true
-                type: array
               injectionStatus:
                 description: DisruptionInjectionStatus represents the injection status
                   of a disruption
@@ -313,6 +369,7 @@ spec:
                 - NotInjected
                 - PartiallyInjected
                 - Injected
+                - PreviouslyInjected
                 type: string
               isInjected:
                 type: boolean
@@ -323,38 +380,12 @@ spec:
                   type: string
                 nullable: true
                 type: array
-              userInfo:
-                description: UserInfo holds the information about the user needed
-                  to implement the user.Info interface.
-                nullable: true
-                properties:
-                  extra:
-                    additionalProperties:
-                      description: ExtraValue masks the value so protobuf can generate
-                      items:
-                        type: string
-                      type: array
-                    description: Any additional information provided by the authenticator.
-                    type: object
-                  groups:
-                    description: The names of groups this user is a part of.
-                    items:
-                      type: string
-                    type: array
-                  uid:
-                    description: A unique value that identifies this user across time.
-                      If this user is deleted and another user by the same name is
-                      added, they will have different UIDs.
-                    type: string
-                  username:
-                    description: The name that uniquely identifies this user among
-                      all active users.
-                    type: string
-                type: object
             type: object
         type: object
     served: true
     storage: true
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""

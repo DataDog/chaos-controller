@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -81,10 +82,28 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 
 	spec.Level = getLevel()
 	spec.Selector = getSelectors()
+	spec.StaticTargeting = getStaticTargeting()
 	spec.Count = getCount()
+
+	isPulsingCompatible := true
+
+	for _, disruptionKind := range spec.GetKindNames() {
+		if disruptionKind == types.DisruptionKindContainerFailure || disruptionKind == types.DisruptionKindNodeFailure {
+			isPulsingCompatible = false
+			break
+		}
+	}
+
+	if isPulsingCompatible {
+		spec.Pulse = getPulse()
+	}
 
 	if spec.Level == types.DisruptionLevelPod {
 		spec.Containers = getContainers()
+	}
+
+	if spec.ContainerFailure == nil && spec.CPUPressure == nil && spec.DiskPressure == nil && spec.NodeFailure == nil && spec.GRPC == nil && spec.Level == types.DisruptionLevelPod && len(spec.Containers) == 0 {
+		spec.OnInit = getOnInit()
 	}
 
 	spec.DryRun = getDryRun()
@@ -444,6 +463,13 @@ func getHosts() []v1beta1.NetworkDisruptionHostSpec {
 			host.Protocol, _ = selectInput("Please choose then (or ctrl+c to go back)", []string{"tcp", "udp"}, "This will cause only the traffic using this protocol to be affected.")
 		}
 
+		host.Flow, _ = selectInput(
+			"Choose a flow direction",
+			[]string{v1beta1.FlowEgress, v1beta1.FlowIngress},
+			fmt.Sprintf("%s will affect traffic leaving the target. %s will not really affect traffic entering the target, but actually will affect replies to the inbound traffic.",
+				v1beta1.FlowEgress, v1beta1.FlowIngress),
+		)
+
 		return host
 	}
 
@@ -494,13 +520,6 @@ func getNetwork() *v1beta1.NetworkDisruptionSpec {
 
 	spec.Hosts = getHosts()
 	spec.Services = getServices()
-
-	spec.Flow, _ = selectInput(
-		"Choose a flow direction",
-		[]string{v1beta1.FlowEgress, v1beta1.FlowIngress},
-		fmt.Sprintf("%s will affect traffic leaving the target. %s will not really affect traffic entering the target, but actually will affect replies to the inbound traffic.",
-			v1beta1.FlowEgress, v1beta1.FlowIngress),
-	)
 
 	if confirmOption("Would you like to drop packets?", "Packets will be dropped before leaving the target") {
 		spec.Drop, _ = strconv.Atoi(getInput("What % of packets should we affect?", "1-100", survey.WithValidator(survey.Required), survey.WithValidator(percentageValidator)))
@@ -560,6 +579,57 @@ func getCount() *intstr.IntOrString {
 	return &wrappedResult
 }
 
+func getOnInit() bool {
+	onInitExplanations := "An OnInit disruption is a disruption which will be launched on the initialization of your targeted pod(s), enabling the disruption to be working directly at the start of the disrupted pod(s).\nTo make it work, you need to add \"chaos.datadoghq.com/disrupt-on-init: \"true\"\" to the labels of your targeted pod(s) and redeploy them."
+
+	fmt.Println(onInitExplanations)
+
+	return confirmOption("Do you want to enable on initialization disruptions?", "OnInit is disabled by default")
+}
+
+func getPulse() *v1beta1.DisruptionPulse {
+	validator := func(val interface{}) error {
+		if str, ok := val.(string); ok {
+			_, err := time.ParseDuration(str)
+			if err != nil {
+				return err
+			}
+
+			duration := v1beta1.DisruptionDuration(str)
+			if duration.Duration() < types.PulsingDisruptionMinimumDuration {
+				return fmt.Errorf("duration must be greater than %s", types.PulsingDisruptionMinimumDuration)
+			}
+
+			return nil
+		}
+
+		return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
+	}
+
+	if !confirmOption("A pulsing disruption is a disruption which will be injected and active for a certain amount of time, then cleaned and dormant for a certain amount of time, and so on until it is removed. Would you like your disruptions to be pulsing?", "The default is non pulsing disruptions.") {
+		return nil
+	}
+
+	activeDuration := v1beta1.DisruptionDuration(getInput(
+		"What would be the duration of the disruption in an active state during the pulse? This can be a golang's time.Duration.",
+		fmt.Sprintf("Please specify a golang's time.Duration's >%s, e.g., \"45s\", \"15m30s\", \"4h30m\".", types.PulsingDisruptionMinimumDuration),
+		survey.WithValidator(survey.Required),
+		survey.WithValidator(validator),
+	))
+
+	dormantDuration := v1beta1.DisruptionDuration(getInput(
+		"What would be the duration of the disruption in a dormant state during the pulse? This can be a golang's time.Duration.",
+		fmt.Sprintf("Please specify a golang's time.Duration's >%s, e.g., \"45s\", \"15m30s\", \"4h30m\".", types.PulsingDisruptionMinimumDuration),
+		survey.WithValidator(survey.Required),
+		survey.WithValidator(validator),
+	))
+
+	return &v1beta1.DisruptionPulse{
+		ActiveDuration:  activeDuration,
+		DormantDuration: dormantDuration,
+	}
+}
+
 func getSelectors() labels.Set {
 	validator := func(val interface{}) error {
 		if str, ok := val.(string); ok {
@@ -610,6 +680,16 @@ func getLevel() types.DisruptionLevel {
 	}
 
 	return types.DisruptionLevel(level)
+}
+
+func getStaticTargeting() *bool {
+	staticTargetingExplanations := "StaticTargeting means the target selection will only happen once at disruption creation, and will never be run again. New targets will not be targeted. StaticTargeting is temporarily defaulting to true, and will eventually default to false"
+
+	fmt.Println(staticTargetingExplanations)
+
+	a := confirmOption("Would you like to enable StaticTargeting? Blocks new pods from being targeted after the initial injection.", staticTargetingExplanations)
+
+	return &a
 }
 
 func getDryRun() bool {

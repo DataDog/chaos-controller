@@ -7,19 +7,25 @@ package v1beta1
 
 import (
 	"crypto/md5"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"os"
+	"path/filepath"
 	"reflect"
 	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/utils"
 	"github.com/hashicorp/go-multierror"
-	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	goyaml "sigs.k8s.io/yaml"
 )
 
 // DisruptionSpec defines the desired state of Disruption
@@ -39,7 +45,11 @@ type DisruptionSpec struct {
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
 	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
-	Duration         DisruptionDuration                `json:"duration,omitempty"`         // time from disruption creation until chaos pods are deleted and no more are created
+	Unsafemode       *UnsafemodeSpec                   `json:"unsafeMode,omitempty"`       // unsafemode spec used to turn off safemode safety nets
+	StaticTargeting  *bool                             `json:"staticTargeting,omitempty"`  // enable dynamic targeting and cluster observation
+	// +nullable
+	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
+	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
 	// +kubebuilder:validation:Enum=pod;node;""
 	// +ddmark:validation:Enum=pod;node;""
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
@@ -59,6 +69,10 @@ type DisruptionSpec struct {
 	// +nullable
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
 }
+
+//go:embed *
+// EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
+var EmbeddedChaosAPI embed.FS
 
 type DisruptionDuration string
 
@@ -112,21 +126,18 @@ func (dd DisruptionDuration) Duration() time.Duration {
 type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
 	IsInjected       bool `json:"isInjected,omitempty"`
-	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;Injected
-	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected
+	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
+	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
 	Targets []string `json:"targets,omitempty"`
-	// +nullable
-	IgnoredTargets []string `json:"ignoredTargets,omitempty"`
-	// +nullable
-	UserInfo *authv1.UserInfo `json:"userInfo,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
 // Disruption is the Schema for the disruptions API
 // +kubebuilder:resource:shortName=dis
+// +kubebuilder:subresource:status
 type Disruption struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -144,6 +155,12 @@ type DisruptionList struct {
 	Items           []Disruption `json:"items"`
 }
 
+// DisruptionPulse contains the active disruption duration and the dormant disruption duration
+type DisruptionPulse struct {
+	ActiveDuration  DisruptionDuration `json:"activeDuration"`
+	DormantDuration DisruptionDuration `json:"dormantDuration"`
+}
+
 func init() {
 	SchemeBuilder.Register(&Disruption{}, &DisruptionList{})
 }
@@ -158,6 +175,13 @@ func (s *DisruptionSpec) Hash() (string, error) {
 
 	// compute bytes hash
 	return fmt.Sprintf("%x", md5.Sum(specBytes)), nil
+}
+
+func (s *DisruptionSpec) HashNoCount() (string, error) {
+	sCopy := s.DeepCopy()
+	sCopy.Count = nil
+
+	return sCopy.Hash()
 }
 
 // Validate applies rules for disruption global scope and all subsequent disruption specifications
@@ -207,12 +231,36 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible with network and dns disruptions"))
 		}
 
+		if s.DNS != nil && len(s.Containers) > 0 {
+			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible on dns disruptions with no subset of targeted containers"))
+		}
+
 		if s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
 			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible with pod level disruptions"))
 		}
 
 		if len(s.Containers) > 0 {
 			retErr = multierror.Append(retErr, errors.New("OnInit is not compatible with containers scoping"))
+		}
+	}
+
+	// Rule: No specificity of containers on a disk disruption
+	if len(s.Containers) != 0 && s.DiskPressure != nil {
+		retErr = multierror.Append(retErr, errors.New("disk pressure disruptions apply to all containers, specifying certain containers does not isolate the disruption"))
+	}
+
+	// Rule: pulse compatibility
+	if s.Pulse != nil {
+		if s.NodeFailure != nil || s.ContainerFailure != nil {
+			retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
+		}
+
+		if s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse activeDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
+		}
+
+		if s.Pulse.DormantDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse dormantDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
 		}
 	}
 
@@ -266,4 +314,66 @@ func (s *DisruptionSpec) GetKindNames() []chaostypes.DisruptionKindName {
 	}
 
 	return kinds
+}
+
+func ReadUnmarshal(path string) (*Disruption, error) {
+	fullPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("error finding absolute path: %v", err)
+	}
+
+	yaml, err := os.Open(filepath.Clean(fullPath))
+	if err != nil {
+		return nil, fmt.Errorf("could not open yaml file at %s: %v", fullPath, err)
+	}
+
+	yamlBytes, err := ioutil.ReadAll(yaml)
+	if err != nil {
+		return nil, fmt.Errorf("could not read yaml file: %v ", err)
+	}
+
+	parsedSpec := Disruption{}
+
+	if err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec); err != nil {
+		return nil, fmt.Errorf("could not unmarshal yaml file to Disruption: %v", err)
+	}
+
+	return &parsedSpec, nil
+}
+
+// RemoveDeadTargets removes targets not found in matchingTargets from the targets list
+func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
+	var desiredTargets []string
+
+	for index := 0; index < len(status.Targets); index++ {
+		if utils.Contains(matchingTargets, status.Targets[index]) {
+			desiredTargets = append(desiredTargets, status.Targets[index])
+		}
+	}
+
+	status.Targets = desiredTargets
+}
+
+// AddTargets adds newTargetsCount random targets from the eligibleTargets list to the Target List
+// - eligibleTargets should be previously filtered to not include current targets
+func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets []string) {
+	if len(eligibleTargets) == 0 || newTargetsCount <= 0 {
+		return
+	}
+
+	for i := 0; i < newTargetsCount && len(eligibleTargets) > 0; i++ {
+		index := rand.Intn(len(eligibleTargets)) //nolint:gosec
+		status.Targets = append(status.Targets, eligibleTargets[index])
+		eligibleTargets[len(eligibleTargets)-1], eligibleTargets[index] = eligibleTargets[index], eligibleTargets[len(eligibleTargets)-1]
+		eligibleTargets = eligibleTargets[:len(eligibleTargets)-1]
+	}
+}
+
+// RemoveTargets removes toRemoveTargetsCount random targets from the Target List
+func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
+	for i := 0; i < toRemoveTargetsCount && len(status.Targets) > 0; i++ {
+		index := rand.Intn(len(status.Targets)) //nolint:gosec
+		status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
+		status.Targets = status.Targets[:len(status.Targets)-1]
+	}
 }

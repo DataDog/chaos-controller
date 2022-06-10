@@ -24,6 +24,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/DataDog/chaos-controller/utils"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -76,6 +78,8 @@ type controllerConfig struct {
 	LeaderElection           bool                          `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
+	UserInfoHook             bool                          `json:"userInfoHook"`
+	SafeMode                 safeModeConfig                `json:"safeMode"`
 }
 
 type controllerWebhookConfig struct {
@@ -84,9 +88,16 @@ type controllerWebhookConfig struct {
 	Port    int    `json:"port"`
 }
 
+type safeModeConfig struct {
+	Enable             bool `json:"enable"`
+	NamespaceThreshold int  `json:"namespaceThreshold"`
+	ClusterThreshold   int  `json:"clusterThreshold"`
+}
+
 type injectorConfig struct {
 	Image             string                          `json:"image"`
 	Annotations       map[string]string               `json:"annotations"`
+	Labels            map[string]string               `json:"labels"`
 	ChaosNamespace    string                          `json:"namespace"`
 	ServiceAccount    string                          `json:"serviceAccount"`
 	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
@@ -118,7 +129,7 @@ func main() {
 	pflag.StringVar(&configPath, "config", "", "Configuration file path")
 
 	pflag.StringVar(&cfg.Controller.MetricsBindAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	handleFatalError(viper.BindPFlag("controller.metrics.addr", pflag.Lookup("metrics-bind-address")))
+	handleFatalError(viper.BindPFlag("controller.metricsBindAddr", pflag.Lookup("metrics-bind-address")))
 
 	pflag.BoolVar(&cfg.Controller.LeaderElection, "leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	handleFatalError(viper.BindPFlag("controller.leaderElection", pflag.Lookup("leader-elect")))
@@ -133,7 +144,7 @@ func main() {
 	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
 
-	pflag.DurationVar(&cfg.Controller.ExpiredDisruptionGCDelay, "expired-disruption-gc-delay", time.Minute*15, "Seconds after a disruption expires before being automatically deleted")
+	pflag.DurationVar(&cfg.Controller.ExpiredDisruptionGCDelay, "expired-disruption-gc-delay", time.Minute*(-1), "Duration after a disruption expires before being automatically deleted, leave unset to disable")
 	handleFatalError(viper.BindPFlag("controller.expiredDisruptionGCDelay", pflag.Lookup("expired-disruption-gc-delay")))
 
 	pflag.DurationVar(&cfg.Controller.DefaultDuration, "default-duration", time.Hour, "Default duration for a disruption with none specified")
@@ -154,8 +165,14 @@ func main() {
 	pflag.StringVar(&cfg.Controller.Notifiers.Slack.TokenFilepath, "notifiers-slack-tokenfilepath", "", "File path of the API token for the Slack notifier (defaulted to empty string)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.slack.tokenFilepath", pflag.Lookup("notifiers-slack-tokenfilepath")))
 
+	pflag.BoolVar(&cfg.Controller.Notifiers.Datadog.Enabled, "notifiers-datadog-enabled", false, "Enabler toggle for the Datadog notifier (defaulted to false)")
+	handleFatalError(viper.BindPFlag("controller.notifiers.datadog.enabled", pflag.Lookup("notifiers-datadog-enabled")))
+
 	pflag.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.annotations", pflag.Lookup("injector-annotations")))
+
+	pflag.StringToStringVar(&cfg.Injector.Labels, "injector-labels", map[string]string{}, "Labels added to the generated injector pods")
+	handleFatalError(viper.BindPFlag("injector.labels", pflag.Lookup("injector-labels")))
 
 	pflag.StringVar(&cfg.Injector.ServiceAccount, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
 	handleFatalError(viper.BindPFlag("injector.serviceAccount.name", pflag.Lookup("injector-service-account")))
@@ -172,7 +189,7 @@ func main() {
 	pflag.StringVar(&cfg.Injector.DNSDisruption.KubeDNS, "injector-dns-disruption-kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
 	handleFatalError(viper.BindPFlag("injector.dnsDisruption.kubeDns", pflag.Lookup("injector-dns-disruption-kube-dns")))
 
-	pflag.StringSliceVar(&cfg.Injector.NetworkDisruption.AllowedHosts, "injector-network-disruption-allowed-hosts", []string{}, "List of hosts always allowed by network disruptions (format: <host>;<port>;<protocol>)")
+	pflag.StringSliceVar(&cfg.Injector.NetworkDisruption.AllowedHosts, "injector-network-disruption-allowed-hosts", []string{}, "List of hosts always allowed by network disruptions (format: <host>;<port>;<protocol>;<flow>)")
 	handleFatalError(viper.BindPFlag("injector.networkDisruption.allowedHosts", pflag.Lookup("injector-network-disruption-allowed-hosts")))
 
 	pflag.BoolVar(&cfg.Handler.Enabled, "handler-enabled", false, "Enable the chaos handler for on-init disruptions")
@@ -193,6 +210,21 @@ func main() {
 	pflag.IntVar(&cfg.Controller.Webhook.Port, "admission-webhook-port", 9443, "Port used by the admission controller to serve requests")
 	handleFatalError(viper.BindPFlag("controller.webhook.port", pflag.Lookup("admission-webhook-port")))
 
+	pflag.BoolVar(&cfg.Controller.UserInfoHook, "user-info-webhook", true, "Enable the mutating webhook to inject user info into disruption status")
+	handleFatalError(viper.BindPFlag("controller.userInfoHook", pflag.Lookup("user-info-webhook")))
+
+	pflag.BoolVar(&cfg.Controller.SafeMode.Enable, "safemode-enable", true,
+		"Enable or disable the safemode functionality of the chaos-controller")
+	handleFatalError(viper.BindPFlag("controller.safemode.enable", pflag.Lookup("safemode-enable")))
+
+	pflag.IntVar(&cfg.Controller.SafeMode.NamespaceThreshold, "safemode-namespace-threshold", 80,
+		"Threshold which safemode checks against to see if the number of targets is over safety measures within a namespace.")
+	handleFatalError(viper.BindPFlag("controller.safemode.namespaceThreshold", pflag.Lookup("safemode-namespace-threshold")))
+
+	pflag.IntVar(&cfg.Controller.SafeMode.ClusterThreshold, "safemode-cluster-threshold", 66,
+		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
+	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-cluster-threshold")))
+
 	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
@@ -205,6 +237,10 @@ func main() {
 	controllerNodeName, exists := os.LookupEnv("CONTROLLER_NODE_NAME")
 	if !exists {
 		logger.Fatal("missing required CONTROLLER_NODE_NAME environment variable")
+	}
+
+	if !cfg.Controller.UserInfoHook && cfg.Controller.Notifiers.Slack.Enabled {
+		logger.Fatal("cannot enable slack notifier without enabling the user info webhook")
 	}
 
 	// load configuration file if present
@@ -273,6 +309,11 @@ func main() {
 	// target selector
 	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName)
 
+	var gcPtr *time.Duration
+	if cfg.Controller.ExpiredDisruptionGCDelay >= 0 {
+		gcPtr = &cfg.Controller.ExpiredDisruptionGCDelay
+	}
+
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:                                mgr.GetClient(),
@@ -282,6 +323,7 @@ func main() {
 		MetricsSink:                           ms,
 		TargetSelector:                        targetSelector,
 		InjectorAnnotations:                   cfg.Injector.Annotations,
+		InjectorLabels:                        cfg.Injector.Labels,
 		InjectorServiceAccount:                cfg.Injector.ServiceAccount,
 		InjectorImage:                         cfg.Injector.Image,
 		ChaosNamespace:                        cfg.Injector.ChaosNamespace,
@@ -289,16 +331,20 @@ func main() {
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
-		ExpiredDisruptionGCDelay:              cfg.Controller.ExpiredDisruptionGCDelay,
+		ExpiredDisruptionGCDelay:              gcPtr,
+		CacheContextStore:                     make(map[string]controllers.CtxTuple),
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Minute*5, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
 
-	if err := r.SetupWithManager(mgr, kubeInformerFactory); err != nil {
+	cont, err := r.SetupWithManager(mgr, kubeInformerFactory)
+	if err != nil {
 		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
+
+	r.Controller = cont
 
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
@@ -306,28 +352,50 @@ func main() {
 	go r.ReportMetrics()
 
 	// register disruption validating webhook
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
+	setupWebhookConfig := utils.SetupWebhookWithManagerConfig{
+		Manager:                mgr,
+		Logger:                 logger,
+		MetricsSink:            ms,
+		NamespaceThresholdFlag: cfg.Controller.SafeMode.NamespaceThreshold,
+		ClusterThresholdFlag:   cfg.Controller.SafeMode.ClusterThreshold,
+		EnableSafemodeFlag:     cfg.Controller.SafeMode.Enable,
+		DeleteOnlyFlag:         cfg.Controller.DeleteOnly,
+		HandlerEnabledFlag:     cfg.Handler.Enabled,
+		DefaultDurationFlag:    cfg.Controller.DefaultDuration,
+	}
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
 		os.Exit(1) //nolint:gocritic
 	}
 
-	// register chaos handler init container mutating webhook
-	mgr.GetWebhookServer().Register("/mutate-v1-pod-chaos-handler-init-container", &webhook.Admission{
-		Handler: &chaoswebhook.ChaosHandlerMutator{
-			Client:  mgr.GetClient(),
-			Log:     logger,
-			Image:   cfg.Handler.Image,
-			Timeout: cfg.Handler.Timeout,
-		},
-	})
+	if cfg.Handler.Enabled {
+		// register chaos handler init container mutating webhook
+		mgr.GetWebhookServer().Register("/mutate-v1-pod-chaos-handler-init-container", &webhook.Admission{
+			Handler: &chaoswebhook.ChaosHandlerMutator{
+				Client:  mgr.GetClient(),
+				Log:     logger,
+				Image:   cfg.Handler.Image,
+				Timeout: cfg.Handler.Timeout,
+			},
+		})
+	}
 
-	// register user info mutating webhook
-	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info", &webhook.Admission{
-		Handler: &chaoswebhook.UserInfoMutator{
-			Client: mgr.GetClient(),
-			Log:    logger,
-		},
-	})
+	if cfg.Controller.UserInfoHook {
+		// register user info mutating webhook
+		mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info", &webhook.Admission{
+			Handler: &chaoswebhook.UserInfoMutator{
+				Client: mgr.GetClient(),
+				Log:    logger,
+			},
+		})
+	}
+
+	// erase/close caches contexts
+	defer func() {
+		for _, contextTuple := range r.CacheContextStore {
+			contextTuple.CancelFunc()
+		}
+	}()
 
 	// +kubebuilder:scaffold:builder
 

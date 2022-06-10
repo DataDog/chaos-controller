@@ -11,9 +11,10 @@ import (
 	"sync"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cpuset"
 	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/stress"
-	"k8s.io/kubernetes/pkg/kubelet/cm/cpuset"
+	"github.com/DataDog/chaos-controller/types"
 )
 
 type cpuPressureInjector struct {
@@ -50,6 +51,10 @@ func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInje
 		spec:   spec,
 		config: config,
 	}
+}
+
+func (i cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
+	return types.DisruptionKindCPUPressure
 }
 
 func (i cpuPressureInjector) Inject() error {

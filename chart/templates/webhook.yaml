@@ -4,8 +4,8 @@
 # Copyright 2021 Datadog, Inc.
 {{- $ca := genCA "chaos-controller-webhook-service-ca" 3650 }}
 {{- $cn := "chaos-controller-webhook-service" }}
-{{- $altName1 := "chaos-controller-webhook-service.chaos-engineering.svc" }}
-{{- $altName2 := "chaos-controller-webhook-service.chaos-engineering.svc.cluster.local" }}
+{{- $altName1 := printf "chaos-controller-webhook-service.%s.svc" .Values.chaosNamespace }}
+{{- $altName2 := printf "chaos-controller-webhook-service.%s.svc.cluster.local" .Values.chaosNamespace }}
 {{- $cert := genSignedCert $cn nil (list $altName1 $altName2) 3650 $ca }}
 ---
 apiVersion: admissionregistration.k8s.io/v1
@@ -13,7 +13,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
   {{- if not .Values.controller.webhook.generateCert }}
-    cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+    cert-manager.io/inject-ca-from: {{ .Values.chaosNamespace }}/chaos-controller-serving-cert
   {{- end }}
   name: chaos-controller
 webhooks:
@@ -25,10 +25,10 @@ webhooks:
   {{- end }}
     service:
       name: chaos-controller-webhook-service
-      namespace: chaos-engineering
+      namespace: {{ .Values.chaosNamespace }}
       path: /validate-chaos-datadoghq-com-v1beta1-disruption
   failurePolicy: Fail
-  name: chaos-controller-webhook-service.chaos-engineering.svc
+  name: chaos-controller-webhook-service.{{ .Values.chaosNamespace }}.svc
   sideEffects: NoneOnDryRun
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
@@ -48,7 +48,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   annotations:
   {{- if not .Values.controller.webhook.generateCert }}
-    cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+    cert-manager.io/inject-ca-from: {{ .Values.chaosNamespace }}/chaos-controller-serving-cert
   {{- end }}
   name: chaos-controller
 webhooks:
@@ -60,10 +60,10 @@ webhooks:
   {{- end }}
     service:
       name: chaos-controller-webhook-service
-      namespace: chaos-engineering
+      namespace: {{ .Values.chaosNamespace }}
       path: /mutate-chaos-datadoghq-com-v1beta1-disruption
   failurePolicy: Fail
-  name: chaos-controller-webhook-service.chaos-engineering.svc
+  name: chaos-controller-webhook-service.{{ .Values.chaosNamespace }}.svc
   sideEffects: NoneOnDryRun
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
@@ -76,12 +76,13 @@ webhooks:
     resources:
       - disruptions
 ---
+{{- if .Values.handler.enabled }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   annotations:
   {{- if not .Values.controller.webhook.generateCert }}
-    cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+    cert-manager.io/inject-ca-from: {{ .Values.chaosNamespace }}/chaos-controller-serving-cert
   {{- end }}
   name: chaos-controller-pod-chaos-handler
 webhooks:
@@ -93,10 +94,10 @@ webhooks:
   {{- end }}
     service:
       name: chaos-controller-webhook-service
-      namespace: chaos-engineering
+      namespace: {{ .Values.chaosNamespace }}
       path: /mutate-v1-pod-chaos-handler-init-container
   failurePolicy: Ignore
-  name: chaos-controller-admission-webhook.chaos-engineering.svc
+  name: chaos-controller-admission-webhook.{{ .Values.chaosNamespace }}.svc
   sideEffects: NoneOnDryRun
   admissionReviewVersions: ["v1", "v1beta1"]
   objectSelector:
@@ -112,13 +113,15 @@ webhooks:
     - CREATE
     resources:
     - pods
+{{- end }}
 ---
+{{- if .Values.controller.userInfoHook }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   annotations:
   {{- if not .Values.controller.webhook.generateCert }}
-    cert-manager.io/inject-ca-from: chaos-engineering/chaos-controller-serving-cert
+    cert-manager.io/inject-ca-from: {{ .Values.chaosNamespace }}/chaos-controller-serving-cert
   {{- end }}
   name: chaos-controller-disruption-user-info
 webhooks:
@@ -130,10 +133,10 @@ webhooks:
   {{- end }}
     service:
       name: chaos-controller-webhook-service
-      namespace: chaos-engineering
+      namespace: {{ .Values.chaosNamespace }}
       path: /mutate-chaos-datadoghq-com-v1beta1-disruption-user-info
   failurePolicy: Fail
-  name: chaos-controller-admission-webhook.chaos-engineering.svc
+  name: chaos-controller-admission-webhook.{{ .Values.chaosNamespace }}.svc
   sideEffects: NoneOnDryRun
   admissionReviewVersions: ["v1", "v1beta1"]
   rules:
@@ -147,17 +150,18 @@ webhooks:
     resources:
     - disruptions
     - disruptions/status
+{{- end }}
 ---
 {{- if not .Values.controller.webhook.generateCert }}
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
   name: chaos-controller-serving-cert
-  namespace: chaos-engineering
+  namespace: {{ .Values.chaosNamespace }}
 spec:
   dnsNames:
-    - chaos-controller-webhook-service.chaos-engineering.svc
-    - chaos-controller-webhook-service.chaos-engineering.svc.cluster.local
+    - chaos-controller-webhook-service.{{ .Values.chaosNamespace }}.svc
+    - chaos-controller-webhook-service.{{ .Values.chaosNamespace }}.svc.cluster.local
   issuerRef:
     kind: Issuer
     name: chaos-controller-selfsigned-issuer
@@ -167,7 +171,7 @@ apiVersion: cert-manager.io/v1alpha2
 kind: Issuer
 metadata:
   name: chaos-controller-selfsigned-issuer
-  namespace: chaos-engineering
+  namespace: {{ .Values.chaosNamespace }}
 spec:
   selfSigned: {}
 {{- else }}
@@ -177,7 +181,7 @@ kind: Secret
 type: kubernetes.io/tls
 metadata:
   name: chaos-controller-webhook-secret
-  namespace: chaos-engineering
+  namespace: {{ .Values.chaosNamespace }}
   labels:
     app: chaos-controller
 data:
