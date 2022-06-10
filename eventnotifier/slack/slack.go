@@ -128,6 +128,20 @@ func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) er
 
 // helper for Slack notifier
 func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
+	// To remove when we stop testing this feature
+	if n.config.MirrorSlackChannelID != "" {
+		_, _, err := n.client.PostMessage(n.config.MirrorSlackChannelID,
+			slack.MsgOptionText("Disruption "+dis.Name+" "+notificationText, false),
+			slack.MsgOptionUsername("Disruption Status Bot"),
+			slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
+			slack.MsgOptionBlocks(blocks...),
+			slack.MsgOptionAsUser(true),
+		)
+		if err != nil {
+			n.logger.Errorw("slack notifier: couldn't send a message to the channel %s. %s", n.config.MirrorSlackChannelID, err.Error())
+		}
+	}
+
 	var annotation v1.UserInfo
 
 	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
@@ -154,20 +168,6 @@ func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, 
 	)
 	if err != nil {
 		return fmt.Errorf("slack notifier: %w", err)
-	}
-
-	// To remove when we stop testing this feature
-	if n.config.MirrorSlackChannelID != "" {
-		_, _, err = n.client.PostMessage(n.config.MirrorSlackChannelID,
-			slack.MsgOptionText("Disruption "+dis.Name+" "+notificationText, false),
-			slack.MsgOptionUsername("Disruption Status Bot"),
-			slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
-			slack.MsgOptionBlocks(blocks...),
-			slack.MsgOptionAsUser(true),
-		)
-		if err != nil {
-			n.logger.Errorw("slack notifier: couldn't send a message to the channel %s. %s", n.config.MirrorSlackChannelID, err.Error())
-		}
 	}
 
 	return nil
