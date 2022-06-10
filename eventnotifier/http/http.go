@@ -16,7 +16,8 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
-	v1 "k8s.io/api/authentication/v1"
+	"github.com/DataDog/chaos-controller/eventnotifier/utils"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -31,6 +32,7 @@ type Notifier struct {
 	Client  *http.Client
 	URL     string
 	Headers map[string][]string
+	Logger  *zap.SugaredLogger
 }
 
 type HTTPNotifierEvent struct {
@@ -47,7 +49,7 @@ type HTTPNotifierEvent struct {
 }
 
 // New HTTP Notifier
-func New(url string, headers []string) (*Notifier, error) {
+func New(url string, headers []string, logger *zap.SugaredLogger) (*Notifier, error) {
 	client := &http.Client{
 		Timeout: 1 * time.Minute,
 	}
@@ -72,6 +74,7 @@ func New(url string, headers []string) (*Notifier, error) {
 		Client:  client,
 		URL:     url,
 		Headers: parsedHeaders,
+		Logger:  logger,
 	}, nil
 }
 
@@ -81,18 +84,11 @@ func (n *Notifier) GetNotifierName() string {
 }
 
 func (n *Notifier) buildAndSendRequest(dis v1beta1.Disruption, event corev1.Event, notificationType string) error {
-	var annotation v1.UserInfo
-	var email, name string
-
-	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
+	emailAddr, err := utils.GetUserInfoFromDisruption(dis)
 	if err != nil {
-		return fmt.Errorf("http notifier: no userinfo in disruption %s: %v", dis.Name, err)
-	}
+		n.Logger.Warnf("http notifier: no userinfo in disruption %s: %v", dis.Name, err)
 
-	emailAddr, err := mail.ParseAddress(annotation.Username)
-	if err == nil {
-		email = emailAddr.Address
-		name = emailAddr.Name
+		emailAddr = &mail.Address{}
 	}
 
 	notif := HTTPNotifierEvent{
@@ -104,18 +100,18 @@ func (n *Notifier) buildAndSendRequest(dis v1beta1.Disruption, event corev1.Even
 		Cluster:           dis.ClusterName,
 		Namespace:         dis.Namespace,
 		TargetsCount:      len(dis.Status.Targets),
-		Username:          name,
-		UserEmail:         email,
+		Username:          emailAddr.Name,
+		UserEmail:         emailAddr.Address,
 	}
 
 	body, err := json.Marshal(notif)
 	if err != nil {
-		return err
+		return fmt.Errorf("http notifier: couldn't send notification: %s", err.Error())
 	}
 
 	req, err := http.NewRequest(http.MethodPost, n.URL, bytes.NewReader(body))
 	if err != nil {
-		return err
+		return fmt.Errorf("http notifier: couldn't send notification: %s", err.Error())
 	}
 
 	for headerKey, headerValues := range n.Headers {
@@ -126,7 +122,7 @@ func (n *Notifier) buildAndSendRequest(dis v1beta1.Disruption, event corev1.Even
 
 	res, err := n.Client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("http notifier: couldn't send notification: %s", err.Error())
 	}
 
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
@@ -138,5 +134,10 @@ func (n *Notifier) buildAndSendRequest(dis v1beta1.Disruption, event corev1.Even
 
 // NotifyWarning generates a notification for generic k8s Warning events
 func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
-	return n.buildAndSendRequest(dis, event, "Warning")
+	return n.buildAndSendRequest(dis, event, event.Type)
+}
+
+// NotifyWarning generates a notification for generic k8s Warning events
+func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) error {
+	return n.buildAndSendRequest(dis, event, event.Type)
 }
