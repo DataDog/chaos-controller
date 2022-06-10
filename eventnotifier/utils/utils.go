@@ -5,7 +5,11 @@
 package utils
 
 import (
+	"encoding/json"
+	"net/mail"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -26,4 +30,15 @@ func BuildHeaderMessageFromDisruptionEvent(dis v1beta1.Disruption, event corev1.
 
 	// We only send out recovery event to notifiers
 	return "Disruption '" + dis.Name + "' received a recovery notification."
+}
+
+func GetUserInfoFromDisruption(dis v1beta1.Disruption) (*mail.Address, error) {
+	var annotation v1.UserInfo
+
+	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
+	if err != nil {
+		return nil, err
+	}
+
+	return mail.ParseAddress(annotation.Username)
 }
