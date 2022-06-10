@@ -120,7 +120,7 @@ minikube-start:
 		--container-runtime=${container-runtime} \
 		--memory=${minikube-memory} \
 		--cpus=4 \
-		--kubernetes-version=1.22.5 \
+		--kubernetes-version=1.22.10 \
 		--disk-size=50GB \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
 		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2021-01-18.iso
