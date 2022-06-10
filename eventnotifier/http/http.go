@@ -10,11 +10,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/mail"
 	"strings"
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
+	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -34,12 +36,14 @@ type Notifier struct {
 type HTTPNotifierEvent struct {
 	NotificationTitle string `json:"notification-title"`
 	NotificationType  string `json:"notification-type"`
-	Message           string `json:"message"`
+	EventMessage      string `json:"message"`
 	DisruptionKind    string `json:"disruption-kind"`
 	DisruptionName    string `json:"disruption-name"`
 	Cluster           string `json:"cluster"`
 	Namespace         string `json:"namespace"`
 	TargetsCount      int    `json:"targets-count"`
+	Username          string `json:"username,omitempty"`
+	UserEmail         string `json:"user-email,omitempty"`
 }
 
 // New HTTP Notifier
@@ -77,15 +81,31 @@ func (n *Notifier) GetNotifierName() string {
 }
 
 func (n *Notifier) buildAndSendRequest(dis v1beta1.Disruption, event corev1.Event, notificationType string) error {
+	var annotation v1.UserInfo
+	var email, name string
+
+	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
+	if err != nil {
+		return fmt.Errorf("http notifier: no userinfo in disruption %s: %v", dis.Name, err)
+	}
+
+	emailAddr, err := mail.ParseAddress(annotation.Username)
+	if err == nil {
+		email = emailAddr.Address
+		name = emailAddr.Name
+	}
+
 	notif := HTTPNotifierEvent{
 		NotificationTitle: "Disruption '" + dis.Name + "' encountered an issue.",
 		NotificationType:  notificationType,
-		Message:           "Disruption " + dis.Name + " emitted the event " + event.Reason + ": " + event.Message,
+		EventMessage:      "Disruption " + dis.Name + " emitted the event " + event.Reason + ": " + event.Message,
 		DisruptionKind:    dis.Kind,
 		DisruptionName:    dis.Name,
 		Cluster:           dis.ClusterName,
 		Namespace:         dis.Namespace,
 		TargetsCount:      len(dis.Status.Targets),
+		Username:          name,
+		UserEmail:         email,
 	}
 
 	body, err := json.Marshal(notif)
