@@ -24,6 +24,12 @@ data:
           enabled: {{ .Values.controller.notifiers.slack.enabled }}
           tokenFilepath: {{ .Values.controller.notifiers.slack.tokenFilepath | quote }}
           mirrorSlackChannelId: {{ .Values.controller.notifiers.slack.mirrorSlackChannelId | quote }}
+        http:
+          enabled: {{ .Values.controller.notifiers.http.enabled }}
+          url: {{ .Values.controller.notifiers.http.url | quote }}
+          headers: {{- range .Values.controller.notifiers.http.headers }}
+            - {{ . | quote }}
+          {{- end }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}

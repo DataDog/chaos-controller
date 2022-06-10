@@ -8,6 +8,7 @@ package eventnotifier
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/datadog"
+	http "github.com/DataDog/chaos-controller/eventnotifier/http"
 	"github.com/DataDog/chaos-controller/eventnotifier/noop"
 	"github.com/DataDog/chaos-controller/eventnotifier/slack"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
@@ -20,6 +21,7 @@ type NotifiersConfig struct {
 	Noop    noop.NotifierNoopConfig       `json:"notifierNoopConfig"`
 	Slack   slack.NotifierSlackConfig     `json:"notifierSlackConfig"`
 	Datadog datadog.NotifierDatadogConfig `json:"notifierDatadogConfig"`
+	HTTP    http.NotifierHTTPConfig       `json:"notifierHTTPConfig"`
 }
 
 type Notifier interface {
@@ -50,6 +52,15 @@ func GetNotifiers(config NotifiersConfig, logger *zap.SugaredLogger) (notifiers 
 		not, ddogErr := datadog.New(config.Common, config.Datadog, logger)
 		if ddogErr != nil {
 			err = ddogErr
+		} else {
+			notifiers = append(notifiers, not)
+		}
+	}
+
+	if config.HTTP.Enabled {
+		not, httpErr := http.New(config.HTTP.URL, config.HTTP.Headers)
+		if httpErr != nil {
+			err = httpErr
 		} else {
 			notifiers = append(notifiers, not)
 		}

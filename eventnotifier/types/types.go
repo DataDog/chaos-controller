@@ -20,4 +20,7 @@ const (
 
 	// NotifierDriverDatadog is the Datadog driver
 	NotifierDriverDatadog NotifierDriver = "datadog"
+
+	// NotifierDriverHTTP is the HTTP driver
+	NotifierDriverHTTP NotifierDriver = "http"
 )

@@ -36,6 +36,8 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 	notifiers, err := eventnotifier.GetNotifiers(notifiersConfig, logger)
 
 	for _, notifier := range notifiers {
+		logger.Infof("notifier %s enabled", notifier.GetNotifierName())
+
 		broadcaster.StartRecordingToSink(&NotifierSink{client: client, notifier: notifier, logger: logger})
 	}
 
