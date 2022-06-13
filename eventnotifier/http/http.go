@@ -29,10 +29,11 @@ type NotifierHTTPConfig struct {
 
 // Notifier describes a HTTP notifier
 type Notifier struct {
-	Client  *http.Client
-	URL     string
-	Headers map[string][]string
-	Logger  *zap.SugaredLogger
+	common  types.NotifiersCommonConfig
+	client  *http.Client
+	url     string
+	headers map[string][]string
+	logger  *zap.SugaredLogger
 }
 
 type HTTPNotifierEvent struct {
@@ -49,7 +50,7 @@ type HTTPNotifierEvent struct {
 }
 
 // New HTTP Notifier
-func New(url string, headers []string, logger *zap.SugaredLogger) (*Notifier, error) {
+func New(commonConfig types.NotifiersCommonConfig, httpConfig NotifierHTTPConfig, logger *zap.SugaredLogger) (*Notifier, error) {
 	client := &http.Client{
 		Timeout: 1 * time.Minute,
 	}
@@ -57,7 +58,7 @@ func New(url string, headers []string, logger *zap.SugaredLogger) (*Notifier, er
 	parsedHeaders := make(map[string][]string)
 
 	// header is of format: key:value, we need to parse it
-	for _, header := range headers {
+	for _, header := range httpConfig.Headers {
 		splittedHeader := strings.Split(header, ":")
 		if len(splittedHeader) == 2 {
 			if parsedHeaders[splittedHeader[0]] == nil {
@@ -71,10 +72,11 @@ func New(url string, headers []string, logger *zap.SugaredLogger) (*Notifier, er
 	}
 
 	return &Notifier{
-		Client:  client,
-		URL:     url,
-		Headers: parsedHeaders,
-		Logger:  logger,
+		common:  commonConfig,
+		client:  client,
+		url:     httpConfig.URL,
+		headers: parsedHeaders,
+		logger:  logger,
 	}, nil
 }
 
@@ -86,7 +88,7 @@ func (n *Notifier) GetNotifierName() string {
 func (n *Notifier) buildAndSendRequest(dis v1beta1.Disruption, event corev1.Event, notificationType string) error {
 	emailAddr, err := utils.GetUserInfoFromDisruption(dis)
 	if err != nil {
-		n.Logger.Warnf("http notifier: no userinfo in disruption %s: %v", dis.Name, err)
+		n.logger.Warnf("http notifier: no userinfo in disruption %s: %v", dis.Name, err)
 
 		emailAddr = &mail.Address{}
 	}
@@ -97,7 +99,7 @@ func (n *Notifier) buildAndSendRequest(dis v1beta1.Disruption, event corev1.Even
 		EventMessage:      "Disruption " + dis.Name + " emitted the event " + event.Reason + ": " + event.Message,
 		DisruptionKind:    dis.Kind,
 		DisruptionName:    dis.Name,
-		Cluster:           dis.ClusterName,
+		Cluster:           n.common.ClusterName,
 		Namespace:         dis.Namespace,
 		TargetsCount:      len(dis.Status.Targets),
 		Username:          emailAddr.Name,
@@ -109,18 +111,18 @@ func (n *Notifier) buildAndSendRequest(dis v1beta1.Disruption, event corev1.Even
 		return fmt.Errorf("http notifier: couldn't send notification: %s", err.Error())
 	}
 
-	req, err := http.NewRequest(http.MethodPost, n.URL, bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, n.url, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("http notifier: couldn't send notification: %s", err.Error())
 	}
 
-	for headerKey, headerValues := range n.Headers {
+	for headerKey, headerValues := range n.headers {
 		for _, headerValue := range headerValues {
 			req.Header.Add(headerKey, headerValue)
 		}
 	}
 
-	res, err := n.Client.Do(req)
+	res, err := n.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("http notifier: couldn't send notification: %s", err.Error())
 	}

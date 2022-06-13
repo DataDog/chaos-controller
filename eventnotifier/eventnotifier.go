@@ -58,7 +58,7 @@ func GetNotifiers(config NotifiersConfig, logger *zap.SugaredLogger) (notifiers 
 	}
 
 	if config.HTTP.Enabled {
-		not, httpErr := http.New(config.HTTP.URL, config.HTTP.Headers, logger)
+		not, httpErr := http.New(config.Common, config.HTTP, logger)
 		if httpErr != nil {
 			err = httpErr
 		} else {
@@ -66,5 +66,5 @@ func GetNotifiers(config NotifiersConfig, logger *zap.SugaredLogger) (notifiers 
 		}
 	}
 
-	return
+	return notifiers, err
 }
