@@ -981,7 +981,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 	// select either pods or nodes depending on the disruption level
 	switch instance.Spec.Level {
 	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
-		pods, totalCount, err := r.TargetSelector.GetMatchingPods(r.Client, instance)
+		pods, totalCount, err := r.TargetSelector.GetMatchingPodsOverTotalPods(r.Client, instance)
 		if err != nil {
 			return nil, 0, fmt.Errorf("can't get pods matching the given label selector: %w", err)
 		}
@@ -992,7 +992,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 
 		totalAvailableTargetsCount = totalCount
 	case chaostypes.DisruptionLevelNode:
-		nodes, totalCount, err := r.TargetSelector.GetMatchingNodes(r.Client, instance)
+		nodes, totalCount, err := r.TargetSelector.GetMatchingNodesOverTotalNodes(r.Client, instance)
 		if err != nil {
 			return nil, 0, fmt.Errorf("can't get pods matching the given label selector: %w", err)
 		}
