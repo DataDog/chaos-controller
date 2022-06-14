@@ -6,19 +6,13 @@
 package eventbroadcaster
 
 import (
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 )
-
-func eventMessageAggregator(event *v1.Event) string {
-	return "Agg: " + event.Message
-}
 
 func EventBroadcaster() record.EventBroadcaster {
 	correlator := record.CorrelatorOptions{
 		MaxEvents:            2,
-		MaxIntervalInSeconds: 60,
-		MessageFunc:          eventMessageAggregator,
+		MaxIntervalInSeconds: 300,
 	}
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(correlator)
 

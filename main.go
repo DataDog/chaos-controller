@@ -75,6 +75,7 @@ type controllerConfig struct {
 	DefaultDuration          time.Duration                 `json:"defaultDuration"`
 	DeleteOnly               bool                          `json:"deleteOnly"`
 	EnableSafeguards         bool                          `json:"enableSafeguards"`
+	EnableObserver           bool                          `json:"enableObserver"`
 	LeaderElection           bool                          `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
@@ -141,6 +142,9 @@ func main() {
 	pflag.BoolVar(&cfg.Controller.EnableSafeguards, "enable-safeguards", true, "Enable safeguards on target selection")
 	handleFatalError(viper.BindPFlag("controller.enableSafeguards", pflag.Lookup("enable-safeguards")))
 
+	pflag.BoolVar(&cfg.Controller.EnableObserver, "enable-observer", true, "Enable observer on targets")
+	handleFatalError(viper.BindPFlag("controller.enableObserver", pflag.Lookup("enable-observer")))
+
 	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
 
@@ -164,6 +168,9 @@ func main() {
 
 	pflag.StringVar(&cfg.Controller.Notifiers.Slack.TokenFilepath, "notifiers-slack-tokenfilepath", "", "File path of the API token for the Slack notifier (defaulted to empty string)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.slack.tokenFilepath", pflag.Lookup("notifiers-slack-tokenfilepath")))
+
+	pflag.StringVar(&cfg.Controller.Notifiers.Slack.MirrorSlackChannelID, "notifiers-slack-mirrorslackchannelid", "", "Slack Channel ID to send all the slack notifier notifications in addition to the personal messages (defaulted to empty string)")
+	handleFatalError(viper.BindPFlag("controller.notifiers.slack.mirrorSlackChannelId", pflag.Lookup("notifiers-slack-mirrorslackchannelid")))
 
 	pflag.BoolVar(&cfg.Controller.Notifiers.Datadog.Enabled, "notifiers-datadog-enabled", false, "Enabler toggle for the Datadog notifier (defaulted to false)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.datadog.enabled", pflag.Lookup("notifiers-datadog-enabled")))
@@ -319,7 +326,7 @@ func main() {
 		Client:                                mgr.GetClient(),
 		BaseLog:                               logger,
 		Scheme:                                mgr.GetScheme(),
-		Recorder:                              mgr.GetEventRecorderFor("disruption-controller"),
+		Recorder:                              mgr.GetEventRecorderFor(chaosv1beta1.SourceDisruptionComponent),
 		MetricsSink:                           ms,
 		TargetSelector:                        targetSelector,
 		InjectorAnnotations:                   cfg.Injector.Annotations,
@@ -333,6 +340,8 @@ func main() {
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
 		ExpiredDisruptionGCDelay:              gcPtr,
 		CacheContextStore:                     make(map[string]controllers.CtxTuple),
+		Reader:                                mgr.GetAPIReader(),
+		EnableObserver:                        cfg.Controller.EnableObserver,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
