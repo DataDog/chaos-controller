@@ -25,6 +25,7 @@ type NotifiersConfig struct {
 type Notifier interface {
 	GetNotifierName() string
 	NotifyWarning(v1beta1.Disruption, corev1.Event) error
+	NotifyRecovery(v1beta1.Disruption, corev1.Event) error
 }
 
 // GetNotifier returns an initiated Notifier instance

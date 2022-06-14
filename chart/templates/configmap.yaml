@@ -15,6 +15,7 @@ data:
       leaderElection: true
       metricsSink: {{ .Values.controller.metricsSink | quote }}
       enableSafeguards: {{ .Values.controller.enableSafeguards }}
+      enableObserver: {{ .Values.controller.enableObserver }}
       notifiers:
         common:
           clusterName: {{ .Values.controller.notifiers.common.clusterName | quote }}
@@ -23,6 +24,7 @@ data:
         slack:
           enabled: {{ .Values.controller.notifiers.slack.enabled }}
           tokenFilepath: {{ .Values.controller.notifiers.slack.tokenFilepath | quote }}
+          mirrorSlackChannelId: {{ .Values.controller.notifiers.slack.mirrorSlackChannelId | quote }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}
