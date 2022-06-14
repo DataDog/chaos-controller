@@ -823,7 +823,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 	case chaostypes.DisruptionLevelNode:
 		nodes, totalCount, err := r.TargetSelector.GetMatchingNodesOverTotalNodes(r.Client, instance)
 		if err != nil {
-			return nil, fmt.Errorf("can't get nodes matching the given label selector: %w", err)
+			return nil, 0, fmt.Errorf("can't get nodes matching the given label selector: %w", err)
 		}
 
 		for _, node := range nodes.Items {

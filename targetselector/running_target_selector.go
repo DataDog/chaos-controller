@@ -33,7 +33,7 @@ func NewRunningTargetSelector(controllerEnableSafeguards bool, controllerNodeNam
 	}
 }
 
-// GetMatchingPodsOverTotalNodesOverTotalPods returns a pods list containing all running pods matching the given label selector and namespace and the count of pods matching the selector
+// GetMatchingPodsOverTotalPods returns a pods list containing all running pods matching the given label selector and namespace and the count of pods matching the selector
 func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, int, error) {
 	// get parsed selector
 	selector, err := GetLabelSelectorFromInstance(instance)
