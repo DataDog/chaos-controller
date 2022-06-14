@@ -8,7 +8,7 @@
 {{- $altName2 := printf "chaos-controller-webhook-service.%s.svc.cluster.local" .Values.chaosNamespace }}
 {{- $cert := genSignedCert $cn nil (list $altName1 $altName2) 3650 $ca }}
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
@@ -29,6 +29,8 @@ webhooks:
       path: /validate-chaos-datadoghq-com-v1beta1-disruption
   failurePolicy: Fail
   name: chaos-controller-webhook-service.{{ .Values.chaosNamespace }}.svc
+  sideEffects: NoneOnDryRun
+  admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - apiGroups:
     - chaos.datadoghq.com
@@ -41,7 +43,7 @@ webhooks:
     resources:
     - disruptions
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   annotations:
@@ -62,6 +64,8 @@ webhooks:
       path: /mutate-chaos-datadoghq-com-v1beta1-disruption
   failurePolicy: Fail
   name: chaos-controller-webhook-service.{{ .Values.chaosNamespace }}.svc
+  sideEffects: NoneOnDryRun
+  admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - apiGroups:
       - chaos.datadoghq.com
@@ -73,7 +77,7 @@ webhooks:
       - disruptions
 ---
 {{- if .Values.handler.enabled }}
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   annotations:
@@ -94,6 +98,8 @@ webhooks:
       path: /mutate-v1-pod-chaos-handler-init-container
   failurePolicy: Ignore
   name: chaos-controller-admission-webhook.{{ .Values.chaosNamespace }}.svc
+  sideEffects: NoneOnDryRun
+  admissionReviewVersions: ["v1", "v1beta1"]
   objectSelector:
     matchExpressions:
       - key: "chaos.datadoghq.com/disrupt-on-init"
@@ -110,7 +116,7 @@ webhooks:
 {{- end }}
 ---
 {{- if .Values.controller.userInfoHook }}
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   annotations:
@@ -131,6 +137,8 @@ webhooks:
       path: /mutate-chaos-datadoghq-com-v1beta1-disruption-user-info
   failurePolicy: Fail
   name: chaos-controller-admission-webhook.{{ .Values.chaosNamespace }}.svc
+  sideEffects: NoneOnDryRun
+  admissionReviewVersions: ["v1", "v1beta1"]
   rules:
   - apiGroups:
     - "chaos.datadoghq.com"
