@@ -14,6 +14,7 @@ images: # images and tag to pull for each component of the stack
 controller:
   deleteOnly: false # enable delete-only mode
   enableSafeguards: true # enable safeguards on targets selection (do not target the node running the controller)
+  enableObserver: true # enable observer on targets, notifying of target warning status and events
   metricsSink: noop # metrics driver (noop or datadog)
   notifiers:
     common:

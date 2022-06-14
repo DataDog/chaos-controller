@@ -66,6 +66,7 @@ type DisruptionReconciler struct {
 	CacheContextStore                     map[string]CtxTuple
 	Controller                            controller.Controller
 	Reader                                client.Reader // Use the k8s API without the cache
+	EnableObserver                        bool          // Enable Observer on targets update with dynamic targeting
 }
 
 type CtxTuple struct {

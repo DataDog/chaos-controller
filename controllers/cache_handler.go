@@ -59,7 +59,10 @@ func (h DisruptionTargetWatcherHandler) OnUpdate(oldObj, newObj interface{}) {
 	newNode, okNewNode := newObj.(*corev1.Node)
 
 	h.OnChangeHandleMetricsSink(newPod, newNode, okNewPod, okNewNode)
-	h.OnChangeHandleNotifierSink(oldPod, newPod, oldNode, newNode, okOldPod, okNewPod, okOldNode, okNewNode)
+
+	if h.reconciler.EnableObserver {
+		h.OnChangeHandleNotifierSink(oldPod, newPod, oldNode, newNode, okOldPod, okNewPod, okOldNode, okNewNode)
+	}
 }
 
 // OnChangeHandleMetricsSink Trigger Metric Sink on changes in the targets

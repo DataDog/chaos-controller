@@ -75,6 +75,7 @@ type controllerConfig struct {
 	DefaultDuration          time.Duration                 `json:"defaultDuration"`
 	DeleteOnly               bool                          `json:"deleteOnly"`
 	EnableSafeguards         bool                          `json:"enableSafeguards"`
+	EnableObserver           bool                          `json:"enableObserver"`
 	LeaderElection           bool                          `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
@@ -140,6 +141,9 @@ func main() {
 
 	pflag.BoolVar(&cfg.Controller.EnableSafeguards, "enable-safeguards", true, "Enable safeguards on target selection")
 	handleFatalError(viper.BindPFlag("controller.enableSafeguards", pflag.Lookup("enable-safeguards")))
+
+	pflag.BoolVar(&cfg.Controller.EnableObserver, "enable-observer", true, "Enable observer on targets")
+	handleFatalError(viper.BindPFlag("controller.enableObserver", pflag.Lookup("enable-observer")))
 
 	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
@@ -337,6 +341,7 @@ func main() {
 		ExpiredDisruptionGCDelay:              gcPtr,
 		CacheContextStore:                     make(map[string]controllers.CtxTuple),
 		Reader:                                mgr.GetAPIReader(),
+		EnableObserver:                        cfg.Controller.EnableObserver,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
