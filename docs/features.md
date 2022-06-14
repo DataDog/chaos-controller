@@ -112,13 +112,19 @@ Note that in this mode, only pending pods with a running `chaos-handler` init co
 
 ## Notifier
 
-When creating a disruption, you may wish to be alerted of important lifecycle warnings (disruption found no target, chaos pod is stuck on removal, etc.) through the Notifier module of the chaos-controller. On each occurence, these events will be propagated through the different set up notifiers (currently `noop/console` and `slack` are implemented).
+When creating a disruption, you may wish to be alerted of important lifecycle warnings (disruption found no target, chaos pod is stuck on removal, target is failing, target is recovering, etc.) through the Notifier module of the chaos-controller. On each occurence, these events will be propagated through the different set up notifiers (currently `noop/console`, `slack` and `datadog` are implemented).
+
+You can find the complete list of the events sent out by the controller [here](/api/v1beta1/events.go#L24).
 
 Any setup/config error will be logged at controller startup.
 
 ### Slack
 
 The `slack` notifier requires a slack API Token to connect to your org's slack workspace. It will use the disruption's creator username in kubernetes (based on your authentication method) as an email address to send a DM on slack as 'Disruption Status Bot'. **The email address used to authentify on the kubernetes cluster and create the disruption needs to be the same used on the slack workspace** or the notification will be ignored.
+
+### Datadog
+
+The `datadog` notifier requires the `STATSD_URL` environment variable to be set up. It will either send a `Warn` event for warning kubernetes events or a `Success` event for normal recovered kubernetes events sent out by the controller.
 
 ### Configuration
 
@@ -133,6 +139,8 @@ notifiers:
   slack:
   	enabled: true/false # enables the slack notifier
   	tokenFilepath: <slack token file path> # path to a file containing an API token for your slack workspace
+  datadog:
+    enabled: true/false # enables the datadog notifier
 ```
 
 ## Disruption Examples
