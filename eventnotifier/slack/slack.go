@@ -16,6 +16,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
+	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 	"github.com/slack-go/slack"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/authentication/v1"
@@ -23,8 +24,9 @@ import (
 )
 
 type NotifierSlackConfig struct {
-	Enabled       bool
-	TokenFilepath string
+	Enabled              bool
+	TokenFilepath        string
+	MirrorSlackChannelID string // To remove when we stop testing observer feature
 }
 
 // Notifier describes a Slack notifier
@@ -78,11 +80,7 @@ func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverSlack)
 }
 
-// NotifyWarning generates a notification for generic k8s Warning events
-func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
-	headerText := "Disruption '" + dis.Name + "' encountered an issue."
-	bodyText := "> Disruption `" + dis.Name + "` emitted the event " + event.Reason + ": " + event.Message
-
+func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, bodyText string, headerText string) []slack.Block {
 	if n.common.ClusterName == "" {
 		if dis.ClusterName != "" {
 			n.common.ClusterName = dis.ClusterName
@@ -91,7 +89,7 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 		}
 	}
 
-	blocks := []slack.Block{
+	return []slack.Block{
 		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, false, false)),
 		slack.NewDividerBlock(),
 		slack.NewSectionBlock(nil, []*slack.TextBlockObject{
@@ -104,14 +102,46 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 		slack.NewDividerBlock(),
 		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", bodyText, false, false), nil, nil),
 	}
+}
 
-	err := n.notifySlack("emitted a warning", dis, blocks...)
+// NotifyWarning generates a notification for generic k8s Warning events
+func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
+	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, event)
+	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, true)
+	blocks := n.buildSlackBlocks(dis, bodyText, headerText)
 
-	return err
+	n.logger.Debugw("notifier: sending notifier event to slack", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+
+	return n.notifySlack("emitted a warning", dis, blocks...)
+}
+
+// NotifyWarning generates a notification for generic k8s normal events
+func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) error {
+	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, event)
+	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, true)
+	blocks := n.buildSlackBlocks(dis, bodyText, headerText)
+
+	n.logger.Debugw("notifier: sending notifier event to slack", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+
+	return n.notifySlack("emitted a notification", dis, blocks...)
 }
 
 // helper for Slack notifier
 func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
+	// To remove when we stop testing this feature
+	if n.config.MirrorSlackChannelID != "" {
+		_, _, err := n.client.PostMessage(n.config.MirrorSlackChannelID,
+			slack.MsgOptionText("Disruption "+dis.Name+" "+notificationText, false),
+			slack.MsgOptionUsername("Disruption Status Bot"),
+			slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
+			slack.MsgOptionBlocks(blocks...),
+			slack.MsgOptionAsUser(true),
+		)
+		if err != nil {
+			n.logger.Errorw("slack notifier: couldn't send a message to the channel %s. %s", n.config.MirrorSlackChannelID, err.Error())
+		}
+	}
+
 	var annotation v1.UserInfo
 
 	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
@@ -136,7 +166,6 @@ func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, 
 		slack.MsgOptionBlocks(blocks...),
 		slack.MsgOptionAsUser(true),
 	)
-
 	if err != nil {
 		return fmt.Errorf("slack notifier: %w", err)
 	}
