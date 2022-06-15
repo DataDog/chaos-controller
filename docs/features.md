@@ -126,6 +126,10 @@ The `slack` notifier requires a slack API Token to connect to your org's slack w
 
 The `datadog` notifier requires the `STATSD_URL` environment variable to be set up. It will either send a `Warn` event for warning kubernetes events or a `Success` event for normal recovered kubernetes events sent out by the controller.
 
+### HTTP
+
+The `http` notifier requires a `URL` to send the POST request to and optionally ask for headers to add to the request if needed. It will send a json body containing the notification information.
+
 ### Configuration
 
 Please setup the following fields to `chart/templates/configmap.yaml - data - config.yaml - controller` pre-controller installation: 
@@ -141,6 +145,11 @@ notifiers:
   	tokenFilepath: <slack token file path> # path to a file containing an API token for your slack workspace
   datadog:
     enabled: true/false # enables the datadog notifier
+  http:
+    enabled: true/false # enables the http notifier
+    url: https://this-is-my-server.com/chaos-notification-receiver
+    headers:
+      - "API-KEY:VERY-SECRET-API-KEY"
 ```
 
 ## Disruption Examples
