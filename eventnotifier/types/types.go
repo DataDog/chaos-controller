@@ -24,3 +24,12 @@ const (
 	// NotifierDriverHTTP is the HTTP driver
 	NotifierDriverHTTP NotifierDriver = "http"
 )
+
+type NotificationType string
+
+const (
+	NotificationSuccess NotificationType = "Success"
+	NotificationInfo    NotificationType = "Info"
+	NotificationWarning NotificationType = "Warning"
+	NotificationError   NotificationType = "Error"
+)

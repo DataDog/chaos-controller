@@ -39,6 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 )
@@ -164,6 +165,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
 			r.log.Infow("all chaos pods are cleaned up; removing disruption finalizer")
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionFinished, "")
 			r.clearInstanceSelectorCache(instance)
 			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
@@ -745,7 +747,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// validate the given label selector to avoid any formatting issues due to special chars
 	if instance.Spec.Selector != nil {
 		if err := validateLabelSelector(instance.Spec.Selector.AsSelector()); err != nil {
-			r.Recorder.Event(instance, corev1.EventTypeWarning, "InvalidLabelSelector", fmt.Sprintf("%s. No targets will be selected.", err.Error()))
+			r.recordEventOnDisruption(instance, v1beta1.EventInvalidDisruptionLabelSelector, err.Error())
 
 			return err
 		}
@@ -776,7 +778,11 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	targetsCount = int(math.Min(float64(targetsCount), float64(len(instance.Status.Targets)+len(eligibleTargets))))
 	if targetsCount < 1 {
 		r.log.Info("ignored targets has reached target count, skipping")
-		r.Recorder.Event(instance, corev1.EventTypeWarning, "NoTarget", "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)")
+
+		// we could send this event two times in a row if we don't check for this
+		if len(matchingTargets) > 0 {
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoTarget, "")
+		}
 
 		return nil
 	}
@@ -827,7 +833,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 	// return an error if the selector returned no targets
 	if len(matchingTargets) == 0 {
 		r.log.Infow("the given label selector did not return any targets, skipping", "selector", instance.Spec.Selector)
-		r.Recorder.Event(instance, corev1.EventTypeWarning, "NoTarget", "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).")
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoTarget, "")
 
 		return nil, nil
 	}
@@ -1177,7 +1183,8 @@ func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disru
 func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Disruption) error {
 	err := instance.Spec.Validate()
 	if err != nil {
-		r.Recorder.Event(instance, corev1.EventTypeWarning, "InvalidSpec", err.Error())
+		r.recordEventOnDisruption(instance, v1beta1.EventInvalidSpecDisruption, err.Error())
+
 		return err
 	}
 

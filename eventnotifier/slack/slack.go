@@ -77,7 +77,7 @@ func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverSlack)
 }
 
-func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, bodyText string, headerText string) []slack.Block {
+func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, bodyText string, headerText string, notifType types.NotificationType) []slack.Block {
 	if n.common.ClusterName == "" {
 		if dis.ClusterName != "" {
 			n.common.ClusterName = dis.ClusterName
@@ -92,6 +92,7 @@ func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, bodyText string, hea
 		slack.NewSectionBlock(nil, []*slack.TextBlockObject{
 			slack.NewTextBlockObject("mrkdwn", "*Kind:*\n"+dis.Kind, false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Name:*\n"+dis.Name, false, false),
+			slack.NewTextBlockObject("mrkdwn", "*Notification Type:*\n"+string(notifType), false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Cluster:*\n"+n.common.ClusterName, false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Namespace:*\n"+dis.Namespace, false, false),
 			slack.NewTextBlockObject("mrkdwn", "*Targets:*\n"+fmt.Sprint(len(dis.Status.Targets)), false, false),
@@ -102,33 +103,15 @@ func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, bodyText string, hea
 }
 
 // NotifyWarning generates a notification for generic k8s Warning events
-func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
-	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, event)
+func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
+	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, notifType)
 	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, true)
-	blocks := n.buildSlackBlocks(dis, bodyText, headerText)
+	blocks := n.buildSlackBlocks(dis, bodyText, headerText, notifType)
 
-	n.logger.Debugw("notifier: sending notifier event to slack", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
-
-	return n.notifySlack("emitted a warning", dis, blocks...)
-}
-
-// NotifyWarning generates a notification for generic k8s normal events
-func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) error {
-	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, event)
-	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, true)
-	blocks := n.buildSlackBlocks(dis, bodyText, headerText)
-
-	n.logger.Debugw("notifier: sending notifier event to slack", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
-
-	return n.notifySlack("emitted a notification", dis, blocks...)
-}
-
-// helper for Slack notifier
-func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, blocks ...slack.Block) error {
 	// To remove when we stop testing this feature
 	if n.config.MirrorSlackChannelID != "" {
 		_, _, err := n.client.PostMessage(n.config.MirrorSlackChannelID,
-			slack.MsgOptionText("Disruption "+dis.Name+" "+notificationText, false),
+			slack.MsgOptionText(headerText, false),
 			slack.MsgOptionUsername("Disruption Status Bot"),
 			slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
 			slack.MsgOptionBlocks(blocks...),
@@ -137,6 +120,12 @@ func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, 
 		if err != nil {
 			n.logger.Errorw("slack notifier: couldn't send a message to the channel %s. %s", n.config.MirrorSlackChannelID, err.Error())
 		}
+	}
+
+	if notifType == types.NotificationInfo {
+		n.logger.Debugw("slack notifier: not sending info notification type to not flood user", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+
+		return nil
 	}
 
 	emailAddr, err := utils.GetUserInfoFromDisruption(dis)
@@ -151,7 +140,7 @@ func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, 
 	}
 
 	_, _, err = n.client.PostMessage(p1.ID,
-		slack.MsgOptionText("Disruption "+dis.Name+" "+notificationText, false),
+		slack.MsgOptionText(headerText, false),
 		slack.MsgOptionUsername("Disruption Status Bot"),
 		slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
 		slack.MsgOptionBlocks(blocks...),
@@ -160,6 +149,8 @@ func (n *Notifier) notifySlack(notificationText string, dis v1beta1.Disruption, 
 	if err != nil {
 		return fmt.Errorf("slack notifier: %w", err)
 	}
+
+	n.logger.Debugw("notifier: sending notifier event to slack", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
 
 	return nil
 }

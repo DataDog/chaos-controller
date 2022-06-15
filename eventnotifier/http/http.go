@@ -37,16 +37,16 @@ type Notifier struct {
 }
 
 type HTTPNotifierEvent struct {
-	NotificationTitle string `json:"notification-title"`
-	NotificationType  string `json:"notification-type"`
-	EventMessage      string `json:"message"`
-	DisruptionKind    string `json:"disruption-kind"`
-	DisruptionName    string `json:"disruption-name"`
-	Cluster           string `json:"cluster"`
-	Namespace         string `json:"namespace"`
-	TargetsCount      int    `json:"targets-count"`
-	Username          string `json:"username,omitempty"`
-	UserEmail         string `json:"user-email,omitempty"`
+	NotificationTitle  string                 `json:"notification-title"`
+	NotificationType   types.NotificationType `json:"notification-type"`
+	EventMessage       string                 `json:"event-message"`
+	InvolvedObjectKind string                 `json:"involved-object-kind"`
+	DisruptionName     string                 `json:"disruption-name"`
+	Cluster            string                 `json:"cluster"`
+	Namespace          string                 `json:"namespace"`
+	TargetsCount       int                    `json:"targets-count"`
+	Username           string                 `json:"username,omitempty"`
+	UserEmail          string                 `json:"user-email,omitempty"`
 }
 
 // New HTTP Notifier
@@ -85,7 +85,8 @@ func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverHTTP)
 }
 
-func (n *Notifier) buildAndSendRequest(dis v1beta1.Disruption, event corev1.Event, notificationType string) error {
+// NotifyWarning generates a notification for generic k8s Warning events
+func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
 	emailAddr, err := utils.GetUserInfoFromDisruption(dis)
 	if err != nil {
 		n.logger.Warnf("http notifier: no userinfo in disruption %s: %v", dis.Name, err)
@@ -94,16 +95,16 @@ func (n *Notifier) buildAndSendRequest(dis v1beta1.Disruption, event corev1.Even
 	}
 
 	notif := HTTPNotifierEvent{
-		NotificationTitle: "Disruption '" + dis.Name + "' encountered an issue.",
-		NotificationType:  notificationType,
-		EventMessage:      "Disruption " + dis.Name + " emitted the event " + event.Reason + ": " + event.Message,
-		DisruptionKind:    dis.Kind,
-		DisruptionName:    dis.Name,
-		Cluster:           n.common.ClusterName,
-		Namespace:         dis.Namespace,
-		TargetsCount:      len(dis.Status.Targets),
-		Username:          emailAddr.Name,
-		UserEmail:         emailAddr.Address,
+		NotificationTitle:  utils.BuildHeaderMessageFromDisruptionEvent(dis, notifType),
+		NotificationType:   notifType,
+		EventMessage:       utils.BuildBodyMessageFromDisruptionEvent(dis, event, false),
+		InvolvedObjectKind: dis.Kind,
+		DisruptionName:     dis.Name,
+		Cluster:            n.common.ClusterName,
+		Namespace:          dis.Namespace,
+		TargetsCount:       len(dis.Status.Targets),
+		Username:           emailAddr.Name,
+		UserEmail:          emailAddr.Address,
 	}
 
 	body, err := json.Marshal(notif)
@@ -127,19 +128,11 @@ func (n *Notifier) buildAndSendRequest(dis v1beta1.Disruption, event corev1.Even
 		return fmt.Errorf("http notifier: couldn't send notification: %s", err.Error())
 	}
 
+	n.logger.Debugw("notifier: sending notifier event to http", "disruption", dis.Name, "eventType", event.Type, "message", notif.EventMessage)
+
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
 		return fmt.Errorf("http notifier: receiving %d status code from sent notification", res.StatusCode)
 	}
 
 	return nil
-}
-
-// NotifyWarning generates a notification for generic k8s Warning events
-func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
-	return n.buildAndSendRequest(dis, event, event.Type)
-}
-
-// NotifyWarning generates a notification for generic k8s Warning events
-func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) error {
-	return n.buildAndSendRequest(dis, event, event.Type)
 }

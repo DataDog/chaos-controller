@@ -11,6 +11,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier"
+	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 	"go.uber.org/zap"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -85,11 +86,14 @@ func (s *NotifierSink) getDisruption(event *corev1.Event) (v1beta1.Disruption, e
 func (s *NotifierSink) parseEventToNotifier(event *corev1.Event, dis v1beta1.Disruption) (err error) {
 	switch event.Type {
 	case corev1.EventTypeWarning:
-		err = s.notifier.NotifyWarning(dis, *event)
+		err = s.notifier.Notify(dis, *event, notifTypes.NotificationWarning)
 	case corev1.EventTypeNormal:
-		// only sends recovery events: we can't create a new type of event so we need to parse the reasons
-		if v1beta1.IsRecoveryEvent(*event) {
-			err = s.notifier.NotifyRecovery(dis, *event)
+		if v1beta1.IsNotifiableEvent(*event) {
+			if v1beta1.IsRecoveryEvent(*event) {
+				err = s.notifier.Notify(dis, *event, notifTypes.NotificationSuccess)
+			} else {
+				err = s.notifier.Notify(dis, *event, notifTypes.NotificationInfo)
+			}
 		} else {
 			err = nil
 		}

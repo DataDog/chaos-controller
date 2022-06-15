@@ -16,7 +16,7 @@ type DisruptionEventCategory string
 
 const (
 	TargetEvent  DisruptionEventCategory = "TargetEvent"
-	DisruptEvent                         = "DisruptionEvent"
+	DisruptEvent DisruptionEventCategory = "DisruptionEvent"
 )
 
 type DisruptionEvent struct {
@@ -60,6 +60,7 @@ const (
 	EventInvalidSpecDisruption          string = "InvalidSpec"
 	// Normal events
 	EventDisruptionCreated      string = "Created"
+	EventDisruptionFinished     string = "Finished"
 	EventDisruptionDurationOver string = "DurationOver"
 	EventDisrupted              string = "Disrupted"
 )
@@ -201,6 +202,12 @@ var Events = map[string]DisruptionEvent{
 		OnDisruptionTemplateMessage: "Created disruption injection pod for \"%s\"",
 		Category:                    DisruptEvent,
 	},
+	EventDisruptionFinished: {
+		Type:                        corev1.EventTypeNormal,
+		Reason:                      EventDisruptionFinished,
+		OnDisruptionTemplateMessage: "Disruption successfully finished",
+		Category:                    DisruptEvent,
+	},
 	EventDisrupted: {
 		Type:                    corev1.EventTypeWarning,
 		Reason:                  EventDisrupted,
@@ -209,14 +216,9 @@ var Events = map[string]DisruptionEvent{
 	},
 }
 
-func IsDisruptionEvent(event corev1.Event, eventType string) bool {
-	for _, disruptionEvent := range Events {
-		if disruptionEvent.Reason == event.Reason && eventType == event.Type {
-			return true
-		}
-	}
-
-	return false
+// IsNotifiableEvent this event can be broadcasted to our notifiers
+func IsNotifiableEvent(event corev1.Event) bool {
+	return event.Source.Component == SourceDisruptionComponent
 }
 
 func IsRecoveryEvent(event corev1.Event) bool {
