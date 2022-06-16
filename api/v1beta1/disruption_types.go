@@ -349,6 +349,41 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 	return &parsedSpec, nil
 }
 
+// GetDisruptionCount get the number of disruption types per disruption
+func (s *DisruptionSpec) GetDisruptionCount() int {
+	count := 0
+
+	if s.CPUPressure != nil {
+		count++
+	}
+
+	if s.ContainerFailure != nil {
+		count++
+	}
+
+	if s.DNS != nil {
+		count++
+	}
+
+	if s.DiskPressure != nil {
+		count++
+	}
+
+	if s.GRPC != nil {
+		count++
+	}
+
+	if s.Network != nil {
+		count++
+	}
+
+	if s.NodeFailure != nil {
+		count++
+	}
+
+	return count
+}
+
 // RemoveDeadTargets removes targets not found in matchingTargets from the targets list
 func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
 	var desiredTargets []string

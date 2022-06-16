@@ -356,7 +356,15 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 	// update instance status
 	instance.Status.InjectionStatus = status
-	instance.Status.InjectedTargetsCount = readyPodsCount
+
+	// we divide by the number of active disruption types because we create one pod per target per disruption
+	// ex: we would have 10 pods if we target 50% of all targets with 2 disruption types like network and dns
+	// we also consider a target is not fully injected if not all disruptions are injected in it
+	if instance.Spec.GetDisruptionCount() == 0 {
+		instance.Status.InjectedTargetsCount = 0
+	} else {
+		instance.Status.InjectedTargetsCount = int(math.Floor(float64(readyPodsCount) / float64(instance.Spec.GetDisruptionCount())))
+	}
 
 	if err := r.Client.Status().Update(context.Background(), instance); err != nil {
 		return false, err
