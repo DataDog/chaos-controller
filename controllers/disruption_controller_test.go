@@ -446,7 +446,7 @@ var _ = Describe("Disruption Controller", func() {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				StaticTargeting: func() *bool { b := false; return &b }(),
 				DryRun:          true,
-				Count:           &intstr.IntOrString{Type: intstr.String, StrVal: "5"},
+				Count:           &intstr.IntOrString{Type: intstr.String, StrVal: "3"},
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
 				},
@@ -469,21 +469,22 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should scale up then down with the right number of targets count", func() {
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 5, 0, 2, 2) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(disruption, 3, 0, 2, 2) }, timeout).Should(Succeed())
 
 			By("Adding an extra target")
-			Expect(k8sClient.Create(context.Background(), targetPodA2)).To(BeNil())
+			Expect(k8sClient.Create(context.Background(), targetPodA3)).To(BeNil())
+
+			By("Adding an extra target")
+			Expect(k8sClient.Create(context.Background(), targetPodA4)).To(BeNil())
 
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 5, 0, 3, 3) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(disruption, 3, 1, 3, 3) }, timeout).Should(Succeed())
 
-			By("Update disruption count to 2")
-			newDisruption := disruption
-			newDisruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "2"}
-			Expect(k8sClient.Update(context.Background(), newDisruption)).To(BeNil())
+			By("Deleting the extra target")
+			Expect(k8sClient.Delete(context.Background(), targetPodA3)).To(BeNil())
 
-			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 2, 1, 2, 2) }, timeout).Should(Succeed())
+			By("Deleting the extra target")
+			Expect(k8sClient.Delete(context.Background(), targetPodA4)).To(BeNil())
 		})
 	})
 
