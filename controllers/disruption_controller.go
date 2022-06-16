@@ -780,6 +780,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		return fmt.Errorf("error getting eligible targets: %w", err)
 	}
 
+	instance.Status.DesiredTargetsCount = targetsCount
 	// if the asked targets count is greater than the amount of found targets, we take all of them
 	targetsCount = int(math.Min(float64(targetsCount), float64(len(instance.Status.Targets)+len(eligibleTargets))))
 	if targetsCount < 1 {
@@ -804,7 +805,6 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	r.log.Infow("updating instance status with targets selected for injection")
 
 	instance.Status.SelectedTargetsCount = len(instance.Status.Targets)
-	instance.Status.DesiredTargetsCount = targetsCount
 	instance.Status.IgnoredTargetsCount = totalAvailableTargetsCount - targetsCount
 
 	return r.Status().Update(context.Background(), instance)

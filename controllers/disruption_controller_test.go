@@ -441,6 +441,52 @@ var _ = Describe("Disruption Controller", func() {
 		})
 	})
 
+	Context("Targets count", func() {
+		BeforeEach(func() {
+			disruption.Spec = chaosv1beta1.DisruptionSpec{
+				StaticTargeting: func() *bool { b := false; return &b }(),
+				DryRun:          true,
+				Count:           &intstr.IntOrString{Type: intstr.String, StrVal: "5"},
+				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+					DisableAll: true,
+				},
+				Selector:   map[string]string{"foo": "bar"},
+				Containers: []string{"ctn1"},
+				Duration:   "10m",
+				Network: &chaosv1beta1.NetworkDisruptionSpec{
+					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
+						{
+							Host:     "127.0.0.1",
+							Port:     80,
+							Protocol: "tcp",
+						},
+					},
+					Drop: 100,
+				},
+			}
+
+		})
+
+		It("should scale up then down with the right number of targets count", func() {
+			By("Ensuring that the disruption status is displaying the right number of targets")
+			Eventually(func() error { return expectDisruptionStatus(disruption, 5, 0, 2, 2) }, timeout).Should(Succeed())
+
+			By("Adding an extra target")
+			Expect(k8sClient.Create(context.Background(), targetPodA2)).To(BeNil())
+
+			By("Ensuring that the disruption status is displaying the right number of targets")
+			Eventually(func() error { return expectDisruptionStatus(disruption, 5, 0, 3, 3) }, timeout).Should(Succeed())
+
+			By("Update disruption count to 2")
+			newDisruption := disruption
+			newDisruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "2"}
+			Expect(k8sClient.Update(context.Background(), newDisruption)).To(BeNil())
+
+			By("Ensuring that the disruption status is displaying the right number of targets")
+			Eventually(func() error { return expectDisruptionStatus(disruption, 2, 1, 2, 2) }, timeout).Should(Succeed())
+		})
+	})
+
 	// NOTE: disabled until fixed
 	// the feature is broken now that we moved all chaos pods into the same namespace
 	// because we had to remove the owner reference on those pods, meaning that
