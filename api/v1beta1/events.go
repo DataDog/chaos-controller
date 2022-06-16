@@ -59,10 +59,11 @@ const (
 	EventDisruptionNoTarget             string = "NoTarget"
 	EventInvalidSpecDisruption          string = "InvalidSpec"
 	// Normal events
-	EventDisruptionCreated      string = "Created"
-	EventDisruptionFinished     string = "Finished"
-	EventDisruptionDurationOver string = "DurationOver"
-	EventDisrupted              string = "Disrupted"
+	EventDisruptionChaosPodCreated string = "ChaosPodCreated"
+	EventDisruptionCreated         string = "Created"
+	EventDisruptionFinished        string = "Finished"
+	EventDisruptionDurationOver    string = "DurationOver"
+	EventDisrupted                 string = "Disrupted"
 )
 
 var Events = map[string]DisruptionEvent{
@@ -196,10 +197,16 @@ var Events = map[string]DisruptionEvent{
 		OnDisruptionTemplateMessage: "%s",
 		Category:                    DisruptEvent,
 	},
+	EventDisruptionChaosPodCreated: {
+		Type:                        corev1.EventTypeNormal,
+		Reason:                      EventDisruptionChaosPodCreated,
+		OnDisruptionTemplateMessage: "Created disruption injection pod for \"%s\"",
+		Category:                    DisruptEvent,
+	},
 	EventDisruptionCreated: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionCreated,
-		OnDisruptionTemplateMessage: "Created disruption injection pod for \"%s\"",
+		OnDisruptionTemplateMessage: "Disruption created",
 		Category:                    DisruptEvent,
 	},
 	EventDisruptionFinished: {

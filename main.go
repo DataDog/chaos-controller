@@ -374,6 +374,7 @@ func main() {
 		Manager:                mgr,
 		Logger:                 logger,
 		MetricsSink:            ms,
+		Recorder:               r.Recorder,
 		NamespaceThresholdFlag: cfg.Controller.SafeMode.NamespaceThreshold,
 		ClusterThresholdFlag:   cfg.Controller.SafeMode.ClusterThreshold,
 		EnableSafemodeFlag:     cfg.Controller.SafeMode.Enable,
