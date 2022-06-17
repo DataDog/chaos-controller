@@ -18,6 +18,10 @@ spec:
       record:
         type: A # return an A record
         value: 10.0.0.154,10.0.0.13 # list of IPs to return (will be round-robined)
+    - hostname: bar.foo.aws # record hostname which should be faked
+      record:
+        type: A # return an A record
+        value: NXDOMAIN # return no IPs
     - hostname: datadoghq.com # record hostname which should be faked
       record:
         type: CNAME # return a CNAME record
