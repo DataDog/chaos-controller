@@ -128,7 +128,16 @@ The `datadog` notifier requires the `STATSD_URL` environment variable to be set 
 
 ### HTTP
 
-The `http` notifier requires a `URL` to send the POST request to and optionally ask for headers to add to the request if needed. It will send a json body containing the notification information.
+The `http` notifier requires a `URL` to send the POST request to and optionally ask for the filepath of a file containing the headers to add to the request if needed. It will send a json body containing the notification information.
+
+The file containing the headers is of format:
+
+```
+key1:value1
+key2:value2
+```
+
+You can deploy an nginx server which will receive the http requests at [examples/http-notifier-in-demo.yaml](../examples/http-notifier-in-demo.yaml).
 
 ### Configuration
 
@@ -147,9 +156,9 @@ notifiers:
     enabled: true/false # enables the datadog notifier
   http:
     enabled: true/false # enables the http notifier
-    url: https://this-is-my-server.com/chaos-notification-receiver
-    headers:
-      - "API-KEY:VERY-SECRET-API-KEY"
+    url: <url>
+    headersFilepath: <headers file path> # path to a file containing the list of headers to add to the http POST request we send for the http notifier
+      
 ```
 
 ## Disruption Examples

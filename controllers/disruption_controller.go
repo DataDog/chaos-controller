@@ -39,7 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 )
@@ -747,7 +746,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// validate the given label selector to avoid any formatting issues due to special chars
 	if instance.Spec.Selector != nil {
 		if err := validateLabelSelector(instance.Spec.Selector.AsSelector()); err != nil {
-			r.recordEventOnDisruption(instance, v1beta1.EventInvalidDisruptionLabelSelector, err.Error())
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidDisruptionLabelSelector, err.Error())
 
 			return err
 		}
@@ -1183,7 +1182,7 @@ func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disru
 func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Disruption) error {
 	err := instance.Spec.Validate()
 	if err != nil {
-		r.recordEventOnDisruption(instance, v1beta1.EventInvalidSpecDisruption, err.Error())
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, err.Error())
 
 		return err
 	}

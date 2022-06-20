@@ -9,8 +9,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/mail"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,9 +25,9 @@ import (
 )
 
 type NotifierHTTPConfig struct {
-	Enabled bool
-	URL     string
-	Headers []string
+	Enabled         bool
+	URL             string
+	HeadersFilepath string
 }
 
 // Notifier describes a HTTP notifier
@@ -55,10 +58,30 @@ func New(commonConfig types.NotifiersCommonConfig, httpConfig NotifierHTTPConfig
 		Timeout: 1 * time.Minute,
 	}
 
+	headersFile, err := os.Open(filepath.Clean(httpConfig.HeadersFilepath))
+	if err != nil {
+		return nil, fmt.Errorf("headers file not found: %w", err)
+	}
+
+	readHeaders, err := ioutil.ReadAll(headersFile)
+	if err != nil {
+		return nil, fmt.Errorf("headers file could not be read: %w", err)
+	}
+
+	headers := []string{}
 	parsedHeaders := make(map[string][]string)
 
+	sHeaders := string(readHeaders)
+	if sHeaders != "" {
+		headers = strings.Split(sHeaders, "\n")
+	}
+
 	// header is of format: key:value, we need to parse it
-	for _, header := range httpConfig.Headers {
+	for _, header := range headers {
+		if header == "" {
+			continue
+		}
+
 		splittedHeader := strings.Split(header, ":")
 		if len(splittedHeader) == 2 {
 			if parsedHeaders[splittedHeader[0]] == nil {
@@ -67,7 +90,7 @@ func New(commonConfig types.NotifiersCommonConfig, httpConfig NotifierHTTPConfig
 
 			parsedHeaders[splittedHeader[0]] = append(parsedHeaders[splittedHeader[0]], splittedHeader[1])
 		} else {
-			return nil, fmt.Errorf("notifier http: invalid headers in conf. Must be of format: key:value. %s", header)
+			return nil, fmt.Errorf("notifier http: invalid headers in headers file. Must be of format: key:value")
 		}
 	}
 

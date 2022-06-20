@@ -1,0 +1,96 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifier-nginx
+  namespace: chaos-demo
+  labels:
+    app: notifier-nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notifier-nginx
+  template:
+    metadata:
+      labels:
+        app: notifier-nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.21.6
+          volumeMounts:
+            - mountPath: /etc/nginx
+              name: config
+      volumes:
+        - name: config
+          configMap:
+            name: notifier-conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifier
+  namespace: chaos-demo
+spec:
+  ports:
+    - port: 8080
+      targetPort: 80
+  selector:
+    app: notifier-nginx
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notifier-conf
+  namespace: chaos-demo
+data:
+  nginx.conf: |
+    user  nginx;
+    worker_processes  auto;
+
+    error_log  /var/log/nginx/error.log notice;
+    pid        /var/run/nginx.pid;
+
+
+    events {
+        worker_connections  1024;
+    }
+
+    http {
+        default_type  application/octet-stream;
+        client_body_buffer_size 1k;
+
+        log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"'  '$request_body_file';
+
+        access_log  /var/log/nginx/access.log  main;
+
+        sendfile        on;
+        #tcp_nopush     on;
+
+        keepalive_timeout  65;
+
+        #gzip  on;
+
+        include /etc/nginx/conf.d/*.conf;
+
+        server {
+            error_page 588 = @saveinfile;
+
+            if ($request_method = POST) {
+              return 588;
+            }
+
+            location / {
+              return 200;
+            }
+            
+            location @saveinfile {
+                client_body_in_file_only on;
+
+                return 200;
+            }
+        } 
+    }
