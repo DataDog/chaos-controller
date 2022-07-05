@@ -27,7 +27,7 @@ controller:
       mirrorSlackChannelId: ""
     http:
       enabled: false
-      url: "http://notifier.chaos-demo.svc.cluster.local:8080" # basic nginx server available to deploy at examples/http-notifier-in-demo.yaml
+      url: ""
       headersFilepath: ""
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
