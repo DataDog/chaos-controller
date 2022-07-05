@@ -13,7 +13,9 @@ import (
 
 // TargetSelector is an interface for applying network disruptions to a Kubernetes Cluster
 type TargetSelector interface {
-	GetMatchingPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, error)
-	GetMatchingNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, error)
+	// GetMatchingPodsOverTotalPods Returns list of matching ready and untargeted pods and number of total pods
+	GetMatchingPodsOverTotalPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, int, error)
+	// GetMatchingPodsOverTotalPods Returns list of matching ready and untargeted nodes and number of total nodes
+	GetMatchingNodesOverTotalNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, int, error)
 	TargetIsHealthy(target string, c client.Client, instance *chaosv1beta1.Disruption) error
 }
