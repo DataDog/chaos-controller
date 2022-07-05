@@ -128,10 +128,11 @@ The `datadog` notifier requires the `STATSD_URL` environment variable to be set 
 
 ### HTTP
 
-The `http` notifier requires a `URL` to send the POST request to and optionally ask for the filepath of a file containing the headers to add to the request if needed. It will send a json body containing the notification information.
+The `http` notifier requires a `URL` to send the POST request to and optionally ask for either the list of headers in the configmap or the filepath of a file containing the list of headers to add to the request if needed. It will send a json body containing the notification information.
 
-The file containing the headers is of format:
+*Note that the list of headers from the configmap will take prevalence over the list of headers found in the file: if there are conflictings headers in both of those lists, the one from the configmap will be kept.*
 
+The list is of format:
 ```
 key1:value1
 key2:value2
@@ -157,7 +158,9 @@ notifiers:
   http:
     enabled: true/false # enables the http notifier
     url: <url>
-    headersFilepath: <headers file path> # path to a file containing the list of headers to add to the http POST request we send for the http notifier
+    headers: # optional, list of headers to add to the http POST request we send
+      - "Authorization:Bearer token"
+    headersFilepath: <headers file path> # optional, path to a file containing the list of headers to add to the http POST request we send for the http notifier
       
 ```
 

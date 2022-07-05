@@ -181,7 +181,10 @@ func main() {
 	pflag.StringVar(&cfg.Controller.Notifiers.HTTP.URL, "notifiers-http-url", "", "URL to send the notification using the HTTP notifier(defaulted to \"\")")
 	handleFatalError(viper.BindPFlag("controller.notifiers.http.url", pflag.Lookup("notifiers-http-url")))
 
-	pflag.StringVar(&cfg.Controller.Notifiers.HTTP.HeadersFilepath, "notifiers-http-headers-filepath", "", "Additional headers to add to the request when sending the notification (defaulted to empty list)")
+	pflag.StringArrayVar(&cfg.Controller.Notifiers.HTTP.Headers, "notifiers-http-headers", []string{}, "Additional headers to add to the request when sending the notification (defaulted to empty list)")
+	handleFatalError(viper.BindPFlag("controller.notifiers.http.headers", pflag.Lookup("notifiers-http-headers")))
+
+	pflag.StringVar(&cfg.Controller.Notifiers.HTTP.HeadersFilepath, "notifiers-http-headers-filepath", "", "Filepath to the additional headers to add to the request when sending the notification (defaulted to empty list)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.http.headersFilepath", pflag.Lookup("notifiers-http-headers-filepath")))
 
 	pflag.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")

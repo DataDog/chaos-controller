@@ -27,6 +27,7 @@ import (
 type NotifierHTTPConfig struct {
 	Enabled         bool
 	URL             string
+	Headers         []string
 	HeadersFilepath string
 }
 
@@ -35,7 +36,7 @@ type Notifier struct {
 	common  types.NotifiersCommonConfig
 	client  *http.Client
 	url     string
-	headers map[string][]string
+	headers map[string]string
 	logger  *zap.SugaredLogger
 }
 
@@ -54,29 +55,32 @@ type HTTPNotifierEvent struct {
 
 // New HTTP Notifier
 func New(commonConfig types.NotifiersCommonConfig, httpConfig NotifierHTTPConfig, logger *zap.SugaredLogger) (*Notifier, error) {
+	parsedHeaders := make(map[string]string)
+	headers := []string{}
+
 	client := &http.Client{
 		Timeout: 1 * time.Minute,
 	}
 
-	headersFile, err := os.Open(filepath.Clean(httpConfig.HeadersFilepath))
-	if err != nil {
-		return nil, fmt.Errorf("headers file not found: %w", err)
+	if httpConfig.HeadersFilepath != "" {
+		headersFile, err := os.Open(filepath.Clean(httpConfig.HeadersFilepath))
+		if err != nil {
+			return nil, fmt.Errorf("headers file not found: %w", err)
+		}
+
+		readHeaders, err := ioutil.ReadAll(headersFile)
+		if err != nil {
+			return nil, fmt.Errorf("headers file could not be read: %w", err)
+		}
+
+		sHeaders := string(readHeaders)
+		if sHeaders != "" {
+			headers = strings.Split(sHeaders, "\n")
+		}
 	}
 
-	readHeaders, err := ioutil.ReadAll(headersFile)
-	if err != nil {
-		return nil, fmt.Errorf("headers file could not be read: %w", err)
-	}
+	headers = append(headers, httpConfig.Headers...)
 
-	headers := []string{}
-	parsedHeaders := make(map[string][]string)
-
-	sHeaders := string(readHeaders)
-	if sHeaders != "" {
-		headers = strings.Split(sHeaders, "\n")
-	}
-
-	// header is of format: key:value, we need to parse it
 	for _, header := range headers {
 		if header == "" {
 			continue
@@ -84,11 +88,7 @@ func New(commonConfig types.NotifiersCommonConfig, httpConfig NotifierHTTPConfig
 
 		splittedHeader := strings.Split(header, ":")
 		if len(splittedHeader) == 2 {
-			if parsedHeaders[splittedHeader[0]] == nil {
-				parsedHeaders[splittedHeader[0]] = []string{}
-			}
-
-			parsedHeaders[splittedHeader[0]] = append(parsedHeaders[splittedHeader[0]], splittedHeader[1])
+			parsedHeaders[splittedHeader[0]] = splittedHeader[1]
 		} else {
 			return nil, fmt.Errorf("notifier http: invalid headers in headers file. Must be of format: key:value")
 		}
@@ -140,10 +140,8 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		return fmt.Errorf("http notifier: couldn't send notification: %s", err.Error())
 	}
 
-	for headerKey, headerValues := range n.headers {
-		for _, headerValue := range headerValues {
-			req.Header.Add(headerKey, headerValue)
-		}
+	for headerKey, headerValue := range n.headers {
+		req.Header.Add(headerKey, headerValue)
 	}
 
 	res, err := n.client.Do(req)

@@ -28,6 +28,9 @@ data:
         http:
           enabled: {{ .Values.controller.notifiers.http.enabled }}
           url: {{ .Values.controller.notifiers.http.url | quote }}
+          headers: {{- range .Values.controller.notifiers.http.headers }}
+            - {{ . | quote }}
+          {{- end }}
           headersFilepath: {{ .Values.controller.notifiers.http.headersFilepath | quote }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
