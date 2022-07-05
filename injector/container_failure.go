@@ -73,6 +73,10 @@ func (i containerFailureInjector) Inject() error {
 	return nil
 }
 
+func (i containerFailureInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
 func (i containerFailureInjector) Clean() error {
 	return nil
 }

@@ -94,6 +94,10 @@ func (i diskPressureInjector) Inject() error {
 	return nil
 }
 
+func (i diskPressureInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
 func (i diskPressureInjector) Clean() error {
 	// clean read throttle
 	i.config.Log.Infow("cleaning disk read throttle", "device", i.config.Informer.Source())

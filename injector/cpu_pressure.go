@@ -158,6 +158,10 @@ func (i cpuPressureInjector) Inject() error {
 	return nil
 }
 
+func (i cpuPressureInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
 func (i cpuPressureInjector) Clean() error {
 	i.config.Log.Info("killing routines")
 

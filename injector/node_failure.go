@@ -98,6 +98,11 @@ func (i nodeFailureInjector) Inject() error {
 	return nil
 }
 
+// Not implemented for node failures
+func (i nodeFailureInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
 func (i nodeFailureInjector) Clean() error {
 	return nil
 }

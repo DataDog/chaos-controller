@@ -155,6 +155,10 @@ func (i DNSDisruptionInjector) Inject() error {
 	return nil
 }
 
+func (i DNSDisruptionInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
 // Clean removes the injected disruption from the given container
 func (i DNSDisruptionInjector) Clean() error {
 	// enter target network namespace

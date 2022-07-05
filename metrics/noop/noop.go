@@ -39,9 +39,23 @@ func (n *Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	return nil
 }
 
+// MetricReinjected increments the reinjected metric
+func (n *Sink) MetricReinjected(succeed bool, kind string, tags []string) error {
+	fmt.Printf("NOOP: MetricReinjected %v\n", succeed)
+
+	return nil
+}
+
 // MetricCleaned increments the cleaned metric
 func (n *Sink) MetricCleaned(succeed bool, kind string, tags []string) error {
 	fmt.Printf("NOOP: MetricCleaned %v\n", succeed)
+
+	return nil
+}
+
+// MetricCleanedForReinjection increments the cleanedForReinjection metric
+func (d *Sink) MetricCleanedForReinjection(succeed bool, kind string, tags []string) error {
+	fmt.Printf("NOOP: MetricCleanedForReinjection %v\n", succeed)
 
 	return nil
 }

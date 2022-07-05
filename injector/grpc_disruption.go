@@ -68,6 +68,10 @@ func (i GRPCDisruptionInjector) Inject() error {
 	return conn.Close()
 }
 
+func (i GRPCDisruptionInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
 // Clean removes the injected disruption from the given container
 func (i GRPCDisruptionInjector) Clean() error {
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")

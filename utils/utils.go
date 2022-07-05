@@ -18,10 +18,12 @@ limitations under the License.
 package utils
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -46,4 +48,41 @@ type SetupWebhookWithManagerConfig struct {
 	DeleteOnlyFlag         bool
 	HandlerEnabledFlag     bool
 	DefaultDurationFlag    time.Duration
+}
+
+// GetTargetedContainersInfo gets the IDs of the targeted containers or all container IDs found in a Pod
+func GetTargetedContainersInfo(pod *corev1.Pod, targets []string) (map[string]string, error) {
+	if len(pod.Status.ContainerStatuses) < 1 {
+		return map[string]string{}, fmt.Errorf("missing container ids for pod '%s'", pod.Name)
+	}
+
+	allContainers := map[string]string{}
+	targetedContainers := map[string]string{}
+
+	ctns := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) //nolint:gocritic
+
+	if len(targets) == 0 {
+		// get all running containers ID
+		for _, c := range ctns {
+			if c.State.Running != nil {
+				targetedContainers[c.Name] = c.ContainerID
+			}
+		}
+	} else {
+		// populate containers name/ID map
+		for _, c := range ctns {
+			allContainers[c.Name] = c.ContainerID
+		}
+
+		// look for the target in the map
+		for _, target := range targets {
+			if id, found := allContainers[target]; found {
+				targetedContainers[target] = id
+			} else {
+				return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, target)
+			}
+		}
+	}
+
+	return targetedContainers, nil
 }

@@ -20,9 +20,11 @@ type Sink interface {
 	Close() error
 	GetSinkName() string
 	MetricCleaned(succeed bool, kind string, tags []string) error
+	MetricCleanedForReinjection(succeed bool, kind string, tags []string) error
 	MetricCleanupDuration(duration time.Duration, tags []string) error
 	MetricInjectDuration(duration time.Duration, tags []string) error
 	MetricInjected(succeed bool, kind string, tags []string) error
+	MetricReinjected(succeed bool, kind string, tags []string) error
 	MetricPodsCreated(target, instanceName, namespace string, succeed bool) error
 	MetricReconcile() error
 	MetricReconcileDuration(duration time.Duration, tags []string) error
