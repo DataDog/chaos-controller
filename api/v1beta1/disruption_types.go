@@ -131,6 +131,14 @@ type DisruptionStatus struct {
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
 	Targets []string `json:"targets,omitempty"`
+	// Actual targets selected by the disruption
+	SelectedTargetsCount int `json:"selectedTargetsCount"`
+	// Targets ignored by the disruption, (not in a ready state, already targeted, not in the count percentage...)
+	IgnoredTargetsCount int `json:"ignoredTargetsCount"`
+	// Number of targets with a chaos pod ready
+	InjectedTargetsCount int `json:"injectedTargetsCount"`
+	// Number of targets we want to target (count)
+	DesiredTargetsCount int `json:"desiredTargetsCount"`
 }
 
 //+kubebuilder:object:root=true
@@ -339,6 +347,41 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 	}
 
 	return &parsedSpec, nil
+}
+
+// GetDisruptionCount get the number of disruption types per disruption
+func (s *DisruptionSpec) GetDisruptionCount() int {
+	count := 0
+
+	if s.CPUPressure != nil {
+		count++
+	}
+
+	if s.ContainerFailure != nil {
+		count++
+	}
+
+	if s.DNS != nil {
+		count++
+	}
+
+	if s.DiskPressure != nil {
+		count++
+	}
+
+	if s.GRPC != nil {
+		count++
+	}
+
+	if s.Network != nil {
+		count++
+	}
+
+	if s.NodeFailure != nil {
+		count++
+	}
+
+	return count
 }
 
 // RemoveDeadTargets removes targets not found in matchingTargets from the targets list

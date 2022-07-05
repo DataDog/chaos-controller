@@ -56,6 +56,8 @@ var (
 	instanceKey types.NamespacedName
 	targetPodA  *corev1.Pod
 	targetPodA2 *corev1.Pod
+	targetPodA3 *corev1.Pod
+	targetPodA4 *corev1.Pod
 	targetPodB  *corev1.Pod
 )
 
@@ -150,6 +152,10 @@ var _ = BeforeSuite(func(done Done) {
 	}
 	targetPodA2 = targetPodA.DeepCopy()
 	targetPodA2.ObjectMeta.Name = "foo2"
+	targetPodA3 = targetPodA.DeepCopy()
+	targetPodA3.ObjectMeta.Name = "foo3"
+	targetPodA4 = targetPodA.DeepCopy()
+	targetPodA4.ObjectMeta.Name = "foo4"
 	targetPodB = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
