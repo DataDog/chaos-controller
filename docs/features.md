@@ -138,8 +138,6 @@ key1:value1
 key2:value2
 ```
 
-You can deploy an nginx server which will receive the http requests at [examples/http-notifier-in-demo.yaml](../examples/http-notifier-in-demo.yaml).
-
 ### Configuration
 
 Please setup the following fields to `chart/templates/configmap.yaml - data - config.yaml - controller` pre-controller installation: 
