@@ -63,7 +63,6 @@ var (
 	chaosNamespace             string
 	targetName                 string
 	targetNodeName             string
-	staticTargeting            bool
 	onInit                     bool
 	pulseActiveDuration        time.Duration
 	pulseDormantDuration       time.Duration
@@ -192,7 +191,7 @@ func initConfig() {
 	// parse target-containers
 	for _, cnt := range tmpTargetContainers {
 		splittedCntInfo := strings.SplitN(cnt, ";", 2)
-		log.Infof("CNT: %s", cnt)
+
 		if len(splittedCntInfo) == 2 {
 			targetContainers[splittedCntInfo[0]] = splittedCntInfo[1]
 		}
@@ -373,20 +372,20 @@ func reinject(pod *v1.Pod, cmdName string) error {
 	}
 
 	// We rebuild and update the configuration
-	for ctnName, ctnId := range targetContainers {
+	for ctnName, ctnID := range targetContainers {
 		for i, conf := range configs {
 			if conf.TargetContainer.Name() != ctnName {
 				continue
 			}
 
-			conf.TargetContainer, err = container.New(ctnId)
+			conf.TargetContainer, err = container.New(ctnID)
 			if err != nil {
 				log.Warnw("can't create container object", "error", err)
 
 				continue
 			}
 
-			log.Debugw("injector targeting container", "containerID", ctnId, "containerName", conf.TargetContainer.Name())
+			log.Debugw("injector targeting container", "containerID", ctnID, "containerName", conf.TargetContainer.Name())
 
 			// create network namespace and cgroup  manager
 			conf.Netns, conf.Cgroup, err = initManagers(conf.TargetContainer.PID())
@@ -465,8 +464,9 @@ func waitDisruptionEnd(deadline time.Time) {
 
 func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveDuration time.Duration, pulseDormantDuration time.Duration) error {
 	var channel <-chan watch.Event
-	var action func(string, bool, bool) bool
 	var sleepDuration time.Duration
+
+	var action func(string, bool, bool) bool
 
 	isInjected := true
 
@@ -552,10 +552,10 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 func pulsingInjectAndClean(isInjected *bool, sleepDuration *time.Duration, action func(string, bool, bool) bool, cmdName string) (func(string, bool, bool) bool, error) {
 	if !*isInjected {
 		action = inject
-		sleepDuration = &pulseDormantDuration
+		*sleepDuration = pulseDormantDuration
 	} else {
 		action = clean
-		sleepDuration = &pulseActiveDuration
+		*sleepDuration = pulseActiveDuration
 	}
 
 	if ok := action(cmdName, true, true); !ok {
@@ -563,7 +563,7 @@ func pulsingInjectAndClean(isInjected *bool, sleepDuration *time.Duration, actio
 	}
 
 	newInjected := !*isInjected
-	isInjected = &newInjected
+	*isInjected = newInjected
 
 	return action, nil
 }
@@ -619,9 +619,11 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		log.Errorw("unable to determine disruption deadline, will self-terminate in one hour instead", "err", err)
 	}
 
-	if !injectSuccess {
+	switch {
+	case !injectSuccess:
 		waitDisruptionEnd(deadline)
-	} else if level == "Node" {
+		break
+	case level == "Node":
 		// wait for an exit signal, this is a blocking call
 		if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
 			var action func(string, bool, bool) bool
@@ -649,7 +651,8 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 
 		waitDisruptionEnd(deadline)
-	} else {
+		break
+	default:
 		if onInit {
 			log.Warnw("the init container will not get restarted on container restart")
 		}
@@ -743,9 +746,9 @@ func updateTargetContainersAndDetectChange(pod *v1.Pod) (bool, error) {
 		return false, err
 	}
 
-	for ctnName, ctnId := range targetContainers {
+	for ctnName, ctnID := range targetContainers {
 		for _, conf := range configs {
-			if conf.TargetContainer.Name() != ctnName || conf.TargetContainer.ID() == ctnId {
+			if conf.TargetContainer.Name() != ctnName || conf.TargetContainer.ID() == ctnID {
 				continue
 			}
 

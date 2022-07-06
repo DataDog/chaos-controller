@@ -54,7 +54,7 @@ func (n *Sink) MetricCleaned(succeed bool, kind string, tags []string) error {
 }
 
 // MetricCleanedForReinjection increments the cleanedForReinjection metric
-func (d *Sink) MetricCleanedForReinjection(succeed bool, kind string, tags []string) error {
+func (n *Sink) MetricCleanedForReinjection(succeed bool, kind string, tags []string) error {
 	fmt.Printf("NOOP: MetricCleanedForReinjection %v\n", succeed)
 
 	return nil

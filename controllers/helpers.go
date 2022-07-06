@@ -28,48 +28,10 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
-
-// getContainerIDs gets the IDs of the targeted containers or all container IDs found in a Pod
-func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
-	if len(pod.Status.ContainerStatuses) < 1 {
-		return []string{}, fmt.Errorf("missing container ids for pod '%s'", pod.Name)
-	}
-
-	containersNameID := map[string]string{}
-	containerIDs := []string{}
-
-	ctns := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) //nolint:gocritic
-
-	if len(targets) == 0 {
-		// get all running containers ID
-		for _, c := range ctns {
-			if c.State.Running != nil {
-				containerIDs = append(containerIDs, c.ContainerID)
-			}
-		}
-	} else {
-		// populate containers name/ID map
-		for _, c := range ctns {
-			containersNameID[c.Name] = c.ContainerID
-		}
-
-		// look for the target in the map
-		for _, target := range targets {
-			if id, found := containersNameID[target]; found {
-				containerIDs = append(containerIDs, id)
-			} else {
-				return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, target)
-			}
-		}
-	}
-
-	return containerIDs, nil
-}
 
 // This function returns a scaled value from an IntOrString type. If the IntOrString
 // is a percentage string value it's treated as a percentage and scaled appropriately
