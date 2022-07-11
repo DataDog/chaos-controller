@@ -215,7 +215,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
 		if r.ExpiredDisruptionGCDelay != nil && (calculateRemainingDuration(*instance) <= (-1 * *r.ExpiredDisruptionGCDelay)) {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
-			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionDurationOver, r.ExpiredDisruptionGCDelay.String())
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionGCOver, r.ExpiredDisruptionGCDelay.String())
 
 			var err error
 
