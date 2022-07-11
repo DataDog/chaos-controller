@@ -362,6 +362,16 @@ spec:
           status:
             description: DisruptionStatus defines the observed state of Disruption
             properties:
+              desiredTargetsCount:
+                description: Number of targets we want to target (count)
+                type: integer
+              ignoredTargetsCount:
+                description: Targets ignored by the disruption, (not in a ready state,
+                  already targeted, not in the count percentage...)
+                type: integer
+              injectedTargetsCount:
+                description: Number of targets with a chaos pod ready
+                type: integer
               injectionStatus:
                 description: DisruptionInjectionStatus represents the injection status
                   of a disruption
@@ -375,11 +385,19 @@ spec:
                 type: boolean
               isStuckOnRemoval:
                 type: boolean
+              selectedTargetsCount:
+                description: Actual targets selected by the disruption
+                type: integer
               targets:
                 items:
                   type: string
                 nullable: true
                 type: array
+            required:
+            - desiredTargetsCount
+            - ignoredTargetsCount
+            - injectedTargetsCount
+            - selectedTargetsCount
             type: object
         type: object
     served: true

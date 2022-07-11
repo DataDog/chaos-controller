@@ -293,13 +293,13 @@ var _ = Describe("Helpers", func() {
 		os.Unsetenv(ChaosFailureInjectionImageVariableName)
 	})
 
-	Describe("GetMatchingPods", func() {
+	Describe("GetMatchingPodsOverTotalPods", func() {
 		Context("with empty label selector", func() {
 			It("should return an error", func() {
 				disruption.Namespace = ""
 				disruption.Spec.Selector = nil
 
-				_, err := targetSelector.GetMatchingPods(nil, disruption)
+				_, _, err := targetSelector.GetMatchingPodsOverTotalPods(nil, disruption)
 				Expect(err).NotTo(BeNil())
 			})
 		})
@@ -333,7 +333,7 @@ var _ = Describe("Helpers", func() {
 			})
 
 			It("should pass given selector for the given namespace to the client", func() {
-				_, err := targetSelector.GetMatchingPods(&c, disruption)
+				_, _, err := targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)
 				Expect(err).To(BeNil())
 				// Note: Namespace filter is not applied for results of the fakeClient.
 				//       We instead test this functionality in the controller tests.
@@ -344,7 +344,7 @@ var _ = Describe("Helpers", func() {
 			It("should return the pods list except for failed pod", func() {
 				disruption.Namespace = ""
 
-				r, err := targetSelector.GetMatchingPods(&c, disruption)
+				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)
 				numExcludedPods := 2 // pending + failed pods
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(len(mixedStatusPods) - numExcludedPods))
@@ -357,7 +357,7 @@ var _ = Describe("Helpers", func() {
 			})
 
 			It("should match pending pods with init containers only", func() {
-				r, err := targetSelector.GetMatchingPods(&c, disruption)
+				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)
 				Expect(err).To(BeNil())
 				Expect(r.Items[0]).To(Equal(*pendingPod))
 			})
@@ -369,7 +369,7 @@ var _ = Describe("Helpers", func() {
 			})
 
 			It("should exclude the pods running on the same node as the controller from targets", func() {
-				r, err := targetSelector.GetMatchingPods(&c, disruption)
+				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)
 
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(1)) // only the pod not running on the same node as the controller
@@ -377,11 +377,11 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 
-	Describe("GetMatchingNodes", func() {
+	Describe("GetMatchingNodesOverTotalNodes", func() {
 		Context("with empty label selector", func() {
 			It("should return an error", func() {
 				disruption.Spec.Selector = nil
-				_, err := targetSelector.GetMatchingNodes(&c, disruption)
+				_, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
 				Expect(err).NotTo(BeNil())
 			})
 		})
@@ -414,13 +414,13 @@ var _ = Describe("Helpers", func() {
 			})
 
 			It("should pass given selector to the client", func() {
-				_, err := targetSelector.GetMatchingNodes(&c, disruption)
+				_, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
 				Expect(err).To(BeNil())
 				Expect(c.ListOptions[0].LabelSelector.String()).To(Equal("app=bar,app,!app,app in (bar),app notin (bar)"))
 			})
 
 			It("should return the nodes list with no error", func() {
-				r, err := targetSelector.GetMatchingNodes(&c, disruption)
+				r, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
 
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(len(justRunningNodes)))
@@ -434,7 +434,7 @@ var _ = Describe("Helpers", func() {
 			})
 
 			It("should exclude the controller node from targets", func() {
-				r, err := targetSelector.GetMatchingNodes(&c, disruption)
+				r, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
 
 				Expect(err).To(BeNil())
 				Expect(len(r.Items)).To(Equal(0))
