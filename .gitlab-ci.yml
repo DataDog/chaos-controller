@@ -5,7 +5,7 @@
 
 ---
 variables:
-  CURRENT_CI_IMAGE: 0.5.0
+  CURRENT_CI_IMAGE: 0.5.1
   CONTROLLER_IMAGE_NAME: chaos-controller
   INJECTOR_IMAGE_NAME: chaos-injector
   HANDLER_IMAGE_NAME: chaos-handler
@@ -31,7 +31,7 @@ stages:
 
 # CI image
 .docker-runner: &docker-runner
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:v1.7.0
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:1.7.0
   tags:
     - "runner:docker"
 
