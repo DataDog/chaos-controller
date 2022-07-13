@@ -24,6 +24,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/DataDog/chaos-controller/utils"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -73,16 +75,24 @@ type controllerConfig struct {
 	DefaultDuration          time.Duration                 `json:"defaultDuration"`
 	DeleteOnly               bool                          `json:"deleteOnly"`
 	EnableSafeguards         bool                          `json:"enableSafeguards"`
+	EnableObserver           bool                          `json:"enableObserver"`
 	LeaderElection           bool                          `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig       `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
 	UserInfoHook             bool                          `json:"userInfoHook"`
+	SafeMode                 safeModeConfig                `json:"safeMode"`
 }
 
 type controllerWebhookConfig struct {
 	CertDir string `json:"certDir"`
 	Host    string `json:"host"`
 	Port    int    `json:"port"`
+}
+
+type safeModeConfig struct {
+	Enable             bool `json:"enable"`
+	NamespaceThreshold int  `json:"namespaceThreshold"`
+	ClusterThreshold   int  `json:"clusterThreshold"`
 }
 
 type injectorConfig struct {
@@ -120,7 +130,7 @@ func main() {
 	pflag.StringVar(&configPath, "config", "", "Configuration file path")
 
 	pflag.StringVar(&cfg.Controller.MetricsBindAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	handleFatalError(viper.BindPFlag("controller.metrics.addr", pflag.Lookup("metrics-bind-address")))
+	handleFatalError(viper.BindPFlag("controller.metricsBindAddr", pflag.Lookup("metrics-bind-address")))
 
 	pflag.BoolVar(&cfg.Controller.LeaderElection, "leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	handleFatalError(viper.BindPFlag("controller.leaderElection", pflag.Lookup("leader-elect")))
@@ -131,6 +141,9 @@ func main() {
 
 	pflag.BoolVar(&cfg.Controller.EnableSafeguards, "enable-safeguards", true, "Enable safeguards on target selection")
 	handleFatalError(viper.BindPFlag("controller.enableSafeguards", pflag.Lookup("enable-safeguards")))
+
+	pflag.BoolVar(&cfg.Controller.EnableObserver, "enable-observer", true, "Enable observer on targets")
+	handleFatalError(viper.BindPFlag("controller.enableObserver", pflag.Lookup("enable-observer")))
 
 	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
@@ -155,6 +168,9 @@ func main() {
 
 	pflag.StringVar(&cfg.Controller.Notifiers.Slack.TokenFilepath, "notifiers-slack-tokenfilepath", "", "File path of the API token for the Slack notifier (defaulted to empty string)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.slack.tokenFilepath", pflag.Lookup("notifiers-slack-tokenfilepath")))
+
+	pflag.StringVar(&cfg.Controller.Notifiers.Slack.MirrorSlackChannelID, "notifiers-slack-mirrorslackchannelid", "", "Slack Channel ID to send all the slack notifier notifications in addition to the personal messages (defaulted to empty string)")
+	handleFatalError(viper.BindPFlag("controller.notifiers.slack.mirrorSlackChannelId", pflag.Lookup("notifiers-slack-mirrorslackchannelid")))
 
 	pflag.BoolVar(&cfg.Controller.Notifiers.Datadog.Enabled, "notifiers-datadog-enabled", false, "Enabler toggle for the Datadog notifier (defaulted to false)")
 	handleFatalError(viper.BindPFlag("controller.notifiers.datadog.enabled", pflag.Lookup("notifiers-datadog-enabled")))
@@ -203,6 +219,18 @@ func main() {
 
 	pflag.BoolVar(&cfg.Controller.UserInfoHook, "user-info-webhook", true, "Enable the mutating webhook to inject user info into disruption status")
 	handleFatalError(viper.BindPFlag("controller.userInfoHook", pflag.Lookup("user-info-webhook")))
+
+	pflag.BoolVar(&cfg.Controller.SafeMode.Enable, "safemode-enable", true,
+		"Enable or disable the safemode functionality of the chaos-controller")
+	handleFatalError(viper.BindPFlag("controller.safemode.enable", pflag.Lookup("safemode-enable")))
+
+	pflag.IntVar(&cfg.Controller.SafeMode.NamespaceThreshold, "safemode-namespace-threshold", 80,
+		"Threshold which safemode checks against to see if the number of targets is over safety measures within a namespace.")
+	handleFatalError(viper.BindPFlag("controller.safemode.namespaceThreshold", pflag.Lookup("safemode-namespace-threshold")))
+
+	pflag.IntVar(&cfg.Controller.SafeMode.ClusterThreshold, "safemode-cluster-threshold", 66,
+		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
+	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-cluster-threshold")))
 
 	pflag.Parse()
 
@@ -298,7 +326,7 @@ func main() {
 		Client:                                mgr.GetClient(),
 		BaseLog:                               logger,
 		Scheme:                                mgr.GetScheme(),
-		Recorder:                              mgr.GetEventRecorderFor("disruption-controller"),
+		Recorder:                              mgr.GetEventRecorderFor(chaosv1beta1.SourceDisruptionComponent),
 		MetricsSink:                           ms,
 		TargetSelector:                        targetSelector,
 		InjectorAnnotations:                   cfg.Injector.Annotations,
@@ -312,6 +340,8 @@ func main() {
 		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
 		ExpiredDisruptionGCDelay:              gcPtr,
 		CacheContextStore:                     make(map[string]controllers.CtxTuple),
+		Reader:                                mgr.GetAPIReader(),
+		EnableObserver:                        cfg.Controller.EnableObserver,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
@@ -331,7 +361,18 @@ func main() {
 	go r.ReportMetrics()
 
 	// register disruption validating webhook
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(mgr, logger, ms, cfg.Controller.DeleteOnly, cfg.Handler.Enabled, cfg.Controller.DefaultDuration); err != nil {
+	setupWebhookConfig := utils.SetupWebhookWithManagerConfig{
+		Manager:                mgr,
+		Logger:                 logger,
+		MetricsSink:            ms,
+		NamespaceThresholdFlag: cfg.Controller.SafeMode.NamespaceThreshold,
+		ClusterThresholdFlag:   cfg.Controller.SafeMode.ClusterThreshold,
+		EnableSafemodeFlag:     cfg.Controller.SafeMode.Enable,
+		DeleteOnlyFlag:         cfg.Controller.DeleteOnly,
+		HandlerEnabledFlag:     cfg.Handler.Enabled,
+		DefaultDurationFlag:    cfg.Controller.DefaultDuration,
+	}
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
 		os.Exit(1) //nolint:gocritic
 	}

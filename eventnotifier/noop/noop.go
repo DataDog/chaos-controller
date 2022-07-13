@@ -37,6 +37,12 @@ func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) err
 	return nil
 }
 
+func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) error {
+	notify("Notifier Normal: "+event.Reason+" - "+event.Message, dis.Name)
+
+	return nil
+}
+
 // helper for noop notifier
 func notify(notificationName string, disName string) {
 	fmt.Printf("NOOP: %s for disruption %s\n", notificationName, disName)
