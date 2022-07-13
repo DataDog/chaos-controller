@@ -205,6 +205,7 @@ jobs:
           <<: *working_directory
           environment:
             GOBIN: /home/circleci/.go_workspace/bin
+            TARGETARCH: amd64
           command: make minikube-build
       - run:
           name: Run e2e tests
