@@ -175,7 +175,9 @@ jobs:
           name: Edit controller chart
           <<: *working_directory
           command: |
-            sudo snap install yq
+            sudo add-apt-repository ppa:rmescandon/yq
+            sudo apt-get update
+            sudo apt-get install -y yq
             yq e '.controller.expiredDisruptionGCDelay = "10s"' -i chart/values.yaml
       - run:
           name: Wait for Docker Daemon to be up and running
