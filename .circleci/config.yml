@@ -80,8 +80,6 @@ jobs:
   prepare-env:
     executor: golang
     steps:
-      - setup_remote_docker:
-          version: 20.10.11
       - checkout
       - run:
           name: Install kubebuilder
@@ -165,6 +163,8 @@ jobs:
     docker:
       - image: cimg/go:1.18.4
     steps:
+      - setup_remote_docker:
+          version: 20.10.11
       - run:
           name: Create missing cache directories
           command: |
