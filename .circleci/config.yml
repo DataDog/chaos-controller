@@ -71,9 +71,6 @@ executors:
     <<: *working_directory
     docker:
       - image: bash:5.0
-  ubuntu:
-    machine:
-      image: cimg/go:1.18.4
 
 jobs:
   # prepares the CI environment by checking out the code,
@@ -165,7 +162,8 @@ jobs:
       - run: make test
   # run e2e tests
   e2e-test:
-    executor: ubuntu
+    docker:
+      - image: cimg/go:1.18.4
     steps:
       - run:
           name: Create missing cache directories
