@@ -73,7 +73,7 @@ executors:
       - image: bash:5.0
   ubuntu:
     machine:
-      image: ubuntu-2004:202107-02
+      image: cimg/go:1.18.4
 
 jobs:
   # prepares the CI environment by checking out the code,
@@ -83,6 +83,8 @@ jobs:
   prepare-env:
     executor: golang
     steps:
+      - setup_remote_docker:
+          version: 20.10.11
       - checkout
       - run:
           name: Install kubebuilder
@@ -205,7 +207,6 @@ jobs:
           <<: *working_directory
           environment:
             GOBIN: /home/circleci/.go_workspace/bin
-            TARGETARCH: amd64
           command: make minikube-build
       - run:
           name: Run e2e tests
