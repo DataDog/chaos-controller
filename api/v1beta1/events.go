@@ -60,9 +60,10 @@ const (
 	EventInvalidSpecDisruption          string = "InvalidSpec"
 	// Normal events
 	EventDisruptionChaosPodCreated string = "ChaosPodCreated"
-	EventDisruptionCreated         string = "Created"
 	EventDisruptionFinished        string = "Finished"
+	EventDisruptionCreated         string = "Created"
 	EventDisruptionDurationOver    string = "DurationOver"
+	EventDisruptionGCOver          string = "GCOver"
 	EventDisrupted                 string = "Disrupted"
 )
 
@@ -158,6 +159,12 @@ var Events = map[string]DisruptionEvent{
 	EventDisruptionDurationOver: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventDisruptionDurationOver,
+		OnDisruptionTemplateMessage: "The disruption has lived longer than its specified duration, and will be deleted in %s.",
+		Category:                    DisruptEvent,
+	},
+	EventDisruptionGCOver: {
+		Type:                        corev1.EventTypeWarning,
+		Reason:                      EventDisruptionGCOver,
 		OnDisruptionTemplateMessage: "The disruption has lived %s longer than its specified duration, and will now be deleted.",
 		Category:                    DisruptEvent,
 	},
