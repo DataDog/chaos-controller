@@ -787,9 +787,9 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	if targetsCount < 1 {
 		r.log.Info("ignored targets has reached target count, skipping")
 
-		// we could send this event two times in a row if we don't check for this
+		// If no target was previously found from the selector we don't notify the user of any ignored target, as there is no target anyway
 		if len(matchingTargets) > 0 {
-			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoTarget, "")
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoMoreValidTargets, "")
 		}
 
 		return nil
@@ -849,7 +849,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 	// return an error if the selector returned no targets
 	if len(healthyMatchingTargets) == 0 {
 		r.log.Infow("the given label selector did not return any targets, skipping", "selector", instance.Spec.Selector)
-		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoTarget, "")
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoTargetsFound, "")
 
 		return nil, 0, nil
 	}

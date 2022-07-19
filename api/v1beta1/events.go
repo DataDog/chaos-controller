@@ -56,7 +56,8 @@ const (
 	EventDisruptionCreationFailed       string = "CreateFailed"
 	EventDisruptionStuckOnRemoval       string = "StuckOnRemoval"
 	EventInvalidDisruptionLabelSelector string = "InvalidLabelSelector"
-	EventDisruptionNoTarget             string = "NoTarget"
+	EventDisruptionNoMoreValidTargets   string = "NoMoreTargets"
+	EventDisruptionNoTargetsFound       string = "NoTargetsFound"
 	EventInvalidSpecDisruption          string = "InvalidSpec"
 	// Normal events
 	EventDisruptionChaosPodCreated string = "ChaosPodCreated"
@@ -192,10 +193,16 @@ var Events = map[string]DisruptionEvent{
 		OnDisruptionTemplateMessage: "%s. No targets will be selected.",
 		Category:                    DisruptEvent,
 	},
-	EventDisruptionNoTarget: {
+	EventDisruptionNoMoreValidTargets: {
 		Type:                        corev1.EventTypeWarning,
-		Reason:                      EventDisruptionNoTarget,
+		Reason:                      EventDisruptionNoMoreValidTargets,
 		OnDisruptionTemplateMessage: "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)",
+		Category:                    DisruptEvent,
+	},
+	EventDisruptionNoTargetsFound: {
+		Type:                        corev1.EventTypeWarning,
+		Reason:                      EventDisruptionNoTargetsFound,
+		OnDisruptionTemplateMessage: "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).",
 		Category:                    DisruptEvent,
 	},
 	EventInvalidSpecDisruption: {
