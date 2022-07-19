@@ -29,6 +29,7 @@ controller:
       enabled: false
       url: ""
       headersFilepath: ""
+      headers: []
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true

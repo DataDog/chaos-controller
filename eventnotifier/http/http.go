@@ -62,6 +62,10 @@ func New(commonConfig types.NotifiersCommonConfig, httpConfig NotifierHTTPConfig
 		Timeout: 1 * time.Minute,
 	}
 
+	if httpConfig.URL == "" {
+		return nil, fmt.Errorf("notifier http: missing URL")
+	}
+
 	if httpConfig.HeadersFilepath != "" {
 		headersFile, err := os.Open(filepath.Clean(httpConfig.HeadersFilepath))
 		if err != nil {
