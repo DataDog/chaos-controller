@@ -293,39 +293,85 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 		pods := &corev1.PodList{}
 		listOptions := &client.ListOptions{
 			Namespace: r.ObjectMeta.Namespace,
+			// In an effort not to fill up memory on huge list calls, limiting to 1000 objects per call
+			Limit: 1000,
 		}
-
+		// we grab the number of pods in the specified namespace
 		err := k8sClient.List(context.Background(), pods, listOptions)
 		if err != nil {
 			return false, "", fmt.Errorf("error listing namespace pods: %w", err)
 		}
 
+		for pods.Continue != "" {
+			namespaceCount = namespaceCount + len(pods.Items)
+			listOptions.Continue = pods.Continue
+
+			err = k8sClient.List(context.Background(), pods, listOptions)
+			if err != nil {
+				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			}
+
+		}
+
 		namespaceCount = len(pods.Items)
 
 		listOptions = &client.ListOptions{
-			Namespace:     r.ObjectMeta.Namespace,
 			LabelSelector: labels.SelectorFromValidatedSet(r.Spec.Selector),
 		}
-
+		// we grab the number of targets in the specified namespace
 		err = k8sClient.List(context.Background(), pods, listOptions)
 		if err != nil {
 			return false, "", fmt.Errorf("error listing target pods: %w", err)
 		}
 
+		for pods.Continue != "" {
+			targetCount = targetCount + len(pods.Items)
+			listOptions.Continue = pods.Continue
+
+			err = k8sClient.List(context.Background(), pods, listOptions)
+			if err != nil {
+				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			}
+
+		}
+
 		targetCount = len(pods.Items)
 
-		err = k8sClient.List(context.Background(), pods)
+		// we grab the number of pods in the entire cluster
+		err = k8sClient.List(context.Background(), pods,
+			client.Limit(1000))
 		if err != nil {
 			return false, "", fmt.Errorf("error listing cluster pods: %w", err)
+		}
+
+		for pods.Continue != "" {
+			totalCount = totalCount + len(pods.Items)
+
+			err = k8sClient.List(context.Background(), pods, client.Limit(1000), client.Continue(pods.Continue))
+			if err != nil {
+				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			}
+
 		}
 
 		totalCount = len(pods.Items)
 	} else {
 		nodes := &corev1.NodeList{}
 
-		err := k8sClient.List(context.Background(), nodes)
+		err := k8sClient.List(context.Background(), nodes,
+			client.Limit(1000))
 		if err != nil {
 			return false, "", fmt.Errorf("error listing target pods: %w", err)
+		}
+
+		for nodes.Continue != "" {
+			totalCount = totalCount + len(nodes.Items)
+
+			err = k8sClient.List(context.Background(), nodes, client.Limit(1000), client.Continue(nodes.Continue))
+			if err != nil {
+				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			}
+
 		}
 
 		totalCount = len(nodes.Items)
