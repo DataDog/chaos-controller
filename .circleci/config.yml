@@ -71,6 +71,9 @@ executors:
     <<: *working_directory
     docker:
       - image: bash:5.0
+  ubuntu:
+    machine:
+      image: ubuntu-2004:202107-02
 
 jobs:
   # prepares the CI environment by checking out the code,
@@ -160,11 +163,8 @@ jobs:
       - run: make test
   # run e2e tests
   e2e-test:
-    docker:
-      - image: cimg/go:1.18.4
+    executor: ubuntu
     steps:
-      - setup_remote_docker:
-          version: 20.10.11
       - run:
           name: Create missing cache directories
           command: |
@@ -179,19 +179,19 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y yq
             yq e '.controller.expiredDisruptionGCDelay = "10s"' -i chart/values.yaml
-#      - run:
-#          name: Wait for Docker Daemon to be up and running
-#          command: |
-#            for i in 0..9; do
-#              docker version
-#
-#              ret=$?
-#              if [ $ret -eq 0 ]; then
-#                exit 0
-#              fi
-#
-#              sleep 5
-#            done
+      - run:
+          name: Wait for Docker Daemon to be up and running
+          command: |
+            for i in 0..9; do
+              docker version
+
+              ret=$?
+              if [ $ret -eq 0 ]; then
+                exit 0
+              fi
+
+              sleep 5
+            done
       - run:
           name: Configure Minikube
           command: |
