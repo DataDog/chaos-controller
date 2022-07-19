@@ -87,7 +87,7 @@ minikube-build-injector: injector
 	minikube image load --daemon=false --overwrite=true ${INJECTOR_IMAGE}
 
 minikube-build-handler: handler
-	docker build --build-arg TARGETARCH=amd64 -t ${HANDER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
+	docker build --build-arg TARGETARCH=amd64 -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
 	minikube image load --daemon=false --overwrite=true ${HANDLER_IMAGE}
 
 minikube-build: minikube-build-manager minikube-build-injector minikube-build-handler
