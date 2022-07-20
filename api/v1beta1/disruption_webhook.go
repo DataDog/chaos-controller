@@ -67,13 +67,6 @@ func (r *Disruption) Default() {
 		logger.Infow(fmt.Sprintf("setting default duration of %s in disruption", defaultDuration), "instance", r.Name, "namespace", r.Namespace)
 		r.Spec.Duration = DisruptionDuration(defaultDuration.String())
 	}
-
-	if r.Spec.StaticTargeting == nil {
-		r.Spec.StaticTargeting = func() *bool {
-			b := true
-			return &b
-		}()
-	}
 }
 
 //+kubebuilder:webhook:webhookVersions={v1},path=/validate-chaos-datadoghq-com-v1beta1-disruption,mutating=false,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptions,verbs=create;update;delete,versions=v1beta1,name=vdisruption.kb.io,admissionReviewVersions={v1,v1beta1}
@@ -136,17 +129,12 @@ func (r *Disruption) ValidateCreate() error {
 func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	logger.Debugw("validating updated disruption", "instance", r.Name, "namespace", r.Namespace)
 
-	// remove when StaticTargeting is defaulted to false
-	if r.Spec.StaticTargeting == nil {
-		logger.Debugw("StaticTargeting pointer is nil")
-	}
-
 	// compare old and new disruption hashes and deny any spec changes
 	var oldHash, newHash string
 
 	var err error
 
-	if r.Spec.StaticTargeting == nil || *r.Spec.StaticTargeting {
+	if r.Spec.StaticTargeting {
 		oldHash, err = old.(*Disruption).Spec.Hash()
 		if err != nil {
 			return fmt.Errorf("error getting old disruption hash: %w", err)
@@ -173,7 +161,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	if oldHash != newHash {
 		logger.Errorw("error when comparing disruption spec hashes", "instance", r.Name, "namespace", r.Namespace, "oldHash", oldHash, "newHash", newHash)
 
-		if r.Spec.StaticTargeting == nil || *r.Spec.StaticTargeting {
+		if r.Spec.StaticTargeting {
 			return fmt.Errorf("[StaticTargeting: true] a disruption spec cannot be updated, please delete and recreate it if needed")
 		}
 

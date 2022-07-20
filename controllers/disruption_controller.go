@@ -744,12 +744,7 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 // the chosen targets names will be reflected in the instance status
 // subsequent calls to this function will always return the same targets as the first call
 func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
-	// remove when StaticTargeting is defaulted to false
-	if instance.Spec.StaticTargeting == nil {
-		r.log.Debugw("StaticTargeting pointer is nil")
-	}
-
-	if len(instance.Status.Targets) != 0 && (instance.Spec.StaticTargeting == nil || *instance.Spec.StaticTargeting) {
+	if len(instance.Status.Targets) != 0 && instance.Spec.StaticTargeting {
 		return nil
 	}
 

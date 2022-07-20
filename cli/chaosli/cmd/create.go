@@ -682,14 +682,14 @@ func getLevel() types.DisruptionLevel {
 	return types.DisruptionLevel(level)
 }
 
-func getStaticTargeting() *bool {
+func getStaticTargeting() bool {
 	staticTargetingExplanations := "StaticTargeting means the target selection will only happen once at disruption creation, and will never be run again. New targets will not be targeted. StaticTargeting is temporarily defaulting to true, and will eventually default to false"
 
 	fmt.Println(staticTargetingExplanations)
 
 	a := confirmOption("Would you like to enable StaticTargeting? Blocks new pods from being targeted after the initial injection.", staticTargetingExplanations)
 
-	return &a
+	return a
 }
 
 func getDryRun() bool {
