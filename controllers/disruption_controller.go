@@ -419,7 +419,11 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 			}
 
 			if err = r.createChaosPods(instance, target); err != nil {
-				return fmt.Errorf("error creating chaos pods: %w", err)
+				if !errors.IsNotFound(err) {
+					return fmt.Errorf("error creating chaos pods: %w", err)
+				}
+
+				r.log.Warnw("could not create chaos pod", "err", err)
 			}
 
 			break
