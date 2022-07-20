@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -30,6 +31,7 @@ import (
 var logger *zap.SugaredLogger
 var k8sClient client.Client
 var metricsSink metrics.Sink
+var recorder record.EventRecorder
 var deleteOnly bool
 var enableSafemode bool
 var namespaceThreshold float64
@@ -42,6 +44,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	*logger = *setupWebhookConfig.Logger.With("source", "admission-controller")
 	k8sClient = setupWebhookConfig.Manager.GetClient()
 	metricsSink = setupWebhookConfig.MetricsSink
+	recorder = setupWebhookConfig.Recorder
 	deleteOnly = setupWebhookConfig.DeleteOnlyFlag
 	enableSafemode = setupWebhookConfig.EnableSafemodeFlag
 	namespaceThreshold = float64(setupWebhookConfig.NamespaceThresholdFlag) / 100.0
@@ -122,6 +125,9 @@ func (r *Disruption) ValidateCreate() error {
 	if err := metricsSink.MetricValidationCreated(r.getMetricsTags()); err != nil {
 		logger.Errorw("error sending a metric", "error", err)
 	}
+
+	// send informative event to disruption to broadcast
+	recorder.Event(r, Events[EventDisruptionCreated].Type, EventDisruptionCreated, Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 	return nil
 }

@@ -5,7 +5,12 @@
 package utils
 
 import (
+	"encoding/json"
+	"net/mail"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/eventnotifier/types"
+	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -19,11 +24,24 @@ func BuildBodyMessageFromDisruptionEvent(dis v1beta1.Disruption, event corev1.Ev
 }
 
 // BuildHeaderMessageFromDisruptionEvent Templated header text to send to notifiers
-func BuildHeaderMessageFromDisruptionEvent(dis v1beta1.Disruption, event corev1.Event) string {
-	if event.Type == corev1.EventTypeWarning {
+func BuildHeaderMessageFromDisruptionEvent(dis v1beta1.Disruption, notifType types.NotificationType) string {
+	switch notifType {
+	case types.NotificationInfo:
+		return "Disruption '" + dis.Name + "' received a notification."
+	case types.NotificationSuccess:
+		return "Disruption '" + dis.Name + "' received a recovery notification."
+	default:
 		return "Disruption '" + dis.Name + "' encountered an issue."
 	}
+}
 
-	// We only send out recovery event to notifiers
-	return "Disruption '" + dis.Name + "' received a recovery notification."
+func GetUserInfoFromDisruption(dis v1beta1.Disruption) (*mail.Address, error) {
+	var annotation v1.UserInfo
+
+	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
+	if err != nil {
+		return nil, err
+	}
+
+	return mail.ParseAddress(annotation.Username)
 }
