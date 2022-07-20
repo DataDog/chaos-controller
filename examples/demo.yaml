@@ -58,6 +58,10 @@ spec:
             port: 80
           initialDelaySeconds: 3
           periodSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -84,6 +88,12 @@ spec:
         volumeMounts:
         - mountPath: /mnt/data
           name: data
+        readinessProbe:
+          exec:
+            command:
+              - curl
+              - -vvv
+              - http://demo.chaos-demo.svc.cluster.local:8080
         resources:
           limits:
             cpu: 1
