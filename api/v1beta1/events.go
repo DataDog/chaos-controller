@@ -226,7 +226,7 @@ var Events = map[string]DisruptionEvent{
 	EventDisruptionFinished: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionFinished,
-		OnDisruptionTemplateMessage: "Disruption successfully finished",
+		OnDisruptionTemplateMessage: "Disruption finished",
 		Category:                    DisruptEvent,
 	},
 	EventDisrupted: {
