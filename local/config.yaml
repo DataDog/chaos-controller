@@ -15,6 +15,11 @@ controller:
     slack:
       enabled: false
       tokenFilepath: ""
+    http:
+      enabled: false
+      url: ""
+      headersFilepath: ""
+      headers: []
   deleteOnly: false
   imagePullSecrets: ""
   defaultDuration: 1h
