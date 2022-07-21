@@ -309,16 +309,14 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 		}
 
 		for pods.Continue != "" {
-			namespaceCount = namespaceCount + len(pods.Items)
+			namespaceCount += len(pods.Items)
 			listOptions.Continue = pods.Continue
 
 			err = k8sClient.List(context.Background(), pods, listOptions)
 			if err != nil {
 				return false, "", fmt.Errorf("error listing target pods: %w", err)
 			}
-
 		}
-
 		namespaceCount = len(pods.Items)
 
 		listOptions = &client.ListOptions{
@@ -331,16 +329,14 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 		}
 
 		for pods.Continue != "" {
-			targetCount = targetCount + len(pods.Items)
+			targetCount += len(pods.Items)
 			listOptions.Continue = pods.Continue
 
 			err = k8sClient.List(context.Background(), pods, listOptions)
 			if err != nil {
 				return false, "", fmt.Errorf("error listing target pods: %w", err)
 			}
-
 		}
-
 		targetCount = len(pods.Items)
 
 		// we grab the number of pods in the entire cluster
@@ -351,13 +347,12 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 		}
 
 		for pods.Continue != "" {
-			totalCount = totalCount + len(pods.Items)
+			totalCount += len(pods.Items)
 
 			err = k8sClient.List(context.Background(), pods, client.Limit(1000), client.Continue(pods.Continue))
 			if err != nil {
 				return false, "", fmt.Errorf("error listing target pods: %w", err)
 			}
-
 		}
 
 		totalCount = len(pods.Items)
@@ -371,7 +366,7 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 		}
 
 		for nodes.Continue != "" {
-			totalCount = totalCount + len(nodes.Items)
+			totalCount += len(nodes.Items)
 
 			err = k8sClient.List(context.Background(), nodes, client.Limit(1000), client.Continue(nodes.Continue))
 			if err != nil {
@@ -382,7 +377,6 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 
 		totalCount = len(nodes.Items)
 	}
-
 	userCountVal := 0.0
 
 	userCountInt, isPercent, err := GetIntOrPercentValueSafely(userCount)
