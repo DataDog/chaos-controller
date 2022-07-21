@@ -49,32 +49,31 @@ var rootCmd = &cobra.Command{
 }
 
 var (
-	log                        *zap.SugaredLogger
-	dryRun                     bool
-	ms                         metrics.Sink
-	sink                       string
-	level                      string
-	disruptionTargetContainers []string
-	tmpTargetContainers        []string
-	targetContainers           map[string]string
-	targetPodIP                string
-	disruptionName             string
-	disruptionNamespace        string
-	chaosNamespace             string
-	targetName                 string
-	targetNodeName             string
-	onInit                     bool
-	pulseActiveDuration        time.Duration
-	pulseDormantDuration       time.Duration
-	deadlineRaw                string
-	handlerPID                 uint32
-	configs                    []injector.Config
-	signals                    chan os.Signal
-	injectors                  []injector.Injector
-	readyToInject              bool
-	dnsServer                  string
-	kubeDNS                    string
-	clientset                  *kubernetes.Clientset
+	log                  *zap.SugaredLogger
+	dryRun               bool
+	ms                   metrics.Sink
+	sink                 string
+	level                string
+	tmpTargetContainers  []string
+	targetContainers     map[string]string
+	targetPodIP          string
+	disruptionName       string
+	disruptionNamespace  string
+	chaosNamespace       string
+	targetName           string
+	targetNodeName       string
+	onInit               bool
+	pulseActiveDuration  time.Duration
+	pulseDormantDuration time.Duration
+	deadlineRaw          string
+	handlerPID           uint32
+	configs              []injector.Config
+	signals              chan os.Signal
+	injectors            []injector.Injector
+	readyToInject        bool
+	dnsServer            string
+	kubeDNS              string
+	clientset            *kubernetes.Clientset
 )
 
 func init() {
@@ -336,7 +335,7 @@ func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 				"containerName", configs[i].TargetContainer.Name(),
 				"containerID", configs[i].TargetContainer.ID(),
 				"containerPID", configs[i].TargetContainer.PID(),
-				"error", err,
+				"error", err.Error(),
 			)
 		} else {
 			if sendToMetrics {
@@ -378,6 +377,8 @@ func reinject(pod *v1.Pod, cmdName string) error {
 				continue
 			}
 
+			log.Infow("injector targeting container, old", "containerName", ctnName, "containerID", ctnID, "containerPID", conf.TargetContainer.PID())
+
 			conf.TargetContainer, err = container.New(ctnID)
 			if err != nil {
 				log.Warnw("can't create container object", "error", err)
@@ -385,7 +386,7 @@ func reinject(pod *v1.Pod, cmdName string) error {
 				continue
 			}
 
-			log.Debugw("injector targeting container", "containerID", ctnID, "containerName", conf.TargetContainer.Name())
+			log.Infow("injector targeting container, new", "containerName", ctnName, "containerID", ctnID, "containerPID", conf.TargetContainer.PID())
 
 			// create network namespace and cgroup  manager
 			conf.Netns, conf.Cgroup, err = initManagers(conf.TargetContainer.PID())
@@ -394,7 +395,6 @@ func reinject(pod *v1.Pod, cmdName string) error {
 
 				continue
 			}
-
 			injectors[i].UpdateConfig(conf)
 
 			break
@@ -463,12 +463,9 @@ func waitDisruptionEnd(deadline time.Time) {
 }
 
 func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveDuration time.Duration, pulseDormantDuration time.Duration) error {
-	var channel <-chan watch.Event
-	var sleepDuration time.Duration
-
-	var action func(string, bool, bool) bool
-
 	isInjected := true
+
+	log.Infof("starting watch during disruption")
 
 	// we keep track of resource version in case of errors during watch to pick up where we were before the error
 	resourceVersion, err := getPodResourceVersion()
@@ -476,12 +473,18 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 		return err
 	}
 
+	var sleepDuration time.Duration
+
 	// set sleepDuration to after deadline duration to never go into the pulsing condition
 	if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
 		sleepDuration = pulseActiveDuration
 	} else {
 		sleepDuration = getDuration(deadline) + time.Hour
 	}
+
+	var channel <-chan watch.Event
+
+	var action func(string, bool, bool) bool
 
 	for {
 		if channel == nil {
@@ -510,7 +513,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 				return err
 			}
 		case event, ok := <-channel: // We have changes in the pod watched
-			log.Debugw("Received event during target watch", "type", event.Type)
+			log.Infow("Received event during target watch", "type", event.Type)
 
 			if !ok {
 				channel = nil
@@ -520,9 +523,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 
 			pod, ok := event.Object.(*v1.Pod)
 			if !ok {
-				log.Errorw("watched object received from event is not a pod")
-
-				continue
+				return fmt.Errorf("watched object received from event is not a pod")
 			}
 
 			if event.Type == watch.Bookmark {
@@ -530,6 +531,24 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 			}
 
 			if event.Type != watch.Modified {
+				continue
+			}
+
+			notReady := false
+			// We wait for the pod to have all containers ready.
+			for _, status := range pod.Status.ContainerStatuses {
+				if targetContainers[status.Name] == "" {
+					continue
+				}
+
+				if targetContainers[status.Name] != "" && (status.Started == nil || (status.Started != nil && *status.Started == false)) {
+					notReady = true
+
+					break
+				}
+			}
+
+			if notReady {
 				continue
 			}
 
@@ -542,6 +561,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 				continue
 			}
 
+			log.Infof("Launching reinjection")
 			if err := reinject(pod, commandName); err != nil {
 				return err
 			}
@@ -651,6 +671,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 
 		waitDisruptionEnd(deadline)
+
 		break
 	default:
 		if onInit {
@@ -739,7 +760,13 @@ func getPodResourceVersion() (string, error) {
 func updateTargetContainersAndDetectChange(pod *v1.Pod) (bool, error) {
 	var err error
 
-	targetContainers, err = utils.GetTargetedContainersInfo(pod, disruptionTargetContainers)
+	targetContainerNames := []string{}
+
+	for name := range targetContainers {
+		targetContainerNames = append(targetContainerNames, name)
+	}
+
+	targetContainers, err = utils.GetTargetedContainersInfo(pod, targetContainerNames)
 	if err != nil {
 		log.Warnw("couldn't get containers info. Waiting for next change to reinject", "err", err)
 

@@ -24,6 +24,7 @@ import (
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -42,6 +43,7 @@ type SetupWebhookWithManagerConfig struct {
 	Manager                ctrl.Manager
 	Logger                 *zap.SugaredLogger
 	MetricsSink            metrics.Sink
+	Recorder               record.EventRecorder
 	NamespaceThresholdFlag int
 	ClusterThresholdFlag   int
 	EnableSafemodeFlag     bool
