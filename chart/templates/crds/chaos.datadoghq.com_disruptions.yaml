@@ -4,7 +4,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.7.0
+    controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
   name: disruptions.chaos.datadoghq.com
 spec:
@@ -147,38 +147,16 @@ spec:
                         endpoint:
                           type: string
                         error:
-                          enum:
-                          - OK
-                          - CANCELED
-                          - UNKNOWN
-                          - INVALID_ARGUMENT
-                          - DEADLINE_EXCEEDED
-                          - NOT_FOUND
-                          - ALREADY_EXISTS
-                          - PERMISSION_DENIED
-                          - RESOURCE_EXHAUSTED
-                          - FAILED_PRECONDITION
-                          - ABORTED
-                          - OUT_OF_RANGE
-                          - UNIMPLEMENTED
-                          - INTERNAL
-                          - UNAVAILABLE
-                          - DATA_LOSS
-                          - UNAUTHENTICATED
                           type: string
                         override:
                           type: string
                         queryPercent:
-                          maximum: 100
-                          minimum: 0
                           type: integer
                       required:
                       - endpoint
                       type: object
                     type: array
                   port:
-                    maximum: 65535
-                    minimum: 1
                     type: integer
                 required:
                 - endpoints
@@ -187,10 +165,6 @@ spec:
               level:
                 description: DisruptionLevel represents which level the disruption
                   should be injected at
-                enum:
-                - pod
-                - node
-                - ""
                 type: string
               network:
                 description: NetworkDisruptionSpec represents a network disruption
@@ -201,81 +175,45 @@ spec:
                     items:
                       properties:
                         flow:
-                          enum:
-                          - ingress
-                          - egress
-                          - ""
                           type: string
                         host:
                           type: string
                         port:
-                          maximum: 65535
-                          minimum: 0
                           type: integer
                         protocol:
-                          enum:
-                          - tcp
-                          - udp
-                          - ""
                           type: string
                       type: object
                     nullable: true
                     type: array
                   bandwidthLimit:
-                    minimum: 0
                     type: integer
                   corrupt:
-                    maximum: 100
-                    minimum: 0
                     type: integer
                   delay:
-                    maximum: 60000
-                    minimum: 0
                     type: integer
                   delayJitter:
-                    maximum: 100
-                    minimum: 0
                     type: integer
                   drop:
-                    maximum: 100
-                    minimum: 0
                     type: integer
                   duplicate:
-                    maximum: 100
-                    minimum: 0
                     type: integer
                   flow:
-                    enum:
-                    - egress
-                    - ingress
                     type: string
                   hosts:
                     items:
                       properties:
                         flow:
-                          enum:
-                          - ingress
-                          - egress
-                          - ""
                           type: string
                         host:
                           type: string
                         port:
-                          maximum: 65535
-                          minimum: 0
                           type: integer
                         protocol:
-                          enum:
-                          - tcp
-                          - udp
-                          - ""
                           type: string
                       type: object
                     nullable: true
                     type: array
                   port:
-                    maximum: 65535
-                    minimum: 0
                     nullable: true
                     type: integer
                   services:
@@ -338,12 +276,8 @@ spec:
                           for the countTooLarge safetynet
                         properties:
                           clusterThreshold:
-                            maximum: 100
-                            minimum: 0
                             type: integer
                           namespaceThreshold:
-                            maximum: 100
-                            minimum: 0
                             type: integer
                         type: object
                     type: object
@@ -375,11 +309,6 @@ spec:
               injectionStatus:
                 description: DisruptionInjectionStatus represents the injection status
                   of a disruption
-                enum:
-                - NotInjected
-                - PartiallyInjected
-                - Injected
-                - PreviouslyInjected
                 type: string
               isInjected:
                 type: boolean
