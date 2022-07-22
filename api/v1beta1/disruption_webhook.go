@@ -317,6 +317,7 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 				return false, "", fmt.Errorf("error listing target pods: %w", err)
 			}
 		}
+
 		namespaceCount = len(pods.Items)
 
 		listOptions = &client.ListOptions{
@@ -337,6 +338,7 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 				return false, "", fmt.Errorf("error listing target pods: %w", err)
 			}
 		}
+
 		targetCount = len(pods.Items)
 
 		// we grab the number of pods in the entire cluster
@@ -372,11 +374,11 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 			if err != nil {
 				return false, "", fmt.Errorf("error listing target pods: %w", err)
 			}
-
 		}
 
 		totalCount = len(nodes.Items)
 	}
+	
 	userCountVal := 0.0
 
 	userCountInt, isPercent, err := GetIntOrPercentValueSafely(userCount)
