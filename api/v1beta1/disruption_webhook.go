@@ -378,7 +378,7 @@ func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
 
 		totalCount = len(nodes.Items)
 	}
-	
+
 	userCountVal := 0.0
 
 	userCountInt, isPercent, err := GetIntOrPercentValueSafely(userCount)
