@@ -318,6 +318,10 @@ func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 	errOnInject := false
 
 	for i, inj := range injectors {
+		if configs[i].TargetContainer.Name() == "chaos-handler" && onInit {
+			continue
+		}
+
 		// start injection, do not fatal on error so we keep the pod
 		// running, allowing the cleanup to happen
 		if err := inj.Inject(); err != nil {
@@ -372,12 +376,14 @@ func reinject(pod *v1.Pod, cmdName string) error {
 
 	// We rebuild and update the configuration
 	for ctnName, ctnID := range targetContainers {
+		if ctnName == "chaos-handler" && onInit {
+			continue
+		}
+
 		for i, conf := range configs {
 			if conf.TargetContainer.Name() != ctnName {
 				continue
 			}
-
-			log.Infow("injector targeting container, old", "containerName", ctnName, "containerID", ctnID, "containerPID", conf.TargetContainer.PID())
 
 			conf.TargetContainer, err = container.New(ctnID)
 			if err != nil {
@@ -386,8 +392,6 @@ func reinject(pod *v1.Pod, cmdName string) error {
 				continue
 			}
 
-			log.Infow("injector targeting container, new", "containerName", ctnName, "containerID", ctnID, "containerPID", conf.TargetContainer.PID())
-
 			// create network namespace and cgroup  manager
 			conf.Netns, conf.Cgroup, err = initManagers(conf.TargetContainer.PID())
 			if err != nil {
@@ -395,6 +399,7 @@ func reinject(pod *v1.Pod, cmdName string) error {
 
 				continue
 			}
+
 			injectors[i].UpdateConfig(conf)
 
 			break
@@ -535,13 +540,15 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 			}
 
 			notReady := false
+
 			// We wait for the pod to have all containers ready.
 			for _, status := range pod.Status.ContainerStatuses {
-				if targetContainers[status.Name] == "" {
+				// we don't control the state of the init container
+				if targetContainers[status.Name] == "" || (onInit && status.Name == "chaos-handler") {
 					continue
 				}
 
-				if targetContainers[status.Name] != "" && (status.Started == nil || (status.Started != nil && *status.Started == false)) {
+				if status.Started == nil || (status.Started != nil && *status.Started == false) {
 					notReady = true
 
 					break
@@ -774,7 +781,13 @@ func updateTargetContainersAndDetectChange(pod *v1.Pod) (bool, error) {
 	}
 
 	for ctnName, ctnID := range targetContainers {
+		// we don't check for init containers
+		if ctnName == "chaos-handler" && onInit {
+			continue
+		}
+
 		for _, conf := range configs {
+			// we check if a container has changed IDs, meaning it was restarted
 			if conf.TargetContainer.Name() != ctnName || conf.TargetContainer.ID() == ctnID {
 				continue
 			}

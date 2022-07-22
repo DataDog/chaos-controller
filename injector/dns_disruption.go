@@ -53,18 +53,18 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 		}
 	}
 
-	return DNSDisruptionInjector{
+	return &DNSDisruptionInjector{
 		spec:   spec,
 		config: config,
 	}, err
 }
 
-func (i DNSDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
+func (i *DNSDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
 	return chaostypes.DisruptionKindDNSDisruption
 }
 
 // Inject injects the given dns disruption into the given container
-func (i DNSDisruptionInjector) Inject() error {
+func (i *DNSDisruptionInjector) Inject() error {
 	i.config.Log.Infow("adding dns disruption", "spec", i.spec)
 
 	// get the chaos pod node IP from the environment variable
@@ -155,12 +155,12 @@ func (i DNSDisruptionInjector) Inject() error {
 	return nil
 }
 
-func (i DNSDisruptionInjector) UpdateConfig(config Config) {
+func (i *DNSDisruptionInjector) UpdateConfig(config Config) {
 	i.config.Config = config
 }
 
 // Clean removes the injected disruption from the given container
-func (i DNSDisruptionInjector) Clean() error {
+func (i *DNSDisruptionInjector) Clean() error {
 	// enter target network namespace
 	if err := i.config.Netns.Enter(); err != nil {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
