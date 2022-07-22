@@ -39,6 +39,7 @@ import (
 
 const (
 	readinessProbeFile = "/tmp/readiness_probe"
+	chaosInitContName  = "chaos-handler"
 )
 
 var rootCmd = &cobra.Command{
@@ -219,7 +220,7 @@ func initConfig() {
 			pid := ctn.PID()
 
 			// keep pid for later if this is a chaos handler container
-			if onInit && ctn.Name() == "chaos-handler" {
+			if onInit && ctn.Name() == chaosInitContName {
 				handlerPID = pid
 			}
 
@@ -318,7 +319,7 @@ func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 	errOnInject := false
 
 	for i, inj := range injectors {
-		if configs[i].TargetContainer.Name() == "chaos-handler" && onInit {
+		if configs[i].TargetContainer.Name() == chaosInitContName && onInit {
 			continue
 		}
 
@@ -376,7 +377,7 @@ func reinject(pod *v1.Pod, cmdName string) error {
 
 	// We rebuild and update the configuration
 	for ctnName, ctnID := range targetContainers {
-		if ctnName == "chaos-handler" && onInit {
+		if ctnName == chaosInitContName && onInit {
 			continue
 		}
 
@@ -544,7 +545,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 			// We wait for the pod to have all containers ready.
 			for _, status := range pod.Status.ContainerStatuses {
 				// we don't control the state of the init container
-				if targetContainers[status.Name] == "" || (onInit && status.Name == "chaos-handler") {
+				if targetContainers[status.Name] == "" || (onInit && status.Name == chaosInitContName) {
 					continue
 				}
 
@@ -568,7 +569,6 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 				continue
 			}
 
-			log.Infof("Launching reinjection")
 			if err := reinject(pod, commandName); err != nil {
 				return err
 			}
@@ -782,7 +782,7 @@ func updateTargetContainersAndDetectChange(pod *v1.Pod) (bool, error) {
 
 	for ctnName, ctnID := range targetContainers {
 		// we don't check for init containers
-		if ctnName == "chaos-handler" && onInit {
+		if ctnName == chaosInitContName && onInit {
 			continue
 		}
 
