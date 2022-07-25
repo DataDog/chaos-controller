@@ -443,6 +443,8 @@ var _ = Describe("Disruption Controller", func() {
 
 	Context("On init", func() {
 		BeforeEach(func() {
+			Expect(k8sClient.Create(context.Background(), targetPodOnInit)).To(BeNil())
+
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				StaticTargeting: func() *bool { b := false; return &b }(),
 				DryRun:          true,
@@ -450,7 +452,7 @@ var _ = Describe("Disruption Controller", func() {
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
 				},
-				Selector: map[string]string{"foooninit": "baroninit"},
+				Selector: map[string]string{"foo": "bar"},
 				Duration: "10m",
 				OnInit:   true,
 				Network: &chaosv1beta1.NetworkDisruptionSpec{
@@ -471,13 +473,11 @@ var _ = Describe("Disruption Controller", func() {
 		})
 
 		It("should keep on init target pods throughout reconcile loop", func() {
-			By("Ensuring that the chaos pods have been created")
-			Eventually(func() error { return expectChaosPod(disruption, 1) }, timeout).Should(Succeed())
-
 			By("Ensuring that the on init target is ready and still targeted")
 			Eventually(func() error {
 				podList := corev1.PodList{}
 				labelSelector := disruption.Spec.Selector
+
 				k8sClient.List(context.Background(), &podList, &client.ListOptions{
 					LabelSelector: labelSelector.AsSelector(),
 				})

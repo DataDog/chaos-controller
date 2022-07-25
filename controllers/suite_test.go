@@ -193,7 +193,7 @@ var _ = BeforeSuite(func(done Done) {
 			Name:      "foo5",
 			Namespace: "default",
 			Labels: map[string]string{
-				"foooninit":                           "baroninit",
+				"foo":                                 "bar",
 				"chaos.datadoghq.com/disrupt-on-init": "true",
 			},
 		},
@@ -210,11 +210,10 @@ var _ = BeforeSuite(func(done Done) {
 	By("Creating target pods")
 	Expect(k8sClient.Create(context.Background(), targetPodA)).To(BeNil())
 	Expect(k8sClient.Create(context.Background(), targetPodB)).To(BeNil())
-	Expect(k8sClient.Create(context.Background(), targetPodOnInit)).To(BeNil())
 
 	By("Waiting for target pods to be ready")
 	Eventually(func() error {
-		running, err := podsAreRunning(targetPodA, targetPodB, targetPodOnInit)
+		running, err := podsAreRunning(targetPodA, targetPodB)
 		if err != nil {
 			return err
 		}
