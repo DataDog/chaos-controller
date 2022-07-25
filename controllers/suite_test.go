@@ -49,16 +49,17 @@ const (
 )
 
 var (
-	cfg         *rest.Config
-	k8sClient   client.Client
-	k8sManager  ctrl.Manager
-	testEnv     *envtest.Environment
-	instanceKey types.NamespacedName
-	targetPodA  *corev1.Pod
-	targetPodA2 *corev1.Pod
-	targetPodA3 *corev1.Pod
-	targetPodA4 *corev1.Pod
-	targetPodB  *corev1.Pod
+	cfg             *rest.Config
+	k8sClient       client.Client
+	k8sManager      ctrl.Manager
+	testEnv         *envtest.Environment
+	instanceKey     types.NamespacedName
+	targetPodA      *corev1.Pod
+	targetPodA2     *corev1.Pod
+	targetPodA3     *corev1.Pod
+	targetPodA4     *corev1.Pod
+	targetPodB      *corev1.Pod
+	targetPodOnInit *corev1.Pod
 )
 
 func TestAPIs(t *testing.T) {
@@ -162,6 +163,39 @@ var _ = BeforeSuite(func(done Done) {
 			Namespace: "default",
 			Labels: map[string]string{
 				"foo": "bar",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Image: "k8s.gcr.io/pause:3.4.1",
+					Name:  "ctn1",
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "foo",
+							MountPath: "/mnt/foo",
+						},
+					},
+				},
+			},
+			Volumes: []corev1.Volume{
+				{
+					Name: "foo",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			},
+		},
+	}
+
+	targetPodOnInit = &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo-oninit",
+			Namespace: "default",
+			Labels: map[string]string{
+				"foo-oninit":                          "bar-oninit",
+				"chaos.datadoghq.com/disrupt-on-init": "true",
 			},
 		},
 		Spec: corev1.PodSpec{

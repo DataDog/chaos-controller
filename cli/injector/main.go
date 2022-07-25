@@ -319,7 +319,7 @@ func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 	errOnInject := false
 
 	for i, inj := range injectors {
-		if configs[i].TargetContainer.Name() == chaosInitContName && onInit {
+		if onInit && len(configs) > i && configs[i].TargetContainer != nil && configs[i].TargetContainer.Name() == chaosInitContName {
 			continue
 		}
 
@@ -650,7 +650,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	case !injectSuccess:
 		waitDisruptionEnd(deadline)
 		break
-	case level == "Node":
+	case level == chaostypes.DisruptionLevelNode:
 		// wait for an exit signal, this is a blocking call
 		if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
 			var action func(string, bool, bool) bool
@@ -678,7 +678,6 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 
 		waitDisruptionEnd(deadline)
-
 		break
 	default:
 		if onInit {
