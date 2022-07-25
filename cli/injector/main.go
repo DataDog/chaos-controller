@@ -201,7 +201,7 @@ func initConfig() {
 	case chaostypes.DisruptionLevelPod:
 		// check for container ID flag
 		if len(targetContainers) == 0 {
-			log.Error("--target-container-ids flag must be passed when --level=pod")
+			log.Error("--target-containers flag must be passed when --level=pod")
 
 			return
 		}
