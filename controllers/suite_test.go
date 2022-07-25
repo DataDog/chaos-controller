@@ -188,13 +188,12 @@ var _ = BeforeSuite(func(done Done) {
 			},
 		},
 	}
-
 	targetPodOnInit = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo-oninit",
+			Name:      "foo5",
 			Namespace: "default",
 			Labels: map[string]string{
-				"foo-oninit":                          "bar-oninit",
+				"foooninit":                          "baroninit",
 				"chaos.datadoghq.com/disrupt-on-init": "true",
 			},
 		},
@@ -203,20 +202,6 @@ var _ = BeforeSuite(func(done Done) {
 				{
 					Image: "k8s.gcr.io/pause:3.4.1",
 					Name:  "ctn1",
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "foo",
-							MountPath: "/mnt/foo",
-						},
-					},
-				},
-			},
-			Volumes: []corev1.Volume{
-				{
-					Name: "foo",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
 				},
 			},
 		},

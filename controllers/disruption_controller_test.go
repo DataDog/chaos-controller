@@ -452,8 +452,9 @@ var _ = Describe("Disruption Controller", func() {
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
 				},
-				Selector: map[string]string{"foo-oninit": "bar-oninit"},
+				Selector: map[string]string{"foooninit": "baroninit"},
 				Duration: "10m",
+				OnInit:   true,
 				Network: &chaosv1beta1.NetworkDisruptionSpec{
 					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
 						{
@@ -465,7 +466,6 @@ var _ = Describe("Disruption Controller", func() {
 					Drop: 100,
 				},
 			}
-
 		})
 
 		AfterEach(func() {
@@ -502,35 +502,6 @@ var _ = Describe("Disruption Controller", func() {
 
 				return nil
 			}, timeout).Should(Succeed())
-		})
-
-		It("should scale up then down properly", func() {
-			By("Ensuring that the chaos pods have been created")
-			Eventually(func() error { return expectChaosPod(disruption, 2) }, timeout).Should(Succeed())
-
-			By("Ensuring that the chaos pods have correct number of targeted containers")
-			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
-
-			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 2, 0, 2, 2) }, timeout).Should(Succeed())
-
-			By("Adding an extra target")
-			Expect(k8sClient.Create(context.Background(), targetPodA2)).To(BeNil())
-
-			By("Ensuring an extra chaos pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, 3) }, timeout).Should(Succeed())
-
-			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 3, 0, 3, 3) }, timeout).Should(Succeed())
-
-			By("Deleting the extra target")
-			Expect(k8sClient.Delete(context.Background(), targetPodA2)).To(BeNil())
-
-			By("Ensuring the extra chaos pod has been deleted")
-			Eventually(func() error { return expectChaosPod(disruption, 2) }, timeout).Should(Succeed())
-
-			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 2, 0, 2, 2) }, timeout).Should(Succeed())
 		})
 	})
 
