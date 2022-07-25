@@ -443,8 +443,6 @@ var _ = Describe("Disruption Controller", func() {
 
 	Context("On init", func() {
 		BeforeEach(func() {
-			Expect(k8sClient.Create(context.Background(), targetPodOnInit)).To(BeNil())
-
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				StaticTargeting: func() *bool { b := false; return &b }(),
 				DryRun:          true,
