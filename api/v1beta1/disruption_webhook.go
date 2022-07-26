@@ -240,6 +240,7 @@ func (r *Disruption) getMetricsTags() []string {
 		if lsr.Operator == metav1.LabelSelectorOpIn || lsr.Operator == metav1.LabelSelectorOpNotIn {
 			value = fmt.Sprintf(":%s", lsr.Values)
 		}
+
 		tags = append(tags, fmt.Sprintf("selector:%s:%s%s", lsr.Key, lsr.Operator, value))
 	}
 
