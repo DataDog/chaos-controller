@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/DataDog/chaos-controller/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -232,6 +233,15 @@ func (r *Disruption) getMetricsTags() []string {
 	// add selectors
 	for key, val := range r.Spec.Selector {
 		tags = append(tags, fmt.Sprintf("selector:%s:%s", key, val))
+	}
+
+	for _, lsr := range r.Spec.AdvancedSelector {
+		value := ""
+		if lsr.Operator == metav1.LabelSelectorOpIn || lsr.Operator == metav1.LabelSelectorOpNotIn {
+			value = fmt.Sprintf(":%s", lsr.Values)
+		}
+
+		tags = append(tags, fmt.Sprintf("selector:%s:%s%s", lsr.Key, lsr.Operator, value))
 	}
 
 	// add kinds
