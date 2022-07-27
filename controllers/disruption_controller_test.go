@@ -452,7 +452,7 @@ var _ = Describe("Disruption Controller", func() {
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
 				},
-				Selector: map[string]string{"foo": "bar"},
+				Selector: map[string]string{"foo-foo": "bar-bar"},
 				Duration: "10m",
 				OnInit:   true,
 				Network: &chaosv1beta1.NetworkDisruptionSpec{

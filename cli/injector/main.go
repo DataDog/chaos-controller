@@ -546,6 +546,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 				}
 			}
 		}
+
 		break
 	default:
 		if onInit {

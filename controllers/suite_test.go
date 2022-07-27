@@ -193,7 +193,7 @@ var _ = BeforeSuite(func(done Done) {
 			Name:      "foo5",
 			Namespace: "default",
 			Labels: map[string]string{
-				"foo":                                 "bar",
+				"foo-foo":                             "bar-bar",
 				"chaos.datadoghq.com/disrupt-on-init": "true",
 			},
 		},
