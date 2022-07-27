@@ -308,8 +308,6 @@ func initPodWatch(resourceVersion string) (<-chan watch.Event, error) {
 		AllowWatchBookmarks: true,
 	})
 
-	log.Infow("watching pod containers", "podName", targetName)
-
 	return podWatcher.ResultChan(), err
 }
 
@@ -336,12 +334,7 @@ func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 				}
 			}
 
-			log.Errorw("disruption injection failed",
-				"containerName", configs[i].TargetContainer.Name(),
-				"containerID", configs[i].TargetContainer.ID(),
-				"containerPID", configs[i].TargetContainer.PID(),
-				"error", err.Error(),
-			)
+			log.Errorw("disruption injection failed", "error", err)
 		} else {
 			if sendToMetrics {
 				if reinjection {
@@ -382,7 +375,7 @@ func reinject(pod *v1.Pod, cmdName string) error {
 		}
 
 		for i, conf := range configs {
-			if conf.TargetContainer.Name() != ctnName {
+			if conf.TargetContainer == nil || conf.TargetContainer.Name() != ctnName {
 				continue
 			}
 
@@ -454,129 +447,8 @@ func clean(kind string, sendToMetrics bool, reinjectionClean bool) bool {
 	return !errOnClean
 }
 
-// waitDisruptionEnd wait for either an exit signal or deadline to stop the disruption
-func waitDisruptionEnd(deadline time.Time) {
-	select {
-	case sig := <-signals:
-		log.Infow("an exit signal has been received", "signal", sig.String())
-
-		break
-	case <-time.After(getDuration(deadline)):
-		log.Infow("duration has expired")
-
-		break
-	}
-}
-
-func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveDuration time.Duration, pulseDormantDuration time.Duration) error {
-	isInjected := true
-
-	log.Infof("starting watch during disruption")
-
-	// we keep track of resource version in case of errors during watch to pick up where we were before the error
-	resourceVersion, err := getPodResourceVersion()
-	if err != nil {
-		return err
-	}
-
-	var sleepDuration time.Duration
-
-	// set sleepDuration to after deadline duration to never go into the pulsing condition
-	if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
-		sleepDuration = pulseActiveDuration
-	} else {
-		sleepDuration = getDuration(deadline) + time.Hour
-	}
-
-	var channel <-chan watch.Event
-
-	var action func(string, bool, bool) bool
-
-	for {
-		if channel == nil {
-			if channel, err = initPodWatch(resourceVersion); err != nil {
-				return err
-			}
-		}
-
-		select {
-		case sig := <-signals:
-			log.Infow("an exit signal has been received", "signal", sig.String())
-
-			return nil
-		case <-time.After(getDuration(deadline)):
-			log.Infow("duration has expired")
-
-			return nil
-		// shouldn't go there if it's not a pulsing disruption
-		case <-time.After(sleepDuration):
-			if pulseActiveDuration == 0 || pulseDormantDuration == 0 {
-				break
-			}
-
-			action, err = pulsingInjectAndClean(&isInjected, &sleepDuration, action, commandName)
-			if err != nil {
-				return err
-			}
-		case event, ok := <-channel: // We have changes in the pod watched
-			log.Infow("Received event during target watch", "type", event.Type)
-
-			if !ok {
-				channel = nil
-
-				break
-			}
-
-			pod, ok := event.Object.(*v1.Pod)
-			if !ok {
-				return fmt.Errorf("watched object received from event is not a pod")
-			}
-
-			if event.Type == watch.Bookmark {
-				resourceVersion = pod.ResourceVersion
-			}
-
-			if event.Type != watch.Modified {
-				continue
-			}
-
-			notReady := false
-
-			// We wait for the pod to have all containers ready.
-			for _, status := range pod.Status.ContainerStatuses {
-				// we don't control the state of the init container
-				if targetContainers[status.Name] == "" || (onInit && status.Name == chaosInitContName) {
-					continue
-				}
-
-				if status.Started == nil || (status.Started != nil && *status.Started == false) {
-					notReady = true
-
-					break
-				}
-			}
-
-			if notReady {
-				continue
-			}
-
-			hasChanged, err := updateTargetContainersAndDetectChange(pod)
-			if err != nil {
-				return err
-			}
-
-			if !hasChanged {
-				continue
-			}
-
-			if err := reinject(pod, commandName); err != nil {
-				return err
-			}
-		}
-	}
-}
-
-func pulsingInjectAndClean(isInjected *bool, sleepDuration *time.Duration, action func(string, bool, bool) bool, cmdName string) (func(string, bool, bool) bool, error) {
+// pulse pulse disruptions (injection and cleaning)
+func pulse(isInjected *bool, sleepDuration *time.Duration, action func(string, bool, bool) bool, cmdName string) (func(string, bool, bool) bool, error) {
 	if !*isInjected {
 		action = inject
 		*sleepDuration = pulseDormantDuration
@@ -648,10 +520,8 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 	switch {
 	case !injectSuccess:
-		waitDisruptionEnd(deadline)
 		break
 	case level == chaostypes.DisruptionLevelNode:
-		// wait for an exit signal, this is a blocking call
 		if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
 			var action func(string, bool, bool) bool
 
@@ -669,27 +539,139 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 					return
 				case <-time.After(sleepDuration):
-					action, err = pulsingInjectAndClean(&isInjected, &sleepDuration, action, cmd.Name())
+					action, err = pulse(&isInjected, &sleepDuration, action, cmd.Name())
 					if err != nil {
 						break
 					}
 				}
 			}
 		}
-
-		waitDisruptionEnd(deadline)
-
 		break
 	default:
 		if onInit {
-			log.Warnw("the init container will not get restarted on container restart")
+			log.Debugw("the init container will not get restarted on container restart")
 		}
 
 		// we watch for targeted pod containers restart to reinject
-		if err := watchTargetAndReinject(deadline, cmd.Name(), pulseActiveDuration, pulseDormantDuration); err != nil {
-			log.Errorw("couldn't continue watching targeted pod", "err", err)
+		err := watchTargetAndReinject(deadline, cmd.Name(), pulseActiveDuration, pulseDormantDuration)
 
-			waitDisruptionEnd(deadline)
+		if err != nil {
+			log.Errorw("couldn't continue watching targeted pod", "err", err)
+		} else {
+			return
+		}
+	}
+
+	// wait for an exit signal, this is a blocking call
+	select {
+	case sig := <-signals:
+		log.Infow("an exit signal has been received", "signal", sig.String())
+	case <-time.After(getDuration(deadline)):
+		log.Infow("duration has expired")
+	}
+}
+
+// watchTargetAndReinject handle reinjection of the disruption on container restart
+func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveDuration time.Duration, pulseDormantDuration time.Duration) error {
+	// we keep track of resource version in case of errors during watch to pick up where we were before the error
+	resourceVersion, err := getPodResourceVersion()
+	if err != nil {
+		return err
+	}
+
+	pulseIndexIsInjected := true
+
+	var pulseSleepDuration time.Duration
+
+	// set sleepDuration to after deadline duration to never go into the pulsing condition
+	if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
+		pulseSleepDuration = pulseActiveDuration
+	} else {
+		pulseSleepDuration = getDuration(deadline) + time.Hour
+	}
+
+	var channel <-chan watch.Event
+
+	var actionOnPulse func(string, bool, bool) bool
+
+	for {
+		if channel == nil {
+			if channel, err = initPodWatch(resourceVersion); err != nil {
+				return err
+			}
+		}
+
+		select {
+		case sig := <-signals:
+			log.Infow("an exit signal has been received", "signal", sig.String())
+
+			return nil
+		case <-time.After(getDuration(deadline)):
+			log.Infow("duration has expired")
+
+			return nil
+		// shouldn't go there if it's not a pulsing disruption
+		case <-time.After(pulseSleepDuration):
+			if pulseActiveDuration == 0 || pulseDormantDuration == 0 {
+				break
+			}
+
+			actionOnPulse, err = pulse(&pulseIndexIsInjected, &pulseSleepDuration, actionOnPulse, commandName)
+			if err != nil {
+				return err
+			}
+		case event, ok := <-channel: // We have changes in the pod watched
+			log.Debugw("received event during target watch", "type", event.Type)
+
+			if !ok {
+				channel = nil
+
+				break
+			}
+
+			pod, ok := event.Object.(*v1.Pod)
+			if !ok {
+				return fmt.Errorf("watched object received from event is not a pod")
+			}
+
+			if event.Type == watch.Bookmark {
+				resourceVersion = pod.ResourceVersion
+			}
+
+			if event.Type != watch.Modified {
+				continue
+			}
+
+			notReady := false
+
+			// We wait for the pod to have all containers ready.
+			for _, status := range pod.Status.ContainerStatuses {
+				// we don't control the state of the init container
+				if targetContainers[status.Name] == "" || (onInit && status.Name == chaosInitContName) {
+					continue
+				}
+
+				if status.Started == nil || (status.Started != nil && *status.Started == false) {
+					notReady = true
+
+					break
+				}
+			}
+
+			if notReady {
+				continue
+			}
+
+			hasChanged, err := updateTargetContainersAndDetectChange(pod)
+			if err != nil {
+				return err
+			}
+
+			if hasChanged {
+				if err := reinject(pod, commandName); err != nil {
+					return err
+				}
+			}
 		}
 	}
 }
@@ -764,15 +746,18 @@ func getPodResourceVersion() (string, error) {
 	return target.ResourceVersion, nil
 }
 
+// updateTargetContainersAndDetectChange get all target container infos to determine if one container has changed ID
+// if it has changed ID, the container just restarted and need to be reinjected
 func updateTargetContainersAndDetectChange(pod *v1.Pod) (bool, error) {
 	var err error
 
+	// transform map of targetContainer info (name, id) to only an array of names
 	targetContainerNames := []string{}
-
 	for name := range targetContainers {
 		targetContainerNames = append(targetContainerNames, name)
 	}
 
+	// update map of targetContainer info (name, id)
 	targetContainers, err = utils.GetTargetedContainersInfo(pod, targetContainerNames)
 	if err != nil {
 		log.Warnw("couldn't get containers info. Waiting for next change to reinject", "err", err)
@@ -780,6 +765,7 @@ func updateTargetContainersAndDetectChange(pod *v1.Pod) (bool, error) {
 		return false, err
 	}
 
+	// Determine if reinjection is needed
 	for ctnName, ctnID := range targetContainers {
 		// we don't check for init containers
 		if ctnName == chaosInitContName && onInit {
