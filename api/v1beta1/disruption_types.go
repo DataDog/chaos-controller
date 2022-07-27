@@ -33,13 +33,11 @@ import (
 // +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS}
 // +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS}
 // +ddmark:validation:AtLeastOneOf={DNS,CPUPressure,Network,NodeFailure,ContainerFailure,DiskPressure,GRPC}
+// +ddmark:validation:AtLeastOneOf={Selector,AdvancedSelector}
 type DisruptionSpec struct {
-	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
 	// +nullable
-	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	Selector labels.Set `json:"selector,omitempty"` // label selector
 	// +nullable
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
@@ -50,7 +48,6 @@ type DisruptionSpec struct {
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
-	// +kubebuilder:validation:Enum=pod;node;""
 	// +ddmark:validation:Enum=pod;node;""
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
 	Containers []string                   `json:"containers,omitempty"`
@@ -126,7 +123,6 @@ func (dd DisruptionDuration) Duration() time.Duration {
 type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
 	IsInjected       bool `json:"isInjected,omitempty"`
-	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
 	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
