@@ -438,9 +438,9 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	var err error
 
 	targetNodeName := ""
-	targetChaosPods := []*corev1.Pod{}
 	targetContainers := map[string]string{}
 	targetPodIP := ""
+	targetChaosPods := []*corev1.Pod{}
 
 	// retrieve target
 	switch instance.Spec.Level {

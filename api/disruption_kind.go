@@ -24,13 +24,13 @@ type DisruptionKind interface {
 
 type DisruptionArgs struct {
 	AllowedHosts         []string
+	TargetContainers     map[string]string
 	Level                chaostypes.DisruptionLevel
 	Kind                 chaostypes.DisruptionKindName
+	TargetPodIP          string
 	MetricsSink          string
 	DisruptionName       string
 	DisruptionNamespace  string
-	TargetContainers     map[string]string
-	TargetPodIP          string
 	TargetName           string
 	TargetNodeName       string
 	DNSServer            string

@@ -56,6 +56,7 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 	runningPods := &corev1.PodList{}
 
 	for _, pod := range pods.Items {
+		// check the pod is already a disruption target
 		isAlreadyATarget := false
 
 		for _, target := range instance.Status.Targets {
