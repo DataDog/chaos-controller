@@ -449,12 +449,7 @@ func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Nod
 func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta1.Disruption) error {
 	r.clearExpiredCacheContexts()
 
-	// remove check when StaticTargeting is defaulted to false
-	if instance.Spec.StaticTargeting == nil {
-		r.log.Debugw("StaticTargeting pointer is nil")
-	}
-
-	if instance.Spec.StaticTargeting == nil || *instance.Spec.StaticTargeting {
+	if instance.Spec.StaticTargeting {
 		return nil
 	}
 
