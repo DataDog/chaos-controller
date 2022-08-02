@@ -18,6 +18,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -170,7 +171,7 @@ func (i *networkDisruptionInjector) Inject() error {
 	i.config.Log.Info("editing pod net_cls cgroup to apply a classid to target container packets")
 
 	// write classid to pod net_cls cgroup
-	if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x00020002"); err != nil {
+	if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", types.InjectorCgroupClassID); err != nil {
 		return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 	}
 

@@ -29,7 +29,6 @@ import (
 )
 
 // DisruptionSpec defines the desired state of Disruption
-// +ddmark:validation:ExclusiveFields={Network,DNS}
 // +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS}
 // +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS}
 // +ddmark:validation:AtLeastOneOf={DNS,CPUPressure,Network,NodeFailure,ContainerFailure,DiskPressure,GRPC}
