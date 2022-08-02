@@ -43,6 +43,8 @@ var ErrorMap = map[string]codes.Code{
 
 // GRPCDisruptionSpec represents a gRPC disruption
 type GRPCDisruptionSpec struct {
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	// +ddmark:validation:Minimum=1
 	// +ddmark:validation:Maximum=65535
 	Port      int                  `json:"port"`
@@ -53,10 +55,14 @@ type GRPCDisruptionSpec struct {
 // +ddmark:validation:ExclusiveFields={ErrorToReturn,OverrideToReturn}
 type EndpointAlteration struct {
 	TargetEndpoint string `json:"endpoint"`
+	// +kubebuilder:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
 	// +ddmark:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
 	ErrorToReturn string `json:"error,omitempty"`
+	// +kubebuilder:validation:Enum={}
 	// +ddmark:validation:Enum="{}"
 	OverrideToReturn string `json:"override,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
 	// +ddmark:validation:Minimum=0
 	// +ddmark:validation:Maximum=100
 	QueryPercent int `json:"queryPercent,omitempty"`
