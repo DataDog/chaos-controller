@@ -114,12 +114,18 @@ pre-release-tag:
   <<: *meta-release
   stage: release
   script:
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-staging/${IMAGE} ${TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-prod/${IMAGE} ${TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 020998557671.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} registry.ddbuild.io/${IMAGE} ${TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 486234852809.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth eu.gcr.io/datadog-staging/${IMAGE} ${TAG}
+    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-staging/${IMAGE}:${TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth eu.gcr.io/datadog-prod/${IMAGE} ${TAG}
+    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-prod/${IMAGE}:${TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
+    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth 020998557671.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
+    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 020998557671.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth registry.ddbuild.io/${IMAGE} ${TAG}
+    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} registry.ddbuild.io/${IMAGE}:${TAG}
+    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth 486234852809.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
+    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 486234852809.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG}
   before_script:
     - set -x
     - ./ci/supplement_docker_headers.sh
