@@ -29,17 +29,15 @@ import (
 )
 
 // DisruptionSpec defines the desired state of Disruption
-// +ddmark:validation:ExclusiveFields={Network,DNS}
 // +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS}
 // +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS}
 // +ddmark:validation:AtLeastOneOf={DNS,CPUPressure,Network,NodeFailure,ContainerFailure,DiskPressure,GRPC}
+// +ddmark:validation:AtLeastOneOf={Selector,AdvancedSelector}
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
 	// +nullable
-	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	Selector labels.Set `json:"selector,omitempty"` // label selector
 	// +nullable
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
