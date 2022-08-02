@@ -9,6 +9,7 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm64
   - id: injector
     binary: injector
     main: ./cli/injector
@@ -16,6 +17,7 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm64
   - id: handler
     binary: handler
     main: ./cli/handler
@@ -23,6 +25,7 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm64
   - id: chaosli
     binary: chaosli
     main: ./cli/chaosli

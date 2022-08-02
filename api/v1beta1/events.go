@@ -16,7 +16,7 @@ type DisruptionEventCategory string
 
 const (
 	TargetEvent  DisruptionEventCategory = "TargetEvent"
-	DisruptEvent                         = "DisruptionEvent"
+	DisruptEvent DisruptionEventCategory = "DisruptionEvent"
 )
 
 type DisruptionEvent struct {
@@ -56,12 +56,16 @@ const (
 	EventDisruptionCreationFailed       string = "CreateFailed"
 	EventDisruptionStuckOnRemoval       string = "StuckOnRemoval"
 	EventInvalidDisruptionLabelSelector string = "InvalidLabelSelector"
-	EventDisruptionNoTarget             string = "NoTarget"
+	EventDisruptionNoMoreValidTargets   string = "NoMoreTargets"
+	EventDisruptionNoTargetsFound       string = "NoTargetsFound"
 	EventInvalidSpecDisruption          string = "InvalidSpec"
 	// Normal events
-	EventDisruptionCreated      string = "Created"
-	EventDisruptionDurationOver string = "DurationOver"
-	EventDisrupted              string = "Disrupted"
+	EventDisruptionChaosPodCreated string = "ChaosPodCreated"
+	EventDisruptionFinished        string = "Finished"
+	EventDisruptionCreated         string = "Created"
+	EventDisruptionDurationOver    string = "DurationOver"
+	EventDisruptionGCOver          string = "GCOver"
+	EventDisrupted                 string = "Disrupted"
 )
 
 var Events = map[string]DisruptionEvent{
@@ -156,6 +160,12 @@ var Events = map[string]DisruptionEvent{
 	EventDisruptionDurationOver: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventDisruptionDurationOver,
+		OnDisruptionTemplateMessage: "The disruption has lived longer than its specified duration, and will be deleted in %s.",
+		Category:                    DisruptEvent,
+	},
+	EventDisruptionGCOver: {
+		Type:                        corev1.EventTypeWarning,
+		Reason:                      EventDisruptionGCOver,
 		OnDisruptionTemplateMessage: "The disruption has lived %s longer than its specified duration, and will now be deleted.",
 		Category:                    DisruptEvent,
 	},
@@ -183,10 +193,16 @@ var Events = map[string]DisruptionEvent{
 		OnDisruptionTemplateMessage: "%s. No targets will be selected.",
 		Category:                    DisruptEvent,
 	},
-	EventDisruptionNoTarget: {
+	EventDisruptionNoMoreValidTargets: {
 		Type:                        corev1.EventTypeWarning,
-		Reason:                      EventDisruptionNoTarget,
+		Reason:                      EventDisruptionNoMoreValidTargets,
 		OnDisruptionTemplateMessage: "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)",
+		Category:                    DisruptEvent,
+	},
+	EventDisruptionNoTargetsFound: {
+		Type:                        corev1.EventTypeWarning,
+		Reason:                      EventDisruptionNoTargetsFound,
+		OnDisruptionTemplateMessage: "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).",
 		Category:                    DisruptEvent,
 	},
 	EventInvalidSpecDisruption: {
@@ -195,10 +211,22 @@ var Events = map[string]DisruptionEvent{
 		OnDisruptionTemplateMessage: "%s",
 		Category:                    DisruptEvent,
 	},
+	EventDisruptionChaosPodCreated: {
+		Type:                        corev1.EventTypeNormal,
+		Reason:                      EventDisruptionChaosPodCreated,
+		OnDisruptionTemplateMessage: "Created disruption injection pod for \"%s\"",
+		Category:                    DisruptEvent,
+	},
 	EventDisruptionCreated: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionCreated,
-		OnDisruptionTemplateMessage: "Created disruption injection pod for \"%s\"",
+		OnDisruptionTemplateMessage: "Disruption created",
+		Category:                    DisruptEvent,
+	},
+	EventDisruptionFinished: {
+		Type:                        corev1.EventTypeNormal,
+		Reason:                      EventDisruptionFinished,
+		OnDisruptionTemplateMessage: "Disruption finished",
 		Category:                    DisruptEvent,
 	},
 	EventDisrupted: {
@@ -209,14 +237,9 @@ var Events = map[string]DisruptionEvent{
 	},
 }
 
-func IsDisruptionEvent(event corev1.Event, eventType string) bool {
-	for _, disruptionEvent := range Events {
-		if disruptionEvent.Reason == event.Reason && eventType == event.Type {
-			return true
-		}
-	}
-
-	return false
+// IsNotifiableEvent this event can be broadcasted to our notifiers
+func IsNotifiableEvent(event corev1.Event) bool {
+	return event.Source.Component == SourceDisruptionComponent
 }
 
 func IsRecoveryEvent(event corev1.Event) bool {

@@ -80,24 +80,26 @@ func (n *Notifier) sendEvent(headerText, bodyText string, alertType statsd.Event
 	return n.client.Event(&event)
 }
 
-// NotifyWarning generates a notification for generic k8s Warning events
-func (n *Notifier) NotifyWarning(dis v1beta1.Disruption, event corev1.Event) error {
-	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, event)
+// NotifyWarning generates a notification for generic k8s events
+func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
+	eventType := statsd.Warning
+
+	switch notifType {
+	case types.NotificationInfo:
+		eventType = statsd.Info
+	case types.NotificationSuccess:
+		eventType = statsd.Success
+	case types.NotificationWarning:
+		eventType = statsd.Warning
+	case types.NotificationError:
+		eventType = statsd.Error
+	}
+
+	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, notifType)
 	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, false)
 
 	n.buildDatadogEventTags(dis)
 	n.logger.Debugw("notifier: sending notifier event to datadog", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
 
-	return n.sendEvent(headerText, bodyText, statsd.Warning)
-}
-
-// NotifyRecovery generates a notification for generic k8s Normal events
-func (n *Notifier) NotifyRecovery(dis v1beta1.Disruption, event corev1.Event) error {
-	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, event)
-	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, false)
-
-	n.buildDatadogEventTags(dis)
-	n.logger.Debugw("notifier: sending notifier event to datadog", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
-
-	return n.sendEvent(headerText, bodyText, statsd.Success)
+	return n.sendEvent(headerText, bodyText, eventType)
 }
