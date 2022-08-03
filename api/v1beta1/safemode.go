@@ -23,9 +23,13 @@ type Config struct {
 // CountTooLargeConfig represents the configuration for the countTooLarge safetynet
 // +ddmark:validation:AtLeastOneOf={NamespaceThreshold,ClusterThreshold}
 type CountTooLargeConfig struct {
+    // +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
 	// +ddmark:validation:Minimum=1
 	// +ddmark:validation:Maximum=100
 	NamespaceThreshold int `json:"namespaceThreshold,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
 	// +ddmark:validation:Minimum=1
 	// +ddmark:validation:Maximum=100
 	ClusterThreshold int `json:"clusterThreshold,omitempty"`

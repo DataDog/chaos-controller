@@ -15,6 +15,7 @@ import (
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -114,10 +115,10 @@ var _ = Describe("Failure", func() {
 				config.Level = chaostypes.DisruptionLevelPod
 			})
 			It("creates pod-level iptable filter rules", func() {
-				iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "OUTPUT", types.InjectorCgroupClassID, "udp", "53", "CHAOS-DNS")
 			})
 			It("should write the custom classid to the target net_cls cgroup", func() {
-				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", InjectorDNSCgroupClassID)
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", types.InjectorCgroupClassID)
 			})
 		})
 	})
@@ -148,7 +149,7 @@ var _ = Describe("Failure", func() {
 				config.Level = chaostypes.DisruptionLevelPod
 			})
 			It("should clear the pod-level iptables rules", func() {
-				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "OUTPUT", InjectorDNSCgroupClassID, "udp", "53", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "OUTPUT", types.InjectorCgroupClassID, "udp", "53", "CHAOS-DNS")
 			})
 			It("should reset the custom classid", func() {
 				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", "0x0")
