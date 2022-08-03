@@ -14,7 +14,7 @@ import (
 	k8smarkers "sigs.k8s.io/controller-tools/pkg/markers"
 )
 
-func InitializeMarkers() *k8smarkers.Collector {
+func initializeMarkers() *k8smarkers.Collector {
 	col := &k8smarkers.Collector{}
 	reg := &k8smarkers.Registry{}
 
@@ -37,7 +37,7 @@ func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ..
 }
 
 func ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error) {
-	col := InitializeMarkers()
+	col := initializeMarkers()
 
 	var err error
 
