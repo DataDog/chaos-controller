@@ -7,12 +7,12 @@ package cmd
 
 import (
 	"fmt"
-	"io/fs"
 	"log"
 	"os"
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -21,7 +21,6 @@ import (
 
 // Version will be set with the -ldflags option at compile time
 var Version = "v0"
-var APILibPath = fmt.Sprintf("chaosli-api-lib/v1beta1/%v", Version)
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
@@ -43,12 +42,17 @@ in english for better understanding, and more.`,
 func Execute() {
 	_ = rootCmd.Execute()
 
-	defer cleanupLibrary()
+	defer ddmark.CleanupLibraries()
 }
 
 func init() {
-	cobra.OnInitialize(initConfig, initLibrary)
-
+	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(func() {
+		err := ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, "chaos-api")
+		if err != nil {
+			log.Fatal("didn't init properly")
+		}
+	})
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
@@ -88,72 +92,6 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
-	}
-}
-
-// initLibrary copies the binary-embedded disruption API into a custom folder in GOPATH
-func initLibrary() {
-	if _, isGoInstalled := os.LookupEnv("GOPATH"); !isGoInstalled {
-		log.Fatal("Setup error: please make sure go (1.18 or higher) is installed and the GOPATH is set")
-	}
-
-	if err := os.Setenv("GO111MODULE", "off"); err != nil {
-		log.Fatal(err)
-	}
-
-	folderPath := fmt.Sprintf("%v/src/%v/", os.Getenv("GOPATH"), APILibPath)
-
-	if err := os.MkdirAll(folderPath, 0750); err != nil {
-		log.Fatal(err)
-	}
-
-	err := fs.WalkDir(v1beta1.EmbeddedChaosAPI, ".",
-		// this function is executed for every file found within the binary-embedded folder
-		// it copies every files to another location on the computer through io.Copy
-		func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			if d.IsDir() {
-				return nil
-			}
-
-			fin, err := fs.ReadFile(v1beta1.EmbeddedChaosAPI, path)
-			if err != nil {
-				return err
-			}
-
-			info, err := d.Info()
-			if err != nil {
-				return err
-			}
-
-			fout, err := os.Create(folderPath + info.Name())
-			if err != nil {
-				return err
-			}
-
-			if _, err = fout.Write(fin); err != nil {
-				return err
-			}
-
-			if err = fout.Close(); err != nil {
-				return err
-			}
-
-			return nil
-		})
-
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func cleanupLibrary() {
-	cleanupPath := fmt.Sprintf("%v/src/chaosli-api-lib", os.Getenv("GOPATH"))
-	if os.RemoveAll(cleanupPath) != nil {
-		log.Println("couldn't clean up API located at " + fmt.Sprintf("%v/src/chaosli-api-lib", os.Getenv("GOPATH")))
 	}
 }
 
