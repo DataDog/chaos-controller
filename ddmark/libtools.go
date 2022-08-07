@@ -17,6 +17,7 @@ func thisLibPath(apiname string) string {
 	// path is "$GOPATH/src/ddmark/api-lib/*api-name*"
 	commonLibPath := genCommonLibPath()
 	folderPath := fmt.Sprintf("%v/%v/", commonLibPath, apiname)
+
 	return folderPath
 }
 
@@ -82,7 +83,7 @@ func InitLibrary(embeddedFS embed.FS, apiname string) error {
 		})
 
 	if err != nil {
-		fmt.Errorf("ddmark lib setup error: %w", err)
+		return fmt.Errorf("ddmark lib setup error: %w", err)
 	}
 
 	return nil

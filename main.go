@@ -418,7 +418,10 @@ func main() {
 		for _, contextTuple := range r.CacheContextStore {
 			contextTuple.CancelFunc()
 		}
-		ddmark.CleanupLibraries()
+
+		if err := ddmark.CleanupLibraries(); err != nil {
+			logger.Error(err)
+		}
 	}()
 
 	// +kubebuilder:scaffold:builder

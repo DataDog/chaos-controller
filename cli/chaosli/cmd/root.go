@@ -42,7 +42,11 @@ in english for better understanding, and more.`,
 func Execute() {
 	_ = rootCmd.Execute()
 
-	defer ddmark.CleanupLibraries()
+	defer func() {
+		if err := ddmark.CleanupLibraries(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 }
 
 func init() {

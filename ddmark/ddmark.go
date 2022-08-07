@@ -42,7 +42,9 @@ func ValidateStructMultierror(marshalledStruct interface{}, filePath string, str
 	var err error
 
 	var pkgs []*k8sloader.Package
-	var localStructPkgs []string
+
+	var localStructPkgs = []string{}
+
 	for _, pkg := range structPkgs {
 		localStructPkgs = append(localStructPkgs, thisLibPath(pkg))
 	}
