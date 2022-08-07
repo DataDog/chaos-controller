@@ -10,9 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
-	"log"
-	"os"
 	"time"
 
 	"github.com/DataDog/chaos-controller/ddmark"
@@ -43,8 +40,13 @@ var namespaceThreshold float64
 var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
+var ddmarkLibPath string = "chaos-api"
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
+	if err := ddmark.InitLibrary(EmbeddedChaosAPI, ddmarkLibPath); err != nil {
+		return err
+	}
+
 	logger = &zap.SugaredLogger{}
 	*logger = *setupWebhookConfig.Logger.With("source", "admission-controller")
 	k8sClient = setupWebhookConfig.Manager.GetClient()
@@ -106,12 +108,10 @@ func (r *Disruption) ValidateCreate() error {
 		return err
 	}
 
-	initLibrary()
-	multiErr := ddmark.ValidateStructMultierror(r.Spec, "test_suite", APILibPath)
+	multiErr := ddmark.ValidateStructMultierror(r.Spec, "test_suite", ddmarkLibPath)
 	if multiErr.ErrorOrNil() != nil {
 		return multierror.Prefix(multiErr, "ddmark: ")
 	}
-	cleanupLibrary()
 
 	// handle initial safety nets
 	if enableSafemode {
@@ -400,71 +400,4 @@ func safetyNetNeitherHostNorPort(r Disruption) bool {
 	}
 
 	return false
-}
-
-var APILibPath = fmt.Sprintf("chaosli-api-lib/v1beta1")
-
-func initLibrary() {
-	if _, isGoInstalled := os.LookupEnv("GOPATH"); !isGoInstalled {
-		log.Fatal("Setup error: please make sure go (1.18 or higher) is installed and the GOPATH is set")
-	}
-
-	if err := os.Setenv("GO111MODULE", "off"); err != nil {
-		log.Fatal(err)
-	}
-
-	folderPath := fmt.Sprintf("%v/src/%v/", os.Getenv("GOPATH"), APILibPath)
-
-	if err := os.MkdirAll(folderPath, 0750); err != nil {
-		log.Fatal(err)
-	}
-
-	err := fs.WalkDir(EmbeddedChaosAPI, ".",
-		// this function is executed for every file found within the binary-embedded folder
-		// it copies every files to another location on the computer through io.Copy
-		func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			if d.IsDir() {
-				return nil
-			}
-
-			fin, err := fs.ReadFile(EmbeddedChaosAPI, path)
-			if err != nil {
-				return err
-			}
-
-			info, err := d.Info()
-			if err != nil {
-				return err
-			}
-
-			fout, err := os.Create(folderPath + info.Name())
-			if err != nil {
-				return err
-			}
-
-			if _, err = fout.Write(fin); err != nil {
-				return err
-			}
-
-			if err = fout.Close(); err != nil {
-				return err
-			}
-
-			return nil
-		})
-
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func cleanupLibrary() {
-	cleanupPath := fmt.Sprintf("%v/src/chaosli-api-lib", os.Getenv("GOPATH"))
-	if os.RemoveAll(cleanupPath) != nil {
-		log.Println("couldn't clean up API located at " + fmt.Sprintf("%v/src/chaosli-api-lib", os.Getenv("GOPATH")))
-	}
 }

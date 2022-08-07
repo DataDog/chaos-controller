@@ -24,6 +24,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
 
 	"github.com/fsnotify/fsnotify"
@@ -417,6 +418,7 @@ func main() {
 		for _, contextTuple := range r.CacheContextStore {
 			contextTuple.CancelFunc()
 		}
+		ddmark.CleanupLibraries()
 	}()
 
 	// +kubebuilder:scaffold:builder
