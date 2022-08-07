@@ -42,8 +42,12 @@ func ValidateStructMultierror(marshalledStruct interface{}, filePath string, str
 	var err error
 
 	var pkgs []*k8sloader.Package
+	var localStructPkgs []string
+	for _, pkg := range structPkgs {
+		localStructPkgs = append(localStructPkgs, thisLibPath(pkg))
+	}
 
-	pkgs, err = k8sloader.LoadRoots(structPkgs...)
+	pkgs, err = k8sloader.LoadRoots(localStructPkgs...)
 
 	if err != nil {
 		return multierror.Append(retErr, fmt.Errorf("error loading markers from crd validation: \n\t%v", err))
