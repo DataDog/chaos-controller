@@ -6,6 +6,7 @@
 package ddmark_test
 
 import (
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/hashicorp/go-multierror"
 	. "github.com/onsi/ginkgo"
@@ -309,16 +310,18 @@ func testStructFromYaml(yamlBytes []byte) (ddmark.Teststruct, error) {
 
 func validateString(yamlStr string) *multierror.Error {
 
+	ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, "chaos-api")
 	// Teststruct is a test-dedicated struct built strictly for these integration tests
 	var marshalledStruct ddmark.Teststruct
 
 	marshalledStruct, err := testStructFromYaml([]byte(yamlStr))
 	retErr := ddmark.ValidateStructMultierror(marshalledStruct, "test_suite",
-		"github.com/DataDog/chaos-controller/ddmark",
+		"chaos-api",
 	)
 	if err != nil {
 		retErr = multierror.Append(retErr, err)
 	}
+	ddmark.CleanupLibraries()
 
 	return retErr
 }
