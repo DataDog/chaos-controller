@@ -15,6 +15,14 @@ import (
 )
 
 var _ = Describe("Validation Integration Tests", func() {
+	BeforeSuite(
+		ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, "chaos-api"),
+	)
+
+	AfterSuite(
+		ddmark.CleanupLibraries(),
+	)
+
 	Context("Minimum/Maximum Markers", func() {
 		It("checks out valid values", func() {
 			var minmaxYaml string = `
@@ -309,8 +317,6 @@ func testStructFromYaml(yamlBytes []byte) (ddmark.Teststruct, error) {
 }
 
 func validateString(yamlStr string) *multierror.Error {
-
-	ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, "chaos-api")
 	// Teststruct is a test-dedicated struct built strictly for these integration tests
 	var marshalledStruct ddmark.Teststruct
 
@@ -321,7 +327,6 @@ func validateString(yamlStr string) *multierror.Error {
 	if err != nil {
 		retErr = multierror.Append(retErr, err)
 	}
-	ddmark.CleanupLibraries()
 
 	return retErr
 }

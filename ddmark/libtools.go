@@ -14,7 +14,7 @@ import (
 
 // thisLibPath defines the local path for a given go library
 func thisLibPath(apiname string) string {
-	// path is "$GOPATH/src/ddmark/api-lib/*api-name*"
+	// commonLibPath is "$GOPATH/src/ddmarktemp/*api-name*"
 	commonLibPath := genCommonLibPath()
 	folderPath := fmt.Sprintf("%v/%v/", commonLibPath, apiname)
 
