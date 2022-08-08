@@ -40,7 +40,7 @@ var namespaceThreshold float64
 var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
-var ddmarkLibPath string = "chaos-api"
+var ddmarkLibPath = "chaos-api"
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	if err := ddmark.InitLibrary(EmbeddedChaosAPI, ddmarkLibPath); err != nil {
