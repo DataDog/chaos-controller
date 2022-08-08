@@ -55,7 +55,7 @@ var (
 	ms                   metrics.Sink
 	sink                 string
 	level                string
-	tmpTargetContainers  []string
+	rawTargetContainers  []string // contains name:id containers
 	targetContainers     map[string]string
 	targetPodIP          string
 	disruptionName       string
@@ -90,7 +90,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Enable dry-run mode")
 	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
-	rootCmd.PersistentFlags().StringSliceVar(&tmpTargetContainers, "target-containers", []string{}, "Targeted containers")
+	rootCmd.PersistentFlags().StringSliceVar(&rawTargetContainers, "target-containers", []string{}, "Targeted containers")
 	rootCmd.PersistentFlags().StringVar(&targetPodIP, "target-pod-ip", "", "Pod IP of targeted pod")
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
 	rootCmd.PersistentFlags().DurationVar(&pulseActiveDuration, "pulse-active-duration", time.Duration(0), "Duration of the disruption being active in a pulsing disruption (empty if the disruption is not pulsing)")
@@ -189,7 +189,7 @@ func initConfig() {
 	targetContainers = map[string]string{}
 
 	// parse target-containers
-	for _, cnt := range tmpTargetContainers {
+	for _, cnt := range rawTargetContainers {
 		splittedCntInfo := strings.SplitN(cnt, ";", 2)
 
 		if len(splittedCntInfo) == 2 {
