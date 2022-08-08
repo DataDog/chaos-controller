@@ -446,9 +446,8 @@ var _ = Describe("Disruption Controller", func() {
 			Expect(k8sClient.Create(context.Background(), targetPodOnInit)).To(BeNil())
 
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
-				StaticTargeting: func() *bool { b := false; return &b }(),
-				DryRun:          true,
-				Count:           &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				DryRun: true,
+				Count:  &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
 				},
