@@ -139,10 +139,13 @@ func disruptionSpecFromYaml(yamlBytes []byte) (v1beta1.DisruptionSpec, error) {
 func ValidateDisruptionSpecFromString(yamlStr string) []error {
 	var marshalledStruct v1beta1.DisruptionSpec
 
+	ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, "chaos-api")
 	marshalledStruct, err := disruptionSpecFromYaml([]byte(yamlStr))
 	errorList := ddmark.ValidateStruct(marshalledStruct, "test_suite",
-		"github.com/DataDog/chaos-controller/api/v1beta1",
+		"chaos-api",
 	)
+	ddmark.CleanupLibraries()
+
 	if err != nil {
 		errorList = append(errorList, err)
 	}
