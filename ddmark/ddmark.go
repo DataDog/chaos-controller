@@ -6,6 +6,7 @@
 package ddmark
 
 import (
+	"embed"
 	"fmt"
 	"reflect"
 
@@ -13,6 +14,9 @@ import (
 	k8sloader "sigs.k8s.io/controller-tools/pkg/loader"
 	k8smarkers "sigs.k8s.io/controller-tools/pkg/markers"
 )
+
+//go:embed *
+var EmbeddedDDMarkAPI embed.FS
 
 func initializeMarkers() *k8smarkers.Collector {
 	col := &k8smarkers.Collector{}

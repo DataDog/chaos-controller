@@ -6,7 +6,6 @@
 package ddmark_test
 
 import (
-	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/hashicorp/go-multierror"
 	. "github.com/onsi/ginkgo"
@@ -15,14 +14,6 @@ import (
 )
 
 var _ = Describe("Validation Integration Tests", func() {
-	BeforeSuite(
-		ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, "chaos-api"),
-	)
-
-	AfterSuite(
-		ddmark.CleanupLibraries(),
-	)
-
 	Context("Minimum/Maximum Markers", func() {
 		It("checks out valid values", func() {
 			var minmaxYaml string = `
@@ -321,9 +312,8 @@ func validateString(yamlStr string) *multierror.Error {
 	var marshalledStruct ddmark.Teststruct
 
 	marshalledStruct, err := testStructFromYaml([]byte(yamlStr))
-	retErr := ddmark.ValidateStructMultierror(marshalledStruct, "test_suite",
-		"chaos-api",
-	)
+	retErr := ddmark.ValidateStructMultierror(marshalledStruct, "test_suite", "github.com/DataDog/chaos-controller/ddmark")
+
 	if err != nil {
 		retErr = multierror.Append(retErr, err)
 	}

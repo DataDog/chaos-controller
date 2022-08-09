@@ -24,5 +24,5 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	ddmark.CleanupLibraries()
+	ddmark.CleanupLibraries("github.com/DataDog/chaos-controller/api/v1beta1")
 })

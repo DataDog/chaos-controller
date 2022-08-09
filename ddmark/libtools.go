@@ -89,13 +89,24 @@ func InitLibrary(embeddedFS embed.FS, apiname string) error {
 	return nil
 }
 
-// CleanupLibraries deletes all libraries in the common ddmark lib folder ($GOPATH/src/ddmarktemp)
-func CleanupLibraries() error {
-	folderPath := genCommonLibPath()
+// CleanupLibraries deletes all listed libraries in the common ddmark lib folder ($GOPATH/src/ddmarktemp)
+func CleanupLibraries(pkgs ...string) error {
+	if len(pkgs) == 0 {
+		pkgs = append(pkgs, "")
+	}
 
-	if os.RemoveAll(folderPath) != nil {
-		return fmt.Errorf("ddmark: couldn't clean up API located at " + folderPath)
+	for _, pkg := range pkgs {
+		folderPath := thisLibPath(pkg)
+
+		if os.RemoveAll(folderPath) != nil {
+			return fmt.Errorf("ddmark: couldn't clean up API located at " + folderPath)
+		}
 	}
 
 	return nil
+}
+
+// CleanupLibraries deletes all listed libraries in the common ddmark lib folder ($GOPATH/src/ddmarktemp)
+func CleanupAllLibraries() error {
+	return CleanupLibraries()
 }
