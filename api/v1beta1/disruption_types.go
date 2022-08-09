@@ -418,3 +418,17 @@ func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
 		status.Targets = status.Targets[:len(status.Targets)-1]
 	}
 }
+
+var NonReinjectableDisruptions = []chaostypes.DisruptionKindName{
+	chaostypes.DisruptionKindGRPCDisruption,
+}
+
+func DisruptionIsReinjectable(kind chaostypes.DisruptionKindName) bool {
+	for _, dis := range NonReinjectableDisruptions {
+		if dis == kind {
+			return false
+		}
+	}
+
+	return true
+}

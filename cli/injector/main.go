@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/env"
@@ -521,6 +522,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	switch {
 	case !injectSuccess:
 		break
+	case v1beta1.DisruptionIsReinjectable((chaostypes.DisruptionKindName)(cmd.Name())):
 	case level == chaostypes.DisruptionLevelNode:
 		if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
 			var action func(string, bool, bool) bool
