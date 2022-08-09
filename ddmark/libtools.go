@@ -89,7 +89,7 @@ func InitLibrary(embeddedFS embed.FS, apiname string) error {
 	return nil
 }
 
-// CleanupLibraries deletes all listed libraries in the common ddmark lib folder ($GOPATH/src/ddmarktemp)
+// CleanupLibraries deletes all listed libraries in the common ddmark lib folder ($GOPATH/src/ddmarktemp/pkgs...)
 func CleanupLibraries(pkgs ...string) error {
 	if len(pkgs) == 0 {
 		pkgs = append(pkgs, "")
@@ -106,7 +106,7 @@ func CleanupLibraries(pkgs ...string) error {
 	return nil
 }
 
-// CleanupLibraries deletes all listed libraries in the common ddmark lib folder ($GOPATH/src/ddmarktemp)
+// CleanupAllLibraries deletes the common ddmark lib folder ($GOPATH/src/ddmarktemp)
 func CleanupAllLibraries() error {
 	return CleanupLibraries()
 }
