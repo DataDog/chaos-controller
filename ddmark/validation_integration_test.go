@@ -312,7 +312,7 @@ func validateString(yamlStr string) *multierror.Error {
 	var marshalledStruct ddmark.Teststruct
 
 	marshalledStruct, err := testStructFromYaml([]byte(yamlStr))
-	retErr := ddmark.ValidateStructMultierror(marshalledStruct, "test_suite", "github.com/DataDog/chaos-controller/ddmark")
+	retErr := ddmark.ValidateStructMultierror(marshalledStruct, "test_suite", "ddmark-api")
 
 	if err != nil {
 		retErr = multierror.Append(retErr, err)

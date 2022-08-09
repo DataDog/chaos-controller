@@ -19,9 +19,9 @@ func TestValidationTest(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	ddmark.InitLibrary(ddmark.EmbeddedDDMarkAPI, "github.com/DataDog/chaos-controller/ddmark")
+	ddmark.InitLibrary(ddmark.EmbeddedDDMarkAPI, "ddmark-api")
 })
 
 var _ = AfterSuite(func() {
-	ddmark.CleanupLibraries("github.com/DataDog/chaos-controller/ddmark")
+	ddmark.CleanupLibraries("ddmark-api")
 })

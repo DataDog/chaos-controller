@@ -140,7 +140,7 @@ func ValidateDisruptionSpecFromString(yamlStr string) []error {
 	var marshalledStruct v1beta1.DisruptionSpec
 
 	marshalledStruct, err := disruptionSpecFromYaml([]byte(yamlStr))
-	errorList := ddmark.ValidateStruct(marshalledStruct, "test_suite", "github.com/DataDog/chaos-controller/api/v1beta1")
+	errorList := ddmark.ValidateStruct(marshalledStruct, "test_suite", "chaos-api")
 
 	if err != nil {
 		errorList = append(errorList, err)

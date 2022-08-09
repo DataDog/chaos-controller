@@ -20,9 +20,9 @@ func TestApi(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, "github.com/DataDog/chaos-controller/api/v1beta1")
+	ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, "chaos-api")
 })
 
 var _ = AfterSuite(func() {
-	ddmark.CleanupLibraries("github.com/DataDog/chaos-controller/api/v1beta1")
+	ddmark.CleanupLibraries("chaos-api")
 })
