@@ -13,6 +13,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/DataDog/chaos-controller/types"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -52,7 +53,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	cobra.OnInitialize(func() {
-		err := ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, "chaos-api")
+		err := ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, types.DDMarkChaoslibPrefix)
 		if err != nil {
 			log.Fatal("didn't init properly")
 		}

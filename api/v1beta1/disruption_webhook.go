@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -40,10 +41,9 @@ var namespaceThreshold float64
 var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
-var ddmarkLibPath = "chaos-api"
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
-	if err := ddmark.InitLibrary(EmbeddedChaosAPI, ddmarkLibPath); err != nil {
+	if err := ddmark.InitLibrary(EmbeddedChaosAPI, types.DDMarkChaoslibPrefix); err != nil {
 		return err
 	}
 
@@ -108,7 +108,7 @@ func (r *Disruption) ValidateCreate() error {
 		return err
 	}
 
-	multiErr := ddmark.ValidateStructMultierror(r.Spec, "validation_webhook", ddmarkLibPath)
+	multiErr := ddmark.ValidateStructMultierror(r.Spec, "validation_webhook", types.DDMarkChaoslibPrefix)
 	if multiErr.ErrorOrNil() != nil {
 		return multierror.Prefix(multiErr, "ddmark: ")
 	}
