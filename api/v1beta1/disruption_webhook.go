@@ -108,7 +108,7 @@ func (r *Disruption) ValidateCreate() error {
 		return err
 	}
 
-	multiErr := ddmark.ValidateStructMultierror(r.Spec, "test_suite", ddmarkLibPath)
+	multiErr := ddmark.ValidateStructMultierror(r.Spec, "validation_webhook", ddmarkLibPath)
 	if multiErr.ErrorOrNil() != nil {
 		return multierror.Prefix(multiErr, "ddmark: ")
 	}
