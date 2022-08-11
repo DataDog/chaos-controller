@@ -10,6 +10,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	ddmark "github.com/DataDog/chaos-controller/ddmark"
+	"github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
 )
@@ -47,7 +48,7 @@ func ValidateDisruption(path string) error {
 func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
 	var retErr *multierror.Error
 
-	retErr = multierror.Append(retErr, multierror.Prefix(ddmark.ValidateStructMultierror(disruption, rootPath, APILibPath), "ddmark:  "))
+	retErr = multierror.Append(retErr, multierror.Prefix(ddmark.ValidateStructMultierror(disruption, rootPath, types.DDMarkChaoslibPrefix), "ddmark:  "))
 
 	if err := disruption.Spec.Validate(); err != nil {
 		retErr = multierror.Append(retErr, multierror.Prefix(err, "validate:"))

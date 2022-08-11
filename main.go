@@ -24,6 +24,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
 
 	"github.com/fsnotify/fsnotify"
@@ -416,6 +417,10 @@ func main() {
 	defer func() {
 		for _, contextTuple := range r.CacheContextStore {
 			contextTuple.CancelFunc()
+		}
+
+		if err := ddmark.CleanupLibraries(); err != nil {
+			logger.Error(err)
 		}
 	}()
 

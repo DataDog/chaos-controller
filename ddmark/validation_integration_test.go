@@ -308,14 +308,12 @@ func testStructFromYaml(yamlBytes []byte) (ddmark.Teststruct, error) {
 }
 
 func validateString(yamlStr string) *multierror.Error {
-
 	// Teststruct is a test-dedicated struct built strictly for these integration tests
 	var marshalledStruct ddmark.Teststruct
 
 	marshalledStruct, err := testStructFromYaml([]byte(yamlStr))
-	retErr := ddmark.ValidateStructMultierror(marshalledStruct, "test_suite",
-		"github.com/DataDog/chaos-controller/ddmark",
-	)
+	retErr := ddmark.ValidateStructMultierror(marshalledStruct, "test_suite", "ddmark-api")
+
 	if err != nil {
 		retErr = multierror.Append(retErr, err)
 	}

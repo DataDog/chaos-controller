@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -41,6 +43,10 @@ var handlerEnabled bool
 var defaultDuration time.Duration
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
+	if err := ddmark.InitLibrary(EmbeddedChaosAPI, types.DDMarkChaoslibPrefix); err != nil {
+		return err
+	}
+
 	logger = &zap.SugaredLogger{}
 	*logger = *setupWebhookConfig.Logger.With("source", "admission-controller")
 	k8sClient = setupWebhookConfig.Manager.GetClient()
@@ -100,6 +106,11 @@ func (r *Disruption) ValidateCreate() error {
 		}
 
 		return err
+	}
+
+	multiErr := ddmark.ValidateStructMultierror(r.Spec, "validation_webhook", types.DDMarkChaoslibPrefix)
+	if multiErr.ErrorOrNil() != nil {
+		return multierror.Prefix(multiErr, "ddmark: ")
 	}
 
 	// handle initial safety nets

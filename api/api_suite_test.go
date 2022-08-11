@@ -8,6 +8,9 @@ package api_test
 import (
 	"testing"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -16,3 +19,11 @@ func TestApi(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Api Suite")
 }
+
+var _ = BeforeSuite(func() {
+	ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, types.DDMarkChaoslibPrefix)
+})
+
+var _ = AfterSuite(func() {
+	ddmark.CleanupLibraries(types.DDMarkChaoslibPrefix)
+})
