@@ -383,10 +383,6 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 // startInjection creates non-existing chaos pod for the given disruption
 func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption) error {
-	if len(instance.Status.Targets) > 0 {
-		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
-	}
-
 	// chaosPodsMap is used to check if a target's chaos pods already exist or not
 	chaosPodsMap := make(map[string]map[string]bool, len(instance.Status.Targets))
 
@@ -406,6 +402,10 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		} else {
 			chaosPodsMap[chaosPod.Labels[chaostypes.TargetLabel]][chaosPod.Labels[chaostypes.DisruptionKindLabel]] = true
 		}
+	}
+
+	if len(instance.Status.Targets) > 0 && (len(instance.Status.Targets) != len(chaosPodsMap)) {
+		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
 	}
 
 	// iterate through target + existing disruption kind -- to ensure all chaos pods exist
