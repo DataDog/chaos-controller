@@ -806,6 +806,8 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	} else if cTargetsCount > dTargetsCount {
 		// too many targets: remove random extra targets
 		instance.Status.RemoveTargets(cTargetsCount - dTargetsCount)
+	} else {
+		return nil
 	}
 
 	r.log.Infow("updating instance status with targets selected for injection")
