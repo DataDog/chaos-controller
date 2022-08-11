@@ -346,7 +346,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 			// consider the disruption as not fully injected if at least one not ready pod is found
 			if !podReady {
-				r.log.Infow("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
+				r.log.Debugw("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
 			}
 		}
 
@@ -623,6 +623,7 @@ func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
 //   - the pod is pending
 //   - the pod is succeeded (exit code == 0)
 //   - the pod target is not healthy (not existing anymore for instance)
+//
 // if a finalizer can't be removed because none of the conditions above are fulfilled, the instance is flagged
 // as stuck on removal and the pod finalizer won't be removed unless someone does it manually
 // the pod target will be moved to ignored targets, so it is not picked up by the next reconcile loop
