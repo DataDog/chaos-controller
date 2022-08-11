@@ -14,7 +14,7 @@ import (
 func NewZapLogger() (*zap.SugaredLogger, error) {
 	// configure logger
 	loggerConfig := zap.NewProductionConfig()
-	loggerConfig.Level.SetLevel(zapcore.InfoLevel)
+	loggerConfig.Level.SetLevel(zapcore.DebugLevel)
 	loggerConfig.EncoderConfig.MessageKey = "message"
 	loggerConfig.EncoderConfig.EncodeTime = zapcore.EpochMillisTimeEncoder
 
