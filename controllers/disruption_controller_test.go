@@ -23,6 +23,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -486,22 +487,22 @@ var _ = Describe("Disruption Controller", func() {
 	// the feature is broken now that we moved all chaos pods into the same namespace
 	// because we had to remove the owner reference on those pods, meaning that
 	// the reconcile loop does not automatically trigger anymore on chaos pods events like a delete
-	// Context("manually delete a chaos pod", func() {
-	// 	It("should properly handle the chaos pod finalizer", func() {
-	// 		By("Ensuring that the chaos pods have been created")
-	// 		Eventually(func() error { return expectChaosPod(disruption, 5) }, timeout).Should(Succeed())
+	FContext("manually delete a chaos pod", func() {
+		It("should properly handle the chaos pod finalizer", func() {
+			By("Ensuring that the chaos pods have been created")
+			Eventually(func() error { return expectChaosPod(disruption, 4) }, timeout).Should(Succeed())
 
-	// 		By("Listing chaos pods to pick one to delete")
-	// 		chaosPods, err := listChaosPods(disruption)
-	// 		Expect(err).To(BeNil())
-	// 		chaosPod := chaosPods.Items[0]
-	// 		chaosPodKey := types.NamespacedName{Namespace: chaosPod.Namespace, Name: chaosPod.Name}
+			By("Listing chaos pods to pick one to delete")
+			chaosPods, err := listChaosPods(disruption)
+			Expect(err).To(BeNil())
+			chaosPod := chaosPods.Items[0]
+			chaosPodKey := types.NamespacedName{Namespace: chaosPod.Namespace, Name: chaosPod.Name}
 
-	// 		By("Deleting one of the chaos pod")
-	// 		Expect(k8sClient.Delete(context.Background(), &chaosPod)).To(BeNil())
+			By("Deleting one of the chaos pod")
+			Expect(k8sClient.Delete(context.Background(), &chaosPod)).To(BeNil())
 
-	// 		By("Waiting for the chaos pod finalizer to be removed")
-	// 		Eventually(func() error { return k8sClient.Get(context.Background(), chaosPodKey, &chaosPod) }, timeout).Should(MatchError(fmt.Sprintf("Pod \"%s\" not found", chaosPod.Name)))
-	// 	})
-	// })
+			By("Waiting for the chaos pod finalizer to be removed")
+			Eventually(func() error { return k8sClient.Get(context.Background(), chaosPodKey, &chaosPod) }, timeout).Should(MatchError(fmt.Sprintf("Pod \"%s\" not found", chaosPod.Name)))
+		})
+	})
 })
