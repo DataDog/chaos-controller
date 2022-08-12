@@ -804,18 +804,15 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	cTargetsCount := len(instance.Status.Targets)
 	dTargetsCount := targetsCount
 
-	switch {
-	case cTargetsCount < dTargetsCount:
+	if cTargetsCount < dTargetsCount {
 		// not enough targets: pick more targets from eligibleTargets
 		instance.Status.AddTargets(dTargetsCount-cTargetsCount, eligibleTargets)
-	case cTargetsCount > dTargetsCount:
+	} else if cTargetsCount > dTargetsCount {
 		// too many targets: remove random extra targets
 		instance.Status.RemoveTargets(cTargetsCount - dTargetsCount)
-	default:
-		return nil
 	}
 
-	r.log.Infow("updating instance status with targets selected for injection")
+	r.log.Debugw("updating instance status with targets selected for injection")
 
 	instance.Status.SelectedTargetsCount = len(instance.Status.Targets)
 	instance.Status.IgnoredTargetsCount = totalAvailableTargetsCount - targetsCount
