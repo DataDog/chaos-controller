@@ -128,7 +128,7 @@ func expectChaosInjectors(instance *chaosv1beta1.Disruption, count int) error {
 	return nil
 }
 
-func expectDisruptionStatus(instance *chaosv1beta1.Disruption, desiredTargetsCount int, ignoredTargetsCount int, selectedTargetsCount int, injectedTargetsCount int) error {
+func expectDisruptionStatus(desiredTargetsCount int, ignoredTargetsCount int, selectedTargetsCount int, injectedTargetsCount int) error {
 	updatedInstance := &chaosv1beta1.Disruption{}
 
 	if err := k8sClient.Get(context.Background(), instanceKey, updatedInstance); err != nil {
@@ -136,16 +136,16 @@ func expectDisruptionStatus(instance *chaosv1beta1.Disruption, desiredTargetsCou
 	}
 
 	if desiredTargetsCount != updatedInstance.Status.DesiredTargetsCount {
-		return fmt.Errorf("incorred number of desired targets: expected %d, found %d", desiredTargetsCount, updatedInstance.Status.DesiredTargetsCount)
+		return fmt.Errorf("incorrect number of desired targets: expected %d, found %d", desiredTargetsCount, updatedInstance.Status.DesiredTargetsCount)
 	}
 	if ignoredTargetsCount != updatedInstance.Status.IgnoredTargetsCount {
-		return fmt.Errorf("incorred number of ignored targets: expected %d, found %d", ignoredTargetsCount, updatedInstance.Status.IgnoredTargetsCount)
+		return fmt.Errorf("incorrect number of ignored targets: expected %d, found %d", ignoredTargetsCount, updatedInstance.Status.IgnoredTargetsCount)
 	}
 	if injectedTargetsCount != updatedInstance.Status.InjectedTargetsCount {
-		return fmt.Errorf("incorred number of injected targets: expected %d, found %d", injectedTargetsCount, updatedInstance.Status.InjectedTargetsCount)
+		return fmt.Errorf("incorrect number of injected targets: expected %d, found %d", injectedTargetsCount, updatedInstance.Status.InjectedTargetsCount)
 	}
 	if selectedTargetsCount != updatedInstance.Status.SelectedTargetsCount {
-		return fmt.Errorf("incorred number of selected targets: expected %d, found %d", selectedTargetsCount, updatedInstance.Status.SelectedTargetsCount)
+		return fmt.Errorf("incorrect number of selected targets: expected %d, found %d", selectedTargetsCount, updatedInstance.Status.SelectedTargetsCount)
 	}
 
 	return nil
@@ -414,7 +414,7 @@ var _ = Describe("Disruption Controller", func() {
 			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
 
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 2, 0, 2, 2) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(2, 0, 2, 2) }, timeout).Should(Succeed())
 
 			By("Adding an extra target")
 			Expect(k8sClient.Create(context.Background(), targetPodA2)).To(BeNil())
@@ -423,7 +423,7 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return expectChaosPod(disruption, 3) }, timeout).Should(Succeed())
 
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 3, 0, 3, 3) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(3, 0, 3, 3) }, timeout).Should(Succeed())
 
 			By("Deleting the extra target")
 			Expect(k8sClient.Delete(context.Background(), targetPodA2)).To(BeNil())
@@ -432,7 +432,7 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return expectChaosPod(disruption, 2) }, timeout).Should(Succeed())
 
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 2, 0, 2, 2) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(2, 0, 2, 2) }, timeout).Should(Succeed())
 		})
 	})
 
@@ -464,7 +464,7 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should scale up then down with the right number of targets count", func() {
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 3, 0, 2, 2) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(3, 0, 2, 2) }, timeout).Should(Succeed())
 
 			By("Adding an extra target")
 			Expect(k8sClient.Create(context.Background(), targetPodA3)).To(BeNil())
@@ -473,7 +473,7 @@ var _ = Describe("Disruption Controller", func() {
 			Expect(k8sClient.Create(context.Background(), targetPodA4)).To(BeNil())
 
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 3, 1, 3, 3) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(3, 1, 3, 3) }, timeout).Should(Succeed())
 
 			By("Deleting the extra target")
 			Expect(k8sClient.Delete(context.Background(), targetPodA3)).To(BeNil())
