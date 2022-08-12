@@ -165,7 +165,7 @@ func (i *networkDisruptionInjector) Inject() error {
 			return fmt.Errorf("error applying tc operations: %w", err)
 		}
 
-		i.config.Log.Info("operations applied successfully")
+		i.config.Log.Debug("operations applied successfully")
 	}
 
 	i.config.Log.Info("editing pod net_cls cgroup to apply a classid to target container packets")
@@ -230,28 +230,29 @@ func (i *networkDisruptionInjector) Clean() error {
 
 // applyOperations applies the added operations by building a tc tree
 // Here's what happen on tc side:
-//  - a first prio qdisc will be created and attached to root
-//    - it'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol
-//  - a second prio qdisc will be created and attached to the first one
-//    - it'll be used to apply the second filter, filtering on packet classid to identify packets coming from the targeted process
-//  - operations will be chained to the second band of the second prio qdisc
-//  - a cgroup filter will be created to classify packets according to their classid (if any)
-//  - a filter will be created to redirect traffic related to the specified host(s) through the last prio band
-//    - if no host, port or protocol is specified, a filter redirecting all the traffic (0.0.0.0/0) to the disrupted band will be created
-//  - a last filter will be created to redirect traffic related to the local node through a not disrupted band
+//   - a first prio qdisc will be created and attached to root
+//   - it'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol
+//   - a second prio qdisc will be created and attached to the first one
+//   - it'll be used to apply the second filter, filtering on packet classid to identify packets coming from the targeted process
+//   - operations will be chained to the second band of the second prio qdisc
+//   - a cgroup filter will be created to classify packets according to their classid (if any)
+//   - a filter will be created to redirect traffic related to the specified host(s) through the last prio band
+//   - if no host, port or protocol is specified, a filter redirecting all the traffic (0.0.0.0/0) to the disrupted band will be created
+//   - a last filter will be created to redirect traffic related to the local node through a not disrupted band
 //
 // Here's the tc tree representation:
 // root (1:) <-- prio qdisc with 4 bands with a filter classifying packets matching the given dst ip, src/dst ports and protocol with class 1:4
-//   |- (1:1) <-- first band
-//   |- (1:2) <-- second band
-//   |- (1:3) <-- third band
-//   |- (1:4) <-- fourth band
-//     |- (2:) <-- prio qdisc with 2 bands with a cgroup filter to classify packets according to their classid (packets with classid 2:2 will be affected by operations)
-//       |- (2:1) <-- first band
-//       |- (2:2) <-- second band
-//         |- (3:) <-- first operation
-//           |- (4:) <-- second operation
-//             ...
+//
+//	|- (1:1) <-- first band
+//	|- (1:2) <-- second band
+//	|- (1:3) <-- third band
+//	|- (1:4) <-- fourth band
+//	  |- (2:) <-- prio qdisc with 2 bands with a cgroup filter to classify packets according to their classid (packets with classid 2:2 will be affected by operations)
+//	    |- (2:1) <-- first band
+//	    |- (2:2) <-- second band
+//	      |- (3:) <-- first operation
+//	        |- (4:) <-- second operation
+//	          ...
 func (i *networkDisruptionInjector) applyOperations() error {
 	i.tcFilterPriority = tcPriority
 
@@ -808,6 +809,8 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 	// build the watchers to handle changes in services and pod endpoints
 	serviceWatchers := []serviceWatcher{}
 
+	//TODO log the service resolution
+
 	for _, serviceSpec := range i.spec.Services {
 		// retrieve serviceSpec
 		k8sService, err := i.config.K8sClient.CoreV1().Services(serviceSpec.Namespace).Get(context.Background(), serviceSpec.Name, metav1.GetOptions{})
@@ -840,6 +843,7 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 
 // addFiltersForHosts creates tc filters on given interfaces for given hosts classifying matching packets in the given flowid
 func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, hosts []v1beta1.NetworkDisruptionHostSpec, flowid string) error {
+	// TODO log the set of all ips here? Or maybe ip per host
 	for _, host := range hosts {
 		// resolve given hosts if needed
 		ips, err := resolveHost(i.config.DNSClient, host.Host)
