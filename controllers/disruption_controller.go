@@ -726,7 +726,11 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 		controllerutil.RemoveFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer)
 
 		if err := r.Client.Update(context.Background(), &chaosPod); err != nil {
-			r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+			if strings.Contains(err.Error(), "latest version and try again") {
+				r.log.Debugw("cannot remove chaos pod finalizer, need to re-reconcile", "error", err)
+			} else {
+				r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+			}
 
 			return
 		}
