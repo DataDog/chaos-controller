@@ -1,5 +1,4 @@
-ARG TARGETARCH
-FROM ${TARGETARCH}/golang:1.18-alpine
+FROM golang:1.18-alpine
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
