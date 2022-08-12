@@ -809,8 +809,6 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 	// build the watchers to handle changes in services and pod endpoints
 	serviceWatchers := []serviceWatcher{}
 
-	//TODO log the service resolution
-
 	for _, serviceSpec := range i.spec.Services {
 		// retrieve serviceSpec
 		k8sService, err := i.config.K8sClient.CoreV1().Services(serviceSpec.Namespace).Get(context.Background(), serviceSpec.Name, metav1.GetOptions{})
@@ -843,13 +841,14 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 
 // addFiltersForHosts creates tc filters on given interfaces for given hosts classifying matching packets in the given flowid
 func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, hosts []v1beta1.NetworkDisruptionHostSpec, flowid string) error {
-	// TODO log the set of all ips here? Or maybe ip per host
 	for _, host := range hosts {
 		// resolve given hosts if needed
 		ips, err := resolveHost(i.config.DNSClient, host.Host)
 		if err != nil {
 			return fmt.Errorf("error resolving given host %s: %w", host.Host, err)
 		}
+
+		i.config.Log.Infof("resolved %s as %s", host.Host, ips)
 
 		for _, ip := range ips {
 			// handle flow direction
