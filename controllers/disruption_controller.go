@@ -804,13 +804,14 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	cTargetsCount := len(instance.Status.Targets)
 	dTargetsCount := targetsCount
 
-	if cTargetsCount < dTargetsCount {
+	switch {
+	case cTargetsCount < dTargetsCount:
 		// not enough targets: pick more targets from eligibleTargets
 		instance.Status.AddTargets(dTargetsCount-cTargetsCount, eligibleTargets)
-	} else if cTargetsCount > dTargetsCount {
+	case cTargetsCount > dTargetsCount:
 		// too many targets: remove random extra targets
 		instance.Status.RemoveTargets(cTargetsCount - dTargetsCount)
-	} else {
+	default:
 		return nil
 	}
 
