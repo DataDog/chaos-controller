@@ -487,7 +487,7 @@ var _ = Describe("Disruption Controller", func() {
 	// the feature is broken now that we moved all chaos pods into the same namespace
 	// because we had to remove the owner reference on those pods, meaning that
 	// the reconcile loop does not automatically trigger anymore on chaos pods events like a delete
-	FContext("manually delete a chaos pod", func() {
+	Context("manually delete a chaos pod", func() {
 		It("should properly handle the chaos pod finalizer", func() {
 			By("Ensuring that the chaos pods have been created")
 			Eventually(func() error { return expectChaosPod(disruption, 4) }, timeout).Should(Succeed())
