@@ -1,11 +1,12 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2022 Datadog, Inc.
 
 package ddmark
 
 import (
+	"embed"
 	"fmt"
 	"reflect"
 
@@ -14,7 +15,11 @@ import (
 	k8smarkers "sigs.k8s.io/controller-tools/pkg/markers"
 )
 
-func InitializeMarkers() *k8smarkers.Collector {
+//go:embed validation_teststruct.go
+// EmbeddedDDMarkAPI includes the teststruct so it can be statically exported for ddmark testing
+var EmbeddedDDMarkAPI embed.FS
+
+func initializeMarkers() *k8smarkers.Collector {
 	col := &k8smarkers.Collector{}
 	reg := &k8smarkers.Registry{}
 
@@ -37,13 +42,19 @@ func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ..
 }
 
 func ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error) {
-	col := InitializeMarkers()
+	col := initializeMarkers()
 
 	var err error
 
 	var pkgs []*k8sloader.Package
 
-	pkgs, err = k8sloader.LoadRoots(structPkgs...)
+	var localStructPkgs = []string{}
+
+	for _, pkg := range structPkgs {
+		localStructPkgs = append(localStructPkgs, thisLibPath(pkg))
+	}
+
+	pkgs, err = k8sloader.LoadRoots(localStructPkgs...)
 
 	if err != nil {
 		return multierror.Append(retErr, fmt.Errorf("error loading markers from crd validation: \n\t%v", err))
