@@ -511,7 +511,13 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 
 		// start the cache with a cancelable context and duration, and attach it to the controller as a watch source
 		ch := make(chan error)
-		cacheCtx, cacheCancelFunc := context.WithTimeout(context.Background(), instance.Spec.Duration.Duration()+*r.ExpiredDisruptionGCDelay*2)
+		deletionDelay := time.Minute * 2
+
+		if r.ExpiredDisruptionGCDelay != nil {
+			deletionDelay = *r.ExpiredDisruptionGCDelay * 2
+		}
+
+		cacheCtx, cacheCancelFunc := context.WithTimeout(context.Background(), instance.Spec.Duration.Duration()+deletionDelay)
 
 		go func() { ch <- cache.Start(cacheCtx) }()
 
