@@ -68,8 +68,9 @@ type DisruptionSpec struct {
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
 }
 
-//go:embed *
 // EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
+//
+//go:embed *
 var EmbeddedChaosAPI embed.FS
 
 type DisruptionDuration string

@@ -82,7 +82,7 @@ type controllerConfig struct {
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
 	UserInfoHook             bool                          `json:"userInfoHook"`
 	SafeMode                 safeModeConfig                `json:"safeMode"`
-	StaticTargetingDefault   bool                          `json:"staticTargetingDefault`
+	StaticTargetingDefault   bool                          `json:"staticTargetingDefault"`
 }
 
 type controllerWebhookConfig struct {
