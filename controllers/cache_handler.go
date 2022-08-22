@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -511,17 +512,14 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 
 		// start the cache with a cancelable context and duration, and attach it to the controller as a watch source
 		ch := make(chan error)
-		deletionDelay := time.Minute * 2
 
-		if r.ExpiredDisruptionGCDelay != nil {
-			deletionDelay = *r.ExpiredDisruptionGCDelay * 2
-		}
+		cacheCtx, cacheCancelFunc := context.WithCancel(context.Background())
+		ctxTuple := CtxTuple{cacheCtx, cacheCancelFunc, disNamespacedName}
 
-		cacheCtx, cacheCancelFunc := context.WithTimeout(context.Background(), instance.Spec.Duration.Duration()+deletionDelay)
+		r.CacheContextStore[disCacheHash] = ctxTuple
 
 		go func() { ch <- cache.Start(cacheCtx) }()
-
-		r.CacheContextStore[disCacheHash] = CtxTuple{cacheCtx, cacheCancelFunc}
+		go r.cacheDeletionSafety(ctxTuple, disCacheHash)
 
 		var cacheSource source.SyncingSource
 		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
@@ -568,10 +566,34 @@ func (r *DisruptionReconciler) clearExpiredCacheContexts() {
 	for key, contextTuple := range r.CacheContextStore {
 		if contextTuple.Ctx.Err() != nil {
 			deletionList = append(deletionList, key)
+			continue
+		}
+
+		if err := r.Get(contextTuple.Ctx, contextTuple.DisruptionNamespacedName, &chaosv1beta1.Disruption{}); err != nil {
+			if client.IgnoreNotFound(err) == nil {
+				contextTuple.CancelFunc()
+
+				deletionList = append(deletionList, key)
+			}
 		}
 	}
 
 	for _, key := range deletionList {
 		delete(r.CacheContextStore, key)
 	}
+}
+
+// cacheDeletionSafety is thought to be run in a goroutine to assert a cache is not running without its disruption
+// the polling is living on the cache context, meaning if it's deleted elsewhere this function will return early.
+func (r *DisruptionReconciler) cacheDeletionSafety(ctxTpl CtxTuple, disHash string) {
+	_ = wait.PollInfiniteWithContext(ctxTpl.Ctx, time.Minute, func(context.Context) (bool, error) {
+		if err := r.Get(ctxTpl.Ctx, ctxTpl.DisruptionNamespacedName, &chaosv1beta1.Disruption{}); err != nil {
+			if client.IgnoreNotFound(err) == nil {
+				defer ctxTpl.CancelFunc()
+				delete(r.CacheContextStore, disHash)
+				return true, nil
+			}
+		}
+		return false, nil
+	})
 }
