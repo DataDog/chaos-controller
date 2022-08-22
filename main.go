@@ -390,6 +390,7 @@ func main() {
 		DeleteOnlyFlag:         cfg.Controller.DeleteOnly,
 		HandlerEnabledFlag:     cfg.Handler.Enabled,
 		DefaultDurationFlag:    cfg.Controller.DefaultDuration,
+		StaticTargetingDefault: cfg.Controller.StaticTargetingDefault,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")

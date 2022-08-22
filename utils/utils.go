@@ -48,4 +48,5 @@ type SetupWebhookWithManagerConfig struct {
 	DeleteOnlyFlag         bool
 	HandlerEnabledFlag     bool
 	DefaultDurationFlag    time.Duration
+	StaticTargetingDefault bool
 }
