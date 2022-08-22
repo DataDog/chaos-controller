@@ -149,10 +149,10 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				return ctrl.Result{}, err
 			}
 
-			// if not cleaned yet, requeue and reconcile again in 5s-10s
+			// if not cleaned yet, requeue and reconcile again in 15s-20s
 			// the reason why we don't rely on the exponential backoff here is that it retries too fast at the beginning
 			if !isCleaned {
-				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
+				requeueAfter := time.Duration(rand.Intn(5)+15) * time.Second //nolint:gosec
 
 				r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
 
@@ -281,8 +281,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
-			// requeue after 5-10 seconds, as default 1ms is too quick here
-			requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
+			// requeue after 15-20 seconds, as default 1ms is too quick here
+			requeueAfter := time.Duration(rand.Intn(5)+15) * time.Second //nolint:gosec
 			r.log.Infow("disruption is not fully injected yet, requeuing", "injectionStatus", instance.Status.InjectionStatus)
 
 			return ctrl.Result{
@@ -346,7 +346,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 			// consider the disruption as not fully injected if at least one not ready pod is found
 			if !podReady {
-				r.log.Infow("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
+				r.log.Debugw("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
 			}
 		}
 
@@ -383,10 +383,6 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 // startInjection creates non-existing chaos pod for the given disruption
 func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption) error {
-	if len(instance.Status.Targets) > 0 {
-		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
-	}
-
 	// chaosPodsMap is used to check if a target's chaos pods already exist or not
 	chaosPodsMap := make(map[string]map[string]bool, len(instance.Status.Targets))
 
@@ -406,6 +402,10 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		} else {
 			chaosPodsMap[chaosPod.Labels[chaostypes.TargetLabel]][chaosPod.Labels[chaostypes.DisruptionKindLabel]] = true
 		}
+	}
+
+	if len(instance.Status.Targets) > 0 && (len(instance.Status.Targets) != len(chaosPodsMap)) {
+		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
 	}
 
 	// iterate through target + existing disruption kind -- to ensure all chaos pods exist
@@ -623,6 +623,7 @@ func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
 //   - the pod is pending
 //   - the pod is succeeded (exit code == 0)
 //   - the pod target is not healthy (not existing anymore for instance)
+//
 // if a finalizer can't be removed because none of the conditions above are fulfilled, the instance is flagged
 // as stuck on removal and the pod finalizer won't be removed unless someone does it manually
 // the pod target will be moved to ignored targets, so it is not picked up by the next reconcile loop
@@ -725,7 +726,11 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 		controllerutil.RemoveFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer)
 
 		if err := r.Client.Update(context.Background(), &chaosPod); err != nil {
-			r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+			if strings.Contains(err.Error(), "latest version and try again") {
+				r.log.Debugw("cannot remove chaos pod finalizer, need to re-reconcile", "error", err)
+			} else {
+				r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+			}
 
 			return
 		}
@@ -807,7 +812,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		instance.Status.RemoveTargets(cTargetsCount - dTargetsCount)
 	}
 
-	r.log.Infow("updating instance status with targets selected for injection")
+	r.log.Debugw("updating instance status with targets selected for injection")
 
 	instance.Status.SelectedTargetsCount = len(instance.Status.Targets)
 	instance.Status.IgnoredTargetsCount = totalAvailableTargetsCount - targetsCount

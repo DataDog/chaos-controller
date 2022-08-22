@@ -61,7 +61,7 @@ func (e defaultTcExecuter) Run(args ...string) (int, string, error) {
 	cmd.Stderr = stderr
 
 	// run command
-	e.log.Infof("running tc command: %v", cmd.String())
+	e.log.Debugf("running tc command: %v", cmd.String())
 
 	// early exit if dry-run mode is enabled
 	if e.dryRun {

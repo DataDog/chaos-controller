@@ -165,7 +165,7 @@ func (i *networkDisruptionInjector) Inject() error {
 			return fmt.Errorf("error applying tc operations: %w", err)
 		}
 
-		i.config.Log.Info("operations applied successfully")
+		i.config.Log.Debug("operations applied successfully")
 	}
 
 	i.config.Log.Info("editing pod net_cls cgroup to apply a classid to target container packets")
@@ -846,6 +846,8 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 		if err != nil {
 			return fmt.Errorf("error resolving given host %s: %w", host.Host, err)
 		}
+
+		i.config.Log.Infof("resolved %s as %s", host.Host, ips)
 
 		for _, ip := range ips {
 			// handle flow direction
