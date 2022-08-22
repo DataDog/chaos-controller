@@ -35,6 +35,7 @@ data:
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}
+      staticTargetingDefault: {{ .Values.controller.staticTargetingDefault }}
       expiredDisruptionGCDelay: {{ .Values.controller.expiredDisruptionGCDelay }}
       userInfoHook: {{ .Values.controller.userInfoHook }}
       webhook:
