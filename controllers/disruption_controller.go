@@ -64,6 +64,7 @@ type DisruptionReconciler struct {
 	InjectorNetworkDisruptionAllowedHosts []string
 	SafetyNets                            []safemode.Safemode
 	ExpiredDisruptionGCDelay              *time.Duration
+	StaticTargetingDefault                bool
 	CacheContextStore                     map[string]CtxTuple
 	Controller                            controller.Controller
 	Reader                                client.Reader // Use the k8s API without the cache
