@@ -71,8 +71,9 @@ type DisruptionReconciler struct {
 }
 
 type CtxTuple struct {
-	Ctx        context.Context
-	CancelFunc context.CancelFunc
+	Ctx                      context.Context
+	CancelFunc               context.CancelFunc
+	DisruptionNamespacedName types.NamespacedName
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
