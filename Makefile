@@ -2,9 +2,19 @@
 .SILENT: release
 
 # Image URL to use all building/pushing image targets
-MANAGER_IMAGE ?= docker.io/chaos-controller:latest
-INJECTOR_IMAGE ?= docker.io/chaos-injector:latest
-HANDLER_IMAGE ?= docker.io/chaos-handler:latest
+MANAGER_IMAGE ?= chaos-controller:latest
+INJECTOR_IMAGE ?= chaos-injector:latest
+HANDLER_IMAGE ?= chaos-handler:latest
+
+DOCKER_REGISTRY_PREFIX ?= docker.io
+# Colima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
+# https://github.com/abiosoft/colima#interacting-with-image-registry
+CONTAINERD_REGISTRY_PREFIX ?= k8s.io
+
+OS_ARCH=amd64
+ifeq (arm,$(shell uname -p))
+OS_ARCH=arm64
+endif
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -50,12 +60,30 @@ chaosli-test:
 minikube-install: manifests
 	helm template --set controller.enableSafeguards=false ./chart | minikube kubectl -- apply -f -
 
+# Install CRDs and controller into a colima k3s cluster
+# In order to use already built images inside the containerd runtime
+# we override images for all of our components to the expected namespace
+colima-install: manifests
+	helm template \
+		--set controller.enableSafeguards=false \
+		--set images.controller=${CONTAINERD_REGISTRY_PREFIX}/${MANAGER_IMAGE} \
+		--set images.injector=${CONTAINERD_REGISTRY_PREFIX}/${INJECTOR_IMAGE} \
+		--set images.handler=${CONTAINERD_REGISTRY_PREFIX}/${HANDLER_IMAGE} \
+		./chart | kubectl apply -f -
+
 # Uninstall CRDs and controller from a minikube cluster
 minikube-uninstall: manifests
 	helm template ./chart | minikube kubectl -- delete -f -
 
+# Uninstall CRDs and controller from a colima k3s cluster
+colima-uninstall:
+	helm template ./chart | kubectl delete -f -
+
 restart:
 	minikube kubectl -- -n chaos-engineering rollout restart deployment chaos-controller
+
+colima-restart:
+	kubectl -n chaos-engineering rollout restart deployment chaos-controller
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
@@ -77,18 +105,34 @@ lint:
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
+colima-build-manager: manager
+	nerdctl build --namespace ${CONTAINERD_REGISTRY_PREFIX} --build-arg TARGETARCH=${OS_ARCH} -t ${CONTAINERD_REGISTRY_PREFIX}/${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
+
+colima-build-injector: injector
+	nerdctl build --namespace ${CONTAINERD_REGISTRY_PREFIX} --build-arg TARGETARCH=${OS_ARCH} -t ${CONTAINERD_REGISTRY_PREFIX}/${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
+
+colima-build-handler: handler
+	nerdctl build --namespace ${CONTAINERD_REGISTRY_PREFIX} --build-arg TARGETARCH=${OS_ARCH} -t ${CONTAINERD_REGISTRY_PREFIX}/${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
+
+colima-build: colima-build-manager colima-build-injector colima-build-handler
+
 # Build the docker images
+# to ease minikube/colima base minikube docker image load, we are using tarball
+# we encountered issue while using docker+containerd on colima to load images from docker to containerd
 minikube-build-manager: manager
-	docker build --build-arg TARGETARCH=amd64 -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
-	minikube image load --daemon=false --overwrite=true ${MANAGER_IMAGE}
+	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${DOCKER_REGISTRY_PREFIX}/${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
+	docker save -o ./bin/manager/manager.tar ${DOCKER_REGISTRY_PREFIX}/${MANAGER_IMAGE}
+	minikube image load --daemon=false --overwrite=true ./bin/manager/manager.tar
 
 minikube-build-injector: injector
-	docker build --build-arg TARGETARCH=amd64 -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
-	minikube image load --daemon=false --overwrite=true ${INJECTOR_IMAGE}
+	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${DOCKER_REGISTRY_PREFIX}/${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
+	docker save -o ./bin/injector/injector.tar ${DOCKER_REGISTRY_PREFIX}/${INJECTOR_IMAGE}
+	minikube image load --daemon=false --overwrite=true ./bin/injector/injector.tar
 
 minikube-build-handler: handler
-	docker build --build-arg TARGETARCH=amd64 -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
-	minikube image load --daemon=false --overwrite=true ${HANDLER_IMAGE}
+	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${DOCKER_REGISTRY_PREFIX}/${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
+	docker save -o ./bin/handler/handler.tar ${DOCKER_REGISTRY_PREFIX}/${HANDLER_IMAGE}
+	minikube image load --daemon=false --overwrite=true ./bin/handler/handler.tar
 
 minikube-build: minikube-build-manager minikube-build-injector minikube-build-handler
 
@@ -117,9 +161,22 @@ container-runtime := containerd
 minikube-start-docker: container-runtime := docker
 minikube-start-docker: minikube-start
 
+colima-stop:
+	colima stop
+	colima stop --profile docker
+
+colima-start:
+	colima start --runtime containerd --kubernetes --cpu 4 --memory 4 --disk 50
+
+colima-install-nerdctl:
+	sudo colima nerdctl install
+
+colima-start-docker:
+	colima start --profile docker --cpu 5 --memory 5 --disk 60
+
 minikube-start:
 	minikube start \
-		--vm-driver=virtualbox \
+		--driver=virtualbox \
 		--container-runtime=${container-runtime} \
 		--memory=${minikube-memory} \
 		--cpus=4 \
@@ -127,7 +184,6 @@ minikube-start:
 		--disk-size=50GB \
 		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
 		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2021-01-18.iso
-
 
 venv:
 	test -d .venv || python3 -m venv .venv

@@ -50,18 +50,18 @@ spec:
         app: demo-nginx
     spec:
       containers:
-      - name: nginx
-        image: nginx:1.21.6
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 3
-          periodSeconds: 3
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 80
+        - name: nginx
+          image: nginx:1.21.6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -81,33 +81,37 @@ spec:
         app: demo-curl
     spec:
       containers:
-      - name: curl
-        image: alpine/curl:3.14
-        command: ["/bin/sh"]
-        args: ["-c", "while true; do curl -vvv http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; done"]
-        volumeMounts:
-        - mountPath: /mnt/data
-          name: data
-        readinessProbe:
-          exec:
-            command:
-              - curl
-              - -vvv
-              - http://demo.chaos-demo.svc.cluster.local:8080
-        resources:
-          limits:
-            cpu: 1
-      - name: dummy
-        image: ubuntu:bionic-20220128
-        command: ["/bin/bash"]
-        args: ["-c", "while true; do sleep 1; done"]
-        volumeMounts:
-        - mountPath: /mnt/data
-          name: data
+        - name: curl
+          image: alpine/curl:3.14
+          command: ["/bin/sh"]
+          args:
+            [
+              "-c",
+              "while true; do time curl -vvv --connect-timeout 15 http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; time curl --connect-timeout 15 -vvv https://www.example.com; done",
+            ]
+          volumeMounts:
+            - mountPath: /mnt/data
+              name: data
+          readinessProbe:
+            exec:
+              command:
+                - curl
+                - -vvv
+                - http://demo.chaos-demo.svc.cluster.local:8080
+          resources:
+            limits:
+              cpu: 1
+        - name: dummy
+          image: ubuntu:bionic-20220128
+          command: ["/bin/bash"]
+          args: ["-c", "while true; do sleep 1; done"]
+          volumeMounts:
+            - mountPath: /mnt/data
+              name: data
       volumes:
-      - name: data
-        persistentVolumeClaim:
-          claimName: demo
+        - name: data
+          persistentVolumeClaim:
+            claimName: demo
 ---
 apiVersion: v1
 kind: Service

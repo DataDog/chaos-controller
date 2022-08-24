@@ -18,7 +18,7 @@ spec:
     hosts: # filter on hosts (an IP, a port, a protocol, or a combination of those)
       - host: 1.2.3.4 # optional, the destination host to filter on (can be an IP, a CIDR or a hostname)
         port: 80 # optional, the destination port to filter on
-        protocol: tcp # optiona, the protocol to filter on
+        protocol: tcp # optional, the protocol to filter on
     services: # filter on Kubernetes services; this will correctly handle the port differences in node vs. pod-level disruptions
       - name: demo # service name
         namespace: chaos-demo # service namespace
