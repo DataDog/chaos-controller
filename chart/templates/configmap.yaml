@@ -32,6 +32,8 @@ data:
             - {{ . | quote }}
           {{- end }}
           headersFilepath: {{ .Values.controller.notifiers.http.headersFilepath | quote }}
+        datadog:
+          enabled: {{ .Values.controller.notifiers.datadog.enabled }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}
