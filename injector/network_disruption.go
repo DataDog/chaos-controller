@@ -167,7 +167,7 @@ func (i *networkDisruptionInjector) Inject() error {
 			return fmt.Errorf("error applying tc operations: %w", err)
 		}
 
-		i.config.Log.Info("operations applied successfully")
+		i.config.Log.Debug("operations applied successfully")
 	}
 
 	i.config.Log.Info("editing pod net_cls cgroup to apply a classid to target container packets")
@@ -456,7 +456,7 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 	for _, filter := range filters {
 		filter.priority = i.getNewPriority()
 
-		i.config.Log.Infow("found service endpoint", "endpoint", filter.service.String(), "service", serviceName)
+		i.config.Log.Infow("found service endpoint", "resolvedEndpoint", filter.service.String(), "resolvedService", serviceName)
 
 		err := i.config.TrafficController.AddFilter(interfaces, "1:0", filter.priority, 0, nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, flowid)
 		if err != nil {
@@ -796,7 +796,7 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 			if !ok { // channel is closed
 				watcher.kubernetesServiceWatcher = nil
 			} else {
-				i.config.Log.Infow(fmt.Sprintf("changes in service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
+				i.config.Log.Debugw(fmt.Sprintf("changes in service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
 
 				if err := i.handleKubernetesServiceChanges(event, &watcher, interfaces, flowid); err != nil {
 					i.config.Log.Errorf("couldn't apply changes to tc filters: %w... Rebuilding watcher", err)
@@ -813,7 +813,7 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 			if !ok { // channel is closed
 				watcher.kubernetesPodEndpointsWatcher = nil
 			} else {
-				i.config.Log.Infow(fmt.Sprintf("changes in pods of service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
+				i.config.Log.Debugw(fmt.Sprintf("changes in pods of service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
 
 				if err := i.handleKubernetesPodsChanges(event, &watcher, interfaces, flowid); err != nil {
 					i.config.Log.Errorf("couldn't apply changes to tc filters: %w... Rebuilding watcher", err)
@@ -875,6 +875,8 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 		if err != nil {
 			return fmt.Errorf("error resolving given host %s: %w", host.Host, err)
 		}
+
+		i.config.Log.Infof("resolved %s as %s", host.Host, ips)
 
 		for _, ip := range ips {
 			// handle flow direction

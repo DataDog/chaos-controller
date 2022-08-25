@@ -23,6 +23,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -127,7 +128,7 @@ func expectChaosInjectors(instance *chaosv1beta1.Disruption, count int) error {
 	return nil
 }
 
-func expectDisruptionStatus(instance *chaosv1beta1.Disruption, desiredTargetsCount int, ignoredTargetsCount int, selectedTargetsCount int, injectedTargetsCount int) error {
+func expectDisruptionStatus(desiredTargetsCount int, ignoredTargetsCount int, selectedTargetsCount int, injectedTargetsCount int) error {
 	updatedInstance := &chaosv1beta1.Disruption{}
 
 	if err := k8sClient.Get(context.Background(), instanceKey, updatedInstance); err != nil {
@@ -135,16 +136,16 @@ func expectDisruptionStatus(instance *chaosv1beta1.Disruption, desiredTargetsCou
 	}
 
 	if desiredTargetsCount != updatedInstance.Status.DesiredTargetsCount {
-		return fmt.Errorf("incorred number of desired targets: expected %d, found %d", desiredTargetsCount, updatedInstance.Status.DesiredTargetsCount)
+		return fmt.Errorf("incorrect number of desired targets: expected %d, found %d", desiredTargetsCount, updatedInstance.Status.DesiredTargetsCount)
 	}
 	if ignoredTargetsCount != updatedInstance.Status.IgnoredTargetsCount {
-		return fmt.Errorf("incorred number of ignored targets: expected %d, found %d", ignoredTargetsCount, updatedInstance.Status.IgnoredTargetsCount)
+		return fmt.Errorf("incorrect number of ignored targets: expected %d, found %d", ignoredTargetsCount, updatedInstance.Status.IgnoredTargetsCount)
 	}
 	if injectedTargetsCount != updatedInstance.Status.InjectedTargetsCount {
-		return fmt.Errorf("incorred number of injected targets: expected %d, found %d", injectedTargetsCount, updatedInstance.Status.InjectedTargetsCount)
+		return fmt.Errorf("incorrect number of injected targets: expected %d, found %d", injectedTargetsCount, updatedInstance.Status.InjectedTargetsCount)
 	}
 	if selectedTargetsCount != updatedInstance.Status.SelectedTargetsCount {
-		return fmt.Errorf("incorred number of selected targets: expected %d, found %d", selectedTargetsCount, updatedInstance.Status.SelectedTargetsCount)
+		return fmt.Errorf("incorrect number of selected targets: expected %d, found %d", selectedTargetsCount, updatedInstance.Status.SelectedTargetsCount)
 	}
 
 	return nil
@@ -413,7 +414,7 @@ var _ = Describe("Disruption Controller", func() {
 			Expect(expectChaosInjectors(disruption, 2)).To(BeNil())
 
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 2, 0, 2, 2) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(2, 0, 2, 2) }, timeout).Should(Succeed())
 
 			By("Adding an extra target")
 			Expect(k8sClient.Create(context.Background(), targetPodA2)).To(BeNil())
@@ -422,7 +423,7 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return expectChaosPod(disruption, 3) }, timeout).Should(Succeed())
 
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 3, 0, 3, 3) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(3, 0, 3, 3) }, timeout).Should(Succeed())
 
 			By("Deleting the extra target")
 			Expect(k8sClient.Delete(context.Background(), targetPodA2)).To(BeNil())
@@ -431,7 +432,7 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return expectChaosPod(disruption, 2) }, timeout).Should(Succeed())
 
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 2, 0, 2, 2) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(2, 0, 2, 2) }, timeout).Should(Succeed())
 		})
 	})
 
@@ -524,7 +525,7 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should scale up then down with the right number of targets count", func() {
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 3, 0, 2, 2) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(3, 0, 2, 2) }, timeout).Should(Succeed())
 
 			By("Adding an extra target")
 			Expect(k8sClient.Create(context.Background(), targetPodA3)).To(BeNil())
@@ -533,7 +534,7 @@ var _ = Describe("Disruption Controller", func() {
 			Expect(k8sClient.Create(context.Background(), targetPodA4)).To(BeNil())
 
 			By("Ensuring that the disruption status is displaying the right number of targets")
-			Eventually(func() error { return expectDisruptionStatus(disruption, 3, 1, 3, 3) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectDisruptionStatus(3, 1, 3, 3) }, timeout).Should(Succeed())
 
 			By("Deleting the extra target")
 			Expect(k8sClient.Delete(context.Background(), targetPodA3)).To(BeNil())
@@ -543,26 +544,22 @@ var _ = Describe("Disruption Controller", func() {
 		})
 	})
 
-	// NOTE: disabled until fixed
-	// the feature is broken now that we moved all chaos pods into the same namespace
-	// because we had to remove the owner reference on those pods, meaning that
-	// the reconcile loop does not automatically trigger anymore on chaos pods events like a delete
-	// Context("manually delete a chaos pod", func() {
-	// 	It("should properly handle the chaos pod finalizer", func() {
-	// 		By("Ensuring that the chaos pods have been created")
-	// 		Eventually(func() error { return expectChaosPod(disruption, 5) }, timeout).Should(Succeed())
+	Context("manually delete a chaos pod", func() {
+		It("should properly handle the chaos pod finalizer", func() {
+			By("Ensuring that the chaos pods have been created")
+			Eventually(func() error { return expectChaosPod(disruption, 4) }, timeout).Should(Succeed())
 
-	// 		By("Listing chaos pods to pick one to delete")
-	// 		chaosPods, err := listChaosPods(disruption)
-	// 		Expect(err).To(BeNil())
-	// 		chaosPod := chaosPods.Items[0]
-	// 		chaosPodKey := types.NamespacedName{Namespace: chaosPod.Namespace, Name: chaosPod.Name}
+			By("Listing chaos pods to pick one to delete")
+			chaosPods, err := listChaosPods(disruption)
+			Expect(err).To(BeNil())
+			chaosPod := chaosPods.Items[0]
+			chaosPodKey := types.NamespacedName{Namespace: chaosPod.Namespace, Name: chaosPod.Name}
 
-	// 		By("Deleting one of the chaos pod")
-	// 		Expect(k8sClient.Delete(context.Background(), &chaosPod)).To(BeNil())
+			By("Deleting one of the chaos pod")
+			Expect(k8sClient.Delete(context.Background(), &chaosPod)).To(BeNil())
 
-	// 		By("Waiting for the chaos pod finalizer to be removed")
-	// 		Eventually(func() error { return k8sClient.Get(context.Background(), chaosPodKey, &chaosPod) }, timeout).Should(MatchError(fmt.Sprintf("Pod \"%s\" not found", chaosPod.Name)))
-	// 	})
-	// })
+			By("Waiting for the chaos pod finalizer to be removed")
+			Eventually(func() error { return k8sClient.Get(context.Background(), chaosPodKey, &chaosPod) }, timeout).Should(MatchError(fmt.Sprintf("Pod \"%s\" not found", chaosPod.Name)))
+		})
+	})
 })
