@@ -39,6 +39,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cloudservice"
+	cloudTypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
 	"github.com/DataDog/chaos-controller/eventnotifier"
@@ -334,6 +336,13 @@ func main() {
 		gcPtr = &cfg.Controller.ExpiredDisruptionGCDelay
 	}
 
+	cloudProviderManager := cloudservice.New(logger, cloudTypes.CloudProviderConfig{
+		IPRangesURL:  "https://ip-ranges.amazonaws.com/ip-ranges.json",
+		IPRangesPath: "/etc/chaos-controller/cloud-provider-cache/aws.json",
+	})
+
+	cloudProviderManager.Run(time.Hour)
+
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:                                mgr.GetClient(),
@@ -355,6 +364,7 @@ func main() {
 		CacheContextStore:                     make(map[string]controllers.CtxTuple),
 		Reader:                                mgr.GetAPIReader(),
 		EnableObserver:                        cfg.Controller.EnableObserver,
+		CloudProviderManager:                  &cloudProviderManager,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
@@ -385,6 +395,7 @@ func main() {
 		DeleteOnlyFlag:         cfg.Controller.DeleteOnly,
 		HandlerEnabledFlag:     cfg.Handler.Enabled,
 		DefaultDurationFlag:    cfg.Controller.DefaultDuration,
+		CloudProviderManager:   &cloudProviderManager,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")

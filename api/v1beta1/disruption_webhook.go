@@ -10,12 +10,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
@@ -40,6 +43,7 @@ var namespaceThreshold float64
 var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
+var cloudProviderManager *cloudservice.CloudProviderManager
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	if err := ddmark.InitLibrary(EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix); err != nil {
@@ -57,6 +61,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	clusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
 	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
+	cloudProviderManager = setupWebhookConfig.CloudProviderManager
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
@@ -97,6 +102,22 @@ func (r *Disruption) ValidateCreate() error {
 	// handle a disruption using the onInit feature without the handler being enabled
 	if !handlerEnabled && r.Spec.OnInit {
 		return errors.New("the chaos handler is disabled but the disruption onInit field is set to true, please enable the handler by specifying the --handler-enabled flag to the controller if you want to use the onInit feature (requires Kubernetes >= 1.15)")
+	}
+
+	if r.Spec.Network.Cloud != nil {
+		clouds := map[cloudtypes.CloudProviderName][]string{
+			cloudtypes.CloudProviderAWS:     r.Spec.Network.Cloud.AWS,
+			cloudtypes.CloudProviderDatadog: r.Spec.Network.Cloud.Datadog,
+			cloudtypes.CloudProviderGCP:     r.Spec.Network.Cloud.GCP,
+		}
+
+		for cloudName, serviceList := range clouds {
+			for _, service := range serviceList {
+				if !cloudProviderManager.ServiceExists(cloudName, service) {
+					return fmt.Errorf("service %s of %s does not exist. Available are: %s", service, cloudName, strings.Join(cloudProviderManager.GetServiceList(cloudName), ", "))
+				}
+			}
+		}
 	}
 
 	if err := r.Spec.Validate(); err != nil {

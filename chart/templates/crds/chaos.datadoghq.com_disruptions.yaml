@@ -224,6 +224,25 @@ spec:
                   bandwidthLimit:
                     minimum: 0
                     type: integer
+                  cloud:
+                    nullable: true
+                    properties:
+                      aws:
+                        items:
+                          type: string
+                        nullable: true
+                        type: array
+                      datadog:
+                        items:
+                          type: string
+                        nullable: true
+                        type: array
+                      gcp:
+                        items:
+                          type: string
+                        nullable: true
+                        type: array
+                    type: object
                   corrupt:
                     maximum: 100
                     minimum: 0

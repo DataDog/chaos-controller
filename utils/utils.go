@@ -20,6 +20,7 @@ package utils
 import (
 	"time"
 
+	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/record"
@@ -48,4 +49,5 @@ type SetupWebhookWithManagerConfig struct {
 	DeleteOnlyFlag         bool
 	HandlerEnabledFlag     bool
 	DefaultDurationFlag    time.Duration
+	CloudProviderManager   *cloudservice.CloudProviderManager
 }

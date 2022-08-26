@@ -30,6 +30,8 @@ type NetworkDisruptionSpec struct {
 	AllowedHosts []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
 	// +nullable
 	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
+	// +nullable
+	Cloud *NetworkDisruptionCloudSpec `json:"cloud,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	// +ddmark:validation:Minimum=0
@@ -87,6 +89,15 @@ type NetworkDisruptionHostSpec struct {
 type NetworkDisruptionServiceSpec struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+}
+
+type NetworkDisruptionCloudSpec struct {
+	// +nullable
+	AWS []string `json:"aws,omitempty"`
+	// +nullable
+	Datadog []string `json:"datadog,omitempty"`
+	// +nullable
+	GCP []string `json:"gcp,omitempty"`
 }
 
 // Validate validates args for the given disruption

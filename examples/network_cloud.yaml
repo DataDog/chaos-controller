@@ -1,0 +1,20 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2022 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-cloud
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    app: demo-cirl
+  count: 1
+  network:
+    cloud:
+      aws:
+    delay: 1000 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
+    delayJitter: 5 # (optional) add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%

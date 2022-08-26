@@ -2,13 +2,11 @@ package aws
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/DataDog/chaos-controller/cloudservice/types"
 )
 
 type CloudService struct {
-	types.CloudProviderConfig
 }
 
 type AWSIpRange struct {
@@ -19,17 +17,16 @@ type AWSIpRange struct {
 }
 
 type AWSIpRanges struct {
-	SyncToken  string       `json:"syncToken"`
-	CreateDate time.Time    `json:"createDate"`
-	Prefixes   []AWSIpRange `json:"prefixes"`
+	SyncToken string       `json:"syncToken"`
+	Prefixes  []AWSIpRange `json:"prefixes"`
 }
 
-func New(conf types.CloudProviderConfig) *CloudService {
-	return &CloudService{conf}
+func New() *CloudService {
+	return &CloudService{}
 }
 
-func (s *CloudService) GetConf() types.CloudProviderConfig {
-	return s.CloudProviderConfig
+func (s *CloudService) GetName() types.CloudProviderName {
+	return types.CloudProviderAWS
 }
 
 func (s *CloudService) IsNewVersion(newIpRanges []byte, oldIpRanges types.CloudProviderIpRange) bool {
@@ -49,6 +46,7 @@ func (s *CloudService) ConvertToGenericIpRanges(unparsedIpRanges []byte) (*types
 
 	genericIpRanges := types.CloudProviderIpRange{
 		CloudProviderServiceName: types.CloudProviderAWS,
+		Version:                  ipRanges.SyncToken,
 		IpRanges:                 make(map[string][]string),
 	}
 

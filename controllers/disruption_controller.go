@@ -15,6 +15,8 @@ import (
 	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
+	"github.com/DataDog/chaos-controller/cloudservice"
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/safemode"
 	"github.com/DataDog/chaos-controller/targetselector"
@@ -68,6 +70,7 @@ type DisruptionReconciler struct {
 	Controller                            controller.Controller
 	Reader                                client.Reader // Use the k8s API without the cache
 	EnableObserver                        bool          // Enable Observer on targets update with dynamic targeting
+	CloudProviderManager                  *cloudservice.CloudProviderManager
 }
 
 type CtxTuple struct {
@@ -1212,6 +1215,11 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 	return nil
 }
 
+func (r *DisruptionReconciler) setDefaultDisruptionSpec(instance *chaosv1beta1.Disruption) *chaosv1beta1.Disruption {
+
+	return instance
+}
+
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
 func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, targetContainerIDs []string, targetPodIP string) {
 	// generate chaos pods for each possible disruptions
@@ -1231,6 +1239,46 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		if instance.Spec.Pulse != nil {
 			pulseActiveDuration = instance.Spec.Pulse.ActiveDuration.Duration()
 			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
+		}
+
+		// get the ip ranges of cloud provider services
+		if instance.Spec.Network.Cloud != nil {
+			clouds := map[cloudtypes.CloudProviderName][]string{
+				cloudtypes.CloudProviderAWS:     instance.Spec.Network.Cloud.AWS,
+				cloudtypes.CloudProviderDatadog: instance.Spec.Network.Cloud.Datadog,
+				cloudtypes.CloudProviderGCP:     instance.Spec.Network.Cloud.GCP,
+			}
+
+			for cloudName, serviceList := range clouds {
+				var ips []string
+				var err error
+
+				if len(serviceList) == 0 {
+					ips, err = r.CloudProviderManager.GetIpRanges(cloudName, "")
+					if err != nil {
+						r.log.Errorf("could not retrieve the ip range of all services of %s", cloudName)
+						continue
+					}
+				}
+
+				for _, service := range serviceList {
+					tmpIps, err := r.CloudProviderManager.GetIpRanges(cloudName, service)
+					if err != nil {
+						r.log.Errorf("could not retrieve the ip range of %s for the service %s", cloudName, service)
+						continue
+					} else {
+						ips = append(ips, tmpIps...)
+					}
+				}
+
+				for _, ip := range ips {
+					instance.Spec.Network.Hosts = append(instance.Spec.Network.Hosts, chaosv1beta1.NetworkDisruptionHostSpec{
+						Host:     ip,
+						Protocol: "tcp",
+						Flow:     "egress",
+					})
+				}
+			}
 		}
 
 		xargs := chaosapi.DisruptionArgs{
