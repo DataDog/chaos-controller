@@ -14,16 +14,16 @@ import (
 type CloudService struct {
 }
 
-type AWSIpRange struct {
+type AWSIPRange struct {
 	IPPrefix           string `json:"ip_prefix"`
 	Region             string `json:"region"`
 	Service            string `json:"service"`
 	NetworkBorderGroup string `json:"network_border_group"`
 }
 
-type AWSIpRanges struct {
+type AWSIPRanges struct {
 	SyncToken string       `json:"syncToken"`
-	Prefixes  []AWSIpRange `json:"prefixes"`
+	Prefixes  []AWSIPRange `json:"prefixes"`
 }
 
 func New() *CloudService {
@@ -34,33 +34,34 @@ func (s *CloudService) GetName() types.CloudProviderName {
 	return types.CloudProviderAWS
 }
 
-func (s *CloudService) IsNewVersion(newIpRanges []byte, oldIpRangesInfo types.CloudProviderIpRangeInfo) bool {
-	ipRanges := AWSIpRanges{}
-	if err := json.Unmarshal(newIpRanges, &ipRanges); err != nil {
+func (s *CloudService) IsNewVersion(newIPRanges []byte, oldIPRangesInfo types.CloudProviderIPRangeInfo) bool {
+	ipRanges := AWSIPRanges{}
+	if err := json.Unmarshal(newIPRanges, &ipRanges); err != nil {
 		return false
 	}
 
-	return ipRanges.SyncToken != oldIpRangesInfo.Version
+	return ipRanges.SyncToken != oldIPRangesInfo.Version
 }
 
-func (s *CloudService) ConvertToGenericIpRanges(unparsedIpRanges []byte) (*types.CloudProviderIpRangeInfo, error) {
-	ipRanges := AWSIpRanges{}
-	if err := json.Unmarshal(unparsedIpRanges, &ipRanges); err != nil {
+func (s *CloudService) ConvertToGenericIPRanges(unparsedIPRanges []byte) (*types.CloudProviderIPRangeInfo, error) {
+	ipRanges := AWSIPRanges{}
+	if err := json.Unmarshal(unparsedIPRanges, &ipRanges); err != nil {
 		return nil, err
 	}
 
-	genericIpRanges := types.CloudProviderIpRangeInfo{
+	genericIPRanges := types.CloudProviderIPRangeInfo{
 		CloudProviderServiceName: types.CloudProviderAWS,
 		Version:                  ipRanges.SyncToken,
-		IpRanges:                 make(map[string][]string),
+		IPRanges:                 make(map[string][]string),
 	}
 
 	for _, ipRange := range ipRanges.Prefixes {
-		if len(genericIpRanges.IpRanges[ipRange.Service]) == 0 {
-			genericIpRanges.IpRanges[ipRange.Service] = []string{}
+		if len(genericIPRanges.IPRanges[ipRange.Service]) == 0 {
+			genericIPRanges.IPRanges[ipRange.Service] = []string{}
 		}
-		genericIpRanges.IpRanges[ipRange.Service] = append(genericIpRanges.IpRanges[ipRange.Service], ipRange.IPPrefix)
+
+		genericIPRanges.IPRanges[ipRange.Service] = append(genericIPRanges.IPRanges[ipRange.Service], ipRange.IPPrefix)
 	}
 
-	return &genericIpRanges, nil
+	return &genericIPRanges, nil
 }

@@ -13,11 +13,11 @@ const (
 	CloudProviderAWS     CloudProviderName = "AWS"
 )
 
-// CloudProviderIpRangeInfo information related to the ip ranges pulled from a cloud provider
-type CloudProviderIpRangeInfo struct {
+// CloudProviderIPRangeInfo information related to the ip ranges pulled from a cloud provider
+type CloudProviderIPRangeInfo struct {
 	Version                  string
 	CloudProviderServiceName CloudProviderName
-	IpRanges                 map[string][]string
+	IPRanges                 map[string][]string
 }
 
 // CloudProviderConfig Single configuration for any cloud provider
