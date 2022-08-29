@@ -25,6 +25,8 @@ controller:
       enabled: false
       tokenFilepath: ""
       mirrorSlackChannelId: ""
+    datadog:
+      enabled: false
     http:
       enabled: false
       url: ""

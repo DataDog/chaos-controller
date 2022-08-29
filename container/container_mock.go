@@ -8,6 +8,7 @@ package container
 import "github.com/stretchr/testify/mock"
 
 // ContainerMock is a mock implementation of the Container interface
+//
 //nolint:golint
 type ContainerMock struct {
 	mock.Mock
