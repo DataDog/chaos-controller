@@ -1254,7 +1254,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 				var err error
 
 				if len(serviceList) == 0 {
-					ips, err = r.CloudProviderManager.GetIpRanges(cloudName, "")
+					ips, err = r.CloudProviderManager.GetServiceIpRanges(cloudName, "")
 					if err != nil {
 						r.log.Errorf("could not retrieve the ip range of all services of %s", cloudName)
 						continue
@@ -1262,7 +1262,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 				}
 
 				for _, service := range serviceList {
-					tmpIps, err := r.CloudProviderManager.GetIpRanges(cloudName, service)
+					tmpIps, err := r.CloudProviderManager.GetServiceIpRanges(cloudName, service)
 					if err != nil {
 						r.log.Errorf("could not retrieve the ip range of %s for the service %s", cloudName, service)
 						continue

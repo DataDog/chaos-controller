@@ -1,9 +1,5 @@
 package types
 
-import (
-	"go.uber.org/zap"
-)
-
 type CloudProviderName string
 
 const (
@@ -12,14 +8,19 @@ const (
 	CloudProviderAWS     CloudProviderName = "AWS"
 )
 
-type CloudProviderIpRange struct {
+// CloudProviderIpRangeInfo information related to the ip ranges pulled from a cloud provider
+type CloudProviderIpRangeInfo struct {
 	Version                  string
 	CloudProviderServiceName CloudProviderName
 	IpRanges                 map[string][]string
 }
 
+// CloudProviderConfig Single configuration for any cloud provider
 type CloudProviderConfig struct {
-	IPRangesURL  string
-	IPRangesPath string
-	Log          *zap.SugaredLogger
+	IPRangesURL string `json:"iprangesurl"`
+}
+
+// CloudProviderConfigs all cloud provider configurations for the manager
+type CloudProviderConfigs struct {
+	Aws CloudProviderConfig `json:"aws"`
 }

@@ -21,6 +21,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -40,7 +41,7 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
-	cloudTypes "github.com/DataDog/chaos-controller/cloudservice/types"
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
 	"github.com/DataDog/chaos-controller/eventnotifier"
@@ -71,19 +72,20 @@ type config struct {
 }
 
 type controllerConfig struct {
-	MetricsBindAddr          string                        `json:"metricsBindAddr"`
-	MetricsSink              string                        `json:"metricsSink"`
-	ImagePullSecrets         string                        `json:"imagePullSecrets"`
-	ExpiredDisruptionGCDelay time.Duration                 `json:"expiredDisruptionGCDelay"`
-	DefaultDuration          time.Duration                 `json:"defaultDuration"`
-	DeleteOnly               bool                          `json:"deleteOnly"`
-	EnableSafeguards         bool                          `json:"enableSafeguards"`
-	EnableObserver           bool                          `json:"enableObserver"`
-	LeaderElection           bool                          `json:"leaderElection"`
-	Webhook                  controllerWebhookConfig       `json:"webhook"`
-	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
-	UserInfoHook             bool                          `json:"userInfoHook"`
-	SafeMode                 safeModeConfig                `json:"safeMode"`
+	MetricsBindAddr          string                          `json:"metricsBindAddr"`
+	MetricsSink              string                          `json:"metricsSink"`
+	ImagePullSecrets         string                          `json:"imagePullSecrets"`
+	ExpiredDisruptionGCDelay time.Duration                   `json:"expiredDisruptionGCDelay"`
+	DefaultDuration          time.Duration                   `json:"defaultDuration"`
+	DeleteOnly               bool                            `json:"deleteOnly"`
+	EnableSafeguards         bool                            `json:"enableSafeguards"`
+	EnableObserver           bool                            `json:"enableObserver"`
+	LeaderElection           bool                            `json:"leaderElection"`
+	Webhook                  controllerWebhookConfig         `json:"webhook"`
+	Notifiers                eventnotifier.NotifiersConfig   `json:"notifiersConfig"`
+	CloudProviders           cloudtypes.CloudProviderConfigs `json:"cloudproviders"`
+	UserInfoHook             bool                            `json:"userInfoHook"`
+	SafeMode                 safeModeConfig                  `json:"safeMode"`
 }
 
 type controllerWebhookConfig struct {
@@ -247,6 +249,9 @@ func main() {
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
 	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-cluster-threshold")))
 
+	pflag.StringVar(&cfg.Controller.CloudProviders.Aws.IPRangesURL, "cloud-providers-aws-ip-ranges-url", "", "URL used to pull ip ranges from AWS (defaulted to \"\")")
+	handleFatalError(viper.BindPFlag("controller.cloudproviders.aws.iprangesurl", pflag.Lookup("cloud-providers-aws-ip-ranges-url")))
+
 	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
@@ -336,12 +341,12 @@ func main() {
 		gcPtr = &cfg.Controller.ExpiredDisruptionGCDelay
 	}
 
-	cloudProviderManager := cloudservice.New(logger, cloudTypes.CloudProviderConfig{
-		IPRangesURL:  "https://ip-ranges.amazonaws.com/ip-ranges.json",
-		IPRangesPath: "/etc/chaos-controller/cloud-provider-cache/aws.json",
-	})
+	cloudProviderManager, err := cloudservice.New(logger, cfg.Controller.CloudProviders)
+	if err != nil {
+		handleFatalError(fmt.Errorf("error initializing CloudProviderManager: %s", err.Error()))
+	}
 
-	cloudProviderManager.Run(time.Hour)
+	cloudProviderManager.StartPeriodicPull(time.Hour)
 
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
@@ -364,7 +369,7 @@ func main() {
 		CacheContextStore:                     make(map[string]controllers.CtxTuple),
 		Reader:                                mgr.GetAPIReader(),
 		EnableObserver:                        cfg.Controller.EnableObserver,
-		CloudProviderManager:                  &cloudProviderManager,
+		CloudProviderManager:                  cloudProviderManager,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
@@ -395,7 +400,7 @@ func main() {
 		DeleteOnlyFlag:         cfg.Controller.DeleteOnly,
 		HandlerEnabledFlag:     cfg.Handler.Enabled,
 		DefaultDurationFlag:    cfg.Controller.DefaultDuration,
-		CloudProviderManager:   &cloudProviderManager,
+		CloudProviderManager:   cloudProviderManager,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")

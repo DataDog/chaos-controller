@@ -29,22 +29,22 @@ func (s *CloudService) GetName() types.CloudProviderName {
 	return types.CloudProviderAWS
 }
 
-func (s *CloudService) IsNewVersion(newIpRanges []byte, oldIpRanges types.CloudProviderIpRange) bool {
+func (s *CloudService) IsNewVersion(newIpRanges []byte, oldIpRangesInfo types.CloudProviderIpRangeInfo) bool {
 	ipRanges := AWSIpRanges{}
 	if err := json.Unmarshal(newIpRanges, &ipRanges); err != nil {
 		return false
 	}
 
-	return ipRanges.SyncToken != oldIpRanges.Version
+	return ipRanges.SyncToken != oldIpRangesInfo.Version
 }
 
-func (s *CloudService) ConvertToGenericIpRanges(unparsedIpRanges []byte) (*types.CloudProviderIpRange, error) {
+func (s *CloudService) ConvertToGenericIpRanges(unparsedIpRanges []byte) (*types.CloudProviderIpRangeInfo, error) {
 	ipRanges := AWSIpRanges{}
 	if err := json.Unmarshal(unparsedIpRanges, &ipRanges); err != nil {
 		return nil, err
 	}
 
-	genericIpRanges := types.CloudProviderIpRange{
+	genericIpRanges := types.CloudProviderIpRangeInfo{
 		CloudProviderServiceName: types.CloudProviderAWS,
 		Version:                  ipRanges.SyncToken,
 		IpRanges:                 make(map[string][]string),

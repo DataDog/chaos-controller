@@ -32,6 +32,11 @@ data:
             - {{ . | quote }}
           {{- end }}
           headersFilepath: {{ .Values.controller.notifiers.http.headersFilepath | quote }}
+      cloudproviders:
+        {{- if .Values.controller.cloudproviders.aws }}
+        aws:
+          iprangesurl: {{ .Values.controller.cloudproviders.aws.iprangesurl | quote }}
+        {{- end }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}
