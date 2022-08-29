@@ -28,6 +28,9 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cloudservice"
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -124,6 +127,50 @@ func validateLabelSelector(selector labels.Selector) error {
 	}
 
 	return nil
+}
+
+// transformCloudSpecToHostsSpec from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
+func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudservice.CloudProviderManager, cloudSpec *v1beta1.NetworkDisruptionCloudSpec) []v1beta1.NetworkDisruptionHostSpec {
+	hosts := []v1beta1.NetworkDisruptionHostSpec{}
+	clouds := map[cloudtypes.CloudProviderName][]string{
+		cloudtypes.CloudProviderAWS:     cloudSpec.AWS,
+		cloudtypes.CloudProviderDatadog: cloudSpec.Datadog,
+		cloudtypes.CloudProviderGCP:     cloudSpec.GCP,
+	}
+
+	for cloudName, serviceList := range clouds {
+		var ips []string
+
+		var err error
+
+		if len(serviceList) == 0 {
+			ips, err = cloudManager.GetServiceIPRanges(cloudName, "")
+			if err != nil {
+				log.Errorf("could not retrieve the ip range of all services of %s", cloudName)
+				continue
+			}
+		}
+
+		for _, service := range serviceList {
+			tmpIps, err := cloudManager.GetServiceIPRanges(cloudName, service)
+			if err != nil {
+				log.Errorf("could not retrieve the ip range of %s for the service %s", cloudName, service)
+				continue
+			} else {
+				ips = append(ips, tmpIps...)
+			}
+		}
+
+		for _, ip := range ips {
+			hosts = append(hosts, v1beta1.NetworkDisruptionHostSpec{
+				Host:     ip,
+				Protocol: "tcp",
+				Flow:     "egress",
+			})
+		}
+	}
+
+	return hosts
 }
 
 // isModifiedError tells us if this error is of the form:

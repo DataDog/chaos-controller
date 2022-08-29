@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice/aws"
 	"github.com/DataDog/chaos-controller/cloudservice/types"
 
@@ -158,50 +157,6 @@ func (s *CloudProviderManager) ServiceExists(cloudProviderName types.CloudProvid
 	}
 
 	return true
-}
-
-// TransformCloudSpecToHostsSpec from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
-func (s *CloudProviderManager) TransformCloudSpecToHostsSpec(cloudSpec *v1beta1.NetworkDisruptionCloudSpec) []v1beta1.NetworkDisruptionHostSpec {
-	hosts := []v1beta1.NetworkDisruptionHostSpec{}
-	clouds := map[types.CloudProviderName][]string{
-		types.CloudProviderAWS:     cloudSpec.AWS,
-		types.CloudProviderDatadog: cloudSpec.Datadog,
-		types.CloudProviderGCP:     cloudSpec.GCP,
-	}
-
-	for cloudName, serviceList := range clouds {
-		var ips []string
-
-		var err error
-
-		if len(serviceList) == 0 {
-			ips, err = s.GetServiceIPRanges(cloudName, "")
-			if err != nil {
-				s.log.Errorf("could not retrieve the ip range of all services of %s", cloudName)
-				continue
-			}
-		}
-
-		for _, service := range serviceList {
-			tmpIps, err := s.GetServiceIPRanges(cloudName, service)
-			if err != nil {
-				s.log.Errorf("could not retrieve the ip range of %s for the service %s", cloudName, service)
-				continue
-			} else {
-				ips = append(ips, tmpIps...)
-			}
-		}
-
-		for _, ip := range ips {
-			hosts = append(hosts, v1beta1.NetworkDisruptionHostSpec{
-				Host:     ip,
-				Protocol: "tcp",
-				Flow:     "egress",
-			})
-		}
-	}
-
-	return hosts
 }
 
 // pullIPRangesPerCloudProvider pull all ip ranges of all cloud providers
