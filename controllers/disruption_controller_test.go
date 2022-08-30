@@ -115,7 +115,7 @@ func expectChaosInjectors(instance *chaosv1beta1.Disruption, count int) error {
 	for _, p := range l.Items {
 		args := p.Spec.Containers[0].Args
 		for i, arg := range args {
-			if arg == "--target-container-ids" {
+			if arg == "--target-containers" {
 				injectors += len(strings.Split(args[i+1], ","))
 			}
 		}
@@ -433,6 +433,67 @@ var _ = Describe("Disruption Controller", func() {
 
 			By("Ensuring that the disruption status is displaying the right number of targets")
 			Eventually(func() error { return expectDisruptionStatus(2, 0, 2, 2) }, timeout).Should(Succeed())
+		})
+	})
+
+	Context("On init", func() {
+		BeforeEach(func() {
+			Expect(k8sClient.Create(context.Background(), targetPodOnInit)).To(BeNil())
+
+			disruption.Spec = chaosv1beta1.DisruptionSpec{
+				DryRun: true,
+				Count:  &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+					DisableAll: true,
+				},
+				Selector: map[string]string{"foo-foo": "bar-bar"},
+				Duration: "10m",
+				OnInit:   true,
+				Network: &chaosv1beta1.NetworkDisruptionSpec{
+					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
+						{
+							Host:     "127.0.0.1",
+							Port:     80,
+							Protocol: "tcp",
+						},
+					},
+					Drop: 100,
+				},
+			}
+		})
+
+		AfterEach(func() {
+			Expect(k8sClient.Delete(context.Background(), targetPodOnInit)).To(BeNil())
+		})
+
+		It("should keep on init target pods throughout reconcile loop", func() {
+			By("Ensuring that the on init target is ready and still targeted")
+			Eventually(func() error {
+				podList := corev1.PodList{}
+				labelSelector := disruption.Spec.Selector
+
+				k8sClient.List(context.Background(), &podList, &client.ListOptions{
+					LabelSelector: labelSelector.AsSelector(),
+				})
+
+				if len(podList.Items) == 0 {
+					return fmt.Errorf("no target found")
+				}
+
+				for _, ctn := range podList.Items[0].Status.InitContainerStatuses {
+					if ctn.State.Running != nil {
+						return fmt.Errorf("chaos-handler container is still running")
+					}
+				}
+
+				for _, ctn := range podList.Items[0].Status.ContainerStatuses {
+					if !ctn.Ready {
+						return fmt.Errorf("container %s is not ready", ctn.Name)
+					}
+				}
+
+				return nil
+			}, timeout).Should(Succeed())
 		})
 	})
 

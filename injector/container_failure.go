@@ -35,18 +35,18 @@ func NewContainerFailureInjector(spec v1beta1.ContainerFailureSpec, config Conta
 		config.ProcessManager = process.NewManager(config.DryRun)
 	}
 
-	return containerFailureInjector{
+	return &containerFailureInjector{
 		spec:   spec,
 		config: config,
 	}
 }
 
-func (i containerFailureInjector) GetDisruptionKind() types.DisruptionKindName {
+func (i *containerFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindContainerFailure
 }
 
 // Inject sends a SIGKILL/SIGTERM signal to the container's PID
-func (i containerFailureInjector) Inject() error {
+func (i *containerFailureInjector) Inject() error {
 	var err error
 
 	containerPid := int(i.config.TargetContainer.PID())
@@ -73,6 +73,10 @@ func (i containerFailureInjector) Inject() error {
 	return nil
 }
 
-func (i containerFailureInjector) Clean() error {
+func (i *containerFailureInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
+func (i *containerFailureInjector) Clean() error {
 	return nil
 }

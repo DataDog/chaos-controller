@@ -49,16 +49,17 @@ const (
 )
 
 var (
-	cfg         *rest.Config
-	k8sClient   client.Client
-	k8sManager  ctrl.Manager
-	testEnv     *envtest.Environment
-	instanceKey types.NamespacedName
-	targetPodA  *corev1.Pod
-	targetPodA2 *corev1.Pod
-	targetPodA3 *corev1.Pod
-	targetPodA4 *corev1.Pod
-	targetPodB  *corev1.Pod
+	cfg             *rest.Config
+	k8sClient       client.Client
+	k8sManager      ctrl.Manager
+	testEnv         *envtest.Environment
+	instanceKey     types.NamespacedName
+	targetPodA      *corev1.Pod
+	targetPodA2     *corev1.Pod
+	targetPodA3     *corev1.Pod
+	targetPodA4     *corev1.Pod
+	targetPodB      *corev1.Pod
+	targetPodOnInit *corev1.Pod
 )
 
 func TestAPIs(t *testing.T) {
@@ -183,6 +184,24 @@ var _ = BeforeSuite(func(done Done) {
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
+				},
+			},
+		},
+	}
+	targetPodOnInit = &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo5",
+			Namespace: "default",
+			Labels: map[string]string{
+				"foo-foo":                             "bar-bar",
+				"chaos.datadoghq.com/disrupt-on-init": "true",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Image: "k8s.gcr.io/pause:3.4.1",
+					Name:  "ctn1",
 				},
 			},
 		},

@@ -58,6 +58,24 @@ func (d *Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	return d.metricWithStatus(metricPrefixInjector+"injected", t)
 }
 
+// MetricReinjected increments the reinjected metric
+func (d *Sink) MetricReinjected(succeed bool, kind string, tags []string) error {
+	status := boolToStatus(succeed)
+	t := []string{"status:" + status, "kind:" + kind}
+	t = append(t, tags...)
+
+	return d.metricWithStatus(metricPrefixInjector+"reinjected", t)
+}
+
+// MetricCleanedForReinjection increments the cleanedForReinjection metric
+func (d *Sink) MetricCleanedForReinjection(succeed bool, kind string, tags []string) error {
+	status := boolToStatus(succeed)
+	t := []string{"status:" + status, "kind:" + kind}
+	t = append(t, tags...)
+
+	return d.metricWithStatus(metricPrefixInjector+"cleanedForReinjection", t)
+}
+
 // MetricCleaned increments the cleaned metric
 func (d *Sink) MetricCleaned(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)

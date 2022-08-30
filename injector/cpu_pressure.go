@@ -47,17 +47,17 @@ func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInje
 		config.ProcessManager = process.NewManager(config.DryRun)
 	}
 
-	return cpuPressureInjector{
+	return &cpuPressureInjector{
 		spec:   spec,
 		config: config,
 	}
 }
 
-func (i cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
+func (i *cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindCPUPressure
 }
 
-func (i cpuPressureInjector) Inject() error {
+func (i *cpuPressureInjector) Inject() error {
 	// read cpuset allocated cores
 	i.config.Log.Infow("retrieving target cpuset allocated cores")
 
@@ -158,7 +158,11 @@ func (i cpuPressureInjector) Inject() error {
 	return nil
 }
 
-func (i cpuPressureInjector) Clean() error {
+func (i *cpuPressureInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
+func (i *cpuPressureInjector) Clean() error {
 	i.config.Log.Info("killing routines")
 
 	// exit the stress routines

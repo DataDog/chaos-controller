@@ -88,10 +88,12 @@ type serviceWatcher struct {
 	kubernetesPodEndpointsWatcher <-chan watch.Event
 	tcFiltersFromPodEndpoints     []tcServiceFilter
 	podsWithoutIPs                []string
+	podsResourceVersion           string
 
 	// filters and watcher for the kubernetes service watched
 	kubernetesServiceWatcher       <-chan watch.Event
 	tcFiltersFromNamespaceServices []tcServiceFilter
+	servicesResourceVersion        string
 }
 
 // NewNetworkDisruptionInjector creates a NetworkDisruptionInjector object with the given config,
@@ -185,6 +187,10 @@ func (i *networkDisruptionInjector) Inject() error {
 	}()
 
 	return nil
+}
+
+func (i *networkDisruptionInjector) UpdateConfig(config Config) {
+	i.config.Config = config
 }
 
 // Clean removes all the injected disruption in the given container
@@ -601,6 +607,14 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		return fmt.Errorf("couldn't watch service in namespace, invalid type of watched object received")
 	}
 
+	// keep track of resource version to continue watching pods when the watcher has timed out
+	// at the right resource already computed.
+	if event.Type == watch.Bookmark {
+		watcher.servicesResourceVersion = service.ResourceVersion
+
+		return nil
+	}
+
 	// We just watch the specified name service
 	if watcher.watchedServiceSpec.Name != service.Name {
 		return nil
@@ -670,6 +684,14 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 		return fmt.Errorf("couldn't watch pods in namespace, invalid type of watched object received")
 	}
 
+	// keep track of resource version to continue watching pods when the watcher has timed out
+	// at the right resource already computed.
+	if event.Type == watch.Bookmark {
+		watcher.servicesResourceVersion = pod.ResourceVersion
+
+		return nil
+	}
+
 	if err = i.config.Netns.Enter(); err != nil {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
@@ -735,7 +757,10 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 	for {
 		// We create the watcher channels when it's closed
 		if watcher.kubernetesServiceWatcher == nil {
-			serviceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{})
+			serviceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
+				ResourceVersion:     watcher.servicesResourceVersion,
+				AllowWatchBookmarks: true,
+			})
 			if err != nil {
 				i.config.Log.Errorf("error watching the changes for the given kubernetes service (%s/%s): %w", watcher.watchedServiceSpec.Namespace, watcher.watchedServiceSpec.Name, err)
 
@@ -748,7 +773,9 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 
 		if watcher.kubernetesPodEndpointsWatcher == nil {
 			podsWatcher, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
-				LabelSelector: watcher.labelServiceSelector,
+				LabelSelector:       watcher.labelServiceSelector,
+				ResourceVersion:     watcher.podsResourceVersion,
+				AllowWatchBookmarks: true,
 			})
 			if err != nil {
 				i.config.Log.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", watcher.watchedServiceSpec.Namespace, watcher.watchedServiceSpec.Name, err)
@@ -823,9 +850,11 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 			kubernetesPodEndpointsWatcher: nil,                 // watch pods related to the kubernetes service filtered on
 			tcFiltersFromPodEndpoints:     []tcServiceFilter{}, // list of tc filters targeting pods related to the kubernetes service filtered on
 			podsWithoutIPs:                []string{},          // some pods are created without IPs. We keep track of them to later create a tc filter on update
+			podsResourceVersion:           "",
 
 			kubernetesServiceWatcher:       nil,                 // watch service filtered on
 			tcFiltersFromNamespaceServices: []tcServiceFilter{}, // list of tc filters targeting the service filtered on
+			servicesResourceVersion:        "",
 		}
 
 		serviceWatchers = append(serviceWatchers, serviceWatcher)
