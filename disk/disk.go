@@ -62,7 +62,7 @@ func FromPath(path string) (Informer, error) {
 
 	out, err = ls.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("error executing ls command: %w", err)
+		return nil, fmt.Errorf("error executing ls command: %w\noutput: %s", err, out)
 	}
 
 	// parse ls output, format is like:

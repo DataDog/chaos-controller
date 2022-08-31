@@ -6,6 +6,8 @@ MANAGER_IMAGE ?= chaos-controller:latest
 INJECTOR_IMAGE ?= chaos-injector:latest
 HANDLER_IMAGE ?= chaos-handler:latest
 
+MINIKUBE_DRIVER ?= virtualbox
+
 DOCKER_REGISTRY_PREFIX ?= docker.io
 # Colima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
 # https://github.com/abiosoft/colima#interacting-with-image-registry
@@ -55,6 +57,37 @@ chaosli:
 # Test chaosli API portability
 chaosli-test:
 	docker build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
+
+colima-all:
+	$(MAKE) colima-start
+	$(MAKE) install-cert-manager
+#	$(MAKE) install-longhorn
+	$(MAKE) colima-build
+	$(MAKE) colima-install
+
+install-cert-manager:
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.3.0/cert-manager.yaml
+
+# Longhorn is used as an alternative StorageClass in order to enable "reliable" disk throttling accross various local setup
+# It aims to bypass some issues encountered with default StorageClass (local-path --> tmpfs) that led to virtual unnamed devices
+# unnamed devices are linked to 0 as a major device identifier, that blkio does not support
+# https://super-unix.com/unixlinux/can-you-throttle-the-bandwidth-to-a-tmpfs-based-ramdisk/
+install-longhorn:
+# https://longhorn.io/docs/1.3.1/deploy/install/#installation-requirements
+# https://longhorn.io/docs/1.3.1/advanced-resources/os-distro-specific/csi-on-k3s/
+# > Longhorn relies on iscsiadm on the host to provide persistent volumes to Kubernetes
+	colima ssh -- sudo apk add open-iscsi
+	colima ssh -- sudo /etc/init.d/iscsid start
+# https://kubernetes.io/docs/concepts/storage/volumes/#mount-propagation
+# > Another feature that CSI depends on is mount propagation.
+# > It allows the sharing of volumes mounted by one container with other containers in the same pod, or even to other pods on the same node
+# https://github.com/longhorn/longhorn/issues/2402#issuecomment-806556931
+# below directories where discovered in an empirical manner, if you encounter an error similar to:
+# >  spec: failed to generate spec: path "/var/lib/longhorn/" is mounted on "/var/lib" but it is not a shared mount
+# you may want to add the directory mentioned in the error below
+	colima ssh -- sudo mount --make-rshared /var/lib/
+	colima ssh -- sudo mount --make-rshared /
+	kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.3.1/deploy/longhorn.yaml
 
 # Install CRDs and controller into a minikube cluster
 minikube-install: manifests
@@ -134,7 +167,10 @@ minikube-build-handler: handler
 	docker save -o ./bin/handler/handler.tar ${DOCKER_REGISTRY_PREFIX}/${HANDLER_IMAGE}
 	minikube image load --daemon=false --overwrite=true ./bin/handler/handler.tar
 
-minikube-build: minikube-build-manager minikube-build-injector minikube-build-handler
+minikube-build-rbac-proxy:
+	minikube image load --daemon=false --overwrite=true gcr.io/kubebuilder/kube-rbac-proxy:v0.4.1
+
+minikube-build: minikube-build-manager minikube-build-injector minikube-build-handler minikube-build-rbac-proxy
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -176,7 +212,7 @@ colima-start-docker:
 
 minikube-start:
 	minikube start \
-		--driver=virtualbox \
+		--driver=${MINIKUBE_DRIVER} \
 		--container-runtime=${container-runtime} \
 		--memory=${minikube-memory} \
 		--cpus=4 \
