@@ -528,6 +528,10 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromService(service v1.Se
 
 	endpointsToWatch := []tcServiceFilter{}
 
+	if service.Spec.ClusterIP == "" || strings.ToLower(service.Spec.ClusterIP) == "none" {
+		return endpointsToWatch
+	}
+
 	for _, port := range servicePorts {
 		filter := tcServiceFilter{
 			service: networkDisruptionService{
