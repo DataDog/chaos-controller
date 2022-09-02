@@ -15,8 +15,9 @@ import (
 	k8smarkers "sigs.k8s.io/controller-tools/pkg/markers"
 )
 
-//go:embed validation_teststruct.go
 // EmbeddedDDMarkAPI includes the teststruct so it can be statically exported for ddmark testing
+//
+//go:embed validation_teststruct.go
 var EmbeddedDDMarkAPI embed.FS
 
 func initializeMarkers() *k8smarkers.Collector {
