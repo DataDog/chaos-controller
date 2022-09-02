@@ -27,14 +27,14 @@ type CloudServicesProvidersManager struct {
 
 // CloudServicesProvider Data and ip ranges manager of one cloud provider
 type CloudServicesProvider struct {
-	CloudProviderIpRangeManager CloudProviderIpRangeManager
+	CloudProviderIPRangeManager CloudProviderIPRangeManager
 	IPRangeInfo                 *types.CloudProviderIPRangeInfo
 	ServiceList                 []string // Makes the process of getting the services names easier
 	Conf                        types.CloudProviderConfig
 }
 
-// CloudProviderIpRangeManager Methods to verify and transform a specifid ip ranges list from a provider
-type CloudProviderIpRangeManager interface {
+// CloudProviderIPRangeManager Methods to verify and transform a specifid ip ranges list from a provider
+type CloudProviderIPRangeManager interface {
 	// Check if the ip ranges pulled are newer than the one we already have
 	IsNewVersion([]byte, types.CloudProviderIPRangeInfo) bool
 	// From an unmarshalled json result of a provider to a generic ip range struct
@@ -44,7 +44,7 @@ type CloudProviderIpRangeManager interface {
 func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServicesProvidersManager, error) {
 	cloudProviderMap := map[types.CloudProviderName]*CloudServicesProvider{
 		types.CloudProviderAWS: {
-			CloudProviderIpRangeManager: aws.New(),
+			CloudProviderIPRangeManager: aws.New(),
 			Conf: types.CloudProviderConfig{
 				IPRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json",
 			},
@@ -181,14 +181,14 @@ func (s *CloudServicesProvidersManager) pullIPRangesPerCloudProvider(cloudProvid
 		return err
 	}
 
-	if provider.IPRangeInfo != nil && !provider.CloudProviderIpRangeManager.IsNewVersion(unparsedIPRange, *provider.IPRangeInfo) {
+	if provider.IPRangeInfo != nil && !provider.CloudProviderIPRangeManager.IsNewVersion(unparsedIPRange, *provider.IPRangeInfo) {
 		s.log.Debugw("no changes of ip ranges", "provider", cloudProviderName)
 		s.log.Debugw("finished pulling new version", "provider", cloudProviderName)
 
 		return nil
 	}
 
-	newIPRangeInfo, err := provider.CloudProviderIpRangeManager.ConvertToGenericIPRanges(unparsedIPRange)
+	newIPRangeInfo, err := provider.CloudProviderIPRangeManager.ConvertToGenericIPRanges(unparsedIPRange)
 	if err != nil {
 		return err
 	}
