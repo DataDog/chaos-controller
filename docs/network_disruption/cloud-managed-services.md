@@ -15,12 +15,11 @@ Available cloud providers are:
 The service will pull and parse the IP Ranges from the available cloud providers every x minutes/hours, defined in the chaos-controller configuration:
 
 ```
-
+cloudproviders:
+    pullInterval: "1d"
 ```
 
-
-When creating a cloud managed service disruption, we convert it to a host disruption with the list of IP Ranges for the service targeted.
-
+On the creation of the chaos pod, the chaos-controller will then use those ip ranges for the Network Disruption and transform it into a Host Network Disruption.
 
 ### Example
 
@@ -43,3 +42,4 @@ spec:
     delay: 1000 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
     delayJitter: 5 # (optional) add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%
 ```
+
