@@ -36,10 +36,6 @@ data:
           enabled: {{ .Values.controller.notifiers.datadog.enabled }}
       cloudproviders:
         pullInterval: {{ .Values.controller.cloudproviders.pullInterval }}
-        {{- if .Values.controller.cloudproviders.aws }}
-        aws:
-          iprangesurl: {{ .Values.controller.cloudproviders.aws.iprangesurl | quote }}
-        {{- end }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}

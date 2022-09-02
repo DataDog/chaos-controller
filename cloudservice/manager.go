@@ -45,9 +45,9 @@ func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServi
 	cloudProviderMap := map[types.CloudProviderName]*CloudServicesProvider{
 		types.CloudProviderAWS: {
 			CloudProviderIpRangeManager: aws.New(),
-			Conf:                        config.Aws,
-			IPRangeInfo:                 nil,
-			ServiceList:                 nil,
+			Conf: types.CloudProviderConfig{
+				IPRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json",
+			},
 		},
 	}
 
