@@ -636,8 +636,14 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		return fmt.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", service.Namespace, service.Name, err)
 	}
 
-	watcher.servicePorts = service.Spec.Ports
+	if service.Spec.ClusterIP == "" || strings.ToLower(service.Spec.ClusterIP) != "none" {
+		// If this is a headless service, we want to block all traffic to the endpoint IPs
+		watcher.servicePorts = append(watcher.servicePorts, v1.ServicePort{Port: 0})
+	} else {
+		watcher.servicePorts = service.Spec.Ports
+	}
 
+	// TODO HERE
 	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
 	if err != nil {
 		return err
