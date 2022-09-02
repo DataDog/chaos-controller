@@ -130,7 +130,7 @@ func validateLabelSelector(selector labels.Selector) error {
 }
 
 // transformCloudSpecToHostsSpec from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
-func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudservice.CloudProviderManager, cloudSpec *v1beta1.NetworkDisruptionCloudSpec) []v1beta1.NetworkDisruptionHostSpec {
+func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudservice.CloudServicesProvidersManager, cloudSpec *v1beta1.NetworkDisruptionCloudSpec) []v1beta1.NetworkDisruptionHostSpec {
 	hosts := []v1beta1.NetworkDisruptionHostSpec{}
 	clouds := map[cloudtypes.CloudProviderName][]string{
 		cloudtypes.CloudProviderAWS:     cloudSpec.AWS,

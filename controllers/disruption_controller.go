@@ -69,7 +69,7 @@ type DisruptionReconciler struct {
 	Controller                            controller.Controller
 	Reader                                client.Reader // Use the k8s API without the cache
 	EnableObserver                        bool          // Enable Observer on targets update with dynamic targeting
-	CloudProviderManager                  *cloudservice.CloudProviderManager
+	CloudServicesProvidersManager         *cloudservice.CloudServicesProvidersManager
 }
 
 type CtxTuple struct {
@@ -1237,7 +1237,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 
 		// get the ip ranges of cloud provider services
 		if instance.Spec.Network.Cloud != nil {
-			instance.Spec.Network.Hosts = append(instance.Spec.Network.Hosts, transformCloudSpecToHostsSpec(r.log, r.CloudProviderManager, instance.Spec.Network.Cloud)...)
+			instance.Spec.Network.Hosts = append(instance.Spec.Network.Hosts, transformCloudSpecToHostsSpec(r.log, r.CloudServicesProvidersManager, instance.Spec.Network.Cloud)...)
 		}
 
 		xargs := chaosapi.DisruptionArgs{

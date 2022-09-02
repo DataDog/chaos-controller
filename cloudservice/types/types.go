@@ -27,5 +27,6 @@ type CloudProviderConfig struct {
 
 // CloudProviderConfigs all cloud provider configurations for the manager
 type CloudProviderConfigs struct {
-	Aws CloudProviderConfig `json:"aws"`
+	PullInterval string              `json:"pullinterval"`
+	Aws          CloudProviderConfig `json:"aws"`
 }

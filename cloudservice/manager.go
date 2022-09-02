@@ -17,41 +17,49 @@ import (
 	"go.uber.org/zap"
 )
 
-// CloudProviderManager manager used to pull and parse any provider ip ranges per service
-type CloudProviderManager struct {
-	cloudProviders map[types.CloudProviderName]*CloudProviderData
-	log            *zap.SugaredLogger
-	close          chan bool
+// CloudServicesProvidersManager Manager used to pull and parse any provider ip ranges per service
+type CloudServicesProvidersManager struct {
+	cloudProviders       map[types.CloudProviderName]*CloudServicesProvider
+	log                  *zap.SugaredLogger
+	stopPeriodicPull     chan bool
+	periodicPullInterval time.Duration
 }
 
-type CloudProviderData struct {
-	CloudProvider CloudProvider
-	IPRangeInfo   *types.CloudProviderIPRangeInfo
-	ServiceList   []string
-	Conf          types.CloudProviderConfig
+// CloudServicesProvider Data and ip ranges manager of one cloud provider
+type CloudServicesProvider struct {
+	CloudProviderIpRangeManager CloudProviderIpRangeManager
+	IPRangeInfo                 *types.CloudProviderIPRangeInfo
+	ServiceList                 []string // Makes the process of getting the services names easier
+	Conf                        types.CloudProviderConfig
 }
 
-// CloudProvider Describe CloudProvider's methods
-type CloudProvider interface {
+// CloudProviderIpRangeManager Methods to verify and transform a specifid ip ranges list from a provider
+type CloudProviderIpRangeManager interface {
 	// Check if the ip ranges pulled are newer than the one we already have
 	IsNewVersion([]byte, types.CloudProviderIPRangeInfo) bool
 	// From an unmarshalled json result of a provider to a generic ip range struct
 	ConvertToGenericIPRanges([]byte) (*types.CloudProviderIPRangeInfo, error)
 }
 
-func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudProviderManager, error) {
-	cloudProviderMap := map[types.CloudProviderName]*CloudProviderData{
+func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServicesProvidersManager, error) {
+	cloudProviderMap := map[types.CloudProviderName]*CloudServicesProvider{
 		types.CloudProviderAWS: {
-			CloudProvider: aws.New(),
-			Conf:          config.Aws,
-			IPRangeInfo:   nil,
-			ServiceList:   nil,
+			CloudProviderIpRangeManager: aws.New(),
+			Conf:                        config.Aws,
+			IPRangeInfo:                 nil,
+			ServiceList:                 nil,
 		},
 	}
 
-	manager := &CloudProviderManager{
-		cloudProviders: cloudProviderMap,
-		log:            log,
+	pullInterval, err := time.ParseDuration(config.PullInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	manager := &CloudServicesProvidersManager{
+		cloudProviders:       cloudProviderMap,
+		log:                  log,
+		periodicPullInterval: pullInterval,
 	}
 
 	if err := manager.PullIPRanges(); err != nil {
@@ -62,17 +70,17 @@ func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudProvi
 }
 
 // StartPeriodicPull go routine pulling every interval all ip ranges of all cloud providers set up.
-func (s *CloudProviderManager) StartPeriodicPull(interval time.Duration) {
-	s.log.Debugw("starting periodic pull and parsing of the cloud provider ip ranges")
+func (s *CloudServicesProvidersManager) StartPeriodicPull() {
+	s.log.Infow("starting periodic pull and parsing of the cloud provider ip ranges", "interval", s.periodicPullInterval)
 
 	go func() {
 		for {
 			select {
-			case closed := <-s.close:
+			case closed := <-s.stopPeriodicPull:
 				if closed {
 					return
 				}
-			case <-time.After(interval):
+			case <-time.After(s.periodicPullInterval):
 				if err := s.PullIPRanges(); err != nil {
 					s.log.Errorf(err.Error())
 				}
@@ -82,14 +90,14 @@ func (s *CloudProviderManager) StartPeriodicPull(interval time.Duration) {
 }
 
 // StopPeriodicPull stop the goroutine pulling all ip ranges of all cloud providers
-func (s *CloudProviderManager) StopPeriodicPull() {
+func (s *CloudServicesProvidersManager) StopPeriodicPull() {
 	s.log.Debugw("closing periodic pull and parsing of the cloud provider ip ranges")
 
-	s.close <- true
+	s.stopPeriodicPull <- true
 }
 
 // PullIPRanges pull all ip ranges of all cloud providers
-func (s *CloudProviderManager) PullIPRanges() error {
+func (s *CloudServicesProvidersManager) PullIPRanges() error {
 	errorMessage := ""
 
 	s.log.Infow("pull and parse of the cloud provider ip ranges")
@@ -110,7 +118,7 @@ func (s *CloudProviderManager) PullIPRanges() error {
 }
 
 // GetServiceIPRanges with a given service name and cloud provider name, returns the list of ip ranges of this service
-func (s *CloudProviderManager) GetServiceIPRanges(cloudProviderName types.CloudProviderName, serviceName string) ([]string, error) {
+func (s *CloudServicesProvidersManager) GetServiceIPRanges(cloudProviderName types.CloudProviderName, serviceName string) ([]string, error) {
 	if s.cloudProviders[cloudProviderName] == nil {
 		return nil, fmt.Errorf("this cloud provider does not exist")
 	}
@@ -131,7 +139,7 @@ func (s *CloudProviderManager) GetServiceIPRanges(cloudProviderName types.CloudP
 }
 
 // GetServiceList return the list of services of a specific cloud provider. Mostly used in disruption creation validation
-func (s *CloudProviderManager) GetServiceList(cloudProviderName types.CloudProviderName) []string {
+func (s *CloudServicesProvidersManager) GetServiceList(cloudProviderName types.CloudProviderName) []string {
 	if s.cloudProviders[cloudProviderName] == nil {
 		return nil
 	}
@@ -140,7 +148,7 @@ func (s *CloudProviderManager) GetServiceList(cloudProviderName types.CloudProvi
 }
 
 // ServiceExists verify if a service exists for a cloud provider
-func (s *CloudProviderManager) ServiceExists(cloudProviderName types.CloudProviderName, serviceName string) bool {
+func (s *CloudServicesProvidersManager) ServiceExists(cloudProviderName types.CloudProviderName, serviceName string) bool {
 	if s.cloudProviders[cloudProviderName] == nil {
 		return false
 	}
@@ -160,7 +168,7 @@ func (s *CloudProviderManager) ServiceExists(cloudProviderName types.CloudProvid
 }
 
 // pullIPRangesPerCloudProvider pull all ip ranges of all cloud providers
-func (s *CloudProviderManager) pullIPRangesPerCloudProvider(cloudProviderName types.CloudProviderName) error {
+func (s *CloudServicesProvidersManager) pullIPRangesPerCloudProvider(cloudProviderName types.CloudProviderName) error {
 	provider := s.cloudProviders[cloudProviderName]
 	if provider == nil {
 		return fmt.Errorf("cloud provider %s does not exist", cloudProviderName)
@@ -173,14 +181,14 @@ func (s *CloudProviderManager) pullIPRangesPerCloudProvider(cloudProviderName ty
 		return err
 	}
 
-	if provider.IPRangeInfo != nil && !provider.CloudProvider.IsNewVersion(unparsedIPRange, *provider.IPRangeInfo) {
+	if provider.IPRangeInfo != nil && !provider.CloudProviderIpRangeManager.IsNewVersion(unparsedIPRange, *provider.IPRangeInfo) {
 		s.log.Debugw("no changes of ip ranges", "provider", cloudProviderName)
 		s.log.Debugw("finished pulling new version", "provider", cloudProviderName)
 
 		return nil
 	}
 
-	newIPRangeInfo, err := provider.CloudProvider.ConvertToGenericIPRanges(unparsedIPRange)
+	newIPRangeInfo, err := provider.CloudProviderIpRangeManager.ConvertToGenericIPRanges(unparsedIPRange)
 	if err != nil {
 		return err
 	}
@@ -195,7 +203,7 @@ func (s *CloudProviderManager) pullIPRangesPerCloudProvider(cloudProviderName ty
 }
 
 // requestIPRangesFromProvider launches a HTTP GET request to pull the ip range json file from a url
-func (s *CloudProviderManager) requestIPRangesFromProvider(url string) ([]byte, error) {
+func (s *CloudServicesProvidersManager) requestIPRangesFromProvider(url string) ([]byte, error) {
 	client := http.Client{
 		Timeout: time.Second * 10,
 	}

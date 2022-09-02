@@ -43,7 +43,7 @@ var namespaceThreshold float64
 var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
-var cloudProviderManager *cloudservice.CloudProviderManager
+var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	if err := ddmark.InitLibrary(EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix); err != nil {
@@ -61,7 +61,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	clusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
 	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
-	cloudProviderManager = setupWebhookConfig.CloudProviderManager
+	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
@@ -113,8 +113,8 @@ func (r *Disruption) ValidateCreate() error {
 
 		for cloudName, serviceList := range clouds {
 			for _, service := range serviceList {
-				if !cloudProviderManager.ServiceExists(cloudName, service) {
-					return fmt.Errorf("service %s of %s does not exist. Available are: %s", service, cloudName, strings.Join(cloudProviderManager.GetServiceList(cloudName), ", "))
+				if !cloudServicesProvidersManager.ServiceExists(cloudName, service) {
+					return fmt.Errorf("service %s of %s does not exist. Available are: %s", service, cloudName, strings.Join(cloudServicesProvidersManager.GetServiceList(cloudName), ", "))
 				}
 			}
 		}

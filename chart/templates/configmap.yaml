@@ -33,6 +33,7 @@ data:
           {{- end }}
           headersFilepath: {{ .Values.controller.notifiers.http.headersFilepath | quote }}
       cloudproviders:
+        pullInterval: {{ .Values.controller.cloudproviders.pullInterval }}
         {{- if .Values.controller.cloudproviders.aws }}
         aws:
           iprangesurl: {{ .Values.controller.cloudproviders.aws.iprangesurl | quote }}

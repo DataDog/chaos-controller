@@ -25,6 +25,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
 
@@ -40,7 +41,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cloudservice"
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
@@ -252,6 +252,9 @@ func main() {
 	pflag.StringVar(&cfg.Controller.CloudProviders.Aws.IPRangesURL, "cloud-providers-aws-ip-ranges-url", "", "URL used to pull ip ranges from AWS (defaulted to \"\")")
 	handleFatalError(viper.BindPFlag("controller.cloudproviders.aws.iprangesurl", pflag.Lookup("cloud-providers-aws-ip-ranges-url")))
 
+	pflag.StringVar(&cfg.Controller.CloudProviders.PullInterval, "cloud-providers-pull-interval", "1d", "Interval of time to pull the ip ranges of all cloud providers' services (default to 1 day)")
+	handleFatalError(viper.BindPFlag("controller.cloudproviders.pullinterval", pflag.Lookup("cloud-providers-pull-interval")))
+
 	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
@@ -346,7 +349,7 @@ func main() {
 		handleFatalError(fmt.Errorf("error initializing CloudProviderManager: %s", err.Error()))
 	}
 
-	cloudProviderManager.StartPeriodicPull(time.Hour)
+	cloudProviderManager.StartPeriodicPull()
 
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
@@ -369,7 +372,7 @@ func main() {
 		CacheContextStore:                     make(map[string]controllers.CtxTuple),
 		Reader:                                mgr.GetAPIReader(),
 		EnableObserver:                        cfg.Controller.EnableObserver,
-		CloudProviderManager:                  cloudProviderManager,
+		CloudServicesProvidersManager:         cloudProviderManager,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
@@ -390,17 +393,17 @@ func main() {
 
 	// register disruption validating webhook
 	setupWebhookConfig := utils.SetupWebhookWithManagerConfig{
-		Manager:                mgr,
-		Logger:                 logger,
-		MetricsSink:            ms,
-		Recorder:               r.Recorder,
-		NamespaceThresholdFlag: cfg.Controller.SafeMode.NamespaceThreshold,
-		ClusterThresholdFlag:   cfg.Controller.SafeMode.ClusterThreshold,
-		EnableSafemodeFlag:     cfg.Controller.SafeMode.Enable,
-		DeleteOnlyFlag:         cfg.Controller.DeleteOnly,
-		HandlerEnabledFlag:     cfg.Handler.Enabled,
-		DefaultDurationFlag:    cfg.Controller.DefaultDuration,
-		CloudProviderManager:   cloudProviderManager,
+		Manager:                       mgr,
+		Logger:                        logger,
+		MetricsSink:                   ms,
+		Recorder:                      r.Recorder,
+		NamespaceThresholdFlag:        cfg.Controller.SafeMode.NamespaceThreshold,
+		ClusterThresholdFlag:          cfg.Controller.SafeMode.ClusterThreshold,
+		EnableSafemodeFlag:            cfg.Controller.SafeMode.Enable,
+		DeleteOnlyFlag:                cfg.Controller.DeleteOnly,
+		HandlerEnabledFlag:            cfg.Handler.Enabled,
+		DefaultDurationFlag:           cfg.Controller.DefaultDuration,
+		CloudServicesProvidersManager: cloudProviderManager,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")

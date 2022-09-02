@@ -11,7 +11,7 @@ import (
 	"github.com/DataDog/chaos-controller/cloudservice/types"
 )
 
-type CloudService struct {
+type CloudProviderIpRangeManager struct {
 }
 
 type AWSIPRange struct {
@@ -26,15 +26,15 @@ type AWSIPRanges struct {
 	Prefixes  []AWSIPRange `json:"prefixes"`
 }
 
-func New() *CloudService {
-	return &CloudService{}
+func New() *CloudProviderIpRangeManager {
+	return &CloudProviderIpRangeManager{}
 }
 
-func (s *CloudService) GetName() types.CloudProviderName {
+func (s *CloudProviderIpRangeManager) GetName() types.CloudProviderName {
 	return types.CloudProviderAWS
 }
 
-func (s *CloudService) IsNewVersion(newIPRanges []byte, oldIPRangesInfo types.CloudProviderIPRangeInfo) bool {
+func (s *CloudProviderIpRangeManager) IsNewVersion(newIPRanges []byte, oldIPRangesInfo types.CloudProviderIPRangeInfo) bool {
 	ipRanges := AWSIPRanges{}
 	if err := json.Unmarshal(newIPRanges, &ipRanges); err != nil {
 		return false
@@ -43,7 +43,7 @@ func (s *CloudService) IsNewVersion(newIPRanges []byte, oldIPRangesInfo types.Cl
 	return ipRanges.SyncToken != oldIPRangesInfo.Version
 }
 
-func (s *CloudService) ConvertToGenericIPRanges(unparsedIPRanges []byte) (*types.CloudProviderIPRangeInfo, error) {
+func (s *CloudProviderIpRangeManager) ConvertToGenericIPRanges(unparsedIPRanges []byte) (*types.CloudProviderIPRangeInfo, error) {
 	ipRanges := AWSIPRanges{}
 	if err := json.Unmarshal(unparsedIPRanges, &ipRanges); err != nil {
 		return nil, err
