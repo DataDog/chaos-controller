@@ -19,6 +19,8 @@ const (
 	FlowEgress = "egress"
 	// FlowIngress is the string representation of network disruptions applied to incoming packets
 	FlowIngress = "ingress"
+
+	MaximumTCFilters = 2048
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
@@ -92,12 +94,7 @@ type NetworkDisruptionServiceSpec struct {
 }
 
 type NetworkDisruptionCloudSpec struct {
-	// +nullable
-	AWS []string `json:"aws,omitempty"`
-	// +nullable
-	Datadog []string `json:"datadog,omitempty"`
-	// +nullable
-	GCP []string `json:"gcp,omitempty"`
+	AWS *[]string `json:"aws,omitempty"`
 }
 
 // Validate validates args for the given disruption

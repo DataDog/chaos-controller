@@ -91,7 +91,7 @@ func (s *CloudServicesProvidersManager) StartPeriodicPull() {
 
 // StopPeriodicPull stop the goroutine pulling all ip ranges of all cloud providers
 func (s *CloudServicesProvidersManager) StopPeriodicPull() {
-	s.log.Debugw("closing periodic pull and parsing of the cloud provider ip ranges")
+	s.log.Infow("closing periodic pull and parsing of the cloud provider ip ranges")
 
 	s.stopPeriodicPull <- true
 }
@@ -118,24 +118,29 @@ func (s *CloudServicesProvidersManager) PullIPRanges() error {
 }
 
 // GetServiceIPRanges with a given service name and cloud provider name, returns the list of ip ranges of this service
-func (s *CloudServicesProvidersManager) GetServiceIPRanges(cloudProviderName types.CloudProviderName, serviceName string) ([]string, error) {
+func (s *CloudServicesProvidersManager) GetServiceIPRanges(cloudProviderName types.CloudProviderName, serviceNames []string) ([]string, error) {
 	if s.cloudProviders[cloudProviderName] == nil {
 		return nil, fmt.Errorf("this cloud provider does not exist")
 	}
 
 	ipRangeInfo := s.cloudProviders[cloudProviderName].IPRangeInfo
+	ipRanges := []string{}
+	computedServices := map[string]bool{}
 
-	if serviceName != "" {
-		return ipRangeInfo.IPRanges[serviceName], nil
+	for _, serviceName := range serviceNames {
+		if computedServices[serviceName] {
+			continue
+		}
+
+		if _, ok := ipRangeInfo.IPRanges[serviceName]; !ok {
+			return nil, fmt.Errorf("service %s from %s does not exist", serviceName, cloudProviderName)
+		}
+
+		computedServices[serviceName] = true
+		ipRanges = append(ipRanges, ipRangeInfo.IPRanges[serviceName]...)
 	}
 
-	// if no service name is provided, we return all ip ranges of all services
-	allIPRanges := []string{}
-	for _, ipRanges := range ipRangeInfo.IPRanges {
-		allIPRanges = append(allIPRanges, ipRanges...)
-	}
-
-	return allIPRanges, nil
+	return ipRanges, nil
 }
 
 // GetServiceList return the list of services of a specific cloud provider. Mostly used in disruption creation validation
@@ -145,26 +150,6 @@ func (s *CloudServicesProvidersManager) GetServiceList(cloudProviderName types.C
 	}
 
 	return s.cloudProviders[cloudProviderName].ServiceList
-}
-
-// ServiceExists verify if a service exists for a cloud provider
-func (s *CloudServicesProvidersManager) ServiceExists(cloudProviderName types.CloudProviderName, serviceName string) bool {
-	if s.cloudProviders[cloudProviderName] == nil {
-		return false
-	}
-
-	ipRanges := s.cloudProviders[cloudProviderName].IPRangeInfo
-	if ipRanges == nil {
-		return false
-	}
-
-	if serviceName != "" {
-		_, ok := ipRanges.IPRanges[serviceName]
-
-		return ok
-	}
-
-	return true
 }
 
 // pullIPRangesPerCloudProvider pull all ip ranges of all cloud providers

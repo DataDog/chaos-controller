@@ -104,19 +104,27 @@ func (r *Disruption) ValidateCreate() error {
 		return errors.New("the chaos handler is disabled but the disruption onInit field is set to true, please enable the handler by specifying the --handler-enabled flag to the controller if you want to use the onInit feature (requires Kubernetes >= 1.15)")
 	}
 
-	if r.Spec.Network.Cloud != nil {
-		clouds := map[cloudtypes.CloudProviderName][]string{
-			cloudtypes.CloudProviderAWS:     r.Spec.Network.Cloud.AWS,
-			cloudtypes.CloudProviderDatadog: r.Spec.Network.Cloud.Datadog,
-			cloudtypes.CloudProviderGCP:     r.Spec.Network.Cloud.GCP,
+	if r.Spec.Network != nil {
+		tcFiltersNb := len(r.Spec.Network.Hosts) + (len(r.Spec.Network.Services) * 2)
+
+		if r.Spec.Network.Cloud != nil {
+			clouds := map[cloudtypes.CloudProviderName]*[]string{
+				cloudtypes.CloudProviderAWS: r.Spec.Network.Cloud.AWS,
+			}
+
+			for cloudName, serviceList := range clouds {
+				ipRanges, err := cloudServicesProvidersManager.GetServiceIPRanges(cloudName, *serviceList)
+				if err != nil {
+					return fmt.Errorf("%s. Available services are: %s", err.Error(), strings.Join(cloudServicesProvidersManager.GetServiceList(cloudName), ", "))
+				}
+
+				tcFiltersNb += len(ipRanges)
+			}
 		}
 
-		for cloudName, serviceList := range clouds {
-			for _, service := range serviceList {
-				if !cloudServicesProvidersManager.ServiceExists(cloudName, service) {
-					return fmt.Errorf("service %s of %s does not exist. Available are: %s", service, cloudName, strings.Join(cloudServicesProvidersManager.GetServiceList(cloudName), ", "))
-				}
-			}
+		if tcFiltersNb > MaximumTCFilters {
+			return fmt.Errorf("too much resources to affect. Please remove some resources in the disruption. Maximum resources are: %d", MaximumTCFilters)
+
 		}
 	}
 

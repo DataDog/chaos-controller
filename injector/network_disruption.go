@@ -30,7 +30,7 @@ import (
 type linkOperation func([]string, string, uint32) error
 
 // tcPriority the lowest priority set by tc automatically when adding a tc filter
-var tcPriority = uint32(49149)
+var tcPriority = uint32(1000)
 
 // networkDisruptionService describes a parsed Kubernetes service, representing an (ip, port, protocol) tuple
 type networkDisruptionService struct {

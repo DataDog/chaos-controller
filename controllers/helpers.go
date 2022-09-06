@@ -132,36 +132,17 @@ func validateLabelSelector(selector labels.Selector) error {
 // transformCloudSpecToHostsSpec from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
 func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudservice.CloudServicesProvidersManager, cloudSpec *v1beta1.NetworkDisruptionCloudSpec) []v1beta1.NetworkDisruptionHostSpec {
 	hosts := []v1beta1.NetworkDisruptionHostSpec{}
-	clouds := map[cloudtypes.CloudProviderName][]string{
-		cloudtypes.CloudProviderAWS:     cloudSpec.AWS,
-		cloudtypes.CloudProviderDatadog: cloudSpec.Datadog,
-		cloudtypes.CloudProviderGCP:     cloudSpec.GCP,
+	clouds := map[cloudtypes.CloudProviderName]*[]string{
+		cloudtypes.CloudProviderAWS: cloudSpec.AWS,
 	}
 
 	for cloudName, serviceList := range clouds {
-		var ips []string
-
-		var err error
-
-		if len(serviceList) == 0 {
-			ips, err = cloudManager.GetServiceIPRanges(cloudName, "")
-			if err != nil {
-				log.Errorf("could not retrieve the ip range of all services of %s", cloudName)
-				continue
-			}
+		ipRanges, err := cloudManager.GetServiceIPRanges(cloudName, *serviceList)
+		if err != nil {
+			return nil
 		}
 
-		for _, service := range serviceList {
-			tmpIps, err := cloudManager.GetServiceIPRanges(cloudName, service)
-			if err != nil {
-				log.Errorf("could not retrieve the ip range of %s for the service %s", cloudName, service)
-				continue
-			} else {
-				ips = append(ips, tmpIps...)
-			}
-		}
-
-		for _, ip := range ips {
+		for _, ip := range ipRanges {
 			hosts = append(hosts, v1beta1.NetworkDisruptionHostSpec{
 				Host:     ip,
 				Protocol: "tcp",

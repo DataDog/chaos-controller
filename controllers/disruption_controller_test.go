@@ -501,4 +501,68 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return k8sClient.Get(context.Background(), chaosPodKey, &chaosPod) }, timeout).Should(MatchError(fmt.Sprintf("Pod \"%s\" not found", chaosPod.Name)))
 		})
 	})
+
+	Context("Cloud disruption is a host disruption disguised", func() {
+		BeforeEach(func() {
+			disruption = &chaosv1beta1.Disruption{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "default",
+				},
+				Spec: chaosv1beta1.DisruptionSpec{
+					DryRun: false,
+					Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+					Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+						DisableAll: true,
+					},
+					Selector: map[string]string{"foo": "bar"},
+					Level:    chaostypes.DisruptionLevelPod,
+					Network: &chaosv1beta1.NetworkDisruptionSpec{
+						Cloud: &chaosv1beta1.NetworkDisruptionCloudSpec{
+							AWS: &[]string{
+								"S3",
+							},
+						},
+						Drop:    0,
+						Corrupt: 0,
+						Delay:   1,
+					},
+				},
+			}
+		})
+
+		// It("should create a cloud disruption but apply a host disruption with the list of cloud managed service ip ranges", func() {
+		// 	By("Ensuring that the chaos pod have been created")
+		// 	Eventually(func() error { return expectChaosPod(disruption, 1) }, timeout).Should(Succeed())
+
+		// 	By("Ensuring that the chaos pod has the list of AWS hosts")
+		// 	Eventually(func() error {
+		// 		injectors := 0
+
+		// 		// get chaos pods
+		// 		l, err := listChaosPods(disruption)
+
+		// 		if err != nil {
+		// 			return err
+		// 		}
+
+		// 		// sum up injectors
+		// 		for _, p := range l.Items {
+		// 			args := p.Spec.Containers[0].Args
+		// 			for i, arg := range args {
+		// 				if arg == "--host" {
+		// 					injectors += len(strings.Split(args[i+1], ","))
+		// 				}
+		// 			}
+		// 		}
+
+		// 		if injectors != count {
+		// 			return fmt.Errorf("incorrect number of targeted containers in spec: expected %d, found %d", count, injectors)
+		// 		}
+
+		// 		return nil
+		// 	}, timeout).Should(Succeed())
+
+		// })
+	})
 })

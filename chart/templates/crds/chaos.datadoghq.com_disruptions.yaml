@@ -230,17 +230,6 @@ spec:
                       aws:
                         items:
                           type: string
-                        nullable: true
-                        type: array
-                      datadog:
-                        items:
-                          type: string
-                        nullable: true
-                        type: array
-                      gcp:
-                        items:
-                          type: string
-                        nullable: true
                         type: array
                     type: object
                   corrupt:

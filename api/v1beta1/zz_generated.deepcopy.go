@@ -416,18 +416,12 @@ func (in *NetworkDisruptionCloudSpec) DeepCopyInto(out *NetworkDisruptionCloudSp
 	*out = *in
 	if in.AWS != nil {
 		in, out := &in.AWS, &out.AWS
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
-	if in.Datadog != nil {
-		in, out := &in.Datadog, &out.Datadog
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
-	if in.GCP != nil {
-		in, out := &in.GCP, &out.GCP
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = new([]string)
+		if **in != nil {
+			in, out := *in, *out
+			*out = make([]string, len(*in))
+			copy(*out, *in)
+		}
 	}
 }
 
