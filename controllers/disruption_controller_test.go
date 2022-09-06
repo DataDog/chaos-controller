@@ -537,7 +537,7 @@ var _ = Describe("Disruption Controller", func() {
 
 			By("Ensuring that the chaos pod has the list of AWS hosts")
 			Eventually(func() error {
-				injectors := 0
+				hosts := 0
 
 				// get chaos pods
 				l, err := listChaosPods(disruption)
@@ -549,14 +549,14 @@ var _ = Describe("Disruption Controller", func() {
 				// sum up injectors
 				for _, p := range l.Items {
 					args := p.Spec.Containers[0].Args
-					for i, arg := range args {
-						if arg == "--host" {
-							injectors += len(strings.Split(args[i+1], ","))
+					for _, arg := range args {
+						if arg == "--hosts" {
+							hosts++
 						}
 					}
 				}
 
-				if injectors == 0 {
+				if hosts == 0 {
 					return fmt.Errorf("should have multiple hosts parameters.")
 				}
 
