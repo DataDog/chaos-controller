@@ -124,7 +124,6 @@ func (r *Disruption) ValidateCreate() error {
 
 		if tcFiltersNb > MaximumTCFilters {
 			return fmt.Errorf("too much resources to affect. Please remove some resources in the disruption. Maximum resources are: %d", MaximumTCFilters)
-
 		}
 	}
 

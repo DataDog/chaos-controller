@@ -123,8 +123,8 @@ func (s *CloudServicesProvidersManager) GetServiceIPRanges(cloudProviderName typ
 		return nil, fmt.Errorf("this cloud provider does not exist")
 	}
 
-	ipRangeInfo := s.cloudProviders[cloudProviderName].IPRangeInfo
-	ipRanges := []string{}
+	IPRangeInfo := s.cloudProviders[cloudProviderName].IPRangeInfo
+	IPRanges := []string{}
 	computedServices := map[string]bool{}
 
 	for _, serviceName := range serviceNames {
@@ -132,15 +132,16 @@ func (s *CloudServicesProvidersManager) GetServiceIPRanges(cloudProviderName typ
 			continue
 		}
 
-		if _, ok := ipRangeInfo.IPRanges[serviceName]; !ok {
+		if _, ok := IPRangeInfo.IPRanges[serviceName]; !ok {
 			return nil, fmt.Errorf("service %s from %s does not exist", serviceName, cloudProviderName)
 		}
 
 		computedServices[serviceName] = true
-		ipRanges = append(ipRanges, ipRangeInfo.IPRanges[serviceName]...)
+
+		IPRanges = append(IPRanges, IPRangeInfo.IPRanges[serviceName]...)
 	}
 
-	return ipRanges, nil
+	return IPRanges, nil
 }
 
 // GetServiceList return the list of services of a specific cloud provider. Mostly used in disruption creation validation

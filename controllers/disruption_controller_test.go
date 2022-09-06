@@ -531,38 +531,38 @@ var _ = Describe("Disruption Controller", func() {
 			}
 		})
 
-		// It("should create a cloud disruption but apply a host disruption with the list of cloud managed service ip ranges", func() {
-		// 	By("Ensuring that the chaos pod have been created")
-		// 	Eventually(func() error { return expectChaosPod(disruption, 1) }, timeout).Should(Succeed())
+		It("should create a cloud disruption but apply a host disruption with the list of cloud managed service ip ranges", func() {
+			By("Ensuring that the chaos pod have been created")
+			Eventually(func() error { return expectChaosPod(disruption, 1) }, timeout).Should(Succeed())
 
-		// 	By("Ensuring that the chaos pod has the list of AWS hosts")
-		// 	Eventually(func() error {
-		// 		injectors := 0
+			By("Ensuring that the chaos pod has the list of AWS hosts")
+			Eventually(func() error {
+				injectors := 0
 
-		// 		// get chaos pods
-		// 		l, err := listChaosPods(disruption)
+				// get chaos pods
+				l, err := listChaosPods(disruption)
 
-		// 		if err != nil {
-		// 			return err
-		// 		}
+				if err != nil {
+					return err
+				}
 
-		// 		// sum up injectors
-		// 		for _, p := range l.Items {
-		// 			args := p.Spec.Containers[0].Args
-		// 			for i, arg := range args {
-		// 				if arg == "--host" {
-		// 					injectors += len(strings.Split(args[i+1], ","))
-		// 				}
-		// 			}
-		// 		}
+				// sum up injectors
+				for _, p := range l.Items {
+					args := p.Spec.Containers[0].Args
+					for i, arg := range args {
+						if arg == "--host" {
+							injectors += len(strings.Split(args[i+1], ","))
+						}
+					}
+				}
 
-		// 		if injectors != count {
-		// 			return fmt.Errorf("incorrect number of targeted containers in spec: expected %d, found %d", count, injectors)
-		// 		}
+				if injectors == 0 {
+					return fmt.Errorf("should have multiple hosts parameters.")
+				}
 
-		// 		return nil
-		// 	}, timeout).Should(Succeed())
+				return nil
+			}, timeout).Should(Succeed())
 
-		// })
+		})
 	})
 })
