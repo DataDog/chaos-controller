@@ -43,3 +43,13 @@ spec:
     delayJitter: 5 # (optional) add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%
 ```
 
+## AWS
+
+Available services are:
+```
+ DYNAMODB, ROUTE53, ROUTE53_RESOLVER, EBS, CODEBUILD, API_GATEWAY, WORKSPACES_GATEWAYS, EC2_INSTANCE_CONNECT, CHIME_VOICECONNECTOR, GLOBALACCELERATOR, CHIME_MEETINGS, CLOUDFRONT_ORIGIN_FACING, AMAZON_APPFLOW, KINESIS_VIDEO_STREAMS, EC2, CLOUDFRONT, ROUTE53_HEALTHCHECKS_PUBLISHING, CLOUD9, ROUTE53_HEALTHCHECKS, S3, AMAZON_CONNECT
+```
+
+We do not support using the service "AMAZON" (from the ip ranges file) as it's a combination of all ip ranges from all services and more miscellaneous ips; the number of ip ranges being too much from this, it's not possible for us to filter all of them at once.
+
+We are using the URL **https://ip-ranges.amazonaws.com/ip-ranges.json** to pull all the IP Ranges of AWS. 
