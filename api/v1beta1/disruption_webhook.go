@@ -105,7 +105,10 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	if r.Spec.Network != nil {
-		tcFiltersNb := len(r.Spec.Network.Hosts) + (len(r.Spec.Network.Services) * 2)
+		// this is the minimum estimated number of tc filters we could have for the disruption
+		// knowing a service is filtered by both its service IP and the pod(s) IP where the service is
+		// we don't count the number of Pods hosting the service here because this could be changing
+		estimatedTcFiltersNb := len(r.Spec.Network.Hosts) + (len(r.Spec.Network.Services) * 2)
 
 		if r.Spec.Network.Cloud != nil {
 			clouds := map[cloudtypes.CloudProviderName]*[]string{
@@ -118,12 +121,12 @@ func (r *Disruption) ValidateCreate() error {
 					return fmt.Errorf("%s. Available services are: %s", err.Error(), strings.Join(cloudServicesProvidersManager.GetServiceList(cloudName), ", "))
 				}
 
-				tcFiltersNb += len(ipRanges)
+				estimatedTcFiltersNb += len(ipRanges)
 			}
 		}
 
-		if tcFiltersNb > MaximumTCFilters {
-			return fmt.Errorf("too much resources to affect. Please remove some resources in the disruption. Maximum resources are: %d", MaximumTCFilters)
+		if estimatedTcFiltersNb > MaximumTCFilters {
+			return fmt.Errorf("the number of resources (ips, ip ranges, single port) to filter is too high (%d). Please remove some hosts, services or cloud managed services to be affected in the disruption. Maximum resources (ips, ip ranges, single port) filterable is %d", estimatedTcFiltersNb, MaximumTCFilters)
 		}
 	}
 
