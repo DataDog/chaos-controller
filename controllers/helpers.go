@@ -130,16 +130,16 @@ func validateLabelSelector(selector labels.Selector) error {
 }
 
 // transformCloudSpecToHostsSpec from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
-func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudservice.CloudServicesProvidersManager, cloudSpec *v1beta1.NetworkDisruptionCloudSpec) []v1beta1.NetworkDisruptionHostSpec {
+func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudservice.CloudServicesProvidersManager, cloudSpec *v1beta1.NetworkDisruptionCloudSpec) ([]v1beta1.NetworkDisruptionHostSpec, error) {
 	hosts := []v1beta1.NetworkDisruptionHostSpec{}
 	clouds := map[cloudtypes.CloudProviderName]*[]string{
-		cloudtypes.CloudProviderAWS: cloudSpec.AWS,
+		cloudtypes.CloudProviderAWS: cloudSpec.AWSServiceList,
 	}
 
 	for cloudName, serviceList := range clouds {
 		ipRanges, err := cloudManager.GetServiceIPRanges(cloudName, *serviceList)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 
 		for _, ip := range ipRanges {
@@ -151,7 +151,7 @@ func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudse
 		}
 	}
 
-	return hosts
+	return hosts, nil
 }
 
 // isModifiedError tells us if this error is of the form:

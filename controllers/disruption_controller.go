@@ -470,7 +470,9 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	}
 
 	// generate injection pods specs
-	r.generateChaosPods(instance, &targetChaosPods, target, targetNodeName, targetContainerIDs, targetPodIP)
+	if err := r.generateChaosPods(instance, &targetChaosPods, target, targetNodeName, targetContainerIDs, targetPodIP); err != nil {
+		return fmt.Errorf("error generating chaos pods: %w", err)
+	}
 
 	if len(targetChaosPods) == 0 {
 		r.recordEventOnDisruption(instance, chaosv1beta1.EventEmptyDisruption, instance.Name)
@@ -1216,7 +1218,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 }
 
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
-func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, targetContainerIDs []string, targetPodIP string) {
+func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, targetContainerIDs []string, targetPodIP string) error {
 	// generate chaos pods for each possible disruptions
 	for _, kind := range chaostypes.DisruptionKindNames {
 		subspec := instance.Spec.DisruptionKindPicker(kind)
@@ -1238,7 +1240,12 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 
 		// get the ip ranges of cloud provider services
 		if instance.Spec.Network.Cloud != nil {
-			instance.Spec.Network.Hosts = append(instance.Spec.Network.Hosts, transformCloudSpecToHostsSpec(r.log, r.CloudServicesProvidersManager, instance.Spec.Network.Cloud)...)
+			hosts, err := transformCloudSpecToHostsSpec(r.log, r.CloudServicesProvidersManager, instance.Spec.Network.Cloud)
+			if err != nil {
+				return err
+			}
+
+			instance.Spec.Network.Hosts = append(instance.Spec.Network.Hosts, hosts...)
 		}
 
 		xargs := chaosapi.DisruptionArgs{
@@ -1270,6 +1277,8 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			*pods = append(*pods, pod)
 		}
 	}
+
+	return nil
 }
 
 // recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level

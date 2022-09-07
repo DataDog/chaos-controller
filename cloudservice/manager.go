@@ -120,7 +120,7 @@ func (s *CloudServicesProvidersManager) PullIPRanges() error {
 // GetServiceIPRanges with a given service name and cloud provider name, returns the list of ip ranges of this service
 func (s *CloudServicesProvidersManager) GetServiceIPRanges(cloudProviderName types.CloudProviderName, serviceNames []string) ([]string, error) {
 	if s.cloudProviders[cloudProviderName] == nil {
-		return nil, fmt.Errorf("this cloud provider does not exist")
+		return nil, fmt.Errorf("cloud provider %s does not exist", cloudProviderName)
 	}
 
 	IPRangeInfo := s.cloudProviders[cloudProviderName].IPRangeInfo
@@ -128,6 +128,7 @@ func (s *CloudServicesProvidersManager) GetServiceIPRanges(cloudProviderName typ
 	computedServices := map[string]bool{}
 
 	for _, serviceName := range serviceNames {
+		// if user has imputed the same service twice, we verify
 		if computedServices[serviceName] {
 			continue
 		}

@@ -109,7 +109,7 @@ func (r *Disruption) ValidateCreate() error {
 
 		if r.Spec.Network.Cloud != nil {
 			clouds := map[cloudtypes.CloudProviderName]*[]string{
-				cloudtypes.CloudProviderAWS: r.Spec.Network.Cloud.AWS,
+				cloudtypes.CloudProviderAWS: r.Spec.Network.Cloud.AWSServiceList,
 			}
 
 			for cloudName, serviceList := range clouds {

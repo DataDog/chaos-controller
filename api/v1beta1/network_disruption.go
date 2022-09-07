@@ -94,7 +94,7 @@ type NetworkDisruptionServiceSpec struct {
 }
 
 type NetworkDisruptionCloudSpec struct {
-	AWS *[]string `json:"aws,omitempty"`
+	AWSServiceList *[]string `json:"aws,omitempty"`
 }
 
 // Validate validates args for the given disruption
