@@ -301,9 +301,10 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter for every service and pods filtered on", func() {
-				// wait for all the addFilters at the beginning of injection to complete
+				// wait for the 3 addFilters at the beginning of injection to complete
 				time.Sleep(5 * time.Second)
-				priority := uint32(1000)
+				tcPriority := 1000                 // first priority set using add filters
+				priority := uint32(tcPriority + 3) // 3 add filters are called during injection
 
 				Eventually(func() bool {
 					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "1:4")
