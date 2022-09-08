@@ -62,7 +62,7 @@ var _ = Describe("Failure", func() {
 		netnsManager.On("Exit").Return(nil)
 
 		// tc
-		tc = &network.TcMock{}
+		tc = network.NewTcMock()
 		tc.On("AddNetem", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -307,10 +307,10 @@ var _ = Describe("Failure", func() {
 				priority := uint32(tcPriority + 3) // 3 add filters are called during injection
 
 				Eventually(func() bool {
-					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "1:4")
+					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "1:4")
 				}, time.Second*5, time.Second).Should(BeTrue())
 				Eventually(func() bool {
-					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "1:4")
+					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "1:4")
 				}, time.Second*5, time.Second).Should(BeTrue())
 
 				Eventually(func() bool {

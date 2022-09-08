@@ -126,7 +126,7 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddFilter", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddFilter(ifaces, parent, 0, handle, srcIP, dstIP, srcPort, dstPort, protocol, flowid)
+			tcRunner.AddFilter(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, protocol, flowid)
 		})
 
 		Context("add a filter on packets going to IP 10.0.0.1 and port 80 with flowid 1:4 on egress traffic", func() {

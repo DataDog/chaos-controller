@@ -12,8 +12,10 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
 )
 
@@ -24,6 +26,7 @@ const (
 	protocolIP  protocolIdentifier = 0
 	protocolTCP protocolIdentifier = 6
 	protocolUDP protocolIdentifier = 17
+	tcPriority  uint32             = uint32(1000)
 )
 
 type protocolIdentifier int
@@ -33,7 +36,7 @@ type protocolIdentifier int
 type TrafficController interface {
 	AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error
 	AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
-	AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error
+	AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) (uint32, error)
 	DeleteFilter(iface string, priority uint32) error
 	AddCgroupFilter(ifaces []string, parent string, handle uint32) error
 	AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error
@@ -77,21 +80,25 @@ func (e defaultTcExecuter) Run(args ...string) (int, string, error) {
 }
 
 type tc struct {
-	executer tcExecuter
+	executer         tcExecuter
+	tcFilterPriority uint32     // keep track of the highest tc filter priority
+	tcFilterMutex    sync.Mutex // since we increment tcFilterPriority in goroutines we use a mutex to lock and unlock
+
 }
 
 // NewTrafficController creates a standard traffic controller using tc
 // and being able to log
 func NewTrafficController(log *zap.SugaredLogger, dryRun bool) TrafficController {
-	return tc{
+	return &tc{
 		executer: defaultTcExecuter{
 			log:    log,
 			dryRun: dryRun,
 		},
+		tcFilterPriority: tcPriority,
 	}
 }
 
-func (t tc) AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
+func (t *tc) AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
 	params := ""
 
 	if delay.Milliseconds() != 0 {
@@ -121,7 +128,7 @@ func (t tc) AddNetem(ifaces []string, parent string, handle uint32, delay time.D
 	return nil
 }
 
-func (t tc) AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
+func (t *tc) AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
 	priomapStr := ""
 	for _, bit := range priomap {
 		priomapStr += fmt.Sprintf(" %d", bit)
@@ -139,7 +146,7 @@ func (t tc) AddPrio(ifaces []string, parent string, handle uint32, bands uint32,
 	return nil
 }
 
-func (t tc) AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error {
+func (t *tc) AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error {
 	// `latency` is max length of time a packet can sit in the queue before being sent; 50ms should be plenty
 	// `burst` is the number of bytes that can be sent at unlimited speed before the rate limiting kicks in,
 	// so again we'll be safe by setting `burst` to be the same as `rate` (should be more than enough)
@@ -155,7 +162,7 @@ func (t tc) AddOutputLimit(ifaces []string, parent string, handle uint32, bytesP
 	return nil
 }
 
-func (t tc) ClearQdisc(ifaces []string) error {
+func (t *tc) ClearQdisc(ifaces []string) error {
 	for _, iface := range ifaces {
 		// tc exits with code 2 when the qdisc does not exist anymore
 		if exitCode, _, err := t.executer.Run(strings.Split(fmt.Sprintf("qdisc del dev %s root", iface), " ")...); err != nil && exitCode != 2 {
@@ -167,12 +174,12 @@ func (t tc) ClearQdisc(ifaces []string) error {
 }
 
 // AddFilter generates a filter to redirect the traffic matching the given ip, port and protocol to the given flowid
-func (t tc) AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
+func (t *tc) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) (uint32, error) {
 	var params string
 
 	// ensure at least an IP or a port has been specified (otherwise the filter doesn't make sense)
 	if srcIP == nil && dstIP == nil && srcPort == 0 && dstPort == 0 && protocol == "" {
-		return fmt.Errorf("wrong filter, at least an IP or a port must be specified")
+		return 0, fmt.Errorf("wrong filter, at least an IP or a port must be specified")
 	}
 
 	// match ip if specified
@@ -200,16 +207,21 @@ func (t tc) AddFilter(ifaces []string, parent string, priority uint32, handle ui
 
 	params += fmt.Sprintf("flowid %s", flowid)
 
+	priority, err := t.getNewPriority()
+	if err != nil {
+		return 0, err
+	}
+
 	for _, iface := range ifaces {
 		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, priority, handle, "u32", params)...); err != nil {
-			return err
+			return 0, err
 		}
 	}
 
-	return nil
+	return priority, nil
 }
 
-func (t tc) DeleteFilter(iface string, priority uint32) error {
+func (t *tc) DeleteFilter(iface string, priority uint32) error {
 	if _, _, err := t.executer.Run("filter", "delete", "dev", iface, "priority", fmt.Sprintf("%d", priority)); err != nil {
 		return err
 	}
@@ -218,7 +230,7 @@ func (t tc) DeleteFilter(iface string, priority uint32) error {
 }
 
 // AddCgroupFilter generates a cgroup filter
-func (t tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error {
+func (t *tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error {
 	for _, iface := range ifaces {
 		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, 0, handle, "cgroup", "")...); err != nil {
 			return err
@@ -226,6 +238,22 @@ func (t tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error
 	}
 
 	return nil
+}
+
+func (t *tc) getNewPriority() (uint32, error) {
+	priority := uint32(0)
+
+	t.tcFilterMutex.Lock()
+	t.tcFilterPriority++
+	priority = t.tcFilterPriority
+	t.tcFilterMutex.Unlock()
+
+	// we can only create 2048 tc filters when using hashing
+	if priority >= (v1beta1.MaximumTCFilters + tcPriority) {
+		return 0, fmt.Errorf("we can not add another tc filter: exceeding limit of tc filters that can be created (%d)", v1beta1.MaximumTCFilters)
+	}
+
+	return priority, nil
 }
 
 func getProtocolIndentifier(protocol string) protocolIdentifier {

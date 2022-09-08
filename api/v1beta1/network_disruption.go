@@ -19,7 +19,10 @@ const (
 	FlowEgress = "egress"
 	// FlowIngress is the string representation of network disruptions applied to incoming packets
 	FlowIngress = "ingress"
-
+	// this limitation does not come from TC itself but from the net scheduler of the kernel.
+	// When not specifying an index for the hashtable created when we use u32 filters, the default id for this hashtable is 0x800.
+	// However, the maximum id being 0xFFF, we can only have 2048 different ids, so 2048 tc filters with u32.
+	// https://github.com/torvalds/linux/blob/v5.19/net/sched/cls_u32.c#L689-L690
 	MaximumTCFilters = 2048
 )
 
@@ -93,6 +96,7 @@ type NetworkDisruptionServiceSpec struct {
 	Namespace string `json:"namespace"`
 }
 
+// +ddmark:validation:AtLeastOneOf={AWSServiceList}
 type NetworkDisruptionCloudSpec struct {
 	AWSServiceList *[]string `json:"aws,omitempty"`
 }
