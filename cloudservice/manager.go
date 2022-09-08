@@ -182,8 +182,7 @@ func (s *CloudServicesProvidersManager) pullIPRangesPerCloudProvider(cloudProvid
 
 	// We compute this into a list to indicate to the user which services are available on error during disruption creation
 	provider.IPRangeInfo = newIPRangeInfo
-	for service, ipRanges := range newIPRangeInfo.IPRanges {
-		s.log.Debugf("%d ip range for %s/%s", len(ipRanges), service, cloudProviderName)
+	for service := range newIPRangeInfo.IPRanges {
 		provider.ServiceList = append(provider.ServiceList, service)
 	}
 

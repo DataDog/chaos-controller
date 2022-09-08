@@ -472,7 +472,7 @@ func (i *networkDisruptionInjector) getNewPriority() (uint32, error) {
 
 	// we can only create 2048 tc filters when using hashing
 	if i.tcFilterPriority >= (v1beta1.MaximumTCFilters + tcPriority) {
-		return 0, fmt.Errorf("we can not add another tc filter: exceeding limit of tc filters that can be created (%d).", v1beta1.MaximumTCFilters)
+		return 0, fmt.Errorf("we can not add another tc filter: exceeding limit of tc filters that can be created (%d)", v1beta1.MaximumTCFilters)
 	}
 
 	return priority, nil
