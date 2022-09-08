@@ -52,7 +52,8 @@ var _ = Describe("Tc", func() {
 
 		// tc runner
 		tcRunner = tc{
-			executer: &tcExecuter,
+			executer:         &tcExecuter,
+			tcFilterPriority: 1000,
 		}
 
 		// injected variables
@@ -136,7 +137,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip dst 10.0.0.1/32 match ip dport 80 0xffff match ip protocol 6 0xff flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo priority 1001 root u32 match ip dst 10.0.0.1/32 match ip dport 80 0xffff match ip protocol 6 0xff flowid 1:2")
 			})
 		})
 
@@ -147,13 +148,13 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip src 192.168.0.1/32 match ip sport 12345 0xffff match ip protocol 6 0xff flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo priority 1001 root u32 match ip src 192.168.0.1/32 match ip sport 12345 0xffff match ip protocol 6 0xff flowid 1:2")
 			})
 		})
 
 		Context("add a filter on packets leaving IP 192.168.0.1 port 12345 and going to IP 10.0.0.1 port 80 with flowid 1:4 on egress traffic", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root u32 match ip src 192.168.0.1/32 match ip dst 10.0.0.1/32 match ip sport 12345 0xffff match ip dport 80 0xffff match ip protocol 6 0xff flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo priority 1001 root u32 match ip src 192.168.0.1/32 match ip dst 10.0.0.1/32 match ip sport 12345 0xffff match ip dport 80 0xffff match ip protocol 6 0xff flowid 1:2")
 			})
 		})
 	})

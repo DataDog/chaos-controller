@@ -26,7 +26,14 @@ const (
 	protocolIP  protocolIdentifier = 0
 	protocolTCP protocolIdentifier = 6
 	protocolUDP protocolIdentifier = 17
-	tcPriority  uint32             = uint32(1000)
+)
+
+const (
+	// start of the priority used for tc filters
+	// we use priorities as id, even though they define the priority of the filter
+	// because we need to delete a tc filter and it's one of the "easiest" way to do so.
+	// priority can also be referred as preference in tc.
+	tcPriority uint32 = uint32(1000)
 )
 
 type protocolIdentifier int

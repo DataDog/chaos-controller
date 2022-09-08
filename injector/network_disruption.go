@@ -28,12 +28,6 @@ import (
 // linkOperation represents a tc operation on a set of network interfaces combined with the parent to bind to and the handle identifier to use
 type linkOperation func([]string, string, uint32) error
 
-// start of the priority used for tc filters
-// we use priorities as id, even though they define the priority of the filter
-// because we need to delete a tc filter and it's one of the "easiest" way to do so.
-// priority can also be referred as preference in tc.
-var tcPriority = uint32(1000)
-
 // networkDisruptionService describes a parsed Kubernetes service, representing an (ip, port, protocol) tuple
 type networkDisruptionService struct {
 	ip       *net.IPNet
