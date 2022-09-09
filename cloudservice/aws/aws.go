@@ -14,6 +14,7 @@ import (
 type CloudProviderIPRangeManager struct {
 }
 
+// AWSIpRange from the model of the ip range file from AWS
 type AWSIPRange struct {
 	IPPrefix           string `json:"ip_prefix"`
 	Region             string `json:"region"`
@@ -21,6 +22,7 @@ type AWSIPRange struct {
 	NetworkBorderGroup string `json:"network_border_group"`
 }
 
+// AWSIpRanges from the model of the ip range file from AWS
 type AWSIPRanges struct {
 	SyncToken string       `json:"syncToken"`
 	Prefixes  []AWSIPRange `json:"prefixes"`
@@ -30,10 +32,7 @@ func New() *CloudProviderIPRangeManager {
 	return &CloudProviderIPRangeManager{}
 }
 
-func (s *CloudProviderIPRangeManager) GetName() types.CloudProviderName {
-	return types.CloudProviderAWS
-}
-
+// IsNewVersion Check if the ip ranges pulled are newer than the one we already have
 func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldIPRangesInfo types.CloudProviderIPRangeInfo) bool {
 	ipRanges := AWSIPRanges{}
 	if err := json.Unmarshal(newIPRanges, &ipRanges); err != nil {
@@ -43,6 +42,7 @@ func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldIPRang
 	return ipRanges.SyncToken != oldIPRangesInfo.Version
 }
 
+// ConvertToGenericIPRanges From an unmarshalled json ip range file from AWS to a generic ip range struct
 func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges []byte) (*types.CloudProviderIPRangeInfo, error) {
 	ipRanges := AWSIPRanges{}
 	if err := json.Unmarshal(unparsedIPRanges, &ipRanges); err != nil {

@@ -35,9 +35,7 @@ type CloudServicesProvider struct {
 
 // CloudProviderIPRangeManager Methods to verify and transform a specifid ip ranges list from a provider
 type CloudProviderIPRangeManager interface {
-	// Check if the ip ranges pulled are newer than the one we already have
 	IsNewVersion([]byte, types.CloudProviderIPRangeInfo) bool
-	// From an unmarshalled json result of a provider to a generic ip range struct
 	ConvertToGenericIPRanges([]byte) (*types.CloudProviderIPRangeInfo, error)
 }
 
