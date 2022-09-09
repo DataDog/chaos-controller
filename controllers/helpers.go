@@ -132,22 +132,29 @@ func validateLabelSelector(selector labels.Selector) error {
 // transformCloudSpecToHostsSpec from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
 func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudservice.CloudServicesProvidersManager, cloudSpec *v1beta1.NetworkDisruptionCloudSpec) ([]v1beta1.NetworkDisruptionHostSpec, error) {
 	hosts := []v1beta1.NetworkDisruptionHostSpec{}
-	clouds := map[cloudtypes.CloudProviderName]*[]string{
+	clouds := map[cloudtypes.CloudProviderName]*[]v1beta1.NetworkDisruptionCloudServiceSpec{
 		cloudtypes.CloudProviderAWS: cloudSpec.AWSServiceList,
 	}
 
 	for cloudName, serviceList := range clouds {
-		ipRanges, err := cloudManager.GetServiceIPRanges(cloudName, *serviceList)
+		serviceListNames := []string{}
+		for _, service := range *serviceList {
+			serviceListNames = append(serviceListNames, service.ServiceName)
+		}
+
+		ipRangesPerService, err := cloudManager.GetServicesIPRanges(cloudName, serviceListNames)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, ip := range ipRanges {
-			hosts = append(hosts, v1beta1.NetworkDisruptionHostSpec{
-				Host:     ip,
-				Protocol: "tcp",
-				Flow:     "egress",
-			})
+		for _, serviceSpec := range *serviceList {
+			for _, ipRange := range ipRangesPerService[serviceSpec.ServiceName] {
+				hosts = append(hosts, v1beta1.NetworkDisruptionHostSpec{
+					Host:     ipRange,
+					Protocol: serviceSpec.Protocol,
+					Flow:     serviceSpec.Flow,
+				})
+			}
 		}
 	}
 

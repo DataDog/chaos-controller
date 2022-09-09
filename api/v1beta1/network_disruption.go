@@ -98,7 +98,18 @@ type NetworkDisruptionServiceSpec struct {
 
 // +ddmark:validation:AtLeastOneOf={AWSServiceList}
 type NetworkDisruptionCloudSpec struct {
-	AWSServiceList *[]string `json:"aws,omitempty"`
+	AWSServiceList *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty"`
+}
+
+type NetworkDisruptionCloudServiceSpec struct {
+	// +ddmark:validation:Required=true
+	ServiceName string `json:"service"`
+	// +kubebuilder:validation:Enum=tcp;udp;""
+	// +ddmark:validation:Enum=tcp;udp;""
+	Protocol string `json:"protocol,omitempty"`
+	// +kubebuilder:validation:Enum=ingress;egress;""
+	// +ddmark:validation:Enum=ingress;egress;""
+	Flow string `json:"flow,omitempty"`
 }
 
 // Validate validates args for the given disruption

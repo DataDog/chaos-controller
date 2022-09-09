@@ -519,8 +519,12 @@ var _ = Describe("Disruption Controller", func() {
 					Level:    chaostypes.DisruptionLevelPod,
 					Network: &chaosv1beta1.NetworkDisruptionSpec{
 						Cloud: &chaosv1beta1.NetworkDisruptionCloudSpec{
-							AWSServiceList: &[]string{
-								"S3",
+							AWSServiceList: &[]chaosv1beta1.NetworkDisruptionCloudServiceSpec{
+								{
+									ServiceName: "S3",
+									Flow:        "egress",
+									Protocol:    "tcp",
+								},
 							},
 						},
 						Drop:    0,

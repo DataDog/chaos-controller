@@ -426,6 +426,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 // addServiceFilters adds a list of service tc filters on a list of interfaces
 func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filters []tcServiceFilter, interfaces []string, flowid string) ([]tcServiceFilter, error) {
 	var err error
+
 	builtServices := []tcServiceFilter{}
 
 	for _, filter := range filters {

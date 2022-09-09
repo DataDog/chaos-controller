@@ -111,17 +111,24 @@ func (r *Disruption) ValidateCreate() error {
 		estimatedTcFiltersNb := len(r.Spec.Network.Hosts) + (len(r.Spec.Network.Services) * 2)
 
 		if r.Spec.Network.Cloud != nil {
-			clouds := map[cloudtypes.CloudProviderName]*[]string{
+			clouds := map[cloudtypes.CloudProviderName]*[]NetworkDisruptionCloudServiceSpec{
 				cloudtypes.CloudProviderAWS: r.Spec.Network.Cloud.AWSServiceList,
 			}
 
 			for cloudName, serviceList := range clouds {
-				ipRanges, err := cloudServicesProvidersManager.GetServiceIPRanges(cloudName, *serviceList)
+				serviceListNames := []string{}
+				for _, service := range *serviceList {
+					serviceListNames = append(serviceListNames, service.ServiceName)
+				}
+
+				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(cloudName, serviceListNames)
 				if err != nil {
 					return fmt.Errorf("%s. Available services are: %s", err.Error(), strings.Join(cloudServicesProvidersManager.GetServiceList(cloudName), ", "))
 				}
 
-				estimatedTcFiltersNb += len(ipRanges)
+				for _, ipRanges := range ipRangesPerService {
+					estimatedTcFiltersNb += len(ipRanges)
+				}
 			}
 		}
 
