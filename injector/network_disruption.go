@@ -529,7 +529,7 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromService(service v1.Se
 
 	endpointsToWatch := []tcServiceFilter{}
 
-	if service.Spec.ClusterIP == "" || strings.ToLower(service.Spec.ClusterIP) == "none" {
+	if isHeadless(service) {
 		return endpointsToWatch
 	}
 
@@ -636,14 +636,13 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		return fmt.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", service.Namespace, service.Name, err)
 	}
 
-	if service.Spec.ClusterIP == "" || strings.ToLower(service.Spec.ClusterIP) != "none" {
+	if isHeadless(*service) {
 		// If this is a headless service, we want to block all traffic to the endpoint IPs
 		watcher.servicePorts = append(watcher.servicePorts, v1.ServicePort{Port: 0})
 	} else {
 		watcher.servicePorts = service.Spec.Ports
 	}
 
-	// TODO HERE
 	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
 	if err != nil {
 		return err
@@ -957,4 +956,9 @@ func (i *networkDisruptionInjector) clearOperations() error {
 	}
 
 	return nil
+}
+
+// isHeadless returns true if the service is a headless service, i.e., has no defined ClusterIP
+func isHeadless(service v1.Service) bool {
+	return service.Spec.ClusterIP == "" || strings.ToLower(service.Spec.ClusterIP) == "none"
 }
