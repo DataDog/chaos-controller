@@ -83,7 +83,7 @@ type controllerConfig struct {
 	LeaderElection           bool                            `json:"leaderElection"`
 	Webhook                  controllerWebhookConfig         `json:"webhook"`
 	Notifiers                eventnotifier.NotifiersConfig   `json:"notifiersConfig"`
-	CloudProviders           cloudtypes.CloudProviderConfigs `json:"cloudproviders"`
+	CloudProviders           cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
 	UserInfoHook             bool                            `json:"userInfoHook"`
 	SafeMode                 safeModeConfig                  `json:"safeMode"`
 }
@@ -250,7 +250,7 @@ func main() {
 	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-cluster-threshold")))
 
 	pflag.StringVar(&cfg.Controller.CloudProviders.PullInterval, "cloud-providers-pull-interval", "1d", "Interval of time to pull the ip ranges of all cloud providers' services (default to 1 day)")
-	handleFatalError(viper.BindPFlag("controller.cloudproviders.pullinterval", pflag.Lookup("cloud-providers-pull-interval")))
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.pullinterval", pflag.Lookup("cloud-providers-pull-interval")))
 
 	pflag.Parse()
 

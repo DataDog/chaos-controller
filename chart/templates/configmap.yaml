@@ -34,8 +34,8 @@ data:
           headersFilepath: {{ .Values.controller.notifiers.http.headersFilepath | quote }}
         datadog:
           enabled: {{ .Values.controller.notifiers.datadog.enabled }}
-      cloudproviders:
-        pullInterval: {{ .Values.controller.cloudproviders.pullInterval }}
+      cloudProviders:
+        pullInterval: {{ .Values.controller.cloudProviders.pullInterval }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}

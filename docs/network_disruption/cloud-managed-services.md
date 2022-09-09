@@ -7,15 +7,12 @@ Large cloud services providers are using wide IP ranges. Hostnames used to ident
 Available cloud providers are:
 - AWS
 
-### Process
-
-
 ### Cloud Provider Manager
 
 The service will pull and parse the IP Ranges from the available cloud providers every x minutes/hours, defined in the chaos-controller configuration:
 
 ```
-cloudproviders:
+cloudProviders:
     pullInterval: "1d"
 ```
 
@@ -38,7 +35,9 @@ spec:
   network:
     cloud:
       aws:
-        - "S3"
+        - service: "S3"
+          flow: "egress" # available are egress or ingress. Optional
+          protocol: "tcp" # available are tcp or udp. Optional
     delay: 1000 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
     delayJitter: 5 # (optional) add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%
 ```
@@ -52,4 +51,4 @@ Available services are:
 
 We do not support using the service "AMAZON" (from the ip ranges file) as it's a combination of all ip ranges from all services and more miscellaneous ips; the number of ip ranges being too much from this, it's not possible for us to filter all of them at once.
 
-We are using the URL **https://ip-ranges.amazonaws.com/ip-ranges.json** to pull all the IP Ranges of AWS. 
+We are using the URL **https://ip-ranges.amazonaws.com/ip-ranges.json** to pull all the IP Ranges of AWS.
