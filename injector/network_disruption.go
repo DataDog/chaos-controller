@@ -236,28 +236,29 @@ func (i *networkDisruptionInjector) Clean() error {
 
 // applyOperations applies the added operations by building a tc tree
 // Here's what happen on tc side:
-//  - a first prio qdisc will be created and attached to root
-//    - it'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol
-//  - a second prio qdisc will be created and attached to the first one
-//    - it'll be used to apply the second filter, filtering on packet classid to identify packets coming from the targeted process
-//  - operations will be chained to the second band of the second prio qdisc
-//  - a cgroup filter will be created to classify packets according to their classid (if any)
-//  - a filter will be created to redirect traffic related to the specified host(s) through the last prio band
-//    - if no host, port or protocol is specified, a filter redirecting all the traffic (0.0.0.0/0) to the disrupted band will be created
-//  - a last filter will be created to redirect traffic related to the local node through a not disrupted band
+//   - a first prio qdisc will be created and attached to root
+//     it'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol
+//   - a second prio qdisc will be created and attached to the first one
+//     it'll be used to apply the second filter, filtering on packet classid to identify packets coming from the targeted process
+//   - operations will be chained to the second band of the second prio qdisc
+//   - a cgroup filter will be created to classify packets according to their classid (if any)
+//   - a filter will be created to redirect traffic related to the specified host(s) through the last prio band
+//     if no host, port or protocol is specified, a filter redirecting all the traffic (0.0.0.0/0) to the disrupted band will be created
+//   - a last filter will be created to redirect traffic related to the local node through a not disrupted band
 //
 // Here's the tc tree representation:
 // root (1:) <-- prio qdisc with 4 bands with a filter classifying packets matching the given dst ip, src/dst ports and protocol with class 1:4
-//   |- (1:1) <-- first band
-//   |- (1:2) <-- second band
-//   |- (1:3) <-- third band
-//   |- (1:4) <-- fourth band
-//     |- (2:) <-- prio qdisc with 2 bands with a cgroup filter to classify packets according to their classid (packets with classid 2:2 will be affected by operations)
-//       |- (2:1) <-- first band
-//       |- (2:2) <-- second band
-//         |- (3:) <-- first operation
-//           |- (4:) <-- second operation
-//             ...
+//
+//	|- (1:1) <-- first band
+//	|- (1:2) <-- second band
+//	|- (1:3) <-- third band
+//	|- (1:4) <-- fourth band
+//	  |- (2:) <-- prio qdisc with 2 bands with a cgroup filter to classify packets according to their classid (packets with classid 2:2 will be affected by operations)
+//	    |- (2:1) <-- first band
+//	    |- (2:2) <-- second band
+//	      |- (3:) <-- first operation
+//	        |- (4:) <-- second operation
+//	          ...
 func (i *networkDisruptionInjector) applyOperations() error {
 	i.tcFilterPriority = tcPriority
 
@@ -528,6 +529,10 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromService(service v1.Se
 
 	endpointsToWatch := []tcServiceFilter{}
 
+	if isHeadless(service) {
+		return endpointsToWatch
+	}
+
 	for _, port := range servicePorts {
 		filter := tcServiceFilter{
 			service: networkDisruptionService{
@@ -631,7 +636,12 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		return fmt.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", service.Namespace, service.Name, err)
 	}
 
-	watcher.servicePorts = service.Spec.Ports
+	if isHeadless(*service) {
+		// If this is a headless service, we want to block all traffic to the endpoint IPs
+		watcher.servicePorts = append(watcher.servicePorts, v1.ServicePort{Port: 0})
+	} else {
+		watcher.servicePorts = service.Spec.Ports
+	}
 
 	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
 	if err != nil {
@@ -946,4 +956,9 @@ func (i *networkDisruptionInjector) clearOperations() error {
 	}
 
 	return nil
+}
+
+// isHeadless returns true if the service is a headless service, i.e., has no defined ClusterIP
+func isHeadless(service v1.Service) bool {
+	return service.Spec.ClusterIP == "" || strings.ToLower(service.Spec.ClusterIP) == "none"
 }

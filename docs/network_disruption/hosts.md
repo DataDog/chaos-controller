@@ -32,6 +32,12 @@ network:
       namespace: example_namespace
 ```
 
+### Headless Services
+
+A "headless" service is a ClusterIP service whose ClusterIP is defined as "None". This means that connecting clients 
+need to resolve the service's hostname via a separate service resolution system. When a headless service is specified under 
+`spec.network.services`, we will resolve the service and block all traffic to all returned endpoints.
+
 ## Q: How can I exclude some hosts from being disrupted?
 
 It is sometimes handy to disrupt all packets going to a whole CIDR but excluding some of them. You have two ways to exclude some hosts from being disrupted in a network disruption:
