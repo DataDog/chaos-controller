@@ -501,4 +501,72 @@ var _ = Describe("Disruption Controller", func() {
 			Eventually(func() error { return k8sClient.Get(context.Background(), chaosPodKey, &chaosPod) }, timeout).Should(MatchError(fmt.Sprintf("Pod \"%s\" not found", chaosPod.Name)))
 		})
 	})
+
+	Context("Cloud disruption is a host disruption disguised", func() {
+		BeforeEach(func() {
+			disruption = &chaosv1beta1.Disruption{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "default",
+				},
+				Spec: chaosv1beta1.DisruptionSpec{
+					DryRun: false,
+					Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+					Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+						DisableAll: true,
+					},
+					Selector: map[string]string{"foo": "bar"},
+					Level:    chaostypes.DisruptionLevelPod,
+					Network: &chaosv1beta1.NetworkDisruptionSpec{
+						Cloud: &chaosv1beta1.NetworkDisruptionCloudSpec{
+							AWSServiceList: &[]chaosv1beta1.NetworkDisruptionCloudServiceSpec{
+								{
+									ServiceName: "S3",
+									Flow:        "egress",
+									Protocol:    "tcp",
+								},
+							},
+						},
+						Drop:    0,
+						Corrupt: 0,
+						Delay:   1,
+					},
+				},
+			}
+		})
+
+		It("should create a cloud disruption but apply a host disruption with the list of cloud managed service ip ranges", func() {
+			By("Ensuring that the chaos pod have been created")
+			Eventually(func() error { return expectChaosPod(disruption, 1) }, timeout).Should(Succeed())
+
+			By("Ensuring that the chaos pod has the list of AWS hosts")
+			Eventually(func() error {
+				hosts := 0
+
+				// get chaos pods
+				l, err := listChaosPods(disruption)
+
+				if err != nil {
+					return err
+				}
+
+				// sum up injectors
+				for _, p := range l.Items {
+					args := p.Spec.Containers[0].Args
+					for _, arg := range args {
+						if arg == "--hosts" {
+							hosts++
+						}
+					}
+				}
+
+				if hosts == 0 {
+					return fmt.Errorf("should have multiple hosts parameters.")
+				}
+
+				return nil
+			}, timeout).Should(Succeed())
+
+		})
+	})
 })

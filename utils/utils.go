@@ -20,6 +20,7 @@ package utils
 import (
 	"time"
 
+	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/record"
@@ -38,14 +39,15 @@ func Contains(s []string, str string) bool {
 }
 
 type SetupWebhookWithManagerConfig struct {
-	Manager                ctrl.Manager
-	Logger                 *zap.SugaredLogger
-	MetricsSink            metrics.Sink
-	Recorder               record.EventRecorder
-	NamespaceThresholdFlag int
-	ClusterThresholdFlag   int
-	EnableSafemodeFlag     bool
-	DeleteOnlyFlag         bool
-	HandlerEnabledFlag     bool
-	DefaultDurationFlag    time.Duration
+	Manager                       ctrl.Manager
+	Logger                        *zap.SugaredLogger
+	MetricsSink                   metrics.Sink
+	Recorder                      record.EventRecorder
+	NamespaceThresholdFlag        int
+	ClusterThresholdFlag          int
+	EnableSafemodeFlag            bool
+	DeleteOnlyFlag                bool
+	HandlerEnabledFlag            bool
+	DefaultDurationFlag           time.Duration
+	CloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 }

@@ -19,6 +19,11 @@ const (
 	FlowEgress = "egress"
 	// FlowIngress is the string representation of network disruptions applied to incoming packets
 	FlowIngress = "ingress"
+	// this limitation does not come from TC itself but from the net scheduler of the kernel.
+	// When not specifying an index for the hashtable created when we use u32 filters, the default id for this hashtable is 0x800.
+	// However, the maximum id being 0xFFF, we can only have 2048 different ids, so 2048 tc filters with u32.
+	// https://github.com/torvalds/linux/blob/v5.19/net/sched/cls_u32.c#L689-L690
+	MaximumTCFilters = 2048
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
@@ -30,6 +35,8 @@ type NetworkDisruptionSpec struct {
 	AllowedHosts []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
 	// +nullable
 	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
+	// +nullable
+	Cloud *NetworkDisruptionCloudSpec `json:"cloud,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	// +ddmark:validation:Minimum=0
@@ -87,6 +94,22 @@ type NetworkDisruptionHostSpec struct {
 type NetworkDisruptionServiceSpec struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+}
+
+// +ddmark:validation:AtLeastOneOf={AWSServiceList}
+type NetworkDisruptionCloudSpec struct {
+	AWSServiceList *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty"`
+}
+
+type NetworkDisruptionCloudServiceSpec struct {
+	// +ddmark:validation:Required=true
+	ServiceName string `json:"service"`
+	// +kubebuilder:validation:Enum=tcp;udp;""
+	// +ddmark:validation:Enum=tcp;udp;""
+	Protocol string `json:"protocol,omitempty"`
+	// +kubebuilder:validation:Enum=ingress;egress;""
+	// +ddmark:validation:Enum=ingress;egress;""
+	Flow string `json:"flow,omitempty"`
 }
 
 // Validate validates args for the given disruption

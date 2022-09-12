@@ -10,12 +10,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
@@ -40,6 +43,7 @@ var namespaceThreshold float64
 var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
+var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	if err := ddmark.InitLibrary(EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix); err != nil {
@@ -57,6 +61,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	clusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
 	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
+	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
@@ -97,6 +102,39 @@ func (r *Disruption) ValidateCreate() error {
 	// handle a disruption using the onInit feature without the handler being enabled
 	if !handlerEnabled && r.Spec.OnInit {
 		return errors.New("the chaos handler is disabled but the disruption onInit field is set to true, please enable the handler by specifying the --handler-enabled flag to the controller if you want to use the onInit feature (requires Kubernetes >= 1.15)")
+	}
+
+	if r.Spec.Network != nil {
+		// this is the minimum estimated number of tc filters we could have for the disruption
+		// knowing a service is filtered by both its service IP and the pod(s) IP where the service is
+		// we don't count the number of Pods hosting the service here because this could be changing
+		estimatedTcFiltersNb := len(r.Spec.Network.Hosts) + (len(r.Spec.Network.Services) * 2)
+
+		if r.Spec.Network.Cloud != nil {
+			clouds := map[cloudtypes.CloudProviderName]*[]NetworkDisruptionCloudServiceSpec{
+				cloudtypes.CloudProviderAWS: r.Spec.Network.Cloud.AWSServiceList,
+			}
+
+			for cloudName, serviceList := range clouds {
+				serviceListNames := []string{}
+				for _, service := range *serviceList {
+					serviceListNames = append(serviceListNames, service.ServiceName)
+				}
+
+				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(cloudName, serviceListNames)
+				if err != nil {
+					return fmt.Errorf("%s. Available services are: %s", err.Error(), strings.Join(cloudServicesProvidersManager.GetServiceList(cloudName), ", "))
+				}
+
+				for _, ipRanges := range ipRangesPerService {
+					estimatedTcFiltersNb += len(ipRanges)
+				}
+			}
+		}
+
+		if estimatedTcFiltersNb > MaximumTCFilters {
+			return fmt.Errorf("the number of resources (ips, ip ranges, single port) to filter is too high (%d). Please remove some hosts, services or cloud managed services to be affected in the disruption. Maximum resources (ips, ip ranges, single port) filterable is %d", estimatedTcFiltersNb, MaximumTCFilters)
+		}
 	}
 
 	if err := r.Spec.Validate(); err != nil {
