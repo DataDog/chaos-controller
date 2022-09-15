@@ -256,7 +256,7 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 	responses := []string{}
 	// handle initial safety nets if safemode is enabled
 	if r.Spec.Unsafemode == nil || !r.Spec.Unsafemode.DisableAll {
-		if caught, response, err := safetyNetCountNotTooLarge(*r); err != nil {
+		if caught, response, err := safetyNetCountNotTooLarge(r); err != nil {
 			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet: %w", err)
 		} else if caught {
 			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", "SafetyNet Catch", "Generic")
@@ -281,7 +281,7 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 // > 66% of the k8s system being targeted warrants a safety check if we assume each of our targets are replicated
 // at least twice. > 80% in a namespace also warrants a safety check as namespaces may be shared between services.
 // returning true indicates the safety net caught something
-func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
+func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableCountTooLarge {
 		return false, "", nil
 	}
