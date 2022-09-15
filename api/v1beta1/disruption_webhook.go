@@ -259,16 +259,16 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 		if caught, response, err := safetyNetCountNotTooLarge(*r); err != nil {
 			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet: %w", err)
 		} else if caught {
-			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", r.Name, "SafetyNet Catch", "Generic")
+			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", "SafetyNet Catch", "Generic")
 
 			responses = append(responses, response)
 		}
 
 		if r.Spec.Network != nil {
 			if caught := safetyNetNeitherHostNorPort(*r); caught {
-				logger.Debugw("The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.", r.Name, "SafetyNet Catch", "Network")
+				logger.Debugw("the specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.", "SafetyNet Catch", "Network")
 
-				responses = append(responses, "The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.")
+				responses = append(responses, "the specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.")
 			}
 		}
 	}
