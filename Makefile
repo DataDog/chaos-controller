@@ -32,7 +32,7 @@ all: manager injector handler
 
 # Run unit tests
 test: generate manifests
-	go test $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
+	go test -race $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
 
 # This target is dedicated for CI and aims to reuse the Kubernetes version defined here as the source of truth
 ci-install-minikube:
