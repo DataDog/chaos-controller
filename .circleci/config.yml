@@ -172,14 +172,6 @@ jobs:
             sudo chown circleci:circleci /go /usr/local/bin /usr/local/kubebuilder
       - go_restore_cache
       - run:
-          name: Edit controller chart
-          <<: *working_directory
-          command: |
-            sudo add-apt-repository ppa:rmescandon/yq
-            sudo apt-get update
-            sudo apt-get install -y yq
-            yq e '.controller.expiredDisruptionGCDelay = "10s"' -i chart/values.yaml
-      - run:
           name: Wait for Docker Daemon to be up and running
           command: |
             for i in 0..9; do
