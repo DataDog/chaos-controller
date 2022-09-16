@@ -266,9 +266,9 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 
 		if r.Spec.Network != nil {
 			if caught := safetyNetNeitherHostNorPort(*r); caught {
-				logger.Debugw("the specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.", "SafetyNet Catch", "Network")
+				logger.Debugw("the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.", "SafetyNet Catch", "Network")
 
-				responses = append(responses, "the specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.")
+				responses = append(responses, "the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.")
 			}
 		}
 	}
