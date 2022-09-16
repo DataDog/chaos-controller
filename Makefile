@@ -80,6 +80,8 @@ colima-all:
 	$(MAKE) colima-build
 	$(MAKE) colima-install
 
+colima-deploy: colima-build colima-install colima-restart
+
 install-cert-manager:
 	$(KUBECTL) apply -f https://github.com/jetstack/cert-manager/releases/download/v1.9.1/cert-manager.yaml
 

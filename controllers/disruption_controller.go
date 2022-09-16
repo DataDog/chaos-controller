@@ -140,7 +140,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// check whether the object is being deleted or not
-	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !instance.DeletionTimestamp.IsZero() {
 		// the instance is being deleted, clean it if the finalizer is still present
 		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
 			isCleaned, err := r.cleanDisruption(instance)
@@ -652,7 +652,7 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 	target := chaosPod.Labels[chaostypes.TargetLabel]
 
 	// ignore chaos pods not being deleted or not having the finalizer anymore
-	if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.IsZero() || !controllerutil.ContainsFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer) {
+	if chaosPod.DeletionTimestamp.IsZero() || !controllerutil.ContainsFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer) {
 		return
 	}
 
@@ -866,7 +866,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 // deleteChaosPods deletes a chaos pod using the client
 func (r *DisruptionReconciler) deleteChaosPod(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) {
 	// delete the chaos pod only if it has not been deleted already
-	if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
+	if chaosPod.DeletionTimestamp.IsZero() {
 		r.log.Infow("terminating chaos pod to trigger cleanup", "chaosPod", chaosPod.Name)
 
 		if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
@@ -917,45 +917,8 @@ func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disrupt
 	return eligibleTargets, nil
 }
 
-// getChaosPods returns chaos pods owned by the given instance and having the given labels
-// both instance and label set are optional but at least one must be provided
 func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error) {
-	pods := &corev1.PodList{}
-
-	// ensure we always have at least a disruption instance or a label set to filter on
-	if instance == nil && ls == nil {
-		return nil, fmt.Errorf("you must specify at least a disruption instance or a label set to get chaos pods")
-	}
-
-	if ls == nil {
-		ls = make(map[string]string)
-	}
-
-	// add instance specific labels if provided
-	if instance != nil {
-		ls[chaostypes.DisruptionNameLabel] = instance.Name
-		ls[chaostypes.DisruptionNamespaceLabel] = instance.Namespace
-	}
-
-	// list pods in the defined namespace and for the given target
-	listOptions := &client.ListOptions{
-		Namespace:     r.ChaosNamespace,
-		LabelSelector: labels.SelectorFromValidatedSet(ls),
-	}
-
-	err := r.Client.List(context.Background(), pods, listOptions)
-	if err != nil {
-		return nil, fmt.Errorf("error listing owned pods: %w", err)
-	}
-
-	podNames := []string{}
-	for _, pod := range pods.Items {
-		podNames = append(podNames, pod.Name)
-	}
-
-	r.log.Debugw("searching for chaos pods with label selector...", "labels", ls.String(), "foundPods", podNames)
-
-	return pods.Items, nil
+	return chaosv1beta1.GetChaosPods(context.Background(), r.log, r.ChaosNamespace, r.Client, instance, ls)
 }
 
 // generatePod generates a pod from a generic pod template in the same namespace
