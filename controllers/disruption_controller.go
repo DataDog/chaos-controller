@@ -675,9 +675,9 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 		}
 	}
 
-	// It is always safe to remove a node failure chaos pod. It is usually hard to tell if a node failure chaos pod has
-	// succeeded or not, so we choose to always remove the finalizer.
-	if chaosPod.Labels[chaostypes.DisruptionKindLabel] == chaostypes.DisruptionKindNodeFailure {
+	// It is always safe to remove some chaos pods. It is usually hard to tell if these chaos pods have
+	// succeeded or not, but they have no possibility of leaving side effects, so we choose to always remove the finalizer.
+	if chaosv1beta1.DisruptionIsCleanedForFree(chaosPod.Labels[chaostypes.DisruptionKindLabel]) {
 		removeFinalizer = true
 		ignoreStatus = true
 	}

@@ -433,3 +433,21 @@ func DisruptionIsReinjectable(kind chaostypes.DisruptionKindName) bool {
 
 	return true
 }
+
+// CleanedFreeDisruptions is the list of all disruption kinds where the lifecycle of the failure matches the lifecycle of
+// the chaos pod. So once the chaos pod is gone, there's nothing left for us to clean.
+var CleanedFreeDisruptions = []chaostypes.DisruptionKindName{
+	chaostypes.DisruptionKindNodeFailure,
+	chaostypes.DisruptionKindContainerFailure,
+	chaostypes.DisruptionKindCPUPressure,
+}
+
+func DisruptionIsCleanedForFree(kind string) bool {
+	for _, dis := range CleanedFreeDisruptions {
+		if dis.String() == kind {
+			return true
+		}
+	}
+
+	return false
+}
