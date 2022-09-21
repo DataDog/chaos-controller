@@ -118,7 +118,7 @@ func (d *Sink) MetricDisruptionOngoingDuration(duration time.Duration, tags []st
 // MetricPodsCreated increment pods.created metric
 func (d *Sink) MetricPodsCreated(target, instanceName, namespace string, succeed bool) error {
 	status := boolToStatus(succeed)
-	tags := []string{"target:" + target, "name:" + instanceName, "status:" + status, "namespace:" + namespace}
+	tags := []string{"target:" + target, "disruptionName:" + instanceName, "name:" + instanceName, "status:" + status, "namespace:" + namespace}
 
 	return d.metricWithStatus(metricPrefixController+"pods.created", tags)
 }

@@ -105,7 +105,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return func() {
 			tags := []string{}
 			if instance.Name != "" {
-				tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
+				tags = append(tags, "disruptionName:"+instance.Name, "name:"+instance.Name, "namespace:"+instance.Namespace)
 			}
 
 			r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
@@ -181,8 +181,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 
 			// send reconciling duration metric
-			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
-			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"disruptionName:" + instance.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}))
+			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + instance.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.emitKindCountMetrics(instance)
 
 			return ctrl.Result{}, nil
@@ -268,7 +268,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// send injection duration metric representing the time it took to fully inject the disruption until its creation
-		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + instance.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}))
 
 		// update resource status injection
 		// requeue the request if the disruption is not fully injected yet
@@ -1198,7 +1198,7 @@ func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Di
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
 	for _, kind := range instance.Spec.GetKindNames() {
-		r.handleMetricSinkError((r.MetricsSink.MetricDisruptionsCount(kind, []string{"name:" + instance.Name, "namespace:" + instance.Namespace})))
+		r.handleMetricSinkError(r.MetricsSink.MetricDisruptionsCount(kind, []string{"disruptionName:" + instance.Name, "name:" + instance.Name, "namespace:" + instance.Namespace}))
 	}
 }
 
@@ -1350,7 +1350,7 @@ func (r *DisruptionReconciler) ReportMetrics() {
 			if d.Status.IsStuckOnRemoval {
 				stuckOnRemoval++
 
-				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"name:" + d.Name, "namespace:" + d.Namespace}); err != nil {
+				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"disruptionName:" + d.Name, "name:" + d.Name, "namespace:" + d.Namespace}); err != nil {
 					r.log.Errorw("error sending stuck_on_removal metric", "error", err)
 				}
 			}
@@ -1362,7 +1362,7 @@ func (r *DisruptionReconciler) ReportMetrics() {
 
 			chaosPodsCount += len(chaosPods)
 
-			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionOngoingDuration(time.Since(d.ObjectMeta.CreationTimestamp.Time), []string{"name:" + d.Name, "namespace:" + d.Namespace}))
+			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionOngoingDuration(time.Since(d.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + d.Name, "name:" + d.Name, "namespace:" + d.Namespace}))
 		}
 
 		// send metrics
