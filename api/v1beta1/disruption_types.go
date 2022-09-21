@@ -420,18 +420,14 @@ func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
 	}
 }
 
-var NonReinjectableDisruptions = []chaostypes.DisruptionKindName{
-	chaostypes.DisruptionKindGRPCDisruption,
+var NonReinjectableDisruptions = map[chaostypes.DisruptionKindName]interface{}{
+	chaostypes.DisruptionKindGRPCDisruption: nil,
 }
 
 func DisruptionIsReinjectable(kind chaostypes.DisruptionKindName) bool {
-	for _, dis := range NonReinjectableDisruptions {
-		if dis == kind {
-			return false
-		}
-	}
+	_, found := NonReinjectableDisruptions[kind]
 
-	return true
+	return found
 }
 
 // NoSideEffectDisruptions is the list of all disruption kinds where the lifecycle of the failure matches the lifecycle of
