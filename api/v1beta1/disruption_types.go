@@ -420,8 +420,8 @@ func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
 	}
 }
 
-var NonReinjectableDisruptions = map[chaostypes.DisruptionKindName]interface{}{
-	chaostypes.DisruptionKindGRPCDisruption: nil,
+var NonReinjectableDisruptions = map[chaostypes.DisruptionKindName]struct{}{
+	chaostypes.DisruptionKindGRPCDisruption: {},
 }
 
 func DisruptionIsReinjectable(kind chaostypes.DisruptionKindName) bool {
@@ -432,10 +432,10 @@ func DisruptionIsReinjectable(kind chaostypes.DisruptionKindName) bool {
 
 // NoSideEffectDisruptions is the list of all disruption kinds where the lifecycle of the failure matches the lifecycle of
 // the chaos pod. So once the chaos pod is gone, there's nothing left for us to clean.
-var NoSideEffectDisruptions = map[chaostypes.DisruptionKindName]interface{}{
-	chaostypes.DisruptionKindNodeFailure:      nil,
-	chaostypes.DisruptionKindContainerFailure: nil,
-	chaostypes.DisruptionKindCPUPressure:      nil,
+var NoSideEffectDisruptions = map[chaostypes.DisruptionKindName]struct{}{
+	chaostypes.DisruptionKindNodeFailure:      {},
+	chaostypes.DisruptionKindContainerFailure: {},
+	chaostypes.DisruptionKindCPUPressure:      {},
 }
 
 func DisruptionHasNoSideEffects(kind string) bool {
