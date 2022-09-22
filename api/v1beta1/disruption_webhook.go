@@ -209,7 +209,6 @@ func (r *Disruption) ValidateDelete() error {
 func (r *Disruption) getMetricsTags() []string {
 	tags := []string{
 		"disruptionName:" + r.Name,
-		"name:" + r.Name,
 		"namespace:" + r.Namespace,
 	}
 
