@@ -66,7 +66,7 @@ colima-all:
 	$(MAKE) colima-install
 
 install-cert-manager:
-	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.3.0/cert-manager.yaml
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.9.1/cert-manager.yaml
 
 # Longhorn is used as an alternative StorageClass in order to enable "reliable" disk throttling accross various local setup
 # It aims to bypass some issues encountered with default StorageClass (local-path --> tmpfs) that led to virtual unnamed devices
