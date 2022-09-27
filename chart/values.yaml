@@ -5,9 +5,9 @@
 chaosNamespace: chaos-engineering # namespace where any resources get created.
 
 images: # images and tag to pull for each component of the stack
-  controller: docker.io/library/chaos-controller:latest
-  injector: docker.io/library/chaos-injector:latest
-  handler: docker.io/library/chaos-handler:latest
+  controller: k8s.io/chaos-controller:latest
+  injector: k8s.io/chaos-injector:latest
+  handler: k8s.io/chaos-handler:latest
   proxy: gcr.io/kubebuilder/kube-rbac-proxy:v0.4.1
   pullSecrets: false # name of the secret object to use when pulling images
 
@@ -18,7 +18,7 @@ controller:
   metricsSink: noop # metrics driver (noop or datadog)
   notifiers:
     common:
-      clusterName: "minikube"
+      clusterName: colima
     noop:
       enabled: true
     slack:

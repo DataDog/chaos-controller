@@ -9,7 +9,7 @@ controller:
   enableSafeguards: false
   notifiers:
     common:
-      clusterName: "minikube"
+      clusterName: colima
     noop:
       enabled: true
     slack:
@@ -29,7 +29,7 @@ controller:
     host: ""
     port: 9443
 injector:
-  image: "docker.io/library/chaos-injector:latest"
+  image: k8s.io/chaos-injector:latest
   serviceAccount: "chaos-injector"
   chaosNamespace: "chaos-engineering"
   dnsDisruption:
@@ -37,5 +37,5 @@ injector:
     kubeDns: "all"
 handler:
   enabled: true
-  image: "docker.io/library/chaos-handler:latest"
+  image: k8s.io/chaos-handler:latest
   timeout: "1m"

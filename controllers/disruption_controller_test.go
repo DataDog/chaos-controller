@@ -19,6 +19,7 @@ package controllers
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
@@ -36,13 +37,23 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+var clusterName string
+
+func init() {
+	if envClusterName, ok := os.LookupEnv("CLUSTER_NAME"); ok {
+		clusterName = envClusterName
+	} else {
+		clusterName = "minikube"
+	}
+}
+
 // listChaosPods returns all the chaos pods for the given instance and mode
 func listChaosPods(instance *chaosv1beta1.Disruption) (corev1.PodList, error) {
 	l := corev1.PodList{}
 	ls := labels.NewSelector()
 
 	// create requirements
-	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "foo2", "bar", "minikube"})
+	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "foo2", "bar", clusterName})
 	disruptionNameRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNameLabel, selection.Equals, []string{instance.Name})
 	disruptionNamespaceRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNamespaceLabel, selection.Equals, []string{instance.Namespace})
 
@@ -247,7 +258,7 @@ var _ = Describe("Disruption Controller", func() {
 					Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 						DisableAll: true,
 					},
-					Selector: map[string]string{"kubernetes.io/hostname": "minikube"},
+					Selector: map[string]string{"kubernetes.io/hostname": clusterName},
 					Level:    chaostypes.DisruptionLevelNode,
 					Network: &chaosv1beta1.NetworkDisruptionSpec{
 						Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
