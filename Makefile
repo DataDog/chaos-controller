@@ -142,8 +142,7 @@ colima-build-injector: injector
 colima-build-handler: handler
 	nerdctl build --namespace ${CONTAINERD_REGISTRY_PREFIX} --build-arg TARGETARCH=${OS_ARCH} -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
 
-colima-build:
-	$(MAKE) -j3 colima-build-manager colima-build-injector colima-build-handler
+colima-build: colima-build-manager colima-build-injector colima-build-handler
 
 # Build the docker images
 # to ease minikube/colima base minikube docker image load, we are using tarball
