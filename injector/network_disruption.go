@@ -19,7 +19,6 @@ import (
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
 	"github.com/DataDog/chaos-controller/types"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -36,7 +35,7 @@ var tcPriority = uint32(49149)
 type networkDisruptionService struct {
 	ip       *net.IPNet
 	port     int
-	protocol string
+	protocol network.Protocol
 }
 
 func (n networkDisruptionService) String() string {
@@ -62,6 +61,7 @@ type networkDisruptionInjector struct {
 type NetworkDisruptionInjectorConfig struct {
 	Config
 	TrafficController network.TrafficController
+	Iptables          network.Iptables
 	NetlinkAdapter    network.NetlinkAdapter
 	DNSClient         network.DNSClient
 	State             DisruptionState
@@ -98,7 +98,16 @@ type serviceWatcher struct {
 
 // NewNetworkDisruptionInjector creates a NetworkDisruptionInjector object with the given config,
 // missing field being initialized with the defaults
-func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config NetworkDisruptionInjectorConfig) Injector {
+func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config NetworkDisruptionInjectorConfig) (Injector, error) {
+	var err error
+
+	if config.Iptables == nil {
+		config.Iptables, err = network.NewIptables(config.Log, config.DryRun)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if config.TrafficController == nil {
 		config.TrafficController = network.NewTrafficController(config.Log, config.DryRun)
 	}
@@ -121,11 +130,11 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 		spec:       spec,
 		config:     config,
 		operations: []linkOperation{},
-	}
+	}, nil
 }
 
-func (i *networkDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
-	return chaostypes.DisruptionKindNetworkDisruption
+func (i *networkDisruptionInjector) GetDisruptionKind() types.DisruptionKindName {
+	return types.DisruptionKindNetworkDisruption
 }
 
 // Inject injects the given network disruption into the given container
@@ -163,6 +172,13 @@ func (i *networkDisruptionInjector) Inject() error {
 
 	// apply operations if any
 	if len(i.operations) > 0 {
+		// add a conntrack reference to enable it
+		// it consists of adding a noop iptables rule loading the conntrack module so it enables connection tracking in the targeted network namespace
+		// cf. https://thermalcircle.de/doku.php?id=blog:linux:connection_tracking_1_modules_and_hooks for more information on how conntrack works outside of the main network namespace
+		if err := i.config.Iptables.PrependRuleSpec("OUTPUT", "-m", "state", "--state", "new,established", "-j", "LOG"); err != nil {
+			return fmt.Errorf("error injecting the conntrack reference iptables rule: %w", err)
+		}
+
 		if err := i.applyOperations(); err != nil {
 			return fmt.Errorf("error applying tc operations: %w", err)
 		}
@@ -224,6 +240,11 @@ func (i *networkDisruptionInjector) Clean() error {
 		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x0"); err != nil {
 			return fmt.Errorf("error reseting classid of pod net_cls cgroup: %w", err)
 		}
+	}
+
+	// remove the conntrack reference to disable conntrack in the network namespace
+	if err := i.config.Iptables.DeleteRuleSpec("OUTPUT", "-m", "state", "--state", "new,established", "-j", "LOG"); err != nil {
+		return fmt.Errorf("error injecting the conntrack reference iptables rule: %w", err)
 	}
 
 	// exit target network namespace
@@ -342,7 +363,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// create a second qdisc to filter packets coming from this specific pod processes only
 	// if the disruption is applied on init, we consider that some more containers may be created within
 	// the pod so we can't scope the disruption to a specific set of containers
-	if i.config.Level == chaostypes.DisruptionLevelPod && !i.config.OnInit {
+	if i.config.Level == types.DisruptionLevelPod && !i.config.OnInit {
 		// create second prio with only 2 bands to filter traffic with a specific classid
 		if err := i.config.TrafficController.AddPrio(interfaces, "1:4", 2, 2, [16]uint32{}); err != nil {
 			return fmt.Errorf("can't create a new qdisc: %w", err)
@@ -375,7 +396,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// depending on the network configuration, only one of those filters can be useful but we must add all of them
 	// those filters are only added if the related interface has been impacted by a disruption so far
 	// NOTE: those filters must be added after every other filters applied to the interface so they are used first
-	if i.config.Level == chaostypes.DisruptionLevelPod {
+	if i.config.Level == types.DisruptionLevelPod {
 		// this filter allows the pod to communicate with the default route gateway IP
 		for _, defaultRoute := range defaultRoutes {
 			gatewayIP := &net.IPNet{
@@ -383,31 +404,31 @@ func (i *networkDisruptionInjector) applyOperations() error {
 				Mask: net.CIDRMask(32, 32),
 			}
 
-			if err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", i.getNewPriority(), 0, nil, gatewayIP, 0, 0, "", "1:1"); err != nil {
+			if err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", i.getNewPriority(), 0, nil, gatewayIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
 			}
 		}
 
 		// this filter allows the pod to communicate with the node IP
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nodeIPNet, 0, 0, "", "1:1"); err != nil {
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nodeIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 		}
-	} else if i.config.Level == chaostypes.DisruptionLevelNode {
+	} else if i.config.Level == types.DisruptionLevelNode {
 		// GENERIC SAFEGUARDS
 		// allow SSH connections on all interfaces (port 22/tcp)
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nil, 22, 0, "tcp", "1:1"); err != nil {
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nil, 22, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
 		}
 
 		// CLOUD PROVIDER SPECIFIC SAFEGUARDS
 		// allow cloud provider health checks on all interfaces(arp)
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nil, 0, 0, "arp", "1:1"); err != nil {
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nil, 0, 0, network.ARP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
 		}
 
 		// allow cloud provider metadata service communication
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, metadataIPNet, 0, 0, "", "1:1"); err != nil {
-			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, metadataIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
+			return fmt.Errorf("error adding filter allowing cloud providers metadata service requests: %w", err)
 		}
 	}
 
@@ -421,7 +442,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	if len(i.spec.Hosts) == 0 && len(i.spec.Services) == 0 {
 		_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
 
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nullIP, 0, 0, "", "1:4"); err != nil {
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nullIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:4"); err != nil {
 			return fmt.Errorf("can't add a filter: %w", err)
 		}
 	} else {
@@ -459,7 +480,7 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 
 		i.config.Log.Infow("found service endpoint", "resolvedEndpoint", filter.service.String(), "resolvedService", serviceName)
 
-		err := i.config.TrafficController.AddFilter(interfaces, "1:0", filter.priority, 0, nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, flowid)
+		err := i.config.TrafficController.AddFilter(interfaces, "1:0", filter.priority, 0, nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, network.ConnStateUndefined, flowid)
 		if err != nil {
 			return nil, err
 		}
@@ -510,7 +531,7 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servi
 			service: networkDisruptionService{
 				ip:       endpointIP,
 				port:     int(port.TargetPort.IntVal),
-				protocol: string(port.Protocol),
+				protocol: network.Protocol(port.Protocol),
 			},
 		}
 
@@ -538,7 +559,7 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromService(service v1.Se
 			service: networkDisruptionService{
 				ip:       serviceIP,
 				port:     int(port.Port),
-				protocol: string(port.Protocol),
+				protocol: network.Protocol(port.Protocol),
 			},
 		}
 
@@ -889,12 +910,13 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 		i.config.Log.Infof("resolved %s as %s", host.Host, ips)
 
 		for _, ip := range ips {
-			// handle flow direction
 			var (
 				srcPort, dstPort int
 				srcIP, dstIP     *net.IPNet
+				connState        network.ConnState
 			)
 
+			// handle flow direction
 			switch host.Flow {
 			case v1beta1.FlowIngress:
 				srcPort = host.Port
@@ -904,8 +926,23 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 				dstIP = ip
 			}
 
+			// default protocol to tcp if not specified
+			if host.Protocol == "" {
+				host.Protocol = string(network.TCP)
+			}
+
+			// cast connection state
+			switch host.ConnState {
+			case "new":
+				connState = network.ConnStateNew
+			case "est":
+				connState = network.ConnStateEstablished
+			default:
+				connState = network.ConnStateUndefined
+			}
+
 			// create tc filter
-			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, srcIP, dstIP, srcPort, dstPort, host.Protocol, flowid); err != nil {
+			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, srcIP, dstIP, srcPort, dstPort, network.Protocol(host.Protocol), connState, flowid); err != nil {
 				return fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
 			}
 		}
