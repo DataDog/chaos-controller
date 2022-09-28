@@ -1,6 +1,5 @@
 *.swp
 .git/
 vendor/
-minikube/
 out/
 cli/chaosli/chaosli.DOCKERFILE

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 function usage() {
   echo "wrong number of parameters: $0 POD_NAME"
@@ -17,14 +17,14 @@ function exec_into_pod() {
   fi
 
   # get container id
-  id=$(kubectl -n chaos-engineering get -ojson pod $pod | jq -r '.status.containerStatuses[0].containerID' | sed "s#$runtime://##")
+  id=$(kubectl -n chaos-engineering get -ojson pod "$pod" | jq -r '.status.containerStatuses[0].containerID' | sed "s#$runtime://##")
   # get pid with containerd
-  if [ $runtime = "containerd" ]; then
-    inspect=$(minikube ssh -- "sudo crictl inspect $id")
+  if [[ "$runtime" = "containerd" ]]; then
+    inspect=$(colima ssh -- sudo crictl inspect "$id")
     pid=$(echo "$inspect" | jq -r .info.pid)
   # get pid with docker
-  elif [ $runtime = "docker" ]; then
-    inspect=$(minikube ssh -- "sudo docker inspect $id")
+  elif [[ "$runtime" = "docker" ]]; then
+    inspect=$(colima ssh -- sudo docker inspect "$id")
     pid=$(echo "$inspect" | jq -r '.[0].State.Pid')
   fi
 
@@ -33,5 +33,7 @@ function exec_into_pod() {
     exit 1
   fi
 
-  minikube ssh -- "sudo nsenter --net=/proc/$pid/ns/net $cmd"
+  # shellcheck disable=SC2086
+  # word splitting is expected on $cmd
+  colima ssh -- sudo nsenter --net="/proc/$pid/ns/net" $cmd
 }
