@@ -19,15 +19,6 @@ import (
 
 const tcPath = "/sbin/tc"
 
-// default protocol identifiers from /etc/protocols
-const (
-	protocolIP  protocolIdentifier = 0
-	protocolTCP protocolIdentifier = 6
-	protocolUDP protocolIdentifier = 17
-)
-
-type protocolIdentifier int
-
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
 type TrafficController interface {
@@ -175,33 +166,35 @@ func (t tc) AddFilter(ifaces []string, parent string, priority uint32, handle ui
 		return fmt.Errorf("wrong filter, at least an IP or a port must be specified")
 	}
 
-	// match ip if specified
-	if srcIP != nil {
-		params += fmt.Sprintf("match ip src %s ", srcIP.String())
+	// match protocol if specified
+	if protocol != "" {
+		params += fmt.Sprintf("ip_proto %s ", strings.ToLower(protocol))
+	} else {
+		params += "ip_proto tcp "
 	}
 
-	if dstIP != nil {
-		params += fmt.Sprintf("match ip dst %s ", dstIP.String())
+	// match ip if specified
+	if srcIP != nil && srcIP.String() != "0.0.0.0/0" {
+		params += fmt.Sprintf("src_ip %s ", srcIP.String())
+	}
+
+	if dstIP != nil && dstIP.String() != "0.0.0.0/0" {
+		params += fmt.Sprintf("dst_ip %s ", dstIP.String())
 	}
 
 	// match port if specified
 	if srcPort != 0 {
-		params += fmt.Sprintf("match ip sport %s 0xffff ", strconv.Itoa(srcPort))
+		params += fmt.Sprintf("src_port %s ", strconv.Itoa(srcPort))
 	}
 
 	if dstPort != 0 {
-		params += fmt.Sprintf("match ip dport %s 0xffff ", strconv.Itoa(dstPort))
-	}
-
-	// match protocol if specified
-	if protocol != "" {
-		params += fmt.Sprintf("match ip protocol %d 0xff ", getProtocolIndentifier(protocol))
+		params += fmt.Sprintf("dst_port %s ", strconv.Itoa(dstPort))
 	}
 
 	params += fmt.Sprintf("flowid %s", flowid)
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, priority, handle, "u32", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, priority, handle, "flower", params)...); err != nil {
 			return err
 		}
 	}
@@ -228,19 +221,12 @@ func (t tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error
 	return nil
 }
 
-func getProtocolIndentifier(protocol string) protocolIdentifier {
-	switch strings.ToLower(protocol) {
-	case "tcp":
-		return protocolTCP
-	case "udp":
-		return protocolUDP
-	default:
-		return protocolIP
-	}
-}
-
 func buildCmd(module string, iface string, parent string, priority uint32, handle uint32, kind string, parameters string) []string {
 	cmd := fmt.Sprintf("%s add dev %s", module, iface)
+
+	if module == "filter" {
+		cmd += " protocol ip"
+	}
 
 	if priority != 0 {
 		cmd += fmt.Sprintf(" priority %d", priority)
