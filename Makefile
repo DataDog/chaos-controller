@@ -47,15 +47,18 @@ e2e-test: generate colima-install
 
 # Build manager binary
 manager: generate
-	GOOS=linux GOARCH=${OS_ARCH} CGO_ENABLED=0 go build -o bin/manager/manager_${OS_ARCH} main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/manager/manager_amd64 main.go
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/manager/manager_arm64 main.go
 
 # Build injector binary
 injector:
-	GOOS=linux GOARCH=${OS_ARCH} CGO_ENABLED=0 go build -o bin/injector/injector_${OS_ARCH} ./cli/injector/
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/injector/injector_amd64 ./cli/injector/
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/injector/injector_arm64 ./cli/injector/
 
 # Build handler binary
 handler:
-	GOOS=linux GOARCH=${OS_ARCH} CGO_ENABLED=0 go build -o bin/handler/handler_${OS_ARCH} ./cli/handler/
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/handler/handler_amd64 ./cli/handler/
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/handler/handler_arm64 ./cli/handler/
 
 # Build chaosli
 chaosli:
