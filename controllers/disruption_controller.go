@@ -64,6 +64,7 @@ type DisruptionReconciler struct {
 	InjectorNetworkDisruptionAllowedHosts []string
 	SafetyNets                            []safemode.Safemode
 	ExpiredDisruptionGCDelay              *time.Duration
+	StaticTargetingDefault                bool
 	CacheContextStore                     map[string]CtxTuple
 	Controller                            controller.Controller
 	Reader                                client.Reader // Use the k8s API without the cache
@@ -751,7 +752,12 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 // the chosen targets names will be reflected in the instance status
 // subsequent calls to this function will always return the same targets as the first call
 func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
-	if len(instance.Status.Targets) != 0 && instance.Spec.StaticTargeting {
+	if instance.Spec.StaticTargeting == nil {
+		r.log.Errorw("StaticTargeting pointer is nil")
+	}
+
+	// if there already are targets and static targeting is activated, do not look for targets
+	if len(instance.Status.Targets) != 0 && (instance.Spec.StaticTargeting != nil && *instance.Spec.StaticTargeting) {
 		return nil
 	}
 

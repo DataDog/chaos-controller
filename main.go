@@ -82,6 +82,7 @@ type controllerConfig struct {
 	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
 	UserInfoHook             bool                          `json:"userInfoHook"`
 	SafeMode                 safeModeConfig                `json:"safeMode"`
+	StaticTargetingDefault   bool                          `json:"staticTargetingDefault"`
 }
 
 type controllerWebhookConfig struct {
@@ -245,6 +246,10 @@ func main() {
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
 	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-cluster-threshold")))
 
+	pflag.BoolVar(&cfg.Controller.StaticTargetingDefault, "statictargeting-default", false,
+		"Default value for staticTargeting field in all disruptions.")
+	handleFatalError(viper.BindPFlag("controller.staticTargetingDefault", pflag.Lookup("statictargeting-default")))
+
 	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
@@ -385,6 +390,7 @@ func main() {
 		DeleteOnlyFlag:         cfg.Controller.DeleteOnly,
 		HandlerEnabledFlag:     cfg.Handler.Enabled,
 		DefaultDurationFlag:    cfg.Controller.DefaultDuration,
+		StaticTargetingDefault: cfg.Controller.StaticTargetingDefault,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")

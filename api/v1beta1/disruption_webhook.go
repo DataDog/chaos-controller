@@ -40,6 +40,7 @@ var namespaceThreshold float64
 var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
+var staticTargetingDefault bool
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	if err := ddmark.InitLibrary(EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix); err != nil {
@@ -57,6 +58,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	clusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
 	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
+	staticTargetingDefault = setupWebhookConfig.StaticTargetingDefault
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
@@ -72,6 +74,11 @@ func (r *Disruption) Default() {
 	if r.Spec.Duration.Duration() == 0 {
 		logger.Infow(fmt.Sprintf("setting default duration of %s in disruption", defaultDuration), "instance", r.Name, "namespace", r.Namespace)
 		r.Spec.Duration = DisruptionDuration(defaultDuration.String())
+	}
+
+	// setup staticTargeting default value if unset in the disruption spec
+	if r.Spec.StaticTargeting == nil {
+		r.Spec.StaticTargeting = &staticTargetingDefault
 	}
 }
 
@@ -145,7 +152,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 
 	var err error
 
-	if r.Spec.StaticTargeting {
+	if r.Spec.StaticTargeting != nil && *r.Spec.StaticTargeting {
 		oldHash, err = old.(*Disruption).Spec.Hash()
 		if err != nil {
 			return fmt.Errorf("error getting old disruption hash: %w", err)
@@ -172,7 +179,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	if oldHash != newHash {
 		logger.Errorw("error when comparing disruption spec hashes", "instance", r.Name, "namespace", r.Namespace, "oldHash", oldHash, "newHash", newHash)
 
-		if r.Spec.StaticTargeting {
+		if r.Spec.StaticTargeting == nil || *r.Spec.StaticTargeting {
 			return fmt.Errorf("[StaticTargeting: true] a disruption spec cannot be updated, please delete and recreate it if needed")
 		}
 

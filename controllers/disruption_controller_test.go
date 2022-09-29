@@ -394,7 +394,7 @@ var _ = Describe("Disruption Controller", func() {
 	Context("Dynamic targeting", func() {
 		BeforeEach(func() {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
-				StaticTargeting: false,
+				StaticTargeting: func() *bool { b := false; return &b }(),
 				DryRun:          true,
 				Count:           &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
@@ -511,7 +511,7 @@ var _ = Describe("Disruption Controller", func() {
 	Context("Targets count", func() {
 		BeforeEach(func() {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
-				StaticTargeting: false,
+				StaticTargeting: func() *bool { b := false; return &b }(),
 				DryRun:          true,
 				Count:           &intstr.IntOrString{Type: intstr.String, StrVal: "3"},
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{

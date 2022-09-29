@@ -50,6 +50,7 @@ type SetupWebhookWithManagerConfig struct {
 	DeleteOnlyFlag         bool
 	HandlerEnabledFlag     bool
 	DefaultDurationFlag    time.Duration
+	StaticTargetingDefault bool
 }
 
 // GetTargetedContainersInfo gets the IDs of the targeted containers or all container IDs found in a Pod
