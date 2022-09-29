@@ -1,5 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-. $(dirname $0)/common
+. "$(dirname "$0")/common"
 [ $# -ne 1 ] && usage
 exec_into_pod "$1" "tc filter show dev eth0"

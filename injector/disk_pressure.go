@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2022 Datadog, Inc.
 
 package injector
 
@@ -62,17 +62,17 @@ func NewDiskPressureInjector(spec v1beta1.DiskPressureSpec, config DiskPressureI
 		config.Informer = informer
 	}
 
-	return diskPressureInjector{
+	return &diskPressureInjector{
 		spec:   spec,
 		config: config,
 	}, nil
 }
 
-func (i diskPressureInjector) GetDisruptionKind() types.DisruptionKindName {
+func (i *diskPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindDiskPressure
 }
 
-func (i diskPressureInjector) Inject() error {
+func (i *diskPressureInjector) Inject() error {
 	// add read throttle
 	if i.spec.Throttling.ReadBytesPerSec != nil {
 		if err := i.config.Cgroup.DiskThrottleRead(i.config.Informer.Major(), *i.spec.Throttling.ReadBytesPerSec); err != nil {
@@ -94,7 +94,11 @@ func (i diskPressureInjector) Inject() error {
 	return nil
 }
 
-func (i diskPressureInjector) Clean() error {
+func (i *diskPressureInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
+func (i *diskPressureInjector) Clean() error {
 	// clean read throttle
 	i.config.Log.Infow("cleaning disk read throttle", "device", i.config.Informer.Source())
 

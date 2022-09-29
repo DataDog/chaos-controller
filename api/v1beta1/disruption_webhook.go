@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2022 Datadog, Inc.
 
 package v1beta1
 
@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -41,6 +42,10 @@ var handlerEnabled bool
 var defaultDuration time.Duration
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
+	if err := ddmark.InitLibrary(EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix); err != nil {
+		return err
+	}
+
 	logger = &zap.SugaredLogger{}
 	*logger = *setupWebhookConfig.Logger.With("source", "admission-controller")
 	k8sClient = setupWebhookConfig.Manager.GetClient()
@@ -100,6 +105,11 @@ func (r *Disruption) ValidateCreate() error {
 		}
 
 		return err
+	}
+
+	multiErr := ddmark.ValidateStructMultierror(r.Spec, "validation_webhook", chaostypes.DDMarkChaoslibPrefix)
+	if multiErr.ErrorOrNil() != nil {
+		return multierror.Prefix(multiErr, "ddmark: ")
 	}
 
 	// handle initial safety nets
@@ -198,7 +208,7 @@ func (r *Disruption) ValidateDelete() error {
 // getMetricsTags parses the disruption to generate metrics tags
 func (r *Disruption) getMetricsTags() []string {
 	tags := []string{
-		"name:" + r.Name,
+		"disruptionName:" + r.Name,
 		"namespace:" + r.Namespace,
 	}
 
@@ -246,19 +256,19 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 	responses := []string{}
 	// handle initial safety nets if safemode is enabled
 	if r.Spec.Unsafemode == nil || !r.Spec.Unsafemode.DisableAll {
-		if caught, response, err := safetyNetCountNotTooLarge(*r); err != nil {
+		if caught, response, err := safetyNetCountNotTooLarge(r); err != nil {
 			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet: %w", err)
 		} else if caught {
-			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", r.Name, "SafetyNet Catch", "Generic")
+			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", "SafetyNet Catch", "Generic")
 
 			responses = append(responses, response)
 		}
 
 		if r.Spec.Network != nil {
 			if caught := safetyNetNeitherHostNorPort(*r); caught {
-				logger.Debugw("The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.", r.Name, "SafetyNet Catch", "Network")
+				logger.Debugw("the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.", "SafetyNet Catch", "Network")
 
-				responses = append(responses, "The specified disruption either contains no Hosts or contains a Host which has neither a port or a host. The more ambiguous, the larger the blast radius.")
+				responses = append(responses, "the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.")
 			}
 		}
 	}
@@ -271,7 +281,7 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 // > 66% of the k8s system being targeted warrants a safety check if we assume each of our targets are replicated
 // at least twice. > 80% in a namespace also warrants a safety check as namespaces may be shared between services.
 // returning true indicates the safety net caught something
-func safetyNetCountNotTooLarge(r Disruption) (bool, string, error) {
+func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableCountTooLarge {
 		return false, "", nil
 	}

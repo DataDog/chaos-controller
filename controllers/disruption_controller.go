@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2022 Datadog, Inc.
 
 package controllers
 
@@ -71,8 +71,9 @@ type DisruptionReconciler struct {
 }
 
 type CtxTuple struct {
-	Ctx        context.Context
-	CancelFunc context.CancelFunc
+	Ctx                      context.Context
+	CancelFunc               context.CancelFunc
+	DisruptionNamespacedName types.NamespacedName
 }
 
 //+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
@@ -104,7 +105,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return func() {
 			tags := []string{}
 			if instance.Name != "" {
-				tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
+				tags = append(tags, "disruptionName:"+instance.Name, "namespace:"+instance.Namespace)
 			}
 
 			r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
@@ -149,10 +150,10 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				return ctrl.Result{}, err
 			}
 
-			// if not cleaned yet, requeue and reconcile again in 5s-10s
+			// if not cleaned yet, requeue and reconcile again in 15s-20s
 			// the reason why we don't rely on the exponential backoff here is that it retries too fast at the beginning
 			if !isCleaned {
-				requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
+				requeueAfter := time.Duration(rand.Intn(5)+15) * time.Second //nolint:gosec
 
 				r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
 
@@ -180,8 +181,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 
 			// send reconciling duration metric
-			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
-			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
+			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.emitKindCountMetrics(instance)
 
 			return ctrl.Result{}, nil
@@ -241,7 +242,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				requeueDelay := *r.ExpiredDisruptionGCDelay
 
 				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionDurationOver, requeueDelay.String())
-				r.log.Infow("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
+				r.log.Debugw("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
 
 				return ctrl.Result{
 					Requeue:      true,
@@ -267,7 +268,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// send injection duration metric representing the time it took to fully inject the disruption until its creation
-		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 
 		// update resource status injection
 		// requeue the request if the disruption is not fully injected yet
@@ -281,8 +282,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
-			// requeue after 5-10 seconds, as default 1ms is too quick here
-			requeueAfter := time.Duration(rand.Intn(5)+5) * time.Second //nolint:gosec
+			// requeue after 15-20 seconds, as default 1ms is too quick here
+			requeueAfter := time.Duration(rand.Intn(5)+15) * time.Second //nolint:gosec
 			r.log.Infow("disruption is not fully injected yet, requeuing", "injectionStatus", instance.Status.InjectionStatus)
 
 			return ctrl.Result{
@@ -309,7 +310,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 // - an instance with at least one chaos pod as "ready" is considered as "partially injected"
 // - an instance with no ready chaos pods is considered as "not injected"
 func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disruption) (bool, error) {
-	r.log.Infow("checking if injection status needs to be updated", "injectionStatus", instance.Status.InjectionStatus)
+	r.log.Debugw("checking if injection status needs to be updated", "injectionStatus", instance.Status.InjectionStatus)
 
 	status := chaostypes.DisruptionInjectionStatusNotInjected
 	readyPodsCount := 0
@@ -346,7 +347,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 			// consider the disruption as not fully injected if at least one not ready pod is found
 			if !podReady {
-				r.log.Infow("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
+				r.log.Debugw("chaos pod is not ready yet", "chaosPod", chaosPod.Name)
 			}
 		}
 
@@ -383,10 +384,6 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 // startInjection creates non-existing chaos pod for the given disruption
 func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption) error {
-	if len(instance.Status.Targets) > 0 {
-		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
-	}
-
 	// chaosPodsMap is used to check if a target's chaos pods already exist or not
 	chaosPodsMap := make(map[string]map[string]bool, len(instance.Status.Targets))
 
@@ -406,6 +403,10 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 		} else {
 			chaosPodsMap[chaosPod.Labels[chaostypes.TargetLabel]][chaosPod.Labels[chaostypes.DisruptionKindLabel]] = true
 		}
+	}
+
+	if len(instance.Status.Targets) > 0 && (len(instance.Status.Targets) != len(chaosPodsMap)) {
+		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
 	}
 
 	// iterate through target + existing disruption kind -- to ensure all chaos pods exist
@@ -439,7 +440,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	var err error
 
 	targetNodeName := ""
-	targetContainerIDs := []string{}
+	targetContainers := map[string]string{}
 	targetPodIP := ""
 	targetChaosPods := []*corev1.Pod{}
 
@@ -455,7 +456,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 		targetNodeName = pod.Spec.NodeName
 
 		// get IDs of targeted containers or all containers
-		targetContainerIDs, err = getContainerIDs(&pod, instance.Spec.Containers)
+		targetContainers, err = utils.GetTargetedContainersInfo(&pod, instance.Spec.Containers)
 		if err != nil {
 			return fmt.Errorf("error getting target pod container ID: %w", err)
 		}
@@ -467,7 +468,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	}
 
 	// generate injection pods specs
-	r.generateChaosPods(instance, &targetChaosPods, target, targetNodeName, targetContainerIDs, targetPodIP)
+	r.generateChaosPods(instance, &targetChaosPods, target, targetNodeName, targetContainers, targetPodIP)
 
 	if len(targetChaosPods) == 0 {
 		r.recordEventOnDisruption(instance, chaosv1beta1.EventEmptyDisruption, instance.Name)
@@ -623,6 +624,7 @@ func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
 //   - the pod is pending
 //   - the pod is succeeded (exit code == 0)
 //   - the pod target is not healthy (not existing anymore for instance)
+//
 // if a finalizer can't be removed because none of the conditions above are fulfilled, the instance is flagged
 // as stuck on removal and the pod finalizer won't be removed unless someone does it manually
 // the pod target will be moved to ignored targets, so it is not picked up by the next reconcile loop
@@ -673,9 +675,9 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 		}
 	}
 
-	// It is always safe to remove a node failure chaos pod. It is usually hard to tell if a node failure chaos pod has
-	// succeeded or not, so we choose to always remove the finalizer.
-	if chaosPod.Labels[chaostypes.DisruptionKindLabel] == chaostypes.DisruptionKindNodeFailure {
+	// It is always safe to remove some chaos pods. It is usually hard to tell if these chaos pods have
+	// succeeded or not, but they have no possibility of leaving side effects, so we choose to always remove the finalizer.
+	if chaosv1beta1.DisruptionHasNoSideEffects(chaosPod.Labels[chaostypes.DisruptionKindLabel]) {
 		removeFinalizer = true
 		ignoreStatus = true
 	}
@@ -725,7 +727,11 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 		controllerutil.RemoveFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer)
 
 		if err := r.Client.Update(context.Background(), &chaosPod); err != nil {
-			r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+			if strings.Contains(err.Error(), "latest version and try again") {
+				r.log.Debugw("cannot remove chaos pod finalizer, need to re-reconcile", "error", err)
+			} else {
+				r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+			}
 
 			return
 		}
@@ -807,7 +813,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 		instance.Status.RemoveTargets(cTargetsCount - dTargetsCount)
 	}
 
-	r.log.Infow("updating instance status with targets selected for injection")
+	r.log.Debugw("updating instance status with targets selected for injection")
 
 	instance.Status.SelectedTargetsCount = len(instance.Status.Targets)
 	instance.Status.IgnoredTargetsCount = totalAvailableTargetsCount - targetsCount
@@ -1192,7 +1198,7 @@ func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Di
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
 	for _, kind := range instance.Spec.GetKindNames() {
-		r.handleMetricSinkError((r.MetricsSink.MetricDisruptionsCount(kind, []string{"name:" + instance.Name, "namespace:" + instance.Namespace})))
+		r.handleMetricSinkError(r.MetricsSink.MetricDisruptionsCount(kind, []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 	}
 }
 
@@ -1208,7 +1214,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 }
 
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
-func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, targetContainerIDs []string, targetPodIP string) {
+func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, targetContainers map[string]string, targetPodIP string) {
 	// generate chaos pods for each possible disruptions
 	for _, kind := range chaostypes.DisruptionKindNames {
 		subspec := instance.Spec.DisruptionKindPicker(kind)
@@ -1231,7 +1237,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		xargs := chaosapi.DisruptionArgs{
 			Level:                level,
 			Kind:                 kind,
-			TargetContainerIDs:   targetContainerIDs,
+			TargetContainers:     targetContainers,
 			TargetName:           targetName,
 			TargetNodeName:       targetNodeName,
 			TargetPodIP:          targetPodIP,
@@ -1344,7 +1350,7 @@ func (r *DisruptionReconciler) ReportMetrics() {
 			if d.Status.IsStuckOnRemoval {
 				stuckOnRemoval++
 
-				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"name:" + d.Name, "namespace:" + d.Namespace}); err != nil {
+				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"disruptionName:" + d.Name, "namespace:" + d.Namespace}); err != nil {
 					r.log.Errorw("error sending stuck_on_removal metric", "error", err)
 				}
 			}
@@ -1356,7 +1362,7 @@ func (r *DisruptionReconciler) ReportMetrics() {
 
 			chaosPodsCount += len(chaosPods)
 
-			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionOngoingDuration(time.Since(d.ObjectMeta.CreationTimestamp.Time), []string{"name:" + d.Name, "namespace:" + d.Namespace}))
+			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionOngoingDuration(time.Since(d.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + d.Name, "namespace:" + d.Namespace}))
 		}
 
 		// send metrics

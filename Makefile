@@ -1,10 +1,25 @@
 .PHONY: manager injector handler release
 .SILENT: release
 
+# Colima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
+# https://github.com/abiosoft/colima#interacting-with-image-registry
+CONTAINERD_REGISTRY_PREFIX ?= k8s.io
+
 # Image URL to use all building/pushing image targets
-MANAGER_IMAGE ?= docker.io/chaos-controller:latest
-INJECTOR_IMAGE ?= docker.io/chaos-injector:latest
-HANDLER_IMAGE ?= docker.io/chaos-handler:latest
+MANAGER_IMAGE ?= ${CONTAINERD_REGISTRY_PREFIX}/chaos-controller:latest
+INJECTOR_IMAGE ?= ${CONTAINERD_REGISTRY_PREFIX}/chaos-injector:latest
+HANDLER_IMAGE ?= ${CONTAINERD_REGISTRY_PREFIX}/chaos-handler:latest
+
+KUBECTL ?= kubectl
+UNZIP_BINARY ?= sudo unzip
+KUBERNETES_VERSION ?= v1.22.13
+
+CLUSTER_NAME ?= colima
+
+OS_ARCH=amd64
+ifeq (arm64,$(shell uname -m))
+OS_ARCH=arm64
+endif
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -19,9 +34,16 @@ all: manager injector handler
 test: generate manifests
 	go test $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
 
+# This target is dedicated for CI and aims to reuse the Kubernetes version defined here as the source of truth
+ci-install-minikube:
+	curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
+	sudo dpkg -i minikube_latest_amd64.deb
+	minikube start --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
+	minikube status
+
 # Run e2e tests (against a real cluster)
-e2e-test: generate minikube-install
-	USE_EXISTING_CLUSTER=true go test ./controllers/... -coverprofile cover.out
+e2e-test: generate colima-install
+	USE_EXISTING_CLUSTER=true CLUSTER_NAME=${CLUSTER_NAME} go test ./controllers/... -coverprofile cover.out
 
 # Build manager binary
 manager: generate
@@ -40,22 +62,59 @@ handler:
 
 # Build chaosli
 chaosli:
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_amd64 ./cli/chaosli/
+	GOOS=darwin GOARCH=${OS_ARCH} CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_${OS_ARCH} ./cli/chaosli/
 
 # Test chaosli API portability
 chaosli-test:
 	docker build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
 
-# Install CRDs and controller into a minikube cluster
-minikube-install: manifests
-	helm template --set controller.enableSafeguards=false ./chart | minikube kubectl -- apply -f -
+colima-all:
+	$(MAKE) colima-start
+	$(MAKE) install-cert-manager
+#	$(MAKE) install-longhorn
+	$(MAKE) colima-build
+	$(MAKE) colima-install
 
-# Uninstall CRDs and controller from a minikube cluster
-minikube-uninstall: manifests
-	helm template ./chart | minikube kubectl -- delete -f -
+install-cert-manager:
+	$(KUBECTL) apply -f https://github.com/jetstack/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+
+# Longhorn is used as an alternative StorageClass in order to enable "reliable" disk throttling accross various local setup
+# It aims to bypass some issues encountered with default StorageClass (local-path --> tmpfs) that led to virtual unnamed devices
+# unnamed devices are linked to 0 as a major device identifier, that blkio does not support
+# https://super-unix.com/unixlinux/can-you-throttle-the-bandwidth-to-a-tmpfs-based-ramdisk/
+install-longhorn:
+# https://longhorn.io/docs/1.3.1/deploy/install/#installation-requirements
+# https://longhorn.io/docs/1.3.1/advanced-resources/os-distro-specific/csi-on-k3s/
+# > Longhorn relies on iscsiadm on the host to provide persistent volumes to Kubernetes
+	colima ssh -- sudo apk add open-iscsi
+	colima ssh -- sudo /etc/init.d/iscsid start
+# https://kubernetes.io/docs/concepts/storage/volumes/#mount-propagation
+# > Another feature that CSI depends on is mount propagation.
+# > It allows the sharing of volumes mounted by one container with other containers in the same pod, or even to other pods on the same node
+# https://github.com/longhorn/longhorn/issues/2402#issuecomment-806556931
+# below directories where discovered in an empirical manner, if you encounter an error similar to:
+# >  spec: failed to generate spec: path "/var/lib/longhorn/" is mounted on "/var/lib" but it is not a shared mount
+# you may want to add the directory mentioned in the error below
+	colima ssh -- sudo mount --make-rshared /var/lib/
+	colima ssh -- sudo mount --make-rshared /
+	$(KUBECTL) apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.3.1/deploy/longhorn.yaml
+
+# Install CRDs and controller into a colima k3s cluster
+# In order to use already built images inside the containerd runtime
+# we override images for all of our components to the expected namespace
+colima-install: manifests
+	helm template \
+		--set controller.enableSafeguards=false \
+		./chart | $(KUBECTL) apply -f -
+
+# Uninstall CRDs and controller from a colima k3s cluster
+colima-uninstall:
+	helm template ./chart | $(KUBECTL) delete -f -
 
 restart:
-	minikube kubectl -- -n chaos-engineering rollout restart deployment chaos-controller
+	$(KUBECTL) -n chaos-engineering rollout restart deployment chaos-controller
+
+colima-restart: restart
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
@@ -77,20 +136,41 @@ lint:
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
+colima-build-manager: manager
+	nerdctl build --namespace ${CONTAINERD_REGISTRY_PREFIX} --build-arg TARGETARCH=${OS_ARCH} -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
+
+colima-build-injector: injector
+	nerdctl build --namespace ${CONTAINERD_REGISTRY_PREFIX} --build-arg TARGETARCH=${OS_ARCH} -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
+
+colima-build-handler: handler
+	nerdctl build --namespace ${CONTAINERD_REGISTRY_PREFIX} --build-arg TARGETARCH=${OS_ARCH} -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
+
+colima-build: colima-build-manager colima-build-injector colima-build-handler
+
 # Build the docker images
+# to ease minikube/colima base minikube docker image load, we are using tarball
+# we encountered issue while using docker+containerd on colima to load images from docker to containerd
+# this Make target are used by the CI
 minikube-build-manager: manager
-	docker build --build-arg TARGETARCH=amd64 -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
-	minikube image load --daemon=false --overwrite=true ${MANAGER_IMAGE}
+	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
+	docker save -o ./bin/manager/manager.tar ${MANAGER_IMAGE}
+	minikube image load --daemon=false --overwrite=true ./bin/manager/manager.tar
 
 minikube-build-injector: injector
-	docker build --build-arg TARGETARCH=amd64 -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
-	minikube image load --daemon=false --overwrite=true ${INJECTOR_IMAGE}
+	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
+	docker save -o ./bin/injector/injector.tar ${INJECTOR_IMAGE}
+	minikube image load --daemon=false --overwrite=true ./bin/injector/injector.tar
 
 minikube-build-handler: handler
-	docker build --build-arg TARGETARCH=amd64 -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
-	minikube image load --daemon=false --overwrite=true ${HANDLER_IMAGE}
+	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
+	docker save -o ./bin/handler/handler.tar ${HANDLER_IMAGE}
+	minikube image load --daemon=false --overwrite=true ./bin/handler/handler.tar
 
-minikube-build: minikube-build-manager minikube-build-injector minikube-build-handler
+minikube-build-rbac-proxy:
+	minikube image load --daemon=false --overwrite=true gcr.io/kubebuilder/kube-rbac-proxy:v0.4.1
+
+minikube-build:
+	$(MAKE) -j4 minikube-build-manager minikube-build-injector minikube-build-handler minikube-build-rbac-proxy
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -109,25 +189,16 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
-minikube-memory := 4096
-minikube-start-big: minikube-memory := 8192
-minikube-start-big: minikube-start
+colima-stop:
+	colima stop
 
-container-runtime := containerd
-minikube-start-docker: container-runtime := docker
-minikube-start-docker: minikube-start
+colima-start:
+	colima start --runtime containerd --kubernetes --kubernetes-version=${KUBERNETES_VERSION}+k3s1 --cpu 4 --memory 4 --disk 50
+# We also install iproute2-tc that contains 'tc' and enables to perform debugging from the VM
+	colima ssh -- sudo apk add iproute2-tc
 
-minikube-start:
-	minikube start \
-		--vm-driver=virtualbox \
-		--container-runtime=${container-runtime} \
-		--memory=${minikube-memory} \
-		--cpus=4 \
-		--kubernetes-version=1.22.10 \
-		--disk-size=50GB \
-		--extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
-		--iso-url=https://public-chaos-controller.s3.amazonaws.com/minikube/minikube-2021-01-18.iso
-
+colima-install-nerdctl:
+	sudo colima nerdctl install
 
 venv:
 	test -d .venv || python3 -m venv .venv
@@ -144,13 +215,15 @@ godeps:
 
 deps: godeps license-check
 
-install-protobuf-macos:
-	PROTOC_VERSION=3.17.3
-	PROTOC_ZIP=protoc-$PROTOC_VERSION-osx-x86_64.zip
-	curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP
-	sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
-	sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
-	rm -f $PROTOC_ZIP
+PROTOC_VERSION = 3.17.3
+PROTOC_OS ?= osx
+PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
+
+install-protobuf:
+	curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
+	$(UNZIP_BINARY) -o ${PROTOC_ZIP} -d /usr/local bin/protoc
+	$(UNZIP_BINARY) -o ${PROTOC_ZIP} -d /usr/local 'include/*'
+	rm -f ${PROTOC_ZIP}
 
 generate-disruptionlistener-protobuf:
 	cd grpc/disruptionlistener && \

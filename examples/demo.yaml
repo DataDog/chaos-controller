@@ -1,23 +1,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2021 Datadog, Inc.
-
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: demo
-  namespace: chaos-demo
-  labels:
-    type: local
-spec:
-  storageClassName: manual
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/data"
+# Copyright 2022 Datadog, Inc.
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -25,7 +9,11 @@ metadata:
   name: demo
   namespace: chaos-demo
 spec:
-  storageClassName: manual
+  # not specifying storage class aims to rely on default storage class instead
+  # this intent to avoid forcing people to install longhorn by default if they do not aim to test disk throttling capabilities
+  # longhorn storage provider being a significant payload for a local setup
+  # storageClassName: longhorn
+  # this will require to delete the PVC/PV and re-create them if longhorn is installed afterwards though
   accessModes:
     - ReadWriteOnce
   resources:
@@ -50,18 +38,18 @@ spec:
         app: demo-nginx
     spec:
       containers:
-      - name: nginx
-        image: nginx:1.21.6
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 3
-          periodSeconds: 3
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 80
+        - name: nginx
+          image: nginx:1.21.6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -81,33 +69,52 @@ spec:
         app: demo-curl
     spec:
       containers:
-      - name: curl
-        image: alpine/curl:3.14
-        command: ["/bin/sh"]
-        args: ["-c", "while true; do curl -vvv http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; done"]
-        volumeMounts:
-        - mountPath: /mnt/data
-          name: data
-        readinessProbe:
-          exec:
-            command:
-              - curl
-              - -vvv
-              - http://demo.chaos-demo.svc.cluster.local:8080
-        resources:
-          limits:
-            cpu: 1
-      - name: dummy
-        image: ubuntu:bionic-20220128
-        command: ["/bin/bash"]
-        args: ["-c", "while true; do sleep 1; done"]
-        volumeMounts:
-        - mountPath: /mnt/data
-          name: data
+        - name: curl
+          image: alpine/curl:3.14
+          command: ["/bin/sh"]
+          args:
+            [
+              "-c",
+              "while true; do time curl -vvv --connect-timeout 15 http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; time curl --connect-timeout 15 -vvv https://www.example.com; done",
+            ]
+          volumeMounts:
+            - mountPath: /mnt/data
+              name: data
+          readinessProbe:
+            exec:
+              command:
+                - curl
+                - -vvv
+                - http://demo.chaos-demo.svc.cluster.local:8080
+          resources:
+            limits:
+              cpu: 1
+        - name: read-file
+          image: ubuntu:bionic-20220128
+          command: ["/bin/bash"]
+          args:
+            [
+              "-c",
+              "echo 'create file to read from: /mnt/data/disk-read-file' && dd if=/dev/zero of=/mnt/data/disk-read-file bs=10k count=1; while true; do time dd if=/mnt/data/disk-read-file of=/dev/null iflag=direct; sleep 1; done",
+            ]
+          volumeMounts:
+            - mountPath: /mnt/data
+              name: data
+        - name: write-file
+          image: ubuntu:bionic-20220128
+          command: ["/bin/bash"]
+          args:
+            [
+              "-c",
+              "while true; do time dd if=/dev/zero of=/mnt/data/disk-write-file bs=10k count=1 oflag=direct; sleep 1; done",
+            ]
+          volumeMounts:
+            - mountPath: /mnt/data
+              name: data
       volumes:
-      - name: data
-        persistentVolumeClaim:
-          claimName: demo
+        - name: data
+          persistentVolumeClaim:
+            claimName: demo
 ---
 apiVersion: v1
 kind: Service

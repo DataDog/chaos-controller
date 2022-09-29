@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2022 Datadog, Inc.
 
 package log
 
@@ -14,7 +14,7 @@ import (
 func NewZapLogger() (*zap.SugaredLogger, error) {
 	// configure logger
 	loggerConfig := zap.NewProductionConfig()
-	loggerConfig.Level.SetLevel(zapcore.InfoLevel)
+	loggerConfig.Level.SetLevel(zapcore.DebugLevel)
 	loggerConfig.EncoderConfig.MessageKey = "message"
 	loggerConfig.EncoderConfig.EncodeTime = zapcore.EpochMillisTimeEncoder
 

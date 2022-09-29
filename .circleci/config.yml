@@ -1,7 +1,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2021 Datadog, Inc.
+# Copyright 2022 Datadog, Inc.
 
 version: 2.1
 
@@ -194,14 +194,13 @@ jobs:
             done
       - run:
           name: Configure Minikube
+          <<: *working_directory
           command: |
-            curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
-            sudo dpkg -i minikube_latest_amd64.deb
-            minikube start --vm-driver=docker --container-runtime=containerd --kubernetes-version=v1.19.14
-            minikube status
+            make ci-install-minikube
       - run:
           name: Install requirements
-          command: minikube kubectl -- apply -f https://github.com/jetstack/cert-manager/releases/download/v1.3.0/cert-manager.yaml
+          <<: *working_directory
+          command: make install-cert-manager KUBECTL="minikube kubectl --"
       - run:
           name: Build and load images
           <<: *working_directory
@@ -211,7 +210,8 @@ jobs:
       - run:
           name: Run e2e tests
           <<: *working_directory
-          command: make e2e-test
+          command: |
+            make e2e-test KUBECTL="minikube kubectl --" CLUSTER_NAME="minikube"
           no_output_timeout: 15m
   # ensures that the file containing 3rd-party licenses is up-to-date
   third-party-licenses:
@@ -241,18 +241,10 @@ jobs:
       - checkout
       - run:
           command: |
-            cd grpc/disruptionlistener
             apt-get update
             apt-get install unzip -y
-            PROTOC_VERSION=3.17.3
-            PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
-            curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP
-            unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
-            unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
-            rm -f $PROTOC_ZIP
-            go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1
-            go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
-            protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative disruptionlistener.proto
+            make install-protobuf UNZIP_BINARY=unzip PROTOC_OS=linux
+            make generate-disruptionlistener-protobuf
       - run: git diff --exit-code ':!go.*'
 
   # ensures that the grpc protobuf files genereated by dogfood/chaosdogfood/chaosdogfood.proto are up to date
@@ -262,18 +254,10 @@ jobs:
       - checkout
       - run:
           command: |
-            cd dogfood/chaosdogfood
             apt-get update
             apt-get install unzip -y
-            PROTOC_VERSION=3.17.3
-            PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
-            curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP
-            unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
-            unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
-            rm -f $PROTOC_ZIP
-            go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1
-            go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
-            protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
+            make install-protobuf UNZIP_BINARY=unzip PROTOC_OS=linux
+            make generate-chaosdogfood-protobuf
       - run: git diff --exit-code ':!go.*'
 
 workflows:

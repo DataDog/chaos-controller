@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2022 Datadog, Inc.
 
 package ddmark_test
 
@@ -308,14 +308,12 @@ func testStructFromYaml(yamlBytes []byte) (ddmark.Teststruct, error) {
 }
 
 func validateString(yamlStr string) *multierror.Error {
-
 	// Teststruct is a test-dedicated struct built strictly for these integration tests
 	var marshalledStruct ddmark.Teststruct
 
 	marshalledStruct, err := testStructFromYaml([]byte(yamlStr))
-	retErr := ddmark.ValidateStructMultierror(marshalledStruct, "test_suite",
-		"github.com/DataDog/chaos-controller/ddmark",
-	)
+	retErr := ddmark.ValidateStructMultierror(marshalledStruct, "test_suite", "ddmark-api")
+
 	if err != nil {
 		retErr = multierror.Append(retErr, err)
 	}

@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2022 Datadog, Inc.
 
 package noop
 
@@ -39,9 +39,23 @@ func (n *Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	return nil
 }
 
+// MetricReinjected increments the reinjected metric
+func (n *Sink) MetricReinjected(succeed bool, kind string, tags []string) error {
+	fmt.Printf("NOOP: MetricReinjected %v\n", succeed)
+
+	return nil
+}
+
 // MetricCleaned increments the cleaned metric
 func (n *Sink) MetricCleaned(succeed bool, kind string, tags []string) error {
 	fmt.Printf("NOOP: MetricCleaned %v\n", succeed)
+
+	return nil
+}
+
+// MetricCleanedForReinjection increments the cleanedForReinjection metric
+func (n *Sink) MetricCleanedForReinjection(succeed bool, kind string, tags []string) error {
+	fmt.Printf("NOOP: MetricCleanedForReinjection %v\n", succeed)
 
 	return nil
 }

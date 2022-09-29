@@ -15,11 +15,18 @@ It also allows us to define custom rules to apply to our structures, and focus t
 
 ## How to use DDMark ?
 
+1. Setup `ddmark` fields in your library:
+
 * Define new rules/read the existing rules within the `ddmark/validation/validation.go` file (or in this doc)
 * Examples can be found in the `ddmark/teststruct.go` file
-* Add the desired rules to the appropriate struct fields in the package you wish to add validation to (care for type checking - e.g. Maximum rule can only be applied to int/uint fields)
-* Make sure to use the format `// +ddmark:validation:<rulename>=<value>`
-* Call the `ValidateStruct` function, with the unmarshalled struct, the file path, and the full path of the packages containing the included structs definition (with markers embedded). Check `cli/chaosli/cmd/validate.go` for a functioning example.
+* Add the desired rules to the appropriate struct fields in the package you wish to add validation to (care for type checking - e.g. Maximum rule can only be applied to int/uint fields). Correct format is `// +ddmark:validation:<rulename>=<value>`
+* The analyzed library has to contain a self-packaging exported [`Embed.FS`](https://pkg.go.dev/embed) field. This field will then be used by `ddmark` to import the versionned files into any executable using `ddmark.InitLibrary()` function.
+
+2. Call the validation function from your code:
+
+* Code needs to run on a go 1.18+ environment
+* Import the analyzed library into your binary with `ddmark.InitLibrary()` and the previously set [`Embed.FS`](https://pkg.go.dev/embed) field. The last arg of `InitLibrary` is the path/name given to that package within ddmark, and will later be used in `ValidateStruct`.
+* Call the `ValidateStruct()` function with the unmarshalled struct, the current file/location for debugging purposes (this is a validation tool !), and the name given to your library in `InitLibrary()`. Check `cli/chaosli/cmd/validate.go` for a functioning example.
 
 ## Markers Documentation
 ### Field Markers (within structs)

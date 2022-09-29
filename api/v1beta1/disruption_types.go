@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2022 Datadog, Inc.
 
 package v1beta1
 
@@ -68,8 +68,9 @@ type DisruptionSpec struct {
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
 }
 
-//go:embed *
 // EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
+//
+//go:embed *
 var EmbeddedChaosAPI embed.FS
 
 type DisruptionDuration string
@@ -417,4 +418,28 @@ func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
 		status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
 		status.Targets = status.Targets[:len(status.Targets)-1]
 	}
+}
+
+var NonReinjectableDisruptions = map[chaostypes.DisruptionKindName]struct{}{
+	chaostypes.DisruptionKindGRPCDisruption: {},
+}
+
+func DisruptionIsReinjectable(kind chaostypes.DisruptionKindName) bool {
+	_, found := NonReinjectableDisruptions[kind]
+
+	return found
+}
+
+// NoSideEffectDisruptions is the list of all disruption kinds where the lifecycle of the failure matches the lifecycle of
+// the chaos pod. So once the chaos pod is gone, there's nothing left for us to clean.
+var NoSideEffectDisruptions = map[chaostypes.DisruptionKindName]struct{}{
+	chaostypes.DisruptionKindNodeFailure:      {},
+	chaostypes.DisruptionKindContainerFailure: {},
+	chaostypes.DisruptionKindCPUPressure:      {},
+}
+
+func DisruptionHasNoSideEffects(kind string) bool {
+	_, found := NoSideEffectDisruptions[chaostypes.DisruptionKindName(kind)]
+
+	return found
 }

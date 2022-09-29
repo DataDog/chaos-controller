@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2022 Datadog, Inc.
 
 package injector
 
@@ -88,10 +88,12 @@ type serviceWatcher struct {
 	kubernetesPodEndpointsWatcher <-chan watch.Event
 	tcFiltersFromPodEndpoints     []tcServiceFilter
 	podsWithoutIPs                []string
+	podsResourceVersion           string
 
 	// filters and watcher for the kubernetes service watched
 	kubernetesServiceWatcher       <-chan watch.Event
 	tcFiltersFromNamespaceServices []tcServiceFilter
+	servicesResourceVersion        string
 }
 
 // NewNetworkDisruptionInjector creates a NetworkDisruptionInjector object with the given config,
@@ -165,7 +167,7 @@ func (i *networkDisruptionInjector) Inject() error {
 			return fmt.Errorf("error applying tc operations: %w", err)
 		}
 
-		i.config.Log.Info("operations applied successfully")
+		i.config.Log.Debug("operations applied successfully")
 	}
 
 	i.config.Log.Info("editing pod net_cls cgroup to apply a classid to target container packets")
@@ -185,6 +187,10 @@ func (i *networkDisruptionInjector) Inject() error {
 	}()
 
 	return nil
+}
+
+func (i *networkDisruptionInjector) UpdateConfig(config Config) {
+	i.config.Config = config
 }
 
 // Clean removes all the injected disruption in the given container
@@ -230,28 +236,29 @@ func (i *networkDisruptionInjector) Clean() error {
 
 // applyOperations applies the added operations by building a tc tree
 // Here's what happen on tc side:
-//  - a first prio qdisc will be created and attached to root
-//    - it'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol
-//  - a second prio qdisc will be created and attached to the first one
-//    - it'll be used to apply the second filter, filtering on packet classid to identify packets coming from the targeted process
-//  - operations will be chained to the second band of the second prio qdisc
-//  - a cgroup filter will be created to classify packets according to their classid (if any)
-//  - a filter will be created to redirect traffic related to the specified host(s) through the last prio band
-//    - if no host, port or protocol is specified, a filter redirecting all the traffic (0.0.0.0/0) to the disrupted band will be created
-//  - a last filter will be created to redirect traffic related to the local node through a not disrupted band
+//   - a first prio qdisc will be created and attached to root
+//     it'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol
+//   - a second prio qdisc will be created and attached to the first one
+//     it'll be used to apply the second filter, filtering on packet classid to identify packets coming from the targeted process
+//   - operations will be chained to the second band of the second prio qdisc
+//   - a cgroup filter will be created to classify packets according to their classid (if any)
+//   - a filter will be created to redirect traffic related to the specified host(s) through the last prio band
+//     if no host, port or protocol is specified, a filter redirecting all the traffic (0.0.0.0/0) to the disrupted band will be created
+//   - a last filter will be created to redirect traffic related to the local node through a not disrupted band
 //
 // Here's the tc tree representation:
 // root (1:) <-- prio qdisc with 4 bands with a filter classifying packets matching the given dst ip, src/dst ports and protocol with class 1:4
-//   |- (1:1) <-- first band
-//   |- (1:2) <-- second band
-//   |- (1:3) <-- third band
-//   |- (1:4) <-- fourth band
-//     |- (2:) <-- prio qdisc with 2 bands with a cgroup filter to classify packets according to their classid (packets with classid 2:2 will be affected by operations)
-//       |- (2:1) <-- first band
-//       |- (2:2) <-- second band
-//         |- (3:) <-- first operation
-//           |- (4:) <-- second operation
-//             ...
+//
+//	|- (1:1) <-- first band
+//	|- (1:2) <-- second band
+//	|- (1:3) <-- third band
+//	|- (1:4) <-- fourth band
+//	  |- (2:) <-- prio qdisc with 2 bands with a cgroup filter to classify packets according to their classid (packets with classid 2:2 will be affected by operations)
+//	    |- (2:1) <-- first band
+//	    |- (2:2) <-- second band
+//	      |- (3:) <-- first operation
+//	        |- (4:) <-- second operation
+//	          ...
 func (i *networkDisruptionInjector) applyOperations() error {
 	i.tcFilterPriority = tcPriority
 
@@ -450,7 +457,7 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 	for _, filter := range filters {
 		filter.priority = i.getNewPriority()
 
-		i.config.Log.Infow("found service endpoint", "endpoint", filter.service.String(), "service", serviceName)
+		i.config.Log.Infow("found service endpoint", "resolvedEndpoint", filter.service.String(), "resolvedService", serviceName)
 
 		err := i.config.TrafficController.AddFilter(interfaces, "1:0", filter.priority, 0, nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, flowid)
 		if err != nil {
@@ -521,6 +528,10 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromService(service v1.Se
 	_, serviceIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", service.Spec.ClusterIP))
 
 	endpointsToWatch := []tcServiceFilter{}
+
+	if isHeadless(service) {
+		return endpointsToWatch
+	}
 
 	for _, port := range servicePorts {
 		filter := tcServiceFilter{
@@ -601,6 +612,14 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		return fmt.Errorf("couldn't watch service in namespace, invalid type of watched object received")
 	}
 
+	// keep track of resource version to continue watching pods when the watcher has timed out
+	// at the right resource already computed.
+	if event.Type == watch.Bookmark {
+		watcher.servicesResourceVersion = service.ResourceVersion
+
+		return nil
+	}
+
 	// We just watch the specified name service
 	if watcher.watchedServiceSpec.Name != service.Name {
 		return nil
@@ -617,7 +636,12 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		return fmt.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", service.Namespace, service.Name, err)
 	}
 
-	watcher.servicePorts = service.Spec.Ports
+	if isHeadless(*service) {
+		// If this is a headless service, we want to block all traffic to the endpoint IPs
+		watcher.servicePorts = append(watcher.servicePorts, v1.ServicePort{Port: 0})
+	} else {
+		watcher.servicePorts = service.Spec.Ports
+	}
 
 	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
 	if err != nil {
@@ -668,6 +692,14 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 	pod, ok := event.Object.(*v1.Pod)
 	if !ok {
 		return fmt.Errorf("couldn't watch pods in namespace, invalid type of watched object received")
+	}
+
+	// keep track of resource version to continue watching pods when the watcher has timed out
+	// at the right resource already computed.
+	if event.Type == watch.Bookmark {
+		watcher.servicesResourceVersion = pod.ResourceVersion
+
+		return nil
 	}
 
 	if err = i.config.Netns.Enter(); err != nil {
@@ -735,7 +767,10 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 	for {
 		// We create the watcher channels when it's closed
 		if watcher.kubernetesServiceWatcher == nil {
-			serviceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{})
+			serviceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
+				ResourceVersion:     watcher.servicesResourceVersion,
+				AllowWatchBookmarks: true,
+			})
 			if err != nil {
 				i.config.Log.Errorf("error watching the changes for the given kubernetes service (%s/%s): %w", watcher.watchedServiceSpec.Namespace, watcher.watchedServiceSpec.Name, err)
 
@@ -748,7 +783,9 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 
 		if watcher.kubernetesPodEndpointsWatcher == nil {
 			podsWatcher, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
-				LabelSelector: watcher.labelServiceSelector,
+				LabelSelector:       watcher.labelServiceSelector,
+				ResourceVersion:     watcher.podsResourceVersion,
+				AllowWatchBookmarks: true,
 			})
 			if err != nil {
 				i.config.Log.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", watcher.watchedServiceSpec.Namespace, watcher.watchedServiceSpec.Name, err)
@@ -769,7 +806,7 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 			if !ok { // channel is closed
 				watcher.kubernetesServiceWatcher = nil
 			} else {
-				i.config.Log.Infow(fmt.Sprintf("changes in service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
+				i.config.Log.Debugw(fmt.Sprintf("changes in service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
 
 				if err := i.handleKubernetesServiceChanges(event, &watcher, interfaces, flowid); err != nil {
 					i.config.Log.Errorf("couldn't apply changes to tc filters: %w... Rebuilding watcher", err)
@@ -786,7 +823,7 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 			if !ok { // channel is closed
 				watcher.kubernetesPodEndpointsWatcher = nil
 			} else {
-				i.config.Log.Infow(fmt.Sprintf("changes in pods of service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
+				i.config.Log.Debugw(fmt.Sprintf("changes in pods of service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
 
 				if err := i.handleKubernetesPodsChanges(event, &watcher, interfaces, flowid); err != nil {
 					i.config.Log.Errorf("couldn't apply changes to tc filters: %w... Rebuilding watcher", err)
@@ -823,9 +860,11 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 			kubernetesPodEndpointsWatcher: nil,                 // watch pods related to the kubernetes service filtered on
 			tcFiltersFromPodEndpoints:     []tcServiceFilter{}, // list of tc filters targeting pods related to the kubernetes service filtered on
 			podsWithoutIPs:                []string{},          // some pods are created without IPs. We keep track of them to later create a tc filter on update
+			podsResourceVersion:           "",
 
 			kubernetesServiceWatcher:       nil,                 // watch service filtered on
 			tcFiltersFromNamespaceServices: []tcServiceFilter{}, // list of tc filters targeting the service filtered on
+			servicesResourceVersion:        "",
 		}
 
 		serviceWatchers = append(serviceWatchers, serviceWatcher)
@@ -846,6 +885,8 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 		if err != nil {
 			return fmt.Errorf("error resolving given host %s: %w", host.Host, err)
 		}
+
+		i.config.Log.Infof("resolved %s as %s", host.Host, ips)
 
 		for _, ip := range ips {
 			// handle flow direction
@@ -915,4 +956,9 @@ func (i *networkDisruptionInjector) clearOperations() error {
 	}
 
 	return nil
+}
+
+// isHeadless returns true if the service is a headless service, i.e., has no defined ClusterIP
+func isHeadless(service v1.Service) bool {
+	return service.Spec.ClusterIP == "" || strings.ToLower(service.Spec.ClusterIP) == "none"
 }

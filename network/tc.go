@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2022 Datadog, Inc.
 
 package network
 
@@ -61,7 +61,7 @@ func (e defaultTcExecuter) Run(args ...string) (int, string, error) {
 	cmd.Stderr = stderr
 
 	// run command
-	e.log.Infof("running tc command: %v", cmd.String())
+	e.log.Debugf("running tc command: %v", cmd.String())
 
 	// early exit if dry-run mode is enabled
 	if e.dryRun {

@@ -1,7 +1,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2021 Datadog, Inc.
+# Copyright 2022 Datadog, Inc.
 {{- $ca := genCA "chaos-controller-webhook-service-ca" 3650 }}
 {{- $cn := "chaos-controller-webhook-service" }}
 {{- $altName1 := printf "chaos-controller-webhook-service.%s.svc" .Values.chaosNamespace }}
@@ -153,7 +153,7 @@ webhooks:
 {{- end }}
 ---
 {{- if not .Values.controller.webhook.generateCert }}
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: chaos-controller-serving-cert
@@ -167,7 +167,7 @@ spec:
     name: chaos-controller-selfsigned-issuer
   secretName: chaos-controller-webhook-secret
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: chaos-controller-selfsigned-issuer

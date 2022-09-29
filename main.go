@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2022 Datadog, Inc.
 
 /*
 
@@ -24,6 +24,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
 
 	"github.com/fsnotify/fsnotify"
@@ -416,6 +417,10 @@ func main() {
 	defer func() {
 		for _, contextTuple := range r.CacheContextStore {
 			contextTuple.CancelFunc()
+		}
+
+		if err := ddmark.CleanupLibraries(); err != nil {
+			logger.Error(err)
 		}
 	}()
 
