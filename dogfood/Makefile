@@ -20,15 +20,19 @@ minikube-ssh-host:
 dogfood-go-client:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/built_go_client ./client
 
-minikube-build-dogfood-client: dogfood-go-client
+dogfood-docker-client:
 	docker build -t ${CLIENT_IMAGE} -f client/Dockerfile ./bin/
+
+minikube-build-dogfood-client: dogfood-go-client dogfood-docker-client
 	minikube image load --daemon=false --overwrite=true ${CLIENT_IMAGE}
 
 dogfood-go-server:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/built_go_server ./server
 
-minikube-build-dogfood-server: dogfood-go-server
+dogfood-docker-server:
 	docker build -t ${SERVER_IMAGE} -f server/Dockerfile ./bin/
+
+minikube-build-dogfood-server: dogfood-go-server dogfood-docker-server
 	minikube image load --daemon=false --overwrite=true ${SERVER_IMAGE}
 
 # INSTALL
@@ -41,7 +45,8 @@ install:
 uninstall:
 	helm template ./client/chart | kubectl delete -f -
 	helm template ./server/chart | kubectl delete -f -
-	kubectl delete -f ../examples/namespace.yaml
+
+reinstall: uninstall install
 
 restart-client:
 	kubectl -n chaos-demo rollout restart deployment chaos-dogfood-client

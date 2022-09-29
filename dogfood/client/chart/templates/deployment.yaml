@@ -24,6 +24,10 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: dogfood-client
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -39,3 +43,11 @@ spec:
               protocol: TCP
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+        - name: io
+          image: ubuntu:focal
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/bash"]
+          args: ["-c", "while true; do dd if=/dev/zero of=/mnt/data/iodump bs=20M count=30 oflag=direct; sleep 1; done"]
+          volumeMounts:
+            - mountPath: /mnt/data
+              name: data
