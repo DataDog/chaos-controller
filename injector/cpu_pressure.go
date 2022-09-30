@@ -81,6 +81,7 @@ func (i *cpuPressureInjector) Inject() error {
 	wg := sync.WaitGroup{}
 	succeeded := true
 	tids := []int{}
+	mutex := sync.Mutex{}
 
 	// create one stress goroutine per allocated core
 	// each goroutine is locked on its current thread, without any other routines running on it
@@ -138,8 +139,10 @@ func (i *cpuPressureInjector) Inject() error {
 
 			i.config.Log.Infow("starting the stresser", "core", core, "pid", pid)
 
+			mutex.Lock()
 			tids = append(tids, pid)
 			i.routines++
+			mutex.Unlock()
 
 			wg.Done()
 			i.config.Stresser.Stress(i.config.StresserExit)

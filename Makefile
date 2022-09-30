@@ -16,6 +16,10 @@ KUBERNETES_VERSION ?= v1.22.13
 
 CLUSTER_NAME ?= colima
 
+# expired disruption gc delay enable to speed up chaos controller disruption removal for e2e testing
+# it's used to check if disruptions are deleted as expected as soon as the expiration delay occurs
+EXPIRED_DISRUPTION_GC_DELAY ?= 10m
+
 OS_ARCH=amd64
 ifeq (arm64,$(shell uname -m))
 OS_ARCH=arm64
@@ -32,7 +36,7 @@ all: manager injector handler
 
 # Run unit tests
 test: generate manifests
-	go test $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
+	go test -race $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
 
 # This target is dedicated for CI and aims to reuse the Kubernetes version defined here as the source of truth
 ci-install-minikube:
@@ -42,8 +46,9 @@ ci-install-minikube:
 	minikube status
 
 # Run e2e tests (against a real cluster)
-e2e-test: generate colima-install
-	USE_EXISTING_CLUSTER=true CLUSTER_NAME=${CLUSTER_NAME} go test ./controllers/... -coverprofile cover.out
+e2e-test: generate
+	$(MAKE) colima-install EXPIRED_DISRUPTION_GC_DELAY=10s
+	USE_EXISTING_CLUSTER=true CLUSTER_NAME=${CLUSTER_NAME} go test -race ./controllers/... -coverprofile cover.out
 
 # Build manager binary
 manager: generate
@@ -75,6 +80,8 @@ colima-all:
 	$(MAKE) colima-build
 	$(MAKE) colima-install
 
+colima-deploy: colima-build colima-install colima-restart
+
 install-cert-manager:
 	$(KUBECTL) apply -f https://github.com/jetstack/cert-manager/releases/download/v1.9.1/cert-manager.yaml
 
@@ -105,6 +112,7 @@ install-longhorn:
 colima-install: manifests
 	helm template \
 		--set controller.enableSafeguards=false \
+		--set controller.expiredDisruptionGCDelay=${EXPIRED_DISRUPTION_GC_DELAY} \
 		./chart | $(KUBECTL) apply -f -
 
 # Uninstall CRDs and controller from a colima k3s cluster
