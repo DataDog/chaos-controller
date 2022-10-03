@@ -371,26 +371,6 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		handle++
 	}
 
-	// create tc filters depending on the given hosts to match
-	// redirect all packets of all interfaces if no host is given
-	if len(i.spec.Hosts) == 0 && len(i.spec.Services) == 0 {
-		_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
-
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nullIP, 0, 0, "", "1:4"); err != nil {
-			return fmt.Errorf("can't add a filter: %w", err)
-		}
-	} else {
-		// apply filters for given hosts
-		if err := i.addFiltersForHosts(interfaces, i.spec.Hosts, "1:4"); err != nil {
-			return fmt.Errorf("error adding filters for given hosts: %w", err)
-		}
-
-		// add or delete filters for given services depending on changes on the destination kubernetes services and associated pods
-		if err := i.handleFiltersForServices(interfaces, "1:4"); err != nil {
-			return fmt.Errorf("error adding filters for given services: %w", err)
-		}
-	}
-
 	// the following lines are used to exclude some critical packets from any disruption such as health check probes
 	// depending on the network configuration, only one of those filters can be useful but we must add all of them
 	// those filters are only added if the related interface has been impacted by a disruption so far
@@ -434,6 +414,26 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// add filters for allowed hosts
 	if err := i.addFiltersForHosts(interfaces, i.spec.AllowedHosts, "1:1"); err != nil {
 		return fmt.Errorf("error adding filter for allowed hosts: %w", err)
+	}
+
+	// create tc filters depending on the given hosts to match
+	// redirect all packets of all interfaces if no host is given
+	if len(i.spec.Hosts) == 0 && len(i.spec.Services) == 0 {
+		_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
+
+		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nullIP, 0, 0, "", "1:4"); err != nil {
+			return fmt.Errorf("can't add a filter: %w", err)
+		}
+	} else {
+		// apply filters for given hosts
+		if err := i.addFiltersForHosts(interfaces, i.spec.Hosts, "1:4"); err != nil {
+			return fmt.Errorf("error adding filters for given hosts: %w", err)
+		}
+
+		// add or delete filters for given services depending on changes on the destination kubernetes services and associated pods
+		if err := i.handleFiltersForServices(interfaces, "1:4"); err != nil {
+			return fmt.Errorf("error adding filters for given services: %w", err)
+		}
 	}
 
 	return nil
