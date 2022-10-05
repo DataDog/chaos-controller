@@ -677,6 +677,7 @@ out:
 
 			if event.Type == watch.Bookmark {
 				resourceVersion = pod.ResourceVersion
+				log.Debugw("received bookmark event, new resource version found", "resourceVersion", pod.ResourceVersion)
 			}
 
 			if event.Type != watch.Modified {
