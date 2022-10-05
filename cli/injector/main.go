@@ -646,9 +646,15 @@ out:
 					if status.Code == 410 {
 						// Status Code 410 indicates our resource version has expired
 						// Get the newest resource version and re-create the channel
-						resourceVersion, err = getPodResourceVersion()
+						updResourceVersion, err := getPodResourceVersion()
 						if err != nil {
 							return fmt.Errorf("could not get latest resource version: %w", err)
+						}
+
+						if updResourceVersion == resourceVersion {
+							time.Sleep(time.Second * 15)
+						} else {
+							resourceVersion = updResourceVersion
 						}
 
 						channel = nil
