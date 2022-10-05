@@ -608,7 +608,9 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 		select {
 		case sig := <-signals:
 			log.Infow("an exit signal has been received", "signal", sig.String())
-
+			// We've already consumed the signal from the channel, so our caller won't find it when checking after we return.
+			// Thus we need to put the signal back into the channel. We do it in a gothread in case we are blocked when writing to the channel
+			go func() { signals <- sig }()
 			return nil
 		case <-time.After(getDuration(deadline)):
 			log.Infow("duration has expired")
