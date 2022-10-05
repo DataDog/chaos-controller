@@ -639,6 +639,25 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 			pod, ok := event.Object.(*v1.Pod)
 			if !ok {
 				log.Debugw("received event was not a pod", "event", event, "event.Object", event.Object)
+
+				status, sok := event.Object.(*metav1.Status)
+				if sok {
+					if status.Code == 410 {
+						// Status Code 410 indicates our resource version has expired
+						// Get the newest resource version and re-create the channel
+						resourceVersion, err = getPodResourceVersion()
+						if err != nil {
+							return fmt.Errorf("could not get latest resource version: %w", err)
+						}
+
+						channel = nil
+
+						log.Debugw("restarting pod watching channel with newest resource version")
+
+						break
+					}
+				}
+
 				return fmt.Errorf("watched object received from event is not a pod")
 			}
 
