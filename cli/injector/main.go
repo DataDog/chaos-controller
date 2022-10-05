@@ -598,6 +598,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 
 	var actionOnPulse func(string, bool, bool) bool
 
+out:
 	for {
 		if channel == nil {
 			if channel, err = initPodWatch(resourceVersion); err != nil {
@@ -633,7 +634,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 			if !ok {
 				channel = nil
 
-				break
+				continue out
 			}
 
 			pod, ok := event.Object.(*v1.Pod)
@@ -654,7 +655,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 
 						log.Debugw("restarting pod watching channel with newest resource version")
 
-						break
+						continue out
 					}
 				}
 
