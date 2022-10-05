@@ -183,7 +183,7 @@ func initConfig() {
 	pids := []uint32{}
 	ctns := []container.Container{}
 	dnsConfig := network.DNSConfig{DNSServer: dnsServer, KubeDNS: kubeDNS}
-	reg, _ = regexp.Compile("\\((.*)\\)")
+	reg, _ = regexp.Compile("\\S\\d{9}\\S")
 
 	// log when dry-run mode is enabled
 	if dryRun {
@@ -657,9 +657,8 @@ out:
 						if updResourceVersion == resourceVersion {
 							// try a hacky fix?
 							if reg != nil {
-								suggested := reg.FindString(updResourceVersion)
-								log.Debugw("getting latest", "suggested", suggested)
-								resourceVersion = suggested[1 : len(suggested)-1]
+								resourceVersion = reg.FindString(updResourceVersion)
+								log.Debugw("regexd this", "rv", resourceVersion)
 							}
 						} else {
 							resourceVersion = updResourceVersion
