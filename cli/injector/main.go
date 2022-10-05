@@ -637,6 +637,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 
 			pod, ok := event.Object.(*v1.Pod)
 			if !ok {
+				log.Debugw("received event was not a pod", "event", event, "event.Object", event.Object)
 				return fmt.Errorf("watched object received from event is not a pod")
 			}
 
