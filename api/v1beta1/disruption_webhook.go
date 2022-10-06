@@ -113,10 +113,12 @@ func (r *Disruption) ValidateCreate() error {
 		if r.Spec.Network.Cloud != nil {
 			clouds := map[cloudtypes.CloudProviderName]*[]NetworkDisruptionCloudServiceSpec{
 				cloudtypes.CloudProviderAWS: r.Spec.Network.Cloud.AWSServiceList,
+				cloudtypes.CloudProviderGCP: r.Spec.Network.Cloud.GCPServiceList,
 			}
 
 			for cloudName, serviceList := range clouds {
 				serviceListNames := []string{}
+
 				for _, service := range *serviceList {
 					serviceListNames = append(serviceListNames, service.ServiceName)
 				}
