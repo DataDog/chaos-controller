@@ -25,7 +25,7 @@ The Chaos Controller allows us to simulate a variety of small and large scenario
 
 ## Local Development
 
-Chaos Engineering is necessarily different from system to system. We encourage you to try out this tool, and extend it for your own use cases. If you want to run the source code locally to make and test implementation changes, visit the [Contributing Docs](CONTRIBUTING.md) which explain how to spin up chaos-controller source code on Minikube. By the way, we welcome Pull Requests.
+Chaos Engineering is necessarily different from system to system. We encourage you to try out this tool, and extend it for your own use cases. If you want to run the source code locally to make and test implementation changes, visit the [Contributing Docs](CONTRIBUTING.md) which explain how to spin up chaos-controller source code on Colima. By the way, we welcome Pull Requests.
 
 ## Getting Started
 
@@ -56,17 +56,17 @@ To disrupt your cluster, run `kubectl apply -f <disruption_file.yaml>`. You can 
 
 Check out [Chaosli](./cli/chaosli/README.md) if you want some help understanding/creating disruption configurations.
 
-> :open_book: _The [features guide](docs/features.md) contains usecases and sample disruption files!_
+> :open*book: \_The [features guide](docs/features.md) contains usecases and sample disruption files!*
 
-> :open_book: _The [development guide](docs/development.md) contains tips for developing locally!_
+> :open*book: \_The [development guide](docs/development.md) contains tips for developing locally!*
 
 ## Useful Links
 
-* [Examples](docs/features.md#disruption-examples)
-* [Design](docs/design.md)
-* [Metrics](docs/metrics.md)
-* [FAQ](docs/faq.md)
-* [Contributing](CONTRIBUTING.md)
+- [Examples](docs/features.md#disruption-examples)
+- [Design](docs/design.md)
+- [Metrics](docs/metrics.md)
+- [FAQ](docs/faq.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## :bomb: Disclaimer :bomb:
 

@@ -31,19 +31,19 @@ type GRPCDisruptionInjectorConfig struct {
 // NewGRPCDisruptionInjector creates a GRPCDisruptionInjector object with the given config,
 // missing fields are initialized with the defaults
 func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisruptionInjectorConfig) Injector {
-	return GRPCDisruptionInjector{
+	return &GRPCDisruptionInjector{
 		spec:       spec,
 		config:     config,
 		serverAddr: config.TargetPodIP + ":" + strconv.Itoa(spec.Port),
 	}
 }
 
-func (i GRPCDisruptionInjector) GetDisruptionKind() types.DisruptionKindName {
+func (i *GRPCDisruptionInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindGRPCDisruption
 }
 
 // Inject injects the given grpc disruption into the given container
-func (i GRPCDisruptionInjector) Inject() error {
+func (i *GRPCDisruptionInjector) Inject() error {
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
 	if i.config.DryRun {
@@ -68,8 +68,12 @@ func (i GRPCDisruptionInjector) Inject() error {
 	return conn.Close()
 }
 
+func (i *GRPCDisruptionInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
 // Clean removes the injected disruption from the given container
-func (i GRPCDisruptionInjector) Clean() error {
+func (i *GRPCDisruptionInjector) Clean() error {
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
 	if i.config.DryRun {

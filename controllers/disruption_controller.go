@@ -107,7 +107,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return func() {
 			tags := []string{}
 			if instance.Name != "" {
-				tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
+				tags = append(tags, "disruptionName:"+instance.Name, "namespace:"+instance.Namespace)
 			}
 
 			r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
@@ -142,7 +142,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// check whether the object is being deleted or not
-	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !instance.DeletionTimestamp.IsZero() {
 		// the instance is being deleted, clean it if the finalizer is still present
 		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
 			isCleaned, err := r.cleanDisruption(instance)
@@ -183,8 +183,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 
 			// send reconciling duration metric
-			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
-			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
+			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.emitKindCountMetrics(instance)
 
 			return ctrl.Result{}, nil
@@ -270,7 +270,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// send injection duration metric representing the time it took to fully inject the disruption until its creation
-		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"name:" + instance.Name, "namespace:" + instance.Namespace}))
+		r.handleMetricSinkError(r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 
 		// update resource status injection
 		// requeue the request if the disruption is not fully injected yet
@@ -442,7 +442,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	var err error
 
 	targetNodeName := ""
-	targetContainerIDs := []string{}
+	targetContainers := map[string]string{}
 	targetPodIP := ""
 	targetChaosPods := []*corev1.Pod{}
 
@@ -458,7 +458,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 		targetNodeName = pod.Spec.NodeName
 
 		// get IDs of targeted containers or all containers
-		targetContainerIDs, err = getContainerIDs(&pod, instance.Spec.Containers)
+		targetContainers, err = utils.GetTargetedContainersInfo(&pod, instance.Spec.Containers)
 		if err != nil {
 			return fmt.Errorf("error getting target pod container ID: %w", err)
 		}
@@ -470,7 +470,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	}
 
 	// generate injection pods specs
-	if err := r.generateChaosPods(instance, &targetChaosPods, target, targetNodeName, targetContainerIDs, targetPodIP); err != nil {
+	if err := r.generateChaosPods(instance, &targetChaosPods, target, targetNodeName, targetContainers, targetPodIP); err != nil {
 		return fmt.Errorf("error generating chaos pods: %w", err)
 	}
 
@@ -656,7 +656,7 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 	target := chaosPod.Labels[chaostypes.TargetLabel]
 
 	// ignore chaos pods not being deleted or not having the finalizer anymore
-	if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.IsZero() || !controllerutil.ContainsFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer) {
+	if chaosPod.DeletionTimestamp.IsZero() || !controllerutil.ContainsFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer) {
 		return
 	}
 
@@ -679,9 +679,9 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 		}
 	}
 
-	// It is always safe to remove a node failure chaos pod. It is usually hard to tell if a node failure chaos pod has
-	// succeeded or not, so we choose to always remove the finalizer.
-	if chaosPod.Labels[chaostypes.DisruptionKindLabel] == chaostypes.DisruptionKindNodeFailure {
+	// It is always safe to remove some chaos pods. It is usually hard to tell if these chaos pods have
+	// succeeded or not, but they have no possibility of leaving side effects, so we choose to always remove the finalizer.
+	if chaosv1beta1.DisruptionHasNoSideEffects(chaosPod.Labels[chaostypes.DisruptionKindLabel]) {
 		removeFinalizer = true
 		ignoreStatus = true
 	}
@@ -870,7 +870,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 // deleteChaosPods deletes a chaos pod using the client
 func (r *DisruptionReconciler) deleteChaosPod(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) {
 	// delete the chaos pod only if it has not been deleted already
-	if chaosPod.DeletionTimestamp == nil || chaosPod.DeletionTimestamp.Time.IsZero() {
+	if chaosPod.DeletionTimestamp.IsZero() {
 		r.log.Infow("terminating chaos pod to trigger cleanup", "chaosPod", chaosPod.Name)
 
 		if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
@@ -921,45 +921,8 @@ func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disrupt
 	return eligibleTargets, nil
 }
 
-// getChaosPods returns chaos pods owned by the given instance and having the given labels
-// both instance and label set are optional but at least one must be provided
 func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error) {
-	pods := &corev1.PodList{}
-
-	// ensure we always have at least a disruption instance or a label set to filter on
-	if instance == nil && ls == nil {
-		return nil, fmt.Errorf("you must specify at least a disruption instance or a label set to get chaos pods")
-	}
-
-	if ls == nil {
-		ls = make(map[string]string)
-	}
-
-	// add instance specific labels if provided
-	if instance != nil {
-		ls[chaostypes.DisruptionNameLabel] = instance.Name
-		ls[chaostypes.DisruptionNamespaceLabel] = instance.Namespace
-	}
-
-	// list pods in the defined namespace and for the given target
-	listOptions := &client.ListOptions{
-		Namespace:     r.ChaosNamespace,
-		LabelSelector: labels.SelectorFromValidatedSet(ls),
-	}
-
-	err := r.Client.List(context.Background(), pods, listOptions)
-	if err != nil {
-		return nil, fmt.Errorf("error listing owned pods: %w", err)
-	}
-
-	podNames := []string{}
-	for _, pod := range pods.Items {
-		podNames = append(podNames, pod.Name)
-	}
-
-	r.log.Debugw("searching for chaos pods with label selector...", "labels", ls.String(), "foundPods", podNames)
-
-	return pods.Items, nil
+	return chaosv1beta1.GetChaosPods(context.Background(), r.log, r.ChaosNamespace, r.Client, instance, ls)
 }
 
 // generatePod generates a pod from a generic pod template in the same namespace
@@ -1202,7 +1165,7 @@ func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Di
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
 	for _, kind := range instance.Spec.GetKindNames() {
-		r.handleMetricSinkError((r.MetricsSink.MetricDisruptionsCount(kind, []string{"name:" + instance.Name, "namespace:" + instance.Namespace})))
+		r.handleMetricSinkError(r.MetricsSink.MetricDisruptionsCount(kind, []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 	}
 }
 
@@ -1218,7 +1181,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 }
 
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
-func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, targetContainerIDs []string, targetPodIP string) error {
+func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, pods *[]*corev1.Pod, targetName string, targetNodeName string, targetContainers map[string]string, targetPodIP string) error {
 	// generate chaos pods for each possible disruptions
 	for _, kind := range chaostypes.DisruptionKindNames {
 		subspec := instance.Spec.DisruptionKindPicker(kind)
@@ -1251,7 +1214,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		xargs := chaosapi.DisruptionArgs{
 			Level:                level,
 			Kind:                 kind,
-			TargetContainerIDs:   targetContainerIDs,
+			TargetContainers:     targetContainers,
 			TargetName:           targetName,
 			TargetNodeName:       targetNodeName,
 			TargetPodIP:          targetPodIP,
@@ -1366,7 +1329,7 @@ func (r *DisruptionReconciler) ReportMetrics() {
 			if d.Status.IsStuckOnRemoval {
 				stuckOnRemoval++
 
-				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"name:" + d.Name, "namespace:" + d.Namespace}); err != nil {
+				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"disruptionName:" + d.Name, "namespace:" + d.Namespace}); err != nil {
 					r.log.Errorw("error sending stuck_on_removal metric", "error", err)
 				}
 			}
@@ -1378,7 +1341,7 @@ func (r *DisruptionReconciler) ReportMetrics() {
 
 			chaosPodsCount += len(chaosPods)
 
-			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionOngoingDuration(time.Since(d.ObjectMeta.CreationTimestamp.Time), []string{"name:" + d.Name, "namespace:" + d.Namespace}))
+			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionOngoingDuration(time.Since(d.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + d.Name, "namespace:" + d.Namespace}))
 		}
 
 		// send metrics
