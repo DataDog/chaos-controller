@@ -19,20 +19,35 @@ import (
 
 const tcPath = "/sbin/tc"
 
-type ConnState string
+type connState string
 
-const (
-	ConnStateUndefined   ConnState = ""
-	ConnStateNew         ConnState = "+trk+new"
-	ConnStateEstablished ConnState = "+trk+est"
+var (
+	ConnStateUndefined   connState = ""
+	ConnStateNew         connState = "+trk+new"
+	ConnStateEstablished connState = "+trk+est"
 )
+
+func NewConnState(hostConnState string) connState {
+	var connState connState
+
+	switch hostConnState {
+	case "new":
+		connState = ConnStateNew
+	case "est":
+		connState = ConnStateEstablished
+	default:
+		connState = ConnStateUndefined
+	}
+
+	return connState
+}
 
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
 type TrafficController interface {
 	AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error
 	AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
-	AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState ConnState, flowid string) error
+	AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) error
 	DeleteFilter(iface string, priority uint32) error
 	AddCgroupFilter(ifaces []string, parent string, handle uint32) error
 	AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error
@@ -167,7 +182,7 @@ func (t tc) ClearQdisc(ifaces []string) error {
 
 // AddFilter generates a filter to redirect the traffic matching the given ip, port and protocol to the given flowid
 // this function relies on the tc flower (https://man7.org/linux/man-pages/man8/tc-flower.8.html) filtering module
-func (t tc) AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState ConnState, flowid string) error {
+func (t tc) AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) error {
 	var params, filterProtocol string
 
 	// match protocol if specified, default to tcp otherwise

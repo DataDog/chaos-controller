@@ -913,7 +913,6 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 			var (
 				srcPort, dstPort int
 				srcIP, dstIP     *net.IPNet
-				connState        network.ConnState
 			)
 
 			// handle flow direction
@@ -932,14 +931,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 			}
 
 			// cast connection state
-			switch host.ConnState {
-			case "new":
-				connState = network.ConnStateNew
-			case "est":
-				connState = network.ConnStateEstablished
-			default:
-				connState = network.ConnStateUndefined
-			}
+			connState := network.NewConnState(host.ConnState)
 
 			// create tc filter
 			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, srcIP, dstIP, srcPort, dstPort, network.Protocol(host.Protocol), connState, flowid); err != nil {

@@ -42,7 +42,7 @@ var _ = Describe("Tc", func() {
 		srcIP, dstIP      *net.IPNet
 		srcPort, dstPort  int
 		protocol          Protocol
-		connState         ConnState
+		connState         connState
 		flowid            string
 	)
 
