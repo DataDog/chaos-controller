@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
-	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -77,7 +76,6 @@ var (
 	dnsServer            string
 	kubeDNS              string
 	clientset            *kubernetes.Clientset
-	reg                  *regexp.Regexp
 )
 
 func init() {
@@ -183,7 +181,6 @@ func initConfig() {
 	pids := []uint32{}
 	ctns := []container.Container{}
 	dnsConfig := network.DNSConfig{DNSServer: dnsServer, KubeDNS: kubeDNS}
-	reg, _ = regexp.Compile("\\S\\d{9}\\S")
 
 	// log when dry-run mode is enabled
 	if dryRun {
@@ -655,11 +652,11 @@ out:
 						}
 
 						if updResourceVersion == resourceVersion {
-							// try a hacky fix?
-							if reg != nil {
-								resourceVersion = reg.FindString(updResourceVersion)
-								log.Debugw("regexd this", "rv", resourceVersion)
-							}
+							// We don't have the latest resource version, but we can't seem to find a new one.
+							// Wait 10 seconds and retry.
+							time.Sleep(time.Second * 10)
+							// An unset resource version is an implicit "latest" request.
+							resourceVersion = ""
 						} else {
 							resourceVersion = updResourceVersion
 						}
