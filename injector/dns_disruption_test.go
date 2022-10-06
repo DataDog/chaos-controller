@@ -57,8 +57,9 @@ var _ = Describe("Failure", func() {
 		iptables.On("AddRuleWithIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("AddWideFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("AddCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("PrependRule", mock.Anything, mock.Anything).Return(nil)
+		iptables.On("PrependRuleSpec", mock.Anything, mock.Anything).Return(nil)
 		iptables.On("DeleteRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("DeleteRuleSpec", mock.Anything, mock.Anything).Return(nil)
 		iptables.On("DeleteCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// environment variables
@@ -104,9 +105,9 @@ var _ = Describe("Failure", func() {
 
 		Context("disruption is node-level", func() {
 			It("creates node-level iptable filter rules", func() {
-				iptables.AssertCalled(GinkgoT(), "PrependRule", "CHAOS-DNS", []string{"-s", "10.0.0.2", "-j", "RETURN"})
-				iptables.AssertCalled(GinkgoT(), "PrependRule", "OUTPUT", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
-				iptables.AssertCalled(GinkgoT(), "PrependRule", "PREROUTING", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
+				iptables.AssertCalled(GinkgoT(), "PrependRuleSpec", "CHAOS-DNS", []string{"-s", "10.0.0.2", "-j", "RETURN"})
+				iptables.AssertCalled(GinkgoT(), "PrependRuleSpec", "OUTPUT", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
+				iptables.AssertCalled(GinkgoT(), "PrependRuleSpec", "PREROUTING", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
 			})
 		})
 

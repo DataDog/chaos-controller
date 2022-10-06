@@ -36,7 +36,7 @@ all: manager injector handler
 
 # Run unit tests
 test: generate manifests
-	go test -race $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
+	CGO_ENABLED=1 go test -race $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
 
 # This target is dedicated for CI and aims to reuse the Kubernetes version defined here as the source of truth
 ci-install-minikube:
@@ -48,7 +48,7 @@ ci-install-minikube:
 # Run e2e tests (against a real cluster)
 e2e-test: generate
 	$(MAKE) colima-install EXPIRED_DISRUPTION_GC_DELAY=10s
-	USE_EXISTING_CLUSTER=true CLUSTER_NAME=${CLUSTER_NAME} go test -race ./controllers/... -coverprofile cover.out
+	USE_EXISTING_CLUSTER=true CLUSTER_NAME=${CLUSTER_NAME} CGO_ENABLED=1 go test -race ./controllers/... -coverprofile cover.out
 
 # Build manager binary
 manager: generate

@@ -24,13 +24,13 @@ spec:
 
 In order to have an up to date state of the filtered on services / pods destination, we dynamically resolve them by:
 * installing **kubernetes watchers** on the kubernetes services and kubernetes pods (more info on watchers [here](https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes))
-* keeping track of **tc filters** (more info on filters [here](https://man7.org/linux/man-pages/man8/tc-u32.8.html))
+* keeping track of **tc filters** (more info on filters [here](https://man7.org/linux/man-pages/man8/tc-flower.8.html))
 
 ### TC Filters Technicalities
 
 To delete tc filters, we need to keep in memory the priority (or preference) of each tc filter created, by assigning a priority when adding a tc filter:
 
-`tc filter add dev eth0 priority 49155 parent 1:0 u32 match ip dst 10.98.115.140/32 match ip dport 8080 0xffff match ip protocol 6 0xff flowid 1:4`
+`tc filter add dev eth0 protocol ip priority 49155 parent 1:0 flower ip_proto tcp dst_ip 10.98.115.140/32 dst_port 8080 flowid 1:4`
 
 The priority will indicate the order of the filter. (We don't need for the filters to have a specific order at this stage)
 
