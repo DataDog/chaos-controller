@@ -39,7 +39,7 @@ var _ = Describe("GCP Parsing", func() {
 			Expect(info.Version).To(Equal("1000000000"))
 
 			By("Ensuring that we have the right info")
-			Expect(len(info.IPRanges["Google Cloud"])).To(Equal(2))
+			Expect(len(info.IPRanges["Google Cloud"])).To(Equal(4))
 		})
 	})
 
