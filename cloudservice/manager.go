@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/cloudservice/aws"
+	"github.com/DataDog/chaos-controller/cloudservice/gcp"
 	"github.com/DataDog/chaos-controller/cloudservice/types"
 
 	"go.uber.org/zap"
@@ -45,6 +46,12 @@ func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServi
 			CloudProviderIPRangeManager: aws.New(),
 			Conf: types.CloudProviderConfig{
 				IPRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json",
+			},
+		},
+		types.CloudProviderGCP: {
+			CloudProviderIPRangeManager: gcp.New(),
+			Conf: types.CloudProviderConfig{
+				IPRangesURL: "https://www.gstatic.com/ipranges/cloud.json",
 			},
 		},
 	}
