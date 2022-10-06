@@ -132,16 +132,16 @@ func (i *DNSDisruptionInjector) Inject() error {
 
 	if i.config.Level == chaostypes.DisruptionLevelNode {
 		// Exempt chaos pod from iptables re-routing
-		if err := i.config.Iptables.PrependRule("CHAOS-DNS", "-s", podIP, "-j", "RETURN"); err != nil {
+		if err := i.config.Iptables.PrependRuleSpec("CHAOS-DNS", "-s", podIP, "-j", "RETURN"); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 
 		// Re-route all pods under node
-		if err := i.config.Iptables.PrependRule("OUTPUT", "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
+		if err := i.config.Iptables.PrependRuleSpec("OUTPUT", "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 
-		if err := i.config.Iptables.PrependRule("PREROUTING", "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
+		if err := i.config.Iptables.PrependRuleSpec("PREROUTING", "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 	}

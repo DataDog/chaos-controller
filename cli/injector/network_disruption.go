@@ -64,13 +64,18 @@ var networkDisruptionCmd = &cobra.Command{
 			}
 
 			// generate injector
-			injectors = append(injectors, injector.NewNetworkDisruptionInjector(spec, injector.NetworkDisruptionInjectorConfig{Config: config}))
+			inj, err := injector.NewNetworkDisruptionInjector(spec, injector.NetworkDisruptionInjectorConfig{Config: config})
+			if err != nil {
+				log.Fatalw("error initializing the network disruption injector: %w", err)
+			}
+
+			injectors = append(injectors, inj)
 		}
 	},
 }
 
 func init() {
-	networkDisruptionCmd.Flags().StringSlice("hosts", []string{}, "List of hosts (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>;<flow>)")
+	networkDisruptionCmd.Flags().StringSlice("hosts", []string{}, "List of hosts (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>;<flow>;<connState>)")
 	networkDisruptionCmd.Flags().StringSlice("allowed-hosts", []string{}, "List of allowed hosts not being impacted by the disruption (hostname, single IP or IP block) with port and protocol to apply disruptions to (format: <host>;<port>;<protocol>;<flow>)")
 	networkDisruptionCmd.Flags().StringSlice("services", []string{}, "List of services to apply disruptions to (format: <name>;<namespace>)")
 	networkDisruptionCmd.Flags().Int("drop", 100, "Percentage to drop packets (100 is a total drop)")

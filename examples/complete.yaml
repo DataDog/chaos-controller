@@ -45,11 +45,13 @@ spec:
         port: 80 # optional, port to drop packets on
         protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
         flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
+        connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
     allowedHosts: # optional, list of excluded hosts which would not be disrupted
       - host: 10.0.0.1 # optional, IP, CIDR or hostname to filter on
         port: 80 # optional, port to filter on
         protocol: tcp # optional, protocol to filter on (can be tcp or udp, defaults to both)
         flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
+        connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
     services: # optional, list of destination Kubernetes services to filter on
       - name: foo # service name
         namespace: bar # service namespace

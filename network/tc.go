@@ -19,21 +19,39 @@ import (
 
 const tcPath = "/sbin/tc"
 
-// default protocol identifiers from /etc/protocols
-const (
-	protocolIP  protocolIdentifier = 0
-	protocolTCP protocolIdentifier = 6
-	protocolUDP protocolIdentifier = 17
+type connState string
+
+var (
+	ConnStateUndefined   connState
+	ConnStateNew         connState = "+trk+new"
+	ConnStateEstablished connState = "+trk+est"
 )
 
-type protocolIdentifier int
+// NewConnState returns a connection state value based on the given string, possible values are:
+// - new: new connections
+// - est: established connections
+// - empty string (""): undefined
+func NewConnState(hostConnState string) connState {
+	var connState connState
+
+	switch hostConnState {
+	case "new":
+		connState = ConnStateNew
+	case "est":
+		connState = ConnStateEstablished
+	default:
+		connState = ConnStateUndefined
+	}
+
+	return connState
+}
 
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
 type TrafficController interface {
 	AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error
 	AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
-	AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error
+	AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) error
 	DeleteFilter(iface string, priority uint32) error
 	AddCgroupFilter(ifaces []string, parent string, handle uint32) error
 	AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error
@@ -113,7 +131,7 @@ func (t tc) AddNetem(ifaces []string, parent string, handle uint32, delay time.D
 	params = strings.TrimPrefix(params, " ")
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, 0, handle, "netem", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, "", 0, handle, "netem", params)...); err != nil {
 			return err
 		}
 	}
@@ -131,7 +149,7 @@ func (t tc) AddPrio(ifaces []string, parent string, handle uint32, bands uint32,
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, 0, handle, "prio", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, "", 0, handle, "prio", params)...); err != nil {
 			return err
 		}
 	}
@@ -147,7 +165,7 @@ func (t tc) AddOutputLimit(ifaces []string, parent string, handle uint32, bytesP
 	//   - https://unix.stackexchange.com/questions/100785/bucket-size-in-tbf
 	//   - https://linux.die.net/man/8/tc-tbf
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, 0, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, "", 0, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))...); err != nil {
 			return err
 		}
 	}
@@ -167,41 +185,48 @@ func (t tc) ClearQdisc(ifaces []string) error {
 }
 
 // AddFilter generates a filter to redirect the traffic matching the given ip, port and protocol to the given flowid
-func (t tc) AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
-	var params string
+// this function relies on the tc flower (https://man7.org/linux/man-pages/man8/tc-flower.8.html) filtering module
+func (t tc) AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) error {
+	var params, filterProtocol string
 
-	// ensure at least an IP or a port has been specified (otherwise the filter doesn't make sense)
-	if srcIP == nil && dstIP == nil && srcPort == 0 && dstPort == 0 && protocol == "" {
-		return fmt.Errorf("wrong filter, at least an IP or a port must be specified")
+	// match protocol if specified, default to tcp otherwise
+	switch protocol {
+	case TCP, UDP:
+		filterProtocol = "ip"
+		params += fmt.Sprintf("ip_proto %s ", strings.ToLower(string(protocol)))
+	case ARP:
+		filterProtocol = "arp"
+	default:
+		return fmt.Errorf("unexpected protocol: %s", protocol)
 	}
 
 	// match ip if specified
-	if srcIP != nil {
-		params += fmt.Sprintf("match ip src %s ", srcIP.String())
+	if srcIP != nil && srcIP.String() != "0.0.0.0/0" {
+		params += fmt.Sprintf("src_ip %s ", srcIP.String())
 	}
 
-	if dstIP != nil {
-		params += fmt.Sprintf("match ip dst %s ", dstIP.String())
+	if dstIP != nil && dstIP.String() != "0.0.0.0/0" {
+		params += fmt.Sprintf("dst_ip %s ", dstIP.String())
 	}
 
 	// match port if specified
 	if srcPort != 0 {
-		params += fmt.Sprintf("match ip sport %s 0xffff ", strconv.Itoa(srcPort))
+		params += fmt.Sprintf("src_port %s ", strconv.Itoa(srcPort))
 	}
 
 	if dstPort != 0 {
-		params += fmt.Sprintf("match ip dport %s 0xffff ", strconv.Itoa(dstPort))
+		params += fmt.Sprintf("dst_port %s ", strconv.Itoa(dstPort))
 	}
 
-	// match protocol if specified
-	if protocol != "" {
-		params += fmt.Sprintf("match ip protocol %d 0xff ", getProtocolIndentifier(protocol))
+	// match conn state if specified
+	if connState != ConnStateUndefined {
+		params += fmt.Sprintf("ct_state %s ", connState)
 	}
 
 	params += fmt.Sprintf("flowid %s", flowid)
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, priority, handle, "u32", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, filterProtocol, priority, handle, "flower", params)...); err != nil {
 			return err
 		}
 	}
@@ -220,7 +245,7 @@ func (t tc) DeleteFilter(iface string, priority uint32) error {
 // AddCgroupFilter generates a cgroup filter
 func (t tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error {
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, 0, handle, "cgroup", "")...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "", 0, handle, "cgroup", "")...); err != nil {
 			return err
 		}
 	}
@@ -228,19 +253,12 @@ func (t tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error
 	return nil
 }
 
-func getProtocolIndentifier(protocol string) protocolIdentifier {
-	switch strings.ToLower(protocol) {
-	case "tcp":
-		return protocolTCP
-	case "udp":
-		return protocolUDP
-	default:
-		return protocolIP
-	}
-}
-
-func buildCmd(module string, iface string, parent string, priority uint32, handle uint32, kind string, parameters string) []string {
+func buildCmd(module string, iface string, parent string, protocol string, priority uint32, handle uint32, kind string, parameters string) []string {
 	cmd := fmt.Sprintf("%s add dev %s", module, iface)
+
+	if protocol != "" {
+		cmd += fmt.Sprintf(" protocol %s", protocol)
+	}
 
 	if priority != 0 {
 		cmd += fmt.Sprintf(" priority %d", priority)
