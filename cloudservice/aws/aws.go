@@ -58,7 +58,7 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 	for _, ipRange := range ipRanges.Prefixes {
 		// this service is the list of all ip ranges of all services + misc ones. We don't need that
 		// it's also too big for us to be able to filter all ips
-		if ipRange.Service == "AMAZON" {
+		if ipRange.Service == "AMAZON" || ipRange.IPPrefix == "" {
 			continue
 		}
 

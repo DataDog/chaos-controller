@@ -59,6 +59,10 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 			genericIPRanges.IPRanges[ipRange.Service] = []string{}
 		}
 
+		if ipRange.IPPrefix == "" {
+			continue
+		}
+
 		genericIPRanges.IPRanges[ipRange.Service] = append(genericIPRanges.IPRanges[ipRange.Service], ipRange.IPPrefix)
 	}
 

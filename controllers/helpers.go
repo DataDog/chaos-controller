@@ -96,10 +96,16 @@ func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudse
 	hosts := []v1beta1.NetworkDisruptionHostSpec{}
 	clouds := map[cloudtypes.CloudProviderName]*[]v1beta1.NetworkDisruptionCloudServiceSpec{
 		cloudtypes.CloudProviderAWS: cloudSpec.AWSServiceList,
+		cloudtypes.CloudProviderGCP: cloudSpec.GCPServiceList,
 	}
 
 	for cloudName, serviceList := range clouds {
 		serviceListNames := []string{}
+
+		if serviceList == nil {
+			continue
+		}
+
 		for _, service := range *serviceList {
 			serviceListNames = append(serviceListNames, service.ServiceName)
 		}
