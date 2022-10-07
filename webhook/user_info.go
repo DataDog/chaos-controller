@@ -55,14 +55,12 @@ func (m *UserInfoMutator) Handle(ctx context.Context, req admission.Request) adm
 		annotations[k] = v
 	}
 
-	marshaledUserInfo, err := json.Marshal(req.UserInfo)
-	if err != nil {
-		m.Log.Errorw("error encoding UserInfo", "error", err)
-	}
-
-	annotations["UserInfo"] = string(marshaledUserInfo)
-
 	dis.Annotations = annotations
+
+	err := dis.SetUserInfo(req.UserInfo)
+	if err != nil {
+		m.Log.Errorw("error defining UserInfo", "error", err, "name", dis.Name, "namespace", dis.Namespace)
+	}
 
 	marshaled, err := json.Marshal(dis)
 	if err != nil {
