@@ -65,24 +65,20 @@ var _ = Describe("Failure", func() {
 
 		// spec
 		spec = v1beta1.CPUPressureSpec{}
-	})
 
-	JustBeforeEach(func() {
 		inj = NewCPUPressureInjector(spec, config)
+
+		// because the cleaning phase is blocking, we start it in a goroutine
+		// and send a signal to the stresser exit handler
+		Expect(inj.Inject()).To(BeNil())
+
+		go func(inj Injector) {
+			Expect(inj.Clean()).To(BeNil())
+		}(inj)
+
+		stresserExit <- struct{}{}
 	})
-
 	Describe("injection", func() {
-		JustBeforeEach(func() {
-			// because the cleaning phase is blocking, we start it in a goroutine
-			// and send a signal to the stresser exit handler
-			Expect(inj.Inject()).To(BeNil())
-
-			go func() {
-				Expect(inj.Clean()).To(BeNil())
-			}()
-
-			stresserExit <- struct{}{}
-		})
 
 		It("should join the cpu and cpuset cgroups", func() {
 			cgroupManager.AssertCalled(GinkgoT(), "Join", "cpu", 666, false)

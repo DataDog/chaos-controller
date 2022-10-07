@@ -6,6 +6,7 @@
 package api
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -23,7 +24,7 @@ type DisruptionKind interface {
 
 type DisruptionArgs struct {
 	AllowedHosts         []string
-	TargetContainerIDs   []string
+	TargetContainers     map[string]string
 	Level                chaostypes.DisruptionLevel
 	Kind                 chaostypes.DisruptionKindName
 	TargetPodIP          string
@@ -43,11 +44,18 @@ type DisruptionArgs struct {
 
 // AppendArgs is a helper function generating common and global args and appending them to the given args array
 func AppendArgs(args []string, xargs DisruptionArgs) []string {
+	formattedTargetContainers := []string{}
+
+	for name, id := range xargs.TargetContainers {
+		f := fmt.Sprintf("%s;%s", name, id)
+		formattedTargetContainers = append(formattedTargetContainers, f)
+	}
+
 	args = append(args,
 		// basic args
 		"--metrics-sink", xargs.MetricsSink,
 		"--level", string(xargs.Level),
-		"--target-container-ids", strings.Join(xargs.TargetContainerIDs, ","),
+		"--target-containers", strings.Join(formattedTargetContainers, ","),
 		"--target-pod-ip", xargs.TargetPodIP,
 		"--chaos-namespace", xargs.ChaosNamespace,
 

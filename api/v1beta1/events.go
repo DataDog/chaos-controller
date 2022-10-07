@@ -158,13 +158,13 @@ var Events = map[string]DisruptionEvent{
 		Category:                       TargetEvent,
 	},
 	EventDisruptionDurationOver: {
-		Type:                        corev1.EventTypeWarning,
+		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionDurationOver,
 		OnDisruptionTemplateMessage: "The disruption has lived longer than its specified duration, and will be deleted in %s.",
 		Category:                    DisruptEvent,
 	},
 	EventDisruptionGCOver: {
-		Type:                        corev1.EventTypeWarning,
+		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionGCOver,
 		OnDisruptionTemplateMessage: "The disruption has lived %s longer than its specified duration, and will now be deleted.",
 		Category:                    DisruptEvent,
@@ -194,7 +194,7 @@ var Events = map[string]DisruptionEvent{
 		Category:                    DisruptEvent,
 	},
 	EventDisruptionNoMoreValidTargets: {
-		Type:                        corev1.EventTypeWarning,
+		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionNoMoreValidTargets,
 		OnDisruptionTemplateMessage: "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)",
 		Category:                    DisruptEvent,
@@ -230,7 +230,7 @@ var Events = map[string]DisruptionEvent{
 		Category:                    DisruptEvent,
 	},
 	EventDisrupted: {
-		Type:                    corev1.EventTypeWarning,
+		Type:                    corev1.EventTypeNormal,
 		Reason:                  EventDisrupted,
 		OnTargetTemplateMessage: "Pod %s from disruption %s targeted this resource for injection",
 		Category:                DisruptEvent,

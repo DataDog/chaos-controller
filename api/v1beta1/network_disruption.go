@@ -89,6 +89,9 @@ type NetworkDisruptionHostSpec struct {
 	// +kubebuilder:validation:Enum=ingress;egress;""
 	// +ddmark:validation:Enum=ingress;egress;""
 	Flow string `json:"flow,omitempty"`
+	// +kubebuilder:validation:Enum=new;est;""
+	// +ddmark:validation:Enum=new;est;""
+	ConnState string `json:"connState,omitempty"`
 }
 
 type NetworkDisruptionServiceSpec struct {
@@ -164,12 +167,12 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 
 	// append hosts
 	for _, host := range s.Hosts {
-		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s;%s", host.Host, host.Port, host.Protocol, host.Flow))
+		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState))
 	}
 
 	// append allowed hosts
 	for _, host := range s.AllowedHosts {
-		args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s;%s", host.Host, host.Port, host.Protocol, host.Flow))
+		args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState))
 	}
 
 	// append services
@@ -181,7 +184,7 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 }
 
 // NetworkDisruptionHostSpecFromString parses the given hosts to host specs
-// The expected format for hosts is <host>;<port>;<protocol>;<flow>
+// The expected format for hosts is <host>;<port>;<protocol>;<flow>;<connState>
 func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHostSpec, error) {
 	var err error
 
@@ -192,9 +195,10 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 		port := 0
 		protocol := ""
 		flow := ""
+		connState := ""
 
-		// parse host with format <host>;<port>;<protocol>;<flow>
-		parsedHost := strings.SplitN(host, ";", 4)
+		// parse host with format <host>;<port>;<protocol>;<flow>;<connState>
+		parsedHost := strings.SplitN(host, ";", 5)
 
 		// cast port to int if specified
 		if len(parsedHost) > 1 && parsedHost[1] != "" {
@@ -214,12 +218,18 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 			flow = parsedHost[3]
 		}
 
+		// get conn state if specified
+		if len(parsedHost) > 4 && parsedHost[4] != "" {
+			connState = parsedHost[4]
+		}
+
 		// generate host spec
 		parsedHosts = append(parsedHosts, NetworkDisruptionHostSpec{
-			Host:     parsedHost[0],
-			Port:     port,
-			Protocol: protocol,
-			Flow:     flow,
+			Host:      parsedHost[0],
+			Port:      port,
+			Protocol:  protocol,
+			Flow:      flow,
+			ConnState: connState,
 		})
 	}
 

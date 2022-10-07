@@ -6,7 +6,7 @@
 replicaCount: 1
 
 image:
-  repository: "docker.io/chaos-dogfood-client"
+  repository: "k8s.io/chaos-dogfood-client"
   pullPolicy: IfNotPresent
   tag: "latest"
 

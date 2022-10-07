@@ -52,18 +52,18 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 		}
 	}
 
-	return DNSDisruptionInjector{
+	return &DNSDisruptionInjector{
 		spec:   spec,
 		config: config,
 	}, err
 }
 
-func (i DNSDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
+func (i *DNSDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
 	return chaostypes.DisruptionKindDNSDisruption
 }
 
 // Inject injects the given dns disruption into the given container
-func (i DNSDisruptionInjector) Inject() error {
+func (i *DNSDisruptionInjector) Inject() error {
 	i.config.Log.Infow("adding dns disruption", "spec", i.spec)
 
 	// get the chaos pod node IP from the environment variable
@@ -132,16 +132,16 @@ func (i DNSDisruptionInjector) Inject() error {
 
 	if i.config.Level == chaostypes.DisruptionLevelNode {
 		// Exempt chaos pod from iptables re-routing
-		if err := i.config.Iptables.PrependRule("CHAOS-DNS", "-s", podIP, "-j", "RETURN"); err != nil {
+		if err := i.config.Iptables.PrependRuleSpec("CHAOS-DNS", "-s", podIP, "-j", "RETURN"); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 
 		// Re-route all pods under node
-		if err := i.config.Iptables.PrependRule("OUTPUT", "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
+		if err := i.config.Iptables.PrependRuleSpec("OUTPUT", "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 
-		if err := i.config.Iptables.PrependRule("PREROUTING", "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
+		if err := i.config.Iptables.PrependRuleSpec("PREROUTING", "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 	}
@@ -154,8 +154,12 @@ func (i DNSDisruptionInjector) Inject() error {
 	return nil
 }
 
+func (i *DNSDisruptionInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
 // Clean removes the injected disruption from the given container
-func (i DNSDisruptionInjector) Clean() error {
+func (i *DNSDisruptionInjector) Clean() error {
 	// enter target network namespace
 	if err := i.config.Netns.Enter(); err != nil {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)

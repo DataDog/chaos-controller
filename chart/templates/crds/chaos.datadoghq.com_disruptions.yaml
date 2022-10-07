@@ -200,6 +200,12 @@ spec:
                   allowedHosts:
                     items:
                       properties:
+                        connState:
+                          enum:
+                          - new
+                          - est
+                          - ""
+                          type: string
                         flow:
                           enum:
                           - ingress
@@ -277,6 +283,12 @@ spec:
                   hosts:
                     items:
                       properties:
+                        connState:
+                          enum:
+                          - new
+                          - est
+                          - ""
+                          type: string
                         flow:
                           enum:
                           - ingress

@@ -14,4 +14,4 @@ spec:
     app: demo-curl
   count: 1
   network:
-    bandwidthLimit: 10000 # outgoing bandwidth limitation in bytes
+    bandwidthLimit: 1024 # outgoing bandwidth limitation in bytes

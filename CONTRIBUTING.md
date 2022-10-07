@@ -1,29 +1,30 @@
 # Contributing
 
-This document explains how to install and run the project on a local minikube cluster.
+This document explains how to install and run the project on a local colima cluster.
 
 ## Signing commits using `gpg`
 
-* Download gpg [here](https://gnupg.org/download/)
-* [Generating a new `gpg` key](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/generating-a-new-gpg-key)
-* [Add `gpg` key to your GitHub account](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/adding-a-new-gpg-key-to-your-github-account)
-* [Tell git about your signing key](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/telling-git-about-your-signing-key)
-* [Automatically sign all commits](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/signing-commits)
+- Download gpg [here](https://gnupg.org/download/)
+- [Generating a new `gpg` key](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/generating-a-new-gpg-key)
+- [Add `gpg` key to your GitHub account](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/adding-a-new-gpg-key-to-your-github-account)
+- [Tell git about your signing key](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/telling-git-about-your-signing-key)
+- [Automatically sign all commits](https://docs.github.com/en/github/authenticating-to-github/managing-commit-signature-verification/signing-commits)
 
 ## Requirements
 
 To get started, we need to have the following software installed:
 
-* [docker](https://docs.docker.com/get-docker/)
-* [minikube >=1.21](https://kubernetes.io/docs/tasks/tools/install-minikube/) (1: Installation)
-* [golangci-lint](https://github.com/golangci/golangci-lint)
-* [Kubebuilder Prerequisites](https://book.kubebuilder.io/quick-start.html#prerequisites) (go, docker, kubectl, kubebuilder, controller-gen)
-* [helm](https://helm.sh/docs/intro/quickstart/)
-* [envtest](#Installing-envtest)
+- [docker](https://docs.docker.com/get-docker/)
+- [colima >= v0.4.5](https://github.com/abiosoft/colima#installation)
+- [golangci-lint](https://github.com/golangci/golangci-lint)
+- [Kubebuilder Prerequisites](https://book.kubebuilder.io/quick-start.html#prerequisites) (go, docker, kubectl, kubebuilder, controller-gen)
+- [helm](https://helm.sh/docs/intro/quickstart/)
+- [envtest](#Installing-envtest)
 
 ## Installing Envtest
 
 In order to run `make test` to run the unit tests, you'll need to install envtest with the following commands:
+
 ```
 export ENVTEST_ASSETS_DIR="/usr/local/kubebuilder"
 mkdir -p ${ENVTEST_ASSETS_DIR}
@@ -31,54 +32,113 @@ test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DI
 source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools ${ENVTEST_ASSETS_DIR}; setup_envtest_env ${ENVTEST_ASSETS_DIR};
 ```
 
-# Developing Locally
+## Developing Locally
 
-## Quick start with Minikube
+### Quick start with Colima
 
 Once you have installed the above requirements, run the following commands:
 
-* start minikube with containerd engine
-  * `make minikube-start`
-* deploy cert-manager
-  * `kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.3.0/cert-manager.yaml`
-* build the new image of the controller with your local files
-  * `make minikube-build`
-* deploy the CRD and the controller on the minikube cluster
-  * `make minikube-install`
+- start colima with containerd engine and a k3s cluster
+  - `make colima-start`
+- deploy cert-manager
+  - `make install-cert-manager`
+- install `nerdctl` alias to target colima containerd runtime to build container images (requires sudo)
+  - `make colima-install-nerdctl`
+- build the new image of the controller with your local files and load them into containerd runtime
+  - `make colima-build`
+- deploy the CRD and the controller on the colima cluster
+  - `make colima-install`
 
-## Deploying Local Changes to Minikube
+### Deploying Local Changes to Colima
 
 To deploy a new version of your local controller code when a version is already deployed, run:
-* `make minikube-build`
-* `make minikube-install`
-* `make restart`
+
+- `make colima-build`
+- `make colima-install`
+- `make colima-restart`
 
 To deploy a new version of the CRD by modifying your local `api/v1beta1/disruption_types.go` (or a particular Subspec by modifying `api/v1beta1/disruption_types.go`), run:
-* `make minikube-install`
-* `make restart`
 
-## Testing Local Changes in Minikube
+- `make colima-install`
+- `make colima-restart`
 
-### Testing manually
+### Testing Local Changes in Colima
+
+#### Testing manually
 
 The [samples](examples/) contains sample data which can be used to test your changes.
 
 [demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster. First, create the `chaos-demo` namespace, then bring up the demo pods:
-  * `minikube kubectl -- apply -f examples/namespace.yaml`
-  * `minikube kubectl -- apply -f examples/demo.yaml`
+
+- `kubectl apply -f examples/namespace.yaml`
+- `kubectl apply -f examples/demo.yaml`
 
 To see whether curls are succeeding, by using kubectl to tail the pod's logs, run:
-  * `minikube kubectl -- -n chaos-demo logs -f <curl pod> curl`
+
+- `kubectl -n chaos-demo logs -f -l app=demo-curl -c curl`
 
 Once you define your test manifest, run:
-  * `minikube kubectl -- apply -f examples/<manifest>.yaml`
+
+- `kubectl apply -f examples/<manifest>.yaml`
+
+> NB: a good example to start with is `kubectl apply -f examples/network_drop.yaml` that will block all outgoing traffic from `demo-curl` pod.
 
 To remove the disruption, run:
-  * `minikube kubectl -- delete -f examples/<manifest>.yaml`
+
+- `kubectl delete -f examples/<manifest>.yaml` (`kubectl delete -f examples/network_drop.yaml`)
 
 See [development guide](docs/development.md) for more robust documentation and tips!
 
-### Testing gRPC disruption manually
+#### Testing disk pressure manually
+
+Once you have installed standard requirements, in order to `reliably` test disk throttling locally, you may want to use `longhorn` as a storage class.
+
+> NB: to detect if you need `longhorn` or not, simply install a disk disruption, e.g. `kubectl apply -f examples/disk_pressure_read.yaml`, if the `chaos-engineering/chaos-disk-pressure-read-XXXXX` is NOT in status `Running` and output logs similar to `error initializing the disk pressure injector","disruptionName":"disk-pressure-read","disruptionNamespace":"chaos-demo","targetName":"demo-curl-588bd4ffc8-q5wnk","targetNodeName":"colima","error":"error initializing disk informer: error executing ls command: exit status 2\noutput: ls: cannot access '/dev/disk/by-label/data-volume': No such file or directory\n` you will need to install `longhorn` as explained below. Delete failing disk disruption before proceeding to the next sections:
+
+```bash
+kubectl delete -f examples/disk_pressure_read.yaml
+kubectl patch \
+    --type json \
+    --patch='[ { "op": "remove", "path": "/metadata/finalizers" } ]' \
+    -n chaos-engineering pods/<disruption-pod-name>
+```
+
+First install `longhorn`:
+
+- `make install-longhorn`
+
+Wait for `longhorn` components to be `Running` (this may takes several minutes):
+
+- `kubectl get pods -n longhorn-system`
+
+Then, if you already created `examples/demo.yaml`, delete it and re-create it:
+
+- `kubectl delete -f examples/demo.yaml`
+- `kubectl apply -f examples/demo.yaml`
+
+This aims to ensure the PVC is created with the proper DEFAULT storage class, that has been changed following longhorn installation.
+
+> NB: if you encounter an error like `Error from server (Forbidden): error when creating "examples/demo.yaml": persistentvolumeclaims "demo" is forbidden: Internal error occurred: 2 default StorageClasses were found` you may want to edit storage classes and keep a single default storage class `kubectl edit storageClass` look for `storageclass.kubernetes.io/is-default-class` annotation and remove the annotation to the storageClasses not being `longhorn`, once done, re-apply `demo`: `kubectl apply -f examples/demo.yaml`
+
+Once demo are now runnning, you can now look at throttling in the dedicated containers:
+
+- To validate read throttling, look at `read-file` container logs
+  - `kubectl logs --follow --timestamps --prefix --since 1m --tail 20 -c read-file -n chaos-demo -l app=demo-curl`
+- Then apply read pressure to the pod:
+  - `kubectl apply -f examples/disk_pressure_read.yaml`
+- Once disruption is applied (chaos-enginnering/pod status is RUNNING), you should witness the slower reading speed (limited at `1.0 kB/s`)
+  - `kubectl delete -f examples/disk_pressure_read.yaml`
+- Following the disruption deletion, reading speed should be back to normal
+
+- To validate write throttling, look at `write-file` container logs
+  - `kubectl logs --follow --timestamps --prefix --since 1m --tail 20 -c write-file -n chaos-demo -l app=demo-curl`
+- Then apply write pressure to the pod:
+  - `kubectl apply -f examples/disk_pressure_write.yaml`
+- Once disruption is applied (chaos-enginnering/pod status is RUNNING), you should witness the slower writing speed (limited at `1.0 kB/s`)
+  - `kubectl delete -f examples/disk_pressure_write.yaml`
+- Following the disruption deletion, writing speed should be back to normal
+
+#### Testing gRPC disruption manually
 
 The [gRPC disruption](docs/grpc_disruption.md) cannot be tested on the nginx client/server pods. To modify and test gRPC disruption [code](grpc/), visit the dogfood [README.md](dogfood/README.md) and the dogfood [CONTRIBUTING.md](dogfood/CONTRIBUTING.md) documents.
 
@@ -86,51 +146,47 @@ The [gRPC disruption](docs/grpc_disruption.md) cannot be tested on the nginx cli
 
 The project contains end-to-end test which are meant to run against a real Kubernetes cluster. You can run them easily with the `make e2e-test` command. Please ensure that the following requirements are met before running the command:
 
-* you deployed your changes locally (see [Deploying Local Changes to Minikube](#deploying-local-changes-to-minikube))
-* your Kubernetes context is set to Minikube (`kubectx minikube` for instance)
+- you deployed your changes locally (see [Deploying Local Changes to Colima](#deploying-local-changes-to-colima))
+- your Kubernetes context is set to Colima (`kubectx colima` for instance)
 
-The end-to-end tests will create a set of dummy pods in the `default` namespace of the Minikube cluster that will be used to inject different kind of failures and make different assertions against those injections.
+The end-to-end tests will create a set of dummy pods in the `default` namespace of the Colima cluster that will be used to inject different kind of failures and make different assertions against those injections.
 
 ## Available commands
 
 ### Running, installing & generating
 
-* `make generate`: generate boilerplate code.
-* `make minikube-install`: install CRDs and controller into a cluster
-* `make manifests`: generate manifests e.g. CRD, RBAC etc.
-* `make minikube-uninstall`: uninstall CRDs and controller from a cluster
-* `make restart`: restart the controller
+- `make generate`: generate boilerplate code.
+- `make colima-install`: install CRDs and controller into a cluster
+- `make manifests`: generate manifests e.g. CRD, RBAC etc.
+- `make colima-uninstall`: uninstall CRDs and controller from a cluster
+- `make colima-restart`: restart the controller
 
 ### Building
 
-* `make minikube-build`: build both images and load them into minikube
-  * `make minikube-build-injector`: build the injector image and load it into minikube
-  * `make minikube-build-manager`: build the manager image and load it into minikube
-* `make injector`: build injector binary
-* `make manager`: build manager binary
-* `make minikube-start`: start minikube with our ISO and containerd runtime
+- `make colima-build`: build both images and load them into colima
+  - `make colima-build-injector`: build the injector image and load it into colima
+  - `make colima-build-manager`: build the manager image and load it into colima
+- `make injector`: build injector binary
+- `make manager`: build manager binary
+- `make colima-start`: start colima with our ISO and containerd runtime
 
 ### Testing, checking & linting
 
-* `make fmt`: run go fmt against the codebase.
-* `make header-check`: check all files if they contain the correct header.
-* `make license-check`: check if all third party modules contain a license and build the license database.
-* `make lint`: run golangci-lint against codebase.
-* `make test`: run tests
-* `make e2e-test`: run end-to-end tests against the current context (cluster)
-* `make vet`: run go vet against the codebase.
+- `make fmt`: run go fmt against the codebase.
+- `make header-check`: check all files if they contain the correct header.
+- `make license-check`: check if all third party modules contain a license and build the license database.
+- `make lint`: run golangci-lint against codebase.
+- `make test`: run tests
+- `make e2e-test`: run end-to-end tests against the current context (cluster)
+- `make vet`: run go vet against the codebase.
 
 <p align="center"><kbd>
-    <img src="docs/img/deployment/make_minikube.png" width=500 align="center" />
+    <img src="docs/img/deployment/make_colima.png" width=500 align="center" />
 </kbd></p>
 
 <p align="center"><kbd>
     <img src="docs/img/deployment/make_install.png" width=700 align="center" />
 </kbd></p>
-
-## Minikube ISO
-
-See [minikube_image.md](docs/minikube_image.md)
 
 ## 3rd-party licenses
 

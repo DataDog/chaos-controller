@@ -19,6 +19,7 @@ package controllers
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
@@ -36,13 +37,23 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+var clusterName string
+
+func init() {
+	if envClusterName, ok := os.LookupEnv("CLUSTER_NAME"); ok {
+		clusterName = envClusterName
+	} else {
+		clusterName = "colima"
+	}
+}
+
 // listChaosPods returns all the chaos pods for the given instance and mode
 func listChaosPods(instance *chaosv1beta1.Disruption) (corev1.PodList, error) {
 	l := corev1.PodList{}
 	ls := labels.NewSelector()
 
 	// create requirements
-	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "foo2", "bar", "minikube"})
+	targetPodRequirement, _ := labels.NewRequirement(chaostypes.TargetLabel, selection.In, []string{"foo", "foo2", "bar", clusterName})
 	disruptionNameRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNameLabel, selection.Equals, []string{instance.Name})
 	disruptionNamespaceRequirement, _ := labels.NewRequirement(chaostypes.DisruptionNamespaceLabel, selection.Equals, []string{instance.Namespace})
 
@@ -115,7 +126,7 @@ func expectChaosInjectors(instance *chaosv1beta1.Disruption, count int) error {
 	for _, p := range l.Items {
 		args := p.Spec.Containers[0].Args
 		for i, arg := range args {
-			if arg == "--target-container-ids" {
+			if arg == "--target-containers" {
 				injectors += len(strings.Split(args[i+1], ","))
 			}
 		}
@@ -247,7 +258,7 @@ var _ = Describe("Disruption Controller", func() {
 					Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 						DisableAll: true,
 					},
-					Selector: map[string]string{"kubernetes.io/hostname": "minikube"},
+					Selector: map[string]string{"kubernetes.io/hostname": clusterName},
 					Level:    chaostypes.DisruptionLevelNode,
 					Network: &chaosv1beta1.NetworkDisruptionSpec{
 						Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
@@ -433,6 +444,67 @@ var _ = Describe("Disruption Controller", func() {
 
 			By("Ensuring that the disruption status is displaying the right number of targets")
 			Eventually(func() error { return expectDisruptionStatus(2, 0, 2, 2) }, timeout).Should(Succeed())
+		})
+	})
+
+	Context("On init", func() {
+		BeforeEach(func() {
+			Expect(k8sClient.Create(context.Background(), targetPodOnInit)).To(BeNil())
+
+			disruption.Spec = chaosv1beta1.DisruptionSpec{
+				DryRun: true,
+				Count:  &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+					DisableAll: true,
+				},
+				Selector: map[string]string{"foo-foo": "bar-bar"},
+				Duration: "10m",
+				OnInit:   true,
+				Network: &chaosv1beta1.NetworkDisruptionSpec{
+					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
+						{
+							Host:     "127.0.0.1",
+							Port:     80,
+							Protocol: "tcp",
+						},
+					},
+					Drop: 100,
+				},
+			}
+		})
+
+		AfterEach(func() {
+			Expect(k8sClient.Delete(context.Background(), targetPodOnInit)).To(BeNil())
+		})
+
+		It("should keep on init target pods throughout reconcile loop", func() {
+			By("Ensuring that the on init target is ready and still targeted")
+			Eventually(func() error {
+				podList := corev1.PodList{}
+				labelSelector := disruption.Spec.Selector
+
+				k8sClient.List(context.Background(), &podList, &client.ListOptions{
+					LabelSelector: labelSelector.AsSelector(),
+				})
+
+				if len(podList.Items) == 0 {
+					return fmt.Errorf("no target found")
+				}
+
+				for _, ctn := range podList.Items[0].Status.InitContainerStatuses {
+					if ctn.State.Running != nil {
+						return fmt.Errorf("chaos-handler container is still running")
+					}
+				}
+
+				for _, ctn := range podList.Items[0].Status.ContainerStatuses {
+					if !ctn.Ready {
+						return fmt.Errorf("container %s is not ready", ctn.Name)
+					}
+				}
+
+				return nil
+			}, timeout).Should(Succeed())
 		})
 	})
 

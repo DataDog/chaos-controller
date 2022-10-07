@@ -39,7 +39,7 @@ func (f *TcMock) AddPrio(ifaces []string, parent string, handle uint32, bands ui
 }
 
 //nolint:golint
-func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) (uint32, error) {
+func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) (uint32, error) {
 	srcIPs := "nil"
 	dstIPs := "nil"
 
@@ -53,7 +53,7 @@ func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP,
 
 	f.tcPriority++
 
-	args := f.Called(ifaces, parent, handle, srcIPs, dstIPs, srcPort, dstPort, protocol, flowid)
+	args := f.Called(ifaces, parent, f.tcPriority, handle, srcIPs, dstIPs, srcPort, dstPort, string(protocol), string(connState), flowid)
 
 	return f.tcPriority, args.Error(0)
 }
