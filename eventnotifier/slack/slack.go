@@ -26,6 +26,12 @@ const (
 	infoNotAvailable = "n/a"
 )
 
+//go:generate mockery --name=slackNotifier --inpackage --case=underscore --testonly --boilerplate-file ../../hack/boilerplate.go.txt
+type slackNotifier interface {
+	PostMessage(channelID string, options ...slack.MsgOption) (string, string, error)
+	GetUserByEmail(email string) (*slack.User, error)
+}
+
 type NotifierSlackConfig struct {
 	Enabled              bool
 	TokenFilepath        string
@@ -34,7 +40,7 @@ type NotifierSlackConfig struct {
 
 // Notifier describes a Slack notifier
 type Notifier struct {
-	client slack.Client
+	client slackNotifier
 	common types.NotifiersCommonConfig
 	config NotifierSlackConfig
 	logger *zap.SugaredLogger
@@ -72,11 +78,13 @@ func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConf
 	}
 
 	stoken = strings.Fields(stoken)[0] // removes eventual \n at the end of the file
-	not.client = *slack.New(stoken)
+	slackClient := slack.New(stoken)
 
-	if _, err = not.client.AuthTest(); err != nil {
+	if _, err = slackClient.AuthTest(); err != nil {
 		return nil, fmt.Errorf("slack auth failed: %w", err)
 	}
+
+	not.client = slackClient
 
 	not.logger.Info("notifier: slack notifier connected to workspace")
 
@@ -109,7 +117,7 @@ func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, notifType types.Noti
 	}
 }
 
-// NotifyWarning generates a notification for generic k8s Warning events
+// Notify generates a notification for generic k8s events
 func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
 	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, notifType)
 	headerBlock := slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, false, false))
