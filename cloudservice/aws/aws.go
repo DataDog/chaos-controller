@@ -7,8 +7,6 @@ package aws
 
 import (
 	"encoding/json"
-
-	"github.com/DataDog/chaos-controller/cloudservice/types"
 )
 
 type CloudProviderIPRangeManager struct {
@@ -33,41 +31,37 @@ func New() *CloudProviderIPRangeManager {
 }
 
 // IsNewVersion Check if the ip ranges pulled are newer than the one we already have
-func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldIPRangesInfo types.CloudProviderIPRangeInfo) bool {
+func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldVersion string) bool {
 	ipRanges := AWSIPRanges{}
 	if err := json.Unmarshal(newIPRanges, &ipRanges); err != nil {
 		return false
 	}
 
-	return ipRanges.SyncToken != oldIPRangesInfo.Version
+	return ipRanges.SyncToken != oldVersion
 }
 
 // ConvertToGenericIPRanges From an unmarshalled json ip range file from AWS to a generic ip range struct
-func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges []byte) (*types.CloudProviderIPRangeInfo, error) {
+func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges []byte) (string, map[string][]string, error) {
 	ipRanges := AWSIPRanges{}
 	if err := json.Unmarshal(unparsedIPRanges, &ipRanges); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	genericIPRanges := types.CloudProviderIPRangeInfo{
-		CloudProviderServiceName: types.CloudProviderAWS,
-		Version:                  ipRanges.SyncToken,
-		IPRanges:                 make(map[string][]string),
-	}
+	genericIPRanges := make(map[string][]string)
 
 	for _, ipRange := range ipRanges.Prefixes {
 		// this service is the list of all ip ranges of all services + misc ones. We don't need that
 		// it's also too big for us to be able to filter all ips
-		if ipRange.Service == "AMAZON" {
+		if ipRange.Service == "AMAZON" || ipRange.IPPrefix == "" {
 			continue
 		}
 
-		if len(genericIPRanges.IPRanges[ipRange.Service]) == 0 {
-			genericIPRanges.IPRanges[ipRange.Service] = []string{}
+		if len(genericIPRanges[ipRange.Service]) == 0 {
+			genericIPRanges[ipRange.Service] = []string{}
 		}
 
-		genericIPRanges.IPRanges[ipRange.Service] = append(genericIPRanges.IPRanges[ipRange.Service], ipRange.IPPrefix)
+		genericIPRanges[ipRange.Service] = append(genericIPRanges[ipRange.Service], ipRange.IPPrefix)
 	}
 
-	return &genericIPRanges, nil
+	return ipRanges.SyncToken, genericIPRanges, nil
 }

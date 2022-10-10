@@ -254,6 +254,27 @@ spec:
                           - service
                           type: object
                         type: array
+                      gcp:
+                        items:
+                          properties:
+                            flow:
+                              enum:
+                              - ingress
+                              - egress
+                              - ""
+                              type: string
+                            protocol:
+                              enum:
+                              - tcp
+                              - udp
+                              - ""
+                              type: string
+                            service:
+                              type: string
+                          required:
+                          - service
+                          type: object
+                        type: array
                     type: object
                   corrupt:
                     maximum: 100

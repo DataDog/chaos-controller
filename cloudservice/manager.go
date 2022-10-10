@@ -29,15 +29,16 @@ type CloudServicesProvidersManager struct {
 // CloudServicesProvider Data and ip ranges manager of one cloud provider
 type CloudServicesProvider struct {
 	CloudProviderIPRangeManager CloudProviderIPRangeManager
-	IPRangeInfo                 *types.CloudProviderIPRangeInfo
+	IPRangeFileVersion          map[string]string // version per url
+	IPRanges                    map[string][]string
 	ServiceList                 []string // Makes the process of getting the services names easier
 	Conf                        types.CloudProviderConfig
 }
 
 // CloudProviderIPRangeManager Methods to verify and transform a specifid ip ranges list from a provider
 type CloudProviderIPRangeManager interface {
-	IsNewVersion([]byte, types.CloudProviderIPRangeInfo) bool
-	ConvertToGenericIPRanges([]byte) (*types.CloudProviderIPRangeInfo, error)
+	IsNewVersion([]byte, string) bool
+	ConvertToGenericIPRanges([]byte) (string, map[string][]string, error)
 }
 
 func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServicesProvidersManager, error) {
@@ -45,13 +46,16 @@ func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServi
 		types.CloudProviderAWS: {
 			CloudProviderIPRangeManager: aws.New(),
 			Conf: types.CloudProviderConfig{
-				IPRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json",
+				IPRangesURL: []string{"https://ip-ranges.amazonaws.com/ip-ranges.json"},
 			},
 		},
 		types.CloudProviderGCP: {
 			CloudProviderIPRangeManager: gcp.New(),
 			Conf: types.CloudProviderConfig{
-				IPRangesURL: "https://www.gstatic.com/ipranges/cloud.json",
+				IPRangesURL: []string{
+					"https://www.gstatic.com/ipranges/goog.json",  // General IP Ranges from Google, contains some API ip ranges
+					"https://www.gstatic.com/ipranges/cloud.json", // GCP IP Ranges from Google
+				},
 			},
 		},
 	}
@@ -128,23 +132,23 @@ func (s *CloudServicesProvidersManager) GetServicesIPRanges(cloudProviderName ty
 		return nil, fmt.Errorf("cloud provider %s does not exist", cloudProviderName)
 	}
 
-	IPRangeInfo := s.cloudProviders[cloudProviderName].IPRangeInfo
-	IPRanges := map[string][]string{}
+	allIPRanges := s.cloudProviders[cloudProviderName].IPRanges
+	toSendIPRanges := map[string][]string{}
 
 	for _, serviceName := range serviceNames {
 		// if user has imputed the same service twice, we verify
-		if _, ok := IPRanges[serviceName]; ok {
+		if _, ok := toSendIPRanges[serviceName]; ok {
 			continue
 		}
 
-		if _, ok := IPRangeInfo.IPRanges[serviceName]; !ok {
+		if _, ok := allIPRanges[serviceName]; !ok {
 			return nil, fmt.Errorf("service %s from %s does not exist", serviceName, cloudProviderName)
 		}
 
-		IPRanges[serviceName] = IPRangeInfo.IPRanges[serviceName]
+		toSendIPRanges[serviceName] = append(toSendIPRanges[serviceName], allIPRanges[serviceName]...)
 	}
 
-	return IPRanges, nil
+	return toSendIPRanges, nil
 }
 
 // GetServiceList return the list of services of a specific cloud provider. Mostly used in disruption creation validation
@@ -165,27 +169,63 @@ func (s *CloudServicesProvidersManager) pullIPRangesPerCloudProvider(cloudProvid
 
 	s.log.Debugw("pulling ip ranges from provider", "provider", cloudProviderName)
 
-	unparsedIPRange, err := s.requestIPRangesFromProvider(provider.Conf.IPRangesURL)
-	if err != nil {
-		return err
+	if provider.ServiceList == nil {
+		provider.ServiceList = []string{}
 	}
 
-	if provider.IPRangeInfo != nil && !provider.CloudProviderIPRangeManager.IsNewVersion(unparsedIPRange, *provider.IPRangeInfo) {
+	if provider.IPRangeFileVersion == nil {
+		provider.IPRangeFileVersion = map[string]string{}
+	}
+
+	toChangeIpRanges := false
+	unparsedIpRangesPerURL := map[string][]byte{}
+
+	// pull and compare with old version of every file
+	for _, ipRangesURL := range provider.Conf.IPRangesURL {
+		unparsedIPRanges, err := s.requestIPRangesFromProvider(ipRangesURL)
+		if err != nil {
+			return err
+		}
+
+		unparsedIpRangesPerURL[ipRangesURL] = unparsedIPRanges
+
+		if provider.IPRangeFileVersion[ipRangesURL] == "" || provider.CloudProviderIPRangeManager.IsNewVersion(unparsedIPRanges, provider.IPRangeFileVersion[ipRangesURL]) {
+			toChangeIpRanges = true
+		}
+	}
+
+	if !toChangeIpRanges {
 		s.log.Debugw("no changes of ip ranges", "provider", cloudProviderName)
 		s.log.Debugw("finished pulling new version", "provider", cloudProviderName)
 
 		return nil
 	}
 
-	newIPRangeInfo, err := provider.CloudProviderIPRangeManager.ConvertToGenericIPRanges(unparsedIPRange)
-	if err != nil {
-		return err
+	// We reset the map
+	provider.IPRanges = map[string][]string{}
+
+	for ipRangesURL, unparsedIpRanges := range unparsedIpRangesPerURL {
+		version, genericIPRangesPerService, err := provider.CloudProviderIPRangeManager.ConvertToGenericIPRanges(unparsedIpRanges)
+		if err != nil {
+			return err
+		}
+
+		provider.IPRangeFileVersion[ipRangesURL] = version
+
+		for serviceName, ipRanges := range genericIPRangesPerService {
+			if len(provider.IPRanges[serviceName]) == 0 {
+				provider.IPRanges[serviceName] = ipRanges
+
+				// We compute this into a list to indicate to the user which services are available on error during disruption creation
+				provider.ServiceList = append(provider.ServiceList, serviceName)
+			} else {
+				provider.IPRanges[serviceName] = append(provider.IPRanges[serviceName], ipRanges...)
+			}
+		}
 	}
 
-	// We compute this into a list to indicate to the user which services are available on error during disruption creation
-	provider.IPRangeInfo = newIPRangeInfo
-	for service := range newIPRangeInfo.IPRanges {
-		provider.ServiceList = append(provider.ServiceList, service)
+	for serviceName, ipRanges := range provider.IPRanges {
+		s.log.Debugf("%s: service %s has %d ip ranges", cloudProviderName, serviceName, len(ipRanges))
 	}
 
 	return nil

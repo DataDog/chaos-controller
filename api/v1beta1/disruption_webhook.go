@@ -114,9 +114,14 @@ func (r *Disruption) ValidateCreate() error {
 		estimatedTcFiltersNb := len(r.Spec.Network.Hosts) + (len(r.Spec.Network.Services) * 2)
 
 		if r.Spec.Network.Cloud != nil {
-			clouds := map[cloudtypes.CloudProviderName]*[]NetworkDisruptionCloudServiceSpec{
-				cloudtypes.CloudProviderAWS: r.Spec.Network.Cloud.AWSServiceList,
-				cloudtypes.CloudProviderGCP: r.Spec.Network.Cloud.GCPServiceList,
+			clouds := map[cloudtypes.CloudProviderName]*[]NetworkDisruptionCloudServiceSpec{}
+
+			if r.Spec.Network.Cloud.AWSServiceList != nil {
+				clouds[cloudtypes.CloudProviderAWS] = r.Spec.Network.Cloud.AWSServiceList
+			}
+
+			if r.Spec.Network.Cloud.GCPServiceList != nil {
+				clouds[cloudtypes.CloudProviderGCP] = r.Spec.Network.Cloud.GCPServiceList
 			}
 
 			for cloudName, serviceList := range clouds {

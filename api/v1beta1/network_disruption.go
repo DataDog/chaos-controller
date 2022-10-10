@@ -99,7 +99,7 @@ type NetworkDisruptionServiceSpec struct {
 	Namespace string `json:"namespace"`
 }
 
-// +ddmark:validation:AtLeastOneOf={AWSServiceList}
+// +ddmark:validation:AtLeastOneOf={AWSServiceList,GCPServiceList}
 type NetworkDisruptionCloudSpec struct {
 	AWSServiceList *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty"`
 	GCPServiceList *[]NetworkDisruptionCloudServiceSpec `json:"gcp,omitempty"`

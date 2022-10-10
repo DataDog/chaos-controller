@@ -7,8 +7,7 @@ package gcp
 
 import (
 	"encoding/json"
-
-	"github.com/DataDog/chaos-controller/cloudservice/types"
+	"strings"
 )
 
 type CloudProviderIPRangeManager struct {
@@ -32,35 +31,39 @@ func New() *CloudProviderIPRangeManager {
 }
 
 // IsNewVersion Check if the ip ranges pulled are newer than the one we already have
-func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldIPRangesInfo types.CloudProviderIPRangeInfo) bool {
+func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldVersion string) bool {
 	ipRanges := GCPIPRanges{}
 	if err := json.Unmarshal(newIPRanges, &ipRanges); err != nil {
 		return false
 	}
 
-	return ipRanges.SyncToken != oldIPRangesInfo.Version
+	return ipRanges.SyncToken != oldVersion
 }
 
 // ConvertToGenericIPRanges From an unmarshalled json ip range file from GCP to a generic ip range struct
-func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges []byte) (*types.CloudProviderIPRangeInfo, error) {
+func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges []byte) (string, map[string][]string, error) {
 	ipRanges := GCPIPRanges{}
 	if err := json.Unmarshal(unparsedIPRanges, &ipRanges); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	genericIPRanges := types.CloudProviderIPRangeInfo{
-		CloudProviderServiceName: types.CloudProviderGCP,
-		Version:                  ipRanges.SyncToken,
-		IPRanges:                 make(map[string][]string),
-	}
+	genericIPRanges := make(map[string][]string)
 
 	for _, ipRange := range ipRanges.Prefixes {
-		if len(genericIPRanges.IPRanges[ipRange.Service]) == 0 {
-			genericIPRanges.IPRanges[ipRange.Service] = []string{}
+		if ipRange.Service == "" {
+			ipRange.Service = "Google Cloud"
 		}
 
-		genericIPRanges.IPRanges[ipRange.Service] = append(genericIPRanges.IPRanges[ipRange.Service], ipRange.IPPrefix)
+		if len(genericIPRanges[ipRange.Service]) == 0 {
+			genericIPRanges[ipRange.Service] = []string{}
+		}
+
+		if ipRange.IPPrefix == "" || strings.HasPrefix(ipRange.IPPrefix, "8.8") {
+			continue
+		}
+
+		genericIPRanges[ipRange.Service] = append(genericIPRanges[ipRange.Service], ipRange.IPPrefix)
 	}
 
-	return &genericIPRanges, nil
+	return ipRanges.SyncToken, genericIPRanges, nil
 }
