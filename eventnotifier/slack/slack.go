@@ -26,7 +26,7 @@ const (
 	infoNotAvailable = "n/a"
 )
 
-//go:generate mockery --name=slackNotifier --inpackage --case=underscore --testonly --boilerplate-file ../../hack/boilerplate.go.txt
+//go:generate mockery --name=slackNotifier --inpackage --case=underscore --testonly
 type slackNotifier interface {
 	PostMessage(channelID string, options ...slack.MsgOption) (string, string, error)
 	GetUserByEmail(email string) (*slack.User, error)
