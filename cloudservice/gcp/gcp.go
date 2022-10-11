@@ -51,13 +51,14 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 
 	for _, ipRange := range ipRanges.Prefixes {
 		if ipRange.Service == "" {
-			ipRange.Service = "Google Cloud"
+			ipRange.Service = "Google"
 		}
 
 		if len(genericIPRanges[ipRange.Service]) == 0 {
 			genericIPRanges[ipRange.Service] = []string{}
 		}
 
+		// Remove empty and remove the dns servers of Google in the list of ip ranges available to disrupt
 		if ipRange.IPPrefix == "" || strings.HasPrefix(ipRange.IPPrefix, "8.8") {
 			continue
 		}
