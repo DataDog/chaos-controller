@@ -149,7 +149,7 @@ func (s *CloudServicesProvidersManager) GetServiceList(cloudProviderName types.C
 	return s.cloudProviders[cloudProviderName].ServiceList
 }
 
-// pullIPRangesPerCloudProvider pull all ip ranges of all cloud providers
+// pullIPRangesPerCloudProvider pull ip ranges of one cloud provider
 func (s *CloudServicesProvidersManager) pullIPRangesPerCloudProvider(cloudProviderName types.CloudProviderName) error {
 	provider := s.cloudProviders[cloudProviderName]
 	if provider == nil {

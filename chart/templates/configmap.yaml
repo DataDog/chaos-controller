@@ -35,7 +35,7 @@ data:
         datadog:
           enabled: {{ .Values.controller.notifiers.datadog.enabled }}
       cloudProviders:
-        pullInterval: {{ .Values.controller.cloudProviders.pullInterval }}
+        pullInterval: 24h
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}

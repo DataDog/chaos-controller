@@ -249,7 +249,7 @@ func main() {
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
 	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-cluster-threshold")))
 
-	pflag.StringVar(&cfg.Controller.CloudProviders.PullInterval, "cloud-providers-pull-interval", "1d", "Interval of time to pull the ip ranges of all cloud providers' services (default to 1 day)")
+	pflag.StringVar(&cfg.Controller.CloudProviders.PullInterval, "cloud-providers-pull-interval", "24h", "Interval of time to pull the ip ranges of all cloud providers' services (default to 1 day)")
 	handleFatalError(viper.BindPFlag("controller.cloudProviders.pullinterval", pflag.Lookup("cloud-providers-pull-interval")))
 
 	pflag.Parse()

@@ -100,6 +100,11 @@ func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudse
 
 	for cloudName, serviceList := range clouds {
 		serviceListNames := []string{}
+
+		if serviceList == nil {
+			continue
+		}
+
 		for _, service := range *serviceList {
 			serviceListNames = append(serviceListNames, service.ServiceName)
 		}
