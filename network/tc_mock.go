@@ -53,7 +53,7 @@ func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP,
 
 	f.tcPriority++
 
-	args := f.Called(ifaces, parent, handle, srcIPs, dstIPs, srcPort, dstPort, protocol, connState, flowid)
+	args := f.Called(ifaces, parent, handle, srcIPs, dstIPs, srcPort, dstPort, string(protocol), string(connState), flowid)
 
 	return f.tcPriority, args.Error(0)
 }
