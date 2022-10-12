@@ -18,10 +18,15 @@ var cpuPressureCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 		// prepare spec
 		spec := v1beta1.CPUPressureSpec{}
+		stresserManager := injector.NewCPUStresserManager(log)
 
 		// create injector
 		for _, config := range configs {
-			injectors = append(injectors, injector.NewCPUPressureInjector(spec, injector.CPUPressureInjectorConfig{Config: config}))
+			injector, _ := injector.NewCPUPressureInjector(spec, injector.CPUPressureInjectorConfig{
+				Config:          config,
+				StresserManager: stresserManager,
+			})
+			injectors = append(injectors, injector)
 		}
 	},
 }
