@@ -1202,7 +1202,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		}
 
 		// get the ip ranges of cloud provider services
-		if instance.Spec.Network.Cloud != nil {
+		if instance.Spec.Network != nil && instance.Spec.Network.Cloud != nil {
 			hosts, err := transformCloudSpecToHostsSpec(r.log, r.CloudServicesProvidersManager, instance.Spec.Network.Cloud)
 			if err != nil {
 				return err
