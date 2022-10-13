@@ -13,7 +13,7 @@ The service will pull and parse the IP Ranges from the available cloud providers
 
 ```
 cloudProviders:
-    pullInterval: "1d"
+    pullInterval: "24h"
 ```
 
 On the creation of the chaos pod, the chaos-controller will then use those ip ranges for the Network Disruption and transform it into a Host Network Disruption.
