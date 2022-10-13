@@ -117,10 +117,10 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 	emailAddr := &mail.Address{}
 
 	if userInfo, err := dis.UserInfo(); err != nil {
-		n.logger.Warnf("http notifier: no user info in disruption %s: %v", dis.Name, err)
+		n.logger.Warnw("http notifier: no user info in disruption", "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace, "error", err)
 	} else {
 		if userInfoEmailAddr, err := mail.ParseAddress(userInfo.Username); err != nil {
-			n.logger.Warnf("http notifier: user info is not a valid email address %s: %v", dis.Name, err)
+			n.logger.Warnw("http notifier: user info username is not a valid email address", "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace, "error", err, "username", userInfo.Username)
 		} else {
 			emailAddr = userInfoEmailAddr
 		}

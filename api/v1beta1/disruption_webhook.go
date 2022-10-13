@@ -245,7 +245,7 @@ func (r *Disruption) getMetricsTags() []string {
 
 	if userInfo, err := r.UserInfo(); !errors.Is(err, ErrNoUserInfo) {
 		if err != nil {
-			logger.Errorw("error retrieving user info from disruption, using empty user info", "error", err, "name", r.Name, "namespace", r.Namespace)
+			logger.Errorw("error retrieving user info from disruption, using empty user info", "error", err, "disruptionName", r.Name, "disruptionNamespace", r.Namespace)
 		}
 
 		tags = append(tags, "username:"+userInfo.Username)

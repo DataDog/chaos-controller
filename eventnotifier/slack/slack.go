@@ -156,7 +156,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 	}
 
 	if notifType == types.NotificationInfo {
-		n.logger.Debugw("slack notifier: not sending info notification type to not flood user", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+		n.logger.Debugw("slack notifier: not sending info notification type to not flood user", "disruptionName", dis.Name, "eventType", event.Type, "message", bodyText)
 
 		return nil
 	}
@@ -168,7 +168,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 
 	p1, err := n.client.GetUserByEmail(emailAddr.Address)
 	if err != nil {
-		n.logger.Warnw("slack notifier: user not found", "user_address", emailAddr.Address, "error", err)
+		n.logger.Warnw("slack notifier: user not found", "userAddress", emailAddr.Address, "error", err)
 		return nil
 	}
 
@@ -189,7 +189,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		return fmt.Errorf("slack notifier: %w", err)
 	}
 
-	n.logger.Debugw("notifier: sending notifier event to slack", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+	n.logger.Debugw("notifier: sending notifier event to slack", "disruptionName", dis.Name, "eventType", event.Type, "message", bodyText)
 
 	return nil
 }
