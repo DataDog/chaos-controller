@@ -118,6 +118,11 @@ func (r *Disruption) ValidateCreate() error {
 
 			for cloudName, serviceList := range clouds {
 				serviceListNames := []string{}
+
+				if serviceList == nil {
+					continue
+				}
+
 				for _, service := range *serviceList {
 					serviceListNames = append(serviceListNames, service.ServiceName)
 				}
