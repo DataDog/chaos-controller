@@ -608,6 +608,9 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 		select {
 		case sig := <-signals:
 			log.Infow("an exit signal has been received", "signal", sig.String())
+			// We've already consumed the signal from the channel, so our caller won't find it when checking after we return.
+			// Thus we need to put the signal back into the channel. We do it in a gothread in case we are blocked when writing to the channel
+			go func() { signals <- sig }()
 
 			return nil
 		case <-time.After(getDuration(deadline)):
@@ -630,16 +633,49 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 			if !ok {
 				channel = nil
 
-				break
+				continue
 			}
 
 			pod, ok := event.Object.(*v1.Pod)
 			if !ok {
+				log.Debugw("received event was not a pod", "event", event, "event.Object", event.Object)
+
+				status, sok := event.Object.(*metav1.Status)
+				if sok {
+					if status.Code == 410 {
+						// Status Code 410 indicates our resource version has expired
+						// Get the newest resource version and re-create the channel
+						updResourceVersion, err := getPodResourceVersion()
+						if err != nil {
+							return fmt.Errorf("could not get latest resource version: %w", err)
+						}
+
+						if updResourceVersion == resourceVersion {
+							// We don't have the latest resource version, but we can't seem to find a new one.
+							// Wait 10 seconds and retry.
+							time.Sleep(time.Second * 10)
+							// An unset resource version is an implicit "latest" request.
+							resourceVersion = ""
+						} else {
+							resourceVersion = updResourceVersion
+						}
+
+						channel = nil
+
+						log.Debugw("restarting pod watching channel with newest resource version", "resourceVersion", resourceVersion)
+
+						continue
+					}
+				}
+
 				return fmt.Errorf("watched object received from event is not a pod")
 			}
 
 			if event.Type == watch.Bookmark {
 				resourceVersion = pod.ResourceVersion
+				channel = nil
+
+				log.Debugw("received bookmark event, new resource version found", "resourceVersion", pod.ResourceVersion)
 			}
 
 			if event.Type != watch.Modified {
