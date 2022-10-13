@@ -245,5 +245,10 @@ generate-chaosdogfood-protobuf:
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
 	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
 
+generate-mock:
+	go install github.com/vektra/mockery/v2@latest
+	go generate ./...
+	$(MAKE) header-check
+
 release:
 	VERSION=$(VERSION) ./tasks/release.sh

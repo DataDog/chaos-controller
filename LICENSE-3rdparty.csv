@@ -269,6 +269,7 @@ github.com/spf13/viper,github.com/spf13/viper,MIT
 github.com/stretchr/objx,github.com/stretchr/objx,MIT
 github.com/stretchr/testify,github.com/stretchr/testify/assert,MIT
 github.com/stretchr/testify,github.com/stretchr/testify/mock,MIT
+github.com/stretchr/testify,github.com/stretchr/testify/require,MIT
 github.com/subosito/gotenv,github.com/subosito/gotenv,MIT
 github.com/vishvananda/netlink,github.com/vishvananda/netlink,Apache-2.0
 github.com/vishvananda/netlink,github.com/vishvananda/netlink/nl,Apache-2.0
