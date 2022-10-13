@@ -13,17 +13,17 @@ type CloudserviceMock struct {
 	mock.Mock
 
 	isNewVersionMockValue           bool
-	convertToGenericIpRangesVersion string
-	convertToGenericIpRanges        map[string][]string
-	convertToGenericIpRangesError   error
+	convertToGenericIPRangesVersion string
+	convertToGenericIPRanges        map[string][]string
+	convertToGenericIPRangesError   error
 }
 
-func NewCloudServiceMock(isNewVersionMockValue bool, convertToGenericIpRangesVersion string, convertToGenericIpRanges map[string][]string, convertToGenericIpRangesError error) *CloudserviceMock {
+func NewCloudServiceMock(isNewVersionMockValue bool, convertToGenericIPRangesVersion string, convertToGenericIPRanges map[string][]string, convertToGenericIPRangesError error) *CloudserviceMock {
 	return &CloudserviceMock{
 		isNewVersionMockValue:           isNewVersionMockValue,
-		convertToGenericIpRangesVersion: convertToGenericIpRangesVersion,
-		convertToGenericIpRanges:        convertToGenericIpRanges,
-		convertToGenericIpRangesError:   convertToGenericIpRangesError,
+		convertToGenericIPRangesVersion: convertToGenericIPRangesVersion,
+		convertToGenericIPRanges:        convertToGenericIPRanges,
+		convertToGenericIPRangesError:   convertToGenericIPRangesError,
 	}
 }
 
@@ -32,5 +32,5 @@ func (a *CloudserviceMock) IsNewVersion(newIPRanges []byte, oldVersion string) b
 }
 
 func (a *CloudserviceMock) ConvertToGenericIPRanges(unparsedIPRanges []byte) (string, map[string][]string, error) {
-	return a.convertToGenericIpRangesVersion, a.convertToGenericIpRanges, a.convertToGenericIpRangesError
+	return a.convertToGenericIPRangesVersion, a.convertToGenericIPRanges, a.convertToGenericIPRangesError
 }
