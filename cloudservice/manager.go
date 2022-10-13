@@ -121,6 +121,10 @@ func (s *CloudServicesProvidersManager) GetServicesIPRanges(cloudProviderName ty
 		return nil, fmt.Errorf("cloud provider %s does not exist", cloudProviderName)
 	}
 
+	if len(serviceNames) == 0 {
+		return nil, fmt.Errorf("no cloud service list provided for cloud provider %s", cloudProviderName)
+	}
+
 	IPRangeInfo := s.cloudProviders[cloudProviderName].IPRangeInfo
 	IPRanges := map[string][]string{}
 

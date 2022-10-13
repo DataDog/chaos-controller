@@ -13,11 +13,11 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/cloudservice"
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
@@ -112,24 +112,18 @@ func (r *Disruption) ValidateCreate() error {
 		estimatedTcFiltersNb := len(r.Spec.Network.Hosts) + (len(r.Spec.Network.Services) * 2)
 
 		if r.Spec.Network.Cloud != nil {
-			clouds := map[cloudtypes.CloudProviderName]*[]NetworkDisruptionCloudServiceSpec{
-				cloudtypes.CloudProviderAWS: r.Spec.Network.Cloud.AWSServiceList,
-			}
+			clouds := r.Spec.Network.Cloud.TransformToCloudMap()
 
 			for cloudName, serviceList := range clouds {
 				serviceListNames := []string{}
 
-				if serviceList == nil {
-					continue
-				}
-
-				for _, service := range *serviceList {
+				for _, service := range serviceList {
 					serviceListNames = append(serviceListNames, service.ServiceName)
 				}
 
-				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(cloudName, serviceListNames)
+				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(cloudtypes.CloudProviderName(cloudName), serviceListNames)
 				if err != nil {
-					return fmt.Errorf("%s. Available services are: %s", err.Error(), strings.Join(cloudServicesProvidersManager.GetServiceList(cloudName), ", "))
+					return fmt.Errorf("%s. Available services are: %s", err.Error(), strings.Join(cloudServicesProvidersManager.GetServiceList(cloudtypes.CloudProviderName(cloudName)), ", "))
 				}
 
 				for _, ipRanges := range ipRangesPerService {
