@@ -7,7 +7,6 @@ package v1beta1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -21,7 +20,6 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
-	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -245,18 +243,15 @@ func (r *Disruption) getMetricsTags() []string {
 		"namespace:" + r.Namespace,
 	}
 
-	if _, ok := r.Annotations["UserInfo"]; ok {
-		var annotation v1.UserInfo
-
-		err := json.Unmarshal([]byte(r.Annotations["UserInfo"]), &annotation)
+	if userInfo, err := r.UserInfo(); !errors.Is(err, ErrNoUserInfo) {
 		if err != nil {
-			logger.Errorw("Error decoding annotation", err)
+			logger.Errorw("error retrieving user info from disruption, using empty user info", "error", err, "disruptionName", r.Name, "disruptionNamespace", r.Namespace)
 		}
 
-		tags = append(tags, "username:"+annotation.Username)
+		tags = append(tags, "username:"+userInfo.Username)
 
 		// add groups
-		for _, group := range annotation.Groups {
+		for _, group := range userInfo.Groups {
 			tags = append(tags, "group:"+group)
 		}
 	}

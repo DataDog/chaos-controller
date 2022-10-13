@@ -5,12 +5,8 @@
 package utils
 
 import (
-	"encoding/json"
-	"net/mail"
-
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
-	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -33,15 +29,4 @@ func BuildHeaderMessageFromDisruptionEvent(dis v1beta1.Disruption, notifType typ
 	default:
 		return "Disruption '" + dis.Name + "' encountered an issue."
 	}
-}
-
-func GetUserInfoFromDisruption(dis v1beta1.Disruption) (*mail.Address, error) {
-	var annotation v1.UserInfo
-
-	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
-	if err != nil {
-		return nil, err
-	}
-
-	return mail.ParseAddress(annotation.Username)
 }
