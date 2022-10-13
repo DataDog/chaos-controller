@@ -51,7 +51,7 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 
 	for _, ipRange := range ipRanges.Prefixes {
 		if ipRange.Service == "" {
-			ipRange.Service = "Google"
+			ipRange.Service = "Google Cloud"
 		}
 
 		if len(genericIPRanges[ipRange.Service]) == 0 {
