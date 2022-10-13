@@ -236,6 +236,12 @@ spec:
                       aws:
                         items:
                           properties:
+                            connState:
+                              enum:
+                              - new
+                              - est
+                              - ""
+                              type: string
                             flow:
                               enum:
                               - ingress
