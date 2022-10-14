@@ -39,9 +39,16 @@ spec:
         - service: "S3"
           flow: "egress" # available are egress or ingress. Optional
           protocol: "tcp" # available are tcp or udp. Optional
+          connState: "new"
       gcp:
         - service: "Google" # only service available for gcp
-          flow: "egress"
+          flow: "egress" # available are egress or ingress. Optional
+          protocol: "tcp" # available are tcp or udp. Optional
+          connState: "new"
+      datadog:
+        - service: "api"
+          flow: "egress" # available are egress or ingress. Optional
+          protocol: "tcp" # available are tcp or udp. Optional
           connState: "new"
     delay: 1000 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
     delayJitter: 5 # (optional) add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%
@@ -65,3 +72,12 @@ Available service is `Google`.
 Google does not indicates which ip ranges correspond to which service in its ip ranges files.
 
 We are using the URL **https://www.gstatic.com/ipranges/goog.json**. This file is the generic Google ip ranges file. We could not use the Google Cloud specific file due to some ip ranges from the apis being in the first file (goog.json). ([More info here](https://support.google.com/a/answer/10026322?hl=en))
+
+### Datadog
+
+Available services are:
+```
+ synthetics, orchestrator, process, global, logs, synthetics-private-locations, apm, webhooks, agents, api
+```
+
+We are using the URL **https://ip-ranges.datadoghq.com** to pull all the IP Ranges of Datadog.
