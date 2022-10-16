@@ -16,22 +16,21 @@ import (
 type CloudProviderIPRangeManager struct {
 }
 
-// DatadogIpRange from the model of the ip range file from Datadog
 type DatadogPrefixes struct {
 	IPv4 []string `json:"prefixes_ipv4"`
 }
 
-// DatadogIpRanges from the model of the ip range file from Datadog
+// DatadogIPRanges from the model of the ip range file from Datadog
 type DatadogIPRanges struct {
 	Version  int
-	IpRanges map[string][]string
+	IPRanges map[string][]string
 }
 
 // UnmarshalJSON custom unmarshalling method as the ip range file from Datadog is essentially map[product-name] = {ipV4: [ip], ...}
 func (c *DatadogIPRanges) UnmarshalJSON(data []byte) error {
 	allData := make(map[string]interface{})
 
-	c.IpRanges = map[string][]string{}
+	c.IPRanges = map[string][]string{}
 
 	// we first unmarshall to a map to extract all the possible products. We don't have a dedicated struct because we could have new products adding up
 	err := json.Unmarshal(data, &allData)
@@ -63,7 +62,7 @@ func (c *DatadogIPRanges) UnmarshalJSON(data []byte) error {
 			}
 
 			if len(ipRanges.IPv4) > 0 {
-				c.IpRanges[field] = ipRanges.IPv4
+				c.IPRanges[field] = ipRanges.IPv4
 			}
 		}
 	}
@@ -95,10 +94,10 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 	genericIPRanges := types.CloudProviderIPRangeInfo{
 		Version:     strconv.Itoa(ipRanges.Version),
 		ServiceList: []string{},
-		IPRanges:    ipRanges.IpRanges,
+		IPRanges:    ipRanges.IPRanges,
 	}
 
-	for service := range ipRanges.IpRanges {
+	for service := range ipRanges.IPRanges {
 		genericIPRanges.ServiceList = append(genericIPRanges.ServiceList, service)
 	}
 
