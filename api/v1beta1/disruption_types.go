@@ -420,6 +420,17 @@ func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
 	}
 }
 
+// HasTarget returns true when a target exists in the Target List or returns false.
+func (status *DisruptionStatus) HasTarget(searchTarget string) bool {
+	for _, target := range status.Targets {
+		if target == searchTarget {
+			return true
+		}
+	}
+
+	return false
+}
+
 var NonReinjectableDisruptions = map[chaostypes.DisruptionKindName]struct{}{
 	chaostypes.DisruptionKindGRPCDisruption: {},
 }
