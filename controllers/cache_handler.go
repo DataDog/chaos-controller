@@ -123,6 +123,12 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 			eventType = corev1.EventTypeNormal
 		}
 
+		if eventReason == chaosv1beta1.EventReadinessProbeChange {
+			if h.disruption.Status.InjectionStatus == chaostypes.DisruptionInjectionStatusNotInjected || !h.disruption.Status.HasTarget(name) {
+				eventType = corev1.EventTypeWarning
+			}
+		}
+
 		// Send to updated target
 		h.reconciler.Recorder.Event(objectToNotify, eventType, eventReason, fmt.Sprintf(chaosv1beta1.Events[eventReason].OnTargetTemplateMessage, h.disruption.Name))
 

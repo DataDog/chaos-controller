@@ -36,10 +36,10 @@ const (
 	EventPodWarningState       string = "TargetPodInWarningState"
 	EventContainerWarningState string = "TargetPodContainersInWarningState"
 	EventLivenessProbeChange   string = "TargetPodLivenessProbe"
-	EventReadinessProbeChange  string = "TargetPodReadinessProbe"
 	EventTooManyRestarts       string = "TargetPodTooManyRestarts"
 	// Normal events
-	EventPodRecoveredState string = "RecoveredWarningStateInTargetPod"
+	EventPodRecoveredState    string = "RecoveredWarningStateInTargetPod"
+	EventReadinessProbeChange string = "TargetPodReadinessProbe"
 
 	// Targeted nodes related
 	// Warning events
@@ -94,7 +94,7 @@ var Events = map[string]DisruptionEvent{
 		Category:                       TargetEvent,
 	},
 	EventReadinessProbeChange: {
-		Type:                           corev1.EventTypeWarning,
+		Type:                           corev1.EventTypeNormal,
 		Reason:                         EventReadinessProbeChange,
 		OnDisruptionTemplateMessage:    "readiness probe on targeted pod %s are failing",
 		OnDisruptionTemplateAggMessage: "readiness probes on targeted pod(s) are failing",

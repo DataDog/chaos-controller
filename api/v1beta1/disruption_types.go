@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
@@ -418,6 +419,16 @@ func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
 		status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
 		status.Targets = status.Targets[:len(status.Targets)-1]
 	}
+}
+
+// HasTarget returns true when a target exists in the Target List or returns false.
+func (status *DisruptionStatus) HasTarget(searchTarget string) bool {
+	for _, target := range status.Targets {
+		if strings.Compare(target, searchTarget) == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 var NonReinjectableDisruptions = map[chaostypes.DisruptionKindName]struct{}{
