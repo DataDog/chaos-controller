@@ -152,7 +152,7 @@ func (s *CloudServicesProvidersManager) GetServicesIPRanges(cloudProviderName ty
 
 // GetServiceList return the list of services of a specific cloud provider. Mostly used in disruption creation validation
 func (s *CloudServicesProvidersManager) GetServiceList(cloudProviderName types.CloudProviderName) []string {
-	if s.cloudProviders[cloudProviderName] == nil {
+	if s.cloudProviders[cloudProviderName] == nil || s.cloudProviders[cloudProviderName].IPRangeInfo == nil {
 		return nil
 	}
 

@@ -49,27 +49,27 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 		return nil, err
 	}
 
-	serviceList := []string{}
-	genericIPRanges := make(map[string][]string)
+	result := &types.CloudProviderIPRangeInfo{
+		ServiceList: []string{},
+		IPRanges:    make(map[string][]string),
+		Version:     ipRanges.SyncToken,
+	}
 
 	for _, ipRange := range ipRanges.Prefixes {
-		// this service is the list of all ip ranges of all services + misc ones. We don't need that
+		// the service AMAZON is the list of all ip ranges of all services + misc ones. We don't need that
 		// it's also too big for us to be able to filter all ips
+		// remove empty IPPrefix for safety
 		if ipRange.Service == "AMAZON" || ipRange.IPPrefix == "" {
 			continue
 		}
 
-		if len(genericIPRanges[ipRange.Service]) == 0 {
-			serviceList = append(serviceList, ipRange.Service)
-			genericIPRanges[ipRange.Service] = []string{}
+		if len(result.IPRanges[ipRange.Service]) == 0 {
+			result.ServiceList = append(result.ServiceList, ipRange.Service)
+			result.IPRanges[ipRange.Service] = []string{}
 		}
 
-		genericIPRanges[ipRange.Service] = append(genericIPRanges[ipRange.Service], ipRange.IPPrefix)
+		result.IPRanges[ipRange.Service] = append(result.IPRanges[ipRange.Service], ipRange.IPPrefix)
 	}
 
-	return &types.CloudProviderIPRangeInfo{
-		Version:     ipRanges.SyncToken,
-		ServiceList: serviceList,
-		IPRanges:    genericIPRanges,
-	}, nil
+	return result, nil
 }

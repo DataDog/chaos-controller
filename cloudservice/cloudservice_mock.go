@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// CloudserviceMock mocking struct to test the logic in manager.go
+// for now we pass the results of ConvertToGenericIPRanges. It enables us to run the manager without parsing the actual ip ranges file
 type CloudserviceMock struct {
 	mock.Mock
 

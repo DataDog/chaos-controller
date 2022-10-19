@@ -49,30 +49,30 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 		return nil, err
 	}
 
-	genericIPRanges := make(map[string][]string)
-	serviceList := []string{}
+	result := &types.CloudProviderIPRangeInfo{
+		ServiceList: []string{},
+		IPRanges:    make(map[string][]string),
+		Version:     ipRanges.SyncToken,
+	}
 
 	for _, ipRange := range ipRanges.Prefixes {
+		// in the IP Ranges provided by google, no service is explicitly set
 		if ipRange.Service == "" {
 			ipRange.Service = "Google Cloud"
 		}
 
-		if len(genericIPRanges[ipRange.Service]) == 0 {
-			genericIPRanges[ipRange.Service] = []string{}
-			serviceList = append(serviceList, ipRange.Service)
+		if len(result.IPRanges[ipRange.Service]) == 0 {
+			result.IPRanges[ipRange.Service] = []string{}
+			result.ServiceList = append(result.ServiceList, ipRange.Service)
 		}
 
-		// Remove empty and remove the dns servers of Google in the list of ip ranges available to disrupt
+		// Remove empty IPPrefixes (can happen if we only have IpV6) and remove the dns servers of Google in the list of ip ranges available to disrupt
 		if ipRange.IPPrefix == "" || strings.HasPrefix(ipRange.IPPrefix, "8.8") {
 			continue
 		}
 
-		genericIPRanges[ipRange.Service] = append(genericIPRanges[ipRange.Service], ipRange.IPPrefix)
+		result.IPRanges[ipRange.Service] = append(result.IPRanges[ipRange.Service], ipRange.IPPrefix)
 	}
 
-	return &types.CloudProviderIPRangeInfo{
-		Version:     ipRanges.SyncToken,
-		ServiceList: serviceList,
-		IPRanges:    genericIPRanges,
-	}, nil
+	return result, nil
 }
