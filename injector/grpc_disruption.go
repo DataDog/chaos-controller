@@ -8,6 +8,7 @@ package injector
 import (
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaos_grpc "github.com/DataDog/chaos-controller/grpc"
@@ -26,6 +27,7 @@ type GRPCDisruptionInjector struct {
 // GRPCDisruptionInjectorConfig contains all needed drivers to create a grpc disruption
 type GRPCDisruptionInjectorConfig struct {
 	Config
+	TimeoutInMs int
 }
 
 // NewGRPCDisruptionInjector creates a GRPCDisruptionInjector object with the given config,
@@ -51,7 +53,7 @@ func (i *GRPCDisruptionInjector) Inject() error {
 		return nil
 	}
 
-	conn, err := connectToServer(i.serverAddr)
+	conn, err := connectToServer(i.serverAddr, time.Duration(i.config.TimeoutInMs)*time.Millisecond)
 	if err != nil {
 		i.config.Log.Errorf(err.Error())
 		return err
@@ -81,10 +83,12 @@ func (i *GRPCDisruptionInjector) Clean() error {
 		return nil
 	}
 
-	conn, err := connectToServer(i.serverAddr)
+	conn, err := connectToServer(i.serverAddr, time.Duration(i.config.TimeoutInMs)*time.Millisecond)
 	if err != nil {
 		i.config.Log.Errorf(err.Error())
-		return err
+		// swallow connection err because there is nothing else we can do with the error
+		// this will allow the clean cycle to exit successfully
+		return nil
 	}
 
 	i.config.Log.Infow("removing grpc disruption", "spec", i.spec)
@@ -98,10 +102,11 @@ func (i *GRPCDisruptionInjector) Clean() error {
 	return conn.Close()
 }
 
-func connectToServer(serverAddr string) (*grpc.ClientConn, error) {
+func connectToServer(serverAddr string, timeout time.Duration) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure()) // Future Work: make secure
 	opts = append(opts, grpc.WithBlock())
+	opts = append(opts, grpc.WithTimeout(timeout))
 
 	conn, err := grpc.Dial(serverAddr, opts...)
 	if err != nil {
