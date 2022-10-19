@@ -7,21 +7,23 @@ package v1beta1
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/DataDog/chaos-controller/cloudservice"
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
+	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -62,6 +64,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
+	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 	chaosNamespace = setupWebhookConfig.ChaosNamespace
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
@@ -94,7 +97,7 @@ func (r *Disruption) ValidateCreate() error {
 		return errors.New("the controller is currently in delete-only mode, you can't create new disruptions for now")
 	}
 
-	// reject disrputions with a name which would not be a valid label value
+	// reject disruptions with a name which would not be a valid label value
 	// according to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 	if _, err := labels.Parse(fmt.Sprintf("name=%s", r.Name)); err != nil {
 		return fmt.Errorf("invalid disruption name: %w", err)
@@ -112,26 +115,18 @@ func (r *Disruption) ValidateCreate() error {
 		estimatedTcFiltersNb := len(r.Spec.Network.Hosts) + (len(r.Spec.Network.Services) * 2)
 
 		if r.Spec.Network.Cloud != nil {
-			clouds := map[cloudtypes.CloudProviderName]*[]NetworkDisruptionCloudServiceSpec{}
-
-			if r.Spec.Network.Cloud.AWSServiceList != nil {
-				clouds[cloudtypes.CloudProviderAWS] = r.Spec.Network.Cloud.AWSServiceList
-			}
-
-			if r.Spec.Network.Cloud.GCPServiceList != nil {
-				clouds[cloudtypes.CloudProviderGCP] = r.Spec.Network.Cloud.GCPServiceList
-			}
+			clouds := r.Spec.Network.Cloud.TransformToCloudMap()
 
 			for cloudName, serviceList := range clouds {
 				serviceListNames := []string{}
 
-				for _, service := range *serviceList {
+				for _, service := range serviceList {
 					serviceListNames = append(serviceListNames, service.ServiceName)
 				}
 
-				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(cloudName, serviceListNames)
+				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(cloudtypes.CloudProviderName(cloudName), serviceListNames)
 				if err != nil {
-					return fmt.Errorf("%s. Available services are: %s", err.Error(), strings.Join(cloudServicesProvidersManager.GetServiceList(cloudName), ", "))
+					return fmt.Errorf("%s. Available services are: %s", err.Error(), strings.Join(cloudServicesProvidersManager.GetServiceList(cloudtypes.CloudProviderName(cloudName)), ", "))
 				}
 
 				for _, ipRanges := range ipRangesPerService {
@@ -287,15 +282,18 @@ func (r *Disruption) getMetricsTags() []string {
 		"namespace:" + r.Namespace,
 	}
 
-	if userInfo, err := r.UserInfo(); !errors.Is(err, ErrNoUserInfo) {
+	if _, ok := r.Annotations["UserInfo"]; ok {
+		var annotation v1.UserInfo
+
+		err := json.Unmarshal([]byte(r.Annotations["UserInfo"]), &annotation)
 		if err != nil {
-			logger.Errorw("error retrieving user info from disruption, using empty user info", "error", err, "disruptionName", r.Name, "disruptionNamespace", r.Namespace)
+			logger.Errorw("Error decoding annotation", err)
 		}
 
-		tags = append(tags, "username:"+userInfo.Username)
+		tags = append(tags, "username:"+annotation.Username)
 
 		// add groups
-		for _, group := range userInfo.Groups {
+		for _, group := range annotation.Groups {
 			tags = append(tags, "group:"+group)
 		}
 	}

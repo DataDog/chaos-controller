@@ -28,17 +28,17 @@ var _ = Describe("GCP Parsing", func() {
 		ipRangeFile := "{\"syncToken\":\"1000000000\",\"createDate\":\"2022-09-01-22-03-06\",\"prefixes\":[{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"},{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"},{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"},{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"}]}"
 		gcpManager := New()
 
-		version, ipRanges, err := gcpManager.ConvertToGenericIPRanges([]byte(ipRangeFile))
+		info, err := gcpManager.ConvertToGenericIPRanges([]byte(ipRangeFile))
 
 		It("should parse the ip range file", func() {
 			By("Ensuring that no error was thrown")
 			Expect(err).To(BeNil())
 
 			By("Ensuring that the right version string was parsed")
-			Expect(version).To(Equal("1000000000"))
+			Expect(info.Version).To(Equal("1000000000"))
 
 			By("Ensuring that we have the right info")
-			Expect(len(ipRanges["Google Cloud"])).To(Equal(4))
+			Expect(len(info.IPRanges["Google Cloud"])).To(Equal(4))
 		})
 	})
 

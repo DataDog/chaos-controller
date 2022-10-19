@@ -106,6 +106,7 @@ type NetworkDisruptionCloudSpec struct {
 }
 
 type NetworkDisruptionCloudServiceSpec struct {
+	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
 	ServiceName string `json:"service"`
 	// +kubebuilder:validation:Enum=tcp;udp;""
@@ -114,6 +115,9 @@ type NetworkDisruptionCloudServiceSpec struct {
 	// +kubebuilder:validation:Enum=ingress;egress;""
 	// +ddmark:validation:Enum=ingress;egress;""
 	Flow string `json:"flow,omitempty"`
+	// +kubebuilder:validation:Enum=new;est;""
+	// +ddmark:validation:Enum=new;est;""
+	ConnState string `json:"connState,omitempty"`
 }
 
 // Validate validates args for the given disruption
@@ -182,6 +186,21 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	}
 
 	return args
+}
+
+// TransformToCloudMap for ease of computing when transforming the cloud services ip ranges to a list of hosts to disrupt
+func (s *NetworkDisruptionCloudSpec) TransformToCloudMap() map[string][]NetworkDisruptionCloudServiceSpec {
+	clouds := map[string][]NetworkDisruptionCloudServiceSpec{}
+
+	if s.AWSServiceList != nil {
+		clouds["AWS"] = *s.AWSServiceList
+	}
+
+	if s.GCPServiceList != nil {
+		clouds["GCP"] = *s.GCPServiceList
+	}
+
+	return clouds
 }
 
 // NetworkDisruptionHostSpecFromString parses the given hosts to host specs

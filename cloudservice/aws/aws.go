@@ -7,6 +7,8 @@ package aws
 
 import (
 	"encoding/json"
+
+	"github.com/DataDog/chaos-controller/cloudservice/types"
 )
 
 type CloudProviderIPRangeManager struct {
@@ -41,12 +43,13 @@ func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldVersio
 }
 
 // ConvertToGenericIPRanges From an unmarshalled json ip range file from AWS to a generic ip range struct
-func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges []byte) (string, map[string][]string, error) {
+func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges []byte) (*types.CloudProviderIPRangeInfo, error) {
 	ipRanges := AWSIPRanges{}
 	if err := json.Unmarshal(unparsedIPRanges, &ipRanges); err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
+	serviceList := []string{}
 	genericIPRanges := make(map[string][]string)
 
 	for _, ipRange := range ipRanges.Prefixes {
@@ -57,11 +60,16 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 		}
 
 		if len(genericIPRanges[ipRange.Service]) == 0 {
+			serviceList = append(serviceList, ipRange.Service)
 			genericIPRanges[ipRange.Service] = []string{}
 		}
 
 		genericIPRanges[ipRange.Service] = append(genericIPRanges[ipRange.Service], ipRange.IPPrefix)
 	}
 
-	return ipRanges.SyncToken, genericIPRanges, nil
+	return &types.CloudProviderIPRangeInfo{
+		Version:     ipRanges.SyncToken,
+		ServiceList: serviceList,
+		IPRanges:    genericIPRanges,
+	}, nil
 }

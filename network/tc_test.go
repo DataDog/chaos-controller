@@ -150,7 +150,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip  priority 1001 root flower ip_proto tcp src_ip 192.168.0.1/32 src_port 12345 ct_state +trk+new flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip priority 1001 root flower ip_proto tcp src_ip 192.168.0.1/32 src_port 12345 ct_state +trk+new flowid 1:2")
 			})
 		})
 

@@ -43,12 +43,12 @@ var _ = Describe("New function", func() {
 			Expect(manager.cloudProviders[types.CloudProviderGCP]).ToNot(BeNil())
 
 			By("Ensuring that the ips are parsed")
-			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangesInfo.IPRanges).ToNot(BeEmpty())
-			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangesInfo.IPRanges).ToNot(BeEmpty())
+			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangeInfo.IPRanges).ToNot(BeEmpty())
+			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.IPRanges).ToNot(BeEmpty())
 
 			By("Ensuring that we have a service list for every cloud provider")
-			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangesInfo.ServiceList).ToNot(BeEmpty())
-			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangesInfo.ServiceList).ToNot(BeEmpty())
+			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangeInfo.ServiceList).ToNot(BeEmpty())
+			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.ServiceList).ToNot(BeEmpty())
 		})
 	})
 
@@ -62,6 +62,7 @@ var _ = Describe("New function", func() {
 					CloudProviderIPRangeManager: NewCloudServiceMock(
 						true,
 						"1",
+						[]string{"S3", "EC2"},
 						map[string][]string{
 							"S3": {
 								"1.2.3.0/24",
@@ -82,6 +83,7 @@ var _ = Describe("New function", func() {
 					CloudProviderIPRangeManager: NewCloudServiceMock(
 						true,
 						"1",
+						[]string{"Google Cloud"},
 						map[string][]string{
 							"Google Cloud": {
 								"6.2.3.0/24",
@@ -104,11 +106,11 @@ var _ = Describe("New function", func() {
 			Expect(err).To(BeNil())
 
 			By("Ensuring that we have a service list for every cloud provider")
-			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangesInfo.ServiceList).ToNot(BeEmpty())
-			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangesInfo.ServiceList).ToNot(BeEmpty())
+			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangeInfo.ServiceList).ToNot(BeEmpty())
+			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.ServiceList).ToNot(BeEmpty())
 
 			By("Ensuring aws service list is populated with the right information")
-			Expect(reflect.DeepEqual(manager.cloudProviders[types.CloudProviderAWS].IPRangesInfo.ServiceList, []string{
+			Expect(reflect.DeepEqual(manager.cloudProviders[types.CloudProviderAWS].IPRangeInfo.ServiceList, []string{
 				"S3",
 				"EC2",
 			})).To(BeTrue())
@@ -118,7 +120,7 @@ var _ = Describe("New function", func() {
 			})).To(BeTrue())
 
 			By("Ensuring gcp service list is populated with the right information")
-			Expect(reflect.DeepEqual(manager.cloudProviders[types.CloudProviderGCP].IPRangesInfo.ServiceList, []string{
+			Expect(reflect.DeepEqual(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.ServiceList, []string{
 				"Google Cloud",
 			})).To(BeTrue())
 			Expect(reflect.DeepEqual(manager.GetServiceList(types.CloudProviderGCP), []string{
@@ -131,11 +133,11 @@ var _ = Describe("New function", func() {
 			Expect(err).To(BeNil())
 
 			By("Ensuring that we have an ip ranges map for every cloud provider")
-			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangesInfo.IPRanges).ToNot(BeEmpty())
-			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangesInfo.IPRanges).ToNot(BeEmpty())
+			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangeInfo.IPRanges).ToNot(BeEmpty())
+			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.IPRanges).ToNot(BeEmpty())
 
 			By("Ensuring aws ip ranges map is populated with the right information")
-			Expect(reflect.DeepEqual(manager.cloudProviders[types.CloudProviderAWS].IPRangesInfo.IPRanges, map[string][]string{
+			Expect(reflect.DeepEqual(manager.cloudProviders[types.CloudProviderAWS].IPRangeInfo.IPRanges, map[string][]string{
 				"S3": {
 					"1.2.3.0/24",
 					"2.2.3.0/24",
@@ -161,7 +163,7 @@ var _ = Describe("New function", func() {
 			})).To(BeTrue())
 
 			By("Ensuring gcp ip ranges map is populated with the right information")
-			Expect(reflect.DeepEqual(manager.cloudProviders[types.CloudProviderGCP].IPRangesInfo.IPRanges, map[string][]string{
+			Expect(reflect.DeepEqual(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.IPRanges, map[string][]string{
 				"Google Cloud": {
 					"6.2.3.0/24",
 					"7.2.3.0/24",

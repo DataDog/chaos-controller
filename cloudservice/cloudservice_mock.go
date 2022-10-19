@@ -6,24 +6,27 @@
 package cloudservice
 
 import (
+	"github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/stretchr/testify/mock"
 )
 
 type CloudserviceMock struct {
 	mock.Mock
 
-	isNewVersionMockValue           bool
-	convertToGenericIPRangesVersion string
-	convertToGenericIPRanges        map[string][]string
-	convertToGenericIPRangesError   error
+	isNewVersionMockValue              bool
+	convertToGenericIPRangesVersion    string
+	convertToGenericIPRanges           map[string][]string
+	converToGenericIPRangesServiceList []string
+	convertToGenericIPRangesError      error
 }
 
-func NewCloudServiceMock(isNewVersionMockValue bool, convertToGenericIPRangesVersion string, convertToGenericIPRanges map[string][]string, convertToGenericIPRangesError error) *CloudserviceMock {
+func NewCloudServiceMock(isNewVersionMockValue bool, convertToGenericIPRangesVersion string, convertToGenericIpRangesServiceList []string, convertToGenericIPRanges map[string][]string, convertToGenericIPRangesError error) *CloudserviceMock {
 	return &CloudserviceMock{
-		isNewVersionMockValue:           isNewVersionMockValue,
-		convertToGenericIPRangesVersion: convertToGenericIPRangesVersion,
-		convertToGenericIPRanges:        convertToGenericIPRanges,
-		convertToGenericIPRangesError:   convertToGenericIPRangesError,
+		isNewVersionMockValue:              isNewVersionMockValue,
+		convertToGenericIPRangesVersion:    convertToGenericIPRangesVersion,
+		convertToGenericIPRanges:           convertToGenericIPRanges,
+		converToGenericIPRangesServiceList: convertToGenericIpRangesServiceList,
+		convertToGenericIPRangesError:      convertToGenericIPRangesError,
 	}
 }
 
@@ -31,6 +34,10 @@ func (a *CloudserviceMock) IsNewVersion(newIPRanges []byte, oldVersion string) b
 	return a.isNewVersionMockValue
 }
 
-func (a *CloudserviceMock) ConvertToGenericIPRanges(unparsedIPRanges []byte) (string, map[string][]string, error) {
-	return a.convertToGenericIPRangesVersion, a.convertToGenericIPRanges, a.convertToGenericIPRangesError
+func (a *CloudserviceMock) ConvertToGenericIPRanges(unparsedIPRanges []byte) (*types.CloudProviderIPRangeInfo, error) {
+	return &types.CloudProviderIPRangeInfo{
+		Version:     a.convertToGenericIPRangesVersion,
+		IPRanges:    a.convertToGenericIPRanges,
+		ServiceList: a.converToGenericIPRangesServiceList,
+	}, a.convertToGenericIPRangesError
 }

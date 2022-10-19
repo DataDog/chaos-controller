@@ -8,6 +8,8 @@ package gcp
 import (
 	"encoding/json"
 	"strings"
+
+	"github.com/DataDog/chaos-controller/cloudservice/types"
 )
 
 type CloudProviderIPRangeManager struct {
@@ -41,13 +43,14 @@ func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldVersio
 }
 
 // ConvertToGenericIPRanges From an unmarshalled json ip range file from GCP to a generic ip range struct
-func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges []byte) (string, map[string][]string, error) {
+func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges []byte) (*types.CloudProviderIPRangeInfo, error) {
 	ipRanges := GCPIPRanges{}
 	if err := json.Unmarshal(unparsedIPRanges, &ipRanges); err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	genericIPRanges := make(map[string][]string)
+	serviceList := []string{}
 
 	for _, ipRange := range ipRanges.Prefixes {
 		if ipRange.Service == "" {
@@ -56,6 +59,7 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 
 		if len(genericIPRanges[ipRange.Service]) == 0 {
 			genericIPRanges[ipRange.Service] = []string{}
+			serviceList = append(serviceList, ipRange.Service)
 		}
 
 		// Remove empty and remove the dns servers of Google in the list of ip ranges available to disrupt
@@ -66,5 +70,9 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 		genericIPRanges[ipRange.Service] = append(genericIPRanges[ipRange.Service], ipRange.IPPrefix)
 	}
 
-	return ipRanges.SyncToken, genericIPRanges, nil
+	return &types.CloudProviderIPRangeInfo{
+		Version:     ipRanges.SyncToken,
+		ServiceList: serviceList,
+		IPRanges:    genericIPRanges,
+	}, nil
 }

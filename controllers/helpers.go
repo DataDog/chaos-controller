@@ -29,7 +29,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
-	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
+	"github.com/DataDog/chaos-controller/cloudservice/types"
 	"go.uber.org/zap"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -94,33 +94,27 @@ func validateLabelSelector(selector labels.Selector) error {
 // transformCloudSpecToHostsSpec from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
 func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudservice.CloudServicesProvidersManager, cloudSpec *v1beta1.NetworkDisruptionCloudSpec) ([]v1beta1.NetworkDisruptionHostSpec, error) {
 	hosts := []v1beta1.NetworkDisruptionHostSpec{}
-	clouds := map[cloudtypes.CloudProviderName]*[]v1beta1.NetworkDisruptionCloudServiceSpec{}
-
-	if cloudSpec.AWSServiceList != nil {
-		clouds[cloudtypes.CloudProviderAWS] = cloudSpec.AWSServiceList
-	}
-
-	if cloudSpec.GCPServiceList != nil {
-		clouds[cloudtypes.CloudProviderGCP] = cloudSpec.GCPServiceList
-	}
+	clouds := cloudSpec.TransformToCloudMap()
 
 	for cloudName, serviceList := range clouds {
 		serviceListNames := []string{}
-		for _, service := range *serviceList {
+
+		for _, service := range serviceList {
 			serviceListNames = append(serviceListNames, service.ServiceName)
 		}
 
-		ipRangesPerService, err := cloudManager.GetServicesIPRanges(cloudName, serviceListNames)
+		ipRangesPerService, err := cloudManager.GetServicesIPRanges(types.CloudProviderName(cloudName), serviceListNames)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, serviceSpec := range *serviceList {
+		for _, serviceSpec := range serviceList {
 			for _, ipRange := range ipRangesPerService[serviceSpec.ServiceName] {
 				hosts = append(hosts, v1beta1.NetworkDisruptionHostSpec{
-					Host:     ipRange,
-					Protocol: serviceSpec.Protocol,
-					Flow:     serviceSpec.Flow,
+					Host:      ipRange,
+					Protocol:  serviceSpec.Protocol,
+					Flow:      serviceSpec.Flow,
+					ConnState: serviceSpec.ConnState,
 				})
 			}
 		}
