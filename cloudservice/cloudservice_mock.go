@@ -22,12 +22,12 @@ type CloudserviceMock struct {
 	convertToGenericIPRangesError      error
 }
 
-func NewCloudServiceMock(isNewVersionMockValue bool, convertToGenericIPRangesVersion string, convertToGenericIpRangesServiceList []string, convertToGenericIPRanges map[string][]string, convertToGenericIPRangesError error) *CloudserviceMock {
+func NewCloudServiceMock(isNewVersionMockValue bool, convertToGenericIPRangesVersion string, convertToGenericIPRangesServiceList []string, convertToGenericIPRanges map[string][]string, convertToGenericIPRangesError error) *CloudserviceMock {
 	return &CloudserviceMock{
 		isNewVersionMockValue:              isNewVersionMockValue,
 		convertToGenericIPRangesVersion:    convertToGenericIPRangesVersion,
 		convertToGenericIPRanges:           convertToGenericIPRanges,
-		converToGenericIPRangesServiceList: convertToGenericIpRangesServiceList,
+		converToGenericIPRangesServiceList: convertToGenericIPRangesServiceList,
 		convertToGenericIPRangesError:      convertToGenericIPRangesError,
 	}
 }

@@ -62,8 +62,9 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 		}
 
 		if len(result.IPRanges[ipRange.Service]) == 0 {
-			result.IPRanges[ipRange.Service] = []string{}
 			result.ServiceList = append(result.ServiceList, ipRange.Service)
+
+			result.IPRanges[ipRange.Service] = []string{}
 		}
 
 		// Remove empty IPPrefixes (can happen if we only have IpV6) and remove the dns servers of Google in the list of ip ranges available to disrupt
