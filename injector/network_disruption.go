@@ -12,7 +12,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -27,9 +26,6 @@ import (
 
 // linkOperation represents a tc operation on a set of network interfaces combined with the parent to bind to and the handle identifier to use
 type linkOperation func([]string, string, uint32) error
-
-// tcPriority the lowest priority set by tc automatically when adding a tc filter
-var tcPriority = uint32(49149)
 
 // networkDisruptionService describes a parsed Kubernetes service, representing an (ip, port, protocol) tuple
 type networkDisruptionService struct {
@@ -52,9 +48,6 @@ type networkDisruptionInjector struct {
 	spec       v1beta1.NetworkDisruptionSpec
 	config     NetworkDisruptionInjectorConfig
 	operations []linkOperation
-
-	tcFilterPriority uint32     // keep track of the highest tc filter priority
-	tcFilterMutex    sync.Mutex // since we increment tcFilterPriority in goroutines we use a mutex to lock and unlock
 }
 
 // NetworkDisruptionInjectorConfig contains all needed drivers to create a network disruption using `tc`
@@ -281,8 +274,6 @@ func (i *networkDisruptionInjector) Clean() error {
 //	        |- (4:) <-- second operation
 //	          ...
 func (i *networkDisruptionInjector) applyOperations() error {
-	i.tcFilterPriority = tcPriority
-
 	// get interfaces
 	links, err := i.config.NetlinkAdapter.LinkList()
 	if err != nil {
@@ -404,30 +395,30 @@ func (i *networkDisruptionInjector) applyOperations() error {
 				Mask: net.CIDRMask(32, 32),
 			}
 
-			if err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", i.getNewPriority(), 0, nil, gatewayIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
+			if _, err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", 0, nil, gatewayIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
 			}
 		}
 
 		// this filter allows the pod to communicate with the node IP
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nodeIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
+		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nodeIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 		}
 	} else if i.config.Level == types.DisruptionLevelNode {
 		// GENERIC SAFEGUARDS
 		// allow SSH connections on all interfaces (port 22/tcp)
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nil, 22, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
+		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 22, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
 		}
 
 		// CLOUD PROVIDER SPECIFIC SAFEGUARDS
 		// allow cloud provider health checks on all interfaces(arp)
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nil, 0, 0, network.ARP, network.ConnStateUndefined, "1:1"); err != nil {
+		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 0, 0, network.ARP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
 		}
 
 		// allow cloud provider metadata service communication
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, metadataIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
+		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, metadataIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing cloud providers metadata service requests: %w", err)
 		}
 	}
@@ -442,7 +433,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	if len(i.spec.Hosts) == 0 && len(i.spec.Services) == 0 {
 		_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
 
-		if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, nil, nullIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:4"); err != nil {
+		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nullIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:4"); err != nil {
 			return fmt.Errorf("can't add a filter: %w", err)
 		}
 	} else {
@@ -460,27 +451,16 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	return nil
 }
 
-func (i *networkDisruptionInjector) getNewPriority() uint32 {
-	priority := uint32(0)
-
-	i.tcFilterMutex.Lock()
-	i.tcFilterPriority++
-	priority = i.tcFilterPriority
-	i.tcFilterMutex.Unlock()
-
-	return priority
-}
-
 // addServiceFilters adds a list of service tc filters on a list of interfaces
 func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filters []tcServiceFilter, interfaces []string, flowid string) ([]tcServiceFilter, error) {
+	var err error
+
 	builtServices := []tcServiceFilter{}
 
 	for _, filter := range filters {
-		filter.priority = i.getNewPriority()
-
 		i.config.Log.Infow("found service endpoint", "resolvedEndpoint", filter.service.String(), "resolvedService", serviceName)
 
-		err := i.config.TrafficController.AddFilter(interfaces, "1:0", filter.priority, 0, nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, network.ConnStateUndefined, flowid)
+		filter.priority, err = i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, network.ConnStateUndefined, flowid)
 		if err != nil {
 			return nil, err
 		}
@@ -934,7 +914,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 			connState := network.NewConnState(host.ConnState)
 
 			// create tc filter
-			if err := i.config.TrafficController.AddFilter(interfaces, "1:0", i.getNewPriority(), 0, srcIP, dstIP, srcPort, dstPort, network.Protocol(host.Protocol), connState, flowid); err != nil {
+			if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, network.Protocol(host.Protocol), connState, flowid); err != nil {
 				return fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
 			}
 		}

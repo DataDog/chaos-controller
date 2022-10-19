@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/metrics"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -40,17 +41,18 @@ func Contains(s []string, str string) bool {
 }
 
 type SetupWebhookWithManagerConfig struct {
-	Manager                ctrl.Manager
-	Logger                 *zap.SugaredLogger
-	MetricsSink            metrics.Sink
-	Recorder               record.EventRecorder
-	NamespaceThresholdFlag int
-	ClusterThresholdFlag   int
-	EnableSafemodeFlag     bool
-	DeleteOnlyFlag         bool
-	HandlerEnabledFlag     bool
-	DefaultDurationFlag    time.Duration
-	ChaosNamespace         string
+	Manager                       ctrl.Manager
+	Logger                        *zap.SugaredLogger
+	MetricsSink                   metrics.Sink
+	Recorder                      record.EventRecorder
+	NamespaceThresholdFlag        int
+	ClusterThresholdFlag          int
+	EnableSafemodeFlag            bool
+	DeleteOnlyFlag                bool
+	HandlerEnabledFlag            bool
+	DefaultDurationFlag           time.Duration
+	ChaosNamespace                string
+	CloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 }
 
 // GetTargetedContainersInfo gets the IDs of the targeted containers or all container IDs found in a Pod

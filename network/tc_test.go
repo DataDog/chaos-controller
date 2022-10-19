@@ -53,7 +53,8 @@ var _ = Describe("Tc", func() {
 
 		// tc runner
 		tcRunner = tc{
-			executer: &tcExecuter,
+			executer:         &tcExecuter,
+			tcFilterPriority: 1000,
 		}
 
 		// injected variables
@@ -128,7 +129,7 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddFilter", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddFilter(ifaces, parent, 0, handle, srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid)
+			tcRunner.AddFilter(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid)
 		})
 
 		Context("add a filter on packets going to IP 10.0.0.1 and port 80 with flowid 1:4 on egress traffic", func() {
@@ -138,7 +139,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip root flower ip_proto tcp dst_ip 10.0.0.1/32 dst_port 80 ct_state +trk+new flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip priority 1001 root flower ip_proto tcp dst_ip 10.0.0.1/32 dst_port 80 ct_state +trk+new flowid 1:2")
 			})
 		})
 
@@ -149,13 +150,13 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip root flower ip_proto tcp src_ip 192.168.0.1/32 src_port 12345 ct_state +trk+new flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip priority 1001 root flower ip_proto tcp src_ip 192.168.0.1/32 src_port 12345 ct_state +trk+new flowid 1:2")
 			})
 		})
 
 		Context("add a filter on packets leaving IP 192.168.0.1 port 12345 and going to IP 10.0.0.1 port 80 with flowid 1:4 on egress traffic", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip root flower ip_proto tcp src_ip 192.168.0.1/32 dst_ip 10.0.0.1/32 src_port 12345 dst_port 80 ct_state +trk+new flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip priority 1001 root flower ip_proto tcp src_ip 192.168.0.1/32 dst_ip 10.0.0.1/32 src_port 12345 dst_port 80 ct_state +trk+new flowid 1:2")
 			})
 		})
 	})
