@@ -6,6 +6,7 @@
 package injector
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"time"
@@ -17,17 +18,21 @@ import (
 	"google.golang.org/grpc"
 )
 
+// Five Seconds timeout before aborting the attempt to connect to server
+// so that in turn, when user requests, the injector pod can be terminated
+const connectionTimeout time.Duration = time.Duration(5) * time.Second
+
 // GRPCDisruptionInjector describes a grpc disruption
 type GRPCDisruptionInjector struct {
 	spec       v1beta1.GRPCDisruptionSpec
 	config     GRPCDisruptionInjectorConfig
 	serverAddr string
+	timeout    time.Duration
 }
 
 // GRPCDisruptionInjectorConfig contains all needed drivers to create a grpc disruption
 type GRPCDisruptionInjectorConfig struct {
 	Config
-	TimeoutInMs int
 }
 
 // NewGRPCDisruptionInjector creates a GRPCDisruptionInjector object with the given config,
@@ -53,7 +58,7 @@ func (i *GRPCDisruptionInjector) Inject() error {
 		return nil
 	}
 
-	conn, err := connectToServer(i.serverAddr, time.Duration(i.config.TimeoutInMs)*time.Millisecond)
+	conn, err := i.connectToServer()
 	if err != nil {
 		i.config.Log.Errorf(err.Error())
 		return err
@@ -83,7 +88,7 @@ func (i *GRPCDisruptionInjector) Clean() error {
 		return nil
 	}
 
-	conn, err := connectToServer(i.serverAddr, time.Duration(i.config.TimeoutInMs)*time.Millisecond)
+	conn, err := i.connectToServer()
 	if err != nil {
 		i.config.Log.Errorf(err.Error())
 		// swallow connection err because there is nothing else we can do with the error
@@ -102,15 +107,19 @@ func (i *GRPCDisruptionInjector) Clean() error {
 	return conn.Close()
 }
 
-func connectToServer(serverAddr string, timeout time.Duration) (*grpc.ClientConn, error) {
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure()) // Future Work: make secure
-	opts = append(opts, grpc.WithBlock())
-	opts = append(opts, grpc.WithTimeout(timeout))
+func (i *GRPCDisruptionInjector) connectToServer() (*grpc.ClientConn, error) {
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(), // Future Work: make secure
+		grpc.WithBlock(),
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
 
-	conn, err := grpc.Dial(serverAddr, opts...)
+	defer cancel()
+
+	conn, err := grpc.DialContext(ctx, i.serverAddr, opts...)
+
 	if err != nil {
-		return nil, errors.New("fail to dial: " + serverAddr)
+		return nil, errors.New("fail to dial: " + i.serverAddr)
 	}
 
 	return conn, nil

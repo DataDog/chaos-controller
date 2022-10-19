@@ -72,10 +72,7 @@ var grpcDisruptionCmd = &cobra.Command{
 		// create injectors
 		for i, config := range configs {
 			if i == 0 {
-				injectors = append(injectors, injector.NewGRPCDisruptionInjector(spec, injector.GRPCDisruptionInjectorConfig{
-					Config:      config,
-					TimeoutInMs: 5000,
-				}))
+				injectors = append(injectors, injector.NewGRPCDisruptionInjector(spec, injector.GRPCDisruptionInjectorConfig{Config: config}))
 			}
 		}
 	},
