@@ -20,7 +20,7 @@ import (
 
 // Five Seconds timeout before aborting the attempt to connect to server
 // so that in turn, when user requests, the injector pod can be terminated
-const connectionTimeout time.Duration = time.Duration(5) * time.Second
+const connectionTimeout = time.Duration(5) * time.Second
 
 // GRPCDisruptionInjector describes a grpc disruption
 type GRPCDisruptionInjector struct {
@@ -42,6 +42,7 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 		spec:       spec,
 		config:     config,
 		serverAddr: config.TargetPodIP + ":" + strconv.Itoa(spec.Port),
+		timeout:    connectionTimeout,
 	}
 }
 
