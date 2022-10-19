@@ -319,7 +319,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter for every service and pods filtered on", func() {
-				// wait for the 3 addFilters at the beginning of injection to complete
+				// wait for all the addFilters at the beginning of injection to complete
 				time.Sleep(5 * time.Second)
 				tcPriority := 1000                 // first priority set using add filters
 				priority := uint32(tcPriority + 3) // 3 add filters are called during injection
