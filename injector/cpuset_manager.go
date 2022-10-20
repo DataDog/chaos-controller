@@ -15,7 +15,6 @@ import (
 
 type StresserManager interface {
 	TrackInjectorCores(config CPUPressureInjectorConfig) (cpuset.CPUSet, error)
-	CoresToBeStressed() cpuset.CPUSet
 	IsCoreAlreadyStressed(core int) bool
 	TrackCoreAlreadyStressed(core int, stresserPID int)
 	StresserPIDs() map[int]int
@@ -46,12 +45,6 @@ func (manager *cpuStressserManager) setCoresToBeStressed(cores cpuset.CPUSet) {
 	manager.log.Infof("changed GOMAXPROCS value from %d to %d", oldMaxProcs, cores.Size())
 }
 
-func (manager *cpuStressserManager) CoresToBeStressed() cpuset.CPUSet {
-	manager.mutex.RLock()
-	defer manager.mutex.RUnlock()
-	return manager.coresToBeStressed
-}
-
 func (manager *cpuStressserManager) IsCoreAlreadyStressed(core int) bool {
 	manager.mutex.RLock()
 	defer manager.mutex.RUnlock()
@@ -66,8 +59,6 @@ func (manager *cpuStressserManager) TrackCoreAlreadyStressed(core int, stresserP
 }
 
 func (manager *cpuStressserManager) StresserPIDs() map[int]int {
-	manager.mutex.RLock()
-	defer manager.mutex.RUnlock()
 	return manager.stresserPIDPerCore
 }
 

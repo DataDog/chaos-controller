@@ -5,19 +5,15 @@
 
 package injector
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+)
 import (
 	"github.com/DataDog/chaos-controller/cpuset"
 )
 
 type StresserManagerMock struct {
 	mock.Mock
-}
-
-//nolint:golint
-func (f *StresserManagerMock) CoresToBeStressed() cpuset.CPUSet {
-	args := f.Called()
-	return args.Get(0).(cpuset.CPUSet)
 }
 
 //nolint:golint

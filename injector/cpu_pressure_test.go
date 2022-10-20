@@ -34,7 +34,6 @@ var _ = Describe("Failure", func() {
 		// cgroup
 		cgroupManager = &cgroup.ManagerMock{}
 		cgroupManager.On("Join", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		cgroupManager.On("Read", "cpuset", "cpuset.cpus").Return("0-1", nil)
 
 		// container
 		ctn = &container.ContainerMock{}
