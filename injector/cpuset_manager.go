@@ -43,7 +43,7 @@ func (manager *cpuStressserManager) setCoresToBeStressed(cores cpuset.CPUSet) {
 	manager.coresToBeStressed = cores
 	oldMaxProcs := runtime.GOMAXPROCS(cores.Size())
 
-	manager.log.Infof("changed GOMAXPROCS value from %d to %d", oldMaxProcs, cores)
+	manager.log.Infof("changed GOMAXPROCS value from %d to %d", oldMaxProcs, cores.Size())
 }
 
 func (manager *cpuStressserManager) CoresToBeStressed() cpuset.CPUSet {

@@ -53,7 +53,6 @@ var _ = Describe("Failure", func() {
 
 		stresserManager = &StresserManagerMock{}
 		stresserManager.On("TrackInjectorCores", mock.Anything).Return(cpuset.NewCPUSet(0, 1), nil)
-		stresserManager.On("CoresToBeStressed").Return(cpuset.NewCPUSet(0, 1))
 		stresserManager.On("TrackCoreAlreadyStressed", mock.Anything, mock.Anything).Return(nil)
 		stresserManager.On("StresserPIDs").Return(map[int]int{0: 666})
 		stresserManager.On("IsCoreAlreadyStressed", 0).Return(true)
@@ -76,7 +75,9 @@ var _ = Describe("Failure", func() {
 		// spec
 		spec = v1beta1.CPUPressureSpec{}
 
-		inj, _ = NewCPUPressureInjector(spec, config)
+		var err error
+		inj, err = NewCPUPressureInjector(spec, config)
+		Expect(err).To(BeNil())
 
 		// because the cleaning phase is blocking, we start it in a goroutine
 		// and send a signal to the stresser exit handler
@@ -88,6 +89,15 @@ var _ = Describe("Failure", func() {
 
 		stresserExit <- struct{}{}
 	})
+
+	AfterEach(func() {
+		manager.AssertExpectations(GinkgoT())
+		stresser.AssertExpectations(GinkgoT())
+		stresserManager.AssertExpectations(GinkgoT())
+		cgroupManager.AssertExpectations(GinkgoT())
+		ctn.AssertExpectations(GinkgoT())
+	})
+
 	Describe("injection", func() {
 
 		It("should join the cpu and cpuset cgroups for the unstressed core", func() {
