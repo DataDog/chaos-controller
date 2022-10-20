@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var _ = Describe("Failure", func() {
@@ -51,7 +52,6 @@ var _ = Describe("Failure", func() {
 		manager.On("ThreadID").Return(666)
 
 		stresserManager = &stress.StresserManagerMock{}
-		stresserManager.On("TrackInjectorCores", mock.Anything).Return(cpuset.NewCPUSet(0, 1), nil)
 		stresserManager.On("TrackCoreAlreadyStressed", mock.Anything, mock.Anything).Return(nil)
 		stresserManager.On("StresserPIDs").Return(map[int]int{0: 666})
 		stresserManager.On("IsCoreAlreadyStressed", 0).Return(true)
@@ -73,7 +73,9 @@ var _ = Describe("Failure", func() {
 
 		// spec
 		spec = v1beta1.CPUPressureSpec{}
+	})
 
+	JustBeforeEach(func() {
 		var err error
 		inj, err = NewCPUPressureInjector(spec, config)
 		Expect(err).To(BeNil())
@@ -98,27 +100,46 @@ var _ = Describe("Failure", func() {
 	})
 
 	Describe("injection", func() {
+		Context("user request to stress all the cores", func() {
+			BeforeEach(func() {
+				stresserManager.On("TrackInjectorCores", mock.Anything, mock.Anything).Return(cpuset.NewCPUSet(0, 1), nil)
+			})
 
-		It("should join the cpu and cpuset cgroups for the unstressed core", func() {
-			cgroupManager.AssertCalled(GinkgoT(), "Join", "cpu", 666, false)
-			cgroupManager.AssertCalled(GinkgoT(), "Join", "cpuset", 666, false)
-			cgroupManager.AssertNumberOfCalls(GinkgoT(), "Join", 2)
+			It("should join the cpu and cpuset cgroups for the unstressed core", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Join", "cpu", 666, false)
+				cgroupManager.AssertCalled(GinkgoT(), "Join", "cpuset", 666, false)
+				cgroupManager.AssertNumberOfCalls(GinkgoT(), "Join", 2)
+			})
+
+			It("should prioritize the current process", func() {
+				manager.AssertCalled(GinkgoT(), "Prioritize")
+			})
+
+			It("should run the stress on one core", func() {
+				stresser.AssertNumberOfCalls(GinkgoT(), "Stress", 1)
+			})
+
+			It("should record core and StresserPID in StresserManager", func() {
+				stresserManager.AssertCalled(GinkgoT(), "TrackCoreAlreadyStressed", 1, 666)
+			})
+
+			It("should skip a target core that was already stress", func() {
+				stresserManager.AssertNotCalled(GinkgoT(), "TrackCoreAlreadyStressed", 0, mock.Anything)
+			})
 		})
 
-		It("should prioritize the current process", func() {
-			manager.AssertCalled(GinkgoT(), "Prioritize")
-		})
+		Context("user request to stress half of the cores", func() {
+			BeforeEach(func() {
+				userRequestCount := intstr.FromString("50%")
+				spec = v1beta1.CPUPressureSpec{
+					Count: &userRequestCount,
+				}
+				stresserManager.On("TrackInjectorCores", mock.Anything, &userRequestCount).Return(cpuset.NewCPUSet(0, 1), nil)
+			})
 
-		It("should run the stress on one core", func() {
-			stresser.AssertNumberOfCalls(GinkgoT(), "Stress", 1)
-		})
-
-		It("should record core and StresserPID in StresserManager", func() {
-			stresserManager.AssertCalled(GinkgoT(), "TrackCoreAlreadyStressed", 1, 666)
-		})
-
-		It("should skip a target core that was already stress", func() {
-			stresserManager.AssertNotCalled(GinkgoT(), "TrackCoreAlreadyStressed", 0, mock.Anything)
+			It("should call stresserManager track cores and get new core to apply pressure", func() {
+				// left empty for AfterEach
+			})
 		})
 	})
 })
