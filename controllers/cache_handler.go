@@ -223,6 +223,8 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 					case strings.Contains(lowerCasedMessage, "liveness probe"):
 						eventsToSend[chaosv1beta1.EventLivenessProbeChange] = true
 					case strings.Contains(lowerCasedMessage, "readiness probe"):
+						// If the object of the disruption is in the list of targets, it means it has been injected.
+						// The readiness probe is failing during the injection
 						if h.disruption.Status.HasTarget(event.InvolvedObject.Name) {
 							eventsToSend[chaosv1beta1.EventReadinessProbeChangeDuringDisruption] = true
 						} else {
