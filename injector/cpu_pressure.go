@@ -28,7 +28,7 @@ type CPUPressureInjectorConfig struct {
 	Stresser        stress.Stresser
 	StresserExit    chan struct{}
 	ProcessManager  process.Manager
-	StresserManager StresserManager
+	StresserManager stress.StresserManager
 }
 
 // NewCPUPressureInjector creates a CPU pressure injector with the given config
@@ -62,7 +62,7 @@ func (i *cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *cpuPressureInjector) Inject() error {
-	cores, err := i.config.StresserManager.TrackInjectorCores(i.config)
+	cores, err := i.config.StresserManager.TrackInjectorCores(i.config.Cgroup)
 
 	if err != nil {
 		return fmt.Errorf("failed to parse CPUSet %w", err)

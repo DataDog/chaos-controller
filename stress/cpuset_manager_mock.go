@@ -3,9 +3,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2022 Datadog, Inc.
 
-package injector
+package stress
 
 import (
+	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/stretchr/testify/mock"
 )
 import (
@@ -34,7 +35,7 @@ func (f *StresserManagerMock) StresserPIDs() map[int]int {
 }
 
 //nolint:golint
-func (f *StresserManagerMock) TrackInjectorCores(config CPUPressureInjectorConfig) (cpuset.CPUSet, error) {
-	args := f.Called(config)
+func (f *StresserManagerMock) TrackInjectorCores(cgroup cgroup.Manager) (cpuset.CPUSet, error) {
+	args := f.Called(cgroup)
 	return args.Get(0).(cpuset.CPUSet), args.Error(1)
 }

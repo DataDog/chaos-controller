@@ -8,6 +8,7 @@ package main
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/stress"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +19,7 @@ var cpuPressureCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 		// prepare spec
 		spec := v1beta1.CPUPressureSpec{}
-		stresserManager := injector.NewCPUStresserManager(log)
+		stresserManager := stress.NewCPUStresserManager(log)
 
 		// create injector
 		for _, config := range configs {

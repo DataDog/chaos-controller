@@ -3,10 +3,11 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2022 Datadog, Inc.
 
-package injector
+package stress
 
 import (
 	"fmt"
+	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/cpuset"
 	"go.uber.org/zap"
 	"runtime"
@@ -14,7 +15,7 @@ import (
 )
 
 type StresserManager interface {
-	TrackInjectorCores(config CPUPressureInjectorConfig) (cpuset.CPUSet, error)
+	TrackInjectorCores(cgroup cgroup.Manager) (cpuset.CPUSet, error)
 	IsCoreAlreadyStressed(core int) bool
 	TrackCoreAlreadyStressed(core int, stresserPID int)
 	StresserPIDs() map[int]int
@@ -62,11 +63,11 @@ func (manager *cpuStressserManager) StresserPIDs() map[int]int {
 	return manager.stresserPIDPerCore
 }
 
-func (manager *cpuStressserManager) TrackInjectorCores(config CPUPressureInjectorConfig) (cpuset.CPUSet, error) {
+func (manager *cpuStressserManager) TrackInjectorCores(cgroup cgroup.Manager) (cpuset.CPUSet, error) {
 	// read cpuset allocated cores
-	config.Log.Infow("retrieving target cpuset allocated cores")
+	manager.log.Infow("retrieving target cpuset allocated cores")
 
-	cpusetCores, err := config.Cgroup.Read("cpuset", "cpuset.cpus")
+	cpusetCores, err := cgroup.Read("cpuset", "cpuset.cpus")
 	if err != nil {
 		return cpuset.NewCPUSet(), fmt.Errorf("failed to read the target allocated cpus from the cpuset cgroup: %w", err)
 	}

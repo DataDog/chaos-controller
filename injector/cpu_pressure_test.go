@@ -27,7 +27,7 @@ var _ = Describe("Failure", func() {
 		manager         *process.ManagerMock
 		inj             Injector
 		spec            v1beta1.CPUPressureSpec
-		stresserManager *StresserManagerMock
+		stresserManager *stress.StresserManagerMock
 	)
 
 	BeforeEach(func() {
@@ -50,7 +50,7 @@ var _ = Describe("Failure", func() {
 		manager.On("Prioritize").Return(nil)
 		manager.On("ThreadID").Return(666)
 
-		stresserManager = &StresserManagerMock{}
+		stresserManager = &stress.StresserManagerMock{}
 		stresserManager.On("TrackInjectorCores", mock.Anything).Return(cpuset.NewCPUSet(0, 1), nil)
 		stresserManager.On("TrackCoreAlreadyStressed", mock.Anything, mock.Anything).Return(nil)
 		stresserManager.On("StresserPIDs").Return(map[int]int{0: 666})
