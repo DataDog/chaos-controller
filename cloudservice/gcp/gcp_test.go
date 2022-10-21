@@ -85,6 +85,19 @@ var _ = Describe("GCP Parsing", func() {
 			Expect(errIsNewVersion).ToNot(BeNil())
 		})
 
+		It("Should throw an error on empty ip ranges file", func() {
+			gcpManager := New()
+
+			_, errConvert := gcpManager.ConvertToGenericIPRanges(make([]byte, 0))
+			_, errIsNewVersion := gcpManager.IsNewVersion(make([]byte, 0), "20")
+
+			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
+			Expect(errConvert).ToNot(BeNil())
+
+			By("Ensuring that an error was thrown on IsNewVersion")
+			Expect(errIsNewVersion).ToNot(BeNil())
+		})
+
 		It("Should throw an error on nil ip ranges file", func() {
 			gcpManager := New()
 
