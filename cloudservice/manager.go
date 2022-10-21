@@ -35,7 +35,7 @@ type CloudServicesProvider struct {
 
 // CloudProviderIPRangeManager Methods to verify and transform a specifid ip ranges list from a provider
 type CloudProviderIPRangeManager interface {
-	IsNewVersion([]byte, string) bool
+	IsNewVersion([]byte, string) (bool, error)
 	ConvertToGenericIPRanges([]byte) (*types.CloudProviderIPRangeInfo, error)
 }
 
@@ -173,11 +173,18 @@ func (s *CloudServicesProvidersManager) pullIPRangesPerCloudProvider(cloudProvid
 		return err
 	}
 
-	if provider.IPRangeInfo != nil && !provider.CloudProviderIPRangeManager.IsNewVersion(unparsedIPRange, provider.IPRangeInfo.Version) {
-		s.log.Debugw("no changes of ip ranges", "provider", cloudProviderName)
-		s.log.Debugw("finished pulling new version", "provider", cloudProviderName)
+	if provider.IPRangeInfo != nil {
+		isNewVersion, err := provider.CloudProviderIPRangeManager.IsNewVersion(unparsedIPRange, provider.IPRangeInfo.Version)
+		if err != nil {
+			return err
+		}
 
-		return nil
+		if !isNewVersion {
+			s.log.Debugw("no changes of ip ranges", "provider", cloudProviderName)
+			s.log.Debugw("finished pulling new version", "provider", cloudProviderName)
+
+			return nil
+		}
 	}
 
 	provider.IPRangeInfo, err = provider.CloudProviderIPRangeManager.ConvertToGenericIPRanges(unparsedIPRange)

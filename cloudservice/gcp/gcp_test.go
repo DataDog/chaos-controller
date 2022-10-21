@@ -25,12 +25,12 @@ var _ = AfterSuite(func() {
 
 var _ = Describe("GCP Parsing", func() {
 	Context("Parse GCP IP Range file", func() {
-		ipRangeFile := "{\"syncToken\":\"1000000000\",\"createDate\":\"2022-09-01-22-03-06\",\"prefixes\":[{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"},{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"},{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"},{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"}]}"
-		gcpManager := New()
-
-		info, err := gcpManager.ConvertToGenericIPRanges([]byte(ipRangeFile))
-
 		It("should parse the ip range file", func() {
+			ipRangeFile := "{\"syncToken\":\"1000000000\",\"createDate\":\"2022-09-01-22-03-06\",\"prefixes\":[{\"ipv4Prefix\": \"34.80.0.0/15\"},{\"ipv4Prefix\": \"5.80.0.0/15\"},{\"ipv4Prefix\": \"150.81.0.0/15\"},{\"ipv4Prefix\": \"127.80.0.0/15\"}]}"
+			gcpManager := New()
+
+			info, err := gcpManager.ConvertToGenericIPRanges([]byte(ipRangeFile))
+
 			By("Ensuring that no error was thrown")
 			Expect(err).To(BeNil())
 
@@ -40,18 +40,62 @@ var _ = Describe("GCP Parsing", func() {
 			By("Ensuring that we have the right info")
 			Expect(len(info.IPRanges["Google Cloud"])).To(Equal(4))
 		})
+
+		It("should remove 8.8.8.8 of the ip range file", func() {
+			ipRangeFile := "{\"syncToken\":\"1000000000\",\"createDate\":\"2022-09-01-22-03-06\",\"prefixes\":[{\"ipv4Prefix\": \"8.8.8.0/15\"},{\"ipv4Prefix\": \"5.80.0.0/15\"},{\"ipv4Prefix\": \"150.81.0.0/15\"},{\"ipv4Prefix\": \"127.80.0.0/15\"}]}"
+			gcpManager := New()
+
+			info, err := gcpManager.ConvertToGenericIPRanges([]byte(ipRangeFile))
+
+			By("Ensuring that no error was thrown")
+			Expect(err).To(BeNil())
+
+			By("Ensuring that we have the right info")
+			Expect(len(info.IPRanges["Google Cloud"])).To(Equal(3))
+		})
 	})
 
 	Context("Verify GCP New version of the file", func() {
-		ipRangeFile := "{\"syncToken\":\"1000000000\",\"createDate\":\"2022-09-01-22-03-06\",\"prefixes\":[{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"},{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"},{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"},{\"ipv4Prefix\": \"34.80.0.0/15\",\"service\": \"Google Cloud\",\"scope\": \"asia-east1\"}]}"
-		awsManager := New()
+		ipRangeFile := "{\"syncToken\":\"1000000000\",\"createDate\":\"2022-09-01-22-03-06\",\"prefixes\":[{\"ipv4Prefix\": \"34.80.0.0/15\"},{\"ipv4Prefix\": \"5.80.0.0/15\"},{\"ipv4Prefix\": \"150.81.0.0/15\"},{\"ipv4Prefix\": \"127.80.0.0/15\"}]}"
+		gcpManager := New()
 
-		isNewVersion := awsManager.IsNewVersion([]byte(ipRangeFile), "20")
+		isNewVersion, err := gcpManager.IsNewVersion([]byte(ipRangeFile), "20")
 
 		It("Should indicate is a new version", func() {
+			By("Ensuring that no error was thrown")
+			Expect(err).To(BeNil())
+
 			By("Ensuring that the version is new")
 			Expect(isNewVersion).To(Equal(true))
 		})
 	})
 
+	Context("Verify GCP handle of errors", func() {
+		It("Should throw an error on empty ip ranges file", func() {
+			ipRangeFile := ""
+			gcpManager := New()
+
+			_, errConvert := gcpManager.ConvertToGenericIPRanges([]byte(ipRangeFile))
+			_, errIsNewVersion := gcpManager.IsNewVersion([]byte(ipRangeFile), "20")
+
+			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
+			Expect(errConvert).ToNot(BeNil())
+
+			By("Ensuring that an error was thrown on IsNewVersion")
+			Expect(errIsNewVersion).ToNot(BeNil())
+		})
+
+		It("Should throw an error on nil ip ranges file", func() {
+			gcpManager := New()
+
+			_, errConvert := gcpManager.ConvertToGenericIPRanges(nil)
+			_, errIsNewVersion := gcpManager.IsNewVersion(nil, "20")
+
+			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
+			Expect(errConvert).ToNot(BeNil())
+
+			By("Ensuring that an error was thrown on IsNewVersion")
+			Expect(errIsNewVersion).ToNot(BeNil())
+		})
+	})
 })

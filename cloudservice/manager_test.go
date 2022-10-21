@@ -61,6 +61,7 @@ var _ = Describe("New function", func() {
 				types.CloudProviderAWS: {
 					CloudProviderIPRangeManager: NewCloudServiceMock(
 						true,
+						nil,
 						"1",
 						[]string{"S3", "EC2"},
 						map[string][]string{
@@ -82,6 +83,7 @@ var _ = Describe("New function", func() {
 				types.CloudProviderGCP: {
 					CloudProviderIPRangeManager: NewCloudServiceMock(
 						true,
+						nil,
 						"1",
 						[]string{"Google Cloud"},
 						map[string][]string{

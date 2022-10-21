@@ -18,8 +18,6 @@ type CloudProviderIPRangeManager struct {
 // GCPIpRange from the model of the ip range file from GCP
 type GCPIPRange struct {
 	IPPrefix string `json:"ipv4Prefix"`
-	Region   string `json:"scope"`
-	Service  string `json:"service"`
 }
 
 // GCPIpRanges from the model of the ip range file from GCP
@@ -28,18 +26,24 @@ type GCPIPRanges struct {
 	Prefixes  []GCPIPRange `json:"prefixes"`
 }
 
+const (
+	// As of today, the file used to parse google ip ranges does not contain information about which ip ranges is assigned to which service
+	// We assign every ip ranges to the service "Google Cloud" for this reason
+	GoogleCloudService = "Google Cloud"
+)
+
 func New() *CloudProviderIPRangeManager {
 	return &CloudProviderIPRangeManager{}
 }
 
 // IsNewVersion Check if the ip ranges pulled are newer than the one we already have
-func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldVersion string) bool {
+func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldVersion string) (bool, error) {
 	ipRanges := GCPIPRanges{}
 	if err := json.Unmarshal(newIPRanges, &ipRanges); err != nil {
-		return false
+		return false, err
 	}
 
-	return ipRanges.SyncToken != oldVersion
+	return ipRanges.SyncToken != oldVersion, nil
 }
 
 // ConvertToGenericIPRanges From an unmarshalled json ip range file from GCP to a generic ip range struct
@@ -50,29 +54,20 @@ func (s *CloudProviderIPRangeManager) ConvertToGenericIPRanges(unparsedIPRanges 
 	}
 
 	result := &types.CloudProviderIPRangeInfo{
-		ServiceList: []string{},
-		IPRanges:    make(map[string][]string),
-		Version:     ipRanges.SyncToken,
+		ServiceList: []string{GoogleCloudService},
+		IPRanges: map[string][]string{
+			GoogleCloudService: {},
+		},
+		Version: ipRanges.SyncToken,
 	}
 
 	for _, ipRange := range ipRanges.Prefixes {
-		// in the IP Ranges provided by google, no service is explicitly set
-		if ipRange.Service == "" {
-			ipRange.Service = "Google Cloud"
-		}
-
-		if len(result.IPRanges[ipRange.Service]) == 0 {
-			result.ServiceList = append(result.ServiceList, ipRange.Service)
-
-			result.IPRanges[ipRange.Service] = []string{}
-		}
-
 		// Remove empty IPPrefixes (can happen if we only have IpV6) and remove the dns servers of Google in the list of ip ranges available to disrupt
 		if ipRange.IPPrefix == "" || strings.HasPrefix(ipRange.IPPrefix, "8.8") {
 			continue
 		}
 
-		result.IPRanges[ipRange.Service] = append(result.IPRanges[ipRange.Service], ipRange.IPPrefix)
+		result.IPRanges[GoogleCloudService] = append(result.IPRanges[GoogleCloudService], ipRange.IPPrefix)
 	}
 
 	return result, nil

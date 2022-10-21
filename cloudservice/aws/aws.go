@@ -33,13 +33,13 @@ func New() *CloudProviderIPRangeManager {
 }
 
 // IsNewVersion Check if the ip ranges pulled are newer than the one we already have
-func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldVersion string) bool {
+func (s *CloudProviderIPRangeManager) IsNewVersion(newIPRanges []byte, oldVersion string) (bool, error) {
 	ipRanges := AWSIPRanges{}
 	if err := json.Unmarshal(newIPRanges, &ipRanges); err != nil {
-		return false
+		return false, err
 	}
 
-	return ipRanges.SyncToken != oldVersion
+	return ipRanges.SyncToken != oldVersion, nil
 }
 
 // ConvertToGenericIPRanges From an unmarshalled json ip range file from AWS to a generic ip range struct
