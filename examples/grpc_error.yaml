@@ -14,7 +14,7 @@ spec:
     app: chaos-dogfood-server
   count: 100%
   grpc:
-    port: 50050
+    port: 50055
     endpoints:
       - endpoint: /chaosdogfood.ChaosDogfood/getCatalog # gRPC service endpoint to disrupt
         error: UNAVAILABLE # gRPC error code to return instead computed response

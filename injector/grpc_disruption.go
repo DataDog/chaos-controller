@@ -33,11 +33,14 @@ type GRPCDisruptionInjector struct {
 // GRPCDisruptionInjectorConfig contains all needed drivers to create a grpc disruption
 type GRPCDisruptionInjectorConfig struct {
 	Config
+	State InjectorState
 }
 
 // NewGRPCDisruptionInjector creates a GRPCDisruptionInjector object with the given config,
 // missing fields are initialized with the defaults
 func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisruptionInjectorConfig) Injector {
+	config.State = Created
+
 	return &GRPCDisruptionInjector{
 		spec:       spec,
 		config:     config,
@@ -65,6 +68,9 @@ func (i *GRPCDisruptionInjector) Inject() error {
 		return err
 	}
 
+	// as long as we managed to dial the server, then we have to assume we're injected
+	i.config.State = Injected
+
 	i.config.Log.Infow("adding grpc disruption", "spec", i.spec)
 
 	err = chaos_grpc.SendGrpcDisruption(pb.NewDisruptionListenerClient(conn), i.spec)
@@ -82,6 +88,11 @@ func (i *GRPCDisruptionInjector) UpdateConfig(config Config) {
 
 // Clean removes the injected disruption from the given container
 func (i *GRPCDisruptionInjector) Clean() error {
+	if i.config.State != Injected {
+		i.config.Log.Infow("nothing to clean", "spec", i.spec, "state", i.config.State)
+		return nil
+	}
+
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
 	if i.config.DryRun {
@@ -92,9 +103,7 @@ func (i *GRPCDisruptionInjector) Clean() error {
 	conn, err := i.connectToServer()
 	if err != nil {
 		i.config.Log.Errorf(err.Error())
-		// swallow connection err because there is nothing else we can do with the error
-		// this will allow the clean cycle to exit successfully
-		return nil
+		return err
 	}
 
 	i.config.Log.Infow("removing grpc disruption", "spec", i.spec)
@@ -103,7 +112,10 @@ func (i *GRPCDisruptionInjector) Clean() error {
 
 	if err != nil {
 		i.config.Log.Error("Received an error: %v", err)
+		return err
 	}
+
+	i.config.State = Cleaned
 
 	return conn.Close()
 }
