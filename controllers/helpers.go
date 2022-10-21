@@ -28,6 +28,9 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cloudservice"
+	"github.com/DataDog/chaos-controller/cloudservice/types"
+	"go.uber.org/zap"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -86,6 +89,38 @@ func validateLabelSelector(selector labels.Selector) error {
 	}
 
 	return nil
+}
+
+// transformCloudSpecToHostsSpec from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
+func transformCloudSpecToHostsSpec(log *zap.SugaredLogger, cloudManager *cloudservice.CloudServicesProvidersManager, cloudSpec *v1beta1.NetworkDisruptionCloudSpec) ([]v1beta1.NetworkDisruptionHostSpec, error) {
+	hosts := []v1beta1.NetworkDisruptionHostSpec{}
+	clouds := cloudSpec.TransformToCloudMap()
+
+	for cloudName, serviceList := range clouds {
+		serviceListNames := []string{}
+
+		for _, service := range serviceList {
+			serviceListNames = append(serviceListNames, service.ServiceName)
+		}
+
+		ipRangesPerService, err := cloudManager.GetServicesIPRanges(types.CloudProviderName(cloudName), serviceListNames)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, serviceSpec := range serviceList {
+			for _, ipRange := range ipRangesPerService[serviceSpec.ServiceName] {
+				hosts = append(hosts, v1beta1.NetworkDisruptionHostSpec{
+					Host:      ipRange,
+					Protocol:  serviceSpec.Protocol,
+					Flow:      serviceSpec.Flow,
+					ConnState: serviceSpec.ConnState,
+				})
+			}
+		}
+	}
+
+	return hosts, nil
 }
 
 // isModifiedError tells us if this error is of the form:

@@ -200,6 +200,12 @@ spec:
                   allowedHosts:
                     items:
                       properties:
+                        connState:
+                          enum:
+                          - new
+                          - est
+                          - ""
+                          type: string
                         flow:
                           enum:
                           - ingress
@@ -224,6 +230,37 @@ spec:
                   bandwidthLimit:
                     minimum: 0
                     type: integer
+                  cloud:
+                    nullable: true
+                    properties:
+                      aws:
+                        items:
+                          properties:
+                            connState:
+                              enum:
+                              - new
+                              - est
+                              - ""
+                              type: string
+                            flow:
+                              enum:
+                              - ingress
+                              - egress
+                              - ""
+                              type: string
+                            protocol:
+                              enum:
+                              - tcp
+                              - udp
+                              - ""
+                              type: string
+                            service:
+                              type: string
+                          required:
+                          - service
+                          type: object
+                        type: array
+                    type: object
                   corrupt:
                     maximum: 100
                     minimum: 0
@@ -252,6 +289,12 @@ spec:
                   hosts:
                     items:
                       properties:
+                        connState:
+                          enum:
+                          - new
+                          - est
+                          - ""
+                          type: string
                         flow:
                           enum:
                           - ingress

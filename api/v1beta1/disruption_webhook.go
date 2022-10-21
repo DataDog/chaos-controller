@@ -7,11 +7,13 @@ package v1beta1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/DataDog/chaos-controller/cloudservice"
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,13 +22,13 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
-	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
@@ -40,6 +42,8 @@ var namespaceThreshold float64
 var clusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
+var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
+var chaosNamespace string
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	if err := ddmark.InitLibrary(EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix); err != nil {
@@ -57,6 +61,8 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	clusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
 	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
+	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
+	chaosNamespace = setupWebhookConfig.ChaosNamespace
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
@@ -99,6 +105,38 @@ func (r *Disruption) ValidateCreate() error {
 		return errors.New("the chaos handler is disabled but the disruption onInit field is set to true, please enable the handler by specifying the --handler-enabled flag to the controller if you want to use the onInit feature (requires Kubernetes >= 1.15)")
 	}
 
+	if r.Spec.Network != nil {
+		// this is the minimum estimated number of tc filters we could have for the disruption
+		// knowing a service is filtered by both its service IP and the pod(s) IP where the service is
+		// we don't count the number of Pods hosting the service here because this could be changing
+		estimatedTcFiltersNb := len(r.Spec.Network.Hosts) + (len(r.Spec.Network.Services) * 2)
+
+		if r.Spec.Network.Cloud != nil {
+			clouds := r.Spec.Network.Cloud.TransformToCloudMap()
+
+			for cloudName, serviceList := range clouds {
+				serviceListNames := []string{}
+
+				for _, service := range serviceList {
+					serviceListNames = append(serviceListNames, service.ServiceName)
+				}
+
+				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(cloudtypes.CloudProviderName(cloudName), serviceListNames)
+				if err != nil {
+					return fmt.Errorf("%s. Available services are: %s", err.Error(), strings.Join(cloudServicesProvidersManager.GetServiceList(cloudtypes.CloudProviderName(cloudName)), ", "))
+				}
+
+				for _, ipRanges := range ipRangesPerService {
+					estimatedTcFiltersNb += len(ipRanges)
+				}
+			}
+		}
+
+		if estimatedTcFiltersNb > MaximumTCFilters {
+			return fmt.Errorf("the number of resources (ips, ip ranges, single port) to filter is too high (%d). Please remove some hosts, services or cloud managed services to be affected in the disruption. Maximum resources (ips, ip ranges, single port) filterable is %d", estimatedTcFiltersNb, MaximumTCFilters)
+		}
+	}
+
 	if err := r.Spec.Validate(); err != nil {
 		if mErr := metricsSink.MetricValidationFailed(r.getMetricsTags()); mErr != nil {
 			logger.Errorw("error sending a metric", "error", mErr)
@@ -138,15 +176,44 @@ func (r *Disruption) ValidateCreate() error {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateUpdate(old runtime.Object) error {
-	logger.Debugw("validating updated disruption", "instance", r.Name, "namespace", r.Namespace)
+	logger := logger.With("instance", r.Name, "namespace", r.Namespace)
+	logger.Debugw("validating updated disruption")
+
+	var err error
+
+	oldDisruption := old.(*Disruption)
+
+	// ensure finalizer removal is only allowed if no related chaos pods exists
+	// we should NOT always prevent finalizer removal because chaos controller reconcile loop will go through this mutating webhook when perfoming updates
+	// and need to be able to remove the finalizer to enable the disruption to be garbage collected on successful removal
+	if controllerutil.ContainsFinalizer(oldDisruption, chaostypes.DisruptionFinalizer) && !controllerutil.ContainsFinalizer(r, chaostypes.DisruptionFinalizer) {
+		oldPods, err := GetChaosPods(context.Background(), logger, chaosNamespace, k8sClient, oldDisruption, nil)
+		if err != nil {
+			return fmt.Errorf("error getting disruption pods: %w", err)
+		}
+
+		if len(oldPods) != 0 {
+			oldPodsInfos := []string{}
+			for _, oldPod := range oldPods {
+				oldPodsInfos = append(oldPodsInfos, fmt.Sprintf("%s/%s", oldPod.Namespace, oldPod.Name))
+			}
+
+			metricTags := append(r.getMetricsTags(), "prevent_finalizer_removal:true")
+			if mErr := metricsSink.MetricValidationFailed(metricTags); mErr != nil {
+				logger.Errorw("error sending a metric", "error", mErr)
+			}
+
+			return fmt.Errorf(`unable to remove disruption finalizer, disruption '%s/%s' still has associated pods:
+- %s
+You first need to remove those chaos pods (and potentially their finalizers) to be able to remove disruption finalizer`, oldDisruption.Namespace, oldDisruption.Name, strings.Join(oldPodsInfos, "\n- "))
+		}
+	}
 
 	// compare old and new disruption hashes and deny any spec changes
 	var oldHash, newHash string
 
-	var err error
-
-	if r.Spec.StaticTargeting {
-		oldHash, err = old.(*Disruption).Spec.Hash()
+	if oldDisruption.Spec.StaticTargeting {
+		oldHash, err = oldDisruption.Spec.Hash()
 		if err != nil {
 			return fmt.Errorf("error getting old disruption hash: %w", err)
 		}
@@ -157,7 +224,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 			return fmt.Errorf("error getting new disruption hash: %w", err)
 		}
 	} else {
-		oldHash, err = old.(*Disruption).Spec.HashNoCount()
+		oldHash, err = oldDisruption.Spec.HashNoCount()
 		if err != nil {
 			return fmt.Errorf("error getting old disruption hash: %w", err)
 		}
@@ -167,12 +234,12 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 		}
 	}
 
-	logger.Debugw("comparing disruption spec hashes", "instance", r.Name, "namespace", r.Namespace, "oldHash", oldHash, "newHash", newHash)
+	logger.Debugw("comparing disruption spec hashes", "oldHash", oldHash, "newHash", newHash)
 
 	if oldHash != newHash {
-		logger.Errorw("error when comparing disruption spec hashes", "instance", r.Name, "namespace", r.Namespace, "oldHash", oldHash, "newHash", newHash)
+		logger.Errorw("error when comparing disruption spec hashes", "oldHash", oldHash, "newHash", newHash)
 
-		if r.Spec.StaticTargeting {
+		if oldDisruption.Spec.StaticTargeting {
 			return fmt.Errorf("[StaticTargeting: true] a disruption spec cannot be updated, please delete and recreate it if needed")
 		}
 
@@ -212,18 +279,15 @@ func (r *Disruption) getMetricsTags() []string {
 		"namespace:" + r.Namespace,
 	}
 
-	if _, ok := r.Annotations["UserInfo"]; ok {
-		var annotation v1.UserInfo
-
-		err := json.Unmarshal([]byte(r.Annotations["UserInfo"]), &annotation)
+	if userInfo, err := r.UserInfo(); !errors.Is(err, ErrNoUserInfo) {
 		if err != nil {
-			logger.Errorw("Error decoding annotation", err)
+			logger.Errorw("error retrieving user info from disruption, using empty user info", "error", err, "disruptionName", r.Name, "disruptionNamespace", r.Namespace)
 		}
 
-		tags = append(tags, "username:"+annotation.Username)
+		tags = append(tags, "username:"+userInfo.Username)
 
 		// add groups
-		for _, group := range annotation.Groups {
+		for _, group := range userInfo.Groups {
 			tags = append(tags, "group:"+group)
 		}
 	}
