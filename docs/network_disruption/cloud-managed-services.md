@@ -40,7 +40,7 @@ spec:
           flow: "egress" # available are egress or ingress. Optional
           protocol: "tcp" # available are tcp or udp. Optional
       gcp:
-        - service: "Google Cloud"
+        - service: "Google" # only service available for gcp
           flow: "egress"
           connState: "new"
     delay: 1000 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
@@ -60,7 +60,7 @@ We are using the URL **https://ip-ranges.amazonaws.com/ip-ranges.json** to pull 
 
 ## GCP
 
-Available service is `Google Cloud`.
+Available service is `Google`.
 
 Google does not indicates which ip ranges correspond to which service in its ip ranges files.
 

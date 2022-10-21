@@ -28,8 +28,8 @@ type GCPIPRanges struct {
 
 const (
 	// As of today, the file used to parse google ip ranges does not contain information about which ip ranges is assigned to which service
-	// We assign every ip ranges to the service "Google Cloud" for this reason
-	GoogleCloudService = "Google Cloud"
+	// We assign every ip ranges to the service "Google" for this reason
+	GoogleCloudService = "Google"
 )
 
 func New() *CloudProviderIPRangeManager {

@@ -38,7 +38,7 @@ var _ = Describe("GCP Parsing", func() {
 			Expect(info.Version).To(Equal("1000000000"))
 
 			By("Ensuring that we have the right info")
-			Expect(len(info.IPRanges["Google Cloud"])).To(Equal(4))
+			Expect(len(info.IPRanges[GoogleCloudService])).To(Equal(4))
 		})
 
 		It("should remove 8.8.8.8 of the ip range file", func() {
@@ -51,7 +51,7 @@ var _ = Describe("GCP Parsing", func() {
 			Expect(err).To(BeNil())
 
 			By("Ensuring that we have the right info")
-			Expect(len(info.IPRanges["Google Cloud"])).To(Equal(3))
+			Expect(len(info.IPRanges[GoogleCloudService])).To(Equal(3))
 		})
 	})
 

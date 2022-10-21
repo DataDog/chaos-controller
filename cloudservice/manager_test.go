@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/DataDog/chaos-controller/cloudservice/gcp"
 	"github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/log"
 	. "github.com/onsi/ginkgo"
@@ -85,9 +86,9 @@ var _ = Describe("New function", func() {
 						true,
 						nil,
 						"1",
-						[]string{"Google Cloud"},
+						[]string{gcp.GoogleCloudService},
 						map[string][]string{
-							"Google Cloud": {
+							gcp.GoogleCloudService: {
 								"6.2.3.0/24",
 								"7.2.3.0/24",
 								"8.2.3.0/24",
@@ -123,10 +124,10 @@ var _ = Describe("New function", func() {
 
 			By("Ensuring gcp service list is populated with the right information")
 			Expect(reflect.DeepEqual(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.ServiceList, []string{
-				"Google Cloud",
+				gcp.GoogleCloudService,
 			})).To(BeTrue())
 			Expect(reflect.DeepEqual(manager.GetServiceList(types.CloudProviderGCP), []string{
-				"Google Cloud",
+				gcp.GoogleCloudService,
 			})).To(BeTrue())
 		})
 
@@ -166,7 +167,7 @@ var _ = Describe("New function", func() {
 
 			By("Ensuring gcp ip ranges map is populated with the right information")
 			Expect(reflect.DeepEqual(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.IPRanges, map[string][]string{
-				"Google Cloud": {
+				gcp.GoogleCloudService: {
 					"6.2.3.0/24",
 					"7.2.3.0/24",
 					"8.2.3.0/24",
@@ -174,10 +175,10 @@ var _ = Describe("New function", func() {
 			})).To(BeTrue())
 
 			By("Ensuring it returns the right ip ranges map when using the GetServicesIPRanges function")
-			ipRanges, err = manager.GetServicesIPRanges(types.CloudProviderGCP, []string{"Google Cloud"})
+			ipRanges, err = manager.GetServicesIPRanges(types.CloudProviderGCP, []string{gcp.GoogleCloudService})
 			Expect(err).To(BeNil())
 			Expect(reflect.DeepEqual(ipRanges, map[string][]string{
-				"Google Cloud": {
+				gcp.GoogleCloudService: {
 					"6.2.3.0/24",
 					"7.2.3.0/24",
 					"8.2.3.0/24",
