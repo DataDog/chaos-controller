@@ -317,11 +317,7 @@ func initPodWatch(resourceVersion string) (<-chan watch.Event, error) {
 func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 	errOnInject := false
 
-	for i, inj := range injectors {
-		if onInit && len(configs) > i && configs[i].TargetContainer != nil && configs[i].TargetContainer.Name() == chaosInitContName {
-			continue
-		}
-
+	for _, inj := range injectors {
 		// start injection, do not fatal on error so we keep the pod
 		// running, allowing the cleanup to happen
 		if err := inj.Inject(); err != nil {
@@ -450,16 +446,20 @@ func clean(kind string, sendToMetrics bool, reinjectionClean bool) bool {
 
 // pulse pulse disruptions (injection and cleaning)
 func pulse(isInjected *bool, sleepDuration *time.Duration, action func(string, bool, bool) bool, cmdName string) (func(string, bool, bool) bool, error) {
+	actionName := ""
+
 	if !*isInjected {
 		action = inject
+		actionName = "inject"
 		*sleepDuration = pulseDormantDuration
 	} else {
 		action = clean
+		actionName = "clean"
 		*sleepDuration = pulseActiveDuration
 	}
 
 	if ok := action(cmdName, true, true); !ok {
-		return nil, fmt.Errorf("error on pulsing disruption mechanism")
+		return nil, fmt.Errorf("error on pulsing disruption mechanism when attempting to %s", actionName)
 	}
 
 	newInjected := !*isInjected
@@ -531,6 +531,8 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 			isInjected := true
 			sleepDuration := pulseActiveDuration
 
+			// using a label for the loop to be able to break out of it
+		pulsingLoop:
 			for { // This loop will wait, clean, wait, inject until a signal is received
 				select { // Quit on signal reception or sleep and injects / cleans the disruptions
 				case sig := <-signals:
@@ -544,13 +546,14 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 				case <-time.After(sleepDuration):
 					action, err = pulse(&isInjected, &sleepDuration, action, cmd.Name())
 					if err != nil {
-						break
+						log.Errorf(err.Error())
+
+						// break of PulsingLoop only
+						break pulsingLoop
 					}
 				}
 			}
 		}
-
-		break
 	default:
 		if onInit {
 			log.Debugw("the init container will not get restarted on container restart")
@@ -691,7 +694,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 					continue
 				}
 
-				if status.Started == nil || (status.Started != nil && *status.Started == false) {
+				if status.Started == nil || (status.Started != nil && !*status.Started) {
 					notReady = true
 
 					break
