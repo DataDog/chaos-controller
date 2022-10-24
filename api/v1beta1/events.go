@@ -33,13 +33,14 @@ type DisruptionEvent struct {
 const (
 	// Targeted pods related
 	// Warning events
-	EventPodWarningState       string = "TargetPodInWarningState"
-	EventContainerWarningState string = "TargetPodContainersInWarningState"
-	EventLivenessProbeChange   string = "TargetPodLivenessProbe"
-	EventReadinessProbeChange  string = "TargetPodReadinessProbe"
-	EventTooManyRestarts       string = "TargetPodTooManyRestarts"
+	EventPodWarningState                      string = "TargetPodInWarningState"
+	EventContainerWarningState                string = "TargetPodContainersInWarningState"
+	EventLivenessProbeChange                  string = "TargetPodLivenessProbe"
+	EventTooManyRestarts                      string = "TargetPodTooManyRestarts"
+	EventReadinessProbeChangeBeforeDisruption string = "EventReadinessProbeChangeBeforeDisruption"
 	// Normal events
-	EventPodRecoveredState string = "RecoveredWarningStateInTargetPod"
+	EventPodRecoveredState                    string = "RecoveredWarningStateInTargetPod"
+	EventReadinessProbeChangeDuringDisruption string = "EventReadinessProbeChangeDuringDisruption"
 
 	// Targeted nodes related
 	// Warning events
@@ -92,11 +93,17 @@ var Events = map[string]DisruptionEvent{
 		OnDisruptionTemplateAggMessage: "liveness probe(s) on targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "liveness probes on pod are failing",
 		Category:                       TargetEvent,
-	},
-	EventReadinessProbeChange: {
+	}, EventReadinessProbeChangeDuringDisruption: {
+		Type:                           corev1.EventTypeNormal,
+		Reason:                         EventReadinessProbeChangeDuringDisruption,
+		OnDisruptionTemplateMessage:    "readiness probe on targeted pod %s is failing",
+		OnDisruptionTemplateAggMessage: "readiness probes on targeted pod(s) are failing",
+		OnTargetTemplateMessage:        EventOnTargetTemplate + "readiness probes on pod are failing",
+		Category:                       TargetEvent,
+	}, EventReadinessProbeChangeBeforeDisruption: {
 		Type:                           corev1.EventTypeWarning,
-		Reason:                         EventReadinessProbeChange,
-		OnDisruptionTemplateMessage:    "readiness probe on targeted pod %s are failing",
+		Reason:                         EventReadinessProbeChangeBeforeDisruption,
+		OnDisruptionTemplateMessage:    "readiness probe on targeted pod %s is failing",
 		OnDisruptionTemplateAggMessage: "readiness probes on targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "readiness probes on pod are failing",
 		Category:                       TargetEvent,
