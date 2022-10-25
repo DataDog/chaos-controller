@@ -94,7 +94,7 @@ func (r *Disruption) ValidateCreate() error {
 		return errors.New("the controller is currently in delete-only mode, you can't create new disruptions for now")
 	}
 
-	// reject disrputions with a name which would not be a valid label value
+	// reject disruptions with a name which would not be a valid label value
 	// according to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 	if _, err := labels.Parse(fmt.Sprintf("name=%s", r.Name)); err != nil {
 		return fmt.Errorf("invalid disruption name: %w", err)

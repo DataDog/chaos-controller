@@ -118,10 +118,7 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 			continue
 		}
 
-		eventType := corev1.EventTypeWarning
-		if eventReason == chaosv1beta1.EventNodeRecoveredState || eventReason == chaosv1beta1.EventPodRecoveredState {
-			eventType = corev1.EventTypeNormal
-		}
+		eventType := chaosv1beta1.Events[eventReason].Type
 
 		// Send to updated target
 		h.reconciler.Recorder.Event(objectToNotify, eventType, eventReason, fmt.Sprintf(chaosv1beta1.Events[eventReason].OnTargetTemplateMessage, h.disruption.Name))
@@ -226,7 +223,13 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 					case strings.Contains(lowerCasedMessage, "liveness probe"):
 						eventsToSend[chaosv1beta1.EventLivenessProbeChange] = true
 					case strings.Contains(lowerCasedMessage, "readiness probe"):
-						eventsToSend[chaosv1beta1.EventReadinessProbeChange] = true
+						// If the object of the disruption is in the list of targets, it means it has been injected.
+						// The readiness probe is failing during the injection
+						if h.disruption.Status.HasTarget(event.InvolvedObject.Name) {
+							eventsToSend[chaosv1beta1.EventReadinessProbeChangeDuringDisruption] = true
+						} else {
+							eventsToSend[chaosv1beta1.EventReadinessProbeChangeBeforeDisruption] = true
+						}
 					default:
 						eventsToSend[chaosv1beta1.EventPodWarningState] = true
 					}

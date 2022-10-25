@@ -99,9 +99,10 @@ type NetworkDisruptionServiceSpec struct {
 	Namespace string `json:"namespace"`
 }
 
-// +ddmark:validation:AtLeastOneOf={AWSServiceList}
+// +ddmark:validation:AtLeastOneOf={AWSServiceList,GCPServiceList}
 type NetworkDisruptionCloudSpec struct {
 	AWSServiceList *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty"`
+	GCPServiceList *[]NetworkDisruptionCloudServiceSpec `json:"gcp,omitempty"`
 }
 
 type NetworkDisruptionCloudServiceSpec struct {
@@ -193,6 +194,10 @@ func (s *NetworkDisruptionCloudSpec) TransformToCloudMap() map[string][]NetworkD
 
 	if s.AWSServiceList != nil {
 		clouds["AWS"] = *s.AWSServiceList
+	}
+
+	if s.GCPServiceList != nil {
+		clouds["GCP"] = *s.GCPServiceList
 	}
 
 	return clouds

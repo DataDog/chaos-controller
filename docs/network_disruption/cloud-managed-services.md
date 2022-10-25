@@ -6,6 +6,7 @@ Large cloud services providers are using wide IP ranges. Hostnames used to ident
 
 Available cloud providers are:
 - AWS
+- GCP
 
 ### Cloud Provider Manager
 
@@ -38,6 +39,10 @@ spec:
         - service: "S3"
           flow: "egress" # available are egress or ingress. Optional
           protocol: "tcp" # available are tcp or udp. Optional
+      gcp:
+        - service: "Google" # only service available for gcp
+          flow: "egress"
+          connState: "new"
     delay: 1000 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
     delayJitter: 5 # (optional) add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%
 ```
@@ -52,3 +57,11 @@ Available services are:
 We do not support using the service "AMAZON" (from the ip ranges file) as it's a combination of all ip ranges from all services and more miscellaneous ips; the number of ip ranges being too much from this, it's not possible for us to filter all of them at once.
 
 We are using the URL **https://ip-ranges.amazonaws.com/ip-ranges.json** to pull all the IP Ranges of AWS.
+
+## GCP
+
+Available service is `Google`.
+
+Google does not indicates which ip ranges correspond to which service in its ip ranges files.
+
+We are using the URL **https://www.gstatic.com/ipranges/goog.json**. This file is the generic Google ip ranges file. We could not use the Google Cloud specific file due to some ip ranges from the apis being in the first file (goog.json). ([More info here](https://support.google.com/a/answer/10026322?hl=en))
