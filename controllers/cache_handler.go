@@ -332,7 +332,6 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 				case newReason == "Completed": // if pod is terminated in a normal way
 					continue
 				case newState != runningState && newReason != "ContainerCreating": // if pod is in Waiting or Terminated state with warning reasons
-
 					eventsToSend[chaosv1beta1.EventContainerWarningState] = true
 				case lastReason != "ContainerCreating" && newState == runningState: // if pod is spawned normally, it was not in a warning state before
 					if recoverTimestamp == nil {
