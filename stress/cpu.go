@@ -5,7 +5,9 @@
 
 package stress
 
-import "runtime"
+import (
+	"runtime"
+)
 
 type cpu struct {
 	dryRun bool

@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cpuset"
 	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/stress"
 	"github.com/DataDog/chaos-controller/types"
@@ -26,13 +25,14 @@ type cpuPressureInjector struct {
 // CPUPressureInjectorConfig is the CPU pressure injector config
 type CPUPressureInjectorConfig struct {
 	Config
-	Stresser       stress.Stresser
-	StresserExit   chan struct{}
-	ProcessManager process.Manager
+	Stresser        stress.Stresser
+	StresserExit    chan struct{}
+	ProcessManager  process.Manager
+	StresserManager stress.StresserManager
 }
 
 // NewCPUPressureInjector creates a CPU pressure injector with the given config
-func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInjectorConfig) Injector {
+func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInjectorConfig) (Injector, error) {
 	// create stresser
 	if config.Stresser == nil {
 		config.Stresser = stress.NewCPU(config.DryRun)
@@ -47,10 +47,14 @@ func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInje
 		config.ProcessManager = process.NewManager(config.DryRun)
 	}
 
+	if config.StresserManager == nil {
+		return nil, fmt.Errorf("StresserManager does not exist")
+	}
+
 	return &cpuPressureInjector{
 		spec:   spec,
 		config: config,
-	}
+	}, nil
 }
 
 func (i *cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
@@ -58,29 +62,14 @@ func (i *cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *cpuPressureInjector) Inject() error {
-	// read cpuset allocated cores
-	i.config.Log.Infow("retrieving target cpuset allocated cores")
+	cores, err := i.config.StresserManager.TrackInjectorCores(i.config.Cgroup)
 
-	cpusetCores, err := i.config.Cgroup.Read("cpuset", "cpuset.cpus")
 	if err != nil {
-		return fmt.Errorf("failed to read the target allocated cpus from the cpuset cgroup: %w", err)
+		return fmt.Errorf("failed to parse CPUSet %w", err)
 	}
-
-	// parse allocated cores
-	cores, err := cpuset.Parse(cpusetCores)
-	if err != nil {
-		return fmt.Errorf("error parsing cpuset allocated cores: %w", err)
-	}
-
-	i.config.Log.Infow(fmt.Sprintf("target identified to be running on %d cores", cores.Size()), "cores", cores.ToSlice())
-
-	// set new GOMAXPROCS value
-	oldMaxProcs := runtime.GOMAXPROCS(cores.Size())
-	i.config.Log.Infof("changed GOMAXPROCS value from %d to %d", oldMaxProcs, cores.Size())
 
 	wg := sync.WaitGroup{}
 	succeeded := true
-	tids := []int{}
 	mutex := sync.Mutex{}
 
 	// create one stress goroutine per allocated core
@@ -90,19 +79,14 @@ func (i *cpuPressureInjector) Inject() error {
 	// each thread is also niced to the highest priority
 	// because of linux scheduling, each thread will occupy a different core of allocated cores when stressing the cpu
 	for _, core := range cores.ToSlice() {
+		if i.config.StresserManager.IsCoreAlreadyStressed(core) {
+			i.config.Log.Infof("core %d is already stressed, skipping", core)
+			continue
+		}
+
 		wg.Add(1)
 
 		go func(core int) {
-			var err error
-
-			defer func() {
-				if err != nil {
-					succeeded = false
-
-					wg.Done()
-				}
-			}()
-
 			// lock the routine on the current thread
 			runtime.LockOSThread()
 			defer runtime.UnlockOSThread()
@@ -110,42 +94,16 @@ func (i *cpuPressureInjector) Inject() error {
 			// retrieve current thread PID
 			pid := i.config.ProcessManager.ThreadID()
 
-			// join target CPU cgroup
-			i.config.Log.Infow("joining target CPU cgroup", "core", core, "pid", pid)
-
-			if err = i.config.Cgroup.Join("cpu", pid, false); err != nil {
-				i.config.Log.Errorw("failed join the target CPU cgroup", "error", err, "core", core, "pid", pid)
-
-				return
+			if i.joinCgroup(core, pid) && i.prioritizeStresserProcess(core, pid) {
+				mutex.Lock()
+				i.routines++
+				mutex.Unlock()
+				wg.Done()
+				i.startStresser(core, pid)
+			} else {
+				succeeded = false
+				wg.Done()
 			}
-
-			// join target cpuset cgroup in case it is used to pin the target on specific cores
-			i.config.Log.Infow("joining target cpuset cgroup", "core", core, "pid", pid)
-
-			if err = i.config.Cgroup.Join("cpuset", pid, false); err != nil {
-				i.config.Log.Errorw("failed to join the target cpuset cgroup", "error", err, "core", core, "pid", pid)
-
-				return
-			}
-
-			// prioritize the current process
-			i.config.Log.Infow("highering current process priority", "core", core, "pid", pid)
-
-			if err = i.config.ProcessManager.Prioritize(); err != nil {
-				i.config.Log.Errorw("error highering the current process priority", "error", err, "core", core, "pid", pid)
-
-				return
-			}
-
-			i.config.Log.Infow("starting the stresser", "core", core, "pid", pid)
-
-			mutex.Lock()
-			tids = append(tids, pid)
-			i.routines++
-			mutex.Unlock()
-
-			wg.Done()
-			i.config.Stresser.Stress(i.config.StresserExit)
 		}(core)
 	}
 
@@ -156,9 +114,46 @@ func (i *cpuPressureInjector) Inject() error {
 		return fmt.Errorf("at least one stresser routine failed to execute")
 	}
 
-	i.config.Log.Infow("all routines have been created successfully, now stressing", "routinesPID", tids)
+	i.config.Log.Infow("all routines have been created successfully, now stressing", "stresserPIDPerCore", i.config.StresserManager.StresserPIDs())
 
 	return nil
+}
+
+func (i *cpuPressureInjector) joinCgroup(core int, pid int) bool {
+	// join target CPU cgroup
+	i.config.Log.Infow("joining target CPU cgroup", "core", core, "pid", pid)
+
+	if err := i.config.Cgroup.Join("cpu", pid, false); err != nil {
+		i.config.Log.Errorw("failed join the target CPU cgroup", "error", err, "core", core, "pid", pid)
+		return false
+	}
+
+	// join target cpuset cgroup in case it is used to pin the target on specific cores
+	i.config.Log.Infow("joining target cpuset cgroup", "core", core, "pid", pid)
+
+	if err := i.config.Cgroup.Join("cpuset", pid, false); err != nil {
+		i.config.Log.Errorw("failed to join the target cpuset cgroup", "error", err, "core", core, "pid", pid)
+		return false
+	}
+
+	return true
+}
+
+func (i *cpuPressureInjector) startStresser(core int, pid int) {
+	i.config.Log.Infow("starting the stresser", "core", core, "pid", pid)
+	i.config.StresserManager.TrackCoreAlreadyStressed(core, pid)
+	i.config.Stresser.Stress(i.config.StresserExit)
+}
+
+func (i *cpuPressureInjector) prioritizeStresserProcess(core int, pid int) bool {
+	i.config.Log.Infow("prioritizing the current stresser process", "core", core, "pid", pid)
+
+	if err := i.config.ProcessManager.Prioritize(); err != nil {
+		i.config.Log.Errorw("failed to prioritize the current stresser process", "error", err, "core", core, "pid", pid)
+		return false
+	}
+
+	return true
 }
 
 func (i *cpuPressureInjector) UpdateConfig(config Config) {
@@ -166,7 +161,7 @@ func (i *cpuPressureInjector) UpdateConfig(config Config) {
 }
 
 func (i *cpuPressureInjector) Clean() error {
-	i.config.Log.Info("killing routines")
+	i.config.Log.Info("killing %d routines", i.routines)
 
 	// exit the stress routines
 	for r := 0; r < i.routines; r++ {
