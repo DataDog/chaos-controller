@@ -401,6 +401,10 @@ var _ = Describe("Failure", func() {
 				tc.AssertNotCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "1:4", uint32(2), uint32(2), mock.Anything)
 				tc.AssertNotCalled(GinkgoT(), "AddCgroupFilter", []string{"lo", "eth0", "eth1"}, "2:0", mock.Anything)
 			})
+
+			It("should apply tc filters to block traffic", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "0.0.0.0/0", 0, 0, "tcp", "", "1:4")
+			})
 		})
 
 		Context("with allowed hosts", func() {
