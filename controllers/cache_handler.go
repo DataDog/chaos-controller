@@ -243,7 +243,11 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
 				)
-			} else if event.Reason == "Started" {
+
+				continue
+			}
+
+			if event.Reason == "Started" {
 				if recoverTimestamp == nil {
 					recoverTimestamp = &event.LastTimestamp.Time
 				}
@@ -256,12 +260,10 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
 				)
-			} else if event.Reason == "Killing" && strings.Contains(event.Message, "Stopping container") {
+			} else if event.Reason == "Killing" && strings.Contains(event.Message, "Stopping container") && eventsToSend[chaosv1beta1.EventContainerWarningState] {
 				// this event indicates a safe killing of a container (can occur when we rollout or manually delete a pod for example)
 				// we remove the warning state event if it has been created when we compared the state of the containers
-				if eventsToSend[chaosv1beta1.EventContainerWarningState] {
-					eventsToSend[chaosv1beta1.EventContainerWarningState] = false
-				}
+				eventsToSend[chaosv1beta1.EventContainerWarningState] = false
 			}
 		case "Node":
 			if event.Type == corev1.EventTypeWarning {
