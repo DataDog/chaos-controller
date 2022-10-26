@@ -300,7 +300,7 @@ spec:
                     maximum: 100
                     minimum: 0
                     type: integer
-                  disableAllowedHosts:
+                  disableDefaultAllowedHosts:
                     type: boolean
                   drop:
                     maximum: 100
