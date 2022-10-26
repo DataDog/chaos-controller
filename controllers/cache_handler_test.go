@@ -16,13 +16,12 @@ import (
 	"golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func findEvent(toFind v1beta1.DisruptionEvent, events []v1.Event) *v1.Event {
+func findEvent(toFind v1beta1.DisruptionEvent, events []v1.Event, involvedObjectName string) *v1.Event {
 	for _, event := range events {
-		if event.Reason == toFind.Reason && event.Type == toFind.Type {
+		if event.Reason == toFind.Reason && event.Type == toFind.Type && event.Source.Component == string(v1beta1.SourceDisruptionComponent) && event.InvolvedObject.Name == involvedObjectName {
 			return &event
 		}
 	}
@@ -94,20 +93,16 @@ var _ = Describe("Cache Handler verifications", func() {
 
 		It("should have created events on the pod", func() {
 			eventList := v1.EventList{}
-			fieldSelector := fields.Set{
-				"involvedObject.name": targetPodA.Name,
-				"source":              "disruption-controller",
-			}
 
 			err := k8sClient.List(context.Background(), &eventList, &client.ListOptions{
-				FieldSelector: fieldSelector.AsSelector(),
+				Namespace: targetPodA.Namespace,
 			})
 
 			By("ensuring no error was thrown")
 			Expect(err).To(BeNil())
 
 			By("ensuring created event was fired")
-			event := findEvent(v1beta1.Events[v1beta1.EventDisrupted], eventList.Items)
+			event := findEvent(v1beta1.Events[v1beta1.EventDisrupted], eventList.Items, targetPodA.Name)
 			Expect(event).ToNot(BeNil())
 		})
 
@@ -116,6 +111,7 @@ var _ = Describe("Cache Handler verifications", func() {
 				return k8sClient.Delete(context.Background(), targetPodA)
 			}, timeout).Should(Succeed())
 
+			targetPodA.ResourceVersion = ""
 			Expect(k8sClient.Create(context.Background(), targetPodA)).To(BeNil())
 			Eventually(func() error {
 				running, err := podsAreRunning(targetPodA)
@@ -131,19 +127,16 @@ var _ = Describe("Cache Handler verifications", func() {
 			}, timeout).Should(Succeed())
 
 			eventList := v1.EventList{}
-			fieldSelector := fields.Set{
-				"involvedObject.name": disruption.Name,
-			}
 
 			err := k8sClient.List(context.Background(), &eventList, &client.ListOptions{
-				FieldSelector: fieldSelector.AsSelector(),
+				Namespace: targetPodA.Namespace,
 			})
 
 			By("ensuring no error was thrown")
 			Expect(err).To(BeNil())
 
 			By("ensuring container target in warning state event was not fired")
-			event := findEvent(v1beta1.Events[v1beta1.EventContainerWarningState], eventList.Items)
+			event := findEvent(v1beta1.Events[v1beta1.EventContainerWarningState], eventList.Items, targetPodA.Name)
 			Expect(event).To(BeNil())
 		})
 	})
