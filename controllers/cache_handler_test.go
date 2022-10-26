@@ -107,8 +107,18 @@ var _ = Describe("Cache Handler verifications", func() {
 		})
 
 		It("should not fire any warning event on disruption", func() {
+			k8sClient.Delete(context.Background(), targetPodA)
 			Eventually(func() error {
-				return k8sClient.Delete(context.Background(), targetPodA)
+				running, err := podsAreNotRunning(targetPodA)
+				if err != nil {
+					return err
+				}
+
+				if !running {
+					return fmt.Errorf("target pods are running")
+				}
+
+				return nil
 			}, timeout).Should(Succeed())
 
 			targetPodA.ResourceVersion = ""
