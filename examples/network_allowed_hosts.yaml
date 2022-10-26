@@ -21,4 +21,4 @@ spec:
         protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
     allowedHosts: # optional, list of excluded hosts which would not be disrupted
       - host: 10.0.0.1 # optional, IP, CIDR or hostname to filter on
-    disableAllowedHosts: false # optional, disables the default set of allowed hosts
+    disableDefaultAllowedHosts: false # optional, disables the default set of allowed hosts

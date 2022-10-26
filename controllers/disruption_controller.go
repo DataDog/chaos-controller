@@ -1215,7 +1215,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			}
 
 			// remove default allowed hosts if disabled
-			if instance.Spec.Network.DisableAllowedHosts {
+			if instance.Spec.Network.DisableDefaultAllowedHosts {
 				allowedHosts = make([]string, 0)
 			}
 		}
