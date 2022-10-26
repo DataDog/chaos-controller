@@ -27,6 +27,7 @@ func TestNotifier_Notify(t *testing.T) {
 		mirrorSlackChannelID string
 		userName             string
 		notifType            types.NotificationType
+		reporting            *v1beta1.Reporting
 	}
 
 	tests := []struct {
@@ -97,6 +98,110 @@ func TestNotifier_Notify(t *testing.T) {
 				).Return("", "", nil).Once().NotBefore(getUserEmailCall)
 			},
 		},
+		{
+			name: "notify warn with reporting send user and custom slack channel notifications",
+			callContext: callContext{
+				userName:  "valid@email.org",
+				notifType: types.NotificationWarning,
+				reporting: &v1beta1.Reporting{
+					SlackChannel: "custom-slack-channel",
+				},
+			},
+			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
+				msn.On("PostMessage",
+					args.reporting.SlackChannel,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+				).Return("", "", nil).Once()
+
+				userID := "slack-user-id"
+				getUserEmailCall := msn.On("GetUserByEmail", args.userName).Return(&slack.User{
+					ID: userID,
+				}, nil)
+
+				msn.On("PostMessage",
+					userID,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+				).Return("", "", nil).Once().NotBefore(getUserEmailCall)
+			},
+		},
+		{
+			name: "notify warn with reporting error send user channel notifications only",
+			callContext: callContext{
+				userName:  "valid@email.org",
+				notifType: types.NotificationWarning,
+				reporting: &v1beta1.Reporting{
+					SlackChannel:          "custom-slack-channel",
+					NotificationTypeLevel: types.NotificationError,
+				},
+			},
+			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
+				userID := "slack-user-id"
+				getUserEmailCall := msn.On("GetUserByEmail", args.userName).Return(&slack.User{
+					ID: userID,
+				}, nil)
+
+				msn.On("PostMessage",
+					userID,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+				).Return("", "", nil).Once().NotBefore(getUserEmailCall)
+			},
+		},
+		{
+			name: "notify success with reporting and mirror send 3 notifications",
+			callContext: callContext{
+				mirrorSlackChannelID: "chaos-notif",
+				userName:             "valid@email.org",
+				notifType:            types.NotificationSuccess,
+				reporting: &v1beta1.Reporting{
+					SlackChannel: "custom-slack-channel",
+				},
+			},
+			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
+				msn.On("PostMessage",
+					args.mirrorSlackChannelID,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+				).Return("", "", nil).Once()
+
+				msn.On("PostMessage",
+					args.reporting.SlackChannel,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+				).Return("", "", nil).Once()
+
+				userID := "slack-user-id"
+				getUserEmailCall := msn.On("GetUserByEmail", args.userName).Return(&slack.User{
+					ID: userID,
+				}, nil)
+
+				msn.On("PostMessage",
+					userID,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+					mock.Anything,
+				).Return("", "", nil).Once().NotBefore(getUserEmailCall)
+			},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -132,6 +237,7 @@ func TestNotifier_Notify(t *testing.T) {
 			d.SetUserInfo(v1.UserInfo{
 				Username: tt.callContext.userName,
 			})
+			d.Spec.Reporting = tt.callContext.reporting
 
 			if tt.setup != nil {
 				tt.setup(t, slackClient, tt.callContext)

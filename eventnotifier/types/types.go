@@ -28,8 +28,25 @@ const (
 type NotificationType string
 
 const (
+	NotificationUnknown NotificationType = ""
 	NotificationSuccess NotificationType = "Success"
 	NotificationInfo    NotificationType = "Info"
 	NotificationWarning NotificationType = "Warning"
 	NotificationError   NotificationType = "Error"
 )
+
+// Allows determines if provided notif is above or equal to checked notificationType
+// We treat notifications similarly to log levels excluding all NotificationType strictly below defined NotificationType
+// Hence, Success will allow Success and above (Warning, Error)...
+func (n NotificationType) Allows(notif NotificationType) bool {
+	switch n {
+	case NotificationSuccess, NotificationUnknown:
+		return notif != NotificationInfo
+	case NotificationWarning:
+		return notif == NotificationWarning || notif == NotificationError
+	case NotificationError:
+		return notif == NotificationError
+	default:
+		return true
+	}
+}

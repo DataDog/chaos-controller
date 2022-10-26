@@ -16,6 +16,8 @@ spec:
     metadata:
       labels:
         app: chaos-controller
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
     spec:
       serviceAccount: chaos-controller
       containers:
