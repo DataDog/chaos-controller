@@ -21,12 +21,6 @@ func TestManager(t *testing.T) {
 	RunSpecs(t, "Cloudservice Manager Suite")
 }
 
-var _ = BeforeSuite(func() {
-})
-
-var _ = AfterSuite(func() {
-})
-
 var _ = Describe("New function", func() {
 	Context("Create New success", func() {
 		logger, _ := log.NewZapLogger()

@@ -37,21 +37,20 @@ spec:
     cloud:
       aws:
         - service: "S3"
-          flow: "egress" # available are egress or ingress. Optional
-          protocol: "tcp" # available are tcp or udp. Optional
-          connState: "new"
+          flow: egress # optional, available are egress or ingress
+          protocol: tcp # optional, available are tcp or udp
+          connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
       gcp:
         - service: "Google" # only service available for gcp
-          flow: "egress" # available are egress or ingress. Optional
-          protocol: "tcp" # available are tcp or udp. Optional
-          connState: "new"
+          flow: egress # optional, available are egress or ingress
+          protocol: tcp # optional, available are tcp or udp
+          connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
       datadog:
         - service: "api"
-          flow: "egress" # available are egress or ingress. Optional
-          protocol: "tcp" # available are tcp or udp. Optional
-          connState: "new"
+          flow: egress # optional, available are egress or ingress
+          protocol: tcp # optional, available are tcp or udp
+          connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
     delay: 1000 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
-    delayJitter: 5 # (optional) add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%
 ```
 
 ## AWS
