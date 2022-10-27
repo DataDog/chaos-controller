@@ -60,7 +60,7 @@ var _ = Describe("Cache Handler verifications", func() {
 		}, timeout).Should(Succeed())
 	})
 
-	Context("basic events should have been sent", func() {
+	Context("events sent verification", func() {
 		BeforeEach(func() {
 			targetLabels = targetPodA.Labels
 			disruption = &v1beta1.Disruption{
@@ -94,16 +94,22 @@ var _ = Describe("Cache Handler verifications", func() {
 		It("should have created events on the pod", func() {
 			eventList := v1.EventList{}
 
-			err := k8sClient.List(context.Background(), &eventList, &client.ListOptions{
-				Namespace: targetPodA.Namespace,
-			})
+			Eventually(func() error {
+				err := k8sClient.List(context.Background(), &eventList, &client.ListOptions{
+					Namespace: targetPodA.Namespace,
+				})
+				if err != nil {
+					return err
+				}
 
-			By("ensuring no error was thrown")
-			Expect(err).To(BeNil())
+				By("ensuring created event was fired")
+				event := findEvent(v1beta1.Events[v1beta1.EventDisrupted], eventList.Items, targetPodA.Name)
+				if event != nil {
+					return fmt.Errorf("event should not be nil")
+				}
 
-			By("ensuring created event was fired")
-			event := findEvent(v1beta1.Events[v1beta1.EventDisrupted], eventList.Items, targetPodA.Name)
-			Expect(event).ToNot(BeNil())
+				return nil
+			}, timeout).Should(Succeed())
 		})
 
 		It("should not fire any warning event on disruption", func() {
