@@ -237,6 +237,7 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 				} else {
 					eventsToSend[chaosv1beta1.EventPodWarningState] = true
 				}
+
 				h.reconciler.log.Debugw("warning event detected on target",
 					"target", targetName,
 					"reason", event.Reason,
