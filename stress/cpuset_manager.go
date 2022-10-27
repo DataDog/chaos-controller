@@ -10,12 +10,13 @@ import (
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/cpuset"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"runtime"
 	"sync"
 )
 
 type StresserManager interface {
-	TrackInjectorCores(cgroup cgroup.Manager) (cpuset.CPUSet, error)
+	TrackInjectorCores(cgroup cgroup.Manager, userRequestCount *intstr.IntOrString) (cpuset.CPUSet, error)
 	IsCoreAlreadyStressed(core int) bool
 	TrackCoreAlreadyStressed(core int, stresserPID int)
 	StresserPIDs() map[int]int
@@ -63,7 +64,7 @@ func (manager *cpuStressserManager) StresserPIDs() map[int]int {
 	return manager.stresserPIDPerCore
 }
 
-func (manager *cpuStressserManager) TrackInjectorCores(cgroup cgroup.Manager) (cpuset.CPUSet, error) {
+func (manager *cpuStressserManager) TrackInjectorCores(cgroup cgroup.Manager, userRequestCount *intstr.IntOrString) (cpuset.CPUSet, error) {
 	// read cpuset allocated cores
 	manager.log.Infow("retrieving target cpuset allocated cores")
 
@@ -78,7 +79,11 @@ func (manager *cpuStressserManager) TrackInjectorCores(cgroup cgroup.Manager) (c
 		return cpuset.NewCPUSet(), fmt.Errorf("error parsing cpuset allocated cores: %w", err)
 	}
 
-	manager.setCoresToBeStressed(manager.coresToBeStressed.Union(cores))
+	coresToBeStressedCount, _ := intstr.GetScaledValueFromIntOrPercent(userRequestCount, cores.Size(), true)
+	coresToBeStressed := cpuset.NewCPUSet(cores.ToSlice()[:coresToBeStressedCount]...)
 
-	return cores, nil
+	manager.log.Infof("retrieved coresToBeStressed after applying userRequestCount %s: %s", userRequestCount.StrVal, coresToBeStressed)
+	manager.setCoresToBeStressed(manager.coresToBeStressed.Union(coresToBeStressed))
+
+	return coresToBeStressed, nil
 }

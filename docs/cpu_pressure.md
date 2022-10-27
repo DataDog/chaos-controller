@@ -21,7 +21,9 @@ The `/sys/fs/cgroup` directory of the host must be mounted in the injector pod a
 When the injector pod starts:
 
 - It parses the `cpuset.cpus` file (located in the target `cpuset` cgroup) to retrieve cores allocated to the target processes.
-- It creates one goroutine per allocated core. Each goroutine is locked on the thread they are running on. By doing so, it forces the Go runtime scheduler to create one thread per locked goroutine.
+- It calculates the number of cores to apply pressure, by taking user input `Count`.
+- It then creates one goroutine per target core.
+- Each goroutine is locked on the thread they are running on. By doing so, it forces the Go runtime scheduler to create one thread per locked goroutine.
 - Each goroutine joins the target `cpu` and `cpuset` cgroups.
   - Joining the `cpuset` cgroup is important to both have the same number of allocated cores as the target as well as the same allocated cores so we ensure that the goroutines threads will be scheduled on the same cores as the target processes
 - Each goroutine renices itself to the highest priority (`-20`) so the Linux scheduler will always give it the priority to consume CPU time over other running processes
