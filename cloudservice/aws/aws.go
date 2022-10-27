@@ -14,7 +14,7 @@ import (
 type CloudProviderIPRangeManager struct {
 }
 
-// AWSIpRange from the model of the ip range file from AWS
+// AWSIPRange from the model of the ip range file from AWS
 type AWSIPRange struct {
 	IPPrefix           string `json:"ip_prefix"`
 	Region             string `json:"region"`
@@ -22,7 +22,7 @@ type AWSIPRange struct {
 	NetworkBorderGroup string `json:"network_border_group"`
 }
 
-// AWSIpRanges from the model of the ip range file from AWS
+// AWSIPRanges from the model of the ip range file from AWS
 type AWSIPRanges struct {
 	SyncToken string       `json:"syncToken"`
 	Prefixes  []AWSIPRange `json:"prefixes"`
