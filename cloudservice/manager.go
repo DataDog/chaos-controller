@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/cloudservice/aws"
+	"github.com/DataDog/chaos-controller/cloudservice/datadog"
 	"github.com/DataDog/chaos-controller/cloudservice/gcp"
 	"github.com/DataDog/chaos-controller/cloudservice/types"
 
@@ -53,6 +54,12 @@ func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServi
 				IPRangesURL: "https://www.gstatic.com/ipranges/goog.json", // General IP Ranges from Google, contains some API ip ranges
 			},
 		},
+		types.CloudProviderDatadog: {
+			CloudProviderIPRangeManager: datadog.New(),
+			Conf: types.CloudProviderConfig{
+				IPRangesURL: "https://ip-ranges.datadoghq.com/",
+			},
+		},
 	}
 
 	pullInterval, err := time.ParseDuration(config.PullInterval)
@@ -67,6 +74,7 @@ func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServi
 	}
 
 	if err := manager.PullIPRanges(); err != nil {
+		manager.log.Error(err)
 		return nil, err
 	}
 

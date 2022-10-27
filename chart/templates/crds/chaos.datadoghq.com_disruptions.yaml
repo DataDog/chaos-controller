@@ -266,6 +266,33 @@ spec:
                           - service
                           type: object
                         type: array
+                      datadog:
+                        items:
+                          properties:
+                            connState:
+                              enum:
+                              - new
+                              - est
+                              - ""
+                              type: string
+                            flow:
+                              enum:
+                              - ingress
+                              - egress
+                              - ""
+                              type: string
+                            protocol:
+                              enum:
+                              - tcp
+                              - udp
+                              - ""
+                              type: string
+                            service:
+                              type: string
+                          required:
+                          - service
+                          type: object
+                        type: array
                       gcp:
                         items:
                           properties:
