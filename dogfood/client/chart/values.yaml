@@ -12,10 +12,10 @@ image:
 
 imagePullSecrets: []
 fullname: "chaos-dogfood-client"
-namespace: "chaos-engineering"
+namespace: "chaos-demo"
 
 server:
-  hostname: "chaos-dogfood-server.chaos-engineering.svc.cluster.local"
+  hostname: "chaos-dogfood-server.chaos-demo.svc.cluster.local"
   port: 50051
 
 client:

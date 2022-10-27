@@ -22,17 +22,11 @@ colima-build-dogfood: colima-build-dogfood-client colima-build-dogfood-server
 dogfood-go-client:
 	GOOS=linux GOARCH=${OS_ARCH} CGO_ENABLED=0 go build -o bin/built_go_client ./client
 
-minikube-build-dogfood-client: dogfood-go-client colima-build-dogfood-client
-	minikube image load --daemon=false --overwrite=true ${CLIENT_IMAGE}
-
 colima-build-dogfood-client: dogfood-go-client
 	nerdctl build --namespace k8s.io --build-arg TARGETARCH=${OS_ARCH} -t ${CLIENT_IMAGE} -f client/Dockerfile ./bin/
 
 dogfood-go-server:
 	GOOS=linux GOARCH=${OS_ARCH} CGO_ENABLED=0 go build -o bin/built_go_server ./server
-
-minikube-build-dogfood-server: dogfood-go-server colima-build-dogfood-server
-	minikube image load --daemon=false --overwrite=true ${SERVER_IMAGE}
 
 colima-build-dogfood-server: dogfood-go-server
 	nerdctl build --namespace k8s.io --build-arg TARGETARCH=${OS_ARCH} -t ${SERVER_IMAGE} -f server/Dockerfile ./bin/

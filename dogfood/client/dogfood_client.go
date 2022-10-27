@@ -60,17 +60,56 @@ func getCatalogWithTimeout(client pb.ChaosDogfoodClient) ([]*pb.CatalogItem, err
 func printAndLog(logLine string) {
 	fmt.Println(logLine)
 
-	// write and read this file to help with testing disk disruptions
-	logLineBytes := []byte(logLine + "\n")
-	err := os.WriteFile("/mnt/data/logging", logLineBytes, 0644)
-	if err != nil {
-		fmt.Errorf("could not write to logging file: %w", err)
-	}
+	go func() {
+		logLineBytes := make([]byte, 50000)
+		logLineBytes, err := os.ReadFile("/dev/urandom")
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = os.WriteFile("/mnt/data/logging", logLineBytes, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
-	_, err = os.ReadFile("/mnt/data/logging")
-	if err != nil {
-		fmt.Errorf("could not read the logging file: %w", err)
-	}
+	go func() {
+		_, err := os.ReadFile("/mnt/data/logging")
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// write and read this file to help with testing disk disruptions
+
+	//writeSize := len(logLineBytes)
+	//var err error
+	//f, err := os.OpenFile("/mnt/data/logging", os.O_APPEND|os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0600)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//defer f.Close()
+	//// the os.WriteFile will reset the file as to not fill up disk space
+	//// the follow WriteString Operations will append 10 lines to the file so to increase read operations that follow
+	//// the writes
+	//err = os.WriteFile("/mnt/data/logging", logLineBytes, 0644)
+	//if err != nil {
+	//	fmt.Errorf("could not write to logging file: %w", err)
+	//}
+	//for i := 0; i < 10; i++ {
+	//	if _, err = f.WriteString(logLine + "\n"); err != nil {
+	//		fmt.Errorf("could not write to logging file: %w", err)
+	//	} else {
+	//		writeSize += writeSize
+	//	}
+	//
+	//}
+	//
+	//test := make([]byte, writeSize)
+	//_, err = f.Read(test)
+	//if err != nil {
+	//	fmt.Errorf("could not read the logging file: %w", err)
+	//}
 }
 
 // regularly order food for different animals
@@ -124,7 +163,6 @@ func stringifyCatalogItems(items []*pb.CatalogItem) string {
 func main() {
 	// create and eventually close connection
 	printAndLog(fmt.Sprintf("connecting to %v...\n", serverAddr))
-
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
 	opts = append(opts, grpc.WithBlock())
@@ -142,6 +180,7 @@ func main() {
 
 	// generate and use client
 	client := pb.NewChaosDogfoodClient(conn)
+	printAndLog("We successfully generated the client, getting ready to send requests")
 
 	sendsLotsOfRequests(client)
 }
