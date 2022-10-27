@@ -62,7 +62,7 @@ func (i *cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *cpuPressureInjector) Inject() error {
-	cores, err := i.config.StresserManager.TrackInjectorCores(i.config.Cgroup)
+	cores, err := i.config.StresserManager.TrackInjectorCores(i.config.Cgroup, i.spec.Count)
 
 	if err != nil {
 		return fmt.Errorf("failed to parse CPUSet %w", err)

@@ -13,4 +13,5 @@ spec:
   selector:
     app: demo-curl
   count: 1
-  cpuPressure: {} # consume as much CPU as possible to generate load
+  cpuPressure:
+    count: 50%

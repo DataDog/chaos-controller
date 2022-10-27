@@ -8,6 +8,7 @@ package stress
 import (
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/stretchr/testify/mock"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 import (
 	"github.com/DataDog/chaos-controller/cpuset"
@@ -35,7 +36,7 @@ func (f *StresserManagerMock) StresserPIDs() map[int]int {
 }
 
 //nolint:golint
-func (f *StresserManagerMock) TrackInjectorCores(cgroup cgroup.Manager) (cpuset.CPUSet, error) {
-	args := f.Called(cgroup)
+func (f *StresserManagerMock) TrackInjectorCores(cgroup cgroup.Manager, userRequestCount *intstr.IntOrString) (cpuset.CPUSet, error) {
+	args := f.Called(cgroup, userRequestCount)
 	return args.Get(0).(cpuset.CPUSet), args.Error(1)
 }

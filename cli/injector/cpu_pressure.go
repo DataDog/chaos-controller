@@ -10,6 +10,7 @@ import (
 	"github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/stress"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var cpuPressureCmd = &cobra.Command{
@@ -17,10 +18,15 @@ var cpuPressureCmd = &cobra.Command{
 	Short: "CPU pressure subcommands",
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		// prepare spec
-		spec := v1beta1.CPUPressureSpec{}
-		stresserManager := stress.NewCPUStresserManager(log)
+		countStr, _ := cmd.Flags().GetString("count")
+		count := intstr.FromString(countStr)
 
+		// prepare spec
+		spec := v1beta1.CPUPressureSpec{
+			Count: &count,
+		}
+
+		stresserManager := stress.NewCPUStresserManager(log)
 		// create injector
 		for _, config := range configs {
 			injector, _ := injector.NewCPUPressureInjector(spec, injector.CPUPressureInjectorConfig{
@@ -30,4 +36,8 @@ var cpuPressureCmd = &cobra.Command{
 			injectors = append(injectors, injector)
 		}
 	},
+}
+
+func init() {
+	cpuPressureCmd.Flags().String("count", "", "number of cores to target, either an integer form or a percentage form appended with a %")
 }
