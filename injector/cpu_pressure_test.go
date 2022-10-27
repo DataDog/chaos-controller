@@ -138,7 +138,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should call stresserManager track cores and get new core to apply pressure", func() {
-				// left empty for AfterEach
+				// left empty as AfterEach 'AssertExpectations' check all this tests expectations
 			})
 		})
 	})
