@@ -73,7 +73,7 @@ func (d *Sink) MetricCleanedForReinjection(succeed bool, kind string, tags []str
 	t := []string{"status:" + status, "kind:" + kind}
 	t = append(t, tags...)
 
-	return d.metricWithStatus(metricPrefixInjector+"cleanedForReinjection", t)
+	return d.metricWithStatus(metricPrefixInjector+"cleaned_for_reinjection", t)
 }
 
 // MetricCleaned increments the cleaned metric
