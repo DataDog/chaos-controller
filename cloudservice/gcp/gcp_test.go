@@ -17,12 +17,6 @@ func TestGCP(t *testing.T) {
 	RunSpecs(t, "CloudService GCP Suite")
 }
 
-var _ = BeforeSuite(func() {
-})
-
-var _ = AfterSuite(func() {
-})
-
 var _ = Describe("GCP Parsing", func() {
 	Context("Parse GCP IP Range file", func() {
 		It("should parse the ip range file", func() {

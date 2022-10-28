@@ -8,7 +8,7 @@
 
 As with all disruptions, pods or nodes are targeted for injection if they satisfy the conditions of the label selector specified in the `selector` field. 
 For network disruptions, we can also specify to only disrupt packets interacting with a particular host or set of hosts through the `network.hosts` field. We will refer to `network.hosts` field in the rest of the document as the `hosts` field.
-The `hosts` field takes a list of `host`/`port`/`protocol` tuples. All three fields are optional.
+The `hosts` field takes a list of `host`/`port`/`protocol`/`connState` tuples. All three fields are optional.
 
 <p align="center"><kbd>
     <img src="../../docs/img/network_hosts/notation_egress.png" height=160 width=570 />
