@@ -300,7 +300,7 @@ func CompareK8S(reason string, toCompareReason KubernetesEventReason) bool {
 }
 
 func IsRecoveryEvent(event corev1.Event) bool {
-	return event.Reason == string(EventNodeRecoveredState) || event.Reason == string(EventPodRecoveredState)
+	return CompareCustom(event.Reason, EventNodeRecoveredState) || CompareCustom(event.Reason, EventPodRecoveredState)
 }
 
 func IsTargetEvent(event corev1.Event) bool {

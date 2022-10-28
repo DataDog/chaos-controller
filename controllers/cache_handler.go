@@ -117,7 +117,7 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 		// Send to updated target
 		h.reconciler.recordEventOnTarget(objectToNotify, eventReason, h.disruption.Name)
 		//Send to disruption and broadcast to notifiers
-		h.reconciler.recordEventOnDisruption(h.disruption, eventReason, "")
+		h.reconciler.recordEventOnDisruption(h.disruption, eventReason, true, "")
 	}
 }
 
@@ -144,7 +144,7 @@ func (h DisruptionTargetWatcherHandler) getEventsFromCurrentDisruptionOnAnyResou
 
 	// Keep events sent during the disruption only, no need to filter events coming from the disruption itself
 	for i, event := range eventList.Items {
-		if event.Type == corev1.EventTypeWarning && event.Reason == string(chaosv1beta1.EventDisrupted) || event.LastTimestamp.Time.Before(disruptionStateTime) {
+		if event.Type == corev1.EventTypeWarning && chaosv1beta1.CompareCustom(event.Reason, chaosv1beta1.EventDisrupted) || event.LastTimestamp.Time.Before(disruptionStateTime) {
 			if i == 0 {
 				return []corev1.Event{}, nil
 			}
@@ -156,7 +156,7 @@ func (h DisruptionTargetWatcherHandler) getEventsFromCurrentDisruptionOnAnyResou
 	return eventList.Items, nil
 }
 
-func getContainerState(containerStatus corev1.ContainerStatus) (string, string) {
+func getContainerStateAndReason(containerStatus corev1.ContainerStatus) (string, string) {
 	var state, reason string
 
 	switch {
@@ -295,8 +295,8 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 				eventsToSend[chaosv1beta1.EventTooManyRestarts] = true
 			}
 
-			lastState, lastReason := getContainerState(oldContainer)
-			newState, newReason := getContainerState(container)
+			lastState, lastReason := getContainerStateAndReason(oldContainer)
+			newState, newReason := getContainerStateAndReason(container)
 
 			if lastState != newState {
 				h.reconciler.log.Infow("container state change detected on target",
