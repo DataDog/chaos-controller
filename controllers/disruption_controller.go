@@ -510,7 +510,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 
 			// send metrics and events
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionChaosPodCreated, false, instance.Name)
-			r.getTargetAndRecordEventOnTarget(instance, target, chaosv1beta1.EventDisrupted, chaosPod.Name, instance.Name)
+			r.getTargetAndRecordEventOnTarget(instance, target, chaosv1beta1.EventDisrupted, instance.Name)
 			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 		case 1:
 			r.log.Debugw("an injection pod is already existing for the selected target", "target", target, "chaosPod", found[0].Name)
@@ -1171,7 +1171,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(target runtime.Object, eventR
 }
 
 // getTargetAndRecordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
-func (r *DisruptionReconciler) getTargetAndRecordEventOnTarget(instance *chaosv1beta1.Disruption, target string, eventReason chaosv1beta1.DisruptionEventReason, chaosPod, optionalMessage string) {
+func (r *DisruptionReconciler) getTargetAndRecordEventOnTarget(instance *chaosv1beta1.Disruption, target string, eventReason chaosv1beta1.DisruptionEventReason, optionalMessage string) {
 	var o runtime.Object
 
 	switch instance.Spec.Level {

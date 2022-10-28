@@ -363,11 +363,13 @@ func buildEventMessageFromValidateErrors(errs *multierror.Error) string {
 		if i > 0 {
 			eventMessage += ", "
 		}
+
 		if i == 3 {
 			eventMessage += "and more, more info in logs"
 
 			break
 		}
+
 		eventMessage += err.Error()
 	}
 
