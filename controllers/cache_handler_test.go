@@ -6,6 +6,8 @@ package controllers
 
 import (
 	"fmt"
+	"log"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,8 +21,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func findEvent(toFind v1beta1.DisruptionEvent, events []v1.Event, involvedObjectName string) *v1.Event {
+func findEvent(disruptionTimestamp time.Time, toFind v1beta1.DisruptionEvent, events []v1.Event, involvedObjectName string) *v1.Event {
 	for _, event := range events {
+		if event.InvolvedObject.Name == involvedObjectName && disruptionTimestamp.Before(event.LastTimestamp.Time) {
+			log.Printf("event: %s | %s %s %s", event.Reason, event.InvolvedObject.Name, event.Type, event.Source.Component)
+		}
 		if event.Reason == toFind.Reason && event.Type == toFind.Type && event.Source.Component == string(v1beta1.SourceDisruptionComponent) && event.InvolvedObject.Name == involvedObjectName {
 			return &event
 		}
@@ -91,27 +96,6 @@ var _ = Describe("Cache Handler verifications", func() {
 			Eventually(func() error { return expectChaosPod(disruption, 1) }, timeout).Should(Succeed())
 		})
 
-		It("should have created events on the pod", func() {
-			eventList := v1.EventList{}
-
-			Eventually(func() error {
-				err := k8sClient.List(context.Background(), &eventList, &client.ListOptions{
-					Namespace: targetPodA.Namespace,
-				})
-				if err != nil {
-					return err
-				}
-
-				By("ensuring created event was fired")
-				event := findEvent(v1beta1.Events[v1beta1.EventDisrupted], eventList.Items, targetPodA.Name)
-				if event != nil {
-					return fmt.Errorf("event should not be nil")
-				}
-
-				return nil
-			}, timeout).Should(Succeed())
-		})
-
 		It("should not fire any warning event on disruption", func() {
 			k8sClient.Delete(context.Background(), targetPodA)
 			Eventually(func() error {
@@ -129,6 +113,7 @@ var _ = Describe("Cache Handler verifications", func() {
 
 			targetPodA.ResourceVersion = ""
 			Expect(k8sClient.Create(context.Background(), targetPodA)).To(BeNil())
+
 			Eventually(func() error {
 				running, err := podsAreRunning(targetPodA)
 				if err != nil {
@@ -151,8 +136,12 @@ var _ = Describe("Cache Handler verifications", func() {
 			By("ensuring no error was thrown")
 			Expect(err).To(BeNil())
 
+			By("ensuring created event was fired")
+			event := findEvent(disruption.CreationTimestamp.Time, v1beta1.Events[v1beta1.EventDisrupted], eventList.Items, targetPodA.Name)
+			Expect(event).ToNot(BeNil())
+
 			By("ensuring container target in warning state event was not fired")
-			event := findEvent(v1beta1.Events[v1beta1.EventContainerWarningState], eventList.Items, targetPodA.Name)
+			event = findEvent(disruption.CreationTimestamp.Time, v1beta1.Events[v1beta1.EventContainerWarningState], eventList.Items, targetPodA.Name)
 			Expect(event).To(BeNil())
 		})
 	})
