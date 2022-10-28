@@ -88,13 +88,10 @@ type Reporting struct {
 	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
 	Purpose string `json:"purpose,omitempty"`
-	// NotificationTypeLevel is the minimal notification type we want to receive informations for
+	// MinNotificationType is the minimal notification type we want to receive informations for
 	// In order of importance it's Info, Success, Warning, Error
 	// Default level is considered Success, meaning all info will be ignored
-	// +kubebuilder:default=Success
-	// +kubebuilder:validation:Enum=Info;Success;Warning;Error
-	// +ddmark:validation:Enum=Info;Success;Warning;Error
-	NotificationTypeLevel eventtypes.NotificationType `json:"notificationTypeLevel,omitempty"`
+	MinNotificationType eventtypes.NotificationType `json:"minNotificationType,omitempty"`
 }
 
 // EmbeddedChaosAPI includes the library so it can be statically exported to chaosli

@@ -15,7 +15,7 @@ spec:
     purpose:
       | # required, purpose/contextual informations to explain reasons of the disruption launch, can contain markdown formatting
       *full network drop*: _aims to validate retry capabilities of demo-curl_. Contact #team-test for more informations.
-    notificationTypeLevel: Info # optional, minimal notification type to be notified, default is Success, available options are Info, Success, Warning, Error
+    minNotificationType: Info # optional, minimal notification type to be notified, default is Success, available options are Info, Success, Warning, Error
   level: pod # level the disruption should be injected at (can be either pod or node, defaults to pod)
   selector: # label selector[s] to target pods
     app: demo

@@ -25,12 +25,18 @@ const (
 	NotifierDriverHTTP NotifierDriver = "http"
 )
 
+// NotificationType is the type representing all notification types level available
+// In order of importance it's Info, Success, Warning, Error
+// Default level is considered Success, meaning all info will be ignored
+// +kubebuilder:default=Success
+// +kubebuilder:validation:Enum=Info;Success;Warning;Error
+// +ddmark:validation:Enum=Info;Success;Warning;Error
 type NotificationType string
 
 const (
 	NotificationUnknown NotificationType = ""
-	NotificationSuccess NotificationType = "Success"
 	NotificationInfo    NotificationType = "Info"
+	NotificationSuccess NotificationType = "Success"
 	NotificationWarning NotificationType = "Warning"
 	NotificationError   NotificationType = "Error"
 )

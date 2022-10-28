@@ -138,8 +138,8 @@ func TestNotifier_Notify(t *testing.T) {
 				userName:  "valid@email.org",
 				notifType: types.NotificationWarning,
 				reporting: &v1beta1.Reporting{
-					SlackChannel:          "custom-slack-channel",
-					NotificationTypeLevel: types.NotificationError,
+					SlackChannel:        "custom-slack-channel",
+					MinNotificationType: types.NotificationError,
 				},
 			},
 			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {

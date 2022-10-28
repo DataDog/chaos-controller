@@ -140,7 +140,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		n.sendMessageToChannel(userInfo, n.config.MirrorSlackChannelID, headerText, headerBlock, disruptionBlocks, bodyBlock)
 	}
 
-	if nil != dis.Spec.Reporting && dis.Spec.Reporting.SlackChannel != "" && dis.Spec.Reporting.NotificationTypeLevel.Allows(notifType) {
+	if nil != dis.Spec.Reporting && dis.Spec.Reporting.SlackChannel != "" && dis.Spec.Reporting.MinNotificationType.Allows(notifType) {
 		n.sendMessageToChannel(userInfo, dis.Spec.Reporting.SlackChannel, headerText, headerBlock, disruptionBlocks, bodyBlock)
 	}
 

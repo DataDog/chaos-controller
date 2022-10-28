@@ -426,12 +426,11 @@ spec:
                   the defined slack channel
                 nullable: true
                 properties:
-                  notificationTypeLevel:
-                    default: Success
-                    description: NotificationTypeLevel is the minimal notification
-                      type we want to receive informations for In order of importance
-                      it's Info, Success, Warning, Error Default level is considered
-                      Success, meaning all info will be ignored
+                  minNotificationType:
+                    description: MinNotificationType is the minimal notification type
+                      we want to receive informations for In order of importance it's
+                      Info, Success, Warning, Error Default level is considered Success,
+                      meaning all info will be ignored
                     enum:
                     - Info
                     - Success
