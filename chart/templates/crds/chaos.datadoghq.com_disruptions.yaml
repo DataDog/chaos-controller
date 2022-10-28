@@ -333,6 +333,8 @@ spec:
                     maximum: 100
                     minimum: 0
                     type: integer
+                  disableDefaultAllowedHosts:
+                    type: boolean
                   drop:
                     maximum: 100
                     minimum: 0

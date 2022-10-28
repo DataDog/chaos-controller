@@ -1201,14 +1201,23 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
 		}
 
+		allowedHosts := r.InjectorNetworkDisruptionAllowedHosts
+
 		// get the ip ranges of cloud provider services
-		if instance.Spec.Network != nil && instance.Spec.Network.Cloud != nil {
-			hosts, err := transformCloudSpecToHostsSpec(r.log, r.CloudServicesProvidersManager, instance.Spec.Network.Cloud)
-			if err != nil {
-				return err
+		if instance.Spec.Network != nil {
+			if instance.Spec.Network.Cloud != nil {
+				hosts, err := transformCloudSpecToHostsSpec(r.log, r.CloudServicesProvidersManager, instance.Spec.Network.Cloud)
+				if err != nil {
+					return err
+				}
+
+				instance.Spec.Network.Hosts = append(instance.Spec.Network.Hosts, hosts...)
 			}
 
-			instance.Spec.Network.Hosts = append(instance.Spec.Network.Hosts, hosts...)
+			// remove default allowed hosts if disabled
+			if instance.Spec.Network.DisableDefaultAllowedHosts {
+				allowedHosts = make([]string, 0)
+			}
 		}
 
 		xargs := chaosapi.DisruptionArgs{
@@ -1225,7 +1234,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			PulseActiveDuration:  pulseActiveDuration,
 			PulseDormantDuration: pulseDormantDuration,
 			MetricsSink:          r.MetricsSink.GetSinkName(),
-			AllowedHosts:         r.InjectorNetworkDisruptionAllowedHosts,
+			AllowedHosts:         allowedHosts,
 			DNSServer:            r.InjectorDNSDisruptionDNSServer,
 			KubeDNS:              r.InjectorDNSDisruptionKubeDNS,
 			ChaosNamespace:       r.ChaosNamespace,

@@ -545,6 +545,12 @@ func getNetwork() *v1beta1.NetworkDisruptionSpec {
 		spec.BandwidthLimit, _ = strconv.Atoi(getInput("What bandwidth limit should we set (in bytes per second)?", ">0", survey.WithValidator(survey.Required), survey.WithValidator(integerValidator)))
 	}
 
+	if confirmOption("Would you like to add additional allowedHosts?", "These will be added to an allowlist and will be excluded from the disruption.") {
+		spec.AllowedHosts = getHosts()
+	}
+
+	spec.DisableDefaultAllowedHosts = confirmOption("Would you like to add disable the default allowedHosts?", "DANGER: You can leave a node entirely unable to connect to the k8s api or cloud provider, which may have consequences.")
+
 	return spec
 }
 

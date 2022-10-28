@@ -32,7 +32,8 @@ type NetworkDisruptionSpec struct {
 	// +nullable
 	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
 	// +nullable
-	AllowedHosts []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
+	AllowedHosts               []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
+	DisableDefaultAllowedHosts bool                        `json:"disableDefaultAllowedHosts,omitempty"`
 	// +nullable
 	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
 	// +nullable
