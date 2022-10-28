@@ -270,3 +270,22 @@ func podsAreRunning(pods ...*corev1.Pod) (bool, error) {
 
 	return true, nil
 }
+
+// podsAreNotRunning returns true when all the given pods have all their containers running
+func podsAreNotRunning(pods ...*corev1.Pod) (bool, error) {
+	for _, pod := range pods {
+		var p corev1.Pod
+
+		// retrieve pod
+		if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &p); err != nil {
+			return true, nil
+		}
+
+		// check the pod phase
+		if p.Status.Phase == corev1.PodRunning {
+			return false, fmt.Errorf("pod is still running")
+		}
+	}
+
+	return true, nil
+}
