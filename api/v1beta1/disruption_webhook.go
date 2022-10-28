@@ -355,6 +355,10 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 func buildEventMessageFromValidateErrors(errs *multierror.Error) string {
 	eventMessage := ""
 
+	if errs == nil {
+		return ""
+	}
+
 	for i, err := range errs.Errors {
 		if i > 0 {
 			eventMessage += ", "

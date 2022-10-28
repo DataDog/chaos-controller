@@ -116,7 +116,7 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 
 		// Send to updated target
 		h.reconciler.recordEventOnTarget(objectToNotify, eventReason, h.disruption.Name)
-		//Send to disruption and broadcast to notifiers
+		// Send to disruption and broadcast to notifiers
 		h.reconciler.recordEventOnDisruption(h.disruption, eventReason, true, "")
 	}
 }
