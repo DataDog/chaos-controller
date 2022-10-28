@@ -50,7 +50,7 @@ func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
 
 	retErr = multierror.Append(retErr, multierror.Prefix(ddmark.ValidateStructMultierror(disruption, rootPath, types.DDMarkChaoslibPrefix), "ddmark:  "))
 
-	if err := disruption.Spec.Validate(); err != nil {
+	if _, err := disruption.Spec.Validate(); err != nil {
 		retErr = multierror.Append(retErr, multierror.Prefix(err, "validate:"))
 	}
 

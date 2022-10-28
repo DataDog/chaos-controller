@@ -82,14 +82,13 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleMetricsSink(pod *corev1.Po
 func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPod *corev1.Pod, oldNode, newNode *corev1.Node, okOldPod, okNewPod, okOldNode, okNewNode bool) {
 	var objectToNotify runtime.Object
 
-	eventsToSend := make(map[string]bool)
-	name := ""
+	eventsToSend := make(map[chaosv1beta1.DisruptionEventReason]bool)
 
 	switch {
 	case okNewPod && okOldPod:
-		objectToNotify, name = newPod, newPod.Name
+		objectToNotify = newPod
 
-		disruptionEvents, err := h.getEventsFromCurrentDisruption("Pod", newPod.ObjectMeta, h.disruption.CreationTimestamp.Time)
+		disruptionEvents, err := h.getEventsFromCurrentDisruptionOnAnyResource("Pod", newPod.ObjectMeta, h.disruption.CreationTimestamp.Time)
 		if err != nil {
 			h.reconciler.log.Warnf("couldn't get the list of events from the target. Might not be able to notify on error changes: %s", err.Error())
 		}
@@ -97,9 +96,9 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 		// we detect and compute the error / warning events, status changes, conditions of the updated pod
 		eventsToSend = h.buildPodEventsToSend(*oldPod, *newPod, disruptionEvents)
 	case okNewNode && okOldNode:
-		objectToNotify, name = newNode, newNode.Name
+		objectToNotify = newNode
 
-		disruptionEvents, err := h.getEventsFromCurrentDisruption("Node", newNode.ObjectMeta, h.disruption.CreationTimestamp.Time)
+		disruptionEvents, err := h.getEventsFromCurrentDisruptionOnAnyResource("Node", newNode.ObjectMeta, h.disruption.CreationTimestamp.Time)
 		if err != nil {
 			h.reconciler.log.Warnf("couldn't get the list of events from the target. Might not be able to notify on error changes: %s", err.Error())
 		}
@@ -110,33 +109,20 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 		h.reconciler.log.Debugw("target observer couldn't detect what type of changes happened on the targets")
 	}
 
-	// Send events to notifier / to disruption
-	lastEvents, _ := h.getEventsFromCurrentDisruption("Disruption", h.disruption.ObjectMeta, h.disruption.CreationTimestamp.Time)
-
 	for eventReason, toSend := range eventsToSend {
 		if !toSend {
 			continue
 		}
 
-		eventType := chaosv1beta1.Events[eventReason].Type
-
 		// Send to updated target
-		h.reconciler.Recorder.Event(objectToNotify, eventType, eventReason, fmt.Sprintf(chaosv1beta1.Events[eventReason].OnTargetTemplateMessage, h.disruption.Name))
-
-		// Send to disruption, broadcast to notifiers
-		for _, event := range lastEvents {
-			if event.Type == eventReason {
-				h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, fmt.Sprintf(chaosv1beta1.Events[eventReason].OnDisruptionTemplateMessage, name))
-
-				return
-			}
-		}
-
-		h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, chaosv1beta1.Events[eventReason].OnDisruptionTemplateAggMessage)
+		h.reconciler.recordEventOnTarget(objectToNotify, eventReason, h.disruption.Name)
+		//Send to disruption and broadcast to notifiers
+		h.reconciler.recordEventOnDisruption(h.disruption, eventReason, "")
 	}
 }
 
-func (h DisruptionTargetWatcherHandler) getEventsFromCurrentDisruption(kind string, objectMeta v1.ObjectMeta, disruptionStateTime time.Time) ([]corev1.Event, error) {
+// getEventsFromCurrentDisruptionOnAnyResource grab all events after the creation of the current disruption
+func (h DisruptionTargetWatcherHandler) getEventsFromCurrentDisruptionOnAnyResource(kind string, objectMeta v1.ObjectMeta, disruptionStateTime time.Time) ([]corev1.Event, error) {
 	eventList := &corev1.EventList{}
 	fieldSelector := fields.Set{
 		"involvedObject.kind": kind,
@@ -157,15 +143,13 @@ func (h DisruptionTargetWatcherHandler) getEventsFromCurrentDisruption(kind stri
 	})
 
 	// Keep events sent during the disruption only, no need to filter events coming from the disruption itself
-	if kind != "Disruption" {
-		for i, event := range eventList.Items {
-			if event.Type == corev1.EventTypeWarning && event.Reason == chaosv1beta1.EventDisrupted || event.LastTimestamp.Time.Before(disruptionStateTime) {
-				if i == 0 {
-					return []corev1.Event{}, nil
-				}
-
-				return eventList.Items[:(i - 1)], nil
+	for i, event := range eventList.Items {
+		if event.Type == corev1.EventTypeWarning && event.Reason == string(chaosv1beta1.EventDisrupted) || event.LastTimestamp.Time.Before(disruptionStateTime) {
+			if i == 0 {
+				return []corev1.Event{}, nil
 			}
+
+			return eventList.Items[:(i - 1)], nil
 		}
 	}
 
@@ -189,11 +173,11 @@ func getContainerState(containerStatus corev1.ContainerStatus) (string, string) 
 	return state, reason
 }
 
-// https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/events/event.go
-// In case of new events sent from kubelet, we can determine any error event in the node to propagate it
-func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[string]bool, eventsFromTarget []corev1.Event, recoverTimestamp *time.Time, targetName string) (map[string]bool, bool) {
+func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[chaosv1beta1.DisruptionEventReason]bool, eventsFromTarget []corev1.Event, recoverTimestamp *time.Time, targetName string) (map[chaosv1beta1.DisruptionEventReason]bool, bool) {
 	cannotRecoverYet := true
 
+	// We verify that a warning event has not been sent on the target
+	// if we detect one, it means the target is not able to recover yet, we make sure we don't send out a new event for recovery
 	for _, event := range eventsFromTarget {
 		if event.Source.Component == chaosv1beta1.SourceDisruptionComponent {
 			// if the target has not sent any warnings, we can't recover it as there is nothing to recover
@@ -216,7 +200,7 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 		switch event.InvolvedObject.Kind {
 		case "Pod":
 			if event.Type == corev1.EventTypeWarning {
-				if event.Reason == "Unhealthy" || event.Reason == "ProbeWarning" {
+				if chaosv1beta1.CompareK8S(event.Reason, chaosv1beta1.ContainerUnhealthy) || chaosv1beta1.CompareK8S(event.Reason, chaosv1beta1.ContainerProbeWarning) {
 					lowerCasedMessage := strings.ToLower(event.Message)
 
 					switch {
@@ -243,7 +227,7 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
 				)
-			} else if event.Reason == "Started" {
+			} else if chaosv1beta1.CompareK8S(event.Reason, chaosv1beta1.StartedContainer) {
 				if recoverTimestamp == nil {
 					recoverTimestamp = &event.LastTimestamp.Time
 				}
@@ -267,7 +251,7 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
 				)
-			} else if event.Reason == "NodeReady" {
+			} else if chaosv1beta1.CompareK8S(event.Reason, chaosv1beta1.NodeReady) {
 				if recoverTimestamp == nil {
 					recoverTimestamp = &event.LastTimestamp.Time
 				}
@@ -287,10 +271,10 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 	return eventsToSend, cannotRecoverYet
 }
 
-func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod corev1.Pod, disruptionEvents []corev1.Event) map[string]bool {
+func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod corev1.Pod, disruptionEvents []corev1.Event) map[chaosv1beta1.DisruptionEventReason]bool {
 	var recoverTimestamp *time.Time // keep track of the timestamp of a recovering event / state
 
-	eventsToSend := make(map[string]bool)
+	eventsToSend := make(map[chaosv1beta1.DisruptionEventReason]bool)
 	runningState := "Running"
 
 	// compare statuses between old and new pod to detect changes
@@ -356,10 +340,10 @@ func (h DisruptionTargetWatcherHandler) buildPodEventsToSend(oldPod corev1.Pod, 
 	return eventsToSend
 }
 
-func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Node, newNode corev1.Node, targetEvents []corev1.Event) map[string]bool {
+func (h DisruptionTargetWatcherHandler) buildNodeEventsToSend(oldNode corev1.Node, newNode corev1.Node, targetEvents []corev1.Event) map[chaosv1beta1.DisruptionEventReason]bool {
 	var recoverTimestamp *time.Time // keep track of the timestamp of a recovering event / condition / phase
 
-	eventsToSend := make(map[string]bool)
+	eventsToSend := make(map[chaosv1beta1.DisruptionEventReason]bool)
 
 	// Evaluate the need to send a warning event on node condition changes
 	for _, newCondition := range newNode.Status.Conditions {

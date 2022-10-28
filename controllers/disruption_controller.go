@@ -510,7 +510,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 
 			// send metrics and events
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionChaosPodCreated, instance.Name)
-			r.recordEventOnTarget(instance, target, chaosv1beta1.EventDisrupted, chaosPod.Name, instance.Name)
+			r.getTargetAndRecordEventOnTarget(instance, target, chaosv1beta1.EventDisrupted, chaosPod.Name, instance.Name)
 			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 		case 1:
 			r.log.Debugw("an injection pod is already existing for the selected target", "target", target, "chaosPod", found[0].Name)
@@ -1152,15 +1152,44 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 	}
 }
 
-func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Disruption, eventReason string, optionalMessage string) {
+func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Disruption, eventReason chaosv1beta1.DisruptionEventReason, optionalMessage string) {
 	disEvent := chaosv1beta1.Events[eventReason]
-	message := disEvent.OnDisruptionTemplateMessage
+	message := fmt.Sprintf(disEvent.OnDisruptionTemplateMessage, optionalMessage)
 
-	if optionalMessage != "" {
-		message = fmt.Sprintf(disEvent.OnDisruptionTemplateMessage, optionalMessage)
+	r.Recorder.Event(instance, disEvent.Type, string(eventReason), message)
+}
+
+func (r *DisruptionReconciler) recordEventOnTarget(target runtime.Object, eventReason chaosv1beta1.DisruptionEventReason, optionalMessage string) {
+	disEvent := chaosv1beta1.Events[eventReason]
+	message := fmt.Sprintf(disEvent.OnTargetTemplateMessage, optionalMessage)
+
+	r.Recorder.Event(target, disEvent.Type, string(eventReason), message)
+}
+
+// getTargetAndRecordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
+func (r *DisruptionReconciler) getTargetAndRecordEventOnTarget(instance *chaosv1beta1.Disruption, target string, eventReason chaosv1beta1.DisruptionEventReason, chaosPod, optionalMessage string) {
+	var o runtime.Object
+
+	switch instance.Spec.Level {
+	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
+		p := &corev1.Pod{}
+
+		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {
+			r.log.Errorw("event failed to be registered on target", "error", err, "target", target)
+		}
+
+		o = p
+	case chaostypes.DisruptionLevelNode:
+		n := &corev1.Node{}
+
+		if err := r.Get(context.Background(), types.NamespacedName{Name: target}, n); err != nil {
+			r.log.Errorw("event failed to be registered on target", "error", err, "target", target)
+		}
+
+		o = n
 	}
 
-	r.Recorder.Event(instance, disEvent.Type, disEvent.Reason, message)
+	r.recordEventOnTarget(o, eventReason, optionalMessage)
 }
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
@@ -1170,9 +1199,9 @@ func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disru
 }
 
 func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Disruption) error {
-	err := instance.Spec.Validate()
+	eventMessage, err := instance.Spec.Validate()
 	if err != nil {
-		r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, err.Error())
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, eventMessage)
 
 		return err
 	}
@@ -1242,32 +1271,6 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 	}
 
 	return nil
-}
-
-// recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
-func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disruption, target string, disruptionEventReason, chaosPod, optionalMessage string) {
-	var o runtime.Object
-
-	switch instance.Spec.Level {
-	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
-		p := &corev1.Pod{}
-
-		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {
-			r.log.Errorw("event failed to be registered on target", "error", err, "target", target)
-		}
-
-		o = p
-	case chaostypes.DisruptionLevelNode:
-		n := &corev1.Node{}
-
-		if err := r.Get(context.Background(), types.NamespacedName{Name: target}, n); err != nil {
-			r.log.Errorw("event failed to be registered on target", "error", err, "target", target)
-		}
-
-		o = n
-	}
-
-	r.Recorder.Event(o, chaosv1beta1.Events[disruptionEventReason].Type, chaosv1beta1.Events[disruptionEventReason].Reason, fmt.Sprintf(chaosv1beta1.Events[disruptionEventReason].OnTargetTemplateMessage, chaosPod, optionalMessage))
 }
 
 // SetupWithManager setups the current reconciler with the given manager

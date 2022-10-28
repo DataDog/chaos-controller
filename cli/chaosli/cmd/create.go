@@ -32,7 +32,7 @@ var createCmd = &cobra.Command{
 	Long:  `creates a disruption given input from the user.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		spec, _ := createSpec()
-		err := spec.Validate()
+		_, err := spec.Validate()
 		if err != nil {
 			fmt.Printf("There were some problems when validating your disruption: %v", err)
 		}

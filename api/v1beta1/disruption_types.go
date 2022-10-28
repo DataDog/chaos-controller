@@ -192,9 +192,11 @@ func (s *DisruptionSpec) HashNoCount() (string, error) {
 }
 
 // Validate applies rules for disruption global scope and all subsequent disruption specifications
-func (s *DisruptionSpec) Validate() (retErr error) {
+func (s *DisruptionSpec) Validate() (string, error) {
+	var multiErr *multierror.Error
+
 	if err := s.validateGlobalDisruptionScope(); err != nil {
-		retErr = multierror.Append(retErr, err)
+		multiErr = multierror.Append(multiErr, err)
 	}
 
 	for _, kind := range chaostypes.DisruptionKindNames {
@@ -204,11 +206,13 @@ func (s *DisruptionSpec) Validate() (retErr error) {
 		}
 
 		if err := disruptionKind.Validate(); err != nil {
-			retErr = multierror.Append(retErr, err)
+			multiErr = multierror.Append(multiErr, err)
 		}
 	}
 
-	return multierror.Prefix(retErr, "Spec:")
+	eventMessage := buildEventMessageFromValidateErrors(multiErr)
+
+	return eventMessage, multierror.Prefix(multiErr, "Spec: ")
 }
 
 // Validate applies rules for disruption global scope

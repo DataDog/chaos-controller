@@ -97,6 +97,8 @@ func (r *Disruption) ValidateCreate() error {
 	// reject disruptions with a name which would not be a valid label value
 	// according to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 	if _, err := labels.Parse(fmt.Sprintf("name=%s", r.Name)); err != nil {
+		recorder.Event(r, Events[EventInvalidSpecDisruption].Type, string(EventInvalidSpecDisruption), fmt.Sprintf(Events[EventInvalidSpecDisruption].OnDisruptionTemplateMessage, "invalid disruption name, more info in logs"))
+
 		return fmt.Errorf("invalid disruption name: %w", err)
 	}
 
@@ -123,6 +125,8 @@ func (r *Disruption) ValidateCreate() error {
 
 				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(cloudtypes.CloudProviderName(cloudName), serviceListNames)
 				if err != nil {
+					recorder.Event(r, Events[EventInvalidSpecDisruption].Type, string(EventInvalidSpecDisruption), fmt.Sprintf(Events[EventInvalidSpecDisruption].OnDisruptionTemplateMessage, err.Error()))
+
 					return fmt.Errorf("%s. Available services are: %s", err.Error(), strings.Join(cloudServicesProvidersManager.GetServiceList(cloudtypes.CloudProviderName(cloudName)), ", "))
 				}
 
@@ -133,11 +137,15 @@ func (r *Disruption) ValidateCreate() error {
 		}
 
 		if estimatedTcFiltersNb > MaximumTCFilters {
+			recorder.Event(r, Events[EventInvalidSpecDisruption].Type, string(EventInvalidSpecDisruption), fmt.Sprintf(Events[EventInvalidSpecDisruption].OnDisruptionTemplateMessage, "the number of resources (ips, ip ranges, single port) to filter is too high, more info in logs"))
+
 			return fmt.Errorf("the number of resources (ips, ip ranges, single port) to filter is too high (%d). Please remove some hosts, services or cloud managed services to be affected in the disruption. Maximum resources (ips, ip ranges, single port) filterable is %d", estimatedTcFiltersNb, MaximumTCFilters)
 		}
 	}
 
-	if err := r.Spec.Validate(); err != nil {
+	if eventMessage, err := r.Spec.Validate(); err != nil {
+		recorder.Event(r, Events[EventInvalidSpecDisruption].Type, string(EventInvalidSpecDisruption), fmt.Sprintf(Events[EventInvalidSpecDisruption].OnDisruptionTemplateMessage, eventMessage))
+
 		if mErr := metricsSink.MetricValidationFailed(r.getMetricsTags()); mErr != nil {
 			logger.Errorw("error sending a metric", "error", mErr)
 		}
@@ -147,6 +155,10 @@ func (r *Disruption) ValidateCreate() error {
 
 	multiErr := ddmark.ValidateStructMultierror(r.Spec, "validation_webhook", chaostypes.DDMarkChaoslibPrefix)
 	if multiErr.ErrorOrNil() != nil {
+		eventMessage := buildEventMessageFromValidateErrors(multiErr)
+
+		recorder.Event(r, Events[EventInvalidSpecDisruption].Type, string(EventInvalidSpecDisruption), fmt.Sprintf(Events[EventInvalidSpecDisruption].OnDisruptionTemplateMessage, eventMessage))
+
 		return multierror.Prefix(multiErr, "ddmark: ")
 	}
 
@@ -169,7 +181,7 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	// send informative event to disruption to broadcast
-	recorder.Event(r, Events[EventDisruptionCreated].Type, EventDisruptionCreated, Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+	recorder.Event(r, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 	return nil
 }
@@ -246,7 +258,7 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		return fmt.Errorf("[StaticTargeting: false] only a disruption spec's Count field can be updated, please delete and recreate it if needed")
 	}
 
-	if err := r.Spec.Validate(); err != nil {
+	if _, err := r.Spec.Validate(); err != nil {
 		if mErr := metricsSink.MetricValidationFailed(r.getMetricsTags()); mErr != nil {
 			logger.Errorw("error sending a metric", "error", mErr)
 		}
@@ -338,6 +350,23 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 	}
 
 	return responses, nil
+}
+
+func buildEventMessageFromValidateErrors(errs *multierror.Error) string {
+	eventMessage := ""
+
+	for i, err := range errs.Errors {
+		if i > 0 {
+			eventMessage += ", "
+		}
+		if i == 3 {
+			eventMessage += "and more, more info in logs"
+			break
+		}
+		eventMessage += err.Error()
+	}
+
+	return eventMessage
 }
 
 // safetyNetCountNotTooLarge is the safety net regarding the count of targets

@@ -90,7 +90,7 @@ var _ = Describe("Validator", func() {
 	)
 
 	JustBeforeEach(func() {
-		err = validator.Validate()
+		_, err = validator.Validate()
 	})
 	Describe("validating container failure spec", func() {
 		var spec *v1beta1.DisruptionSpec
@@ -147,7 +147,7 @@ func ValidateDisruptionSpecFromString(yamlStr string) []error {
 		errorList = append(errorList, err)
 	}
 
-	err = marshalledStruct.Validate()
+	_, err = marshalledStruct.Validate()
 	if err != nil {
 		errorList = append(errorList, err)
 	}
