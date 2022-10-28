@@ -6,7 +6,6 @@ package controllers
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -23,9 +22,6 @@ import (
 
 func findEvent(disruptionTimestamp time.Time, eventReason v1beta1.DisruptionEventReason, events []v1.Event, involvedObjectName string) *v1.Event {
 	for _, event := range events {
-		if event.InvolvedObject.Name == involvedObjectName && disruptionTimestamp.Before(event.LastTimestamp.Time) {
-			log.Printf("event: %s | %s %s %s", event.Reason, event.InvolvedObject.Name, event.Type, event.Source.Component)
-		}
 		if v1beta1.CompareCustom(event.Reason, eventReason) && event.Type == v1beta1.Events[eventReason].Type && event.Source.Component == string(v1beta1.SourceDisruptionComponent) && event.InvolvedObject.Name == involvedObjectName {
 			return &event
 		}
