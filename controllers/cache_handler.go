@@ -199,7 +199,8 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[ch
 		// if warning event has been sent after target recovering
 		switch event.InvolvedObject.Kind {
 		case "Pod":
-			if event.Type == corev1.EventTypeWarning {
+			switch {
+			case event.Type == corev1.EventTypeWarning:
 				if chaosv1beta1.CompareK8S(event.Reason, chaosv1beta1.ContainerUnhealthy) || chaosv1beta1.CompareK8S(event.Reason, chaosv1beta1.ContainerProbeWarning) {
 					lowerCasedMessage := strings.ToLower(event.Message)
 
@@ -227,19 +228,23 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[ch
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
 				)
-			} else if chaosv1beta1.CompareK8S(event.Reason, chaosv1beta1.StartedContainer) {
+			case chaosv1beta1.CompareK8S(event.Reason, chaosv1beta1.StartedContainer):
 				if recoverTimestamp == nil {
 					recoverTimestamp = &event.LastTimestamp.Time
 				}
 
 				eventsToSend[chaosv1beta1.EventPodRecoveredState] = true
 
-				h.reconciler.log.Infow("recovering event detected on target",
+				h.reconciler.log.Debugw("recovering event detected on target",
 					"target", targetName,
 					"reason", event.Reason,
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
 				)
+			case event.Reason == "Killing" && strings.Contains(event.Message, "Stopping container") && eventsToSend[chaosv1beta1.EventContainerWarningState]:
+				// this event indicates a safe killing of a container (can occur when we rollout or manually delete a pod for example)
+				// we remove the warning state event if it has been created when we compared the state of the containers
+				delete(eventsToSend, chaosv1beta1.EventContainerWarningState)
 			}
 		case "Node":
 			if event.Type == corev1.EventTypeWarning {
@@ -258,7 +263,7 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[ch
 
 				eventsToSend[chaosv1beta1.EventNodeRecoveredState] = true
 
-				h.reconciler.log.Infow("recovering event detected on target",
+				h.reconciler.log.Debugw("recovering event detected on target",
 					"target", targetName,
 					"reason", event.Reason,
 					"message", event.Message,

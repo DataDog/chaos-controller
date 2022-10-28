@@ -15,16 +15,18 @@ const SourceDisruptionComponent string = "disruption-controller"
 type DisruptionEventCategory string
 
 const (
-	TargetEvent  DisruptionEventCategory = "TargetEvent"
+	// Event only attached to a target
+	TargetEvent DisruptionEventCategory = "TargetEvent"
+	// Event only attached to the disruption
 	DisruptEvent DisruptionEventCategory = "DisruptionEvent"
 )
 
 type DisruptionEvent struct {
-	Type                           string
-	OnTargetTemplateMessage        string
-	OnDisruptionTemplateMessage    string // We want to separate the aggregated message from the single message to include more info in the single message
-	OnDisruptionTemplateAggMessage string
-	Category                       DisruptionEventCategory
+	Type                           string                  // Warning or Normal
+	OnTargetTemplateMessage        string                  // Template message to attach to the target resource (pod or node). Empty if the event should not be sent to a target (DisruptEvent only)
+	OnDisruptionTemplateMessage    string                  // We want to separate the aggregated message from the single message to include more info in the single message
+	OnDisruptionTemplateAggMessage string                  // Template message to attach to the disruption. Empty if the event should not be sent on a disruption
+	Category                       DisruptionEventCategory // Either TargetEvent or DisruptionEvent
 }
 
 // Complete list of events sent out by the controller
@@ -139,84 +141,84 @@ const (
 var Events = map[DisruptionEventReason]DisruptionEvent{
 	EventPodWarningState: {
 		Type:                           corev1.EventTypeWarning,
-		OnDisruptionTemplateMessage:    "targeted pod %s is failing",
-		OnDisruptionTemplateAggMessage: "targeted pod(s) are failing",
+		OnDisruptionTemplateMessage:    "Targeted pod %s is failing",
+		OnDisruptionTemplateAggMessage: "Targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "pod is failing",
 		Category:                       TargetEvent,
 	},
 	EventContainerWarningState: {
 		Type:                           corev1.EventTypeWarning,
-		OnDisruptionTemplateMessage:    "container on targeted pod %s is failing",
-		OnDisruptionTemplateAggMessage: "containers on targeted pod(s) are failing",
+		OnDisruptionTemplateMessage:    "Container on targeted pod %s is failing",
+		OnDisruptionTemplateAggMessage: "Containers on targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "containers on pod are failing",
 		Category:                       TargetEvent,
 	},
 	EventLivenessProbeChange: {
 		Type:                           corev1.EventTypeWarning,
-		OnDisruptionTemplateMessage:    "liveness probe on targeted pod %s are failing",
-		OnDisruptionTemplateAggMessage: "liveness probe(s) on targeted pod(s) are failing",
+		OnDisruptionTemplateMessage:    "Liveness probe on targeted pod %s are failing",
+		OnDisruptionTemplateAggMessage: "Liveness probe(s) on targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "liveness probes on pod are failing",
 		Category:                       TargetEvent,
 	}, EventReadinessProbeChangeDuringDisruption: {
 		Type:                           corev1.EventTypeNormal,
-		OnDisruptionTemplateMessage:    "readiness probe on targeted pod %s is failing",
-		OnDisruptionTemplateAggMessage: "readiness probes on targeted pod(s) are failing",
+		OnDisruptionTemplateMessage:    "Readiness probe on targeted pod %s is failing",
+		OnDisruptionTemplateAggMessage: "Readiness probes on targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "readiness probes on pod are failing",
 		Category:                       TargetEvent,
 	}, EventReadinessProbeChangeBeforeDisruption: {
 		Type:                           corev1.EventTypeWarning,
-		OnDisruptionTemplateMessage:    "readiness probe on targeted pod %s is failing",
-		OnDisruptionTemplateAggMessage: "readiness probes on targeted pod(s) are failing",
+		OnDisruptionTemplateMessage:    "Readiness probe on targeted pod %s is failing",
+		OnDisruptionTemplateAggMessage: "Readiness probes on targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "readiness probes on pod are failing",
 		Category:                       TargetEvent,
 	},
 	EventTooManyRestarts: {
 		Type:                           corev1.EventTypeWarning,
-		OnDisruptionTemplateMessage:    "targeted pod %s has restarted too many times",
-		OnDisruptionTemplateAggMessage: "targeted pod(s) have restarted too many times",
+		OnDisruptionTemplateMessage:    "Targeted pod %s has restarted too many times",
+		OnDisruptionTemplateAggMessage: "Targeted pod(s) have restarted too many times",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "pod has restarted too many times",
 		Category:                       TargetEvent,
 	},
 	EventPodRecoveredState: {
 		Type:                           corev1.EventTypeNormal,
-		OnDisruptionTemplateMessage:    "targeted pod %s seems to have recovered",
-		OnDisruptionTemplateAggMessage: "targeted pod(s) seem to have recovered",
+		OnDisruptionTemplateMessage:    "Targeted pod %s seems to have recovered",
+		OnDisruptionTemplateAggMessage: "Targeted pod(s) seem to have recovered",
 		OnTargetTemplateMessage:        "pod seems to have recovered from the disruption %s failure",
 		Category:                       TargetEvent,
 	},
 	EventNodeMemPressureState: {
 		Type:                           corev1.EventTypeWarning,
-		OnDisruptionTemplateMessage:    "targeted node %s is under memory pressure",
-		OnDisruptionTemplateAggMessage: "targeted node(s) are under memory pressure",
+		OnDisruptionTemplateMessage:    "Targeted node %s is under memory pressure",
+		OnDisruptionTemplateAggMessage: "Targeted node(s) are under memory pressure",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "node is under memory pressure",
 		Category:                       TargetEvent,
 	},
 	EventNodeDiskPressureState: {
 		Type:                           corev1.EventTypeWarning,
-		OnDisruptionTemplateMessage:    "targeted node %s is under disk pressure",
-		OnDisruptionTemplateAggMessage: "targeted node(s) are under disk pressure",
+		OnDisruptionTemplateMessage:    "Targeted node %s is under disk pressure",
+		OnDisruptionTemplateAggMessage: "Targeted node(s) are under disk pressure",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "node is under disk pressure",
 		Category:                       TargetEvent,
 	},
 	EventNodeUnavailableNetworkState: {
 		Type:                           corev1.EventTypeWarning,
-		OnDisruptionTemplateMessage:    "targeted node %s network is unavailable",
-		OnDisruptionTemplateAggMessage: "targeted node(s) network are unavailable",
+		OnDisruptionTemplateMessage:    "Targeted node %s network is unavailable",
+		OnDisruptionTemplateAggMessage: "Targeted node(s) network are unavailable",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "node network is unavaialble",
 		Category:                       TargetEvent,
 	},
 	EventNodeWarningState: {
 		Type:                           corev1.EventTypeWarning,
-		OnDisruptionTemplateMessage:    "targeted node %s is not ready",
-		OnDisruptionTemplateAggMessage: "targeted node(s) are not ready",
+		OnDisruptionTemplateMessage:    "Targeted node %s is not ready",
+		OnDisruptionTemplateAggMessage: "Targeted node(s) are not ready",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "node is not ready",
 		Category:                       TargetEvent,
 	},
 	EventNodeRecoveredState: {
 		Type:                           corev1.EventTypeNormal,
-		OnDisruptionTemplateMessage:    "targeted node %s seems to have recovered",
-		OnDisruptionTemplateAggMessage: "targeted node(s) seem to have recovered",
-		OnTargetTemplateMessage:        "node seems to have recovered from the disruption %s failure",
+		OnDisruptionTemplateMessage:    "Targeted node %s seems to have recovered",
+		OnDisruptionTemplateAggMessage: "Targeted node(s) seem to have recovered",
+		OnTargetTemplateMessage:        "Node seems to have recovered from the disruption %s failure",
 		Category:                       TargetEvent,
 	},
 	EventDisruptionDurationOver: {
