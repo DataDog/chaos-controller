@@ -445,9 +445,10 @@ spec:
                   slackChannel:
                     description: SlackChannel is the destination slack channel to
                       send reporting informations to. It's expected to follow slack
-                      naming restrictions https://api.slack.com/methods/conversations.create#naming
+                      naming conventions https://api.slack.com/methods/conversations.create#naming
+                      or slack channel ID format
                     maxLength: 80
-                    pattern: '[a-z0-9-_]'
+                    pattern: (^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
                     type: string
                 type: object
               selector:

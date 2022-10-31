@@ -76,9 +76,9 @@ type DisruptionSpec struct {
 // it expect slack bot to be added to the defined slack channel
 type Reporting struct {
 	// SlackChannel is the destination slack channel to send reporting informations to.
-	// It's expected to follow slack naming restrictions https://api.slack.com/methods/conversations.create#naming
+	// It's expected to follow slack naming conventions https://api.slack.com/methods/conversations.create#naming or slack channel ID format
 	// +kubebuilder:validation:MaxLength=80
-	// +kubebuilder:validation:Pattern=[a-z0-9-_]
+	// +kubebuilder:validation:Pattern=(^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
 	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
 	SlackChannel string `json:"slackChannel,omitempty"`
