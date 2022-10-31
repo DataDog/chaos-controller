@@ -194,6 +194,7 @@ func (s *DisruptionSpec) HashNoCount() (string, error) {
 // Validate applies rules for disruption global scope and all subsequent disruption specifications
 func (s *DisruptionSpec) Validate() (string, error) {
 	var multiErr *multierror.Error
+
 	var toReturnErr error
 
 	if err := s.validateGlobalDisruptionScope(); err != nil {
