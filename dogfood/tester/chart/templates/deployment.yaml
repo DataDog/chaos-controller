@@ -24,22 +24,7 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: dogfood-client-pvc
       containers:
-        - name: read-file
-          image: ubuntu:bionic-20220128
-          command: [ "/bin/bash" ]
-          args:
-            [
-              "-c",
-              "echo 'create file to read from: /mnt/data/disk-read-file' && dd if=/dev/zero of=/mnt/data/disk-read-file bs=20k count=1; while true; do time dd if=/mnt/data/disk-read-file of=/dev/null iflag=direct; sleep 1; done",
-            ]
-          volumeMounts:
-              - mountPath: /mnt/data
-                name: data
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -48,12 +33,5 @@ spec:
           args:
             - -server_hostname={{ $.Values.server.hostname }}
             - -server_port={{ $.Values.server.port }}
-          ports:
-            - name: grpc
-              containerPort: {{ $.Values.client.port }}
-              protocol: TCP
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          volumeMounts:
-            - mountPath: /mnt/data
-              name: data

@@ -9,6 +9,7 @@ metadata:
   name: dogfood-client-pvc
   namespace: chaos-demo
 spec:
+  storageClassName: longhorn
   accessModes:
     - ReadWriteOnce
   resources:

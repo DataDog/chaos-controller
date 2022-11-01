@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -61,22 +62,32 @@ func printAndLog(logLine string) {
 	fmt.Println(logLine)
 
 	go func() {
-		logLineBytes := make([]byte, 50000)
-		logLineBytes, err := os.ReadFile("/dev/urandom")
+		f, err := os.OpenFile("/dev/urandom", os.O_RDONLY|os.O_SYNC, 0644)
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = os.WriteFile("/mnt/data/logging", logLineBytes, 0644)
+		logLineBytes := make([]byte, 500000)
+		_, err = f.Read(logLineBytes)
 		if err != nil {
 			log.Fatal(err)
 		}
-	}()
-
-	go func() {
-		_, err := os.ReadFile("/mnt/data/logging")
+		f.Close()
+		if _, err := os.Stat("/mnt/data/logging"); errors.Is(err, os.ErrNotExist) {
+			f, err = os.Create("/mnt/data/logging")
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			f, err = os.OpenFile("/mnt/data/logging", os.O_WRONLY|os.O_SYNC, 0644)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		_, err = f.Write(logLineBytes)
 		if err != nil {
 			log.Fatal(err)
 		}
+		f.Close()
 	}()
 
 	// write and read this file to help with testing disk disruptions
