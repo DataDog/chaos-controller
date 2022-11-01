@@ -6,8 +6,10 @@
 package injector
 
 import (
+	"context"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaos_grpc "github.com/DataDog/chaos-controller/grpc"
@@ -16,25 +18,34 @@ import (
 	"google.golang.org/grpc"
 )
 
+// Five Seconds timeout before aborting the attempt to connect to server
+// so that in turn, when user requests, the injector pod can be terminated
+const connectionTimeout = time.Duration(5) * time.Second
+
 // GRPCDisruptionInjector describes a grpc disruption
 type GRPCDisruptionInjector struct {
 	spec       v1beta1.GRPCDisruptionSpec
 	config     GRPCDisruptionInjectorConfig
 	serverAddr string
+	timeout    time.Duration
 }
 
 // GRPCDisruptionInjectorConfig contains all needed drivers to create a grpc disruption
 type GRPCDisruptionInjectorConfig struct {
 	Config
+	State InjectorState
 }
 
 // NewGRPCDisruptionInjector creates a GRPCDisruptionInjector object with the given config,
 // missing fields are initialized with the defaults
 func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisruptionInjectorConfig) Injector {
+	config.State = Created
+
 	return &GRPCDisruptionInjector{
 		spec:       spec,
 		config:     config,
 		serverAddr: config.TargetPodIP + ":" + strconv.Itoa(spec.Port),
+		timeout:    connectionTimeout,
 	}
 }
 
@@ -51,11 +62,14 @@ func (i *GRPCDisruptionInjector) Inject() error {
 		return nil
 	}
 
-	conn, err := connectToServer(i.serverAddr)
+	conn, err := i.connectToServer()
 	if err != nil {
 		i.config.Log.Errorf(err.Error())
 		return err
 	}
+
+	// as long as we managed to dial the server, then we have to assume we're injected
+	i.config.State = Injected
 
 	i.config.Log.Infow("adding grpc disruption", "spec", i.spec)
 
@@ -74,6 +88,11 @@ func (i *GRPCDisruptionInjector) UpdateConfig(config Config) {
 
 // Clean removes the injected disruption from the given container
 func (i *GRPCDisruptionInjector) Clean() error {
+	if i.config.State != Injected {
+		i.config.Log.Infow("nothing to clean", "spec", i.spec, "state", i.config.State)
+		return nil
+	}
+
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
 	if i.config.DryRun {
@@ -81,7 +100,7 @@ func (i *GRPCDisruptionInjector) Clean() error {
 		return nil
 	}
 
-	conn, err := connectToServer(i.serverAddr)
+	conn, err := i.connectToServer()
 	if err != nil {
 		i.config.Log.Errorf(err.Error())
 		return err
@@ -93,19 +112,27 @@ func (i *GRPCDisruptionInjector) Clean() error {
 
 	if err != nil {
 		i.config.Log.Error("Received an error: %v", err)
+		return err
 	}
+
+	i.config.State = Cleaned
 
 	return conn.Close()
 }
 
-func connectToServer(serverAddr string) (*grpc.ClientConn, error) {
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure()) // Future Work: make secure
-	opts = append(opts, grpc.WithBlock())
+func (i *GRPCDisruptionInjector) connectToServer() (*grpc.ClientConn, error) {
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(), // Future Work: make secure
+		grpc.WithBlock(),
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
 
-	conn, err := grpc.Dial(serverAddr, opts...)
+	defer cancel()
+
+	conn, err := grpc.DialContext(ctx, i.serverAddr, opts...)
+
 	if err != nil {
-		return nil, errors.New("fail to dial: " + serverAddr)
+		return nil, errors.New("fail to dial: " + i.serverAddr)
 	}
 
 	return conn, nil

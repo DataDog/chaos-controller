@@ -15,9 +15,9 @@ const (
 
 // CloudProviderIPRangeInfo information related to the ip ranges pulled from a cloud provider
 type CloudProviderIPRangeInfo struct {
-	Version                  string
-	CloudProviderServiceName CloudProviderName
-	IPRanges                 map[string][]string
+	Version     string
+	IPRanges    map[string][]string
+	ServiceList []string // Makes the process of getting the services names easier
 }
 
 // CloudProviderConfig Single configuration for any cloud provider

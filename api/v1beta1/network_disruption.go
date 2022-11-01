@@ -32,7 +32,8 @@ type NetworkDisruptionSpec struct {
 	// +nullable
 	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
 	// +nullable
-	AllowedHosts []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
+	AllowedHosts               []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
+	DisableDefaultAllowedHosts bool                        `json:"disableDefaultAllowedHosts,omitempty"`
 	// +nullable
 	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
 	// +nullable
@@ -99,9 +100,11 @@ type NetworkDisruptionServiceSpec struct {
 	Namespace string `json:"namespace"`
 }
 
-// +ddmark:validation:AtLeastOneOf={AWSServiceList}
+// +ddmark:validation:AtLeastOneOf={AWSServiceList,GCPServiceList,DatadogServiceList}
 type NetworkDisruptionCloudSpec struct {
-	AWSServiceList *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty"`
+	AWSServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty"`
+	GCPServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"gcp,omitempty"`
+	DatadogServiceList *[]NetworkDisruptionCloudServiceSpec `json:"datadog,omitempty"`
 }
 
 type NetworkDisruptionCloudServiceSpec struct {
@@ -193,6 +196,14 @@ func (s *NetworkDisruptionCloudSpec) TransformToCloudMap() map[string][]NetworkD
 
 	if s.AWSServiceList != nil {
 		clouds["AWS"] = *s.AWSServiceList
+	}
+
+	if s.GCPServiceList != nil {
+		clouds["GCP"] = *s.GCPServiceList
+	}
+
+	if s.DatadogServiceList != nil {
+		clouds["Datadog"] = *s.DatadogServiceList
 	}
 
 	return clouds

@@ -85,6 +85,12 @@ spec:
               cpuPressure:
                 description: CPUPressureSpec represents a cpu pressure disruption
                 nullable: true
+                properties:
+                  count:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    x-kubernetes-int-or-string: true
                 type: object
               diskPressure:
                 description: DiskPressureSpec represents a disk pressure disruption
@@ -260,6 +266,60 @@ spec:
                           - service
                           type: object
                         type: array
+                      datadog:
+                        items:
+                          properties:
+                            connState:
+                              enum:
+                              - new
+                              - est
+                              - ""
+                              type: string
+                            flow:
+                              enum:
+                              - ingress
+                              - egress
+                              - ""
+                              type: string
+                            protocol:
+                              enum:
+                              - tcp
+                              - udp
+                              - ""
+                              type: string
+                            service:
+                              type: string
+                          required:
+                          - service
+                          type: object
+                        type: array
+                      gcp:
+                        items:
+                          properties:
+                            connState:
+                              enum:
+                              - new
+                              - est
+                              - ""
+                              type: string
+                            flow:
+                              enum:
+                              - ingress
+                              - egress
+                              - ""
+                              type: string
+                            protocol:
+                              enum:
+                              - tcp
+                              - udp
+                              - ""
+                              type: string
+                            service:
+                              type: string
+                          required:
+                          - service
+                          type: object
+                        type: array
                     type: object
                   corrupt:
                     maximum: 100
@@ -273,6 +333,8 @@ spec:
                     maximum: 100
                     minimum: 0
                     type: integer
+                  disableDefaultAllowedHosts:
+                    type: boolean
                   drop:
                     maximum: 100
                     minimum: 0

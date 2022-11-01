@@ -194,20 +194,8 @@ func explainGRPC(spec v1beta1.DisruptionSpec) {
 	PrintSeparator()
 }
 
-func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
-	network := spec.Network
-
-	if network == nil {
-		return
-	}
-
-	fmt.Println("💉 injects a network disruption ...")
-
-	if len(network.Hosts) != 0 {
-		fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following hosts/ports/protocols triplets:")
-	}
-
-	for _, data := range network.Hosts {
+func explainHosts(hosts []v1beta1.NetworkDisruptionHostSpec) {
+	for _, data := range hosts {
 		if len(data.Host) != 0 {
 			fmt.Printf("\t\t🎯 Host: %s\n", data.Host)
 		} else {
@@ -231,6 +219,21 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 		} else {
 			fmt.Println("\t💥 applies network failures on outgoing traffic.")
 		}
+	}
+}
+
+func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
+	network := spec.Network
+
+	if network == nil {
+		return
+	}
+
+	fmt.Println("💉 injects a network disruption ...")
+
+	if len(network.Hosts) != 0 {
+		fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following hosts/ports/protocols triplets:")
+		explainHosts(network.Hosts)
 	}
 
 	if len(network.Services) != 0 {
@@ -260,6 +263,15 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 
 	if network.BandwidthLimit != 0 {
 		fmt.Printf("\t\t💣 applies a bandwidth limit of %d ms.\n", network.BandwidthLimit)
+	}
+
+	if len(network.AllowedHosts) > 0 {
+		fmt.Println("\t💥  will apply filters so that the injected network failure excludes affecting traffic to/from the following host tuples:")
+		explainHosts(network.AllowedHosts)
+	}
+
+	if network.DisableDefaultAllowedHosts {
+		fmt.Printf("\t\tSetting disableDefaultAllowedHosts will remove the default list of excluded hosts from disruptions, and will allow you to prevent targets from reaching the k8s api. \n")
 	}
 
 	PrintSeparator()

@@ -118,10 +118,7 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 			continue
 		}
 
-		eventType := corev1.EventTypeWarning
-		if eventReason == chaosv1beta1.EventNodeRecoveredState || eventReason == chaosv1beta1.EventPodRecoveredState {
-			eventType = corev1.EventTypeNormal
-		}
+		eventType := chaosv1beta1.Events[eventReason].Type
 
 		// Send to updated target
 		h.reconciler.Recorder.Event(objectToNotify, eventType, eventReason, fmt.Sprintf(chaosv1beta1.Events[eventReason].OnTargetTemplateMessage, h.disruption.Name))
@@ -218,7 +215,8 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 		// if warning event has been sent after target recovering
 		switch event.InvolvedObject.Kind {
 		case "Pod":
-			if event.Type == corev1.EventTypeWarning {
+			switch {
+			case event.Type == corev1.EventTypeWarning:
 				if event.Reason == "Unhealthy" || event.Reason == "ProbeWarning" {
 					lowerCasedMessage := strings.ToLower(event.Message)
 
@@ -226,7 +224,13 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 					case strings.Contains(lowerCasedMessage, "liveness probe"):
 						eventsToSend[chaosv1beta1.EventLivenessProbeChange] = true
 					case strings.Contains(lowerCasedMessage, "readiness probe"):
-						eventsToSend[chaosv1beta1.EventReadinessProbeChange] = true
+						// If the object of the disruption is in the list of targets, it means it has been injected.
+						// The readiness probe is failing during the injection
+						if h.disruption.Status.HasTarget(event.InvolvedObject.Name) {
+							eventsToSend[chaosv1beta1.EventReadinessProbeChangeDuringDisruption] = true
+						} else {
+							eventsToSend[chaosv1beta1.EventReadinessProbeChangeBeforeDisruption] = true
+						}
 					default:
 						eventsToSend[chaosv1beta1.EventPodWarningState] = true
 					}
@@ -240,19 +244,23 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
 				)
-			} else if event.Reason == "Started" {
+			case event.Reason == "Started":
 				if recoverTimestamp == nil {
 					recoverTimestamp = &event.LastTimestamp.Time
 				}
 
 				eventsToSend[chaosv1beta1.EventPodRecoveredState] = true
 
-				h.reconciler.log.Infow("recovering event detected on target",
+				h.reconciler.log.Debugw("recovering event detected on target",
 					"target", targetName,
 					"reason", event.Reason,
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
 				)
+			case event.Reason == "Killing" && strings.Contains(event.Message, "Stopping container") && eventsToSend[chaosv1beta1.EventContainerWarningState]:
+				// this event indicates a safe killing of a container (can occur when we rollout or manually delete a pod for example)
+				// we remove the warning state event if it has been created when we compared the state of the containers
+				delete(eventsToSend, chaosv1beta1.EventContainerWarningState)
 			}
 		case "Node":
 			if event.Type == corev1.EventTypeWarning {
@@ -271,7 +279,7 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 
 				eventsToSend[chaosv1beta1.EventNodeRecoveredState] = true
 
-				h.reconciler.log.Infow("recovering event detected on target",
+				h.reconciler.log.Debugw("recovering event detected on target",
 					"target", targetName,
 					"reason", event.Reason,
 					"message", event.Message,

@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/cloudservice/aws"
+	"github.com/DataDog/chaos-controller/cloudservice/datadog"
+	"github.com/DataDog/chaos-controller/cloudservice/gcp"
 	"github.com/DataDog/chaos-controller/cloudservice/types"
 
 	"go.uber.org/zap"
@@ -29,13 +31,12 @@ type CloudServicesProvidersManager struct {
 type CloudServicesProvider struct {
 	CloudProviderIPRangeManager CloudProviderIPRangeManager
 	IPRangeInfo                 *types.CloudProviderIPRangeInfo
-	ServiceList                 []string // Makes the process of getting the services names easier
 	Conf                        types.CloudProviderConfig
 }
 
 // CloudProviderIPRangeManager Methods to verify and transform a specifid ip ranges list from a provider
 type CloudProviderIPRangeManager interface {
-	IsNewVersion([]byte, types.CloudProviderIPRangeInfo) bool
+	IsNewVersion([]byte, string) (bool, error)
 	ConvertToGenericIPRanges([]byte) (*types.CloudProviderIPRangeInfo, error)
 }
 
@@ -45,6 +46,18 @@ func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServi
 			CloudProviderIPRangeManager: aws.New(),
 			Conf: types.CloudProviderConfig{
 				IPRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json",
+			},
+		},
+		types.CloudProviderGCP: {
+			CloudProviderIPRangeManager: gcp.New(),
+			Conf: types.CloudProviderConfig{
+				IPRangesURL: "https://www.gstatic.com/ipranges/goog.json", // General IP Ranges from Google, contains some API ip ranges
+			},
+		},
+		types.CloudProviderDatadog: {
+			CloudProviderIPRangeManager: datadog.New(),
+			Conf: types.CloudProviderConfig{
+				IPRangesURL: "https://ip-ranges.datadoghq.com/",
 			},
 		},
 	}
@@ -61,6 +74,7 @@ func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServi
 	}
 
 	if err := manager.PullIPRanges(); err != nil {
+		manager.log.Error(err)
 		return nil, err
 	}
 
@@ -146,11 +160,11 @@ func (s *CloudServicesProvidersManager) GetServicesIPRanges(cloudProviderName ty
 
 // GetServiceList return the list of services of a specific cloud provider. Mostly used in disruption creation validation
 func (s *CloudServicesProvidersManager) GetServiceList(cloudProviderName types.CloudProviderName) []string {
-	if s.cloudProviders[cloudProviderName] == nil {
+	if s.cloudProviders[cloudProviderName] == nil || s.cloudProviders[cloudProviderName].IPRangeInfo == nil {
 		return nil
 	}
 
-	return s.cloudProviders[cloudProviderName].ServiceList
+	return s.cloudProviders[cloudProviderName].IPRangeInfo.ServiceList
 }
 
 // pullIPRangesPerCloudProvider pull ip ranges of one cloud provider
@@ -167,25 +181,23 @@ func (s *CloudServicesProvidersManager) pullIPRangesPerCloudProvider(cloudProvid
 		return err
 	}
 
-	if provider.IPRangeInfo != nil && !provider.CloudProviderIPRangeManager.IsNewVersion(unparsedIPRange, *provider.IPRangeInfo) {
-		s.log.Debugw("no changes of ip ranges", "provider", cloudProviderName)
-		s.log.Debugw("finished pulling new version", "provider", cloudProviderName)
+	if provider.IPRangeInfo != nil {
+		isNewVersion, err := provider.CloudProviderIPRangeManager.IsNewVersion(unparsedIPRange, provider.IPRangeInfo.Version)
+		if err != nil {
+			return err
+		}
 
-		return nil
+		if !isNewVersion {
+			s.log.Debugw("no changes of ip ranges", "provider", cloudProviderName)
+			s.log.Debugw("finished pulling new version", "provider", cloudProviderName)
+
+			return nil
+		}
 	}
 
-	newIPRangeInfo, err := provider.CloudProviderIPRangeManager.ConvertToGenericIPRanges(unparsedIPRange)
-	if err != nil {
-		return err
-	}
+	provider.IPRangeInfo, err = provider.CloudProviderIPRangeManager.ConvertToGenericIPRanges(unparsedIPRange)
 
-	// We compute this into a list to indicate to the user which services are available on error during disruption creation
-	provider.IPRangeInfo = newIPRangeInfo
-	for service := range newIPRangeInfo.IPRanges {
-		provider.ServiceList = append(provider.ServiceList, service)
-	}
-
-	return nil
+	return err
 }
 
 // requestIPRangesFromProvider launches a HTTP GET request to pull the ip range json file from a url
