@@ -1029,6 +1029,10 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 				},
 				VolumeMounts: []corev1.VolumeMount{ // define volume mounts required for disruptions to work
 					{
+						Name:      "fstab",
+						MountPath: "/mnt/fstab",
+					},
+					{
 						Name:      "run",
 						MountPath: "/run",
 					},
@@ -1068,6 +1072,15 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 					HostPath: &corev1.HostPathVolumeSource{
 						Path: "/proc",
 						Type: &hostPathDirectory,
+					},
+				},
+			},
+			{
+				Name: "fstab",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/etc/fstab",
+						Type: &hostPathFile,
 					},
 				},
 			},
