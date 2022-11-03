@@ -19,6 +19,7 @@ import (
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 	"github.com/slack-go/slack"
 	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -130,32 +131,21 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		n.logger.Errorw("unable to retrieve disruption user info", "error", err, "disruption", dis.Name)
 	}
 
-	// To remove when we stop testing this feature
-	if n.config.MirrorSlackChannelID != "" {
-		userName := infoNotAvailable
-		if userInfo.Username != "" {
-			userName = userInfo.Username
-		}
-
-		_, _, err := n.client.PostMessage(n.config.MirrorSlackChannelID,
-			slack.MsgOptionText(headerText, false),
-			slack.MsgOptionUsername("Disruption Status Bot"),
-			slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
-			slack.MsgOptionBlocks(
-				headerBlock,
-				slack.NewDividerBlock(),
-				slack.NewSectionBlock(nil, append(disruptionBlocks, slack.NewTextBlockObject("mrkdwn", "*Author:*\n"+userName, false, false)), nil),
-				slack.NewDividerBlock(),
-				bodyBlock,
-			),
-			slack.MsgOptionAsUser(true),
-		)
-		if err != nil {
-			n.logger.Errorw("slack notifier: couldn't send a message to the channel", "mirrorSlackChannelID", n.config.MirrorSlackChannelID, "error", err)
-		}
+	// Whenever a purpose is defined, we expect it to be available into all notifications sent messages
+	if nil != dis.Spec.Reporting && dis.Spec.Reporting.Purpose != "" {
+		disruptionBlocks = append(disruptionBlocks, slack.NewTextBlockObject("mrkdwn", "*Purpose:*\n"+dis.Spec.Reporting.Purpose, false, false))
 	}
 
-	if notifType == types.NotificationInfo {
+	if n.config.MirrorSlackChannelID != "" {
+		n.sendMessageToChannel(userInfo, n.config.MirrorSlackChannelID, headerText, headerBlock, disruptionBlocks, bodyBlock)
+	}
+
+	if nil != dis.Spec.Reporting && dis.Spec.Reporting.SlackChannel != "" && dis.Spec.Reporting.MinNotificationType.Allows(notifType) {
+		n.sendMessageToChannel(userInfo, dis.Spec.Reporting.SlackChannel, headerText, headerBlock, disruptionBlocks, bodyBlock)
+	}
+
+	// We expect notification equal to or above success to be sent to users
+	if !types.NotificationSuccess.Allows(notifType) {
 		n.logger.Debugw("slack notifier: not sending info notification type to not flood user", "disruptionName", dis.Name, "eventType", event.Type, "message", bodyText)
 
 		return nil
@@ -192,4 +182,28 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 	n.logger.Debugw("notifier: sending notifier event to slack", "disruptionName", dis.Name, "eventType", event.Type, "message", bodyText)
 
 	return nil
+}
+
+func (n *Notifier) sendMessageToChannel(userInfo authv1.UserInfo, slackChannel, headerText string, headerBlock *slack.HeaderBlock, disruptionBlocks []*slack.TextBlockObject, bodyBlock *slack.SectionBlock) {
+	userName := infoNotAvailable
+	if userInfo.Username != "" {
+		userName = userInfo.Username
+	}
+
+	_, _, err := n.client.PostMessage(slackChannel,
+		slack.MsgOptionText(headerText, false),
+		slack.MsgOptionUsername("Disruption Status Bot"),
+		slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
+		slack.MsgOptionBlocks(
+			headerBlock,
+			slack.NewDividerBlock(),
+			slack.NewSectionBlock(nil, append(disruptionBlocks, slack.NewTextBlockObject("mrkdwn", "*Author:*\n"+userName, false, false)), nil),
+			slack.NewDividerBlock(),
+			bodyBlock,
+		),
+		slack.MsgOptionAsUser(true),
+	)
+	if err != nil {
+		n.logger.Errorw("slack notifier: couldn't send a message to the channel", "slackChannel", slackChannel, "error", err)
+	}
 }
