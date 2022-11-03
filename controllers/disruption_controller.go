@@ -510,7 +510,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 
 			// send metrics and events
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionChaosPodCreated, false, instance.Name)
-			r.getTargetAndRecordEventOnTarget(instance, target, chaosv1beta1.EventDisrupted, instance.Name)
+			r.getTargetAndRecordEventOnTarget(instance, target, chaosv1beta1.EventDisrupted, chaosPod.Name, instance.Name)
 			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 		case 1:
 			r.log.Debugw("an injection pod is already existing for the selected target", "target", target, "chaosPod", found[0].Name)
@@ -1154,7 +1154,11 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 
 func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Disruption, eventReason chaosv1beta1.DisruptionEventReason, isAggregatedMessage bool, optionalMessage string) {
 	disEvent := chaosv1beta1.Events[eventReason]
-	message := fmt.Sprintf(disEvent.OnDisruptionTemplateMessage, optionalMessage)
+	message := disEvent.OnDisruptionTemplateMessage
+
+	if optionalMessage != "" {
+		message = fmt.Sprintf(disEvent.OnDisruptionTemplateMessage, optionalMessage)
+	}
 
 	if isAggregatedMessage {
 		message = disEvent.OnDisruptionTemplateAggMessage
@@ -1163,15 +1167,15 @@ func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Di
 	r.Recorder.Event(instance, disEvent.Type, string(eventReason), message)
 }
 
-func (r *DisruptionReconciler) recordEventOnTarget(target runtime.Object, eventReason chaosv1beta1.DisruptionEventReason, optionalMessage string) {
+func (r *DisruptionReconciler) recordEventOnTarget(target runtime.Object, eventReason chaosv1beta1.DisruptionEventReason, v ...any) {
 	disEvent := chaosv1beta1.Events[eventReason]
-	message := fmt.Sprintf(disEvent.OnTargetTemplateMessage, optionalMessage)
+	message := fmt.Sprintf(disEvent.OnTargetTemplateMessage, v...)
 
 	r.Recorder.Event(target, disEvent.Type, string(eventReason), message)
 }
 
 // getTargetAndRecordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
-func (r *DisruptionReconciler) getTargetAndRecordEventOnTarget(instance *chaosv1beta1.Disruption, target string, eventReason chaosv1beta1.DisruptionEventReason, optionalMessage string) {
+func (r *DisruptionReconciler) getTargetAndRecordEventOnTarget(instance *chaosv1beta1.Disruption, target string, eventReason chaosv1beta1.DisruptionEventReason, v ...any) {
 	var o runtime.Object
 
 	switch instance.Spec.Level {
@@ -1193,7 +1197,7 @@ func (r *DisruptionReconciler) getTargetAndRecordEventOnTarget(instance *chaosv1
 		o = n
 	}
 
-	r.recordEventOnTarget(o, eventReason, optionalMessage)
+	r.recordEventOnTarget(o, eventReason, v...)
 }
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
