@@ -419,6 +419,38 @@ spec:
                 - activeDuration
                 - dormantDuration
                 type: object
+              reporting:
+                description: Reporting provides additional reporting options in order
+                  to send a message to a custom slack channel it expect the main controller
+                  to have slack notifier enabled it expect slack bot to be added to
+                  the defined slack channel
+                nullable: true
+                properties:
+                  minNotificationType:
+                    description: MinNotificationType is the minimal notification type
+                      we want to receive informations for In order of importance it's
+                      Info, Success, Warning, Error Default level is considered Success,
+                      meaning all info will be ignored
+                    enum:
+                    - Info
+                    - Success
+                    - Warning
+                    - Error
+                    type: string
+                  purpose:
+                    description: Purpose determines contextual informations about
+                      the disruption a brief context to determines disruption goal
+                    minLength: 10
+                    type: string
+                  slackChannel:
+                    description: SlackChannel is the destination slack channel to
+                      send reporting informations to. It's expected to follow slack
+                      naming conventions https://api.slack.com/methods/conversations.create#naming
+                      or slack channel ID format
+                    maxLength: 80
+                    pattern: (^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
+                    type: string
+                type: object
               selector:
                 additionalProperties:
                   type: string

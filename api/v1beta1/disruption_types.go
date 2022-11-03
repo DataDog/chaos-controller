@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -19,6 +19,7 @@ import (
 	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
+	eventtypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/hashicorp/go-multierror"
@@ -66,6 +67,31 @@ type DisruptionSpec struct {
 	DNS DNSDisruptionSpec `json:"dns,omitempty"`
 	// +nullable
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
+	// +nullable
+	Reporting *Reporting `json:"reporting,omitempty"`
+}
+
+// Reporting provides additional reporting options in order to send a message to a custom slack channel
+// it expect the main controller to have slack notifier enabled
+// it expect slack bot to be added to the defined slack channel
+type Reporting struct {
+	// SlackChannel is the destination slack channel to send reporting informations to.
+	// It's expected to follow slack naming conventions https://api.slack.com/methods/conversations.create#naming or slack channel ID format
+	// +kubebuilder:validation:MaxLength=80
+	// +kubebuilder:validation:Pattern=(^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
+	// +kubebuilder:validation:Required
+	// +ddmark:validation:Required=true
+	SlackChannel string `json:"slackChannel,omitempty"`
+	// Purpose determines contextual informations about the disruption
+	// a brief context to determines disruption goal
+	// +kubebuilder:validation:MinLength=10
+	// +kubebuilder:validation:Required
+	// +ddmark:validation:Required=true
+	Purpose string `json:"purpose,omitempty"`
+	// MinNotificationType is the minimal notification type we want to receive informations for
+	// In order of importance it's Info, Success, Warning, Error
+	// Default level is considered Success, meaning all info will be ignored
+	MinNotificationType eventtypes.NotificationType `json:"minNotificationType,omitempty"`
 }
 
 // EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
@@ -334,7 +360,7 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 		return nil, fmt.Errorf("could not open yaml file at %s: %v", fullPath, err)
 	}
 
-	yamlBytes, err := ioutil.ReadAll(yaml)
+	yamlBytes, err := io.ReadAll(yaml)
 	if err != nil {
 		return nil, fmt.Errorf("could not read yaml file: %v ", err)
 	}
