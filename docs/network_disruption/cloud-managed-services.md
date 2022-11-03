@@ -4,9 +4,10 @@
 
 Large cloud services providers are using wide IP ranges. Hostnames used to identify those services are resolving with some IPs of that range, and resolved IPs can change between each DNS request. Applying a network disruption using those hostnames only doesn’t work well since retrying the resolution of such hostname would return new IPs (not disrupted) and the disruption would be ineffective.
 
-Available cloud providers are:
+Available providers are:
 - AWS
 - GCP
+- Datadog
 
 ### Cloud Provider Manager
 

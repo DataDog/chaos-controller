@@ -16,6 +16,18 @@ spec:
   network:
     cloud:
       aws:
-        - service: "S3"
-          flow: "egress"
+        - service: "S3" # service name as declared in the provider file (see doc for details)
+          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+          flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
+          connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
+      gcp:
+        - service: "Google" # service name as declared in the provider file (see doc for details)
+          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+          flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
+          connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
+      datadog:
+        - service: "synthetics" # service name as declared in the provider file (see doc for details)
+          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+          flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
+          connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
     drop: 100 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
