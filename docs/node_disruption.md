@@ -5,4 +5,4 @@ The `nodeFailure` field triggers a kernel panic on the node. Because the node wi
 * `/proc/sys/kernel/sysrq` > `/mnt/sysrq`
 * `/proc/sysrq-trigger` > `/mnt/sysrq-trigger`
 
-> ℹ️ Node behavior when using this disruption can differ depending on the cloud provider (node may or may not be replaced, restarted, cordoned, etc.).
+> :warning:️ Node behavior when using this disruption can differ depending on the cloud provider (node may or may not be replaced, restarted, cordoned, etc.).
