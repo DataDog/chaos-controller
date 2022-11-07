@@ -92,6 +92,20 @@ func (c *disruptionClient) Create(ctx context.Context, disruption *v1beta1.Disru
 	return &result, err
 }
 
+func (c *disruptionClient) Update(ctx context.Context, disruption *v1beta1.Disruption) (*v1beta1.Disruption, error) {
+	result := v1beta1.Disruption{}
+	err := c.restClient.
+		Put().
+		Namespace(c.ns).
+		Name(disruption.Name).
+		Resource("disruptions").
+		Body(disruption).
+		Do(ctx).
+		Into(&result)
+
+	return &result, err
+}
+
 func (c *disruptionClient) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	opts.Watch = true
 
