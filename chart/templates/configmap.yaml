@@ -51,7 +51,7 @@ data:
         port: {{ .Values.controller.webhook.port }}
       safeMode:
         enable: {{ .Values.controller.safeMode.enable }}
-        networkThreshold: {{ .Values.controller.safeMode.networkThreshold }}
+        namespaceThreshold: {{ .Values.controller.safeMode.namespaceThreshold }}
         clusterThreshold: {{ .Values.controller.safeMode.clusterThreshold }}
     injector:
       image: {{ .Values.images.injector | quote }}
