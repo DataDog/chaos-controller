@@ -62,9 +62,6 @@ spec:
         - mountPath: /etc/chaos-controller
           name: config
           readOnly: true
-        - mountPath: /etc/chaos-controller/cloud-provider-cache
-          name: cloud-provider-cache
-          readOnly: false
       {{- if .Values.images.pullSecrets }}
       imagePullSecrets:
         - name: {{ .Values.images.pullSecrets }}
@@ -78,5 +75,3 @@ spec:
       - name: config
         configMap:
           name: chaos-controller-config
-      - name: cloud-provider-cache
-        emptyDir: {}
