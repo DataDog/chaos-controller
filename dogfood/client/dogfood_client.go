@@ -66,12 +66,16 @@ func printAndLog(logLine string) {
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		logLineBytes := make([]byte, 500000)
+
 		_, err = f.Read(logLineBytes)
 		if err != nil {
 			log.Fatal(err)
 		}
-		f.Close()
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
 		if _, err := os.Stat("/mnt/data/logging"); errors.Is(err, os.ErrNotExist) {
 			f, err = os.Create("/mnt/data/logging")
 			if err != nil {
@@ -83,11 +87,14 @@ func printAndLog(logLine string) {
 				log.Fatal(err)
 			}
 		}
+
 		_, err = f.Write(logLineBytes)
 		if err != nil {
 			log.Fatal(err)
 		}
-		f.Close()
+		if err = f.Close(); err != nil {
+			log.Fatal(err)
+		}
 	}()
 }
 
@@ -159,6 +166,7 @@ func main() {
 
 	// generate and use client
 	client := pb.NewChaosDogfoodClient(conn)
+	
 	printAndLog("We successfully generated the client, getting ready to send requests")
 
 	sendsLotsOfRequests(client)

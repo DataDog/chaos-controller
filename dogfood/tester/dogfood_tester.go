@@ -7,10 +7,11 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"go.uber.org/zap"
 	"net/http"
 	"time"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"go.uber.org/zap"
 )
 
 var VERSION string
