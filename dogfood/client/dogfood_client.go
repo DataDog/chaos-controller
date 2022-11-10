@@ -73,10 +73,12 @@ func printAndLog(logLine string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := f.Close(); err != nil {
+
+		if err = f.Close(); err != nil {
 			log.Fatal(err)
 		}
-		if _, err := os.Stat("/mnt/data/logging"); errors.Is(err, os.ErrNotExist) {
+
+		if _, err = os.Stat("/mnt/data/logging"); errors.Is(err, os.ErrNotExist) {
 			f, err = os.Create("/mnt/data/logging")
 			if err != nil {
 				log.Fatal(err)
@@ -92,6 +94,7 @@ func printAndLog(logLine string) {
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		if err = f.Close(); err != nil {
 			log.Fatal(err)
 		}
@@ -149,7 +152,9 @@ func stringifyCatalogItems(items []*pb.CatalogItem) string {
 func main() {
 	// create and eventually close connection
 	printAndLog(fmt.Sprintf("connecting to %v...\n", serverAddr))
+
 	var opts []grpc.DialOption
+	
 	opts = append(opts, grpc.WithInsecure())
 	opts = append(opts, grpc.WithBlock())
 
@@ -166,7 +171,7 @@ func main() {
 
 	// generate and use client
 	client := pb.NewChaosDogfoodClient(conn)
-	
+
 	printAndLog("We successfully generated the client, getting ready to send requests")
 
 	sendsLotsOfRequests(client)
