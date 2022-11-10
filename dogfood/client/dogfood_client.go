@@ -89,38 +89,6 @@ func printAndLog(logLine string) {
 		}
 		f.Close()
 	}()
-
-	// write and read this file to help with testing disk disruptions
-
-	//writeSize := len(logLineBytes)
-	//var err error
-	//f, err := os.OpenFile("/mnt/data/logging", os.O_APPEND|os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0600)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//defer f.Close()
-	//// the os.WriteFile will reset the file as to not fill up disk space
-	//// the follow WriteString Operations will append 10 lines to the file so to increase read operations that follow
-	//// the writes
-	//err = os.WriteFile("/mnt/data/logging", logLineBytes, 0644)
-	//if err != nil {
-	//	fmt.Errorf("could not write to logging file: %w", err)
-	//}
-	//for i := 0; i < 10; i++ {
-	//	if _, err = f.WriteString(logLine + "\n"); err != nil {
-	//		fmt.Errorf("could not write to logging file: %w", err)
-	//	} else {
-	//		writeSize += writeSize
-	//	}
-	//
-	//}
-	//
-	//test := make([]byte, writeSize)
-	//_, err = f.Read(test)
-	//if err != nil {
-	//	fmt.Errorf("could not read the logging file: %w", err)
-	//}
 }
 
 // regularly order food for different animals
