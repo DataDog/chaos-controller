@@ -154,7 +154,7 @@ func main() {
 	printAndLog(fmt.Sprintf("connecting to %v...\n", serverAddr))
 
 	var opts []grpc.DialOption
-	
+
 	opts = append(opts, grpc.WithInsecure())
 	opts = append(opts, grpc.WithBlock())
 
