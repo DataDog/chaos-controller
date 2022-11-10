@@ -5,15 +5,53 @@
 
 package main
 
-func init() {
+import (
+	"encoding/json"
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"go.uber.org/zap"
+	"net/http"
+	"time"
+)
+
+var VERSION string
+var STATUS string
+var logger *zap.SugaredLogger
+
+type SpecificRequest struct {
+	CustomDisruption       v1beta1.Disruption `json:"disruption"`
+	PreInstalledDisruption string             `json:"preinstalled"`
+}
+
+type Response struct {
+	Disruption       string    `json:"disruption"`
+	StartTime        time.Time `json:"startTime"`
+	EndTime          time.Time `json:"endTime"`
+	Results          string    `json:"results"`
+	ResultsExplained string    `json:"resultsExplained"`
+}
+
+func version(w http.ResponseWriter, r *http.Request) {
+	if err := json.NewEncoder(w).Encode(VERSION); err != nil {
+		logger.Errorw("Failed to Encode Version: %w", err)
+	}
+}
+
+func status(w http.ResponseWriter, r *http.Request) {
+	if err := json.NewEncoder(w).Encode(STATUS); err != nil {
+		logger.Errorw("Failed to Encode STATUS: %w", err)
+	}
+}
+
+func handleRequests() {
+	http.HandleFunc("/version", version)
+	http.HandleFunc("/status", status)
+
+	STATUS = "ready for requests"
 }
 
 func main() {
 	//TODO
 	//1. Wait for a request to run a test
-	//2. When a request is received, place that request in a global queue in case several people are attempting to test at once
-	//   a. Have CI continuously hit this end point and if its currently in the queue, returns its place in queue
-	//3. In another go thread, pop requests to test from the queue
 	//4. Find out what relevant metrics would be (if only testing CPU, only CPU metrics matter)
 	//5. Get relevant metrics from datadog for the past 3 minutes
 	//6. Deploy the version to test
@@ -27,4 +65,7 @@ func main() {
 	//12. Once the entire request is finished, do 1 of 2 things:
 	//    a. If queue is empty, return the chaos controller in the staging cluster back to latest:stable
 	//    b. If queue is not empty, take the next request
+	STATUS = "initializing"
+	logger = &zap.SugaredLogger{}
+	handleRequests()
 }
