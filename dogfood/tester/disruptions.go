@@ -6,6 +6,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -14,30 +15,39 @@ import (
 // Globals
 
 var SELECTOR = []string{"app", "chaos-dogfood-client"}
-var CONTAINER = "client-deploy"
+
+const CONTAINER = "client-deploy"
+const NAMESPACE = "chaos-engineering"
+const NAME_PREFIX = "e2etest-"
+const DURATION v1beta1.DisruptionDuration = "3m"
+const DISK_PRESSURE_PATH = "/mnt/data"
+
+var COUNT = &intstr.IntOrString{Type: intstr.Int, IntVal: 1}
+var UNSAFEMODE = &v1beta1.UnsafemodeSpec{
+	DisableAll: true,
+}
+var NETWORK_HOST_SPEC = []v1beta1.NetworkDisruptionHostSpec{
+	{
+		Host:     fmt.Sprintf("chaos-dogfood-server.%s.svc.cluster.local", NAMESPACE),
+		Port:     50051,
+		Protocol: "tcp",
+	},
+}
 
 // Network Disruptions
 var network1 = v1beta1.Disruption{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "e2etest-network1",
-		Namespace: "chaos-engineering",
+		Name:      fmt.Sprint(NAME_PREFIX, "network-drop30"),
+		Namespace: NAMESPACE,
 	},
 	Spec: v1beta1.DisruptionSpec{
-		Count: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-		Unsafemode: &v1beta1.UnsafemodeSpec{
-			DisableAll: true,
-		},
+		Count:      COUNT,
+		Unsafemode: UNSAFEMODE,
 		Selector:   map[string]string{SELECTOR[0]: SELECTOR[1]},
 		Containers: []string{CONTAINER},
-		Duration:   "3m",
+		Duration:   DURATION,
 		Network: &v1beta1.NetworkDisruptionSpec{
-			Hosts: []v1beta1.NetworkDisruptionHostSpec{
-				{
-					Host:     "chaos-dogfood-server.chaos-demo.svc.cluster.local",
-					Port:     50051,
-					Protocol: "tcp",
-				},
-			},
+			Hosts:          NETWORK_HOST_SPEC,
 			Drop:           30,
 			Corrupt:        0,
 			Delay:          0,
@@ -48,25 +58,17 @@ var network1 = v1beta1.Disruption{
 
 var network2 = v1beta1.Disruption{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "e2etest-network2",
-		Namespace: "chaos-engineering",
+		Name:      fmt.Sprint(NAME_PREFIX, "network-drop70"),
+		Namespace: NAMESPACE,
 	},
 	Spec: v1beta1.DisruptionSpec{
-		Count: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-		Unsafemode: &v1beta1.UnsafemodeSpec{
-			DisableAll: true,
-		},
+		Count:      COUNT,
+		Unsafemode: UNSAFEMODE,
 		Selector:   map[string]string{SELECTOR[0]: SELECTOR[1]},
 		Containers: []string{CONTAINER},
-		Duration:   "3m",
+		Duration:   DURATION,
 		Network: &v1beta1.NetworkDisruptionSpec{
-			Hosts: []v1beta1.NetworkDisruptionHostSpec{
-				{
-					Host:     "chaos-dogfood-server.chaos-demo.svc.cluster.local",
-					Port:     50051,
-					Protocol: "tcp",
-				},
-			},
+			Hosts:          NETWORK_HOST_SPEC,
 			Drop:           70,
 			Corrupt:        0,
 			Delay:          0,
@@ -77,25 +79,17 @@ var network2 = v1beta1.Disruption{
 
 var network3 = v1beta1.Disruption{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "e2etest-network3",
-		Namespace: "chaos-engineering",
+		Name:      fmt.Sprint(NAME_PREFIX, "network-delay1000"),
+		Namespace: NAMESPACE,
 	},
 	Spec: v1beta1.DisruptionSpec{
-		Count: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-		Unsafemode: &v1beta1.UnsafemodeSpec{
-			DisableAll: true,
-		},
+		Count:      COUNT,
+		Unsafemode: UNSAFEMODE,
 		Selector:   map[string]string{SELECTOR[0]: SELECTOR[1]},
 		Containers: []string{CONTAINER},
-		Duration:   "3m",
+		Duration:   DURATION,
 		Network: &v1beta1.NetworkDisruptionSpec{
-			Hosts: []v1beta1.NetworkDisruptionHostSpec{
-				{
-					Host:     "chaos-dogfood-server.chaos-demo.svc.cluster.local",
-					Port:     50051,
-					Protocol: "tcp",
-				},
-			},
+			Hosts:          NETWORK_HOST_SPEC,
 			Drop:           0,
 			Corrupt:        0,
 			Delay:          1000,
@@ -111,19 +105,17 @@ var diskReadsThresholds = []int{1024, 2048, 4098}
 
 var disk1 = v1beta1.Disruption{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "e2etest-disk1",
-		Namespace: "chaos-engineering",
+		Name:      fmt.Sprint(NAME_PREFIX, "disk-read1024"),
+		Namespace: NAMESPACE,
 	},
 	Spec: v1beta1.DisruptionSpec{
-		Count: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-		Unsafemode: &v1beta1.UnsafemodeSpec{
-			DisableAll: true,
-		},
+		Count:      COUNT,
+		Unsafemode: UNSAFEMODE,
 		Selector:   map[string]string{SELECTOR[0]: SELECTOR[1]},
 		Containers: []string{CONTAINER},
-		Duration:   "3m",
+		Duration:   DURATION,
 		DiskPressure: &v1beta1.DiskPressureSpec{
-			Path: "/mnt/data",
+			Path: DISK_PRESSURE_PATH,
 			Throttling: v1beta1.DiskPressureThrottlingSpec{
 				ReadBytesPerSec: &diskReadsThresholds[0],
 			},
@@ -133,19 +125,17 @@ var disk1 = v1beta1.Disruption{
 
 var disk2 = v1beta1.Disruption{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "e2etest-disk2",
-		Namespace: "chaos-engineering",
+		Name:      fmt.Sprint(NAME_PREFIX, "disk-write2048"),
+		Namespace: NAMESPACE,
 	},
 	Spec: v1beta1.DisruptionSpec{
-		Count: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-		Unsafemode: &v1beta1.UnsafemodeSpec{
-			DisableAll: true,
-		},
+		Count:      COUNT,
+		Unsafemode: UNSAFEMODE,
 		Selector:   map[string]string{SELECTOR[0]: SELECTOR[1]},
 		Containers: []string{CONTAINER},
-		Duration:   "3m",
+		Duration:   DURATION,
 		DiskPressure: &v1beta1.DiskPressureSpec{
-			Path: "/mnt/data",
+			Path: DISK_PRESSURE_PATH,
 			Throttling: v1beta1.DiskPressureThrottlingSpec{
 				WriteBytesPerSec: &diskReadsThresholds[1],
 			},
@@ -155,17 +145,15 @@ var disk2 = v1beta1.Disruption{
 
 var disk3 = v1beta1.Disruption{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "e2etest-disk3",
-		Namespace: "chaos-engineering",
+		Name:      fmt.Sprint(NAME_PREFIX, "disk-write4098"),
+		Namespace: NAMESPACE,
 	},
 	Spec: v1beta1.DisruptionSpec{
-		Count: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-		Unsafemode: &v1beta1.UnsafemodeSpec{
-			DisableAll: true,
-		},
+		Count:      COUNT,
+		Unsafemode: UNSAFEMODE,
 		Selector:   map[string]string{SELECTOR[0]: SELECTOR[1]},
 		Containers: []string{CONTAINER},
-		Duration:   "3m",
+		Duration:   DURATION,
 		DiskPressure: &v1beta1.DiskPressureSpec{
 			Path: "/mnt/data",
 			Throttling: v1beta1.DiskPressureThrottlingSpec{
@@ -181,17 +169,15 @@ var DISK_DISRUPTIONS = []v1beta1.Disruption{disk1, disk2, disk3}
 
 var cpu1 = v1beta1.Disruption{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "e2etest-cpu1",
-		Namespace: "chaos-engineering",
+		Name:      fmt.Sprint(NAME_PREFIX, "cpu-cores4"),
+		Namespace: NAMESPACE,
 	},
 	Spec: v1beta1.DisruptionSpec{
-		Count: &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-		Unsafemode: &v1beta1.UnsafemodeSpec{
-			DisableAll: true,
-		},
+		Count:      COUNT,
+		Unsafemode: UNSAFEMODE,
 		Selector:   map[string]string{SELECTOR[0]: SELECTOR[1]},
 		Containers: []string{CONTAINER},
-		Duration:   "3m",
+		Duration:   DURATION,
 		CPUPressure: &v1beta1.CPUPressureSpec{
 			Count: &intstr.IntOrString{IntVal: 4},
 		},

@@ -1,4 +1,4 @@
- # Installing protoc
+# Installing protoc
 
 Run `brew install protobuf` or `make install-protobuf`
 
@@ -107,8 +107,8 @@ For gRPC disruption, you can follow these [detailed steps](../docs/grpc_disrupti
 ### Sending Metrics to Datadog
 
 For the purposes of testing disruptions/workflows, you should make sure that the datadog agent is properly installed
-on the cluster that the client and server are running on. 3 of the major disruptive resources properly send metrics
-to Datadog (CPU, Network, Disk). The client contains computation related to these disruptions and can be tested using
+on the cluster that the client and server are running on. The Datadog Agent should be posting metrics related to CPU, 
+Network, and Disk which are all necessary to test the related disruptions. The client contains computation related to these disruptions and can be tested using
 the disruptions mentioned.
 
 ### Clean up
