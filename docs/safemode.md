@@ -89,3 +89,9 @@ spec:
     throttling:
       readBytesPerSec: 1024 # read throttling in bytes per sec
 ```
+
+## FAQ
+
+### Why is the namespace/cluster threshold not equal to what I specified in my Disruption?
+It may be the case that 0 was used as namespace/cluster threshold. Because 0 has no value as a threshold, it is simply
+ignored as if it was omitted. And if omitted, the ConfigMaps `Unsafemode` default values kick in.
