@@ -83,6 +83,7 @@ func init() {
 	rootCmd.AddCommand(nodeFailureCmd)
 	rootCmd.AddCommand(containerFailureCmd)
 	rootCmd.AddCommand(cpuPressureCmd)
+	rootCmd.AddCommand(diskFailureCmd)
 	rootCmd.AddCommand(diskPressureCmd)
 	rootCmd.AddCommand(dnsDisruptionCmd)
 	rootCmd.AddCommand(grpcDisruptionCmd)
