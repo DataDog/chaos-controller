@@ -64,6 +64,8 @@ type DisruptionSpec struct {
 	// +nullable
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
 	// +nullable
+	DiskFailure *DiskFailureSpec `json:"diskFailure,omitempty"`
+	// +nullable
 	DNS DNSDisruptionSpec `json:"dns,omitempty"`
 	// +nullable
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`

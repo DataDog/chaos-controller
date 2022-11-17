@@ -32,6 +32,8 @@ const (
 	DisruptionKindContainerFailure = "container-failure"
 	// DisruptionKindCPUPressure is a CPU pressure disruption
 	DisruptionKindCPUPressure = "cpu-pressure"
+	// DisruptionKindDiskFailure is a disk failure disruption
+	DisruptionKindDiskFailure = "disk-failure"
 	// DisruptionKindDiskPressure is a disk pressure disruption
 	DisruptionKindDiskPressure = "disk-pressure"
 	// DisruptionKindDNSDisruption is a dns disruption
