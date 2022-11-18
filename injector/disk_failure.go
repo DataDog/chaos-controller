@@ -9,9 +9,11 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/types"
+	"go.uber.org/zap"
 )
 
 const (
@@ -66,7 +68,10 @@ func (i *DiskFailureInjector) Inject() (err error) {
 	}
 
 	// Start the execution of ebpfault
-	cmd := exec.Command("ebpfault", []string{"--config", "config.json", "-p", strconv.Itoa(int(i.config.Config.TargetContainer.PID()))}...)
+	commandPath := []string{"--config", "config.json", "-p", strconv.Itoa(int(i.config.Config.TargetContainer.PID()))}
+	cmd := exec.Command("ebpfault", commandPath...)
+
+	i.config.Log.Info("injecting disk failure", zap.String("path", strings.Join(commandPath, " ")))
 
 	if err = cmd.Run(); err != nil {
 		return
