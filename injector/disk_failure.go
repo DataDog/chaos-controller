@@ -19,12 +19,15 @@ import (
 const (
 	ebpfaultConfig = `
 {
-	"syscall_name": "openat",
-
-	"error_list": [
+	"fault_injectors": [
 		{
-			"exit_code": "-ENOENT",
-			"probability": 50
+			"syscall_name": "openat",
+			"error_list": [
+				{
+					"exit_code": "-ENOENT",
+					"probability": 50
+				}
+			]
 		}
 	]
 }
@@ -71,7 +74,11 @@ func (i *DiskFailureInjector) Inject() (err error) {
 	commandPath := []string{"--config", "config.json", "-p", strconv.Itoa(int(i.config.Config.TargetContainer.PID()))}
 	cmd := exec.Command("ebpfault", commandPath...)
 
-	i.config.Log.Info("injecting disk failure", zap.String("path", strings.Join(commandPath, " ")))
+	i.config.Log.Infow(
+		"injecting disk failure",
+		zap.String("command", "ebpfault"),
+		zap.String("args", strings.Join(commandPath, " ")),
+	)
 
 	if err = cmd.Run(); err != nil {
 		return
