@@ -102,7 +102,7 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 		spec.Containers = getContainers()
 	}
 
-	if spec.ContainerFailure == nil && spec.CPUPressure == nil && spec.DiskPressure == nil && spec.NodeFailure == nil && spec.GRPC == nil && spec.Level == types.DisruptionLevelPod && len(spec.Containers) == 0 {
+	if spec.ContainerFailure == nil && spec.CPUPressure == nil && spec.DiskPressure == nil && spec.NodeFailure == nil && spec.GRPC == nil && spec.DiskFailure == nil && spec.Level == types.DisruptionLevelPod && len(spec.Containers) == 0 {
 		spec.OnInit = getOnInit()
 	}
 
@@ -114,7 +114,7 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 func promptForKind(spec *v1beta1.DisruptionSpec) error {
 	initial := "Let's begin by choosing the type of disruption to apply! Which disruption kind would you like to add?"
 	followUp := "Would you like to add another disruption kind? It's not necessary, most disruptions involve only one kind. Select .. to finish adding kinds."
-	kinds := []string{"dns", "network", "cpu", "disk", "node failure", "container failure"}
+	kinds := []string{"dns", "network", "cpu", "disk", "node failure", "container failure", "disk failure"}
 	helpText := `The DNS disruption allows for overriding the A or CNAME records returned by DNS queries.
 The Network disruption allows for injecting a variety of different network issues into your target.
 The CPU and Disk disruptions apply cpu pressure or IO throttling to your target, respectively.
@@ -178,7 +178,7 @@ Select one for more information on it.`
 
 				continue
 			}
-		case "disk":
+		case "disk pressure":
 			spec.DiskPressure = getDiskPressure()
 
 			if spec.DiskPressure == nil {
@@ -190,6 +190,21 @@ Select one for more information on it.`
 				fmt.Printf("There were some problems with your disk throttling disruption's spec: %v\n\n", err)
 
 				spec.DiskPressure = nil
+
+				continue
+			}
+		case "disk failure":
+			spec.DiskFailure = getDiskFailure()
+
+			if spec.DiskFailure == nil {
+				continue
+			}
+
+			err := spec.DiskFailure.Validate()
+			if err != nil {
+				fmt.Printf("There were some problems with your disk failure disruption's spec: %v\n\n", err)
+
+				spec.DiskFailure = nil
 
 				continue
 			}
