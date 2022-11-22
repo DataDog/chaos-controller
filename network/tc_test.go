@@ -78,7 +78,7 @@ var _ = Describe("Tc", func() {
 		}
 		srcPort = 12345
 		dstPort = 80
-		protocol = TCP
+		protocol = "TCP"
 		connState = ConnStateNew
 		flowid = "1:2"
 	})
