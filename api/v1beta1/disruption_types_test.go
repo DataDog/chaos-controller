@@ -24,14 +24,45 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"sort"
 )
 
-var disruptionStatus *v1beta1.DisruptionStatus
+var _ = Describe("TargetInjections", func() {
+	Describe("GetTargetNames", func() {
+		var targetInjections v1beta1.TargetInjections
+
+		Context("with three targets", func() {
+			BeforeEach(func() {
+				targetInjections = v1beta1.TargetInjections{"target-1": {}, "target-2": {}, "target-3": {}}
+			})
+
+			It("should return the list of targets name", func() {
+				targetNames := targetInjections.GetTargetNames()
+				sort.Strings(targetNames)
+				Expect(targetNames).Should(BeEquivalentTo([]string{"target-1", "target-2", "target-3"}))
+			})
+		})
+
+		Context("without targets", func() {
+			BeforeEach(func() {
+				targetInjections = v1beta1.TargetInjections{}
+			})
+
+			It("should return the list of targets name", func() {
+				Expect(targetInjections.GetTargetNames()).Should(BeEquivalentTo([]string{}))
+			})
+		})
+	})
+})
 
 var _ = Describe("Check if a target exist into DisruptionStatus targets list", func() {
+	var disruptionStatus *v1beta1.DisruptionStatus
 
 	BeforeEach(func() {
-		disruptionStatus = &v1beta1.DisruptionStatus{}
+		disruptionStatus = &v1beta1.DisruptionStatus{
+			TargetInjections: v1beta1.TargetInjections{"test-1": {}},
+		}
+
 	})
 
 	AfterEach(func() {
@@ -40,21 +71,18 @@ var _ = Describe("Check if a target exist into DisruptionStatus targets list", f
 
 	Context("with an empty target", func() {
 		It("should return false", func() {
-			target := ""
-			Expect(disruptionStatus.HasTarget(target)).Should(BeFalse())
+			Expect(disruptionStatus.HasTarget("")).Should(BeFalse())
 		})
 	})
 
 	Context("with an existing target", func() {
 		It("should return true", func() {
-			disruptionStatus.Targets = append(disruptionStatus.Targets, "test-1")
 			Expect(disruptionStatus.HasTarget("test-1")).Should(BeTrue())
 		})
 	})
 
 	Context("with an non existing target", func() {
 		It("should return false", func() {
-			disruptionStatus.Targets = append(disruptionStatus.Targets, "test-1")
 			Expect(disruptionStatus.HasTarget("test-2")).Should(BeFalse())
 		})
 	})

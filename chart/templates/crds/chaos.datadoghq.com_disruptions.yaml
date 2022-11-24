@@ -525,11 +525,23 @@ spec:
               selectedTargetsCount:
                 description: Actual targets selected by the disruption
                 type: integer
-              targets:
-                items:
-                  type: string
+              targetInjections:
+                additionalProperties:
+                  properties:
+                    injectionStatus:
+                      description: DisruptionInjectionStatus represents the injection
+                        status of a disruption
+                      type: string
+                    injectorPodName:
+                      type: string
+                    since:
+                      description: since when this status is in place
+                      format: int64
+                      type: integer
+                  type: object
+                description: TargetInjections map of target injection
                 nullable: true
-                type: array
+                type: object
             required:
             - desiredTargetsCount
             - ignoredTargetsCount

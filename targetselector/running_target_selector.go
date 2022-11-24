@@ -59,7 +59,7 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 		// check the pod is already a disruption target
 		isAlreadyATarget := false
 
-		for _, target := range instance.Status.Targets {
+		for target := range instance.Status.TargetInjections {
 			if target == pod.Name {
 				isAlreadyATarget = true
 

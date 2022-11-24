@@ -134,7 +134,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		DisruptionName:     dis.Name,
 		Cluster:            n.common.ClusterName,
 		Namespace:          dis.Namespace,
-		TargetsCount:       len(dis.Status.Targets),
+		TargetsCount:       len(dis.Status.TargetInjections),
 		Username:           emailAddr.Name,
 		UserEmail:          emailAddr.Address,
 	}

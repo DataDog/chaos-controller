@@ -147,6 +147,29 @@ func (dd DisruptionDuration) Duration() time.Duration {
 	return d
 }
 
+type TargetInjection struct {
+	InjectorPodName string                               `json:"injectorPodName,omitempty"`
+	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
+	// since when this status is in place
+	Since int64 `json:"since,omitempty"`
+}
+
+// TargetInjections map of target injection
+type TargetInjections map[string]TargetInjection
+
+// GetTargetNames return the name of targets
+func (in TargetInjections) GetTargetNames() []string {
+	names := make([]string, len(in))
+	i := 0
+
+	for tName := range in {
+		names[i] = tName
+		i++
+	}
+
+	return names
+}
+
 // DisruptionStatus defines the observed state of Disruption
 type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
@@ -155,7 +178,7 @@ type DisruptionStatus struct {
 	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
-	Targets []string `json:"targets,omitempty"`
+	TargetInjections TargetInjections `json:"targetInjections,omitempty"`
 	// Actual targets selected by the disruption
 	SelectedTargetsCount int `json:"selectedTargetsCount"`
 	// Targets ignored by the disruption, (not in a ready state, already targeted, not in the count percentage...)
@@ -411,50 +434,47 @@ func (s *DisruptionSpec) GetDisruptionCount() int {
 
 // RemoveDeadTargets removes targets not found in matchingTargets from the targets list
 func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
-	var desiredTargets []string
+	desiredTargets := TargetInjections{}
 
-	for index := 0; index < len(status.Targets); index++ {
-		if utils.Contains(matchingTargets, status.Targets[index]) {
-			desiredTargets = append(desiredTargets, status.Targets[index])
+	for name, ti := range status.TargetInjections {
+		if utils.Contains(matchingTargets, name) {
+			desiredTargets[name] = ti
 		}
 	}
 
-	status.Targets = desiredTargets
+	status.TargetInjections = desiredTargets
 }
 
 // AddTargets adds newTargetsCount random targets from the eligibleTargets list to the Target List
 // - eligibleTargets should be previously filtered to not include current targets
-func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets []string) {
+func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets TargetInjections) {
 	if len(eligibleTargets) == 0 || newTargetsCount <= 0 {
 		return
 	}
 
 	for i := 0; i < newTargetsCount && len(eligibleTargets) > 0; i++ {
 		index := rand.Intn(len(eligibleTargets)) //nolint:gosec
-		status.Targets = append(status.Targets, eligibleTargets[index])
-		eligibleTargets[len(eligibleTargets)-1], eligibleTargets[index] = eligibleTargets[index], eligibleTargets[len(eligibleTargets)-1]
-		eligibleTargets = eligibleTargets[:len(eligibleTargets)-1]
+		targetNames := eligibleTargets.GetTargetNames()
+		name := targetNames[index]
+		status.TargetInjections[name] = eligibleTargets[name]
+		delete(eligibleTargets, name)
 	}
 }
 
 // RemoveTargets removes toRemoveTargetsCount random targets from the Target List
 func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
-	for i := 0; i < toRemoveTargetsCount && len(status.Targets) > 0; i++ {
-		index := rand.Intn(len(status.Targets)) //nolint:gosec
-		status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
-		status.Targets = status.Targets[:len(status.Targets)-1]
+	for i := 0; i < toRemoveTargetsCount && len(status.TargetInjections) > 0; i++ {
+		index := rand.Intn(len(status.TargetInjections)) //nolint:gosec
+		targetNames := status.TargetInjections.GetTargetNames()
+		name := targetNames[index]
+		delete(status.TargetInjections, name)
 	}
 }
 
 // HasTarget returns true when a target exists in the Target List or returns false.
 func (status *DisruptionStatus) HasTarget(searchTarget string) bool {
-	for _, target := range status.Targets {
-		if target == searchTarget {
-			return true
-		}
-	}
-
-	return false
+	_, exists := status.TargetInjections[searchTarget]
+	return exists
 }
 
 var NonReinjectableDisruptions = map[chaostypes.DisruptionKindName]struct{}{

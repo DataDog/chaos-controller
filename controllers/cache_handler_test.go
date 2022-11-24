@@ -97,7 +97,8 @@ var _ = Describe("Cache Handler verifications", func() {
 		})
 
 		It("should not fire any warning event on disruption", func() {
-			k8sClient.Delete(context.Background(), targetPodA)
+			err := k8sClient.Delete(context.Background(), targetPodA)
+			Expect(err).ShouldNot(HaveOccurred())
 			Eventually(func() error {
 				running, err := podsAreNotRunning(targetPodA)
 				if err != nil {
@@ -129,7 +130,7 @@ var _ = Describe("Cache Handler verifications", func() {
 
 			eventList := v1.EventList{}
 
-			err := k8sClient.List(context.Background(), &eventList, &client.ListOptions{
+			err = k8sClient.List(context.Background(), &eventList, &client.ListOptions{
 				Namespace: targetPodA.Namespace,
 			})
 

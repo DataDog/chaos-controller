@@ -7,6 +7,7 @@ package api_test
 
 import (
 	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -22,26 +23,29 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 	BeforeEach(func() {
 		rand.Seed(time.Now().UnixNano())
 		status = &v1beta1.DisruptionStatus{
-			Targets: []string{"0.0.0.0", "1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4"},
+			TargetInjections: *makeValidTargetInjections(),
 		}
 	})
 
-	JustBeforeEach(func() {
-		rand.Shuffle(len(matchingTargets), func(i, j int) {
-			matchingTargets[i], matchingTargets[j] = matchingTargets[j], matchingTargets[i]
-		})
-	})
-
 	When("matchingTargets contains some current targets", func() {
+		var saveTargets v1beta1.TargetInjections
+
 		BeforeEach(func() {
-			matchingTargets = status.Targets
+			matchingTargets = []string{
+				"0.0.0.0",
+				"1.1.1.1",
+				"2.2.2.2",
+				"3.3.3.3",
+				"4.4.4.4",
+			}
+			saveTargets = status.TargetInjections
 		})
 
 		When("matchingTargets contains exactly all the current targets", func() {
-			It("expects status.Targets to be intact", func() {
+			It("expects status.TargetInjections to be intact", func() {
 				status.RemoveDeadTargets(matchingTargets)
-				Expect(status.Targets).To(HaveLen(5))
-				Expect(status.Targets).To(Equal(matchingTargets))
+				Expect(status.TargetInjections).To(HaveLen(5))
+				Expect(status.TargetInjections).To(BeEquivalentTo(saveTargets))
 			})
 		})
 
@@ -50,13 +54,13 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 				matchingTargets = append(matchingTargets, "5.5.5.5")
 			})
 
-			It("expects status.Targets to be full", func() {
+			It("expects status.TargetInjection to be full", func() {
 				status.RemoveDeadTargets(matchingTargets)
-				Expect(status.Targets).To(HaveLen(5))
+				Expect(status.TargetInjections).To(HaveLen(5))
 			})
 		})
 
-		When("matchingTargets contains less targets than status.Targets", func() {
+		When("matchingTargets contains less targets than status.TargetInjection", func() {
 			var randCount int
 			BeforeEach(func() {
 				rand.Shuffle(len(matchingTargets), func(i, j int) {
@@ -66,10 +70,13 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 				matchingTargets = matchingTargets[:randCount]
 			})
 
-			It("expects status.Targets to be limited to alive targets", func() {
+			It("expects status.TargetInjections to be limited to alive targets", func() {
 				status.RemoveDeadTargets(matchingTargets)
-				Expect(status.Targets).To(HaveLen(randCount))
-				Expect(status.Targets).To(Equal(matchingTargets))
+				Expect(status.TargetInjections).To(HaveLen(randCount))
+				targetNames := status.TargetInjections.GetTargetNames()
+				sort.Strings(targetNames)
+				sort.Strings(matchingTargets)
+				Expect(targetNames).Should(BeEquivalentTo(matchingTargets))
 			})
 		})
 	})
@@ -77,38 +84,54 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 	When("matchingTarget has no element", func() {
 		BeforeEach(func() {
 			matchingTargets = []string{}
-			Expect(status.Targets).To(HaveLen(5))
+			Expect(status.TargetInjections).To(HaveLen(5))
 		})
 
-		It("expects status.Targets to be empty", func() {
+		It("expects status.TargetInjection to be empty", func() {
 			status.RemoveDeadTargets(matchingTargets)
-			Expect(status.Targets).To(HaveLen(0))
+			Expect(status.TargetInjections).To(HaveLen(0))
 		})
 	})
 
 	When("matchingTarget has all different elements", func() {
 		BeforeEach(func() {
-			matchingTargets = []string{"5.5.5.5", "6.6.6.6", "7.7.7.7", "8.8.8.8", "9.9.9.9"}
+			matchingTargets = []string{
+				"5.5.5.5",
+				"6.6.6.6",
+				"7.7.7.7",
+				"8.8.8.8",
+				"9.9.9.9",
+			}
 		})
 
-		It("expects status.Targets to be empty", func() {
+		It("expects status.TargetInjection to be empty", func() {
 			status.RemoveDeadTargets(matchingTargets)
-			Expect(status.Targets).To(HaveLen(0))
+			Expect(status.TargetInjections).To(HaveLen(0))
 		})
 	})
 })
 
+func makeValidTargetInjections() *v1beta1.TargetInjections {
+	return &v1beta1.TargetInjections{
+		"0.0.0.0": {},
+		"1.1.1.1": {},
+		"2.2.2.2": {},
+		"3.3.3.3": {},
+		"4.4.4.4": {},
+	}
+}
+
 var _ = Describe("DisruptionStatus.AddTargets Test", func() {
 	var status, oldStatus *v1beta1.DisruptionStatus
 	var newTargetsCount int
-	var eligibleTargets []string
+	var eligibleTargets v1beta1.TargetInjections
 
 	BeforeEach(func() {
 		rand.Seed(time.Now().UnixNano())
 		status = &v1beta1.DisruptionStatus{
-			Targets: []string{"0.0.0.0", "1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4"},
+			TargetInjections: *makeValidTargetInjections(),
 		}
-		oldStatus = status.DeepCopy()
+		oldStatus = status
 	})
 
 	When("newTargetsCount is between [1;5]", func() {
@@ -118,48 +141,47 @@ var _ = Describe("DisruptionStatus.AddTargets Test", func() {
 
 		When("eligibleTargets is empty", func() {
 			BeforeEach(func() {
-				eligibleTargets = []string{}
+				eligibleTargets = v1beta1.TargetInjections{}
 			})
 
-			It("expects status.Targets to stay the same", func() {
+			It("expects status.TargetInjection to stay the same", func() {
 				status.AddTargets(newTargetsCount, eligibleTargets)
-				Expect(status.Targets).To(Equal(oldStatus.Targets))
+				Expect(status.TargetInjections).To(Equal(oldStatus.TargetInjections))
 			})
 		})
 
 		When("eligibleTargets 5 new targets", func() {
 			BeforeEach(func() {
-				eligibleTargets = []string{"5.5.5.5", "6.6.6.6", "7.7.7.7", "8.8.8.8", "9.9.9.9"}
+				eligibleTargets = v1beta1.TargetInjections{
+					"5.5.5.5": {},
+					"6.6.6.6": {},
+					"7.7.7.7": {},
+					"8.8.8.8": {},
+					"9.9.9.9": {},
+				}
 			})
 
 			It("expects newTargets to transfer", func() {
 				status.AddTargets(newTargetsCount, eligibleTargets)
-				Expect(status.Targets).To(HaveLen(5 + newTargetsCount))
-			})
-		})
-
-		When("eligibleTargets has exactly all current targets", func() {
-			BeforeEach(func() {
-				eligibleTargets = status.Targets
-			})
-
-			It("expects no filtering, targets will appear double", func() {
-				status.AddTargets(newTargetsCount, eligibleTargets)
-				Expect(status.Targets).To(HaveLen(5 + newTargetsCount))
+				Expect(status.TargetInjections).To(HaveLen(5 + newTargetsCount))
 			})
 		})
 	})
 
 	When("eligibleTargets only has 2 new targets and newTargetsCount is 5+", func() {
 		BeforeEach(func() {
-			eligibleTargets = []string{"5.5.5.5", "6.6.6.6"} // only 2 new targets
-			newTargetsCount = rand.Intn(6) + 5               // int between [5;10]
+			eligibleTargets = v1beta1.TargetInjections{
+				"5.5.5.5": {},
+				"6.6.6.6": {},
+			} // only 2 new targets
+			newTargetsCount = rand.Intn(6) + 5 // int between [5;10]
 		})
 
 		It("expects all available targets to transfer", func() {
-			oldTargetsCount := len(status.Targets)
+			oldTargetsCount := len(status.TargetInjections)
+			lenEligibleTargets := len(eligibleTargets)
 			status.AddTargets(newTargetsCount, eligibleTargets)
-			Expect(status.Targets).To(HaveLen(oldTargetsCount + len(eligibleTargets)))
+			Expect(status.TargetInjections).To(HaveLen(oldTargetsCount + lenEligibleTargets))
 		})
 	})
 })
@@ -171,7 +193,7 @@ var _ = Describe("DisruptionStatus.RemoveTargets Test", func() {
 	BeforeEach(func() {
 		rand.Seed(time.Now().UnixNano())
 		status = &v1beta1.DisruptionStatus{
-			Targets: []string{"0.0.0.0", "1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4"},
+			TargetInjections: *makeValidTargetInjections(),
 		}
 	})
 
@@ -182,40 +204,40 @@ var _ = Describe("DisruptionStatus.RemoveTargets Test", func() {
 
 		It("expects to remove none of the targets", func() {
 			status.RemoveTargets(toRemoveTargetsCount)
-			Expect(status.Targets).To(HaveLen(5))
+			Expect(status.TargetInjections).To(HaveLen(5))
 		})
 	})
 
-	Context("asks to remove less targets than there are in status.Targets", func() {
+	Context("asks to remove less targets than there are in status.TargetInjection", func() {
 		BeforeEach(func() {
 			toRemoveTargetsCount = rand.Intn(4) + 1
 		})
 
 		It("expects to remove part of the targets", func() {
 			status.RemoveTargets(toRemoveTargetsCount)
-			Expect(status.Targets).To(HaveLen(5 - toRemoveTargetsCount))
+			Expect(status.TargetInjections).To(HaveLen(5 - toRemoveTargetsCount))
 		})
 	})
 
-	Context("asks to remove exactly the amount of targets in status.Targets", func() {
+	Context("asks to remove exactly the amount of targets in status.TargetInjection", func() {
 		BeforeEach(func() {
-			toRemoveTargetsCount = len(status.Targets)
+			toRemoveTargetsCount = len(status.TargetInjections)
 		})
 
 		It("expects to remove all the targets", func() {
 			status.RemoveTargets(toRemoveTargetsCount)
-			Expect(status.Targets).To(BeEmpty())
+			Expect(status.TargetInjections).To(BeEmpty())
 		})
 	})
 
-	Context("asks to remove more than the amount of targets in status.Targets", func() {
+	Context("asks to remove more than the amount of targets in status.TargetInjection", func() {
 		BeforeEach(func() {
-			toRemoveTargetsCount = rand.Intn(4) + 1 + len(status.Targets)
+			toRemoveTargetsCount = rand.Intn(4) + 1 + len(status.TargetInjections)
 		})
 
 		It("expects to remove all the targets", func() {
 			status.RemoveTargets(toRemoveTargetsCount)
-			Expect(status.Targets).To(BeEmpty())
+			Expect(status.TargetInjections).To(BeEmpty())
 		})
 	})
 })
