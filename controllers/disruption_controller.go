@@ -906,16 +906,16 @@ func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disrupt
 			continue
 		}
 
-		tLabels := map[string]string{
+		targetLabels := map[string]string{
 			chaostypes.TargetLabel: target, // filter with target name
 		}
 
 		if instance.Spec.Level == chaostypes.DisruptionLevelPod { // nodes aren't namespaced and thus should only check by target name
-			tLabels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // filter with current instance namespace (to avoid getting pods having the same name but living in different namespaces)
+			targetLabels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // filter with current instance namespace (to avoid getting pods having the same name but living in different namespaces)
 		}
 
 		// skip targets already targeted by a chaos pod from another disruption
-		chaosPods, err := r.getChaosPods(nil, tLabels)
+		chaosPods, err := r.getChaosPods(nil, targetLabels)
 		if err != nil {
 			return nil, fmt.Errorf("error getting chaos pods targeting the given target (%s): %w", target, err)
 		}
@@ -1133,15 +1133,15 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 		}
 	}
 
-	pLabels := make(map[string]string)
+	podLabels := make(map[string]string)
 	for k, v := range r.InjectorLabels {
-		pLabels[k] = v
+		podLabels[k] = v
 	}
 
-	pLabels[chaostypes.TargetLabel] = targetName                      // target name label
-	pLabels[chaostypes.DisruptionKindLabel] = string(kind)            // disruption kind label
-	pLabels[chaostypes.DisruptionNameLabel] = instance.Name           // disruption name label, used to determine ownership
-	pLabels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // disruption namespace label, used to determine ownership
+	podLabels[chaostypes.TargetLabel] = targetName                      // target name label
+	podLabels[chaostypes.DisruptionKindLabel] = string(kind)            // disruption kind label
+	podLabels[chaostypes.DisruptionNameLabel] = instance.Name           // disruption name label, used to determine ownership
+	podLabels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // disruption namespace label, used to determine ownership
 
 	// define injector pod
 	pod := corev1.Pod{
@@ -1149,7 +1149,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 			GenerateName: fmt.Sprintf("chaos-%s-", instance.Name), // generate the pod name automatically with a prefix
 			Namespace:    r.ChaosNamespace,                        // chaos pods need to be in the same namespace as their service account to run
 			Annotations:  r.InjectorAnnotations,                   // add extra annotations passed to the controller
-			Labels:       pLabels,                                 // add default and extra pLabels passed to the controller
+			Labels:       podLabels,                               // add default and extra podLabels passed to the controller
 		},
 		Spec: podSpec,
 	}
@@ -1308,9 +1308,9 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 
 		r.handleMetricSinkError(r.MetricsSink.MetricInformed([]string{"podName:" + c.GetName(), "podNamespace:" + c.GetNamespace()}))
 
-		pLabels := c.GetLabels()
-		name := pLabels[chaostypes.DisruptionNameLabel]
-		namespace := pLabels[chaostypes.DisruptionNamespaceLabel]
+		podLabels := c.GetLabels()
+		name := podLabels[chaostypes.DisruptionNameLabel]
+		namespace := podLabels[chaostypes.DisruptionNamespaceLabel]
 
 		if name != "" && namespace != "" {
 			disruption = append(disruption, reconcile.Request{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}})

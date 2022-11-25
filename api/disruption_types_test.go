@@ -23,7 +23,7 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 	BeforeEach(func() {
 		rand.Seed(time.Now().UnixNano())
 		status = &v1beta1.DisruptionStatus{
-			TargetInjections: *makeValidTargetInjections(),
+			TargetInjections: makeValidTargetInjections(),
 		}
 	})
 
@@ -32,13 +32,13 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 
 		BeforeEach(func() {
 			matchingTargets = []string{
-				"0.0.0.0",
-				"1.1.1.1",
-				"2.2.2.2",
-				"3.3.3.3",
-				"4.4.4.4",
+				"target-1",
+				"target-2",
+				"target-3",
+				"target-4",
+				"target-5",
 			}
-			saveTargets = status.TargetInjections
+			saveTargets = status.TargetInjections.DeepCopy()
 		})
 
 		When("matchingTargets contains exactly all the current targets", func() {
@@ -51,7 +51,7 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 
 		When("matchingTargets has all current targets and more", func() {
 			JustBeforeEach(func() {
-				matchingTargets = append(matchingTargets, "5.5.5.5")
+				matchingTargets = append(matchingTargets, "target-6")
 			})
 
 			It("expects status.TargetInjection to be full", func() {
@@ -96,11 +96,11 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 	When("matchingTarget has all different elements", func() {
 		BeforeEach(func() {
 			matchingTargets = []string{
-				"5.5.5.5",
-				"6.6.6.6",
-				"7.7.7.7",
-				"8.8.8.8",
-				"9.9.9.9",
+				"target-6",
+				"target-7",
+				"target-8",
+				"target-9",
+				"target-10",
 			}
 		})
 
@@ -111,13 +111,13 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 	})
 })
 
-func makeValidTargetInjections() *v1beta1.TargetInjections {
-	return &v1beta1.TargetInjections{
-		"0.0.0.0": {},
-		"1.1.1.1": {},
-		"2.2.2.2": {},
-		"3.3.3.3": {},
-		"4.4.4.4": {},
+func makeValidTargetInjections() v1beta1.TargetInjections {
+	return v1beta1.TargetInjections{
+		"target-1": {},
+		"target-2": {},
+		"target-3": {},
+		"target-4": {},
+		"target-5": {},
 	}
 }
 
@@ -129,9 +129,9 @@ var _ = Describe("DisruptionStatus.AddTargets Test", func() {
 	BeforeEach(func() {
 		rand.Seed(time.Now().UnixNano())
 		status = &v1beta1.DisruptionStatus{
-			TargetInjections: *makeValidTargetInjections(),
+			TargetInjections: makeValidTargetInjections(),
 		}
-		oldStatus = status
+		oldStatus = status.DeepCopy()
 	})
 
 	When("newTargetsCount is between [1;5]", func() {
@@ -153,11 +153,11 @@ var _ = Describe("DisruptionStatus.AddTargets Test", func() {
 		When("eligibleTargets 5 new targets", func() {
 			BeforeEach(func() {
 				eligibleTargets = v1beta1.TargetInjections{
-					"5.5.5.5": {},
-					"6.6.6.6": {},
-					"7.7.7.7": {},
-					"8.8.8.8": {},
-					"9.9.9.9": {},
+					"target-6":  {},
+					"target-7":  {},
+					"target-8":  {},
+					"target-9":  {},
+					"target-10": {},
 				}
 			})
 
@@ -171,8 +171,8 @@ var _ = Describe("DisruptionStatus.AddTargets Test", func() {
 	When("eligibleTargets only has 2 new targets and newTargetsCount is 5+", func() {
 		BeforeEach(func() {
 			eligibleTargets = v1beta1.TargetInjections{
-				"5.5.5.5": {},
-				"6.6.6.6": {},
+				"target-6": {},
+				"target-7": {},
 			} // only 2 new targets
 			newTargetsCount = rand.Intn(6) + 5 // int between [5;10]
 		})
@@ -193,7 +193,7 @@ var _ = Describe("DisruptionStatus.RemoveTargets Test", func() {
 	BeforeEach(func() {
 		rand.Seed(time.Now().UnixNano())
 		status = &v1beta1.DisruptionStatus{
-			TargetInjections: *makeValidTargetInjections(),
+			TargetInjections: makeValidTargetInjections(),
 		}
 	})
 

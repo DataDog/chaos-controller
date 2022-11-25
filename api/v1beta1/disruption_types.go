@@ -159,12 +159,10 @@ type TargetInjections map[string]TargetInjection
 
 // GetTargetNames return the name of targets
 func (in TargetInjections) GetTargetNames() []string {
-	names := make([]string, len(in))
-	i := 0
+	names := make([]string, 0, len(in))
 
-	for tName := range in {
-		names[i] = tName
-		i++
+	for targetName := range in {
+		names = append(names, targetName)
 	}
 
 	return names
