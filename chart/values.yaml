@@ -44,7 +44,7 @@ controller:
     port: 9443 # port to use to serve requests
   safeMode:
     enable: false
-    networkThreshold: 80
+    namespaceThreshold: 80
     clusterThreshold: 66
 
 injector:

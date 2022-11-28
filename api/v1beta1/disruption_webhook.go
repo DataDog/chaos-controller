@@ -38,8 +38,8 @@ var metricsSink metrics.Sink
 var recorder record.EventRecorder
 var deleteOnly bool
 var enableSafemode bool
-var namespaceThreshold float64
-var clusterThreshold float64
+var defaultNamespaceThreshold float64
+var defaultClusterThreshold float64
 var handlerEnabled bool
 var defaultDuration time.Duration
 var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
@@ -57,8 +57,8 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	recorder = setupWebhookConfig.Recorder
 	deleteOnly = setupWebhookConfig.DeleteOnlyFlag
 	enableSafemode = setupWebhookConfig.EnableSafemodeFlag
-	namespaceThreshold = float64(setupWebhookConfig.NamespaceThresholdFlag) / 100.0
-	clusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
+	defaultNamespaceThreshold = float64(setupWebhookConfig.NamespaceThresholdFlag) / 100.0
+	defaultClusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
 	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
@@ -354,6 +354,8 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	totalCount := 0
 	namespaceCount := 0
 	targetCount := 0
+	namespaceThreshold := defaultNamespaceThreshold
+	clusterThreshold := defaultClusterThreshold
 
 	if r.Spec.Unsafemode != nil {
 		if r.Spec.Unsafemode.Config != nil && r.Spec.Unsafemode.Config.CountTooLarge != nil {
