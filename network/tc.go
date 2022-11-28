@@ -204,11 +204,11 @@ func (t *tc) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dst
 	var params, filterProtocol string
 
 	// match protocol if specified, default to tcp otherwise
-	switch protocol {
-	case TCP, UDP:
+	switch protocol.String() {
+	case TCP.String(), UDP.String():
 		filterProtocol = "ip"
-		params += fmt.Sprintf("ip_proto %s ", strings.ToLower(string(protocol)))
-	case ARP:
+		params += fmt.Sprintf("ip_proto %s ", protocol.String())
+	case ARP.String():
 		filterProtocol = "arp"
 	default:
 		return 0, fmt.Errorf("unexpected protocol: %s", protocol)

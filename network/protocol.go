@@ -5,6 +5,8 @@
 
 package network
 
+import "strings"
+
 type Protocol string
 
 const (
@@ -12,3 +14,7 @@ const (
 	UDP Protocol = "udp"
 	ARP Protocol = "arp"
 )
+
+func (p Protocol) String() string {
+	return strings.ToLower(string(p))
+}
