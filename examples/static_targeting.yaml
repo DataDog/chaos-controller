@@ -12,6 +12,6 @@ spec:
   selector:
     app: demo-curl
   count: 1
-  staticTargeting: false
+  staticTargeting: true
   network:
     duplicate: 100 # percentage of outgoing packets to duplicate
