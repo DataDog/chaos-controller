@@ -434,9 +434,11 @@ func (s *DisruptionSpec) GetDisruptionCount() int {
 func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
 	desiredTargets := TargetInjections{}
 
-	for name, ti := range status.TargetInjections {
-		if utils.Contains(matchingTargets, name) {
-			desiredTargets[name] = ti
+	targetNames := status.TargetInjections.GetTargetNames()
+
+	for _, matchingTarget := range matchingTargets {
+		if utils.Contains(targetNames, matchingTarget) {
+			desiredTargets[matchingTarget] = status.TargetInjections[matchingTarget]
 		}
 	}
 
@@ -450,22 +452,30 @@ func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets 
 		return
 	}
 
-	for i := 0; i < newTargetsCount && len(eligibleTargets) > 0; i++ {
-		index := rand.Intn(len(eligibleTargets)) //nolint:gosec
-		targetNames := eligibleTargets.GetTargetNames()
-		name := targetNames[index]
-		status.TargetInjections[name] = eligibleTargets[name]
-		delete(eligibleTargets, name)
+	targetNames := eligibleTargets.GetTargetNames()
+
+	for i := 0; i < newTargetsCount && len(targetNames) > 0; i++ {
+		index := rand.Intn(len(targetNames)) //nolint:gosec
+		targetName := targetNames[index]
+		targetNames[len(targetNames)-1], targetNames[index] = targetNames[index], targetNames[len(targetNames)-1]
+		targetNames = targetNames[:len(targetNames)-1]
+
+		status.TargetInjections[targetName] = eligibleTargets[targetName]
+		delete(eligibleTargets, targetName)
 	}
 }
 
 // RemoveTargets removes toRemoveTargetsCount random targets from the Target List
 func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
+	targetNames := status.TargetInjections.GetTargetNames()
+
 	for i := 0; i < toRemoveTargetsCount && len(status.TargetInjections) > 0; i++ {
-		index := rand.Intn(len(status.TargetInjections)) //nolint:gosec
-		targetNames := status.TargetInjections.GetTargetNames()
-		name := targetNames[index]
-		delete(status.TargetInjections, name)
+		index := rand.Intn(len(targetNames)) //nolint:gosec
+		targetName := targetNames[index]
+		targetNames[len(targetNames)-1], targetNames[index] = targetNames[index], targetNames[len(targetNames)-1]
+		targetNames = targetNames[:len(targetNames)-1]
+
+		delete(status.TargetInjections, targetName)
 	}
 }
 
