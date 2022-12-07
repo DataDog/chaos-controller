@@ -64,7 +64,7 @@ Check out [Chaosli](./cli/chaosli/README.md) if you want some help understanding
 
 - [Examples](docs/features.md#disruption-examples)
 - [Design](docs/design.md)
-- [Metrics](docs/metrics.md)
+- [Metrics](docs/metrics_events.md)
 - [FAQ](docs/faq.md)
 - [Contributing](CONTRIBUTING.md)
 
