@@ -9,8 +9,8 @@ github.com/AlecAivazis/survey/v2/terminal
 # github.com/DataDog/datadog-go v4.8.2+incompatible
 ## explicit
 github.com/DataDog/datadog-go/statsd
-# github.com/Microsoft/go-winio v0.5.0
-## explicit; go 1.12
+# github.com/Microsoft/go-winio v0.5.2
+## explicit; go 1.13
 github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/backuptar
 github.com/Microsoft/go-winio/pkg/guid
@@ -54,7 +54,7 @@ github.com/cespare/xxhash/v2
 # github.com/containerd/cgroups v1.0.3
 ## explicit; go 1.16
 github.com/containerd/cgroups/stats/v1
-# github.com/containerd/containerd v1.5.13
+# github.com/containerd/containerd v1.5.16
 ## explicit; go 1.17
 github.com/containerd/containerd
 github.com/containerd/containerd/api/services/containers/v1
@@ -113,8 +113,8 @@ github.com/containerd/containerd/snapshots
 github.com/containerd/containerd/snapshots/proxy
 github.com/containerd/containerd/sys
 github.com/containerd/containerd/version
-# github.com/containerd/continuity v0.1.0
-## explicit; go 1.13
+# github.com/containerd/continuity v0.3.0
+## explicit; go 1.17
 github.com/containerd/continuity/fs
 github.com/containerd/continuity/sysx
 # github.com/containerd/fifo v1.0.0
@@ -280,7 +280,7 @@ github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
 ## explicit; go 1.12
 github.com/mattn/go-isatty
-# github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369
+# github.com/matttproud/golang_protobuf_extensions v1.0.4
 ## explicit; go 1.9
 github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
