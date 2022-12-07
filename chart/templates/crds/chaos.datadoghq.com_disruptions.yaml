@@ -536,8 +536,8 @@ spec:
                       type: string
                     since:
                       description: since when this status is in place
-                      format: int64
-                      type: integer
+                      format: date-time
+                      type: string
                   type: object
                 description: TargetInjections map of target injection
                 nullable: true

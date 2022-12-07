@@ -342,7 +342,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 						podReady = true
 						readyPodsCount++
 
-						r.updateTargetInjectionStatus(instance, chaosPod, chaostypes.DisruptionInjectionStatusInjected)
+						r.updateTargetInjectionStatus(instance, chaosPod, chaostypes.DisruptionInjectionStatusInjected, cond.LastTransitionTime)
 
 						break
 					}
@@ -749,14 +749,14 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 
 		instance.Status.IsStuckOnRemoval = true
 
-		r.updateTargetInjectionStatus(instance, chaosPod, chaostypes.DisruptionInjectionStatusIsStuckOnRemoval)
+		r.updateTargetInjectionStatus(instance, chaosPod, chaostypes.DisruptionInjectionStatusIsStuckOnRemoval, *chaosPod.DeletionTimestamp)
 	}
 }
 
-func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod, status chaostypes.DisruptionInjectionStatus) {
+func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod, status chaostypes.DisruptionInjectionStatus, since metav1.Time) {
 	targetInjection := instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]]
 	targetInjection.InjectionStatus = status
-	targetInjection.Since = instance.Spec.Duration.Duration().Milliseconds()
+	targetInjection.Since = since
 	targetInjection.InjectorPodName = chaosPod.Name
 	instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]] = targetInjection
 }
@@ -929,7 +929,6 @@ func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disrupt
 		// add target if eligible
 		eligibleTargets[target] = chaosv1beta1.TargetInjection{
 			InjectionStatus: chaostypes.DisruptionInjectionStatusNotInjected,
-			Since:           time.Now().Unix(),
 		}
 	}
 

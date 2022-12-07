@@ -151,7 +151,7 @@ type TargetInjection struct {
 	InjectorPodName string                               `json:"injectorPodName,omitempty"`
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// since when this status is in place
-	Since int64 `json:"since,omitempty"`
+	Since metav1.Time `json:"since,omitempty"`
 }
 
 // TargetInjections map of target injection
