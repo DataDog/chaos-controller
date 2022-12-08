@@ -452,30 +452,29 @@ func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets 
 		return
 	}
 
-	targetNames := eligibleTargets.GetTargetNames()
-
-	for i := 0; i < newTargetsCount && len(targetNames) > 0; i++ {
-		index := rand.Intn(len(targetNames)) //nolint:gosec
-		targetName := targetNames[index]
-		targetNames[len(targetNames)-1], targetNames[index] = targetNames[index], targetNames[len(targetNames)-1]
-		targetNames = targetNames[:len(targetNames)-1]
-
+	parseRandomTargets(newTargetsCount, eligibleTargets, func(targetName string) {
 		status.TargetInjections[targetName] = eligibleTargets[targetName]
 		delete(eligibleTargets, targetName)
-	}
+	})
 }
 
 // RemoveTargets removes toRemoveTargetsCount random targets from the Target List
 func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
-	targetNames := status.TargetInjections.GetTargetNames()
+	parseRandomTargets(toRemoveTargetsCount, status.TargetInjections, func(targetName string) {
+		delete(status.TargetInjections, targetName)
+	})
+}
 
-	for i := 0; i < toRemoveTargetsCount && len(status.TargetInjections) > 0; i++ {
+func parseRandomTargets(targetLimit int, targetInjections TargetInjections, callback func(targetName string)) {
+	targetNames := targetInjections.GetTargetNames()
+
+	for i := 0; i < targetLimit && len(targetNames) > 0; i++ {
 		index := rand.Intn(len(targetNames)) //nolint:gosec
 		targetName := targetNames[index]
 		targetNames[len(targetNames)-1], targetNames[index] = targetNames[index], targetNames[len(targetNames)-1]
 		targetNames = targetNames[:len(targetNames)-1]
 
-		delete(status.TargetInjections, targetName)
+		callback(targetName)
 	}
 }
 
