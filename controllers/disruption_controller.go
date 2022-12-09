@@ -342,6 +342,8 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 						podReady = true
 						readyPodsCount++
 
+						r.updateTargetInjectionStatus(instance, chaosPod, chaostypes.DisruptionInjectionStatusInjected, cond.LastTransitionTime)
+
 						break
 					}
 				}
@@ -387,7 +389,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 // startInjection creates non-existing chaos pod for the given disruption
 func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption) error {
 	// chaosPodsMap is used to check if a target's chaos pods already exist or not
-	chaosPodsMap := make(map[string]map[string]bool, len(instance.Status.Targets))
+	chaosPodsMap := make(map[string]map[string]bool, len(instance.Status.TargetInjections))
 
 	chaosPods, err := r.getChaosPods(instance, nil)
 	if err != nil {
@@ -395,34 +397,34 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 	}
 
 	// init all the required maps
-	for _, target := range instance.Status.Targets {
-		chaosPodsMap[target] = make(map[string]bool)
+	for targetName := range instance.Status.TargetInjections {
+		chaosPodsMap[targetName] = make(map[string]bool)
 	}
 
 	for _, chaosPod := range chaosPods {
-		if !utils.Contains(instance.Status.Targets, chaosPod.Labels[chaostypes.TargetLabel]) {
+		if !instance.Status.HasTarget(chaosPod.Labels[chaostypes.TargetLabel]) {
 			r.deleteChaosPod(instance, chaosPod)
 		} else {
 			chaosPodsMap[chaosPod.Labels[chaostypes.TargetLabel]][chaosPod.Labels[chaostypes.DisruptionKindLabel]] = true
 		}
 	}
 
-	if len(instance.Status.Targets) > 0 && (len(instance.Status.Targets) != len(chaosPodsMap)) {
-		r.log.Infow("starting targets injection", "targets", instance.Status.Targets)
+	if len(instance.Status.TargetInjections) > 0 && (len(instance.Status.TargetInjections) != len(chaosPodsMap)) {
+		r.log.Infow("starting targets injection", "targets", instance.Status.TargetInjections)
 	}
 
 	// iterate through target + existing disruption kind -- to ensure all chaos pods exist
-	for _, target := range instance.Status.Targets {
+	for targetName := range instance.Status.TargetInjections {
 		for _, disKind := range chaostypes.DisruptionKindNames {
 			if subspec := instance.Spec.DisruptionKindPicker(disKind); reflect.ValueOf(subspec).IsNil() {
 				continue
 			}
 
-			if _, ok := chaosPodsMap[target][disKind.String()]; ok {
+			if _, ok := chaosPodsMap[targetName][disKind.String()]; ok {
 				continue
 			}
 
-			if err = r.createChaosPods(instance, target); err != nil {
+			if err = r.createChaosPods(instance, targetName); err != nil {
 				if !errors.IsNotFound(err) {
 					return fmt.Errorf("error creating chaos pods: %w", err)
 				}
@@ -437,7 +439,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 	return nil
 }
 
-// createChaosPods attempts to creates all the chaos pods for a given target. If a given chaos pod already exists, it is not recreated.
+// createChaosPods attempts to create all the chaos pods for a given target. If a given chaos pod already exists, it is not recreated.
 func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption, target string) error {
 	var err error
 
@@ -746,7 +748,17 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "")
 
 		instance.Status.IsStuckOnRemoval = true
+
+		r.updateTargetInjectionStatus(instance, chaosPod, chaostypes.DisruptionInjectionStatusIsStuckOnRemoval, *chaosPod.DeletionTimestamp)
 	}
+}
+
+func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod, status chaostypes.DisruptionInjectionStatus, since metav1.Time) {
+	targetInjection := instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]]
+	targetInjection.InjectionStatus = status
+	targetInjection.Since = since
+	targetInjection.InjectorPodName = chaosPod.Name
+	instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]] = targetInjection
 }
 
 // selectTargets will select min(count, all matching targets) random targets (pods or nodes depending on the disruption level)
@@ -755,7 +767,7 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 // the chosen targets names will be reflected in the instance status
 // subsequent calls to this function will always return the same targets as the first call
 func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
-	if len(instance.Status.Targets) != 0 && instance.Spec.StaticTargeting {
+	if len(instance.Status.TargetInjections) != 0 && instance.Spec.StaticTargeting {
 		return nil
 	}
 
@@ -793,7 +805,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 	instance.Status.DesiredTargetsCount = targetsCount
 	// if the asked targets count is greater than the amount of found targets, we take all of them
-	targetsCount = int(math.Min(float64(targetsCount), float64(len(instance.Status.Targets)+len(eligibleTargets))))
+	targetsCount = int(math.Min(float64(targetsCount), float64(len(instance.Status.TargetInjections)+len(eligibleTargets))))
 	if targetsCount < 1 {
 		r.log.Info("ignored targets has reached target count, skipping")
 
@@ -806,7 +818,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	}
 
 	// Current and Desired targets count
-	cTargetsCount := len(instance.Status.Targets)
+	cTargetsCount := len(instance.Status.TargetInjections)
 	dTargetsCount := targetsCount
 
 	if cTargetsCount < dTargetsCount {
@@ -819,7 +831,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 	r.log.Debugw("updating instance status with targets selected for injection")
 
-	instance.Status.SelectedTargetsCount = len(instance.Status.Targets)
+	instance.Status.SelectedTargetsCount = len(instance.Status.TargetInjections)
 	instance.Status.IgnoredTargetsCount = totalAvailableTargetsCount - targetsCount
 
 	return r.Status().Update(context.Background(), instance)
@@ -883,27 +895,27 @@ func (r *DisruptionReconciler) deleteChaosPod(instance *chaosv1beta1.Disruption,
 
 // getEligibleTargets returns targets which can be targeted by the given instance from the given targets pool
 // it skips ignored targets and targets being already targeted by another disruption
-func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disruption, potentialTargets []string) ([]string, error) {
+func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disruption, potentialTargets []string) (chaosv1beta1.TargetInjections, error) {
 	r.log.Debug("getting eligible targets for disruption injection")
 
-	eligibleTargets := []string{}
+	eligibleTargets := chaosv1beta1.TargetInjections{}
 
 	for _, target := range potentialTargets {
 		// skip current targets
-		if utils.Contains(instance.Status.Targets, target) {
+		if instance.Status.HasTarget(target) {
 			continue
 		}
 
-		labels := map[string]string{
+		targetLabels := map[string]string{
 			chaostypes.TargetLabel: target, // filter with target name
 		}
 
 		if instance.Spec.Level == chaostypes.DisruptionLevelPod { // nodes aren't namespaced and thus should only check by target name
-			labels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // filter with current instance namespace (to avoid getting pods having the same name but living in different namespaces)
+			targetLabels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // filter with current instance namespace (to avoid getting pods having the same name but living in different namespaces)
 		}
 
 		// skip targets already targeted by a chaos pod from another disruption
-		chaosPods, err := r.getChaosPods(nil, labels)
+		chaosPods, err := r.getChaosPods(nil, targetLabels)
 		if err != nil {
 			return nil, fmt.Errorf("error getting chaos pods targeting the given target (%s): %w", target, err)
 		}
@@ -915,7 +927,9 @@ func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disrupt
 		}
 
 		// add target if eligible
-		eligibleTargets = append(eligibleTargets, target)
+		eligibleTargets[target] = chaosv1beta1.TargetInjection{
+			InjectionStatus: chaostypes.DisruptionInjectionStatusNotInjected,
+		}
 	}
 
 	return eligibleTargets, nil
@@ -1118,15 +1132,15 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 		}
 	}
 
-	labels := make(map[string]string)
+	podLabels := make(map[string]string)
 	for k, v := range r.InjectorLabels {
-		labels[k] = v
+		podLabels[k] = v
 	}
 
-	labels[chaostypes.TargetLabel] = targetName                      // target name label
-	labels[chaostypes.DisruptionKindLabel] = string(kind)            // disruption kind label
-	labels[chaostypes.DisruptionNameLabel] = instance.Name           // disruption name label, used to determine ownership
-	labels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // disruption namespace label, used to determine ownership
+	podLabels[chaostypes.TargetLabel] = targetName                      // target name label
+	podLabels[chaostypes.DisruptionKindLabel] = string(kind)            // disruption kind label
+	podLabels[chaostypes.DisruptionNameLabel] = instance.Name           // disruption name label, used to determine ownership
+	podLabels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // disruption namespace label, used to determine ownership
 
 	// define injector pod
 	pod := corev1.Pod{
@@ -1134,7 +1148,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 			GenerateName: fmt.Sprintf("chaos-%s-", instance.Name), // generate the pod name automatically with a prefix
 			Namespace:    r.ChaosNamespace,                        // chaos pods need to be in the same namespace as their service account to run
 			Annotations:  r.InjectorAnnotations,                   // add extra annotations passed to the controller
-			Labels:       labels,                                  // add default and extra labels passed to the controller
+			Labels:       podLabels,                               // add default and extra podLabels passed to the controller
 		},
 		Spec: podSpec,
 	}
@@ -1293,9 +1307,9 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 
 		r.handleMetricSinkError(r.MetricsSink.MetricInformed([]string{"podName:" + c.GetName(), "podNamespace:" + c.GetNamespace()}))
 
-		labels := c.GetLabels()
-		name := labels[chaostypes.DisruptionNameLabel]
-		namespace := labels[chaostypes.DisruptionNamespaceLabel]
+		podLabels := c.GetLabels()
+		name := podLabels[chaostypes.DisruptionNameLabel]
+		namespace := podLabels[chaostypes.DisruptionNamespaceLabel]
 
 		if name != "" && namespace != "" {
 			disruption = append(disruption, reconcile.Request{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}})

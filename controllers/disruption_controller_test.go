@@ -241,6 +241,19 @@ var _ = Describe("Disruption Controller", func() {
 				return fmt.Errorf("disruptions is not injected, current status is %s", d.Status.InjectionStatus)
 			}
 
+			// check targets injection
+			for targetName, target := range d.Status.TargetInjections {
+				// check status
+				if target.InjectionStatus != chaostypes.DisruptionInjectionStatusInjected {
+					return fmt.Errorf("target injection %s is not injected, current status is %s", targetName, target.InjectionStatus)
+				}
+
+				// check fi the chaos pod is defined
+				if target.InjectorPodName == "" {
+					return fmt.Errorf("the %s target pod does not have an injector pod ", targetName)
+				}
+			}
+
 			return nil
 		}, timeout).Should(Succeed())
 	})
@@ -483,9 +496,10 @@ var _ = Describe("Disruption Controller", func() {
 				podList := corev1.PodList{}
 				labelSelector := disruption.Spec.Selector
 
-				k8sClient.List(context.Background(), &podList, &client.ListOptions{
+				err := k8sClient.List(context.Background(), &podList, &client.ListOptions{
 					LabelSelector: labelSelector.AsSelector(),
 				})
+				Expect(err).ShouldNot(HaveOccurred())
 
 				if len(podList.Items) == 0 {
 					return fmt.Errorf("no target found")
@@ -508,7 +522,7 @@ var _ = Describe("Disruption Controller", func() {
 		})
 	})
 
-	Context("Targets count", func() {
+	Context("Target injections count", func() {
 		BeforeEach(func() {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				StaticTargeting: false,

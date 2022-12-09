@@ -54,6 +54,8 @@ const (
 	DisruptionInjectionStatusInjected DisruptionInjectionStatus = "Injected"
 	// DisruptionInjectionStatusPreviouslyInjected is the value of the injection status after the duration has expired
 	DisruptionInjectionStatusPreviouslyInjected DisruptionInjectionStatus = "PreviouslyInjected"
+	// DisruptionInjectionStatusIsStuckOnRemoval is the value of the injection status when the injection could not be removed
+	DisruptionInjectionStatusIsStuckOnRemoval DisruptionInjectionStatus = "IsStuckOnRemoval"
 
 	// DisruptionNameLabel is the label used to identify the disruption name for a chaos pod. This is used to determine pod ownership.
 	DisruptionNameLabel = "chaos.datadoghq.com/disruption-name"

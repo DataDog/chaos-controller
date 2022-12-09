@@ -112,7 +112,7 @@ func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, notifType types.Noti
 		slack.NewTextBlockObject("mrkdwn", "*Notification Type:*\n"+string(notifType), false, false),
 		slack.NewTextBlockObject("mrkdwn", "*Cluster:*\n"+n.common.ClusterName, false, false),
 		slack.NewTextBlockObject("mrkdwn", "*Namespace:*\n"+dis.Namespace, false, false),
-		slack.NewTextBlockObject("mrkdwn", "*Targets:*\n"+fmt.Sprint(len(dis.Status.Targets)), false, false),
+		slack.NewTextBlockObject("mrkdwn", "*Targets:*\n"+fmt.Sprint(len(dis.Status.TargetInjections)), false, false),
 		slack.NewTextBlockObject("mrkdwn", "*DryRun:*\n"+strconv.FormatBool(dis.Spec.DryRun), false, false),
 		slack.NewTextBlockObject("mrkdwn", "*Duration:*\n"+dis.Spec.Duration.Duration().String(), false, false),
 	}
