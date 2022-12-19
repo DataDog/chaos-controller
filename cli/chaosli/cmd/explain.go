@@ -257,7 +257,7 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t💣 applies a packet delay of %d ms.\n", network.Delay)
 
 		if network.DelayJitter != 0 {
-			fmt.Printf("\t\t\t💣 applies a jitter of %d ms to the delay value to add randomness to the delay.\n", network.Delay)
+			fmt.Printf("\t\t\t💣 applies a jitter of %d ms to the delay value to add randomness to the delay.\n", network.DelayJitter)
 		}
 	}
 
