@@ -38,7 +38,7 @@ func NewRunningTargetSelector(controllerEnableSafeguards bool, controllerNodeNam
 // GetMatchingPodsOverTotalPods returns a pods list containing all running pods matching the given label selector and namespace and the count of pods matching the selector
 func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, int, error) {
 	// get parsed selector
-	selector, err := GetLabelSelectorFromInstance(instance)
+	selector, secondarySelector, err := GetLabelSelectorsFromInstance(instance)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error getting label selector from disruption: %w", err)
 	}
@@ -103,17 +103,7 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 		}
 	}
 
-	if instance.Spec.SecondarySelector != nil {
-		secondarySelector := labels.NewSelector()
-		for _, s := range instance.Spec.SecondarySelector {
-			// generate and add the requirement to the selector
-			parsedReq, err := advancedSelectorToSelector(s)
-			if err != nil {
-				return nil, 0, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
-			}
-
-			secondarySelector = secondarySelector.Add(*parsedReq)
-		}
+	if secondarySelector != nil {
 		prunedRunningPods := &corev1.PodList{}
 		nodes := &corev1.NodeList{}
 		var nodeNames []string
@@ -144,7 +134,7 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 // GetMatchingNodesOverTotalNodes returns a nodes list containing all nodes matching the given label selector and the count of nodes matching the selector
 func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, int, error) {
 	// get parsed selector
-	selector, err := GetLabelSelectorFromInstance(instance)
+	selector, secondarySelector, err := GetLabelSelectorsFromInstance(instance)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error getting label selector from disruption: %w", err)
 	}
@@ -186,17 +176,7 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 		}
 	}
 
-	if instance.Spec.SecondarySelector != nil {
-		secondarySelector := labels.NewSelector()
-		for _, s := range instance.Spec.SecondarySelector {
-			// generate and add the requirement to the selector
-			parsedReq, err := advancedSelectorToSelector(s)
-			if err != nil {
-				return nil, 0, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
-			}
-
-			secondarySelector = secondarySelector.Add(*parsedReq)
-		}
+	if secondarySelector != nil {
 		prunedRunningNodes := &corev1.NodeList{}
 		pods := &corev1.PodList{}
 		var podNodeNames []string
@@ -271,20 +251,21 @@ func (r runningTargetSelector) TargetIsHealthy(target string, c client.Client, i
 	return nil
 }
 
-// GetLabelSelectorFromInstance crafts a label selector made of requirements from the given disruption instance
-func GetLabelSelectorFromInstance(instance *chaosv1beta1.Disruption) (labels.Selector, error) {
+// GetLabelSelectorsFromInstance crafts a label selector made of requirements from the given disruption instance
+func GetLabelSelectorsFromInstance(instance *chaosv1beta1.Disruption) (labels.Selector, labels.Selector, error) {
 	// we want to ensure we never run into the possibility of using an empty label selector
 	if (len(instance.Spec.Selector) == 0 || instance.Spec.Selector == nil) && (len(instance.Spec.AdvancedSelector) == 0 || instance.Spec.AdvancedSelector == nil) {
-		return nil, errors.New("selector can't be an empty set")
+		return nil, nil, errors.New("selector can't be an empty set")
 	}
 
 	selector := labels.NewSelector()
+	secondarySelector := labels.NewSelector()
 
 	// add simple selectors by parsing them
 	if instance.Spec.Selector != nil {
 		req, err := labels.ParseToRequirements(instance.Spec.Selector.AsSelector().String())
 		if err != nil {
-			return nil, fmt.Errorf("error parsing given selector to requirements: %w", err)
+			return nil, nil, fmt.Errorf("error parsing given selector to requirements: %w", err)
 		}
 
 		selector = selector.Add(req...)
@@ -295,7 +276,7 @@ func GetLabelSelectorFromInstance(instance *chaosv1beta1.Disruption) (labels.Sel
 		for _, req := range instance.Spec.AdvancedSelector {
 			parsedReq, err := advancedSelectorToSelector(req)
 			if err != nil {
-				return nil, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
+				return nil, nil, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
 			}
 
 			selector = selector.Add(*parsedReq)
@@ -307,13 +288,25 @@ func GetLabelSelectorFromInstance(instance *chaosv1beta1.Disruption) (labels.Sel
 	if instance.Spec.OnInit {
 		onInitRequirement, err := labels.NewRequirement(chaostypes.DisruptOnInitLabel, selection.Exists, []string{})
 		if err != nil {
-			return nil, fmt.Errorf("error adding the disrupt-on-init label requirement: %w", err)
+			return nil, nil, fmt.Errorf("error adding the disrupt-on-init label requirement: %w", err)
 		}
 
 		selector.Add(*onInitRequirement)
 	}
 
-	return selector, nil
+	if instance.Spec.SecondarySelector != nil {
+		for _, s := range instance.Spec.SecondarySelector {
+			// generate and add the requirement to the selector
+			parsedReq, err := advancedSelectorToSelector(s)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
+			}
+
+			secondarySelector = secondarySelector.Add(*parsedReq)
+		}
+	}
+
+	return selector, secondarySelector, nil
 }
 
 func advancedSelectorToSelector(req metav1.LabelSelectorRequirement) (*labels.Requirement, error) {

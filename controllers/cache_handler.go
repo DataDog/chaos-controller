@@ -470,7 +470,7 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 	}
 
 	disCacheHash := disNamespacedName.String() + disSpecHash
-	disCompleteSelector, err := targetselector.GetLabelSelectorFromInstance(instance)
+	disCompleteSelector, _, err := targetselector.GetLabelSelectorsFromInstance(instance)
 
 	if err != nil {
 		return fmt.Errorf("error getting instance selector: %w", err)
