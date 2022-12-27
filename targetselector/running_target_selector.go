@@ -278,7 +278,7 @@ func GetLabelSelectorsFromInstance(instance *chaosv1beta1.Disruption) (labels.Se
 	// add advanced selectors
 	if instance.Spec.AdvancedSelector != nil {
 		for _, req := range instance.Spec.AdvancedSelector {
-			parsedReq, err := advancedSelectorToSelector(req)
+			parsedReq, err := advancedSelectorToRequirement(req)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
 			}
@@ -301,7 +301,7 @@ func GetLabelSelectorsFromInstance(instance *chaosv1beta1.Disruption) (labels.Se
 	if instance.Spec.SecondarySelector != nil {
 		for _, s := range instance.Spec.SecondarySelector {
 			// generate and add the requirement to the selector
-			parsedReq, err := advancedSelectorToSelector(s)
+			parsedReq, err := advancedSelectorToRequirement(s)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
 			}
@@ -313,7 +313,7 @@ func GetLabelSelectorsFromInstance(instance *chaosv1beta1.Disruption) (labels.Se
 	return selector, secondarySelector, nil
 }
 
-func advancedSelectorToSelector(req metav1.LabelSelectorRequirement) (*labels.Requirement, error) {
+func advancedSelectorToRequirement(req metav1.LabelSelectorRequirement) (*labels.Requirement, error) {
 	var op selection.Operator
 
 	// parse the operator to convert it from one package to another
