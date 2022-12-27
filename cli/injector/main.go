@@ -357,7 +357,7 @@ func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 }
 
 // reinject reinitialize conf, clean and inject all the disruptions
-func reinject(pod *v1.Pod, cmdName string) error {
+func reinject(cmdName string) error {
 	var err error
 
 	// Clean all injections to reinject on an empty slate
@@ -711,7 +711,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 			}
 
 			if hasChanged {
-				if err := reinject(pod, commandName); err != nil {
+				if err := reinject(commandName); err != nil {
 					return err
 				}
 			}
