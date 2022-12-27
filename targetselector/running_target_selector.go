@@ -103,7 +103,7 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 		}
 	}
 
-	if secondarySelector != nil {
+	if instance.Spec.SecondarySelector != nil {
 		prunedRunningPods := &corev1.PodList{}
 		nodes := &corev1.NodeList{}
 		nodeNames := []string{}
@@ -178,7 +178,7 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 		}
 	}
 
-	if secondarySelector != nil {
+	if instance.Spec.SecondarySelector != nil {
 		prunedRunningNodes := &corev1.NodeList{}
 		pods := &corev1.PodList{}
 		podNodeNames := []string{}
