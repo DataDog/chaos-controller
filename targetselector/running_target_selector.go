@@ -106,7 +106,8 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 	if secondarySelector != nil {
 		prunedRunningPods := &corev1.PodList{}
 		nodes := &corev1.NodeList{}
-		var nodeNames []string
+		nodeNames := []string{}
+
 		listOptions = &client.ListOptions{
 			LabelSelector: secondarySelector,
 		}
@@ -125,6 +126,7 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 				prunedRunningPods.Items = append(prunedRunningPods.Items, pod)
 			}
 		}
+
 		runningPods = prunedRunningPods
 	}
 
@@ -179,7 +181,8 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 	if secondarySelector != nil {
 		prunedRunningNodes := &corev1.NodeList{}
 		pods := &corev1.PodList{}
-		var podNodeNames []string
+		podNodeNames := []string{}
+
 		listOptions = &client.ListOptions{
 			LabelSelector: secondarySelector,
 		}
@@ -198,6 +201,7 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 				prunedRunningNodes.Items = append(prunedRunningNodes.Items, node)
 			}
 		}
+
 		runningNodes = prunedRunningNodes
 	}
 
