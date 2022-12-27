@@ -101,6 +101,33 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 		}
 	}
 
+	if instance.Spec.SecondarySelector != nil {
+		secondarySelector := labels.NewSelector()
+		for _, s := range instance.Spec.SecondarySelector {
+			// generate and add the requirement to the selector
+			parsedReq, err := advancedSelectorToSelector(s)
+			if err != nil {
+				return nil, 0, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
+			}
+
+			secondarySelector = secondarySelector.Add(*parsedReq)
+		}
+		prunedRunningPods := &corev1.PodList{}
+
+		for _, pod := range runningPods.Items {
+			var node corev1.Node
+			err := c.Get(context.Background(), types.NamespacedName{Name: pod.Spec.NodeName}, &node)
+			if err != nil {
+				return nil, 0, err
+			}
+
+			if secondarySelector.Matches(labels.Set(node.ObjectMeta.Labels)) {
+				prunedRunningPods.Items = append(prunedRunningPods.Items, pod)
+			}
+		}
+		runningPods = prunedRunningPods
+	}
+
 	return runningPods, len(pods.Items), nil
 }
 
@@ -221,24 +248,7 @@ func GetLabelSelectorFromInstance(instance *chaosv1beta1.Disruption) (labels.Sel
 	// add advanced selectors
 	if instance.Spec.AdvancedSelector != nil {
 		for _, req := range instance.Spec.AdvancedSelector {
-			var op selection.Operator
-
-			// parse the operator to convert it from one package to another
-			switch req.Operator {
-			case metav1.LabelSelectorOpIn:
-				op = selection.In
-			case metav1.LabelSelectorOpNotIn:
-				op = selection.NotIn
-			case metav1.LabelSelectorOpExists:
-				op = selection.Exists
-			case metav1.LabelSelectorOpDoesNotExist:
-				op = selection.DoesNotExist
-			default:
-				return nil, fmt.Errorf("error parsing advanced selector operator %s: must be either In, NotIn, Exists or DoesNotExist", req.Operator)
-			}
-
-			// generate and add the requirement to the selector
-			parsedReq, err := labels.NewRequirement(req.Key, op, req.Values)
+			parsedReq, err := advancedSelectorToSelector(req)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
 			}
@@ -259,4 +269,25 @@ func GetLabelSelectorFromInstance(instance *chaosv1beta1.Disruption) (labels.Sel
 	}
 
 	return selector, nil
+}
+
+func advancedSelectorToSelector(req metav1.LabelSelectorRequirement) (*labels.Requirement, error) {
+	var op selection.Operator
+
+	// parse the operator to convert it from one package to another
+	switch req.Operator {
+	case metav1.LabelSelectorOpIn:
+		op = selection.In
+	case metav1.LabelSelectorOpNotIn:
+		op = selection.NotIn
+	case metav1.LabelSelectorOpExists:
+		op = selection.Exists
+	case metav1.LabelSelectorOpDoesNotExist:
+		op = selection.DoesNotExist
+	default:
+		return nil, fmt.Errorf("error parsing advanced selector operator %s: must be either In, NotIn, Exists or DoesNotExist", req.Operator)
+	}
+
+	// generate and add the requirement to the selector
+	return labels.NewRequirement(req.Key, op, req.Values)
 }
