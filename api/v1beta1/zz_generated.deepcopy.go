@@ -283,6 +283,13 @@ func (in *DisruptionSpec) DeepCopyInto(out *DisruptionSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.SecondarySelector != nil {
+		in, out := &in.SecondarySelector, &out.SecondarySelector
+		*out = make([]v1.LabelSelectorRequirement, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.Unsafemode != nil {
 		in, out := &in.Unsafemode, &out.Unsafemode
 		*out = new(UnsafemodeSpec)

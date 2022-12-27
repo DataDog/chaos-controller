@@ -12,6 +12,8 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/utils"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -113,15 +115,23 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 			secondarySelector = secondarySelector.Add(*parsedReq)
 		}
 		prunedRunningPods := &corev1.PodList{}
+		nodes := &corev1.NodeList{}
+		var nodeNames []string
+		listOptions = &client.ListOptions{
+			LabelSelector: secondarySelector,
+		}
+
+		// fetch nodes from label selector
+		if err = c.List(context.Background(), nodes, listOptions); err != nil {
+			return nil, 0, err
+		}
+
+		for _, node := range nodes.Items {
+			nodeNames = append(nodeNames, node.Name)
+		}
 
 		for _, pod := range runningPods.Items {
-			var node corev1.Node
-			err := c.Get(context.Background(), types.NamespacedName{Name: pod.Spec.NodeName}, &node)
-			if err != nil {
-				return nil, 0, err
-			}
-
-			if secondarySelector.Matches(labels.Set(node.ObjectMeta.Labels)) {
+			if utils.Contains(nodeNames, pod.Spec.NodeName) {
 				prunedRunningPods.Items = append(prunedRunningPods.Items, pod)
 			}
 		}
