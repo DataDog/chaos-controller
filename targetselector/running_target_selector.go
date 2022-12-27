@@ -186,6 +186,41 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 		}
 	}
 
+	if instance.Spec.SecondarySelector != nil {
+		secondarySelector := labels.NewSelector()
+		for _, s := range instance.Spec.SecondarySelector {
+			// generate and add the requirement to the selector
+			parsedReq, err := advancedSelectorToSelector(s)
+			if err != nil {
+				return nil, 0, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
+			}
+
+			secondarySelector = secondarySelector.Add(*parsedReq)
+		}
+		prunedRunningNodes := &corev1.NodeList{}
+		pods := &corev1.PodList{}
+		var podNodeNames []string
+		listOptions = &client.ListOptions{
+			LabelSelector: secondarySelector,
+		}
+
+		// fetch nodes from label selector
+		if err = c.List(context.Background(), pods, listOptions); err != nil {
+			return nil, 0, err
+		}
+
+		for _, pod := range pods.Items {
+			podNodeNames = append(podNodeNames, pod.Spec.NodeName)
+		}
+
+		for _, node := range runningNodes.Items {
+			if utils.Contains(podNodeNames, node.Name) {
+				prunedRunningNodes.Items = append(prunedRunningNodes.Items, node)
+			}
+		}
+		runningNodes = prunedRunningNodes
+	}
+
 	return runningNodes, len(nodes.Items), nil
 }
 
