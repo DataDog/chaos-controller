@@ -66,12 +66,6 @@ spec:
                   type: object
                 nullable: true
                 type: array
-              annotationFilter:
-                additionalProperties:
-                  type: string
-                description: Set is a map of label:value. It implements Labels.
-                nullable: true
-                type: object
               containerFailure:
                 description: ContainerFailureSpec represents a container failure injection
                 nullable: true
@@ -147,6 +141,15 @@ spec:
                 type: boolean
               duration:
                 type: string
+              filter:
+                nullable: true
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Set is a map of label:value. It implements Labels.
+                    type: object
+                type: object
               grpc:
                 description: GRPCDisruptionSpec represents a gRPC disruption
                 nullable: true
