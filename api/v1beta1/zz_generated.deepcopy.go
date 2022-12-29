@@ -283,6 +283,13 @@ func (in *DisruptionSpec) DeepCopyInto(out *DisruptionSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.AnnotationFilter != nil {
+		in, out := &in.AnnotationFilter, &out.AnnotationFilter
+		*out = make(labels.Set, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.Unsafemode != nil {
 		in, out := &in.Unsafemode, &out.Unsafemode
 		*out = new(UnsafemodeSpec)
