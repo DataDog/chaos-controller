@@ -190,7 +190,7 @@ type DisruptionStatus struct {
 }
 
 type DisruptionFilter struct {
-	Annotations labels.Set `json:"annotations,omitempty"`
+	Annotations labels.Set `json:"annotation,omitempty"`
 }
 
 //+kubebuilder:object:root=true
