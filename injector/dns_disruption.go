@@ -13,7 +13,6 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
-	"github.com/DataDog/chaos-controller/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
@@ -114,12 +113,12 @@ func (i *DNSDisruptionInjector) Inject() error {
 	if i.config.Level == chaostypes.DisruptionLevelPod {
 		if !i.config.OnInit {
 			// write classid to container net_cls cgroup - for iptable filtering
-			if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", types.InjectorCgroupClassID); err != nil {
+			if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", chaostypes.InjectorCgroupClassID); err != nil {
 				return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
 			}
 
 			// Redirect traffic marked by targeted InjectorDNSCgroupClassID to CHAOS-DNS
-			if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", types.InjectorCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
+			if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", chaostypes.InjectorCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
 				return fmt.Errorf("unable to create new iptables rule: %w", err)
 			}
 		} else {
@@ -184,7 +183,7 @@ func (i *DNSDisruptionInjector) Clean() error {
 			}
 
 			// Delete iptables rules
-			if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", types.InjectorCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
+			if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", chaostypes.InjectorCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
 				return fmt.Errorf("unable to remove injected iptables rule: %w", err)
 			}
 		}
