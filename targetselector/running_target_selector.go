@@ -153,6 +153,15 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 			}
 		}
 
+		if instance.Spec.Filters != nil && len(instance.Spec.Filters.Annotations) > 0 {
+			for k, v := range instance.Spec.Filters.Annotations {
+				nodeAnno, ok := node.Annotations[k]
+				if !ok || nodeAnno != v {
+					continue
+				}
+			}
+		}
+
 		if ready {
 			runningNodes.Items = append(runningNodes.Items, node)
 		}
