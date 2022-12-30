@@ -14,7 +14,7 @@ spec:
     app: demo-curl
   filter:
     annotation:
-      aws-zone: us-east-1b # filter selected targets to only those with this annotation
+      app.kubernetes.io/component: client # filter selected targets to only those with this annotation
   count: 1
   network:
     drop: 100

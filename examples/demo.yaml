@@ -65,6 +65,8 @@ spec:
       app: demo-curl
   template:
     metadata:
+      annotations:
+        app.kubernetes.io/component: client
       labels:
         app: demo-curl
     spec:
