@@ -40,6 +40,17 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\tℹ️  has the following selectors which will be used to target %ss\n\t\t🎯  %s\n", spec.Level, spec.Selector.String())
 	}
 
+	if spec.AdvancedSelector != nil {
+		fmt.Printf("\tℹ️  has the following advanced selectors which will be used to target %ss:\n", spec.Level)
+		for _, selector := range spec.AdvancedSelector {
+			fmt.Printf("\t\t🎯  %s\n", selector.String())
+		}
+	}
+
+	if spec.Filter != nil && spec.Filter.Annotations != nil {
+		fmt.Printf("\tℹ️  has the following annotation filters which will be used to target %ss\n\t\t🎯  %s\n", spec.Level, spec.Filter.Annotations.String())
+	}
+
 	if spec.Containers != nil {
 		if spec.Level == chaostypes.DisruptionLevelNode {
 			fmt.Println("\tℹ️  is using the node level. The Containers attribute only makes sense when using the pod level!")
