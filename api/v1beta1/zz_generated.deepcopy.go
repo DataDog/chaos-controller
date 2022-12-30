@@ -305,8 +305,8 @@ func (in *DisruptionSpec) DeepCopyInto(out *DisruptionSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Filters != nil {
-		in, out := &in.Filters, &out.Filters
+	if in.Filter != nil {
+		in, out := &in.Filter, &out.Filter
 		*out = new(DisruptionFilter)
 		(*in).DeepCopyInto(*out)
 	}

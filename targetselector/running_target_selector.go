@@ -75,8 +75,8 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 			}
 		}
 
-		if instance.Spec.Filters != nil && len(instance.Spec.Filters.Annotations) > 0 {
-			for k, v := range instance.Spec.Filters.Annotations {
+		if instance.Spec.Filter != nil && len(instance.Spec.Filter.Annotations) > 0 {
+			for k, v := range instance.Spec.Filter.Annotations {
 				podAnno, ok := pod.Annotations[k]
 				if !ok || podAnno != v {
 					continue
@@ -153,8 +153,8 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 			}
 		}
 
-		if instance.Spec.Filters != nil && len(instance.Spec.Filters.Annotations) > 0 {
-			for k, v := range instance.Spec.Filters.Annotations {
+		if instance.Spec.Filter != nil && len(instance.Spec.Filter.Annotations) > 0 {
+			for k, v := range instance.Spec.Filter.Annotations {
 				nodeAnno, ok := node.Annotations[k]
 				if !ok || nodeAnno != v {
 					continue
