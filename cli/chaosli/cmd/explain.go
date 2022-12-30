@@ -42,6 +42,7 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 
 	if spec.AdvancedSelector != nil {
 		fmt.Printf("\tℹ️  has the following advanced selectors which will be used to target %ss:\n", spec.Level)
+
 		for _, selector := range spec.AdvancedSelector {
 			fmt.Printf("\t\t🎯  %s\n", selector.String())
 		}
