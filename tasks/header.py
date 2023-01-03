@@ -3,7 +3,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2022 Datadog, Inc.
+# Copyright 2023 Datadog, Inc.
 
 from invoke import task
 import glob
@@ -43,7 +43,7 @@ def generate_header_with_tag(tag: str) -> t.List:
         f"{tag} Unless explicitly stated otherwise all files in this repository are licensed\n",
         f"{tag} under the Apache License Version 2.0.\n",
         f"{tag} This product includes software developed at Datadog (https://www.datadoghq.com/).\n",
-        f"{tag} Copyright 2022 Datadog, Inc.\n",
+        f"{tag} Copyright 2023 Datadog, Inc.\n",
     ]
 
 
@@ -96,7 +96,7 @@ def update_header(file: str, header: t.List, header_position: t.Dict):
     header = "".join(header)
 
     # reinsert the header on the given position
-    content.insert(header_position["starting_pos"], header)
+    content[header_position["starting_pos"]:header_position["ending_pos"]] = header
     content = "".join(content)
 
     with open(file, "w") as f:
