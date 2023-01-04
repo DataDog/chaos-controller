@@ -21,7 +21,7 @@ spec:
     app: demo
     team: developer
   filter:
-    annotation:
+    annotations:
       aws-zone: us-east-1b # filter selected targets to only those with this annotation
   advancedSelector: # advanced selectors can select targets on something else than an exact key/value match
     - key: app

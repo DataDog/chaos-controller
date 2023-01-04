@@ -13,7 +13,7 @@ spec:
   selector:
     app: demo-curl
   filter:
-    annotation:
+    annotations:
       app.kubernetes.io/component: client # filter selected targets to only those with this annotation
   count: 1
   network:
