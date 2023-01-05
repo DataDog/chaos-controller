@@ -75,6 +75,15 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 			}
 		}
 
+		if instance.Spec.Filter != nil {
+			for k, v := range instance.Spec.Filter.Annotations {
+				podAnno, ok := pod.Annotations[k]
+				if !ok || podAnno != v {
+					continue
+				}
+			}
+		}
+
 		// if the disruption is applied on init, we only target pending pods with a running (or terminated)
 		// chaos handler init container
 		// otherwise, we only target running pods
@@ -141,6 +150,15 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
 				ready = true
 				break
+			}
+		}
+
+		if instance.Spec.Filter != nil {
+			for k, v := range instance.Spec.Filter.Annotations {
+				nodeAnno, ok := node.Annotations[k]
+				if !ok || nodeAnno != v {
+					continue
+				}
 			}
 		}
 

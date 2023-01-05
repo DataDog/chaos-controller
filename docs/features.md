@@ -86,6 +86,13 @@ In addition to the simple `selector` field matching an exact key/value label, on
 
 You can look at [an example of the expected format](../examples/advanced_selector.yaml) to know how to use it.
 
+#### Filtering
+
+The `selector` and `advancedSelector` fields only use kubernetes resource labels, as the kubernetes api only allows for listing resources based on their labels. However, 
+it's perfectly valid to want to filter your targets to those containing specific annotations. The `spec.filter` field currently has a single subfield, `spec.filter.annotation`, 
+which takes a set of key/value pairs. It works similarly to the `selector` field, in that all targets must have annotations matching _all_ specified k/v pairs. We will filter targets initially based 
+on the label selectors used, before applying any filters.
+
 ### Targeting a specific pod
 
 How can you target a specific pod by name, if it doesn't have a unique label selector you can use? The `Disruption` spec doesn't support field selectors at this time, so selecting by name isn't possible. However, you can use the `kubectl label pods` command, e.g., `kubectl label pods $podname unique-label-for-this-disruption=target-me` to dynamically add a unique label to the pod, which you can use as your label selector in the `Disruption` spec.

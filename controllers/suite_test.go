@@ -111,6 +111,9 @@ var _ = BeforeSuite(func(done Done) {
 			Labels: map[string]string{
 				"foo": "bar",
 			},
+			Annotations: map[string]string{
+				"foo": "baz",
+			},
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -163,6 +166,9 @@ var _ = BeforeSuite(func(done Done) {
 			Namespace: "default",
 			Labels: map[string]string{
 				"foo": "bar",
+			},
+			Annotations: map[string]string{
+				"foo": "qux",
 			},
 		},
 		Spec: corev1.PodSpec{

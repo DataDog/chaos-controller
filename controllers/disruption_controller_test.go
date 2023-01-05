@@ -258,6 +258,18 @@ var _ = Describe("Disruption Controller", func() {
 		}, timeout).Should(Succeed())
 	})
 
+	Context("annotation filters should limit selected targets", func() {
+		BeforeEach(func() {
+			disruption.Spec.Filter = &chaosv1beta1.DisruptionFilter{
+				Annotations: map[string]string{"foo": "bar"},
+			}
+		})
+
+		It("should only select half of all pods", func() {
+			Eventually(func() error { return expectChaosPod(disruption, 4) }, timeout*2).Should(Succeed())
+		})
+	})
+
 	Context("a node level test should pass", func() {
 		BeforeEach(func() {
 			disruption = &chaosv1beta1.Disruption{
