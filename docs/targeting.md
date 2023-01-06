@@ -71,11 +71,11 @@ As trivial as it sounds, new targetable pods are not yet registered and monitore
 
 - Run the reconcile loop periodically for no reason to scan for new pods matching the disruption's selector :no_entry:
 
-  Would work, but would not scale well -as one controller can start running more and more disruptions simultaneously-, waste resources running the loop for sometimes no reason, and input an arbitrary time scale. **We should not trigger the loop for no reason and need external signals. **
+  Would work, but would not scale well -as one controller can start running more and more disruptions simultaneously-, waste resources running the loop for sometimes no reason, and input an arbitrary time scale. **We should not trigger the loop for no reason and need external signals.**
 
 - Run the reconcile loop on any cluster activity (pod/node CREATE, UPDATE, DELETE events) :no_entry:
 
-  Would be very ressource-expensive, and would trigger all disruptions' reconcile loops at the same time. The controller would be constantly running all its' disruptions reconcile loops. **We cannot afford triggering the loop on all possible external signals; we need to filter them.**
+  Would be very ressource-expensive, and would trigger all disruptions' reconcile loops at the same time. The controller would be constantly running all its' disruptions reconcile loops. **We cannot afford to trigger the loop on all possible external signals; we need to filter them.**
 
 In the end, it's all about reconciling the relevant disruptions as a reaction to the relevant events: chaos-pods, targets and potential targets CRUD operations.
 
@@ -85,18 +85,18 @@ Each disruption contains its given selector, describing a set of desired targets
 
 To solve those problems, we use a client-go kubernetes object called a [cache](https://pkg.go.dev/k8s.io/client-go/tools/cache) to which is attached an Informer object, and an event handler. They serve the purpose of an Observer.
 
-For each new disruption the controller receives, the controller will create a [new cache object](https://github.com/DataDog/chaos-controller/blob/adb8070c989a6c25195354e3bcef3f2c839ef032/controllers/cache_handler.go#L497), taking the given selector as input. All caches object are stored in a map, using a hash of the disruption's configuration as key for uniqueness. On relevant events (and relevant events only), the cache will trigger/enqueue a reconcile in the controller specifically for the corresponding disruption.
+For each new disruption the controller receives, the controller will create a [new cache object](https://github.com/DataDog/chaos-controller/blob/adb8070c989a6c25195354e3bcef3f2c839ef032/controllers/cache_handler.go#L497), taking the given selector as input. All caches object are stored in a map, using a hash of the disruption's configuration as key for uniqueness, and a cache's lifecycle it correlated to the one of its disruption. On relevant events (and relevant events only), the cache will trigger/enqueue a reconcile loop in the controller specifically for the corresponding disruption.
 
 #### Cache deletion
 
-Using a dedicated cache object for each disruption works great; the reconcile loop is run on every possible target event, and the disruption adapts wonderfully. Ressource consumption is stable and seems to scale. However when the disruption is deleted, we need to make sure the cache is deleted as well. This proved more difficult than it looked.
+Using a dedicated cache object for each disruption works great; the reconcile loop is run on every possible target events, and the disruption adapts wonderfully to changing targets. Ressource consumption is stable and seems to scale. However when the disruption is deleted, we need to make sure the cache is deleted as well. This proved more difficult than it looked.
 
 When created, the cache has a context, and a cancel function. Those are stored with the cache reference in the aforementionned map, and called upon the final disruption reconcile. However, if the deletion does not go through for any given reason, this cache can be very hard to recover without restarting the controller. To uphold our safety and performance standards, we need safety mechanisms to assert a cache cannot be lost in nature after a disruption is deleted.
 
 There are three folds:
 
-- [Clear Instance Selector Cache](https://github.com/DataDog/chaos-controller/blob/adb8070c989a6c25195354e3bcef3f2c839ef032/controllers/cache_handler.go#L552): This function is called as late as possible before the disruption deletion. The loop then call the cache cancel function and delete the cache map entry. This will cover most cases, next attempts are extra safety as reconcile loops can be interrupted.
+- [Clear Instance Selector Cache](https://github.com/DataDog/chaos-controller/blob/adb8070c989a6c25195354e3bcef3f2c839ef032/controllers/cache_handler.go#L552): This function is called as late as possible before the disruption deletion. The loop then calls the cache cancel function and deletes the cache map entry. This will cover most cases, and following listings are extra safeties -- because the reconcile loop can be interrupted.
 - [Expired Cache Context Cleanup](https://github.com/DataDog/chaos-controller/blob/adb8070c989a6c25195354e3bcef3f2c839ef032/controllers/cache_handler.go#L571): on every reconcile, asserts for every existing cache the corresponding disruption exists. Also, asserts no cache is still listed with a already-canceled context.
-- [Cache Deletion Safety](https://github.com/DataDog/chaos-controller/blob/adb8070c989a6c25195354e3bcef3f2c839ef032/controllers/cache_handler.go#L596): the first method is useful and will prevent many cases from going wrong, but still relies on the controller looping after the disruption is over to release the ressources. Every minute, the disruption will be polled, and if it is not found, will cancel the cache context, releasing the ressources it used. If the controller reconciles again, the first listed function will erase the cache from the map, as the context will be canceled.
+- [Cache Deletion Safety](https://github.com/DataDog/chaos-controller/blob/adb8070c989a6c25195354e3bcef3f2c839ef032/controllers/cache_handler.go#L596): the first two methods are useful and will prevent most cases from going wrong, but still relies on the controller looping after the disruption is over to make sure the ressources are released. Here, every minute, the disruption will be polled and if it is not found the cache context will be canceled, releasing the ressources it used. If the controller reconciles again, the second listed function will erase the cache from the map, as the context will be found canceled.
 
 To ensure no cache is running loose, a gauge indicating the amount of cache entries is set to be monitored; it can be substracted to the gauge of live disruptions to check for sustained negative differences.
