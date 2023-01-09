@@ -8,6 +8,7 @@ package cloudservice
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/DataDog/chaos-controller/cloudservice/gcp"
 	"github.com/DataDog/chaos-controller/cloudservice/types"
@@ -22,37 +23,86 @@ func TestManager(t *testing.T) {
 }
 
 var _ = Describe("New function", func() {
-	Context("Create New success", func() {
+	var manager *CloudServicesProvidersManager
+	var configs types.CloudProviderConfigs
+
+	BeforeEach(func() {
+		configs = types.CloudProviderConfigs{
+			DisableAll:   false,
+			PullInterval: time.Minute,
+			AWS: types.CloudProviderConfig{
+				Enabled:     true,
+				IPRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json",
+			},
+			GCP: types.CloudProviderConfig{
+				Enabled:     true,
+				IPRangesURL: "https://www.gstatic.com/ipranges/goog.json",
+			},
+			Datadog: types.CloudProviderConfig{
+				Enabled:     true,
+				IPRangesURL: "https://ip-ranges.datadoghq.com/",
+			},
+		}
+	})
+
+	JustBeforeEach(func() {
+		var err error
+
 		logger, _ := log.NewZapLogger()
+		manager, err = New(logger, configs)
 
-		manager, err := New(logger, types.CloudProviderConfigs{
-			PullInterval: "1m",
-		})
+		By("Ensuring that no error was thrown")
+		Expect(err).To(BeNil())
+	})
 
+	Context("Creating a new manager with all providers enabled", func() {
 		It("should have parsed once", func() {
-			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
-
 			By("Ensuring that we have all cloud managed services")
 			Expect(manager.cloudProviders[types.CloudProviderAWS]).ToNot(BeNil())
 			Expect(manager.cloudProviders[types.CloudProviderGCP]).ToNot(BeNil())
+			Expect(manager.cloudProviders[types.CloudProviderDatadog]).ToNot(BeNil())
 
 			By("Ensuring that the ips are parsed")
 			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangeInfo.IPRanges).ToNot(BeEmpty())
 			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.IPRanges).ToNot(BeEmpty())
+			Expect(manager.cloudProviders[types.CloudProviderDatadog].IPRangeInfo.IPRanges).ToNot(BeEmpty())
 
 			By("Ensuring that we have a service list for every cloud provider")
 			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangeInfo.ServiceList).ToNot(BeEmpty())
 			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.ServiceList).ToNot(BeEmpty())
+			Expect(manager.cloudProviders[types.CloudProviderDatadog].IPRangeInfo.ServiceList).ToNot(BeEmpty())
+		})
+	})
+
+	Context("Creating a new manager with one provider disabled", func() {
+		BeforeEach(func() {
+			configs.AWS.Enabled = false
+		})
+
+		It("should have parsed once", func() {
+			By("Ensuring that we have all cloud managed services")
+			Expect(manager.cloudProviders[types.CloudProviderAWS]).To(BeNil())
+			Expect(manager.cloudProviders[types.CloudProviderGCP]).ToNot(BeNil())
+			Expect(manager.cloudProviders[types.CloudProviderDatadog]).ToNot(BeNil())
+		})
+	})
+
+	Context("Creating a new manager with all providers disabled", func() {
+		BeforeEach(func() {
+			configs.DisableAll = true
+		})
+
+		It("should have parsed once", func() {
+			By("Ensuring that we have all cloud managed services")
+			Expect(manager.cloudProviders[types.CloudProviderAWS]).To(BeNil())
+			Expect(manager.cloudProviders[types.CloudProviderGCP]).To(BeNil())
+			Expect(manager.cloudProviders[types.CloudProviderDatadog]).To(BeNil())
 		})
 	})
 
 	Context("Pull new ip ranges from aws and gcp", func() {
-		logger, _ := log.NewZapLogger()
-
-		manager := &CloudServicesProvidersManager{
-			log: logger,
-			cloudProviders: map[types.CloudProviderName]*CloudServicesProvider{
+		JustBeforeEach(func() {
+			manager.cloudProviders = map[types.CloudProviderName]*CloudServicesProvider{
 				types.CloudProviderAWS: {
 					CloudProviderIPRangeManager: NewCloudServiceMock(
 						true,
@@ -72,6 +122,7 @@ var _ = Describe("New function", func() {
 						nil,
 					),
 					Conf: types.CloudProviderConfig{
+						Enabled:     true,
 						IPRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json",
 					},
 				},
@@ -91,17 +142,19 @@ var _ = Describe("New function", func() {
 						nil,
 					),
 					Conf: types.CloudProviderConfig{
+						Enabled:     true,
 						IPRangesURL: "https://www.gstatic.com/ipranges/goog.json", // General IP Ranges from Google, contains some API ip ranges
 					},
 				},
-			},
-		}
+			}
 
-		err := manager.PullIPRanges()
-		It("should have parsed successfully the service list", func() {
+			err := manager.PullIPRanges()
+
 			By("Ensuring that no error was thrown")
 			Expect(err).To(BeNil())
+		})
 
+		It("should have parsed successfully the service list", func() {
 			By("Ensuring that we have a service list for every cloud provider")
 			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangeInfo.ServiceList).ToNot(BeEmpty())
 			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.ServiceList).ToNot(BeEmpty())
@@ -126,9 +179,6 @@ var _ = Describe("New function", func() {
 		})
 
 		It("should have parsed successfully the ip ranges map", func() {
-			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
-
 			By("Ensuring that we have an ip ranges map for every cloud provider")
 			Expect(manager.cloudProviders[types.CloudProviderAWS].IPRangeInfo.IPRanges).ToNot(BeEmpty())
 			Expect(manager.cloudProviders[types.CloudProviderGCP].IPRangeInfo.IPRanges).ToNot(BeEmpty())
