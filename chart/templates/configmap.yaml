@@ -35,7 +35,17 @@ data:
         datadog:
           enabled: {{ .Values.controller.notifiers.datadog.enabled }}
       cloudProviders:
-        pullInterval: 24h
+        disableAll: {{ .Values.controller.cloudProviders.disableAll }}
+        pullInterval: {{ .Values.controller.cloudProviders.pullInterval }}
+        aws:
+          enabled: {{ .Values.controller.cloudProviders.aws.enabled }}
+          ipRangesURL: {{ .Values.controller.cloudProviders.aws.ipRangesURL }}
+        gcp:
+          enabled: {{ .Values.controller.cloudProviders.gcp.enabled }}
+          ipRangesURL: {{ .Values.controller.cloudProviders.gcp.ipRangesURL }}
+        datadog:
+          enabled: {{ .Values.controller.cloudProviders.datadog.enabled }}
+          ipRangesURL: {{ .Values.controller.cloudProviders.datadog.ipRangesURL }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}

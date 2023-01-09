@@ -11,11 +11,21 @@ Available providers are:
 
 ### Cloud Provider Manager
 
-The service will pull and parse the IP Ranges from the available cloud providers every x minutes/hours, defined in the chaos-controller configuration:
+The manager handles regular IP ranges files pulls to refresh the file content on enabled providers. The chart contains the default public URL for each cloud provider but it can be customized if needed. You can also disable some providers or all of them in case you want to disable the feature. Please note that if you specify a custom URL, the file must match the same format as the public one to be loaded successfully, otherwise the controller will crash.
 
 ```
 cloudProviders:
+    disableAll: false
     pullInterval: "24h"
+    aws:
+      enabled: true
+      ipRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json"
+    gcp:
+      enabled: true
+      ipRangesURL: "https://www.gstatic.com/ipranges/goog.json"
+    datadog:
+      enabled: true
+      ipRangesURL: "https://ip-ranges.datadoghq.com/"
 ```
 
 On the creation of the chaos pod, the chaos-controller will then use those ip ranges for the Network Disruption and transform it into a Host Network Disruption.

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/DataDog/chaos-controller/cloudservice/aws"
@@ -41,36 +42,44 @@ type CloudProviderIPRangeManager interface {
 }
 
 func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServicesProvidersManager, error) {
-	cloudProviderMap := map[types.CloudProviderName]*CloudServicesProvider{
-		types.CloudProviderAWS: {
-			CloudProviderIPRangeManager: aws.New(),
-			Conf: types.CloudProviderConfig{
-				IPRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json",
-			},
-		},
-		types.CloudProviderGCP: {
-			CloudProviderIPRangeManager: gcp.New(),
-			Conf: types.CloudProviderConfig{
-				IPRangesURL: "https://www.gstatic.com/ipranges/goog.json", // General IP Ranges from Google, contains some API ip ranges
-			},
-		},
-		types.CloudProviderDatadog: {
-			CloudProviderIPRangeManager: datadog.New(),
-			Conf: types.CloudProviderConfig{
-				IPRangesURL: "https://ip-ranges.datadoghq.com/",
-			},
-		},
-	}
-
-	pullInterval, err := time.ParseDuration(config.PullInterval)
-	if err != nil {
-		return nil, err
-	}
-
 	manager := &CloudServicesProvidersManager{
-		cloudProviders:       cloudProviderMap,
+		cloudProviders:       map[types.CloudProviderName]*CloudServicesProvider{},
 		log:                  log,
-		periodicPullInterval: pullInterval,
+		periodicPullInterval: config.PullInterval,
+	}
+
+	// return an empty manager if all providers are disabled
+	if config.DisableAll {
+		log.Info("all cloud providers are disabled")
+
+		return manager, nil
+	}
+
+	for _, cp := range types.AllCloudProviders {
+		provider := &CloudServicesProvider{}
+
+		switch cp {
+		case types.CloudProviderAWS:
+			provider.CloudProviderIPRangeManager = aws.New()
+			provider.Conf.Enabled = config.AWS.Enabled
+			provider.Conf.IPRangesURL = config.AWS.IPRangesURL
+		case types.CloudProviderGCP:
+			provider.CloudProviderIPRangeManager = gcp.New()
+			provider.Conf.Enabled = config.GCP.Enabled
+			provider.Conf.IPRangesURL = config.GCP.IPRangesURL
+		case types.CloudProviderDatadog:
+			provider.CloudProviderIPRangeManager = datadog.New()
+			provider.Conf.Enabled = config.Datadog.Enabled
+			provider.Conf.IPRangesURL = config.Datadog.IPRangesURL
+		}
+
+		if !provider.Conf.Enabled {
+			log.Debugw("a cloud provider was disabled", "provider", cp)
+
+			continue
+		}
+
+		manager.cloudProviders[cp] = provider
 	}
 
 	if err := manager.PullIPRanges(); err != nil {
@@ -83,7 +92,7 @@ func New(log *zap.SugaredLogger, config types.CloudProviderConfigs) (*CloudServi
 
 // StartPeriodicPull go routine pulling every interval all ip ranges of all cloud providers set up.
 func (s *CloudServicesProvidersManager) StartPeriodicPull() {
-	s.log.Infow("starting periodic pull and parsing of the cloud provider ip ranges", "interval", s.periodicPullInterval)
+	s.log.Infow("starting periodic pull and parsing of the cloud provider ip ranges", "interval", s.periodicPullInterval.String())
 
 	go func() {
 		for {
@@ -132,7 +141,7 @@ func (s *CloudServicesProvidersManager) PullIPRanges() error {
 // GetServicesIPRanges with a given list of service names and cloud provider name, returns the list of ip ranges of those services
 func (s *CloudServicesProvidersManager) GetServicesIPRanges(cloudProviderName types.CloudProviderName, serviceNames []string) (map[string][]string, error) {
 	if s.cloudProviders[cloudProviderName] == nil {
-		return nil, fmt.Errorf("cloud provider %s does not exist", cloudProviderName)
+		return nil, fmt.Errorf("cloud provider %s is not configured or does not exist", cloudProviderName)
 	}
 
 	if len(serviceNames) == 0 {
@@ -149,7 +158,7 @@ func (s *CloudServicesProvidersManager) GetServicesIPRanges(cloudProviderName ty
 		}
 
 		if _, ok := IPRangeInfo.IPRanges[serviceName]; !ok {
-			return nil, fmt.Errorf("service %s from %s does not exist", serviceName, cloudProviderName)
+			return nil, fmt.Errorf("service %s from %s does not exist, available services are: %s", serviceName, cloudProviderName, strings.Join(s.GetServiceList(cloudProviderName), ", "))
 		}
 
 		IPRanges[serviceName] = IPRangeInfo.IPRanges[serviceName]

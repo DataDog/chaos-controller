@@ -32,8 +32,18 @@ controller:
       url: ""
       headersFilepath: ""
       headers: []
-  cloudProviders:
-    pullInterval: 1h
+  cloudProviders: # cloud providers specific disruptions configuration
+    disableAll: false # disable all cloud providers disruption, it overrides per cloud provider configuration (you can't disable all + enable one)
+    pullInterval: 24h # pull interval used by the controller to update ip ranges files
+    aws: # aws cloud provider config
+      enabled: true # enable the provider
+      ipRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json" # URL to the IP ranges file (format must be the expected one, defaults is the public file provided by the cloud provider)
+    gcp: # gcp cloud provider config
+      enabled: true # enable the provider
+      ipRangesURL: "https://www.gstatic.com/ipranges/goog.json" # URL to the IP ranges file (format must be the expected one, defaults is the public file provided by the cloud provider)
+    datadog: # datadog cloud provider config
+      enabled: true # enable the provider
+      ipRangesURL: "https://ip-ranges.datadoghq.com/" # URL to the IP ranges file (format must be the expected one, defaults is the public file provided by the cloud provider)
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true
