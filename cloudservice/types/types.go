@@ -35,7 +35,7 @@ type CloudProviderConfig struct {
 // CloudProviderConfigs all cloud provider configurations for the manager
 type CloudProviderConfigs struct {
 	DisableAll   bool                `json:"disableAll"`
-	PullInterval time.Duration       `json:"pullinterval"`
+	PullInterval time.Duration       `json:"pullInterval"`
 	AWS          CloudProviderConfig `json:"aws"`
 	GCP          CloudProviderConfig `json:"gcp"`
 	Datadog      CloudProviderConfig `json:"datadog"`
