@@ -139,7 +139,7 @@ var _ = Describe("Cache Handler verifications", func() {
 
 			By("ensuring created event was fired")
 			event := findEvent(disruption.CreationTimestamp.Time, v1beta1.Events[v1beta1.EventDisrupted], eventList.Items, targetPodA.Name)
-			Expect(event).ToNot(BeNil())
+			Eventually(event).ShouldNot(BeNil())
 
 			By("ensuring container target in warning state event was not fired")
 			event = findEvent(disruption.CreationTimestamp.Time, v1beta1.Events[v1beta1.EventContainerWarningState], eventList.Items, targetPodA.Name)
