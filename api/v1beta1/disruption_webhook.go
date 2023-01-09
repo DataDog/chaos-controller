@@ -123,7 +123,7 @@ func (r *Disruption) ValidateCreate() error {
 
 				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(cloudtypes.CloudProviderName(cloudName), serviceListNames)
 				if err != nil {
-					return fmt.Errorf("%s. Available services are: %s", err.Error(), strings.Join(cloudServicesProvidersManager.GetServiceList(cloudtypes.CloudProviderName(cloudName)), ", "))
+					return err
 				}
 
 				for _, ipRanges := range ipRangesPerService {

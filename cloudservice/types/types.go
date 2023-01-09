@@ -5,12 +5,18 @@
 
 package types
 
+import "time"
+
 type CloudProviderName string
 
 const (
 	CloudProviderDatadog CloudProviderName = "Datadog"
 	CloudProviderGCP     CloudProviderName = "GCP"
 	CloudProviderAWS     CloudProviderName = "AWS"
+)
+
+var (
+	AllCloudProviders = []CloudProviderName{CloudProviderAWS, CloudProviderGCP, CloudProviderDatadog}
 )
 
 // CloudProviderIPRangeInfo information related to the ip ranges pulled from a cloud provider
@@ -22,10 +28,15 @@ type CloudProviderIPRangeInfo struct {
 
 // CloudProviderConfig Single configuration for any cloud provider
 type CloudProviderConfig struct {
-	IPRangesURL string `json:"iprangesurl"`
+	Enabled     bool   `json:"enabled"`
+	IPRangesURL string `json:"ipRangesURL"`
 }
 
 // CloudProviderConfigs all cloud provider configurations for the manager
 type CloudProviderConfigs struct {
-	PullInterval string `json:"pullinterval"`
+	DisableAll   bool                `json:"disableAll"`
+	PullInterval time.Duration       `json:"pullinterval"`
+	AWS          CloudProviderConfig `json:"aws"`
+	GCP          CloudProviderConfig `json:"gcp"`
+	Datadog      CloudProviderConfig `json:"datadog"`
 }

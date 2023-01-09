@@ -249,8 +249,29 @@ func main() {
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
 	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-cluster-threshold")))
 
-	pflag.StringVar(&cfg.Controller.CloudProviders.PullInterval, "cloud-providers-pull-interval", "24h", "Interval of time to pull the ip ranges of all cloud providers' services (default to 1 day)")
+	pflag.BoolVar(&cfg.Controller.CloudProviders.DisableAll, "cloud-providers-disable-all", false, "Disable all cloud providers disruptions (defaults to false, overrides all individual cloud providers configuration)")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.disableAll", pflag.Lookup("cloud-providers-disable-all")))
+
+	pflag.DurationVar(&cfg.Controller.CloudProviders.PullInterval, "cloud-providers-pull-interval", 24*time.Hour, "Interval of time to pull the ip ranges of all cloud providers' services (defaults to 1 day)")
 	handleFatalError(viper.BindPFlag("controller.cloudProviders.pullinterval", pflag.Lookup("cloud-providers-pull-interval")))
+
+	pflag.BoolVar(&cfg.Controller.CloudProviders.AWS.Enabled, "cloud-providers-aws-enabled", true, "Enable AWS cloud provider disruptions (defaults to true, is overridden by --cloud-providers-disable-all)")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.aws.enabled", pflag.Lookup("cloud-providers-aws-enabled")))
+
+	pflag.StringVar(&cfg.Controller.CloudProviders.AWS.IPRangesURL, "cloud-providers-aws-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.aws.ipRangesURL", pflag.Lookup("cloud-providers-aws-iprangesurl")))
+
+	pflag.BoolVar(&cfg.Controller.CloudProviders.GCP.Enabled, "cloud-providers-gcp-enabled", true, "Enable GCP cloud provider disruptions (defaults to true, is overridden by --cloud-providers-disable-all)")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.gcp.enabled", pflag.Lookup("cloud-providers-gcp-enabled")))
+
+	pflag.StringVar(&cfg.Controller.CloudProviders.GCP.IPRangesURL, "cloud-providers-gcp-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.gcp.ipRangesURL", pflag.Lookup("cloud-providers-gcp-iprangesurl")))
+
+	pflag.BoolVar(&cfg.Controller.CloudProviders.Datadog.Enabled, "cloud-providers-datadog-enabled", true, "Enable Datadog cloud provider disruptions (defaults to true, is overridden by --cloud-providers-disable-all)")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.enabled", pflag.Lookup("cloud-providers-datadog-enabled")))
+
+	pflag.StringVar(&cfg.Controller.CloudProviders.Datadog.IPRangesURL, "cloud-providers-datadog-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.ipRangesURL", pflag.Lookup("cloud-providers-datadog-iprangesurl")))
 
 	pflag.Parse()
 
@@ -341,6 +362,7 @@ func main() {
 		gcPtr = &cfg.Controller.ExpiredDisruptionGCDelay
 	}
 
+	// initialize the cloud provider manager which will handle ip ranges files updates
 	cloudProviderManager, err := cloudservice.New(logger, cfg.Controller.CloudProviders)
 	if err != nil {
 		handleFatalError(fmt.Errorf("error initializing CloudProviderManager: %s", err.Error()))
