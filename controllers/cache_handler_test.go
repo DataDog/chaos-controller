@@ -140,7 +140,7 @@ var _ = Describe("Cache Handler verifications", func() {
 			By("ensuring created event was fired")
 			Eventually(func(g Gomega) {
 				event := findEvent(disruption.CreationTimestamp.Time, v1beta1.Events[v1beta1.EventDisrupted], eventList.Items, targetPodA.Name)
-				Expect(event).ShouldNot(BeNil())
+				g.Expect(event).ShouldNot(BeNil())
 			}).Should(Succeed())
 
 			By("ensuring container target in warning state event was not fired")
