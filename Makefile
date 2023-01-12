@@ -174,6 +174,13 @@ lima-start: lima-clean
 	limactl shell ${LIMA_PROFILE} sudo sed 's/default/lima/g' /etc/rancher/k3s/k3s.yaml >> ~/.kube/config
 	kubectx ${LIMA_PROFILE}
 
+# Longhorn is used as an alternative StorageClass in order to enable "reliable" disk throttling accross various local setup
+# It aims to bypass some issues encountered with default StorageClass (local-path --> tmpfs) that led to virtual unnamed devices
+# unnamed devices are linked to 0 as a major device identifier, that blkio does not support
+# https://super-unix.com/unixlinux/can-you-throttle-the-bandwidth-to-a-tmpfs-based-ramdisk/
+lima-install-longhorn:
+	$(KUBECTL) apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.4.0/deploy/longhorn.yaml
+
 # find or download controller-gen
 # download controller-gen if necessary
 controller-gen:

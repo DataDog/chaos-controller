@@ -32,6 +32,9 @@ provision:
     fi
     mkdir -p /run/containerd/
     ln -s /run/k3s/containerd/containerd.sock /run/containerd/containerd.sock
+    /etc/init.d/iscsid start
+    mount --make-rshared /var/lib/
+    mount --make-rshared /
 
 # wait for k3s to be running
 probes:
