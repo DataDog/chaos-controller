@@ -131,29 +131,32 @@ lima-restart:
 ## Build all images and import them in lima
 lima-build-all: lima-build-manager lima-build-injector lima-build-handler
 
-## Build and import the manager image in lima
-lima-build-manager: manager
+docker-build-manager: manager
 	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
 	docker save ${MANAGER_IMAGE} -o ./bin/manager.tar.gz
-	limactl copy ./bin/manager.tar.gz ${LIMA_PROFILE}:/tmp/
-	limactl shell ${LIMA_PROFILE} -- sudo k3s ctr i import /tmp/manager.tar.gz
-	rm ./bin/manager.tar.gz
 
-## Build and import the injector image in lima
-lima-build-injector: injector
+docker-build-injector: injector
 	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
 	docker save ${INJECTOR_IMAGE} -o ./bin/injector.tar.gz
-	limactl copy ./bin/injector.tar.gz ${LIMA_PROFILE}:/tmp/
-	limactl shell ${LIMA_PROFILE} -- sudo k3s ctr i import /tmp/injector.tar.gz
-	rm ./bin/injector.tar.gz
 
-## Build and import the handler image in lima
-lima-build-handler: handler
+docker-build-handler: handler
 	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
 	docker save ${HANDLER_IMAGE} -o ./bin/handler.tar.gz
+
+## Build and import the manager image in lima
+lima-build-manager: docker-build-manager
+	limactl copy ./bin/manager.tar.gz ${LIMA_PROFILE}:/tmp/
+	limactl shell ${LIMA_PROFILE} -- sudo k3s ctr i import /tmp/manager.tar.gz
+
+## Build and import the injector image in lima
+lima-build-injector: docker-build-injector
+	limactl copy ./bin/injector.tar.gz ${LIMA_PROFILE}:/tmp/
+	limactl shell ${LIMA_PROFILE} -- sudo k3s ctr i import /tmp/injector.tar.gz
+
+## Build and import the handler image in lima
+lima-build-handler: docker-build-handler
 	limactl copy ./bin/handler.tar.gz ${LIMA_PROFILE}:/tmp/
 	limactl shell ${LIMA_PROFILE} -- sudo k3s ctr i import /tmp/handler.tar.gz
-	rm ./bin/handler.tar.gz
 
 ## Remove lima references from kubectl config
 lima-clean:
@@ -199,6 +202,19 @@ CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
 # CI-specific actions
+
+## Minikube builds for e2e tests
+minikube-build-all: minikube-build-manager minikube-build-injector minikube-build-handler
+
+minikube-build-manager: docker-build-manager
+	minikube image load --daemon=false --overwrite=true ./bin/manager.tar.gz
+
+minikube-build-injector: docker-build-injector
+	minikube image load --daemon=false --overwrite=true ./bin/injector.tar.gz
+
+minikube-build-handler: docker-build-handler
+	minikube image load --daemon=false --overwrite=true ./bin/handler.tar.gz
+
 venv:
 	test -d .venv || python3 -m venv .venv
 	source .venv/bin/activate; pip install -qr tasks/requirements.txt

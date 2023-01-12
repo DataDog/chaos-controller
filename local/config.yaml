@@ -9,7 +9,7 @@ controller:
   enableSafeguards: false
   notifiers:
     common:
-      clusterName: colima
+      clusterName: lima
     noop:
       enabled: true
     slack:

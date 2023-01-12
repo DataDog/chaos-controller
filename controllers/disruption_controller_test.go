@@ -43,7 +43,7 @@ func init() {
 	if envClusterName, ok := os.LookupEnv("CLUSTER_NAME"); ok {
 		clusterName = envClusterName
 	} else {
-		clusterName = "colima"
+		clusterName = "lima"
 	}
 }
 

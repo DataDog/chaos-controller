@@ -11,6 +11,6 @@ metadata:
 spec:
   level: node # impact the whole node instead of a single pod
   selector:
-    kubernetes.io/hostname: colima # when node level is enabled, the selector applies to nodes and not pods
+    kubernetes.io/hostname: lima-lima # when node level is enabled, the selector applies to nodes and not pods
   count: 1
   cpuPressure: {}

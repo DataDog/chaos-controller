@@ -1,6 +1,6 @@
 # Contributing
 
-This document explains how to install and run the project on a local colima cluster.
+This document explains how to install and run the project on a local Lima cluster.
 
 ## Signing commits using `gpg`
 
@@ -86,7 +86,7 @@ See [development guide](docs/development.md) for more robust documentation and t
 
 Once you have installed standard requirements, in order to `reliably` test disk throttling locally, you may want to use `longhorn` as a storage class.
 
-> NB: to detect if you need `longhorn` or not, simply install a disk disruption, e.g. `kubectl apply -f examples/disk_pressure_read.yaml`, if the `chaos-engineering/chaos-disk-pressure-read-XXXXX` is NOT in status `Running` and output logs similar to `error initializing the disk pressure injector","disruptionName":"disk-pressure-read","disruptionNamespace":"chaos-demo","targetName":"demo-curl-588bd4ffc8-q5wnk","targetNodeName":"colima","error":"error initializing disk informer: error executing ls command: exit status 2\noutput: ls: cannot access '/dev/disk/by-label/data-volume': No such file or directory\n` you will need to install `longhorn` as explained below. Delete failing disk disruption before proceeding to the next sections:
+> NB: to detect if you need `longhorn` or not, simply install a disk disruption, e.g. `kubectl apply -f examples/disk_pressure_read.yaml`, if the `chaos-engineering/chaos-disk-pressure-read-XXXXX` is NOT in status `Running` and output logs similar to `error initializing the disk pressure injector","disruptionName":"disk-pressure-read","disruptionNamespace":"chaos-demo","targetName":"demo-curl-588bd4ffc8-q5wnk","targetNodeName":"lima","error":"error initializing disk informer: error executing ls command: exit status 2\noutput: ls: cannot access '/dev/disk/by-label/data-volume': No such file or directory\n` you will need to install `longhorn` as explained below. Delete failing disk disruption before proceeding to the next sections:
 
 ```bash
 kubectl delete -f examples/disk_pressure_read.yaml

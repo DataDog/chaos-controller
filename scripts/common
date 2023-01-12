@@ -20,11 +20,11 @@ function exec_into_pod() {
   id=$(kubectl -n chaos-engineering get -ojson pod "$pod" | jq -r '.status.containerStatuses[0].containerID' | sed "s#$runtime://##")
   # get pid with containerd
   if [[ "$runtime" = "containerd" ]]; then
-    inspect=$(colima ssh -- sudo crictl inspect "$id")
+    inspect=$(limactl shell lima -- sudo k3s crictl inspect "$id")
     pid=$(echo "$inspect" | jq -r .info.pid)
   # get pid with docker
   elif [[ "$runtime" = "docker" ]]; then
-    inspect=$(colima ssh -- sudo docker inspect "$id")
+    inspect=$(limactl shell lima -- sudo docker inspect "$id")
     pid=$(echo "$inspect" | jq -r '.[0].State.Pid')
   fi
 
@@ -35,5 +35,5 @@ function exec_into_pod() {
 
   # shellcheck disable=SC2086
   # word splitting is expected on $cmd
-  colima ssh -- sudo nsenter --net="/proc/$pid/ns/net" $cmd
+  limactl shell lima -- sudo nsenter --net="/proc/$pid/ns/net" $cmd
 }
