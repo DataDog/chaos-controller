@@ -15,7 +15,7 @@ This document explains how to install and run the project on a local colima clus
 To get started, we need to have the following software installed:
 
 - [docker](https://docs.docker.com/get-docker/)
-- [colima >= v0.4.5](https://github.com/abiosoft/colima#installation)
+- [lima >= v0.14.0](https://github.com/lima-vm/lima)
 - [golangci-lint](https://github.com/golangci/golangci-lint)
 - [Kubebuilder Prerequisites](https://book.kubebuilder.io/quick-start.html#prerequisites) (go, docker, kubectl, kubebuilder, controller-gen)
 - [helm](https://helm.sh/docs/intro/quickstart/)
@@ -34,35 +34,28 @@ source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools ${ENVTEST_ASS
 
 ## Developing Locally
 
-### Quick start with Colima
+### Quick start with Lima: `make lima-all`
 
-Once you have installed the above requirements, run the following commands:
+**NOTE: (experimental) you can start the stack using cgroups v2 by running `CGROUPS=v2 make lima-all`. Some features of the chaos-controller may not be working in this mode as of today.**
 
-- start colima with containerd engine and a k3s cluster
-  - `make colima-start`
-- deploy cert-manager
-  - `make install-cert-manager`
-- install `nerdctl` alias to target colima containerd runtime to build container images (requires sudo)
-  - `make colima-install-nerdctl`
-- build the new image of the controller with your local files and load them into containerd runtime
-  - `make colima-build`
-- deploy the CRD and the controller on the colima cluster
-  - `make colima-install`
+Once you have installed the above requirements, run the `make lima-all` command to spin up a local stack. This command will run the following targets:
 
-### Deploying Local Changes to Colima
+- `make lima-start` to create the lima vm with containerd and Kubernetes (backed by k3s)
+- `make lima-install-cert-manager` to install cert-manager
+- `make lima-build` to build the chaos-controller images
+- `make lima-install` to render and apply the chaos-controller helm chart
 
-To deploy a new version of your local controller code when a version is already deployed, run:
+### Deploying local changes to Lima: `make lima-redeploy`
 
-- `make colima-build`
-- `make colima-install`
-- `make colima-restart`
+To deploy changes made to the controller code or chart, run the `make lima-redeploy` command that will run the following targets:
 
-To deploy a new version of the CRD by modifying your local `api/v1beta1/disruption_types.go` (or a particular Subspec by modifying `api/v1beta1/disruption_types.go`), run:
+- `make lima-build` to build the chaos-controller images
+- `make lima-install` to render and apply the chaos-controller helm chart
+- `make lima-restart` to restart the chaos-controller manager pod
 
-- `make colima-install`
-- `make colima-restart`
+### Tearing down the local stack: `make lima-stop`
 
-### Testing Local Changes in Colima
+### Testing local changes in Lima
 
 #### Testing manually
 
@@ -146,47 +139,10 @@ The [gRPC disruption](docs/grpc_disruption.md) cannot be tested on the nginx cli
 
 The project contains end-to-end test which are meant to run against a real Kubernetes cluster. You can run them easily with the `make e2e-test` command. Please ensure that the following requirements are met before running the command:
 
-- you deployed your changes locally (see [Deploying Local Changes to Colima](#deploying-local-changes-to-colima))
-- your Kubernetes context is set to Colima (`kubectx colima` for instance)
+- you deployed your changes locally (see [Deploying local changes to Lima](#deploying-local-changes-to-lima))
+- your Kubernetes context is set to Lima (`kubectx lima` for instance)
 
-The end-to-end tests will create a set of dummy pods in the `default` namespace of the Colima cluster that will be used to inject different kind of failures and make different assertions against those injections.
-
-## Available commands
-
-### Running, installing & generating
-
-- `make generate`: generate boilerplate code.
-- `make colima-install`: install CRDs and controller into a cluster
-- `make manifests`: generate manifests e.g. CRD, RBAC etc.
-- `make colima-uninstall`: uninstall CRDs and controller from a cluster
-- `make colima-restart`: restart the controller
-
-### Building
-
-- `make colima-build`: build both images and load them into colima
-  - `make colima-build-injector`: build the injector image and load it into colima
-  - `make colima-build-manager`: build the manager image and load it into colima
-- `make injector`: build injector binary
-- `make manager`: build manager binary
-- `make colima-start`: start colima with our ISO and containerd runtime
-
-### Testing, checking & linting
-
-- `make fmt`: run go fmt against the codebase.
-- `make header-check`: check all files if they contain the correct header.
-- `make license-check`: check if all third party modules contain a license and build the license database.
-- `make lint`: run golangci-lint against codebase.
-- `make test`: run tests
-- `make e2e-test`: run end-to-end tests against the current context (cluster)
-- `make vet`: run go vet against the codebase.
-
-<p align="center"><kbd>
-    <img src="docs/img/deployment/make_colima.png" width=500 align="center" />
-</kbd></p>
-
-<p align="center"><kbd>
-    <img src="docs/img/deployment/make_install.png" width=700 align="center" />
-</kbd></p>
+The end-to-end tests will create a set of dummy pods in the `default` namespace of the Lima cluster that will be used to inject different kind of failures and make different assertions against those injections.
 
 ## 3rd-party licenses
 

@@ -1,0 +1,48 @@
+# enable rosetta for x86_64 arch compatibility
+rosetta:
+  enabled: true
+  binfmt: true
+
+images:
+- location: "https://github.com/lima-vm/alpine-lima/releases/download/v0.2.26/alpine-lima-std-3.17.0-x86_64.iso"
+  arch: "x86_64"
+  digest: "sha512:93bf8d52ad2b3a6ef401a1a565f67e4f06f8022ec8963cad36cac4a25253f056ac0b755d1ed56b8993b0261440e0d5d38bad15b271864ed33cd3b02272738672"
+- location: "https://github.com/lima-vm/alpine-lima/releases/download/v0.2.26/alpine-lima-std-3.17.0-aarch64.iso"
+  arch: "aarch64"
+  digest: "sha512:aacd3a9e7a3231553bcee879c6770b379afbfad3dcfac7f274a80d6c490faf33f3c23b6130efa881f57c0c5235ced2877e2f45e3cdf4fefff11531d6023ae214"
+
+# disable mounts
+mounts: []
+
+# containerd is managed by k3s, not by Lima, so the values are set to false here.
+containerd:
+  system: false
+  user: false
+
+# install k3s
+provision:
+- mode: system
+  script: |
+    #!/bin/bash
+    apk add curl curl-dev
+    curl -sfL https://get.k3s.io | sh -
+    if ! timeout 90s bash -c "until test -e /run/k3s/containerd/containerd.sock; do sleep 3; done"; then
+            echo >&2 "containerd is not running"
+            exit 1
+    fi
+    mkdir -p /run/containerd/
+    ln -s /run/k3s/containerd/containerd.sock /run/containerd/containerd.sock
+
+# wait for k3s to be running
+probes:
+- script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    if ! timeout 30s bash -c "until test -f /etc/rancher/k3s/k3s.yaml; do sleep 3; done"; then
+            echo >&2 "k3s is not running yet"
+            exit 1
+    fi
+  hint: |
+    The k3s kubeconfig file has not yet been created.
+    Run "limactl shell k3s sudo journalctl -u k3s" to check the log.
+    If that is still empty, check the bottom of the log at "/var/log/cloud-init-output.log".
