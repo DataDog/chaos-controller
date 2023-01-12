@@ -248,6 +248,9 @@ generate-chaosdogfood-protobuf:
 generate-mock:
 	go install github.com/vektra/mockery/v2@latest
 	go generate ./...
+# First re-generate header, it should complain as just (re)generated mocks does not contains them
+	-$(MAKE) header-check
+# Then, re-generate header, it should succeed as now all files contains headers as expected, and command return with an happy exit code
 	$(MAKE) header-check
 
 release:

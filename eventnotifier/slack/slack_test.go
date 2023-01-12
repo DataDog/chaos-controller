@@ -56,7 +56,7 @@ func TestNotifier_Notify(t *testing.T) {
 				mirrorSlackChannelID: "chaos-notif",
 			},
 			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
-				msn.On("PostMessage",
+				msn.EXPECT().PostMessage(
 					args.mirrorSlackChannelID,
 					mock.Anything,
 					mock.Anything,
@@ -74,7 +74,7 @@ func TestNotifier_Notify(t *testing.T) {
 				notifType:            types.NotificationWarning,
 			},
 			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
-				msn.On("PostMessage",
+				msn.EXPECT().PostMessage(
 					args.mirrorSlackChannelID,
 					mock.Anything,
 					mock.Anything,
@@ -84,11 +84,11 @@ func TestNotifier_Notify(t *testing.T) {
 				).Return("", "", nil).Once()
 
 				userID := "slack-user-id"
-				getUserEmailCall := msn.On("GetUserByEmail", args.userName).Return(&slack.User{
+				getUserEmailCall := msn.EXPECT().GetUserByEmail(args.userName).Return(&slack.User{
 					ID: userID,
-				}, nil)
+				}, nil).Call
 
-				msn.On("PostMessage",
+				msn.EXPECT().PostMessage(
 					userID,
 					mock.Anything,
 					mock.Anything,
@@ -108,7 +108,7 @@ func TestNotifier_Notify(t *testing.T) {
 				},
 			},
 			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
-				msn.On("PostMessage",
+				msn.EXPECT().PostMessage(
 					args.reporting.SlackChannel,
 					mock.Anything,
 					mock.Anything,
@@ -118,11 +118,11 @@ func TestNotifier_Notify(t *testing.T) {
 				).Return("", "", nil).Once()
 
 				userID := "slack-user-id"
-				getUserEmailCall := msn.On("GetUserByEmail", args.userName).Return(&slack.User{
+				getUserEmailCall := msn.EXPECT().GetUserByEmail(args.userName).Return(&slack.User{
 					ID: userID,
-				}, nil)
+				}, nil).Call
 
-				msn.On("PostMessage",
+				msn.EXPECT().PostMessage(
 					userID,
 					mock.Anything,
 					mock.Anything,
@@ -144,11 +144,11 @@ func TestNotifier_Notify(t *testing.T) {
 			},
 			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
 				userID := "slack-user-id"
-				getUserEmailCall := msn.On("GetUserByEmail", args.userName).Return(&slack.User{
+				getUserEmailCall := msn.EXPECT().GetUserByEmail(args.userName).Return(&slack.User{
 					ID: userID,
-				}, nil)
+				}, nil).Call
 
-				msn.On("PostMessage",
+				msn.EXPECT().PostMessage(
 					userID,
 					mock.Anything,
 					mock.Anything,
@@ -169,7 +169,7 @@ func TestNotifier_Notify(t *testing.T) {
 				},
 			},
 			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
-				msn.On("PostMessage",
+				msn.EXPECT().PostMessage(
 					args.mirrorSlackChannelID,
 					mock.Anything,
 					mock.Anything,
@@ -178,7 +178,7 @@ func TestNotifier_Notify(t *testing.T) {
 					mock.Anything,
 				).Return("", "", nil).Once()
 
-				msn.On("PostMessage",
+				msn.EXPECT().PostMessage(
 					args.reporting.SlackChannel,
 					mock.Anything,
 					mock.Anything,
@@ -188,11 +188,11 @@ func TestNotifier_Notify(t *testing.T) {
 				).Return("", "", nil).Once()
 
 				userID := "slack-user-id"
-				getUserEmailCall := msn.On("GetUserByEmail", args.userName).Return(&slack.User{
+				getUserEmailCall := msn.EXPECT().GetUserByEmail(args.userName).Return(&slack.User{
 					ID: userID,
-				}, nil)
+				}, nil).Call
 
-				msn.On("PostMessage",
+				msn.EXPECT().PostMessage(
 					userID,
 					mock.Anything,
 					mock.Anything,

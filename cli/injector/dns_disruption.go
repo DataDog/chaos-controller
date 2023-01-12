@@ -45,7 +45,15 @@ var dnsDisruptionCmd = &cobra.Command{
 
 		// create injectors
 		for _, config := range configs {
-			inj, err := injector.NewDNSDisruptionInjector(hostRecordPairs, injector.DNSDisruptionInjectorConfig{Config: config})
+			inj, err := injector.NewDNSDisruptionInjector(
+				hostRecordPairs,
+				injector.DNSDisruptionInjectorConfig{
+					Config:              config,
+					DisruptionName:      disruptionName,
+					DisruptionNamespace: disruptionNamespace,
+					TargetName:          targetName,
+				},
+			)
 			if err != nil {
 				log.Fatalw("error initializing the DNS injector", "error", err)
 			}

@@ -27,12 +27,30 @@ Fakedns.py: A regular-expression based DNS MITM Server by Crypt0s.
 Taken from https://github.com/Crypt0s/FakeDns/blob/085737893532ae1c11717807cf3928e989029391/fakedns.py
 """
 
+import json
+import logging
+
+class CustomJsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        super(CustomJsonFormatter, self).format(record)
+        output = {k: v for k, v in record.__dict__.items() if k not in ["msg", "args", "levelname", "levelno"]}
+        return json.dumps(output, skipkeys=True)
+
+
+cf = CustomJsonFormatter()
+sh = logging.StreamHandler()
+sh.setFormatter(cf)
+
+logger = logging.getLogger("dns.disruption.resolver")
+logger.addHandler(sh)
+logger.setLevel(level=logging.INFO)
+
 # This isn't the most elegent way - i could possibly support both versions of python,
 # but people should really not use Python 2 anymore.
 import sys
 vnum = sys.version.split()[0]
 if int(vnum[0]) < 3:
-    print("Python 2 support has been deprecated.  Please run FakeDNS using Python3!")
+    logger.error("Python 2 support has been deprecated.  Please run FakeDNS using Python3!")
     sys.exit(1)
 
 import binascii
@@ -234,7 +252,7 @@ class DNSResponse(object):
                 self.pointer + self.type + self.dnsclass + self.ttl + \
                 self.length + self.data
         except Exception as e: #(TypeError, ValueError):
-            print("[!] - %s" % str(e))
+            logger.error("[!] unable to make packet", extra={'error': e})
 
 # All classes need to set type, length, and data fields of the DNS Response
 # Finished
@@ -329,13 +347,13 @@ class MX(DNSResponse):
 
     @staticmethod
     def get_domain(dns_record):
-       domain = dns_record
-       ret_domain=[]
-       for x in domain.split('.'):
-               st = "{:02x}".format(len(x))
-               ret_domain.append( st.decode("hex"))
-               ret_domain.append(x)
-       return "".join(ret_domain)
+        domain = dns_record
+        ret_domain=[]
+        for x in domain.split('.'):
+            st = "{:02x}".format(len(x))
+            ret_domain.append( st.decode("hex"))
+            ret_domain.append(x)
+        return "".join(ret_domain)
 
 class SOA(DNSResponse):
     def __init__(self, query, config_location):
@@ -414,7 +432,7 @@ class NONEFOUND(DNSResponse):
         self.rranswers = b"\x00\x00"
         self.length = b"\x00\x00"
         self.data = b"\x00"
-        print(">> Built NONEFOUND response")
+        logger.debug("Built NONEFOUND response")
 
 
 class Rule (object):
@@ -489,17 +507,17 @@ class Rule (object):
 # Error classes for handling rule issues
 class RuleError_BadRegularExpression(Exception):
     def __init__(self,lineno):
-        print("\n!! Malformed Regular Expression on rulefile line #%d\n\n" % lineno)
+        logger.error("\n!! Malformed Regular Expression on rulefile line #%d\n\n", lineno)
 
 
 class RuleError_BadRuleType(Exception):
     def __init__(self,lineno):
-        print("\n!! Rule type unsupported on rulefile line #%d\n\n" % lineno)
+        logger.error("\n!! Rule type unsupported on rulefile line #%d\n\n", lineno)
 
 
 class RuleError_BadFormat(Exception):
     def __init__(self,lineno):
-        print("\n!! Not Enough Parameters for rule on rulefile line #%d\n\n" % lineno)
+        logger.error("\n!! Not Enough Parameters for rule on rulefile line #%d\n\n", lineno)
 
 
 class RuleEngine2:
@@ -512,8 +530,8 @@ class RuleEngine2:
                 try:
                     self_ip = socket.gethostbyname(socket.gethostname())
                 except socket.error:
-                    print(">> Could not get your IP address from your " \
-                          "DNS Server.")
+                    logger.warning("Could not get your IP address from your " \
+                        "DNS Server.")
                     self_ip = '127.0.0.1'
                 ips[ips.index(ip)] = self_ip
         return ips
@@ -604,7 +622,7 @@ class RuleEngine2:
                 # increment the line number
                 lineno += 1
 
-            print(">> Parsed %d rules from %s" % (len(self.rule_list),file_))
+            logger.info("Parsed %d rules from %s", len(self.rule_list), file_)
 
 
     def match(self, query, addr):
@@ -627,7 +645,7 @@ class RuleEngine2:
 
                 response = CASE[query.type](query, response_data)
 
-                print(">> Matched Request - " + query.domain.decode())
+                logger.info("Matched Request - %s", query.domain.decode())
                 return response.make_packet()
 
         # if we got here, we didn't match.
@@ -635,7 +653,7 @@ class RuleEngine2:
 
         # if the user said not to forward requests, and we are here, it's time to send a NONEFOUND
         if args.noforward:
-            print(">> Don't Forward %s" % query.domain.decode())
+            logger.info("Don't Forward - %s", query.domain.decode())
             return NONEFOUND(query).make_packet()
         try:
             s = socket.socket(type=socket.SOCK_DGRAM)
@@ -651,13 +669,12 @@ class RuleEngine2:
             s.sendto(query.data, addr)
             data = s.recv(1024)
             s.close()
-            print("Unmatched Request " + query.domain.decode())
+            logger.info("Forwarded Request - %s", query.domain.decode())
             return data
         except socket.error as e:
             # We shouldn't wind up here but if we do, don't drop the request
             # send the client *something*
-            print(">> Error was handled by sending NONEFOUND")
-            print(e)
+            logger.debug("Error was handled by sending NONEFOUND", extra={'error': e})
             return NONEFOUND(query).make_packet()
 
 
@@ -683,7 +700,7 @@ def respond(data, addr, s):
 
 # Capture Control-C and handle here
 def signal_handler(signal, frame):
-    print('Exiting...')
+    logger.info('Exiting...')
     sys.exit(0)
 
 
@@ -693,6 +710,20 @@ if __name__ == '__main__':
     parser.add_argument(
         '-c', dest='path', action='store', required=True,
         help='Path to configuration file')
+
+    parser.add_argument(
+        '--log-context-disruption-name', dest='disruptionName', action='store', required=True,
+        help="Disruption name to add to all logs")
+    parser.add_argument(
+        '--log-context-disruption-namespace', dest='disruptionNamespace', action='store', required=True,
+        help="Disruption namespace to add to all logs")
+    parser.add_argument(
+        '--log-context-target-name', dest='targetName', action='store', required=True,
+        help="Target name to add to all logs")
+    parser.add_argument(
+        '--log-context-target-node-name', dest='targetNodeName', action='store', required=True,
+        help="Target node name to add to all logs")
+
     parser.add_argument(
         '-i', dest='iface', action='store', default='0.0.0.0', required=False,
         help='IP address you wish to run FakeDns with - default all')
@@ -723,6 +754,18 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # Add disruption related fields to all logs to ease log filtering and troubleshooting
+    def log_default_fields(record: logging.LogRecord):
+        record.disruptionName = args.disruptionName
+        record.disruptionNamespace = args.disruptionNamespace
+        record.targetName = args.targetName
+        record.targetNodeName = args.targetNodeName
+        # we expect the log level to be in level not levelname, and lowercased
+        record.level = record.levelname.lower()
+        return record
+
+    sh.addFilter(log_default_fields)
+
     # if non-authoritative is set to true, it'll cancel out the default authoritative setting
     # this is a not-very-coherent way to pull this off but we'll be changing the behavior of FakeDNS soon so it's OK
     args.authoritative = True ^ args.non_authoritative
@@ -730,9 +773,9 @@ if __name__ == '__main__':
     # Default config file path.
     path = args.path
     if not os.path.isfile(path):
-        print('>> Please create a "dns.conf" file or specify a config path: ' \
-              './fakedns.py [configfile]')
-        exit()
+        logger.error('Please create a "dns.conf" file or specify a config path: ' \
+            './fakedns.py [configfile]')
+        exit(1)
 
     rules = RuleEngine2(path)
     rule_list = rules.rule_list
@@ -743,12 +786,13 @@ if __name__ == '__main__':
     try:
         server = ThreadedUDPServer((interface, int(port)), UDPHandler)
     except socket.error:
-        print(">> Could not start server -- is another program on udp:{0}?".format(port))
+        logger.error("Could not start server -- is another program on udp:%d?", port)
         exit(1)
+
+    logger.info("Fake DNS server started on udp:%d?", port)
 
     server.daemon = True
 
     # Tell python what happens if someone presses ctrl-C
     signal.signal(signal.SIGINT, signal_handler)
     server.serve_forever()
-    server_thread.join()
