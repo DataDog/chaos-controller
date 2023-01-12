@@ -141,11 +141,13 @@ var _ = Describe("Cache Handler verifications", func() {
 			Eventually(func(g Gomega) {
 				event := findEvent(disruption.CreationTimestamp.Time, v1beta1.Events[v1beta1.EventDisrupted], eventList.Items, targetPodA.Name)
 				g.Expect(event).ShouldNot(BeNil())
-			}).Should(Succeed())
+			}, "10s", "50ms").Should(Succeed())
 
 			By("ensuring container target in warning state event was not fired")
-			event := findEvent(disruption.CreationTimestamp.Time, v1beta1.Events[v1beta1.EventContainerWarningState], eventList.Items, targetPodA.Name)
-			Expect(event).To(BeNil())
+			Consistently(func(g Gomega) {
+				event := findEvent(disruption.CreationTimestamp.Time, v1beta1.Events[v1beta1.EventContainerWarningState], eventList.Items, targetPodA.Name)
+				g.Expect(event).To(BeNil())
+			}, "5s", "500ms").Should(Succeed())
 		})
 	})
 })
