@@ -301,7 +301,7 @@ var _ = Describe("Disruption Controller", func() {
 			}
 		})
 
-		FIt("should target the node", func() {
+		It("should target the node", func() {
 			By("Ensuring that the inject pod has been created")
 			Eventually(func() error { return expectChaosPod(disruption, 1) }, timeout).Should(Succeed())
 		})
