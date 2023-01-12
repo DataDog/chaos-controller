@@ -73,7 +73,7 @@ ci-install-minikube:
 ## Run e2e tests (against a real cluster)
 e2e-test: generate
 	$(MAKE) lima-install EXPIRED_DISRUPTION_GC_DELAY=10s
-	USE_EXISTING_CLUSTER=true CLUSTER_NAME=${LIMA_PROFILE} CGO_ENABLED=1 go test -race ./controllers/... -coverprofile cover.out
+	USE_EXISTING_CLUSTER=true CGO_ENABLED=1 go test -race ./controllers/... -coverprofile cover.out
 
 # Test chaosli API portability
 chaosli-test:

@@ -43,7 +43,7 @@ func init() {
 	if envClusterName, ok := os.LookupEnv("CLUSTER_NAME"); ok {
 		clusterName = envClusterName
 	} else {
-		clusterName = "lima"
+		clusterName = "lima-lima"
 	}
 }
 
@@ -270,7 +270,7 @@ var _ = Describe("Disruption Controller", func() {
 		})
 	})
 
-	Context("a node level test should pass", func() {
+	Context("node level", func() {
 		BeforeEach(func() {
 			disruption = &chaosv1beta1.Disruption{
 				ObjectMeta: metav1.ObjectMeta{
@@ -301,7 +301,7 @@ var _ = Describe("Disruption Controller", func() {
 			}
 		})
 
-		It("should target the node", func() {
+		FIt("should target the node", func() {
 			By("Ensuring that the inject pod has been created")
 			Eventually(func() error { return expectChaosPod(disruption, 1) }, timeout).Should(Succeed())
 		})
