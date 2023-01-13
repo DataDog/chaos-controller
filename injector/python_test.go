@@ -39,7 +39,7 @@ func Test_standardPythonRunner_RunPython(t *testing.T) {
 			wantErr: "unable to start command, encountered error (start some error) using args ([/usr/local/bin/some_python.py -v -i]): ",
 		},
 		{
-			name: "when wait error immediatly, error is returned to the caller",
+			name: "when wait error immediately, error is returned to the caller",
 			expect: func(t *testing.T, mockCommand *mockCommand, logs *observer.ObservedLogs) {
 				mockCommand.EXPECT().Start().Return(nil)
 				mockCommand.EXPECT().Wait().Return(errors.New("wait immediate error"))
