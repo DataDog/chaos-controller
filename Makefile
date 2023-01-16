@@ -11,7 +11,8 @@ INJECTOR_IMAGE ?= ${CONTAINERD_REGISTRY_PREFIX}/chaos-injector:latest
 HANDLER_IMAGE ?= ${CONTAINERD_REGISTRY_PREFIX}/chaos-handler:latest
 
 LIMA_PROFILE ?= lima
-KUBECTL ?= limactl shell ${LIMA_PROFILE} sudo kubectl
+LIMA_CONFIG ?= lima
+KUBECTL ?= limactl shell default sudo kubectl
 UNZIP_BINARY ?= sudo unzip
 KUBERNETES_VERSION ?= v1.26.0
 
@@ -24,9 +25,9 @@ ifeq (arm64,$(shell uname -m))
 OS_ARCH=arm64
 endif
 
-LIMA_CONFIG=lima_alpine
+LIMA_CGROUPS=v1
 ifeq (v2,$(CGROUPS))
-LIMA_CONFIG=lima_ubuntu
+LIMA_CGROUPS=v2
 endif
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -133,49 +134,47 @@ lima-build-all: lima-build-manager lima-build-injector lima-build-handler
 
 docker-build-manager: manager
 	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
-	docker save ${MANAGER_IMAGE} -o ./bin/manager.tar.gz
+	docker save ${MANAGER_IMAGE} -o ./bin/manager/manager.tar.gz
 
 docker-build-injector: injector
 	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
-	docker save ${INJECTOR_IMAGE} -o ./bin/injector.tar.gz
+	docker save ${INJECTOR_IMAGE} -o ./bin/injector/injector.tar.gz
 
 docker-build-handler: handler
 	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
-	docker save ${HANDLER_IMAGE} -o ./bin/handler.tar.gz
+	docker save ${HANDLER_IMAGE} -o ./bin/handler/handler.tar.gz
 
 ## Build and import the manager image in lima
 lima-build-manager: docker-build-manager
-	limactl copy ./bin/manager.tar.gz ${LIMA_PROFILE}:/tmp/
-	limactl shell ${LIMA_PROFILE} -- sudo k3s ctr i import /tmp/manager.tar.gz
+	limactl copy ./bin/manager/manager.tar.gz default:/tmp/
+	limactl shell default -- sudo k3s ctr i import /tmp/manager.tar.gz
 
 ## Build and import the injector image in lima
 lima-build-injector: docker-build-injector
-	limactl copy ./bin/injector.tar.gz ${LIMA_PROFILE}:/tmp/
-	limactl shell ${LIMA_PROFILE} -- sudo k3s ctr i import /tmp/injector.tar.gz
+	limactl copy ./bin/injector/injector.tar.gz default:/tmp/
+	limactl shell default -- sudo k3s ctr i import /tmp/injector.tar.gz
 
 ## Build and import the handler image in lima
 lima-build-handler: docker-build-handler
-	limactl copy ./bin/handler.tar.gz ${LIMA_PROFILE}:/tmp/
-	limactl shell ${LIMA_PROFILE} -- sudo k3s ctr i import /tmp/handler.tar.gz
+	limactl copy ./bin/handler/handler.tar.gz default:/tmp/
+	limactl shell default -- sudo k3s ctr i import /tmp/handler.tar.gz
 
 ## Remove lima references from kubectl config
 lima-clean:
-	kubectl config delete-cluster ${LIMA_PROFILE} || true
-	kubectl config delete-context ${LIMA_PROFILE} || true
-	kubectl config delete-user ${LIMA_PROFILE} || true
+	kubectl config delete-cluster default || true
+	kubectl config delete-context default || true
+	kubectl config delete-user default || true
 	kubectl config unset current-context
 
 ## Stop and delete the lima cluster
 lima-stop:
-	limactl stop -f ${LIMA_PROFILE}
-	limactl delete ${LIMA_PROFILE}
+	limactl stop -f default
+	limactl delete default
 	$(MAKE) lima-clean
 
 ## Start the lima cluster, pre-cleaning kubectl config
 lima-start: lima-clean
-	limactl start --tty=false --name=${LIMA_PROFILE} ./${LIMA_CONFIG}.yaml
-	limactl shell ${LIMA_PROFILE} sudo sed 's/default/lima/g' /etc/rancher/k3s/k3s.yaml >> ~/.kube/config
-	kubectx ${LIMA_PROFILE}
+	LIMA_CGROUPS=${LIMA_CGROUPS} LIMA_PROFILE=${LIMA_PROFILE} LIMA_CONFIG=${LIMA_CONFIG} ./scripts/lima_start.sh
 
 # Longhorn is used as an alternative StorageClass in order to enable "reliable" disk throttling accross various local setup
 # It aims to bypass some issues encountered with default StorageClass (local-path --> tmpfs) that led to virtual unnamed devices

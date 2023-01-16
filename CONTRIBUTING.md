@@ -38,6 +38,8 @@ source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools ${ENVTEST_ASS
 
 **NOTE: (experimental) you can start the stack using cgroups v2 by running `CGROUPS=v2 make lima-all`. Some features of the chaos-controller may not be working in this mode as of today.**
 
+**NOTE: sometimes, the instance can hang on waiting for ssh for some reasons. When it's the case, best bet is to run `make lima-stop` and re-run `make lima-all` again.**
+
 Once you have installed the above requirements, run the `make lima-all` command to spin up a local stack. This command will run the following targets:
 
 - `make lima-start` to create the lima vm with containerd and Kubernetes (backed by k3s)
