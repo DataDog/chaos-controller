@@ -18,7 +18,7 @@ controller:
   metricsSink: noop # metrics driver (noop or datadog)
   notifiers:
     common:
-      clusterName: colima
+      clusterName: lima
     noop:
       enabled: true
     slack:

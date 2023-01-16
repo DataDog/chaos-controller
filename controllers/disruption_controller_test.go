@@ -43,7 +43,7 @@ func init() {
 	if envClusterName, ok := os.LookupEnv("CLUSTER_NAME"); ok {
 		clusterName = envClusterName
 	} else {
-		clusterName = "colima"
+		clusterName = "lima-default"
 	}
 }
 
@@ -270,7 +270,7 @@ var _ = Describe("Disruption Controller", func() {
 		})
 	})
 
-	Context("a node level test should pass", func() {
+	Context("node level", func() {
 		BeforeEach(func() {
 			disruption = &chaosv1beta1.Disruption{
 				ObjectMeta: metav1.ObjectMeta{

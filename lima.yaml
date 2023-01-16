@@ -1,0 +1,56 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2023 Datadog, Inc.
+
+# use vz instead of qemu for rosetta support
+vmType: "vz"
+
+# enable rosetta for x86_64 arch compatibility
+rosetta:
+  enabled: true
+  binfmt: true
+
+images:
+- location: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.img"
+  arch: "x86_64"
+- location: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-arm64.img"
+  arch: "aarch64"
+
+# disable mounts
+mounts: []
+
+# containerd is managed by k3s, not by Lima, so the values are set to false here.
+containerd:
+  system: false
+  user: false
+
+# install k3s
+provision:
+- mode: system
+  script: |
+    #!/bin/bash
+    curl -sfL https://get.k3s.io | sh -
+    if ! timeout 90s bash -c "until test -e /run/k3s/containerd/containerd.sock; do sleep 3; done"; then
+            echo >&2 "containerd is not running"
+            exit 1
+    fi
+    mkdir -p /run/containerd/
+    ln -s /run/k3s/containerd/containerd.sock /run/containerd/containerd.sock
+    /etc/init.d/iscsid start
+    mount --make-rshared /var/lib/
+    mount --make-rshared /
+
+# wait for k3s to be running
+probes:
+- script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    if ! timeout 30s bash -c "until test -f /etc/rancher/k3s/k3s.yaml; do sleep 3; done"; then
+            echo >&2 "k3s is not running yet"
+            exit 1
+    fi
+  hint: |
+    The k3s kubeconfig file has not yet been created.
+    Run "limactl shell k3s sudo journalctl -u k3s" to check the log.
+    If that is still empty, check the bottom of the log at "/var/log/cloud-init-output.log".
