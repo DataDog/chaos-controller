@@ -2,8 +2,6 @@
 
 # start the lima instance with the given image and get the kube config
 limactl start --tty=false --name=default ./${LIMA_CONFIG}.yaml
-limactl shell default sudo sed 's/default/lima/g' /etc/rancher/k3s/k3s.yaml >> ~/.kube/config
-kubectx ${LIMA_PROFILE}
 
 # for cgroups v1, reconfigure grub and restart the instance
 # we need to both call the reboot command and do a lima stop/start

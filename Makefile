@@ -160,21 +160,29 @@ lima-build-handler: docker-build-handler
 	limactl shell default -- sudo k3s ctr i import /tmp/handler.tar.gz
 
 ## Remove lima references from kubectl config
-lima-clean:
+lima-kubectx-clean:
 	kubectl config delete-cluster ${LIMA_PROFILE} || true
 	kubectl config delete-context ${LIMA_PROFILE} || true
 	kubectl config delete-user ${LIMA_PROFILE} || true
 	kubectl config unset current-context
 
+lima-kubectx:
+	limactl shell default sudo sed 's/default/lima/g' /etc/rancher/k3s/k3s.yaml >> ~/.kube/config_lima
+	KUBECONFIG=${KUBECONFIG}:~/.kube/config:~/.kube/config_lima kubectl config view --flatten > /tmp/config
+	rm ~/.kube/config_lima
+	mv /tmp/config ~/.kube/config
+	kubectx ${LIMA_PROFILE}
+
 ## Stop and delete the lima cluster
 lima-stop:
 	limactl stop -f default
 	limactl delete default
-	$(MAKE) lima-clean
+	$(MAKE) lima-kubectx-clean
 
 ## Start the lima cluster, pre-cleaning kubectl config
-lima-start: lima-clean
-	LIMA_CGROUPS=${LIMA_CGROUPS} LIMA_PROFILE=${LIMA_PROFILE} LIMA_CONFIG=${LIMA_CONFIG} ./scripts/lima_start.sh
+lima-start: lima-kubectx-clean
+	LIMA_CGROUPS=${LIMA_CGROUPS} LIMA_CONFIG=${LIMA_CONFIG} ./scripts/lima_start.sh
+	$(MAKE) lima-kubectx
 
 # Longhorn is used as an alternative StorageClass in order to enable "reliable" disk throttling accross various local setup
 # It aims to bypass some issues encountered with default StorageClass (local-path --> tmpfs) that led to virtual unnamed devices
