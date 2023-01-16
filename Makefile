@@ -161,9 +161,9 @@ lima-build-handler: docker-build-handler
 
 ## Remove lima references from kubectl config
 lima-clean:
-	kubectl config delete-cluster default || true
-	kubectl config delete-context default || true
-	kubectl config delete-user default || true
+	kubectl config delete-cluster ${LIMA_PROFILE} || true
+	kubectl config delete-context ${LIMA_PROFILE} || true
+	kubectl config delete-user ${LIMA_PROFILE} || true
 	kubectl config unset current-context
 
 ## Stop and delete the lima cluster
