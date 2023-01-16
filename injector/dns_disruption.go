@@ -9,11 +9,17 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+)
+
+var (
+	launchDNSServer    sync.Once
+	launchDNSServerErr error
 )
 
 // DNSDisruptionInjector describes a dns disruption
@@ -25,9 +31,12 @@ type DNSDisruptionInjector struct {
 // DNSDisruptionInjectorConfig contains all needed drivers to create a dns disruption using `iptables`
 type DNSDisruptionInjectorConfig struct {
 	Config
-	Iptables     network.Iptables
-	FileWriter   FileWriter
-	PythonRunner PythonRunner
+	Iptables            network.Iptables
+	FileWriter          FileWriter
+	PythonRunner        PythonRunner
+	DisruptionName      string
+	DisruptionNamespace string
+	TargetName          string
 }
 
 // NewDNSDisruptionInjector creates a DNSDisruptionInjector object with the given config,
@@ -45,10 +54,7 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 	}
 
 	if config.PythonRunner == nil {
-		config.PythonRunner = standardPythonRunner{
-			dryRun: config.DryRun,
-			log:    config.Log,
-		}
+		config.PythonRunner = newStandardPythonRunner(config.DryRun, config.Log)
 	}
 
 	return &DNSDisruptionInjector{
@@ -71,29 +77,55 @@ func (i *DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("%s environment variable must be set with the chaos pod IP", env.InjectorChaosPodIP)
 	}
 
-	// Set up resolver config file
-	resolverConfig := []string{}
-	for _, record := range i.spec {
-		resolverConfig = append(resolverConfig, fmt.Sprintf("%s %s %s", record.Record.Type, record.Hostname, record.Record.Value))
-	}
+	// Create a Fake DNS server, once
+	launchDNSServer.Do(func() {
+		// Set up resolver config file
+		resolverConfig := []string{}
+		for _, record := range i.spec {
+			resolverConfig = append(resolverConfig, fmt.Sprintf("%s %s %s", record.Record.Type, record.Hostname, record.Record.Value))
+		}
 
-	if err := i.config.FileWriter.Write("/tmp/dns.conf", 0644, strings.Join(resolverConfig, "\n")); err != nil {
-		return fmt.Errorf("unable to write resolver config: %w", err)
-	}
+		if err := i.config.FileWriter.Write("/tmp/dns.conf", 0644, strings.Join(resolverConfig, "\n")); err != nil {
+			launchDNSServerErr = fmt.Errorf("unable to write resolver config: %w", err)
+			return
+		}
 
-	cmd := []string{"/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf"}
+		cmd := []string{"/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf"}
 
-	if i.config.DNS.DNSServer != "" {
-		cmd = append(cmd, "--dns", i.config.DNS.DNSServer)
-	}
+		if i.config.DisruptionName != "" {
+			cmd = append(cmd, "--log-context-disruption-name", i.config.DisruptionName)
+		}
 
-	if i.config.DNS.KubeDNS != "" {
-		cmd = append(cmd, "--kube-dns", i.config.DNS.KubeDNS)
-	}
+		if i.config.DisruptionNamespace != "" {
+			cmd = append(cmd, "--log-context-disruption-namespace", i.config.DisruptionNamespace)
+		}
 
-	_, _, err := i.config.PythonRunner.RunPython(cmd...)
-	if err != nil {
-		return fmt.Errorf("unable to run resolver: %w", err)
+		if i.config.TargetName != "" {
+			cmd = append(cmd, "--log-context-target-name", i.config.TargetName)
+		}
+
+		if i.config.TargetNodeName != "" {
+			cmd = append(cmd, "--log-context-target-node-name", i.config.TargetNodeName)
+		}
+
+		if i.config.DNS.DNSServer != "" {
+			cmd = append(cmd, "--dns", i.config.DNS.DNSServer)
+		}
+
+		if i.config.DNS.KubeDNS != "" {
+			cmd = append(cmd, "--kube-dns", i.config.DNS.KubeDNS)
+		}
+
+		if err := i.config.PythonRunner.RunPython(cmd...); err != nil {
+			launchDNSServerErr = fmt.Errorf("unable to run resolver: %w", err)
+			return
+		}
+	})
+
+	// This will return an error on all injectors if the launchDNSServer once call failed
+	// if we did not succeed to create a fake DNS server, we should not continue
+	if launchDNSServerErr != nil {
+		return launchDNSServerErr
 	}
 
 	// enter target network namespace
