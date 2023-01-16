@@ -214,13 +214,13 @@ endif
 minikube-build-all: minikube-build-manager minikube-build-injector minikube-build-handler
 
 minikube-build-manager: docker-build-manager
-	minikube image load --daemon=false --overwrite=true ./bin/manager.tar.gz
+	minikube image load --daemon=false --overwrite=true ./bin/manager/manager.tar.gz
 
 minikube-build-injector: docker-build-injector
-	minikube image load --daemon=false --overwrite=true ./bin/injector.tar.gz
+	minikube image load --daemon=false --overwrite=true ./bin/injector/injector.tar.gz
 
 minikube-build-handler: docker-build-handler
-	minikube image load --daemon=false --overwrite=true ./bin/handler.tar.gz
+	minikube image load --daemon=false --overwrite=true ./bin/handler/handler.tar.gz
 
 venv:
 	test -d .venv || python3 -m venv .venv
