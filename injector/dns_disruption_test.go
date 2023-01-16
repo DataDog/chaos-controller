@@ -47,8 +47,8 @@ var _ = Describe("Failure", func() {
 		ctn := &container.ContainerMock{}
 
 		// pythonRunner
-		pythonRunner := &PythonRunnerMock{}
-		pythonRunner.On("RunPython", mock.Anything).Return(0, "", nil)
+		pythonRunner := NewMockPythonRunner(GinkgoT())
+		pythonRunner.EXPECT().RunPython(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// iptables
 		iptables = &network.IptablesMock{}
