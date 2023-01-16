@@ -171,6 +171,7 @@ lima-kubectx:
 	KUBECONFIG=${KUBECONFIG}:~/.kube/config:~/.kube/config_lima kubectl config view --flatten > /tmp/config
 	rm ~/.kube/config_lima
 	mv /tmp/config ~/.kube/config
+	chmod 600 ~/.kube/config
 	kubectx ${LIMA_PROFILE}
 
 ## Stop and delete the lima cluster
