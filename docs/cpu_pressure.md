@@ -122,7 +122,7 @@ Threads fairness:
 ```
 # ps ax | grep injector
    4376 ?        Ssl    7:42 /app/cmd/cainjector/cainjector --v=2 --leader-election-namespace=kube-system
-1113879 ?        Ssl    0:00 /usr/local/bin/injector node-failure inject --metrics-sink noop --level pod --target-container-ids containerd://cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460,containerd://629c7da02cbcf77c6b7131a59f5be50579d9e374433a444210b6547186dd5f0d --target-pod-ip 10.244.0.8 --chaos-namespace chaos-engineering --log-context-disruption-name dry-run --log-context-disruption-namespace chaos-demo --log-context-target-name demo-curl-547bb9c686-57484 --log-context-target-node-name colima --dry-run
+1113879 ?        Ssl    0:00 /usr/local/bin/injector node-failure inject --metrics-sink noop --level pod --target-container-ids containerd://cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460,containerd://629c7da02cbcf77c6b7131a59f5be50579d9e374433a444210b6547186dd5f0d --target-pod-ip 10.244.0.8 --chaos-namespace chaos-engineering --log-context-disruption-name dry-run --log-context-disruption-namespace chaos-demo --log-context-target-name demo-curl-547bb9c686-57484 --log-context-target-node-name lima --dry-run
 1117684 pts/0    R+     0:00 grep injector
 ```
 
