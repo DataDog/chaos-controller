@@ -48,58 +48,11 @@ If a `pulse` is not specified, then a disruption will not be pulsing.
 
 ## Targeting
 
-**NEW:** StaticTargeting currently defaults to false. Please mention explicitely if you wish to activate it. [Read StaticTargeting](<#StaticTargeting-(current-default-behaviour)>).
-
 The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the given label selector and will randomly select a number (defined in the `count` field) of matching targets. It's possible to specify multiple label selectors, in which case the controller will select from targets that match all of them. Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.
 
 **NOTE:** If you are targeting pods, the disruption must be created in the same namespace as the targeted pods.
 
-### DynamicTargeting (default)
-
-By default, there is a constant re-targeting for disruptions. This means at any given time, any target within the selector's scope will be added to the target list and be disrupted.
-Although default, this is to use with care as a disruption gone wrong can quickly get out of control: per example, a disruption targeting 100% of an application's pod will affect all existing **and** future pods which can appear once the disruption started. As long as this 100% disruption exists, there will be no spared pod.
-
-`DynamicTargeting` behaviour design choices:
-
-- the controller will consider as a still-alive target any pod that exists - regardless of its state.
-- the controller will reconcile/update its targets list on any chaos or selector pod movement (create, update, delete)
-
-### StaticTargeting
-
-Activate `StaticTargeting` to limit the disruption to a single target selection step at the disruption's creation. It allows for more controlled disruption impact and propagation, as the targets will never change and _can_ be compensated for in case they are made useless. Its major limit is not being able to follow targets through deployments/rollouts.
-
-### Targeting safeguards
-
-When enabled [in the configuration](../chart/values.yaml) (`controller.enableSafeguards` field), safeguards will exclude some targets from the selection to avoid unexpected issues:
-
-- if the disruption is applied at the node level, the node where the controller is running on can't be selected
-- if the disruption is applied at the pod level with a node disruption, the node where the controller is running on can't be selected
-
-### Advanced targeting
-
-In addition to the simple `selector` field matching an exact key/value label, one can do some more advanced targeting with the `advancedSelector` field. It uses the [label selector requirements mechanism](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#LabelSelectorRequirement) allowing to match labels with the following operator:
-
-- `Exists`: the label with the specified key is present, no matter the value
-- `DoesNotExist`: the label with the specified key is not present
-- `In`: the label with the specified key has a value strictly equal to one of the given values
-- `NotIn`: the label with the specified key has a value not matching any of the given values
-
-You can look at [an example of the expected format](../examples/advanced_selector.yaml) to know how to use it.
-
-#### Filtering
-
-The `selector` and `advancedSelector` fields only use kubernetes resource labels, as the kubernetes api only allows for listing resources based on their labels. However, 
-it's perfectly valid to want to filter your targets to those containing specific annotations. The `spec.filter` field currently has a single subfield, `spec.filter.annotation`, 
-which takes a set of key/value pairs. It works similarly to the `selector` field, in that all targets must have annotations matching _all_ specified k/v pairs. We will filter targets initially based 
-on the label selectors used, before applying any filters.
-
-### Targeting a specific pod
-
-How can you target a specific pod by name, if it doesn't have a unique label selector you can use? The `Disruption` spec doesn't support field selectors at this time, so selecting by name isn't possible. However, you can use the `kubectl label pods` command, e.g., `kubectl label pods $podname unique-label-for-this-disruption=target-me` to dynamically add a unique label to the pod, which you can use as your label selector in the `Disruption` spec.
-
-### Targeting a specific container within a pod
-
-By default, a disruption affects all containers within the pod. You can restrict the scope of the disruption to a single container or to only some containers [like this](../examples/containers_targeting.yaml).
+See [targeting](./targeting.md)
 
 ## Applying a disruption on pod initialization
 
