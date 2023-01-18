@@ -7,11 +7,12 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: disk-failure
-  namespace: mvisonneau
+  namespace: chaos-demo
 spec:
   level: pod
   selector:
-    app: test-file-read
+    app: demo-curl
   count: 1
   diskFailure:
+    path: /mnt/data/disk-read-file
     foo: bar

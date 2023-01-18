@@ -19,7 +19,11 @@ var diskFailureCmd = &cobra.Command{
 	Short: "Disk failure subcommands",
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		spec := v1beta1.DiskFailureSpec{}
+		path, _ := cmd.Flags().GetString("path")
+
+		spec := v1beta1.DiskFailureSpec{
+			Path: path,
+		}
 
 		// create injectors
 		for _, config := range configs {
@@ -43,5 +47,5 @@ var diskFailureCmd = &cobra.Command{
 }
 
 func init() {
-	_ = cobra.MarkFlagRequired(diskFailureCmd.PersistentFlags(), "path")
+	diskFailureCmd.Flags().String("path", "", "Path to apply/clean disk failure")
 }
