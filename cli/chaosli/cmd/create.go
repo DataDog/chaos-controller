@@ -425,6 +425,16 @@ func getDiskPressure() *v1beta1.DiskPressureSpec {
 	return spec
 }
 
+func getDiskFailure() *v1beta1.DiskFailureSpec {
+	if !confirmKind("Disk Failure", "Simulates disk failure by applying ebpf fault IO to the target") {
+		return nil
+	}
+
+	spec := &v1beta1.DiskFailureSpec{}
+
+	return spec
+}
+
 func getCPUPressure() *v1beta1.CPUPressureSpec {
 	if confirmKind("CPU Pressure", "Applies CPU pressure to the target") {
 		return &v1beta1.CPUPressureSpec{}

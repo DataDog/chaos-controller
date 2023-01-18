@@ -16,24 +16,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	ebpfaultConfig = `
-{
-	"fault_injectors": [
-		{
-			"syscall_name": "openat",
-			"error_list": [
-				{
-					"exit_code": "-ENOENT",
-					"probability": 50
-				}
-			]
-		}
-	]
-}
-`
-)
-
 type DiskFailureInjector struct {
 	spec   v1beta1.DiskFailureSpec
 	config DiskFailureInjectorConfig
@@ -42,8 +24,10 @@ type DiskFailureInjector struct {
 // DiskFailureInjectorConfig is the disk pressure injector config
 type DiskFailureInjectorConfig struct {
 	Config
-	EBPFaultProcess *os.Process
+	Process *os.Process
 }
+
+const BpfDiskfailureCmd = "bpf-diskfailure"
 
 // NewDiskFailureInjector creates a disk pressure injector with the given config
 func NewDiskFailureInjector(spec v1beta1.DiskFailureSpec, config DiskFailureInjectorConfig) (Injector, error) {
@@ -58,34 +42,35 @@ func (i *DiskFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *DiskFailureInjector) Inject() (err error) {
-	// Write the config.json
-	var f *os.File
-	f, err = os.Create("config.json")
-	if err != nil {
-		return
-	}
-	defer f.Close()
+	// Start the execution of bpf-diskfailure
+	pid := int(i.config.Config.TargetContainer.PID())
+	commandPath := []string{"-p", strconv.Itoa(pid)}
 
-	if _, err = f.WriteString(ebpfaultConfig); err != nil {
-		return
+	if i.spec.Path != "" {
+		commandPath = append(commandPath, "-f", i.spec.Path)
 	}
 
-	// Start the execution of ebpfault
-	commandPath := []string{"--config", "config.json", "-p", strconv.Itoa(int(i.config.Config.TargetContainer.PID()))}
-	cmd := exec.Command("ebpfault", commandPath...)
+	cmd := exec.Command(BpfDiskfailureCmd, commandPath...)
 
 	i.config.Log.Infow(
 		"injecting disk failure",
-		zap.String("command", "ebpfault"),
+		zap.String("command", BpfDiskfailureCmd),
 		zap.String("args", strings.Join(commandPath, " ")),
 	)
 
-	if err = cmd.Run(); err != nil {
-		return
-	}
+	go func() {
+		if err := cmd.Run(); err != nil {
+			i.config.Log.Errorw(
+				"error during the disk failure",
+				zap.String("command", BpfDiskfailureCmd),
+				zap.String("args", strings.Join(commandPath, " ")),
+				zap.String("error", err.Error()),
+			)
+		}
+	}()
 
-	// Store the PID of our ebpfault execution
-	i.config.EBPFaultProcess = cmd.Process
+	// Store the PID for our execution
+	i.config.Process = cmd.Process
 
 	return nil
 }
@@ -96,8 +81,8 @@ func (i *DiskFailureInjector) UpdateConfig(config Config) {
 
 func (i *DiskFailureInjector) Clean() error {
 	// Kill the process
-	if i.config.EBPFaultProcess != nil {
-		return i.config.EBPFaultProcess.Kill()
+	if i.config.Process != nil {
+		return i.config.Process.Kill()
 	}
 
 	return nil

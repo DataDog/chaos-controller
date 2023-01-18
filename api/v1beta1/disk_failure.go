@@ -6,7 +6,9 @@
 package v1beta1
 
 // DiskFailureSpec represents a disk pressure disruption
-type DiskFailureSpec struct{}
+type DiskFailureSpec struct {
+	Path string `json:"path"`
+}
 
 // Validate validates args for the given disruption
 func (s *DiskFailureSpec) Validate() error {
@@ -14,8 +16,11 @@ func (s *DiskFailureSpec) Validate() error {
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *DiskFailureSpec) GenerateArgs() []string {
-	return []string{
-		"disk-failure",
+func (s *DiskFailureSpec) GenerateArgs() (args []string) {
+	args = append(args, "disk-failure")
+	if s.Path != "" {
+		args = append(args, "--path", s.Path)
 	}
+
+	return args
 }
