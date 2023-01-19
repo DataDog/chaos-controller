@@ -13,7 +13,7 @@ RUN curl -LO http://ftp.de.debian.org/debian/pool/main/g/glibc/libc6_2.36-8_${TA
     dpkg -i libc6_2.36-8_${TARGETARCH}.deb
 
 RUN export BPF_OBJECT="$(echo $BPF_DISKFAILURE_NAME | sed -e 's/amd64/x86/').bpf.o" && \
-    curl -L  https://github.com/aymericDD/bpf-diskfailure/releases/download/v0.1.0/${BPF_DISKFAILURE_NAME}.tar.gz > ${BPF_DISKFAILURE_NAME}.tar.gz && \
+    curl -LO  https://github.com/aymericDD/bpf-diskfailure/releases/download/v0.1.0/${BPF_DISKFAILURE_NAME}.tar.gz && \
     mkdir -p ${BPF_DISKFAILURE_NAME} &&  \
     tar xvf ${BPF_DISKFAILURE_NAME}.tar.gz -C ${BPF_DISKFAILURE_NAME} && \
     mv ${BPF_DISKFAILURE_NAME}/$BPF_OBJECT /$BPF_OBJECT && \

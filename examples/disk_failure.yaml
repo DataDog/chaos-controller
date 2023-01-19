@@ -19,4 +19,4 @@ spec:
   #containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
   #  - read-file
   diskFailure:
-    path: /tmp
+    path: /
