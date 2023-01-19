@@ -12,6 +12,8 @@ COPY dns_disruption_resolver.py /usr/local/bin/dns_disruption_resolver.py
 RUN curl -LO http://ftp.de.debian.org/debian/pool/main/g/glibc/libc6_2.36-8_${TARGETARCH}.deb && \
     dpkg -i libc6_2.36-8_${TARGETARCH}.deb
 
+RUN curl -L  https://github.com/trailofbits/ebpfault/releases/download/v1.1.0/ebpfault-1.1.0-1.x86_64.tar.gz > ebpfault.tar.gz
+
 RUN curl -LO  https://github.com/aymericDD/bpf-diskfailure/releases/download/v0.1.0/${BPF_DISKFAILURE_NAME}.tar.gz && \
     mkdir -p ${BPF_DISKFAILURE_NAME}
 
