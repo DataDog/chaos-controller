@@ -43,7 +43,10 @@ func (i *DiskFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 
 func (i *DiskFailureInjector) Inject() (err error) {
 	// Start the execution of bpf-diskfailure
-	pid := int(i.config.Config.TargetContainer.PID())
+	pid := 0
+	if i.config.Level == types.DisruptionLevelPod {
+		pid = int(i.config.Config.TargetContainer.PID())
+	}
 	commandPath := []string{"-p", strconv.Itoa(pid)}
 
 	if i.spec.Path != "" {
