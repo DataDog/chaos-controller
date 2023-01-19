@@ -1,4 +1,4 @@
-FROM ubuntu:kinetic as injector
+FROM ubuntu:focal as injector
 
 ARG TARGETARCH
 ENV BPF_DISKFAILURE_NAME "bpf-diskfailure-${TARGETARCH}"
@@ -8,6 +8,9 @@ RUN apt-get -y install curl git gcc iproute2 coreutils python3 iptables libelf1
 
 COPY injector_${TARGETARCH} /usr/local/bin/injector
 COPY dns_disruption_resolver.py /usr/local/bin/dns_disruption_resolver.py
+
+RUN curl -LO http://ftp.de.debian.org/debian/pool/main/g/glibc/libc6_2.36-8_${TARGETARCH}.deb && \
+    dpkg -i libc6_2.36-8_${TARGETARCH}.deb
 
 RUN export BPF_OBJECT="$(echo $BPF_DISKFAILURE_NAME | sed -e 's/amd64/x86/').bpf.o" && \
     curl -L  https://github.com/aymericDD/bpf-diskfailure/releases/download/v0.1.0/${BPF_DISKFAILURE_NAME}.tar.gz > ${BPF_DISKFAILURE_NAME}.tar.gz && \

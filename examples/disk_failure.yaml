@@ -9,10 +9,14 @@ metadata:
   name: disk-failure
   namespace: chaos-demo
 spec:
+  #level: node
+  #selector:
+  #  kubernetes.io/hostname: colima
   level: pod
   selector:
     app: demo-curl
   count: 1
+  #containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
+  #  - read-file
   diskFailure:
-    path: /mnt/data/disk-read-file
-    foo: bar
+    path: /tmp
