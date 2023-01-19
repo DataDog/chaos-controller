@@ -47,6 +47,7 @@ func (i *DiskFailureInjector) Inject() (err error) {
 	if i.config.Level == types.DisruptionLevelPod {
 		pid = int(i.config.Config.TargetContainer.PID())
 	}
+
 	commandPath := []string{"-p", strconv.Itoa(pid)}
 
 	if i.spec.Path != "" {
