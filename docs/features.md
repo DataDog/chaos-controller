@@ -150,34 +150,3 @@ reporting: # optional, add custom notification for this disruption
     *full network drop*: _aims to validate retry capabilities of demo-curl_. Contact #team-test for more informations.
   notificationTypeLevel: Info # optional, minimal notification type to be notified, default is Success, available options are Info, Success, Warning, Error
 ```
-
-## Disruption Examples
-
-Please take a look at the different disruptions documentation linked in the table of content for more information about what they can do and how to use them.
-
-Here is [a full example of the disruption resource](../examples/complete.yaml) with comments. You can also have a look at the following use cases with examples of disruptions you can adapt and apply as you wish:
-
-- [Node disruptions](/docs/node_disruption.md)
-  - [I want to randomly kill one of my node](../examples/node_failure.yaml)
-  - [I want to randomly kill one of my node and keep it down](../examples/node_failure_shutdown.yaml)
-- [Pod disruptions](/docs/container_disruption.md)
-  - [I want to terminate all the containers of one of my pods gracefully](../examples/container_failure_all_graceful.yaml)
-  - [I want to terminate all the containers of one of my pods non-gracefully](../examples/container_failure_all_forced.yaml)
-  - [I want to terminate a container of one of my pods gracefully](../examples/container_failure_graceful.yaml)
-  - [I want to terminate a container of one of my pods non-gracefully](../examples/container_failure_forced.yaml)
-- [Network disruptions](/docs/network_disruption.md)
-  - [I want to drop packets going out from my pods](../examples/network_drop.yaml)
-  - [I want to corrupt packets going out from my pods](../examples/network_corrupt.yaml)
-  - [I want to add network latency to packets going out from my pods](../examples/network_delay.yaml)
-  - [I want to restrict the outgoing bandwidth of my pods](../examples/network_bandwidth_limitation.yaml)
-  - [I want to disrupt packets going to a specific host, port or Kubernetes service](../examples/network_filters.yaml)
-  - [I want to disrupt packets going to a specific cloud managed service](../examples/network_cloud.yaml)
-- [CPU pressure](/docs/cpu_pressure.md)
-  - [I want to put CPU pressure against my pods](../examples/cpu_pressure.yaml)
-- [Disk pressure](/docs/disk_pressure.md)
-  - [I want to throttle my pods disk reads](../examples/disk_pressure_read.yaml)
-  - [I want to throttle my pods disk writes](../examples/disk_pressure_write.yaml)
-- [DNS resolution mocking](/docs/dns_disruption.md)
-  - [I want to fake my pods DNS resolutions](../examples/dns.yaml)
-- Network and DNS disruptions
-  - [I want to disrupt network packets on pod initialization](../examples/on_init.yaml)
