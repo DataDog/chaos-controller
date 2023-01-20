@@ -8,7 +8,7 @@
 >
 > _The Chaos Controller allows you to disrupt your Kubernetes infrastructure through various means including but not limited to: bringing down resources you have provisioned and preventing critical data from being transmitted between resources. The use of Chaos Controller on your production system is done at your own discretion and risk._
 
-The Chaos Controller is a Kubernetes controller with which you can inject various systemic failures, at scale, and without caring about the implementation details of your Kubernetes infrastructure. It was created to:
+The Chaos Controller is a Kubernetes controller with which you can inject various systemic failures, at scale, and without caring about the implementation details of your Kubernetes infrastructure. It was created with a specific mindset answering Datadog's internal needs:
 
 * 🐇 **Be fast and operate at scale**
   * At Datadog, we are running experiments injecting and cleaning failures to/from thousands of targets within a few minutes.
