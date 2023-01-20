@@ -2,30 +2,27 @@
 
 > :warning: **Kubernetes version 1.20.x is not supported!** _This [Kubernetes issue](https://github.com/kubernetes/kubernetes/issues/97288) prevents the controller from running properly on Kubernetes 1.20.0-1.20.4. Earlier versions of Kubernetes as well as 1.20.5 and later are still supported._
 
-# Chaos Controller
+# Datadog Chaos Controller
 
-Datadog runs regular chaos experiments to test the resilience of our distributed cloud applications hosted in Kubernetes. The Chaos Controller facilitates automation of these experiments by simulating common "disruptions" including but not limited to: poor network quality, exhaustion of computational resources, or unexpected node failures. All you need to do to get started is define a `yaml` file which contains all of the specifications needed by our custom Kubernetes Resource to run the preferred disruption `Kind`.
+> *:bomb: Disclaimer :bomb:*
+>
+> _The Chaos Controller allows you to disrupt your Kubernetes infrastructure through various means including but not limited to: bringing down resources you have provisioned and preventing critical data from being transmitted between resources. The use of Chaos Controller on your production system is done at your own discretion and risk._
 
-<p align="center"><kbd>
-    <img src="docs/img/architecture/chaos_controller.svg" width=700 align="center" />
-</kbd></p>
+The Chaos Controller is a Kubernetes controller with which you can inject various systemic failures, at scale, and without caring about the implementation details of your Kubernetes infrastructure. It was created to:
 
-## Gamedays
-
-At Datadog, we use the Chaos Controller to run Gamedays where we intentionally introduce failures into staging and production systems to test the resilience of our critical applications.
-
-<p align="center"><kbd>
-    <img src="docs/img/gameday/dns.png" width=700 align="center" />
-</kbd></p>
-<p align="center"><kbd>
-    <img src="docs/img/gameday/consul.png" width=700 align="center" />
-</kbd></p>
-
-The Chaos Controller allows us to simulate a variety of small and large scenarios (and combination of scenarios) such as a network degradation across an AZ which limits access to critical DNS resolvers (top) or a bad configuration triggering a “thundering herd” on Consul's key-value store (bottom).
-
-## Local Development
-
-Chaos Engineering is necessarily different from system to system. We encourage you to try out this tool, and extend it for your own use cases. If you want to run the source code locally to make and test implementation changes, visit the [Contributing Docs](CONTRIBUTING.md) which explain how to spin up chaos-controller source code on Colima. By the way, we welcome Pull Requests.
+* 🐇 **Be fast and operate at scale**
+  * At Datadog, we are running experiments injecting and cleaning failures to/from thousands of targets within a few minutes.
+* 🚑 **Be safe and operate in highly disrupted environments**
+  * The controller is built to be able to limit the blast radius of failures but also to be able to recover by itself in catastrophic scenarios.
+* 💡 **Be smart and operate in various technical environments**
+  * With Kubernetes, all environments are built differently.
+  * Whatever your cluster configuration and implement details choice, the controller is able to inject failures by relying on low-level Linux kernel features such as cgroups, tc or even eBPF.
+* 🪙 **Be simple and operate at low cost**
+  * Most of the time, your Chaos Engineering platform is waiting and doing nothing.
+  * We built this project so it uses resources only when it is really doing something:
+    * No daemonset or any always-running processes on your nodes for injection, no reserved resources when it's not needed.
+    * Injection pods are created only when it is needed, killed once experiment is done, and built to be evicted if necessary to free resources.
+    * A single long-running pod, the controller, and nothing else!
 
 ## Getting Started
 
@@ -38,27 +35,27 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: node-failure
-  namespace: chaos-demo
+  namespace: chaos-demo # it must be in the same namespace as targeted resources
 spec:
   selector: # a label selector used to target resources
     app: demo-curl
-  count: 1 # the number of resources to target
-  duration: 1h # the amount of time before your disruption automatically terminates itself
-  nodeFailure:
-    shutdown: false # trigger a kernel panic on the target node
+  count: 1 # the number of resources to target, can be a percentage
+  duration: 1h # the amount of time before your disruption automatically terminates itself, for safety
+  nodeFailure: # trigger a kernel panic on the target node
+    shutdown: false # do not force the node to be kept down
 ```
 
 To disrupt your cluster, run `kubectl apply -f <disruption_file.yaml>`. You can clean up the disruption with `kubectl delete -f <disruption_file>.yaml`. For your safety, we recommend you get started with the `dry-run` mode enabled.
 
-<p align="center"><kbd>
-    <img src="docs/img/deployment/apply_delete.png" width=500 align="center" />
-</kbd></p>
+> :open_book: The [features guide](docs/features.md) details all the features of the Chaos Controller.
 
-Check out [Chaosli](./cli/chaosli/README.md) if you want some help understanding/creating disruption configurations.
+> :open_book: The [examples guide](docs/examples.md) contains a list of various disruption files that you can use.
 
-> :open*book: \_The [features guide](docs/features.md) contains usecases and sample disruption files!*
+> Check out [Chaosli](./cli/chaosli/README.md) if you want some help understanding/creating disruption configurations.
 
-> :open*book: \_The [development guide](docs/development.md) contains tips for developing locally!*
+## Contributing
+
+Chaos Engineering is necessarily different from system to system. We encourage you to try out this tool, and extend it for your own use cases. If you want to run the source code locally to make and test implementation changes, visit the [Contributing Doc](CONTRIBUTING.md). By the way, we welcome Pull Requests.
 
 ## Useful Links
 
@@ -67,7 +64,3 @@ Check out [Chaosli](./cli/chaosli/README.md) if you want some help understanding
 - [Metrics](docs/metrics.md)
 - [FAQ](docs/faq.md)
 - [Contributing](CONTRIBUTING.md)
-
-## :bomb: Disclaimer :bomb:
-
-_The Chaos Controller allows you to disrupt your Kubernetes infrastructure through various means including but not limited to: bringing down resources you have provisioned and preventing critical data from being transmitted between resources. The use of Chaos Controller on your production system is done at your own discretion and risk._
