@@ -5,7 +5,7 @@ This folder contains the detailed documentation of most parts of the project.
 ## Table of Contents
 
 * [General Design](design.md)
-* [Installation Guide](installation.md)
+* [Configuration Guide](configuration.md)
 * [Features Guide](features.md)
 * [Development Guide](development.md)
 * [Targeting Specificities](targeting.md)
