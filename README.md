@@ -26,6 +26,8 @@ The Chaos Controller is a Kubernetes controller with which you can inject variou
 
 ## Getting Started
 
+> :bulb: Read the [latest release quick installation guide](https://github.com/DataDog/chaos-controller/releases/latest) to know how to deploy the controller.
+
 Disruptions are built as short-living resources which should be manually created and removed once your experiments are done. They should not be part of any application deployment. The `Disruption` resource is **immutable**. Once applied, you can't edit it. If you need to change the disruption definition, you need to delete the existing resource and to re-create it.
 
 Getting started is as simple as creating a Kubernetes resource:
