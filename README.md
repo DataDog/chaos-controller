@@ -59,8 +59,7 @@ Chaos Engineering is necessarily different from system to system. We encourage y
 
 ## Useful Links
 
-- [Examples](docs/features.md#disruption-examples)
-- [Design](docs/design.md)
-- [Metrics](docs/metrics.md)
+- [Examples of disruptions](docs/examples.md)
+- [General design](docs/design.md)
+- [Reported metrics](docs/metrics.md)
 - [FAQ](docs/faq.md)
-- [Contributing](CONTRIBUTING.md)
