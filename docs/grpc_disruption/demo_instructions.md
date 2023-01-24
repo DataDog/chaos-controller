@@ -90,7 +90,7 @@ x
 x
 ```
 
-The first three groups of logs (where a "group" is demarkated by an `x`) are healthy responses, and second three groups are each returning the configured errors for both requests' types.
+The first three groups of logs (where a "group" is demarcated by an `x`) are healthy responses, and second three groups are each returning the configured errors for both requests' types.
 
 Run `kubectl delete -f examples/grpc_error.yaml` to remove the disruption. You should see the logs you are following revert back to the original responses which successfully fill orders for `dog` and `cat` but not `mouse`.
 

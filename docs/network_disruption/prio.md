@@ -8,7 +8,7 @@
     <img src="../../docs/img/network_prio/pfifo.png" height=200 width=650 />
 </kbd></p>
 
-The `prio` qdisc is a queuing discipline used to define Quality of Service (QoS) on the outgoing traffic. By default, a `prio` qdisc has 3 bands. A priority map spreads the traffic across those 3 bands depending on its criticality as indicated in the IP packet. `Band 0` is always drained before dequeuing `Band 1`, and `Band 1` is drained before dequeueing `Band 2`. More information about this can be found on the [official tc-prio documentation](https://linux.die.net/man/8/tc-prio). 
+The `prio` qdisc is a queuing discipline used to define Quality of Service (QoS) on the outgoing traffic. By default, a `prio` qdisc has 3 bands. A priority map spreads the traffic across those 3 bands depending on its criticality as indicated in the IP packet. `Band 0` is always drained before dequeuing `Band 1`, and `Band 1` is drained before dequeuing `Band 2`. More information about this can be found on the [official tc-prio documentation](https://linux.die.net/man/8/tc-prio). 
 
 <p align="center"><kbd>
     <img src="../../docs/img/network_prio/classic_visualization.png" height=300 width=650 />
@@ -122,7 +122,7 @@ spec:
 
 The disruption should only affect packets leaving our target node. On top of the three default bands, chaos-controller creates a fourth band (class `1:4`) to which it will send packets identified as candidates for the disruptions. In this step, the filter on handle `1:` to route traffic to class `1:4` has not been set up. We will see the specific criteria in `Step 3` after setting up the fourth band completely.
 
-#### (Step 2)  Disrupt the fourth band for only the traffic orginating from specified pods
+#### (Step 2)  Disrupt the fourth band for only the traffic originating from specified pods
 
 <p align="center"><kbd>
     <img src="../../docs/img/network_prio/pod/2-1.png" height=270 width=650 />

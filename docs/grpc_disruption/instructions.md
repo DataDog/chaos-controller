@@ -21,7 +21,7 @@ if err := dogfoodServer.Serve(lis); err != nil {
 }
 ```
 
-`chaos-controller` will inject a disruption to your application by communicating with an interceptor which executes code everytime a query reaches the gRPC server. It communicates with your server through a new service dedicated to chaos called `disruptionlistener` which you need to register upon server instantiation along with the interceptor code. Both code snippets already exist in this repository and simply need to be imported:
+`chaos-controller` will inject a disruption to your application by communicating with an interceptor which executes code every time a query reaches the gRPC server. It communicates with your server through a new service dedicated to chaos called `disruptionlistener` which you need to register upon server instantiation along with the interceptor code. Both code snippets already exist in this repository and simply need to be imported:
 
 ```
 import (
@@ -87,7 +87,7 @@ if err := dogfoodServer.Serve(lis); err != nil {
 }
 ```
 
-You can pass in a logger which you may have instatiated with: `	loggerConfig := zap.NewProductionConfig(); logger, err := loggerConfig.Build()` ([chaos-controller/log](../../log) contains sample logger code).
+You can pass in a logger which you may have instantiated with: `	loggerConfig := zap.NewProductionConfig(); logger, err := loggerConfig.Build()` ([chaos-controller/log](../../log) contains sample logger code).
 
 ### (4) Apply gRPC disruption
 
