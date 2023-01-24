@@ -118,13 +118,13 @@ This aims to ensure the PVC is created with the proper DEFAULT storage class, th
 
 > NB: if you encounter an error like `Error from server (Forbidden): error when creating "examples/demo.yaml": persistentvolumeclaims "demo" is forbidden: Internal error occurred: 2 default StorageClasses were found` you may want to edit storage classes and keep a single default storage class `kubectl edit storageClass` look for `storageclass.kubernetes.io/is-default-class` annotation and remove the annotation to the storageClasses not being `longhorn`, once done, re-apply `demo`: `kubectl apply -f examples/demo.yaml`
 
-Once demo are now runnning, you can now look at throttling in the dedicated containers:
+Once demo are now running, you can now look at throttling in the dedicated containers:
 
 - To validate read throttling, look at `read-file` container logs
   - `kubectl logs --follow --timestamps --prefix --since 1m --tail 20 -c read-file -n chaos-demo -l app=demo-curl`
 - Then apply read pressure to the pod:
   - `kubectl apply -f examples/disk_pressure_read.yaml`
-- Once disruption is applied (chaos-enginnering/pod status is RUNNING), you should witness the slower reading speed (limited at `1.0 kB/s`)
+- Once disruption is applied (chaos-engineering/pod status is RUNNING), you should witness the slower reading speed (limited at `1.0 kB/s`)
   - `kubectl delete -f examples/disk_pressure_read.yaml`
 - Following the disruption deletion, reading speed should be back to normal
 
@@ -132,7 +132,7 @@ Once demo are now runnning, you can now look at throttling in the dedicated cont
   - `kubectl logs --follow --timestamps --prefix --since 1m --tail 20 -c write-file -n chaos-demo -l app=demo-curl`
 - Then apply write pressure to the pod:
   - `kubectl apply -f examples/disk_pressure_write.yaml`
-- Once disruption is applied (chaos-enginnering/pod status is RUNNING), you should witness the slower writing speed (limited at `1.0 kB/s`)
+- Once disruption is applied (chaos-engineering/pod status is RUNNING), you should witness the slower writing speed (limited at `1.0 kB/s`)
   - `kubectl delete -f examples/disk_pressure_write.yaml`
 - Following the disruption deletion, writing speed should be back to normal
 

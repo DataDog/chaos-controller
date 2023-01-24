@@ -8,7 +8,7 @@ It allows for defining rules that put constraints on fields, which will be appli
 
 DDMark emerged as an idea when using kubebuilder, which uses markers to put constraints on CRD (Custom Resource Definition) fields.
 Those constraints could later only be applied when parsed by the kubernetes api, which isn't very practical for other uses.
-It was decided to use the same [markers](https://pkg.go.dev/sigs.k8s.io/controller-tools/pkg/markers) in a customised way to be more flexible and usable.
+It was decided to use the same [markers](https://pkg.go.dev/sigs.k8s.io/controller-tools/pkg/markers) in a customized way to be more flexible and usable.
 
 DDMarkers can be validated through code, which allows us to validate through a CLI and any valid go runner - no need for kubernetes anymore. 
 It also allows us to define custom rules to apply to our structures, and focus the code validation within the chaos-controller to environment-specific validation (*does this service exist in this cluster ? Is my cluster in a supported version ?*) and not structural config validation (*is this field under 100 like we need it to be* ?), which would end up being very annoying, cluttered and messy code.
@@ -20,7 +20,7 @@ It also allows us to define custom rules to apply to our structures, and focus t
 * Define new rules/read the existing rules within the `ddmark/validation/validation.go` file (or in this doc)
 * Examples can be found in the `ddmark/teststruct.go` file
 * Add the desired rules to the appropriate struct fields in the package you wish to add validation to (care for type checking - e.g. Maximum rule can only be applied to int/uint fields). Correct format is `// +ddmark:validation:<rulename>=<value>`
-* The analyzed library has to contain a self-packaging exported [`Embed.FS`](https://pkg.go.dev/embed) field. This field will then be used by `ddmark` to import the versionned files into any executable using `ddmark.InitLibrary()` function.
+* The analyzed library has to contain a self-packaging exported [`Embed.FS`](https://pkg.go.dev/embed) field. This field will then be used by `ddmark` to import the versioned files into any executable using `ddmark.InitLibrary()` function.
 
 2. Call the validation function from your code:
 

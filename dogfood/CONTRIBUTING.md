@@ -5,7 +5,7 @@ This tutorial assumes you are in the [dogfood/](/dogfood) directory.
 
 ## Testing code changes
 
-- `make colima-build-dogfood` to rebuild both client and server iamges.
+- `make colima-build-dogfood` to rebuild both client and server images.
 
   - `make colima-build-dogfood-client` to just build client.
   - `make colima-build-dogfood-server` to just build server.
