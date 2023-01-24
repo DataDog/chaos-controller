@@ -7,17 +7,13 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: disk-failure
-  namespace: chaos-engineering
+  namespace: chaos-demo
 spec:
-  #level: node
-  #selector:
-  #  kubernetes.io/hostname: colima
   level: pod
   selector:
-    #app: chaos-test-deployment
-    app: feature-demo-toolbox-curl
+    app: demo-curl
   count: 1
   #containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
   #  - read-file
   diskFailure:
-    path: /
+    path: /mnt/
