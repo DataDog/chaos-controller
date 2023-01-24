@@ -64,11 +64,28 @@ chaosli:
 test: generate manifests
 	CGO_ENABLED=1 go test -race $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
 
-spellcheck:
-	mdspell --en-us --report --ignore-acronyms --ignore-numbers 'docs/**/*.md'
+spellcheck-deps:
+ifeq (, $(shell which npm))
+	@{\
+		echo "please install npm or run 'make spellcheck-docker' for a slow but platform-agnistic run" ;\
+		exit 1 ;\
+	}
+endif
+ifeq (, $(shell which mdspell))
+	@{\
+		echo "installing mdspell through npm -g... (might require sudo run)" ;\
+		npm -g i markdown-spellcheck ;\
+	}
+endif
 
-spellcheck-fix:
-	mdspell --en-us --ignore-acronyms --ignore-numbers 'docs/**/*.md'
+spellcheck: spellcheck-deps
+	mdspell --en-us --ignore-acronyms --ignore-numbers 'docs/**/*.md';
+
+spellcheck-report: spellcheck-deps
+	mdspell --en-us --report --ignore-acronyms --ignore-numbers 'docs/**/*.md';
+
+spellcheck-docker:
+	docker run --rm -ti -v $(shell pwd):/workdir tmaier/markdown-spellcheck:latest --ignore-numbers --ignore-acronyms --en-us 'docs/**/*.md'
 
 ## This target is dedicated for CI and aims to reuse the Kubernetes version defined here as the source of truth
 ci-install-minikube:
