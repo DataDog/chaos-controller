@@ -20,7 +20,7 @@ The Chaos Controller is a Kubernetes controller with which you can inject variou
 * 🪙 **Be simple and operate at low cost**
   * Most of the time, your Chaos Engineering platform is waiting and doing nothing.
   * We built this project so it uses resources only when it is really doing something:
-    * No daemonSet or any always-running processes on your nodes for injection, no reserved resources when it's not needed.
+    * No DaemonSet or any always-running processes on your nodes for injection, no reserved resources when it's not needed.
     * Injection pods are created only when it is needed, killed once experiment is done, and built to be evicted if necessary to free resources.
     * A single long-running pod, the controller, and nothing else!
 

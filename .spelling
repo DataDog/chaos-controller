@@ -10,6 +10,7 @@
 AtLeastOneOf
 ClusterIP
 ClusterRole
+DaemonSet
 DisableCountTooLarge
 DisableNeitherHostNorPort
 DynamicTargeting
@@ -48,7 +49,6 @@ containerd
 contributing.md
 cpu
 csv
-daemonSet
 datadog
 ddmark
 ddmarkers
