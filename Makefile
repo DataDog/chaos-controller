@@ -64,6 +64,12 @@ chaosli:
 test: generate manifests
 	CGO_ENABLED=1 go test -race $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
 
+spellcheck:
+	mdspell --en-us --report --ignore-acronyms --ignore-numbers 'docs/**/*.md'
+
+spellcheck-fix:
+	mdspell --en-us --ignore-acronyms --ignore-numbers 'docs/**/*.md'
+
 ## This target is dedicated for CI and aims to reuse the Kubernetes version defined here as the source of truth
 ci-install-minikube:
 	curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
