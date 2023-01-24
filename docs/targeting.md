@@ -12,7 +12,7 @@ By default, there is a constant re-targeting for disruptions in time. This means
 
 > :warning: :warning:  Although activated by default, this feature is to use with care as a disruption gone wrong can get out of control: per example, a disruption targeting 100% of an application's pod will affect all existing **and** future pods which can appear once the disruption started. As long as this 100% disruption exists, there will be no spared pod. 
 
-Dynamic Targeting behaviour design choices:
+Dynamic Targeting behavior design choices:
 
 - the controller will reconcile/update its targets list on any chaos or selector pod movement (create, update, delete)
 - the controller will consider as a still-alive target any pod/node that exists - regardless of its state.
@@ -91,7 +91,7 @@ For each new disruption the controller receives, the controller will create a [n
 
 Using a dedicated cache object for each disruption works great; the reconcile loop is ran on every possible target events, and the disruption adapts wonderfully to changing targets. Resource consumption is stable and seems to scale. However when the disruption is deleted, we need to make sure the cache is deleted as well. This proved more difficult than it looked.
 
-When created, the cache has a context, and a cancel function. Those are stored with the cache reference in the aforementionned map, and called upon the final disruption reconcile. However, if the deletion does not go through for any given reason, this cache can be very hard to recover without restarting the controller. To uphold our safety and performance standards, we need safety mechanisms to assert a cache cannot be lost in nature after a disruption is deleted.
+When created, the cache has a context, and a cancel function. Those are stored with the cache reference in the aforementioned map, and called upon the final disruption reconcile. However, if the deletion does not go through for any given reason, this cache can be very hard to recover without restarting the controller. To uphold our safety and performance standards, we need safety mechanisms to assert a cache cannot be lost in nature after a disruption is deleted.
 
 There are three folds:
 

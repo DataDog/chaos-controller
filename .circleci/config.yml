@@ -238,7 +238,6 @@ jobs:
             make install-protobuf UNZIP_BINARY=unzip PROTOC_OS=linux
             make generate-disruptionlistener-protobuf
       - run: git diff --exit-code ':!go.*'
-
   # ensures that the grpc protobuf files genereated by dogfood/chaosdogfood/chaosdogfood.proto are up to date
   chaosdogfood-protobuf:
     executor: golang
@@ -251,6 +250,16 @@ jobs:
             make install-protobuf UNZIP_BINARY=unzip PROTOC_OS=linux
             make generate-chaosdogfood-protobuf
       - run: git diff --exit-code ':!go.*'
+  # runs a spellcheck job on documentation for
+  doc-spellcheck:
+    docker:
+      - image: tmaier/markdown-spellcheck:latest
+    steps:
+      - checkout
+      - run:
+          name: Spell check
+          command: |
+            mdspell --report --en-us --ignore-numbers --ignore-acronyms $(find . -name vendor -prune -o -name '*.md' -print) || echo "please run `make spellcheck` for local testing"
 
 workflows:
   version: 2
@@ -282,3 +291,4 @@ workflows:
       - license-header
       - disruptionlistener-protobuf
       - chaosdogfood-protobuf
+      - doc-spellcheck

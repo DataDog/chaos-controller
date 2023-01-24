@@ -22,13 +22,13 @@ Applying the manifest triggers the admission controller which validates your yam
 
 The resource request is passed to the reconcile loop which creates as many chaos pods as the number of disruptions kinds you included in your manifest. The controller also adds a `finalizer` to active disruptions so they are not cleaned up by Kubernetes before the disruption is cleaned up. Each chaos pod applies its specific disruption kind (`network_disruption`, `cpu_pressure`, `node_failure`, etc) to your target resources.
 
-A succesful apply prints:
+A successful apply prints:
 
 - `disruption.chaos.datadoghq.com/"<manifest name>" created`
 
 ### Unsuccessful validation
 
-An explanitory error message like the following will print:
+An explanatory error message like the following will print:
 
 - `Error from server (count must be a positive integer or a valid percentage value): error when creating "examples/network_drop.yaml": admission webhook "chaos-controller-admission-webhook.chaos-engineering.svc" denied the request: count must be a positive integer or a valid percentage value`
 
@@ -54,7 +54,7 @@ Once you are done testing, you can remove the disruption by running:
     <img src="../docs/img/deployment/delete.png" width=800 align="center" />
 </kbd></p>
 
-Deleting the manifest triggers the reconcile loop which then tries to delete all chaos pods the controller is aware of having created. When Kubernetes attempts to kill each chaos pod, the kill signal triggers the `PersistentPostRun` which was configured to run in Cobra. For each desription kind, the `cleanAndExit` function specified in `PersistentPostRun` executes the `Clean` functionality required by the `Injector` interface. Once this is done, the pod is removed, and when the reconcile loop picks up that all pods are cleaned, it removes the `finalizer` on the Disruption resource, allowing Kubernetes to clean it up.
+Deleting the manifest triggers the reconcile loop which then tries to delete all chaos pods the controller is aware of having created. When Kubernetes attempts to kill each chaos pod, the kill signal triggers the `PersistentPostRun` which was configured to run in Cobra. For each description kind, the `cleanAndExit` function specified in `PersistentPostRun` executes the `Clean` functionality required by the `Injector` interface. Once this is done, the pod is removed, and when the reconcile loop picks up that all pods are cleaned, it removes the `finalizer` on the Disruption resource, allowing Kubernetes to clean it up.
 
 A successful delete prints:
 

@@ -76,7 +76,7 @@ Note that in this mode, only pending pods with a running `chaos-handler` init co
 
 ## Notifier
 
-When creating a disruption, you may wish to be alerted of important lifecycle warnings (disruption found no target, chaos pod is stuck on removal, target is failing, target is recovering, etc.) through the Notifier module of the chaos-controller. On each occurence, these events will be propagated through the different set up notifiers (currently `noop/console`, `slack` and `datadog` are implemented).
+When creating a disruption, you may wish to be alerted of important lifecycle warnings (disruption found no target, chaos pod is stuck on removal, target is failing, target is recovering, etc.) through the Notifier module of the chaos-controller. On each occurrence, these events will be propagated through the different set up notifiers (currently `noop/console`, `slack` and `datadog` are implemented).
 
 You can find the complete list of the events sent out by the controller [here](/api/v1beta1/events.go#L24).
 
@@ -94,7 +94,7 @@ The `datadog` notifier requires the `STATSD_URL` environment variable to be set 
 
 The `http` notifier requires a `URL` to send the POST request to and optionally ask for either the list of headers in the configmap or the filepath of a file containing the list of headers to add to the request if needed. It will send a json body containing the notification information.
 
-_Note that the list of headers from the configmap will take prevalence over the list of headers found in the file: if there are conflictings headers in both of those lists, the one from the configmap will be kept._
+_Note that the list of headers from the configmap will take prevalence over the list of headers found in the file: if there are conflicting headers in both of those lists, the one from the configmap will be kept._
 
 The list is of format:
 
