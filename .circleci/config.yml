@@ -258,15 +258,13 @@ jobs:
       - checkout
       - run:
           name: Spell check
-          command: mdspell --report --en-us --ignore-numbers --ignore-acronyms "docs/**/*.md"
-      - run:
-          name: Error Message
-          when: on_fail
           command: |
-            echo "please check out https://github.com/lukeapage/node-markdown-spellcheck for local testing"
-            echo "or run \
-            'docker run --rm -ti -v $(pwd):/workdir tmaier/markdown-spellcheck:latest --ignore-numbers --ignore-acronyms --en-us 'docs/**/*.md''"
-            return 1
+            mdspell --report --en-us --ignore-numbers --ignore-acronyms "docs/**/*.md" || \
+            (\
+              echo "please check out https://github.com/lukeapage/node-markdown-spellcheck for local testing" && \
+              echo "or run 'docker run --rm -ti -v $(pwd):/workdir tmaier/markdown-spellcheck:latest --ignore-numbers --ignore-acronyms --en-us 'docs/**/*.md''"
+              return 0 \
+            )
 
 workflows:
   version: 2
