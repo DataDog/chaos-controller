@@ -87,6 +87,9 @@ spellcheck-report: spellcheck-deps
 spellcheck-docker:
 	docker run --rm -ti -v $(shell pwd):/workdir tmaier/markdown-spellcheck:latest --ignore-numbers --ignore-acronyms --en-us 'docs/**/*.md'
 
+spellcheck-format-spelling:
+	sort < .spelling | sort | uniq | grep -v '^-' | tee .spelling.tmp > /dev/null && mv .spelling.tmp .spelling
+
 ## This target is dedicated for CI and aims to reuse the Kubernetes version defined here as the source of truth
 ci-install-minikube:
 	curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
