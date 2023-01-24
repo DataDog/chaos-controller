@@ -259,7 +259,7 @@ jobs:
       - run:
           name: Spell check
           command: |
-            mdspell --report --en-us --ignore-numbers --ignore-acronyms $(shell find . -name vendor -prune -o -name '*.md' -print) || echo "please run `make spellcheck` for local testing"
+            mdspell --report --en-us --ignore-numbers --ignore-acronyms $(find . -name vendor -prune -o -name '*.md' -print) || echo "please run `make spellcheck` for local testing"
 
 workflows:
   version: 2
