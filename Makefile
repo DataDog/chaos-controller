@@ -79,13 +79,16 @@ ifeq (, $(shell which mdspell))
 endif
 
 spellcheck: spellcheck-deps
-	mdspell --en-us --ignore-acronyms --ignore-numbers 'docs/**/*.md';
+	mdspell --en-us --ignore-acronyms --ignore-numbers \
+		$(shell find . -name vendor -prune -o -name '*.md' -print);
 
 spellcheck-report: spellcheck-deps
-	mdspell --en-us --report --ignore-acronyms --ignore-numbers 'docs/**/*.md';
+	mdspell --en-us --ignore-acronyms --ignore-numbers --report \
+		$(shell find . -name vendor -prune -o -name '*.md' -print);
 
 spellcheck-docker:
-	docker run --rm -ti -v $(shell pwd):/workdir tmaier/markdown-spellcheck:latest --ignore-numbers --ignore-acronyms --en-us 'docs/**/*.md'
+	docker run --rm -ti -v $(shell pwd):/workdir tmaier/markdown-spellcheck:latest --ignore-numbers --ignore-acronyms --en-us \
+		$(shell find . -name vendor -prune -o -name '*.md' -print);
 
 spellcheck-format-spelling:
 	sort < .spelling | sort | uniq | grep -v '^-' | tee .spelling.tmp > /dev/null && mv .spelling.tmp .spelling
