@@ -1,4 +1,4 @@
-module github.com/lizrice/ebpf-beginners
+module github.com/DataDog/chaos-controller/ebpf/diskfailure
 
 go 1.18
 
