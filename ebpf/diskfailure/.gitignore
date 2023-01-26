@@ -1,0 +1,7 @@
+dist/
+libbpf/
+bpf-diskfailure
+bpf-diskfailure-x86
+bpf-diskfailure-arm64
+*.o
+.idea/
