@@ -485,11 +485,11 @@ spec:
                         properties:
                           clusterThreshold:
                             maximum: 100
-                            minimum: 0
+                            minimum: 1
                             type: integer
                           namespaceThreshold:
                             maximum: 100
-                            minimum: 0
+                            minimum: 1
                             type: integer
                         type: object
                     type: object

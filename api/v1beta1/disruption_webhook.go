@@ -359,12 +359,12 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 
 	if r.Spec.Unsafemode != nil {
 		if r.Spec.Unsafemode.Config != nil && r.Spec.Unsafemode.Config.CountTooLarge != nil {
-			if r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold != 0 {
-				namespaceThreshold = float64(r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold) / 100.0
+			if r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold != nil {
+				namespaceThreshold = float64(*r.Spec.Unsafemode.Config.CountTooLarge.NamespaceThreshold) / 100.0
 			}
 
-			if r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold != 0 {
-				clusterThreshold = float64(r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold) / 100.0
+			if r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold != nil {
+				clusterThreshold = float64(*r.Spec.Unsafemode.Config.CountTooLarge.ClusterThreshold) / 100.0
 			}
 		}
 	}
@@ -373,39 +373,81 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		pods := &corev1.PodList{}
 		listOptions := &client.ListOptions{
 			Namespace: r.ObjectMeta.Namespace,
+			// In an effort not to fill up memory on huge list calls, limiting to 1000 objects per call
+			Limit: 1000,
 		}
-
+		// we grab the number of pods in the specified namespace
 		err := k8sClient.List(context.Background(), pods, listOptions)
 		if err != nil {
 			return false, "", fmt.Errorf("error listing namespace pods: %w", err)
 		}
 
+		for pods.Continue != "" {
+			namespaceCount += len(pods.Items)
+			listOptions.Continue = pods.Continue
+
+			err = k8sClient.List(context.Background(), pods, listOptions)
+			if err != nil {
+				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			}
+		}
+
 		namespaceCount = len(pods.Items)
 
 		listOptions = &client.ListOptions{
-			Namespace:     r.ObjectMeta.Namespace,
 			LabelSelector: labels.SelectorFromValidatedSet(r.Spec.Selector),
 		}
-
+		// we grab the number of targets in the specified namespace
 		err = k8sClient.List(context.Background(), pods, listOptions)
 		if err != nil {
 			return false, "", fmt.Errorf("error listing target pods: %w", err)
 		}
 
+		for pods.Continue != "" {
+			targetCount += len(pods.Items)
+			listOptions.Continue = pods.Continue
+
+			err = k8sClient.List(context.Background(), pods, listOptions)
+			if err != nil {
+				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			}
+		}
+
 		targetCount = len(pods.Items)
 
-		err = k8sClient.List(context.Background(), pods)
+		// we grab the number of pods in the entire cluster
+		err = k8sClient.List(context.Background(), pods,
+			client.Limit(1000))
 		if err != nil {
 			return false, "", fmt.Errorf("error listing cluster pods: %w", err)
+		}
+
+		for pods.Continue != "" {
+			totalCount += len(pods.Items)
+
+			err = k8sClient.List(context.Background(), pods, client.Limit(1000), client.Continue(pods.Continue))
+			if err != nil {
+				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			}
 		}
 
 		totalCount = len(pods.Items)
 	} else {
 		nodes := &corev1.NodeList{}
 
-		err := k8sClient.List(context.Background(), nodes)
+		err := k8sClient.List(context.Background(), nodes,
+			client.Limit(1000))
 		if err != nil {
 			return false, "", fmt.Errorf("error listing target pods: %w", err)
+		}
+
+		for nodes.Continue != "" {
+			totalCount += len(nodes.Items)
+
+			err = k8sClient.List(context.Background(), nodes, client.Limit(1000), client.Continue(nodes.Continue))
+			if err != nil {
+				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			}
 		}
 
 		totalCount = len(nodes.Items)
@@ -428,8 +470,8 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		userCountVal = float64(userCountInt)
 	}
 
-	// we check to see if the count represents > 80 percent of all pods in the existing namepsace
-	// or if the count represents > 66 percent of all pods in the cluster
+	// we check to see if the count represents > namespaceThreshold (default 80) percent of all pods in the existing namespace
+	// or if the count represents > clusterThreshold (default 66) percent of all pods in the cluster
 	if r.Spec.Level != chaostypes.DisruptionLevelNode {
 		if userNamespacePercent := userCountVal / float64(namespaceCount); userNamespacePercent > namespaceThreshold {
 			response := fmt.Sprintf("target selection represents %.2f %% of the total pods in the namespace while the threshold is %.2f %%", userNamespacePercent*100, namespaceThreshold*100)
