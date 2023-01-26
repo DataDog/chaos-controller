@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package webhook
 
@@ -41,13 +41,13 @@ func (m *UserInfoMutator) Handle(ctx context.Context, req admission.Request) adm
 
 	// decode object
 	if err := m.decoder.Decode(req, dis); err != nil {
-		m.Log.Errorw("error decoding disruption object", "error", err, "name", req.Name, "namespace", req.Namespace)
+		m.Log.Errorw("error decoding disruption object", "error", err, "disruptionName", req.Name, "disruptionNamespace", req.Namespace)
 
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
 	// retrieve user info
-	m.Log.Infow("storing user info in annotations", "name", dis.Name, "namespace", dis.Namespace, "req", req.UserInfo)
+	m.Log.Infow("storing user info in annotations", "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace, "req", req.UserInfo)
 
 	annotations := make(map[string]string)
 
@@ -55,18 +55,16 @@ func (m *UserInfoMutator) Handle(ctx context.Context, req admission.Request) adm
 		annotations[k] = v
 	}
 
-	marshaledUserInfo, err := json.Marshal(req.UserInfo)
-	if err != nil {
-		m.Log.Errorw("error encoding UserInfo", "error", err)
-	}
-
-	annotations["UserInfo"] = string(marshaledUserInfo)
-
 	dis.Annotations = annotations
+
+	err := dis.SetUserInfo(req.UserInfo)
+	if err != nil {
+		m.Log.Errorw("error defining UserInfo", "error", err, "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace)
+	}
 
 	marshaled, err := json.Marshal(dis)
 	if err != nil {
-		m.Log.Errorw("error encoding modified annotations", "error", err, "name", dis.Name, "namespace", dis.Namespace)
+		m.Log.Errorw("error encoding modified annotations", "error", err, "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace)
 
 		return admission.Errored(http.StatusInternalServerError, err)
 	}

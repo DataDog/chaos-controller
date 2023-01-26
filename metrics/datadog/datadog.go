@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package datadog
 
@@ -58,6 +58,24 @@ func (d *Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	return d.metricWithStatus(metricPrefixInjector+"injected", t)
 }
 
+// MetricReinjected increments the reinjected metric
+func (d *Sink) MetricReinjected(succeed bool, kind string, tags []string) error {
+	status := boolToStatus(succeed)
+	t := []string{"status:" + status, "kind:" + kind}
+	t = append(t, tags...)
+
+	return d.metricWithStatus(metricPrefixInjector+"reinjected", t)
+}
+
+// MetricCleanedForReinjection increments the cleanedForReinjection metric
+func (d *Sink) MetricCleanedForReinjection(succeed bool, kind string, tags []string) error {
+	status := boolToStatus(succeed)
+	t := []string{"status:" + status, "kind:" + kind}
+	t = append(t, tags...)
+
+	return d.metricWithStatus(metricPrefixInjector+"cleaned_for_reinjection", t)
+}
+
 // MetricCleaned increments the cleaned metric
 func (d *Sink) MetricCleaned(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
@@ -100,7 +118,7 @@ func (d *Sink) MetricDisruptionOngoingDuration(duration time.Duration, tags []st
 // MetricPodsCreated increment pods.created metric
 func (d *Sink) MetricPodsCreated(target, instanceName, namespace string, succeed bool) error {
 	status := boolToStatus(succeed)
-	tags := []string{"target:" + target, "name:" + instanceName, "status:" + status, "namespace:" + namespace}
+	tags := []string{"target:" + target, "disruptionName:" + instanceName, "status:" + status, "namespace:" + namespace}
 
 	return d.metricWithStatus(metricPrefixController+"pods.created", tags)
 }

@@ -1,13 +1,14 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package container
 
 import "github.com/stretchr/testify/mock"
 
 // ContainerMock is a mock implementation of the Container interface
+//
 //nolint:golint
 type ContainerMock struct {
 	mock.Mock

@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 /*
 
@@ -49,16 +49,17 @@ const (
 )
 
 var (
-	cfg         *rest.Config
-	k8sClient   client.Client
-	k8sManager  ctrl.Manager
-	testEnv     *envtest.Environment
-	instanceKey types.NamespacedName
-	targetPodA  *corev1.Pod
-	targetPodA2 *corev1.Pod
-	targetPodA3 *corev1.Pod
-	targetPodA4 *corev1.Pod
-	targetPodB  *corev1.Pod
+	cfg             *rest.Config
+	k8sClient       client.Client
+	k8sManager      ctrl.Manager
+	testEnv         *envtest.Environment
+	instanceKey     types.NamespacedName
+	targetPodA      *corev1.Pod
+	targetPodA2     *corev1.Pod
+	targetPodA3     *corev1.Pod
+	targetPodA4     *corev1.Pod
+	targetPodB      *corev1.Pod
+	targetPodOnInit *corev1.Pod
 )
 
 func TestAPIs(t *testing.T) {
@@ -109,6 +110,9 @@ var _ = BeforeSuite(func(done Done) {
 			Namespace: "default",
 			Labels: map[string]string{
 				"foo": "bar",
+			},
+			Annotations: map[string]string{
+				"foo": "baz",
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -163,6 +167,9 @@ var _ = BeforeSuite(func(done Done) {
 			Labels: map[string]string{
 				"foo": "bar",
 			},
+			Annotations: map[string]string{
+				"foo": "qux",
+			},
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -183,6 +190,24 @@ var _ = BeforeSuite(func(done Done) {
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
+				},
+			},
+		},
+	}
+	targetPodOnInit = &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo5",
+			Namespace: "default",
+			Labels: map[string]string{
+				"foo-foo":                             "bar-bar",
+				"chaos.datadoghq.com/disrupt-on-init": "true",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Image: "k8s.gcr.io/pause:3.4.1",
+					Name:  "ctn1",
 				},
 			},
 		},
@@ -246,6 +271,25 @@ func podsAreRunning(pods ...*corev1.Pod) (bool, error) {
 
 		if !running {
 			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+// podsAreNotRunning returns true when all the given pods have all their containers running
+func podsAreNotRunning(pods ...*corev1.Pod) (bool, error) {
+	for _, pod := range pods {
+		var p corev1.Pod
+
+		// retrieve pod
+		if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &p); err != nil {
+			return true, nil
+		}
+
+		// check the pod phase
+		if p.Status.Phase == corev1.PodRunning {
+			return false, fmt.Errorf("pod is still running")
 		}
 	}
 

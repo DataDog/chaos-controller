@@ -72,7 +72,7 @@ spec:
         error: PERMISSION_DENIED
 ```
 
-As in the previous case, all alterations with a defined `queryPercent` are allocated upfront. The algorithm keeps track of alterations which do not yet have `queryPercent`s assigned, and splits the remaining (unconfigured) queries equally amongst these unassigned alterations.
+As in the previous case, all alterations with a defined `queryPercent` are allocated upfront. The algorithm keeps track of alterations which do not yet have `queryPercent`s assigned, and splits the remaining (unconfigured) queries equally among these unassigned alterations.
 
 ```
 [

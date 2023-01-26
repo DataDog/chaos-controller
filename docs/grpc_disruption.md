@@ -93,7 +93,7 @@ You can configure an interceptor function when you bring up the server to handle
     </kbd>
 </p>
 
-In our case, we do not make a service call if the request is one which the disruptionlistener is configured to spoof, and instead return a canned response. The disruption begins when you apply a manifest to Kuberenetes with a gRPC disruption for this particular service. The disruptionlistener is always checking for requests to disrupt the server to which it is registered. By creating an injector pod that acts as a client on the disruptionlistener, Chaos Controller sends its expectations to the server and the server configures the interceptor to spoof requests. The disruption stops when you delete this manifest through the same communication channel (a kill signal to the injector executes its clean command which resets the interceptor to let all queries pass through).
+In our case, we do not make a service call if the request is one which the disruptionlistener is configured to spoof, and instead return a canned response. The disruption begins when you apply a manifest to Kubernetes with a gRPC disruption for this particular service. The disruptionlistener is always checking for requests to disrupt the server to which it is registered. By creating an injector pod that acts as a client on the disruptionlistener, Chaos Controller sends its expectations to the server and the server configures the interceptor to spoof requests. The disruption stops when you delete this manifest through the same communication channel (a kill signal to the injector executes its clean command which resets the interceptor to let all queries pass through).
 
 # FAQs
 

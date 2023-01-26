@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 /*
 
@@ -28,48 +28,12 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/DataDog/chaos-controller/cloudservice"
+	"github.com/DataDog/chaos-controller/cloudservice/types"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
-
-// getContainerIDs gets the IDs of the targeted containers or all container IDs found in a Pod
-func getContainerIDs(pod *corev1.Pod, targets []string) ([]string, error) {
-	if len(pod.Status.ContainerStatuses) < 1 {
-		return []string{}, fmt.Errorf("missing container ids for pod '%s'", pod.Name)
-	}
-
-	containersNameID := map[string]string{}
-	containerIDs := []string{}
-
-	ctns := append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) //nolint:gocritic
-
-	if len(targets) == 0 {
-		// get all running containers ID
-		for _, c := range ctns {
-			if c.State.Running != nil {
-				containerIDs = append(containerIDs, c.ContainerID)
-			}
-		}
-	} else {
-		// populate containers name/ID map
-		for _, c := range ctns {
-			containersNameID[c.Name] = c.ContainerID
-		}
-
-		// look for the target in the map
-		for _, target := range targets {
-			if id, found := containersNameID[target]; found {
-				containerIDs = append(containerIDs, id)
-			} else {
-				return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, target)
-			}
-		}
-	}
-
-	return containerIDs, nil
-}
 
 // This function returns a scaled value from an IntOrString type. If the IntOrString
 // is a percentage string value it's treated as a percentage and scaled appropriately
@@ -124,6 +88,38 @@ func validateLabelSelector(selector labels.Selector) error {
 	}
 
 	return nil
+}
+
+// transformCloudSpecToHostsSpec from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
+func transformCloudSpecToHostsSpec(cloudManager *cloudservice.CloudServicesProvidersManager, cloudSpec *v1beta1.NetworkDisruptionCloudSpec) ([]v1beta1.NetworkDisruptionHostSpec, error) {
+	hosts := []v1beta1.NetworkDisruptionHostSpec{}
+	clouds := cloudSpec.TransformToCloudMap()
+
+	for cloudName, serviceList := range clouds {
+		serviceListNames := []string{}
+
+		for _, service := range serviceList {
+			serviceListNames = append(serviceListNames, service.ServiceName)
+		}
+
+		ipRangesPerService, err := cloudManager.GetServicesIPRanges(types.CloudProviderName(cloudName), serviceListNames)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, serviceSpec := range serviceList {
+			for _, ipRange := range ipRangesPerService[serviceSpec.ServiceName] {
+				hosts = append(hosts, v1beta1.NetworkDisruptionHostSpec{
+					Host:      ipRange,
+					Protocol:  serviceSpec.Protocol,
+					Flow:      serviceSpec.Flow,
+					ConnState: serviceSpec.ConnState,
+				})
+			}
+		}
+	}
+
+	return hosts, nil
 }
 
 // isModifiedError tells us if this error is of the form:

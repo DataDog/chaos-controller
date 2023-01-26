@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package controllers
 
@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -69,11 +70,11 @@ func (h DisruptionTargetWatcherHandler) OnUpdate(oldObj, newObj interface{}) {
 func (h DisruptionTargetWatcherHandler) OnChangeHandleMetricsSink(pod *corev1.Pod, node *corev1.Node, okPod, okNode bool) {
 	switch {
 	case okPod:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:pod", "target:" + pod.Name}))
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"disruptionName:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:pod", "target:" + pod.Name}))
 	case okNode:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:node", "target:" + node.Name}))
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"disruptionName:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:node", "target:" + node.Name}))
 	default:
-		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"name:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:object"}))
+		h.reconciler.handleMetricSinkError(h.reconciler.MetricsSink.MetricSelectorCacheTriggered([]string{"disruptionName:" + h.disruption.Name, "namespace:" + h.disruption.Namespace, "event:add", "targetKind:object"}))
 	}
 }
 
@@ -117,10 +118,7 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 			continue
 		}
 
-		eventType := corev1.EventTypeWarning
-		if eventReason == chaosv1beta1.EventNodeRecoveredState || eventReason == chaosv1beta1.EventPodRecoveredState {
-			eventType = corev1.EventTypeNormal
-		}
+		eventType := chaosv1beta1.Events[eventReason].Type
 
 		// Send to updated target
 		h.reconciler.Recorder.Event(objectToNotify, eventType, eventReason, fmt.Sprintf(chaosv1beta1.Events[eventReason].OnTargetTemplateMessage, h.disruption.Name))
@@ -217,7 +215,8 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 		// if warning event has been sent after target recovering
 		switch event.InvolvedObject.Kind {
 		case "Pod":
-			if event.Type == corev1.EventTypeWarning {
+			switch {
+			case event.Type == corev1.EventTypeWarning:
 				if event.Reason == "Unhealthy" || event.Reason == "ProbeWarning" {
 					lowerCasedMessage := strings.ToLower(event.Message)
 
@@ -225,7 +224,13 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 					case strings.Contains(lowerCasedMessage, "liveness probe"):
 						eventsToSend[chaosv1beta1.EventLivenessProbeChange] = true
 					case strings.Contains(lowerCasedMessage, "readiness probe"):
-						eventsToSend[chaosv1beta1.EventReadinessProbeChange] = true
+						// If the object of the disruption is in the list of targets, it means it has been injected.
+						// The readiness probe is failing during the injection
+						if h.disruption.Status.HasTarget(event.InvolvedObject.Name) {
+							eventsToSend[chaosv1beta1.EventReadinessProbeChangeDuringDisruption] = true
+						} else {
+							eventsToSend[chaosv1beta1.EventReadinessProbeChangeBeforeDisruption] = true
+						}
 					default:
 						eventsToSend[chaosv1beta1.EventPodWarningState] = true
 					}
@@ -239,19 +244,23 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
 				)
-			} else if event.Reason == "Started" {
+			case event.Reason == "Started":
 				if recoverTimestamp == nil {
 					recoverTimestamp = &event.LastTimestamp.Time
 				}
 
 				eventsToSend[chaosv1beta1.EventPodRecoveredState] = true
 
-				h.reconciler.log.Infow("recovering event detected on target",
+				h.reconciler.log.Debugw("recovering event detected on target",
 					"target", targetName,
 					"reason", event.Reason,
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
 				)
+			case event.Reason == "Killing" && strings.Contains(event.Message, "Stopping container") && eventsToSend[chaosv1beta1.EventContainerWarningState]:
+				// this event indicates a safe killing of a container (can occur when we rollout or manually delete a pod for example)
+				// we remove the warning state event if it has been created when we compared the state of the containers
+				delete(eventsToSend, chaosv1beta1.EventContainerWarningState)
 			}
 		case "Node":
 			if event.Type == corev1.EventTypeWarning {
@@ -270,7 +279,7 @@ func (h DisruptionTargetWatcherHandler) findNotifiableEvents(eventsToSend map[st
 
 				eventsToSend[chaosv1beta1.EventNodeRecoveredState] = true
 
-				h.reconciler.log.Infow("recovering event detected on target",
+				h.reconciler.log.Debugw("recovering event detected on target",
 					"target", targetName,
 					"reason", event.Reason,
 					"message", event.Message,
@@ -511,11 +520,14 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 
 		// start the cache with a cancelable context and duration, and attach it to the controller as a watch source
 		ch := make(chan error)
-		cacheCtx, cacheCancelFunc := context.WithTimeout(context.Background(), instance.Spec.Duration.Duration()+*r.ExpiredDisruptionGCDelay*2)
+
+		cacheCtx, cacheCancelFunc := context.WithCancel(context.Background())
+		ctxTuple := CtxTuple{cacheCtx, cacheCancelFunc, disNamespacedName}
+
+		r.CacheContextStore[disCacheHash] = ctxTuple
 
 		go func() { ch <- cache.Start(cacheCtx) }()
-
-		r.CacheContextStore[disCacheHash] = CtxTuple{cacheCtx, cacheCancelFunc}
+		go r.cacheDeletionSafety(ctxTuple, disCacheHash)
 
 		var cacheSource source.SyncingSource
 		if instance.Spec.Level == chaostypes.DisruptionLevelNode {
@@ -562,10 +574,34 @@ func (r *DisruptionReconciler) clearExpiredCacheContexts() {
 	for key, contextTuple := range r.CacheContextStore {
 		if contextTuple.Ctx.Err() != nil {
 			deletionList = append(deletionList, key)
+			continue
+		}
+
+		if err := r.Get(contextTuple.Ctx, contextTuple.DisruptionNamespacedName, &chaosv1beta1.Disruption{}); err != nil {
+			if client.IgnoreNotFound(err) == nil {
+				contextTuple.CancelFunc()
+
+				deletionList = append(deletionList, key)
+			}
 		}
 	}
 
 	for _, key := range deletionList {
 		delete(r.CacheContextStore, key)
 	}
+}
+
+// cacheDeletionSafety is thought to be run in a goroutine to assert a cache is not running without its disruption
+// the polling is living on the cache context, meaning if it's deleted elsewhere this function will return early.
+func (r *DisruptionReconciler) cacheDeletionSafety(ctxTpl CtxTuple, disHash string) {
+	_ = wait.PollInfiniteWithContext(ctxTpl.Ctx, time.Minute, func(context.Context) (bool, error) {
+		if err := r.Get(ctxTpl.Ctx, ctxTpl.DisruptionNamespacedName, &chaosv1beta1.Disruption{}); err != nil {
+			if client.IgnoreNotFound(err) == nil {
+				defer ctxTpl.CancelFunc()
+				delete(r.CacheContextStore, disHash)
+				return true, nil
+			}
+		}
+		return false, nil
+	})
 }

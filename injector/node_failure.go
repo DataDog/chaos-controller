@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package injector
 
@@ -50,7 +50,7 @@ func NewNodeFailureInjector(spec v1beta1.NodeFailureSpec, config NodeFailureInje
 		return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountSysrqTrigger)
 	}
 
-	return nodeFailureInjector{
+	return &nodeFailureInjector{
 		spec:             spec,
 		config:           config,
 		sysrqPath:        sysrqPath,
@@ -58,12 +58,12 @@ func NewNodeFailureInjector(spec v1beta1.NodeFailureSpec, config NodeFailureInje
 	}, nil
 }
 
-func (i nodeFailureInjector) GetDisruptionKind() types.DisruptionKindName {
+func (i *nodeFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindNodeFailure
 }
 
 // Inject triggers a kernel panic through the sysrq trigger
-func (i nodeFailureInjector) Inject() error {
+func (i *nodeFailureInjector) Inject() error {
 	var err error
 
 	i.config.Log.Infow("injecting a node failure by triggering a kernel panic",
@@ -98,6 +98,11 @@ func (i nodeFailureInjector) Inject() error {
 	return nil
 }
 
-func (i nodeFailureInjector) Clean() error {
+// Not implemented for node failures
+func (i *nodeFailureInjector) UpdateConfig(config Config) {
+	i.config.Config = config
+}
+
+func (i *nodeFailureInjector) Clean() error {
 	return nil
 }

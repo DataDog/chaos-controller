@@ -1,7 +1,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2021 Datadog, Inc.
+# Copyright 2022 Datadog, Inc.
 
 run:
   skip-files:
@@ -10,16 +10,13 @@ run:
     - cpuset/*
 linters:
   enable:
-    - deadcode
     - errcheck
     - gosimple
     - govet
     - ineffassign
     - staticcheck
-    - structcheck
     - typecheck
     - unused
-    - varcheck
     - bodyclose
     - depguard
     - dogsled
@@ -57,3 +54,4 @@ issues:
     - (comment on exported (method|function|type|const)|should have( a package)? comment|comment should be of the form)
     # revive
     - and that stutters
+    - unexported-return

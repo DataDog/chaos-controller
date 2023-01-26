@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package v1beta1
 
@@ -19,6 +19,11 @@ const (
 	FlowEgress = "egress"
 	// FlowIngress is the string representation of network disruptions applied to incoming packets
 	FlowIngress = "ingress"
+	// this limitation does not come from TC itself but from the net scheduler of the kernel.
+	// When not specifying an index for the hashtable created when we use u32 filters, the default id for this hashtable is 0x800.
+	// However, the maximum id being 0xFFF, we can only have 2048 different ids, so 2048 tc filters with u32.
+	// https://github.com/torvalds/linux/blob/v5.19/net/sched/cls_u32.c#L689-L690
+	MaximumTCFilters = 2048
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
@@ -27,9 +32,12 @@ type NetworkDisruptionSpec struct {
 	// +nullable
 	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
 	// +nullable
-	AllowedHosts []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
+	AllowedHosts               []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
+	DisableDefaultAllowedHosts bool                        `json:"disableDefaultAllowedHosts,omitempty"`
 	// +nullable
 	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
+	// +nullable
+	Cloud *NetworkDisruptionCloudSpec `json:"cloud,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	// +ddmark:validation:Minimum=0
@@ -82,11 +90,36 @@ type NetworkDisruptionHostSpec struct {
 	// +kubebuilder:validation:Enum=ingress;egress;""
 	// +ddmark:validation:Enum=ingress;egress;""
 	Flow string `json:"flow,omitempty"`
+	// +kubebuilder:validation:Enum=new;est;""
+	// +ddmark:validation:Enum=new;est;""
+	ConnState string `json:"connState,omitempty"`
 }
 
 type NetworkDisruptionServiceSpec struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+}
+
+// +ddmark:validation:AtLeastOneOf={AWSServiceList,GCPServiceList,DatadogServiceList}
+type NetworkDisruptionCloudSpec struct {
+	AWSServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty"`
+	GCPServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"gcp,omitempty"`
+	DatadogServiceList *[]NetworkDisruptionCloudServiceSpec `json:"datadog,omitempty"`
+}
+
+type NetworkDisruptionCloudServiceSpec struct {
+	// +kubebuilder:validation:Required
+	// +ddmark:validation:Required=true
+	ServiceName string `json:"service"`
+	// +kubebuilder:validation:Enum=tcp;udp;""
+	// +ddmark:validation:Enum=tcp;udp;""
+	Protocol string `json:"protocol,omitempty"`
+	// +kubebuilder:validation:Enum=ingress;egress;""
+	// +ddmark:validation:Enum=ingress;egress;""
+	Flow string `json:"flow,omitempty"`
+	// +kubebuilder:validation:Enum=new;est;""
+	// +ddmark:validation:Enum=new;est;""
+	ConnState string `json:"connState,omitempty"`
 }
 
 // Validate validates args for the given disruption
@@ -141,12 +174,12 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 
 	// append hosts
 	for _, host := range s.Hosts {
-		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s;%s", host.Host, host.Port, host.Protocol, host.Flow))
+		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState))
 	}
 
 	// append allowed hosts
 	for _, host := range s.AllowedHosts {
-		args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s;%s", host.Host, host.Port, host.Protocol, host.Flow))
+		args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState))
 	}
 
 	// append services
@@ -157,8 +190,27 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	return args
 }
 
+// TransformToCloudMap for ease of computing when transforming the cloud services ip ranges to a list of hosts to disrupt
+func (s *NetworkDisruptionCloudSpec) TransformToCloudMap() map[string][]NetworkDisruptionCloudServiceSpec {
+	clouds := map[string][]NetworkDisruptionCloudServiceSpec{}
+
+	if s.AWSServiceList != nil {
+		clouds["AWS"] = *s.AWSServiceList
+	}
+
+	if s.GCPServiceList != nil {
+		clouds["GCP"] = *s.GCPServiceList
+	}
+
+	if s.DatadogServiceList != nil {
+		clouds["Datadog"] = *s.DatadogServiceList
+	}
+
+	return clouds
+}
+
 // NetworkDisruptionHostSpecFromString parses the given hosts to host specs
-// The expected format for hosts is <host>;<port>;<protocol>;<flow>
+// The expected format for hosts is <host>;<port>;<protocol>;<flow>;<connState>
 func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHostSpec, error) {
 	var err error
 
@@ -169,9 +221,10 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 		port := 0
 		protocol := ""
 		flow := ""
+		connState := ""
 
-		// parse host with format <host>;<port>;<protocol>;<flow>
-		parsedHost := strings.SplitN(host, ";", 4)
+		// parse host with format <host>;<port>;<protocol>;<flow>;<connState>
+		parsedHost := strings.SplitN(host, ";", 5)
 
 		// cast port to int if specified
 		if len(parsedHost) > 1 && parsedHost[1] != "" {
@@ -191,12 +244,18 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 			flow = parsedHost[3]
 		}
 
+		// get conn state if specified
+		if len(parsedHost) > 4 && parsedHost[4] != "" {
+			connState = parsedHost[4]
+		}
+
 		// generate host spec
 		parsedHosts = append(parsedHosts, NetworkDisruptionHostSpec{
-			Host:     parsedHost[0],
-			Port:     port,
-			Protocol: protocol,
-			Flow:     flow,
+			Host:      parsedHost[0],
+			Port:      port,
+			Protocol:  protocol,
+			Flow:      flow,
+			ConnState: connState,
 		})
 	}
 

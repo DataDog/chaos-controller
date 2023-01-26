@@ -1,16 +1,12 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 package utils
 
 import (
-	"encoding/json"
-	"net/mail"
-
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
-	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -33,15 +29,4 @@ func BuildHeaderMessageFromDisruptionEvent(dis v1beta1.Disruption, notifType typ
 	default:
 		return "Disruption '" + dis.Name + "' encountered an issue."
 	}
-}
-
-func GetUserInfoFromDisruption(dis v1beta1.Disruption) (*mail.Address, error) {
-	var annotation v1.UserInfo
-
-	err := json.Unmarshal([]byte(dis.Annotations["UserInfo"]), &annotation)
-	if err != nil {
-		return nil, err
-	}
-
-	return mail.ParseAddress(annotation.Username)
 }

@@ -1,15 +1,17 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package slack
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
+	"net/mail"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -17,8 +19,19 @@ import (
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 	"github.com/slack-go/slack"
 	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 )
+
+const (
+	infoNotAvailable = "n/a"
+)
+
+//go:generate mockery --name=slackNotifier --inpackage --case=underscore --testonly --disable-version-string --with-expecter
+type slackNotifier interface {
+	PostMessage(channelID string, options ...slack.MsgOption) (string, string, error)
+	GetUserByEmail(email string) (*slack.User, error)
+}
 
 type NotifierSlackConfig struct {
 	Enabled              bool
@@ -28,7 +41,7 @@ type NotifierSlackConfig struct {
 
 // Notifier describes a Slack notifier
 type Notifier struct {
-	client slack.Client
+	client slackNotifier
 	common types.NotifiersCommonConfig
 	config NotifierSlackConfig
 	logger *zap.SugaredLogger
@@ -43,13 +56,18 @@ func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConf
 	}
 
 	tokenfile, err := os.Open(filepath.Clean(not.config.TokenFilepath))
-
 	if err != nil {
 		return nil, fmt.Errorf("slack token file not found: %w", err)
 	}
 
-	token, err := ioutil.ReadAll(tokenfile)
+	defer func() {
+		err := tokenfile.Close()
+		if err != nil {
+			not.logger.Warnw("unable to close token file", "error", err)
+		}
+	}()
 
+	token, err := io.ReadAll(tokenfile)
 	if err != nil {
 		return nil, fmt.Errorf("slack token file could not be read: %w", err)
 	}
@@ -61,11 +79,13 @@ func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConf
 	}
 
 	stoken = strings.Fields(stoken)[0] // removes eventual \n at the end of the file
-	not.client = *slack.New(stoken)
+	slackClient := slack.New(stoken)
 
-	if _, err = not.client.AuthTest(); err != nil {
+	if _, err = slackClient.AuthTest(); err != nil {
 		return nil, fmt.Errorf("slack auth failed: %w", err)
 	}
+
+	not.client = slackClient
 
 	not.logger.Info("notifier: slack notifier connected to workspace")
 
@@ -77,65 +97,68 @@ func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverSlack)
 }
 
-func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, bodyText string, headerText string, notifType types.NotificationType) []slack.Block {
+func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, notifType types.NotificationType) []*slack.TextBlockObject {
 	if n.common.ClusterName == "" {
 		if dis.ClusterName != "" {
 			n.common.ClusterName = dis.ClusterName
 		} else {
-			n.common.ClusterName = "n/a"
+			n.common.ClusterName = infoNotAvailable
 		}
 	}
 
-	return []slack.Block{
-		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, false, false)),
-		slack.NewDividerBlock(),
-		slack.NewSectionBlock(nil, []*slack.TextBlockObject{
-			slack.NewTextBlockObject("mrkdwn", "*Kind:*\n"+dis.Kind, false, false),
-			slack.NewTextBlockObject("mrkdwn", "*Name:*\n"+dis.Name, false, false),
-			slack.NewTextBlockObject("mrkdwn", "*Notification Type:*\n"+string(notifType), false, false),
-			slack.NewTextBlockObject("mrkdwn", "*Cluster:*\n"+n.common.ClusterName, false, false),
-			slack.NewTextBlockObject("mrkdwn", "*Namespace:*\n"+dis.Namespace, false, false),
-			slack.NewTextBlockObject("mrkdwn", "*Targets:*\n"+fmt.Sprint(len(dis.Status.Targets)), false, false),
-		}, nil),
-		slack.NewDividerBlock(),
-		slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", bodyText, false, false), nil, nil),
+	return []*slack.TextBlockObject{
+		slack.NewTextBlockObject("mrkdwn", "*Kind:*\n"+dis.Kind, false, false),
+		slack.NewTextBlockObject("mrkdwn", "*Name:*\n"+dis.Name, false, false),
+		slack.NewTextBlockObject("mrkdwn", "*Notification Type:*\n"+string(notifType), false, false),
+		slack.NewTextBlockObject("mrkdwn", "*Cluster:*\n"+n.common.ClusterName, false, false),
+		slack.NewTextBlockObject("mrkdwn", "*Namespace:*\n"+dis.Namespace, false, false),
+		slack.NewTextBlockObject("mrkdwn", "*Targets:*\n"+fmt.Sprint(len(dis.Status.TargetInjections)), false, false),
+		slack.NewTextBlockObject("mrkdwn", "*DryRun:*\n"+strconv.FormatBool(dis.Spec.DryRun), false, false),
+		slack.NewTextBlockObject("mrkdwn", "*Duration:*\n"+dis.Spec.Duration.Duration().String(), false, false),
 	}
 }
 
-// NotifyWarning generates a notification for generic k8s Warning events
+// Notify generates a notification for generic k8s events
 func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
 	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, notifType)
+	headerBlock := slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, false, false))
 	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, true)
-	blocks := n.buildSlackBlocks(dis, bodyText, headerText, notifType)
+	bodyBlock := slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", bodyText, false, false), nil, nil)
+	disruptionBlocks := n.buildSlackBlocks(dis, notifType)
 
-	// To remove when we stop testing this feature
-	if n.config.MirrorSlackChannelID != "" {
-		_, _, err := n.client.PostMessage(n.config.MirrorSlackChannelID,
-			slack.MsgOptionText(headerText, false),
-			slack.MsgOptionUsername("Disruption Status Bot"),
-			slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
-			slack.MsgOptionBlocks(blocks...),
-			slack.MsgOptionAsUser(true),
-		)
-		if err != nil {
-			n.logger.Errorw("slack notifier: couldn't send a message to the channel %s. %s", n.config.MirrorSlackChannelID, err.Error())
-		}
+	userInfo, err := dis.UserInfo()
+	if err != nil {
+		n.logger.Errorw("unable to retrieve disruption user info", "error", err, "disruption", dis.Name)
 	}
 
-	if notifType == types.NotificationInfo {
-		n.logger.Debugw("slack notifier: not sending info notification type to not flood user", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+	// Whenever a purpose is defined, we expect it to be available into all notifications sent messages
+	if nil != dis.Spec.Reporting && dis.Spec.Reporting.Purpose != "" {
+		disruptionBlocks = append(disruptionBlocks, slack.NewTextBlockObject("mrkdwn", "*Purpose:*\n"+dis.Spec.Reporting.Purpose, false, false))
+	}
+
+	if n.config.MirrorSlackChannelID != "" {
+		n.sendMessageToChannel(userInfo, n.config.MirrorSlackChannelID, headerText, headerBlock, disruptionBlocks, bodyBlock)
+	}
+
+	if nil != dis.Spec.Reporting && dis.Spec.Reporting.SlackChannel != "" && dis.Spec.Reporting.MinNotificationType.Allows(notifType) {
+		n.sendMessageToChannel(userInfo, dis.Spec.Reporting.SlackChannel, headerText, headerBlock, disruptionBlocks, bodyBlock)
+	}
+
+	// We expect notification equal to or above success to be sent to users
+	if !types.NotificationSuccess.Allows(notifType) {
+		n.logger.Debugw("slack notifier: not sending info notification type to not flood user", "disruptionName", dis.Name, "eventType", event.Type, "message", bodyText)
 
 		return nil
 	}
 
-	emailAddr, err := utils.GetUserInfoFromDisruption(dis)
+	emailAddr, err := mail.ParseAddress(userInfo.Username)
 	if err != nil {
-		return fmt.Errorf("slack notifier: no userinfo in disruption %s: %v", dis.Name, err)
+		return fmt.Errorf("slack notifier: invalid user info email in disruption %s: %w", dis.Name, err)
 	}
 
 	p1, err := n.client.GetUserByEmail(emailAddr.Address)
 	if err != nil {
-		n.logger.Warn(fmt.Errorf("slack notifier: user %s not found: %w", emailAddr.Address, err))
+		n.logger.Warnw("slack notifier: user not found", "userAddress", emailAddr.Address, "error", err)
 		return nil
 	}
 
@@ -143,14 +166,44 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		slack.MsgOptionText(headerText, false),
 		slack.MsgOptionUsername("Disruption Status Bot"),
 		slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
-		slack.MsgOptionBlocks(blocks...),
+		slack.MsgOptionBlocks(
+			headerBlock,
+			slack.NewDividerBlock(),
+			slack.NewSectionBlock(nil, disruptionBlocks, nil),
+			slack.NewDividerBlock(),
+			bodyBlock,
+		),
 		slack.MsgOptionAsUser(true),
 	)
 	if err != nil {
 		return fmt.Errorf("slack notifier: %w", err)
 	}
 
-	n.logger.Debugw("notifier: sending notifier event to slack", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+	n.logger.Debugw("notifier: sending notifier event to slack", "disruptionName", dis.Name, "eventType", event.Type, "message", bodyText)
 
 	return nil
+}
+
+func (n *Notifier) sendMessageToChannel(userInfo authv1.UserInfo, slackChannel, headerText string, headerBlock *slack.HeaderBlock, disruptionBlocks []*slack.TextBlockObject, bodyBlock *slack.SectionBlock) {
+	userName := infoNotAvailable
+	if userInfo.Username != "" {
+		userName = userInfo.Username
+	}
+
+	_, _, err := n.client.PostMessage(slackChannel,
+		slack.MsgOptionText(headerText, false),
+		slack.MsgOptionUsername("Disruption Status Bot"),
+		slack.MsgOptionIconURL("https://upload.wikimedia.org/wikipedia/commons/3/39/LogoChaosMonkeysNetflix.png"),
+		slack.MsgOptionBlocks(
+			headerBlock,
+			slack.NewDividerBlock(),
+			slack.NewSectionBlock(nil, append(disruptionBlocks, slack.NewTextBlockObject("mrkdwn", "*Author:*\n"+userName, false, false)), nil),
+			slack.NewDividerBlock(),
+			bodyBlock,
+		),
+		slack.MsgOptionAsUser(true),
+	)
+	if err != nil {
+		n.logger.Errorw("slack notifier: couldn't send a message to the channel", "slackChannel", slackChannel, "error", err)
+	}
 }

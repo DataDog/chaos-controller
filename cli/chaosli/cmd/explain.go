@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package cmd
 
@@ -38,6 +38,18 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 
 	if spec.Selector != nil {
 		fmt.Printf("\tℹ️  has the following selectors which will be used to target %ss\n\t\t🎯  %s\n", spec.Level, spec.Selector.String())
+	}
+
+	if spec.AdvancedSelector != nil {
+		fmt.Printf("\tℹ️  has the following advanced selectors which will be used to target %ss:\n", spec.Level)
+
+		for _, selector := range spec.AdvancedSelector {
+			fmt.Printf("\t\t🎯  %s\n", selector.String())
+		}
+	}
+
+	if spec.Filter != nil && spec.Filter.Annotations != nil {
+		fmt.Printf("\tℹ️  has the following annotation filters which will be used to target %ss\n\t\t🎯  %s\n", spec.Level, spec.Filter.Annotations.String())
 	}
 
 	if spec.Containers != nil {
@@ -194,20 +206,8 @@ func explainGRPC(spec v1beta1.DisruptionSpec) {
 	PrintSeparator()
 }
 
-func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
-	network := spec.Network
-
-	if network == nil {
-		return
-	}
-
-	fmt.Println("💉 injects a network disruption ...")
-
-	if len(network.Hosts) != 0 {
-		fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following hosts/ports/protocols triplets:")
-	}
-
-	for _, data := range network.Hosts {
+func explainHosts(hosts []v1beta1.NetworkDisruptionHostSpec) {
+	for _, data := range hosts {
 		if len(data.Host) != 0 {
 			fmt.Printf("\t\t🎯 Host: %s\n", data.Host)
 		} else {
@@ -232,6 +232,21 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 			fmt.Println("\t💥 applies network failures on outgoing traffic.")
 		}
 	}
+}
+
+func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
+	network := spec.Network
+
+	if network == nil {
+		return
+	}
+
+	fmt.Println("💉 injects a network disruption ...")
+
+	if len(network.Hosts) != 0 {
+		fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following hosts/ports/protocols triplets:")
+		explainHosts(network.Hosts)
+	}
 
 	if len(network.Services) != 0 {
 		fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following services/namespaces pairs:")
@@ -254,12 +269,21 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t💣 applies a packet delay of %d ms.\n", network.Delay)
 
 		if network.DelayJitter != 0 {
-			fmt.Printf("\t\t\t💣 applies a jitter of %d ms to the delay value to add randomness to the delay.\n", network.Delay)
+			fmt.Printf("\t\t\t💣 applies a jitter of %d ms to the delay value to add randomness to the delay.\n", network.DelayJitter)
 		}
 	}
 
 	if network.BandwidthLimit != 0 {
 		fmt.Printf("\t\t💣 applies a bandwidth limit of %d ms.\n", network.BandwidthLimit)
+	}
+
+	if len(network.AllowedHosts) > 0 {
+		fmt.Println("\t💥  will apply filters so that the injected network failure excludes affecting traffic to/from the following host tuples:")
+		explainHosts(network.AllowedHosts)
+	}
+
+	if network.DisableDefaultAllowedHosts {
+		fmt.Printf("\t\tSetting disableDefaultAllowedHosts will remove the default list of excluded hosts from disruptions, and will allow you to prevent targets from reaching the k8s api. \n")
 	}
 
 	PrintSeparator()

@@ -14,18 +14,20 @@ var serverAddr string
 func init() {
 ```
 
-Make sure you have already setup chaos-controller on your local minikube by following the main [CONTRIBUTING.md](../../CONTRIBUTING.md) guidelines.
+Make sure you have already setup chaos-controller on your local Colima by following the main [CONTRIBUTING.md](../../CONTRIBUTING.md) guidelines.
 
 To run the dogfood application, go through the `build` and `install` instructions in [dogfood/CONTRIBUTING.md](../../dogfood/CONTRIBUTING.md). If you already have the application running, `restart` it.
 
 ### (1) Follow client logs
 
 Get pod name (such as `chaos-dogfood-client-84596b6c5-8kdxl` or `chaos-dogfood-server-5fdcff889f-hblj2`) by running:
+
 ```
 kubectl -n chaos-demo get pods -o wide
 ```
 
 Follow live logs with the `--follow` option on the `logs` command:
+
 ```
 kubectl -n chaos-demo logs --follow <pod name such as chaos-dogfood-client-84596b6c5-8kdxl>
 ```
@@ -35,6 +37,7 @@ kubectl -n chaos-demo logs --follow <pod name such as chaos-dogfood-client-84596
 From the root of the repository, run `kubectl apply -f examples/grpc_error.yaml`.
 
 Which applies the following `disruption` spec ([examples/grpc_error.yaml](../../examples/grpc_error.yaml)):
+
 ```
 spec:
   level: pod
@@ -51,16 +54,18 @@ spec:
 ```
 
 To break this down:
-* `app: chaos-dogfood-server` - a selector identifying which pods to disrupt (in this case, `chaos-dogfood-server-5fdcff889f-hblj2`).
-* `port: 50050` - port to connect to the gRPC application on your pod (it's distinct from the port you expose on the Kubernetes `Service` which in this case would be `50051`, not `50050`).
-* Since the `endpoints` do not have `query_percent`s specified, the assigned errors will be applied to all queries for the respective endpoints.
+
+- `app: chaos-dogfood-server` - a selector identifying which pods to disrupt (in this case, `chaos-dogfood-server-5fdcff889f-hblj2`).
+- `port: 50050` - port to connect to the gRPC application on your pod (it's distinct from the port you expose on the Kubernetes `Service` which in this case would be `50051`, not `50050`).
+- Since the `endpoints` do not have `query_percent`s specified, the assigned errors will be applied to all queries for the respective endpoints.
 
 The sample client logs might look like in the moment the disruption is applied:
+
 ```
 x
 | catalog: 3 items returned (cow, cat, dog)
 | ERROR ordering food: rpc error: code = Unknown desc = Sorry, we don't deliver food for your mouse =(
-| ordered: 
+| ordered:
 x
 | catalog: 3 items returned (cat, dog, cow)
 | ordered: Chewey is on its way!
@@ -71,21 +76,21 @@ x
 | ERROR getting catalog:rpc error: code = Unavailable desc = Chaos Controller injected this error: UNAVAILABLE
 | catalog: 0 items returned ()
 | ERROR ordering food: rpc error: code = NotFound desc = Chaos Controller injected this error: NOT_FOUND
-| ordered: 
+| ordered:
 x
 | ERROR getting catalog:rpc error: code = Unavailable desc = Chaos Controller injected this error: UNAVAILABLE
 | catalog: 0 items returned ()
 | ERROR ordering food: rpc error: code = NotFound desc = Chaos Controller injected this error: NOT_FOUND
-| ordered: 
+| ordered:
 x
 | ERROR getting catalog:rpc error: code = Unavailable desc = Chaos Controller injected this error: UNAVAILABLE
 | catalog: 0 items returned ()
 | ERROR ordering food: rpc error: code = NotFound desc = Chaos Controller injected this error: NOT_FOUND
-| ordered: 
+| ordered:
 x
 ```
 
-The first three groups of logs (where a "group" is demarkated by an `x`) are healthy responses, and second three groups are each returning the configured errors for both requests' types.
+The first three groups of logs (where a "group" is demarcated by an `x`) are healthy responses, and second three groups are each returning the configured errors for both requests' types.
 
 Run `kubectl delete -f examples/grpc_error.yaml` to remove the disruption. You should see the logs you are following revert back to the original responses which successfully fill orders for `dog` and `cat` but not `mouse`.
 
@@ -94,6 +99,7 @@ Run `kubectl delete -f examples/grpc_error.yaml` to remove the disruption. You s
 From the root of the repository, run `kubectl apply -f examples/grpc_override.yaml`.
 
 Which applies the following `disruption` spec ([examples/grpc_override.yaml](../../examples/grpc_override.yaml)):
+
 ```
 spec:
   level: pod
@@ -110,6 +116,7 @@ spec:
 ```
 
 The sample client logs might look like in the moment the disruption is applied:
+
 ```
 x
 | catalog: 3 items returned (cat, dog, cow)
@@ -120,16 +127,16 @@ x
 x
 | catalog: 3 items returned (cat, dog, cow)
 | ERROR ordering food: rpc error: code = Unknown desc = Sorry, we don't deliver food for your mouse =(
-| ordered: 
+| ordered:
 x
 | catalog: 0 items returned ()
-| ordered: 
+| ordered:
 x
 | catalog: 0 items returned ()
-| ordered: 
+| ordered:
 x
 | catalog: 0 items returned ()
-| ordered: 
+| ordered:
 x
 ```
 
@@ -140,6 +147,7 @@ For now, the only override available is an empty protobuf message denoted by `"{
 From the root of the repository, run `kubectl apply -f examples/grpc.yaml`.
 
 Which applies the following `disruption` spec ([examples/grpc.yaml](../../examples/grpc.yaml)):
+
 ```
 spec:
   level: pod
@@ -163,12 +171,14 @@ spec:
 ```
 
 The endpoints here read as follows:
-* for 25% of `getCatalog` queries, return a `NOT_FOUND` error
-* for 50% of `getCatalog` queries, return a `ALREADY_EXISTS` error
-* for remaining `getCatalog` queries (which calculates to 25%), return an empty protobuf message
-* for 50% of `order` queries, return an empty protobuf message
+
+- for 25% of `getCatalog` queries, return a `NOT_FOUND` error
+- for 50% of `getCatalog` queries, return a `ALREADY_EXISTS` error
+- for remaining `getCatalog` queries (which calculates to 25%), return an empty protobuf message
+- for 50% of `order` queries, return an empty protobuf message
 
 You can verify approximately that these proportions are honored in the logs:
+
 ```
 x
 | ERROR getting catalog:rpc error: code = NotFound desc = Chaos Controller injected this error: NOT_FOUND
@@ -177,23 +187,23 @@ x
 x
 | ERROR getting catalog:rpc error: code = AlreadyExists desc = Chaos Controller injected this error: ALREADY_EXISTS
 | catalog: 0 items returned ()
-| ordered: 
+| ordered:
 x
 | catalog: 0 items returned ()
-| ordered: 
+| ordered:
 x
 | ERROR getting catalog:rpc error: code = AlreadyExists desc = Chaos Controller injected this error: ALREADY_EXISTS
 | catalog: 0 items returned ()
-| ordered: 
+| ordered:
 x
 | ERROR getting catalog:rpc error: code = NotFound desc = Chaos Controller injected this error: NOT_FOUND
 | catalog: 0 items returned ()
 | ERROR ordering food: rpc error: code = Unknown desc = Sorry, we don't deliver food for your mouse =(
-| ordered: 
+| ordered:
 x
 | ERROR getting catalog:rpc error: code = AlreadyExists desc = Chaos Controller injected this error: ALREADY_EXISTS
 | catalog: 0 items returned ()
-| ordered: 
+| ordered:
 x
 | ERROR getting catalog:rpc error: code = NotFound desc = Chaos Controller injected this error: NOT_FOUND
 | catalog: 0 items returned ()
@@ -201,7 +211,7 @@ x
 x
 | ERROR getting catalog:rpc error: code = AlreadyExists desc = Chaos Controller injected this error: ALREADY_EXISTS
 | catalog: 0 items returned ()
-| ordered: 
+| ordered:
 x
 | ERROR getting catalog:rpc error: code = NotFound desc = Chaos Controller injected this error: NOT_FOUND
 | catalog: 0 items returned ()
@@ -213,7 +223,7 @@ x
 x
 | ERROR getting catalog:rpc error: code = AlreadyExists desc = Chaos Controller injected this error: ALREADY_EXISTS
 | catalog: 0 items returned ()
-| ordered: 
+| ordered:
 x
 | ERROR getting catalog:rpc error: code = AlreadyExists desc = Chaos Controller injected this error: ALREADY_EXISTS
 | catalog: 0 items returned ()
@@ -225,10 +235,10 @@ x
 | ERROR getting catalog:rpc error: code = AlreadyExists desc = Chaos Controller injected this error: ALREADY_EXISTS
 | catalog: 0 items returned ()
 | ERROR ordering food: rpc error: code = Unknown desc = Sorry, we don't deliver food for your mouse =(
-| ordered: 
+| ordered:
 x
 | catalog: 0 items returned ()
-| ordered: 
+| ordered:
 ```
 
 As usual, run `kubectl delete -f examples/grpc.yaml` to remove the disruption.

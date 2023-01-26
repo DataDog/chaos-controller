@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package datadog
 
@@ -114,11 +114,16 @@ func (n *Notifier) GetNotifierName() string {
 
 // NotifyWarning generates a notification for generic k8s Warning events
 func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
-	emailAddr, err := utils.GetUserInfoFromDisruption(dis)
-	if err != nil {
-		n.logger.Warnf("http notifier: no userinfo in disruption %s: %v", dis.Name, err)
+	emailAddr := &mail.Address{}
 
-		emailAddr = &mail.Address{}
+	if userInfo, err := dis.UserInfo(); err != nil {
+		n.logger.Warnw("http notifier: no user info in disruption", "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace, "error", err)
+	} else {
+		if userInfoEmailAddr, err := mail.ParseAddress(userInfo.Username); err != nil {
+			n.logger.Warnw("http notifier: user info username is not a valid email address", "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace, "error", err, "username", userInfo.Username)
+		} else {
+			emailAddr = userInfoEmailAddr
+		}
 	}
 
 	notif := HTTPNotifierEvent{
@@ -129,7 +134,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		DisruptionName:     dis.Name,
 		Cluster:            n.common.ClusterName,
 		Namespace:          dis.Namespace,
-		TargetsCount:       len(dis.Status.Targets),
+		TargetsCount:       len(dis.Status.TargetInjections),
 		Username:           emailAddr.Name,
 		UserEmail:          emailAddr.Address,
 	}

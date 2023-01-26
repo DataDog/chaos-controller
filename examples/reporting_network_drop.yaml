@@ -1,0 +1,23 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2023 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: reporting-network-drop
+  namespace: chaos-demo
+spec:
+  reporting: # optional, add custom notification for this disruption
+    slackChannel: team-slack-channel # required, custom slack channel to send notifications to (can be a name or slack channel ID)
+    purpose:
+      | # required, purpose/contextual informations to explain reasons of the disruption launch, can contain markdown formatting
+      *full network drop*: _aims to validate retry capabilities of demo-curl_. Contact #team-test for more informations.
+    minNotificationType: Info # optional, minimal notification type to be notified, default is Success, available options are Info, Success, Warning, Error
+  level: pod
+  selector:
+    app: demo-curl
+  count: 1
+  network:
+    drop: 100 # percentage of outgoing packets to drop

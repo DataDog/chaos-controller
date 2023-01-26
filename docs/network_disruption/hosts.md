@@ -8,7 +8,7 @@
 
 As with all disruptions, pods or nodes are targeted for injection if they satisfy the conditions of the label selector specified in the `selector` field. 
 For network disruptions, we can also specify to only disrupt packets interacting with a particular host or set of hosts through the `network.hosts` field. We will refer to `network.hosts` field in the rest of the document as the `hosts` field.
-The `hosts` field takes a list of `host`/`port`/`protocol` tuples. All three fields are optional.
+The `hosts` field takes a list of `host`/`port`/`protocol`/`connState` tuples. All three fields are optional.
 
 <p align="center"><kbd>
     <img src="../../docs/img/network_hosts/notation_egress.png" height=160 width=570 />
@@ -32,6 +32,12 @@ network:
       namespace: example_namespace
 ```
 
+### Headless Services
+
+A "headless" service is a ClusterIP service whose ClusterIP is defined as "None". This means that connecting clients 
+need to resolve the service's hostname via a separate service resolution system. When a headless service is specified under 
+`spec.network.services`, we will resolve the service and block all traffic to all returned endpoints.
+
 ## Q: How can I exclude some hosts from being disrupted?
 
 It is sometimes handy to disrupt all packets going to a whole CIDR but excluding some of them. You have two ways to exclude some hosts from being disrupted in a network disruption:
@@ -53,6 +59,8 @@ You can pass a flag to the controller to specify hosts which would be excluded f
 It can be configured easily [in the chart values.yaml file](../../chart/values.yaml).
 
 ## Q: What are the default excluded hosts?
+
+These can be disabled by setting `network.disableDefaultAllowedHosts: false` in your Disruption's spec.
 
 ### Pod level network disruptions
 

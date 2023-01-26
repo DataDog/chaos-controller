@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package types
 
@@ -25,11 +25,34 @@ const (
 	NotifierDriverHTTP NotifierDriver = "http"
 )
 
+// NotificationType is the type representing all notification types level available
+// In order of importance it's Info, Success, Warning, Error
+// Default level is considered Success, meaning all info will be ignored
+// +kubebuilder:default=Success
+// +kubebuilder:validation:Enum=Info;Success;Warning;Error
+// +ddmark:validation:Enum=Info;Success;Warning;Error
 type NotificationType string
 
 const (
-	NotificationSuccess NotificationType = "Success"
+	NotificationUnknown NotificationType = ""
 	NotificationInfo    NotificationType = "Info"
+	NotificationSuccess NotificationType = "Success"
 	NotificationWarning NotificationType = "Warning"
 	NotificationError   NotificationType = "Error"
 )
+
+// Allows determines if provided notif is above or equal to checked notificationType
+// We treat notifications similarly to log levels excluding all NotificationType strictly below defined NotificationType
+// Hence, Success will allow Success and above (Warning, Error)...
+func (n NotificationType) Allows(notif NotificationType) bool {
+	switch n {
+	case NotificationSuccess, NotificationUnknown:
+		return notif != NotificationInfo
+	case NotificationWarning:
+		return notif == NotificationWarning || notif == NotificationError
+	case NotificationError:
+		return notif == NotificationError
+	default:
+		return true
+	}
+}

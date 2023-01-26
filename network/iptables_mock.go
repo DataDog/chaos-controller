@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package network
 
@@ -34,7 +34,7 @@ func (f *IptablesMock) AddRuleWithIP(chain string, protocol string, port string,
 }
 
 //nolint:golint
-func (f *IptablesMock) PrependRule(chain string, rulespec ...string) error {
+func (f *IptablesMock) PrependRuleSpec(chain string, rulespec ...string) error {
 	args := f.Called(chain, rulespec)
 
 	return args.Error(0)
@@ -43,6 +43,13 @@ func (f *IptablesMock) PrependRule(chain string, rulespec ...string) error {
 //nolint:golint
 func (f *IptablesMock) DeleteRule(chain string, protocol string, port string, jump string) error {
 	args := f.Called(chain, protocol, port, jump)
+
+	return args.Error(0)
+}
+
+//nolint:golint
+func (f *IptablesMock) DeleteRuleSpec(chain string, rulespec ...string) error {
+	args := f.Called(chain, rulespec)
 
 	return args.Error(0)
 }

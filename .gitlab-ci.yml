@@ -1,7 +1,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2021 Datadog, Inc.
+# Copyright 2022 Datadog, Inc.
 
 ---
 variables:
@@ -13,47 +13,45 @@ variables:
 stages:
   - ci-image
   - build
-  - pre-release
-  - release
+  - release-staging
+  - release-prod
   - release-public
   - notify
 
-# Slack Notify Base
-.slack-notifier-base:
-  tags: [ "runner:main", "size:large" ]
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/slack-notifier:latest
-  allow_failure: true
-  when: on_failure
-  script:
-    - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
-    - 'MESSAGE_TEXT=":siren: | $CI_PIPELINE_NAME Pipeline Failure | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
-    - postmessage "#chaos-ops" "$MESSAGE_TEXT"
+.docker-runner: &docker-runner
+  image: registry.ddbuild.io/docker-push:1.7.0
+  tags: ["runner:docker"]
+
+# login into Docker Hub -- allows to not get rate-limited on releases
+.docker-hub-login: &docker-hub-login
+  <<: *docker-runner
+  before_script:
+    - echo "Logging into the Docker Hub"
+    - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
+    - aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_pwd --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin docker.io
 
 # CI image
-.docker-runner: &docker-runner
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:1.7.0
-  tags:
-    - "runner:docker"
-
 ci-image:
-  <<: *docker-runner
+  <<: *docker-hub-login
   stage: ci-image
   when: manual
   except: [tags, schedules]
   script:
     - docker buildx create --use
-    - docker buildx build --platform linux/amd64,linux/arm64 --tag 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/chaos-controller:$CURRENT_CI_IMAGE ci --push
+    - docker buildx build --platform linux/amd64,linux/arm64 --tag registry.ddbuild.io/ci/chaos-controller:$CURRENT_CI_IMAGE ci --push
 
-# main
+# main make build
 build:make:
   <<: *docker-runner
   stage: build
   when: always
+  variables:
+    GO_FILENAME: go1.18.1.linux-amd64.tar.gz
   script:
     - apt-get update
     - apt-get -y install build-essential git
-    - curl -O https://dl.google.com/go/go1.18.1.linux-amd64.tar.gz
-    - rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.1.linux-amd64.tar.gz
+    - curl -O https://dl.google.com/go/${GO_FILENAME}
+    - rm -rf /usr/local/go && tar -C /usr/local -xzf ${GO_FILENAME}
     - export PATH=$PATH:/usr/local/go/bin
     - make
   artifacts:
@@ -65,133 +63,81 @@ build:make:
       - bin/manager/manager_arm64
       - bin/handler/handler_arm64
 
-# meta-release
-# release image and common stuff
-.meta-release: &meta-release
-  <<: *docker-runner
-  before_script:
-    - echo "Logging into the Docker Hub"
-    - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
-    - aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_pwd --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin docker.io
-
-# pre-release
-# build the target from the local Dockerfile and push it to
-# AWS staging registry
-.pre-release: &pre-release
-  <<: *meta-release
-  stage: pre-release
+# build the target from the local Dockerfile and push it to the registry
+# replication will depend on the TARGET_LABEL set by parent job
+.build-image: &build-image
+  <<: *docker-hub-login
   script:
     - docker buildx create --use
-    - docker buildx build --platform linux/amd64,linux/arm64 -t 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME}:${TAG} -f bin/manager/Dockerfile ./bin/manager/ --push
-    - docker buildx build --platform linux/amd64,linux/arm64 -t 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME}:${TAG} -f bin/injector/Dockerfile ./bin/injector/ --push
-    - docker buildx build --platform linux/amd64,linux/arm64 -t 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME}:${TAG} -f bin/handler/Dockerfile ./bin/handler/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/manager/Dockerfile ./bin/manager/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/injector/Dockerfile ./bin/injector/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/handler/Dockerfile ./bin/handler/ --push
   dependencies:
     - build:make
 
-# pre-release-ref
-# build a reference image tag for controller images
-pre-release-ref:
-  <<: *pre-release
-  when: manual
-  except:
-    - tags
-  variables:
-    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+# release a ref on the staging ECRs
+.release-staging: &release-staging
+  <<: *build-image
+  stage: release-staging
 
 # pre-release-tag
 # build a tag image tag for controller images
-pre-release-tag:
-  <<: *pre-release
-  when: always
-  only:
-    - tags
-  variables:
-    TAG: "${CI_COMMIT_TAG}"
+.release-prod: &release-prod
+  <<: *build-image
+  stage: release-prod
 
-# release
-# build the target from the local Dockerfile and push it unified registry
-.release: &release
-  <<: *meta-release
-  stage: release
-  script:
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth eu.gcr.io/datadog-staging/${IMAGE} ${TAG}
-    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-staging/${IMAGE}:${TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth eu.gcr.io/datadog-prod/${IMAGE} ${TAG}
-    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} eu.gcr.io/datadog-prod/${IMAGE}:${TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
-    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 464622532012.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth 020998557671.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
-    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 020998557671.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth registry.ddbuild.io/${IMAGE} ${TAG}
-    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} registry.ddbuild.io/${IMAGE}:${TAG}
-    - release.sh --pull-from=727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} --setup-auth 486234852809.dkr.ecr.us-east-1.amazonaws.com/${IMAGE} ${TAG}
-    - crane copy 727006795293.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG} 486234852809.dkr.ecr.us-east-1.amazonaws.com/${IMAGE}:${TAG}
-  before_script:
-    - set -x
-    - ./ci/supplement_docker_headers.sh
-
-.release-ref: &release-ref
-  <<: *release
+release-staging-ref:
+  <<: *release-staging
   when: manual
   except:
     - tags
+  variables:
+    TARGET_LABEL: "staging"
+    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
 
-.release-tag: &release-tag
-  <<: *release
+release-prod-ref:
+  <<: *release-prod
+  when: manual
+  except:
+    - tags
+  variables:
+    TARGET_LABEL: "prod"
+    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+
+release-staging-tag:
+  <<: *release-staging
+  when: manual
+  only:
+    - tags
+  variables:
+    TARGET_LABEL: "staging"
+    TAG: "${CI_COMMIT_TAG}"
+
+release-prod-tag:
+  <<: *release-prod
   when: always
   only:
     - tags
-
-release-controller-ref:
-  <<: *release-ref
   variables:
-    IMAGE: "${CONTROLLER_IMAGE_NAME}"
-    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-
-release-injector-ref:
-  <<: *release-ref
-  variables:
-    IMAGE: "${INJECTOR_IMAGE_NAME}"
-    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-
-release-handler-ref:
-  <<: *release-ref
-  variables:
-    IMAGE: "${HANDLER_IMAGE_NAME}"
-    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-
-release-controller-tag:
-  <<: *release-tag
-  variables:
-    IMAGE: "${CONTROLLER_IMAGE_NAME}"
+    TARGET_LABEL: "prod"
     TAG: "${CI_COMMIT_TAG}"
 
-release-injector-tag:
-  <<: *release-tag
-  variables:
-    IMAGE: "${INJECTOR_IMAGE_NAME}"
-    TAG: "${CI_COMMIT_TAG}"
-
-release-handler-tag:
-  <<: *release-tag
-  variables:
-    IMAGE: "${HANDLER_IMAGE_NAME}"
-    TAG: "${CI_COMMIT_TAG}"
+## Docker Hub Release
 
 .release-docker-hub: &release-docker-hub
-  <<: *meta-release
+  <<: *docker-hub-login
   stage: release-public
-  tags: [ "runner:docker" ]
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:v1912023-8c8dc1c-0.6.1
+  tags: ["runner:docker"]
+  image: registry.ddbuild.io/docker-notary:0.6.1
   script:
-    - docker pull 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME}:${TAG}
-    - docker tag 727006795293.dkr.ecr.us-east-1.amazonaws.com/${CONTROLLER_IMAGE_NAME}:${TAG} datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
+    - docker pull registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG}
+    - docker tag registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG} datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
     - docker push datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
-    - docker pull 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME}:${TAG}
-    - docker tag 727006795293.dkr.ecr.us-east-1.amazonaws.com/${INJECTOR_IMAGE_NAME}:${TAG} datadog/${INJECTOR_IMAGE_NAME}:${TAG}
+    - docker pull registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG}
+    - docker tag registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG} datadog/${INJECTOR_IMAGE_NAME}:${TAG}
     - docker push datadog/${INJECTOR_IMAGE_NAME}:${TAG}
-    - docker pull 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME}:${TAG}
-    - docker tag 727006795293.dkr.ecr.us-east-1.amazonaws.com/${HANDLER_IMAGE_NAME}:${TAG} datadog/${HANDLER_IMAGE_NAME}:${TAG}
+    - docker pull registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG}
+    - docker tag registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG} datadog/${HANDLER_IMAGE_NAME}:${TAG}
     - docker push datadog/${HANDLER_IMAGE_NAME}:${TAG}
 
 release-docker-hub-ref:
@@ -209,6 +155,17 @@ release-docker-hub-tag:
     - tags
   variables:
     TAG: "${CI_COMMIT_TAG}"
+
+# Slack Notify
+.slack-notifier-base:
+  tags: ["runner:main", "size:large"]
+  image: registry.ddbuild.io/slack-notifier:latest
+  allow_failure: true
+  when: on_failure
+  script:
+    - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
+    - 'MESSAGE_TEXT=":siren: | $CI_PIPELINE_NAME Pipeline Failure | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ] [ <$BUILD_URL|$CI_PIPELINE_ID> ]   :siren:"'
+    - postmessage "#chaos-ops" "$MESSAGE_TEXT"
 
 slack-notifier-build.on-failure:
   extends: .slack-notifier-base

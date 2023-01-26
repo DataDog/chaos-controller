@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package metrics
 
@@ -20,9 +20,11 @@ type Sink interface {
 	Close() error
 	GetSinkName() string
 	MetricCleaned(succeed bool, kind string, tags []string) error
+	MetricCleanedForReinjection(succeed bool, kind string, tags []string) error
 	MetricCleanupDuration(duration time.Duration, tags []string) error
 	MetricInjectDuration(duration time.Duration, tags []string) error
 	MetricInjected(succeed bool, kind string, tags []string) error
+	MetricReinjected(succeed bool, kind string, tags []string) error
 	MetricPodsCreated(target, instanceName, namespace string, succeed bool) error
 	MetricReconcile() error
 	MetricReconcileDuration(duration time.Duration, tags []string) error

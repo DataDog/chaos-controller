@@ -67,7 +67,7 @@ spec:
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2021 Datadog, Inc.
+# Copyright 2022 Datadog, Inc.
 
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
@@ -89,3 +89,9 @@ spec:
     throttling:
       readBytesPerSec: 1024 # read throttling in bytes per sec
 ```
+
+## FAQ
+
+### Why is the namespace/cluster threshold not equal to what I specified in my Disruption?
+It may be the case that 0 was used as namespace/cluster threshold. Because 0 has no value as a threshold, it is simply
+ignored as if it was omitted. And if omitted, the ConfigMaps `Unsafemode` default values kick in.

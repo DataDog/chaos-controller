@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package cmd
 
@@ -82,6 +82,7 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 
 	spec.Level = getLevel()
 	spec.Selector = getSelectors()
+	spec.Filter = getFilters()
 	spec.StaticTargeting = getStaticTargeting()
 	spec.Count = getCount()
 
@@ -545,6 +546,12 @@ func getNetwork() *v1beta1.NetworkDisruptionSpec {
 		spec.BandwidthLimit, _ = strconv.Atoi(getInput("What bandwidth limit should we set (in bytes per second)?", ">0", survey.WithValidator(survey.Required), survey.WithValidator(integerValidator)))
 	}
 
+	if confirmOption("Would you like to add additional allowedHosts?", "These will be added to an allowlist and will be excluded from the disruption.") {
+		spec.AllowedHosts = getHosts()
+	}
+
+	spec.DisableDefaultAllowedHosts = confirmOption("Would you like to add disable the default allowedHosts?", "DANGER: You can leave a node entirely unable to connect to the k8s api or cloud provider, which may have consequences.")
+
 	return spec
 }
 
@@ -630,8 +637,8 @@ func getPulse() *v1beta1.DisruptionPulse {
 	}
 }
 
-func getSelectors() labels.Set {
-	validator := func(val interface{}) error {
+func getLabelsSetValidator() func(val interface{}) error {
+	return func(val interface{}) error {
 		if str, ok := val.(string); ok {
 			for _, s := range strings.Split(str, "\n") {
 				if !strings.Contains(s, "=") {
@@ -644,12 +651,15 @@ func getSelectors() labels.Set {
 
 		return nil
 	}
+}
+
+func getSelectors() labels.Set {
 	selectors := getSliceInput(
 		"Add a label selector[s] for targeting.",
 		`Please specify this in the form of "key=value", e.g., "app=hello-node". One label selector per new-line. If you specify multiple, we will only target the union of all selectors.
 For example, if you set both "app=hello-node" and "pod-name=ubuntu-uuid", then no matter how many pods with the label "app=hello-node" there were, the disruption would only target pods who also had the label "pod-name=ubuntu-uuid".`,
 		survey.WithValidator(survey.Required),
-		survey.WithValidator(validator),
+		survey.WithValidator(getLabelsSetValidator()),
 	)
 
 	var selectorLabels labels.Set
@@ -666,6 +676,36 @@ For example, if you set both "app=hello-node" and "pod-name=ubuntu-uuid", then n
 	}
 
 	return selectorLabels
+}
+
+func getFilters() *v1beta1.DisruptionFilter {
+	a := confirmOption("Would you like to filter targets based on annotations", "We will remove any targets that don't contain matching annotations")
+	if a {
+		filters := getSliceInput(
+			"Add an annotation for filtering.",
+			`Please specify this in the form of "key=value", e.g., "app=hello-node". One annotation per new-line. If you specify multiple, we will only target the union of all.
+For example, if you set both "app=hello-node" and "pod-name=ubuntu-uuid", then no matter how many pods with the annotation "app=hello-node" there were, the disruption would only target pods who also had the annotation "pod-name=ubuntu-uuid".`,
+			survey.WithValidator(survey.Required),
+			survey.WithValidator(getLabelsSetValidator()),
+		)
+
+		var filterLabels labels.Set
+
+		for _, f := range filters {
+			fAsSet, err := labels.ConvertSelectorToLabelsMap(f)
+
+			if err != nil {
+				fmt.Printf("invalid selector string: %v", err)
+				return nil
+			}
+
+			filterLabels = labels.Merge(filterLabels, fAsSet)
+		}
+
+		return &v1beta1.DisruptionFilter{Annotations: filterLabels}
+	}
+
+	return nil
 }
 
 func getLevel() types.DisruptionLevel {

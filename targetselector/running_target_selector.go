@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package targetselector
 
@@ -56,6 +56,17 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 	runningPods := &corev1.PodList{}
 
 	for _, pod := range pods.Items {
+		// check the pod is already a disruption target
+		isAlreadyATarget := false
+
+		for target := range instance.Status.TargetInjections {
+			if target == pod.Name {
+				isAlreadyATarget = true
+
+				break
+			}
+		}
+
 		// apply controller safeguards if enabled
 		if r.controllerEnableSafeguards {
 			// skip the node running the controller if the disruption has a node failure in its spec
@@ -64,7 +75,16 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 			}
 		}
 
-		// if the disruption is applied on init, we only target pending pods with a running
+		if instance.Spec.Filter != nil {
+			for k, v := range instance.Spec.Filter.Annotations {
+				podAnno, ok := pod.Annotations[k]
+				if !ok || podAnno != v {
+					continue
+				}
+			}
+		}
+
+		// if the disruption is applied on init, we only target pending pods with a running (or terminated)
 		// chaos handler init container
 		// otherwise, we only target running pods
 		if instance.Spec.OnInit {
@@ -72,14 +92,17 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 
 			// search for a potential running chaos handler init container
 			for _, initContainerStatus := range pod.Status.InitContainerStatuses {
-				if initContainerStatus.Name == "chaos-handler" && initContainerStatus.State.Running != nil {
+				// If the container is the on init container named chaos handler and either in
+				// - a Running state, blocking the execution of the target
+				// - a Completed state, but already was targeted before and is being reevaluated because of dynamic targeting so we shouldn't remove the pod from the list of targets
+				if initContainerStatus.Name == "chaos-handler" && (initContainerStatus.State.Running != nil || (isAlreadyATarget && initContainerStatus.State.Terminated != nil && initContainerStatus.State.Terminated.Reason == "Completed")) {
 					hasChaosHandler = true
 
 					break
 				}
 			}
 
-			if pod.Status.Phase == corev1.PodPending && hasChaosHandler {
+			if hasChaosHandler && (pod.Status.Phase == corev1.PodPending || (pod.Status.Phase == corev1.PodRunning && isAlreadyATarget)) {
 				runningPods.Items = append(runningPods.Items, pod)
 			}
 		} else if pod.Status.Phase == corev1.PodRunning {
@@ -127,6 +150,15 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
 				ready = true
 				break
+			}
+		}
+
+		if instance.Spec.Filter != nil {
+			for k, v := range instance.Spec.Filter.Annotations {
+				nodeAnno, ok := node.Annotations[k]
+				if !ok || nodeAnno != v {
+					continue
+				}
 			}
 		}
 

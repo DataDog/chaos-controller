@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package disk
 
@@ -62,7 +62,7 @@ func FromPath(path string) (Informer, error) {
 
 	out, err = ls.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("error executing ls command: %w", err)
+		return nil, fmt.Errorf("error executing ls command: %w\noutput: %s", err, out)
 	}
 
 	// parse ls output, format is like:

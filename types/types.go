@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package types
 
@@ -54,6 +54,8 @@ const (
 	DisruptionInjectionStatusInjected DisruptionInjectionStatus = "Injected"
 	// DisruptionInjectionStatusPreviouslyInjected is the value of the injection status after the duration has expired
 	DisruptionInjectionStatusPreviouslyInjected DisruptionInjectionStatus = "PreviouslyInjected"
+	// DisruptionInjectionStatusIsStuckOnRemoval is the value of the injection status when the injection could not be removed
+	DisruptionInjectionStatusIsStuckOnRemoval DisruptionInjectionStatus = "IsStuckOnRemoval"
 
 	// DisruptionNameLabel is the label used to identify the disruption name for a chaos pod. This is used to determine pod ownership.
 	DisruptionNameLabel = "chaos.datadoghq.com/disruption-name"
@@ -70,6 +72,10 @@ const (
 	// Also used in the DNS Disruption to allow combined Network + DNS Disruption
 	// This value should NEVER be changed without changing the Network Disruption TC tree.
 	InjectorCgroupClassID = "0x00020002"
+
+	// DDMarkChaoslibPrefix allows to consistently name the chaos-imported API in ddmark.
+	// It's arbitrary but needs to be consistent across multiple files.
+	DDMarkChaoslibPrefix = "chaos-api"
 )
 
 func (d DisruptionKindName) String() string {

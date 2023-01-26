@@ -1,7 +1,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2021 Datadog, Inc.
+# Copyright 2023 Datadog, Inc.
 
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
@@ -11,6 +11,6 @@ metadata:
 spec:
   level: node # impact the whole node instead of a single pod
   selector:
-    minikube.k8s.io/name: minikube # when node level is enabled, the selector applies to nodes and not pods
+    kubernetes.io/hostname: lima-default # when node level is enabled, the selector applies to nodes and not pods
   count: 1
   cpuPressure: {}

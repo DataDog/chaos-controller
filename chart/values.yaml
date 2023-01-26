@@ -1,13 +1,13 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2021 Datadog, Inc.
+# Copyright 2023 Datadog, Inc.
 chaosNamespace: chaos-engineering # namespace where any resources get created.
 
 images: # images and tag to pull for each component of the stack
-  controller: docker.io/library/chaos-controller:latest
-  injector: docker.io/library/chaos-injector:latest
-  handler: docker.io/library/chaos-handler:latest
+  controller: k8s.io/chaos-controller:latest
+  injector: k8s.io/chaos-injector:latest
+  handler: k8s.io/chaos-handler:latest
   proxy: gcr.io/kubebuilder/kube-rbac-proxy:v0.4.1
   pullSecrets: false # name of the secret object to use when pulling images
 
@@ -18,18 +18,32 @@ controller:
   metricsSink: noop # metrics driver (noop or datadog)
   notifiers:
     common:
-      clusterName: "minikube"
+      clusterName: lima
     noop:
       enabled: true
     slack:
       enabled: false
       tokenFilepath: ""
       mirrorSlackChannelId: ""
+    datadog:
+      enabled: false
     http:
       enabled: false
       url: ""
       headersFilepath: ""
       headers: []
+  cloudProviders: # cloud providers specific disruptions configuration
+    disableAll: false # disable all cloud providers disruption, it overrides per cloud provider configuration (you can't disable all + enable one)
+    pullInterval: 24h # pull interval used by the controller to update ip ranges files
+    aws: # aws cloud provider config
+      enabled: true # enable the provider
+      ipRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json" # URL to the IP ranges file (format must be the expected one, defaults is the public file provided by the cloud provider)
+    gcp: # gcp cloud provider config
+      enabled: true # enable the provider
+      ipRangesURL: "https://www.gstatic.com/ipranges/goog.json" # URL to the IP ranges file (format must be the expected one, defaults is the public file provided by the cloud provider)
+    datadog: # datadog cloud provider config
+      enabled: true # enable the provider
+      ipRangesURL: "https://ip-ranges.datadoghq.com/" # URL to the IP ranges file (format must be the expected one, defaults is the public file provided by the cloud provider)
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true
@@ -40,7 +54,7 @@ controller:
     port: 9443 # port to use to serve requests
   safeMode:
     enable: false
-    networkThreshold: 80
+    namespaceThreshold: 80
     clusterThreshold: 66
 
 injector:

@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 /*
 
@@ -21,9 +21,12 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
+	"github.com/DataDog/chaos-controller/cloudservice"
+	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
 
 	"github.com/fsnotify/fsnotify"
@@ -38,6 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
 	"github.com/DataDog/chaos-controller/eventnotifier"
@@ -68,19 +72,20 @@ type config struct {
 }
 
 type controllerConfig struct {
-	MetricsBindAddr          string                        `json:"metricsBindAddr"`
-	MetricsSink              string                        `json:"metricsSink"`
-	ImagePullSecrets         string                        `json:"imagePullSecrets"`
-	ExpiredDisruptionGCDelay time.Duration                 `json:"expiredDisruptionGCDelay"`
-	DefaultDuration          time.Duration                 `json:"defaultDuration"`
-	DeleteOnly               bool                          `json:"deleteOnly"`
-	EnableSafeguards         bool                          `json:"enableSafeguards"`
-	EnableObserver           bool                          `json:"enableObserver"`
-	LeaderElection           bool                          `json:"leaderElection"`
-	Webhook                  controllerWebhookConfig       `json:"webhook"`
-	Notifiers                eventnotifier.NotifiersConfig `json:"notifiersConfig"`
-	UserInfoHook             bool                          `json:"userInfoHook"`
-	SafeMode                 safeModeConfig                `json:"safeMode"`
+	MetricsBindAddr          string                          `json:"metricsBindAddr"`
+	MetricsSink              string                          `json:"metricsSink"`
+	ImagePullSecrets         string                          `json:"imagePullSecrets"`
+	ExpiredDisruptionGCDelay time.Duration                   `json:"expiredDisruptionGCDelay"`
+	DefaultDuration          time.Duration                   `json:"defaultDuration"`
+	DeleteOnly               bool                            `json:"deleteOnly"`
+	EnableSafeguards         bool                            `json:"enableSafeguards"`
+	EnableObserver           bool                            `json:"enableObserver"`
+	LeaderElection           bool                            `json:"leaderElection"`
+	Webhook                  controllerWebhookConfig         `json:"webhook"`
+	Notifiers                eventnotifier.NotifiersConfig   `json:"notifiersConfig"`
+	CloudProviders           cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
+	UserInfoHook             bool                            `json:"userInfoHook"`
+	SafeMode                 safeModeConfig                  `json:"safeMode"`
 }
 
 type controllerWebhookConfig struct {
@@ -244,6 +249,30 @@ func main() {
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
 	handleFatalError(viper.BindPFlag("controller.safemode.clusterThreshold", pflag.Lookup("safemode-cluster-threshold")))
 
+	pflag.BoolVar(&cfg.Controller.CloudProviders.DisableAll, "cloud-providers-disable-all", false, "Disable all cloud providers disruptions (defaults to false, overrides all individual cloud providers configuration)")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.disableAll", pflag.Lookup("cloud-providers-disable-all")))
+
+	pflag.DurationVar(&cfg.Controller.CloudProviders.PullInterval, "cloud-providers-pull-interval", 24*time.Hour, "Interval of time to pull the ip ranges of all cloud providers' services (defaults to 1 day)")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.pullinterval", pflag.Lookup("cloud-providers-pull-interval")))
+
+	pflag.BoolVar(&cfg.Controller.CloudProviders.AWS.Enabled, "cloud-providers-aws-enabled", true, "Enable AWS cloud provider disruptions (defaults to true, is overridden by --cloud-providers-disable-all)")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.aws.enabled", pflag.Lookup("cloud-providers-aws-enabled")))
+
+	pflag.StringVar(&cfg.Controller.CloudProviders.AWS.IPRangesURL, "cloud-providers-aws-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.aws.ipRangesURL", pflag.Lookup("cloud-providers-aws-iprangesurl")))
+
+	pflag.BoolVar(&cfg.Controller.CloudProviders.GCP.Enabled, "cloud-providers-gcp-enabled", true, "Enable GCP cloud provider disruptions (defaults to true, is overridden by --cloud-providers-disable-all)")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.gcp.enabled", pflag.Lookup("cloud-providers-gcp-enabled")))
+
+	pflag.StringVar(&cfg.Controller.CloudProviders.GCP.IPRangesURL, "cloud-providers-gcp-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.gcp.ipRangesURL", pflag.Lookup("cloud-providers-gcp-iprangesurl")))
+
+	pflag.BoolVar(&cfg.Controller.CloudProviders.Datadog.Enabled, "cloud-providers-datadog-enabled", true, "Enable Datadog cloud provider disruptions (defaults to true, is overridden by --cloud-providers-disable-all)")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.enabled", pflag.Lookup("cloud-providers-datadog-enabled")))
+
+	pflag.StringVar(&cfg.Controller.CloudProviders.Datadog.IPRangesURL, "cloud-providers-datadog-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
+	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.ipRangesURL", pflag.Lookup("cloud-providers-datadog-iprangesurl")))
+
 	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
@@ -333,6 +362,14 @@ func main() {
 		gcPtr = &cfg.Controller.ExpiredDisruptionGCDelay
 	}
 
+	// initialize the cloud provider manager which will handle ip ranges files updates
+	cloudProviderManager, err := cloudservice.New(logger, cfg.Controller.CloudProviders)
+	if err != nil {
+		handleFatalError(fmt.Errorf("error initializing CloudProviderManager: %s", err.Error()))
+	}
+
+	cloudProviderManager.StartPeriodicPull()
+
 	// create reconciler
 	r := &controllers.DisruptionReconciler{
 		Client:                                mgr.GetClient(),
@@ -354,6 +391,7 @@ func main() {
 		CacheContextStore:                     make(map[string]controllers.CtxTuple),
 		Reader:                                mgr.GetAPIReader(),
 		EnableObserver:                        cfg.Controller.EnableObserver,
+		CloudServicesProvidersManager:         cloudProviderManager,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
@@ -374,16 +412,18 @@ func main() {
 
 	// register disruption validating webhook
 	setupWebhookConfig := utils.SetupWebhookWithManagerConfig{
-		Manager:                mgr,
-		Logger:                 logger,
-		MetricsSink:            ms,
-		Recorder:               r.Recorder,
-		NamespaceThresholdFlag: cfg.Controller.SafeMode.NamespaceThreshold,
-		ClusterThresholdFlag:   cfg.Controller.SafeMode.ClusterThreshold,
-		EnableSafemodeFlag:     cfg.Controller.SafeMode.Enable,
-		DeleteOnlyFlag:         cfg.Controller.DeleteOnly,
-		HandlerEnabledFlag:     cfg.Handler.Enabled,
-		DefaultDurationFlag:    cfg.Controller.DefaultDuration,
+		Manager:                       mgr,
+		Logger:                        logger,
+		MetricsSink:                   ms,
+		Recorder:                      r.Recorder,
+		NamespaceThresholdFlag:        cfg.Controller.SafeMode.NamespaceThreshold,
+		ClusterThresholdFlag:          cfg.Controller.SafeMode.ClusterThreshold,
+		EnableSafemodeFlag:            cfg.Controller.SafeMode.Enable,
+		DeleteOnlyFlag:                cfg.Controller.DeleteOnly,
+		HandlerEnabledFlag:            cfg.Handler.Enabled,
+		DefaultDurationFlag:           cfg.Controller.DefaultDuration,
+		ChaosNamespace:                cfg.Injector.ChaosNamespace,
+		CloudServicesProvidersManager: cloudProviderManager,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
@@ -416,6 +456,10 @@ func main() {
 	defer func() {
 		for _, contextTuple := range r.CacheContextStore {
 			contextTuple.CancelFunc()
+		}
+
+		if err := ddmark.CleanupLibraries(); err != nil {
+			logger.Error(err)
 		}
 	}()
 

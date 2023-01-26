@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package v1beta1
 
@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -19,6 +19,7 @@ import (
 	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
+	eventtypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/hashicorp/go-multierror"
@@ -41,10 +42,12 @@ type DisruptionSpec struct {
 	Selector labels.Set `json:"selector,omitempty"` // label selector
 	// +nullable
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
-	DryRun           bool                              `json:"dryRun,omitempty"`           // enable dry-run mode
-	OnInit           bool                              `json:"onInit,omitempty"`           // enable disruption on init
-	Unsafemode       *UnsafemodeSpec                   `json:"unsafeMode,omitempty"`       // unsafemode spec used to turn off safemode safety nets
-	StaticTargeting  bool                              `json:"staticTargeting,omitempty"`  // enable dynamic targeting and cluster observation
+	// +nullable
+	Filter          *DisruptionFilter `json:"filter,omitempty"`
+	DryRun          bool              `json:"dryRun,omitempty"`          // enable dry-run mode
+	OnInit          bool              `json:"onInit,omitempty"`          // enable disruption on init
+	Unsafemode      *UnsafemodeSpec   `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
+	StaticTargeting bool              `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
@@ -66,10 +69,36 @@ type DisruptionSpec struct {
 	DNS DNSDisruptionSpec `json:"dns,omitempty"`
 	// +nullable
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
+	// +nullable
+	Reporting *Reporting `json:"reporting,omitempty"`
 }
 
-//go:embed *
+// Reporting provides additional reporting options in order to send a message to a custom slack channel
+// it expect the main controller to have slack notifier enabled
+// it expect slack bot to be added to the defined slack channel
+type Reporting struct {
+	// SlackChannel is the destination slack channel to send reporting informations to.
+	// It's expected to follow slack naming conventions https://api.slack.com/methods/conversations.create#naming or slack channel ID format
+	// +kubebuilder:validation:MaxLength=80
+	// +kubebuilder:validation:Pattern=(^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
+	// +kubebuilder:validation:Required
+	// +ddmark:validation:Required=true
+	SlackChannel string `json:"slackChannel,omitempty"`
+	// Purpose determines contextual informations about the disruption
+	// a brief context to determines disruption goal
+	// +kubebuilder:validation:MinLength=10
+	// +kubebuilder:validation:Required
+	// +ddmark:validation:Required=true
+	Purpose string `json:"purpose,omitempty"`
+	// MinNotificationType is the minimal notification type we want to receive informations for
+	// In order of importance it's Info, Success, Warning, Error
+	// Default level is considered Success, meaning all info will be ignored
+	MinNotificationType eventtypes.NotificationType `json:"minNotificationType,omitempty"`
+}
+
 // EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
+//
+//go:embed *
 var EmbeddedChaosAPI embed.FS
 
 type DisruptionDuration string
@@ -120,6 +149,27 @@ func (dd DisruptionDuration) Duration() time.Duration {
 	return d
 }
 
+type TargetInjection struct {
+	InjectorPodName string                               `json:"injectorPodName,omitempty"`
+	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
+	// since when this status is in place
+	Since metav1.Time `json:"since,omitempty"`
+}
+
+// TargetInjections map of target injection
+type TargetInjections map[string]TargetInjection
+
+// GetTargetNames return the name of targets
+func (in TargetInjections) GetTargetNames() []string {
+	names := make([]string, 0, len(in))
+
+	for targetName := range in {
+		names = append(names, targetName)
+	}
+
+	return names
+}
+
 // DisruptionStatus defines the observed state of Disruption
 type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
@@ -128,7 +178,7 @@ type DisruptionStatus struct {
 	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
-	Targets []string `json:"targets,omitempty"`
+	TargetInjections TargetInjections `json:"targetInjections,omitempty"`
 	// Actual targets selected by the disruption
 	SelectedTargetsCount int `json:"selectedTargetsCount"`
 	// Targets ignored by the disruption, (not in a ready state, already targeted, not in the count percentage...)
@@ -137,6 +187,10 @@ type DisruptionStatus struct {
 	InjectedTargetsCount int `json:"injectedTargetsCount"`
 	// Number of targets we want to target (count)
 	DesiredTargetsCount int `json:"desiredTargetsCount"`
+}
+
+type DisruptionFilter struct {
+	Annotations labels.Set `json:"annotations,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -333,7 +387,7 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 		return nil, fmt.Errorf("could not open yaml file at %s: %v", fullPath, err)
 	}
 
-	yamlBytes, err := ioutil.ReadAll(yaml)
+	yamlBytes, err := io.ReadAll(yaml)
 	if err != nil {
 		return nil, fmt.Errorf("could not read yaml file: %v ", err)
 	}
@@ -384,37 +438,78 @@ func (s *DisruptionSpec) GetDisruptionCount() int {
 
 // RemoveDeadTargets removes targets not found in matchingTargets from the targets list
 func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
-	var desiredTargets []string
+	desiredTargets := TargetInjections{}
 
-	for index := 0; index < len(status.Targets); index++ {
-		if utils.Contains(matchingTargets, status.Targets[index]) {
-			desiredTargets = append(desiredTargets, status.Targets[index])
+	targetNames := status.TargetInjections.GetTargetNames()
+
+	for _, matchingTarget := range matchingTargets {
+		if utils.Contains(targetNames, matchingTarget) {
+			desiredTargets[matchingTarget] = status.TargetInjections[matchingTarget]
 		}
 	}
 
-	status.Targets = desiredTargets
+	status.TargetInjections = desiredTargets
 }
 
 // AddTargets adds newTargetsCount random targets from the eligibleTargets list to the Target List
 // - eligibleTargets should be previously filtered to not include current targets
-func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets []string) {
+func (status *DisruptionStatus) AddTargets(newTargetsCount int, eligibleTargets TargetInjections) {
 	if len(eligibleTargets) == 0 || newTargetsCount <= 0 {
 		return
 	}
 
-	for i := 0; i < newTargetsCount && len(eligibleTargets) > 0; i++ {
-		index := rand.Intn(len(eligibleTargets)) //nolint:gosec
-		status.Targets = append(status.Targets, eligibleTargets[index])
-		eligibleTargets[len(eligibleTargets)-1], eligibleTargets[index] = eligibleTargets[index], eligibleTargets[len(eligibleTargets)-1]
-		eligibleTargets = eligibleTargets[:len(eligibleTargets)-1]
-	}
+	parseRandomTargets(newTargetsCount, eligibleTargets, func(targetName string) {
+		status.TargetInjections[targetName] = eligibleTargets[targetName]
+		delete(eligibleTargets, targetName)
+	})
 }
 
 // RemoveTargets removes toRemoveTargetsCount random targets from the Target List
 func (status *DisruptionStatus) RemoveTargets(toRemoveTargetsCount int) {
-	for i := 0; i < toRemoveTargetsCount && len(status.Targets) > 0; i++ {
-		index := rand.Intn(len(status.Targets)) //nolint:gosec
-		status.Targets[len(status.Targets)-1], status.Targets[index] = status.Targets[index], status.Targets[len(status.Targets)-1]
-		status.Targets = status.Targets[:len(status.Targets)-1]
+	parseRandomTargets(toRemoveTargetsCount, status.TargetInjections, func(targetName string) {
+		delete(status.TargetInjections, targetName)
+	})
+}
+
+func parseRandomTargets(targetLimit int, targetInjections TargetInjections, callback func(targetName string)) {
+	targetNames := targetInjections.GetTargetNames()
+
+	for i := 0; i < targetLimit && len(targetNames) > 0; i++ {
+		index := rand.Intn(len(targetNames)) //nolint:gosec
+		targetName := targetNames[index]
+		targetNames[len(targetNames)-1], targetNames[index] = targetNames[index], targetNames[len(targetNames)-1]
+		targetNames = targetNames[:len(targetNames)-1]
+
+		callback(targetName)
 	}
+}
+
+// HasTarget returns true when a target exists in the Target List or returns false.
+func (status *DisruptionStatus) HasTarget(searchTarget string) bool {
+	_, exists := status.TargetInjections[searchTarget]
+	return exists
+}
+
+var NonReinjectableDisruptions = map[chaostypes.DisruptionKindName]struct{}{
+	chaostypes.DisruptionKindGRPCDisruption: {},
+}
+
+func DisruptionIsReinjectable(kind chaostypes.DisruptionKindName) bool {
+	_, found := NonReinjectableDisruptions[kind]
+
+	return found
+}
+
+// NoSideEffectDisruptions is the list of all disruption kinds where the lifecycle of the failure matches the lifecycle of
+// the chaos pod. So once the chaos pod is gone, there's nothing left for us to clean.
+var NoSideEffectDisruptions = map[chaostypes.DisruptionKindName]struct{}{
+	chaostypes.DisruptionKindNodeFailure:      {},
+	chaostypes.DisruptionKindContainerFailure: {},
+	chaostypes.DisruptionKindCPUPressure:      {},
+}
+
+func DisruptionHasNoSideEffects(kind string) bool {
+	_, found := NoSideEffectDisruptions[chaostypes.DisruptionKindName(kind)]
+
+	return found
 }

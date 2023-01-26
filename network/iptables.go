@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package network
 
@@ -19,8 +19,9 @@ type Iptables interface {
 	AddRuleWithIP(chain string, protocol string, port string, jump string, destinationIP string) error
 	AddWideFilterRule(chain string, protocol string, port string, jump string) error
 	AddCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error
-	PrependRule(chain string, rulespec ...string) error
+	PrependRuleSpec(chain string, rulespec ...string) error
 	DeleteRule(chain string, protocol string, port string, jump string) error
+	DeleteRuleSpec(chain string, rulespec ...string) error
 	DeleteCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error
 }
 
@@ -75,7 +76,7 @@ func (i iptables) AddRuleWithIP(chain string, protocol string, port string, jump
 	return i.ip.AppendUnique("nat", chain, "-p", protocol, "--dport", port, "-j", jump, "--to-destination", fmt.Sprintf("%s:%s", destinationIP, port))
 }
 
-func (i iptables) PrependRule(chain string, rulespec ...string) error {
+func (i iptables) PrependRuleSpec(chain string, rulespec ...string) error {
 	if i.dryRun {
 		return nil
 	}
@@ -113,12 +114,6 @@ func (i iptables) DeleteRule(chain string, protocol string, port string, jump st
 		return nil
 	}
 
-	i.log.Infow("deleting iptables rule", "chain name", chain, "protocol", protocol, "port", port, "jump target", jump)
-
-	if exists, _ := i.ip.ChainExists("nat", chain); !exists {
-		return nil
-	}
-
 	// Why do we check if the jump target exists? A command of the form
 	// iptables -t nat -C OUTPUT -p udp --dport 53 -j CHAOS-DNS
 	// will actually error if the jump target does not exist. However, you are unable
@@ -128,7 +123,21 @@ func (i iptables) DeleteRule(chain string, protocol string, port string, jump st
 		return nil
 	}
 
-	return i.ip.DeleteIfExists("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
+	return i.DeleteRuleSpec("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
+}
+
+func (i iptables) DeleteRuleSpec(chain string, rulespec ...string) error {
+	if i.dryRun {
+		return nil
+	}
+
+	i.log.Infow("deleting iptables rule", "chain name", chain, "rulespec", rulespec)
+
+	if exists, _ := i.ip.ChainExists("nat", chain); !exists {
+		return nil
+	}
+
+	return i.ip.DeleteIfExists("nat", chain, rulespec...)
 }
 
 // Delete a rule with cgroup filter

@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2021 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 package network
 
@@ -15,6 +15,13 @@ import (
 // TcMock is a mock implementation of the Tc interface
 type TcMock struct {
 	mock.Mock
+	tcPriority uint32
+}
+
+func NewTcMock() *TcMock {
+	return &TcMock{
+		tcPriority: 1000,
+	}
 }
 
 //nolint:golint
@@ -32,7 +39,7 @@ func (f *TcMock) AddPrio(ifaces []string, parent string, handle uint32, bands ui
 }
 
 //nolint:golint
-func (f *TcMock) AddFilter(ifaces []string, parent string, priority uint32, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol string, flowid string) error {
+func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) (uint32, error) {
 	srcIPs := "nil"
 	dstIPs := "nil"
 
@@ -44,9 +51,11 @@ func (f *TcMock) AddFilter(ifaces []string, parent string, priority uint32, hand
 		dstIPs = dstIP.String()
 	}
 
-	args := f.Called(ifaces, parent, priority, handle, srcIPs, dstIPs, srcPort, dstPort, protocol, flowid)
+	f.tcPriority++
 
-	return args.Error(0)
+	args := f.Called(ifaces, parent, handle, srcIPs, dstIPs, srcPort, dstPort, string(protocol), string(connState), flowid)
+
+	return f.tcPriority, args.Error(0)
 }
 
 //nolint:golint
