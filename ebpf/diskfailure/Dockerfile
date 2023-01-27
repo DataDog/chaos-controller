@@ -5,8 +5,8 @@ ARG GOVERSION=1.19.4
 ARG ARCH=arm64
 
 # Download development environment.
-RUN apt-get update && \
-    apt-get install -y \
+RUN apt update && \
+    apt install -y \
         curl \
         pahole \
         dwarves \
