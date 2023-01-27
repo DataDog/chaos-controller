@@ -7,55 +7,22 @@ package cgroup
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/DataDog/chaos-controller/env"
-	"go.uber.org/zap"
 )
 
-// Manager represents a cgroup manager able to join the given cgroup
-type Manager interface {
-	Join(kind string, pid int, inherit bool) error
-	Read(kind, file string) (string, error)
-	Write(kind, file, data string) error
-	Exists(kind string) (bool, error)
-	DiskThrottleRead(identifier, bps int) error
-	DiskThrottleWrite(identifier, bps int) error
-}
-
-type manager struct {
+type cgroup struct {
 	dryRun bool
 	paths  map[string]string
 	mount  string
 	log    *zap.SugaredLogger
 }
 
-// NewManager creates a new cgroup manager from the given cgroup root path
-func NewManager(dryRun bool, pid uint32, log *zap.SugaredLogger) (Manager, error) {
-	mount, ok := os.LookupEnv(env.InjectorMountCgroup)
-	if !ok {
-		return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountCgroup)
-	}
-
-	// create cgroups manager
-	cgroupPaths, err := parse(fmt.Sprintf("/proc/%d/cgroup", pid))
-	if err != nil {
-		return nil, err
-	}
-
-	return manager{
-		dryRun: dryRun,
-		paths:  cgroupPaths,
-		mount:  mount,
-		log:    log,
-	}, nil
-}
-
 // read reads the given cgroup file data and returns it as a string, truncating leading \n char
-func (m manager) read(path string) (string, error) {
+func (m cgroup) read(path string) (string, error) {
 	m.log.Infow("reading from cgroup file", "path", path)
 	//nolint:gosec
 	data, err := ioutil.ReadFile(path)
@@ -68,7 +35,7 @@ func (m manager) read(path string) (string, error) {
 
 // write appends the given data to the given cgroup file path
 // NOTE: depending on the cgroup file, the append will result in an overwrite
-func (m manager) write(path, data string) error {
+func (m cgroup) write(path, data string) error {
 	m.log.Infow("writing to cgroup file", "path", path, "data", data)
 	// early exit if dry-run mode is enabled
 	if m.dryRun {
@@ -92,7 +59,7 @@ func (m manager) write(path, data string) error {
 }
 
 // generatePath generates a path within the cgroup like /<mount>/<kind>/<path (kubepods)>
-func (m manager) generatePath(kind string) (string, error) {
+func (m cgroup) generatePath(kind string) (string, error) {
 	kindPath, found := m.paths[kind]
 	if !found {
 		return "", fmt.Errorf("cgroup path not found for kind %s", kind)
@@ -104,7 +71,7 @@ func (m manager) generatePath(kind string) (string, error) {
 }
 
 // Read reads the given cgroup file data and returns the content as a string
-func (m manager) Read(kind, file string) (string, error) {
+func (m cgroup) Read(kind, file string) (string, error) {
 	kindPath, err := m.generatePath(kind)
 	if err != nil {
 		return "", err
@@ -116,7 +83,7 @@ func (m manager) Read(kind, file string) (string, error) {
 }
 
 // Write writes the given data to the given cgroup kind
-func (m manager) Write(kind, file, data string) error {
+func (m cgroup) Write(kind, file, data string) error {
 	kindPath, err := m.generatePath(kind)
 	if err != nil {
 		return err
@@ -128,7 +95,7 @@ func (m manager) Write(kind, file, data string) error {
 }
 
 // Exists returns true if the given cgroup exists, false otherwise
-func (m manager) Exists(kind string) (bool, error) {
+func (m cgroup) Exists(kind string) (bool, error) {
 	kindPath, err := m.generatePath(kind)
 	if err != nil {
 		return false, err
@@ -149,7 +116,7 @@ func (m manager) Exists(kind string) (bool, error) {
 // Join adds the given PID to the given cgroup
 // If inherit is set to true, all PID of the same group will be moved to the cgroup (writing to cgroup.procs file)
 // Otherwise, only the given PID will be moved to the cgroup (writing to tasks file)
-func (m manager) Join(kind string, pid int, inherit bool) error {
+func (m cgroup) Join(kind string, pid int, inherit bool) error {
 	file := "tasks"
 
 	if inherit {
@@ -167,14 +134,14 @@ func (m manager) Join(kind string, pid int, inherit bool) error {
 }
 
 // diskThrottle writes a disk throttling rule to the given blkio cgroup file
-func (m manager) diskThrottle(path string, identifier, bps int) error {
+func (m cgroup) diskThrottle(path string, identifier, bps int) error {
 	data := fmt.Sprintf("%d:0 %d", identifier, bps)
 
 	return m.write(path, data)
 }
 
 // DiskThrottleRead adds a disk throttle on read operations to the given disk identifier
-func (m manager) DiskThrottleRead(identifier, bps int) error {
+func (m cgroup) DiskThrottleRead(identifier, bps int) error {
 	kindPath, err := m.generatePath("blkio")
 	if err != nil {
 		return err
@@ -186,7 +153,7 @@ func (m manager) DiskThrottleRead(identifier, bps int) error {
 }
 
 // DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
-func (m manager) DiskThrottleWrite(identifier, bps int) error {
+func (m cgroup) DiskThrottleWrite(identifier, bps int) error {
 	kindPath, err := m.generatePath("blkio")
 	if err != nil {
 		return err
