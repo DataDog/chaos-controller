@@ -8,9 +8,10 @@ package cgroup
 import (
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/DataDog/chaos-controller/env"
 	"go.uber.org/zap"
-	"os"
 )
 
 // Manager represents a cgroup manager able to join the given cgroup
@@ -21,6 +22,7 @@ type Manager interface {
 	Exists(kind string) (bool, error)
 	DiskThrottleRead(identifier, bps int) error
 	DiskThrottleWrite(identifier, bps int) error
+	IsCgroupV2() bool
 }
 
 // NewManager creates a new cgroup manager from the given cgroup root path

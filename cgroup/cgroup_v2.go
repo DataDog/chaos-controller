@@ -7,13 +7,12 @@ package cgroup
 
 import (
 	"fmt"
+
 	"go.uber.org/zap"
 )
 
 type cgroupV2 struct {
-	// TODO: implement missing features for cgroupV2
-	// https://docs.google.com/document/d/1kNKA5k-oLA5rZDk72gyZvBbP_c5uUgLH1xXb3HtAo7s/edit#heading=h.2tvwjppghz7
-	log    *zap.SugaredLogger
+	log *zap.SugaredLogger
 }
 
 // Read reads the given cgroup file data and returns the content as a string
@@ -43,4 +42,8 @@ func (m cgroupV2) DiskThrottleRead(identifier, bps int) error {
 // DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
 func (m cgroupV2) DiskThrottleWrite(identifier, bps int) error {
 	return fmt.Errorf("not implemented")
+}
+
+func (m cgroupV2) IsCgroupV2() bool {
+	return true
 }

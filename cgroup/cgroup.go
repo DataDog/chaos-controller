@@ -7,11 +7,12 @@ package cgroup
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type cgroup struct {
@@ -162,4 +163,8 @@ func (m cgroup) DiskThrottleWrite(identifier, bps int) error {
 	path := fmt.Sprintf("%s/blkio.throttle.write_bps_device", kindPath)
 
 	return m.diskThrottle(path, identifier, bps)
+}
+
+func (m cgroup) IsCgroupV2() bool {
+	return false
 }
