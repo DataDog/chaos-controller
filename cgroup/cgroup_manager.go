@@ -43,21 +43,22 @@ func NewManager(dryRun bool, pid uint32, log *zap.SugaredLogger) (Manager, error
 	}
 
 	manager, err := cgroupManager(fmt.Sprintf("/proc/%d/cgroup", pid))
-	manager.Apply(int(pid))
 	if err != nil {
 		return nil, err
-	} else if isCgroupV2 {
+	}
+
+	if isCgroupV2 {
 		return cgroupV2{
 			manager: &manager,
 			log:     log,
 		}, nil
-	} else {
-		return cgroup{
-			manager: &manager,
-			dryRun:  dryRun,
-			paths:   cgroupPaths,
-			mount:   mount,
-			log:     log,
-		}, nil
 	}
+
+	return cgroup{
+		manager: &manager,
+		dryRun:  dryRun,
+		paths:   cgroupPaths,
+		mount:   mount,
+		log:     log,
+	}, nil
 }

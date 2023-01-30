@@ -26,6 +26,7 @@ func cgroupManager(cgroupFile string) (cgroups.Manager, error) {
 		Resources: &configs.Resources{},
 	}
 	cgroupPaths, err := parse(cgroupFile)
+
 	if err != nil {
 		return nil, err
 	}
@@ -46,5 +47,6 @@ func cgroupManager(cgroupFile string) (cgroups.Manager, error) {
 			cgroupPaths[subsystem] = filepath.Join("/proc/1/root/sys/fs/cgroup", subsystem, path)
 		}
 	}
+
 	return fs.NewManager(cg, cgroupPaths)
 }
