@@ -6,7 +6,6 @@
 package stress_test
 
 import (
-	. "github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/cgroup/mocks"
 	"github.com/DataDog/chaos-controller/cpuset"
 	. "github.com/DataDog/chaos-controller/stress"
