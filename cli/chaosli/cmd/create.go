@@ -426,7 +426,7 @@ func getDiskPressure() *v1beta1.DiskPressureSpec {
 }
 
 func getDiskFailure() *v1beta1.DiskFailureSpec {
-	if !confirmKind("Disk Failure", "Simulates disk failure by applying ebpf fault IO to the target") {
+	if !confirmKind("Disk Failure", "Simulates disk failure by applying ebpf disk failure IO to the target") {
 		return nil
 	}
 

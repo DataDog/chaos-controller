@@ -5,7 +5,7 @@ ARG GOVERSION=1.19.4
 ARG ARCH=arm64
 
 # Download development environment.
-RUN apt-get update || apt-get update && \
+RUN apt-get update && \
     apt-get install -y \
         curl \
         pahole \
