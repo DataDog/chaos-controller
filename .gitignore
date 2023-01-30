@@ -6,7 +6,7 @@
 *.so
 *.dylib
 bin/injector/injector*
-bin/injector/bpf-diskfailure*
+bin/injector/bpf-disk-failure*
 bin/injector*
 bin/manager/manager*
 bin/manager*

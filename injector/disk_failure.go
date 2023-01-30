@@ -6,14 +6,13 @@
 package injector
 
 import (
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/types"
+	"go.uber.org/zap"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
-
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/types"
-	"go.uber.org/zap"
 )
 
 type DiskFailureInjector struct {
@@ -24,13 +23,63 @@ type DiskFailureInjector struct {
 // DiskFailureInjectorConfig is the disk pressure injector config
 type DiskFailureInjectorConfig struct {
 	Config
+	cmd     BPFDiskFailureCommand
 	Process *os.Process
 }
 
-const BpfDiskfailureCmd = "bpf-diskfailure"
+type BPFDiskFailureCommand interface {
+	Run(pid int, path string) error
+	GetProcess() *os.Process
+}
+
+type bPFDiskFailureCommand struct {
+	process *os.Process
+	log     *zap.SugaredLogger
+}
+
+const EBPFDiskFailureCmd = "bpf-disk-failure"
+
+func (d *bPFDiskFailureCommand) Run(pid int, path string) error {
+	commandPath := []string{"-p", strconv.Itoa(pid)}
+
+	if path != "" {
+		commandPath = append(commandPath, "-f", path)
+	}
+
+	execCmd := exec.Command(EBPFDiskFailureCmd, commandPath...)
+	d.process = execCmd.Process
+
+	d.log.Infow(
+		"injecting disk failure",
+		zap.String("command", EBPFDiskFailureCmd),
+		zap.String("args", strings.Join(commandPath, " ")),
+	)
+
+	err := execCmd.Run()
+	if err != nil {
+		d.log.Errorw(
+			"error during the disk failure",
+			zap.String("command", EBPFDiskFailureCmd),
+			zap.String("args", strings.Join(commandPath, " ")),
+			zap.String("error", err.Error()),
+		)
+	}
+
+	return err
+}
+
+func (d bPFDiskFailureCommand) GetProcess() *os.Process {
+	return d.process
+}
 
 // NewDiskFailureInjector creates a disk pressure injector with the given config
 func NewDiskFailureInjector(spec v1beta1.DiskFailureSpec, config DiskFailureInjectorConfig) (Injector, error) {
+	if config.cmd == nil {
+		config.cmd = &bPFDiskFailureCommand{
+			log: config.Log,
+		}
+	}
+
 	return &DiskFailureInjector{
 		spec:   spec,
 		config: config,
@@ -42,41 +91,20 @@ func (i *DiskFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *DiskFailureInjector) Inject() (err error) {
-	// Start the execution of bpf-diskfailure
+	// Start the execution of bpf-disk-failure
 	pid := 0
 	if i.config.Level == types.DisruptionLevelPod {
 		pid = int(i.config.Config.TargetContainer.PID())
 	}
 
-	commandPath := []string{"-p", strconv.Itoa(pid)}
-
-	if i.spec.Path != "" {
-		commandPath = append(commandPath, "-f", i.spec.Path)
-	}
-
-	cmd := exec.Command(BpfDiskfailureCmd, commandPath...)
-
-	i.config.Log.Infow(
-		"injecting disk failure",
-		zap.String("command", BpfDiskfailureCmd),
-		zap.String("args", strings.Join(commandPath, " ")),
-	)
-
 	go func() {
-		if err := cmd.Run(); err != nil {
-			i.config.Log.Errorw(
-				"error during the disk failure",
-				zap.String("command", BpfDiskfailureCmd),
-				zap.String("args", strings.Join(commandPath, " ")),
-				zap.String("error", err.Error()),
-			)
-		}
+		err = i.config.cmd.Run(pid, i.spec.Path)
 	}()
 
 	// Store the PID for our execution
-	i.config.Process = cmd.Process
+	i.config.Process = i.config.cmd.GetProcess()
 
-	return nil
+	return
 }
 
 func (i *DiskFailureInjector) UpdateConfig(config Config) {

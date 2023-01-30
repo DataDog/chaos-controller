@@ -1,4 +1,4 @@
-# bpf-diskfailure
+# bpf-disk-failure
 This eBPF program catchs openat syscalls and replace its return by -ENOENT. The goal is to fake disk failures. This library is based on in Golang using [libbpfgo](http://github.com/aquasecurity/libbpfgo). 
 
 ## Install Go 
@@ -18,12 +18,12 @@ sudo apt-get -y install libc6-dev-i386
 
 ```sh
 make all
-sudo ./bpf-diskfailure-(arm64|amd64) -p <your-pid>
+sudo ./bpf-disk-failure-(arm64|amd64) -p <your-pid>
 ```
 
 Output:
-* bpf-diskfailure.bpf.o - an object file for the eBPF program
-* bpf-diskfailure - a Go executable
+* bpf-disk-failure.bpf.o - an object file for the eBPF program
+* bpf-disk-failure - a Go executable
 
 The Go executable reads in the object file at runtime. Take a look at the .o file with readelf if you want to see the sections defined in it.
 
@@ -35,24 +35,24 @@ Build it by your own:
 
 ```bash
 # ARM
-docker build --build-arg ARCH=arm64 --platform linux/arm64 -t build-bpf-diskfailure:lunar-arm64 .
+docker build --build-arg ARCH=arm64 --platform linux/arm64 -t build-bpf-disk-failure:lunar-arm64 .
 # AMD
-docker build --build-arg ARCH=amd64 --platform linux/amd64 -t build-bpf-diskfailure:lunar-amd64 .
+docker build --build-arg ARCH=amd64 --platform linux/amd64 -t build-bpf-disk-failure:lunar-amd64 .
 ```
 
 And then run it from the project directory to compile the program:
 
 ```bash
 # ARM
-docker run --rm -v $(pwd)/:/app/:z build-bpf-diskfailure:lunar-arm64
+docker run --rm -v $(pwd)/:/app/:z build-bpf-disk-failure:lunar-arm64
 # Output:
-bpf-diskfailure-arm64 # Go binary
-bpf-diskfailure-arm64.bpf.o # C binary
+bpf-disk-failure-arm64 # Go binary
+bpf-disk-failure-arm64.bpf.o # C binary
 # AMD
-docker run --rm -v $(pwd)/:/app/:z build-bpf-diskfailure:lunar-amd64
+docker run --rm -v $(pwd)/:/app/:z build-bpf-disk-failure:lunar-amd64
 # Output:
-bpf-diskfailure-amd64 # Go binary
-bpf-diskfailure-amd64.bpf.o # C binary
+bpf-disk-failure-amd64 # Go binary
+bpf-disk-failure-amd64.bpf.o # C binary
 
 ```
 

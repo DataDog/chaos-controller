@@ -1,4 +1,4 @@
-module github.com/DataDog/chaos-controller/ebpf/diskfailure
+module github.com/DataDog/chaos-controller/ebpf/disk-failure
 
 go 1.18
 
