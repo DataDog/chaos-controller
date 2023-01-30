@@ -1,9 +1,9 @@
 UNAME_ARCH=$(shell uname -m)
 ARCH := x86
-TARGET := bpf-diskfailure-amd64
+TARGET := bpf-disk-failure-amd64
 ifeq ($(UNAME_ARCH),aarch64)
 	ARCH=arm64
-	TARGET=bpf-diskfailure-arm64
+	TARGET=bpf-disk-failure-arm64
 endif
 
 TARGET_BPF := $(TARGET).bpf.o
