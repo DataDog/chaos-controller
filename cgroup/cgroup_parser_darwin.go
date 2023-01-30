@@ -10,3 +10,11 @@ import "fmt"
 func parse(cgroupFile string) (map[string]string, error) {
 	return nil, fmt.Errorf("not implemented")
 }
+
+func pathExists(path string) (bool, error) {
+	return false, fmt.Errorf("not implemented")
+}
+
+func cgroupManager(cgroupFile string) (cgroups.Manager, error) {
+	return nil, fmt.Errorf("not implemented")
+}

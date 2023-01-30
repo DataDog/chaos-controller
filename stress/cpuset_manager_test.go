@@ -6,7 +6,7 @@
 package stress_test
 
 import (
-	. "github.com/DataDog/chaos-controller/cgroup"
+	"github.com/DataDog/chaos-controller/cgroup/mocks"
 	"github.com/DataDog/chaos-controller/cpuset"
 	. "github.com/DataDog/chaos-controller/stress"
 	. "github.com/onsi/ginkgo"
@@ -87,8 +87,8 @@ var _ = Describe("StresserManager Test", func() {
 	})
 })
 
-func cgroupManager() *ManagerMock {
-	cgroup := &ManagerMock{}
+func cgroupManager() *mocks.ManagerMock {
+	cgroup := &mocks.ManagerMock{}
 	cgroup.On("Read", "cpuset", "cpuset.cpus").Return("0-1", nil)
 
 	return cgroup

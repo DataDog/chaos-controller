@@ -5,6 +5,7 @@
 package injector_test
 
 import (
+	"github.com/DataDog/chaos-controller/cgroup/mocks"
 	"os"
 
 	. "github.com/onsi/ginkgo"
@@ -12,7 +13,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/disk"
 	"github.com/DataDog/chaos-controller/env"
@@ -22,7 +22,7 @@ import (
 var _ = Describe("Failure", func() {
 	var (
 		config        DiskPressureInjectorConfig
-		cgroupManager *cgroup.ManagerMock
+		cgroupManager *mocks.ManagerMock
 		ctn           *container.ContainerMock
 		informer      *disk.InformerMock
 		inj           Injector
@@ -31,7 +31,7 @@ var _ = Describe("Failure", func() {
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = &cgroup.ManagerMock{}
+		cgroupManager = &mocks.ManagerMock{}
 		cgroupManager.On("DiskThrottleRead", mock.Anything, mock.Anything).Return(nil)
 		cgroupManager.On("DiskThrottleWrite", mock.Anything, mock.Anything).Return(nil)
 
