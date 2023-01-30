@@ -23,7 +23,7 @@ type DiskFailureInjector struct {
 // DiskFailureInjectorConfig is the disk pressure injector config
 type DiskFailureInjectorConfig struct {
 	Config
-	cmd     BPFDiskFailureCommand
+	Cmd     BPFDiskFailureCommand
 	Process *os.Process
 }
 
@@ -68,14 +68,14 @@ func (d *bPFDiskFailureCommand) Run(pid int, path string) error {
 	return err
 }
 
-func (d bPFDiskFailureCommand) GetProcess() *os.Process {
+func (d *bPFDiskFailureCommand) GetProcess() *os.Process {
 	return d.process
 }
 
 // NewDiskFailureInjector creates a disk pressure injector with the given config
 func NewDiskFailureInjector(spec v1beta1.DiskFailureSpec, config DiskFailureInjectorConfig) (Injector, error) {
-	if config.cmd == nil {
-		config.cmd = &bPFDiskFailureCommand{
+	if config.Cmd == nil {
+		config.Cmd = &bPFDiskFailureCommand{
 			log: config.Log,
 		}
 	}
@@ -98,11 +98,11 @@ func (i *DiskFailureInjector) Inject() (err error) {
 	}
 
 	go func() {
-		err = i.config.cmd.Run(pid, i.spec.Path)
+		err = i.config.Cmd.Run(pid, i.spec.Path)
 	}()
 
 	// Store the PID for our execution
-	i.config.Process = i.config.cmd.GetProcess()
+	i.config.Process = i.config.Cmd.GetProcess()
 
 	return
 }
