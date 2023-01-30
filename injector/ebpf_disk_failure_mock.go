@@ -6,8 +6,9 @@
 package injector
 
 import (
-	"github.com/stretchr/testify/mock"
 	"os"
+
+	"github.com/stretchr/testify/mock"
 )
 
 // BPFDiskFailureCommandMock is a mock implementation of the DiskFailureCmd interface
