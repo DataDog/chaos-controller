@@ -6,11 +6,12 @@
 package cgroup
 
 import (
+	"path/filepath"
+
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs2"
 	"github.com/opencontainers/runc/libcontainer/configs"
-	"path/filepath"
 )
 
 func parse(cgroupFile string) (map[string]string, error) {
