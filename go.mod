@@ -45,6 +45,7 @@ require (
 	github.com/Microsoft/hcsshim v0.8.24 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
+	github.com/cilium/ebpf v0.7.0 // indirect
 	github.com/containerd/cgroups v1.0.3 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect

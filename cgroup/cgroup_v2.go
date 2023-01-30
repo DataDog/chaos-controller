@@ -7,12 +7,14 @@ package cgroup
 
 import (
 	"fmt"
+	"github.com/opencontainers/runc/libcontainer/cgroups"
 
 	"go.uber.org/zap"
 )
 
 type cgroupV2 struct {
-	log *zap.SugaredLogger
+	manager *cgroups.Manager
+	log     *zap.SugaredLogger
 }
 
 // Read reads the given cgroup file data and returns the content as a string

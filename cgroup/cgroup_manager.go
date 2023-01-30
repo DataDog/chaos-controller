@@ -6,7 +6,6 @@
 package cgroup
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -38,22 +37,27 @@ func NewManager(dryRun bool, pid uint32, log *zap.SugaredLogger) (Manager, error
 		return nil, err
 	}
 
-	if pathExists("/sys/fs/cgroup/cgroup.controllers") {
-		return cgroupV2{log: log}, nil
+	isCgroupV2, err := pathExists("/sys/fs/cgroup/cgroup.controllers")
+	if err != nil {
+		return nil, err
 	}
 
-	return cgroup{
-		dryRun: dryRun,
-		paths:  cgroupPaths,
-		mount:  mount,
-		log:    log,
-	}, nil
-}
-
-func pathExists(path string) bool {
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		return false
+	manager, err := cgroupManager(fmt.Sprintf("/proc/%d/cgroup", pid))
+	manager.Apply(int(pid))
+	if err != nil {
+		return nil, err
+	} else if isCgroupV2 {
+		return cgroupV2{
+			manager: &manager,
+			log:     log,
+		}, nil
+	} else {
+		return cgroup{
+			manager: &manager,
+			dryRun:  dryRun,
+			paths:   cgroupPaths,
+			mount:   mount,
+			log:     log,
+		}, nil
 	}
-
-	return true
 }

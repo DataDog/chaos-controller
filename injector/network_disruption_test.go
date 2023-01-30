@@ -6,6 +6,7 @@
 package injector_test
 
 import (
+	"github.com/DataDog/chaos-controller/cgroup/mocks"
 	"net"
 	"os"
 	"time"
@@ -15,7 +16,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
@@ -36,7 +36,7 @@ var _ = Describe("Failure", func() {
 		inj                                                     Injector
 		config                                                  NetworkDisruptionInjectorConfig
 		spec                                                    v1beta1.NetworkDisruptionSpec
-		cgroupManager                                           *cgroup.ManagerMock
+		cgroupManager                                           *mocks.ManagerMock
 		cgroupManagerExistsCall                                 *mock.Call
 		tc                                                      *network.TcMock
 		iptables                                                *network.IptablesMock
@@ -53,7 +53,7 @@ var _ = Describe("Failure", func() {
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = &cgroup.ManagerMock{}
+		cgroupManager = &mocks.ManagerMock{}
 		cgroupManagerExistsCall = cgroupManager.On("Exists", "net_cls").Return(true, nil)
 		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 

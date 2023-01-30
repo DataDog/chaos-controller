@@ -7,6 +7,7 @@ package cgroup
 
 import (
 	"fmt"
+	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -16,10 +17,11 @@ import (
 )
 
 type cgroup struct {
-	dryRun bool
-	paths  map[string]string
-	mount  string
-	log    *zap.SugaredLogger
+	manager *cgroups.Manager
+	dryRun  bool
+	paths   map[string]string
+	mount   string
+	log     *zap.SugaredLogger
 }
 
 // read reads the given cgroup file data and returns it as a string, truncating leading \n char
