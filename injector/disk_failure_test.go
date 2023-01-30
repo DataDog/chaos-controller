@@ -6,45 +6,64 @@
 package injector_test
 
 import (
-	"os"
-	"time"
-
+	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/container"
+	. "github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/process"
+	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
-
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/env"
-	. "github.com/DataDog/chaos-controller/injector"
+	"os"
+	"time"
 )
 
 var _ = Describe("Failure", func() {
 	var (
-		config DiskFailureInjectorConfig
-		fw     FileWriterMock
-		inj    Injector
-		spec   v1beta1.NodeFailureSpec
+		config  DiskFailureInjectorConfig
+		level   types.DisruptionLevel
+		manager *process.ManagerMock
+		cmdMock BPFDiskFailureCommandMock
+		proc    *os.Process
+		ctn     *container.ContainerMock
+		inj     Injector
+		spec    v1beta1.DiskFailureSpec
 	)
 
-	BeforeEach(func() {
+	JustBeforeEach(func() {
+		const PID = 1
+		proc = &os.Process{Pid: PID}
+
+		// container
+		ctn = &container.ContainerMock{}
+		ctn.On("PID").Return(uint32(PID))
+
+		// manager
+		manager = &process.ManagerMock{}
+		manager.On("Find", mock.Anything).Return(proc, nil)
+		manager.On("Signal", mock.Anything, mock.Anything).Return(nil)
+
+		// BPF Disk failure command
+		cmdMock = BPFDiskFailureCommandMock{}
+		cmdMock.On("Run", mock.Anything, mock.Anything).Return(nil)
+		cmdMock.On("GetProcess").Return(proc)
+
 		config = DiskFailureInjectorConfig{
 			Config: Config{
-				Log:         log,
-				MetricsSink: ms,
+				Log:             log,
+				MetricsSink:     ms,
+				Level:           level,
+				TargetContainer: ctn,
 			},
-			Process: nil,
+			Process: nil, Cmd: &cmdMock,
 		}
 
-		spec = v1beta1.NodeFailureSpec{}
+		spec = v1beta1.DiskFailureSpec{
+			Path: "/",
+		}
 
-		// set mandatory environment variables
-		os.Setenv(env.InjectorMountSysrq, "/mnt/sysrq")
-		os.Setenv(env.InjectorMountSysrqTrigger, "/mnt/sysrq-trigger")
-	})
-
-	JustBeforeEach(func() {
 		var err error
-		inj, err = NewNodeFailureInjector(spec, config)
+		inj, err = NewDiskFailureInjector(spec, config)
 
 		Expect(err).To(BeNil())
 	})
@@ -52,28 +71,35 @@ var _ = Describe("Failure", func() {
 	Describe("injection", func() {
 		JustBeforeEach(func() {
 			Expect(inj.Inject()).To(BeNil())
-			time.Sleep(time.Second * 11)
+			time.Sleep(time.Second * 1)
 		})
 
-		It("should enable the sysrq handler", func() {
-			fw.AssertCalled(GinkgoT(), "Write", "/mnt/sysrq", mock.Anything, "1")
-		})
-
-		Context("with shutdown enabled", func() {
+		Context("with a pod level", func() {
 			BeforeEach(func() {
-				spec.Shutdown = true
+				level = types.DisruptionLevelPod
 			})
 
-			It("should write into the sysrq trigger file", func() {
-				fw.AssertCalled(GinkgoT(), "Write", "/mnt/sysrq-trigger", mock.Anything, "o")
+			It("should start the eBPF Disk failure program", func() {
+				cmdMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/")
 			})
-		})
 
-		Context("with shutdown disabled", func() {
-			It("should write into the sysrq trigger file", func() {
-				fw.AssertCalled(GinkgoT(), "Write", "/mnt/sysrq-trigger", mock.Anything, "c")
+			It("should get the pid of the ebpf program", func() {
+				cmdMock.AssertCalled(GinkgoT(), "GetProcess")
 			})
 		})
 
+		Context("with a node level", func() {
+			BeforeEach(func() {
+				level = types.DisruptionLevelNode
+			})
+
+			It("should start the eBPF Disk failure program", func() {
+				cmdMock.AssertCalled(GinkgoT(), "Run", 0, "/")
+			})
+
+			It("should get the pid of the ebpf program", func() {
+				cmdMock.AssertCalled(GinkgoT(), "GetProcess")
+			})
+		})
 	})
 })
