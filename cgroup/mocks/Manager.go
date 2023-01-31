@@ -69,12 +69,12 @@ func (_m *ManagerMock) IsCgroupV2() bool {
 }
 
 // Join provides a mock function with given fields: kind, pid, inherit
-func (_m *ManagerMock) Join(kind string, pid int, inherit bool) error {
-	ret := _m.Called(kind, pid, inherit)
+func (_m *ManagerMock) Join(controller string, pid int, inherit bool) error {
+	ret := _m.Called(controller, pid, inherit)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, int, bool) error); ok {
-		r0 = rf(kind, pid, inherit)
+		r0 = rf(controller, pid, inherit)
 	} else {
 		r0 = ret.Error(0)
 	}

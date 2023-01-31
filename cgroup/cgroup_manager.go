@@ -7,7 +7,7 @@ package cgroup
 
 // Manager represents a cgroup manager able to join the given cgroup
 type Manager interface {
-	Join(kind string, pid int, inherit bool) error
+	Join(controller string, pid int, inherit bool) error
 	Read(controller, file string) (string, error)
 	Write(controller, file, data string) error
 	Exists(controller string) bool
