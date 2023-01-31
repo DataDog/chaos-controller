@@ -13,8 +13,6 @@ import (
 
 type cgroup struct {
 	dryRun bool
-	paths  map[string]string
-	mount  string
 	log    *zap.SugaredLogger
 }
 
@@ -64,5 +62,8 @@ func (m cgroup) IsCgroupV2() bool {
 
 // NewManager creates a new cgroup manager from the given cgroup root path
 func NewManager(dryRun bool, pid uint32, log *zap.SugaredLogger) (Manager, error) {
-	return nil, fmt.Errorf("not implemented")
+	return cgroup{
+		dryRun: dryRun,
+		log:    log,
+	}, nil
 }
