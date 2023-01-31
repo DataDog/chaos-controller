@@ -24,31 +24,6 @@ type cgroup struct {
 	log     *zap.SugaredLogger
 }
 
-// write appends the given data to the given cgroup file path
-// NOTE: depending on the cgroup file, the append will result in an overwrite
-func (m cgroup) write(path, data string) error {
-	m.log.Infow("writing to cgroup file", "path", path, "data", data)
-	// early exit if dry-run mode is enabled
-	if m.dryRun {
-		return nil
-	}
-
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("error opening cgroup file %s: %w", path, err)
-	}
-
-	if _, err := file.WriteString(data); err != nil {
-		return fmt.Errorf("error writing to cgroup file %s: %w", path, err)
-	}
-
-	if err := file.Close(); err != nil {
-		return fmt.Errorf("error closing cgroup file %s: %w", path, err)
-	}
-
-	return nil
-}
-
 // generatePath generates a path within the cgroup like /<mount>/<kind>/<path (kubepods)>
 func (m cgroup) generatePath(kind string) (string, error) {
 	kindPath, found := m.paths[kind]
