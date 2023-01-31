@@ -19,12 +19,12 @@ type cgroupV2 struct {
 }
 
 // Read reads the given cgroup file data and returns the content as a string
-func (m cgroupV2) Read(kind, file string) (string, error) {
+func (m cgroupV2) Read(controller, file string) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
 // Write writes the given data to the given cgroup kind
-func (m cgroupV2) Write(kind, file, data string) error {
+func (m cgroupV2) Write(controller, file, data string) error {
 	return fmt.Errorf("not implemented")
 }
 

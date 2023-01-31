@@ -90,19 +90,19 @@ func (_m *ManagerMock) Join(kind string, pid int, inherit bool) error {
 }
 
 // Read provides a mock function with given fields: kind, file
-func (_m *ManagerMock) Read(kind string, file string) (string, error) {
-	ret := _m.Called(kind, file)
+func (_m *ManagerMock) Read(controller string, file string) (string, error) {
+	ret := _m.Called(controller, file)
 
 	var r0 string
 	if rf, ok := ret.Get(0).(func(string, string) string); ok {
-		r0 = rf(kind, file)
+		r0 = rf(controller, file)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = rf(kind, file)
+		r1 = rf(controller, file)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -111,12 +111,12 @@ func (_m *ManagerMock) Read(kind string, file string) (string, error) {
 }
 
 // Write provides a mock function with given fields: kind, file, data
-func (_m *ManagerMock) Write(kind string, file string, data string) error {
-	ret := _m.Called(kind, file, data)
+func (_m *ManagerMock) Write(controller string, file string, data string) error {
+	ret := _m.Called(controller, file, data)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
-		r0 = rf(kind, file, data)
+		r0 = rf(controller, file, data)
 	} else {
 		r0 = ret.Error(0)
 	}
