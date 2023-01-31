@@ -5,14 +5,6 @@
 
 package cgroup
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/DataDog/chaos-controller/env"
-	"go.uber.org/zap"
-)
-
 // Manager represents a cgroup manager able to join the given cgroup
 type Manager interface {
 	Join(controller string, pid int, inherit bool) error
@@ -22,43 +14,4 @@ type Manager interface {
 	DiskThrottleRead(identifier, bps int) error
 	DiskThrottleWrite(identifier, bps int) error
 	IsCgroupV2() bool
-}
-
-// NewManager creates a new cgroup manager from the given cgroup root path
-func NewManager(dryRun bool, pid uint32, log *zap.SugaredLogger) (Manager, error) {
-	mount, ok := os.LookupEnv(env.InjectorMountCgroup)
-	if !ok {
-		return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountCgroup)
-	}
-
-	// create cgroups manager
-	cgroupPaths, err := parse(fmt.Sprintf("/proc/%d/cgroup", pid))
-	if err != nil {
-		return nil, err
-	}
-
-	isCgroupV2, err := pathExists("/sys/fs/cgroup/cgroup.controllers")
-	if err != nil {
-		return nil, err
-	}
-
-	manager, err := cgroupManager(fmt.Sprintf("/proc/%d/cgroup", pid))
-	if err != nil {
-		return nil, err
-	}
-
-	if isCgroupV2 {
-		return cgroupV2{
-			manager: &manager,
-			log:     log,
-		}, nil
-	}
-
-	return cgroup{
-		manager: &manager,
-		dryRun:  dryRun,
-		paths:   cgroupPaths,
-		mount:   mount,
-		log:     log,
-	}, nil
 }
