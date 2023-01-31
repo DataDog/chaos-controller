@@ -29,8 +29,8 @@ func (m cgroupV2) Write(controller, file, data string) error {
 }
 
 // Exists returns true if the given cgroup exists, false otherwise
-func (m cgroupV2) Exists(kind string) (bool, error) {
-	return false, fmt.Errorf("not implemented")
+func (m cgroupV2) Exists(controller string) bool {
+	return false
 }
 
 func (m cgroupV2) Join(kind string, pid int, inherit bool) error {

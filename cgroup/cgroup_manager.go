@@ -10,7 +10,7 @@ type Manager interface {
 	Join(kind string, pid int, inherit bool) error
 	Read(controller, file string) (string, error)
 	Write(controller, file, data string) error
-	Exists(kind string) (bool, error)
+	Exists(controller string) bool
 	DiskThrottleRead(identifier, bps int) error
 	DiskThrottleWrite(identifier, bps int) error
 	IsCgroupV2() bool
