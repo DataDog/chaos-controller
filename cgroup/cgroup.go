@@ -83,22 +83,11 @@ func (m cgroup) Write(controller, file, data string) error {
 }
 
 // Exists returns true if the given cgroup exists, false otherwise
-func (m cgroup) Exists(kind string) (bool, error) {
-	kindPath, err := m.generatePath(kind)
-	if err != nil {
-		return false, err
-	}
+func (m cgroup) Exists(controller string) bool {
+	manager := *m.manager
+	controllerDir := manager.Path(controller)
 
-	path := fmt.Sprintf("%s/cgroup.procs", kindPath)
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	return true, nil
+	return cgroups.PathExists(fmt.Sprintf("%s/cgroup.procs", controllerDir))
 }
 
 // Join adds the given PID to the given cgroup

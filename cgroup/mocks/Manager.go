@@ -41,24 +41,17 @@ func (_m *ManagerMock) DiskThrottleWrite(identifier int, bps int) error {
 }
 
 // Exists provides a mock function with given fields: kind
-func (_m *ManagerMock) Exists(kind string) (bool, error) {
-	ret := _m.Called(kind)
+func (_m *ManagerMock) Exists(controller string) bool {
+	ret := _m.Called(controller)
 
 	var r0 bool
 	if rf, ok := ret.Get(0).(func(string) bool); ok {
-		r0 = rf(kind)
+		r0 = rf(controller)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(kind)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // IsCgroupV2 provides a mock function with given fields:
