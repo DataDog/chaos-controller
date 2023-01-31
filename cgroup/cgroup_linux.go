@@ -8,13 +8,55 @@ package cgroup
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/DataDog/chaos-controller/env"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
-
+	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
+	"github.com/opencontainers/runc/libcontainer/cgroups/fs2"
+	"github.com/opencontainers/runc/libcontainer/configs"
 	"go.uber.org/zap"
 )
+
+func parse(cgroupFile string) (map[string]string, error) {
+	return cgroups.ParseCgroupFile(cgroupFile)
+}
+
+func pathExists(path string) (bool, error) {
+	return cgroups.PathExists(path), nil
+}
+
+func cgroupManager(cgroupFile string) (cgroups.Manager, error) {
+	cg := &configs.Cgroup{
+		Resources: &configs.Resources{},
+	}
+	cgroupPaths, err := parse(cgroupFile)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if cgroups.IsCgroup2UnifiedMode() {
+		// Note that for cgroup v2 unified hierarchy, there are no per-controller
+		// cgroup paths, so the resulting map will have a single element where the key
+		// is empty string ("") and the value is the cgroup path the <pid> is in.
+		cgroupPath := cgroupPaths[""]
+		return fs2.NewManager(cg, cgroupPath)
+	}
+
+	for subsystem, path := range cgroupPaths {
+		if subsystem != "" {
+			// Process ID 1 is usually the init process primarily responsible for starting and shutting down the system.
+			// Originally, process ID 1 was not specifically reserved for init by any technical measures:
+			// it simply had this ID as a natural consequence of being the first process invoked by the kernel.
+			cgroupPaths[subsystem] = filepath.Join("/proc/1/root/sys/fs/cgroup", subsystem, path)
+		}
+	}
+
+	return fs.NewManager(cg, cgroupPaths)
+}
 
 type cgroup struct {
 	manager *cgroups.Manager
@@ -154,4 +196,43 @@ func (m cgroup) DiskThrottleWrite(identifier, bps int) error {
 
 func (m cgroup) IsCgroupV2() bool {
 	return false
+}
+
+// NewManager creates a new cgroup manager from the given cgroup root path
+func NewManager(dryRun bool, pid uint32, log *zap.SugaredLogger) (Manager, error) {
+	mount, ok := os.LookupEnv(env.InjectorMountCgroup)
+	if !ok {
+		return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountCgroup)
+	}
+
+	// create cgroups manager
+	cgroupPaths, err := parse(fmt.Sprintf("/proc/%d/cgroup", pid))
+	if err != nil {
+		return nil, err
+	}
+
+	isCgroupV2, err := pathExists("/sys/fs/cgroup/cgroup.controllers")
+	if err != nil {
+		return nil, err
+	}
+
+	manager, err := cgroupManager(fmt.Sprintf("/proc/%d/cgroup", pid))
+	if err != nil {
+		return nil, err
+	}
+
+	if isCgroupV2 {
+		return cgroupV2{
+			manager: &manager,
+			log:     log,
+		}, nil
+	}
+
+	return cgroup{
+		manager: &manager,
+		dryRun:  dryRun,
+		paths:   cgroupPaths,
+		mount:   mount,
+		log:     log,
+	}, nil
 }
