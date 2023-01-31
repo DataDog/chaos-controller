@@ -62,10 +62,10 @@ func (m cgroup) generatePath(kind string) (string, error) {
 }
 
 // Read reads the given cgroup file data and returns the content as a string
-func (m cgroup) Read(kind, file string) (string, error) {
+func (m cgroup) Read(controller, file string) (string, error) {
 	manager := *m.manager
-	kindPath := manager.Path(kind)
-	content, err := cgroups.ReadFile(kindPath, file)
+	controllerDir := manager.Path(controller)
+	content, err := cgroups.ReadFile(controllerDir, file)
 
 	if err != nil {
 		return "", err
@@ -75,11 +75,11 @@ func (m cgroup) Read(kind, file string) (string, error) {
 }
 
 // Write writes the given data to the given cgroup kind
-func (m cgroup) Write(kind, file, data string) error {
+func (m cgroup) Write(controller, file, data string) error {
 	manager := *m.manager
-	kindPath := manager.Path(kind)
+	controllerDir := manager.Path(controller)
 
-	return cgroups.WriteFile(kindPath, file, data)
+	return cgroups.WriteFile(controllerDir, file, data)
 }
 
 // Exists returns true if the given cgroup exists, false otherwise

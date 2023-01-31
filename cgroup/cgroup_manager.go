@@ -16,8 +16,8 @@ import (
 // Manager represents a cgroup manager able to join the given cgroup
 type Manager interface {
 	Join(kind string, pid int, inherit bool) error
-	Read(kind, file string) (string, error)
-	Write(kind, file, data string) error
+	Read(controller, file string) (string, error)
+	Write(controller, file, data string) error
 	Exists(kind string) (bool, error)
 	DiskThrottleRead(identifier, bps int) error
 	DiskThrottleWrite(identifier, bps int) error
