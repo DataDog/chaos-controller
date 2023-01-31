@@ -35,14 +35,14 @@ func (m cgroup) Write(controller, file, data string) error {
 }
 
 // Exists returns true if the given cgroup exists, false otherwise
-func (m cgroup) Exists(kind string) (bool, error) {
-	return true, nil
+func (m cgroup) Exists(controller string) bool {
+	return true
 }
 
 // Join adds the given PID to the given cgroup
 // If inherit is set to true, all PID of the same group will be moved to the cgroup (writing to cgroup.procs file)
 // Otherwise, only the given PID will be moved to the cgroup (writing to tasks file)
-func (m cgroup) Join(kind string, pid int, inherit bool) error {
+func (m cgroup) Join(controller string, pid int, inherit bool) error {
 	return nil
 }
 
