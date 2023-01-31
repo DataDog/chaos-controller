@@ -7,7 +7,6 @@ package cgroup
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -23,18 +22,6 @@ type cgroup struct {
 	paths   map[string]string
 	mount   string
 	log     *zap.SugaredLogger
-}
-
-// read reads the given cgroup file data and returns it as a string, truncating leading \n char
-func (m cgroup) read(path string) (string, error) {
-	m.log.Infow("reading from cgroup file", "path", path)
-	//nolint:gosec
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("error reading cgroup file %s: %w", path, err)
-	}
-
-	return strings.TrimSuffix(string(data), "\n"), nil
 }
 
 // write appends the given data to the given cgroup file path
@@ -76,26 +63,23 @@ func (m cgroup) generatePath(kind string) (string, error) {
 
 // Read reads the given cgroup file data and returns the content as a string
 func (m cgroup) Read(kind, file string) (string, error) {
-	kindPath, err := m.generatePath(kind)
+	manager := *m.manager
+	kindPath := manager.Path(kind)
+	content, err := cgroups.ReadFile(kindPath, file)
+
 	if err != nil {
 		return "", err
 	}
 
-	path := fmt.Sprintf("%s/%s", kindPath, file)
-
-	return m.read(path)
+	return strings.TrimSuffix(content, "\n"), nil
 }
 
 // Write writes the given data to the given cgroup kind
 func (m cgroup) Write(kind, file, data string) error {
-	kindPath, err := m.generatePath(kind)
-	if err != nil {
-		return err
-	}
+	manager := *m.manager
+	kindPath := manager.Path(kind)
 
-	path := fmt.Sprintf("%s/%s", kindPath, file)
-
-	return m.write(path, data)
+	return cgroups.WriteFile(kindPath, file, data)
 }
 
 // Exists returns true if the given cgroup exists, false otherwise
