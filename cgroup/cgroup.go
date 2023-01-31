@@ -7,7 +7,6 @@ package cgroup
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -22,18 +21,6 @@ type cgroup struct {
 	paths   map[string]string
 	mount   string
 	log     *zap.SugaredLogger
-}
-
-// generatePath generates a path within the cgroup like /<mount>/<kind>/<path (kubepods)>
-func (m cgroup) generatePath(kind string) (string, error) {
-	kindPath, found := m.paths[kind]
-	if !found {
-		return "", fmt.Errorf("cgroup path not found for kind %s", kind)
-	}
-
-	generatedPath := fmt.Sprintf("%s%s/%s", m.mount, kind, kindPath)
-
-	return generatedPath, nil
 }
 
 // Read reads the given cgroup file data and returns the content as a string
