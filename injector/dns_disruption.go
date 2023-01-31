@@ -203,10 +203,7 @@ func (i *DNSDisruptionInjector) Clean() error {
 			}
 		} else {
 			// write default classid to pod net_cls cgroup if it still exists
-			exists, err := i.config.Cgroup.Exists("net_cls")
-			if err != nil {
-				return fmt.Errorf("error checking if pod net_cls cgroup still exists: %w", err)
-			}
+			exists := i.config.Cgroup.Exists("net_cls")
 
 			if exists {
 				if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x0"); err != nil {
