@@ -93,21 +93,17 @@ func (m cgroup) Exists(controller string) bool {
 // Join adds the given PID to the given cgroup
 // If inherit is set to true, all PID of the same group will be moved to the cgroup (writing to cgroup.procs file)
 // Otherwise, only the given PID will be moved to the cgroup (writing to tasks file)
-func (m cgroup) Join(kind string, pid int, inherit bool) error {
+func (m cgroup) Join(controller string, pid int, inherit bool) error {
 	file := "tasks"
 
 	if inherit {
 		file = "cgroup.procs"
 	}
 
-	kindPath, err := m.generatePath(kind)
-	if err != nil {
-		return err
-	}
+	manager := *m.manager
+	controllerDir := manager.Path(controller)
 
-	path := fmt.Sprintf("%s/%s", kindPath, file)
-
-	return m.write(path, strconv.Itoa(pid))
+	return cgroups.WriteFile(controllerDir, file, strconv.Itoa(pid))
 }
 
 // diskThrottle writes a disk throttling rule to the given blkio cgroup file
