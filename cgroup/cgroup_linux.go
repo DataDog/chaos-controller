@@ -66,43 +66,6 @@ type cgroup struct {
 	log     *zap.SugaredLogger
 }
 
-// write appends the given data to the given cgroup file path
-// NOTE: depending on the cgroup file, the append will result in an overwrite
-func (m cgroup) write(path, data string) error {
-	m.log.Infow("writing to cgroup file", "path", path, "data", data)
-	// early exit if dry-run mode is enabled
-	if m.dryRun {
-		return nil
-	}
-
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("error opening cgroup file %s: %w", path, err)
-	}
-
-	if _, err := file.WriteString(data); err != nil {
-		return fmt.Errorf("error writing to cgroup file %s: %w", path, err)
-	}
-
-	if err := file.Close(); err != nil {
-		return fmt.Errorf("error closing cgroup file %s: %w", path, err)
-	}
-
-	return nil
-}
-
-// generatePath generates a path within the cgroup like /<mount>/<kind>/<path (kubepods)>
-func (m cgroup) generatePath(kind string) (string, error) {
-	kindPath, found := m.paths[kind]
-	if !found {
-		return "", fmt.Errorf("cgroup path not found for kind %s", kind)
-	}
-
-	generatedPath := fmt.Sprintf("%s%s/%s", m.mount, kind, kindPath)
-
-	return generatedPath, nil
-}
-
 // Read reads the given cgroup file data and returns the content as a string
 func (m cgroup) Read(controller, file string) (string, error) {
 	manager := *m.manager
@@ -148,35 +111,24 @@ func (m cgroup) Join(controller string, pid int, inherit bool) error {
 	return cgroups.WriteFile(controllerDir, file, strconv.Itoa(pid))
 }
 
-// diskThrottle writes a disk throttling rule to the given blkio cgroup file
-func (m cgroup) diskThrottle(path string, identifier, bps int) error {
-	data := fmt.Sprintf("%d:0 %d", identifier, bps)
-
-	return m.write(path, data)
-}
-
 // DiskThrottleRead adds a disk throttle on read operations to the given disk identifier
 func (m cgroup) DiskThrottleRead(identifier, bps int) error {
-	kindPath, err := m.generatePath("blkio")
-	if err != nil {
-		return err
-	}
+	manager := *m.manager
+	controllerDir := manager.Path("blkio")
+	file := "blkio.throttle.read_bps_device"
+	data := fmt.Sprintf("%d:0 %d", identifier, bps)
 
-	path := fmt.Sprintf("%s/blkio.throttle.read_bps_device", kindPath)
-
-	return m.diskThrottle(path, identifier, bps)
+	return cgroups.WriteFile(controllerDir, file, data)
 }
 
 // DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
 func (m cgroup) DiskThrottleWrite(identifier, bps int) error {
-	kindPath, err := m.generatePath("blkio")
-	if err != nil {
-		return err
-	}
+	manager := *m.manager
+	controllerDir := manager.Path("blkio")
+	file := "blkio.throttle.write_bps_device"
+	data := fmt.Sprintf("%d:0 %d", identifier, bps)
 
-	path := fmt.Sprintf("%s/blkio.throttle.write_bps_device", kindPath)
-
-	return m.diskThrottle(path, identifier, bps)
+	return cgroups.WriteFile(controllerDir, file, data)
 }
 
 func (m cgroup) IsCgroupV2() bool {
