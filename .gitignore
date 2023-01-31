@@ -6,8 +6,11 @@
 *.so
 *.dylib
 bin/injector/injector*
+bin/injector*
 bin/manager/manager*
+bin/manager*
 bin/handler/handler*
+bin/handler*
 bin/chaosli/chaosli.tar.gz
 bin/chaosli/chaosli_darwin_amd64
 bin/chaosli/chaosli_darwin_amd64.sha256sum
