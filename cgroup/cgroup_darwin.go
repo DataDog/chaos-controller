@@ -7,9 +7,7 @@ package cgroup
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/DataDog/chaos-controller/env"
 	"go.uber.org/zap"
 )
 
@@ -66,32 +64,5 @@ func (m cgroup) IsCgroupV2() bool {
 
 // NewManager creates a new cgroup manager from the given cgroup root path
 func NewManager(dryRun bool, pid uint32, log *zap.SugaredLogger) (Manager, error) {
-	mount, ok := os.LookupEnv(env.InjectorMountCgroup)
-	if !ok {
-		return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountCgroup)
-	}
-
-	// create cgroups manager
-	cgroupPaths, err := parse(fmt.Sprintf("/proc/%d/cgroup", pid))
-	if err != nil {
-		return nil, err
-	}
-
-	isCgroupV2, err := pathExists("/sys/fs/cgroup/cgroup.controllers")
-	if err != nil {
-		return nil, err
-	}
-
-	if isCgroupV2 {
-		return cgroupV2{
-			log: log,
-		}, nil
-	}
-
-	return cgroup{
-		dryRun: dryRun,
-		paths:  cgroupPaths,
-		mount:  mount,
-		log:    log,
-	}, nil
+	return nil, fmt.Errorf("not implemented")
 }
