@@ -5,7 +5,11 @@
 
 package cgroup
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/opencontainers/runc/libcontainer/cgroups"
+)
 
 func parse(cgroupFile string) (map[string]string, error) {
 	return nil, fmt.Errorf("not implemented")
