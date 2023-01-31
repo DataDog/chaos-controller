@@ -33,7 +33,7 @@ func (m cgroupV2) Exists(kind string) (bool, error) {
 	return false, fmt.Errorf("not implemented")
 }
 
-func (m cgroupV2) Join(kind string, pid int, inherit bool) error {
+func (m cgroupV2) Join(controller string, pid int, inherit bool) error {
 	return fmt.Errorf("not implemented")
 }
 
