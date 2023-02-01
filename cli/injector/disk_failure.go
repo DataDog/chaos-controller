@@ -47,5 +47,5 @@ var diskFailureCmd = &cobra.Command{
 }
 
 func init() {
-	diskFailureCmd.Flags().String("path", "", "Path to apply/clean disk failure")
+	diskFailureCmd.Flags().String("path", "", "Path to apply the disk failure")
 }

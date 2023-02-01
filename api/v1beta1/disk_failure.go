@@ -5,7 +5,7 @@
 
 package v1beta1
 
-// DiskFailureSpec represents a disk pressure disruption
+// DiskFailureSpec represents a disk failure disruption
 type DiskFailureSpec struct {
 	Path string `json:"path"`
 }

@@ -1,11 +1,16 @@
 # bpf-disk-failure
-This eBPF program catchs openat syscalls and replace its return by -ENOENT. The goal is to fake disk failures. This library is based on in Golang using [libbpfgo](http://github.com/aquasecurity/libbpfgo). 
+This code is a BPF program used to intercept system calls and inject errors. It is used to prevent certain processes from accessing certain files. It defines a target process and a filter path, and if the process is trying to open a file that matches the filter path, an -ENOENT error will be injected, preventing the process from opening the file.
+This library is based on in Golang using [libbpfgo](http://github.com/aquasecurity/libbpfgo). 
 
 ## Install Go 
 
 See [the Go documentation](https://golang.org/doc/install)
 
-## Install packages
+## Prerequisites
+
+- :warning: Linux kernel >= 5.x (tested on Ubuntu 22.10) with the `CONFIG_BPF_KPROBE_OVERRIDE` option enabled
+
+### Install packages
 
 ```sh
 sudo apt-get update
@@ -22,8 +27,8 @@ sudo ./bpf-disk-failure-(arm64|amd64) -p <your-pid>
 ```
 
 Output:
-* bpf-disk-failure.bpf.o - an object file for the eBPF program
-* bpf-disk-failure - a Go executable
+* bpf-disk-failure-(arm64|amd64).bpf.o - an object file for the eBPF program
+* bpf-disk-failure-(arm64|amd64) - a Go executable
 
 The Go executable reads in the object file at runtime. Take a look at the .o file with readelf if you want to see the sections defined in it.
 
@@ -54,6 +59,14 @@ docker run --rm -v $(pwd)/:/app/:z build-bpf-disk-failure:lunar-amd64
 bpf-disk-failure-amd64 # Go binary
 bpf-disk-failure-amd64.bpf.o # C binary
 
+```
+
+Now you can run the program
+
+```bash
+./bpf-disk-failure-arm64 -p 1 -f / 
+# or
+./bpf-disk-failure-amd64 -p 1 -f / 
 ```
 
 ## Notes 

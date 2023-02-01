@@ -30,7 +30,6 @@ func main() {
 	must(err)
 	defer bpfModule.Close()
 
-	// Get Pid
 	var pid uint32
 	pid = uint32(*nFlag)
 	if err := bpfModule.InitGlobalVariable("target_pid", pid); err != nil {
@@ -66,11 +65,11 @@ func main() {
 	counter := make(map[string]int, 350)
 	go func() {
 		for data := range e {
-			ppid := int(binary.LittleEndian.Uint32(data[0:4]))  // Treat first 4 bytes as LittleEndian Uint32
-			pid := int(binary.LittleEndian.Uint32(data[4:8]))   // Treat first 4 bytes as LittleEndian Uint32
-			tid := int(binary.LittleEndian.Uint32(data[8:12]))  // Treat first 4 bytes as LittleEndian Uint32
-			gid := int(binary.LittleEndian.Uint32(data[12:16])) // Treat first 4 bytes as LittleEndian Uint32
-			comm := string(bytes.TrimRight(data[16:], "\x00"))  // Remove excess 0's from comm, treat as string
+			ppid := int(binary.LittleEndian.Uint32(data[0:4]))
+			pid := int(binary.LittleEndian.Uint32(data[4:8]))
+			tid := int(binary.LittleEndian.Uint32(data[8:12]))
+			gid := int(binary.LittleEndian.Uint32(data[12:16]))
+			comm := string(bytes.TrimRight(data[16:], "\x00"))
 			counter[comm]++
 			fmt.Printf("Disrupt Ppid %d, Pid %d, Tid: %d, Gid: %d, Command: %s\n", ppid, pid, tid, gid, comm)
 		}

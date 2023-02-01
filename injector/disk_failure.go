@@ -66,7 +66,7 @@ func (d bPFDiskFailureCommand) Run(pid int, path string) (err error) {
 	return
 }
 
-// NewDiskFailureInjector creates a disk pressure injector with the given config
+// NewDiskFailureInjector creates a disk failure injector with the given config
 func NewDiskFailureInjector(spec v1beta1.DiskFailureSpec, config DiskFailureInjectorConfig) (Injector, error) {
 	if config.Cmd == nil {
 		config.Cmd = &bPFDiskFailureCommand{
@@ -85,7 +85,6 @@ func (i *DiskFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *DiskFailureInjector) Inject() (err error) {
-	// Start the execution of bpf-disk-failure
 	pid := 0
 	if i.config.Level == types.DisruptionLevelPod {
 		pid = int(i.config.Config.TargetContainer.PID())

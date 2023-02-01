@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2023 Datadog, Inc.
+
 // +build ignore
 #include "injection.bpf.h"
 #if defined(__x86_64__) || defined(__TARGET_ARCH_x86)
@@ -34,13 +39,12 @@ struct {
     __type(value, u32);
 } events SEC(".maps");
 
-//BPF_PERF_OUTPUT(events) 
 SEC("kprobe/sys_openat")
 int injection_bpftrace(struct pt_regs *ctx)
 {
     struct data_t data = {};
 
-    // Get datas of current process
+    // Get data of the current process
     u32 ppid = 0;
     u32 pid = bpf_get_current_pid_tgid();
     if (pid == exclude_pid) {
@@ -67,7 +71,8 @@ int injection_bpftrace(struct pt_regs *ctx)
         return 0;
     }
 
-
+// Exclude this part of code if the following variables are not defined.
+// It allows the go program to compile without error.
 #if defined(__TARGET_ARCH_arm64) || defined(__TARGET_ARCH_x86)
     // Allow only file with the desired prefix.
     struct pt_regs *real_regs = (struct pt_regs *)PT_REGS_PARM1(ctx);
@@ -98,11 +103,12 @@ int injection_bpftrace(struct pt_regs *ctx)
     // Get command name
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
 
-    // Uncomment for debuging purpose.
+    // Uncomment for debuging
     //bpf_printk("COMM: %s, Pid: %i, Tid: %i\n", &data.comm, data.pid, data.tid);
     //bpf_printk("COMM: %s, Parent Id: %i, Path: %s.\n", &data.comm, data.ppid, path);
     //bpf_printk("COMM:%s, Start injection", &data.comm);
 
+    // Add the event to the ring buffer
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &data, 100);
 
     // Override return of process with an -ENOENT error.

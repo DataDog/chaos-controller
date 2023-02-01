@@ -93,7 +93,7 @@ spec:
                     x-kubernetes-int-or-string: true
                 type: object
               diskFailure:
-                description: DiskFailureSpec represents a disk pressure disruption
+                description: DiskFailureSpec represents a disk failure disruption
                 nullable: true
                 properties:
                   path:
