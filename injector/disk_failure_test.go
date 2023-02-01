@@ -9,7 +9,6 @@ import (
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -20,42 +19,33 @@ import (
 
 var _ = Describe("Failure", func() {
 	var (
-		config  DiskFailureInjectorConfig
-		level   types.DisruptionLevel
-		manager *process.ManagerMock
-		cmdMock BPFDiskFailureCommandMock
-		proc    *os.Process
-		ctn     *container.ContainerMock
-		inj     Injector
-		spec    v1beta1.DiskFailureSpec
+		config        DiskFailureInjectorConfig
+		level         types.DisruptionLevel
+		proc          *os.Process
+		inj           Injector
+		spec          v1beta1.DiskFailureSpec
+		commandMock   BPFDiskFailureCommandMock
+		containerMock *container.ContainerMock
 	)
 
 	JustBeforeEach(func() {
 		const PID = 1
 		proc = &os.Process{Pid: PID}
 
-		// container
-		ctn = &container.ContainerMock{}
-		ctn.On("PID").Return(uint32(PID))
+		containerMock = &container.ContainerMock{}
+		containerMock.On("PID").Return(uint32(PID))
 
-		// manager
-		manager = &process.ManagerMock{}
-		manager.On("Find", mock.Anything).Return(proc, nil)
-		manager.On("Signal", mock.Anything, mock.Anything).Return(nil)
-
-		// BPF Disk failure command
-		cmdMock = BPFDiskFailureCommandMock{}
-		cmdMock.On("Run", mock.Anything, mock.Anything).Return(nil)
-		cmdMock.On("GetProcess").Return(proc)
+		commandMock = BPFDiskFailureCommandMock{}
+		commandMock.On("Run", mock.Anything, mock.Anything).Return(nil)
 
 		config = DiskFailureInjectorConfig{
 			Config: Config{
 				Log:             log,
 				MetricsSink:     ms,
 				Level:           level,
-				TargetContainer: ctn,
+				TargetContainer: containerMock,
 			},
-			Process: nil, Cmd: &cmdMock,
+			Cmd: &commandMock,
 		}
 
 		spec = v1beta1.DiskFailureSpec{
@@ -80,11 +70,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should start the eBPF Disk failure program", func() {
-				cmdMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/")
-			})
-
-			It("should get the pid of the ebpf program", func() {
-				cmdMock.AssertCalled(GinkgoT(), "GetProcess")
+				commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/")
 			})
 		})
 
@@ -94,11 +80,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should start the eBPF Disk failure program", func() {
-				cmdMock.AssertCalled(GinkgoT(), "Run", 0, "/")
-			})
-
-			It("should get the pid of the ebpf program", func() {
-				cmdMock.AssertCalled(GinkgoT(), "GetProcess")
+				commandMock.AssertCalled(GinkgoT(), "Run", 0, "/")
 			})
 		})
 	})

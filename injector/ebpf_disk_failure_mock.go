@@ -6,8 +6,6 @@
 package injector
 
 import (
-	"os"
-
 	"github.com/stretchr/testify/mock"
 )
 
@@ -21,10 +19,4 @@ func (d *BPFDiskFailureCommandMock) Run(pid int, path string) error {
 	args := d.Called(pid, path)
 
 	return args.Error(0)
-}
-
-func (d *BPFDiskFailureCommandMock) GetProcess() *os.Process {
-	args := d.Called()
-
-	return args.Get(0).(*os.Process)
 }
