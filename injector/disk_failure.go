@@ -6,12 +6,13 @@
 package injector
 
 import (
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/types"
-	"go.uber.org/zap"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/types"
+	"go.uber.org/zap"
 )
 
 type DiskFailureInjector struct {
