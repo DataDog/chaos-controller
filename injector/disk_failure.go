@@ -6,14 +6,12 @@
 package injector
 
 import (
-	"os"
-	"os/exec"
-	"strconv"
-	"strings"
-
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
+	"os/exec"
+	"strconv"
+	"strings"
 )
 
 type DiskFailureInjector struct {
@@ -24,23 +22,20 @@ type DiskFailureInjector struct {
 // DiskFailureInjectorConfig is the disk pressure injector config
 type DiskFailureInjectorConfig struct {
 	Config
-	Cmd     BPFDiskFailureCommand
-	Process *os.Process
+	Cmd BPFDiskFailureCommand
 }
 
 type BPFDiskFailureCommand interface {
 	Run(pid int, path string) error
-	GetProcess() *os.Process
 }
 
 type bPFDiskFailureCommand struct {
-	process *os.Process
-	log     *zap.SugaredLogger
+	log *zap.SugaredLogger
 }
 
 const EBPFDiskFailureCmd = "bpf-disk-failure"
 
-func (d *bPFDiskFailureCommand) Run(pid int, path string) error {
+func (d bPFDiskFailureCommand) Run(pid int, path string) (err error) {
 	commandPath := []string{"-p", strconv.Itoa(pid)}
 
 	if path != "" {
@@ -48,7 +43,6 @@ func (d *bPFDiskFailureCommand) Run(pid int, path string) error {
 	}
 
 	execCmd := exec.Command(EBPFDiskFailureCmd, commandPath...)
-	d.process = execCmd.Process
 
 	d.log.Infow(
 		"injecting disk failure",
@@ -56,21 +50,19 @@ func (d *bPFDiskFailureCommand) Run(pid int, path string) error {
 		zap.String("args", strings.Join(commandPath, " ")),
 	)
 
-	err := execCmd.Run()
-	if err != nil {
-		d.log.Errorw(
-			"error during the disk failure",
-			zap.String("command", EBPFDiskFailureCmd),
-			zap.String("args", strings.Join(commandPath, " ")),
-			zap.String("error", err.Error()),
-		)
-	}
+	go func() {
+		err = execCmd.Run()
+		if err != nil {
+			d.log.Errorw(
+				"error during the disk failure",
+				zap.String("command", EBPFDiskFailureCmd),
+				zap.String("args", strings.Join(commandPath, " ")),
+				zap.String("error", err.Error()),
+			)
+		}
+	}()
 
-	return err
-}
-
-func (d *bPFDiskFailureCommand) GetProcess() *os.Process {
-	return d.process
+	return
 }
 
 // NewDiskFailureInjector creates a disk pressure injector with the given config
@@ -98,12 +90,7 @@ func (i *DiskFailureInjector) Inject() (err error) {
 		pid = int(i.config.Config.TargetContainer.PID())
 	}
 
-	go func() {
-		err = i.config.Cmd.Run(pid, i.spec.Path)
-	}()
-
-	// Store the PID for our execution
-	i.config.Process = i.config.Cmd.GetProcess()
+	err = i.config.Cmd.Run(pid, i.spec.Path)
 
 	return
 }
@@ -113,10 +100,5 @@ func (i *DiskFailureInjector) UpdateConfig(config Config) {
 }
 
 func (i *DiskFailureInjector) Clean() error {
-	// Kill the process
-	if i.config.Process != nil {
-		return i.config.Process.Kill()
-	}
-
 	return nil
 }
