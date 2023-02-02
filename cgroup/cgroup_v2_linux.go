@@ -41,3 +41,8 @@ func (cg cgroupV2) DiskThrottleWrite(identifier, bps int) error {
 func (cg cgroupV2) IsCgroupV2() bool {
 	return true
 }
+
+// RelativePath returns the cgroup relative path (without the mount path)
+func (cg cgroupV2) RelativePath(controller string) string {
+	return cg.cg.RelativePath(controller)
+}

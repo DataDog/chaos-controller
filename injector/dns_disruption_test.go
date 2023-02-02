@@ -6,8 +6,9 @@
 package injector_test
 
 import (
-	"github.com/DataDog/chaos-controller/cgroup/mocks"
 	"os"
+
+	"github.com/DataDog/chaos-controller/cgroup/mocks"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
@@ -15,7 +16,6 @@ import (
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/network"
-	"github.com/DataDog/chaos-controller/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -35,8 +35,7 @@ var _ = Describe("Failure", func() {
 	BeforeEach(func() {
 		// cgroup
 		cgroupManager = &mocks.ManagerMock{}
-		cgroupManager.On("Exists", "net_cls").Return(true, nil)
-		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		cgroupManager.On("RelativePath", mock.Anything).Return("/kubepod.slice/foo")
 
 		// netns
 		netnsManager = &netns.ManagerMock{}
@@ -56,11 +55,12 @@ var _ = Describe("Failure", func() {
 		iptables.On("ClearAndDeleteChain", mock.Anything).Return(nil)
 		iptables.On("AddRuleWithIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("AddWideFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("AddCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("AddCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("PrependRuleSpec", mock.Anything, mock.Anything).Return(nil)
 		iptables.On("DeleteRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("DeleteRuleSpec", mock.Anything, mock.Anything).Return(nil)
-		iptables.On("DeleteCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("DeleteCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("ListRules", mock.Anything, mock.Anything).Return([]string{}, nil)
 
 		// environment variables
 		Expect(os.Setenv(env.InjectorChaosPodIP, "10.0.0.2")).To(BeNil())
@@ -116,10 +116,7 @@ var _ = Describe("Failure", func() {
 				config.Level = chaostypes.DisruptionLevelPod
 			})
 			It("creates pod-level iptable filter rules", func() {
-				iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "OUTPUT", types.InjectorCgroupClassID, "udp", "53", "CHAOS-DNS")
-			})
-			It("should write the custom classid to the target net_cls cgroup", func() {
-				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", types.InjectorCgroupClassID)
+				iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "nat", "OUTPUT", "/kubepod.slice/foo", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
 			})
 		})
 	})
@@ -150,10 +147,7 @@ var _ = Describe("Failure", func() {
 				config.Level = chaostypes.DisruptionLevelPod
 			})
 			It("should clear the pod-level iptables rules", func() {
-				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "OUTPUT", types.InjectorCgroupClassID, "udp", "53", "CHAOS-DNS")
-			})
-			It("should reset the custom classid", func() {
-				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", "0x0")
+				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "nat", "OUTPUT", "/kubepod.slice/foo", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
 			})
 		})
 

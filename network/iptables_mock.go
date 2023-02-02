@@ -62,15 +62,22 @@ func (f *IptablesMock) AddWideFilterRule(chain string, protocol string, port str
 }
 
 //nolint:golint
-func (f *IptablesMock) AddCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error {
-	args := f.Called(chain, cgroupid, protocol, port, jump)
+func (f *IptablesMock) AddCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error {
+	args := f.Called(table, chain, cgroupPath, rulespec)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *IptablesMock) DeleteCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error {
-	args := f.Called(chain, cgroupid, protocol, port, jump)
+func (f *IptablesMock) DeleteCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error {
+	args := f.Called(table, chain, cgroupPath, rulespec)
 
 	return args.Error(0)
+}
+
+//nolint:golint
+func (f *IptablesMock) ListRules(table string, chain string) ([]string, error) {
+	args := f.Called(table, chain)
+
+	return args.Get(0).([]string), args.Error(1)
 }

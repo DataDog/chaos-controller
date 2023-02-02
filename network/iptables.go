@@ -18,11 +18,12 @@ type Iptables interface {
 	ClearAndDeleteChain(name string) error
 	AddRuleWithIP(chain string, protocol string, port string, jump string, destinationIP string) error
 	AddWideFilterRule(chain string, protocol string, port string, jump string) error
-	AddCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error
+	AddCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error
 	PrependRuleSpec(chain string, rulespec ...string) error
 	DeleteRule(chain string, protocol string, port string, jump string) error
 	DeleteRuleSpec(chain string, rulespec ...string) error
-	DeleteCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error
+	DeleteCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error
+	ListRules(table string, chain string) ([]string, error)
 }
 
 type iptables struct {
@@ -88,15 +89,16 @@ func (i iptables) PrependRuleSpec(chain string, rulespec ...string) error {
 }
 
 // Add a rule with cgroup filter
-func (i iptables) AddCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error {
+func (i iptables) AddCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error {
 	if i.dryRun {
 		return nil
 	}
 
-	i.log.Infow("creating new iptables rule", "chain name", chain, "cgroup/netclass/classid identifier", cgroupid,
-		"protocol", protocol, "port", port, "jump target", jump)
+	i.log.Infow("creating new iptables rule", "table", table, "chain", chain, "cgroup path", cgroupPath, "rulespec", rulespec)
 
-	return i.ip.AppendUnique("nat", chain, "-m", "cgroup", "--cgroup", cgroupid, "-p", protocol, "--dport", port, "-j", jump)
+	rulespec = append([]string{"-m", "cgroup", "--path", cgroupPath}, rulespec...)
+
+	return i.ip.AppendUnique(table, chain, rulespec...)
 }
 
 func (i iptables) AddWideFilterRule(chain string, protocol string, port string, jump string) error {
@@ -141,20 +143,23 @@ func (i iptables) DeleteRuleSpec(chain string, rulespec ...string) error {
 }
 
 // Delete a rule with cgroup filter
-func (i iptables) DeleteCgroupFilterRule(chain string, cgroupid string, protocol string, port string, jump string) error {
+func (i iptables) DeleteCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error {
 	if i.dryRun {
 		return nil
 	}
 
-	i.log.Infow("deleting iptables rule", "chain name", chain, "protocol", protocol, "port", port, "jump target", jump)
+	i.log.Infow("deleting iptables rule", "chain name", chain, "cgroup path", cgroupPath, "rulespec", rulespec)
 
-	if exists, _ := i.ip.ChainExists("nat", chain); !exists {
+	if exists, _ := i.ip.ChainExists(table, chain); !exists {
 		return nil
 	}
 
-	if exists, _ := i.ip.ChainExists("nat", jump); !exists {
-		return nil
-	}
+	rulespec = append([]string{"-m", "cgroup", "--path", cgroupPath}, rulespec...)
 
-	return i.ip.DeleteIfExists("nat", chain, "-m", "cgroup", "--cgroup", cgroupid, "-p", protocol, "--dport", port, "-j", jump)
+	return i.ip.DeleteIfExists(table, chain, rulespec...)
+}
+
+// ListRules lists the rules of the given table and chain
+func (i iptables) ListRules(table string, chain string) ([]string, error) {
+	return i.ip.List(table, chain)
 }

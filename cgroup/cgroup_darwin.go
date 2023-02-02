@@ -50,6 +50,10 @@ func (cg cgroup) IsCgroupV2() bool {
 	return false
 }
 
+func (cg cgroup) RelativePath(controller string) string {
+	return ""
+}
+
 // NewManager creates a new cgroup manager from the given cgroup root path
 func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLogger) (Manager, error) {
 	return cgroup{

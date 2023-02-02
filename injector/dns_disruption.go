@@ -144,13 +144,8 @@ func (i *DNSDisruptionInjector) Inject() error {
 
 	if i.config.Level == chaostypes.DisruptionLevelPod {
 		if !i.config.OnInit {
-			// write classid to container net_cls cgroup - for iptable filtering
-			if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", chaostypes.InjectorCgroupClassID); err != nil {
-				return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
-			}
-
 			// Redirect traffic marked by targeted InjectorDNSCgroupClassID to CHAOS-DNS
-			if err := i.config.Iptables.AddCgroupFilterRule("OUTPUT", chaostypes.InjectorCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
+			if err := i.config.Iptables.AddCgroupFilterRule("nat", "OUTPUT", i.config.Cgroup.RelativePath(""), "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
 				return fmt.Errorf("unable to create new iptables rule: %w", err)
 			}
 		} else {
@@ -202,17 +197,8 @@ func (i *DNSDisruptionInjector) Clean() error {
 				return fmt.Errorf("unable to remove injected iptables rule: %w", err)
 			}
 		} else {
-			// write default classid to pod net_cls cgroup if it still exists
-			exists := i.config.Cgroup.Exists("net_cls")
-
-			if exists {
-				if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x0"); err != nil {
-					return fmt.Errorf("error reseting classid of pod net_cls cgroup: %w", err)
-				}
-			}
-
 			// Delete iptables rules
-			if err := i.config.Iptables.DeleteCgroupFilterRule("OUTPUT", chaostypes.InjectorCgroupClassID, "udp", "53", "CHAOS-DNS"); err != nil {
+			if err := i.config.Iptables.DeleteCgroupFilterRule("nat", "OUTPUT", i.config.Cgroup.RelativePath(""), "-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"); err != nil {
 				return fmt.Errorf("unable to remove injected iptables rule: %w", err)
 			}
 		}
@@ -229,8 +215,29 @@ func (i *DNSDisruptionInjector) Clean() error {
 		}
 	}
 
-	if err := i.config.Iptables.ClearAndDeleteChain("CHAOS-DNS"); err != nil {
-		return fmt.Errorf("unable to remove injected iptables chain: %w", err)
+	// check if there's still a jump rule to CHAOS-DNS chain existing
+	// that would block its deletion
+	rules, err := i.config.Iptables.ListRules("nat", "OUTPUT")
+	if err != nil {
+		return fmt.Errorf("error listing nat output rules: %w", err)
+	}
+
+	jumpRuleExists := false
+
+	for _, rule := range rules {
+		if strings.HasSuffix(rule, "-j CHAOS-DNS") {
+			jumpRuleExists = true
+			break
+		}
+	}
+
+	// delete CHAOS-DNS chain once no more jump rules are existing
+	if !jumpRuleExists {
+		i.config.Log.Debug("no more jump rules to CHAOS-DNS chain, now deleting it")
+
+		if err := i.config.Iptables.ClearAndDeleteChain("CHAOS-DNS"); err != nil {
+			return fmt.Errorf("unable to remove injected iptables chain: %w", err)
+		}
 	}
 
 	// exit target network namespace
