@@ -18,33 +18,32 @@ import (
 	"go.uber.org/zap"
 )
 
-func cgroupManager(cgroupFile string) (cgroups.Manager, error) {
+func cgroupManager(cgroupFile string, cgroupMount string) (cgroups.Manager, error) {
 	cg := &configs.Cgroup{
 		Resources: &configs.Resources{},
 	}
-	cgroupPaths, err := cgroups.ParseCgroupFile(cgroupFile)
 
+	// parse the proc cgroup file
+	cgroupPaths, err := cgroups.ParseCgroupFile(cgroupFile)
 	if err != nil {
 		return nil, err
 	}
 
-	if cgroups.IsCgroup2UnifiedMode() {
-		// Note that for cgroup v2 unified hierarchy, there are no per-controller
-		// cgroup paths, so the resulting map will have a single element where the key
-		// is empty string ("") and the value is the cgroup path the <pid> is in.
-		cgroupPath := cgroupPaths[""]
-		return fs2.NewManager(cg, cgroupPath)
-	}
-
+	// prefix the cgroup path with the mount point path
 	for subsystem, path := range cgroupPaths {
-		if subsystem != "" {
-			// Process ID 1 is usually the init process primarily responsible for starting and shutting down the system.
-			// Originally, process ID 1 was not specifically reserved for init by any technical measures:
-			// it simply had this ID as a natural consequence of being the first process invoked by the kernel.
-			cgroupPaths[subsystem] = filepath.Join("/proc/1/root/sys/fs/cgroup", subsystem, path)
-		}
+		cgroupPaths[subsystem] = filepath.Join(cgroupMount, subsystem, path)
 	}
 
+	fmt.Println(cgroupPaths)
+
+	// for cgroup v2 unified hierarchy, there are no per-controller
+	// cgroup paths, so the resulting map will have a single element where the key
+	// is empty string ("") and the value is the cgroup path the <pid> is in.
+	if cgroups.IsCgroup2UnifiedMode() {
+		return fs2.NewManager(cg, cgroupPaths[""])
+	}
+
+	// cgroup v1 manager
 	return fs.NewManager(cg, cgroupPaths)
 }
 
@@ -124,8 +123,8 @@ func (cg cgroup) IsCgroupV2() bool {
 }
 
 // NewManager creates a new cgroup manager from the given cgroup root path
-func NewManager(dryRun bool, pid uint32, log *zap.SugaredLogger) (Manager, error) {
-	manager, err := cgroupManager(fmt.Sprintf("/proc/%d/cgroup", pid))
+func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLogger) (Manager, error) {
+	manager, err := cgroupManager(fmt.Sprintf("/proc/%d/cgroup", pid), cgroupMount)
 	if err != nil {
 		return nil, err
 	}

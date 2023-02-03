@@ -167,8 +167,19 @@ func initManagers(pid uint32) (netns.Manager, cgroup.Manager, error) {
 		return nil, nil, fmt.Errorf("error creating network namespace manager: %s", err.Error())
 	}
 
+	// retrieve cgroup mount path set in env or fallback to the default value
+	cgroupMount := ""
+	if mount, exists := os.LookupEnv(env.InjectorMountCgroup); exists {
+		cgroupMount = mount
+	} else {
+		// process ID 1 is usually the init process primarily responsible for starting and shutting down the system
+		// originally, process ID 1 was not specifically reserved for init by any technical measures
+		// it simply had this ID as a natural consequence of being the first process invoked by the kernel
+		cgroupMount = "/proc/1/root/sys/fs/cgroup"
+	}
+
 	// create cgroups manager
-	cgroupMgr, err := cgroup.NewManager(dryRun, pid, log)
+	cgroupMgr, err := cgroup.NewManager(dryRun, pid, cgroupMount, log)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating cgroup manager: %s", err.Error())
 	}
