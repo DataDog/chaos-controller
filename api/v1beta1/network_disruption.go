@@ -215,7 +215,7 @@ func (s *NetworkDisruptionSpec) Format() string {
 		return ""
 	}
 
-	networkDescription := strings.Join(networkVerbs, ", ")
+	networkDescription := "Network disruption " + strings.Join(networkVerbs, ", ")
 	if addOfWord {
 		networkDescription += " of"
 	}
