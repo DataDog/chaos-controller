@@ -193,7 +193,7 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 // Format describe a NetworkDisruptionSpec
 func (s *NetworkDisruptionSpec) Format() string {
 	networkVerbs := []string{}
-	addOfWord := false
+	addOfWord := false // know whether or not we should suffix the verbs with a "of" word. example: delaying of 100ms the traffic vs dropping 100% of the traffic
 
 	if s.Delay != 0 {
 		networkVerbs = append(networkVerbs, fmt.Sprintf("delaying of %dms", s.Delay))
@@ -201,16 +201,19 @@ func (s *NetworkDisruptionSpec) Format() string {
 
 	if s.Drop != 0 {
 		addOfWord = true
+
 		networkVerbs = append(networkVerbs, fmt.Sprintf("dropping %d%%", s.Drop))
 	}
 
 	if s.Duplicate != 0 {
 		addOfWord = true
+
 		networkVerbs = append(networkVerbs, fmt.Sprintf("duplicating %d%%", s.Duplicate))
 	}
 
 	if s.Corrupt != 0 {
 		addOfWord = true
+
 		networkVerbs = append(networkVerbs, fmt.Sprintf("corrupting %d%%", s.Corrupt))
 	}
 
@@ -232,6 +235,7 @@ func (s *NetworkDisruptionSpec) Format() string {
 
 	filterDescriptions := []string{}
 
+	// Add host to description
 	for _, host := range s.Hosts {
 		descr := ""
 
@@ -253,10 +257,12 @@ func (s *NetworkDisruptionSpec) Format() string {
 		filterDescriptions = append(filterDescriptions, descr)
 	}
 
+	// Add services to description
 	for _, service := range s.Services {
 		filterDescriptions = append(filterDescriptions, fmt.Sprintf(" going to %s/%s", service.Name, service.Namespace))
 	}
 
+	// Add cloud services to description
 	if s.Cloud != nil {
 		services := []NetworkDisruptionCloudServiceSpec{}
 
@@ -293,6 +299,7 @@ func (s *NetworkDisruptionSpec) Format() string {
 
 	networkDescription += strings.Join(filterDescriptions[:len(filterDescriptions)-1], ",")
 
+	// Last filter uses and instead of a comma
 	if len(filterDescriptions) > 1 {
 		networkDescription += " and"
 	}
