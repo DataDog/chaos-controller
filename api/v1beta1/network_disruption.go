@@ -250,6 +250,7 @@ func (s *NetworkDisruptionSpec) Format() string {
 		if host.Port != 0 {
 			descr += fmt.Sprintf(":%d", host.Port)
 		}
+
 		if host.Protocol != "" {
 			descr += fmt.Sprintf(" with protocol %s", host.Protocol)
 		}
