@@ -190,6 +190,126 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	return args
 }
 
+// Format describe a NetworkDisruptionSpec
+func (s *NetworkDisruptionSpec) Format() string {
+	networkVerbs := []string{}
+	addOfWord := false // know whether or not we should suffix the verbs with a "of" word. example: delaying of 100ms the traffic vs dropping 100% of the traffic
+
+	if s.Delay != 0 {
+		networkVerbs = append(networkVerbs, fmt.Sprintf("delaying of %dms", s.Delay))
+	}
+
+	if s.Drop != 0 {
+		addOfWord = true
+
+		networkVerbs = append(networkVerbs, fmt.Sprintf("dropping %d%%", s.Drop))
+	}
+
+	if s.Duplicate != 0 {
+		addOfWord = true
+
+		networkVerbs = append(networkVerbs, fmt.Sprintf("duplicating %d%%", s.Duplicate))
+	}
+
+	if s.Corrupt != 0 {
+		addOfWord = true
+
+		networkVerbs = append(networkVerbs, fmt.Sprintf("corrupting %d%%", s.Corrupt))
+	}
+
+	if len(networkVerbs) == 0 {
+		return ""
+	}
+
+	networkDescription := "Network disruption " + strings.Join(networkVerbs, ", ")
+
+	if addOfWord {
+		networkDescription += " of"
+	}
+
+	networkDescription += " the traffic"
+
+	if s.DelayJitter != 0 {
+		networkDescription += fmt.Sprintf(" with %dms of delay jitter", s.DelayJitter)
+	}
+
+	filterDescriptions := []string{}
+
+	// Add host to description
+	for _, host := range s.Hosts {
+		descr := ""
+
+		if host.Flow == FlowIngress {
+			descr += " coming from "
+		} else {
+			descr += " going to "
+		}
+
+		descr += host.Host
+
+		if host.Port != 0 {
+			descr += fmt.Sprintf(":%d", host.Port)
+		}
+
+		if host.Protocol != "" {
+			descr += fmt.Sprintf(" with protocol %s", host.Protocol)
+		}
+
+		filterDescriptions = append(filterDescriptions, descr)
+	}
+
+	// Add services to description
+	for _, service := range s.Services {
+		filterDescriptions = append(filterDescriptions, fmt.Sprintf(" going to %s/%s", service.Name, service.Namespace))
+	}
+
+	// Add cloud services to description
+	if s.Cloud != nil {
+		services := []NetworkDisruptionCloudServiceSpec{}
+
+		if s.Cloud.AWSServiceList != nil {
+			services = append(services, *s.Cloud.AWSServiceList...)
+		}
+
+		if s.Cloud.DatadogServiceList != nil {
+			services = append(services, *s.Cloud.DatadogServiceList...)
+		}
+
+		if s.Cloud.GCPServiceList != nil {
+			services = append(services, *s.Cloud.GCPServiceList...)
+		}
+
+		for _, service := range services {
+			descr := ""
+
+			if service.Flow == FlowIngress {
+				descr += " coming from "
+			} else {
+				descr += " going to "
+			}
+
+			descr += service.ServiceName
+
+			if service.Protocol != "" {
+				descr += fmt.Sprintf(" with protocol %s", service.Protocol)
+			}
+
+			filterDescriptions = append(filterDescriptions, descr)
+		}
+	}
+
+	networkDescription += strings.Join(filterDescriptions[:len(filterDescriptions)-1], ",")
+
+	// Last filter uses and instead of a comma
+	if len(filterDescriptions) > 1 {
+		networkDescription += " and"
+	}
+
+	networkDescription += filterDescriptions[len(filterDescriptions)-1]
+
+	return networkDescription
+}
+
 // TransformToCloudMap for ease of computing when transforming the cloud services ip ranges to a list of hosts to disrupt
 func (s *NetworkDisruptionCloudSpec) TransformToCloudMap() map[string][]NetworkDisruptionCloudServiceSpec {
 	clouds := map[string][]NetworkDisruptionCloudServiceSpec{}
