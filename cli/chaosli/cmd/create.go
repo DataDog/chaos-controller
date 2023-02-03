@@ -115,7 +115,7 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 func promptForKind(spec *v1beta1.DisruptionSpec) error {
 	initial := "Let's begin by choosing the type of disruption to apply! Which disruption kind would you like to add?"
 	followUp := "Would you like to add another disruption kind? It's not necessary, most disruptions involve only one kind. Select .. to finish adding kinds."
-	kinds := []string{"dns", "network", "cpu", "disk", "node failure", "container failure", "disk failure"}
+	kinds := []string{"dns", "network", "cpu", "disk pressure", "node failure", "container failure", "disk failure"}
 	helpText := `The DNS disruption allows for overriding the A or CNAME records returned by DNS queries.
 The Network disruption allows for injecting a variety of different network issues into your target.
 The CPU and Disk disruptions apply cpu pressure or IO throttling to your target, respectively.
@@ -431,6 +431,10 @@ func getDiskFailure() *v1beta1.DiskFailureSpec {
 	}
 
 	spec := &v1beta1.DiskFailureSpec{}
+
+	spec.Path = getInput("Add a filter path to target (or leave blank, default=\"/\")",
+		"The filter path is a strict prefix matcher and avoid a program to access file or directory with this prefix. Currently it does not support wildcards.",
+	)
 
 	return spec
 }

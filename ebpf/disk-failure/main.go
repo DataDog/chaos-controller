@@ -21,15 +21,65 @@ var nFlag = flag.Uint64("p", 0, "Process to check")
 var nPath = flag.String("f", "/", "Path to filter")
 
 func main() {
-	flag.Parse()
-
+	// Defined a chanel to handle SIGTERM
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
 
+	// Create the bpf module
 	bpfModule, err := bpf.NewModuleFromFile(obj_name)
 	must(err)
 	defer bpfModule.Close()
 
+	initGlobalVariables(bpfModule)
+
+	err = bpfModule.BPFLoadObject()
+	must(err)
+
+	// reads data from the trace pipe that bpf_trace_printk() writes to,
+	// (/sys/kernel/debug/tracing/trace_pipe).
+	go helpers.TracePipeListen()
+
+	// Load the BPF program
+	prog, err := bpfModule.GetProgram("injection_disk_failure")
+	must(err)
+
+	// Attach the kprope to catch sys openat syscall
+	_, err = prog.AttachKprobe(sys_openat)
+	must(err)
+
+	// Create the ring buffer to store events
+	e := make(chan []byte, 300)
+	p, err := bpfModule.InitPerfBuf("events", e, nil, 1024)
+	must(err)
+
+	// Start the buffer
+	p.Start()
+
+	go func() {
+		for data := range e {
+			printEvent(data)
+		}
+	}()
+
+	<-sig
+	p.Stop()
+}
+
+func printEvent(data []byte) {
+	ppid := int(binary.LittleEndian.Uint32(data[0:4]))
+	pid := int(binary.LittleEndian.Uint32(data[4:8]))
+	tid := int(binary.LittleEndian.Uint32(data[8:12]))
+	gid := int(binary.LittleEndian.Uint32(data[12:16]))
+	comm := string(bytes.TrimRight(data[16:], "\x00"))
+	fmt.Printf("Disrupt Ppid %d, Pid %d, Tid: %d, Gid: %d, Command: %s\n", ppid, pid, tid, gid, comm)
+}
+
+// The global variables are shared against the userspace application and the BPF application (loaded into the kernel).
+// This global variables allow the user application to parametrise the BPF application.
+func initGlobalVariables(bpfModule *bpf.Module) {
+	flag.Parse()
+
+	// Set the PID
 	var pid uint32
 	pid = uint32(*nFlag)
 	if err := bpfModule.InitGlobalVariable("target_pid", pid); err != nil {
@@ -44,41 +94,6 @@ func main() {
 	currentPid := uint32(os.Getpid())
 	if err := bpfModule.InitGlobalVariable("exclude_pid", currentPid); err != nil {
 		must(err)
-	}
-
-	err = bpfModule.BPFLoadObject()
-	must(err)
-
-	go helpers.TracePipeListen()
-
-	prog, err := bpfModule.GetProgram("injection_bpftrace")
-	must(err)
-	_, err = prog.AttachKprobe(sys_openat)
-	must(err)
-
-	e := make(chan []byte, 300)
-	p, err := bpfModule.InitPerfBuf("events", e, nil, 1024)
-	must(err)
-
-	p.Start()
-
-	counter := make(map[string]int, 350)
-	go func() {
-		for data := range e {
-			ppid := int(binary.LittleEndian.Uint32(data[0:4]))
-			pid := int(binary.LittleEndian.Uint32(data[4:8]))
-			tid := int(binary.LittleEndian.Uint32(data[8:12]))
-			gid := int(binary.LittleEndian.Uint32(data[12:16]))
-			comm := string(bytes.TrimRight(data[16:], "\x00"))
-			counter[comm]++
-			fmt.Printf("Disrupt Ppid %d, Pid %d, Tid: %d, Gid: %d, Command: %s\n", ppid, pid, tid, gid, comm)
-		}
-	}()
-
-	<-sig
-	p.Stop()
-	for comm, n := range counter {
-		fmt.Printf("%s: %d\n", comm, n)
 	}
 }
 

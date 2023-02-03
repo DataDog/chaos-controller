@@ -5,20 +5,6 @@
 
 // +build ignore
 #include "injection.bpf.h"
-#if defined(__x86_64__) || defined(__TARGET_ARCH_x86)
-#include "amd64/vmlinux.h"
-#endif
-#if defined(__aarch64__) || defined(__TARGET_ARCH_arm64)
-#include "aarch64/vmlinux.h"
-#endif
-#if SC_PLATFORM == SC_PLATFORM_LINUX
-#include <errno.h>
-#endif
-#include <bpf/bpf_helpers.h>
-#if defined(__TARGET_ARCH_arm64) || defined(__TARGET_ARCH_x86)
-#include <bpf/bpf_tracing.h>
-#include <bpf/bpf_core_read.h>
-#endif
 
 const volatile pid_t target_pid = 0;
 const volatile pid_t exclude_pid;
@@ -40,7 +26,7 @@ struct {
 } events SEC(".maps");
 
 SEC("kprobe/sys_openat")
-int injection_bpftrace(struct pt_regs *ctx)
+int injection_disk_failure(struct pt_regs *ctx)
 {
     struct data_t data = {};
 
@@ -102,11 +88,6 @@ int injection_bpftrace(struct pt_regs *ctx)
 
     // Get command name
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
-
-    // Uncomment for debuging
-    //bpf_printk("COMM: %s, Pid: %i, Tid: %i\n", &data.comm, data.pid, data.tid);
-    //bpf_printk("COMM: %s, Parent Id: %i, Path: %s.\n", &data.comm, data.ppid, path);
-    //bpf_printk("COMM:%s, Start injection", &data.comm);
 
     // Add the event to the ring buffer
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &data, 100);

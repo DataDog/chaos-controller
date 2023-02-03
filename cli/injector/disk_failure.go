@@ -30,7 +30,7 @@ var diskFailureCmd = &cobra.Command{
 			inj, err := injector.NewDiskFailureInjector(spec, injector.DiskFailureInjectorConfig{Config: config})
 			if err != nil {
 				if errors.Is(errors.Unwrap(err), os.ErrNotExist) {
-					log.Errorw("error initializing the disk failure injector because the given path does not exist", "error", err)
+					log.Fatalw("error initializing the disk failure injector because the given path does not exist", "error", err)
 				} else {
 					log.Fatalw("error initializing the disk failure injector", "error", err)
 				}

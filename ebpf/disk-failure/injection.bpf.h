@@ -9,10 +9,10 @@
  */
 #if defined(__x86_64__) || defined(__TARGET_ARCH_x86)
 #include "amd64/vmlinux.h"
-#endif
-#if defined(__aarch64__) || defined(__TARGET_ARCH_arm64)
+#elif defined(__aarch64__) || defined(__TARGET_ARCH_arm64)
 #include "aarch64/vmlinux.h"
 #endif
+#include <errno.h>
 #ifdef asm_inline
 #undef asm_inline
 #define asm_inline asm
