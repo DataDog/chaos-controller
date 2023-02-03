@@ -6,6 +6,7 @@
 package cgroup
 
 import (
+	"fmt"
 	"go.uber.org/zap"
 )
 
@@ -16,34 +17,34 @@ type cgroup struct {
 
 // Read reads the given cgroup file data and returns the content as a string
 func (cg cgroup) Read(controller, file string) (string, error) {
-	return "", nil
+	return "", fmt.Errorf("not implemented")
 }
 
 // Write writes the given data to the given cgroup kind
 func (cg cgroup) Write(controller, file, data string) error {
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
 // Exists returns true if the given cgroup exists, false otherwise
 func (cg cgroup) Exists(controller string) bool {
-	return true
+	return false
 }
 
 // Join adds the given PID to the given cgroup
 // If inherit is set to true, all PID of the same group will be moved to the cgroup (writing to cgroup.procs file)
 // Otherwise, only the given PID will be moved to the cgroup (writing to tasks file)
 func (cg cgroup) Join(controller string, pid int, inherit bool) error {
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
 // DiskThrottleRead adds a disk throttle on read operations to the given disk identifier
 func (cg cgroup) DiskThrottleRead(identifier, bps int) error {
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
 // DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
 func (cg cgroup) DiskThrottleWrite(identifier, bps int) error {
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
 func (cg cgroup) IsCgroupV2() bool {
