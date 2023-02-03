@@ -252,9 +252,15 @@ func (s *NetworkDisruptionSpec) Format() string {
 
 	if s.Cloud != nil {
 		services := []NetworkDisruptionCloudServiceSpec{}
-		services = append(services, *s.Cloud.AWSServiceList...)
-		services = append(services, *s.Cloud.DatadogServiceList...)
-		services = append(services, *s.Cloud.GCPServiceList...)
+		if s.Cloud.AWSServiceList != nil {
+			services = append(services, *s.Cloud.AWSServiceList...)
+		}
+		if s.Cloud.DatadogServiceList != nil {
+			services = append(services, *s.Cloud.DatadogServiceList...)
+		}
+		if s.Cloud.GCPServiceList != nil {
+			services = append(services, *s.Cloud.GCPServiceList...)
+		}
 
 		for _, service := range services {
 			descr := ""
