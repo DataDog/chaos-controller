@@ -198,14 +198,17 @@ func (s *NetworkDisruptionSpec) Format() string {
 	if s.Delay != 0 {
 		networkVerbs = append(networkVerbs, fmt.Sprintf("delaying of %dms", s.Delay))
 	}
+
 	if s.Drop != 0 {
 		addOfWord = true
 		networkVerbs = append(networkVerbs, fmt.Sprintf("dropping %d%%", s.Drop))
 	}
+
 	if s.Duplicate != 0 {
 		addOfWord = true
 		networkVerbs = append(networkVerbs, fmt.Sprintf("duplicating %d%%", s.Duplicate))
 	}
+
 	if s.Corrupt != 0 {
 		addOfWord = true
 		networkVerbs = append(networkVerbs, fmt.Sprintf("corrupting %d%%", s.Corrupt))
@@ -216,9 +219,11 @@ func (s *NetworkDisruptionSpec) Format() string {
 	}
 
 	networkDescription := "Network disruption " + strings.Join(networkVerbs, ", ")
+
 	if addOfWord {
 		networkDescription += " of"
 	}
+
 	networkDescription += " the traffic"
 
 	if s.DelayJitter != 0 {
@@ -229,6 +234,7 @@ func (s *NetworkDisruptionSpec) Format() string {
 
 	for _, host := range s.Hosts {
 		descr := ""
+
 		if host.Flow == FlowIngress {
 			descr += " coming from "
 		} else {
@@ -236,6 +242,7 @@ func (s *NetworkDisruptionSpec) Format() string {
 		}
 
 		descr += host.Host
+
 		if host.Port != 0 {
 			descr += fmt.Sprintf(":%d", host.Port)
 		}
@@ -252,18 +259,22 @@ func (s *NetworkDisruptionSpec) Format() string {
 
 	if s.Cloud != nil {
 		services := []NetworkDisruptionCloudServiceSpec{}
+
 		if s.Cloud.AWSServiceList != nil {
 			services = append(services, *s.Cloud.AWSServiceList...)
 		}
+
 		if s.Cloud.DatadogServiceList != nil {
 			services = append(services, *s.Cloud.DatadogServiceList...)
 		}
+
 		if s.Cloud.GCPServiceList != nil {
 			services = append(services, *s.Cloud.GCPServiceList...)
 		}
 
 		for _, service := range services {
 			descr := ""
+
 			if service.Flow == FlowIngress {
 				descr += " coming from "
 			} else {
@@ -271,6 +282,7 @@ func (s *NetworkDisruptionSpec) Format() string {
 			}
 
 			descr += service.ServiceName
+
 			if service.Protocol != "" {
 				descr += fmt.Sprintf(" with protocol %s", service.Protocol)
 			}
@@ -286,6 +298,7 @@ func (s *NetworkDisruptionSpec) Format() string {
 	}
 
 	networkDescription += filterDescriptions[len(filterDescriptions)-1]
+
 	return networkDescription
 }
 
