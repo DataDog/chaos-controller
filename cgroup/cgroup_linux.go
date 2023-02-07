@@ -138,7 +138,7 @@ func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLog
 	isCgroupV2 := cgroups.PathExists("/sys/fs/cgroup/cgroup.controllers")
 	if isCgroupV2 {
 		return cgroupV2{
-			cgroup: cg,
+			cg: cg,
 		}, nil
 	}
 
