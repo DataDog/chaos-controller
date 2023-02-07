@@ -226,6 +226,12 @@ var _ = Describe("Disruption Controller", func() {
 	})
 
 	JustBeforeEach(func() {
+		if os.Getenv("CGROUPS") == "v2" {
+			if disruption.Spec.Network != nil {
+				Skip("can't run this test in cgroups v2")
+			}
+		}
+
 		By("Creating disruption resource and waiting for injection to be done")
 		Expect(k8sClient.Create(context.Background(), disruption)).To(BeNil())
 

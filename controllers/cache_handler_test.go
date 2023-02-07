@@ -7,6 +7,7 @@ package controllers
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -46,6 +47,12 @@ var _ = Describe("Cache Handler verifications", func() {
 	})
 
 	JustBeforeEach(func() {
+		if os.Getenv("CGROUPS") == "v2" {
+			if disruption.Spec.Network != nil {
+				Skip("can't run this test in cgroups v2")
+			}
+		}
+
 		By("Creating disruption resource and waiting for injection to be done")
 		Expect(k8sClient.Create(context.Background(), disruption)).To(BeNil())
 
