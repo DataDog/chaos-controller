@@ -270,7 +270,7 @@ var _ = Describe("Disruption Controller", func() {
 		})
 	})
 
-	FContext("node level", func() {
+	Context("node level", func() {
 		BeforeEach(func() {
 			disruption = &chaosv1beta1.Disruption{
 				ObjectMeta: metav1.ObjectMeta{
@@ -283,9 +283,20 @@ var _ = Describe("Disruption Controller", func() {
 					Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 						DisableAll: true,
 					},
-					Selector:    map[string]string{"kubernetes.io/hostname": clusterName},
-					Level:       chaostypes.DisruptionLevelNode,
-					CPUPressure: &chaosv1beta1.CPUPressureSpec{},
+					Selector: map[string]string{"kubernetes.io/hostname": clusterName},
+					Level:    chaostypes.DisruptionLevelNode,
+					Network: &chaosv1beta1.NetworkDisruptionSpec{
+						Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
+							{
+								Host:     "127.0.0.1",
+								Port:     80,
+								Protocol: "tcp",
+							},
+						},
+						Drop:    0,
+						Corrupt: 0,
+						Delay:   1,
+					},
 				},
 			}
 		})
@@ -414,10 +425,19 @@ var _ = Describe("Disruption Controller", func() {
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
 				},
-				Selector:    map[string]string{"foo": "bar"},
-				Containers:  []string{"ctn1"},
-				Duration:    "10m",
-				CPUPressure: &chaosv1beta1.CPUPressureSpec{},
+				Selector:   map[string]string{"foo": "bar"},
+				Containers: []string{"ctn1"},
+				Duration:   "10m",
+				Network: &chaosv1beta1.NetworkDisruptionSpec{
+					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
+						{
+							Host:     "127.0.0.1",
+							Port:     80,
+							Protocol: "tcp",
+						},
+					},
+					Drop: 100,
+				},
 			}
 
 		})
