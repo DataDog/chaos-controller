@@ -5,46 +5,37 @@
 
 package cgroup
 
-import (
-	"fmt"
-
-	"github.com/opencontainers/runc/libcontainer/cgroups"
-
-	"go.uber.org/zap"
-)
-
 type cgroupV2 struct {
-	manager *cgroups.Manager
-	log     *zap.SugaredLogger
+	cgroup
 }
 
 // Read reads the given cgroup file data and returns the content as a string
 func (cg cgroupV2) Read(controller, file string) (string, error) {
-	return "", fmt.Errorf("not implemented")
+	return cg.Read(controller, file)
 }
 
 // Write writes the given data to the given cgroup kind
 func (cg cgroupV2) Write(controller, file, data string) error {
-	return fmt.Errorf("not implemented")
+	return cg.Write(controller, file, data)
 }
 
 // Exists returns true if the given cgroup exists, false otherwise
 func (cg cgroupV2) Exists(controller string) bool {
-	return false
+	return cg.Exists(controller)
 }
 
 func (cg cgroupV2) Join(controller string, pid int, inherit bool) error {
-	return fmt.Errorf("not implemented")
+	return cg.Join(controller, pid, inherit)
 }
 
 // DiskThrottleRead adds a disk throttle on read operations to the given disk identifier
 func (cg cgroupV2) DiskThrottleRead(identifier, bps int) error {
-	return fmt.Errorf("not implemented")
+	return cg.DiskThrottleRead(identifier, bps)
 }
 
 // DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
 func (cg cgroupV2) DiskThrottleWrite(identifier, bps int) error {
-	return fmt.Errorf("not implemented")
+	return cg.DiskThrottleRead(identifier, bps)
 }
 
 func (cg cgroupV2) IsCgroupV2() bool {

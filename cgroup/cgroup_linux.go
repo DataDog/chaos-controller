@@ -40,7 +40,7 @@ func cgroupManager(cgroupFile string, cgroupMount string) (cgroups.Manager, erro
 	// cgroup paths, so the resulting map will have a single element where the key
 	// is empty string ("") and the value is the cgroup path the <pid> is in.
 	if cgroups.IsCgroup2UnifiedMode() {
-		return fs2.NewManager(cg, cgroupPaths[""])
+		return fs2.NewManager(cg, cgroupPaths[cgroupMount])
 	}
 
 	// cgroup v1 manager
@@ -129,17 +129,18 @@ func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLog
 		return nil, err
 	}
 
-	isCgroupV2 := cgroups.PathExists("/sys/fs/cgroup/cgroup.controllers")
-	if isCgroupV2 {
-		return cgroupV2{
-			manager: &manager,
-			log:     log,
-		}, nil
-	}
-
-	return cgroup{
+	cg := cgroup{
 		manager: &manager,
 		dryRun:  dryRun,
 		log:     log,
-	}, nil
+	}
+
+	isCgroupV2 := cgroups.PathExists("/sys/fs/cgroup/cgroup.controllers")
+	if isCgroupV2 {
+		return cgroupV2{
+			cgroup: cg,
+		}, nil
+	}
+
+	return cg, nil
 }
