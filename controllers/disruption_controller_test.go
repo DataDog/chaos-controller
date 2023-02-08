@@ -226,6 +226,12 @@ var _ = Describe("Disruption Controller", func() {
 	})
 
 	JustBeforeEach(func() {
+		if os.Getenv("CGROUPS") == "v2" {
+			if disruption.Spec.Network != nil {
+				Skip("can't run this test in cgroups v2")
+			}
+		}
+
 		By("Creating disruption resource and waiting for injection to be done")
 		Expect(k8sClient.Create(context.Background(), disruption)).To(BeNil())
 
@@ -315,22 +321,10 @@ var _ = Describe("Disruption Controller", func() {
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
 				},
-				Selector:   map[string]string{"foo": "bar"},
-				Containers: []string{"ctn1"},
-				Duration:   "30s",
-				Network: &chaosv1beta1.NetworkDisruptionSpec{
-					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
-						{
-							Host:     "127.0.0.1",
-							Port:     80,
-							Protocol: "tcp",
-						},
-					},
-					Drop:           0,
-					Corrupt:        0,
-					Delay:          1000,
-					BandwidthLimit: 10000,
-				},
+				Selector:    map[string]string{"foo": "bar"},
+				Containers:  []string{"ctn1"},
+				Duration:    "30s",
+				CPUPressure: &chaosv1beta1.CPUPressureSpec{}, // Consider reverting b6902333bf2074e90b00b055bfe639a97774a39e here once cgroups v2 support is fully implemented
 			}
 		})
 
