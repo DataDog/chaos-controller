@@ -311,8 +311,8 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 
 	// Rule: pulse compatibility
 	if s.Pulse != nil {
-		if s.NodeFailure != nil || s.ContainerFailure != nil {
-			retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
+		if s.NodeFailure != nil {
+			retErr = multierror.Append(retErr, errors.New("pulse is not compatible with node failure disruptions"))
 		}
 
 		if s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
