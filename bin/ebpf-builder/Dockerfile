@@ -28,7 +28,7 @@ RUN apt-get install -y wget && \
 
 # Setup working directory.
 RUN mkdir -p /app
-WORKDIR /app
+WORKDIR /app/ebpf
 
 # Execute build command.
 ENTRYPOINT ["/usr/bin/make", "all"]

@@ -7,5 +7,18 @@
  * Redefine it to just asm to enable successful compilation.
  * see https://github.com/iovisor/bcc/commit/2d1497cde1cc9835f759a707b42dea83bee378b8 for more details
  */
-#include "../includes/bpf_common.h"
+#if defined(__x86_64__) || defined(__TARGET_ARCH_x86)
+#include "./amd64/vmlinux.h"
+#elif defined(__aarch64__) || defined(__TARGET_ARCH_arm64)
+#include "./aarch64/vmlinux.h"
+#endif
+#include <errno.h>
+#ifdef asm_inline
+#undef asm_inline
+#define asm_inline asm
+#endif
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
+#include <bpf/bpf_core_read.h>
 
+char LICENSE[] SEC("license") = "Dual BSD/GPL";

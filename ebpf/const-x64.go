@@ -3,10 +3,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023 Datadog, Inc.
 
-//go:build arm64
-// +build arm64
+//go:build amd64
+// +build amd64
 
-package main
+package ebpf
 
-const sys_openat = "__arm64_sys_openat"
-const obj_name = "bpf-disk-failure-arm64.bpf.o"
+const SYS_OPENAT = "__x64_sys_openat"
+const DISK_FAILURE_OBJ_NAME = "bpf-disk-failure-amd64.bpf.o"

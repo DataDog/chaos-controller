@@ -166,10 +166,11 @@ docker-build-manager: manager
 	docker save ${MANAGER_IMAGE} -o ./bin/manager/manager.tar.gz
 
 docker-build-ebpf:
-	docker build --platform linux/${OS_ARCH} --build-arg ARCH=${OS_ARCH} -t ebpf-disk-failure-builder-${OS_ARCH} -f ebpf/disk-failure/Dockerfile ./ebpf/disk-failure
-	docker run --rm -v ${shell pwd}/ebpf/disk-failure:/app ebpf-disk-failure-builder-${OS_ARCH}
-	mv ebpf/disk-failure/bpf-disk-failure-${OS_ARCH} bin/injector/bpf-disk-failure-${OS_ARCH}
-	mv ebpf/disk-failure/bpf-disk-failure-${OS_ARCH}.bpf.o bin/injector/bpf-disk-failure-${OS_ARCH}.bpf.o
+	docker build --platform linux/${OS_ARCH} --build-arg ARCH=${OS_ARCH} -t ebpf-builder-${OS_ARCH} -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
+	rm -r ebpf/builds || true
+	docker run --rm -v ${shell pwd}:/app ebpf-builder-${OS_ARCH}
+	mv ebpf/builds/*-${OS_ARCH} bin/injector/
+	mv ebpf/builds/*-${OS_ARCH}.bpf.o bin/injector/
 
 docker-build-injector: docker-build-ebpf injector
 	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/

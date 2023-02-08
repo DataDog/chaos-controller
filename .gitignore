@@ -54,3 +54,6 @@ crash.log
 # local certificates
 /local/certDir/*.crt
 /local/certDir/*.key
+
+# eBPF
+ebpf/builds/

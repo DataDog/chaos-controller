@@ -3,6 +3,9 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023 Datadog, Inc.
 
+//go:build !cgo
+// +build !cgo
+
 package main
 
 import (
@@ -11,6 +14,7 @@ import (
 	"encoding/binary"
 	"flag"
 	"fmt"
+	"github.com/DataDog/chaos-controller/ebpf"
 	bpf "github.com/aquasecurity/libbpfgo"
 	"github.com/aquasecurity/libbpfgo/helpers"
 	"os"
@@ -26,7 +30,7 @@ func main() {
 	signal.Notify(sig, os.Interrupt)
 
 	// Create the bpf module
-	bpfModule, err := bpf.NewModuleFromFile(obj_name)
+	bpfModule, err := bpf.NewModuleFromFile(ebpf.DISK_FAILURE_OBJ_NAME)
 	must(err)
 	defer bpfModule.Close()
 
@@ -44,7 +48,7 @@ func main() {
 	must(err)
 
 	// Attach the kprope to catch sys openat syscall
-	_, err = prog.AttachKprobe(sys_openat)
+	_, err = prog.AttachKprobe(ebpf.SYS_OPENAT)
 	must(err)
 
 	// Create the ring buffer to store events
