@@ -1209,8 +1209,9 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			level = chaostypes.DisruptionLevelPod
 		}
 
-		pulseActiveDuration, pulseDormantDuration := time.Duration(0), time.Duration(0)
+		pulseActiveDuration, pulseDormantDuration, pulseInitialDelay := time.Duration(0), time.Duration(0), time.Duration(0)
 		if instance.Spec.Pulse != nil {
+			pulseInitialDelay = instance.Spec.Pulse.InitialDelay.Duration()
 			pulseActiveDuration = instance.Spec.Pulse.ActiveDuration.Duration()
 			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
 		}
@@ -1245,6 +1246,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			DisruptionName:       instance.Name,
 			DisruptionNamespace:  instance.Namespace,
 			OnInit:               instance.Spec.OnInit,
+			PulseInitialDelay:    pulseInitialDelay,
 			PulseActiveDuration:  pulseActiveDuration,
 			PulseDormantDuration: pulseDormantDuration,
 			MetricsSink:          r.MetricsSink.GetSinkName(),
