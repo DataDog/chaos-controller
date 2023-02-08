@@ -7,6 +7,7 @@ package cgroup
 
 import (
 	"fmt"
+
 	"go.uber.org/zap"
 )
 
@@ -52,7 +53,7 @@ func (cg cgroup) IsCgroupV2() bool {
 }
 
 // NewManager creates a new cgroup manager from the given cgroup root path
-func NewManager(dryRun bool, pid uint32, log *zap.SugaredLogger) (Manager, error) {
+func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLogger) (Manager, error) {
 	return cgroup{
 		dryRun: dryRun,
 		log:    log,
