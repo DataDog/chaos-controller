@@ -73,7 +73,7 @@ executors:
       - image: bash:5.0
   ubuntu:
     machine:
-      image: ubuntu-2004:202107-02
+      image: ubuntu-2004:2022.10.1
 
 jobs:
   # prepares the CI environment by checking out the code,
