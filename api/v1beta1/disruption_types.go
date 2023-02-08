@@ -494,7 +494,7 @@ var NonReinjectableDisruptions = map[chaostypes.DisruptionKindName]struct{}{
 	chaostypes.DisruptionKindGRPCDisruption: {},
 }
 
-func DisruptionIsReinjectable(kind chaostypes.DisruptionKindName) bool {
+func DisruptionIsNotReinjectable(kind chaostypes.DisruptionKindName) bool {
 	_, found := NonReinjectableDisruptions[kind]
 
 	return found
