@@ -491,6 +491,18 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	if pulseInitialDelay > 0 {
+		log.Infow("waiting for initialDelay to pass", "initialDelay", pulseInitialDelay)
+		select {
+		case <-time.After(pulseInitialDelay):
+			break
+		case sig := <-signals:
+			log.Infow("an exit signal has been received", "signal", sig.String())
+
+			return
+		}
+	}
+
 	log.Infow("injecting the disruption", "kind", cmd.Name())
 
 	injectSuccess := inject(cmd.Name(), true, false)
