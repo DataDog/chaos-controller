@@ -6,6 +6,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.2
 	github.com/DataDog/datadog-go v4.8.2+incompatible
 	github.com/aquasecurity/libbpfgo v0.4.5-libbpf-1.0.1
+	github.com/aquasecurity/libbpfgo/helpers v0.4.5
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/containerd/containerd v1.5.16
@@ -28,7 +29,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
 	go.uber.org/zap v1.19.0
 	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
-	golang.org/x/sys v0.0.0-20220804214406-8e32c043e418
+	golang.org/x/sys v0.1.0
 	google.golang.org/grpc v1.40.0
 	google.golang.org/protobuf v1.27.1
 	k8s.io/api v0.22.2
@@ -44,7 +45,6 @@ require (
 	cloud.google.com/go v0.81.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Microsoft/hcsshim v0.8.24 // indirect
-	github.com/aquasecurity/libbpfgo/helpers v0.4.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cilium/ebpf v0.7.0 // indirect
