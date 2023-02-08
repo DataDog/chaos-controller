@@ -196,8 +196,6 @@ jobs:
       - run:
           name: Build and load images
           <<: *working_directory
-          environment:
-            GOBIN: /home/circleci/.go_workspace/bin
           command: make minikube-build-all
       - run:
           name: Run e2e tests
