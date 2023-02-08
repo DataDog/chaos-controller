@@ -324,7 +324,7 @@ var _ = Describe("Disruption Controller", func() {
 				Selector:    map[string]string{"foo": "bar"},
 				Containers:  []string{"ctn1"},
 				Duration:    "30s",
-				CPUPressure: &chaosv1beta1.CPUPressureSpec{},
+				CPUPressure: &chaosv1beta1.CPUPressureSpec{}, // Consider reverting b6902333bf2074e90b00b055bfe639a97774a39e here once cgroups v2 support is fully implemented
 			}
 		})
 
