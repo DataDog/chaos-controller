@@ -492,6 +492,7 @@ func (status *DisruptionStatus) HasTarget(searchTarget string) bool {
 
 var NonReinjectableDisruptions = map[chaostypes.DisruptionKindName]struct{}{
 	chaostypes.DisruptionKindGRPCDisruption: {},
+	chaostypes.DisruptionKindNodeFailure:    {},
 }
 
 func DisruptionIsNotReinjectable(kind chaostypes.DisruptionKindName) bool {
