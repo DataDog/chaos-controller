@@ -30,7 +30,7 @@ func main() {
 	signal.Notify(sig, os.Interrupt)
 
 	// Create the bpf module
-	bpfModule, err := bpf.NewModuleFromFile(ebpf.DISK_FAILURE_OBJ_NAME)
+	bpfModule, err := bpf.NewModuleFromFile(ebpf.DiskFailureObjName)
 	must(err)
 	defer bpfModule.Close()
 
@@ -48,7 +48,7 @@ func main() {
 	must(err)
 
 	// Attach the kprope to catch sys openat syscall
-	_, err = prog.AttachKprobe(ebpf.SYS_OPENAT)
+	_, err = prog.AttachKprobe(ebpf.SysOpenat)
 	must(err)
 
 	// Create the ring buffer to store events

@@ -8,5 +8,5 @@
 
 package ebpf
 
-const SYS_OPENAT = "__arm64_sys_openat"
-const DISK_FAILURE_OBJ_NAME = "bpf-disk-failure-arm64.bpf.o"
+const SysOpenat = "__arm64_sys_openat"
+const DiskFailureObjName = "bpf-disk-failure-arm64.bpf.o"
