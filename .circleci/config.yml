@@ -73,7 +73,7 @@ executors:
       - image: bash:5.0
   ubuntu:
     machine:
-      image: ubuntu-2004:202107-02
+      image: ubuntu-2004:2022.10.1
 
 jobs:
   # prepares the CI environment by checking out the code,
@@ -192,12 +192,10 @@ jobs:
       - run:
           name: Install requirements
           <<: *working_directory
-          command: make lima-install-cert-manager KUBECTL="minikube kubectl --"
+          command: make controller-gen lima-install-cert-manager KUBECTL="minikube kubectl --"
       - run:
           name: Build and load images
           <<: *working_directory
-          environment:
-            GOBIN: /home/circleci/.go_workspace/bin
           command: make minikube-build-all
       - run:
           name: Run e2e tests

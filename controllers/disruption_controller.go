@@ -979,7 +979,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 				ReadinessProbe: &corev1.Probe{ // define readiness probe (file created by the injector when the injection is successful)
 					PeriodSeconds:    1,
 					FailureThreshold: 5,
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						Exec: &corev1.ExecAction{
 							Command: []string{"cat", "/tmp/readiness_probe"},
 						},

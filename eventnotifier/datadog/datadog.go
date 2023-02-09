@@ -53,14 +53,6 @@ func (n *Notifier) GetNotifierName() string {
 }
 
 func (n *Notifier) buildDatadogEventTags(dis v1beta1.Disruption) {
-	if n.common.ClusterName == "" {
-		if dis.ClusterName != "" {
-			n.common.ClusterName = dis.ClusterName
-		} else {
-			n.common.ClusterName = "n/a"
-		}
-	}
-
 	if team := dis.Spec.Selector.Get("team"); team != "" {
 		n.client.Tags = append(n.client.Tags, "team:"+team)
 	}
