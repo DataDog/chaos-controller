@@ -169,8 +169,6 @@ docker-build-ebpf:
 	docker build --platform linux/${OS_ARCH} --build-arg ARCH=${OS_ARCH} -t ebpf-builder-${OS_ARCH} -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
 	rm -r ebpf/builds || true
 	docker run --rm -v ${shell pwd}:/app ebpf-builder-${OS_ARCH}
-	mv ebpf/builds/*-${OS_ARCH} bin/injector/
-	mv ebpf/builds/*-${OS_ARCH}.bpf.o bin/injector/
 
 docker-build-injector: docker-build-ebpf injector
 	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/

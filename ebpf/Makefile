@@ -1,5 +1,5 @@
 ARCH := x86
-BUILD_DIR := builds
+BUILD_DIR := ../bin/injector
 TARGET_PREFIX := bpf-
 TARGET_SUFFIX := -amd64
 UNAME_ARCH := $(shell uname -m)
@@ -9,7 +9,7 @@ ifeq ($(UNAME_ARCH),aarch64)
 	TARGET_SUFFIX := -arm64
 endif
 
-PROJECTS = $(shell find * -maxdepth 1 -type d | grep -v includes | grep -v builds)
+PROJECTS := $(shell find * -maxdepth 1 -type d | grep -v includes | grep -v builds)
 
 LIBBPF_OBJ := /usr/lib/$(UNAME_ARCH)-linux-gnu/libbpf.a
 
@@ -25,7 +25,7 @@ $(PROJECTS):
 	$(eval TARGET_PATH := $(BUILD_DIR)/$(TARGET))
 	@echo "Compiling" \"$(TARGET)\" "GO program in progress..."
 	${go_env} go build -o ./$(TARGET_PATH) $@/main.go
-	@echo "Successfully compiled" \"$(TARGET)\" "GO program! Location: "$(TARGET_PATH)
+	@echo "Successfully compiled" \"$(TARGET)\" "GO program! Location:" $(TARGET_PATH)
 	$(eval TARGET_BPF := $(TARGET).bpf.o)
 	@echo "Compiling" \"$(TARGET_BPF)\" "eBPF program in progress..."
 	clang \
@@ -39,5 +39,3 @@ $(PROJECTS):
 .PHONY: clean
 clean:
 	go clean
-	rm -r builds/
-
