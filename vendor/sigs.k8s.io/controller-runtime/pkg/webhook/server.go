@@ -21,7 +21,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -34,6 +33,7 @@ import (
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/internal/httpserver"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics"
 )
@@ -74,7 +74,11 @@ type Server struct {
 
 	// TLSVersion is the minimum version of TLS supported. Accepts
 	// "", "1.0", "1.1", "1.2" and "1.3" only ("" is equivalent to "1.0" for backwards compatibility)
+	// Deprecated: Use TLSOpts instead.
 	TLSMinVersion string
+
+	// TLSOpts is used to allow configuring the TLS config used for the server
+	TLSOpts []func(*tls.Config)
 
 	// WebhookMux is the multiplexer that handles different webhooks.
 	WebhookMux *http.ServeMux
@@ -240,9 +244,9 @@ func (s *Server) Start(ctx context.Context) error {
 	// load CA to verify client certificate
 	if s.ClientCAName != "" {
 		certPool := x509.NewCertPool()
-		clientCABytes, err := ioutil.ReadFile(filepath.Join(s.CertDir, s.ClientCAName))
+		clientCABytes, err := os.ReadFile(filepath.Join(s.CertDir, s.ClientCAName))
 		if err != nil {
-			return fmt.Errorf("failed to read client CA cert: %v", err)
+			return fmt.Errorf("failed to read client CA cert: %w", err)
 		}
 
 		ok := certPool.AppendCertsFromPEM(clientCABytes)
@@ -254,6 +258,11 @@ func (s *Server) Start(ctx context.Context) error {
 		cfg.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
+	// fallback TLS config ready, will now mutate if passer wants full control over it
+	for _, op := range s.TLSOpts {
+		op(cfg)
+	}
+
 	listener, err := tls.Listen("tcp", net.JoinHostPort(s.Host, strconv.Itoa(s.Port)), cfg)
 	if err != nil {
 		return err
@@ -261,9 +270,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	log.Info("Serving webhook server", "host", s.Host, "port", s.Port)
 
-	srv := &http.Server{
-		Handler: s.WebhookMux,
-	}
+	srv := httpserver.New(s.WebhookMux)
 
 	idleConnsClosed := make(chan struct{})
 	go func() {
@@ -293,7 +300,7 @@ func (s *Server) Start(ctx context.Context) error {
 // server has been started.
 func (s *Server) StartedChecker() healthz.Checker {
 	config := &tls.Config{
-		InsecureSkipVerify: true, // nolint:gosec // config is used to connect to our own webhook port.
+		InsecureSkipVerify: true, //nolint:gosec // config is used to connect to our own webhook port.
 	}
 	return func(req *http.Request) error {
 		s.mu.Lock()
@@ -306,11 +313,11 @@ func (s *Server) StartedChecker() healthz.Checker {
 		d := &net.Dialer{Timeout: 10 * time.Second}
 		conn, err := tls.DialWithDialer(d, "tcp", net.JoinHostPort(s.Host, strconv.Itoa(s.Port)), config)
 		if err != nil {
-			return fmt.Errorf("webhook server is not reachable: %v", err)
+			return fmt.Errorf("webhook server is not reachable: %w", err)
 		}
 
 		if err := conn.Close(); err != nil {
-			return fmt.Errorf("webhook server is not reachable: closing connection: %v", err)
+			return fmt.Errorf("webhook server is not reachable: closing connection: %w", err)
 		}
 
 		return nil

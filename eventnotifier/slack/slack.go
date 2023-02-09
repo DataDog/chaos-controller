@@ -98,14 +98,6 @@ func (n *Notifier) GetNotifierName() string {
 }
 
 func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, notifType types.NotificationType) []*slack.TextBlockObject {
-	if n.common.ClusterName == "" {
-		if dis.ClusterName != "" {
-			n.common.ClusterName = dis.ClusterName
-		} else {
-			n.common.ClusterName = infoNotAvailable
-		}
-	}
-
 	return []*slack.TextBlockObject{
 		slack.NewTextBlockObject("mrkdwn", "*Kind:*\n"+dis.Kind, false, false),
 		slack.NewTextBlockObject("mrkdwn", "*Name:*\n"+dis.Name, false, false),
