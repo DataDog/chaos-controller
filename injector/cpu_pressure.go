@@ -62,8 +62,15 @@ func (i *cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *cpuPressureInjector) Inject() error {
-	cores, err := i.config.StresserManager.TrackInjectorCores(i.config.Cgroup, i.spec.Count)
+	// move the injector process to the target cgroup controllers
+	i.config.Log.Infow("joining target cgroups")
 
+	if err := i.config.Cgroup.Join(i.config.ProcessManager.ProcessID()); err != nil {
+		return fmt.Errorf("failed to join the target cgroup: %w", err)
+	}
+
+	// get cores to stress from cpuset config
+	cores, err := i.config.StresserManager.TrackInjectorCores(i.config.Cgroup, i.spec.Count)
 	if err != nil {
 		return fmt.Errorf("failed to parse CPUSet %w", err)
 	}
@@ -92,14 +99,14 @@ func (i *cpuPressureInjector) Inject() error {
 			defer runtime.UnlockOSThread()
 
 			// retrieve current thread PID
-			pid := i.config.ProcessManager.ThreadID()
+			tid := i.config.ProcessManager.ThreadID()
 
-			if i.joinCgroup(core, pid) && i.prioritizeStresserProcess(core, pid) {
+			if i.prioritizeStresserProcess(core, tid) {
 				mutex.Lock()
 				i.routines++
 				mutex.Unlock()
 				wg.Done()
-				i.startStresser(core, pid)
+				i.startStresser(core, tid)
 			} else {
 				succeeded = false
 				wg.Done()
@@ -117,26 +124,6 @@ func (i *cpuPressureInjector) Inject() error {
 	i.config.Log.Infow("all routines have been created successfully, now stressing", "stresserPIDPerCore", i.config.StresserManager.StresserPIDs())
 
 	return nil
-}
-
-func (i *cpuPressureInjector) joinCgroup(core int, pid int) bool {
-	// join target CPU cgroup
-	i.config.Log.Infow("joining target CPU cgroup", "core", core, "pid", pid)
-
-	if err := i.config.Cgroup.Join("cpu", pid, false); err != nil {
-		i.config.Log.Errorw("failed join the target CPU cgroup", "error", err, "core", core, "pid", pid)
-		return false
-	}
-
-	// join target cpuset cgroup in case it is used to pin the target on specific cores
-	i.config.Log.Infow("joining target cpuset cgroup", "core", core, "pid", pid)
-
-	if err := i.config.Cgroup.Join("cpuset", pid, false); err != nil {
-		i.config.Log.Errorw("failed to join the target cpuset cgroup", "error", err, "core", core, "pid", pid)
-		return false
-	}
-
-	return true
 }
 
 func (i *cpuPressureInjector) startStresser(core int, pid int) {
@@ -161,7 +148,7 @@ func (i *cpuPressureInjector) UpdateConfig(config Config) {
 }
 
 func (i *cpuPressureInjector) Clean() error {
-	i.config.Log.Info("killing %d routines", i.routines)
+	i.config.Log.Infof("killing %d routines", i.routines)
 
 	// exit the stress routines
 	for r := 0; r < i.routines; r++ {

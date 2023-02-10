@@ -8,7 +8,6 @@ package cgroup
 import (
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
@@ -34,13 +33,11 @@ func cgroupManager(cgroupFile string, cgroupMount string) (cgroups.Manager, erro
 		cgroupPaths[subsystem] = filepath.Join(cgroupMount, subsystem, path)
 	}
 
-	fmt.Println(cgroupPaths)
-
 	// for cgroup v2 unified hierarchy, there are no per-controller
 	// cgroup paths, so the resulting map will have a single element where the key
 	// is empty string ("") and the value is the cgroup path the <pid> is in.
 	if cgroups.IsCgroup2UnifiedMode() {
-		return fs2.NewManager(cg, cgroupPaths[cgroupMount])
+		return fs2.NewManager(cg, cgroupPaths[""])
 	}
 
 	// cgroup v1 manager
@@ -82,20 +79,9 @@ func (cg cgroup) Exists(controller string) bool {
 	return cgroups.PathExists(fmt.Sprintf("%s/cgroup.procs", controllerDir))
 }
 
-// Join adds the given PID to the given cgroup
-// If inherit is set to true, all PID of the same group will be moved to the cgroup (writing to cgroup.procs file)
-// Otherwise, only the given PID will be moved to the cgroup (writing to tasks file)
-func (cg cgroup) Join(controller string, pid int, inherit bool) error {
-	file := "tasks"
-
-	if inherit {
-		file = "cgroup.procs"
-	}
-
-	manager := *cg.manager
-	controllerDir := manager.Path(controller)
-
-	return cgroups.WriteFile(controllerDir, file, strconv.Itoa(pid))
+// Join adds the given PID to all available controllers of the cgroup
+func (cg cgroup) Join(pid int) error {
+	return cgroups.EnterPid((*cg.manager).GetPaths(), pid)
 }
 
 // DiskThrottleRead adds a disk throttle on read operations to the given disk identifier

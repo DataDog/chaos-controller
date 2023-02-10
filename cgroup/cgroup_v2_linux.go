@@ -24,8 +24,8 @@ func (cg cgroupV2) Exists(controller string) bool {
 	return cg.cg.Exists(controller)
 }
 
-func (cg cgroupV2) Join(controller string, pid int, inherit bool) error {
-	return cg.cg.Join(controller, pid, inherit)
+func (cg cgroupV2) Join(pid int) error {
+	return cg.cg.Join(pid)
 }
 
 // DiskThrottleRead adds a disk throttle on read operations to the given disk identifier

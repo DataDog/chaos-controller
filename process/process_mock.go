@@ -31,6 +31,13 @@ func (f *ManagerMock) ThreadID() int {
 }
 
 //nolint:golint
+func (f *ManagerMock) ProcessID() int {
+	args := f.Called()
+
+	return args.Int(0)
+}
+
+//nolint:golint
 func (f *ManagerMock) Find(pid int) (*os.Process, error) {
 	args := f.Called(pid)
 
