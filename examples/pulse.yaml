@@ -13,7 +13,9 @@ spec:
   selector:
     app: demo-curl
   count: 1
+  duration: 10m
   pulse: # optional, activate pulsing disruptions. Available for any disruptions except nodeFailure and containerFailure
+    initialDelay: 1m # optional field. Injectors will sleep for this long before beginning the first activeDuration
     activeDuration: 60s # this is the duration of the disruption in an active state, must be a valid time.Duration string, e.g. (300s, 15m25s, 4h) and must be greater than 500ms
     dormantDuration: 20s # this is the duration of the disruption in a dormant state, must be a valid time.Duration string, e.g. (300s, 15m25s, 4h) and must be greater than 500ms
   network:

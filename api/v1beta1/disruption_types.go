@@ -219,6 +219,7 @@ type DisruptionList struct {
 type DisruptionPulse struct {
 	ActiveDuration  DisruptionDuration `json:"activeDuration"`
 	DormantDuration DisruptionDuration `json:"dormantDuration"`
+	InitialDelay    DisruptionDuration `json:"initialDelay,omitempty"`
 }
 
 func init() {

@@ -65,6 +65,7 @@ var (
 	targetName           string
 	targetNodeName       string
 	onInit               bool
+	pulseInitialDelay    time.Duration
 	pulseActiveDuration  time.Duration
 	pulseDormantDuration time.Duration
 	deadlineRaw          string
@@ -94,6 +95,7 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceVar(&rawTargetContainers, "target-containers", []string{}, "Targeted containers")
 	rootCmd.PersistentFlags().StringVar(&targetPodIP, "target-pod-ip", "", "Pod IP of targeted pod")
 	rootCmd.PersistentFlags().BoolVar(&onInit, "on-init", false, "Apply the disruption on initialization, requiring a synchronization with the chaos-handler container")
+	rootCmd.PersistentFlags().DurationVar(&pulseInitialDelay, "pulse-initial-delay", time.Duration(0), "Duration to wait after injector starts before beginning the activeDuration")
 	rootCmd.PersistentFlags().DurationVar(&pulseActiveDuration, "pulse-active-duration", time.Duration(0), "Duration of the disruption being active in a pulsing disruption (empty if the disruption is not pulsing)")
 	rootCmd.PersistentFlags().DurationVar(&pulseDormantDuration, "pulse-dormant-duration", time.Duration(0), "Duration of the disruption being dormant in a pulsing disruption (empty if the disruption is not pulsing)")
 	rootCmd.PersistentFlags().StringVar(&deadlineRaw, "deadline", "", "Timestamp at which the disruption must be over by")
@@ -487,6 +489,18 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		log.Error("an injector could not be configured successfully during initialization, aborting the injection now")
 
 		return
+	}
+
+	if pulseInitialDelay > 0 {
+		log.Infow("waiting for initialDelay to pass", "initialDelay", pulseInitialDelay)
+		select {
+		case <-time.After(pulseInitialDelay):
+			break
+		case sig := <-signals:
+			log.Infow("an exit signal has been received", "signal", sig.String())
+
+			return
+		}
 	}
 
 	log.Infow("injecting the disruption", "kind", cmd.Name())
