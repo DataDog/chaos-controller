@@ -31,10 +31,8 @@ func (cg cgroup) Exists(controller string) bool {
 	return false
 }
 
-// Join adds the given PID to the given cgroup
-// If inherit is set to true, all PID of the same group will be moved to the cgroup (writing to cgroup.procs file)
-// Otherwise, only the given PID will be moved to the cgroup (writing to tasks file)
-func (cg cgroup) Join(controller string, pid int, inherit bool) error {
+// Join adds the given PID to all available controllers of the cgroup
+func (cg cgroup) Join(pid int) error {
 	return fmt.Errorf("not implemented")
 }
 

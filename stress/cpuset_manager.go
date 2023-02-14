@@ -7,12 +7,13 @@ package stress
 
 import (
 	"fmt"
+	"runtime"
+	"sync"
+
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/cpuset"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"runtime"
-	"sync"
 )
 
 type StresserManager interface {
@@ -68,7 +69,12 @@ func (manager *cpuStressserManager) TrackInjectorCores(cgroup cgroup.Manager, us
 	// read cpuset allocated cores
 	manager.log.Infow("retrieving target cpuset allocated cores")
 
-	cpusetCores, err := cgroup.Read("cpuset", "cpuset.cpus")
+	cpusetFile := "cpuset.effective_cpus"
+	if cgroup.IsCgroupV2() {
+		cpusetFile = "cpuset.cpus.effective"
+	}
+
+	cpusetCores, err := cgroup.Read("cpuset", cpusetFile)
 	if err != nil {
 		return cpuset.NewCPUSet(), fmt.Errorf("failed to read the target allocated cpus from the cpuset cgroup: %w", err)
 	}

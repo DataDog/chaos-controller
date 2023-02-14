@@ -89,7 +89,8 @@ var _ = Describe("StresserManager Test", func() {
 
 func cgroupManager() *mocks.ManagerMock {
 	cgroup := &mocks.ManagerMock{}
-	cgroup.On("Read", "cpuset", "cpuset.cpus").Return("0-1", nil)
+	cgroup.On("IsCgroupV2").Return(false)
+	cgroup.On("Read", "cpuset", "cpuset.effective_cpus").Return("0-1", nil)
 
 	return cgroup
 }

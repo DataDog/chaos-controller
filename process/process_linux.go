@@ -42,6 +42,11 @@ func (p manager) ThreadID() int {
 	return syscall.Gettid()
 }
 
+// ProcessID returns the caller PID
+func (p manager) ProcessID() int {
+	return syscall.Getpid()
+}
+
 // Find looks for a running process by its pid
 func (p manager) Find(pid int) (*os.Process, error) {
 	proc, err := os.FindProcess(pid)

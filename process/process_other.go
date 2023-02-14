@@ -32,6 +32,11 @@ func (p manager) ThreadID() int {
 	return -1
 }
 
+// ProcessID returns the caller PID
+func (p manager) ProcessID() int {
+	return -1
+}
+
 // Find looks for a running process by its pid
 func (p manager) Find(pid int) (*os.Process, error) {
 	return nil, errors.New("unsupported")
