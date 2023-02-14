@@ -25,7 +25,7 @@ import (
 )
 
 // linkOperation represents a tc operation on a set of network interfaces combined with the parent to bind to and the handle identifier to use
-type linkOperation func([]string, string, uint32) error
+type linkOperation func([]string, string, string) error
 
 // networkDisruptionService describes a parsed Kubernetes service, representing an (ip, port, protocol) tuple
 type networkDisruptionService struct {
@@ -179,11 +179,9 @@ func (i *networkDisruptionInjector) Inject() error {
 		i.config.Log.Debug("operations applied successfully")
 	}
 
-	i.config.Log.Info("editing pod net_cls cgroup to apply a classid to target container packets")
-
-	// write classid to pod net_cls cgroup
-	if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", types.InjectorCgroupClassID); err != nil {
-		return fmt.Errorf("error writing classid to pod net_cls cgroup: %w", err)
+	// inject an iptables rule to mark all packets going out from the container using its cgroup path
+	if err := i.config.Iptables.AddCgroupFilterRule("mangle", "OUTPUT", i.config.Cgroup.RelativePath(""), "-j", "MARK", "--set-mark", types.InjectorCgroupClassID); err != nil {
+		return fmt.Errorf("error injecting cgroup packet marking iptables rule: %w", err)
 	}
 
 	// exit target network namespace
@@ -223,18 +221,13 @@ func (i *networkDisruptionInjector) Clean() error {
 		return fmt.Errorf("error clearing tc operations: %w", err)
 	}
 
-	// write default classid to pod net_cls cgroup if it still exists
-	exists := i.config.Cgroup.Exists("net_cls")
-
-	if exists {
-		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0x0"); err != nil {
-			return fmt.Errorf("error reseting classid of pod net_cls cgroup: %w", err)
-		}
-	}
-
 	// remove the conntrack reference to disable conntrack in the network namespace
 	if err := i.config.Iptables.DeleteRuleSpec("OUTPUT", "-m", "state", "--state", "new,established", "-j", "LOG"); err != nil {
-		return fmt.Errorf("error injecting the conntrack reference iptables rule: %w", err)
+		return fmt.Errorf("error cleaning the conntrack reference iptables rule: %w", err)
+	}
+
+	if err := i.config.Iptables.DeleteCgroupFilterRule("mangle", "OUTPUT", i.config.Cgroup.RelativePath(""), "-j", "MARK", "--set-mark", types.InjectorCgroupClassID); err != nil {
+		return fmt.Errorf("error cleaning the cgroup packet marking iptables rule: %w", err)
 	}
 
 	// exit target network namespace
@@ -250,9 +243,9 @@ func (i *networkDisruptionInjector) Clean() error {
 //   - a first prio qdisc will be created and attached to root
 //     it'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol
 //   - a second prio qdisc will be created and attached to the first one
-//     it'll be used to apply the second filter, filtering on packet classid to identify packets coming from the targeted process
+//     it'll be used to apply the second filter, filtering on packet mark to identify packets coming from the targeted process
 //   - operations will be chained to the second band of the second prio qdisc
-//   - a cgroup filter will be created to classify packets according to their classid (if any)
+//   - an fw filter will be created to classify packets according to their mark (if any)
 //   - a filter will be created to redirect traffic related to the specified host(s) through the last prio band
 //     if no host, port or protocol is specified, a filter redirecting all the traffic (0.0.0.0/0) to the disrupted band will be created
 //   - a last filter will be created to redirect traffic related to the local node through a not disrupted band
@@ -264,7 +257,7 @@ func (i *networkDisruptionInjector) Clean() error {
 //	|- (1:2) <-- second band
 //	|- (1:3) <-- third band
 //	|- (1:4) <-- fourth band
-//	  |- (2:) <-- prio qdisc with 2 bands with a cgroup filter to classify packets according to their classid (packets with classid 2:2 will be affected by operations)
+//	  |- (2:) <-- prio qdisc with 2 bands with an fw filter to classify packets according to their mark (packets with mark 2:2 will be affected by operations)
 //	    |- (2:1) <-- first band
 //	    |- (2:2) <-- second band
 //	      |- (3:) <-- first operation
@@ -338,7 +331,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// we only create this qdisc if we want to target traffic going to some hosts only, it avoids to apply disruptions to all the traffic for a bit of time
 	priomap := [16]uint32{1, 2, 2, 2, 1, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1}
 
-	if err := i.config.TrafficController.AddPrio(interfaces, "root", 1, 4, priomap); err != nil {
+	if err := i.config.TrafficController.AddPrio(interfaces, "root", "1:", 4, priomap); err != nil {
 		return fmt.Errorf("can't create a new qdisc: %w", err)
 	}
 
@@ -352,14 +345,14 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// if the disruption is applied on init, we consider that some more containers may be created within
 	// the pod so we can't scope the disruption to a specific set of containers
 	if i.config.Level == types.DisruptionLevelPod && !i.config.OnInit {
-		// create second prio with only 2 bands to filter traffic with a specific classid
-		if err := i.config.TrafficController.AddPrio(interfaces, "1:4", 2, 2, [16]uint32{}); err != nil {
+		// create second prio with only 2 bands to filter traffic with a specific mark
+		if err := i.config.TrafficController.AddPrio(interfaces, "1:4", "2:", 2, [16]uint32{}); err != nil {
 			return fmt.Errorf("can't create a new qdisc: %w", err)
 		}
 
-		// create cgroup filter
-		if err := i.config.TrafficController.AddCgroupFilter(interfaces, "2:0", 2); err != nil {
-			return fmt.Errorf("can't create the cgroup filter: %w", err)
+		// create fw filter to classify packets based on their mark
+		if err := i.config.TrafficController.AddFwFilter(interfaces, "2:0", types.InjectorCgroupClassID, "2:2"); err != nil {
+			return fmt.Errorf("can't create the fw filter: %w", err)
 		}
 		// parent 2:2 refers to the 2nd band of the 2nd prio qdisc
 		// handle starts from 3 because 1 and 2 are used by the 2 prio qdiscs
@@ -369,7 +362,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 
 	// add operations
 	for _, operation := range i.operations {
-		if err := operation(interfaces, parent, handle); err != nil {
+		if err := operation(interfaces, parent, fmt.Sprintf("%d:", handle)); err != nil {
 			return fmt.Errorf("could not perform operation on newly created qdisc: %w", err)
 		}
 
@@ -392,30 +385,30 @@ func (i *networkDisruptionInjector) applyOperations() error {
 				Mask: net.CIDRMask(32, 32),
 			}
 
-			if _, err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", 0, nil, gatewayIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
+			if _, err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", "", nil, gatewayIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
 			}
 		}
 
 		// this filter allows the pod to communicate with the node IP
-		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nodeIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
+		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nodeIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 		}
 	} else if i.config.Level == types.DisruptionLevelNode {
 		// GENERIC SAFEGUARDS
 		// allow SSH connections on all interfaces (port 22/tcp)
-		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 22, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
+		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nil, 22, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
 		}
 
 		// CLOUD PROVIDER SPECIFIC SAFEGUARDS
 		// allow cloud provider health checks on all interfaces(arp)
-		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nil, 0, 0, network.ARP, network.ConnStateUndefined, "1:1"); err != nil {
+		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nil, 0, 0, network.ARP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
 		}
 
 		// allow cloud provider metadata service communication
-		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, metadataIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
+		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, metadataIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("error adding filter allowing cloud providers metadata service requests: %w", err)
 		}
 	}
@@ -430,7 +423,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	if len(i.spec.Hosts) == 0 && len(i.spec.Services) == 0 {
 		_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
 
-		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, nullIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:4"); err != nil {
+		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nullIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:4"); err != nil {
 			return fmt.Errorf("can't add a filter: %w", err)
 		}
 	} else {
@@ -457,7 +450,7 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 	for _, filter := range filters {
 		i.config.Log.Infow("found service endpoint", "resolvedEndpoint", filter.service.String(), "resolvedService", serviceName)
 
-		filter.priority, err = i.config.TrafficController.AddFilter(interfaces, "1:0", 0, nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, network.ConnStateUndefined, flowid)
+		filter.priority, err = i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, network.ConnStateUndefined, flowid)
 		if err != nil {
 			return nil, err
 		}
@@ -911,7 +904,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 			connState := network.NewConnState(host.ConnState)
 
 			// create tc filter
-			if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", 0, srcIP, dstIP, srcPort, dstPort, network.Protocol(host.Protocol), connState, flowid); err != nil {
+			if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", srcIP, dstIP, srcPort, dstPort, network.Protocol(host.Protocol), connState, flowid); err != nil {
 				return fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
 			}
 		}
@@ -923,7 +916,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 // AddNetem adds network disruptions using the drivers in the networkDisruptionInjector
 func (i *networkDisruptionInjector) addNetemOperation(delay, delayJitter time.Duration, drop int, corrupt int, duplicate int) {
 	// closure which adds netem disruptions
-	operation := func(interfaces []string, parent string, handle uint32) error {
+	operation := func(interfaces []string, parent string, handle string) error {
 		return i.config.TrafficController.AddNetem(interfaces, parent, handle, delay, delayJitter, drop, corrupt, duplicate)
 	}
 
@@ -933,7 +926,7 @@ func (i *networkDisruptionInjector) addNetemOperation(delay, delayJitter time.Du
 // AddOutputLimit adds a network bandwidth disruption using the drivers in the networkDisruptionInjector
 func (i *networkDisruptionInjector) addOutputLimitOperation(bytesPerSec uint) {
 	// closure which adds a bandwidth limit
-	operation := func(interfaces []string, parent string, handle uint32) error {
+	operation := func(interfaces []string, parent string, handle string) error {
 		return i.config.TrafficController.AddOutputLimit(interfaces, parent, handle, bytesPerSec)
 	}
 

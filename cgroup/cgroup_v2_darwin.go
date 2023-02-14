@@ -47,3 +47,7 @@ func (cg cgroupV2) DiskThrottleWrite(identifier, bps int) error {
 func (cg cgroupV2) IsCgroupV2() bool {
 	return true
 }
+
+func (cg cgroupV2) RelativePath(controller string) string {
+	return ""
+}

@@ -45,15 +45,15 @@ func cgroupManager(cgroupFile string, cgroupMount string) (cgroups.Manager, erro
 }
 
 type cgroup struct {
-	manager *cgroups.Manager
-	dryRun  bool
-	log     *zap.SugaredLogger
+	manager   *cgroups.Manager
+	mountPath string
+	dryRun    bool
+	log       *zap.SugaredLogger
 }
 
 // Read reads the given cgroup file data and returns the content as a string
 func (cg cgroup) Read(controller, file string) (string, error) {
-	manager := *cg.manager
-	controllerDir := manager.Path(controller)
+	controllerDir := (*cg.manager).Path(controller)
 	content, err := cgroups.ReadFile(controllerDir, file)
 
 	if err != nil {
@@ -65,16 +65,14 @@ func (cg cgroup) Read(controller, file string) (string, error) {
 
 // Write writes the given data to the given cgroup kind
 func (cg cgroup) Write(controller, file, data string) error {
-	manager := *cg.manager
-	controllerDir := manager.Path(controller)
+	controllerDir := (*cg.manager).Path(controller)
 
 	return cgroups.WriteFile(controllerDir, file, data)
 }
 
 // Exists returns true if the given cgroup exists, false otherwise
 func (cg cgroup) Exists(controller string) bool {
-	manager := *cg.manager
-	controllerDir := manager.Path(controller)
+	controllerDir := (*cg.manager).Path(controller)
 
 	return cgroups.PathExists(fmt.Sprintf("%s/cgroup.procs", controllerDir))
 }
@@ -86,8 +84,7 @@ func (cg cgroup) Join(pid int) error {
 
 // DiskThrottleRead adds a disk throttle on read operations to the given disk identifier
 func (cg cgroup) DiskThrottleRead(identifier, bps int) error {
-	manager := *cg.manager
-	controllerDir := manager.Path("blkio")
+	controllerDir := (*cg.manager).Path("blkio")
 	file := "blkio.throttle.read_bps_device"
 	data := fmt.Sprintf("%d:0 %d", identifier, bps)
 
@@ -96,8 +93,7 @@ func (cg cgroup) DiskThrottleRead(identifier, bps int) error {
 
 // DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
 func (cg cgroup) DiskThrottleWrite(identifier, bps int) error {
-	manager := *cg.manager
-	controllerDir := manager.Path("blkio")
+	controllerDir := (*cg.manager).Path("blkio")
 	file := "blkio.throttle.write_bps_device"
 	data := fmt.Sprintf("%d:0 %d", identifier, bps)
 
@@ -108,6 +104,11 @@ func (cg cgroup) IsCgroupV2() bool {
 	return false
 }
 
+// RelativePath returns the cgroup relative path (without the mount path)
+func (cg cgroup) RelativePath(controller string) string {
+	return strings.TrimPrefix((*cg.manager).Path(controller), cg.mountPath)
+}
+
 // NewManager creates a new cgroup manager from the given cgroup root path
 func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLogger) (Manager, error) {
 	manager, err := cgroupManager(fmt.Sprintf("/proc/%d/cgroup", pid), cgroupMount)
@@ -116,9 +117,10 @@ func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLog
 	}
 
 	cg := cgroup{
-		manager: &manager,
-		dryRun:  dryRun,
-		log:     log,
+		manager:   &manager,
+		mountPath: cgroupMount,
+		dryRun:    dryRun,
+		log:       log,
 	}
 
 	isCgroupV2 := cgroups.PathExists("/sys/fs/cgroup/cgroup.controllers")

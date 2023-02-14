@@ -25,21 +25,21 @@ func NewTcMock() *TcMock {
 }
 
 //nolint:golint
-func (f *TcMock) AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
+func (f *TcMock) AddNetem(ifaces []string, parent string, handle string, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
 	args := f.Called(ifaces, parent, handle, delay, delayJitter, drop, corrupt, duplicate)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *TcMock) AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
+func (f *TcMock) AddPrio(ifaces []string, parent string, handle string, bands uint32, priomap [16]uint32) error {
 	args := f.Called(ifaces, parent, handle, bands, priomap)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) (uint32, error) {
+func (f *TcMock) AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) (uint32, error) {
 	srcIPs := "nil"
 	dstIPs := "nil"
 
@@ -59,14 +59,14 @@ func (f *TcMock) AddFilter(ifaces []string, parent string, handle uint32, srcIP,
 }
 
 //nolint:golint
-func (f *TcMock) AddCgroupFilter(ifaces []string, parent string, handle uint32) error {
-	args := f.Called(ifaces, parent, handle)
+func (f *TcMock) AddFwFilter(ifaces []string, parent string, handle string, flowid string) error {
+	args := f.Called(ifaces, parent, handle, flowid)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *TcMock) AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error {
+func (f *TcMock) AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error {
 	args := f.Called(ifaces, parent, handle, bytesPerSec)
 
 	return args.Error(0)

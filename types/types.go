@@ -73,6 +73,9 @@ const (
 	// This value should NEVER be changed without changing the Network Disruption TC tree.
 	InjectorCgroupClassID = "0x00020002"
 
+	// iptables chain name used by the injector to filter and redirect DNS packets in the DNS disruption
+	InjectorIptablesChaosDNSChainName = "CHAOS-DNS"
+
 	// DDMarkChaoslibPrefix allows to consistently name the chaos-imported API in ddmark.
 	// It's arbitrary but needs to be consistent across multiple files.
 	DDMarkChaoslibPrefix = "chaos-api"

@@ -59,12 +59,12 @@ const (
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
 type TrafficController interface {
-	AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error
-	AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error
-	AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) (uint32, error)
+	AddNetem(ifaces []string, parent string, handle string, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error
+	AddPrio(ifaces []string, parent string, handle string, bands uint32, priomap [16]uint32) error
+	AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) (uint32, error)
 	DeleteFilter(iface string, priority uint32) error
-	AddCgroupFilter(ifaces []string, parent string, handle uint32) error
-	AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error
+	AddFwFilter(ifaces []string, parent string, handle string, flowid string) error
+	AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error
 	ClearQdisc(ifaces []string) error
 }
 
@@ -123,7 +123,7 @@ func NewTrafficController(log *zap.SugaredLogger, dryRun bool) TrafficController
 	}
 }
 
-func (t *tc) AddNetem(ifaces []string, parent string, handle uint32, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
+func (t *tc) AddNetem(ifaces []string, parent string, handle string, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
 	params := ""
 
 	if delay.Milliseconds() != 0 {
@@ -153,7 +153,7 @@ func (t *tc) AddNetem(ifaces []string, parent string, handle uint32, delay time.
 	return nil
 }
 
-func (t *tc) AddPrio(ifaces []string, parent string, handle uint32, bands uint32, priomap [16]uint32) error {
+func (t *tc) AddPrio(ifaces []string, parent string, handle string, bands uint32, priomap [16]uint32) error {
 	priomapStr := ""
 	for _, bit := range priomap {
 		priomapStr += fmt.Sprintf(" %d", bit)
@@ -171,7 +171,7 @@ func (t *tc) AddPrio(ifaces []string, parent string, handle uint32, bands uint32
 	return nil
 }
 
-func (t *tc) AddOutputLimit(ifaces []string, parent string, handle uint32, bytesPerSec uint) error {
+func (t *tc) AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error {
 	// `latency` is max length of time a packet can sit in the queue before being sent; 50ms should be plenty
 	// `burst` is the number of bytes that can be sent at unlimited speed before the rate limiting kicks in,
 	// so again we'll be safe by setting `burst` to be the same as `rate` (should be more than enough)
@@ -200,7 +200,7 @@ func (t *tc) ClearQdisc(ifaces []string) error {
 
 // AddFilter generates a filter to redirect the traffic matching the given ip, port and protocol to the given flowid
 // this function relies on the tc flower (https://man7.org/linux/man-pages/man8/tc-flower.8.html) filtering module
-func (t *tc) AddFilter(ifaces []string, parent string, handle uint32, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) (uint32, error) {
+func (t *tc) AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) (uint32, error) {
 	var params, filterProtocol string
 
 	// match protocol if specified, default to tcp otherwise
@@ -266,10 +266,10 @@ func (t *tc) DeleteFilter(iface string, priority uint32) error {
 	return nil
 }
 
-// AddCgroupFilter generates a cgroup filter
-func (t *tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error {
+// AddFwFilter generates a cgroup filter
+func (t *tc) AddFwFilter(ifaces []string, parent string, handle string, flowid string) error {
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "", 0, handle, "cgroup", "")...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "ip", 0, handle, "fw", "flowid "+flowid)...); err != nil {
 			return err
 		}
 	}
@@ -293,7 +293,7 @@ func (t *tc) getNewPriority() (uint32, error) {
 	return priority, nil
 }
 
-func buildCmd(module string, iface string, parent string, protocol string, priority uint32, handle uint32, kind string, parameters string) []string {
+func buildCmd(module string, iface string, parent string, protocol string, priority uint32, handle string, kind string, parameters string) []string {
 	cmd := fmt.Sprintf("%s add dev %s", module, iface)
 
 	if protocol != "" {
@@ -312,8 +312,8 @@ func buildCmd(module string, iface string, parent string, protocol string, prior
 	}
 
 	// handle
-	if handle != 0 {
-		cmd += fmt.Sprintf(" handle %d:", handle)
+	if handle != "" {
+		cmd += fmt.Sprintf(" handle %s", handle)
 	}
 
 	// kind

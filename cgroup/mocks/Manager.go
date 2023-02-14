@@ -117,6 +117,20 @@ func (_m *ManagerMock) Write(controller string, file string, data string) error 
 	return r0
 }
 
+// RelativePath provides a mock function with given fields: controller
+func (_m *ManagerMock) RelativePath(controller string) string {
+	ret := _m.Called(controller)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(controller)
+	} else {
+		r0 = ret.String(0)
+	}
+
+	return r0
+}
+
 type mockConstructorTestingTNewManager interface {
 	mock.TestingT
 	Cleanup(func())

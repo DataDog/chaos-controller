@@ -31,7 +31,7 @@ var _ = Describe("Tc", func() {
 		tcExecuterRunCall *mock.Call
 		ifaces            []string
 		parent            string
-		handle            uint32
+		handle            string
 		delay             time.Duration
 		delayJitter       time.Duration
 		drop              int
@@ -60,7 +60,7 @@ var _ = Describe("Tc", func() {
 		// injected variables
 		ifaces = []string{"lo", "eth0"}
 		parent = "root"
-		handle = 0
+		handle = ""
 		delay = time.Second
 		delayJitter = time.Second
 		drop = 5
@@ -96,7 +96,7 @@ var _ = Describe("Tc", func() {
 
 		Context("add delay and delayJitter with a handle", func() {
 			BeforeEach(func() {
-				handle = 1
+				handle = "1:"
 			})
 
 			It("should execute", func() {
@@ -161,14 +161,14 @@ var _ = Describe("Tc", func() {
 		})
 	})
 
-	Describe("AddCgroupFilter", func() {
+	Describe("AddFwFilter", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddCgroupFilter(ifaces, parent, handle)
+			tcRunner.AddFwFilter(ifaces, parent, handle, flowid)
 		})
 
 		Context("add a cgroup filter", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo root cgroup")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip root fw flowid 1:2")
 			})
 		})
 	})

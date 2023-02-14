@@ -14,4 +14,5 @@ type Manager interface {
 	DiskThrottleRead(identifier, bps int) error
 	DiskThrottleWrite(identifier, bps int) error
 	IsCgroupV2() bool
+	RelativePath(controller string) string
 }
