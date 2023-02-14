@@ -99,15 +99,15 @@ var _ = Describe("Failure", func() {
 		})
 
 		It("should create and set the CHAOS-DNS Chain", func() {
-			iptables.AssertCalled(GinkgoT(), "CreateChain", "CHAOS-DNS")
-			iptables.AssertCalled(GinkgoT(), "AddRuleWithIP", "CHAOS-DNS", "udp", "53", "DNAT", "10.0.0.2")
+			iptables.AssertCalled(GinkgoT(), "CreateChain", chaostypes.InjectorIptablesChaosDNSChainName)
+			iptables.AssertCalled(GinkgoT(), "AddRuleWithIP", chaostypes.InjectorIptablesChaosDNSChainName, "udp", "53", "DNAT", "10.0.0.2")
 		})
 
 		Context("disruption is node-level", func() {
 			It("creates node-level iptable filter rules", func() {
-				iptables.AssertCalled(GinkgoT(), "PrependRuleSpec", "CHAOS-DNS", []string{"-s", "10.0.0.2", "-j", "RETURN"})
-				iptables.AssertCalled(GinkgoT(), "PrependRuleSpec", "OUTPUT", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
-				iptables.AssertCalled(GinkgoT(), "PrependRuleSpec", "PREROUTING", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
+				iptables.AssertCalled(GinkgoT(), "PrependRuleSpec", chaostypes.InjectorIptablesChaosDNSChainName, []string{"-s", "10.0.0.2", "-j", "RETURN"})
+				iptables.AssertCalled(GinkgoT(), "PrependRuleSpec", "OUTPUT", []string{"-p", "udp", "--dport", "53", "-j", chaostypes.InjectorIptablesChaosDNSChainName})
+				iptables.AssertCalled(GinkgoT(), "PrependRuleSpec", "PREROUTING", []string{"-p", "udp", "--dport", "53", "-j", chaostypes.InjectorIptablesChaosDNSChainName})
 			})
 		})
 
@@ -116,7 +116,7 @@ var _ = Describe("Failure", func() {
 				config.Level = chaostypes.DisruptionLevelPod
 			})
 			It("creates pod-level iptable filter rules", func() {
-				iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "nat", "OUTPUT", "/kubepod.slice/foo", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
+				iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "nat", "OUTPUT", "/kubepod.slice/foo", []string{"-p", "udp", "--dport", "53", "-j", chaostypes.InjectorIptablesChaosDNSChainName})
 			})
 		})
 	})
@@ -132,13 +132,13 @@ var _ = Describe("Failure", func() {
 		})
 
 		It("should clear and delete the CHAOS-DNS Chain", func() {
-			iptables.AssertCalled(GinkgoT(), "ClearAndDeleteChain", "CHAOS-DNS")
+			iptables.AssertCalled(GinkgoT(), "ClearAndDeleteChain", chaostypes.InjectorIptablesChaosDNSChainName)
 		})
 
 		Context("disruption is node-level", func() {
 			It("should clear the node-level iptable rules", func() {
-				iptables.AssertCalled(GinkgoT(), "DeleteRule", "OUTPUT", "udp", "53", "CHAOS-DNS")
-				iptables.AssertCalled(GinkgoT(), "DeleteRule", "PREROUTING", "udp", "53", "CHAOS-DNS")
+				iptables.AssertCalled(GinkgoT(), "DeleteRule", "OUTPUT", "udp", "53", chaostypes.InjectorIptablesChaosDNSChainName)
+				iptables.AssertCalled(GinkgoT(), "DeleteRule", "PREROUTING", "udp", "53", chaostypes.InjectorIptablesChaosDNSChainName)
 			})
 		})
 
@@ -147,7 +147,7 @@ var _ = Describe("Failure", func() {
 				config.Level = chaostypes.DisruptionLevelPod
 			})
 			It("should clear the pod-level iptables rules", func() {
-				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "nat", "OUTPUT", "/kubepod.slice/foo", []string{"-p", "udp", "--dport", "53", "-j", "CHAOS-DNS"})
+				iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "nat", "OUTPUT", "/kubepod.slice/foo", []string{"-p", "udp", "--dport", "53", "-j", chaostypes.InjectorIptablesChaosDNSChainName})
 			})
 		})
 
