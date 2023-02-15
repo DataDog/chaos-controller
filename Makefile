@@ -93,13 +93,6 @@ spellcheck-docker:
 spellcheck-format-spelling:
 	sort < .spelling | sort | uniq | grep -v '^-' | tee .spelling.tmp > /dev/null && mv .spelling.tmp .spelling
 
-## This target is dedicated for CI and aims to reuse the Kubernetes version defined here as the source of truth
-ci-install-minikube:
-	curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
-	sudo dpkg -i minikube_latest_amd64.deb
-	minikube start --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
-	minikube status
-
 ## Run e2e tests (against a real cluster)
 e2e-test: generate
 	$(MAKE) lima-install EXPIRED_DISRUPTION_GC_DELAY=10s
@@ -190,10 +183,10 @@ lima-build-handler: docker-build-handler
 
 ## Remove lima references from kubectl config
 lima-kubectx-clean:
-	kubectl config delete-cluster ${LIMA_PROFILE} || true
-	kubectl config delete-context ${LIMA_PROFILE} || true
-	kubectl config delete-user ${LIMA_PROFILE} || true
-	kubectl config unset current-context
+	$(KUBECTL) config delete-cluster ${LIMA_PROFILE} || true
+	$(KUBECTL) config delete-context ${LIMA_PROFILE} || true
+	$(KUBECTL) config delete-user ${LIMA_PROFILE} || true
+	$(KUBECTL) config unset current-context || true
 
 lima-kubectx:
 	limactl shell default sudo sed 's/default/lima/g' /etc/rancher/k3s/k3s.yaml >> ~/.kube/config_lima
@@ -239,6 +232,19 @@ CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
 # CI-specific actions
+
+## This target is dedicated for CI and aims to reuse the Kubernetes version defined here as the source of truth
+ci-install-minikube:
+	curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
+	sudo dpkg -i minikube_latest_amd64.deb
+	minikube start --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
+	minikube status
+
+ci-install-lima:
+	curl -fsSL "https://github.com/lima-vm/lima/releases/download/v0.14.2/lima-0.14.2-Linux-x86_64.tar.gz" | tar Cxzvm /usr/local/bin
+	mv /usr/local/bin/bin/* /usr/local/bin/
+	sudo apt-get update
+	sudo apt-get install -y qemu-utils
 
 ## Minikube builds for e2e tests
 minikube-build-all: minikube-build-manager minikube-build-injector minikube-build-handler

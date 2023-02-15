@@ -203,6 +203,47 @@ jobs:
           command: |
             make e2e-test KUBECTL="minikube kubectl --" CLUSTER_NAME="minikube"
           no_output_timeout: 15m
+  e2e-test-cgroups-v2:
+    executor: ubuntu
+    steps:
+      - run:
+          name: Create missing cache directories
+          command: |
+            sudo mkdir -p /go /usr/local/bin /usr/local/kubebuilder
+            sudo chown circleci:circleci /go /usr/local/bin /usr/local/kubebuilder
+      - go_restore_cache
+      - run:
+          name: Wait for Docker Daemon to be up and running
+          command: |
+            for i in 0..9; do
+              docker version
+
+              ret=$?
+              if [ $ret -eq 0 ]; then
+                exit 0
+              fi
+
+              sleep 5
+            done
+      - run:
+          name: Configure Lima
+          <<: *working_directory
+          command: |
+            make ci-install-lima
+      - run:
+          name: Install requirements
+          <<: *working_directory
+          command: make controller-gen
+      - run:
+          name: Build and load images
+          <<: *working_directory
+          command: LIMA_CONFIG=lima-linux make lima-all
+      - run:
+          name: Run e2e tests
+          <<: *working_directory
+          command: |
+            make e2e-test
+
   # ensures that the file containing 3rd-party licenses is up-to-date
   third-party-licenses:
     executor: python
@@ -283,6 +324,9 @@ workflows:
           requires:
             - prepare-env
       - e2e-test:
+          requires:
+            - prepare-env
+      - e2e-test-cgroups-v2:
           requires:
             - prepare-env
       - third-party-licenses
