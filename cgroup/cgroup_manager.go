@@ -11,8 +11,6 @@ type Manager interface {
 	Read(controller, file string) (string, error)
 	Write(controller, file, data string) error
 	Exists(controller string) bool
-	DiskThrottleRead(identifier, bps int) error
-	DiskThrottleWrite(identifier, bps int) error
 	IsCgroupV2() bool
 	RelativePath(controller string) string
 }

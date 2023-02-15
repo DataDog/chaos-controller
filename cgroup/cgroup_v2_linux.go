@@ -28,16 +28,6 @@ func (cg cgroupV2) Join(pid int) error {
 	return cg.cg.Join(pid)
 }
 
-// DiskThrottleRead adds a disk throttle on read operations to the given disk identifier
-func (cg cgroupV2) DiskThrottleRead(identifier, bps int) error {
-	return cg.cg.DiskThrottleRead(identifier, bps)
-}
-
-// DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
-func (cg cgroupV2) DiskThrottleWrite(identifier, bps int) error {
-	return cg.cg.DiskThrottleRead(identifier, bps)
-}
-
 func (cg cgroupV2) IsCgroupV2() bool {
 	return true
 }

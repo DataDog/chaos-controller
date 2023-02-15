@@ -82,24 +82,6 @@ func (cg cgroup) Join(pid int) error {
 	return cgroups.EnterPid((*cg.manager).GetPaths(), pid)
 }
 
-// DiskThrottleRead adds a disk throttle on read operations to the given disk identifier
-func (cg cgroup) DiskThrottleRead(identifier, bps int) error {
-	controllerDir := (*cg.manager).Path("blkio")
-	file := "blkio.throttle.read_bps_device"
-	data := fmt.Sprintf("%d:0 %d", identifier, bps)
-
-	return cgroups.WriteFile(controllerDir, file, data)
-}
-
-// DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
-func (cg cgroup) DiskThrottleWrite(identifier, bps int) error {
-	controllerDir := (*cg.manager).Path("blkio")
-	file := "blkio.throttle.write_bps_device"
-	data := fmt.Sprintf("%d:0 %d", identifier, bps)
-
-	return cgroups.WriteFile(controllerDir, file, data)
-}
-
 func (cg cgroup) IsCgroupV2() bool {
 	return false
 }

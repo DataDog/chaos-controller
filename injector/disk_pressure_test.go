@@ -5,8 +5,9 @@
 package injector_test
 
 import (
-	"github.com/DataDog/chaos-controller/cgroup/mocks"
 	"os"
+
+	"github.com/DataDog/chaos-controller/cgroup/mocks"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -32,8 +33,7 @@ var _ = Describe("Failure", func() {
 	BeforeEach(func() {
 		// cgroup
 		cgroupManager = &mocks.ManagerMock{}
-		cgroupManager.On("DiskThrottleRead", mock.Anything, mock.Anything).Return(nil)
-		cgroupManager.On("DiskThrottleWrite", mock.Anything, mock.Anything).Return(nil)
+		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// container
 		ctn = &container.ContainerMock{}
@@ -83,9 +83,26 @@ var _ = Describe("Failure", func() {
 			Expect(inj.Inject()).To(BeNil())
 		})
 
-		It("should throttle disk from cgroup", func() {
-			cgroupManager.AssertCalled(GinkgoT(), "DiskThrottleRead", 8, *spec.Throttling.ReadBytesPerSec)
-			cgroupManager.AssertCalled(GinkgoT(), "DiskThrottleWrite", 8, *spec.Throttling.WriteBytesPerSec)
+		Context("with cgroups v1", func() {
+			BeforeEach(func() {
+				cgroupManager.On("IsCgroupV2").Return(false)
+			})
+
+			It("should throttle disk from cgroup", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.read_bps_device", "8:0 1024")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.write_bps_device", "8:0 4096")
+			})
+		})
+
+		Context("with cgroups v2", func() {
+			BeforeEach(func() {
+				cgroupManager.On("IsCgroupV2").Return(true)
+			})
+
+			It("should throttle disk from cgroup", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 rbps=1024")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 wbps=4096")
+			})
 		})
 	})
 
@@ -94,9 +111,26 @@ var _ = Describe("Failure", func() {
 			Expect(inj.Clean()).To(BeNil())
 		})
 
-		It("should remove throttle from cgroup", func() {
-			cgroupManager.AssertCalled(GinkgoT(), "DiskThrottleRead", 8, 0)
-			cgroupManager.AssertCalled(GinkgoT(), "DiskThrottleWrite", 8, 0)
+		Context("with cgroups v1", func() {
+			BeforeEach(func() {
+				cgroupManager.On("IsCgroupV2").Return(false)
+			})
+
+			It("should remove throttle from cgroup", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.read_bps_device", "8:0 0")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.write_bps_device", "8:0 0")
+			})
+		})
+
+		Context("with cgroups v2", func() {
+			BeforeEach(func() {
+				cgroupManager.On("IsCgroupV2").Return(true)
+			})
+
+			It("should throttle disk from cgroup", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 rbps=max")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 wbps=max")
+			})
 		})
 	})
 })

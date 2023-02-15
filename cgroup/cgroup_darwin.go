@@ -36,16 +36,6 @@ func (cg cgroup) Join(pid int) error {
 	return fmt.Errorf("not implemented")
 }
 
-// DiskThrottleRead adds a disk throttle on read operations to the given disk identifier
-func (cg cgroup) DiskThrottleRead(identifier, bps int) error {
-	return fmt.Errorf("not implemented")
-}
-
-// DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
-func (cg cgroup) DiskThrottleWrite(identifier, bps int) error {
-	return fmt.Errorf("not implemented")
-}
-
 func (cg cgroup) IsCgroupV2() bool {
 	return false
 }
