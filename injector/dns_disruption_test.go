@@ -8,9 +8,8 @@ package injector_test
 import (
 	"os"
 
-	"github.com/DataDog/chaos-controller/cgroup/mocks"
-
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
@@ -27,14 +26,14 @@ var _ = Describe("Failure", func() {
 		inj           Injector
 		config        DNSDisruptionInjectorConfig
 		spec          v1beta1.DNSDisruptionSpec
-		cgroupManager *mocks.ManagerMock
+		cgroupManager *cgroup.ManagerMock
 		netnsManager  *netns.ManagerMock
 		iptables      *network.IptablesMock
 	)
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = &mocks.ManagerMock{}
+		cgroupManager = &cgroup.ManagerMock{}
 		cgroupManager.On("RelativePath", mock.Anything).Return("/kubepod.slice/foo")
 
 		// netns

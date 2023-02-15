@@ -26,11 +26,6 @@ func (cg cgroup) Write(controller, file, data string) error {
 	return fmt.Errorf("not implemented")
 }
 
-// Exists returns true if the given cgroup exists, false otherwise
-func (cg cgroup) Exists(controller string) bool {
-	return false
-}
-
 // Join adds the given PID to all available controllers of the cgroup
 func (cg cgroup) Join(pid int) error {
 	return fmt.Errorf("not implemented")

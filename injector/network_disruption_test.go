@@ -10,13 +10,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/DataDog/chaos-controller/cgroup/mocks"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
@@ -37,7 +36,7 @@ var _ = Describe("Failure", func() {
 		inj                                                     Injector
 		config                                                  NetworkDisruptionInjectorConfig
 		spec                                                    v1beta1.NetworkDisruptionSpec
-		cgroupManager                                           *mocks.ManagerMock
+		cgroupManager                                           *cgroup.ManagerMock
 		tc                                                      *network.TcMock
 		iptables                                                *network.IptablesMock
 		nl                                                      *network.NetlinkAdapterMock
@@ -53,7 +52,7 @@ var _ = Describe("Failure", func() {
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = &mocks.ManagerMock{}
+		cgroupManager = &cgroup.ManagerMock{}
 		cgroupManager.On("RelativePath", mock.Anything).Return("/kubepod.slice/foo")
 
 		// netns

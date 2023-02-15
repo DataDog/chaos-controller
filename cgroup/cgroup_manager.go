@@ -10,7 +10,6 @@ type Manager interface {
 	Join(pid int) error
 	Read(controller, file string) (string, error)
 	Write(controller, file, data string) error
-	Exists(controller string) bool
 	IsCgroupV2() bool
 	RelativePath(controller string) string
 }

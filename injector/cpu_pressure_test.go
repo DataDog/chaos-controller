@@ -6,7 +6,7 @@ package injector_test
 
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cgroup/mocks"
+	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/cpuset"
 	. "github.com/DataDog/chaos-controller/injector"
@@ -21,7 +21,7 @@ import (
 var _ = Describe("Failure", func() {
 	var (
 		config          CPUPressureInjectorConfig
-		cgroupManager   *mocks.ManagerMock
+		cgroupManager   *cgroup.ManagerMock
 		ctn             *container.ContainerMock
 		stresser        *stress.StresserMock
 		stresserExit    chan struct{}
@@ -33,7 +33,7 @@ var _ = Describe("Failure", func() {
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = &mocks.ManagerMock{}
+		cgroupManager = &cgroup.ManagerMock{}
 		cgroupManager.On("Join", mock.Anything).Return(nil)
 
 		// container
