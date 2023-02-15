@@ -1,12 +1,14 @@
 # Disk pressure
 
-The `diskPressure` field offers a way to apply pressure on a specific mount path.
+The `diskPressure` field offers a way to apply IO throttling on a specific mount path.
 
 ## Throttling
 
 Unlike the CPU pressure, this kind of disruption is not done by stressing the disk but by throttling its capacities. A throttle can be applied on read or write operations, or both.
 
-The throttling is done by using the [blkio cgroup controller](https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt), and more specifically by the `blkio.throttle.read_bps_device` and `blkio.throttle.write_bps_device` files.
+The throttling is done by using the [blkio cgroup controller](https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt), and more specifically:
+* by the `blkio.throttle.read_bps_device` and `blkio.throttle.write_bps_device` files for cgroup v1
+* by the `io.max` file for cgroup v2 ([more to read here](https://docs.kernel.org/admin-guide/cgroup-v2.html#io-interface-files))
 
 To apply the throttle, the injector will:
 
@@ -64,6 +66,10 @@ kubectl get -ojson pod demo-curl-547bb9c686-57484 | jq '.status.containerStatuse
 8:0 1073741824
 ```
 
+---
+
+**Reset the throttle in cgroup v1**
+
 *Throttle files are located directly in `/sys/fs/cgroup/blkio` if the disruption is applied at the node level.*
 
 * Reset throttle values for the found device
@@ -78,4 +84,22 @@ kubectl get -ojson pod demo-curl-547bb9c686-57484 | jq '.status.containerStatuse
 ```
 # cat /sys/fs/cgroup/blkio/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460/blkio.throttle.read_bps_device
 # cat /sys/fs/cgroup/blkio/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460/blkio.throttle.write_bps_device
+```
+
+---
+
+**Reset the throttle in cgroup v2**
+
+*Throttle files are located directly in `/sys/fs/cgroup` if the disruption is applied at the node level.*
+
+* Reset throttle values for the found device
+
+```
+# echo "8:0 rbps=max wbps=max" > /sys/fs/cgroup/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460/io.max
+```
+
+* Ensure that the values are reset
+
+```
+# cat /sys/fs/cgroup/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460/io.max
 ```

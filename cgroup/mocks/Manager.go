@@ -12,34 +12,6 @@ type ManagerMock struct {
 	mock.Mock
 }
 
-// DiskThrottleRead provides a mock function with given fields: identifier, bps
-func (_m *ManagerMock) DiskThrottleRead(identifier int, bps int) error {
-	ret := _m.Called(identifier, bps)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(int, int) error); ok {
-		r0 = rf(identifier, bps)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// DiskThrottleWrite provides a mock function with given fields: identifier, bps
-func (_m *ManagerMock) DiskThrottleWrite(identifier int, bps int) error {
-	ret := _m.Called(identifier, bps)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(int, int) error); ok {
-		r0 = rf(identifier, bps)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // Exists provides a mock function with given fields: kind
 func (_m *ManagerMock) Exists(controller string) bool {
 	ret := _m.Called(controller)
