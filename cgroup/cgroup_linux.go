@@ -17,7 +17,64 @@ import (
 	"go.uber.org/zap"
 )
 
-func cgroupManager(cgroupFile string, cgroupMount string) (cgroups.Manager, error) {
+type cgroup struct {
+	manager   *cgroups.Manager
+	mountPath string
+	isV2      bool
+	dryRun    bool
+	log       *zap.SugaredLogger
+}
+
+// NewManager creates a new cgroup manager from the given cgroup root path
+func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLogger) (Manager, error) {
+	manager, err := newCgroupManager(fmt.Sprintf("/proc/%d/cgroup", pid), cgroupMount)
+	if err != nil {
+		return nil, err
+	}
+
+	return cgroup{
+		manager:   &manager,
+		mountPath: cgroupMount,
+		isV2:      cgroups.PathExists("/sys/fs/cgroup/cgroup.controllers"),
+		dryRun:    dryRun,
+		log:       log,
+	}, nil
+}
+
+// Read reads the given cgroup file data and returns the content as a string
+func (cg cgroup) Read(controller, file string) (string, error) {
+	controllerDir := (*cg.manager).Path(controller)
+	content, err := cgroups.ReadFile(controllerDir, file)
+
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSuffix(content, "\n"), nil
+}
+
+// Write writes the given data to the given cgroup kind
+func (cg cgroup) Write(controller, file, data string) error {
+	controllerDir := (*cg.manager).Path(controller)
+
+	return cgroups.WriteFile(controllerDir, file, data)
+}
+
+// Join adds the given PID to all available controllers of the cgroup
+func (cg cgroup) Join(pid int) error {
+	return cgroups.EnterPid((*cg.manager).GetPaths(), pid)
+}
+
+func (cg cgroup) IsCgroupV2() bool {
+	return cg.isV2
+}
+
+// RelativePath returns the cgroup relative path (without the mount path)
+func (cg cgroup) RelativePath(controller string) string {
+	return strings.TrimPrefix((*cg.manager).Path(controller), cg.mountPath)
+}
+
+func newCgroupManager(cgroupFile string, cgroupMount string) (cgroups.Manager, error) {
 	cg := &configs.Cgroup{
 		Resources: &configs.Resources{},
 	}
@@ -42,75 +99,4 @@ func cgroupManager(cgroupFile string, cgroupMount string) (cgroups.Manager, erro
 
 	// cgroup v1 manager
 	return fs.NewManager(cg, cgroupPaths)
-}
-
-type cgroup struct {
-	manager   *cgroups.Manager
-	mountPath string
-	dryRun    bool
-	log       *zap.SugaredLogger
-}
-
-// Read reads the given cgroup file data and returns the content as a string
-func (cg cgroup) Read(controller, file string) (string, error) {
-	controllerDir := (*cg.manager).Path(controller)
-	content, err := cgroups.ReadFile(controllerDir, file)
-
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSuffix(content, "\n"), nil
-}
-
-// Write writes the given data to the given cgroup kind
-func (cg cgroup) Write(controller, file, data string) error {
-	controllerDir := (*cg.manager).Path(controller)
-
-	return cgroups.WriteFile(controllerDir, file, data)
-}
-
-// Exists returns true if the given cgroup exists, false otherwise
-func (cg cgroup) Exists(controller string) bool {
-	controllerDir := (*cg.manager).Path(controller)
-
-	return cgroups.PathExists(fmt.Sprintf("%s/cgroup.procs", controllerDir))
-}
-
-// Join adds the given PID to all available controllers of the cgroup
-func (cg cgroup) Join(pid int) error {
-	return cgroups.EnterPid((*cg.manager).GetPaths(), pid)
-}
-
-func (cg cgroup) IsCgroupV2() bool {
-	return false
-}
-
-// RelativePath returns the cgroup relative path (without the mount path)
-func (cg cgroup) RelativePath(controller string) string {
-	return strings.TrimPrefix((*cg.manager).Path(controller), cg.mountPath)
-}
-
-// NewManager creates a new cgroup manager from the given cgroup root path
-func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLogger) (Manager, error) {
-	manager, err := cgroupManager(fmt.Sprintf("/proc/%d/cgroup", pid), cgroupMount)
-	if err != nil {
-		return nil, err
-	}
-
-	cg := cgroup{
-		manager:   &manager,
-		mountPath: cgroupMount,
-		dryRun:    dryRun,
-		log:       log,
-	}
-
-	isCgroupV2 := cgroups.PathExists("/sys/fs/cgroup/cgroup.controllers")
-	if isCgroupV2 {
-		return cgroupV2{
-			cg: cg,
-		}, nil
-	}
-
-	return cg, nil
 }
