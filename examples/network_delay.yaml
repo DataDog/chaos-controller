@@ -8,6 +8,8 @@ kind: Disruption
 metadata:
   name: network-delay
   namespace: chaos-demo
+  labels:
+    nameMeLater: lima
 spec:
   level: pod
   selector:

@@ -60,6 +60,7 @@ data:
         host: {{ .Values.controller.webhook.host | quote }}
         port: {{ .Values.controller.webhook.port }}
       safeMode:
+        nameMeLater: {{ .Values.controller.safeMode.nameMeLater }}
         enable: {{ .Values.controller.safeMode.enable }}
         namespaceThreshold: {{ .Values.controller.safeMode.namespaceThreshold }}
         clusterThreshold: {{ .Values.controller.safeMode.clusterThreshold }}

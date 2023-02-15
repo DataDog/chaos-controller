@@ -53,6 +53,7 @@ controller:
     host: "" # host to use to serve requests
     port: 9443 # port to use to serve requests
   safeMode:
+    nameMeLater: lima
     enable: false
     namespaceThreshold: 80
     clusterThreshold: 66

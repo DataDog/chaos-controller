@@ -44,6 +44,7 @@ var handlerEnabled bool
 var defaultDuration time.Duration
 var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 var chaosNamespace string
+var nameMeLater string
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	if err := ddmark.InitLibrary(EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix); err != nil {
@@ -63,6 +64,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 	chaosNamespace = setupWebhookConfig.ChaosNamespace
+	nameMeLater = setupWebhookConfig.NameMeLater
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
@@ -98,6 +100,17 @@ func (r *Disruption) ValidateCreate() error {
 	// according to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 	if _, err := labels.Parse(fmt.Sprintf("name=%s", r.Name)); err != nil {
 		return fmt.Errorf("invalid disruption name: %w", err)
+	}
+
+	if nameMeLater != "" {
+		nameMe, ok := r.Labels["nameMeLater"]
+		if !ok {
+			return fmt.Errorf("disruption's nameMeLater label is unset")
+		}
+
+		if nameMe != nameMeLater {
+			return fmt.Errorf("disruption is configured to run in %s but has been applied in %s", nameMe, nameMeLater)
+		}
 	}
 
 	// handle a disruption using the onInit feature without the handler being enabled
