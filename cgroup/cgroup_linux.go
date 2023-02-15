@@ -57,11 +57,23 @@ func (cg cgroup) Read(controller, file string) (string, error) {
 func (cg cgroup) Write(controller, file, data string) error {
 	controllerDir := (*cg.manager).Path(controller)
 
+	cg.log.Infow("writing to cgroup file", "path", filepath.Join(controllerDir, file), "data", data)
+
+	if cg.dryRun {
+		return nil
+	}
+
 	return cgroups.WriteFile(controllerDir, file, data)
 }
 
 // Join adds the given PID to all available controllers of the cgroup
 func (cg cgroup) Join(pid int) error {
+	cg.log.Infow("moving the pid to cgroup", "pid", pid)
+
+	if cg.dryRun {
+		return nil
+	}
+
 	return cgroups.EnterPid((*cg.manager).GetPaths(), pid)
 }
 
