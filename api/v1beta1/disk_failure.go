@@ -5,13 +5,23 @@
 
 package v1beta1
 
+import (
+	"errors"
+	"fmt"
+)
+
 // DiskFailureSpec represents a disk failure disruption
 type DiskFailureSpec struct {
 	Path string `json:"path"`
 }
 
+const MaxPathCharacters = 62
+
 // Validate validates args for the given disruption
 func (s *DiskFailureSpec) Validate() error {
+	if len(s.Path) > MaxPathCharacters {
+		return errors.New(fmt.Sprintf("The path of the disk failure disruption must not exceed %d characters", MaxPathCharacters))
+	}
 	return nil
 }
 

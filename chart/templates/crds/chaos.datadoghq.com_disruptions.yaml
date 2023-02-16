@@ -506,6 +506,8 @@ spec:
                     type: boolean
                   disableCountTooLarge:
                     type: boolean
+                  disableDiskFailurePath:
+                    type: boolean
                   disableNeitherHostNorPort:
                     type: boolean
                   disableSpecificContainDisk:

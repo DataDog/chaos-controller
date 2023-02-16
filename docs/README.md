@@ -14,10 +14,12 @@ This folder contains the detailed documentation of most parts of the project.
 * [Safeguards](safemode.md)
 * [FAQ](faq.md)
 * [Handling changes in the environment of the targets](changes_handling.md)
+* [How create a disruption based on eBPF](ebpf_disruption.md)
 * Failures Design Documentations
   * [Container Failure](container_disruption.md)
   * [Node Failure](node_disruption.md)
   * [CPU Pressure](cpu_pressure.md)
+  * [Disk Failure](disk_failure.md)
   * [Disk Pressure](disk_pressure.md)
   * [DNS Disruption](dns_disruption.md)
   * [GRPC Disruption](grpc_disruption.md)

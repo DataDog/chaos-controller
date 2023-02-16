@@ -32,10 +32,11 @@ unsafeMode:
 
 ### Safety Nets
 
-| Safety Net                    | Type | Description                                                                                                                                                             | IgnoreName                 |
-|-------------------------------| ----------- |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|
-| Large Scope Targeting         | Generic | Running any disruption with generic label selectors that select a majority of pods/nodes in a namespace as a target to inject a disruption into                         | DisableCountTooLarge       |
-| No Port and No Host Specified | Network | Running a network disruption without specifying a port and a host                                                                                                       | DisableNeitherHostNorPort  |
+| Safety Net                    | Type         | Description                                                                                                                                     | IgnoreName                |
+|-------------------------------|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|
+| Large Scope Targeting         | Generic      | Running any disruption with generic label selectors that select a majority of pods/nodes in a namespace as a target to inject a disruption into | DisableCountTooLarge      |
+| No Port and No Host Specified | Network      | Running a network disruption without specifying a port and a host                                                                               | DisableNeitherHostNorPort |
+| Wrong path specified          | Disk Failure | Running a disk failure disruption without specifying a path or '/' value.                                                                       | DisableDiskFailurePath    |
 
 
 #### Example of Disabling Specific Safety Net
@@ -67,7 +68,7 @@ spec:
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2022 Datadog, Inc.
+# Copyright 2023 Datadog, Inc.
 
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption

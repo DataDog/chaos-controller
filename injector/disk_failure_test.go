@@ -60,8 +60,9 @@ var _ = Describe("Failure", func() {
 
 	Describe("injection", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(BeNil())
-			time.Sleep(time.Second * 1)
+			Eventually(func() bool {
+				return Expect(inj.Inject()).To(BeNil())
+			}, time.Second*1, time.Second).Should(BeTrue())
 		})
 
 		Context("with a pod level", func() {

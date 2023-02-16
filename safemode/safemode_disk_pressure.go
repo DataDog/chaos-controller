@@ -10,13 +10,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type Disk struct {
+type DiskPressure struct {
 	dis    v1beta1.Disruption
 	client client.Client
 }
 
 // Init Refer to safemode.Safemode interface for documentation
-func (sm *Disk) Init(disruption v1beta1.Disruption, client client.Client) {
+func (sm *DiskPressure) Init(disruption v1beta1.Disruption, client client.Client) {
 	sm.dis = disruption
 	sm.client = client
 }

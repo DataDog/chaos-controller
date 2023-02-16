@@ -167,7 +167,7 @@ docker-build-manager: manager
 
 docker-build-ebpf:
 	docker build --platform linux/${OS_ARCH} --build-arg ARCH=${OS_ARCH} -t ebpf-builder-${OS_ARCH} -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
-	rm -r ebpf/builds || true
+	rm -r bin/injector/ebpf/ || true
 	docker run --rm -v ${shell pwd}:/app ebpf-builder-${OS_ARCH}
 
 docker-build-injector: docker-build-ebpf injector

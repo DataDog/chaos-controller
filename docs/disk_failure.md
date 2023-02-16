@@ -1,22 +1,141 @@
 # Disk failure
 
-The `diskFailure` field offers a way to apply a disk failure on a specific process and path.
+## Context & Motivation
 
-## How it works
+<p align="center">
+    <kbd>
+        <img src="../docs/img/disk_failure/openat.png" height=auto width=372 />
+    </kbd>
+</p>
 
-The disruption runs an eBPF disk failure program used to intercept system calls and inject errors. It is used to prevent certain processes from accessing certain files. It defines a target process and a filter path, and if the process is trying to open a file that matches the filter path, an -ENOENT error will be injected, preventing the process from opening the file. The filter path is a strict prefix matcher and currently it does not support wildcards.
+An application exchanges with the operating system via syscall. The kernel receives calls, process them and return a result or an error for each of them.
+In order to open a file, the application needs to send an openat syscall to the kernel. This signal is processed by the kernel, and it returns to the application a new file descriptor or an error.
+If a file does not exist, the kernel returns an `-ENOENT` error code. 
+The idea, is to simulate this behavior by catching this signal before the kernel and return this error code. This solution does not alert file system and no needs to change the code of the application or kernel. 
 
-The source code of the eBPF disk failure program is [here](../ebpf/disk-failure). 
+## Current Features
 
-### Notes
+<p align="center">
+    <kbd>
+        <img src="../docs/img/disk_failure/simple_schema.png" height=auto width=372 />
+    </kbd>
+</p>
 
-:warning: If you target a node with a `"/"` filter path, the disruption will catch all openat syscalls of the node. If it's the case, your last chance is to restart the node manually because you will not be able to connect remotely to it and do any command line.
+The `diskFailure` disruption runs an eBPF program used to intercept system calls and inject errors. It is used to prevent certain processes from accessing certain files. It defines a target process and a filter path, and if the process is trying to open a file that matches the filter path, an -ENOENT error will be injected, preventing the process from opening the file.
 
-### Known issues
+The Linux kernel provides an eBPF framework that allows users to load and run custom programs within the kernel of the operating system.
+That means it can extend or even modify the way the kernel behaves. It is useful for observability, security, chaos, etc...
+With eBPF it is possible to catch openat syscall and override the result with a `-ENOENT` error code.
 
-Because an eBPF program has a limited memory and you cannot do dynamic loop, the filter path could not exceed `62` characters.
+The disruption has the following additional field:
+* **Path**: Prefix used to filter `openat` system calls by path. Does not support wildcard and cannot exceed `62` characters due to eBPF kernel limitation. A validation is in place to avoid the usage of a path greater than this limit.
 
-Be sure to have a kernel build with eBPF:
+Support two kind of levels:
+* **Node**: Intercept all `openat` system calls of nodes matching the selector.
+
+> Valid disruption
+
+```yaml
+---
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: example
+  namespace: example
+spec:
+  level: node
+  selector:
+    app: example
+  count: 1
+  diskFailure:
+    path: /sub/path
+```
+
+> Invalid disruption
+
+```yaml
+---
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: example
+  namespace: example
+spec:
+  level: node
+  selector:
+    app: example
+  count: 1
+  diskFailure:
+    path: / # <----- Denied!
+```
+
+To allow the `"/"` path, the safe-mode has to be disabled. :warning: This is not recommended at all
+
+
+```yaml
+---
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: example
+  namespace: example
+spec:
+  level: node
+  selector:
+    app: example
+  count: 1
+  unsafeMode:
+    DisableDiskFailurePath: true
+  diskFailure:
+    path: / # <----- Allowed
+```
+
+* **Pod**: Intercept all `openat` system  calls of the main process of the containers and its children. Allow to filter by container name too:
+
+> Disrupt all containers
+
+```yaml
+---
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: example
+  namespace: example
+spec:
+  level: pod
+  selector:
+    app: example
+  count: 1
+  diskFailure:
+    path: /
+```
+
+> Disrupt a single container
+
+```yaml
+---
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: example
+  namespace: example
+spec:
+  level: pod
+  selector:
+    app: example
+  count: 1
+  containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
+    - container-1
+  diskFailure:
+    path: /
+```
+
+## Notes
+
+* The source code of the eBPF disk failure program is [here](../ebpf/disk-failure). 
+* Tested with Ubuntu 22.10, kernel 5.15, go 1.19
+* To know how to create an eBPF disruption you can refer to the following [documentation](ebpf_disruption.md).
+* Be sure to have a kernel build with eBPF:
 
 ```shell
 CONFIG_BPF=y

@@ -1,12 +1,10 @@
 ARCH := x86
-BUILD_DIR := ../bin/injector
+BUILD_DIR := ../bin/injector/ebpf
 TARGET_PREFIX := bpf-
-TARGET_SUFFIX := -amd64
 UNAME_ARCH := $(shell uname -m)
 
 ifeq ($(UNAME_ARCH),aarch64)
 	ARCH := arm64
-	TARGET_SUFFIX := -arm64
 endif
 
 PROJECTS := $(shell find * -maxdepth 1 -type d | grep -v includes | grep -v builds)
@@ -21,7 +19,7 @@ go_env := CC=clang CGO_CFLAGS="-I /usr/include/$(UNAME_ARCH)-linux-gnu" CGO_LDFL
 
 $(PROJECTS):
 	@echo "Start build the" \"$@\" "project"
-	$(eval TARGET := $(TARGET_PREFIX)$@$(TARGET_SUFFIX))
+	$(eval TARGET := $(TARGET_PREFIX)$@)
 	$(eval TARGET_PATH := $(BUILD_DIR)/$(TARGET))
 	@echo "Compiling" \"$(TARGET)\" "GO program in progress..."
 	${go_env} go build -o ./$(TARGET_PATH) $@/main.go

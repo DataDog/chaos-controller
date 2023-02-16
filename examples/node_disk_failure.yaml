@@ -6,17 +6,12 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: disk-failure
+  name: node-disk-failure
   namespace: chaos-demo
 spec:
   level: node # impact the whole node instead of a single pod
   selector:
     kubernetes.io/hostname: lima-default # when node level is enabled, the selector applies to nodes and not pods
-  #level: pod
-  #selector:
-  #  app: demo-curl
   count: 1
-  #containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
-  #  - read-file
   diskFailure:
-    path: /
+    path: "/mnt"

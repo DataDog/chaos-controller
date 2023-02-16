@@ -13,24 +13,31 @@ import (
 	"bytes"
 	"encoding/binary"
 	"flag"
-	"fmt"
 	"github.com/DataDog/chaos-controller/ebpf"
+	"github.com/DataDog/chaos-controller/log"
 	bpf "github.com/aquasecurity/libbpfgo"
 	"github.com/aquasecurity/libbpfgo/helpers"
+	"go.uber.org/zap"
 	"os"
 	"os/signal"
 )
 
-var nFlag = flag.Uint64("p", 0, "Process to check")
-var nPath = flag.String("f", "/", "Path to filter")
+var nFlag = flag.Uint64("p", 0, "Process to disrupt")
+var nPath = flag.String("f", "/", "Filter path")
+
+var logger *zap.SugaredLogger
 
 func main() {
 	// Defined a chanel to handle SIGTERM
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
 
+	var err error
+	logger, err = log.NewZapLogger()
+	must(err)
+
 	// Create the bpf module
-	bpfModule, err := bpf.NewModuleFromFile(ebpf.DiskFailureObjName)
+	bpfModule, err := bpf.NewModuleFromFile("/usr/local/bin/bpf-disk-failure.bpf.o")
 	must(err)
 	defer bpfModule.Close()
 
@@ -59,6 +66,7 @@ func main() {
 	// Start the buffer
 	p.Start()
 
+	// Print events
 	go func() {
 		for data := range e {
 			printEvent(data)
@@ -75,7 +83,7 @@ func printEvent(data []byte) {
 	tid := int(binary.LittleEndian.Uint32(data[8:12]))
 	gid := int(binary.LittleEndian.Uint32(data[12:16]))
 	comm := string(bytes.TrimRight(data[16:], "\x00"))
-	fmt.Printf("Disrupt Ppid %d, Pid %d, Tid: %d, Gid: %d, Command: %s\n", ppid, pid, tid, gid, comm)
+	logger.Infof("Disrupt Ppid %d, Pid %d, Tid: %d, Gid: %d, Command: %s", ppid, pid, tid, gid, comm)
 }
 
 // The global variables are shared against the userspace application and the BPF application (loaded into the kernel).
