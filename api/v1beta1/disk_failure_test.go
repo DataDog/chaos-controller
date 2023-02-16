@@ -39,7 +39,7 @@ var _ = Describe("DiskFailureSpec", func() {
 			})
 			It("should return an error", func() {
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(Equal("The path of the disk failure disruption must not exceed 62 characters"))
+				Expect(err.Error()).Should(Equal("the path of the disk failure disruption must not exceed 62 characters"))
 			})
 		})
 
