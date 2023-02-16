@@ -6,7 +6,6 @@
 package v1beta1
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -20,7 +19,7 @@ const MaxPathCharacters = 62
 // Validate validates args for the given disruption
 func (s *DiskFailureSpec) Validate() error {
 	if len(s.Path) > MaxPathCharacters {
-		return errors.New(fmt.Sprintf("The path of the disk failure disruption must not exceed %d characters", MaxPathCharacters))
+		return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters", MaxPathCharacters)
 	}
 	return nil
 }
