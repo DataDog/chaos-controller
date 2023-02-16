@@ -21,6 +21,7 @@ func (s *DiskFailureSpec) Validate() error {
 	if len(s.Path) > MaxPathCharacters {
 		return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters", MaxPathCharacters)
 	}
+
 	return nil
 }
 
