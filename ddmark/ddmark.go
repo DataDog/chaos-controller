@@ -20,6 +20,20 @@ import (
 //go:embed validation_teststruct.go
 var EmbeddedDDMarkAPI embed.FS
 
+// Ddmark interface manage validation of struct fields
+type Ddmark interface {
+	ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error
+	ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error)
+}
+
+// ddmark struct implementing Ddmark interface
+type ddmark struct{}
+
+// NewDdmark create an new instance of Ddmark
+func NewDdmark() Ddmark {
+	return ddmark{}
+}
+
 func initializeMarkers() *k8smarkers.Collector {
 	col := &k8smarkers.Collector{}
 	reg := &k8smarkers.Registry{}
@@ -38,11 +52,11 @@ func initializeMarkers() *k8smarkers.Collector {
 
 // ValidateStruct applies struct markers found in structPkgs struct definitions to a marshalledStruct object.
 // It allows to enforce markers rule onto that object, according to the constraints defined in structPkgs
-func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error {
-	return ValidateStructMultierror(marshalledStruct, filePath, structPkgs...).Errors
+func (d ddmark) ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error {
+	return d.ValidateStructMultierror(marshalledStruct, filePath, structPkgs...).Errors
 }
 
-func ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error) {
+func (d ddmark) ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error) {
 	col := initializeMarkers()
 
 	var err error

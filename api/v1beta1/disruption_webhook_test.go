@@ -6,9 +6,11 @@
 package v1beta1
 
 import (
+	"fmt"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/metrics/noop"
-	"github.com/DataDog/chaos-controller/types"
+	"github.com/hashicorp/go-multierror"
+	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/tools/record"
 	"time"
 
@@ -147,9 +149,11 @@ var _ = Describe("Disruption", func() {
 
 	Context("ValidateCreate", func() {
 		Describe("general errors expectations", func() {
+			ddmarkMock := ddmark.DdmarkMock{}
+
 			BeforeEach(func() {
-				err := ddmark.InitLibrary(EmbeddedChaosAPI, types.DDMarkChaoslibPrefix)
-				Expect(err).ShouldNot(HaveOccurred())
+				ddmarkMock.On("ValidateStructMultierror", mock.Anything, mock.Anything, mock.Anything).Return(&multierror.Error{})
+				_ddmark = ddmarkMock
 				k8sClient = makek8sClientWithDisruptionPod()
 				deleteOnly = false
 			})
@@ -160,8 +164,6 @@ var _ = Describe("Disruption", func() {
 			})
 
 			AfterEach(func() {
-				err := ddmark.CleanupLibraries(types.DDMarkChaoslibPrefix)
-				Expect(err).ShouldNot(HaveOccurred())
 				k8sClient = nil
 				newDisruption = nil
 			})
@@ -177,6 +179,7 @@ var _ = Describe("Disruption", func() {
 					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(HavePrefix("the controller is currently in delete-only mode, you can't create new disruptions for now"))
+					Expect(ddmarkMock.AssertNotCalled(GinkgoT(), "ValidateStructMultierror", mock.Anything, mock.Anything, mock.Anything)).To(BeTrue())
 				})
 			})
 
@@ -191,6 +194,7 @@ var _ = Describe("Disruption", func() {
 					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(HavePrefix("invalid disruption name: found '!', expected: ',' or 'end of string'"))
+					Expect(ddmarkMock.AssertNotCalled(GinkgoT(), "ValidateStructMultierror", mock.Anything, mock.Anything, mock.Anything)).To(BeTrue())
 				})
 			})
 
@@ -205,6 +209,7 @@ var _ = Describe("Disruption", func() {
 					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(HavePrefix("the chaos handler is disabled but the disruption onInit field is set to true, please enable the handler by specifying the --handler-enabled flag to the controller if you want to use the onInit feature"))
+					Expect(ddmarkMock.AssertNotCalled(GinkgoT(), "ValidateStructMultierror", mock.Anything, mock.Anything, mock.Anything)).To(BeTrue())
 				})
 			})
 
@@ -220,30 +225,41 @@ var _ = Describe("Disruption", func() {
 					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(Equal("1 error occurred:\n\t* Spec: either selector or advancedSelector field must be set\n\n"))
+					Expect(ddmarkMock.AssertNotCalled(GinkgoT(), "ValidateStructMultierror", mock.Anything, mock.Anything, mock.Anything)).To(BeTrue())
 				})
 			})
 
 			When("ddmark return an error", func() {
 				It("should catch this error and propagated it", func() {
 					// Arrange
-					err := ddmark.CleanupLibraries(types.DDMarkChaoslibPrefix)
-					Expect(err).ShouldNot(HaveOccurred())
+					ddmarkMockError := ddmark.DdmarkMock{}
+					ddmarkMockError.On("ValidateStructMultierror", mock.Anything, mock.Anything, mock.Anything).Return(&multierror.Error{
+						Errors: []error{
+							fmt.Errorf("something bad happened"),
+						},
+					})
+					_ddmark = ddmarkMockError
 
 					// Action
-					err = newDisruption.ValidateCreate()
+					err := newDisruption.ValidateCreate()
+
+					// Revert arrange to avoid side effects
+					_ddmark = ddmarkMock
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(Equal("1 error occurred:\n\t* ddmark:  validation_webhook: loaded classes are empty or not found\n\n"))
+					Expect(err.Error()).Should(ContainSubstring("something bad happened"))
+					Expect(ddmarkMockError.AssertExpectations(GinkgoT())).To(BeTrue())
 				})
 			})
 		})
 
 		Describe("expectations with a disk failure disruption", func() {
-			BeforeEach(func() {
-				err := ddmark.InitLibrary(EmbeddedChaosAPI, types.DDMarkChaoslibPrefix)
-				Expect(err).ShouldNot(HaveOccurred())
+			ddmarkMock := ddmark.DdmarkMock{}
 
+			BeforeEach(func() {
+				ddmarkMock.On("ValidateStructMultierror", mock.Anything, mock.Anything, mock.Anything).Return(&multierror.Error{})
+				_ddmark = ddmarkMock
 				k8sClient = makek8sClientWithDisruptionPod()
 				recorder = record.NewFakeRecorder(1)
 				metricsSink = noop.New()
@@ -257,8 +273,6 @@ var _ = Describe("Disruption", func() {
 			})
 
 			AfterEach(func() {
-				err := ddmark.CleanupLibraries(types.DDMarkChaoslibPrefix)
-				Expect(err).ShouldNot(HaveOccurred())
 				k8sClient = nil
 				newDisruption = nil
 			})

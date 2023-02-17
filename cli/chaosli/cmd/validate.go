@@ -47,8 +47,9 @@ func ValidateDisruption(path string) error {
 // RunAllValidation runs and concatenate the ddmark validation and the regular api validation
 func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
 	var retErr *multierror.Error
+	_ddmark := ddmark.NewDdmark()
 
-	retErr = multierror.Append(retErr, multierror.Prefix(ddmark.ValidateStructMultierror(disruption, rootPath, types.DDMarkChaoslibPrefix), "ddmark:  "))
+	retErr = multierror.Append(retErr, multierror.Prefix(_ddmark.ValidateStructMultierror(disruption, rootPath, types.DDMarkChaoslibPrefix), "ddmark:  "))
 
 	if err := disruption.Spec.Validate(); err != nil {
 		retErr = multierror.Append(retErr, multierror.Prefix(err, "validate:"))

@@ -139,9 +139,10 @@ func disruptionSpecFromYaml(yamlBytes []byte) (v1beta1.DisruptionSpec, error) {
 // run ddmark and validation through the Validate() interface
 func ValidateDisruptionSpecFromString(yamlStr string) []error {
 	var marshalledStruct v1beta1.DisruptionSpec
+	_ddmark := ddmark.NewDdmark()
 
 	marshalledStruct, err := disruptionSpecFromYaml([]byte(yamlStr))
-	errorList := ddmark.ValidateStruct(marshalledStruct, "test_suite", types.DDMarkChaoslibPrefix)
+	errorList := _ddmark.ValidateStruct(marshalledStruct, "test_suite", types.DDMarkChaoslibPrefix)
 
 	if err != nil {
 		errorList = append(errorList, err)
