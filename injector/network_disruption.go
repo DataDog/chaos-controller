@@ -165,13 +165,6 @@ func (i *networkDisruptionInjector) Inject() error {
 
 	// apply operations if any
 	if len(i.operations) > 0 {
-		// add a conntrack reference to enable it
-		// it consists of adding a noop iptables rule loading the conntrack module so it enables connection tracking in the targeted network namespace
-		// cf. https://thermalcircle.de/doku.php?id=blog:linux:connection_tracking_1_modules_and_hooks for more information on how conntrack works outside of the main network namespace
-		if err := i.config.Iptables.PrependRuleSpec("OUTPUT", "-m", "state", "--state", "new,established", "-j", "LOG"); err != nil {
-			return fmt.Errorf("error injecting the conntrack reference iptables rule: %w", err)
-		}
-
 		if err := i.applyOperations(); err != nil {
 			return fmt.Errorf("error applying tc operations: %w", err)
 		}
@@ -179,9 +172,18 @@ func (i *networkDisruptionInjector) Inject() error {
 		i.config.Log.Debug("operations applied successfully")
 	}
 
-	// inject an iptables rule to mark all packets going out from the container using its cgroup path
-	if err := i.config.Iptables.AddCgroupFilterRule("mangle", "OUTPUT", i.config.Cgroup.RelativePath(""), "-j", "MARK", "--set-mark", types.InjectorCgroupClassID); err != nil {
-		return fmt.Errorf("error injecting cgroup packet marking iptables rule: %w", err)
+	// add a conntrack reference to enable it
+	// it consists of adding a noop iptables rule loading the conntrack module so it enables connection tracking in the targeted network namespace
+	// cf. https://thermalcircle.de/doku.php?id=blog:linux:connection_tracking_1_modules_and_hooks for more information on how conntrack works outside of the main network namespace
+	if err := i.config.Iptables.LogConntrack(); err != nil {
+		return fmt.Errorf("error injecting the conntrack reference iptables rule: %w", err)
+	}
+
+	// mark all packets created by the targeted container with the classifying mark
+	if i.config.Level == types.DisruptionLevelPod && !i.config.OnInit {
+		if err := i.config.Iptables.Mark(i.config.Cgroup.RelativePath(""), types.InjectorCgroupClassID); err != nil {
+			return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
+		}
 	}
 
 	// exit target network namespace
@@ -222,12 +224,8 @@ func (i *networkDisruptionInjector) Clean() error {
 	}
 
 	// remove the conntrack reference to disable conntrack in the network namespace
-	if err := i.config.Iptables.DeleteRuleSpec("OUTPUT", "-m", "state", "--state", "new,established", "-j", "LOG"); err != nil {
-		return fmt.Errorf("error cleaning the conntrack reference iptables rule: %w", err)
-	}
-
-	if err := i.config.Iptables.DeleteCgroupFilterRule("mangle", "OUTPUT", i.config.Cgroup.RelativePath(""), "-j", "MARK", "--set-mark", types.InjectorCgroupClassID); err != nil {
-		return fmt.Errorf("error cleaning the cgroup packet marking iptables rule: %w", err)
+	if err := i.config.Iptables.Clear(); err != nil {
+		return fmt.Errorf("error cleaning iptables rules and chain: %w", err)
 	}
 
 	// exit target network namespace

@@ -72,15 +72,9 @@ var _ = Describe("Failure", func() {
 
 		// iptables
 		iptables = &network.IptablesMock{}
-		iptables.On("CreateChain", mock.Anything).Return(nil)
-		iptables.On("ClearAndDeleteChain", mock.Anything).Return(nil)
-		iptables.On("AddRuleWithIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("AddWideFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("AddCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("PrependRuleSpec", mock.Anything, mock.Anything).Return(nil)
-		iptables.On("DeleteRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("DeleteRuleSpec", mock.Anything, mock.Anything).Return(nil)
-		iptables.On("DeleteCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("Clear").Return(nil)
+		iptables.On("Mark", mock.Anything, mock.Anything).Return(nil)
+		iptables.On("LogConntrack").Return(nil)
 
 		// netlink
 		nllink1 = &network.NetlinkLinkMock{}
@@ -226,7 +220,7 @@ var _ = Describe("Failure", func() {
 		})
 
 		It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
-			iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "mangle", "OUTPUT", "/kubepod.slice/foo", []string{"-j", "MARK", "--set-mark", chaostypes.InjectorCgroupClassID})
+			iptables.AssertCalled(GinkgoT(), "Mark", "/kubepod.slice/foo", chaostypes.InjectorCgroupClassID)
 		})
 
 		// qlen cases
@@ -430,8 +424,8 @@ var _ = Describe("Failure", func() {
 			netnsManager.AssertCalled(GinkgoT(), "Exit")
 		})
 
-		It("should remove the cgroup iptables packet marking rule", func() {
-			iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "mangle", "OUTPUT", "/kubepod.slice/foo", []string{"-j", "MARK", "--set-mark", chaostypes.InjectorCgroupClassID})
+		It("should remove iptables rules", func() {
+			iptables.AssertCalled(GinkgoT(), "Clear")
 		})
 
 		Context("qdisc cleanup should happen", func() {
