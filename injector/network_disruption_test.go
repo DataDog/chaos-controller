@@ -6,7 +6,6 @@
 package injector_test
 
 import (
-	"github.com/DataDog/chaos-controller/cgroup/mocks"
 	"net"
 	"os"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
@@ -36,8 +36,7 @@ var _ = Describe("Failure", func() {
 		inj                                                     Injector
 		config                                                  NetworkDisruptionInjectorConfig
 		spec                                                    v1beta1.NetworkDisruptionSpec
-		cgroupManager                                           *mocks.ManagerMock
-		cgroupManagerExistsCall                                 *mock.Call
+		cgroupManager                                           *cgroup.ManagerMock
 		tc                                                      *network.TcMock
 		iptables                                                *network.IptablesMock
 		nl                                                      *network.NetlinkAdapterMock
@@ -53,9 +52,8 @@ var _ = Describe("Failure", func() {
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = &mocks.ManagerMock{}
-		cgroupManagerExistsCall = cgroupManager.On("Exists", "net_cls").Return(true, nil)
-		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		cgroupManager = &cgroup.ManagerMock{}
+		cgroupManager.On("RelativePath", mock.Anything).Return("/kubepod.slice/foo")
 
 		// netns
 		netnsManager = &netns.ManagerMock{}
@@ -67,7 +65,7 @@ var _ = Describe("Failure", func() {
 		tc.On("AddNetem", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("AddCgroupFilter", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.On("AddFwFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.On("DeleteFilter", mock.Anything, mock.Anything).Return(nil)
 		tc.On("ClearQdisc", mock.Anything).Return(nil)
@@ -213,22 +211,22 @@ var _ = Describe("Failure", func() {
 			netnsManager.AssertCalled(GinkgoT(), "Exit")
 		})
 
-		It("should write the custom classid to the target net_cls cgroup", func() {
-			cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", "0x00020002")
-		})
-
 		It("should create 2 prio qdiscs on main interfaces", func() {
-			tc.AssertCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "root", uint32(1), uint32(4), mock.Anything)
-			tc.AssertCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "1:4", uint32(2), uint32(2), mock.Anything)
+			tc.AssertCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "root", "1:", uint32(4), mock.Anything)
+			tc.AssertCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "1:4", "2:", uint32(2), mock.Anything)
 		})
 
-		It("should add a cgroup filter to classify packets according to their classid", func() {
-			tc.AssertCalled(GinkgoT(), "AddCgroupFilter", []string{"lo", "eth0", "eth1"}, "2:0", mock.Anything)
+		It("should add an fw filter to classify packets according to their classid set by iptables mark", func() {
+			tc.AssertCalled(GinkgoT(), "AddFwFilter", []string{"lo", "eth0", "eth1"}, "2:0", "0x00020002", "2:2")
 		})
 
 		It("should apply disruptions to main interfaces 2nd band", func() {
 			tc.AssertCalled(GinkgoT(), "AddNetem", []string{"lo", "eth0", "eth1"}, "2:2", mock.Anything, time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
 			tc.AssertCalled(GinkgoT(), "AddOutputLimit", []string{"lo", "eth0", "eth1"}, "3:", mock.Anything, uint(spec.BandwidthLimit))
+		})
+
+		It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
+			iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "mangle", "OUTPUT", "/kubepod.slice/foo", []string{"-j", "MARK", "--set-mark", chaostypes.InjectorCgroupClassID})
 		})
 
 		// qlen cases
@@ -398,8 +396,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should not add a second prio band with the cgroup filter", func() {
-				tc.AssertNotCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "1:4", uint32(2), uint32(2), mock.Anything)
-				tc.AssertNotCalled(GinkgoT(), "AddCgroupFilter", []string{"lo", "eth0", "eth1"}, "2:0", mock.Anything)
+				tc.AssertNotCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "1:4", "2:", uint32(2), mock.Anything)
 			})
 
 			It("should apply tc filters to block traffic", func() {
@@ -433,25 +430,13 @@ var _ = Describe("Failure", func() {
 			netnsManager.AssertCalled(GinkgoT(), "Exit")
 		})
 
+		It("should remove the cgroup iptables packet marking rule", func() {
+			iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "mangle", "OUTPUT", "/kubepod.slice/foo", []string{"-j", "MARK", "--set-mark", chaostypes.InjectorCgroupClassID})
+		})
+
 		Context("qdisc cleanup should happen", func() {
 			It("should clear the interfaces qdisc", func() {
 				tc.AssertCalled(GinkgoT(), "ClearQdisc", []string{"lo", "eth0", "eth1"})
-			})
-		})
-
-		Context("with an existing net_cls cgroup", func() {
-			It("should erase the classid value", func() {
-				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", "0x0")
-			})
-		})
-
-		Context("with a non-existing net_cls cgroup", func() {
-			BeforeEach(func() {
-				cgroupManagerExistsCall.Return(false, nil)
-			})
-
-			It("should not try to erase the classid value", func() {
-				cgroupManager.AssertNotCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", mock.Anything)
 			})
 		})
 	})

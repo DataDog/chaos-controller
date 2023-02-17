@@ -12,7 +12,7 @@ if [[ ${LIMA_CGROUPS} == "v1" ]]; then
   limactl shell default sudo update-grub
   limactl shell default sudo reboot
   echo "Waiting for instance to reboot, it might take a while"
-  sleep 5
+  sleep 10
   limactl stop default
   limactl start default
 fi

@@ -11,6 +11,7 @@ import "os"
 type Manager interface {
 	Prioritize() error
 	ThreadID() int
+	ProcessID() int
 	Find(pid int) (*os.Process, error)
 	Signal(process *os.Process, signal os.Signal) error
 }

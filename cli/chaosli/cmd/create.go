@@ -660,7 +660,14 @@ func getPulse() *v1beta1.DisruptionPulse {
 		survey.WithValidator(validator),
 	))
 
+	initialDelay := v1beta1.DisruptionDuration(getInput(
+		"Would you like to include an initial delay prior to the first span of active duration?",
+		fmt.Sprintf("Please specify a golang's time.Duration's >%s, e.g., \"45s\", \"15m30s\", \"4h30m\".", types.PulsingDisruptionMinimumDuration),
+		survey.WithValidator(validator),
+	))
+
 	return &v1beta1.DisruptionPulse{
+		InitialDelay:    initialDelay,
 		ActiveDuration:  activeDuration,
 		DormantDuration: dormantDuration,
 	}

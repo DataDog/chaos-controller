@@ -516,7 +516,10 @@ func (r *DisruptionReconciler) manageInstanceSelectorCache(instance *chaosv1beta
 			return fmt.Errorf("cache gen error: %w", err)
 		}
 
-		info.AddEventHandler(DisruptionTargetWatcherHandler{disruption: instance, reconciler: r})
+		_, err = info.AddEventHandler(DisruptionTargetWatcherHandler{disruption: instance, reconciler: r})
+		if err != nil {
+			return fmt.Errorf("error adding event handler: %w", err)
+		}
 
 		// start the cache with a cancelable context and duration, and attach it to the controller as a watch source
 		ch := make(chan error)

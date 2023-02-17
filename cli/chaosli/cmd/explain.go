@@ -61,7 +61,7 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 	}
 
 	if spec.Pulse != nil {
-		fmt.Printf("\tℹ️  has the pulse mode activated meaning the disruptions will alternate between an active injected state with a duration of %s, and an inactive dormant state with a duration of %s.\n", spec.Pulse.ActiveDuration.Duration().String(), spec.Pulse.DormantDuration.Duration().String())
+		fmt.Printf("\tℹ️  has the pulse mode activated meaning that after an initial delay of %s the disruptions will alternate between an active injected state with a duration of %s, and an inactive dormant state with a duration of %s.\n", spec.Pulse.InitialDelay.Duration().String(), spec.Pulse.ActiveDuration.Duration().String(), spec.Pulse.DormantDuration.Duration().String())
 	}
 
 	if spec.OnInit {

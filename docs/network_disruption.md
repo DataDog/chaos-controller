@@ -62,13 +62,18 @@ kubectl get -ojson pod demo-curl-547bb9c686-57484 | jq '.status.containerStatuse
 "containerd://629c7da02cbcf77c6b7131a59f5be50579d9e374433a444210b6547186dd5f0d"
 ```
 
-* Find one of the container PID
+* For each container, find its pid and its cgroup path
 
 ```
 # crictl inspect cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460 | grep pid
     "pid": 5607,
             "pid": 1
             "type": "pid"
+```
+
+```
+# crictl inspect cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460 | grep cgroupsPath
+        "cgroupsPath": "/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460",
 ```
 
 * Enter the network namespace
@@ -78,6 +83,8 @@ kubectl get -ojson pod demo-curl-547bb9c686-57484 | jq '.status.containerStatuse
 ```
 
 ---
+
+**Clean tc rules**
 
 * Identify impacted interfaces
 
@@ -106,27 +113,8 @@ qdisc noqueue 0: dev eth0 root refcnt 2
 
 ---
 
-:warning: If the disruption is injected at the pod level, you must find the related cgroups path **for each container**.
-
-* Identify the container IDs of your pod
+**Clean iptables rules**
 
 ```
-kubectl get -ojson pod demo-curl-547bb9c686-57484 | jq '.status.containerStatuses[].containerID'
-"containerd://cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460"
-"containerd://629c7da02cbcf77c6b7131a59f5be50579d9e374433a444210b6547186dd5f0d"
-```
-
-* Identify cgroups path
-
-```
-# crictl inspect cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460 | grep cgroupsPath
-        "cgroupsPath": "/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460",
-```
-
----
-
-* Reset the `net_cls` value for each container
-
-```
-# echo 0 > /sys/fs/cgroup/net_cls/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460/net_cls.classid
+iptables -t mangle -D OUTPUT -m cgroup --path /kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460 -j MARK --set-mark 131074
 ```

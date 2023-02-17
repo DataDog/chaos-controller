@@ -6,7 +6,7 @@ package injector_test
 
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cgroup/mocks"
+	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/cpuset"
 	. "github.com/DataDog/chaos-controller/injector"
@@ -21,7 +21,7 @@ import (
 var _ = Describe("Failure", func() {
 	var (
 		config          CPUPressureInjectorConfig
-		cgroupManager   *mocks.ManagerMock
+		cgroupManager   *cgroup.ManagerMock
 		ctn             *container.ContainerMock
 		stresser        *stress.StresserMock
 		stresserExit    chan struct{}
@@ -33,8 +33,8 @@ var _ = Describe("Failure", func() {
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = &mocks.ManagerMock{}
-		cgroupManager.On("Join", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		cgroupManager = &cgroup.ManagerMock{}
+		cgroupManager.On("Join", mock.Anything).Return(nil)
 
 		// container
 		ctn = &container.ContainerMock{}
@@ -50,6 +50,7 @@ var _ = Describe("Failure", func() {
 		manager = &process.ManagerMock{}
 		manager.On("Prioritize").Return(nil)
 		manager.On("ThreadID").Return(666)
+		manager.On("ProcessID").Return(42)
 
 		stresserManager = &stress.StresserManagerMock{}
 		stresserManager.On("TrackCoreAlreadyStressed", mock.Anything, mock.Anything).Return(nil)
@@ -105,10 +106,8 @@ var _ = Describe("Failure", func() {
 				stresserManager.On("TrackInjectorCores", mock.Anything, mock.Anything).Return(cpuset.NewCPUSet(0, 1), nil)
 			})
 
-			It("should join the cpu and cpuset cgroups for the unstressed core", func() {
-				cgroupManager.AssertCalled(GinkgoT(), "Join", "cpu", 666, false)
-				cgroupManager.AssertCalled(GinkgoT(), "Join", "cpuset", 666, false)
-				cgroupManager.AssertNumberOfCalls(GinkgoT(), "Join", 2)
+			It("should join target cgroup subsystems from the main process", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Join", 42)
 			})
 
 			It("should prioritize the current process", func() {

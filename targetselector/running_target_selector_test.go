@@ -15,7 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	meta "k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,7 +30,7 @@ type fakeClient struct {
 	ListOptions []*client.ListOptions
 }
 
-func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	if key.Name == "runningPod" {
 		objVal := reflect.ValueOf(obj)
 		nodeVal := reflect.ValueOf(runningPod1)
@@ -101,6 +101,10 @@ func (f fakeClient) Scheme() *runtime.Scheme {
 }
 
 func (f fakeClient) RESTMapper() meta.RESTMapper {
+	return nil
+}
+
+func (f fakeClient) SubResource(subResource string) client.SubResourceClient {
 	return nil
 }
 

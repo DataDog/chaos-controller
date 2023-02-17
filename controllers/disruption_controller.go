@@ -979,7 +979,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 				ReadinessProbe: &corev1.Probe{ // define readiness probe (file created by the injector when the injection is successful)
 					PeriodSeconds:    1,
 					FailureThreshold: 5,
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						Exec: &corev1.ExecAction{
 							Command: []string{"cat", "/tmp/readiness_probe"},
 						},
@@ -1209,8 +1209,9 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			level = chaostypes.DisruptionLevelPod
 		}
 
-		pulseActiveDuration, pulseDormantDuration := time.Duration(0), time.Duration(0)
+		pulseActiveDuration, pulseDormantDuration, pulseInitialDelay := time.Duration(0), time.Duration(0), time.Duration(0)
 		if instance.Spec.Pulse != nil {
+			pulseInitialDelay = instance.Spec.Pulse.InitialDelay.Duration()
 			pulseActiveDuration = instance.Spec.Pulse.ActiveDuration.Duration()
 			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
 		}
@@ -1245,6 +1246,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			DisruptionName:       instance.Name,
 			DisruptionNamespace:  instance.Namespace,
 			OnInit:               instance.Spec.OnInit,
+			PulseInitialDelay:    pulseInitialDelay,
 			PulseActiveDuration:  pulseActiveDuration,
 			PulseDormantDuration: pulseDormantDuration,
 			MetricsSink:          r.MetricsSink.GetSinkName(),

@@ -6,7 +6,7 @@
 package stress_test
 
 import (
-	"github.com/DataDog/chaos-controller/cgroup/mocks"
+	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/cpuset"
 	. "github.com/DataDog/chaos-controller/stress"
 	. "github.com/onsi/ginkgo"
@@ -19,12 +19,18 @@ var _ = Describe("StresserManager Test", func() {
 	var (
 		log             *zap.SugaredLogger
 		stresserManager StresserManager
+		cgroupManager   *cgroup.ManagerMock
 	)
 
 	BeforeEach(func() {
 		z, _ := zap.NewDevelopment()
 		log = z.Sugar()
 		stresserManager = NewCPUStresserManager(log)
+
+		// cgroup
+		cgroupManager = &cgroup.ManagerMock{}
+		cgroupManager.On("IsCgroupV2").Return(false)
+		cgroupManager.On("Read", "cpuset", "cpuset.effective_cpus").Return("0-1", nil)
 	})
 
 	When("IsCoreAlreadyStress", func() {
@@ -45,14 +51,10 @@ var _ = Describe("StresserManager Test", func() {
 	})
 
 	When("TrackInjectorCores", func() {
-		var (
-			cgroup = cgroupManager()
-		)
-
 		Context("StresserManager is freshly initialized", func() {
 			It("should track injector cores and return new cores to apply stress", func() {
 				userRequestedCount := intstr.FromInt(2)
-				cores, err := stresserManager.TrackInjectorCores(cgroup, &userRequestedCount)
+				cores, err := stresserManager.TrackInjectorCores(cgroupManager, &userRequestedCount)
 
 				Expect(err).To(BeNil())
 				Expect(cores).To(Equal(cpuset.NewCPUSet(0, 1)))
@@ -62,7 +64,7 @@ var _ = Describe("StresserManager Test", func() {
 		Context("user request to target a specific number of cores", func() {
 			It("should discount core according to user request", func() {
 				userRequestedCount := intstr.FromInt(1)
-				cores, err := stresserManager.TrackInjectorCores(cgroup, &userRequestedCount)
+				cores, err := stresserManager.TrackInjectorCores(cgroupManager, &userRequestedCount)
 
 				Expect(err).To(BeNil())
 				Expect(cores).To(Equal(cpuset.NewCPUSet(0)))
@@ -70,7 +72,7 @@ var _ = Describe("StresserManager Test", func() {
 
 			It("should discount core, percentage round up, according to user request", func() {
 				userRequestedCount := intstr.FromString("30%")
-				cores, err := stresserManager.TrackInjectorCores(cgroup, &userRequestedCount)
+				cores, err := stresserManager.TrackInjectorCores(cgroupManager, &userRequestedCount)
 
 				Expect(err).To(BeNil())
 				Expect(cores).To(Equal(cpuset.NewCPUSet(0)))
@@ -86,10 +88,3 @@ var _ = Describe("StresserManager Test", func() {
 		})
 	})
 })
-
-func cgroupManager() *mocks.ManagerMock {
-	cgroup := &mocks.ManagerMock{}
-	cgroup.On("Read", "cpuset", "cpuset.cpus").Return("0-1", nil)
-
-	return cgroup
-}

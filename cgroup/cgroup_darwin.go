@@ -7,6 +7,7 @@ package cgroup
 
 import (
 	"fmt"
+
 	"go.uber.org/zap"
 )
 
@@ -25,25 +26,8 @@ func (cg cgroup) Write(controller, file, data string) error {
 	return fmt.Errorf("not implemented")
 }
 
-// Exists returns true if the given cgroup exists, false otherwise
-func (cg cgroup) Exists(controller string) bool {
-	return false
-}
-
-// Join adds the given PID to the given cgroup
-// If inherit is set to true, all PID of the same group will be moved to the cgroup (writing to cgroup.procs file)
-// Otherwise, only the given PID will be moved to the cgroup (writing to tasks file)
-func (cg cgroup) Join(controller string, pid int, inherit bool) error {
-	return fmt.Errorf("not implemented")
-}
-
-// DiskThrottleRead adds a disk throttle on read operations to the given disk identifier
-func (cg cgroup) DiskThrottleRead(identifier, bps int) error {
-	return fmt.Errorf("not implemented")
-}
-
-// DiskThrottleWrite adds a disk throttle on write operations to the given disk identifier
-func (cg cgroup) DiskThrottleWrite(identifier, bps int) error {
+// Join adds the given PID to all available controllers of the cgroup
+func (cg cgroup) Join(pid int) error {
 	return fmt.Errorf("not implemented")
 }
 
@@ -51,8 +35,12 @@ func (cg cgroup) IsCgroupV2() bool {
 	return false
 }
 
+func (cg cgroup) RelativePath(controller string) string {
+	return ""
+}
+
 // NewManager creates a new cgroup manager from the given cgroup root path
-func NewManager(dryRun bool, pid uint32, log *zap.SugaredLogger) (Manager, error) {
+func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLogger) (Manager, error) {
 	return cgroup{
 		dryRun: dryRun,
 		log:    log,
