@@ -16,14 +16,14 @@ type DdmarkMock struct {
 }
 
 //nolint:golint
-func (d DdmarkMock) ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error {
+func (d *DdmarkMock) ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error {
 	args := d.Called(marshalledStruct, filePath, structPkgs)
 
 	return args.Get(0).([]error)
 }
 
 //nolint:golint
-func (d DdmarkMock) ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error) {
+func (d *DdmarkMock) ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error) {
 	args := d.Called(marshalledStruct, filePath, structPkgs)
 
 	return args.Get(0).(*multierror.Error)
