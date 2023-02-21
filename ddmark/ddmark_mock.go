@@ -33,5 +33,5 @@ func (d *DDMarkMock) ValidateStructMultierror(marshalledStruct interface{}, file
 func (d *DDMarkMock) CleanupLibraries() error {
 	args := d.Called()
 
-	return args.Get(0).(*multierror.Error)
+	return args.Error(0)
 }
