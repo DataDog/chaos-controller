@@ -29,8 +29,8 @@ type DDMark interface {
 	CleanupLibraries() error
 }
 
-// ddmark struct implementing DDMark interface
-type ddmark struct {
+// client struct implementing DDMark interface
+type client struct {
 	markedLibs []markedLib
 }
 
@@ -46,7 +46,7 @@ type markedLib struct {
 func NewDDMark(embeddedFS ...embed.FS) (DDMark, error) {
 	var err error
 
-	var d = ddmark{
+	var c = client{
 		markedLibs: []markedLib{},
 	}
 
@@ -55,15 +55,15 @@ func NewDDMark(embeddedFS ...embed.FS) (DDMark, error) {
 		if err != nil {
 			return nil, err
 		}
-		d.markedLibs = append(d.markedLibs, markedLib{lib, randomSha})
+		c.markedLibs = append(c.markedLibs, markedLib{lib, randomSha})
 
-		err = d.initLibrary(lib, randomSha)
+		err = c.initLibrary(lib, randomSha)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return d, err
+	return c, err
 }
 
 func initializeMarkers() *k8smarkers.Collector {
@@ -84,11 +84,11 @@ func initializeMarkers() *k8smarkers.Collector {
 
 // ValidateStruct applies struct markers found in structPkgs struct definitions to a marshalledStruct object.
 // It allows to enforce markers rule onto that object, according to the constraints defined in structPkgs
-func (d ddmark) ValidateStruct(marshalledStruct interface{}, filePath string) []error {
-	return d.ValidateStructMultierror(marshalledStruct, filePath).Errors
+func (c client) ValidateStruct(marshalledStruct interface{}, filePath string) []error {
+	return c.ValidateStructMultierror(marshalledStruct, filePath).Errors
 }
 
-func (d ddmark) ValidateStructMultierror(marshalledStruct interface{}, filePath string) (retErr *multierror.Error) {
+func (c client) ValidateStructMultierror(marshalledStruct interface{}, filePath string) (retErr *multierror.Error) {
 	col := initializeMarkers()
 
 	var err error
@@ -97,7 +97,7 @@ func (d ddmark) ValidateStructMultierror(marshalledStruct interface{}, filePath 
 
 	var localStructPkgs = []string{}
 
-	for _, pkg := range d.markedLibs {
+	for _, pkg := range c.markedLibs {
 		localStructPkgs = append(localStructPkgs, thisLibPath(pkg.APIName))
 	}
 

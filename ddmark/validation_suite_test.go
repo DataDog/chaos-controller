@@ -20,16 +20,16 @@ func TestValidationTest(t *testing.T) {
 	RunSpecs(t, "ValidationTest Suite")
 }
 
-var _ddmark ddmark.DDMark
+var client ddmark.DDMark
 
 var _ = BeforeSuite(func() {
 	var err error
-	_ddmark, err = ddmark.NewDDMark(ddmark.EmbeddedDDMarkAPI)
+	client, err = ddmark.NewDDMark(ddmark.EmbeddedDDMarkAPI)
 	if err != nil {
 		fmt.Println("error setting up ddmark")
 	}
 })
 
 var _ = AfterSuite(func() {
-	_ddmark.CleanupLibraries()
+	client.CleanupLibraries()
 })
