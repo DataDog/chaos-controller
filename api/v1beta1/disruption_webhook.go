@@ -44,11 +44,11 @@ var handlerEnabled bool
 var defaultDuration time.Duration
 var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 var chaosNamespace string
-var _ddmark ddmark.DDMark
+var ddmarkClient ddmark.DDMark
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	var err error
-	_ddmark, err = ddmark.NewDDMark(EmbeddedChaosAPI)
+	ddmarkClient, err = ddmark.NewDDMark(EmbeddedChaosAPI)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (r *Disruption) ValidateCreate() error {
 		return err
 	}
 
-	multiErr := _ddmark.ValidateStructMultierror(r.Spec, "validation_webhook")
+	multiErr := ddmarkClient.ValidateStructMultierror(r.Spec, "validation_webhook")
 	if multiErr.ErrorOrNil() != nil {
 		return multierror.Prefix(multiErr, "ddmark: ")
 	}

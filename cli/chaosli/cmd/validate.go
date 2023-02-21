@@ -46,7 +46,7 @@ func ValidateDisruption(path string) error {
 func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
 	var retErr *multierror.Error
 
-	retErr = multierror.Append(retErr, multierror.Prefix(_ddmark.ValidateStructMultierror(disruption, rootPath), "ddmark:  "))
+	retErr = multierror.Append(retErr, multierror.Prefix(client.ValidateStructMultierror(disruption, rootPath), "ddmark:  "))
 
 	if err := disruption.Spec.Validate(); err != nil {
 		retErr = multierror.Append(retErr, multierror.Prefix(err, "validate:"))

@@ -154,7 +154,7 @@ var _ = Describe("Disruption", func() {
 
 			BeforeEach(func() {
 				ddmarkMock.On("ValidateStructMultierror", mock.Anything, mock.Anything).Return(&multierror.Error{})
-				_ddmark = &ddmarkMock
+				ddmarkClient = &ddmarkMock
 				k8sClient = makek8sClientWithDisruptionPod()
 				deleteOnly = false
 			})
@@ -239,13 +239,13 @@ var _ = Describe("Disruption", func() {
 							fmt.Errorf("something bad happened"),
 						},
 					})
-					_ddmark = &ddmarkMockError
+					ddmarkClient = &ddmarkMockError
 
 					// Action
 					err := newDisruption.ValidateCreate()
 
 					// Revert arrange to avoid side effects
-					_ddmark = &ddmarkMock
+					ddmarkClient = &ddmarkMock
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -260,7 +260,7 @@ var _ = Describe("Disruption", func() {
 
 			BeforeEach(func() {
 				ddmarkMock.On("ValidateStructMultierror", mock.Anything, mock.Anything).Return(&multierror.Error{})
-				_ddmark = &ddmarkMock
+				ddmarkClient = &ddmarkMock
 				k8sClient = makek8sClientWithDisruptionPod()
 				recorder = record.NewFakeRecorder(1)
 				metricsSink = noop.New()
