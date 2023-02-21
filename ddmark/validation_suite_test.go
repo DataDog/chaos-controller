@@ -24,7 +24,7 @@ var _ddmark ddmark.DDMark
 
 var _ = BeforeSuite(func() {
 	var err error
-	_ddmark, err = ddmark.NewDDMark(ddmark.MarkedLib{ddmark.EmbeddedDDMarkAPI, "ddmark-api"})
+	_ddmark, err = ddmark.NewDDMark(ddmark.EmbeddedDDMarkAPI)
 	if err != nil {
 		fmt.Println("error setting up ddmark")
 	}

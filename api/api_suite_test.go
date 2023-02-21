@@ -10,7 +10,6 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/ddmark"
-	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -23,7 +22,7 @@ func TestApi(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	_ddmark, _ = ddmark.NewDDMark(ddmark.MarkedLib{v1beta1.EmbeddedChaosAPI, types.DDMarkChaoslibPrefix})
+	_ddmark, _ = ddmark.NewDDMark(v1beta1.EmbeddedChaosAPI)
 })
 
 var _ = AfterSuite(func() {

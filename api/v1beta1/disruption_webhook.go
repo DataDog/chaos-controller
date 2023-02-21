@@ -48,7 +48,7 @@ var _ddmark ddmark.DDMark
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	var err error
-	_ddmark, err = ddmark.NewDDMark(ddmark.MarkedLib{EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix})
+	_ddmark, err = ddmark.NewDDMark(EmbeddedChaosAPI)
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,8 @@
 package ddmark
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
 	"embed"
 	"fmt"
 	"reflect"
@@ -41,14 +43,24 @@ type MarkedLib struct {
 }
 
 // NewDDMark create an new instance of DDMark
-func NewDDMark(markedLibs ...MarkedLib) (DDMark, error) {
+func NewDDMark(embeddedFS ...embed.FS) (DDMark, error) {
 	var err error
+
 	var d = ddmark{
-		markedLibs: markedLibs,
+		markedLibs: []MarkedLib{},
 	}
 
-	for _, pkg := range markedLibs {
-		err = d.initLibrary(pkg.EmbeddedFS, pkg.APIName)
+	for _, lib := range embeddedFS {
+		randomSha, err := generateRandomSha()
+		if err != nil {
+			return nil, err
+		}
+		d.markedLibs = append(d.markedLibs, MarkedLib{lib, randomSha})
+
+		err = d.initLibrary(lib, randomSha)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return d, err
@@ -233,6 +245,16 @@ func getAllPackageTypes(packages []*k8sloader.Package, col *k8smarkers.Collector
 	}
 
 	return typesMap
+}
+
+// generateRandomSha generates a 64-chars sha as a string
+func generateRandomSha() (string, error) {
+	var err error
+	data := make([]byte, 10)
+	if _, err = rand.Read(data); err == nil {
+		return fmt.Sprintf("%x", sha256.Sum256(data)), err
+	}
+	return "", err
 }
 
 // HELPERS
