@@ -15,15 +15,17 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ddmark ddmark.DDMark
+
 func TestApi(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Api Suite")
 }
 
 var _ = BeforeSuite(func() {
-	ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, types.DDMarkChaoslibPrefix)
+	_ddmark, _ = ddmark.NewDDMark(ddmark.MarkedLib{v1beta1.EmbeddedChaosAPI, types.DDMarkChaoslibPrefix})
 })
 
 var _ = AfterSuite(func() {
-	ddmark.CleanupLibraries(types.DDMarkChaoslibPrefix)
+	_ddmark.CleanupLibraries()
 })

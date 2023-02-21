@@ -23,6 +23,7 @@ import (
 // Version will be set with the -ldflags option at compile time
 var Version = "v0"
 var cfgFile string
+var _ddmark ddmark.DDMark
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -44,7 +45,7 @@ func Execute() {
 	_ = rootCmd.Execute()
 
 	defer func() {
-		if err := ddmark.CleanupLibraries(); err != nil {
+		if err := _ddmark.CleanupLibraries(); err != nil {
 			log.Fatal(err)
 		}
 	}()
@@ -53,9 +54,10 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	cobra.OnInitialize(func() {
-		err := ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, types.DDMarkChaoslibPrefix)
+		var err error
+		_ddmark, err = ddmark.NewDDMark(ddmark.MarkedLib{v1beta1.EmbeddedChaosAPI, types.DDMarkChaoslibPrefix})
 		if err != nil {
-			log.Fatal("didn't init properly")
+			log.Fatal("ddmark didn't init properly")
 		}
 	})
 	// Here you will define your flags and configuration settings.

@@ -8,8 +8,6 @@ package api_test
 import (
 	"strings"
 
-	"github.com/DataDog/chaos-controller/ddmark"
-	"github.com/DataDog/chaos-controller/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -139,10 +137,9 @@ func disruptionSpecFromYaml(yamlBytes []byte) (v1beta1.DisruptionSpec, error) {
 // run ddmark and validation through the Validate() interface
 func ValidateDisruptionSpecFromString(yamlStr string) []error {
 	var marshalledStruct v1beta1.DisruptionSpec
-	_ddmark := ddmark.NewDDMark()
 
 	marshalledStruct, err := disruptionSpecFromYaml([]byte(yamlStr))
-	errorList := _ddmark.ValidateStruct(marshalledStruct, "test_suite", types.DDMarkChaoslibPrefix)
+	errorList := _ddmark.ValidateStruct(marshalledStruct, "test_suite")
 
 	if err != nil {
 		errorList = append(errorList, err)

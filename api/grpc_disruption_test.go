@@ -7,8 +7,6 @@ package api_test
 
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/ddmark"
-	"github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
 
 	. "github.com/onsi/ginkgo"
@@ -160,8 +158,6 @@ var _ = Describe("GRPCDisruption Validation", func() {
 	})
 
 	Describe("Alterations with ErrorToReturn", func() {
-		_ddmark := ddmark.NewDDMark()
-
 		Context("which are not in the standard grpc errors", func() {
 			It("Fails ddmark validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
@@ -173,7 +169,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					},
 				}
 
-				err := _ddmark.ValidateStructMultierror(spec, "grpc_test_suite", types.DDMarkChaoslibPrefix)
+				err := _ddmark.ValidateStructMultierror(spec, "grpc_test_suite")
 				Expect(err.Errors).To(HaveLen(1))
 				Expect(err.Errors[0].Error()).To(Equal("grpc_test_suite>Endpoints>>ErrorToReturn - ddmark:validation:Enum: field needs to be one of [OK CANCELED UNKNOWN INVALID_ARGUMENT DEADLINE_EXCEEDED NOT_FOUND ALREADY_EXISTS PERMISSION_DENIED RESOURCE_EXHAUSTED FAILED_PRECONDITION ABORTED OUT_OF_RANGE UNIMPLEMENTED INTERNAL UNAVAILABLE DATA_LOSS UNAUTHENTICATED], currently \"MEOW\""))
 			})
@@ -195,7 +191,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 
 				Expect(len(spec.Endpoints)).To(Equal(17))
 
-				err := _ddmark.ValidateStructMultierror(spec, "grpc_test_suite", types.DDMarkChaoslibPrefix)
+				err := _ddmark.ValidateStructMultierror(spec, "grpc_test_suite")
 				Expect(err.ErrorOrNil()).To(BeNil())
 				Expect(err.Errors).To(HaveLen(0))
 			})

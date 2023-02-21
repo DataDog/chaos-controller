@@ -22,16 +22,36 @@ var EmbeddedDDMarkAPI embed.FS
 
 // DDMark interface manage validation of struct fields
 type DDMark interface {
-	ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error
-	ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error)
+	ValidateStruct(marshalledStruct interface{}, filePath string) []error
+	ValidateStructMultierror(marshalledStruct interface{}, filePath string) (retErr *multierror.Error)
+	CleanupLibraries() error
 }
 
 // ddmark struct implementing DDMark interface
-type ddmark struct{}
+type ddmark struct {
+	markedLibs []MarkedLib
+}
+
+// MarkedLib is a struct describing a library containing DDMarkers to be used in validation
+//
+// It includes the embedded library FS and a path naming option for consistency.
+type MarkedLib struct {
+	EmbeddedFS embed.FS
+	APIName    string
+}
 
 // NewDDMark create an new instance of DDMark
-func NewDDMark() DDMark {
-	return ddmark{}
+func NewDDMark(markedLibs ...MarkedLib) (DDMark, error) {
+	var err error
+	var d = ddmark{
+		markedLibs: markedLibs,
+	}
+
+	for _, pkg := range markedLibs {
+		err = d.initLibrary(pkg.EmbeddedFS, pkg.APIName)
+	}
+
+	return d, err
 }
 
 func initializeMarkers() *k8smarkers.Collector {
@@ -52,11 +72,11 @@ func initializeMarkers() *k8smarkers.Collector {
 
 // ValidateStruct applies struct markers found in structPkgs struct definitions to a marshalledStruct object.
 // It allows to enforce markers rule onto that object, according to the constraints defined in structPkgs
-func (d ddmark) ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error {
-	return d.ValidateStructMultierror(marshalledStruct, filePath, structPkgs...).Errors
+func (d ddmark) ValidateStruct(marshalledStruct interface{}, filePath string) []error {
+	return d.ValidateStructMultierror(marshalledStruct, filePath).Errors
 }
 
-func (d ddmark) ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error) {
+func (d ddmark) ValidateStructMultierror(marshalledStruct interface{}, filePath string) (retErr *multierror.Error) {
 	col := initializeMarkers()
 
 	var err error
@@ -65,8 +85,8 @@ func (d ddmark) ValidateStructMultierror(marshalledStruct interface{}, filePath 
 
 	var localStructPkgs = []string{}
 
-	for _, pkg := range structPkgs {
-		localStructPkgs = append(localStructPkgs, thisLibPath(pkg))
+	for _, pkg := range d.markedLibs {
+		localStructPkgs = append(localStructPkgs, thisLibPath(pkg.APIName))
 	}
 
 	pkgs, err = k8sloader.LoadRoots(localStructPkgs...)

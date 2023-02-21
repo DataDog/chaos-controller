@@ -16,15 +16,22 @@ type DDMarkMock struct {
 }
 
 //nolint:golint
-func (d *DDMarkMock) ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error {
-	args := d.Called(marshalledStruct, filePath, structPkgs)
+func (d *DDMarkMock) ValidateStruct(marshalledStruct interface{}, filePath string) []error {
+	args := d.Called(marshalledStruct, filePath)
 
 	return args.Get(0).([]error)
 }
 
 //nolint:golint
-func (d *DDMarkMock) ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error) {
-	args := d.Called(marshalledStruct, filePath, structPkgs)
+func (d *DDMarkMock) ValidateStructMultierror(marshalledStruct interface{}, filePath string) (retErr *multierror.Error) {
+	args := d.Called(marshalledStruct, filePath)
+
+	return args.Get(0).(*multierror.Error)
+}
+
+//nolint:golint
+func (d *DDMarkMock) CleanupLibraries() error {
+	args := d.Called()
 
 	return args.Get(0).(*multierror.Error)
 }

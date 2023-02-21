@@ -458,7 +458,7 @@ func main() {
 			contextTuple.CancelFunc()
 		}
 
-		if err := ddmark.CleanupLibraries(); err != nil {
+		if err := ddmark.CleanupAllLibraries(); err != nil {
 			logger.Error(err)
 		}
 	}()
