@@ -6,8 +6,9 @@
 package ddmark_test
 
 import (
-	"github.com/DataDog/chaos-controller/ddmark"
 	"testing"
+
+	"github.com/DataDog/chaos-controller/ddmark"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,10 +19,10 @@ func TestValidationTest(t *testing.T) {
 	RunSpecs(t, "ValidationTest Suite")
 }
 
-var _ddmark ddmark.Ddmark
+var _ddmark ddmark.DDMark
 
 var _ = BeforeSuite(func() {
-	_ddmark = ddmark.NewDdmark()
+	_ddmark = ddmark.NewDDMark()
 	ddmark.InitLibrary(ddmark.EmbeddedDDMarkAPI, "ddmark-api")
 })
 

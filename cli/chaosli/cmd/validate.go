@@ -48,7 +48,7 @@ func ValidateDisruption(path string) error {
 func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
 	var retErr *multierror.Error
 
-	_ddmark := ddmark.NewDdmark()
+	_ddmark := ddmark.NewDDMark()
 
 	retErr = multierror.Append(retErr, multierror.Prefix(_ddmark.ValidateStructMultierror(disruption, rootPath, types.DDMarkChaoslibPrefix), "ddmark:  "))
 

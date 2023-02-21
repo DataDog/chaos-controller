@@ -20,17 +20,17 @@ import (
 //go:embed validation_teststruct.go
 var EmbeddedDDMarkAPI embed.FS
 
-// Ddmark interface manage validation of struct fields
-type Ddmark interface {
+// DDMark interface manage validation of struct fields
+type DDMark interface {
 	ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error
 	ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error)
 }
 
-// ddmark struct implementing Ddmark interface
+// ddmark struct implementing DDMark interface
 type ddmark struct{}
 
-// NewDdmark create an new instance of Ddmark
-func NewDdmark() Ddmark {
+// NewDDMark create an new instance of DDMark
+func NewDDMark() DDMark {
 	return ddmark{}
 }
 

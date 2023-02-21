@@ -7,12 +7,13 @@ package v1beta1
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/metrics/noop"
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/tools/record"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -149,7 +150,7 @@ var _ = Describe("Disruption", func() {
 
 	Context("ValidateCreate", func() {
 		Describe("general errors expectations", func() {
-			ddmarkMock := ddmark.DdmarkMock{}
+			ddmarkMock := ddmark.DDMarkMock{}
 
 			BeforeEach(func() {
 				ddmarkMock.On("ValidateStructMultierror", mock.Anything, mock.Anything, mock.Anything).Return(&multierror.Error{})
@@ -232,7 +233,7 @@ var _ = Describe("Disruption", func() {
 			When("ddmark return an error", func() {
 				It("should catch this error and propagated it", func() {
 					// Arrange
-					ddmarkMockError := ddmark.DdmarkMock{}
+					ddmarkMockError := ddmark.DDMarkMock{}
 					ddmarkMockError.On("ValidateStructMultierror", mock.Anything, mock.Anything, mock.Anything).Return(&multierror.Error{
 						Errors: []error{
 							fmt.Errorf("something bad happened"),
@@ -255,7 +256,7 @@ var _ = Describe("Disruption", func() {
 		})
 
 		Describe("expectations with a disk failure disruption", func() {
-			ddmarkMock := ddmark.DdmarkMock{}
+			ddmarkMock := ddmark.DDMarkMock{}
 
 			BeforeEach(func() {
 				ddmarkMock.On("ValidateStructMultierror", mock.Anything, mock.Anything, mock.Anything).Return(&multierror.Error{})

@@ -44,7 +44,7 @@ var handlerEnabled bool
 var defaultDuration time.Duration
 var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 var chaosNamespace string
-var _ddmark ddmark.Ddmark
+var _ddmark ddmark.DDMark
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	if err := ddmark.InitLibrary(EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix); err != nil {
@@ -64,7 +64,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 	chaosNamespace = setupWebhookConfig.ChaosNamespace
-	_ddmark = ddmark.NewDdmark()
+	_ddmark = ddmark.NewDDMark()
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).

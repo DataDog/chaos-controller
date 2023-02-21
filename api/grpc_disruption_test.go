@@ -160,7 +160,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 	})
 
 	Describe("Alterations with ErrorToReturn", func() {
-		_ddmark := ddmark.NewDdmark()
+		_ddmark := ddmark.NewDDMark()
 
 		Context("which are not in the standard grpc errors", func() {
 			It("Fails ddmark validation", func() {
