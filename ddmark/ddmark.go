@@ -31,13 +31,13 @@ type DDMark interface {
 
 // ddmark struct implementing DDMark interface
 type ddmark struct {
-	markedLibs []MarkedLib
+	markedLibs []markedLib
 }
 
-// MarkedLib is a struct describing a library containing DDMarkers to be used in validation
+// markedLib is a struct describing a library containing DDMarkers to be used in validation
 //
 // It includes the embedded library FS and a path naming option for consistency.
-type MarkedLib struct {
+type markedLib struct {
 	EmbeddedFS embed.FS
 	APIName    string
 }
@@ -47,7 +47,7 @@ func NewDDMark(embeddedFS ...embed.FS) (DDMark, error) {
 	var err error
 
 	var d = ddmark{
-		markedLibs: []MarkedLib{},
+		markedLibs: []markedLib{},
 	}
 
 	for _, lib := range embeddedFS {
@@ -55,7 +55,7 @@ func NewDDMark(embeddedFS ...embed.FS) (DDMark, error) {
 		if err != nil {
 			return nil, err
 		}
-		d.markedLibs = append(d.markedLibs, MarkedLib{lib, randomSha})
+		d.markedLibs = append(d.markedLibs, markedLib{lib, randomSha})
 
 		err = d.initLibrary(lib, randomSha)
 		if err != nil {

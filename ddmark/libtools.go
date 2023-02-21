@@ -92,7 +92,7 @@ func (d ddmark) initLibrary(embeddedFS embed.FS, apiname string) error {
 // CleanupLibraries deletes all listed libraries in the common ddmark lib folder ($GOPATH/src/ddmarktemp/pkgs...)
 func (d ddmark) CleanupLibraries() error {
 	if len(d.markedLibs) == 0 {
-		d.markedLibs = append(d.markedLibs, MarkedLib{embed.FS{}, ""})
+		d.markedLibs = append(d.markedLibs, markedLib{embed.FS{}, ""})
 	}
 
 	for _, markedLib := range d.markedLibs {
