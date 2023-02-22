@@ -952,6 +952,9 @@ func (i *networkDisruptionInjector) clearOperations() error {
 		return fmt.Errorf("error deleting root qdisc: %w", err)
 	}
 
+	// clear operations to avoid them to stack up
+	i.operations = []linkOperation{}
+
 	return nil
 }
 
