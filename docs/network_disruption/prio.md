@@ -117,7 +117,7 @@ spec:
 #### (Step 1) Add a fourth band
 
 <p align="center"><kbd>
-    <img src="../docs/img/network_prio/1-4.png" height=220 width=650 />
+    <img src="../../docs/img/network_prio/1-4.png" height=220 width=650 />
 </kbd></p>
 
 The disruption should only affect packets leaving our target node. On top of the three default bands, chaos-controller creates a fourth band (class `1:4`) to which it will send packets identified as candidates for the disruptions. In this step, the filter on handle `1:` to route traffic to class `1:4` has not been set up. We will see the specific criteria in `Step 3` after setting up the fourth band completely.
