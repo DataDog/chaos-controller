@@ -44,11 +44,11 @@ var handlerEnabled bool
 var defaultDuration time.Duration
 var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 var chaosNamespace string
-var ddmarkClient ddmark.DDMark
+var ddmarkClient ddmark.Client
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	var err error
-	ddmarkClient, err = ddmark.NewDDMark(EmbeddedChaosAPI)
+	ddmarkClient, err = ddmark.NewClient(EmbeddedChaosAPI)
 
 	if err != nil {
 		return err

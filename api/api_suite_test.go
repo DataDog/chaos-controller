@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var client ddmark.DDMark
+var client ddmark.Client
 
 func TestApi(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -22,7 +22,7 @@ func TestApi(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	client, _ = ddmark.NewDDMark(v1beta1.EmbeddedChaosAPI)
+	client, _ = ddmark.NewClient(v1beta1.EmbeddedChaosAPI)
 })
 
 var _ = AfterSuite(func() {

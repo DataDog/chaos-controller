@@ -22,8 +22,8 @@ import (
 //go:embed validation_teststruct.go
 var EmbeddedDDMarkAPI embed.FS
 
-// DDMark interface manage validation of struct fields
-type DDMark interface {
+// Client interface manage validation of struct fields
+type Client interface {
 	ValidateStruct(marshalledStruct interface{}, filePath string) []error
 	ValidateStructMultierror(marshalledStruct interface{}, filePath string) (retErr *multierror.Error)
 	CleanupLibraries() error
@@ -42,8 +42,8 @@ type markedLib struct {
 	APIName    string
 }
 
-// NewDDMark create an new instance of DDMark
-func NewDDMark(embeddedFS ...embed.FS) (DDMark, error) {
+// NewClient create an new instance of DDMark
+func NewClient(embeddedFS ...embed.FS) (Client, error) {
 	var err error
 
 	var c = client{
