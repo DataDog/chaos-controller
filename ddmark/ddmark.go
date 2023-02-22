@@ -55,6 +55,7 @@ func NewDDMark(embeddedFS ...embed.FS) (DDMark, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		c.markedLibs = append(c.markedLibs, markedLib{lib, randomSha})
 
 		err = c.initLibrary(lib, randomSha)
@@ -250,10 +251,13 @@ func getAllPackageTypes(packages []*k8sloader.Package, col *k8smarkers.Collector
 // generateRandomSha generates a 64-chars sha as a string
 func generateRandomSha() (string, error) {
 	var err error
+
 	data := make([]byte, 10)
+
 	if _, err = rand.Read(data); err == nil {
 		return fmt.Sprintf("%x", sha256.Sum256(data)), err
 	}
+
 	return "", err
 }
 
