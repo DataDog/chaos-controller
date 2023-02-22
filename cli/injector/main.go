@@ -186,6 +186,8 @@ func initManagers(pid uint32) (netns.Manager, cgroup.Manager, error) {
 		return nil, nil, fmt.Errorf("error creating cgroup manager: %s", err.Error())
 	}
 
+	log.Infow("DEBUG CGROUP", "path", cgroupMgr.RelativePath(), "mount", cgroupMount, "subs", cgroupMgr.Subsystems())
+
 	return netnsMgr, cgroupMgr, nil
 }
 

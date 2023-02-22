@@ -181,7 +181,7 @@ func (i *networkDisruptionInjector) Inject() error {
 
 	// mark all packets created by the targeted container with the classifying mark
 	if i.config.Level == types.DisruptionLevelPod && !i.config.OnInit {
-		if err := i.config.Iptables.Mark(i.config.Cgroup.RelativePath(""), types.InjectorCgroupClassID); err != nil {
+		if err := i.config.Iptables.Mark(i.config.Cgroup.RelativePath(), types.InjectorCgroupClassID); err != nil {
 			return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
 		}
 	}

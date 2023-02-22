@@ -35,8 +35,12 @@ func (cg cgroup) IsCgroupV2() bool {
 	return false
 }
 
-func (cg cgroup) RelativePath(controller string) string {
+func (cg cgroup) RelativePath() string {
 	return ""
+}
+
+func (cg cgroup) Subsystems() map[string]string {
+	return nil
 }
 
 // NewManager creates a new cgroup manager from the given cgroup root path

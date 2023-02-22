@@ -11,5 +11,6 @@ type Manager interface {
 	Read(controller, file string) (string, error)
 	Write(controller, file, data string) error
 	IsCgroupV2() bool
-	RelativePath(controller string) string
+	RelativePath() string
+	Subsystems() map[string]string
 }

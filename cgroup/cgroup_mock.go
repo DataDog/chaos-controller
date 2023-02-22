@@ -41,8 +41,8 @@ func (f *ManagerMock) Write(controller string, file string, data string) error {
 }
 
 //nolint:golint
-func (f *ManagerMock) RelativePath(controller string) string {
-	args := f.Called(controller)
+func (f *ManagerMock) RelativePath() string {
+	args := f.Called()
 
 	return args.String(0)
 }

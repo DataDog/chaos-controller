@@ -142,7 +142,7 @@ func (i *DNSDisruptionInjector) Inject() error {
 	if i.config.Level == chaostypes.DisruptionLevelPod {
 		if !i.config.OnInit {
 			// Redirect traffic coming from the targeted container to CHAOS-DNS
-			if err := i.config.Iptables.Intercept("udp", "53", i.config.Cgroup.RelativePath(""), podIP); err != nil {
+			if err := i.config.Iptables.Intercept("udp", "53", i.config.Cgroup.RelativePath(), podIP); err != nil {
 				return fmt.Errorf("unable to create new iptables rule: %w", err)
 			}
 		} else {

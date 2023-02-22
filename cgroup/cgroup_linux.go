@@ -82,8 +82,18 @@ func (cg cgroup) IsCgroupV2() bool {
 }
 
 // RelativePath returns the cgroup relative path (without the mount path)
-func (cg cgroup) RelativePath(controller string) string {
-	return strings.TrimPrefix((*cg.manager).Path(controller), cg.mountPath)
+func (cg cgroup) RelativePath() string {
+	controller := "net_cls"
+
+	if cg.isV2 {
+		controller = ""
+	}
+
+	return strings.TrimPrefix((*cg.manager).Path(controller), filepath.Join(cg.mountPath, controller))
+}
+
+func (cg cgroup) Subsystems() map[string]string {
+	return (*cg.manager).GetPaths()
 }
 
 func newCgroupManager(cgroupFile string, cgroupMount string) (cgroups.Manager, error) {

@@ -34,7 +34,7 @@ var _ = Describe("Failure", func() {
 	BeforeEach(func() {
 		// cgroup
 		cgroupManager = &cgroup.ManagerMock{}
-		cgroupManager.On("RelativePath", mock.Anything).Return("/kubepod.slice/foo")
+		cgroupManager.On("RelativePath").Return("/kubepod.slice/foo")
 
 		// netns
 		netnsManager = &netns.ManagerMock{}
