@@ -24,7 +24,7 @@ var _ = Describe("DiskFailureSpec", func() {
 			err = df.Validate()
 		})
 
-		Context("with a valid path not exceeded 62 characters", func() {
+		Context("with a valid path not exceeding 62 characters", func() {
 			BeforeEach(func() {
 				path = randStringRunes(rand.IntnRange(1, 62))
 			})

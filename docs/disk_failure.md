@@ -8,7 +8,7 @@
     </kbd>
 </p>
 
-An application exchanges with the operating system via syscall. The kernel receives calls, process them and return a result or an error for each of them.
+An application exchanges with the operating system via syscall. The kernel receives calls, processes them and returns a result or an error for each of them.
 In order to open a file, the application needs to send an openat syscall to the kernel. This signal is processed by the kernel, and it returns to the application a new file descriptor or an error.
 If a file does not exist, the kernel returns an `-ENOENT` error code. 
 The idea, is to simulate this behavior by catching this signal before the kernel and return this error code. This solution does not alert file system and no needs to change the code of the application or kernel. 

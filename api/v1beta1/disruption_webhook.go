@@ -342,7 +342,7 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 
 		if r.Spec.DiskFailure != nil {
 			if caught, response := safetyNetDiskFailurePath(r); caught {
-				logger.Debugw("the specified disruption either contains an invalid path.", "SafetyNet Catch", "DiskFailure")
+				logger.Debugw("the specified disruption contains an invalid path.", "SafetyNet Catch", "DiskFailure")
 
 				responses = append(responses, response)
 			}

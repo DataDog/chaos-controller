@@ -8,7 +8,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"strconv"
@@ -49,7 +48,7 @@ var createCmd = &cobra.Command{
 		}
 
 		path, _ := cmd.Flags().GetString("path")
-		err = ioutil.WriteFile(path, y, 0644) // #nosec
+		err = os.WriteFile(path, y, 0644) // #nosec
 		if err != nil {
 			fmt.Printf("writeFile err: %v", err)
 		}
@@ -432,8 +431,8 @@ func getDiskFailure() *v1beta1.DiskFailureSpec {
 
 	spec := &v1beta1.DiskFailureSpec{}
 
-	spec.Path = getInput("Add a filter path to target (or leave blank, default=\"/\")",
-		"The filter path is a strict prefix matcher and avoid a program to access file or directory with this prefix. Currently it does not support wildcards.",
+	spec.Path = getInput("Add a filter path prefix matcher",
+		"The filter path is a strict prefix matcher and avoid a program to access file or directory with this prefix. Currently it does not support wildcards and could not exceed 62 characters.",
 	)
 
 	return spec
