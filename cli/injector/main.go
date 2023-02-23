@@ -326,7 +326,7 @@ func initPodWatch(resourceVersion string) (<-chan watch.Event, error) {
 	return podWatcher.ResultChan(), err
 }
 
-// inject inject all the disruptions using the list of injectors
+// inject all the disruptions using the list of injectors
 // returns true if injection succeeded, false otherwise
 func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 	errOnInject := false

@@ -216,6 +216,7 @@ var _ = Describe("Failure", func() {
 
 		It("should apply disruptions to main interfaces 2nd band", func() {
 			tc.AssertCalled(GinkgoT(), "AddNetem", []string{"lo", "eth0", "eth1"}, "2:2", mock.Anything, time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
+			tc.AssertNumberOfCalls(GinkgoT(), "AddNetem", 1)
 			tc.AssertCalled(GinkgoT(), "AddOutputLimit", []string{"lo", "eth0", "eth1"}, "3:", mock.Anything, uint(spec.BandwidthLimit))
 		})
 
@@ -335,7 +336,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			AfterEach(func() {
-				inj.Clean()
+				Expect(inj.Clean()).To(BeNil())
 			})
 
 		})
@@ -410,6 +411,21 @@ var _ = Describe("Failure", func() {
 
 			It("should add a filter to redirect traffic going to 8.8.8.8/32 on port 53 on the not disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "8.8.8.8/32", 0, 53, "tcp", "", "1:1")
+			})
+		})
+
+		Context("with a re-injection", func() {
+			JustBeforeEach(func() {
+				// When an update event is sent to the injector, the disruption method Clean is called before its Inject method.
+				// If the method Clean is not called the AddNetem operations will stack up.
+				Expect(inj.Clean()).To(BeNil())
+				Expect(inj.Inject()).To(BeNil())
+			})
+
+			It("should not stack up AddNetem operations", func() {
+				tc.AssertCalled(GinkgoT(), "AddNetem", []string{"lo", "eth0", "eth1"}, "2:2", mock.Anything, time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
+				// The first call come from the first injection and the second is form the last injection. So the sum of calls si two.
+				tc.AssertNumberOfCalls(GinkgoT(), "AddNetem", 2)
 			})
 		})
 	})
