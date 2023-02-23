@@ -132,10 +132,11 @@ spec:
 
 ## Notes
 
-* The source code of the eBPF disk failure program is [here](../ebpf/disk-failure). 
+* The source code of the eBPF disk failure program is [here](../ebpf/disk-failure)
 * Tested with Ubuntu 22.10, kernel 5.15, go 1.19
-* To know how to create an eBPF disruption you can refer to the following [documentation](ebpf_disruption.md).
-* Be sure to have a kernel build with eBPF:
+* To know how to create an eBPF disruption you can refer to the following [documentation](ebpf_disruption.md)
+* :warning: It does not support linux kernel greater than 5.15.95
+* :warning: Be sure to have a kernel build with eBPF:
 
 ```shell
 CONFIG_BPF=y
