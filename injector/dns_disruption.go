@@ -140,14 +140,28 @@ func (i *DNSDisruptionInjector) Inject() error {
 	}
 
 	if i.config.Level == chaostypes.DisruptionLevelPod {
-		if !i.config.OnInit {
-			// Redirect traffic coming from the targeted container to CHAOS-DNS
-			if err := i.config.Iptables.Intercept("udp", "53", i.config.Cgroup.RelativePath(""), podIP); err != nil {
+		if i.config.OnInit {
+			// Redirect all dns related traffic in the pod to CHAOS-DNS
+			if err := i.config.Iptables.Intercept("udp", "53", "", "", ""); err != nil {
 				return fmt.Errorf("unable to create new iptables rule: %w", err)
 			}
 		} else {
-			// Redirect all dns related traffic in the pod to CHAOS-DNS
-			if err := i.config.Iptables.Intercept("udp", "53", "", ""); err != nil {
+			cgroupPath := ""
+			classID := ""
+
+			if i.config.Cgroup.IsCgroupV2() { // Filter packets on cgroup path for cgroup v2
+				cgroupPath = i.config.Cgroup.RelativePath("")
+			} else { // Filter packets on net_cls classid for cgroup v1
+				classID = chaostypes.InjectorCgroupClassID
+
+				// Apply the classid through net_cls to all packets created by the container
+				if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", classID); err != nil {
+					return fmt.Errorf("unable to write net_cls classid: %w", err)
+				}
+			}
+
+			// Redirect packets based on their cgroup or classid depending on cgroup version to CHAOS-DNS
+			if err := i.config.Iptables.Intercept("udp", "53", cgroupPath, classID, podIP); err != nil {
 				return fmt.Errorf("unable to create new iptables rule: %w", err)
 			}
 		}
@@ -155,7 +169,7 @@ func (i *DNSDisruptionInjector) Inject() error {
 
 	if i.config.Level == chaostypes.DisruptionLevelNode {
 		// Re-route all pods under node except for injector pod itself
-		if err := i.config.Iptables.Intercept("udp", "53", "", podIP); err != nil {
+		if err := i.config.Iptables.Intercept("udp", "53", "", "", podIP); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 	}
@@ -187,6 +201,13 @@ func (i *DNSDisruptionInjector) Clean() error {
 	// exit target network namespace
 	if err := i.config.Netns.Exit(); err != nil {
 		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
+	}
+
+	// Remove the net_cls classid for cgroup v1
+	if !i.config.Cgroup.IsCgroupV2() {
+		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0"); err != nil {
+			return fmt.Errorf("unable to write net_cls classid: %w", err)
+		}
 	}
 
 	// There is nothing we need to do to shut down the resolver beyond letting the pod terminate

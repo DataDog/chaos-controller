@@ -37,6 +37,7 @@ var _ = Describe("Failure", func() {
 		config                                                  NetworkDisruptionInjectorConfig
 		spec                                                    v1beta1.NetworkDisruptionSpec
 		cgroupManager                                           *cgroup.ManagerMock
+		isCgroupV2Call                                          *mock.Call
 		tc                                                      *network.TcMock
 		iptables                                                *network.IptablesMock
 		nl                                                      *network.NetlinkAdapterMock
@@ -54,6 +55,8 @@ var _ = Describe("Failure", func() {
 		// cgroup
 		cgroupManager = &cgroup.ManagerMock{}
 		cgroupManager.On("RelativePath", mock.Anything).Return("/kubepod.slice/foo")
+		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		isCgroupV2Call = cgroupManager.On("IsCgroupV2").Return(false)
 
 		// netns
 		netnsManager = &netns.ManagerMock{}
@@ -73,7 +76,8 @@ var _ = Describe("Failure", func() {
 		// iptables
 		iptables = &network.IptablesMock{}
 		iptables.On("Clear").Return(nil)
-		iptables.On("Mark", mock.Anything, mock.Anything).Return(nil)
+		iptables.On("MarkCgroupPath", mock.Anything, mock.Anything).Return(nil)
+		iptables.On("MarkClassID", mock.Anything, mock.Anything).Return(nil)
 		iptables.On("LogConntrack").Return(nil)
 
 		// netlink
@@ -220,8 +224,21 @@ var _ = Describe("Failure", func() {
 			tc.AssertCalled(GinkgoT(), "AddOutputLimit", []string{"lo", "eth0", "eth1"}, "3:", mock.Anything, uint(spec.BandwidthLimit))
 		})
 
-		It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
-			iptables.AssertCalled(GinkgoT(), "Mark", "/kubepod.slice/foo", chaostypes.InjectorCgroupClassID)
+		Context("packet marking with cgroups v1", func() {
+			It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", chaostypes.InjectorCgroupClassID)
+				iptables.AssertCalled(GinkgoT(), "MarkClassID", chaostypes.InjectorCgroupClassID, chaostypes.InjectorCgroupClassID)
+			})
+		})
+
+		Context("packet marking with cgroups v2", func() {
+			BeforeEach(func() {
+				isCgroupV2Call.Return(true)
+			})
+
+			It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
+				iptables.AssertCalled(GinkgoT(), "MarkCgroupPath", "/kubepod.slice/foo", chaostypes.InjectorCgroupClassID)
+			})
 		})
 
 		// qlen cases

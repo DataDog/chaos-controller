@@ -6,6 +6,7 @@
 package network
 
 import (
+	"errors"
 	"fmt"
 
 	goiptables "github.com/coreos/go-iptables/iptables"
@@ -17,8 +18,9 @@ type Iptables interface {
 	Clear() error
 	LogConntrack() error
 	RedirectTo(protocol string, port string, destinationIP string) error
-	Intercept(protocol string, port string, cgroupPath string, injectorPodIP string) error
-	Mark(cgroupPath string, mark string) error
+	Intercept(protocol string, port string, cgroupPath string, cgroupClassID string, injectorPodIP string) error
+	MarkCgroupPath(cgroupPath string, mark string) error
+	MarkClassID(classid string, mark string) error
 }
 
 type iptables struct {
@@ -101,8 +103,12 @@ func (i *iptables) RedirectTo(protocol string, port string, destinationIP string
 
 // Intercept jumps the matching packets to the injector dedicated chain except for
 // packets coming from the injector itself
-func (i *iptables) Intercept(protocol string, port string, cgroupPath string, injectorPodIP string) error {
+func (i *iptables) Intercept(protocol string, port string, cgroupPath string, cgroupClassID string, injectorPodIP string) error {
 	rulespec := []string{}
+
+	if cgroupPath != "" && cgroupClassID != "" {
+		return errors.New("either cgroup path or cgroup class id must be specified, not both")
+	}
 
 	// add protocol
 	if protocol != "" {
@@ -119,9 +125,14 @@ func (i *iptables) Intercept(protocol string, port string, cgroupPath string, in
 		rulespec = append(rulespec, "!", "-s", injectorPodIP)
 	}
 
-	// add cgroup path
+	// add cgroup path filter
 	if cgroupPath != "" {
 		rulespec = append(rulespec, "-m", "cgroup", "--path", cgroupPath)
+	}
+
+	// add cgroup classid filter
+	if cgroupClassID != "" {
+		rulespec = append(rulespec, "-m", "cgroup", "--cgroup", cgroupClassID)
 	}
 
 	rulespec = append(rulespec, "-j", chaosChainName)
@@ -134,7 +145,7 @@ func (i *iptables) Intercept(protocol string, port string, cgroupPath string, in
 	// inject prerouting rule only if there's no cgroup path filtering
 	// packets going through prerouting chain are not yet associated
 	// to a process so there's no possibility to filter on a cgroup at this stage
-	if cgroupPath == "" {
+	if cgroupPath == "" && cgroupClassID == "" {
 		if err := i.insert("nat", "PREROUTING", rulespec...); err != nil {
 			return err
 		}
@@ -143,9 +154,14 @@ func (i *iptables) Intercept(protocol string, port string, cgroupPath string, in
 	return nil
 }
 
-// Mark marks the packets in the injector dedicated chain with the given mark
-func (i *iptables) Mark(cgroupPath string, mark string) error {
+// MarkCgroupPath marks the packets created from the given cgroup path with the given mark
+func (i *iptables) MarkCgroupPath(cgroupPath string, mark string) error {
 	return i.insert("mangle", "OUTPUT", "-m", "cgroup", "--path", cgroupPath, "-j", "MARK", "--set-mark", mark)
+}
+
+// MarkClassID marks the packets created with the given classid with the given mark
+func (i *iptables) MarkClassID(classID string, mark string) error {
+	return i.insert("mangle", "OUTPUT", "-m", "cgroup", "--cgroup", classID, "-j", "MARK", "--set-mark", mark)
 }
 
 // insert creates a new iptables rule definition, stores it
