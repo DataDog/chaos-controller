@@ -130,6 +130,14 @@ spec:
     path: /
 ```
 
+## eBPF Architecture
+
+<p align="center">
+    <kbd>
+        <img src="../docs/img/disk_failure/ebpf_disk_failure_architecture.png" height=auto width=1200 />
+    </kbd>
+</p>
+
 ## Notes
 
 * The source code of the eBPF disk failure program is [here](../ebpf/disk-failure)
