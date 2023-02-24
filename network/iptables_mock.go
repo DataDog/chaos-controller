@@ -27,15 +27,22 @@ func (f *IptablesMock) RedirectTo(protocol string, port string, destinationIP st
 }
 
 //nolint:golint
-func (f *IptablesMock) Intercept(protocol string, port string, cgroupPath string, injectorPodIP string) error {
-	args := f.Called(protocol, port, cgroupPath, injectorPodIP)
+func (f *IptablesMock) Intercept(protocol string, port string, cgroupPath string, cgroupClassID string, injectorPodIP string) error {
+	args := f.Called(protocol, port, cgroupPath, cgroupClassID, injectorPodIP)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *IptablesMock) Mark(cgroupPath string, mark string) error {
+func (f *IptablesMock) MarkCgroupPath(cgroupPath string, mark string) error {
 	args := f.Called(cgroupPath, mark)
+
+	return args.Error(0)
+}
+
+//nolint:golint
+func (f *IptablesMock) MarkClassID(classID string, mark string) error {
+	args := f.Called(classID, mark)
 
 	return args.Error(0)
 }

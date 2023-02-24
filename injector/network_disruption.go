@@ -181,8 +181,18 @@ func (i *networkDisruptionInjector) Inject() error {
 
 	// mark all packets created by the targeted container with the classifying mark
 	if i.config.Level == types.DisruptionLevelPod && !i.config.OnInit {
-		if err := i.config.Iptables.Mark(i.config.Cgroup.RelativePath(""), types.InjectorCgroupClassID); err != nil {
-			return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
+		if i.config.Cgroup.IsCgroupV2() { // cgroup v2 can rely on the single cgroup hierarchy relative path to mark packets
+			if err := i.config.Iptables.MarkCgroupPath(i.config.Cgroup.RelativePath(""), types.InjectorCgroupClassID); err != nil {
+				return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
+			}
+		} else { // cgroup v1 needs to mark packets through the net_cls cgroup controller of the container
+			if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", types.InjectorCgroupClassID); err != nil {
+				return fmt.Errorf("error injecting packet marking in net_cls cgroup: %w", err)
+			}
+
+			if err := i.config.Iptables.MarkClassID(types.InjectorCgroupClassID, types.InjectorCgroupClassID); err != nil {
+				return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
+			}
 		}
 	}
 
@@ -215,10 +225,6 @@ func (i *networkDisruptionInjector) Clean() error {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
-	// defer the exit on return
-	defer func() {
-	}()
-
 	if err := i.clearOperations(); err != nil {
 		return fmt.Errorf("error clearing tc operations: %w", err)
 	}
@@ -231,6 +237,13 @@ func (i *networkDisruptionInjector) Clean() error {
 	// exit target network namespace
 	if err := i.config.Netns.Exit(); err != nil {
 		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
+	}
+
+	// remove the net_cls classid used for cgroup v1
+	if !i.config.Cgroup.IsCgroupV2() {
+		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0"); err != nil {
+			return fmt.Errorf("error cleaning net_cls classid: %w", err)
+		}
 	}
 
 	return nil
