@@ -23,18 +23,21 @@ import (
 
 var _ = Describe("Failure", func() {
 	var (
-		inj           Injector
-		config        DNSDisruptionInjectorConfig
-		spec          v1beta1.DNSDisruptionSpec
-		cgroupManager *cgroup.ManagerMock
-		netnsManager  *netns.ManagerMock
-		iptables      *network.IptablesMock
+		inj            Injector
+		config         DNSDisruptionInjectorConfig
+		spec           v1beta1.DNSDisruptionSpec
+		cgroupManager  *cgroup.ManagerMock
+		isCgroupV2Call *mock.Call
+		netnsManager   *netns.ManagerMock
+		iptables       *network.IptablesMock
 	)
 
 	BeforeEach(func() {
 		// cgroup
 		cgroupManager = &cgroup.ManagerMock{}
 		cgroupManager.On("RelativePath", mock.Anything).Return("/kubepod.slice/foo")
+		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		isCgroupV2Call = cgroupManager.On("IsCgroupV2").Return(false)
 
 		// netns
 		netnsManager = &netns.ManagerMock{}
@@ -52,7 +55,7 @@ var _ = Describe("Failure", func() {
 		iptables = &network.IptablesMock{}
 		iptables.On("Clear").Return(nil)
 		iptables.On("RedirectTo", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("Intercept", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("Intercept", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		iptables.On("ListRules", mock.Anything, mock.Anything).Return([]string{}, nil)
 
 		// environment variables
@@ -97,7 +100,7 @@ var _ = Describe("Failure", func() {
 
 		Context("disruption is node-level", func() {
 			It("creates node-level iptable filter rules", func() {
-				iptables.AssertCalled(GinkgoT(), "Intercept", "udp", "53", "", "10.0.0.2")
+				iptables.AssertCalled(GinkgoT(), "Intercept", "udp", "53", "", "", "10.0.0.2")
 			})
 		})
 
@@ -105,8 +108,25 @@ var _ = Describe("Failure", func() {
 			BeforeEach(func() {
 				config.Level = chaostypes.DisruptionLevelPod
 			})
-			It("creates pod-level iptable filter rules", func() {
-				iptables.AssertCalled(GinkgoT(), "Intercept", "udp", "53", "/kubepod.slice/foo", "10.0.0.2")
+
+			Context("with cgroups v1", func() {
+				It("enables pod-level net_cls packet marking", func() {
+					cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", chaostypes.InjectorCgroupClassID)
+				})
+
+				It("creates pod-level iptable filter rules", func() {
+					iptables.AssertCalled(GinkgoT(), "Intercept", "udp", "53", "", chaostypes.InjectorCgroupClassID, "10.0.0.2")
+				})
+			})
+
+			Context("with cgroups v2", func() {
+				BeforeEach(func() {
+					isCgroupV2Call.Return(true)
+				})
+
+				It("creates pod-level iptable filter rules", func() {
+					iptables.AssertCalled(GinkgoT(), "Intercept", "udp", "53", "/kubepod.slice/foo", "", "10.0.0.2")
+				})
 			})
 		})
 	})
