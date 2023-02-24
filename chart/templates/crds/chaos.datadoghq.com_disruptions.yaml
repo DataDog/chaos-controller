@@ -485,6 +485,8 @@ spec:
                   disabling safety nets requires manually changing these booleans
                   to true
                 properties:
+                  allowRootDiskFailure:
+                    type: boolean
                   config:
                     description: Config represents any configurable parameters for
                       the safetynets, all of which have defaults
@@ -506,8 +508,6 @@ spec:
                   disableAll:
                     type: boolean
                   disableCountTooLarge:
-                    type: boolean
-                  disableDiskFailurePath:
                     type: boolean
                   disableNeitherHostNorPort:
                     type: boolean

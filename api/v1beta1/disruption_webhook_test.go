@@ -310,39 +310,11 @@ var _ = Describe("Disruption", func() {
 						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\"."))
 					})
 				})
-				Context("with an empty path", func() {
-					It("should deny the usage of an empty path", func() {
-						// Arrange
-						newDisruption.Spec.DiskFailure.Path = ""
-
-						// Action
-						err := newDisruption.ValidateCreate()
-
-						// Assert
-						Expect(err).Should(HaveOccurred())
-						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption must not be empty."))
-					})
-				})
-				Context("with a blank path", func() {
-					It("should deny the usage of a blank path", func() {
-						// Arrange
-						newDisruption.Spec.DiskFailure.Path = " "
-
-						// Action
-						err := newDisruption.ValidateCreate()
-
-						// Assert
-						Expect(err).Should(HaveOccurred())
-						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption must not be blank."))
-					})
-				})
 				Context("safe-mode disabled", func() {
 					It("should allow the '/' path", func() {
 						// Arrange
 						newDisruption.Spec.Unsafemode = &UnsafemodeSpec{
-							DisableDiskFailurePath: true,
+							AllowRootDiskFailure: true,
 						}
 
 						// Action
@@ -370,39 +342,11 @@ var _ = Describe("Disruption", func() {
 						Expect(err).ShouldNot(HaveOccurred())
 					})
 				})
-				Context("with an empty path", func() {
-					It("should deny the usage of an empty path", func() {
-						// Arrange
-						newDisruption.Spec.DiskFailure.Path = ""
-
-						// Action
-						err := newDisruption.ValidateCreate()
-
-						// Assert
-						Expect(err).Should(HaveOccurred())
-						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption must not be empty."))
-					})
-				})
-				Context("with a blank path", func() {
-					It("should deny the usage of a blank path", func() {
-						// Arrange
-						newDisruption.Spec.DiskFailure.Path = " "
-
-						// Action
-						err := newDisruption.ValidateCreate()
-
-						// Assert
-						Expect(err).Should(HaveOccurred())
-						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption must not be blank."))
-					})
-				})
 				Context("with the safe-mode disabled", func() {
 					It("should allow the '/' path", func() {
 						// Arrange
 						newDisruption.Spec.Unsafemode = &UnsafemodeSpec{
-							DisableDiskFailurePath: true,
+							AllowRootDiskFailure: true,
 						}
 
 						// Action

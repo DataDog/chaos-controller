@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"fmt"
+	"strings"
 )
 
 // DiskFailureSpec represents a disk failure disruption
@@ -18,7 +19,17 @@ const MaxPathCharacters = 62
 
 // Validate validates args for the given disruption
 func (s *DiskFailureSpec) Validate() error {
-	if len(s.Path) > MaxPathCharacters {
+	if s.Path == "" {
+		return fmt.Errorf("the path of the disk failure disruption must not be empty")
+	}
+
+	path := strings.TrimSpace(s.Path)
+
+	if strings.TrimSpace(path) == "" {
+		return fmt.Errorf("the path of the disk failure disruption must not be blank")
+	}
+
+	if len(path) > MaxPathCharacters {
 		return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters", MaxPathCharacters)
 	}
 
@@ -28,9 +39,8 @@ func (s *DiskFailureSpec) Validate() error {
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
 func (s *DiskFailureSpec) GenerateArgs() (args []string) {
 	args = append(args, "disk-failure")
-	if s.Path != "" {
-		args = append(args, "--path", s.Path)
-	}
+	path := strings.TrimSpace(s.Path)
+	args = append(args, "--path", path)
 
 	return args
 }

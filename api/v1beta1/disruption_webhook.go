@@ -341,7 +341,7 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 		}
 
 		if r.Spec.DiskFailure != nil {
-			if caught, response := safetyNetDiskFailurePath(r); caught {
+			if caught, response := safetyNetAllowRootDiskFailure(r); caught {
 				logger.Debugw("the specified disruption contains an invalid path.", "SafetyNet Catch", "DiskFailure")
 
 				responses = append(responses, response)
@@ -521,27 +521,17 @@ func safetyNetNeitherHostNorPort(r Disruption) bool {
 	return false
 }
 
-// safetyNetDiskFailurePath is the safety net regarding missing path or invalid path values for a disk failure disruption.
-func safetyNetDiskFailurePath(r *Disruption) (bool, string) {
-	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableDiskFailurePath {
+// safetyNetAllowRootDiskFailure is the safety net regarding missing path or invalid path values for a disk failure disruption.
+func safetyNetAllowRootDiskFailure(r *Disruption) (bool, string) {
+	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowRootDiskFailure {
 		return false, ""
-	}
-
-	if r.Spec.DiskFailure.Path == "" {
-		return true, "the specified path for the disk failure disruption must not be empty."
-	}
-
-	path := strings.TrimSpace(r.Spec.DiskFailure.Path)
-
-	if strings.TrimSpace(path) == "" {
-		return true, "the specified path for the disk failure disruption must not be blank."
 	}
 
 	if r.Spec.Level != chaostypes.DisruptionLevelNode {
 		return false, ""
 	}
 
-	if path == "/" {
+	if strings.TrimSpace(r.Spec.DiskFailure.Path) == "/" {
 		return true, "the specified path for the disk failure disruption targeting a node must not be \"/\"."
 	}
 
