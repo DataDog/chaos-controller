@@ -12,7 +12,7 @@ ClusterIP
 ClusterRole
 DaemonSet
 DisableCountTooLarge
-DisableDiskFailurePath
+AllowRootDiskFailure
 DisableNeitherHostNorPort
 DynamicTargeting
 ExclusiveFields

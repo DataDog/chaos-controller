@@ -25,7 +25,7 @@ func (s *DiskFailureSpec) Validate() error {
 
 	path := strings.TrimSpace(s.Path)
 
-	if strings.TrimSpace(path) == "" {
+	if path == "" {
 		return fmt.Errorf("the path of the disk failure disruption must not be blank")
 	}
 

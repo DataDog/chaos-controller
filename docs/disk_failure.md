@@ -85,7 +85,7 @@ spec:
     app: example
   count: 1
   unsafeMode:
-    DisableDiskFailurePath: true
+    AllowRootDiskFailure: true
   diskFailure:
     path: / # <----- Allowed
 ```

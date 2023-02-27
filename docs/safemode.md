@@ -36,7 +36,7 @@ unsafeMode:
 |-------------------------------|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|
 | Large Scope Targeting         | Generic      | Running any disruption with generic label selectors that select a majority of pods/nodes in a namespace as a target to inject a disruption into | DisableCountTooLarge      |
 | No Port and No Host Specified | Network      | Running a network disruption without specifying a port and a host                                                                               | DisableNeitherHostNorPort |
-| Wrong path specified          | Disk Failure | Running a disk failure disruption without specifying a path or '/' value.                                                                       | DisableDiskFailurePath    |
+| Wrong path specified          | Disk Failure | Running a disk failure disruption without specifying a path or '/' value.                                                                       | AllowRootDiskFailure      |
 
 
 #### Example of Disabling Specific Safety Net
