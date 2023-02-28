@@ -9,6 +9,7 @@ variables:
   CONTROLLER_IMAGE_NAME: chaos-controller
   INJECTOR_IMAGE_NAME: chaos-injector
   HANDLER_IMAGE_NAME: chaos-handler
+  REGISTRY_ADDRESS: registry.ddbuild.io
 
 stages:
   - ci-image
@@ -19,7 +20,7 @@ stages:
   - notify
 
 .docker-runner: &docker-runner
-  image: registry.ddbuild.io/docker-push:1.7.0
+  image: ${REGISTRY_ADDRESS}/docker-push:1.7.0
   tags: ["runner:docker"]
 
 # login into Docker Hub -- allows to not get rate-limited on releases
@@ -38,7 +39,7 @@ ci-image:
   except: [tags, schedules]
   script:
     - docker buildx create --use
-    - docker buildx build --platform linux/amd64,linux/arm64 --tag registry.ddbuild.io/ci/chaos-controller:$CURRENT_CI_IMAGE ci --push
+    - docker buildx build --platform linux/amd64,linux/arm64 --tag ${REGISTRY_ADDRESS}/ci/chaos-controller:$CURRENT_CI_IMAGE ci --push
 
 # main make build
 build:make:
@@ -69,9 +70,33 @@ build:make:
   <<: *docker-hub-login
   script:
     - docker buildx create --use
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/manager/Dockerfile ./bin/manager/ --push
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/injector/Dockerfile ./bin/injector/ --push
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/handler/Dockerfile ./bin/handler/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t ${REGISTRY_ADDRESS}/${CONTROLLER_IMAGE_NAME}:${TAG} -f bin/manager/Dockerfile
+      --label target=${TARGET_LABEL} 
+      --label git.repository=${CI_PROJECT_NAME}
+      --label git.branch=${CI_COMMIT_REF_NAME}
+      --label git.commit=${CI_COMMIT_SHA}
+      --label ci.pipeline_id=${CI_PIPELINE_ID}
+      --label ci.job_id=${CI_JOB_ID}
+      ./bin/manager/ --push
+    
+    - docker buildx build --platform linux/amd64,linux/arm64 -t ${REGISTRY_ADDRESS}/${INJECTOR_IMAGE_NAME}:${TAG} -f bin/injector/Dockerfile 
+      --label target=${TARGET_LABEL}
+      --label git.repository=${CI_PROJECT_NAME}
+      --label git.branch=${CI_COMMIT_REF_NAME}
+      --label git.commit=${CI_COMMIT_SHA}
+      --label ci.pipeline_id=${CI_PIPELINE_ID}
+      --label ci.job_id=${CI_JOB_ID}
+      ./bin/injector/ --push
+      
+    - docker buildx build --platform linux/amd64,linux/arm64 -t ${REGISTRY_ADDRESS}/${HANDLER_IMAGE_NAME}:${TAG} -f bin/handler/Dockerfile
+      --label target=${TARGET_LABEL}
+      --label git.repository=${CI_PROJECT_NAME}
+      --label git.branch=${CI_COMMIT_REF_NAME}
+      --label git.commit=${CI_COMMIT_SHA}
+      --label ci.pipeline_id=${CI_PIPELINE_ID}
+      --label ci.job_id=${CI_JOB_ID}
+      ./bin/handler/ --push
+  
   dependencies:
     - build:make
 
@@ -128,16 +153,16 @@ release-prod-tag:
   <<: *docker-hub-login
   stage: release-public
   tags: ["runner:docker"]
-  image: registry.ddbuild.io/docker-notary:0.6.1
+  image: ${REGISTRY_ADDRESS}/docker-notary:0.6.1
   script:
-    - docker pull registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG}
-    - docker tag registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG} datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
+    - docker pull ${REGISTRY_ADDRESS}/${CONTROLLER_IMAGE_NAME}:${TAG}
+    - docker tag ${REGISTRY_ADDRESS}/${CONTROLLER_IMAGE_NAME}:${TAG} datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
     - docker push datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
-    - docker pull registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG}
-    - docker tag registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG} datadog/${INJECTOR_IMAGE_NAME}:${TAG}
+    - docker pull ${REGISTRY_ADDRESS}/${INJECTOR_IMAGE_NAME}:${TAG}
+    - docker tag ${REGISTRY_ADDRESS}/${INJECTOR_IMAGE_NAME}:${TAG} datadog/${INJECTOR_IMAGE_NAME}:${TAG}
     - docker push datadog/${INJECTOR_IMAGE_NAME}:${TAG}
-    - docker pull registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG}
-    - docker tag registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG} datadog/${HANDLER_IMAGE_NAME}:${TAG}
+    - docker pull ${REGISTRY_ADDRESS}/${HANDLER_IMAGE_NAME}:${TAG}
+    - docker tag ${REGISTRY_ADDRESS}/${HANDLER_IMAGE_NAME}:${TAG} datadog/${HANDLER_IMAGE_NAME}:${TAG}
     - docker push datadog/${HANDLER_IMAGE_NAME}:${TAG}
 
 release-docker-hub-ref:
@@ -159,7 +184,7 @@ release-docker-hub-tag:
 # Slack Notify
 .slack-notifier-base:
   tags: ["runner:main", "size:large"]
-  image: registry.ddbuild.io/slack-notifier:latest
+  image: ${REGISTRY_ADDRESS}/slack-notifier:latest
   allow_failure: true
   when: on_failure
   script:
