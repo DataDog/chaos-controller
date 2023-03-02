@@ -6,6 +6,7 @@
 package network
 
 import (
+	"errors"
 	"fmt"
 
 	goiptables "github.com/coreos/go-iptables/iptables"
@@ -14,152 +15,204 @@ import (
 
 // Iptables is an interface for interacting with target nat firewall/iptables rules
 type Iptables interface {
-	CreateChain(name string) error
-	ClearAndDeleteChain(name string) error
-	AddRuleWithIP(chain string, protocol string, port string, jump string, destinationIP string) error
-	AddWideFilterRule(chain string, protocol string, port string, jump string) error
-	AddCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error
-	PrependRuleSpec(chain string, rulespec ...string) error
-	DeleteRule(chain string, protocol string, port string, jump string) error
-	DeleteRuleSpec(chain string, rulespec ...string) error
-	DeleteCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error
-	ListRules(table string, chain string) ([]string, error)
+	Clear() error
+	LogConntrack() error
+	RedirectTo(protocol string, port string, destinationIP string) error
+	Intercept(protocol string, port string, cgroupPath string, cgroupClassID string, injectorPodIP string) error
+	MarkCgroupPath(cgroupPath string, mark string) error
+	MarkClassID(classid string, mark string) error
 }
 
 type iptables struct {
-	log    *zap.SugaredLogger
-	dryRun bool
-	ip     *goiptables.IPTables
+	log           *zap.SugaredLogger
+	dryRun        bool
+	ip            *goiptables.IPTables
+	injectedRules []rule
 }
+
+type rule struct {
+	table    string
+	chain    string
+	rulespec []string
+}
+
+const (
+	chaosChainName = "CHAOS-DNS"
+)
 
 // NewIptables returns an implementation of the Iptables interface that can log
 func NewIptables(log *zap.SugaredLogger, dryRun bool) (Iptables, error) {
 	ip, err := goiptables.New()
 
-	return iptables{
-		log:    log,
-		dryRun: dryRun,
-		ip:     ip,
+	return &iptables{
+		log:           log,
+		dryRun:        dryRun,
+		ip:            ip,
+		injectedRules: []rule{},
 	}, err
 }
 
-func (i iptables) CreateChain(name string) error {
+// Clear removes any previously injected rules in any chain and table
+func (i *iptables) Clear() error {
+	i.log.Infow("deleting injected iptables rules", "chain", chaosChainName)
+
 	if i.dryRun {
 		return nil
 	}
 
-	if res, _ := i.ip.ChainExists("nat", name); res {
-		return nil
+	// remove previously injected rules
+	for _, r := range i.injectedRules {
+		i.log.Infow("deleting injected iptables rule", "chain", r.chain, "table", r.table, "rulespec", r.rulespec)
+
+		// skip if it does not exist anymore for idempotency
+		exists, err := i.ip.Exists(r.table, r.chain, r.rulespec...)
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			i.log.Infow("iptables rule doesn't exist anymore, skipping cleaning", "table", r.table, "chain", r.chain, "rulespec", r.rulespec)
+
+			continue
+		}
+
+		// delete rule
+		if err := i.ip.Delete(r.table, r.chain, r.rulespec...); err != nil {
+			return err
+		}
 	}
 
-	i.log.Infow("creating new iptables chain", "chain name", name)
+	// eventually delete the injector dedicated chain
+	// the error is ignored here as any remaining rules in the chain, or any remaining
+	// jumping rules to that chain, coming from any remaining injector would cause it to error
+	_ = i.ip.DeleteChain("nat", chaosChainName)
 
-	return i.ip.NewChain("nat", name)
+	return nil
 }
 
-func (i iptables) ClearAndDeleteChain(name string) error {
+// LogConntrack creates a rule logging packets with a new or established connection state,
+// usually used to enable the conntrack tracking in non-root network namespaces
+func (i *iptables) LogConntrack() error {
+	return i.insert("nat", "OUTPUT", "-m", "state", "--state", "new,established", "-j", "LOG")
+}
+
+// RedirectTo redirects the matching packets to the given destination IP
+func (i *iptables) RedirectTo(protocol string, port string, destinationIP string) error {
+	return i.insert("nat", chaosChainName, "-p", protocol, "--dport", port, "-j", "DNAT", "--to-destination", destinationIP+":"+port)
+}
+
+// Intercept jumps the matching packets to the injector dedicated chain except for
+// packets coming from the injector itself
+func (i *iptables) Intercept(protocol string, port string, cgroupPath string, cgroupClassID string, injectorPodIP string) error {
+	rulespec := []string{}
+
+	if cgroupPath != "" && cgroupClassID != "" {
+		return errors.New("either cgroup path or cgroup class id must be specified, not both")
+	}
+
+	// add protocol
+	if protocol != "" {
+		rulespec = append(rulespec, "-p", protocol)
+	}
+
+	// add port
+	if port != "" {
+		rulespec = append(rulespec, "--dport", port)
+	}
+
+	// exclude injector pod IP
+	if injectorPodIP != "" {
+		rulespec = append(rulespec, "!", "-s", injectorPodIP)
+	}
+
+	// add cgroup path filter
+	if cgroupPath != "" {
+		rulespec = append(rulespec, "-m", "cgroup", "--path", cgroupPath)
+	}
+
+	// add cgroup classid filter
+	if cgroupClassID != "" {
+		rulespec = append(rulespec, "-m", "cgroup", "--cgroup", cgroupClassID)
+	}
+
+	rulespec = append(rulespec, "-j", chaosChainName)
+
+	// inject output rule
+	if err := i.insert("nat", "OUTPUT", rulespec...); err != nil {
+		return err
+	}
+
+	// inject prerouting rule only if there's no cgroup path filtering
+	// packets going through prerouting chain are not yet associated
+	// to a process so there's no possibility to filter on a cgroup at this stage
+	if cgroupPath == "" && cgroupClassID == "" {
+		if err := i.insert("nat", "PREROUTING", rulespec...); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// MarkCgroupPath marks the packets created from the given cgroup path with the given mark
+func (i *iptables) MarkCgroupPath(cgroupPath string, mark string) error {
+	return i.insert("mangle", "OUTPUT", "-m", "cgroup", "--path", cgroupPath, "-j", "MARK", "--set-mark", mark)
+}
+
+// MarkClassID marks the packets created with the given classid with the given mark
+func (i *iptables) MarkClassID(classID string, mark string) error {
+	return i.insert("mangle", "OUTPUT", "-m", "cgroup", "--cgroup", classID, "-j", "MARK", "--set-mark", mark)
+}
+
+// insert creates a new iptables rule definition, stores it
+// for further cleanup and inserts the rule in the given table and chain
+// at the first position
+func (i *iptables) insert(table string, chain string, rulespec ...string) error {
+	i.log.Infow("injecting iptables rule", "table", table, "chain", chain, "rulespec", rulespec)
+
 	if i.dryRun {
 		return nil
 	}
 
-	i.log.Infow("deleting iptables chain", "chain name", name)
+	// create the injector chain if it does not exist yet and is used here
+	if chain == chaosChainName {
+		chainExists, err := i.ip.ChainExists(table, chain)
+		if err != nil {
+			return err
+		}
 
-	return i.ip.ClearAndDeleteChain("nat", name)
-}
+		if !chainExists {
+			if err := i.ip.NewChain(table, chain); err != nil {
+				return fmt.Errorf("error creating chain %s: %w", chain, err)
+			}
+		}
+	}
 
-func (i iptables) AddRuleWithIP(chain string, protocol string, port string, jump string, destinationIP string) error {
-	if i.dryRun {
+	// check if the rule already exists before trying to insert it
+	exists, err := i.ip.Exists(table, chain, rulespec...)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		i.log.Infow("iptables rule already exists, skipping", "table", table, "chain", chain, "rulespec", rulespec)
+
 		return nil
 	}
 
-	i.log.Infow("creating new iptables rule", "chain name", chain, "protocol", protocol, "port", port, "jump target", jump, "destination", destinationIP)
-
-	return i.ip.AppendUnique("nat", chain, "-p", protocol, "--dport", port, "-j", jump, "--to-destination", fmt.Sprintf("%s:%s", destinationIP, port))
-}
-
-func (i iptables) PrependRuleSpec(chain string, rulespec ...string) error {
-	if i.dryRun {
-		return nil
+	// inject rule
+	if err := i.ip.Insert(table, chain, 1, rulespec...); err != nil {
+		return fmt.Errorf("error injecting rule: %w", err)
 	}
 
-	i.log.Infow("creating new iptables rule", "chain name", chain, "rulespec", rulespec)
-
-	// 1 is the first position, not 0
-	return i.ip.Insert("nat", chain, 1, rulespec...)
-}
-
-// Add a rule with cgroup filter
-func (i iptables) AddCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error {
-	if i.dryRun {
-		return nil
+	r := rule{
+		table:    table,
+		chain:    chain,
+		rulespec: rulespec,
 	}
 
-	i.log.Infow("creating new iptables rule", "table", table, "chain", chain, "cgroup path", cgroupPath, "rulespec", rulespec)
+	// store rule for further cleanup
+	i.injectedRules = append(i.injectedRules, r)
 
-	rulespec = append([]string{"-m", "cgroup", "--path", cgroupPath}, rulespec...)
-
-	return i.ip.AppendUnique(table, chain, rulespec...)
-}
-
-func (i iptables) AddWideFilterRule(chain string, protocol string, port string, jump string) error {
-	if i.dryRun {
-		return nil
-	}
-
-	i.log.Infow("creating new iptables rule", "chain name", chain, "protocol", protocol, "port", port, "jump target", jump)
-
-	return i.ip.AppendUnique("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
-}
-
-func (i iptables) DeleteRule(chain string, protocol string, port string, jump string) error {
-	if i.dryRun {
-		return nil
-	}
-
-	// Why do we check if the jump target exists? A command of the form
-	// iptables -t nat -C OUTPUT -p udp --dport 53 -j CHAOS-DNS
-	// will actually error if the jump target does not exist. However, you are unable
-	// to delete a chain if there are rules that jump to it, so if the target does not exist
-	// we can be sure that the rule does not exist.
-	if exists, _ := i.ip.ChainExists("nat", jump); !exists {
-		return nil
-	}
-
-	return i.DeleteRuleSpec("nat", chain, "-p", protocol, "--dport", port, "-j", jump)
-}
-
-func (i iptables) DeleteRuleSpec(chain string, rulespec ...string) error {
-	if i.dryRun {
-		return nil
-	}
-
-	i.log.Infow("deleting iptables rule", "chain name", chain, "rulespec", rulespec)
-
-	if exists, _ := i.ip.ChainExists("nat", chain); !exists {
-		return nil
-	}
-
-	return i.ip.DeleteIfExists("nat", chain, rulespec...)
-}
-
-// Delete a rule with cgroup filter
-func (i iptables) DeleteCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error {
-	if i.dryRun {
-		return nil
-	}
-
-	i.log.Infow("deleting iptables rule", "chain name", chain, "cgroup path", cgroupPath, "rulespec", rulespec)
-
-	if exists, _ := i.ip.ChainExists(table, chain); !exists {
-		return nil
-	}
-
-	rulespec = append([]string{"-m", "cgroup", "--path", cgroupPath}, rulespec...)
-
-	return i.ip.DeleteIfExists(table, chain, rulespec...)
-}
-
-// ListRules lists the rules of the given table and chain
-func (i iptables) ListRules(table string, chain string) ([]string, error) {
-	return i.ip.List(table, chain)
+	return nil
 }

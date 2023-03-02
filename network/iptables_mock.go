@@ -13,71 +13,43 @@ type IptablesMock struct {
 }
 
 //nolint:golint
-func (f *IptablesMock) CreateChain(name string) error {
-	args := f.Called(name)
+func (f *IptablesMock) Clear() error {
+	args := f.Called()
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *IptablesMock) ClearAndDeleteChain(name string) error {
-	args := f.Called(name)
+func (f *IptablesMock) RedirectTo(protocol string, port string, destinationIP string) error {
+	args := f.Called(protocol, port, destinationIP)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *IptablesMock) AddRuleWithIP(chain string, protocol string, port string, jump string, destinationIP string) error {
-	args := f.Called(chain, protocol, port, jump, destinationIP)
+func (f *IptablesMock) Intercept(protocol string, port string, cgroupPath string, cgroupClassID string, injectorPodIP string) error {
+	args := f.Called(protocol, port, cgroupPath, cgroupClassID, injectorPodIP)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *IptablesMock) PrependRuleSpec(chain string, rulespec ...string) error {
-	args := f.Called(chain, rulespec)
+func (f *IptablesMock) MarkCgroupPath(cgroupPath string, mark string) error {
+	args := f.Called(cgroupPath, mark)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *IptablesMock) DeleteRule(chain string, protocol string, port string, jump string) error {
-	args := f.Called(chain, protocol, port, jump)
+func (f *IptablesMock) MarkClassID(classID string, mark string) error {
+	args := f.Called(classID, mark)
 
 	return args.Error(0)
 }
 
 //nolint:golint
-func (f *IptablesMock) DeleteRuleSpec(chain string, rulespec ...string) error {
-	args := f.Called(chain, rulespec)
+func (f *IptablesMock) LogConntrack() error {
+	args := f.Called()
 
 	return args.Error(0)
-}
-
-//nolint:golint
-func (f *IptablesMock) AddWideFilterRule(chain string, protocol string, port string, jump string) error {
-	args := f.Called(chain, protocol, port, jump)
-
-	return args.Error(0)
-}
-
-//nolint:golint
-func (f *IptablesMock) AddCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error {
-	args := f.Called(table, chain, cgroupPath, rulespec)
-
-	return args.Error(0)
-}
-
-//nolint:golint
-func (f *IptablesMock) DeleteCgroupFilterRule(table string, chain string, cgroupPath string, rulespec ...string) error {
-	args := f.Called(table, chain, cgroupPath, rulespec)
-
-	return args.Error(0)
-}
-
-//nolint:golint
-func (f *IptablesMock) ListRules(table string, chain string) ([]string, error) {
-	args := f.Called(table, chain)
-
-	return args.Get(0).([]string), args.Error(1)
 }

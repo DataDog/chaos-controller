@@ -133,41 +133,43 @@ func (i *DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
-	// Set up iptables rules
-	if err := i.config.Iptables.CreateChain(chaostypes.InjectorIptablesChaosDNSChainName); err != nil {
-		return fmt.Errorf("unable to create new iptables chain: %w", err)
-	}
-
-	if err := i.config.Iptables.AddRuleWithIP(chaostypes.InjectorIptablesChaosDNSChainName, "udp", "53", "DNAT", podIP); err != nil {
+	// Set up iptables rules to redirect dns requests to the injector pod
+	// which holds the dns proxy process
+	if err := i.config.Iptables.RedirectTo("udp", "53", podIP); err != nil {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
 
 	if i.config.Level == chaostypes.DisruptionLevelPod {
-		if !i.config.OnInit {
-			// Redirect traffic marked by targeted InjectorDNSCgroupClassID to CHAOS-DNS
-			if err := i.config.Iptables.AddCgroupFilterRule("nat", "OUTPUT", i.config.Cgroup.RelativePath(""), "-p", "udp", "--dport", "53", "-j", chaostypes.InjectorIptablesChaosDNSChainName); err != nil {
+		if i.config.OnInit {
+			// Redirect all dns related traffic in the pod to CHAOS-DNS
+			if err := i.config.Iptables.Intercept("udp", "53", "", "", ""); err != nil {
 				return fmt.Errorf("unable to create new iptables rule: %w", err)
 			}
 		} else {
-			// Redirect all dns related traffic in the pod to CHAOS-DNS
-			if err := i.config.Iptables.AddWideFilterRule("OUTPUT", "udp", "53", chaostypes.InjectorIptablesChaosDNSChainName); err != nil {
+			cgroupPath := ""
+			classID := ""
+
+			if i.config.Cgroup.IsCgroupV2() { // Filter packets on cgroup path for cgroup v2
+				cgroupPath = i.config.Cgroup.RelativePath("")
+			} else { // Filter packets on net_cls classid for cgroup v1
+				classID = chaostypes.InjectorCgroupClassID
+
+				// Apply the classid through net_cls to all packets created by the container
+				if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", classID); err != nil {
+					return fmt.Errorf("unable to write net_cls classid: %w", err)
+				}
+			}
+
+			// Redirect packets based on their cgroup or classid depending on cgroup version to CHAOS-DNS
+			if err := i.config.Iptables.Intercept("udp", "53", cgroupPath, classID, podIP); err != nil {
 				return fmt.Errorf("unable to create new iptables rule: %w", err)
 			}
 		}
 	}
 
 	if i.config.Level == chaostypes.DisruptionLevelNode {
-		// Exempt chaos pod from iptables re-routing
-		if err := i.config.Iptables.PrependRuleSpec(chaostypes.InjectorIptablesChaosDNSChainName, "-s", podIP, "-j", "RETURN"); err != nil {
-			return fmt.Errorf("unable to create new iptables rule: %w", err)
-		}
-
-		// Re-route all pods under node
-		if err := i.config.Iptables.PrependRuleSpec("OUTPUT", "-p", "udp", "--dport", "53", "-j", chaostypes.InjectorIptablesChaosDNSChainName); err != nil {
-			return fmt.Errorf("unable to create new iptables rule: %w", err)
-		}
-
-		if err := i.config.Iptables.PrependRuleSpec("PREROUTING", "-p", "udp", "--dport", "53", "-j", chaostypes.InjectorIptablesChaosDNSChainName); err != nil {
+		// Re-route all pods under node except for injector pod itself
+		if err := i.config.Iptables.Intercept("udp", "53", "", "", podIP); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 	}
@@ -191,58 +193,21 @@ func (i *DNSDisruptionInjector) Clean() error {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
-	if i.config.Level == chaostypes.DisruptionLevelPod {
-		if i.config.OnInit {
-			if err := i.config.Iptables.DeleteRule("OUTPUT", "udp", "53", chaostypes.InjectorIptablesChaosDNSChainName); err != nil {
-				return fmt.Errorf("unable to remove injected iptables rule: %w", err)
-			}
-		} else {
-			// Delete iptables rules
-			if err := i.config.Iptables.DeleteCgroupFilterRule("nat", "OUTPUT", i.config.Cgroup.RelativePath(""), "-p", "udp", "--dport", "53", "-j", chaostypes.InjectorIptablesChaosDNSChainName); err != nil {
-				return fmt.Errorf("unable to remove injected iptables rule: %w", err)
-			}
-		}
-	}
-
-	if i.config.Level == chaostypes.DisruptionLevelNode {
-		// Delete prerouting rule affecting all pods on node
-		if err := i.config.Iptables.DeleteRule("OUTPUT", "udp", "53", chaostypes.InjectorIptablesChaosDNSChainName); err != nil {
-			return fmt.Errorf("unable to remove new iptables rule: %w", err)
-		}
-
-		if err := i.config.Iptables.DeleteRule("PREROUTING", "udp", "53", chaostypes.InjectorIptablesChaosDNSChainName); err != nil {
-			return fmt.Errorf("unable to remove new iptables rule: %w", err)
-		}
-	}
-
-	// check if there's still a jump rule to CHAOS-DNS chain existing
-	// that would block its deletion
-	rules, err := i.config.Iptables.ListRules("nat", "OUTPUT")
-	if err != nil {
-		return fmt.Errorf("error listing nat output rules: %w", err)
-	}
-
-	jumpRuleExists := false
-
-	for _, rule := range rules {
-		if strings.HasSuffix(rule, "-j "+chaostypes.InjectorIptablesChaosDNSChainName) {
-			jumpRuleExists = true
-			break
-		}
-	}
-
-	// delete CHAOS-DNS chain once no more jump rules are existing
-	if !jumpRuleExists {
-		i.config.Log.Debugf("no more jump rules to %s chain, now deleting it", chaostypes.InjectorIptablesChaosDNSChainName)
-
-		if err := i.config.Iptables.ClearAndDeleteChain(chaostypes.InjectorIptablesChaosDNSChainName); err != nil {
-			return fmt.Errorf("unable to remove injected iptables chain: %w", err)
-		}
+	// clean injected iptables
+	if err := i.config.Iptables.Clear(); err != nil {
+		return fmt.Errorf("unable to clean iptables rules and chain: %w", err)
 	}
 
 	// exit target network namespace
 	if err := i.config.Netns.Exit(); err != nil {
 		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
+	}
+
+	// Remove the net_cls classid for cgroup v1
+	if !i.config.Cgroup.IsCgroupV2() {
+		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0"); err != nil {
+			return fmt.Errorf("unable to write net_cls classid: %w", err)
+		}
 	}
 
 	// There is nothing we need to do to shut down the resolver beyond letting the pod terminate

@@ -37,6 +37,7 @@ var _ = Describe("Failure", func() {
 		config                                                  NetworkDisruptionInjectorConfig
 		spec                                                    v1beta1.NetworkDisruptionSpec
 		cgroupManager                                           *cgroup.ManagerMock
+		isCgroupV2Call                                          *mock.Call
 		tc                                                      *network.TcMock
 		iptables                                                *network.IptablesMock
 		nl                                                      *network.NetlinkAdapterMock
@@ -54,6 +55,8 @@ var _ = Describe("Failure", func() {
 		// cgroup
 		cgroupManager = &cgroup.ManagerMock{}
 		cgroupManager.On("RelativePath", mock.Anything).Return("/kubepod.slice/foo")
+		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		isCgroupV2Call = cgroupManager.On("IsCgroupV2").Return(false)
 
 		// netns
 		netnsManager = &netns.ManagerMock{}
@@ -72,15 +75,10 @@ var _ = Describe("Failure", func() {
 
 		// iptables
 		iptables = &network.IptablesMock{}
-		iptables.On("CreateChain", mock.Anything).Return(nil)
-		iptables.On("ClearAndDeleteChain", mock.Anything).Return(nil)
-		iptables.On("AddRuleWithIP", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("AddWideFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("AddCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("PrependRuleSpec", mock.Anything, mock.Anything).Return(nil)
-		iptables.On("DeleteRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptables.On("DeleteRuleSpec", mock.Anything, mock.Anything).Return(nil)
-		iptables.On("DeleteCgroupFilterRule", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptables.On("Clear").Return(nil)
+		iptables.On("MarkCgroupPath", mock.Anything, mock.Anything).Return(nil)
+		iptables.On("MarkClassID", mock.Anything, mock.Anything).Return(nil)
+		iptables.On("LogConntrack").Return(nil)
 
 		// netlink
 		nllink1 = &network.NetlinkLinkMock{}
@@ -222,11 +220,25 @@ var _ = Describe("Failure", func() {
 
 		It("should apply disruptions to main interfaces 2nd band", func() {
 			tc.AssertCalled(GinkgoT(), "AddNetem", []string{"lo", "eth0", "eth1"}, "2:2", mock.Anything, time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
+			tc.AssertNumberOfCalls(GinkgoT(), "AddNetem", 1)
 			tc.AssertCalled(GinkgoT(), "AddOutputLimit", []string{"lo", "eth0", "eth1"}, "3:", mock.Anything, uint(spec.BandwidthLimit))
 		})
 
-		It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
-			iptables.AssertCalled(GinkgoT(), "AddCgroupFilterRule", "mangle", "OUTPUT", "/kubepod.slice/foo", []string{"-j", "MARK", "--set-mark", chaostypes.InjectorCgroupClassID})
+		Context("packet marking with cgroups v1", func() {
+			It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", chaostypes.InjectorCgroupClassID)
+				iptables.AssertCalled(GinkgoT(), "MarkClassID", chaostypes.InjectorCgroupClassID, chaostypes.InjectorCgroupClassID)
+			})
+		})
+
+		Context("packet marking with cgroups v2", func() {
+			BeforeEach(func() {
+				isCgroupV2Call.Return(true)
+			})
+
+			It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
+				iptables.AssertCalled(GinkgoT(), "MarkCgroupPath", "/kubepod.slice/foo", chaostypes.InjectorCgroupClassID)
+			})
 		})
 
 		// qlen cases
@@ -341,7 +353,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			AfterEach(func() {
-				inj.Clean()
+				Expect(inj.Clean()).To(BeNil())
 			})
 
 		})
@@ -418,6 +430,21 @@ var _ = Describe("Failure", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "8.8.8.8/32", 0, 53, "tcp", "", "1:1")
 			})
 		})
+
+		Context("with a re-injection", func() {
+			JustBeforeEach(func() {
+				// When an update event is sent to the injector, the disruption method Clean is called before its Inject method.
+				// If the method Clean is not called the AddNetem operations will stack up.
+				Expect(inj.Clean()).To(BeNil())
+				Expect(inj.Inject()).To(BeNil())
+			})
+
+			It("should not stack up AddNetem operations", func() {
+				tc.AssertCalled(GinkgoT(), "AddNetem", []string{"lo", "eth0", "eth1"}, "2:2", mock.Anything, time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
+				// The first call come from the first injection and the second is form the last injection. So the sum of calls si two.
+				tc.AssertNumberOfCalls(GinkgoT(), "AddNetem", 2)
+			})
+		})
 	})
 
 	Describe("inj.Clean", func() {
@@ -430,8 +457,8 @@ var _ = Describe("Failure", func() {
 			netnsManager.AssertCalled(GinkgoT(), "Exit")
 		})
 
-		It("should remove the cgroup iptables packet marking rule", func() {
-			iptables.AssertCalled(GinkgoT(), "DeleteCgroupFilterRule", "mangle", "OUTPUT", "/kubepod.slice/foo", []string{"-j", "MARK", "--set-mark", chaostypes.InjectorCgroupClassID})
+		It("should remove iptables rules", func() {
+			iptables.AssertCalled(GinkgoT(), "Clear")
 		})
 
 		Context("qdisc cleanup should happen", func() {
