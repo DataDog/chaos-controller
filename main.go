@@ -95,10 +95,10 @@ type controllerWebhookConfig struct {
 }
 
 type safeModeConfig struct {
-	NameMeLater        string `json:"nameMeLater"`
-	Enable             bool   `json:"enable"`
-	NamespaceThreshold int    `json:"namespaceThreshold"`
-	ClusterThreshold   int    `json:"clusterThreshold"`
+	SpecifiedEnvironment string `json:"specifiedEnvironment"`
+	Enable               bool   `json:"enable"`
+	NamespaceThreshold   int    `json:"namespaceThreshold"`
+	ClusterThreshold     int    `json:"clusterThreshold"`
 }
 
 type injectorConfig struct {
@@ -238,8 +238,8 @@ func main() {
 	pflag.BoolVar(&cfg.Controller.UserInfoHook, "user-info-webhook", true, "Enable the mutating webhook to inject user info into disruption status")
 	handleFatalError(viper.BindPFlag("controller.userInfoHook", pflag.Lookup("user-info-webhook")))
 
-	pflag.StringVar(&cfg.Controller.SafeMode.NameMeLater, "name-me-later", "", "Specify the 'location' this controller is run in. All disruption's must have a label configured with this location to be allowed to create")
-	handleFatalError(viper.BindPFlag("conroller.safemode.nameMeLater", pflag.Lookup("name-me-later")))
+	pflag.StringVar(&cfg.Controller.SafeMode.SpecifiedEnvironment, "specified-environment", "", "Specify the 'location' this controller is run in. All disruption's must have their spec.specifiedEnv configured with this location to be allowed to create")
+	handleFatalError(viper.BindPFlag("conroller.safemode.specifiedEnvironment", pflag.Lookup("specified-environment")))
 
 	pflag.BoolVar(&cfg.Controller.SafeMode.Enable, "safemode-enable", true,
 		"Enable or disable the safemode functionality of the chaos-controller")
@@ -428,7 +428,7 @@ func main() {
 		DefaultDurationFlag:           cfg.Controller.DefaultDuration,
 		ChaosNamespace:                cfg.Injector.ChaosNamespace,
 		CloudServicesProvidersManager: cloudProviderManager,
-		NameMeLater:                   cfg.Controller.SafeMode.NameMeLater,
+		SpecifiedEnvironment:          cfg.Controller.SafeMode.SpecifiedEnvironment,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
