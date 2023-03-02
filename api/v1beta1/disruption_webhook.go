@@ -103,13 +103,13 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	if nameMeLater != "" {
-		nameMe, ok := r.Labels["nameMeLater"]
-		if !ok {
-			return fmt.Errorf("disruption's nameMeLater label is unset")
+		specifiedEnv := r.Spec.SpecifiedEnvironment
+		if len(specifiedEnv) == 0 {
+			return fmt.Errorf("disruption's does not specify an environment to run, but this controller requires it. Set your spec.specifiedEnv field")
 		}
 
-		if nameMe != nameMeLater {
-			return fmt.Errorf("disruption is configured to run in %s but has been applied in %s", nameMe, nameMeLater)
+		if specifiedEnv != nameMeLater {
+			return fmt.Errorf("disruption is configured to run in %s but has been applied in %s", specifiedEnv, nameMeLater)
 		}
 	}
 

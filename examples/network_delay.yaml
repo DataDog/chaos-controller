@@ -8,9 +8,8 @@ kind: Disruption
 metadata:
   name: network-delay
   namespace: chaos-demo
-  labels:
-    nameMeLater: lima
 spec:
+  specifiedEnv: lima
   level: pod
   selector:
     app: demo-curl

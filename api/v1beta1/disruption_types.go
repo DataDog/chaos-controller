@@ -43,11 +43,12 @@ type DisruptionSpec struct {
 	// +nullable
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	// +nullable
-	Filter          *DisruptionFilter `json:"filter,omitempty"`
-	DryRun          bool              `json:"dryRun,omitempty"`          // enable dry-run mode
-	OnInit          bool              `json:"onInit,omitempty"`          // enable disruption on init
-	Unsafemode      *UnsafemodeSpec   `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
-	StaticTargeting bool              `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
+	Filter               *DisruptionFilter `json:"filter,omitempty"`
+	DryRun               bool              `json:"dryRun,omitempty"`          // enable dry-run mode
+	OnInit               bool              `json:"onInit,omitempty"`          // enable disruption on init
+	Unsafemode           *UnsafemodeSpec   `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
+	SpecifiedEnvironment string            `json:"specifiedEnv,omitempty"`    // optional field limiting where disruptions can ru
+	StaticTargeting      bool              `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
