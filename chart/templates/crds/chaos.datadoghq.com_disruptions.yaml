@@ -467,6 +467,8 @@ spec:
                 description: Set is a map of label:value. It implements Labels.
                 nullable: true
                 type: object
+              specifiedEnv:
+                type: string
               staticTargeting:
                 type: boolean
               unsafeMode:
