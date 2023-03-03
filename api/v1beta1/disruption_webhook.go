@@ -46,7 +46,7 @@ var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 var chaosNamespace string
 var safemodeEnvironment string
 
-const safeModeEnvironmentAnnotation = "chaos.datadoghq.com/environment"
+const safemodeEnvironmentAnnotation = "chaos.datadoghq.com/environment"
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	if err := ddmark.InitLibrary(EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix); err != nil {
@@ -105,13 +105,13 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	if safemodeEnvironment != "" {
-		disruptionEnv, ok := r.Annotations[safeModeEnvironmentAnnotation]
+		disruptionEnv, ok := r.Annotations[safemodeEnvironmentAnnotation]
 		if !ok {
-			return fmt.Errorf("disruption does not specify an environment to run, but this controller requires it. Set the annotation `%s:\"%s\"` to run on this controller", safeModeEnvironmentAnnotation, safemodeEnvironment)
+			return fmt.Errorf("disruption does not specify an environment to run, but this controller requires it. Set the annotation `%s:\"%s\"` to run on this controller", safemodeEnvironmentAnnotation, safemodeEnvironment)
 		}
 
 		if disruptionEnv != safemodeEnvironment {
-			return fmt.Errorf("disruption is configured to run in %s but has been applied in %s", disruptionEnv, safemodeEnvironment)
+			return fmt.Errorf("disruption is configured to run in %s but has been applied in %s. Set the annotation `%s:\\\"%s\\\"` to run on this controller\", safemodeEnvironmentAnnotation, safemodeEnvironment", disruptionEnv, safemodeEnvironment, safemodeEnvironmentAnnotation, safemodeEnvironment)
 		}
 	}
 

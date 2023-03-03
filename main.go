@@ -238,8 +238,8 @@ func main() {
 	pflag.BoolVar(&cfg.Controller.UserInfoHook, "user-info-webhook", true, "Enable the mutating webhook to inject user info into disruption status")
 	handleFatalError(viper.BindPFlag("controller.userInfoHook", pflag.Lookup("user-info-webhook")))
 
-	pflag.StringVar(&cfg.Controller.SafeMode.Environment, "environment", "", "Specify the 'location' this controller is run in. All disruptions must have an annotation of chaos.datadoghq.com/environment configured with this location to be allowed to create")
-	handleFatalError(viper.BindPFlag("conroller.safemode.environment", pflag.Lookup("environment")))
+	pflag.StringVar(&cfg.Controller.SafeMode.Environment, "safemode-environment", "", "Specify the 'location' this controller is run in. All disruptions must have an annotation of chaos.datadoghq.com/environment configured with this location to be allowed to create")
+	handleFatalError(viper.BindPFlag("conroller.safemode.environment", pflag.Lookup("safemode-environment")))
 
 	pflag.BoolVar(&cfg.Controller.SafeMode.Enable, "safemode-enable", true,
 		"Enable or disable the safemode functionality of the chaos-controller")
