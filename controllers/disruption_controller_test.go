@@ -168,8 +168,9 @@ var _ = Describe("Disruption Controller", func() {
 	BeforeEach(func() {
 		disruption = &chaosv1beta1.Disruption{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "default",
+				Name:        "foo",
+				Namespace:   "default",
+				Annotations: map[string]string{chaosv1beta1.SafemodeEnvironmentAnnotation: "lima"},
 			},
 			Spec: chaosv1beta1.DisruptionSpec{
 				DryRun: true,
