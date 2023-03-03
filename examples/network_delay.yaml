@@ -8,8 +8,9 @@ kind: Disruption
 metadata:
   name: network-delay
   namespace: chaos-demo
+  annotations:
+    chaos.datadoghq.com/environment: "lima"
 spec:
-  specifiedEnv: lima
   level: pod
   selector:
     app: demo-curl

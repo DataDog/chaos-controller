@@ -44,7 +44,9 @@ var handlerEnabled bool
 var defaultDuration time.Duration
 var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 var chaosNamespace string
-var specifiedEnvironment string
+var safemodeEnvironment string
+
+const safeModeEnvironmentAnnotation = "chaos.datadoghq.com/environment"
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	if err := ddmark.InitLibrary(EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix); err != nil {
@@ -64,7 +66,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 	chaosNamespace = setupWebhookConfig.ChaosNamespace
-	specifiedEnvironment = setupWebhookConfig.SpecifiedEnvironment
+	safemodeEnvironment = setupWebhookConfig.Environment
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
@@ -102,14 +104,14 @@ func (r *Disruption) ValidateCreate() error {
 		return fmt.Errorf("invalid disruption name: %w", err)
 	}
 
-	if specifiedEnvironment != "" {
-		specifiedEnv := r.Spec.SpecifiedEnvironment
-		if len(specifiedEnv) == 0 {
-			return fmt.Errorf("disruption's does not specify an environment to run, but this controller requires it. Set your spec.specifiedEnv field")
+	if safemodeEnvironment != "" {
+		disruptionEnv, ok := r.Annotations[safeModeEnvironmentAnnotation]
+		if !ok {
+			return fmt.Errorf("disruption does not specify an environment to run, but this controller requires it. Set the annotation `%s:\"%s\"` to run on this controller", safeModeEnvironmentAnnotation, safemodeEnvironment)
 		}
 
-		if specifiedEnv != specifiedEnvironment {
-			return fmt.Errorf("disruption is configured to run in %s but has been applied in %s", specifiedEnv, specifiedEnvironment)
+		if disruptionEnv != safemodeEnvironment {
+			return fmt.Errorf("disruption is configured to run in %s but has been applied in %s", disruptionEnv, safemodeEnvironment)
 		}
 	}
 

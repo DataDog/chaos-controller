@@ -17,7 +17,7 @@ intended for a given cluster cannot be accidentally run anywhere else, especiall
 ## Ignoring Safety Nets
 
 Because the list of safety nets to be implemented will grow in the future, there will surely be overlap with safety nets which will make it difficult for a user who is confident a specific safety net is not necessary but unsure if others will be.
-Therefore the controller allows for you to disable specific safety nets in the Safemode Spec. Checkout out example below to see how to remove certain safety nets.
+Therefore, the controller allows for you to disable specific safety nets in the Safemode Spec. Checkout out example below to see how to remove certain safety nets.
 Keep in mind that all safety nets are turned on by default.
 
 ## Configuring Safety Nets
