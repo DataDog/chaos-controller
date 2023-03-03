@@ -8,6 +8,8 @@ kind: Disruption
 metadata:
   name: dry-run
   namespace: chaos-demo
+  annotations:
+    chaos.datadoghq.com/environment: "lima"
 spec:
   dryRun: true # enable dry-run mode (chaos pods will be created but won't inject anything)
   level: pod

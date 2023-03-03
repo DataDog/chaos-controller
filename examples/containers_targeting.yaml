@@ -8,6 +8,8 @@ kind: Disruption
 metadata:
   name: containers-targeting
   namespace: chaos-demo
+  annotations:
+    chaos.datadoghq.com/environment: "lima"
 spec:
   level: pod
   selector:
