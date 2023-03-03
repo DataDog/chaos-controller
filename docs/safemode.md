@@ -12,7 +12,7 @@ Please take a look at the example below to see how to use `unsafeMode`.
 
 The chaos-controller operates within the boundaries of a single kubernetes cluster. For users with multiple kubernetes clusters in their environments, they may want to enforce the added safety that Disruptions
 intended for a given cluster cannot be accidentally run anywhere else, especially across the dev/prod boundary. Operators of the chaos-controller can optionally set the
-`controller.safeMode.specifiedEnvironment` field in the config map to a string of their choice. Disruptions will then be rejected if their `spec.specifiedEnvironment` field is not set to an identical string.
+`controller.safeMode.specifiedEnvironment` field in the config map to a string of their choice. Disruptions will then be rejected if they do not have a `chaos.datadoghq.com/environment` annotation set to an identical string.
 
 ## Ignoring Safety Nets
 
