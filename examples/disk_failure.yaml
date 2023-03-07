@@ -13,7 +13,5 @@ spec:
   selector:
     app: demo-curl
   count: 1
-  #containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
-  #  - read-file
   diskFailure:
     path: /mnt/
