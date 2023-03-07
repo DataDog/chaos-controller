@@ -70,7 +70,7 @@ var _ = Describe("DiskFailureSpec", func() {
 
 			It("should return an error", func() {
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(Equal("the path of the disk failure disruption must not be blank"))
+				Expect(err.Error()).Should(Equal("the path of the disk failure disruption must not be empty"))
 			})
 		})
 	})

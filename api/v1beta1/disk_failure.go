@@ -19,14 +19,10 @@ const MaxPathCharacters = 62
 
 // Validate validates args for the given disruption
 func (s *DiskFailureSpec) Validate() error {
-	if s.Path == "" {
-		return fmt.Errorf("the path of the disk failure disruption must not be empty")
-	}
-
 	path := strings.TrimSpace(s.Path)
 
 	if path == "" {
-		return fmt.Errorf("the path of the disk failure disruption must not be blank")
+		return fmt.Errorf("the path of the disk failure disruption must not be empty")
 	}
 
 	if len(path) > MaxPathCharacters {
