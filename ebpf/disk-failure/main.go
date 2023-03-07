@@ -28,7 +28,7 @@ var nPath = flag.String("f", "/", "Filter path")
 var logger *zap.SugaredLogger
 
 func main() {
-	// Defined a chanel to handle SIGTERM
+	// Defined a chanel to handle SIGINT
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
 
