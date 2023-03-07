@@ -63,8 +63,11 @@ injector:
   labels: {} # extra labels passed to the chaos injector pods
   serviceAccount: chaos-injector # service account to use for the chaos injector pods
   dnsDisruption: # dns disruption configuration
-    dnsServer: "8.8.8.8" # IP address of the upstream dns server
-    kubeDns: "off" # whether to use kube-dns for DNS resolution (off, internal, all)
+    dnsServer: "" # IP address of the upstream dns server
+    kubeDns: "all" # whether to use kube-dns for DNS resolution (default: "all"). Options:
+         # : "off": disable k8s DNS resolution
+         # : "internal": allow only k8s internal DNS resolution. It means all domains with the suffix `.local.` or `.internal.`
+         # : "all": allow all k8s DNS resolution
   networkDisruption: # network disruption general configuration
     allowedHosts: [] # list of always allowed hosts (even if explicitly blocked by a network disruption)
     # (here's the expected format, all fields are optional)
