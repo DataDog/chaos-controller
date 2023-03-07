@@ -65,9 +65,9 @@ injector:
   dnsDisruption: # dns disruption configuration
     dnsServer: "" # IP address of the upstream dns server
     kubeDns: "all" # whether to use kube-dns for DNS resolution (default: "all"). Options:
-         # : "off": disable k8s DNS resolution
-         # : "internal": allow only k8s internal DNS resolution. It means all domains with the suffix `.local.` or `.internal.`
-         # : "all": allow all k8s DNS resolution
+         # : "off": use the DNS server defined in the controller configuration for all resolutions
+         # : "internal": use kube-dns for internal hostnames resolution (`.local.` or `.internal.` suffixes), use the DNS server defined in the controller configuration for all other resolutions
+         # : "all": use kube-dns for all resolutions
   networkDisruption: # network disruption general configuration
     allowedHosts: [] # list of always allowed hosts (even if explicitly blocked by a network disruption)
     # (here's the expected format, all fields are optional)
