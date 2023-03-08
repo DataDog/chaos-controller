@@ -38,6 +38,8 @@ kind: Disruption
 metadata:
   name: node-failure
   namespace: chaos-demo # it must be in the same namespace as targeted resources
+  annotations:
+    chaos.datadoghq.com/environment: "dev" # must match the environment you are running your disruption in. The options here are controlled by the operators of the chaos-controller
 spec:
   selector: # a label selector used to target resources
     app: demo-curl
