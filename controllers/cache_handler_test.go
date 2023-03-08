@@ -77,8 +77,9 @@ var _ = Describe("Cache Handler verifications", func() {
 			targetLabels = targetPodA.Labels
 			disruption = &v1beta1.Disruption{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "default",
+					Name:        "foo",
+					Namespace:   "default",
+					Annotations: map[string]string{v1beta1.SafemodeEnvironmentAnnotation: "lima"},
 				},
 				Spec: v1beta1.DisruptionSpec{
 					DryRun: false,

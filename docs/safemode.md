@@ -8,10 +8,16 @@ Safemode is always enabled by default and will require manual disabling of safet
 `unsafeMode.disableAll` turns off all safety nets. The other options under `unsafeMode` represent individual safety nets which can be disabled independently.
 Please take a look at the example below to see how to use `unsafeMode`.
 
+## Explicit Disruption Environments
+
+The chaos-controller operates within the boundaries of a single kubernetes cluster. For users with multiple kubernetes clusters in their environments, they may want to enforce the added safety that Disruptions
+intended for a given cluster cannot be accidentally run anywhere else, especially across the dev/prod boundary. Operators of the chaos-controller can optionally set the
+`controller.safeMode.specifiedEnvironment` field in the config map to a string of their choice. Disruptions will then be rejected if they do not have a `chaos.datadoghq.com/environment` annotation set to an identical string.
+
 ## Ignoring Safety Nets
 
 Because the list of safety nets to be implemented will grow in the future, there will surely be overlap with safety nets which will make it difficult for a user who is confident a specific safety net is not necessary but unsure if others will be.
-Therefore the controller allows for you to disable specific safety nets in the Safemode Spec. Checkout out example below to see how to remove certain safety nets.
+Therefore, the controller allows for you to disable specific safety nets in the Safemode Spec. Checkout out example below to see how to remove certain safety nets.
 Keep in mind that all safety nets are turned on by default.
 
 ## Configuring Safety Nets

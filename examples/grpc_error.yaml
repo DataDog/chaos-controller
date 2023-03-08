@@ -8,6 +8,8 @@ kind: Disruption
 metadata:
   name: grpc-error
   namespace: chaos-demo
+  annotations:
+    chaos.datadoghq.com/environment: "lima"
 spec:
   level: pod
   selector:
