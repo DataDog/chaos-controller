@@ -45,6 +45,9 @@ var defaultDuration time.Duration
 var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 var chaosNamespace string
 var ddmarkClient ddmark.Client
+var safemodeEnvironment string
+
+const SafemodeEnvironmentAnnotation = "chaos.datadoghq.com/environment"
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	var err error
@@ -67,6 +70,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 	chaosNamespace = setupWebhookConfig.ChaosNamespace
+	safemodeEnvironment = setupWebhookConfig.Environment
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
@@ -102,6 +106,17 @@ func (r *Disruption) ValidateCreate() error {
 	// according to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 	if _, err := labels.Parse(fmt.Sprintf("name=%s", r.Name)); err != nil {
 		return fmt.Errorf("invalid disruption name: %w", err)
+	}
+
+	if safemodeEnvironment != "" {
+		disruptionEnv, ok := r.Annotations[SafemodeEnvironmentAnnotation]
+		if !ok {
+			return fmt.Errorf("disruption does not specify an environment to run, but this controller requires it. Set the annotation `%s:\"%s\"` to run on this controller", SafemodeEnvironmentAnnotation, safemodeEnvironment)
+		}
+
+		if disruptionEnv != safemodeEnvironment {
+			return fmt.Errorf("disruption is configured to run in %s but has been applied in %s. Set the annotation `%s:\\\"%s\\\"` to run on this controller\", SafemodeEnvironmentAnnotation, safemodeEnvironment", disruptionEnv, safemodeEnvironment, SafemodeEnvironmentAnnotation, safemodeEnvironment)
+		}
 	}
 
 	// handle a disruption using the onInit feature without the handler being enabled

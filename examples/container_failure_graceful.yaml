@@ -8,6 +8,8 @@ kind: Disruption
 metadata:
   name: container-failure-graceful
   namespace: chaos-demo
+  annotations:
+    chaos.datadoghq.com/environment: "lima"
 spec:
   selector:
     app: demo-curl

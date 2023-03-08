@@ -53,6 +53,7 @@ type SetupWebhookWithManagerConfig struct {
 	DefaultDurationFlag           time.Duration
 	ChaosNamespace                string
 	CloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
+	Environment                   string
 }
 
 // GetTargetedContainersInfo gets the IDs of the targeted containers or all container IDs found in a Pod
