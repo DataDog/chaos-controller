@@ -189,7 +189,8 @@ lima-kubectx-clean:
 	$(KUBECTL) config unset current-context || true
 
 lima-kubectx:
-	limactl shell default sudo sed 's/default/lima/g' /etc/rancher/k3s/k3s.yaml >> ~/.kube/config_lima
+	mkdir -p ~/.kube
+	limactl shell default sudo sed 's/default/lima/g' /etc/rancher/k3s/k3s.yaml >> ~/.kube/config_lima || true
 	KUBECONFIG=${KUBECONFIG}:~/.kube/config:~/.kube/config_lima kubectl config view --flatten > /tmp/config
 	rm ~/.kube/config_lima
 	mv /tmp/config ~/.kube/config

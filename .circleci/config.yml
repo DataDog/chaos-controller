@@ -237,7 +237,7 @@ jobs:
       - run:
           name: Build and load images
           <<: *working_directory
-          command: LIMA_CONFIG=lima-linux make lima-all
+          command: CGROUPS=v2 LIMA_CONFIG=lima-linux make lima-all
       - run:
           name: Run e2e tests
           <<: *working_directory
