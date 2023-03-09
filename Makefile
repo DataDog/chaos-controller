@@ -245,7 +245,7 @@ ci-install-lima:
 	curl -fsSL "https://github.com/lima-vm/lima/releases/download/v0.14.2/lima-0.14.2-Linux-x86_64.tar.gz" | tar Cxzvm /usr/local/bin
 	mv /usr/local/bin/bin/* /usr/local/bin/
 	sudo apt-get update
-	sudo apt-get install -y qemu-utils
+	sudo apt-get install -y qemu-utils kubectl
 
 ## Minikube builds for e2e tests
 minikube-build-all: minikube-build-manager minikube-build-injector minikube-build-handler

@@ -235,7 +235,7 @@ jobs:
           <<: *working_directory
           command: make controller-gen
       - run:
-          name: Build and load images
+          name: Build and load images, and start lima
           <<: *working_directory
           command: CGROUPS=v2 LIMA_CONFIG=lima-linux make lima-all
       - run:
