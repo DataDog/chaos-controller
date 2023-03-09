@@ -246,6 +246,7 @@ ci-install-lima:
 	mv /usr/local/bin/bin/* /usr/local/bin/
 	sudo apt-get update
 	sudo apt-get install -y qemu-utils kubectl
+	sudo snap install kubectx --classic
 
 ## Minikube builds for e2e tests
 minikube-build-all: minikube-build-manager minikube-build-injector minikube-build-handler
