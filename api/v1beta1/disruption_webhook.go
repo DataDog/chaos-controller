@@ -111,7 +111,7 @@ func (r *Disruption) ValidateCreate() error {
 		}
 
 		if disruptionEnv != safemodeEnvironment {
-			return fmt.Errorf("disruption is configured to run in %s but has been applied in %s. Set the annotation `%s: \\\"%s\\\"` to run on this controller\", SafemodeEnvironmentAnnotation, safemodeEnvironment", disruptionEnv, safemodeEnvironment, SafemodeEnvironmentAnnotation, safemodeEnvironment)
+			return fmt.Errorf("disruption is configured to run in %s but has been applied in %s. Set the annotation `%s: \"%s\"` to run on this controller\", SafemodeEnvironmentAnnotation, safemodeEnvironment", disruptionEnv, safemodeEnvironment, SafemodeEnvironmentAnnotation, safemodeEnvironment)
 		}
 	}
 
