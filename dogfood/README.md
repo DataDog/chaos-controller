@@ -104,6 +104,13 @@ x
 You can `kubectl apply -f examples/<disruption.yaml>` for any `example/` disruption files.
 For gRPC disruption, you can follow these [detailed steps](../docs/grpc_disruption/demo_instructions.md).
 
+### Sending Metrics to Datadog
+
+For the purposes of testing disruptions/workflows, you should make sure that the datadog agent is properly installed
+on the cluster that the client and server are running on. The Datadog Agent should be posting metrics related to CPU, 
+Network, and Disk which are all necessary to test the related disruptions. The client contains computation related to these disruptions and can be tested using
+the disruptions mentioned.
+
 ### Clean up
 
 - Run `make uninstall` to `kubectl delete` both charts as well as remove the namespace.

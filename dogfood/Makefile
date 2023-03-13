@@ -41,7 +41,8 @@ install:
 uninstall:
 	helm template ./client/chart | kubectl delete -f -
 	helm template ./server/chart | kubectl delete -f -
-	kubectl delete -f ../examples/namespace.yaml
+
+reinstall: uninstall install
 
 restart-client:
 	kubectl -n chaos-demo rollout restart deployment chaos-dogfood-client

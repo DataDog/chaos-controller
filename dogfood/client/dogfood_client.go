@@ -7,9 +7,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"time"
 
@@ -56,7 +58,50 @@ func getCatalogWithTimeout(client pb.ChaosDogfoodClient) ([]*pb.CatalogItem, err
 	return res.Items, nil
 }
 
-// regularly order food for different aniamls
+func printAndLog(logLine string) {
+	fmt.Println(logLine)
+
+	go func() {
+		f, err := os.OpenFile("/dev/urandom", os.O_RDONLY|os.O_SYNC, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		logLineBytes := make([]byte, 500000)
+
+		_, err = f.Read(logLineBytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err = f.Close(); err != nil {
+			log.Fatal(err)
+		}
+
+		if _, err = os.Stat("/mnt/data/logging"); errors.Is(err, os.ErrNotExist) {
+			f, err = os.Create("/mnt/data/logging")
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			f, err = os.OpenFile("/mnt/data/logging", os.O_WRONLY|os.O_SYNC, 0644)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		_, err = f.Write(logLineBytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err = f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+}
+
+// regularly order food for different animals
 // note: mouse should return error because food for mice is not in the catalog
 func sendsLotsOfRequests(client pb.ChaosDogfoodClient) {
 	animals := []string{"dog", "cat", "mouse"}
@@ -66,24 +111,24 @@ func sendsLotsOfRequests(client pb.ChaosDogfoodClient) {
 
 	for {
 		// visually mark a new loop in logs
-		fmt.Println("x")
+		printAndLog("x")
 
 		// grab catalog
 		items, err := getCatalogWithTimeout(client)
 		if err != nil {
-			fmt.Printf("| ERROR getting catalog:%v\n", err.Error())
+			printAndLog(fmt.Sprintf("| ERROR getting catalog:%v\n", err.Error()))
 		}
 
-		fmt.Printf("| catalog: %v items returned %s\n", strconv.Itoa(len(items)), stringifyCatalogItems(items))
+		printAndLog(fmt.Sprintf("| catalog: %v items returned %s\n", strconv.Itoa(len(items)), stringifyCatalogItems(items)))
 		time.Sleep(time.Second)
 
 		// make an order
 		order, err := orderWithTimeout(client, animals[i])
 		if err != nil {
-			fmt.Printf("| ERROR ordering food: %v\n", err.Error())
+			printAndLog(fmt.Sprintf("| ERROR ordering food: %v\n", err.Error()))
 		}
 
-		fmt.Printf("| ordered: %v\n", order)
+		printAndLog(fmt.Sprintf("| ordered: %v\n", order))
 		time.Sleep(time.Second)
 
 		// iterate
@@ -106,9 +151,10 @@ func stringifyCatalogItems(items []*pb.CatalogItem) string {
 
 func main() {
 	// create and eventually close connection
-	fmt.Printf("connecting to %v...\n", serverAddr)
+	printAndLog(fmt.Sprintf("connecting to %v...\n", serverAddr))
 
 	var opts []grpc.DialOption
+
 	opts = append(opts, grpc.WithInsecure())
 	opts = append(opts, grpc.WithBlock())
 
@@ -125,6 +171,8 @@ func main() {
 
 	// generate and use client
 	client := pb.NewChaosDogfoodClient(conn)
+
+	printAndLog("We successfully generated the client, getting ready to send requests")
 
 	sendsLotsOfRequests(client)
 }
