@@ -53,7 +53,7 @@ build:make:
     - curl -O https://dl.google.com/go/${GO_FILENAME}
     - rm -rf /usr/local/go && tar -C /usr/local -xzf ${GO_FILENAME}
     - export PATH=$PATH:/usr/local/go/bin
-    - make
+    - make all docker-build-ebpf
   artifacts:
     paths:
       - bin/injector/injector_amd64
