@@ -27,7 +27,7 @@ type cgroup struct {
 
 // NewManager creates a new cgroup manager from the given cgroup root path
 func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLogger) (Manager, error) {
-	manager, err := newCgroupManager(fmt.Sprintf("/proc/%d/cgroup", pid), cgroupMount)
+	manager, err := newCgroupManager(fmt.Sprintf("/proc/%d/cgroup", pid), cgroupMount, log)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (cg cgroup) RelativePath(controller string) string {
 	return strings.TrimPrefix((*cg.manager).Path(controller), cg.mountPath)
 }
 
-func newCgroupManager(cgroupFile string, cgroupMount string) (cgroups.Manager, error) {
+func newCgroupManager(cgroupFile string, cgroupMount string, log *zap.SugaredLogger) (cgroups.Manager, error) {
 	cg := &configs.Cgroup{
 		Resources: &configs.Resources{},
 	}
@@ -99,6 +99,7 @@ func newCgroupManager(cgroupFile string, cgroupMount string) (cgroups.Manager, e
 
 	// prefix the cgroup path with the mount point path
 	for subsystem, path := range cgroupPaths {
+		log.Debugw("adding cgroup subsystem path to manager", "subsystem", subsystem, "path", path)
 		cgroupPaths[subsystem] = filepath.Join(cgroupMount, subsystem, path)
 	}
 
@@ -108,6 +109,9 @@ func newCgroupManager(cgroupFile string, cgroupMount string) (cgroups.Manager, e
 	if cgroups.IsCgroup2UnifiedMode() {
 		return fs2.NewManager(cg, cgroupPaths[""])
 	}
+
+	// We don't want the empty subsystem if we're in v1
+	delete(cgroupPaths, "")
 
 	// cgroup v1 manager
 	return fs.NewManager(cg, cgroupPaths)
