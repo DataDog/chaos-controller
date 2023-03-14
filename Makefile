@@ -165,7 +165,12 @@ docker-build-manager: manager
 	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
 	docker save ${MANAGER_IMAGE} -o ./bin/manager/manager.tar.gz
 
-docker-build-injector: injector
+docker-build-ebpf:
+	docker build --platform linux/${OS_ARCH} --build-arg ARCH=${OS_ARCH} -t ebpf-builder-${OS_ARCH} -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
+	rm -r bin/injector/ebpf/ || true
+	docker run --rm -v ${shell pwd}:/app ebpf-builder-${OS_ARCH}
+
+docker-build-injector: docker-build-ebpf injector
 	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
 	docker save ${INJECTOR_IMAGE} -o ./bin/injector/injector.tar.gz
 

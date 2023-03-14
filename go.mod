@@ -5,6 +5,8 @@ go 1.18
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.2
 	github.com/DataDog/datadog-go v4.8.3+incompatible
+	github.com/aquasecurity/libbpfgo v0.4.5-libbpf-1.0.1
+	github.com/aquasecurity/libbpfgo/helpers v0.4.5
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/containerd/containerd v1.5.18

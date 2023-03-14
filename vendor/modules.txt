@@ -37,6 +37,12 @@ github.com/Microsoft/hcsshim/internal/wclayer
 github.com/Microsoft/hcsshim/internal/winapi
 github.com/Microsoft/hcsshim/osversion
 github.com/Microsoft/hcsshim/pkg/ociwclayer
+# github.com/aquasecurity/libbpfgo v0.4.5-libbpf-1.0.1
+## explicit; go 1.18
+github.com/aquasecurity/libbpfgo
+# github.com/aquasecurity/libbpfgo/helpers v0.4.5
+## explicit; go 1.18
+github.com/aquasecurity/libbpfgo/helpers
 # github.com/avast/retry-go v3.0.0+incompatible
 ## explicit
 github.com/avast/retry-go

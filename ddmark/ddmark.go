@@ -6,6 +6,8 @@
 package ddmark
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
 	"embed"
 	"fmt"
 	"reflect"
@@ -20,6 +22,62 @@ import (
 //go:embed validation_teststruct.go
 var EmbeddedDDMarkAPI embed.FS
 
+// Client interface to manage validation of struct fields
+//
+// Client is the expected way to use DDMark. Create a client with ddmark.NewClient(embed.FS).
+// The client interfaces with local-disk copies of the given files.
+// DDMark clients can be used simultaneously, as they manage independent/separate disk resources.
+//
+// Client creates local files in the GOPATH. Make sure to use Client.CleanupLibraries (or ddmark.CleanupAllLibraries) to remove them.
+type Client interface {
+	// ValidateStruct applies struct markers found in structPkgs struct definitions to a marshalledStruct object.
+	// It allows to enforce ddmark rules onto that object, according to the constraints defined in struct file.
+	ValidateStruct(marshalledStruct interface{}, filePath string) []error
+	// ValidateStructMultierror is the parent function of ValidateStruct.
+	// It allows users to leverage the multierror package for error management.
+	ValidateStructMultierror(marshalledStruct interface{}, filePath string) (retErr *multierror.Error)
+	// CleanupLibraries removes the disk files related to the client.
+	CleanupLibraries() error
+}
+
+// client struct implementing DDMark interface
+type client struct {
+	markedLibs []markedLib
+}
+
+// markedLib is a struct describing a library containing DDMarkers to be used in validation.
+// It includes the embedded library FS and a path naming option for consistency.
+type markedLib struct {
+	EmbeddedFS embed.FS
+	APIName    string
+}
+
+// NewClient create an new instance of DDMark
+func NewClient(embeddedFS ...embed.FS) (Client, error) {
+	var err error
+
+	var c = client{
+		markedLibs: []markedLib{},
+	}
+
+	for _, lib := range embeddedFS {
+		randomSha, err := generateRandomSha()
+		if err != nil {
+			return nil, err
+		}
+
+		c.markedLibs = append(c.markedLibs, markedLib{lib, randomSha})
+
+		err = c.initLibrary(lib, randomSha)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return c, err
+}
+
+// initializeMarkers creates and sets up the controller-tools Collector instance for ddmark.
 func initializeMarkers() *k8smarkers.Collector {
 	col := &k8smarkers.Collector{}
 	reg := &k8smarkers.Registry{}
@@ -37,12 +95,14 @@ func initializeMarkers() *k8smarkers.Collector {
 }
 
 // ValidateStruct applies struct markers found in structPkgs struct definitions to a marshalledStruct object.
-// It allows to enforce markers rule onto that object, according to the constraints defined in structPkgs
-func ValidateStruct(marshalledStruct interface{}, filePath string, structPkgs ...string) []error {
-	return ValidateStructMultierror(marshalledStruct, filePath, structPkgs...).Errors
+// It allows to enforce ddmark rules onto that object, according to the constraints defined in struct file.
+func (c client) ValidateStruct(marshalledStruct interface{}, filePath string) []error {
+	return c.ValidateStructMultierror(marshalledStruct, filePath).Errors
 }
 
-func ValidateStructMultierror(marshalledStruct interface{}, filePath string, structPkgs ...string) (retErr *multierror.Error) {
+// ValidateStructMultierror is the parent function of ValidateStruct.
+// It allows users to leverage the multierror package for error management.
+func (c client) ValidateStructMultierror(marshalledStruct interface{}, filePath string) (retErr *multierror.Error) {
 	col := initializeMarkers()
 
 	var err error
@@ -51,8 +111,8 @@ func ValidateStructMultierror(marshalledStruct interface{}, filePath string, str
 
 	var localStructPkgs = []string{}
 
-	for _, pkg := range structPkgs {
-		localStructPkgs = append(localStructPkgs, thisLibPath(pkg))
+	for _, pkg := range c.markedLibs {
+		localStructPkgs = append(localStructPkgs, thisLibPath(pkg.APIName))
 	}
 
 	pkgs, err = k8sloader.LoadRoots(localStructPkgs...)
@@ -71,7 +131,7 @@ func ValidateStructMultierror(marshalledStruct interface{}, filePath string, str
 	return retErr
 }
 
-// validateStruct is an internal recursive function that recursively applies markers rules to types and fields
+// validateStruct is an internal recursive function that recursively applies markers rules to types and fields.
 func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarkers.TypeInfo, markerValues k8smarkers.MarkerValues, fieldName string, col *k8smarkers.Collector) (retErr error) {
 	value := reflect.ValueOf(marshalledStruct)
 	unpointedValue := reflect.Indirect(value) // dereferences pointer value if there is one
@@ -109,7 +169,7 @@ func validateStruct(marshalledStruct interface{}, typesMap map[string]*k8smarker
 	return retErr
 }
 
-// applyMarkers applies all markers found in the markers arg to a given type/field
+// applyMarkers applies all markers found in the markers arg to a given type/field.
 func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, fieldName string, targetType k8smarkers.TargetType, col *k8smarkers.Collector) (retErr error) {
 	// if value is Invalid, field is most likely absent -- needs to add an error if Required is found true
 	if !reflect.Indirect(value).IsValid() {
@@ -177,7 +237,7 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, fieldNam
 	return retErr
 }
 
-// getAllPackageTypes extracts all marker rules found in packages and keeps them in a map, ordered by type names
+// getAllPackageTypes extracts all marker rules found in packages and keeps them in a map, ordered by type names.
 func getAllPackageTypes(packages []*k8sloader.Package, col *k8smarkers.Collector) map[string]*k8smarkers.TypeInfo {
 	var typesMap = map[string]*k8smarkers.TypeInfo{}
 
@@ -199,6 +259,19 @@ func getAllPackageTypes(packages []*k8sloader.Package, col *k8smarkers.Collector
 	}
 
 	return typesMap
+}
+
+// generateRandomSha generates a 64-chars sha as a string
+func generateRandomSha() (string, error) {
+	var err error
+
+	data := make([]byte, 10)
+
+	if _, err = rand.Read(data); err == nil {
+		return fmt.Sprintf("%x", sha256.Sum256(data)), err
+	}
+
+	return "", err
 }
 
 // HELPERS

@@ -28,7 +28,7 @@ func genCommonLibPath() string {
 
 // initLibrary copies a binary-embedded API into a custom folder in GOPATH.
 // This way, it can be read by ddmark.
-func InitLibrary(embeddedFS embed.FS, apiname string) error {
+func (c client) initLibrary(embeddedFS embed.FS, apiname string) error {
 	if _, isGoInstalled := os.LookupEnv("GOPATH"); !isGoInstalled {
 		err := fmt.Errorf("ddmark lib setup error: please make sure go (1.18 or higher) is installed and the GOPATH is set")
 		return err
@@ -89,14 +89,14 @@ func InitLibrary(embeddedFS embed.FS, apiname string) error {
 	return nil
 }
 
-// CleanupLibraries deletes all listed libraries in the common ddmark lib folder ($GOPATH/src/ddmarktemp/pkgs...)
-func CleanupLibraries(pkgs ...string) error {
-	if len(pkgs) == 0 {
-		pkgs = append(pkgs, "")
+// CleanupLibraries deletes a client-related disk resources in the common ddmark lib folder ($GOPATH/src/ddmarktemp/pkgs...)
+func (c client) CleanupLibraries() error {
+	if len(c.markedLibs) == 0 {
+		c.markedLibs = append(c.markedLibs, markedLib{embed.FS{}, ""})
 	}
 
-	for _, pkg := range pkgs {
-		folderPath := thisLibPath(pkg)
+	for _, markedLib := range c.markedLibs {
+		folderPath := thisLibPath(markedLib.APIName)
 
 		if os.RemoveAll(folderPath) != nil {
 			return fmt.Errorf("ddmark: couldn't clean up API located at " + folderPath)
@@ -106,7 +106,8 @@ func CleanupLibraries(pkgs ...string) error {
 	return nil
 }
 
-// CleanupAllLibraries deletes the common ddmark lib folder ($GOPATH/src/ddmarktemp)
+// CleanupAllLibraries deletes the common ddmark lib folder ($GOPATH/src/ddmarktemp/*)
+// Will remove the disk dependencies for all ddmark clients.
 func CleanupAllLibraries() error {
-	return CleanupLibraries()
+	return client{}.CleanupLibraries()
 }

@@ -12,6 +12,7 @@ type UnsafemodeSpec struct {
 	DisableCountTooLarge       bool    `json:"disableCountTooLarge,omitempty"`
 	DisableNeitherHostNorPort  bool    `json:"disableNeitherHostNorPort,omitempty"`
 	DisableSpecificContainDisk bool    `json:"disableSpecificContainDisk,omitempty"`
+	AllowRootDiskFailure       bool    `json:"allowRootDiskFailure,omitempty"`
 	Config                     *Config `json:"config,omitempty"`
 }
 

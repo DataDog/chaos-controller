@@ -44,12 +44,16 @@ var handlerEnabled bool
 var defaultDuration time.Duration
 var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
 var chaosNamespace string
+var ddmarkClient ddmark.Client
 var safemodeEnvironment string
 
 const SafemodeEnvironmentAnnotation = "chaos.datadoghq.com/environment"
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
-	if err := ddmark.InitLibrary(EmbeddedChaosAPI, chaostypes.DDMarkChaoslibPrefix); err != nil {
+	var err error
+	ddmarkClient, err = ddmark.NewClient(EmbeddedChaosAPI)
+
+	if err != nil {
 		return err
 	}
 
@@ -160,7 +164,7 @@ func (r *Disruption) ValidateCreate() error {
 		return err
 	}
 
-	multiErr := ddmark.ValidateStructMultierror(r.Spec, "validation_webhook", chaostypes.DDMarkChaoslibPrefix)
+	multiErr := ddmarkClient.ValidateStructMultierror(r.Spec, "validation_webhook")
 	if multiErr.ErrorOrNil() != nil {
 		return multierror.Prefix(multiErr, "ddmark: ")
 	}
@@ -350,6 +354,14 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 				responses = append(responses, "the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.")
 			}
 		}
+
+		if r.Spec.DiskFailure != nil {
+			if caught, response := safetyNetAllowRootDiskFailure(r); caught {
+				logger.Debugw("the specified disruption contains an invalid path.", "SafetyNet Catch", "DiskFailure")
+
+				responses = append(responses, response)
+			}
+		}
 	}
 
 	return responses, nil
@@ -522,4 +534,21 @@ func safetyNetNeitherHostNorPort(r Disruption) bool {
 	}
 
 	return false
+}
+
+// safetyNetAllowRootDiskFailure is the safety net regarding missing path or invalid path values for a disk failure disruption.
+func safetyNetAllowRootDiskFailure(r *Disruption) (bool, string) {
+	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowRootDiskFailure {
+		return false, ""
+	}
+
+	if r.Spec.Level != chaostypes.DisruptionLevelNode {
+		return false, ""
+	}
+
+	if strings.TrimSpace(r.Spec.DiskFailure.Path) == "/" {
+		return true, "the specified path for the disk failure disruption targeting a node must not be \"/\"."
+	}
+
+	return false, ""
 }

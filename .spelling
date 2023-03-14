@@ -12,6 +12,7 @@ ClusterIP
 ClusterRole
 DaemonSet
 DisableCountTooLarge
+AllowRootDiskFailure
 DisableNeitherHostNorPort
 DynamicTargeting
 ExclusiveFields
@@ -21,6 +22,7 @@ LICENSE-3rdparty
 LinkedFields
 Meowmix
 OnInit
+PIDs
 QoS
 README.md
 SIGKILL
@@ -36,6 +38,7 @@ authentify
 base64
 benchmarked
 blkio
+bpf-provided
 cetera
 cgroup
 cgroups
@@ -60,6 +63,7 @@ dns
 dogfood
 e.g.
 eBPF
+ebpf-builder
 eg
 enqueue
 enqueued
@@ -99,6 +103,7 @@ kube-dns
 kubebuilder
 kubectl
 kubernetes
+libbpf
 lifecycle
 lima
 linux
@@ -113,6 +118,7 @@ netem
 nginx
 no_entry
 open_book
+openat
 pid
 pre-controller
 pre-run
@@ -136,6 +142,7 @@ struct
 structs
 subcommand
 subfields
+syscall
 targetable
 tbf
 tc
@@ -160,4 +167,5 @@ vm
 webhook
 webhooks
 whitelisted
+wildcard
 yaml

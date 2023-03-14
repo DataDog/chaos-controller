@@ -10,10 +10,11 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/ddmark"
-	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
+
+var ddMarkClient ddmark.Client
 
 func TestApi(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -21,9 +22,11 @@ func TestApi(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	ddmark.InitLibrary(v1beta1.EmbeddedChaosAPI, types.DDMarkChaoslibPrefix)
+	var err error
+	ddMarkClient, err = ddmark.NewClient(v1beta1.EmbeddedChaosAPI)
+	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
-	ddmark.CleanupLibraries(types.DDMarkChaoslibPrefix)
+	Expect(ddMarkClient.CleanupLibraries()).ToNot(HaveOccurred())
 })

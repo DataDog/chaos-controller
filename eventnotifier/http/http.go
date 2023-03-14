@@ -154,6 +154,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 	}
 
 	res, err := n.client.Do(req)
+
 	if err != nil {
 		return fmt.Errorf("http notifier: error when sending notification: %s", err.Error())
 	}

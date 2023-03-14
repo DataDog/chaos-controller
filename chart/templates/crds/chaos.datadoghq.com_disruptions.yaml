@@ -91,6 +91,15 @@ spec:
                     - type: string
                     x-kubernetes-int-or-string: true
                 type: object
+              diskFailure:
+                description: DiskFailureSpec represents a disk failure disruption
+                nullable: true
+                properties:
+                  path:
+                    type: string
+                required:
+                - path
+                type: object
               diskPressure:
                 description: DiskPressureSpec represents a disk pressure disruption
                 nullable: true
@@ -476,6 +485,8 @@ spec:
                   disabling safety nets requires manually changing these booleans
                   to true
                 properties:
+                  allowRootDiskFailure:
+                    type: boolean
                   config:
                     description: Config represents any configurable parameters for
                       the safetynets, all of which have defaults

@@ -30,9 +30,9 @@ import (
 )
 
 // DisruptionSpec defines the desired state of Disruption
-// +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS}
-// +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS}
-// +ddmark:validation:AtLeastOneOf={DNS,CPUPressure,Network,NodeFailure,ContainerFailure,DiskPressure,GRPC}
+// +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS,DiskFailure}
+// +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS,DiskFailure}
+// +ddmark:validation:AtLeastOneOf={DNS,CPUPressure,Network,NodeFailure,ContainerFailure,DiskPressure,GRPC,DiskFailure}
 // +ddmark:validation:AtLeastOneOf={Selector,AdvancedSelector}
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
@@ -65,6 +65,8 @@ type DisruptionSpec struct {
 	CPUPressure *CPUPressureSpec `json:"cpuPressure,omitempty"`
 	// +nullable
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
+	// +nullable
+	DiskFailure *DiskFailureSpec `json:"diskFailure,omitempty"`
 	// +nullable
 	DNS DNSDisruptionSpec `json:"dns,omitempty"`
 	// +nullable
@@ -288,7 +290,8 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 			s.NodeFailure != nil ||
 			s.ContainerFailure != nil ||
 			s.DiskPressure != nil ||
-			s.GRPC != nil {
+			s.GRPC != nil ||
+			s.DiskFailure != nil {
 			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible with network and dns disruptions"))
 		}
 
@@ -356,6 +359,8 @@ func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName
 		disruptionKind = s.DNS
 	case chaostypes.DisruptionKindGRPCDisruption:
 		disruptionKind = s.GRPC
+	case chaostypes.DisruptionKindDiskFailure:
+		disruptionKind = s.DiskFailure
 	}
 
 	return disruptionKind
@@ -431,6 +436,10 @@ func (s *DisruptionSpec) GetDisruptionCount() int {
 	}
 
 	if s.NodeFailure != nil {
+		count++
+	}
+
+	if s.DiskFailure != nil {
 		count++
 	}
 

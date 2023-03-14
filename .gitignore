@@ -6,6 +6,7 @@
 *.so
 *.dylib
 bin/injector/injector*
+bin/injector/bpf-disk-failure*
 bin/injector*
 bin/manager/manager*
 bin/manager*
@@ -53,3 +54,6 @@ crash.log
 # local certificates
 /local/certDir/*.crt
 /local/certDir/*.key
+
+# eBPF
+ebpf/builds/
