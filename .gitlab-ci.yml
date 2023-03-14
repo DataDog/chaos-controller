@@ -62,6 +62,7 @@ build:make:
       - bin/injector/injector_arm64
       - bin/manager/manager_arm64
       - bin/handler/handler_arm64
+      - bin/injector/ebpf/*
 
 # build the target from the local Dockerfile and push it to the registry
 # replication will depend on the TARGET_LABEL set by parent job
