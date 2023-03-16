@@ -18,7 +18,7 @@ Without the OnInit parameter, we target all port 53 udp traffic **of each contai
 
 ## Forwarding non-matched requests
 
-Depending on your DNS setup you might need to override the DNS server and/or instruct the controller to forward requests to kube-dns. See the [advanced installation guide](installation.md#dns-resolution).
+Depending on your DNS setup you might need to override the DNS server and/or instruct the controller to forward requests to kube-dns. See the `dnsDisruption` section of the [helm chart](../chart/values.yaml).
 
 ## Manual cleanup instructions
 
