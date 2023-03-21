@@ -282,10 +282,16 @@ func main() {
 
 	pflag.Parse()
 
+	logger, err := log.NewZapLogger()
+	if err != nil {
+		setupLog.Error(err, "error creating controller logger")
+		os.Exit(1)
+	}
+
 	tracer.Start()
 	defer tracer.Stop()
 
-	err := profiler.Start(
+	err = profiler.Start(
 		profiler.WithProfileTypes(
 			profiler.CPUProfile,
 			profiler.HeapProfile,
@@ -299,15 +305,9 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 	defer profiler.Stop()
-
-	logger, err := log.NewZapLogger()
-	if err != nil {
-		setupLog.Error(err, "error creating controller logger")
-		os.Exit(1)
-	}
 
 	// get controller node name
 	controllerNodeName, exists := os.LookupEnv("CONTROLLER_NODE_NAME")
