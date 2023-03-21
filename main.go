@@ -25,6 +25,9 @@ import (
 	"os"
 	"time"
 
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
+
 	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
@@ -278,6 +281,27 @@ func main() {
 	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.ipRangesURL", pflag.Lookup("cloud-providers-datadog-iprangesurl")))
 
 	pflag.Parse()
+
+	tracer.Start()
+	defer tracer.Stop()
+
+	err := profiler.Start(
+		profiler.WithProfileTypes(
+			profiler.CPUProfile,
+			profiler.HeapProfile,
+
+			// The profiles below are disabled by
+			// default to keep overhead low, but
+			// can be enabled as needed.
+			// profiler.BlockProfile,
+			// profiler.MutexProfile,
+			// profiler.GoroutineProfile,
+		),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer profiler.Stop()
 
 	logger, err := log.NewZapLogger()
 	if err != nil {
