@@ -242,6 +242,11 @@ func (i *networkDisruptionInjector) Clean() error {
 	// remove the net_cls classid used for cgroup v1
 	if !i.config.Cgroup.IsCgroupV2() {
 		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0"); err != nil {
+			if os.IsNotExist(err) {
+				i.config.Log.Warnw("unable to find target container's net_cls.classid file, we will assume we cannot find the cgroup path because it is gone", "targetContainerID", i.config.TargetContainer.ID(), "err, err")
+				return nil
+			}
+
 			return fmt.Errorf("error cleaning net_cls classid: %w", err)
 		}
 	}

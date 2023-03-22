@@ -419,7 +419,7 @@ func reinject(cmdName string) error {
 	return nil
 }
 
-// clean clean all the disruptions using the list of injectors
+// clean will remove or undo all the disruptions using the list of injectors
 // returns true if cleanup succeeded, false otherwise
 func clean(kind string, sendToMetrics bool, reinjectionClean bool) bool {
 	errOnClean := false
