@@ -16,18 +16,17 @@ import (
 // Sink describes a tracer
 type Sink interface {
 	GetSinkName() string
-	Start()
 	Stop()
 }
 
 // GetSink returns an initiated tracer sink
-func GetSink(driver types.SinkDriver) (Sink, error) {
-	switch driver {
+func GetSink(cfg types.SinkConfig) (Sink, error) {
+	switch types.SinkDriver(cfg.Sink) {
 	case types.SinkDriverDatadog:
-		return datadog.New(), nil
+		return datadog.New(cfg)
 	case types.SinkDriverNoop:
-		return noop.New(), nil
+		return noop.New(cfg), nil
 	default:
-		return nil, fmt.Errorf("unsupported tracer: %s", driver)
+		return nil, fmt.Errorf("unsupported tracer: %s", cfg.Sink)
 	}
 }

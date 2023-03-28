@@ -14,6 +14,11 @@ data:
       metricsBindAddr: "127.0.0.1:8080"
       leaderElection: true
       metricsSink: {{ .Values.controller.metricsSink | quote }}
+      tracerSink: {{ .Values.controller.tracerSink | quote }}
+      tracer: 
+        enableTracer: {{ .Values.controller.tracer.enableTracer }}
+        sampleRate: {{ .Values.controller.tracer.sampleRate }}
+        enableProfiler: {{ .Values.controller.tracer.enableProfiler }}
       enableSafeguards: {{ .Values.controller.enableSafeguards }}
       enableObserver: {{ .Values.controller.enableObserver }}
       notifiers:

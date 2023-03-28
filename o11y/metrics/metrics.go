@@ -46,7 +46,7 @@ type Sink interface {
 	MetricOrphanFound(tags []string) error
 }
 
-// GetSink returns an initiated sink
+// GetSink returns an initiated metrics sink
 func GetSink(driver types.SinkDriver, app types.SinkApp) (Sink, error) {
 	switch driver {
 	case types.SinkDriverDatadog:

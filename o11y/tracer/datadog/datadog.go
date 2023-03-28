@@ -11,29 +11,28 @@ import (
 	"github.com/DataDog/chaos-controller/o11y/tracer/types"
 )
 
-// Sink describes a datadog tracer
+// Sink describes a datadog tracer sink
 type Sink struct{}
 
-// New datadog sink
-func New() *Sink {
-	return &Sink{}
-}
+// New initiated datadog tracer sink
+func New(cfg types.SinkConfig) (Sink, error) {
+	var err error
 
-// Start returns nil
-func (d *Sink) Start() {
-	tracer.Start(
-		tracer.WithAgentAddr(""),
-		tracer.WithAnalytics(true),
-		tracer.WithAnalyticsRate(100),
-	)
+	if cfg.Enable {
+		tracer.Start(
+			tracer.WithSampler(tracer.NewRateSampler(cfg.SampleRate)),
+		)
+	}
+
+	return Sink{}, err
 }
 
 // Stop returns nil
-func (d *Sink) Stop() {
+func (d Sink) Stop() {
 	tracer.Stop()
 }
 
 // GetSinkName returns the name of the sink
-func (d *Sink) GetSinkName() string {
+func (d Sink) GetSinkName() string {
 	return string(types.SinkDriverDatadog)
 }

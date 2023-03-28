@@ -25,8 +25,6 @@ import (
 	"github.com/DataDog/chaos-controller/network"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
-	"github.com/DataDog/chaos-controller/o11y/tracer"
-	tracertypes "github.com/DataDog/chaos-controller/o11y/tracer/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
 
@@ -57,7 +55,6 @@ var (
 	log                  *zap.SugaredLogger
 	dryRun               bool
 	ms                   metrics.Sink
-	ts                   tracer.Sink
 	sink                 string
 	level                string
 	rawTargetContainers  []string // contains name:id containers
@@ -119,7 +116,6 @@ func init() {
 	cobra.OnInitialize(initMetricsSink)
 	cobra.OnInitialize(initConfig)
 	cobra.OnInitialize(initExitSignalsHandler)
-	cobra.OnInitialize(initTracerSink)
 }
 
 func main() {
@@ -130,11 +126,6 @@ func main() {
 		if err := ms.Close(); err != nil {
 			log.Errorw("error closing metrics sink client", "error", err, "sink", ms.GetSinkName())
 		}
-	}()
-
-	defer func() {
-		log.Infow("closing tracer sink client before exiting", "sink", ts.GetSinkName())
-		ts.Stop()
 	}()
 
 	// execute command
@@ -172,20 +163,6 @@ func initMetricsSink() {
 
 		ms, _ = metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppInjector)
 	}
-}
-
-func initTracerSink() {
-	var err error
-
-	ts, err = tracer.GetSink(tracertypes.SinkDriver("noop")) //FIXME: add configmap parameter
-
-	if err != nil {
-		log.Errorw("error while creating tracer sink, switching to noop sink", "error", err)
-
-		ts, _ = tracer.GetSink(tracertypes.SinkDriverNoop)
-	}
-
-	ts.Start()
 }
 
 func initManagers(pid uint32) (netns.Manager, cgroup.Manager, error) {

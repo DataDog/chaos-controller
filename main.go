@@ -25,8 +25,6 @@ import (
 	"os"
 	"time"
 
-	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
-
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
@@ -37,6 +35,7 @@ import (
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
+	profilertypes "github.com/DataDog/chaos-controller/o11y/profiler/types"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
 	tracertypes "github.com/DataDog/chaos-controller/o11y/tracer/types"
 	"github.com/DataDog/chaos-controller/targetselector"
@@ -91,6 +90,8 @@ type controllerConfig struct {
 	CloudProviders           cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
 	UserInfoHook             bool                            `json:"userInfoHook"`
 	SafeMode                 safeModeConfig                  `json:"safeMode"`
+	Tracer                   tracertypes.SinkConfig          `json:"tracer"`
+	Profiler                 profilertypes.SinkConfig        `json:"profiler"`
 }
 
 type controllerWebhookConfig struct {
@@ -282,6 +283,21 @@ func main() {
 	pflag.StringVar(&cfg.Controller.CloudProviders.Datadog.IPRangesURL, "cloud-providers-datadog-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
 	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.ipRangesURL", pflag.Lookup("cloud-providers-datadog-iprangesurl")))
 
+	pflag.StringVar(&cfg.Controller.Tracer.Sink, "tracer-sink", "noop", "Tracer sink (datadog, or noop)")
+	handleFatalError(viper.BindPFlag("controller.tracer.sink", pflag.Lookup("tracer-sink")))
+
+	pflag.BoolVar(&cfg.Controller.Tracer.Enable, "tracer-enable", false, "Enable tracer")
+	handleFatalError(viper.BindPFlag("controller.tracer.enable", pflag.Lookup("tracer-enable")))
+
+	pflag.Float64Var(&cfg.Controller.Tracer.SampleRate, "tracer-samplerate", 1.0, "Sets tracer sampling rate")
+	handleFatalError(viper.BindPFlag("controller.tracer.sampleRate", pflag.Lookup("tracer-samplerate")))
+
+	pflag.StringVar(&cfg.Controller.Profiler.Sink, "profiler-sink", "noop", "profiler sink (datadog, or noop)")
+	handleFatalError(viper.BindPFlag("controller.profiler.sink", pflag.Lookup("profiler-sink")))
+
+	pflag.BoolVar(&cfg.Controller.Profiler.Enable, "profiler-enable", false, "Enable profiler")
+	handleFatalError(viper.BindPFlag("controller.profiler.enable", pflag.Lookup("profiler-enable")))
+
 	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
@@ -364,28 +380,12 @@ func main() {
 	}()
 
 	// tracer sink
-	tracer, err := tracer.GetSink(tracertypes.SinkDriver("noop")) //FIXME: configmap parameter
-	tracer.Start()
+	tracer, err := tracer.GetSink(cfg.Controller.Tracer)
 	defer tracer.Stop()
 
-	// profiler sink
-	err = profiler.Start(
-		profiler.WithProfileTypes(
-			profiler.CPUProfile,
-			profiler.HeapProfile,
-
-			// The profiles below are disabled by
-			// default to keep overhead low, but
-			// can be enabled as needed.
-			// profiler.BlockProfile,
-			// profiler.MutexProfile,
-			// profiler.GoroutineProfile,
-		),
-	)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Errorw("error while creating tracer sink", "error", err)
 	}
-	defer profiler.Stop()
 
 	// target selector
 	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName)
