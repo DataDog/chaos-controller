@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/ddmark"
-	"github.com/DataDog/chaos-controller/metrics/noop"
+	"github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/tools/record"

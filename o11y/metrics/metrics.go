@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/DataDog/chaos-controller/metrics/datadog"
-	"github.com/DataDog/chaos-controller/metrics/noop"
-	"github.com/DataDog/chaos-controller/metrics/types"
+	"github.com/DataDog/chaos-controller/o11y/metrics/datadog"
+	"github.com/DataDog/chaos-controller/o11y/metrics/noop"
+	"github.com/DataDog/chaos-controller/o11y/metrics/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 

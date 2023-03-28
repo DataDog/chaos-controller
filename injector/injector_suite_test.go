@@ -9,8 +9,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/DataDog/chaos-controller/metrics"
-	"github.com/DataDog/chaos-controller/metrics/types"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+	"github.com/DataDog/chaos-controller/o11y/metrics/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"

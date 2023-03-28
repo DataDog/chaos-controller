@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 
-	"github.com/DataDog/chaos-controller/metrics/noop"
+	"github.com/DataDog/chaos-controller/o11y/metrics/noop"
 )
 
 func TestV1Beta1(t *testing.T) {

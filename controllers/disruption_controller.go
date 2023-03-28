@@ -16,7 +16,7 @@ import (
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/cloudservice"
-	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/safemode"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
