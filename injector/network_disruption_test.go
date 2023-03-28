@@ -358,6 +358,90 @@ var _ = Describe("Failure", func() {
 
 		})
 
+		Context("with a service and allowed ports specified", func() {
+			BeforeEach(func() {
+				spec.Services = []v1beta1.NetworkDisruptionServiceSpec{
+					{
+						Name:      "foo",
+						Namespace: "bar",
+						Ports:     []int{80},
+					},
+				}
+
+				podsWatcher := watch.NewFake()
+				servicesWatcher := watch.NewFake()
+
+				k8sClient.PrependWatchReactor("pods", testing.DefaultWatchReactor(podsWatcher, nil))
+				k8sClient.PrependWatchReactor("services", testing.DefaultWatchReactor(servicesWatcher, nil))
+
+				// fake watchers for service handling
+				go func() {
+					// Set up
+					time.Sleep(300 * time.Millisecond)
+					servicesWatcher.Add(fakeService)
+					time.Sleep(300 * time.Millisecond)
+					podsWatcher.Add(fakeEndpoint)
+				}()
+			})
+
+			It("should add a filter for every service and pods filtered on", func() {
+				// wait for all the addFilters at the beginning of injection to complete
+				time.Sleep(5 * time.Second)
+
+				Eventually(func() bool {
+					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "", "1:4")
+				}, time.Second*5, time.Second).Should(BeTrue())
+				Eventually(func() bool {
+					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "", "1:4")
+				}, time.Second*5, time.Second).Should(BeTrue())
+			})
+
+			AfterEach(func() {
+				Expect(inj.Clean()).To(BeNil())
+			})
+
+		})
+
+		Context("with a service and allowed ports specified", func() {
+			BeforeEach(func() {
+				spec.Services = []v1beta1.NetworkDisruptionServiceSpec{
+					{
+						Name:      "foo",
+						Namespace: "bar",
+						Ports:     []int{81},
+					},
+				}
+
+				podsWatcher := watch.NewFake()
+				servicesWatcher := watch.NewFake()
+
+				k8sClient.PrependWatchReactor("pods", testing.DefaultWatchReactor(podsWatcher, nil))
+				k8sClient.PrependWatchReactor("services", testing.DefaultWatchReactor(servicesWatcher, nil))
+
+				// fake watchers for service handling
+				go func() {
+					// Set up
+					time.Sleep(300 * time.Millisecond)
+					servicesWatcher.Add(fakeService)
+					time.Sleep(300 * time.Millisecond)
+					podsWatcher.Add(fakeEndpoint)
+				}()
+			})
+
+			It("should error on bad port provided", func() {
+				// wait for all the addFilters at the beginning of injection to complete
+				time.Sleep(5 * time.Second)
+
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "", "1:4")
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "", "1:4")
+
+			})
+
+			AfterEach(func() {
+				Expect(inj.Clean()).To(BeNil())
+			})
+		})
+
 		// safeguards
 		Context("pod level safeguards", func() {
 			It("should add a filter to redirect default gateway IP traffic on a non-disrupted band", func() {
