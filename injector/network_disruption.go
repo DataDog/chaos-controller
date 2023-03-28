@@ -641,16 +641,16 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 	if isHeadless(*service) {
 		// If this is a headless service, we want to block all traffic to the endpoint IPs
 		watcher.servicePorts = append(watcher.servicePorts, v1.ServicePort{Port: 0})
-	} else {
+	} else if len(watcher.watchedServiceSpec.Ports) == 0 {
 		watcher.servicePorts = service.Spec.Ports
 	}
 
-	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
+	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, watcher.servicePorts, interfaces, flowid)
 	if err != nil {
 		return err
 	}
 
-	nsServicesTcFilters := i.buildServiceFiltersFromService(*service, service.Spec.Ports)
+	nsServicesTcFilters := i.buildServiceFiltersFromService(*service, watcher.servicePorts)
 
 	switch event.Type {
 	case watch.Added:
@@ -854,9 +854,25 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 			return fmt.Errorf("error getting the given kubernetes service (%s/%s): %w", serviceSpec.Namespace, serviceSpec.Name, err)
 		}
 
+		ports := k8sService.Spec.Ports
+
+		if len(serviceSpec.Ports) != 0 {
+			ports = []v1.ServicePort{}
+		}
+
+		for _, allowedPort := range serviceSpec.Ports {
+			for _, port := range k8sService.Spec.Ports {
+				if allowedPort == int(port.Port) {
+					ports = append(ports, port)
+
+					break
+				}
+			}
+		}
+
 		serviceWatcher := serviceWatcher{
 			watchedServiceSpec:   serviceSpec,
-			servicePorts:         k8sService.Spec.Ports,
+			servicePorts:         ports,
 			labelServiceSelector: labels.SelectorFromValidatedSet(k8sService.Spec.Selector).String(), // keep this information to later create watchers on resources destination
 
 			kubernetesPodEndpointsWatcher: nil,                 // watch pods related to the kubernetes service filtered on

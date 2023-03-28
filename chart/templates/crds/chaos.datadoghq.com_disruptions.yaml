@@ -407,6 +407,10 @@ spec:
                           type: string
                         namespace:
                           type: string
+                        ports:
+                          items:
+                            type: integer
+                          type: array
                       required:
                       - name
                       - namespace
@@ -574,3 +578,9 @@ spec:
     storage: true
     subresources:
       status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

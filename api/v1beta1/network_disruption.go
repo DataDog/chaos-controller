@@ -98,6 +98,8 @@ type NetworkDisruptionHostSpec struct {
 type NetworkDisruptionServiceSpec struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+	// +optional
+	Ports []int `json:"ports,omitempty"`
 }
 
 // +ddmark:validation:AtLeastOneOf={AWSServiceList,GCPServiceList,DatadogServiceList}
@@ -184,7 +186,12 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 
 	// append services
 	for _, service := range s.Services {
-		args = append(args, "--services", fmt.Sprintf("%s;%s", service.Name, service.Namespace))
+		ports := ""
+		for _, port := range service.Ports {
+			ports += fmt.Sprintf(";%d", port)
+		}
+
+		args = append(args, "--services", fmt.Sprintf("%s;%s%s", service.Name, service.Namespace, ports))
 	}
 
 	return args
@@ -391,14 +398,26 @@ func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisrupt
 	for _, service := range services {
 		// parse service with format <name>;<namespace>
 		parsedService := strings.Split(service, ";")
-		if len(parsedService) != 2 {
+		if len(parsedService) < 2 {
 			return nil, fmt.Errorf("unexpected service format: %s", service)
+		}
+
+		ports := []int{}
+
+		for _, parsed := range parsedService[2:] {
+			port, err := strconv.Atoi(parsed)
+			if err != nil {
+				return nil, fmt.Errorf("unexpected port format in service: %s", parsed)
+			}
+
+			ports = append(ports, port)
 		}
 
 		// generate service spec
 		parsedServices = append(parsedServices, NetworkDisruptionServiceSpec{
 			Name:      parsedService[0],
 			Namespace: parsedService[1],
+			Ports:     ports,
 		})
 	}
 

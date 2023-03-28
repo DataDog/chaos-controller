@@ -35,6 +35,21 @@ func validateServices(k8sClient client.Client, services []NetworkDisruptionServi
 			return fmt.Errorf("error retrieving the specified network disruption service: %w", err)
 		}
 
+		for _, port := range service.Ports {
+			found := false
+			for _, k8sServicePort := range k8sService.Spec.Ports {
+				if port == int(k8sServicePort.Port) {
+					found = true
+
+					break
+				}
+			}
+
+			if !found {
+				return fmt.Errorf("the port %d specified for the service in the network disruption (%s/%s) does not exist", port, service.Name, service.Namespace)
+			}
+		}
+
 		// check the service type
 		if k8sService.Spec.Type != corev1.ServiceTypeClusterIP {
 			return fmt.Errorf("the service specified in the network disruption (%s/%s) is of type %s, but only the following service types are supported: ClusterIP", service.Namespace, service.Name, k8sService.Spec.Type)
