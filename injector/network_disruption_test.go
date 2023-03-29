@@ -337,7 +337,7 @@ var _ = Describe("Failure", func() {
 				// wait for all the addFilters at the beginning of injection to complete
 				time.Sleep(5 * time.Second)
 				tcPriority := 1000                 // first priority set using add filters
-				priority := uint32(tcPriority + 4) // 4 add filters are called during injection
+				priority := uint32(tcPriority + 3) // 3 add filters are called during injection
 
 				Eventually(func() bool {
 					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "", "1:4")
