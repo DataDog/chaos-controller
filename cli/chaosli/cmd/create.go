@@ -557,7 +557,7 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 
 		service.Name = getInput("What is the name of this service?", "", survey.WithValidator(survey.Required))
 		service.Namespace = getInput("What namespace is this service in?", "", survey.WithValidator(survey.Required))
-		service.Ports = getIntSliceInput("Do you want to list the ports affected by the disruption? (No list means all ports of the service are affected)", "")
+		service.Ports = getIntSliceInput("Do you want to provide the ports affected by the disruption? (In case of no port defined, all ports of the service will be affected)", "")
 
 		return service
 	}
