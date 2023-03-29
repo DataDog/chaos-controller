@@ -37,6 +37,7 @@ func validateServices(k8sClient client.Client, services []NetworkDisruptionServi
 
 		for _, port := range service.Ports {
 			found := false
+
 			for _, k8sServicePort := range k8sService.Spec.Ports {
 				if port == int(k8sServicePort.Port) {
 					found = true
