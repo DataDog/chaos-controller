@@ -552,6 +552,26 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromService(service v1.Se
 	return endpointsToWatch
 }
 
+func (i *networkDisruptionInjector) extractValidPortListInServicePorts(serviceSpec v1beta1.NetworkDisruptionServiceSpec, k8sService *v1.Service) []v1.ServicePort {
+	ports := k8sService.Spec.Ports
+
+	if len(serviceSpec.Ports) != 0 {
+		ports = []v1.ServicePort{}
+	}
+
+	for _, allowedPort := range serviceSpec.Ports {
+		for _, port := range k8sService.Spec.Ports {
+			if allowedPort == int(port.Port) {
+				ports = append(ports, port)
+
+				break
+			}
+		}
+	}
+
+	return ports
+}
+
 func (i *networkDisruptionInjector) handleWatchError(event watch.Event) error {
 	err, ok := event.Object.(*metav1.Status)
 	if ok {
@@ -641,8 +661,8 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 	if isHeadless(*service) {
 		// If this is a headless service, we want to block all traffic to the endpoint IPs
 		watcher.servicePorts = append(watcher.servicePorts, v1.ServicePort{Port: 0})
-	} else if len(watcher.watchedServiceSpec.Ports) == 0 {
-		watcher.servicePorts = service.Spec.Ports
+	} else {
+		watcher.servicePorts = i.extractValidPortListInServicePorts(watcher.watchedServiceSpec, service)
 	}
 
 	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, watcher.servicePorts, interfaces, flowid)
@@ -857,25 +877,9 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 			return fmt.Errorf("error getting the given kubernetes service (%s/%s): %w", serviceSpec.Namespace, serviceSpec.Name, err)
 		}
 
-		ports := k8sService.Spec.Ports
-
-		if len(serviceSpec.Ports) != 0 {
-			ports = []v1.ServicePort{}
-		}
-
-		for _, allowedPort := range serviceSpec.Ports {
-			for _, port := range k8sService.Spec.Ports {
-				if allowedPort == int(port.Port) {
-					ports = append(ports, port)
-
-					break
-				}
-			}
-		}
-
 		serviceWatcher := serviceWatcher{
 			watchedServiceSpec:   serviceSpec,
-			servicePorts:         ports,
+			servicePorts:         i.extractValidPortListInServicePorts(serviceSpec, k8sService),
 			labelServiceSelector: labels.SelectorFromValidatedSet(k8sService.Spec.Selector).String(), // keep this information to later create watchers on resources destination
 
 			kubernetesPodEndpointsWatcher: nil,                 // watch pods related to the kubernetes service filtered on
