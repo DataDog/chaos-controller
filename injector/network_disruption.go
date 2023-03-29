@@ -709,6 +709,9 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 	}
 
 	tcFiltersFromPod := i.buildServiceFiltersFromPod(*pod, watcher.servicePorts)
+	if len(tcFiltersFromPod) == 0 {
+		return fmt.Errorf("unable to find service %s/%s endpoints to filter", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace)
+	}
 
 	switch event.Type {
 	case watch.Added:

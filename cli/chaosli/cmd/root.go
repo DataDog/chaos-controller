@@ -56,7 +56,7 @@ func init() {
 		var err error
 		ddMarkClient, err = ddmark.NewClient(v1beta1.EmbeddedChaosAPI)
 		if err != nil {
-			log.Fatal("ddmark didn't init properly")
+			log.Fatalf("ddmark didn't init properly: %s", err.Error())
 		}
 	})
 	// Here you will define your flags and configuration settings.

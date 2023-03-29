@@ -25,3 +25,5 @@ spec:
     services: # filter on Kubernetes services; this will correctly handle the port differences in node vs. pod-level disruptions
       - name: demo # service name
         namespace: chaos-demo # service namespace
+        ports: # optional. List of affected ports. No list means all ports are affected
+          - 8080
