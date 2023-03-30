@@ -321,9 +321,7 @@ var _ = Describe("Failure", func() {
 				// fake watchers for service handling
 				go func() {
 					// Set up
-					time.Sleep(300 * time.Millisecond)
 					servicesWatcher.Add(fakeService)
-					time.Sleep(300 * time.Millisecond)
 					podsWatcher.Add(fakeEndpoint)
 
 					// Deleting a pod
@@ -334,8 +332,6 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter for every service and pods filtered on", func() {
-				// wait for all the addFilters at the beginning of injection to complete
-				time.Sleep(5 * time.Second)
 				tcPriority := 1000                 // first priority set using add filters
 				priority := uint32(tcPriority + 3) // 3 add filters are called during injection
 
@@ -372,7 +368,11 @@ var _ = Describe("Failure", func() {
 					{
 						Name:      "foo",
 						Namespace: "bar",
-						Ports:     []int{80},
+						Ports: []v1beta1.NetworkDisruptionServicePortSpec{
+							{
+								Port: 80,
+							},
+						},
 					},
 				}
 
@@ -385,17 +385,12 @@ var _ = Describe("Failure", func() {
 				// fake watchers for service handling
 				go func() {
 					// Set up
-					time.Sleep(300 * time.Millisecond)
 					servicesWatcher.Add(fakeService)
-					time.Sleep(300 * time.Millisecond)
 					podsWatcher.Add(fakeEndpoint)
 				}()
 			})
 
 			It("should add a filter for every service and pods filtered on", func() {
-				// wait for all the addFilters at the beginning of injection to complete
-				time.Sleep(5 * time.Second)
-
 				Eventually(func() bool {
 					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "", "1:4")
 				}, time.Second*5, time.Second).Should(BeTrue())

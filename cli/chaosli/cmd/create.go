@@ -557,7 +557,32 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 
 		service.Name = getInput("What is the name of this service?", "", survey.WithValidator(survey.Required))
 		service.Namespace = getInput("What namespace is this service in?", "", survey.WithValidator(survey.Required))
-		service.Ports = getIntSliceInput("Do you want to provide the ports affected by the disruption? (In case of no port defined, all ports of the service will be affected)", "")
+		hasPorts := confirmOption("Do you want to provide the ports affected by the disruption? (In case of no port defined, all ports of the service will be affected)", "")
+
+		ports := []v1beta1.NetworkDisruptionServicePortSpec{}
+		if hasPorts {
+			getServicePort := func() v1beta1.NetworkDisruptionServicePortSpec {
+				port := v1beta1.NetworkDisruptionServicePortSpec{}
+
+				if confirmOption("Would you like to specify the name for this port?", "This field is optional and is used to find the right port to be affected in case the service has multiple ports") {
+					port.Name = getInput("Please enter the name of the port for this service (or ctrl+c to go back)", "")
+				}
+				if confirmOption("Would you like to specify the protocol for this port?", "This field is optional and is used to find the right port to be affected in case the service has multiple ports") {
+					port.Protocol, _ = selectInput("Please choose then (or ctrl+c to go back)", []string{"tcp", "udp", "sctp"}, "")
+				}
+				port.Port, _ = strconv.Atoi(getInput("What port would you like to target?", "", survey.WithValidator(integerValidator), survey.WithValidator(survey.Required)))
+
+				return port
+			}
+
+			ports = append(ports, getServicePort())
+
+			for confirmOption("Would you like to add another k8s service port affected by the disruption?", "") {
+				ports = append(ports, getServicePort())
+			}
+
+			service.Ports = ports
+		}
 
 		return service
 	}

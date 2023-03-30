@@ -561,7 +561,9 @@ func (i *networkDisruptionInjector) extractValidPortListInServicePorts(serviceSp
 
 	for _, allowedPort := range serviceSpec.Ports {
 		for _, port := range k8sService.Spec.Ports {
-			if allowedPort == int(port.Port) {
+			if allowedPort.Port == int(port.Port) &&
+				((allowedPort.Protocol != "" && allowedPort.Protocol == strings.ToLower(string(port.Protocol))) || allowedPort.Protocol == "") &&
+				((allowedPort.Name != "" && allowedPort.Name == port.Name) || allowedPort.Name == "") {
 				ports = append(ports, port)
 
 				break

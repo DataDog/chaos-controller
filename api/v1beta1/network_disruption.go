@@ -99,7 +99,19 @@ type NetworkDisruptionServiceSpec struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
 	// +optional
-	Ports []int `json:"ports,omitempty"`
+	Ports []NetworkDisruptionServicePortSpec `json:"ports,omitempty"`
+}
+
+type NetworkDisruptionServicePortSpec struct {
+	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
+	// +ddmark:validation:Minimum=0
+	// +ddmark:validation:Maximum=65535
+	Port int `json:"port"`
+	// +kubebuilder:validation:Enum=tcp;udp;sctp;""
+	// +ddmark:validation:Enum=tcp;udp;sctp;""
+	Protocol string `json:"protocol,omitempty"`
 }
 
 // +ddmark:validation:AtLeastOneOf={AWSServiceList,GCPServiceList,DatadogServiceList}
@@ -188,7 +200,7 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	for _, service := range s.Services {
 		ports := ""
 		for _, port := range service.Ports {
-			ports += fmt.Sprintf(";%d", port)
+			ports += fmt.Sprintf(";%d-%s-%s", port.Port, port.Protocol, port.Name)
 		}
 
 		args = append(args, "--services", fmt.Sprintf("%s;%s%s", service.Name, service.Namespace, ports))
@@ -396,21 +408,34 @@ func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisrupt
 
 	// parse given services
 	for _, service := range services {
-		// parse service with format <name>;<namespace>
+		// parse service with format <name>;<namespace>;<port-value>-<port-protocol>-<port-name>;<port-value>-<port-protocol>-<port-name>...
 		parsedService := strings.Split(service, ";")
 		if len(parsedService) < 2 {
 			return nil, fmt.Errorf("unexpected service format: %s", service)
 		}
 
-		ports := []int{}
+		ports := []NetworkDisruptionServicePortSpec{}
 
-		for _, parsed := range parsedService[2:] {
-			port, err := strconv.Atoi(parsed)
-			if err != nil {
-				return nil, fmt.Errorf("unexpected port format in service: %s", parsed)
+		for _, unparsedPort := range parsedService[2:] {
+			// <port-value>-<port-protocol>-<port-name>
+			parsedPort := strings.Split(unparsedPort, "-")
+			if len(parsedPort) != 3 {
+				return nil, fmt.Errorf("unexpected service port format: %s", unparsedPort)
 			}
 
-			ports = append(ports, port)
+			port, err := strconv.Atoi(parsedPort[0])
+			if err != nil {
+				return nil, fmt.Errorf("unexpected port format in service port: %s", unparsedPort)
+			}
+
+			protocol := parsedPort[1]
+			name := parsedPort[2]
+
+			ports = append(ports, NetworkDisruptionServicePortSpec{
+				Port:     port,
+				Protocol: protocol,
+				Name:     name,
+			})
 		}
 
 		// generate service spec

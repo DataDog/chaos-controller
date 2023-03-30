@@ -39,7 +39,9 @@ func validateServices(k8sClient client.Client, services []NetworkDisruptionServi
 			found := false
 
 			for _, k8sServicePort := range k8sService.Spec.Ports {
-				if port == int(k8sServicePort.Port) {
+				if port.Port == int(k8sServicePort.Port) &&
+					((port.Protocol != "" && port.Protocol == strings.ToLower(string(k8sServicePort.Protocol))) || port.Protocol == "") &&
+					((port.Name != "" && port.Name == k8sServicePort.Name) || port.Name == "") {
 					found = true
 
 					break
@@ -47,7 +49,19 @@ func validateServices(k8sClient client.Client, services []NetworkDisruptionServi
 			}
 
 			if !found {
-				return fmt.Errorf("the port %d specified for the service in the network disruption (%s/%s) does not exist", port, service.Name, service.Namespace)
+				displayedStringsForPort := []string{}
+
+				if port.Name != "" {
+					displayedStringsForPort = append(displayedStringsForPort, port.Name)
+				}
+
+				displayedStringsForPort = append(displayedStringsForPort, strconv.Itoa(port.Port))
+
+				if port.Protocol != "" {
+					displayedStringsForPort = append(displayedStringsForPort, port.Protocol)
+				}
+
+				return fmt.Errorf("the port (%s) specified for the service in the network disruption (%s/%s) does not exist", strings.Join(displayedStringsForPort, "/"), service.Name, service.Namespace)
 			}
 		}
 
