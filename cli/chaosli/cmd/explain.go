@@ -261,6 +261,7 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 
 			for _, port := range data.Ports {
 				fmt.Printf("\t\t\t\t⛵️ Port: %d\n", port.Port)
+
 				if port.Name != "" {
 					fmt.Printf("\t\t\t\t\t⛵️ Port name: %s\n", port.Name)
 				}
@@ -269,7 +270,6 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 					fmt.Printf("\t\t\t\t\t⛵️ Port protocol: %s\n", port.Protocol)
 				}
 			}
-
 		}
 	}
 
