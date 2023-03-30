@@ -347,13 +347,13 @@ var _ = Describe("Failure", func() {
 
 				Eventually(func() bool {
 					return tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
-				}, time.Second*10, time.Second).Should(BeTrue())
+				}, time.Second*7, time.Second).Should(BeTrue())
 				Eventually(func() bool {
 					return tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
-				}, time.Second*10, time.Second).Should(BeTrue())
+				}, time.Second*7, time.Second).Should(BeTrue())
 				Eventually(func() bool {
 					return tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
-				}, time.Second*10, time.Second).Should(BeTrue())
+				}, time.Second*7, time.Second).Should(BeTrue())
 			})
 
 			AfterEach(func() {
