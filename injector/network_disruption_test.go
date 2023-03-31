@@ -359,11 +359,25 @@ var _ = Describe("Failure", func() {
 				// fake watchers for service handling
 				// the below calls are assigning watcher events to channels and are looping endlessly the unit tests if we don't put them in a goroutine
 				go func() {
+					modifiedService := *fakeService
+
 					// Set up adding 2 services
-					servicesWatcher.Add(fakeService)
+					servicesWatcher.Add(&modifiedService)
 
 					// Set up adding 2 pods
 					podsWatcher.Add(fakeEndpoint)
+
+					ports := []corev1.ServicePort{
+						{
+							Port:       81,
+							TargetPort: intstr.FromInt(8080),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					}
+
+					modifiedService.Spec.Ports = ports
+
+					servicesWatcher.Modify(&modifiedService)
 
 					// delete the pod 1
 					podsWatcher.Delete(fakeEndpoint)
@@ -371,6 +385,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter for every service and pods filtered on, modify the filter and then delete a filter", func() {
+				servicePortRulePriority := uint32(tcPriority + 4)
 				serviceAssociatedPodRulePriority := uint32(tcPriority + 3) // tcfilter priority of endpoint
 
 				// Initial setup
@@ -378,11 +393,17 @@ var _ = Describe("Failure", func() {
 					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "", "1:4") // priority 1003
 					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "", "1:4") // priority 1004
 
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", servicePortRulePriority)
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", servicePortRulePriority)
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", servicePortRulePriority)
+
+					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 81, "TCP", "", "1:4") // priority 1005
+
 					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", serviceAssociatedPodRulePriority)
 					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", serviceAssociatedPodRulePriority)
 					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", serviceAssociatedPodRulePriority)
 
-				}, time.Second*7, time.Second).Should(Succeed())
+				}, time.Second*10, time.Second).Should(Succeed())
 			})
 
 			AfterEach(func() {
