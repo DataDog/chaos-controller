@@ -48,7 +48,9 @@ var _ = Describe("Failure", func() {
 		netnsManager                                            *netns.ManagerMock
 		k8sClient                                               *kubernetes.Clientset
 		fakeService                                             *corev1.Service
+		fakeService2                                            *corev1.Service
 		fakeEndpoint                                            *corev1.Pod
+		fakeEndpoint2                                           *corev1.Pod
 	)
 
 	BeforeEach(func() {
@@ -140,6 +142,27 @@ var _ = Describe("Failure", func() {
 						TargetPort: intstr.FromInt(8080),
 						Protocol:   corev1.ProtocolTCP,
 					},
+				},
+				Selector: map[string]string{
+					"app": "foo",
+				},
+			},
+		}
+
+		fakeService2 = &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo2",
+				Namespace: "bar",
+			},
+			Spec: corev1.ServiceSpec{
+				Type:      corev1.ServiceTypeClusterIP,
+				ClusterIP: "172.16.0.2",
+				Ports: []corev1.ServicePort{
+					{
+						Port:       8180,
+						TargetPort: intstr.FromInt(8080),
+						Protocol:   corev1.ProtocolTCP,
+					},
 					{
 						Port:       8181,
 						TargetPort: intstr.FromInt(8080),
@@ -147,7 +170,7 @@ var _ = Describe("Failure", func() {
 					},
 				},
 				Selector: map[string]string{
-					"app": "foo",
+					"app": "foo2",
 				},
 			},
 		}
@@ -165,7 +188,20 @@ var _ = Describe("Failure", func() {
 			},
 		}
 
-		k8sClient = kubernetes.NewSimpleClientset(fakeService, fakeEndpoint)
+		fakeEndpoint2 = &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo2-abcd-1234",
+				Namespace: "bar",
+				Labels: map[string]string{
+					"app": "foo2",
+				},
+			},
+			Status: corev1.PodStatus{
+				PodIP: "10.1.0.5",
+			},
+		}
+
+		k8sClient = kubernetes.NewSimpleClientset(fakeService, fakeService2, fakeEndpoint, fakeEndpoint2)
 
 		// config
 		config = NetworkDisruptionInjectorConfig{
@@ -303,7 +339,9 @@ var _ = Describe("Failure", func() {
 			})
 		})
 
-		Context("with multiple services specified", func() {
+		Context("with one service specified", func() {
+			tcPriority := 1000 // first priority set using add filters
+
 			BeforeEach(func() {
 				spec.Services = []v1beta1.NetworkDisruptionServiceSpec{
 					{
@@ -319,58 +357,48 @@ var _ = Describe("Failure", func() {
 				k8sClient.PrependWatchReactor("services", testing.DefaultWatchReactor(servicesWatcher, nil))
 
 				// fake watchers for service handling
+				// the below calls are assigning watcher events to channels and are looping endlessly the unit tests if we don't put them in a goroutine
 				go func() {
-					// Set up
+					// Set up adding 2 services
 					servicesWatcher.Add(fakeService)
+
+					// Set up adding 2 pods
 					podsWatcher.Add(fakeEndpoint)
 
-					// Deleting a pod
-					time.Sleep(300 * time.Millisecond)
+					// delete the pod 1
 					podsWatcher.Delete(fakeEndpoint)
 				}()
-
 			})
 
-			It("should add a filter for every service and pods filtered on", func() {
-				tcPriority := 1000                 // first priority set using add filters
-				priority := uint32(tcPriority + 3) // 3 add filters are called during injection
+			It("should add a filter for every service and pods filtered on, modify the filter and then delete a filter", func() {
+				serviceAssociatedPodRulePriority := uint32(tcPriority + 3) // tcfilter priority of endpoint
 
-				Eventually(func() bool {
-					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "", "1:4")
-				}, time.Second*5, time.Second).Should(BeTrue())
-				Eventually(func() bool {
-					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 8181, "TCP", "", "1:4")
-				}, time.Second*5, time.Second).Should(BeTrue())
-				Eventually(func() bool {
-					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "", "1:4")
-				}, time.Second*5, time.Second).Should(BeTrue())
+				// Initial setup
+				Eventually(func(g Gomega) {
+					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "", "1:4") // priority 1003
+					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "", "1:4") // priority 1004
 
-				Eventually(func() bool {
-					return tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
-				}, time.Second*7, time.Second).Should(BeTrue())
-				Eventually(func() bool {
-					return tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
-				}, time.Second*7, time.Second).Should(BeTrue())
-				Eventually(func() bool {
-					return tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
-				}, time.Second*7, time.Second).Should(BeTrue())
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", serviceAssociatedPodRulePriority)
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", serviceAssociatedPodRulePriority)
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", serviceAssociatedPodRulePriority)
+
+				}, time.Second*7, time.Second).Should(Succeed())
 			})
 
 			AfterEach(func() {
 				Expect(inj.Clean()).To(BeNil())
 			})
-
 		})
 
-		Context("with a service and allowed ports specified", func() {
+		Context("with one service and one port specified", func() {
 			BeforeEach(func() {
 				spec.Services = []v1beta1.NetworkDisruptionServiceSpec{
 					{
-						Name:      "foo",
+						Name:      "foo2",
 						Namespace: "bar",
 						Ports: []v1beta1.NetworkDisruptionServicePortSpec{
 							{
-								Port: 80,
+								Port: 8180,
 							},
 						},
 					},
@@ -383,26 +411,27 @@ var _ = Describe("Failure", func() {
 				k8sClient.PrependWatchReactor("services", testing.DefaultWatchReactor(servicesWatcher, nil))
 
 				// fake watchers for service handling
+				// the below calls are assigning watcher events to channels and are looping endlessly the unit tests if we don't put them in a goroutine
 				go func() {
-					// Set up
-					servicesWatcher.Add(fakeService)
-					podsWatcher.Add(fakeEndpoint)
+					// Set up adding 1 service
+					servicesWatcher.Add(fakeService2)
+
+					// Set up adding 1 pod
+					podsWatcher.Add(fakeEndpoint2)
 				}()
 			})
 
-			It("should add a filter for every service and pods filtered on", func() {
-				Eventually(func() bool {
-					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "", "1:4")
-				}, time.Second*5, time.Second).Should(BeTrue())
-				Eventually(func() bool {
-					return tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "", "1:4")
-				}, time.Second*5, time.Second).Should(BeTrue())
+			It("should add a filter on allowed port, not on not specified port", func() {
+				Eventually(func(g Gomega) {
+					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.2/32", 0, 8180, "TCP", "", "1:4") // priority 1003
+					tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.2/32", 0, 8181, "TCP", "", "1:4")
+					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.5/32", 0, 8080, "TCP", "", "1:4") // priority 1004
+				}, time.Second*5, time.Second).Should(Succeed())
 			})
 
 			AfterEach(func() {
 				Expect(inj.Clean()).To(BeNil())
 			})
-
 		})
 
 		// safeguards

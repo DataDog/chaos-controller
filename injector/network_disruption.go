@@ -459,12 +459,12 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 	builtServices := []tcServiceFilter{}
 
 	for _, filter := range filters {
-		i.config.Log.Infow("found service endpoint", "resolvedEndpoint", filter.service.String(), "resolvedService", serviceName)
-
 		filter.priority, err = i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, network.ConnStateUndefined, flowid)
 		if err != nil {
 			return nil, err
 		}
+
+		i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service.String(), filter.priority), "interfaces", strings.Join(interfaces, ", "))
 
 		builtServices = append(builtServices, filter)
 	}
@@ -480,7 +480,7 @@ func (i *networkDisruptionInjector) removeServiceFilter(interfaces []string, tcF
 		}
 	}
 
-	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter on %s", tcFilter.service.String()), "interfaces", strings.Join(interfaces, ", "))
+	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter for service %s with priority %d", tcFilter.service.String(), tcFilter.priority), "interfaces", strings.Join(interfaces, ", "))
 
 	return nil
 }
