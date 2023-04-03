@@ -13,8 +13,8 @@ metadata:
 spec:
   selector:
     app: demo-curl
-  containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
-    - dummy
+  containers: # only target the curl container, you can specify multiple containers here (all containers are targeted by default)
+    - curl
   count: 1
   containerFailure:
     forced: false # send a SIGTERM signal to the specified containers

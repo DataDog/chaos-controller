@@ -140,6 +140,7 @@ lima-redeploy: lima-build-all lima-install lima-restart
 ## Install cert-manager chart
 lima-install-cert-manager:
 	$(KUBECTL) apply -f https://github.com/jetstack/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+	$(KUBECTL) -n cert-manager rollout status deployment/cert-manager-webhook --timeout=180s
 
 ## Install CRDs and controller into a lima k3s cluster
 ## In order to use already built images inside the containerd runtime
