@@ -22,7 +22,68 @@ as NAT rules are applied before `tc` rules, and thus the port that a pod uses to
 It is not simple to detect that a hostname passed to `network.hosts` is a kubernetes service, and thus we include the `network.services` field.
 
 Whenever you want to disrupt traffic interacting with a kubernetes service[s], for correctness's sake, you _must_ specify the service under `network.services`, rather than `network.hosts`.
-`network.services` takes a list of services, which are defined with each service's `name` and `namespace`, as well as a list of `ports` to be affected. In this `ports` list, you can specify the `name` of the port, the `protocol` of the port and the `port` itself ([see kubernetes service definition for context](https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service)). 
+`network.services` takes a list of services, which are defined with each service's `name` and `namespace`, as well as a list of `ports` to be affected. 
+In this `ports` list, you can specify the `name` of the port and/or the `port` itself ([see kubernetes service definition for context](https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service)). Those fields (`name`, `port`) are **exclusively used to find the right service port to affect**. 
+
+Example:
+
+You have a service defined here:
+```
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo
+  namespace: chaos-demo
+spec:
+  ports:
+    - name: regular-port
+      port: 8080
+      targetPort: 80
+      protocol: TCP
+    - name: very-special-port
+      port: 8081
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: demo-nginx
+```
+
+In order to only affect the service port `regular-port`, you can define in your disruption specs:
+
+```
+network:
+  services:
+    - name: demo
+      namespace: chaos-demo
+      ports:
+        - name: regular-port # optional. This is used to find the right port to be affected in case the service has multiple ports
+```
+
+OR
+
+```
+network:
+  services:
+    - name: demo
+      namespace: chaos-demo
+      ports:
+        - port: 8080
+```
+
+OR BOTH
+
+```
+network:
+  services:
+    - name: demo
+      namespace: chaos-demo
+      ports:
+        - port: 8080
+          name: regular-port
+```
+
+
 The controller will take care of applying `tc` rules in a way that targets any port that may be used to talk to that service. There are no changes to how you should configure this field in a `node` level disruption
 vs. a `pod` level disruption.
 
@@ -34,7 +95,6 @@ network:
       ports:
         - port: 8080 
           name: service_port_name # optional. This is used to find the right port to be affected in case the service has multiple ports
-          protocol: tcp #optional. This is used to find the right port to be affected in case the service has multiple ports
 ```
 
 ### Headless Services

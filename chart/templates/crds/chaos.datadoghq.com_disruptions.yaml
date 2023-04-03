@@ -416,15 +416,6 @@ spec:
                                 maximum: 65535
                                 minimum: 0
                                 type: integer
-                              protocol:
-                                enum:
-                                - tcp
-                                - udp
-                                - sctp
-                                - ""
-                                type: string
-                            required:
-                            - port
                             type: object
                           type: array
                       required:

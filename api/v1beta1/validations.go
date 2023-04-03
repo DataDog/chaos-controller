@@ -35,34 +35,25 @@ func validateServices(k8sClient client.Client, services []NetworkDisruptionServi
 			return fmt.Errorf("error retrieving the specified network disruption service: %w", err)
 		}
 
-		for _, port := range service.Ports {
-			found := false
+		_, notFoundPorts := service.ExtractAffectedPortsInServicePorts(&k8sService)
+		if len(notFoundPorts) > 0 {
+			errorOnNotFoundPorts := []string{}
 
-			for _, k8sServicePort := range k8sService.Spec.Ports {
-				if port.Port == int(k8sServicePort.Port) &&
-					((port.Protocol != "" && port.Protocol == strings.ToLower(string(k8sServicePort.Protocol))) || port.Protocol == "") &&
-					((port.Name != "" && port.Name == k8sServicePort.Name) || port.Name == "") {
-					found = true
-
-					break
-				}
-			}
-
-			if !found {
+			for _, port := range notFoundPorts {
 				displayedStringsForPort := []string{}
 
 				if port.Name != "" {
 					displayedStringsForPort = append(displayedStringsForPort, port.Name)
 				}
 
-				displayedStringsForPort = append(displayedStringsForPort, strconv.Itoa(port.Port))
-
-				if port.Protocol != "" {
-					displayedStringsForPort = append(displayedStringsForPort, port.Protocol)
+				if port.Port != 0 {
+					displayedStringsForPort = append(displayedStringsForPort, strconv.Itoa(int(port.Port)))
 				}
 
-				return fmt.Errorf("the port (%s) specified for the service in the network disruption (%s/%s) does not exist", strings.Join(displayedStringsForPort, "/"), service.Name, service.Namespace)
+				errorOnNotFoundPorts = append(errorOnNotFoundPorts, strings.Join(displayedStringsForPort, "/"))
 			}
+
+			return fmt.Errorf("the ports (%s) specified for the service in the network disruption (%s/%s) do not exist", errorOnNotFoundPorts, service.Name, service.Namespace)
 		}
 
 		// check the service type

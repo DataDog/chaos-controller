@@ -537,11 +537,13 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 					port.Name = getInput("Please enter the name of the port for this service (or ctrl+c to go back)", "")
 				}
 
-				if confirmOption("Would you like to specify the protocol for this port?", "This field is optional and is used to find the right port to be affected in case the service has multiple ports") {
-					port.Protocol, _ = selectInput("Please choose then (or ctrl+c to go back)", []string{"tcp", "udp", "sctp"}, "")
+				if confirmOption("Would you like to specify the port value for this port?", "This field is optional and is used to find the right port to be affected in case the service has multiple ports") {
+					port.Port, _ = strconv.Atoi(getInput("Please enter the name of the port for this service (or ctrl+c to go back)", "", survey.WithValidator(integerValidator), survey.WithValidator(survey.Required)))
 				}
 
-				port.Port, _ = strconv.Atoi(getInput("What port would you like to target?", "", survey.WithValidator(integerValidator), survey.WithValidator(survey.Required)))
+				if port.Name == "" && port.Port == 0 {
+
+				}
 
 				return port
 			}
