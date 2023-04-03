@@ -47,7 +47,7 @@ func validateServices(k8sClient client.Client, services []NetworkDisruptionServi
 				}
 
 				if port.Port != 0 {
-					displayedStringsForPort = append(displayedStringsForPort, strconv.Itoa(int(port.Port)))
+					displayedStringsForPort = append(displayedStringsForPort, strconv.Itoa(port.Port))
 				}
 
 				errorOnNotFoundPorts = append(errorOnNotFoundPorts, strings.Join(displayedStringsForPort, "/"))

@@ -463,7 +463,7 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 	servicePortsDic := map[string]v1.ServicePort{}
 	goodPorts, notFoundPorts := []v1.ServicePort{}, []NetworkDisruptionServicePortSpec{}
 
-	// Convert service ports from found k8s service to a dictionnary in order to facilitate the filtering of the ports
+	// Convert service ports from found k8s service to a dictionary in order to facilitate the filtering of the ports
 	for _, port := range k8sService.Spec.Ports {
 		servicePortsDic[strconv.Itoa(int(port.Port))] = port
 		if port.Name != "" {
