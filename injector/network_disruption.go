@@ -464,7 +464,7 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 			return nil, err
 		}
 
-		i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service.String(), filter.priority), "interfaces", strings.Join(interfaces, ", "))
+		i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service, filter.priority), "interfaces", interfaces)
 
 		builtServices = append(builtServices, filter)
 	}
@@ -480,7 +480,7 @@ func (i *networkDisruptionInjector) removeServiceFilter(interfaces []string, tcF
 		}
 	}
 
-	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter for service %s with priority %d", tcFilter.service.String(), tcFilter.priority), "interfaces", strings.Join(interfaces, ", "))
+	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter for service %s with priority %d", tcFilter.service, tcFilter.priority), "interfaces", interfaces)
 
 	return nil
 }
