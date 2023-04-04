@@ -527,14 +527,16 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 
 		hasPorts := confirmOption("Do you want to provide the ports affected by the disruption? (In case of no port defined, all ports of the service will be affected)", "")
 
-		ports := []v1beta1.NetworkDisruptionServicePortSpec{}
-
 		if hasPorts {
-			getServicePort := func() v1beta1.NetworkDisruptionServicePortSpec {
+			ports := []v1beta1.NetworkDisruptionServicePortSpec{}
+
+			getServicePort := func() *v1beta1.NetworkDisruptionServicePortSpec {
 				port := v1beta1.NetworkDisruptionServicePortSpec{}
 
+				fmt.Println(`We can identify a service port by name or by port value. At least one of those fields are required.`)
+
 				if confirmOption("Would you like to specify the name for this port?", "This field is optional and is used to find the right port to be affected in case the service has multiple ports") {
-					port.Name = getInput("Please enter the name of the port for this service (or ctrl+c to go back)", "")
+					port.Name = getInput("Please enter the name of the port for this service (or ctrl+c to go back)", "", survey.WithValidator(survey.Required))
 				}
 
 				if confirmOption("Would you like to specify the port value for this port?", "This field is optional and is used to find the right port to be affected in case the service has multiple ports") {
@@ -542,16 +544,22 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 				}
 
 				if port.Name == "" && port.Port == 0 {
+					fmt.Println(`No port name or port value was specified.`)
 
+					return nil
 				}
 
-				return port
+				return &port
 			}
 
-			ports = append(ports, getServicePort())
+			if port := getServicePort(); port != nil {
+				ports = append(ports, *port)
+			}
 
 			for confirmOption("Would you like to add another k8s service port affected by the disruption?", "") {
-				ports = append(ports, getServicePort())
+				if port := getServicePort(); port != nil {
+					ports = append(ports, *port)
+				}
 			}
 
 			service.Ports = ports
