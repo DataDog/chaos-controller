@@ -75,14 +75,11 @@ func main() {
 		logger.Fatalw("unable to create a valid configuration", "error", err)
 	}
 
-	broadcaster := eventbroadcaster.EventBroadcaster()
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: cfg.Controller.MetricsBindAddr,
 		LeaderElection:     cfg.Controller.LeaderElection,
 		LeaderElectionID:   "75ec2fa4.datadoghq.com",
-		EventBroadcaster:   broadcaster,
 		Host:               cfg.Controller.Webhook.Host,
 		Port:               cfg.Controller.Webhook.Port,
 		CertDir:            cfg.Controller.Webhook.CertDir,
@@ -92,6 +89,8 @@ func main() {
 	}
 
 	// event notifiers
+	broadcaster := eventbroadcaster.EventBroadcaster()
+
 	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.Notifiers, logger)
 	if err != nil {
 		logger.Errorw("error(s) while creating notifiers", "error", err)
