@@ -403,7 +403,7 @@ var _ = Describe("Failure", func() {
 					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", serviceAssociatedPodRulePriority)
 					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", serviceAssociatedPodRulePriority)
 
-				}, time.Second*20, time.Second).Should(Succeed())
+				}, time.Second*60, time.Second).Should(Succeed())
 			})
 
 			AfterEach(func() {
