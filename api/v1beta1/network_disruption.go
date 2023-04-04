@@ -409,7 +409,7 @@ func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisrupt
 		// parse service with format <name>;<namespace>;<port-value>-<port-name>;<port-value>-<port-name>...
 		parsedService := strings.Split(service, ";")
 		if len(parsedService) < 2 {
-			return nil, fmt.Errorf("unexpected service format: %s", service)
+			return nil, fmt.Errorf("service format is expected to follow '<name>;<namespace>;<port-value>-<port-name>;<port-value>-<port-name>', unexpected format detected: %s", service)
 		}
 
 		ports := []NetworkDisruptionServicePortSpec{}
@@ -418,7 +418,7 @@ func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisrupt
 			// <port-value>-<port-name>
 			parsedPort := strings.Split(unparsedPort, "-")
 			if len(parsedPort) != 2 {
-				return nil, fmt.Errorf("unexpected service port format: %s", unparsedPort)
+				return nil, fmt.Errorf("service port format is expected to follow '<port-value>-<port-name>', unexpected format detected: %s", unparsedPort)
 			}
 
 			port, err := strconv.Atoi(parsedPort[0])
