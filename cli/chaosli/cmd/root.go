@@ -35,7 +35,7 @@ Validate your disruption configurations for structure, explaining a disruption c
 in english for better understanding, and more.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	// Run: func(cmd *cobra.Command, args []string) {},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -51,7 +51,10 @@ func Execute() {
 }
 
 func init() {
-	initConfig()
+	initDDMark()
+
+	// run initConfig function before each Run() of each command having a Run() method
+	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -93,7 +96,9 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
+}
 
+func initDDMark() {
 	// setup ddmark
 	var err error
 
