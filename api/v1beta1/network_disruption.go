@@ -423,7 +423,7 @@ func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisrupt
 
 			port, err := strconv.Atoi(parsedPort[0])
 			if err != nil {
-				return nil, fmt.Errorf("unexpected port format in service port: %s", unparsedPort)
+				return nil, fmt.Errorf("port format is expected to be a valid integer, unexpected format detected in service port: %s", unparsedPort)
 			}
 
 			name := parsedPort[1]
