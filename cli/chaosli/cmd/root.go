@@ -51,14 +51,8 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-	cobra.OnInitialize(func() {
-		var err error
-		ddMarkClient, err = ddmark.NewClient(v1beta1.EmbeddedChaosAPI)
-		if err != nil {
-			log.Fatal("ddmark didn't init properly")
-		}
-	})
+	initConfig()
+
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
@@ -98,6 +92,13 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	}
+
+	// setup ddmark
+	var err error
+	ddMarkClient, err = ddmark.NewClient(v1beta1.EmbeddedChaosAPI)
+	if err != nil {
+		log.Fatal("ddmark didn't init properly")
 	}
 }
 
