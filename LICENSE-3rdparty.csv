@@ -111,7 +111,6 @@ github.com/cyphar/filepath-securejoin,github.com/cyphar/filepath-securejoin,BSD-
 github.com/davecgh/go-spew,github.com/davecgh/go-spew/spew,ISC
 github.com/docker/distribution,github.com/docker/distribution/digestset,Apache-2.0
 github.com/docker/distribution,github.com/docker/distribution/reference,Apache-2.0
-github.com/docker/distribution,github.com/docker/distribution/registry/api/errcode,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/blkiodev,Apache-2.0
