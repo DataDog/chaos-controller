@@ -264,7 +264,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// start injections
 		if err := r.startInjection(instance); err != nil {
-			r.log.Errorw("error injecting the disruption", "error", err)
+			r.log.Errorw("error creating chaos pods to start the disruption", "error", err)
 
 			return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
 		}
