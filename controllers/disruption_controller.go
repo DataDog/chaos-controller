@@ -414,13 +414,19 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 	}
 
 	// iterate through target + existing disruption kind -- to ensure all chaos pods exist
-	for targetName := range instance.Status.TargetInjections {
+	for targetName, injection := range instance.Status.TargetInjections {
 		for _, disKind := range chaostypes.DisruptionKindNames {
 			if subspec := instance.Spec.DisruptionKindPicker(disKind); reflect.ValueOf(subspec).IsNil() {
 				continue
 			}
 
 			if _, ok := chaosPodsMap[targetName][disKind.String()]; ok {
+				continue
+			}
+
+			if disKind == chaostypes.DisruptionKindNodeFailure && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionInjectionStatusNotInjected {
+				// we should never re-inject a static node failure, as it may be targeting the same pod on a new node
+				r.log.Debugw("skipping over injection, seems to be a re-injected node failure", "targetName", targetName, "injectionStatus", injection)
 				continue
 			}
 
