@@ -131,9 +131,9 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
 		if isModifiedError(err) {
-			r.log.Warnw("error handling chaos pods termination", "error", err)
+			r.log.Warnw("retryable error handling chaos pods termination", "error", err)
 
-			return ctrl.Result{}, nil
+			return ctrl.Result{Requeue: true}, nil
 		}
 
 		r.log.Errorw("error handling chaos pods termination", "error", err)
@@ -174,7 +174,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 			if err := r.Update(context.Background(), instance); err != nil {
 				if isModifiedError(err) {
-					r.log.Warnw("error removing disruption finalizer", "error", err)
+					r.log.Warnw("retryable error removing disruption finalizer", "error", err)
 				} else {
 					r.log.Errorw("error removing disruption finalizer", "error", err)
 				}
@@ -232,7 +232,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		} else if calculateRemainingDuration(*instance) <= 0 {
 			if _, err := r.updateInjectionStatus(instance); err != nil {
 				if isModifiedError(err) {
-					r.log.Warnw("error updating disruption injection status", "error", err)
+					r.log.Warnw("retryable error updating disruption injection status", "error", err)
 				} else {
 					r.log.Errorw("error updating disruption injection status", "error", err)
 				}
@@ -277,7 +277,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		injected, err := r.updateInjectionStatus(instance)
 		if err != nil {
 			if isModifiedError(err) {
-				r.log.Warnw("error updating injection status", "error", err)
+				r.log.Warnw("retryable error updating injection status", "error", err)
 			} else {
 				r.log.Errorw("error updating injection status", "error", err)
 			}
@@ -608,7 +608,7 @@ func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
 
 			if err := r.Client.Update(context.Background(), &chaosPod); err != nil {
 				if isModifiedError(err) {
-					r.log.Warnw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+					r.log.Warnw("retryable error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
 				} else {
 					r.log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
 				}
@@ -619,7 +619,7 @@ func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
 			// if the chaos pod still exists after having its finalizer removed, delete it
 			if err := r.Client.Delete(context.Background(), &chaosPod); client.IgnoreNotFound(err) != nil {
 				if isModifiedError(err) {
-					r.log.Warnw("error deleting orphaned chaos pod", "error", err, "chaosPod", chaosPod.Name)
+					r.log.Warnw("retryable error deleting orphaned chaos pod", "error", err, "chaosPod", chaosPod.Name)
 				} else {
 					r.log.Errorw("error deleting orphaned chaos pod", "error", err, "chaosPod", chaosPod.Name)
 				}
