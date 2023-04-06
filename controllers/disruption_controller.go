@@ -494,7 +494,14 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 		// create injection pods if none have been found
 		switch len(found) {
 		case 0:
-			r.log.Infow("creating chaos pod", "target", target)
+			chaosPodArgs := []string{}
+			if len(chaosPod.Spec.Containers) > 0 && chaosPod.Spec.Containers[0].Name == "injector" {
+				chaosPodArgs = chaosPod.Spec.Containers[0].Args
+			} else {
+				r.log.Warnw("unable to find the args for this chaos pod", "chaosPodName", chaosPod.Name, "chaosPodContainerCount", len(chaosPod.Spec.Containers))
+			}
+
+			r.log.Infow("creating chaos pod", "target", target, "chaosPodArgs", chaosPodArgs)
 
 			// create the pod
 			if err = r.Create(context.Background(), chaosPod); err != nil {
