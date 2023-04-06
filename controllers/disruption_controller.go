@@ -1303,8 +1303,8 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 		// which we determine by checking the object labels for the name and namespace labels that we add to all injector pods
 		disruption := []reconcile.Request{}
 
-		if r.log != nil {
-			r.log.Debugw("watching event from pod", "podName", c.GetName(), "podNamespace", c.GetNamespace())
+		if r.BaseLog != nil {
+			r.BaseLog.Debugw("watching event from pod", "podName", c.GetName(), "podNamespace", c.GetNamespace())
 		}
 
 		r.handleMetricSinkError(r.MetricsSink.MetricInformed([]string{"podName:" + c.GetName(), "podNamespace:" + c.GetNamespace()}))
