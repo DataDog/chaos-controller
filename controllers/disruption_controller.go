@@ -462,6 +462,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 		// get IDs of targeted containers or all containers
 		targetContainers, err = utils.GetTargetedContainersInfo(&pod, instance.Spec.Containers)
 		if err != nil {
+			r.log.Debugw("unable to get target pod container ID", "targetPodStatus", pod.Status, "targetPodName", target, "targetPodNamespace", instance.Namespace)
 			return fmt.Errorf("error getting target pod container ID: %w", err)
 		}
 
