@@ -95,7 +95,8 @@ var _ webhook.Validator = &Disruption{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateCreate() error {
-	logger.Debugw("validating created disruption", "instance", r.Name, "namespace", r.Namespace)
+	logger := logger.With("instance", r.Name, "namespace", r.Namespace)
+	logger.Debugw("validating created disruption", "spec", r.Spec)
 
 	// delete-only mode, reject everything trying to be created
 	if deleteOnly {
@@ -196,7 +197,7 @@ func (r *Disruption) ValidateCreate() error {
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	logger := logger.With("instance", r.Name, "namespace", r.Namespace)
-	logger.Debugw("validating updated disruption")
+	logger.Debugw("validating updated disruption", "spec", r.Spec)
 
 	var err error
 
