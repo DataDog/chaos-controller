@@ -210,6 +210,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
 		if err := r.Update(context.Background(), instance); err != nil {
+			// TODO check for modifiable error
 			r.log.Errorw("error adding disruption finalizer", "error", err)
 
 			return ctrl.Result{Requeue: true}, err
@@ -266,7 +267,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if err := r.startInjection(instance); err != nil {
 			r.log.Errorw("error creating chaos pods to start the disruption", "error", err)
 
-			return ctrl.Result{}, fmt.Errorf("error injecting the disruption: %w", err)
+			return ctrl.Result{}, fmt.Errorf("error creating chaos pods to start the disruption: %w", err)
 		}
 
 		// send injection duration metric representing the time it took to fully inject the disruption until its creation
