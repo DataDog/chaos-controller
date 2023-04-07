@@ -177,11 +177,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 					r.log.Infow("retryable error removing disruption finalizer", "error", err)
 
 					return ctrl.Result{Requeue: true}, err
-				} else {
-					r.log.Errorw("error removing disruption finalizer", "error", err)
-
-					return ctrl.Result{}, err
 				}
+
+				r.log.Errorw("error removing disruption finalizer", "error", err)
+
+				return ctrl.Result{}, err
 			}
 
 			// send reconciling duration metric
@@ -216,11 +216,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				r.log.Infow("retryable error handling chaos pods termination", "error", err)
 
 				return ctrl.Result{Requeue: true}, err
-			} else {
-				r.log.Errorw("error adding disruption finalizer", "error", err)
-
-				return ctrl.Result{}, err
 			}
+
+			r.log.Errorw("error adding disruption finalizer", "error", err)
+
+			return ctrl.Result{}, err
 		}
 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
@@ -243,11 +243,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 					r.log.Infow("retryable error updating disruption injection status", "error", err)
 
 					return ctrl.Result{Requeue: true}, err
-				} else {
-					r.log.Errorw("error updating disruption injection status", "error", err)
-
-					return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 				}
+
+				r.log.Errorw("error updating disruption injection status", "error", err)
+
+				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 			}
 
 			if r.ExpiredDisruptionGCDelay != nil {
@@ -290,11 +290,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				r.log.Infow("retryable error updating injection status", "error", err)
 
 				return ctrl.Result{Requeue: true}, err
-			} else {
-				r.log.Errorw("error updating injection status", "error", err)
-
-				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 			}
+
+			r.log.Errorw("error updating injection status", "error", err)
+
+			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
 			// requeue after 15-20 seconds, as default 1ms is too quick here
 			requeueAfter := time.Duration(rand.Intn(5)+15) * time.Second //nolint:gosec
