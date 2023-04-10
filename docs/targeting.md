@@ -1,8 +1,22 @@
 # Targeting
 
-The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the given label selector and will randomly select a number (defined in the `count` field) of matching targets. It's possible to specify multiple label selectors, in which case the controller will select from targets that match all of them. Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.
+The `Disruption` resource uses [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) to target pods and nodes. The controller will retrieve all pods or nodes matching the label selectors specified in `spec.selector` and will randomly select a number (defined in the `count` field) of matching targets. It's possible to specify multiple label selectors, in which case the controller will select from targets that match all of them. Once applied, you can see the targeted pods/nodes by describing the `Disruption` resource.
 
 **NOTE:** If you are targeting pods, the disruption must be created in the same namespace as the targeted pods.
+
+The label selectors used to select targets should be specified under `spec.selector`. This field can take zero, one, or more label selectors. Each should be specified as `key: value` pair on their own line.
+Targets must match _all_ specified selectors in order to be eligible for disruption. Please read the linked kubernetes documentation for information on how labels and label selectors work.
+
+```
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  ...
+spec:
+  selector:
+    foo: bar
+    baz: qux
+```
 
 The default behavior for a disruption is Dynamic Targeting. Please use the `StaticTargeting` configuration flag in your disruption ([see example](../examples/static_targeting.yaml)) if you wish to deactivate it. [Read StaticTargeting](<#Static Targeting>).
 
