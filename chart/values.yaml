@@ -44,7 +44,7 @@ controller:
     datadog: # datadog cloud provider config
       enabled: true # enable the provider
       ipRangesURL: "https://ip-ranges.datadoghq.com/" # URL to the IP ranges file (format must be the expected one, defaults is the public file provided by the cloud provider)
-  defaultDuration: 5m # default spec.duration for a disruption with none specified
+  defaultDuration: 1h # default spec.duration for a disruption with none specified
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true
   webhook: # admission webhook configuration
