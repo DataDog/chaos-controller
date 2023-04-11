@@ -5,3 +5,4 @@
 
 controller:
   defaultDuration: 5m
+  enableSafeguards: false # there is only one node while in local dev
