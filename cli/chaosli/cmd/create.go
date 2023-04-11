@@ -530,7 +530,7 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 		if hasPorts {
 			ports := []v1beta1.NetworkDisruptionServicePortSpec{}
 
-			getServicePort := func() *v1beta1.NetworkDisruptionServicePortSpec {
+			getServicePort := func() v1beta1.NetworkDisruptionServicePortSpec {
 				port := v1beta1.NetworkDisruptionServicePortSpec{}
 
 				fmt.Println(`We can identify a service port by name or by port value. Providing on of those fields is required to limit impact on specified port.`)
@@ -544,21 +544,21 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 				}
 
 				if port.Name == "" && port.Port == 0 {
-					fmt.Println(`No port name or port value was specified.`)
+					fmt.Println(`No port name or port value was specified, please provide a port/name or hit CTRL^C to skip this filtering and impact all ports.`)
 
-					return nil
+					return v1beta1.NetworkDisruptionServicePortSpec{}
 				}
 
-				return &port
+				return port
 			}
 
-			if port := getServicePort(); port != nil {
-				ports = append(ports, *port)
+			if port := getServicePort(); port.Name != "" || port.Port != 0 {
+				ports = append(ports, port)
 			}
 
 			for confirmOption("Would you like to add another k8s service port affected by the disruption?", "") {
-				if port := getServicePort(); port != nil {
-					ports = append(ports, *port)
+				if port := getServicePort(); port.Name != "" || port.Port != 0 {
+					ports = append(ports, port)
 				}
 			}
 
