@@ -119,10 +119,9 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return
 		}
 
-		errorContext := map[string]string{}
 		unwrappedError, ok := err.(chaostypes.DisruptionError)
 		if ok {
-			errorContext = unwrappedError.Context()
+			errorContext := unwrappedError.Context()
 
 			if isModifiedError(unwrappedError) {
 				r.log.Infow(fmt.Sprintf("retryable %s", unwrappedError.Error()), errorContext)
@@ -136,7 +135,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		} else {
 			r.log.Errorw(err.Error())
 		}
-
 	}()
 
 	if err := r.Get(context.Background(), req.NamespacedName, instance); err != nil {
