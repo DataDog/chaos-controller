@@ -823,8 +823,6 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// filter matching targets to only get eligible ones
 	eligibleTargets, err := r.getEligibleTargets(instance, matchingTargets)
 	if err != nil {
-		r.log.Errorw("error getting eligible targets", "error", err)
-
 		return fmt.Errorf("error getting eligible targets: %w", err)
 	}
 
