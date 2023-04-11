@@ -87,7 +87,7 @@ type CtxTuple struct {
 //+kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
 //+kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
 
-func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
@@ -114,6 +114,31 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}()()
 
+	defer func() {
+		if err == nil {
+			return
+		}
+
+		errorContext := map[string]string{}
+		unwrappedError, ok := err.(chaostypes.DisruptionError)
+		if ok {
+			errorContext = unwrappedError.Context()
+
+			if isModifiedError(unwrappedError) {
+				r.log.Infow(fmt.Sprintf("retryable %s", unwrappedError.Error()), errorContext)
+			} else {
+				r.log.Errorw(unwrappedError.Error(), errorContext)
+			}
+		}
+
+		if isModifiedError(err) {
+			r.log.Infow(fmt.Sprintf("retryable %s", err.Error()))
+		} else {
+			r.log.Errorw(err.Error())
+		}
+
+	}()
+
 	if err := r.Get(context.Background(), req.NamespacedName, instance); err != nil {
 		if client.IgnoreNotFound(err) == nil {
 			// If we're reconciling but without an instance, then we must have been triggered by the pod informer
@@ -130,15 +155,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
-		if isModifiedError(err) {
-			r.log.Infow("retryable error handling chaos pods termination", "error", err)
-
-			return ctrl.Result{Requeue: true}, err
-		}
-
-		r.log.Errorw("error handling chaos pods termination", "error", err)
-
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("error handling chaos pods termination: %w", err)
 	}
 
 	// check whether the object is being deleted or not
@@ -147,9 +164,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
 			isCleaned, err := r.cleanDisruption(instance)
 			if err != nil {
-				r.log.Errorw("error cleaning disruption", "error", err)
-
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("error cleaning disruption: %w", err)
 			}
 
 			// if not cleaned yet, requeue and reconcile again in 15s-20s
@@ -173,15 +188,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 			if err := r.Update(context.Background(), instance); err != nil {
-				if isModifiedError(err) {
-					r.log.Infow("retryable error removing disruption finalizer", "error", err)
-
-					return ctrl.Result{Requeue: true}, err
-				}
-
-				r.log.Errorw("error removing disruption finalizer", "error", err)
-
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("error removing disruption finalizer: %w", err)
 			}
 
 			// send reconciling duration metric
@@ -212,15 +219,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
 		if err := r.Update(context.Background(), instance); err != nil {
-			if isModifiedError(err) {
-				r.log.Infow("retryable error handling chaos pods termination", "error", err)
-
-				return ctrl.Result{Requeue: true}, err
-			}
-
-			r.log.Errorw("error adding disruption finalizer", "error", err)
-
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("error adding disruption finalizer: %w", err)
 		}
 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
@@ -239,14 +238,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{Requeue: true}, err
 		} else if calculateRemainingDuration(*instance) <= 0 {
 			if _, err := r.updateInjectionStatus(instance); err != nil {
-				if isModifiedError(err) {
-					r.log.Infow("retryable error updating disruption injection status", "error", err)
-
-					return ctrl.Result{Requeue: true}, err
-				}
-
-				r.log.Errorw("error updating disruption injection status", "error", err)
-
 				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 			}
 
@@ -267,15 +258,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// retrieve targets from label selector
 		if err := r.selectTargets(instance); err != nil {
-			r.log.Errorw("error selecting targets", "error", err)
-
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 		}
 
 		// start injections
 		if err := r.startInjection(instance); err != nil {
-			r.log.Errorw("error creating chaos pods to start the disruption", "error", err)
-
 			return ctrl.Result{}, fmt.Errorf("error creating chaos pods to start the disruption: %w", err)
 		}
 
@@ -286,14 +273,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// requeue the request if the disruption is not fully injected yet
 		injected, err := r.updateInjectionStatus(instance)
 		if err != nil {
-			if isModifiedError(err) {
-				r.log.Infow("retryable error updating injection status", "error", err)
-
-				return ctrl.Result{Requeue: true}, err
-			}
-
-			r.log.Errorw("error updating injection status", "error", err)
-
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
 			// requeue after 15-20 seconds, as default 1ms is too quick here
@@ -479,8 +458,12 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 		// get IDs of targeted containers or all containers
 		targetContainers, err = utils.GetTargetedContainersInfo(&pod, instance.Spec.Containers)
 		if err != nil {
-			r.log.Debugw("unable to get target pod container ID", "targetPodStatus", pod.Status, "targetPodName", target, "targetPodNamespace", instance.Namespace)
-			return fmt.Errorf("error getting target pod container ID: %w", err)
+			dErr := chaostypes.DisruptionError{Err: fmt.Errorf("error getting target pod container ID: %w", err)}
+			dErr.AddContext("targetPodStatus", pod.Status.String())
+			dErr.AddContext("targetPodName", target)
+			dErr.AddContext("targetPodNamespace", instance.Namespace)
+
+			return dErr
 		}
 
 		// get IP of targeted pod

@@ -10,11 +10,11 @@ type DisruptionError struct {
 	Err     error
 }
 
-func (d *DisruptionError) Error() string {
+func (d DisruptionError) Error() string {
 	return d.Err.Error()
 }
 
-func (d *DisruptionError) Context() map[string]string {
+func (d DisruptionError) Context() map[string]string {
 	if d.context == nil {
 		return map[string]string{}
 	}
@@ -22,7 +22,7 @@ func (d *DisruptionError) Context() map[string]string {
 	return d.context
 }
 
-func (d *DisruptionError) AddContext(key string, value string) {
+func (d DisruptionError) AddContext(key string, value string) {
 	if d.context == nil {
 		d.context = map[string]string{}
 	}
