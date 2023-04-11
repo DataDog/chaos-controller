@@ -533,14 +533,14 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 			getServicePort := func() v1beta1.NetworkDisruptionServicePortSpec {
 				port := v1beta1.NetworkDisruptionServicePortSpec{}
 
-				fmt.Println(`We can identify a service port by name or by port value. Providing on of those fields is required to limit impact on specified port.`)
+				fmt.Println(`We can identify a service port by name or by port value. Providing one of those fields is required to limit impact on specified port.`)
 
 				if confirmOption("Would you like to specify the name for this port?", "This field is optional and is used to find the right port to be affected in case the service has multiple ports") {
 					port.Name = getInput("Please enter the name of the port for this service (or ctrl+c to go back)", "", survey.WithValidator(survey.Required))
 				}
 
 				if confirmOption("Would you like to specify the port value for this port?", "This field is optional and is used to find the right port to be affected in case the service has multiple ports") {
-					port.Port, _ = strconv.Atoi(getInput("Please enter the name of the port for this service (or ctrl+c to go back)", "", survey.WithValidator(integerValidator), survey.WithValidator(survey.Required)))
+					port.Port, _ = strconv.Atoi(getInput("Please enter the port value for this service (or ctrl+c to go back)", "", survey.WithValidator(integerValidator), survey.WithValidator(survey.Required)))
 				}
 
 				if port.Name == "" && port.Port == 0 {
