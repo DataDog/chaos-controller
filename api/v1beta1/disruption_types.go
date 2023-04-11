@@ -524,3 +524,11 @@ func DisruptionHasNoSideEffects(kind string) bool {
 
 	return found
 }
+
+// ShouldSkipNodeFailureInjection returns true if we are attempting to inject a node failure that has already been injected for this given target
+// If we're using staticTargeting, we should never re-select a target whose InjectionStatus is anything other than NotInjected, as we may be
+// injecting into a pod that has been rescheduled onto a new node
+func ShouldSkipNodeFailureInjection(disKind chaostypes.DisruptionKindName, instance *Disruption, injection TargetInjection) bool {
+	// we should never re-inject a static node failure, as it may be targeting the same pod on a new node
+	return disKind == chaostypes.DisruptionKindNodeFailure && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionInjectionStatusNotInjected
+}
