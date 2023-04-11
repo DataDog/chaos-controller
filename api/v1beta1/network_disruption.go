@@ -473,9 +473,9 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 
 	for _, allowedPort := range s.Ports {
 		if allowedPort.Port != 0 {
-			servicePort := servicePortsDic[fmt.Sprintf("port-%d", allowedPort.Port)]
+			servicePort, ok := servicePortsDic[fmt.Sprintf("port-%d", allowedPort.Port)]
 
-			if servicePort.Port == 0 || (allowedPort.Name != "" && allowedPort.Name != servicePort.Name) {
+			if !ok || (allowedPort.Name != "" && allowedPort.Name != servicePort.Name) {
 				notFoundPorts = append(notFoundPorts, allowedPort)
 
 				continue
@@ -483,9 +483,9 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 
 			goodPorts = append(goodPorts, servicePort)
 		} else if allowedPort.Name != "" {
-			servicePort := servicePortsDic[fmt.Sprintf("name-%s", allowedPort.Name)]
+			servicePort, ok := servicePortsDic[fmt.Sprintf("name-%s", allowedPort.Name)]
 
-			if servicePort.Port == 0 || (servicePort.Port == int32(allowedPort.Port)) {
+			if !ok || servicePort.Port == int32(allowedPort.Port) {
 				notFoundPorts = append(notFoundPorts, allowedPort)
 
 				continue
