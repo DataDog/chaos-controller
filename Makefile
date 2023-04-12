@@ -133,6 +133,7 @@ generate: controller-gen
 # Lima actions
 ## Create a new lima cluster and deploy the chaos-controller into it
 lima-all: lima-start lima-install-cert-manager lima-build-all lima-install
+	kubens chaos-engineering
 
 ## Rebuild the chaos-controller images, re-install the chart and restart the chaos-controller pods
 lima-redeploy: lima-build-all lima-install lima-restart
@@ -142,6 +143,13 @@ lima-install-cert-manager:
 	$(KUBECTL) apply -f https://github.com/jetstack/cert-manager/releases/download/v1.9.1/cert-manager.yaml
 	$(KUBECTL) -n cert-manager rollout status deployment/cert-manager-webhook --timeout=180s
 
+lima-install-demo:
+	kubectl apply -f ./examples/namespace.yaml
+	kubectl apply -f ./examples/demo.yaml
+	$(KUBECTL) -n chaos-demo rollout status deployment/demo-curl --timeout=60s
+	$(KUBECTL) -n chaos-demo rollout status deployment/demo-nginx --timeout=60s
+
+
 ## Install CRDs and controller into a lima k3s cluster
 ## In order to use already built images inside the containerd runtime
 ## we override images for all of our components to the expected namespace
@@ -150,6 +158,7 @@ lima-install: manifests
 		--set controller.enableSafeguards=false \
 		--set controller.expiredDisruptionGCDelay=${EXPIRED_DISRUPTION_GC_DELAY} \
 		./chart | $(KUBECTL) apply -f -
+	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
 
 ## Uninstall CRDs and controller from a lima k3s cluster
 lima-uninstall:
@@ -196,9 +205,9 @@ lima-build-handler: docker-build-handler
 
 ## Remove lima references from kubectl config
 lima-kubectx-clean:
-	kubectl config delete-cluster ${LIMA_PROFILE} || true
-	kubectl config delete-context ${LIMA_PROFILE} || true
-	kubectl config delete-user ${LIMA_PROFILE} || true
+	-kubectl config delete-cluster ${LIMA_PROFILE}
+	-kubectl config delete-context ${LIMA_PROFILE}
+	-kubectl config delete-user ${LIMA_PROFILE}
 	kubectl config unset current-context
 
 lima-kubectx:
@@ -296,7 +305,7 @@ generate-chaosdogfood-protobuf:
 	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
 
 generate-mock:
-	go install github.com/vektra/mockery/v2@latest
+	go install github.com/vektra/mockery/v2@v2.24.0
 	go generate ./...
 # First re-generate header, it should complain as just (re)generated mocks does not contains them
 	-$(MAKE) header-check
