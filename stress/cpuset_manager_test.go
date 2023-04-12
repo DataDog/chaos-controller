@@ -19,7 +19,7 @@ var _ = Describe("StresserManager Test", func() {
 	var (
 		log             *zap.SugaredLogger
 		stresserManager StresserManager
-		cgroupManager   *cgroup.ManagerMock
+		cgroupManager   *cgroup.MockManager
 	)
 
 	BeforeEach(func() {
@@ -28,9 +28,9 @@ var _ = Describe("StresserManager Test", func() {
 		stresserManager = NewCPUStresserManager(log)
 
 		// cgroup
-		cgroupManager = &cgroup.ManagerMock{}
-		cgroupManager.On("IsCgroupV2").Return(false)
-		cgroupManager.On("Read", "cpuset", "cpuset.effective_cpus").Return("0-1", nil)
+		cgroupManager = cgroup.NewMockManager(GinkgoT())
+		cgroupManager.EXPECT().IsCgroupV2().Return(false)
+		cgroupManager.EXPECT().Read("cpuset", "cpuset.effective_cpus").Return("0-1", nil)
 	})
 
 	When("IsCoreAlreadyStress", func() {

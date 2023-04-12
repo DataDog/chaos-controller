@@ -21,21 +21,22 @@ import (
 var _ = Describe("Failure", func() {
 	var (
 		config NodeFailureInjectorConfig
-		fw     FileWriterMock
+		fw     *MockFileWriter
 		inj    Injector
 		spec   v1beta1.NodeFailureSpec
 	)
 
 	BeforeEach(func() {
-		fw = FileWriterMock{}
-		fw.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		fw = NewMockFileWriter(GinkgoT())
+		fw.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		config = NodeFailureInjectorConfig{
 			Config: Config{
 				Log:         log,
 				MetricsSink: ms,
 			},
-			FileWriter: &fw,
+			FileWriter:         fw,
+			WaitBeforeShutdown: 100 * time.Millisecond,
 		}
 
 		spec = v1beta1.NodeFailureSpec{}
@@ -55,7 +56,7 @@ var _ = Describe("Failure", func() {
 	Describe("injection", func() {
 		JustBeforeEach(func() {
 			Expect(inj.Inject()).To(BeNil())
-			time.Sleep(time.Second * 11)
+			time.Sleep(config.WaitBeforeShutdown * 2)
 		})
 
 		It("should enable the sysrq handler", func() {
@@ -77,6 +78,5 @@ var _ = Describe("Failure", func() {
 				fw.AssertCalled(GinkgoT(), "Write", "/mnt/sysrq-trigger", mock.Anything, "c")
 			})
 		})
-
 	})
 })

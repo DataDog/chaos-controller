@@ -150,11 +150,11 @@ var _ = Describe("Disruption", func() {
 
 	Context("ValidateCreate", func() {
 		Describe("general errors expectations", func() {
-			ddmarkMock := ddmark.DDMarkMock{}
+			ddmarkMock := ddmark.NewMockClient(GinkgoT())
 
 			BeforeEach(func() {
-				ddmarkMock.On("ValidateStructMultierror", mock.Anything, mock.Anything).Return(&multierror.Error{})
-				ddmarkClient = &ddmarkMock
+				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+				ddmarkClient = ddmarkMock
 				k8sClient = makek8sClientWithDisruptionPod()
 				deleteOnly = false
 			})
@@ -233,19 +233,19 @@ var _ = Describe("Disruption", func() {
 			When("ddmark return an error", func() {
 				It("should catch this error and propagated it", func() {
 					// Arrange
-					ddmarkMockError := ddmark.DDMarkMock{}
-					ddmarkMockError.On("ValidateStructMultierror", mock.Anything, mock.Anything).Return(&multierror.Error{
+					ddmarkMockError := ddmark.NewMockClient(GinkgoT())
+					ddmarkMockError.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{
 						Errors: []error{
 							fmt.Errorf("something bad happened"),
 						},
 					})
-					ddmarkClient = &ddmarkMockError
+					ddmarkClient = ddmarkMockError
 
 					// Action
 					err := newDisruption.ValidateCreate()
 
 					// Revert arrange to avoid side effects
-					ddmarkClient = &ddmarkMock
+					ddmarkClient = ddmarkMock
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -256,11 +256,11 @@ var _ = Describe("Disruption", func() {
 		})
 
 		Describe("expectations with a disk failure disruption", func() {
-			ddmarkMock := ddmark.DDMarkMock{}
+			ddmarkMock := ddmark.NewMockClient(GinkgoT())
 
 			BeforeEach(func() {
-				ddmarkMock.On("ValidateStructMultierror", mock.Anything, mock.Anything).Return(&multierror.Error{})
-				ddmarkClient = &ddmarkMock
+				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+				ddmarkClient = ddmarkMock
 				k8sClient = makek8sClientWithDisruptionPod()
 				recorder = record.NewFakeRecorder(1)
 				metricsSink = noop.New()

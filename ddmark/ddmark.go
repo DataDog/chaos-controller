@@ -22,6 +22,8 @@ import (
 //go:embed validation_teststruct.go
 var EmbeddedDDMarkAPI embed.FS
 
+//go:generate mockery --name=Client --filename=ddmark_mock.go
+
 // Client interface to manage validation of struct fields
 //
 // Client is the expected way to use DDMark. Create a client with ddmark.NewClient(embed.FS).
@@ -56,7 +58,7 @@ type markedLib struct {
 func NewClient(embeddedFS ...embed.FS) (Client, error) {
 	var err error
 
-	var c = client{
+	c := client{
 		markedLibs: []markedLib{},
 	}
 
@@ -109,7 +111,7 @@ func (c client) ValidateStructMultierror(marshalledStruct interface{}, filePath 
 
 	var pkgs []*k8sloader.Package
 
-	var localStructPkgs = []string{}
+	localStructPkgs := []string{}
 
 	for _, pkg := range c.markedLibs {
 		localStructPkgs = append(localStructPkgs, thisLibPath(pkg.APIName))
@@ -239,16 +241,15 @@ func applyMarkers(value reflect.Value, markers k8smarkers.MarkerValues, fieldNam
 
 // getAllPackageTypes extracts all marker rules found in packages and keeps them in a map, ordered by type names.
 func getAllPackageTypes(packages []*k8sloader.Package, col *k8smarkers.Collector) map[string]*k8smarkers.TypeInfo {
-	var typesMap = map[string]*k8smarkers.TypeInfo{}
+	typesMap := map[string]*k8smarkers.TypeInfo{}
 
 	for _, pkg := range packages {
-		var isEmpty = true
+		isEmpty := true
 
 		err := k8smarkers.EachType(col, pkg, func(info *k8smarkers.TypeInfo) {
 			isEmpty = false
 			typesMap[info.Name] = info
 		})
-
 		if err != nil {
 			fmt.Println(pkg, "marker loader:", err)
 		}

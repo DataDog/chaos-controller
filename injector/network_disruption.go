@@ -31,7 +31,7 @@ type linkOperation func([]string, string, string) error
 type networkDisruptionService struct {
 	ip       *net.IPNet
 	port     int
-	protocol network.Protocol
+	protocol v1.Protocol
 }
 
 func (n networkDisruptionService) String() string {
@@ -466,7 +466,7 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 	for _, filter := range filters {
 		i.config.Log.Infow("found service endpoint", "resolvedEndpoint", filter.service.String(), "resolvedService", serviceName)
 
-		filter.priority, err = i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, filter.service.ip, 0, filter.service.port, filter.service.protocol, network.ConnStateUndefined, flowid)
+		filter.priority, err = i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, filter.service.ip, 0, filter.service.port, network.NewProtocol(filter.service.protocol), network.ConnStateUndefined, flowid)
 		if err != nil {
 			return nil, err
 		}
@@ -517,7 +517,7 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servi
 			service: networkDisruptionService{
 				ip:       endpointIP,
 				port:     int(port.TargetPort.IntVal),
-				protocol: network.Protocol(port.Protocol),
+				protocol: port.Protocol,
 			},
 		}
 
@@ -545,7 +545,7 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromService(service v1.Se
 			service: networkDisruptionService{
 				ip:       serviceIP,
 				port:     int(port.Port),
-				protocol: network.Protocol(port.Protocol),
+				protocol: port.Protocol,
 			},
 		}
 
@@ -918,9 +918,10 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 
 			// cast connection state
 			connState := network.NewConnState(host.ConnState)
+			protocol := network.NewProtocol(host.Protocol)
 
 			// create tc filter
-			if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", srcIP, dstIP, srcPort, dstPort, network.Protocol(host.Protocol), connState, flowid); err != nil {
+			if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid); err != nil {
 				return fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
 			}
 		}

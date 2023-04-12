@@ -7,6 +7,8 @@ package injector_test
 
 import (
 	"errors"
+	"os"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
@@ -18,7 +20,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
-	"os"
 )
 
 var _ = Describe("Failure", func() {
@@ -26,42 +27,41 @@ var _ = Describe("Failure", func() {
 		inj               Injector
 		config            DNSDisruptionInjectorConfig
 		spec              v1beta1.DNSDisruptionSpec
-		cgroupManagerMock *cgroup.ManagerMock
-		isCgroupV2Call    *mock.Call
-		netnsManagerMock  *netns.ManagerMock
-		iptablesMock      *network.IptablesMock
-		fileWriterMock    *FileWriterMock
+		cgroupManagerMock *cgroup.MockManager
+		isCgroupV2Call    *cgroup.MockManager_IsCgroupV2_Call
+		netnsManagerMock  *netns.MockManager
+		iptablesMock      *network.MockIptables
+		fileWriterMock    *MockFileWriter
 	)
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManagerMock = &cgroup.ManagerMock{}
-		cgroupManagerMock.On("RelativePath", mock.Anything).Return("/kubepod.slice/foo")
-		cgroupManagerMock.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		isCgroupV2Call = cgroupManagerMock.On("IsCgroupV2").Return(false)
+		cgroupManagerMock = cgroup.NewMockManager(GinkgoT())
+		cgroupManagerMock.EXPECT().RelativePath(mock.Anything).Return("/kubepod.slice/foo")
+		cgroupManagerMock.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		isCgroupV2Call = cgroupManagerMock.EXPECT().IsCgroupV2().Return(false)
 
 		// netns
-		netnsManagerMock = &netns.ManagerMock{}
-		netnsManagerMock.On("Enter").Return(nil)
-		netnsManagerMock.On("Exit").Return(nil)
+		netnsManagerMock = netns.NewMockManager(GinkgoT())
+		netnsManagerMock.EXPECT().Enter().Return(nil)
+		netnsManagerMock.EXPECT().Exit().Return(nil)
 
 		// container
-		ctn := &container.ContainerMock{}
+		ctn := container.NewMockContainer(GinkgoT())
 
 		// pythonRunner
 		pythonRunner := NewMockPythonRunner(GinkgoT())
 		pythonRunner.EXPECT().RunPython(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// iptables
-		iptablesMock = &network.IptablesMock{}
-		iptablesMock.On("Clear").Return(nil)
-		iptablesMock.On("RedirectTo", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptablesMock.On("Intercept", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		iptablesMock.On("ListRules", mock.Anything, mock.Anything).Return([]string{}, nil)
+		iptablesMock = network.NewMockIptables(GinkgoT())
+		iptablesMock.EXPECT().Clear().Return(nil)
+		iptablesMock.EXPECT().RedirectTo(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		iptablesMock.EXPECT().Intercept(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// fileWriter
-		fileWriterMock = &FileWriterMock{}
-		fileWriterMock.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		fileWriterMock = NewMockFileWriter(GinkgoT())
+		fileWriterMock.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// environment variables
 		Expect(os.Setenv(env.InjectorChaosPodIP, "10.0.0.2")).To(BeNil())
@@ -114,8 +114,8 @@ var _ = Describe("Failure", func() {
 
 		Context("with an error during the enter of the targeted network namespace", func() {
 			BeforeEach(func() {
-				managerErrorMock := &netns.ManagerMock{}
-				managerErrorMock.On("Enter").Return(errors.New("message"))
+				managerErrorMock := netns.NewMockManager(GinkgoT())
+				managerErrorMock.EXPECT().Enter().Return(errors.New("message"))
 				config.Netns = managerErrorMock
 			})
 
@@ -127,8 +127,8 @@ var _ = Describe("Failure", func() {
 
 		Context("with an error during the set up of iptables rules to redirect dns requests to the injector pod", func() {
 			BeforeEach(func() {
-				iptablesErrorMock := &network.IptablesMock{}
-				iptablesErrorMock.On("RedirectTo", "udp", "53", mock.Anything).Return(errors.New("message"))
+				iptablesErrorMock := network.NewMockIptables(GinkgoT())
+				iptablesErrorMock.EXPECT().RedirectTo("udp", "53", mock.Anything).Return(errors.New("message"))
 				config.Iptables = iptablesErrorMock
 			})
 
@@ -162,10 +162,10 @@ var _ = Describe("Failure", func() {
 
 			Context("with an error during the re-route of all pods under node except for injector pod itself", func() {
 				BeforeEach(func() {
-					errorIptableMock := network.IptablesMock{}
-					errorIptableMock.On("RedirectTo", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-					errorIptableMock.On("Intercept", "udp", "53", "", "", mock.Anything).Return(errors.New("message"))
-					config.Iptables = &errorIptableMock
+					errorIptableMock := network.NewMockIptables(GinkgoT())
+					errorIptableMock.EXPECT().RedirectTo(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+					errorIptableMock.EXPECT().Intercept("udp", "53", "", "", mock.Anything).Return(errors.New("message"))
+					config.Iptables = errorIptableMock
 				})
 
 				It("should return an error", func() {
@@ -201,10 +201,10 @@ var _ = Describe("Failure", func() {
 
 				Context("with an error from iptable", func() {
 					BeforeEach(func() {
-						iptableErrorMock := network.IptablesMock{}
-						iptableErrorMock.On("RedirectTo", "udp", "53", mock.Anything).Return(nil)
-						iptableErrorMock.On("Intercept", "udp", "53", "", "", "").Return(errors.New("message"))
-						config.Iptables = &iptableErrorMock
+						iptableErrorMock := network.NewMockIptables(GinkgoT())
+						iptableErrorMock.EXPECT().RedirectTo("udp", "53", mock.Anything).Return(nil)
+						iptableErrorMock.EXPECT().Intercept("udp", "53", "", "", "").Return(errors.New("message"))
+						config.Iptables = iptableErrorMock
 					})
 
 					It("should return an error", func() {
@@ -227,10 +227,10 @@ var _ = Describe("Failure", func() {
 
 				Context("with an error from the write function of cgroup", func() {
 					BeforeEach(func() {
-						cgroupErrorMock := cgroup.ManagerMock{}
-						cgroupErrorMock.On("IsCgroupV2").Return(false)
-						cgroupErrorMock.On("Write", "net_cls", "net_cls.classid", mock.Anything).Return(errors.New("message"))
-						config.Cgroup = &cgroupErrorMock
+						cgroupErrorMock := cgroup.NewMockManager(GinkgoT())
+						cgroupErrorMock.EXPECT().IsCgroupV2().Return(false)
+						cgroupErrorMock.EXPECT().Write("net_cls", "net_cls.classid", mock.Anything).Return(errors.New("message"))
+						config.Cgroup = cgroupErrorMock
 					})
 
 					It("should return an error", func() {
@@ -241,10 +241,10 @@ var _ = Describe("Failure", func() {
 
 				Context("with an error from the intercept function of iptables", func() {
 					BeforeEach(func() {
-						iptablesErrorMock := network.IptablesMock{}
-						iptablesErrorMock.On("RedirectTo", "udp", "53", mock.Anything).Return(nil)
-						iptablesErrorMock.On("Intercept", "udp", "53", "", chaostypes.InjectorCgroupClassID, "10.0.0.2").Return(errors.New("message"))
-						config.Iptables = &iptablesErrorMock
+						iptablesErrorMock := network.NewMockIptables(GinkgoT())
+						iptablesErrorMock.EXPECT().RedirectTo("udp", "53", mock.Anything).Return(nil)
+						iptablesErrorMock.EXPECT().Intercept("udp", "53", "", chaostypes.InjectorCgroupClassID, "10.0.0.2").Return(errors.New("message"))
+						config.Iptables = iptablesErrorMock
 					})
 
 					It("should return an error", func() {
@@ -297,9 +297,9 @@ var _ = Describe("Failure", func() {
 
 		Context("with an error from the enter netns function", func() {
 			BeforeEach(func() {
-				netnsErrorMock := netns.ManagerMock{}
-				netnsErrorMock.On("Enter").Return(errors.New("message"))
-				config.Netns = &netnsErrorMock
+				netnsErrorMock := netns.NewMockManager(GinkgoT())
+				netnsErrorMock.EXPECT().Enter().Return(errors.New("message"))
+				config.Netns = netnsErrorMock
 			})
 
 			It("should return an error", func() {
@@ -310,9 +310,9 @@ var _ = Describe("Failure", func() {
 
 		Context("with an error from the clear iptables function", func() {
 			BeforeEach(func() {
-				iptablesErrorMock := network.IptablesMock{}
-				iptablesErrorMock.On("Clear").Return(errors.New("message"))
-				config.Iptables = &iptablesErrorMock
+				iptablesErrorMock := network.NewMockIptables(GinkgoT())
+				iptablesErrorMock.EXPECT().Clear().Return(errors.New("message"))
+				config.Iptables = iptablesErrorMock
 			})
 
 			It("should return an error", func() {
@@ -323,10 +323,10 @@ var _ = Describe("Failure", func() {
 
 		Context("with an error from the exit netns function", func() {
 			BeforeEach(func() {
-				netnsErrorMock := netns.ManagerMock{}
-				netnsErrorMock.On("Enter").Return(nil)
-				netnsErrorMock.On("Exit").Return(errors.New("message"))
-				config.Netns = &netnsErrorMock
+				netnsErrorMock := netns.NewMockManager(GinkgoT())
+				netnsErrorMock.EXPECT().Enter().Return(nil)
+				netnsErrorMock.EXPECT().Exit().Return(errors.New("message"))
+				config.Netns = netnsErrorMock
 			})
 
 			It("should return an error", func() {
@@ -343,10 +343,10 @@ var _ = Describe("Failure", func() {
 
 			Context("with an error from write cgroup function", func() {
 				BeforeEach(func() {
-					cgroupErrorMock := cgroup.ManagerMock{}
-					cgroupErrorMock.On("IsCgroupV2").Return(false)
-					cgroupErrorMock.On("Write", "net_cls", "net_cls.classid", "0").Return(errors.New("message"))
-					config.Cgroup = &cgroupErrorMock
+					cgroupErrorMock := cgroup.NewMockManager(GinkgoT())
+					cgroupErrorMock.EXPECT().IsCgroupV2().Return(false)
+					cgroupErrorMock.EXPECT().Write("net_cls", "net_cls.classid", "0").Return(errors.New("message"))
+					config.Cgroup = cgroupErrorMock
 				})
 
 				It("should return an error", func() {
