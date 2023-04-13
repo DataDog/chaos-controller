@@ -21,44 +21,44 @@ import (
 var _ = Describe("Failure", func() {
 	var (
 		config          CPUPressureInjectorConfig
-		cgroupManager   *cgroup.ManagerMock
-		ctn             *container.ContainerMock
-		stresser        *stress.StresserMock
+		cgroupManager   *cgroup.MockManager
+		ctn             *container.MockContainer
+		stresser        *stress.MockStresser
 		stresserExit    chan struct{}
-		manager         *process.ManagerMock
+		manager         *process.MockManager
 		inj             Injector
 		spec            v1beta1.CPUPressureSpec
-		stresserManager *stress.StresserManagerMock
+		stresserManager *stress.MockStresserManager
 	)
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = &cgroup.ManagerMock{}
-		cgroupManager.On("Join", mock.Anything).Return(nil)
+		cgroupManager = cgroup.NewMockManager(GinkgoT())
+		cgroupManager.EXPECT().Join(mock.Anything).Return(nil)
 
 		// container
-		ctn = &container.ContainerMock{}
+		ctn = container.NewMockContainer(GinkgoT())
 
 		// stresser
-		stresser = &stress.StresserMock{}
-		stresser.On("Stress", mock.Anything).Return()
+		stresser = stress.NewMockStresser(GinkgoT())
+		stresser.EXPECT().Stress(mock.Anything).Return()
 
 		// stresser exit chan, used to sync the stress goroutine with the test
-		stresserExit = make(chan struct{})
+		stresserExit = make(chan struct{}, 1)
 
 		// manager
-		manager = &process.ManagerMock{}
-		manager.On("Prioritize").Return(nil)
-		manager.On("ThreadID").Return(666)
-		manager.On("ProcessID").Return(42)
+		manager = process.NewMockManager(GinkgoT())
+		manager.EXPECT().Prioritize().Return(nil)
+		manager.EXPECT().ThreadID().Return(666)
+		manager.EXPECT().ProcessID().Return(42)
 
-		stresserManager = &stress.StresserManagerMock{}
-		stresserManager.On("TrackCoreAlreadyStressed", mock.Anything, mock.Anything).Return(nil)
-		stresserManager.On("StresserPIDs").Return(map[int]int{0: 666})
-		stresserManager.On("IsCoreAlreadyStressed", 0).Return(true)
-		stresserManager.On("IsCoreAlreadyStressed", 1).Return(false)
+		stresserManager = stress.NewMockStresserManager(GinkgoT())
+		stresserManager.EXPECT().TrackCoreAlreadyStressed(mock.Anything, mock.Anything)
+		stresserManager.EXPECT().StresserPIDs().Return(map[int]int{0: 666})
+		stresserManager.EXPECT().IsCoreAlreadyStressed(0).Return(true)
+		stresserManager.EXPECT().IsCoreAlreadyStressed(1).Return(false)
 
-		//config
+		// config
 		config = CPUPressureInjectorConfig{
 			Config: Config{
 				Cgroup:          cgroupManager,
@@ -79,31 +79,23 @@ var _ = Describe("Failure", func() {
 	JustBeforeEach(func() {
 		var err error
 		inj, err = NewCPUPressureInjector(spec, config)
-		Expect(err).To(BeNil())
+		Expect(err).ShouldNot(HaveOccurred())
 
 		// because the cleaning phase is blocking, we start it in a goroutine
 		// and send a signal to the stresser exit handler
-		Expect(inj.Inject()).To(BeNil())
+		Expect(inj.Inject()).Should(Succeed())
 
 		go func(inj Injector) {
-			Expect(inj.Clean()).To(BeNil())
+			Expect(inj.Clean()).Should(Succeed())
 		}(inj)
 
 		stresserExit <- struct{}{}
 	})
 
-	AfterEach(func() {
-		manager.AssertExpectations(GinkgoT())
-		stresser.AssertExpectations(GinkgoT())
-		stresserManager.AssertExpectations(GinkgoT())
-		cgroupManager.AssertExpectations(GinkgoT())
-		ctn.AssertExpectations(GinkgoT())
-	})
-
 	Describe("injection", func() {
 		Context("user request to stress all the cores", func() {
 			BeforeEach(func() {
-				stresserManager.On("TrackInjectorCores", mock.Anything, mock.Anything).Return(cpuset.NewCPUSet(0, 1), nil)
+				stresserManager.EXPECT().TrackInjectorCores(mock.Anything, mock.Anything).Return(cpuset.NewCPUSet(0, 1), nil)
 			})
 
 			It("should join target cgroup subsystems from the main process", func() {
@@ -133,7 +125,7 @@ var _ = Describe("Failure", func() {
 				spec = v1beta1.CPUPressureSpec{
 					Count: &userRequestCount,
 				}
-				stresserManager.On("TrackInjectorCores", mock.Anything, &userRequestCount).Return(cpuset.NewCPUSet(0, 1), nil)
+				stresserManager.EXPECT().TrackInjectorCores(mock.Anything, &userRequestCount).Return(cpuset.NewCPUSet(0, 1), nil)
 			})
 
 			It("should call stresserManager track cores and get new core to apply pressure", func() {

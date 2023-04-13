@@ -71,6 +71,11 @@ func (_c *MockPythonRunner_RunPython_Call) Return(_a0 error) *MockPythonRunner_R
 	return _c
 }
 
+func (_c *MockPythonRunner_RunPython_Call) RunAndReturn(run func(...string) error) *MockPythonRunner_RunPython_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 type mockConstructorTestingTNewMockPythonRunner interface {
 	mock.TestingT
 	Cleanup(func())

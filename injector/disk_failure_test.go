@@ -6,6 +6,9 @@
 package injector_test
 
 import (
+	"os"
+	"time"
+
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/injector"
@@ -13,8 +16,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
-	"os"
-	"time"
 )
 
 var _ = Describe("Failure", func() {
@@ -24,19 +25,19 @@ var _ = Describe("Failure", func() {
 		proc          *os.Process
 		inj           Injector
 		spec          v1beta1.DiskFailureSpec
-		commandMock   BPFDiskFailureCommandMock
-		containerMock *container.ContainerMock
+		commandMock   *MockBPFDiskFailureCommand
+		containerMock *container.MockContainer
 	)
 
 	JustBeforeEach(func() {
 		const PID = 1
 		proc = &os.Process{Pid: PID}
 
-		containerMock = &container.ContainerMock{}
-		containerMock.On("PID").Return(uint32(PID))
+		containerMock = container.NewMockContainer(GinkgoT())
+		containerMock.EXPECT().PID().Return(PID)
 
-		commandMock = BPFDiskFailureCommandMock{}
-		commandMock.On("Run", mock.Anything, mock.Anything).Return(nil)
+		commandMock = NewMockBPFDiskFailureCommand(GinkgoT())
+		commandMock.EXPECT().Run(mock.Anything, mock.Anything).Return(nil)
 
 		config = DiskFailureInjectorConfig{
 			Config: Config{
@@ -45,7 +46,7 @@ var _ = Describe("Failure", func() {
 				Level:           level,
 				TargetContainer: containerMock,
 			},
-			Cmd: &commandMock,
+			Cmd: commandMock,
 		}
 
 		spec = v1beta1.DiskFailureSpec{

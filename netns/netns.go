@@ -15,6 +15,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//go:generate mockery --name=Manager --filename=netns_mock.go
+
 // Manager is an interface being able to interact with a process network namespace
 type Manager interface {
 	Enter() error

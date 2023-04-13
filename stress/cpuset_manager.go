@@ -16,6 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+//go:generate mockery --name=StresserManager --filename=cpuset_manager_mock.go
+
 type StresserManager interface {
 	TrackInjectorCores(cgroup cgroup.Manager, userRequestCount *intstr.IntOrString) (cpuset.CPUSet, error)
 	IsCoreAlreadyStressed(core int) bool

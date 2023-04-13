@@ -26,6 +26,8 @@ type DiskFailureInjectorConfig struct {
 	Cmd BPFDiskFailureCommand
 }
 
+//go:generate mockery --name=BPFDiskFailureCommand --filename=ebpf_disk_failure_mock.go
+
 type BPFDiskFailureCommand interface {
 	Run(pid int, path string) error
 }

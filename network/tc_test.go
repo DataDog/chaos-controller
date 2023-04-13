@@ -6,7 +6,6 @@ package network
 
 import (
 	"net"
-	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -14,21 +13,11 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type tcExecuterMock struct {
-	mock.Mock
-}
-
-func (f *tcExecuterMock) Run(args ...string) (int, string, error) {
-	a := f.Called(strings.Join(args, " "))
-
-	return a.Int(0), a.String(1), a.Error(2)
-}
-
 var _ = Describe("Tc", func() {
 	var (
 		tcRunner          tc
-		tcExecuter        tcExecuterMock
-		tcExecuterRunCall *mock.Call
+		tcExecuter        *mockTcExecuter
+		tcExecuterRunCall *mockTcExecuter_Run_Call
 		ifaces            []string
 		parent            string
 		handle            string
@@ -41,19 +30,19 @@ var _ = Describe("Tc", func() {
 		priomap           [16]uint32
 		srcIP, dstIP      *net.IPNet
 		srcPort, dstPort  int
-		protocol          Protocol
+		protocol          protocol
 		connState         connState
 		flowid            string
 	)
 
 	BeforeEach(func() {
 		// fake command executer
-		tcExecuter = tcExecuterMock{}
-		tcExecuterRunCall = tcExecuter.On("Run", mock.Anything).Return(0, "", nil)
+		tcExecuter = newMockTcExecuter(GinkgoT())
+		tcExecuterRunCall = tcExecuter.EXPECT().Run(mock.Anything).Return(0, "", nil)
 
 		// tc runner
 		tcRunner = tc{
-			executer:         &tcExecuter,
+			executer:         tcExecuter,
 			tcFilterPriority: 1000,
 		}
 
@@ -78,19 +67,19 @@ var _ = Describe("Tc", func() {
 		}
 		srcPort = 12345
 		dstPort = 80
-		protocol = "TCP"
+		protocol = NewProtocol("TCP")
 		connState = ConnStateNew
 		flowid = "1:2"
 	})
 
 	Describe("AddNetem", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddNetem(ifaces, parent, handle, delay, delayJitter, drop, corrupt, duplicate)
+			Expect(tcRunner.AddNetem(ifaces, parent, handle, delay, delayJitter, drop, corrupt, duplicate)).Should(Succeed())
 		})
 
 		Context("add 1s delay and 1s delayJitter to lo interface to the root parent without any handle", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root netem delay 1000ms 1000ms distribution normal loss 5% duplicate 5% corrupt 1%")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"qdisc", "add", "dev", "lo", "root", "netem", "delay", "1000ms", "1000ms", "distribution", "normal", "loss", "5%", "duplicate", "5%", "corrupt", "1%"})
 			})
 		})
 
@@ -100,7 +89,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root handle 1: netem delay 1000ms 1000ms distribution normal loss 5% duplicate 5% corrupt 1%")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"qdisc", "add", "dev", "lo", "root", "handle", "1:", "netem", "delay", "1000ms", "1000ms", "distribution", "normal", "loss", "5%", "duplicate", "5%", "corrupt", "1%"})
 			})
 		})
 
@@ -110,26 +99,27 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo parent 1:4 netem delay 1000ms 1000ms distribution normal loss 5% duplicate 5% corrupt 1%")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"qdisc", "add", "dev", "lo", "parent", "1:4", "netem", "delay", "1000ms", "1000ms", "distribution", "normal", "loss", "5%", "duplicate", "5%", "corrupt", "1%"})
 			})
 		})
 	})
 
 	Describe("AddPrio", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddPrio(ifaces, parent, handle, bands, priomap)
+			Expect(tcRunner.AddPrio(ifaces, parent, handle, bands, priomap)).Should(Succeed())
 		})
 
 		Context("add a 16 bands prio with a priomap with one case per band", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root prio bands 16 priomap 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"qdisc", "add", "dev", "lo", "root", "prio", "bands", "16", "priomap", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"})
 			})
 		})
 	})
 
 	Describe("AddFilter", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddFilter(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid)
+			_, err := tcRunner.AddFilter(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid)
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		Context("add a filter on packets going to IP 10.0.0.1 and port 80 with flowid 1:4 on egress traffic", func() {
@@ -139,7 +129,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip priority 1001 root flower ip_proto tcp dst_ip 10.0.0.1/32 dst_port 80 ct_state +trk+new flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "priority", "1001", "root", "flower", "ip_proto", "tcp", "dst_ip", "10.0.0.1/32", "dst_port", "80", "ct_state", "+trk+new", "flowid", "1:2"})
 			})
 		})
 
@@ -150,48 +140,48 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip priority 1001 root flower ip_proto tcp src_ip 192.168.0.1/32 src_port 12345 ct_state +trk+new flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "priority", "1001", "root", "flower", "ip_proto", "tcp", "src_ip", "192.168.0.1/32", "src_port", "12345", "ct_state", "+trk+new", "flowid", "1:2"})
 			})
 		})
 
 		Context("add a filter on packets leaving IP 192.168.0.1 port 12345 and going to IP 10.0.0.1 port 80 with flowid 1:4 on egress traffic", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip priority 1001 root flower ip_proto tcp src_ip 192.168.0.1/32 dst_ip 10.0.0.1/32 src_port 12345 dst_port 80 ct_state +trk+new flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "priority", "1001", "root", "flower", "ip_proto", "tcp", "src_ip", "192.168.0.1/32", "dst_ip", "10.0.0.1/32", "src_port", "12345", "dst_port", "80", "ct_state", "+trk+new", "flowid", "1:2"})
 			})
 		})
 	})
 
 	Describe("AddFwFilter", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddFwFilter(ifaces, parent, handle, flowid)
+			Expect(tcRunner.AddFwFilter(ifaces, parent, handle, flowid)).Should(Succeed())
 		})
 
 		Context("add a cgroup filter", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "filter add dev lo protocol ip root fw flowid 1:2")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "root", "fw", "flowid", "1:2"})
 			})
 		})
 	})
 
 	Describe("AddOutputLimit", func() {
 		JustBeforeEach(func() {
-			tcRunner.AddOutputLimit(ifaces, parent, handle, 12345)
+			Expect(tcRunner.AddOutputLimit(ifaces, parent, handle, 12345)).Should(Succeed())
 		})
 		Context("add an output limit on root device of 12345 bytes per second", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc add dev lo root tbf rate 12345 latency 50ms burst 12345")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"qdisc", "add", "dev", "lo", "root", "tbf", "rate", "12345", "latency", "50ms", "burst", "12345"})
 			})
 		})
 	})
 
 	Describe("ClearQdisc", func() {
 		JustBeforeEach(func() {
-			Expect(tcRunner.ClearQdisc(ifaces)).To(BeNil())
+			Expect(tcRunner.ClearQdisc(ifaces)).Should(Succeed())
 		})
 
 		Context("clear qdisc for local interface", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc del dev lo root")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"qdisc", "del", "dev", "lo", "root"})
 			})
 		})
 
@@ -201,7 +191,7 @@ var _ = Describe("Tc", func() {
 			})
 
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", "qdisc del dev lo root")
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"qdisc", "del", "dev", "lo", "root"})
 			})
 		})
 	})

@@ -7,6 +7,8 @@ package injector
 
 import "os"
 
+//go:generate mockery --name=FileWriter --filename=file_writer_mock.go
+
 // FileWriter is a component allowing to write the given data
 // to the given file
 type FileWriter interface {

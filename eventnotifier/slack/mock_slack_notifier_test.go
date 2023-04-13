@@ -29,6 +29,10 @@ func (_m *mockSlackNotifier) GetUserByEmail(email string) (*slack_goslack.User, 
 	ret := _m.Called(email)
 
 	var r0 *slack_goslack.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*slack_goslack.User, error)); ok {
+		return rf(email)
+	}
 	if rf, ok := ret.Get(0).(func(string) *slack_goslack.User); ok {
 		r0 = rf(email)
 	} else {
@@ -37,7 +41,6 @@ func (_m *mockSlackNotifier) GetUserByEmail(email string) (*slack_goslack.User, 
 		}
 	}
 
-	var r1 error
 	if rf, ok := ret.Get(1).(func(string) error); ok {
 		r1 = rf(email)
 	} else {
@@ -70,6 +73,11 @@ func (_c *mockSlackNotifier_GetUserByEmail_Call) Return(_a0 *slack_goslack.User,
 	return _c
 }
 
+func (_c *mockSlackNotifier_GetUserByEmail_Call) RunAndReturn(run func(string) (*slack_goslack.User, error)) *mockSlackNotifier_GetUserByEmail_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PostMessage provides a mock function with given fields: channelID, options
 func (_m *mockSlackNotifier) PostMessage(channelID string, options ...slack_goslack.MsgOption) (string, string, error) {
 	_va := make([]interface{}, len(options))
@@ -82,20 +90,23 @@ func (_m *mockSlackNotifier) PostMessage(channelID string, options ...slack_gosl
 	ret := _m.Called(_ca...)
 
 	var r0 string
+	var r1 string
+	var r2 error
+	if rf, ok := ret.Get(0).(func(string, ...slack_goslack.MsgOption) (string, string, error)); ok {
+		return rf(channelID, options...)
+	}
 	if rf, ok := ret.Get(0).(func(string, ...slack_goslack.MsgOption) string); ok {
 		r0 = rf(channelID, options...)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	var r1 string
 	if rf, ok := ret.Get(1).(func(string, ...slack_goslack.MsgOption) string); ok {
 		r1 = rf(channelID, options...)
 	} else {
 		r1 = ret.Get(1).(string)
 	}
 
-	var r2 error
 	if rf, ok := ret.Get(2).(func(string, ...slack_goslack.MsgOption) error); ok {
 		r2 = rf(channelID, options...)
 	} else {
@@ -133,6 +144,11 @@ func (_c *mockSlackNotifier_PostMessage_Call) Run(run func(channelID string, opt
 
 func (_c *mockSlackNotifier_PostMessage_Call) Return(_a0 string, _a1 string, _a2 error) *mockSlackNotifier_PostMessage_Call {
 	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *mockSlackNotifier_PostMessage_Call) RunAndReturn(run func(string, ...slack_goslack.MsgOption) (string, string, error)) *mockSlackNotifier_PostMessage_Call {
+	_c.Call.Return(run)
 	return _c
 }
 
