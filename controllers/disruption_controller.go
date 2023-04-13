@@ -122,23 +122,24 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		unwrappedError, ok := err.(chaostypes.DisruptionError)
 		if ok {
 			errorContext := unwrappedError.Context()
+			wraps := make([]interface{}, 0, len(errorContext)+2)
+			wraps = append(wraps, "err", unwrappedError)
+
+			for key, value := range errorContext {
+				wraps = append(wraps, key, value)
+			}
 
 			if isModifiedError(unwrappedError) {
-                                 wraps := make([]interface{}, 0, len(errorContext)+2)
-                                 wraps = append(wraps, "err", unwrappedError)
-                                 for key, value := range errorContext {
-                                   wraps = append(wraps, key, value)
-                                 }
-				r.log.Infow("a retryable error occured in reconcile loop", wraps...)
+				r.log.Infow("a retryable error occurred in reconcile loop", wraps...)
 			} else {
-				r.log.Errorw(unwrappedError.Error(), errorContext)
+				r.log.Errorw("an error occurred in reconcile loop", wraps...)
 			}
 		}
 
 		if isModifiedError(err) {
-			r.log.Infow("a retryable error occured in reconcile loop", "err", err)
+			r.log.Infow("a retryable error occurred in reconcile loop", "err", err)
 		} else {
-			r.log.Errorw("an error occured in reconcile loop", "err", err)
+			r.log.Errorw("an error occurred in reconcile loop", "err", err)
 		}
 	}()
 
@@ -497,13 +498,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 		// create injection pods if none have been found
 		switch len(found) {
 		case 0:
-			chaosPodArgs := []string{}
-			if len(chaosPod.Spec.Containers) > 0 && chaosPod.Spec.Containers[0].Name == "injector" {
-				chaosPodArgs = chaosPod.Spec.Containers[0].Args
-			} else {
-				r.log.Warnw("unable to find the args for this chaos pod", "chaosPodName", chaosPod.Name, "chaosPodContainerCount", len(chaosPod.Spec.Containers))
-			}
-
+			chaosPodArgs := r.getChaosPodInjectorArgs(chaosPod)
 			r.log.Infow("creating chaos pod", "target", target, "chaosPodArgs", chaosPodArgs)
 
 			// create the pod
@@ -538,6 +533,26 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	}
 
 	return nil
+}
+
+func (r *DisruptionReconciler) getChaosPodInjectorArgs(chaosPod *corev1.Pod) []string {
+	chaosPodArgs := []string{}
+
+	if len(chaosPod.Spec.Containers) > 0 {
+		for _, container := range chaosPod.Spec.Containers {
+			if container.Name == "injector" {
+				chaosPodArgs = container.Args
+			}
+		}
+
+		if len(chaosPodArgs) == 0 {
+			r.log.Warnw("unable to find the args for this chaos pod", "chaosPodName", chaosPod.Name, "chaosPodSpec", chaosPod.Spec, "chaosPodContainerCount", len(chaosPod.Spec.Containers))
+		}
+	} else {
+		r.log.Errorw("no containers found in chaos pod spec", "chaosPodSpec", chaosPod.Spec)
+	}
+
+	return chaosPodArgs
 }
 
 // waitForPodCreation waits for the given pod to be created
