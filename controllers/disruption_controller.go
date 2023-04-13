@@ -124,7 +124,12 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			errorContext := unwrappedError.Context()
 
 			if isModifiedError(unwrappedError) {
-				r.log.Infow(fmt.Sprintf("retryable %s", unwrappedError.Error()), errorContext)
+                                 wraps := make([]interface{}, 0, len(errorContext)+2)
+                                 wraps = append(wraps, "err", unwrappedError)
+                                 for key, value := range errorContext {
+                                   wraps = append(wraps, key, value)
+                                 }
+				r.log.Infow("a retryable error occured in reconcile loop", wraps...)
 			} else {
 				r.log.Errorw(unwrappedError.Error(), errorContext)
 			}
