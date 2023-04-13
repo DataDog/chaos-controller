@@ -57,6 +57,11 @@ func (_c *mockCommand_Start_Call) Return(_a0 error) *mockCommand_Start_Call {
 	return _c
 }
 
+func (_c *mockCommand_Start_Call) RunAndReturn(run func() error) *mockCommand_Start_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // String provides a mock function with given fields:
 func (_m *mockCommand) String() string {
 	ret := _m.Called()
@@ -93,6 +98,11 @@ func (_c *mockCommand_String_Call) Return(_a0 string) *mockCommand_String_Call {
 	return _c
 }
 
+func (_c *mockCommand_String_Call) RunAndReturn(run func() string) *mockCommand_String_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Wait provides a mock function with given fields:
 func (_m *mockCommand) Wait() error {
 	ret := _m.Called()
@@ -126,6 +136,11 @@ func (_c *mockCommand_Wait_Call) Run(run func()) *mockCommand_Wait_Call {
 
 func (_c *mockCommand_Wait_Call) Return(_a0 error) *mockCommand_Wait_Call {
 	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockCommand_Wait_Call) RunAndReturn(run func() error) *mockCommand_Wait_Call {
+	_c.Call.Return(run)
 	return _c
 }
 

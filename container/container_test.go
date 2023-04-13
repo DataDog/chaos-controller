@@ -16,15 +16,15 @@ import (
 var _ = Describe("Container", func() {
 	var (
 		config  Config
-		runtime *container.RuntimeMock
+		runtime *container.MockRuntime
 		ctn     Container
 	)
 
 	BeforeEach(func() {
 		// runtime
-		runtime = &container.RuntimeMock{}
-		runtime.On("PID", mock.Anything).Return(uint32(666), nil)
-		runtime.On("Name", mock.Anything).Return("", nil)
+		runtime = container.NewMockRuntime(GinkgoT())
+		runtime.EXPECT().PID(mock.Anything).Return(uint32(666), nil)
+		runtime.EXPECT().Name(mock.Anything).Return("", nil)
 
 		// config
 		config = Config{
