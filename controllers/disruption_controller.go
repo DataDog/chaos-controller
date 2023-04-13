@@ -136,9 +136,9 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		if isModifiedError(err) {
-			r.log.Infow(fmt.Sprintf("retryable %s", err.Error()))
+			r.log.Infow("a retryable error occured in reconcile loop", "err", err)
 		} else {
-			r.log.Errorw(err.Error())
+			r.log.Errorw("an error occured in reconcile loop", "err", err)
 		}
 	}()
 
