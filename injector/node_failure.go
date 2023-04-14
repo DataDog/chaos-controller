@@ -27,7 +27,8 @@ type nodeFailureInjector struct {
 // create a NodeFailureInjector
 type NodeFailureInjectorConfig struct {
 	Config
-	FileWriter FileWriter
+	FileWriter         FileWriter
+	WaitBeforeShutdown time.Duration
 }
 
 // NewNodeFailureInjector creates a NodeFailureInjector object with the given config,
@@ -48,6 +49,10 @@ func NewNodeFailureInjector(spec v1beta1.NodeFailureSpec, config NodeFailureInje
 	sysrqTriggerPath, ok := os.LookupEnv(env.InjectorMountSysrqTrigger)
 	if !ok {
 		return nil, fmt.Errorf("environment variable %s doesn't exist", env.InjectorMountSysrqTrigger)
+	}
+
+	if config.WaitBeforeShutdown == 0 {
+		config.WaitBeforeShutdown = 10 * time.Second
 	}
 
 	return &nodeFailureInjector{
@@ -72,7 +77,7 @@ func (i *nodeFailureInjector) Inject() error {
 	)
 
 	// Ensure sysrq value is set to 1 (to accept the kernel panic trigger)
-	if err := i.config.FileWriter.Write(i.sysrqPath, 0644, "1"); err != nil {
+	if err := i.config.FileWriter.Write(i.sysrqPath, 0o644, "1"); err != nil {
 		return fmt.Errorf("error while writing to the sysrq file (%s): %w", i.sysrqPath, err)
 	}
 
@@ -81,13 +86,13 @@ func (i *nodeFailureInjector) Inject() error {
 	i.config.Log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
 	_ = i.config.Log.Sync() // If we can't flush the logger, why would logging the error help? so we just ignore
 
-	go func() { // Wait ten seconds for the logs to be flushed and collected, as the shutdown will be immediate
-		time.Sleep(time.Second * 10)
+	go func() { // Wait for the logs to be flushed and collected, as the shutdown will be immediate
+		time.Sleep(i.config.WaitBeforeShutdown)
 
 		if i.spec.Shutdown {
-			err = i.config.FileWriter.Write(i.sysrqTriggerPath, 0200, "o")
+			err = i.config.FileWriter.Write(i.sysrqTriggerPath, 0o200, "o")
 		} else {
-			err = i.config.FileWriter.Write(i.sysrqTriggerPath, 0200, "c")
+			err = i.config.FileWriter.Write(i.sysrqTriggerPath, 0o200, "c")
 		}
 
 		if err != nil {

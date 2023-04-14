@@ -6,6 +6,7 @@
 package injector_test
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"time"
@@ -30,102 +31,109 @@ import (
 	"k8s.io/client-go/testing"
 )
 
+const (
+	secondGatewayIP, targetPodHostIP, testHostIP, clusterIP, podIP = "192.168.0.1", "10.0.0.2", "1.1.1.1", "172.16.0.1", "10.1.0.4"
+)
+
 var _ = Describe("Failure", func() {
 	var (
-		ctn                                                     *container.ContainerMock
+		ctn                                                     *container.MockContainer
 		inj                                                     Injector
 		config                                                  NetworkDisruptionInjectorConfig
 		spec                                                    v1beta1.NetworkDisruptionSpec
-		cgroupManager                                           *cgroup.ManagerMock
-		isCgroupV2Call                                          *mock.Call
-		tc                                                      *network.TcMock
-		iptables                                                *network.IptablesMock
-		nl                                                      *network.NetlinkAdapterMock
-		nllink1, nllink2, nllink3                               *network.NetlinkLinkMock
-		nllink1TxQlenCall, nllink2TxQlenCall, nllink3TxQlenCall *mock.Call
-		nlroute1, nlroute2, nlroute3                            *network.NetlinkRouteMock
-		dns                                                     *network.DNSMock
-		netnsManager                                            *netns.ManagerMock
+		cgroupManager                                           *cgroup.MockManager
+		isCgroupV2Call                                          *cgroup.MockManager_IsCgroupV2_Call
+		tc                                                      *network.MockTrafficController
+		iptables                                                *network.MockIptables
+		nl                                                      *network.MockNetlinkAdapter
+		nllink1, nllink2, nllink3                               *network.MockNetlinkLink
+		nllink1TxQlenCall, nllink2TxQlenCall, nllink3TxQlenCall *network.MockNetlinkLink_TxQLen_Call
+		nlroute1, nlroute2, nlroute3                            *network.MockNetlinkRoute
+		dns                                                     *network.MockDNSClient
+		netnsManager                                            *netns.MockManager
 		k8sClient                                               *kubernetes.Clientset
 		fakeService                                             *corev1.Service
 		fakeService2                                            *corev1.Service
 		fakeEndpoint                                            *corev1.Pod
 		fakeEndpoint2                                           *corev1.Pod
+		zeroIPNet, nilIPNet                                     *net.IPNet
 	)
 
 	BeforeEach(func() {
+		nilIPNet = nil
+		_, zeroIPNet, _ = net.ParseCIDR("0.0.0.0/0")
 		// cgroup
-		cgroupManager = &cgroup.ManagerMock{}
-		cgroupManager.On("RelativePath", mock.Anything).Return("/kubepod.slice/foo")
-		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		isCgroupV2Call = cgroupManager.On("IsCgroupV2").Return(false)
+		cgroupManager = cgroup.NewMockManager(GinkgoT())
+		cgroupManager.EXPECT().RelativePath(mock.Anything).Return("/kubepod.slice/foo")
+		cgroupManager.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		isCgroupV2Call = cgroupManager.EXPECT().IsCgroupV2().Return(false)
 
 		// netns
-		netnsManager = &netns.ManagerMock{}
-		netnsManager.On("Enter").Return(nil)
-		netnsManager.On("Exit").Return(nil)
+		netnsManager = netns.NewMockManager(GinkgoT())
+		netnsManager.EXPECT().Enter().Return(nil)
+		netnsManager.EXPECT().Exit().Return(nil)
 
 		// tc
-		tc = network.NewTcMock()
-		tc.On("AddNetem", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("AddPrio", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("AddFwFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("AddOutputLimit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.On("DeleteFilter", mock.Anything, mock.Anything).Return(nil)
-		tc.On("ClearQdisc", mock.Anything).Return(nil)
+		tc = network.NewMockTrafficController(GinkgoT())
+		tc.EXPECT().AddNetem(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.EXPECT().AddPrio(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.EXPECT().AddFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0, nil)
+		tc.EXPECT().AddFwFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.EXPECT().AddOutputLimit(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		tc.EXPECT().DeleteFilter(mock.Anything, mock.Anything).Return(nil)
+		tc.EXPECT().ClearQdisc(mock.Anything).Return(nil)
 
 		// iptables
-		iptables = &network.IptablesMock{}
-		iptables.On("Clear").Return(nil)
-		iptables.On("MarkCgroupPath", mock.Anything, mock.Anything).Return(nil)
-		iptables.On("MarkClassID", mock.Anything, mock.Anything).Return(nil)
-		iptables.On("LogConntrack").Return(nil)
+		iptables = network.NewMockIptables(GinkgoT())
+		iptables.EXPECT().Clear().Return(nil)
+		iptables.EXPECT().MarkCgroupPath(mock.Anything, mock.Anything).Return(nil)
+		iptables.EXPECT().MarkClassID(mock.Anything, mock.Anything).Return(nil)
+		iptables.EXPECT().LogConntrack().Return(nil)
 
 		// netlink
-		nllink1 = &network.NetlinkLinkMock{}
-		nllink1.On("Name").Return("lo")
-		nllink1.On("SetTxQLen", mock.Anything).Return(nil)
-		nllink1TxQlenCall = nllink1.On("TxQLen").Return(0)
-		nllink2 = &network.NetlinkLinkMock{}
-		nllink2.On("Name").Return("eth0")
-		nllink2.On("SetTxQLen", mock.Anything).Return(nil)
-		nllink2TxQlenCall = nllink2.On("TxQLen").Return(0)
-		nllink3 = &network.NetlinkLinkMock{}
-		nllink3.On("Name").Return("eth1")
-		nllink3.On("SetTxQLen", mock.Anything).Return(nil)
-		nllink3TxQlenCall = nllink3.On("TxQLen").Return(0)
+		nllink1 = network.NewMockNetlinkLink(GinkgoT())
+		nllink1.EXPECT().Name().Return("lo")
+		nllink1.EXPECT().SetTxQLen(mock.Anything).Return(nil)
+		nllink1TxQlenCall = nllink1.EXPECT().TxQLen().Return(0)
+		nllink2 = network.NewMockNetlinkLink(GinkgoT())
+		nllink2.EXPECT().Name().Return("eth0")
+		nllink2.EXPECT().SetTxQLen(mock.Anything).Return(nil)
+		nllink2TxQlenCall = nllink2.EXPECT().TxQLen().Return(0)
+		nllink3 = network.NewMockNetlinkLink(GinkgoT())
+		nllink3.EXPECT().Name().Return("eth1")
+		nllink3.EXPECT().SetTxQLen(mock.Anything).Return(nil)
+		nllink3TxQlenCall = nllink3.EXPECT().TxQLen().Return(0)
 
-		nlroute1 = &network.NetlinkRouteMock{}
-		nlroute1.On("Link").Return(nllink1)
-		nlroute1.On("Gateway").Return(net.IP([]byte{}))
-		nlroute2 = &network.NetlinkRouteMock{}
-		nlroute2.On("Link").Return(nllink2)
-		nlroute2.On("Gateway").Return(net.ParseIP("192.168.0.1"))
-		nlroute3 = &network.NetlinkRouteMock{}
-		nlroute3.On("Link").Return(nllink3)
-		nlroute3.On("Gateway").Return(net.ParseIP("192.168.1.1"))
+		nlroute1 = network.NewMockNetlinkRoute(GinkgoT())
+		nlroute1.EXPECT().Link().Return(nllink1)
+		nlroute1.EXPECT().Gateway().Return(net.IP([]byte{}))
+		nlroute2 = network.NewMockNetlinkRoute(GinkgoT())
+		nlroute2.EXPECT().Link().Return(nllink2)
+		nlroute2.EXPECT().Gateway().Return(net.ParseIP(secondGatewayIP))
+		nlroute3 = network.NewMockNetlinkRoute(GinkgoT())
+		nlroute3.EXPECT().Link().Return(nllink3)
+		nlroute3.EXPECT().Gateway().Return(net.ParseIP("192.168.1.1"))
 
-		nl = &network.NetlinkAdapterMock{}
-		nl.On("LinkList").Return([]network.NetlinkLink{nllink1, nllink2, nllink3}, nil)
-		nl.On("LinkByIndex", 0).Return(nllink1, nil)
-		nl.On("LinkByIndex", 1).Return(nllink2, nil)
-		nl.On("LinkByIndex", 2).Return(nllink3, nil)
-		nl.On("LinkByName", "lo").Return(nllink1, nil)
-		nl.On("LinkByName", "eth0").Return(nllink2, nil)
-		nl.On("LinkByName", "eth1").Return(nllink3, nil)
-		nl.On("DefaultRoutes").Return([]network.NetlinkRoute{nlroute2}, nil)
+		nl = network.NewMockNetlinkAdapter(GinkgoT())
+		nl.EXPECT().LinkList().Return([]network.NetlinkLink{nllink1, nllink2, nllink3}, nil)
+		nl.EXPECT().LinkByIndex(0).Return(nllink1, nil)
+		nl.EXPECT().LinkByIndex(1).Return(nllink2, nil)
+		nl.EXPECT().LinkByIndex(2).Return(nllink3, nil)
+		nl.EXPECT().LinkByName("lo").Return(nllink1, nil)
+		nl.EXPECT().LinkByName("eth0").Return(nllink2, nil)
+		nl.EXPECT().LinkByName("eth1").Return(nllink3, nil)
+		nl.EXPECT().DefaultRoutes().Return([]network.NetlinkRoute{nlroute2}, nil)
 
 		// dns
-		dns = &network.DNSMock{}
-		dns.On("Resolve", "kubernetes.default").Return([]net.IP{net.ParseIP("192.168.0.254")}, nil)
-		dns.On("Resolve", "testhost").Return([]net.IP{net.ParseIP("1.1.1.1")}, nil)
+		dns = network.NewMockDNSClient(GinkgoT())
+		dns.EXPECT().Resolve("kubernetes.default").Return([]net.IP{net.ParseIP("192.168.0.254")}, nil)
+		dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil)
 
 		// container
-		ctn = &container.ContainerMock{}
+		ctn = container.NewMockContainer(GinkgoT())
 
 		// environment variables
-		Expect(os.Setenv(env.InjectorTargetPodHostIP, "10.0.0.2")).To(BeNil())
+		Expect(os.Setenv(env.InjectorTargetPodHostIP, targetPodHostIP)).To(BeNil())
 
 		// fake kubernetes client and resources
 		fakeService = &corev1.Service{
@@ -135,7 +143,7 @@ var _ = Describe("Failure", func() {
 			},
 			Spec: corev1.ServiceSpec{
 				Type:      corev1.ServiceTypeClusterIP,
-				ClusterIP: "172.16.0.1",
+				ClusterIP: clusterIP,
 				Ports: []corev1.ServicePort{
 					{
 						Port:       80,
@@ -156,7 +164,7 @@ var _ = Describe("Failure", func() {
 			},
 			Spec: corev1.ServiceSpec{
 				Type:      corev1.ServiceTypeClusterIP,
-				ClusterIP: "172.16.0.2",
+				ClusterIP: clusterIP,
 				Ports: []corev1.ServicePort{
 					{
 						Port:       8180,
@@ -184,7 +192,7 @@ var _ = Describe("Failure", func() {
 				},
 			},
 			Status: corev1.PodStatus{
-				PodIP: "10.1.0.4",
+				PodIP: podIP,
 			},
 		}
 
@@ -197,7 +205,7 @@ var _ = Describe("Failure", func() {
 				},
 			},
 			Status: corev1.PodStatus{
-				PodIP: "10.1.0.5",
+				PodIP: podIP,
 			},
 		}
 
@@ -311,7 +319,7 @@ var _ = Describe("Failure", func() {
 		// hosts and services filtering cases
 		Context("with no hosts specified", func() {
 			It("should add a filter to redirect all traffic on main interfaces on the disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "0.0.0.0/0", 0, 0, "tcp", "", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, zeroIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:4")
 			})
 		})
 
@@ -319,7 +327,7 @@ var _ = Describe("Failure", func() {
 			BeforeEach(func() {
 				spec.Hosts = []v1beta1.NetworkDisruptionHostSpec{
 					{
-						Host:      "1.1.1.1",
+						Host:      testHostIP,
 						Port:      80,
 						Protocol:  "tcp",
 						ConnState: "new",
@@ -334,8 +342,8 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter to redirect targeted traffic on all interfaces on the disrupted band filter on given hosts as destination IP", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "1.1.1.1/32", 0, 80, "tcp", "+trk+new", "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "2.2.2.2/32", 0, 443, "tcp", "+trk+est", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(testHostIP), 0, 80, network.TCP, network.ConnStateNew, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse("2.2.2.2"), 0, 443, network.TCP, network.ConnStateEstablished, "1:4")
 			})
 		})
 
@@ -390,14 +398,14 @@ var _ = Describe("Failure", func() {
 
 				// Initial setup
 				Eventually(func(g Gomega) {
-					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.4/32", 0, 8080, "TCP", "", "1:4") // priority 1003
-					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 80, "TCP", "", "1:4") // priority 1004
+					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
 
 					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", servicePortRulePriority)
 					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", servicePortRulePriority)
 					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", servicePortRulePriority)
 
-					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.1/32", 0, 81, "TCP", "", "1:4") // priority 1005
+					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 81, network.TCP, network.ConnStateUndefined, "1:4") // priority 1005
 
 					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", serviceAssociatedPodRulePriority)
 					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", serviceAssociatedPodRulePriority)
@@ -444,9 +452,9 @@ var _ = Describe("Failure", func() {
 
 			It("should add a filter on allowed port, not on not specified port", func() {
 				Eventually(func(g Gomega) {
-					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.2/32", 0, 8180, "TCP", "", "1:4") // priority 1003
-					tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "172.16.0.2/32", 0, 8181, "TCP", "", "1:4")
-					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.1.0.5/32", 0, 8080, "TCP", "", "1:4") // priority 1004
+					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 8180, network.TCP, network.ConnStateUndefined, "1:4")
+					tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 8181, network.TCP, network.ConnStateUndefined, "1:4")
+					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
 				}, time.Second*5, time.Second).Should(Succeed())
 			})
 
@@ -458,11 +466,11 @@ var _ = Describe("Failure", func() {
 		// safeguards
 		Context("pod level safeguards", func() {
 			It("should add a filter to redirect default gateway IP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"eth0"}, "1:0", mock.Anything, "nil", "192.168.0.1/32", 0, 0, "tcp", "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"eth0"}, "1:0", "", nilIPNet, buildSingleIPNet(secondGatewayIP), 0, 0, network.TCP, network.ConnStateUndefined, "1:1")
 			})
 
 			It("should add a filter to redirect node IP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "10.0.0.2/32", 0, 0, "tcp", "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(targetPodHostIP), 0, 0, network.TCP, network.ConnStateUndefined, "1:1")
 			})
 		})
 
@@ -472,15 +480,15 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter to redirect SSH traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "nil", 22, 0, "tcp", "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, nilIPNet, 22, 0, network.TCP, network.ConnStateUndefined, "1:1")
 			})
 
 			It("should add a filter to redirect ARP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "nil", 0, 0, "arp", "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, nilIPNet, 0, 0, network.ARP, network.ConnStateUndefined, "1:1")
 			})
 
 			It("should add a filter to redirect metadata service traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "169.254.169.254/32", 0, 0, "tcp", "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet("169.254.169.254"), 0, 0, network.TCP, network.ConnStateUndefined, "1:1")
 			})
 		})
 
@@ -495,7 +503,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter to redirect all traffic on main interfaces on the disrupted band with specified port as source port", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "0.0.0.0/0", "nil", 80, 0, "tcp", "", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", zeroIPNet, nilIPNet, 80, 0, network.TCP, network.ConnStateUndefined, "1:4")
 			})
 		})
 
@@ -509,7 +517,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should apply tc filters to block traffic", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "0.0.0.0/0", 0, 0, "tcp", "", "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, zeroIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:4")
 			})
 		})
 
@@ -524,7 +532,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter to redirect traffic going to 8.8.8.8/32 on port 53 on the not disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", mock.Anything, "nil", "8.8.8.8/32", 0, 53, "tcp", "", "1:1")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse("8.8.8.8"), 0, 53, network.TCP, network.ConnStateUndefined, "1:1")
 			})
 		})
 
@@ -565,3 +573,15 @@ var _ = Describe("Failure", func() {
 		})
 	})
 })
+
+func buildSingleIPNet(ip string) *net.IPNet {
+	return &net.IPNet{
+		IP:   net.ParseIP(ip),
+		Mask: net.CIDRMask(32, 32),
+	}
+}
+
+func buildSingleIPNetUsingParse(ip string) *net.IPNet {
+	_, r, _ := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
+	return r
+}

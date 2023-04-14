@@ -5,16 +5,39 @@
 
 package network
 
-import "strings"
+import (
+	"strings"
 
-type Protocol string
-
-const (
-	TCP Protocol = "tcp"
-	UDP Protocol = "udp"
-	ARP Protocol = "arp"
+	v1 "k8s.io/api/core/v1"
 )
 
-func (p Protocol) String() string {
-	return strings.ToLower(string(p))
+type protocol string
+
+const (
+	TCP protocol = "tcp"
+	UDP protocol = "udp"
+	ARP protocol = "arp"
+)
+
+func (p protocol) String() string {
+	return string(p)
+}
+
+type protocolString interface {
+	string | v1.Protocol
+}
+
+// NewProtocol returns a protocol value based on the given string, possible values are:
+// - tcp: by default if value is not recognised or is tcp
+// - udp: if provided value is udp in any case
+// - arp: if provided value is arp in any case
+func NewProtocol[C protocolString](protocol C) protocol {
+	switch strings.ToLower(string(protocol)) {
+	case string(UDP):
+		return UDP
+	case string(ARP):
+		return ARP
+	default:
+		return TCP
+	}
 }

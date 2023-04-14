@@ -56,20 +56,24 @@ const (
 	tcPriority uint32 = uint32(1000)
 )
 
+//go:generate mockery --name=TrafficController --filename=tc_mock.go
+
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
 type TrafficController interface {
 	AddNetem(ifaces []string, parent string, handle string, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error
 	AddPrio(ifaces []string, parent string, handle string, bands uint32, priomap [16]uint32) error
-	AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) (uint32, error)
+	AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, prot protocol, state connState, flowid string) (uint32, error)
 	DeleteFilter(iface string, priority uint32) error
 	AddFwFilter(ifaces []string, parent string, handle string, flowid string) error
 	AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error
 	ClearQdisc(ifaces []string) error
 }
 
+//go:generate mockery --name=tcExecuter --filename=tc_executer_mock.go
+
 type tcExecuter interface {
-	Run(args ...string) (exitCode int, stdout string, stderr error)
+	Run(args []string) (exitCode int, stdout string, stderr error)
 }
 
 type defaultTcExecuter struct {
@@ -80,7 +84,7 @@ type defaultTcExecuter struct {
 // Run executes the given args using the tc command
 // and returns a wrapped error containing both the error returned by the execution and
 // the stderr content
-func (e defaultTcExecuter) Run(args ...string) (int, string, error) {
+func (e defaultTcExecuter) Run(args []string) (int, string, error) {
 	// parse args and execute
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -108,7 +112,6 @@ type tc struct {
 	executer         tcExecuter
 	tcFilterPriority uint32     // keep track of the highest tc filter priority
 	tcFilterMutex    sync.Mutex // since we increment tcFilterPriority in goroutines we use a mutex to lock and unlock
-
 }
 
 // NewTrafficController creates a standard traffic controller using tc
@@ -145,7 +148,7 @@ func (t *tc) AddNetem(ifaces []string, parent string, handle string, delay time.
 	params = strings.TrimPrefix(params, " ")
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, "", 0, handle, "netem", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, "", 0, handle, "netem", params)); err != nil {
 			return err
 		}
 	}
@@ -163,7 +166,7 @@ func (t *tc) AddPrio(ifaces []string, parent string, handle string, bands uint32
 	params := fmt.Sprintf("bands %d priomap %s", bands, priomapStr)
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, "", 0, handle, "prio", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, "", 0, handle, "prio", params)); err != nil {
 			return err
 		}
 	}
@@ -179,7 +182,7 @@ func (t *tc) AddOutputLimit(ifaces []string, parent string, handle string, bytes
 	//   - https://unix.stackexchange.com/questions/100785/bucket-size-in-tbf
 	//   - https://linux.die.net/man/8/tc-tbf
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, "", 0, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, "", 0, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))); err != nil {
 			return err
 		}
 	}
@@ -190,7 +193,7 @@ func (t *tc) AddOutputLimit(ifaces []string, parent string, handle string, bytes
 func (t *tc) ClearQdisc(ifaces []string) error {
 	for _, iface := range ifaces {
 		// tc exits with code 2 when the qdisc does not exist anymore
-		if exitCode, _, err := t.executer.Run(strings.Split(fmt.Sprintf("qdisc del dev %s root", iface), " ")...); err != nil && exitCode != 2 {
+		if exitCode, _, err := t.executer.Run(strings.Split(fmt.Sprintf("qdisc del dev %s root", iface), " ")); err != nil && exitCode != 2 {
 			return err
 		}
 	}
@@ -200,7 +203,7 @@ func (t *tc) ClearQdisc(ifaces []string) error {
 
 // AddFilter generates a filter to redirect the traffic matching the given ip, port and protocol to the given flowid
 // this function relies on the tc flower (https://man7.org/linux/man-pages/man8/tc-flower.8.html) filtering module
-func (t *tc) AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol Protocol, connState connState, flowid string) (uint32, error) {
+func (t *tc) AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, protocol protocol, connState connState, flowid string) (uint32, error) {
 	var params, filterProtocol string
 
 	// match protocol if specified, default to tcp otherwise
@@ -250,7 +253,7 @@ func (t *tc) AddFilter(ifaces []string, parent string, handle string, srcIP, dst
 	}
 
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, filterProtocol, priority, handle, "flower", params)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, filterProtocol, priority, handle, "flower", params)); err != nil {
 			return 0, err
 		}
 	}
@@ -259,7 +262,7 @@ func (t *tc) AddFilter(ifaces []string, parent string, handle string, srcIP, dst
 }
 
 func (t *tc) DeleteFilter(iface string, priority uint32) error {
-	if _, _, err := t.executer.Run("filter", "delete", "dev", iface, "priority", fmt.Sprintf("%d", priority)); err != nil {
+	if _, _, err := t.executer.Run([]string{"filter", "delete", "dev", iface, "priority", fmt.Sprintf("%d", priority)}); err != nil {
 		return err
 	}
 
@@ -269,7 +272,7 @@ func (t *tc) DeleteFilter(iface string, priority uint32) error {
 // AddFwFilter generates a cgroup filter
 func (t *tc) AddFwFilter(ifaces []string, parent string, handle string, flowid string) error {
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "ip", 0, handle, "fw", "flowid "+flowid)...); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "ip", 0, handle, "fw", "flowid "+flowid)); err != nil {
 			return err
 		}
 	}
