@@ -348,8 +348,6 @@ var _ = Describe("Failure", func() {
 		})
 
 		Context("with one service specified", func() {
-			tcPriority := 1000 // first priority set using add filters
-
 			BeforeEach(func() {
 				spec.Services = []v1beta1.NetworkDisruptionServiceSpec{
 					{
@@ -393,23 +391,22 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter for every service and pods filtered on, modify the filter and then delete a filter", func() {
-				servicePortRulePriority := uint32(tcPriority + 4)
-				serviceAssociatedPodRulePriority := uint32(tcPriority + 3) // tcfilter priority of endpoint
+				priority := uint32(0)
 
 				// Initial setup
 				Eventually(func(g Gomega) {
 					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
 
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", servicePortRulePriority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", servicePortRulePriority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", servicePortRulePriority)
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
 
 					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 81, network.TCP, network.ConnStateUndefined, "1:4") // priority 1005
 
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", serviceAssociatedPodRulePriority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", serviceAssociatedPodRulePriority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", serviceAssociatedPodRulePriority)
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
+					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
 
 				}, time.Second*60, time.Second).Should(Succeed())
 			})
