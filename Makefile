@@ -157,6 +157,7 @@ lima-install: manifests
 	helm template \
 		--set controller.enableSafeguards=false \
 		--set controller.expiredDisruptionGCDelay=${EXPIRED_DISRUPTION_GC_DELAY} \
+		--values ./chart/values/dev.yaml \
 		./chart | $(KUBECTL) apply -f -
 	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
 

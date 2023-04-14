@@ -255,7 +255,7 @@ var _ = Describe("Disruption Controller", func() {
 					return fmt.Errorf("target injection %s is not injected, current status is %s", targetName, target.InjectionStatus)
 				}
 
-				// check fi the chaos pod is defined
+				// check if the chaos pod is defined
 				if target.InjectorPodName == "" {
 					return fmt.Errorf("the %s target pod does not have an injector pod ", targetName)
 				}
@@ -593,6 +593,53 @@ var _ = Describe("Disruption Controller", func() {
 
 			By("Waiting for the chaos pod finalizer to be removed")
 			Eventually(func() error { return k8sClient.Get(context.Background(), chaosPodKey, &chaosPod) }, timeout).Should(MatchError(fmt.Sprintf("Pod \"%s\" not found", chaosPod.Name)))
+		})
+	})
+
+	Context("don't reinject a static node disruption", func() {
+		BeforeEach(func() {
+			disruption = &chaosv1beta1.Disruption{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "foo",
+					Namespace:   "default",
+					Annotations: map[string]string{chaosv1beta1.SafemodeEnvironmentAnnotation: "lima"},
+				},
+				Spec: chaosv1beta1.DisruptionSpec{
+					Filter: &chaosv1beta1.DisruptionFilter{
+						Annotations: map[string]string{"foo": "baz"},
+					},
+					DryRun: true,
+					Count:  &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+					Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+						DisableAll: true,
+					},
+					StaticTargeting: true,
+					Selector:        map[string]string{"foo": "bar"},
+					Level:           chaostypes.DisruptionLevelPod,
+					NodeFailure:     &chaosv1beta1.NodeFailureSpec{Shutdown: false},
+				},
+			}
+		})
+
+		When("chaos pods don't exist for injected targets", func() {
+			It("should not recreate those chaos pods", func() {
+				By("Initially targeting both pods")
+				Eventually(func() error { return expectChaosPod(disruption, 2) }, timeout).Should(Succeed())
+
+				By("Listing chaos pods to pick one to delete")
+				chaosPods, err := listChaosPods(disruption)
+				Expect(err).To(BeNil())
+				chaosPod := chaosPods.Items[0]
+
+				By("Deleting one of the chaos pod")
+				Expect(k8sClient.Delete(context.Background(), &chaosPod)).To(BeNil())
+
+				By("Waiting to only have one chaos pod")
+				Eventually(func() error { return expectChaosPod(disruption, 1) }, timeout).Should(Succeed())
+
+				By("Waiting to see the second chaos pod is not re-created")
+				Consistently(func() error { return expectChaosPod(disruption, 2) }, timeout).ShouldNot(Succeed())
+			})
 		})
 	})
 
