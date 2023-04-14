@@ -13,8 +13,9 @@ import (
 	"github.com/DataDog/chaos-controller/cloudservice/gcp"
 	"github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/log"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestManager(t *testing.T) {
@@ -52,7 +53,7 @@ var _ = Describe("New function", func() {
 		manager, err = New(logger, configs)
 
 		By("Ensuring that no error was thrown")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Context("Creating a new manager with all providers enabled", func() {
@@ -151,7 +152,7 @@ var _ = Describe("New function", func() {
 			err := manager.PullIPRanges()
 
 			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should have parsed successfully the service list", func() {
@@ -197,7 +198,7 @@ var _ = Describe("New function", func() {
 
 			By("Ensuring it returns the right ip ranges map when using the GetServicesIPRanges function")
 			ipRanges, err := manager.GetServicesIPRanges(types.CloudProviderAWS, []string{"S3", "EC2"})
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(reflect.DeepEqual(ipRanges, map[string][]string{
 				"S3": {
 					"1.2.3.0/24",
@@ -220,7 +221,7 @@ var _ = Describe("New function", func() {
 
 			By("Ensuring it returns the right ip ranges map when using the GetServicesIPRanges function")
 			ipRanges, err = manager.GetServicesIPRanges(types.CloudProviderGCP, []string{gcp.GoogleCloudService})
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(reflect.DeepEqual(ipRanges, map[string][]string{
 				gcp.GoogleCloudService: {
 					"6.2.3.0/24",
@@ -231,3 +232,18 @@ var _ = Describe("New function", func() {
 		})
 	})
 })
+
+func NewCloudServiceMock(isNewVersionMockValue bool, isNewVersionError error, convertToGenericIPRangesVersion string, convertToGenericIPRangesServiceList []string, convertToGenericIPRanges map[string][]string, convertToGenericIPRangesError error) *CloudProviderIPRangeManagerMock {
+	cloudProviderIPRangeMock := NewCloudProviderIPRangeManagerMock(GinkgoT())
+
+	cloudProviderIPRangeMock.EXPECT().ConvertToGenericIPRanges(mock.Anything).Return(
+		&types.CloudProviderIPRangeInfo{
+			Version:     convertToGenericIPRangesVersion,
+			IPRanges:    convertToGenericIPRanges,
+			ServiceList: convertToGenericIPRangesServiceList,
+		},
+		convertToGenericIPRangesError,
+	)
+
+	return cloudProviderIPRangeMock
+}

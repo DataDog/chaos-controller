@@ -6,8 +6,8 @@
 package v1beta1_test
 
 import (
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	. "github.com/onsi/ginkgo"
+	. "github.com/DataDog/chaos-controller/api/v1beta1"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
@@ -18,7 +18,7 @@ var _ = Describe("DiskFailureSpec", func() {
 		var err error
 
 		JustBeforeEach(func() {
-			df := v1beta1.DiskFailureSpec{
+			df := DiskFailureSpec{
 				Path: path,
 			}
 			err = df.Validate()
@@ -80,7 +80,7 @@ var _ = Describe("DiskFailureSpec", func() {
 		var path string
 
 		JustBeforeEach(func() {
-			diskFailureSpec := v1beta1.DiskFailureSpec{Path: path}
+			diskFailureSpec := DiskFailureSpec{Path: path}
 			args = diskFailureSpec.GenerateArgs()
 		})
 
@@ -114,7 +114,7 @@ var _ = Describe("DiskFailureSpec", func() {
 })
 
 func randStringRunes(n int) string {
-	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	letterRunes := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 	b := make([]rune, n)
 	for i := range b {

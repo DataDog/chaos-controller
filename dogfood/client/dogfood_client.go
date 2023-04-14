@@ -15,6 +15,7 @@ import (
 
 	pb "github.com/DataDog/chaos-controller/dogfood/chaosdogfood"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -109,7 +110,7 @@ func main() {
 	fmt.Printf("connecting to %v...\n", serverAddr)
 
 	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	opts = append(opts, grpc.WithBlock())
 
 	conn, err := grpc.Dial(serverAddr, opts...)

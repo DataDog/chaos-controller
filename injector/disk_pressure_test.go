@@ -7,7 +7,7 @@ package injector_test
 import (
 	"os"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
@@ -22,23 +22,23 @@ import (
 var _ = Describe("Failure", func() {
 	var (
 		config        DiskPressureInjectorConfig
-		cgroupManager *cgroup.MockManager
-		ctn           *container.MockContainer
-		informer      *disk.MockInformer
+		cgroupManager *cgroup.ManagerMock
+		ctn           *container.ContainerMock
+		informer      *disk.InformerMock
 		inj           Injector
 		spec          v1beta1.DiskPressureSpec
 	)
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = cgroup.NewMockManager(GinkgoT())
+		cgroupManager = cgroup.NewManagerMock(GinkgoT())
 		cgroupManager.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// container
-		ctn = container.NewMockContainer(GinkgoT())
+		ctn = container.NewContainerMock(GinkgoT())
 
 		// disk informer
-		informer = disk.NewMockInformer(GinkgoT())
+		informer = disk.NewInformerMock(GinkgoT())
 		informer.EXPECT().Major().Return(8)
 		informer.EXPECT().Source().Return("/dev/sda1")
 
@@ -74,12 +74,12 @@ var _ = Describe("Failure", func() {
 	JustBeforeEach(func() {
 		var err error
 		inj, err = NewDiskPressureInjector(spec, config)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("injection", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(BeNil())
+			Expect(inj.Inject()).ToNot(HaveOccurred())
 		})
 
 		Context("with cgroups v1", func() {
@@ -107,7 +107,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("clean", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Clean()).To(BeNil())
+			Expect(inj.Clean()).To(Succeed())
 		})
 
 		Context("with cgroups v1", func() {

@@ -8,9 +8,11 @@ package grpc_test
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/grpc"
+	"github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -48,7 +50,11 @@ var _ = Describe("Test send and clean disruption", func() {
 			},
 		}
 
-		disruptionListenerClient := pb.NewMockDisruptionListenerClient(GinkgoT())
+		var disruptionListenerClient *disruptionlistener.DisruptionListenerClientMock
+
+		BeforeEach(func() {
+			disruptionListenerClient = disruptionlistener.NewDisruptionListenerClientMock(GinkgoT())
+		})
 
 		Specify("calls Disrupt and ResetDisruptions with expected parameters", func() {
 			// define expectations
@@ -104,8 +110,8 @@ var _ = Describe("Test send and clean disruption", func() {
 				&emptypb.Empty{},
 			).Return(&emptypb.Empty{}, nil)
 
-			grpc.SendGrpcDisruption(disruptionListenerClient, spec)
-			grpc.ClearGrpcDisruptions(disruptionListenerClient)
+			Expect(grpc.SendGrpcDisruption(disruptionListenerClient, spec)).To(Succeed())
+			Expect(grpc.ClearGrpcDisruptions(disruptionListenerClient)).To(Succeed())
 
 			// run test
 			disruptionListenerClient.AssertExpectations(GinkgoT())

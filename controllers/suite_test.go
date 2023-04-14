@@ -3,41 +3,29 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023 Datadog, Inc.
 
-/*
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package controllers
 
 import (
-	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
+	"gopkg.in/yaml.v3"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -45,22 +33,31 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const (
-	timeout = time.Second * 45
+	k8sAPIServerResponseTimeout = 30 * time.Second
+	k8sAPIPotentialChangesEvery = time.Second
 )
 
 var (
-	cfg             *rest.Config
-	k8sClient       client.Client
-	k8sManager      ctrl.Manager
-	testEnv         *envtest.Environment
-	instanceKey     types.NamespacedName
-	targetPodA      *corev1.Pod
-	targetPodA2     *corev1.Pod
-	targetPodA3     *corev1.Pod
-	targetPodA4     *corev1.Pod
-	targetPodB      *corev1.Pod
-	targetPodOnInit *corev1.Pod
+	k8sClient  client.Client
+	restConfig *rest.Config
+	namespace  string
+	lightCfg   lightConfig
 )
+
+var (
+	clusterName, contextName string
+	log                      *zap.SugaredLogger
+)
+
+func init() {
+	if envClusterName, ok := os.LookupEnv("CLUSTER_NAME"); ok {
+		clusterName = envClusterName
+		contextName = envClusterName
+	} else {
+		clusterName = "lima-default"
+		contextName = "lima"
+	}
+}
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -68,230 +65,54 @@ func TestAPIs(t *testing.T) {
 	RunSpecs(t, "Controller Suite")
 }
 
-var _ = BeforeSuite(func(done Done) {
-	var err error
+var _ = BeforeSuite(func(ctx SpecContext) {
+	log = zaptest.NewLogger(GinkgoT()).Sugar()
 
-	By("bootstrapping test environment")
-	testEnv = &envtest.Environment{}
-
-	cfg, err = testEnv.Start()
+	ciValues, err := os.ReadFile("../chart/values/ci.yaml")
 	Expect(err).ToNot(HaveOccurred())
-	Expect(cfg).ToNot(BeNil())
+	Expect(yaml.Unmarshal(ciValues, &lightCfg)).To(Succeed())
+	Expect(lightCfg).ToNot(BeZero())
 
-	err = chaosv1beta1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = chaosv1beta1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = chaosv1beta1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = chaosv1beta1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
+	// We use ginkgo process identifier to shard our tests among namespaces
+	// it enables us to speed up things
+	namespace = fmt.Sprintf("e2e-test-%d", GinkgoParallelProcess())
 
 	// +kubebuilder:scaffold:scheme
+	Expect(chaosv1beta1.AddToScheme(scheme.Scheme)).To(Succeed())
 
-	// prepare and start manager
-	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{
-		Scheme: scheme.Scheme,
-	})
+	// We create a kube client to interact with a local kube cluster (by default it expect lima if no CLUSTER_NAME env var is provided)
+	restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		clientcmd.NewDefaultClientConfigLoadingRules(),
+		&clientcmd.ConfigOverrides{
+			CurrentContext: contextName,
+		}).ClientConfig()
 	Expect(err).ToNot(HaveOccurred())
-	k8sClient = k8sManager.GetClient()
-	go func() {
-		err = k8sManager.Start(ctrl.SetupSignalHandler())
-		Expect(err).ToNot(HaveOccurred())
-	}()
+	Expect(restConfig).ToNot(BeNil())
 
-	instanceKey = types.NamespacedName{Name: "foo", Namespace: "default"}
-	targetPodA = &corev1.Pod{
+	Eventually(func(ctx SpecContext) error {
+		k8sClient, err = client.New(restConfig, client.Options{
+			Scheme: scheme.Scheme,
+		})
+
+		return err
+	}).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(Succeed())
+
+	// Create namespace according to parallelization (and cleanup it on test cleanup)
+	namespace := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "default",
-			Labels: map[string]string{
-				"foo": "bar",
-			},
-			Annotations: map[string]string{
-				"foo": "baz",
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Image: "k8s.gcr.io/pause:3.4.1",
-					Name:  "ctn1",
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "foo",
-							MountPath: "/mnt/foo",
-						},
-					},
-				},
-				{
-					Image: "k8s.gcr.io/pause:3.4.1",
-					Name:  "ctn2",
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "bar",
-							MountPath: "/mnt/bar",
-						},
-					},
-				},
-			},
-			Volumes: []corev1.Volume{
-				{
-					Name: "foo",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
-				},
-				{
-					Name: "bar",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
-				},
-			},
+			Name: namespace,
 		},
 	}
-	targetPodA2 = targetPodA.DeepCopy()
-	targetPodA2.ObjectMeta.Name = "foo2"
-	targetPodA3 = targetPodA.DeepCopy()
-	targetPodA3.ObjectMeta.Name = "foo3"
-	targetPodA4 = targetPodA.DeepCopy()
-	targetPodA4.ObjectMeta.Name = "foo4"
-	targetPodB = &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "bar",
-			Namespace: "default",
-			Labels: map[string]string{
-				"foo": "bar",
-			},
-			Annotations: map[string]string{
-				"foo": "qux",
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Image: "k8s.gcr.io/pause:3.4.1",
-					Name:  "ctn1",
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "foo",
-							MountPath: "/mnt/foo",
-						},
-					},
-				},
-			},
-			Volumes: []corev1.Volume{
-				{
-					Name: "foo",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
-				},
-			},
-		},
-	}
-	targetPodOnInit = &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo5",
-			Namespace: "default",
-			Labels: map[string]string{
-				"foo-foo":                             "bar-bar",
-				"chaos.datadoghq.com/disrupt-on-init": "true",
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Image: "k8s.gcr.io/pause:3.4.1",
-					Name:  "ctn1",
-				},
-			},
-		},
-	}
+	Eventually(k8sClient.Create).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).WithArguments(&namespace).Should(WithTransform(client.IgnoreAlreadyExists, Succeed()))
+	DeferCleanup(func(ctx SpecContext, nsName corev1.Namespace) {
+		// We do not only DELETE the namespace
+		Eventually(k8sClient.Delete).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).WithArguments(&nsName).Should(WithTransform(client.IgnoreNotFound, Succeed()))
 
-	By("Creating target pods")
-	Expect(k8sClient.Create(context.Background(), targetPodA)).To(BeNil())
-	Expect(k8sClient.Create(context.Background(), targetPodB)).To(BeNil())
-
-	By("Waiting for target pods to be ready")
-	Eventually(func() error {
-		running, err := podsAreRunning(targetPodA, targetPodB)
-		if err != nil {
-			return err
-		}
-
-		if !running {
-			return fmt.Errorf("target pods are not running")
-		}
-
-		return nil
-	}, timeout).Should(Succeed())
-
-	close(done)
-}, 60)
-
-var _ = AfterSuite(func() {
-	By("tearing down the test environment")
-
-	_ = k8sClient.Delete(context.Background(), targetPodA)
-	_ = k8sClient.Delete(context.Background(), targetPodB)
-
-	Expect(testEnv.Stop()).To(BeNil())
-})
-
-// podsAreRunning returns true when all the given pods have all their containers running
-func podsAreRunning(pods ...*corev1.Pod) (bool, error) {
-	for _, pod := range pods {
-		var p corev1.Pod
-
-		// retrieve pod
-		if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &p); err != nil {
-			return false, fmt.Errorf("error getting pod: %w", err)
-		}
-
-		// check the pod phase
-		if p.Status.Phase != corev1.PodRunning {
-			return false, nil
-		}
-
-		// check the pod containers statuses (pod phase can be running while all containers are not running)
-		// we return false if at least one container in the pod is not running
-		running := true
-		for _, status := range p.Status.ContainerStatuses {
-			if status.State.Running == nil {
-				running = false
-
-				break
-			}
-		}
-
-		if !running {
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
-// podsAreNotRunning returns true when all the given pods have all their containers running
-func podsAreNotRunning(pods ...*corev1.Pod) (bool, error) {
-	for _, pod := range pods {
-		var p corev1.Pod
-
-		// retrieve pod
-		if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &p); err != nil {
-			return true, nil
-		}
-
-		// check the pod phase
-		if p.Status.Phase == corev1.PodRunning {
-			return false, fmt.Errorf("pod is still running")
-		}
-	}
-
-	return true, nil
-}
+		// But we also WAIT for it's completed deletion to ensure repetitive tests (--until-it-fails) do not face terminated namespace errors
+		Eventually(k8sClient.Get).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).
+			WithArguments(types.NamespacedName{
+				Name: nsName.Name,
+			}, &nsName).
+			Should(WithTransform(apierrors.IsNotFound, BeTrue()))
+	}, namespace)
+}, NodeTimeout(time.Minute))

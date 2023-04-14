@@ -27,7 +27,6 @@ const (
 	infoNotAvailable = "n/a"
 )
 
-//go:generate mockery --name=slackNotifier --inpackage --case=underscore --testonly --disable-version-string --with-expecter
 type slackNotifier interface {
 	PostMessage(channelID string, options ...slack.MsgOption) (string, string, error)
 	GetUserByEmail(email string) (*slack.User, error)

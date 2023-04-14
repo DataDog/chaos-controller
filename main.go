@@ -3,34 +3,34 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023 Datadog, Inc.
 
-/*
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
 
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
+	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/DataDog/chaos-controller/eventbroadcaster"
+	"github.com/DataDog/chaos-controller/eventnotifier"
+	"github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
+	"github.com/DataDog/chaos-controller/o11y/profiler"
+	profilertypes "github.com/DataDog/chaos-controller/o11y/profiler/types"
+	"github.com/DataDog/chaos-controller/targetselector"
 	"github.com/DataDog/chaos-controller/utils"
+	"github.com/DataDog/chaos-controller/watchers"
+	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -40,19 +40,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
-	"github.com/DataDog/chaos-controller/controllers"
-	"github.com/DataDog/chaos-controller/eventbroadcaster"
-	"github.com/DataDog/chaos-controller/eventnotifier"
-	"github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/chaos-controller/metrics"
-	"github.com/DataDog/chaos-controller/metrics/types"
-	"github.com/DataDog/chaos-controller/targetselector"
-	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 	"github.com/spf13/viper"
 	// +kubebuilder:scaffold:imports
 )
+
+//go:generate mockery  --config .local.mockery.yaml
+//go:generate mockery  --config .vendor.mockery.yaml
 
 var (
 	scheme   = runtime.NewScheme()
@@ -74,7 +67,6 @@ type config struct {
 type controllerConfig struct {
 	MetricsBindAddr          string                          `json:"metricsBindAddr"`
 	MetricsSink              string                          `json:"metricsSink"`
-	ImagePullSecrets         string                          `json:"imagePullSecrets"`
 	ExpiredDisruptionGCDelay time.Duration                   `json:"expiredDisruptionGCDelay"`
 	DefaultDuration          time.Duration                   `json:"defaultDuration"`
 	DeleteOnly               bool                            `json:"deleteOnly"`
@@ -86,6 +78,7 @@ type controllerConfig struct {
 	CloudProviders           cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
 	UserInfoHook             bool                            `json:"userInfoHook"`
 	SafeMode                 safeModeConfig                  `json:"safeMode"`
+	ProfilerSink             string                          `json:"profilerSink"`
 }
 
 type controllerWebhookConfig struct {
@@ -109,6 +102,7 @@ type injectorConfig struct {
 	ServiceAccount    string                          `json:"serviceAccount"`
 	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
+	ImagePullSecrets  string                          `json:"imagePullSecrets"`
 }
 
 type injectorDNSDisruptionConfig struct {
@@ -151,7 +145,7 @@ func main() {
 	pflag.BoolVar(&cfg.Controller.EnableObserver, "enable-observer", true, "Enable observer on targets")
 	handleFatalError(viper.BindPFlag("controller.enableObserver", pflag.Lookup("enable-observer")))
 
-	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
+	pflag.StringVar(&cfg.Injector.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
 
 	pflag.DurationVar(&cfg.Controller.ExpiredDisruptionGCDelay, "expired-disruption-gc-delay", time.Minute*(-1), "Duration after a disruption expires before being automatically deleted, leave unset to disable")
@@ -159,9 +153,6 @@ func main() {
 
 	pflag.DurationVar(&cfg.Controller.DefaultDuration, "default-duration", time.Hour, "Default duration for a disruption with none specified")
 	handleFatalError(viper.BindPFlag("controller.defaultDuration", pflag.Lookup("default-duration")))
-
-	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
-	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
 
 	pflag.StringVar(&cfg.Controller.Notifiers.Common.ClusterName, "notifiers-common-clustername", "", "Cluster Name for notifiers output")
 	handleFatalError(viper.BindPFlag("controller.notifiers.common.clusterName", pflag.Lookup("notifiers-common-clustername")))
@@ -277,6 +268,12 @@ func main() {
 	pflag.StringVar(&cfg.Controller.CloudProviders.Datadog.IPRangesURL, "cloud-providers-datadog-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
 	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.ipRangesURL", pflag.Lookup("cloud-providers-datadog-iprangesurl")))
 
+	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "metrics sink (datadog, or noop)")
+	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
+
+	pflag.StringVar(&cfg.Controller.ProfilerSink, "profiler-sink", "noop", "profiler sink (datadog, or noop)")
+	handleFatalError(viper.BindPFlag("controller.profilerSink", pflag.Lookup("profiler-sink")))
+
 	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
@@ -317,6 +314,7 @@ func main() {
 	}
 
 	broadcaster := eventbroadcaster.EventBroadcaster()
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: cfg.Controller.MetricsBindAddr,
@@ -327,7 +325,6 @@ func main() {
 		Port:               cfg.Controller.Webhook.Port,
 		CertDir:            cfg.Controller.Webhook.CertDir,
 	})
-
 	if err != nil {
 		logger.Errorw("unable to start manager", "error", err)
 		os.Exit(1)
@@ -340,13 +337,15 @@ func main() {
 	}
 
 	// metrics sink
-	ms, err := metrics.GetSink(types.SinkDriver(cfg.Controller.MetricsSink), types.SinkAppController)
+	ms, err := metrics.GetSink(logger, metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
 	if err != nil {
-		logger.Errorw("error while creating metric sink", "error", err)
-	}
+		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
 
-	if ms.MetricRestart() != nil {
-		logger.Errorw("error sending MetricRestart", "sink", ms.GetSinkName())
+		ms, err = metrics.GetSink(logger, metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
+
+		if err != nil {
+			logger.Fatalw("error creating noop metrics sink", "error", err)
+		}
 	}
 
 	// handle metrics sink client close on exit
@@ -357,6 +356,24 @@ func main() {
 			logger.Errorw("error closing metrics sink client", "sink", ms.GetSinkName(), "error", err)
 		}
 	}()
+
+	if ms.MetricRestart() != nil {
+		logger.Errorw("error sending MetricRestart", "sink", ms.GetSinkName())
+	}
+
+	// profiler sink
+	prfl, err := profiler.GetSink(logger, profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
+	if err != nil {
+		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
+
+		prfl, err = profiler.GetSink(logger, profilertypes.SinkDriverNoop)
+
+		if err != nil {
+			logger.Errorw("error while creating noop profiler sink", "error", err)
+		}
+	}
+	// handle profiler sink close on exit
+	defer prfl.Stop()
 
 	// target selector
 	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName)
@@ -390,7 +407,7 @@ func main() {
 		InjectorDNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
-		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
+		ImagePullSecrets:                      cfg.Injector.ImagePullSecrets,
 		ExpiredDisruptionGCDelay:              gcPtr,
 		CacheContextStore:                     make(map[string]controllers.CtxTuple),
 		Reader:                                mgr.GetAPIReader(),
@@ -403,11 +420,35 @@ func main() {
 
 	cont, err := r.SetupWithManager(mgr, kubeInformerFactory)
 	if err != nil {
-		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
+		logger.Errorw("unable to create controller", "controller", chaosv1beta1.DisruptionKind, "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
 
 	r.Controller = cont
+
+	watcherFactory := watchers.NewWatcherFactory(logger, ms, r.Client, r.Recorder)
+	r.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, r.Reader, logger)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				logger.Debugw("Initiate the removal of all expired watchers.")
+				r.DisruptionsWatchersManager.RemoveAllExpiredWatchers()
+
+			case <-ctx.Done():
+				// Context canceled, terminate the goroutine
+				return
+			}
+		}
+	}()
+
+	defer cancel()
 
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
@@ -431,7 +472,7 @@ func main() {
 		Environment:                   cfg.Controller.SafeMode.Environment,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
+		setupLog.Error(err, "unable to create webhook", "webhook", chaosv1beta1.DisruptionKind)
 		os.Exit(1) //nolint:gocritic
 	}
 

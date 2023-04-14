@@ -1,0 +1,54 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2023 Datadog, Inc.
+
+# this file can be used to debug chaos-controller locally
+# more details: https://github.com/DataDog/chaos-controller/blob/main/docs/development.md#debugging-the-controller-locally
+
+controller:
+  enabled: false # locally we want everything except the controller to be deployed to we can run it or debug it and still have everything needed inside the cluster
+  enableSafeguards: false
+  leaderElection: false
+  metricsBindAddr: 127.0.0.1:8080
+  metricsSink: noop
+  notifiers:
+    common:
+      clusterName: lima
+    noop:
+      enabled: true
+    slack:
+      enabled: false
+    http:
+      enabled: false
+  cloudProviders:
+    disableAll: false
+    pullInterval: 24h
+    aws:
+      enabled: true
+      ipRangesURL: https://ip-ranges.amazonaws.com/ip-ranges.json
+    gcp:
+      enabled: true
+      ipRangesURL: https://www.gstatic.com/ipranges/goog.json
+    datadog:
+      enabled: true
+      ipRangesURL: https://ip-ranges.datadoghq.com/
+  deleteOnly: false
+  imagePullSecrets: ""
+  defaultDuration: 3m
+  expiredDisruptionGCDelay: 15s
+  webhook:
+    certDir: chart/certs
+    host: ""
+    port: 9443
+injector:
+  image: k8s.io/chaos-injector:latest
+  serviceAccount: chaos-injector
+  chaosNamespace: chaos-engineering
+  dnsDisruption:
+    dnsServer: ""
+    kubeDns: all
+handler:
+  enabled: true
+  image: k8s.io/chaos-handler:latest
+  timeout: 1m

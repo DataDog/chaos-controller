@@ -2,55 +2,56 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2023 Datadog, Inc.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: chaos-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: chaos-controller
+subjects:
+  - kind: ServiceAccount
+    name: chaos-controller
+    namespace: "{{ .Values.chaosNamespace }}"
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: chaos-controller-leader-election-rolebinding
-  namespace: {{ .Values.chaosNamespace }}
+  name: chaos-controller-leader-election
+  namespace: "{{ .Values.chaosNamespace }}"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: chaos-controller-leader-election-role
+  name: chaos-controller-leader-election
 subjects:
-- kind: ServiceAccount
-  name: chaos-controller
-  namespace: {{ .Values.chaosNamespace }}
+  - kind: ServiceAccount
+    name: chaos-controller
+    namespace: "{{ .Values.chaosNamespace }}"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: chaos-controller-injector-rolebinding
+  name: chaos-controller-proxy
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: chaos-injector-role
+  name: chaos-controller-proxy
 subjects:
-- kind: ServiceAccount
+  - kind: ServiceAccount
+    name: chaos-controller
+    namespace: "{{ .Values.chaosNamespace }}"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
   name: chaos-injector
-  namespace: {{ .Values.chaosNamespace }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: chaos-controller-manager-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: chaos-controller-role
+  name: chaos-injector
 subjects:
-- kind: ServiceAccount
-  name: chaos-controller
-  namespace: {{ .Values.chaosNamespace }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: chaos-controller-proxy-rolebinding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: chaos-controller-proxy-role
-subjects:
-- kind: ServiceAccount
-  name: chaos-controller
-  namespace: {{ .Values.chaosNamespace }}
+  - kind: ServiceAccount
+    name: chaos-injector
+    namespace: "{{ .Values.chaosNamespace }}"

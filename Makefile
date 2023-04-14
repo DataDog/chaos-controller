@@ -1,5 +1,14 @@
-.PHONY: manager injector handler release
+.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all e2e-test test lima-install manifests lima-restart install-controller-gen
 .SILENT: release
+
+GOOS = $(shell go env GOOS)
+GOARCH = $(shell go env GOARCH)
+
+# GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
+GOBIN ?= $(shell go env GOBIN)
+ifeq (,$(GOBIN))
+GOBIN = $(shell go env GOPATH)/bin
+endif
 
 # Lima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
 # https://github.com/abiosoft/colima#interacting-with-image-registry
@@ -13,16 +22,39 @@ HANDLER_IMAGE ?= ${CONTAINERD_REGISTRY_PREFIX}/chaos-handler:latest
 LIMA_PROFILE ?= lima
 LIMA_CONFIG ?= lima
 KUBECTL ?= limactl shell default sudo kubectl
-UNZIP_BINARY ?= sudo unzip
-KUBERNETES_VERSION ?= v1.26.0
+PROTOC_VERSION = 3.17.3
+PROTOC_OS ?= osx
+PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
+# you might also want to change ~/lima.yaml k3s version
+KUBERNETES_MAJOR_VERSION ?= 1.26
+KUBERNETES_VERSION ?= v$(KUBERNETES_MAJOR_VERSION).0
+KUBEBUILDER_VERSION ?= 3.1.0
+USE_VOLUMES ?= false
 
-# expired disruption gc delay enable to speed up chaos controller disruption removal for e2e testing
-# it's used to check if disruptions are deleted as expected as soon as the expiration delay occurs
-EXPIRED_DISRUPTION_GC_DELAY ?= 10m
+HELM_VALUES ?= dev.yaml
+HELM_VERSION = v3.11.3
+HELM_INSTALLED_VERSION = $(shell (helm version --template="{{ .Version }}" || echo "") | awk '{ print $$1 }')
 
-OS_ARCH=amd64
-ifeq (arm64,$(shell uname -m))
-OS_ARCH=arm64
+GOLANGCI_LINT_VERSION = 1.52.2
+GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
+
+CONTROLLER_GEN_VERSION = v0.11.4
+CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
+
+MOCKERY_VERSION = 2.28.2
+MOCKERY_INSTALLED_VERSION = $(shell mockery --version --quiet --config="" 2>/dev/null || echo "")
+
+# Additional args to provide to test runner (ginkgo)
+# examples:
+# `make test TEST_ARGS=--until-it-fails` to run tests randomly and repeatedly until a failure might occur (help to detect flaky tests or wrong tests setup)
+# `make test TEST_ARGS=injector` will focus on package injector to run tests
+TEST_ARGS ?=
+
+DD_ENV = local
+# https://circleci.com/docs/variables/
+# we rely on standard CI env var to adapt test upload configuration automatically
+ifeq (true,$(CI))
+DD_ENV = ci
 endif
 
 LIMA_CGROUPS=v1
@@ -30,39 +62,119 @@ ifeq (v2,$(CGROUPS))
 LIMA_CGROUPS=v2
 endif
 
-# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
+# we define target specific variables values https://www.gnu.org/software/make/manual/html_node/Target_002dspecific.html
+injector handler: BINARY_PATH=./cli/$(BINARY_NAME)
+manager: BINARY_PATH=.
+
+docker-build-injector: IMAGE_TAG=$(INJECTOR_IMAGE)
+docker-build-handler: IMAGE_TAG=$(HANDLER_IMAGE)
+docker-build-manager: IMAGE_TAG=$(MANAGER_IMAGE)
+
+docker-build-ebpf:
+	docker buildx build --platform linux/$(GOARCH) --build-arg ARCH=$(GOARCH) -t ebpf-builder-$(GOARCH) -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
+	-rm -r bin/injector/ebpf/
+ifeq (true,$(USE_VOLUMES))
+# create a dummy container with volume to store files
+# circleci remote docker does not allow to use volumes, locally we fallbakc to standard volume but can call this target with USE_VOLUMES=true to debug if necessary
+# https://circleci.com/docs/building-docker-images/#mounting-folders
+	-docker rm ebpf-volume
+	-docker create --platform linux/$(GOARCH) -v /app --name ebpf-volume ebpf-builder-$(GOARCH) /bin/true
+	-docker cp . ebpf-volume:/app
+	-docker rm ebpf-builder
+	docker run --platform linux/$(GOARCH) --volumes-from ebpf-volume --name=ebpf-builder ebpf-builder-$(GOARCH)
+	docker cp ebpf-builder:/app/bin/injector/ebpf bin/injector/ebpf
+	docker rm ebpf-builder
 else
-GOBIN=$(shell go env GOBIN)
+	docker run --rm --platform linux/$(GOARCH) -v $(shell pwd):/app ebpf-builder-$(GOARCH)
 endif
 
+lima-push-injector lima-push-handler lima-push-manager: FAKE_FOR=COMPLETION
+
+_injector:;
+_handler:;
+_manager: generate
+
+_docker-build-injector: docker-build-ebpf
+_docker-build-handler:;
+_docker-build-manager:;
+
+# we define the template we expect for each target
+# $(1) is the target name: injector|handler|manager
+define TARGET_template
+$(1): BINARY_NAME=$(1)
+
+_$(1)_arm:
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o ./bin/$(1)/$(1)_arm64 $$(BINARY_PATH)
+
+_$(1)_amd:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ./bin/$(1)/$(1)_amd64 $$(BINARY_PATH)
+
+$(1): _$(1) _$(1)_arm _$(1)_amd
+
+docker-build-$(1): _docker-build-$(1) $(1)
+	docker buildx build --build-arg TARGETARCH=$(GOARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
+	docker save $$(IMAGE_TAG) -o ./bin/$(1)/$(1).tar.gz
+
+lima-push-$(1): docker-build-$(1)
+	limactl copy ./bin/$(1)/$(1).tar.gz default:/tmp/
+	limactl shell default -- sudo k3s ctr i import /tmp/$(1).tar.gz
+
+minikube-load-$(1):
+# let's fail if the file does not exists so we know, mk load is not failing
+	ls -la ./bin/$(1)/$(1).tar.gz
+	minikube image load --daemon=false --overwrite=true ./bin/$(1)/$(1).tar.gz
+endef
+
+# we define the targers we want to generate make target for
+TARGETS = injector handler manager
+
+# we generate the exact same rules as for target specific variables, hence completion works and no duplication 😎
+$(foreach tgt,$(TARGETS),$(eval $(call TARGET_template,$(tgt))))
+
 # Build actions
-all: manager injector handler
+all: $(TARGETS)
 
-# Build manager binary
-manager: generate
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/manager/manager_amd64 main.go
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/manager/manager_arm64 main.go
-
-# Build injector binary
-injector:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/injector/injector_amd64 ./cli/injector/
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/injector/injector_arm64 ./cli/injector/
-
-# Build handler binary
-handler:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/handler/handler_amd64 ./cli/handler/
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/handler/handler_arm64 ./cli/handler/
+docker-build-all: $(addprefix docker-build-,$(TARGETS))
+lima-push-all: $(addprefix lima-push-,$(TARGETS))
+minikube-load-all: $(addprefix minikube-load-,$(TARGETS))
 
 # Build chaosli
 chaosli:
 	GOOS=darwin GOARCH=${OS_ARCH} CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_${OS_ARCH} ./cli/chaosli/
 
+# https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
+_ginkgo_test:
+# Run the test and write a file if succeed
+# Do not stop on any error
+	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going \
+		--cover --coverprofile=cover.profile --randomize-all \
+		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
+		--compilers=4 --procs=4 \
+		--poll-progress-after=10s --poll-progress-interval=10s \
+		$(GO_TEST_ARGS) \
+			&& touch report-$(GO_TEST_REPORT_NAME)-succeed
+# Try upload test reports if allowed and necessary prerequisites exists
+ifneq (true,$(GO_TEST_SKIP_UPLOAD)) # you can bypass test upload
+ifdef DATADOG_API_KEY # if no API key bypass is guaranteed
+ifneq (,$(shell which datadog-ci)) # same if no test binary
+	-DD_ENV=$(DD_ENV) datadog-ci junit upload --service chaos-controller --tags="team:chaos-engineering,type:$(GO_TEST_REPORT_NAME)" report-$(GO_TEST_REPORT_NAME).xml
+else
+	@echo "datadog-ci binary is not installed, run 'make install-datadog-ci' to upload tests results to datadog"
+endif
+else
+	@echo "DATADOG_API_KEY env var is not defined, create a local API key https://app.datadoghq.com/personal-settings/application-keys if you want to upload your local tests results to datadog"
+endif
+else
+	@echo "datadog-ci junit upload SKIPPED"
+endif
+# Fail if succeed file does not exists
+	[ -f report-$(GO_TEST_REPORT_NAME)-succeed ] && rm -f report-$(GO_TEST_REPORT_NAME)-succeed || exit 1
+
 # Tests & CI
 ## Run unit tests
 test: generate manifests
-	CGO_ENABLED=1 go test -race $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
+	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
+		GO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -100,19 +212,27 @@ ci-install-minikube:
 	minikube start --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
 	minikube status
 
+SKIP_DEPLOY ?=
+
 ## Run e2e tests (against a real cluster)
-e2e-test: generate
-	$(MAKE) lima-install EXPIRED_DISRUPTION_GC_DELAY=10s
-	USE_EXISTING_CLUSTER=true CGO_ENABLED=1 go test -race ./controllers/... -coverprofile cover.out
+## to run them locally you first need to run `make install-kubebuilder`
+e2e-test: generate manifests
+ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
+	$(MAKE) lima-install HELM_VALUES=ci.yaml
+endif
+	USE_EXISTING_CLUSTER=true $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
+		GO_TEST_ARGS="--timeout=15m controllers"
 
 # Test chaosli API portability
 chaosli-test:
-	docker build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
+	docker buildx build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
 
 # Go actions
 ## Generate manifests e.g. CRD, RBAC etc.
-manifests: controller-gen
-	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:crdVersions=v1 paths="./..." output:crd:dir=./chart/templates/crds/ output:rbac:dir=./chart/templates/
+manifests: install-controller-gen install-yamlfmt
+	controller-gen rbac:roleName=chaos-controller crd:crdVersions=v1 paths="./..." output:crd:dir=./chart/templates/generated/ output:rbac:dir=./chart/templates/generated/
+# ensure generated files stays formatted as expected
+	yamlfmt chart/templates/generated
 
 ## Run go fmt against code
 fmt:
@@ -123,20 +243,23 @@ vet:
 	go vet ./...
 
 ## Run golangci-lint against code
-lint:
-	golangci-lint run --timeout 5m0s
+lint: install-golangci-lint
+# By using GOOS=linux we aim to validate files as if we were on linux
+# you can use a similar trick with gopls to have vs-code linting your linux platform files instead of darwin
+	GOOS=linux golangci-lint run --no-config -E ginkgolinter ./...
+	GOOS=linux golangci-lint run
 
 ## Generate code
-generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
+generate: install-controller-gen
+	controller-gen object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
 # Lima actions
 ## Create a new lima cluster and deploy the chaos-controller into it
-lima-all: lima-start lima-install-cert-manager lima-build-all lima-install
+lima-all: lima-start lima-install-cert-manager lima-push-all lima-install
 	kubens chaos-engineering
 
 ## Rebuild the chaos-controller images, re-install the chart and restart the chaos-controller pods
-lima-redeploy: lima-build-all lima-install lima-restart
+lima-redeploy: lima-push-all lima-install lima-restart
 
 ## Install cert-manager chart
 lima-install-cert-manager:
@@ -144,8 +267,8 @@ lima-install-cert-manager:
 	$(KUBECTL) -n cert-manager rollout status deployment/cert-manager-webhook --timeout=180s
 
 lima-install-demo:
-	kubectl apply -f ./examples/namespace.yaml
-	kubectl apply -f ./examples/demo.yaml
+	$(KUBECTL) apply -f - < ./examples/namespace.yaml
+	$(KUBECTL) apply -f - < ./examples/demo.yaml
 	$(KUBECTL) -n chaos-demo rollout status deployment/demo-curl --timeout=60s
 	$(KUBECTL) -n chaos-demo rollout status deployment/demo-nginx --timeout=60s
 
@@ -155,54 +278,22 @@ lima-install-demo:
 ## we override images for all of our components to the expected namespace
 lima-install: manifests
 	helm template \
-		--set controller.enableSafeguards=false \
-		--set controller.expiredDisruptionGCDelay=${EXPIRED_DISRUPTION_GC_DELAY} \
-		--values ./chart/values/dev.yaml \
+		--values ./chart/values/$(HELM_VALUES) \
 		./chart | $(KUBECTL) apply -f -
+ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
 	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
+endif
 
 ## Uninstall CRDs and controller from a lima k3s cluster
 lima-uninstall:
-	helm template ./chart | $(KUBECTL) delete -f -
+	helm template --values ./chart/values/$(HELM_VALUES) ./chart | $(KUBECTL) delete -f -
 
 ## Restart the chaos-controller pod
 lima-restart:
-	$(KUBECTL) -n chaos-engineering rollout restart deployment chaos-controller
-
-## Build all images and import them in lima
-lima-build-all: lima-build-manager lima-build-injector lima-build-handler
-
-docker-build-manager: manager
-	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
-	docker save ${MANAGER_IMAGE} -o ./bin/manager/manager.tar.gz
-
-docker-build-ebpf:
-	docker build --platform linux/${OS_ARCH} --build-arg ARCH=${OS_ARCH} -t ebpf-builder-${OS_ARCH} -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
-	rm -r bin/injector/ebpf/ || true
-	docker run --rm -v ${shell pwd}:/app ebpf-builder-${OS_ARCH}
-
-docker-build-injector: docker-build-ebpf injector
-	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
-	docker save ${INJECTOR_IMAGE} -o ./bin/injector/injector.tar.gz
-
-docker-build-handler: handler
-	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
-	docker save ${HANDLER_IMAGE} -o ./bin/handler/handler.tar.gz
-
-## Build and import the manager image in lima
-lima-build-manager: docker-build-manager
-	limactl copy ./bin/manager/manager.tar.gz default:/tmp/
-	limactl shell default -- sudo k3s ctr i import /tmp/manager.tar.gz
-
-## Build and import the injector image in lima
-lima-build-injector: docker-build-injector
-	limactl copy ./bin/injector/injector.tar.gz default:/tmp/
-	limactl shell default -- sudo k3s ctr i import /tmp/injector.tar.gz
-
-## Build and import the handler image in lima
-lima-build-handler: docker-build-handler
-	limactl copy ./bin/handler/handler.tar.gz default:/tmp/
-	limactl shell default -- sudo k3s ctr i import /tmp/handler.tar.gz
+ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
+	$(KUBECTL) -n chaos-engineering rollout restart deployment/chaos-controller
+	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
+endif
 
 ## Remove lima references from kubectl config
 lima-kubectx-clean:
@@ -237,61 +328,28 @@ lima-start: lima-kubectx-clean
 lima-install-longhorn:
 	$(KUBECTL) apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.4.0/deploy/longhorn.yaml
 
-# find or download controller-gen
-# download controller-gen if necessary
-controller-gen:
-ifeq (, $(shell which controller-gen))
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.11.3 ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
-CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
-
 # CI-specific actions
-
-## Minikube builds for e2e tests
-minikube-build-all: minikube-build-manager minikube-build-injector minikube-build-handler
-
-minikube-build-manager: docker-build-manager
-	minikube image load --daemon=false --overwrite=true ./bin/manager/manager.tar.gz
-
-minikube-build-injector: docker-build-injector
-	minikube image load --daemon=false --overwrite=true ./bin/injector/injector.tar.gz
-
-minikube-build-handler: docker-build-handler
-	minikube image load --daemon=false --overwrite=true ./bin/handler/handler.tar.gz
 
 venv:
 	test -d .venv || python3 -m venv .venv
 	source .venv/bin/activate; pip install -qr tasks/requirements.txt
 
-header-check: venv
+header: venv
 	source .venv/bin/activate; inv header-check
 
-license-check: venv
+header-fix:
+# First re-generate header, it should complain as just (re)generated mocks does not contains them
+	-$(MAKE) header
+# Then, re-generate header, it should succeed as now all files contains headers as expected, and command return with an happy exit code
+	$(MAKE) header
+
+license: venv
 	source .venv/bin/activate; inv license-check
 
 godeps:
 	go mod tidy; go mod vendor
 
-deps: godeps license-check
-
-PROTOC_VERSION = 3.17.3
-PROTOC_OS ?= osx
-PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
-
-install-protobuf:
-	curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
-	$(UNZIP_BINARY) -o ${PROTOC_ZIP} -d /usr/local bin/protoc
-	$(UNZIP_BINARY) -o ${PROTOC_ZIP} -d /usr/local 'include/*'
-	rm -f ${PROTOC_ZIP}
+deps: godeps license
 
 generate-disruptionlistener-protobuf:
 	cd grpc/disruptionlistener && \
@@ -305,13 +363,96 @@ generate-chaosdogfood-protobuf:
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
 	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
 
-generate-mock:
-	go install github.com/vektra/mockery/v2@v2.24.0
+clean-mocks:
+	find . -type file -name "*mock*.go" -not -path "./vendor/*" -exec rm {} \;
+	rm -rf mocks/
+
+generate-mocks: clean-mocks install-mockery
 	go generate ./...
-# First re-generate header, it should complain as just (re)generated mocks does not contains them
-	-$(MAKE) header-check
-# Then, re-generate header, it should succeed as now all files contains headers as expected, and command return with an happy exit code
-	$(MAKE) header-check
+	$(MAKE) header-fix
 
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
+
+lima-install-local:
+# uninstall using a non local value to ensure deployment is deleted
+	-$(MAKE) lima-uninstall HELM_VALUES=dev.yaml
+	$(MAKE) lima-install HELM_VALUES=local.yaml
+
+pre-debug: generate manifests lima-install-local
+	@echo "now you can launch through vs-code or your favorite IDE a controller in debug with appropriate configuration (--config=chart/values/local.yaml + CONTROLLER_NODE_NAME=local)"
+
+local: generate manifests lima-install-local
+	CONTROLLER_NODE_NAME=local go run main.go --config=chart/values/local.yaml
+
+install-protobuf:
+	curl -sSLo /tmp/${PROTOC_ZIP} https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
+	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} bin/protoc
+	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} 'include/*'
+	rm -f /tmp/${PROTOC_ZIP}
+
+install-golangci-lint:
+ifneq ($(GOLANGCI_LINT_VERSION),$(GOLANGCI_LINT_INSTALLED_VERSION))
+	$(info golangci-lint version $(GOLANGCI_LINT_VERSION) is not installed or version differ (v$(GOLANGCI_LINT_VERSION) != $(GOLANGCI_LINT_INSTALLED_VERSION)))
+	$(info installing golangci-lint v$(GOLANGCI_LINT_VERSION)...)
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOBIN) v$(GOLANGCI_LINT_VERSION)
+endif
+
+install-kubebuilder:
+# download kubebuilder and install locally.
+	curl -sSLo $(GOBIN)/kubebuilder https://go.kubebuilder.io/dl/latest/$(GOOS)/$(GOARCH)
+	chmod u+x $(GOBIN)/kubebuilder
+# download setup-envtest and install related binaries locally
+	go install -v sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+# setup-envtest use -p path $(KUBERNETES_MAJOR_VERSION).x
+
+install-helm:
+ifneq ($(HELM_INSTALLED_VERSION),$(HELM_VERSION))
+	$(info helm version $(HELM_VERSION) is not installed or version differ ($(HELM_VERSION) != $(HELM_INSTALLED_VERSION)))
+	$(info installing helm $(HELM_VERSION)...)
+	curl -sSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-$(HELM_VERSION)-$(GOOS)-$(GOARCH).tar.gz"
+	tar -xvzf /tmp/helm.tar.gz --directory=$(GOBIN) --strip-components=1 $(GOOS)-$(GOARCH)/helm
+	rm /tmp/helm.tar.gz
+endif
+
+# install controller-gen expected version
+install-controller-gen:
+ifneq ($(CONTROLLER_GEN_INSTALLED_VERSION),$(CONTROLLER_GEN_VERSION))
+	$(info controller-gen version $(CONTROLLER_GEN_VERSION) is not installed or version differ ($(CONTROLLER_GEN_VERSION) != $(CONTROLLER_GEN_INSTALLED_VERSION)))
+	$(info installing controller-gen $(CONTROLLER_GEN_VERSION)...)
+	@{ \
+	set -e ;\
+	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$CONTROLLER_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	CGO_ENABLED=0 go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) ;\
+	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
+	}
+endif
+
+install-datadog-ci:
+	curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_$(GOOS)-x64" --output "$(GOBIN)/datadog-ci" && chmod u+x $(GOBIN)/datadog-ci
+
+install-mockery:
+# recommended way to install mockery is through their released binaries, NOT go install...
+# https://vektra.github.io/mockery/installation/#github-release
+ifneq ($(MOCKERY_INSTALLED_VERSION),v$(MOCKERY_VERSION))
+	$(info mockery version $(MOCKERY_VERSION) is not installed or version differ (v$(MOCKERY_VERSION) != $(MOCKERY_INSTALLED_VERSION)))
+	$(info installing mockery v$(MOCKERY_VERSION)...)
+	curl -sSLo /tmp/mockery.tar.gz https://github.com/vektra/mockery/releases/download/v$(MOCKERY_VERSION)/mockery_$(MOCKERY_VERSION)_$(GOOS)_$(GOARCH).tar.gz
+	tar -xvzf /tmp/mockery.tar.gz --directory=$(GOBIN) mockery
+	rm /tmp/mockery.tar.gz
+endif
+
+YAMLFMT_ARCH = $(GOARCH)
+ifeq (amd64,$(GOARCH))
+YAMLFMT_ARCH = x86_64
+endif
+
+install-yamlfmt:
+ifeq (,$(wildcard $(GOBIN)/yamlfmt))
+	$(info installing yamlfmt...)
+	curl -sSLo /tmp/yamlfmt.tar.gz https://github.com/google/yamlfmt/releases/download/v0.9.0/yamlfmt_0.9.0_$(GOOS)_$(YAMLFMT_ARCH).tar.gz
+	tar -xvzf /tmp/yamlfmt.tar.gz --directory=$(GOBIN) yamlfmt
+	rm /tmp/yamlfmt.tar.gz
+endif

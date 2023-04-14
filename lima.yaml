@@ -6,6 +6,8 @@
 # use vz instead of qemu for rosetta support
 vmType: "vz"
 
+cpus: 6
+
 # enable rosetta for x86_64 arch compatibility
 rosetta:
   enabled: true

@@ -15,8 +15,6 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:generate mockery --name=Manager --filename=netns_mock.go
-
 // Manager is an interface being able to interact with a process network namespace
 type Manager interface {
 	Enter() error
@@ -44,9 +42,11 @@ func NewManager(log *zap.SugaredLogger, pid uint32) (Manager, error) {
 	}
 
 	// retrieve network namespace inode
-	targetns, err := netns.GetFromPath(fmt.Sprintf("%s%d/ns/net", mountProc, pid))
+	targetPath := fmt.Sprintf("%s%d/ns/net", mountProc, pid)
+
+	targetns, err := netns.GetFromPath(targetPath)
 	if err != nil {
-		return nil, fmt.Errorf("error getting given PID (%d) network namespace: %w", pid, err)
+		return nil, fmt.Errorf("error getting given PID (%d) network namespace from path %s: %w", pid, targetPath, err)
 	}
 
 	log.Debugw("Retrieved root namespace and target namespace", "rootns", int(rootns), "targetns", int(targetns), "targetnsPath", fmt.Sprintf("%s%d/ns/net", mountProc, pid))

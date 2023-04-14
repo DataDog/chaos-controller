@@ -11,4 +11,8 @@ import "reflect"
 type DDValidationMarker interface {
 	// ApplyRule asserts the marker's rule is checked and returns an error if it isn't (invalidating the config)
 	ApplyRule(reflect.Value) error
+	// ValueCheckError returns a marker's error message for an incorrect value/presence check
+	ValueCheckError() error
+	// TypeCheckError returns a marker's error message for an incorrect type check
+	TypeCheckError(reflect.Value) error
 }

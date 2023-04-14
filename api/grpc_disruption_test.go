@@ -9,7 +9,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/hashicorp/go-multierror"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -51,7 +51,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					},
 				}
 
-				Expect(spec.Validate()).To(BeNil())
+				Expect(spec.Validate()).To(Succeed())
 			})
 		})
 
@@ -66,7 +66,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					},
 				}
 
-				Expect(spec.Validate()).To(BeNil())
+				Expect(spec.Validate()).To(Succeed())
 			})
 		})
 	})
@@ -88,7 +88,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 				},
 			}
 
-			Expect(spec.Validate()).To(BeNil())
+			Expect(spec.Validate()).To(Succeed())
 		})
 	})
 
@@ -110,7 +110,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					},
 				}
 
-				Expect(spec.Validate()).To(BeNil())
+				Expect(spec.Validate()).To(Succeed())
 			})
 		})
 
@@ -131,7 +131,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					},
 				}
 
-				Expect(spec.Validate()).To(BeNil())
+				Expect(spec.Validate()).To(Succeed())
 			})
 		})
 
@@ -152,7 +152,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					},
 				}
 
-				Expect(spec.Validate()).ToNot(BeNil())
+				Expect(spec.Validate()).ToNot(Succeed())
 			})
 		})
 	})
@@ -171,7 +171,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 
 				err := ddMarkClient.ValidateStructMultierror(spec, "grpc_test_suite")
 				Expect(err.Errors).To(HaveLen(1))
-				Expect(err.Errors[0].Error()).To(Equal("grpc_test_suite>Endpoints>>ErrorToReturn - ddmark:validation:Enum: field needs to be one of [OK CANCELED UNKNOWN INVALID_ARGUMENT DEADLINE_EXCEEDED NOT_FOUND ALREADY_EXISTS PERMISSION_DENIED RESOURCE_EXHAUSTED FAILED_PRECONDITION ABORTED OUT_OF_RANGE UNIMPLEMENTED INTERNAL UNAVAILABLE DATA_LOSS UNAUTHENTICATED], currently \"MEOW\""))
+				Expect(err.Errors[0].Error()).To(Equal("grpc_test_suite>Endpoints>>ErrorToReturn - ddmark:validation:Enum: field needs to be one of [OK CANCELED UNKNOWN INVALID_ARGUMENT DEADLINE_EXCEEDED NOT_FOUND ALREADY_EXISTS PERMISSION_DENIED RESOURCE_EXHAUSTED FAILED_PRECONDITION ABORTED OUT_OF_RANGE UNIMPLEMENTED INTERNAL UNAVAILABLE DATA_LOSS UNAUTHENTICATED]"))
 			})
 		})
 
@@ -189,11 +189,11 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					)
 				}
 
-				Expect(len(spec.Endpoints)).To(Equal(17))
+				Expect(spec.Endpoints).To(HaveLen(17))
 
 				err := ddMarkClient.ValidateStructMultierror(spec, "grpc_test_suite")
-				Expect(err.ErrorOrNil()).To(BeNil())
-				Expect(err.Errors).To(HaveLen(0))
+				Expect(err.ErrorOrNil()).To(Succeed())
+				Expect(err.Errors).To(BeEmpty())
 			})
 
 			It("Passes validation", func() {
@@ -272,7 +272,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					},
 				}
 
-				Expect(spec.Validate()).To(BeNil())
+				Expect(spec.Validate()).To(Succeed())
 			})
 		})
 
@@ -353,7 +353,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 					},
 				}
 
-				Expect(spec.Validate()).ToNot(BeNil())
+				Expect(spec.Validate()).ToNot(Succeed())
 			})
 		})
 	})

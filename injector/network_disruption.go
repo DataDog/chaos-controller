@@ -48,20 +48,16 @@ type networkDisruptionInjector struct {
 	spec       v1beta1.NetworkDisruptionSpec
 	config     NetworkDisruptionInjectorConfig
 	operations []linkOperation
+	cancel     context.CancelFunc
 }
 
 // NetworkDisruptionInjectorConfig contains all needed drivers to create a network disruption using `tc`
 type NetworkDisruptionInjectorConfig struct {
 	Config
 	TrafficController network.TrafficController
-	Iptables          network.Iptables
+	IPTables          network.IPTables
 	NetlinkAdapter    network.NetlinkAdapter
 	DNSClient         network.DNSClient
-	State             DisruptionState
-}
-
-type DisruptionState struct {
-	State chan InjectorState
 }
 
 // tcServiceFilter describes a tc filter, representing the service filtered and its priority
@@ -94,15 +90,15 @@ type serviceWatcher struct {
 func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config NetworkDisruptionInjectorConfig) (Injector, error) {
 	var err error
 
-	if config.Iptables == nil {
-		config.Iptables, err = network.NewIptables(config.Log, config.DryRun)
+	if config.IPTables == nil {
+		config.IPTables, err = network.NewIPTables(config.Log, config.Disruption.DryRun)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if config.TrafficController == nil {
-		config.TrafficController = network.NewTrafficController(config.Log, config.DryRun)
+		config.TrafficController = network.NewTrafficController(config.Log, config.Disruption.DryRun)
 	}
 
 	if config.NetlinkAdapter == nil {
@@ -112,12 +108,6 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 	if config.DNSClient == nil {
 		config.DNSClient = network.NewDNSClient()
 	}
-
-	config.State = DisruptionState{}
-
-	go func() {
-		config.State.State <- Created
-	}()
 
 	return &networkDisruptionInjector{
 		spec:       spec,
@@ -175,14 +165,14 @@ func (i *networkDisruptionInjector) Inject() error {
 	// add a conntrack reference to enable it
 	// it consists of adding a noop iptables rule loading the conntrack module so it enables connection tracking in the targeted network namespace
 	// cf. https://thermalcircle.de/doku.php?id=blog:linux:connection_tracking_1_modules_and_hooks for more information on how conntrack works outside of the main network namespace
-	if err := i.config.Iptables.LogConntrack(); err != nil {
+	if err := i.config.IPTables.LogConntrack(); err != nil {
 		return fmt.Errorf("error injecting the conntrack reference iptables rule: %w", err)
 	}
 
 	// mark all packets created by the targeted container with the classifying mark
-	if i.config.Level == types.DisruptionLevelPod && !i.config.OnInit {
+	if i.config.Disruption.Level == types.DisruptionLevelPod && !i.config.Disruption.OnInit {
 		if i.config.Cgroup.IsCgroupV2() { // cgroup v2 can rely on the single cgroup hierarchy relative path to mark packets
-			if err := i.config.Iptables.MarkCgroupPath(i.config.Cgroup.RelativePath(""), types.InjectorCgroupClassID); err != nil {
+			if err := i.config.IPTables.MarkCgroupPath(i.config.Cgroup.RelativePath(""), types.InjectorCgroupClassID); err != nil {
 				return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
 			}
 		} else { // cgroup v1 needs to mark packets through the net_cls cgroup controller of the container
@@ -190,7 +180,7 @@ func (i *networkDisruptionInjector) Inject() error {
 				return fmt.Errorf("error injecting packet marking in net_cls cgroup: %w", err)
 			}
 
-			if err := i.config.Iptables.MarkClassID(types.InjectorCgroupClassID, types.InjectorCgroupClassID); err != nil {
+			if err := i.config.IPTables.MarkClassID(types.InjectorCgroupClassID, types.InjectorCgroupClassID); err != nil {
 				return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
 			}
 		}
@@ -201,10 +191,6 @@ func (i *networkDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
 	}
 
-	go func() {
-		i.config.State.State <- Injected
-	}()
-
 	return nil
 }
 
@@ -214,11 +200,11 @@ func (i *networkDisruptionInjector) UpdateConfig(config Config) {
 
 // Clean removes all the injected disruption in the given container
 func (i *networkDisruptionInjector) Clean() error {
-	defer func() {
-		go func() {
-			i.config.State.State <- Cleaned
-		}()
-	}()
+	// stop all background watchers now
+	if i.cancel != nil {
+		i.cancel()
+		i.cancel = nil
+	}
 
 	// enter container network namespace
 	if err := i.config.Netns.Enter(); err != nil {
@@ -230,7 +216,7 @@ func (i *networkDisruptionInjector) Clean() error {
 	}
 
 	// remove the conntrack reference to disable conntrack in the network namespace
-	if err := i.config.Iptables.Clear(); err != nil {
+	if err := i.config.IPTables.Clear(); err != nil {
 		return fmt.Errorf("error cleaning iptables rules and chain: %w", err)
 	}
 
@@ -243,7 +229,7 @@ func (i *networkDisruptionInjector) Clean() error {
 	if !i.config.Cgroup.IsCgroupV2() {
 		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0"); err != nil {
 			if os.IsNotExist(err) {
-				i.config.Log.Warnw("unable to find target container's net_cls.classid file, we will assume we cannot find the cgroup path because it is gone", "targetContainerID", i.config.TargetContainer.ID(), "err", err)
+				i.config.Log.Warnw("unable to find target container's net_cls.classid file, we will assume we cannot find the cgroup path because it is gone", "targetContainerID", i.config.TargetContainer.ID(), "error", err)
 				return nil
 			}
 
@@ -360,7 +346,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// create a second qdisc to filter packets coming from this specific pod processes only
 	// if the disruption is applied on init, we consider that some more containers may be created within
 	// the pod so we can't scope the disruption to a specific set of containers
-	if i.config.Level == types.DisruptionLevelPod && !i.config.OnInit {
+	if i.config.Disruption.Level == types.DisruptionLevelPod && !i.config.Disruption.OnInit {
 		// create second prio with only 2 bands to filter traffic with a specific mark
 		if err := i.config.TrafficController.AddPrio(interfaces, "1:4", "2:", 2, [16]uint32{}); err != nil {
 			return fmt.Errorf("can't create a new qdisc: %w", err)
@@ -393,7 +379,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// depending on the network configuration, only one of those filters can be useful but we must add all of them
 	// those filters are only added if the related interface has been impacted by a disruption so far
 	// NOTE: those filters must be added after every other filters applied to the interface so they are used first
-	if i.config.Level == types.DisruptionLevelPod {
+	if i.config.Disruption.Level == types.DisruptionLevelPod {
 		// this filter allows the pod to communicate with the default route gateway IP
 		for _, defaultRoute := range defaultRoutes {
 			gatewayIP := &net.IPNet{
@@ -410,7 +396,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nodeIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 		}
-	} else if i.config.Level == types.DisruptionLevelNode {
+	} else if i.config.Disruption.Level == types.DisruptionLevelNode {
 		// GENERIC SAFEGUARDS
 		// allow SSH connections on all interfaces (port 22/tcp)
 		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nil, 22, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
@@ -471,6 +457,8 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 			return nil, err
 		}
 
+		i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service, filter.priority), "interfaces", interfaces)
+
 		builtServices = append(builtServices, filter)
 	}
 
@@ -485,7 +473,7 @@ func (i *networkDisruptionInjector) removeServiceFilter(interfaces []string, tcF
 		}
 	}
 
-	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter on %s", tcFilter.service.String()), "interfaces", strings.Join(interfaces, ", "))
+	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter for service %s with priority %d", tcFilter.service, tcFilter.priority), "interfaces", interfaces)
 
 	return nil
 }
@@ -647,15 +635,15 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		// If this is a headless service, we want to block all traffic to the endpoint IPs
 		watcher.servicePorts = append(watcher.servicePorts, v1.ServicePort{Port: 0})
 	} else {
-		watcher.servicePorts = service.Spec.Ports
+		watcher.servicePorts, _ = watcher.watchedServiceSpec.ExtractAffectedPortsInServicePorts(service)
 	}
 
-	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
+	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, watcher.servicePorts, interfaces, flowid)
 	if err != nil {
 		return err
 	}
 
-	nsServicesTcFilters := i.buildServiceFiltersFromService(*service, service.Spec.Ports)
+	nsServicesTcFilters := i.buildServiceFiltersFromService(*service, watcher.servicePorts)
 
 	switch event.Type {
 	case watch.Added:
@@ -714,6 +702,9 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 	}
 
 	tcFiltersFromPod := i.buildServiceFiltersFromPod(*pod, watcher.servicePorts)
+	if len(tcFiltersFromPod) == 0 {
+		return fmt.Errorf("unable to find service %s/%s endpoints to filter", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace)
+	}
 
 	switch event.Type {
 	case watch.Added:
@@ -770,7 +761,7 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 }
 
 // watchServiceChanges for every changes happening in the kubernetes service destination or in the pods related to the kubernetes service destination, we update the tc service filters
-func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, interfaces []string, flowid string) {
+func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, watcher serviceWatcher, interfaces []string, flowid string) {
 	for {
 		// We create the watcher channels when it's closed
 		if watcher.kubernetesServiceWatcher == nil {
@@ -805,10 +796,8 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 		}
 
 		select {
-		case state := <-i.config.State.State:
-			if state == Cleaned {
-				return
-			}
+		case <-ctx.Done():
+			return
 		case event, ok := <-watcher.kubernetesServiceWatcher: // We have changes in the service watched
 			if !ok { // channel is closed
 				watcher.kubernetesServiceWatcher = nil
@@ -859,9 +848,11 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 			return fmt.Errorf("error getting the given kubernetes service (%s/%s): %w", serviceSpec.Namespace, serviceSpec.Name, err)
 		}
 
+		servicePorts, _ := serviceSpec.ExtractAffectedPortsInServicePorts(k8sService)
+
 		serviceWatcher := serviceWatcher{
 			watchedServiceSpec:   serviceSpec,
-			servicePorts:         k8sService.Spec.Ports,
+			servicePorts:         servicePorts,
 			labelServiceSelector: labels.SelectorFromValidatedSet(k8sService.Spec.Selector).String(), // keep this information to later create watchers on resources destination
 
 			kubernetesPodEndpointsWatcher: nil,                 // watch pods related to the kubernetes service filtered on
@@ -877,8 +868,15 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 		serviceWatchers = append(serviceWatchers, serviceWatcher)
 	}
 
+	if i.cancel != nil {
+		return fmt.Errorf("some watcher goroutines are already launched, call Clean on injector prior to Inject")
+	}
+
+	var ctx context.Context
+	ctx, i.cancel = context.WithCancel(context.Background())
+
 	for _, serviceWatcher := range serviceWatchers {
-		go i.watchServiceChanges(serviceWatcher, interfaces, flowid)
+		go i.watchServiceChanges(ctx, serviceWatcher, interfaces, flowid)
 	}
 
 	return nil

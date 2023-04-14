@@ -41,60 +41,65 @@ type DisruptionArgs struct {
 	PulseInitialDelay    time.Duration
 	PulseActiveDuration  time.Duration
 	PulseDormantDuration time.Duration
+	NotInjectedBefore    time.Time
 }
 
-// AppendArgs is a helper function generating common and global args and appending them to the given args array
-func AppendArgs(args []string, xargs DisruptionArgs) []string {
+// CreateCmdArgs is a helper function generating common and global args and appending them to the given args array
+func (d DisruptionArgs) CreateCmdArgs(args []string) []string {
 	formattedTargetContainers := []string{}
 
-	for name, id := range xargs.TargetContainers {
+	for name, id := range d.TargetContainers {
 		f := fmt.Sprintf("%s;%s", name, id)
 		formattedTargetContainers = append(formattedTargetContainers, f)
 	}
 
 	args = append(args,
 		// basic args
-		"--metrics-sink", xargs.MetricsSink,
-		"--level", string(xargs.Level),
+		"--metrics-sink", d.MetricsSink,
+		"--level", string(d.Level),
 		"--target-containers", strings.Join(formattedTargetContainers, ","),
-		"--target-pod-ip", xargs.TargetPodIP,
-		"--chaos-namespace", xargs.ChaosNamespace,
+		"--target-pod-ip", d.TargetPodIP,
+		"--chaos-namespace", d.ChaosNamespace,
 
 		// log context args
-		"--log-context-disruption-name", xargs.DisruptionName,
-		"--log-context-disruption-namespace", xargs.DisruptionNamespace,
-		"--log-context-target-name", xargs.TargetName,
-		"--log-context-target-node-name", xargs.TargetNodeName,
+		"--log-context-disruption-name", d.DisruptionName,
+		"--log-context-disruption-namespace", d.DisruptionNamespace,
+		"--log-context-target-name", d.TargetName,
+		"--log-context-target-node-name", d.TargetNodeName,
 	)
 
 	// enable dry-run mode
-	if xargs.DryRun {
+	if d.DryRun {
 		args = append(args, "--dry-run")
 	}
 
 	// enable chaos handler init container notification
-	if xargs.OnInit {
+	if d.OnInit {
 		args = append(args, "--on-init")
 	}
 
-	if xargs.PulseActiveDuration > 0 && xargs.PulseDormantDuration > 0 {
-		args = append(args, "--pulse-active-duration", xargs.PulseActiveDuration.String())
-		args = append(args, "--pulse-dormant-duration", xargs.PulseDormantDuration.String())
+	if d.PulseActiveDuration > 0 && d.PulseDormantDuration > 0 {
+		args = append(args, "--pulse-active-duration", d.PulseActiveDuration.String())
+		args = append(args, "--pulse-dormant-duration", d.PulseDormantDuration.String())
+	}
 
-		if xargs.PulseInitialDelay > 0 {
-			args = append(args, "--pulse-initial-delay", xargs.PulseInitialDelay.String())
-		}
+	if d.PulseInitialDelay > 0 {
+		args = append(args, "--pulse-initial-delay", d.PulseInitialDelay.String())
+	}
+
+	if !d.NotInjectedBefore.IsZero() {
+		args = append(args, "--not-injected-before", d.NotInjectedBefore.Format(time.RFC3339))
 	}
 
 	// DNS disruption configs
-	if xargs.Kind == chaostypes.DisruptionKindDNSDisruption {
-		args = append(args, "--dns-server", xargs.DNSServer)
-		args = append(args, "--kube-dns", xargs.KubeDNS)
+	if d.Kind == chaostypes.DisruptionKindDNSDisruption {
+		args = append(args, "--dns-server", d.DNSServer)
+		args = append(args, "--kube-dns", d.KubeDNS)
 	}
 
 	// append allowed hosts for network disruptions
-	if xargs.Kind == chaostypes.DisruptionKindNetworkDisruption {
-		for _, host := range xargs.AllowedHosts {
+	if d.Kind == chaostypes.DisruptionKindNetworkDisruption {
+		for _, host := range d.AllowedHosts {
 			args = append(args, "--allowed-hosts", host)
 		}
 	}

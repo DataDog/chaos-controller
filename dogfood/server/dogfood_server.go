@@ -95,8 +95,8 @@ func main() {
 	if chaosEnabled == true {
 		fmt.Println("CHAOS ENABLED")
 
-		disruptionLogger, error := zaplog.NewZapLogger()
-		if error != nil {
+		disruptionLogger, err := zaplog.NewZapLogger()
+		if err != nil {
 			log.Fatal("error creating controller logger")
 			return
 		}

@@ -45,12 +45,11 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, err
 
 	spec := disruption.Spec
 	labels := spec.Selector.String()
-	level := string(spec.Level)
 	size := 0
 
-	fmt.Println("Let's look at your targets...")
+	fmt.Printf("Let's look at your targets (you are targeting '%ss')", spec.Level)
 
-	if level == types.DisruptionLevelPod {
+	if spec.Level == types.DisruptionLevelPod {
 		if pods, err = getPods(disruption); err != nil {
 			return nil, nil, err
 		}
@@ -69,11 +68,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, err
 	if size <= 0 {
 		errorString := fmt.Sprintf("\nThe label selectors chosen (%s) result in 0 targets, meaning this disruption would do nothing given the namespace/cluster/label combination.", labels)
 
-		if level == types.DisruptionLevelPod {
-			disruption.Spec.Level = types.DisruptionLevelNode
-		} else {
-			disruption.Spec.Level = types.DisruptionLevelPod
-		}
+		disruption.Spec.Level = spec.Level
 
 		size, err = getTargetSize(disruption)
 		if err != nil {
@@ -81,13 +76,13 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, err
 		}
 
 		if size > 0 {
-			errorString = fmt.Sprintf("\nWe noticed that your target size is 0 for level %s given your label selectors. We checked to see if the %s level would give you results and we found %d %ss. Is this the level you wanted to use?", level, disruption.Spec.Level, size, disruption.Spec.Level)
+			errorString = fmt.Sprintf("\nWe noticed that your target size is 0 for level %s given your label selectors. We checked to see if the %s level would give you results and we found %d %ss. Is this the level you wanted to use?", spec.Level, disruption.Spec.Level, size, disruption.Spec.Level)
 		}
 
 		return nil, nil, fmt.Errorf(errorString)
 	}
 
-	if level == types.DisruptionLevelPod {
+	if spec.Level == types.DisruptionLevelPod {
 		allPods = showPods(pods)
 	} else {
 		allNodes = showNodes(nodes)
@@ -184,8 +179,8 @@ func getPods(disruption v1beta1.Disruption) (v1.PodList, error) {
 	options := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromValidatedSet(disruption.Spec.Selector).String(),
 	}
-	pods, err := clientset.CoreV1().Pods(disruption.ObjectMeta.Namespace).List(context.TODO(), options)
 
+	pods, err := clientset.CoreV1().Pods(disruption.ObjectMeta.Namespace).List(context.TODO(), options)
 	if err != nil {
 		return v1.PodList{}, fmt.Errorf("errored when attempted to get list of pods: %v", err)
 	}
@@ -197,8 +192,8 @@ func getNodes(disruption v1beta1.Disruption) (v1.NodeList, error) {
 	options := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromValidatedSet(disruption.Spec.Selector).String(),
 	}
-	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
 
+	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
 	if err != nil {
 		return v1.NodeList{}, fmt.Errorf("errored when attempted to get list of nodes: %v", err)
 	}
@@ -426,7 +421,6 @@ func contextualize(path string) {
 	}
 
 	pods, nodes, err := contextTargetsSize(disruption)
-
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -446,8 +440,8 @@ func init() {
 	contextCmd.Flags().String("kubeconfig", "", "The path to your kube configuration directory (.../.kube/config). defaults to ~/.kube/config.")
 	contextCmd.Flags().Bool("verbose", false, "If set, will describe a small set of 5 (default) of your targets. Otherwise it only describes percentages of the group of targets in total.")
 	contextCmd.Flags().Int("maxtargetshow", 5, "Only really applies when verbose is set to true; This value determines how many targets will be described in the output.")
-	err := contextCmd.MarkFlagRequired("path")
 
+	err := contextCmd.MarkFlagRequired("path")
 	if err != nil {
 		return
 	}

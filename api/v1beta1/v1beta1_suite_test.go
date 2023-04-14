@@ -8,11 +8,11 @@ package v1beta1
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 
-	"github.com/DataDog/chaos-controller/metrics/noop"
+	"github.com/DataDog/chaos-controller/o11y/metrics/noop"
 )
 
 func TestV1Beta1(t *testing.T) {
@@ -24,11 +24,8 @@ func TestV1Beta1(t *testing.T) {
 var _ = BeforeSuite(func() {
 	By("initializing disruption_webhook global variables")
 
-	baseLogger, err := zap.NewDevelopmentConfig().Build()
-	Expect(err).To(BeNil())
-
-	logger = baseLogger.Sugar()
+	logger = zaptest.NewLogger(GinkgoT()).Sugar()
 	chaosNamespace = "chaos-engineering"
 
-	metricsSink = noop.New()
+	metricsSink = noop.New(logger)
 })

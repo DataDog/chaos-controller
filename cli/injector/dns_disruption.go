@@ -48,10 +48,7 @@ var dnsDisruptionCmd = &cobra.Command{
 			inj, err := injector.NewDNSDisruptionInjector(
 				hostRecordPairs,
 				injector.DNSDisruptionInjectorConfig{
-					Config:              config,
-					DisruptionName:      disruptionName,
-					DisruptionNamespace: disruptionNamespace,
-					TargetName:          targetName,
+					Config: config,
 				},
 			)
 			if err != nil {

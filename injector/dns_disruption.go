@@ -6,14 +6,17 @@
 package injector
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/command"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/process"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
@@ -31,30 +34,35 @@ type DNSDisruptionInjector struct {
 // DNSDisruptionInjectorConfig contains all needed drivers to create a dns disruption using `iptables`
 type DNSDisruptionInjectorConfig struct {
 	Config
-	Iptables            network.Iptables
-	FileWriter          FileWriter
-	PythonRunner        PythonRunner
 	DisruptionName      string
 	DisruptionNamespace string
 	TargetName          string
+	FileWriter          FileWriter
+	IPTables            network.IPTables
+	CmdFactory          command.Factory
+	ProcessManager      process.Manager
 }
 
 // NewDNSDisruptionInjector creates a DNSDisruptionInjector object with the given config,
 // missing fields are initialized with the defaults
 func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisruptionInjectorConfig) (Injector, error) {
 	var err error
-	if config.Iptables == nil {
-		config.Iptables, err = network.NewIptables(config.Log, config.DryRun)
+	if config.IPTables == nil {
+		config.IPTables, err = network.NewIPTables(config.Log, config.Disruption.DryRun)
 	}
 
 	if config.FileWriter == nil {
 		config.FileWriter = standardFileWriter{
-			dryRun: config.DryRun,
+			dryRun: config.Disruption.DryRun,
 		}
 	}
 
-	if config.PythonRunner == nil {
-		config.PythonRunner = newStandardPythonRunner(config.DryRun, config.Log)
+	if config.CmdFactory == nil {
+		config.CmdFactory = command.NewFactory(config.Disruption.DryRun)
+	}
+
+	if config.ProcessManager == nil {
+		config.ProcessManager = process.NewManager(config.Disruption.DryRun)
 	}
 
 	return &DNSDisruptionInjector{
@@ -85,38 +93,41 @@ func (i *DNSDisruptionInjector) Inject() error {
 			resolverConfig = append(resolverConfig, fmt.Sprintf("%s %s %s", record.Record.Type, record.Hostname, record.Record.Value))
 		}
 
-		if err := i.config.FileWriter.Write("/tmp/dns.conf", 0644, strings.Join(resolverConfig, "\n")); err != nil {
+		if err := i.config.FileWriter.Write("/tmp/dns.conf", 0o644, strings.Join(resolverConfig, "\n")); err != nil {
 			launchDNSServerErr = fmt.Errorf("unable to write resolver config: %w", err)
 			return
 		}
 
-		cmd := []string{"/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf"}
+		args := []string{"/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf"}
 
-		if i.config.DisruptionName != "" {
-			cmd = append(cmd, "--log-context-disruption-name", i.config.DisruptionName)
+		if i.config.Disruption.DisruptionName != "" {
+			args = append(args, "--log-context-disruption-name", i.config.Disruption.DisruptionName)
 		}
 
-		if i.config.DisruptionNamespace != "" {
-			cmd = append(cmd, "--log-context-disruption-namespace", i.config.DisruptionNamespace)
+		if i.config.Disruption.DisruptionNamespace != "" {
+			args = append(args, "--log-context-disruption-namespace", i.config.Disruption.DisruptionNamespace)
 		}
 
-		if i.config.TargetName != "" {
-			cmd = append(cmd, "--log-context-target-name", i.config.TargetName)
+		if i.config.Disruption.TargetName != "" {
+			args = append(args, "--log-context-target-name", i.config.Disruption.TargetName)
 		}
 
-		if i.config.TargetNodeName != "" {
-			cmd = append(cmd, "--log-context-target-node-name", i.config.TargetNodeName)
+		if i.config.Disruption.TargetNodeName != "" {
+			args = append(args, "--log-context-target-node-name", i.config.Disruption.TargetNodeName)
 		}
 
 		if i.config.DNS.DNSServer != "" {
-			cmd = append(cmd, "--dns", i.config.DNS.DNSServer)
+			args = append(args, "--dns", i.config.DNS.DNSServer)
 		}
 
 		if i.config.DNS.KubeDNS != "" {
-			cmd = append(cmd, "--kube-dns", i.config.DNS.KubeDNS)
+			args = append(args, "--kube-dns", i.config.DNS.KubeDNS)
 		}
 
-		if err := i.config.PythonRunner.RunPython(cmd...); err != nil {
+		cmd := i.config.CmdFactory.NewCmd(context.Background(), "/usr/bin/python3", args)
+
+		bgCmd := command.NewBackgroundCmd(cmd, i.config.Log, i.config.ProcessManager)
+		if err := bgCmd.Start(); err != nil {
 			launchDNSServerErr = fmt.Errorf("unable to run resolver: %w", err)
 			return
 		}
@@ -135,14 +146,14 @@ func (i *DNSDisruptionInjector) Inject() error {
 
 	// Set up iptables rules to redirect dns requests to the injector pod
 	// which holds the dns proxy process
-	if err := i.config.Iptables.RedirectTo("udp", "53", podIP); err != nil {
+	if err := i.config.IPTables.RedirectTo("udp", "53", podIP); err != nil {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
 
-	if i.config.Level == chaostypes.DisruptionLevelPod {
-		if i.config.OnInit {
+	if i.config.Disruption.Level == chaostypes.DisruptionLevelPod {
+		if i.config.Disruption.OnInit {
 			// Redirect all dns related traffic in the pod to CHAOS-DNS
-			if err := i.config.Iptables.Intercept("udp", "53", "", "", ""); err != nil {
+			if err := i.config.IPTables.Intercept("udp", "53", "", "", ""); err != nil {
 				return fmt.Errorf("unable to create new iptables rule: %w", err)
 			}
 		} else {
@@ -161,15 +172,15 @@ func (i *DNSDisruptionInjector) Inject() error {
 			}
 
 			// Redirect packets based on their cgroup or classid depending on cgroup version to CHAOS-DNS
-			if err := i.config.Iptables.Intercept("udp", "53", cgroupPath, classID, podIP); err != nil {
+			if err := i.config.IPTables.Intercept("udp", "53", cgroupPath, classID, podIP); err != nil {
 				return fmt.Errorf("unable to create new iptables rule: %w", err)
 			}
 		}
 	}
 
-	if i.config.Level == chaostypes.DisruptionLevelNode {
+	if i.config.Disruption.Level == chaostypes.DisruptionLevelNode {
 		// Re-route all pods under node except for injector pod itself
-		if err := i.config.Iptables.Intercept("udp", "53", "", "", podIP); err != nil {
+		if err := i.config.IPTables.Intercept("udp", "53", "", "", podIP); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
 		}
 	}
@@ -194,7 +205,7 @@ func (i *DNSDisruptionInjector) Clean() error {
 	}
 
 	// clean injected iptables
-	if err := i.config.Iptables.Clear(); err != nil {
+	if err := i.config.IPTables.Clear(); err != nil {
 		return fmt.Errorf("unable to clean iptables rules and chain: %w", err)
 	}
 
@@ -207,7 +218,7 @@ func (i *DNSDisruptionInjector) Clean() error {
 	if !i.config.Cgroup.IsCgroupV2() {
 		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0"); err != nil {
 			if os.IsNotExist(err) {
-				i.config.Log.Warnw("unable to find target container's net_cls.classid file, we will assume we cannot find the cgroup path because it is gone", "targetContainerID", i.config.TargetContainer.ID(), "err", err)
+				i.config.Log.Warnw("unable to find target container's net_cls.classid file, we will assume we cannot find the cgroup path because it is gone", "targetContainerID", i.config.TargetContainer.ID(), "error", err)
 				return nil
 			}
 

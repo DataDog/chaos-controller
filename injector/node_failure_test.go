@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
@@ -21,13 +21,13 @@ import (
 var _ = Describe("Failure", func() {
 	var (
 		config NodeFailureInjectorConfig
-		fw     *MockFileWriter
+		fw     *FileWriterMock
 		inj    Injector
 		spec   v1beta1.NodeFailureSpec
 	)
 
 	BeforeEach(func() {
-		fw = NewMockFileWriter(GinkgoT())
+		fw = NewFileWriterMock(GinkgoT())
 		fw.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		config = NodeFailureInjectorConfig{
@@ -50,12 +50,12 @@ var _ = Describe("Failure", func() {
 		var err error
 		inj, err = NewNodeFailureInjector(spec, config)
 
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("injection", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(BeNil())
+			Expect(inj.Inject()).To(Succeed())
 			time.Sleep(config.WaitBeforeShutdown * 2)
 		})
 

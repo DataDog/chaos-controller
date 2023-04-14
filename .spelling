@@ -7,12 +7,12 @@
 15m30s
 45s
 4h30m
+AllowRootDiskFailure
 AtLeastOneOf
 ClusterIP
 ClusterRole
 DaemonSet
 DisableCountTooLarge
-AllowRootDiskFailure
 DisableNeitherHostNorPort
 DynamicTargeting
 ExclusiveFields
@@ -20,6 +20,8 @@ IPs
 IgnoreName
 LICENSE-3rdparty
 LinkedFields
+LinkedFieldsValue
+LinkedFieldsValueWithTrigger
 Meowmix
 OnInit
 PIDs
@@ -58,6 +60,7 @@ ddmarkers
 demo.yaml
 dequeued
 dequeuing
+dev
 disruptionlistener
 dns
 dogfood

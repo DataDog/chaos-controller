@@ -9,23 +9,22 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/DataDog/chaos-controller/container"
-	"github.com/DataDog/chaos-controller/process"
-
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/process"
 )
 
 var _ = Describe("Failure", func() {
 	var (
 		config  ContainerFailureInjectorConfig
-		manager *process.MockManager
+		manager *process.ManagerMock
 		proc    *os.Process
-		ctn     *container.MockContainer
+		ctn     *container.ContainerMock
 		inj     Injector
 		spec    v1beta1.ContainerFailureSpec
 	)
@@ -36,11 +35,11 @@ var _ = Describe("Failure", func() {
 		proc = &os.Process{Pid: PID}
 
 		// container
-		ctn = container.NewMockContainer(GinkgoT())
+		ctn = container.NewContainerMock(GinkgoT())
 		ctn.EXPECT().PID().Return(PID)
 
 		// manager
-		manager = process.NewMockManager(GinkgoT())
+		manager = process.NewManagerMock(GinkgoT())
 		manager.EXPECT().Find(mock.Anything).Return(proc, nil)
 		manager.EXPECT().Signal(mock.Anything, mock.Anything).Return(nil)
 
@@ -62,7 +61,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("injection", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(BeNil())
+			Expect(inj.Inject()).To(Succeed())
 		})
 
 		Context("with forced enabled", func() {

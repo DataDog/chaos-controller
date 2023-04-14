@@ -6,9 +6,8 @@
 package container_test
 
 import (
-	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/container"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 )
@@ -16,13 +15,13 @@ import (
 var _ = Describe("Container", func() {
 	var (
 		config  Config
-		runtime *container.MockRuntime
+		runtime *RuntimeMock
 		ctn     Container
 	)
 
 	BeforeEach(func() {
 		// runtime
-		runtime = container.NewMockRuntime(GinkgoT())
+		runtime = NewRuntimeMock(GinkgoT())
 		runtime.EXPECT().PID(mock.Anything).Return(uint32(666), nil)
 		runtime.EXPECT().Name(mock.Anything).Return("", nil)
 
@@ -35,7 +34,7 @@ var _ = Describe("Container", func() {
 	JustBeforeEach(func() {
 		var err error
 		ctn, err = NewWithConfig("containerd://fake", config)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("loading a container", func() {

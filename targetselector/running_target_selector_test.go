@@ -12,7 +12,7 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/types"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -108,19 +108,27 @@ func (f fakeClient) SubResource(subResource string) client.SubResourceClient {
 	return nil
 }
 
-var runningPod1 *corev1.Pod
-var runningPod2 *corev1.Pod
-var failedPod *corev1.Pod
-var pendingPod *corev1.Pod
+var (
+	runningPod1 *corev1.Pod
+	runningPod2 *corev1.Pod
+	failedPod   *corev1.Pod
+	pendingPod  *corev1.Pod
+)
 
-var mixedStatusPods []corev1.Pod
-var twoPods []corev1.Pod
+var (
+	mixedStatusPods []corev1.Pod
+	twoPods         []corev1.Pod
+)
 
-var runningNode *corev1.Node
-var failedNode *corev1.Node
+var (
+	runningNode *corev1.Node
+	failedNode  *corev1.Node
+)
 
-var justRunningNodes []corev1.Node
-var mixedNodes []corev1.Node
+var (
+	justRunningNodes []corev1.Node
+	mixedNodes       []corev1.Node
+)
 
 var _ = Describe("Helpers", func() {
 	var c fakeClient
@@ -303,8 +311,7 @@ var _ = Describe("Helpers", func() {
 				disruption.Namespace = ""
 				disruption.Spec.Selector = nil
 
-				_, _, err := targetSelector.GetMatchingPodsOverTotalPods(nil, disruption)
-				Expect(err).NotTo(BeNil())
+				Expect(targetSelector.GetMatchingPodsOverTotalPods(nil, disruption)).Error().To(HaveOccurred())
 			})
 		})
 
@@ -337,8 +344,7 @@ var _ = Describe("Helpers", func() {
 			})
 
 			It("should pass given selector for the given namespace to the client", func() {
-				_, _, err := targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)
-				Expect(err).To(BeNil())
+				Expect(targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)).Error().To(Succeed())
 				// Note: Namespace filter is not applied for results of the fakeClient.
 				//       We instead test this functionality in the controller tests.
 				Expect(c.ListOptions[0].Namespace).To(Equal("foo"))
@@ -350,8 +356,8 @@ var _ = Describe("Helpers", func() {
 
 				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)
 				numExcludedPods := 2 // pending + failed pods
-				Expect(err).To(BeNil())
-				Expect(len(r.Items)).To(Equal(len(mixedStatusPods) - numExcludedPods))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r.Items).To(HaveLen(len(mixedStatusPods) - numExcludedPods))
 			})
 		})
 
@@ -362,7 +368,7 @@ var _ = Describe("Helpers", func() {
 
 			It("should match pending pods with init containers only", func() {
 				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(r.Items[0]).To(Equal(*pendingPod))
 			})
 		})
@@ -375,8 +381,8 @@ var _ = Describe("Helpers", func() {
 			It("should exclude the pods running on the same node as the controller from targets", func() {
 				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)
 
-				Expect(err).To(BeNil())
-				Expect(len(r.Items)).To(Equal(1)) // only the pod not running on the same node as the controller
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r.Items).To(HaveLen(1)) // only the pod not running on the same node as the controller
 			})
 		})
 	})
@@ -386,7 +392,7 @@ var _ = Describe("Helpers", func() {
 			It("should return an error", func() {
 				disruption.Spec.Selector = nil
 				_, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
-				Expect(err).NotTo(BeNil())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -419,15 +425,15 @@ var _ = Describe("Helpers", func() {
 
 			It("should pass given selector to the client", func() {
 				_, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(c.ListOptions[0].LabelSelector.String()).To(Equal("app=bar,app,!app,app in (bar),app notin (bar)"))
 			})
 
 			It("should return the nodes list with no error", func() {
 				r, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
 
-				Expect(err).To(BeNil())
-				Expect(len(r.Items)).To(Equal(len(justRunningNodes)))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r.Items).To(HaveLen(len(justRunningNodes)))
 				Expect(r.Items[0].Name).To(Equal("runningNode"))
 			})
 		})
@@ -440,8 +446,8 @@ var _ = Describe("Helpers", func() {
 			It("should exclude the controller node from targets", func() {
 				r, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
 
-				Expect(err).To(BeNil())
-				Expect(len(r.Items)).To(Equal(0))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r.Items).To(BeEmpty())
 			})
 		})
 	})
@@ -455,11 +461,11 @@ var _ = Describe("Helpers", func() {
 
 			It("should return no error for running pod", func() {
 				err := targetSelector.TargetIsHealthy("runningPod", &c, disruption)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 			It("should return error for failed pod", func() {
 				err := targetSelector.TargetIsHealthy("failedPod", &c, disruption)
-				Expect(err).ToNot(BeNil())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -471,11 +477,11 @@ var _ = Describe("Helpers", func() {
 
 			It("should return an error for running node", func() {
 				err := targetSelector.TargetIsHealthy("runnningNode", &c, disruption)
-				Expect(err).ToNot(BeNil())
+				Expect(err).To(HaveOccurred())
 			})
 			It("should return an error for failed node", func() {
 				err := targetSelector.TargetIsHealthy("failedNode", &c, disruption)
-				Expect(err).ToNot(BeNil())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})

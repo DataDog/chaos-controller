@@ -7,6 +7,7 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -24,10 +25,6 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 		fmt.Println("\tℹ️  has DryRun set to true meaning no actual disruption is being run.")
 	} else {
 		fmt.Println("\tℹ️  has DryRun set to false meaning this disruption WILL run.")
-	}
-
-	if spec.Level == chaostypes.DisruptionLevelUnspecified {
-		spec.Level = chaostypes.DisruptionLevelPod
 	}
 
 	if spec.Level == chaostypes.DisruptionLevelPod {
@@ -153,7 +150,7 @@ func explainDiskPressure(spec v1beta1.DisruptionSpec) {
 func explainDNS(spec v1beta1.DisruptionSpec) {
 	dns := spec.DNS
 
-	if dns == nil || len(dns) == 0 {
+	if len(dns) == 0 {
 		return
 	}
 
@@ -185,7 +182,6 @@ func explainGRPC(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t👩‍⚕️ endpoint: %s ...\n", endpt.TargetEndpoint) //nolint:stylecheck
 
 		alterationToQueryPercent, err := grpccalc.GetPercentagePerAlteration(endpt.Alterations)
-
 		if err != nil {
 			fmt.Printf("\t\t\t💣  this disruption fails with err: %s\n", err.Error())
 		}
@@ -255,6 +251,24 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	for _, data := range network.Services {
 		fmt.Printf("\t\t🎯 Service: %s\n", data.Name)
 		fmt.Printf("\t\t\t⛵️ Namespace: %s\n", data.Namespace)
+
+		if len(data.Ports) > 0 {
+			fmt.Printf("\t\t\t⛵️ Affected ports:\n")
+
+			for _, port := range data.Ports {
+				toPrint := []string{}
+
+				if port.Port != 0 {
+					toPrint = append(toPrint, strconv.Itoa(port.Port))
+				}
+
+				if port.Name != "" {
+					toPrint = append(toPrint, port.Name)
+				}
+
+				fmt.Printf("\t\t\t\t⛵️ Port: (%s)\n", strings.Join(toPrint, "/"))
+			}
+		}
 	}
 
 	if network.Drop != 0 {
@@ -342,8 +356,8 @@ func explanation(path string) {
 
 func init() {
 	explainCmd.Flags().String("path", "", "The path to the disruption file to be explained.")
-	err := explainCmd.MarkFlagRequired("path")
 
+	err := explainCmd.MarkFlagRequired("path")
 	if err != nil {
 		return
 	}

@@ -42,37 +42,38 @@ ci-image:
 
 # main make build
 build:make:
-  <<: *docker-runner
+  <<: *docker-hub-login
   stage: build
   when: always
   variables:
-    GO_FILENAME: go1.18.1.linux-amd64.tar.gz
+    GO_FILENAME: go1.20.4.linux-amd64.tar.gz
   script:
     - apt-get update
     - apt-get -y install build-essential git
     - curl -O https://dl.google.com/go/${GO_FILENAME}
     - rm -rf /usr/local/go && tar -C /usr/local -xzf ${GO_FILENAME}
-    - export PATH=$PATH:/usr/local/go/bin
-    - make all docker-build-ebpf
+    - export PATH="/usr/local/go/bin:${PATH}"
+    - make GOBIN=/usr/local/go/bin all docker-build-ebpf
   artifacts:
     paths:
-      - bin/injector/injector_amd64
       - bin/manager/manager_amd64
-      - bin/handler/handler_amd64
-      - bin/injector/injector_arm64
       - bin/manager/manager_arm64
+      - bin/injector/injector_amd64
+      - bin/injector/injector_arm64
+      - bin/handler/handler_amd64
       - bin/handler/handler_arm64
       - bin/injector/ebpf/*
 
 # build the target from the local Dockerfile and push it to the registry
 # replication will depend on the TARGET_LABEL set by parent job
+# we always push images with the exact commit SHA on top of any other TAG based images
 .build-image: &build-image
   <<: *docker-hub-login
   script:
     - docker buildx create --use
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/manager/Dockerfile ./bin/manager/ --push
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/injector/Dockerfile ./bin/injector/ --push
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/handler/Dockerfile ./bin/handler/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG} -t registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${CI_COMMIT_SHA} --label target=${TARGET_LABEL} -f bin/manager/Dockerfile ./bin/manager/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG} -t registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${CI_COMMIT_SHA} --label target=${TARGET_LABEL} -f bin/injector/Dockerfile ./bin/injector/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG} -t registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${CI_COMMIT_SHA} --label target=${TARGET_LABEL} -f bin/handler/Dockerfile ./bin/handler/ --push
   dependencies:
     - build:make
 
@@ -89,9 +90,13 @@ build:make:
 
 release-staging-ref:
   <<: *release-staging
-  when: manual
-  except:
-    - tags
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_BRANCH =~ /^.*-staging$/
+      when: on_success
+    - when: manual
+      allow_failure: true
   variables:
     TARGET_LABEL: "staging"
     TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
@@ -176,3 +181,24 @@ slack-notifier-build.on-failure:
   only:
     - main
     - tags
+
+slack-notifier-release-staging: &slack-notifier-release-staging
+  image: registry.ddbuild.io/slack-notifier:sdm
+  tags: [ "runner:main" ]
+  stage: notify
+  only:
+    - /^.*-staging$/
+  script:
+    - /usr/local/bin/notify.sh
+
+slack-notifier-release-staging.on-success:
+  <<: *slack-notifier-release-staging
+  when: on_success
+  variables:
+    MESSAGE: ':check: | Staging Image Build Complete | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ][ $CI_COMMIT_SHA ]'
+
+slack-notifier-release-staging.on-failure:
+  <<: *slack-notifier-release-staging
+  when: on_failure
+  variables:
+    MESSAGE: ':siren: | Staging Image Build Failed | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ][ $CI_COMMIT_SHA ] :siren:'

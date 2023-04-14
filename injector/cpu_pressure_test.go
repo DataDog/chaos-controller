@@ -5,132 +5,132 @@
 package injector_test
 
 import (
-	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"errors"
+	"strconv"
+
 	"github.com/DataDog/chaos-controller/cgroup"
+	"github.com/DataDog/chaos-controller/command"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/cpuset"
 	. "github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/process"
-	"github.com/DataDog/chaos-controller/stress"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-var _ = Describe("Failure", func() {
+var nothingToCancel = func() {}
+
+var _ = Describe("CPU pressure", func() {
 	var (
-		config          CPUPressureInjectorConfig
-		cgroupManager   *cgroup.MockManager
-		ctn             *container.MockContainer
-		stresser        *stress.MockStresser
-		stresserExit    chan struct{}
-		manager         *process.MockManager
-		inj             Injector
-		spec            v1beta1.CPUPressureSpec
-		stresserManager *stress.MockStresserManager
+		config     Config
+		cgroups    *cgroup.ManagerMock
+		ctr        *container.ContainerMock
+		factory    *InjectorCmdFactoryMock
+		args       *CPUStressArgsBuilderMock
+		background *command.BackgroundCmdMock
 	)
 
+	noCPUs := cpuset.CPUSet{}
+	threeCPUs := cpuset.NewCPUSet(0, 1, 2)
+
+	const containerName = "my-container-name"
+
 	BeforeEach(func() {
-		// cgroup
-		cgroupManager = cgroup.NewMockManager(GinkgoT())
-		cgroupManager.EXPECT().Join(mock.Anything).Return(nil)
+		cgroups = cgroup.NewManagerMock(GinkgoT())
+		ctr = container.NewContainerMock(GinkgoT())
+		args = NewCPUStressArgsBuilderMock(GinkgoT())
+		background = command.NewBackgroundCmdMock(GinkgoT())
+		factory = NewInjectorCmdFactoryMock(GinkgoT())
 
-		// container
-		ctn = container.NewMockContainer(GinkgoT())
-
-		// stresser
-		stresser = stress.NewMockStresser(GinkgoT())
-		stresser.EXPECT().Stress(mock.Anything).Return()
-
-		// stresser exit chan, used to sync the stress goroutine with the test
-		stresserExit = make(chan struct{}, 1)
-
-		// manager
-		manager = process.NewMockManager(GinkgoT())
-		manager.EXPECT().Prioritize().Return(nil)
-		manager.EXPECT().ThreadID().Return(666)
-		manager.EXPECT().ProcessID().Return(42)
-
-		stresserManager = stress.NewMockStresserManager(GinkgoT())
-		stresserManager.EXPECT().TrackCoreAlreadyStressed(mock.Anything, mock.Anything)
-		stresserManager.EXPECT().StresserPIDs().Return(map[int]int{0: 666})
-		stresserManager.EXPECT().IsCoreAlreadyStressed(0).Return(true)
-		stresserManager.EXPECT().IsCoreAlreadyStressed(1).Return(false)
-
-		// config
-		config = CPUPressureInjectorConfig{
-			Config: Config{
-				Cgroup:          cgroupManager,
-				TargetContainer: ctn,
-				Log:             log,
-				MetricsSink:     ms,
-			},
-			Stresser:        stresser,
-			StresserExit:    stresserExit,
-			ProcessManager:  manager,
-			StresserManager: stresserManager,
+		config = Config{
+			Log:             log,
+			Cgroup:          cgroups,
+			TargetContainer: ctr,
 		}
-
-		// spec
-		spec = v1beta1.CPUPressureSpec{}
 	})
 
-	JustBeforeEach(func() {
-		var err error
-		inj, err = NewCPUPressureInjector(spec, config)
-		Expect(err).ShouldNot(HaveOccurred())
+	When("Inject is called", func() {
+		DescribeTable("succeed with valid user requests",
+			func(count string, stressExpected int, cpus cpuset.CPUSet) {
+				inj := NewCPUPressureInjector(config, count, factory, args)
 
-		// because the cleaning phase is blocking, we start it in a goroutine
-		// and send a signal to the stresser exit handler
-		Expect(inj.Inject()).Should(Succeed())
+				seenArgs := []string{strconv.Itoa(stressExpected)}
 
-		go func(inj Injector) {
-			Expect(inj.Clean()).Should(Succeed())
-		}(inj)
+				cgroups.EXPECT().ReadCPUSet().Return(cpus, nil).Maybe() // Only called when Int, let's be simple, externally we should not know
+				ctr.EXPECT().Name().Return(containerName).Once()
 
-		stresserExit <- struct{}{}
-	})
+				args.EXPECT().GenerateArgs(stressExpected).Return(seenArgs).Once()
 
-	Describe("injection", func() {
-		Context("user request to stress all the cores", func() {
-			BeforeEach(func() {
-				stresserManager.EXPECT().TrackInjectorCores(mock.Anything, mock.Anything).Return(cpuset.NewCPUSet(0, 1), nil)
+				background.EXPECT().Start().Return(nil).Once()
+				background.EXPECT().KeepAlive().Once()
+
+				factory.EXPECT().NewInjectorBackgroundCmd(config.DisruptionDeadline, config.Disruption, containerName, seenArgs).Return(background, nothingToCancel, nil).Once()
+
+				Expect(inj.Inject()).To(Succeed())
+			},
+			Entry("all the cores", "100%", 100, noCPUs),
+			Entry("half the cores", "50%", 50, noCPUs),
+			Entry("nothing", "0%", 0, noCPUs),
+			Entry("too much", "1000%", 100, noCPUs),
+			Entry("negative", "-1000%", 0, noCPUs),
+			Entry("1 core out of 3", "1", 33, threeCPUs),
+			Entry("3 core out of 3", "3", 100, threeCPUs),
+			Entry("-1 core out of 3", "-1", 0, threeCPUs),
+			Entry("6 core out of 3", "6", 100, threeCPUs),
+		)
+
+		Context("fails", func() {
+			var inj Injector
+			ExpectInjectError := func(expectedError string) {
+				GinkgoHelper()
+
+				Expect(inj.Inject()).Should(MatchError(expectedError))
+			}
+
+			It("when count is empty", func() {
+				inj = NewCPUPressureInjector(config, "", factory, args)
+
+				ExpectInjectError("unable to calculate stress percentage for '': invalid value for IntOrString: invalid type: string is not a percentage")
 			})
 
-			It("should join target cgroup subsystems from the main process", func() {
-				cgroupManager.AssertCalled(GinkgoT(), "Join", 42)
+			It("with cgroup manager error", func() {
+				inj = NewCPUPressureInjector(config, "2", factory, args)
+				cgroups.EXPECT().ReadCPUSet().Return(noCPUs, errors.New("cgroup manager error")).Once()
+
+				ExpectInjectError("unable to read CPUSet for current container: cgroup manager error")
 			})
 
-			It("should prioritize the current process", func() {
-				manager.AssertCalled(GinkgoT(), "Prioritize")
-			})
+			It("with background manager error", func() {
+				inj = NewCPUPressureInjector(config, "100%", factory, args)
 
-			It("should run the stress on one core", func() {
-				stresser.AssertNumberOfCalls(GinkgoT(), "Stress", 1)
-			})
+				ctr.EXPECT().Name().Return("").Once()
+				args.EXPECT().GenerateArgs(100).Return(nil).Once()
+				factory.EXPECT().NewInjectorBackgroundCmd(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil, errors.New("background manager error")).Once()
 
-			It("should record core and StresserPID in StresserManager", func() {
-				stresserManager.AssertCalled(GinkgoT(), "TrackCoreAlreadyStressed", 1, 666)
-			})
-
-			It("should skip a target core that was already stress", func() {
-				stresserManager.AssertNotCalled(GinkgoT(), "TrackCoreAlreadyStressed", 0, mock.Anything)
+				ExpectInjectError("unable to create new process definition for injector: background manager error")
 			})
 		})
+	})
 
-		Context("user request to stress half of the cores", func() {
-			BeforeEach(func() {
-				userRequestCount := intstr.FromString("50%")
-				spec = v1beta1.CPUPressureSpec{
-					Count: &userRequestCount,
-				}
-				stresserManager.EXPECT().TrackInjectorCores(mock.Anything, &userRequestCount).Return(cpuset.NewCPUSet(0, 1), nil)
-			})
+	When("Clean is called", func() {
+		It("succeed if no background process", func() {
+			inj := NewCPUPressureInjector(config, "", factory, args)
+			Expect(inj.Clean()).To(Succeed())
+		})
 
-			It("should call stresserManager track cores and get new core to apply pressure", func() {
-				// left empty as AfterEach 'AssertExpectations' check all this tests expectations
-			})
+		It("succeed and call stop after proper inject", func() {
+			background.EXPECT().Start().Return(nil).Once()
+			background.EXPECT().KeepAlive().Once()
+			background.EXPECT().Stop().Return(nil).Once()
+
+			inj := NewCPUPressureInjector(config, "100%", factory, args)
+
+			ctr.EXPECT().Name().Return("").Once()
+			args.EXPECT().GenerateArgs(100).Return(nil).Once()
+			factory.EXPECT().NewInjectorBackgroundCmd(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(background, nothingToCancel, nil)
+
+			Expect(inj.Inject()).To(Succeed()) // we need to first call inject to store the background process
+			Expect(inj.Clean()).To(Succeed())
 		})
 	})
 })

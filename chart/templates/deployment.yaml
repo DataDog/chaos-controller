@@ -2,6 +2,7 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2023 Datadog, Inc.
+{{- if .Values.controller.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,7 +23,7 @@ spec:
       serviceAccount: chaos-controller
       containers:
       - name: kube-rbac-proxy
-        image: {{ .Values.images.proxy }}
+        image: {{ template "chaos-controller.format-image" .Values.proxy.image }}
         imagePullPolicy: IfNotPresent
         args:
         - --secure-listen-address=0.0.0.0:8443
@@ -33,7 +34,7 @@ spec:
         - containerPort: 8443
           name: https
       - name: manager
-        image: {{ .Values.images.controller }}
+        image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.controller.image }}
         imagePullPolicy: IfNotPresent
         command:
         - /usr/local/bin/manager
@@ -45,16 +46,16 @@ spec:
               fieldRef:
                 fieldPath: spec.nodeName
         ports:
-        - containerPort: 9443
+        - containerPort: {{ .Values.controller.webhook.port }}
           name: webhook-server
           protocol: TCP
         resources:
           limits:
-            cpu: 100m
-            memory: 300Mi
+            cpu: {{ .Values.controller.resources.cpu }}
+            memory: {{ .Values.controller.resources.memory }}
           requests:
-            cpu: 100m
-            memory: 300Mi
+            cpu: {{ .Values.controller.resources.cpu }}
+            memory: {{ .Values.controller.resources.memory }}
         volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
@@ -62,9 +63,9 @@ spec:
         - mountPath: /etc/chaos-controller
           name: config
           readOnly: true
-      {{- if .Values.images.pullSecrets }}
+      {{- if .Values.controller.image.pullSecrets }}
       imagePullSecrets:
-        - name: {{ .Values.images.pullSecrets }}
+        - name: {{ .Values.controller.image.pullSecrets }}
       {{- end }}
       terminationGracePeriodSeconds: 10
       volumes:
@@ -74,4 +75,5 @@ spec:
           secretName: chaos-controller-webhook-secret
       - name: config
         configMap:
-          name: chaos-controller-config
+          name: chaos-controller
+{{- end }}

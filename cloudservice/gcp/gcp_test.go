@@ -8,7 +8,7 @@ package gcp
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -26,13 +26,13 @@ var _ = Describe("GCP Parsing", func() {
 			info, err := gcpManager.ConvertToGenericIPRanges([]byte(ipRangeFile))
 
 			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Ensuring that the right version string was parsed")
 			Expect(info.Version).To(Equal("1000000000"))
 
 			By("Ensuring that we have the right info")
-			Expect(len(info.IPRanges[GoogleCloudService])).To(Equal(4))
+			Expect(info.IPRanges[GoogleCloudService]).To(HaveLen(4))
 		})
 
 		It("should remove 8.8.8.8 of the ip range file", func() {
@@ -42,10 +42,10 @@ var _ = Describe("GCP Parsing", func() {
 			info, err := gcpManager.ConvertToGenericIPRanges([]byte(ipRangeFile))
 
 			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Ensuring that we have the right info")
-			Expect(len(info.IPRanges[GoogleCloudService])).To(Equal(3))
+			Expect(info.IPRanges[GoogleCloudService]).To(HaveLen(3))
 		})
 	})
 
@@ -57,10 +57,10 @@ var _ = Describe("GCP Parsing", func() {
 
 		It("Should indicate is a new version", func() {
 			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Ensuring that the version is new")
-			Expect(isNewVersion).To(Equal(true))
+			Expect(isNewVersion).To(BeTrue())
 		})
 	})
 
@@ -73,10 +73,10 @@ var _ = Describe("GCP Parsing", func() {
 			_, errIsNewVersion := gcpManager.IsNewVersion([]byte(ipRangeFile), "20")
 
 			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
-			Expect(errConvert).ToNot(BeNil())
+			Expect(errConvert).To(HaveOccurred())
 
 			By("Ensuring that an error was thrown on IsNewVersion")
-			Expect(errIsNewVersion).ToNot(BeNil())
+			Expect(errIsNewVersion).To(HaveOccurred())
 		})
 
 		It("Should throw an error on empty ip ranges file", func() {
@@ -86,10 +86,10 @@ var _ = Describe("GCP Parsing", func() {
 			_, errIsNewVersion := gcpManager.IsNewVersion(make([]byte, 0), "20")
 
 			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
-			Expect(errConvert).ToNot(BeNil())
+			Expect(errConvert).To(HaveOccurred())
 
 			By("Ensuring that an error was thrown on IsNewVersion")
-			Expect(errIsNewVersion).ToNot(BeNil())
+			Expect(errIsNewVersion).To(HaveOccurred())
 		})
 
 		It("Should throw an error on nil ip ranges file", func() {
@@ -99,10 +99,10 @@ var _ = Describe("GCP Parsing", func() {
 			_, errIsNewVersion := gcpManager.IsNewVersion(nil, "20")
 
 			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
-			Expect(errConvert).ToNot(BeNil())
+			Expect(errConvert).To(HaveOccurred())
 
 			By("Ensuring that an error was thrown on IsNewVersion")
-			Expect(errIsNewVersion).ToNot(BeNil())
+			Expect(errIsNewVersion).To(HaveOccurred())
 		})
 	})
 })

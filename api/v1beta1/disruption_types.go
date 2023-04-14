@@ -23,6 +23,7 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/hashicorp/go-multierror"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -32,12 +33,18 @@ import (
 // DisruptionSpec defines the desired state of Disruption
 // +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS,DiskFailure}
 // +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS,DiskFailure}
+// +ddmark:validation:LinkedFieldsValueWithTrigger={NodeFailure,Level}
 // +ddmark:validation:AtLeastOneOf={DNS,CPUPressure,Network,NodeFailure,ContainerFailure,DiskPressure,GRPC,DiskFailure}
 // +ddmark:validation:AtLeastOneOf={Selector,AdvancedSelector}
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
+	// AllowDisruptedTargets allow pods with one or several other active disruptions, with disruption kinds that does not intersect
+	// with this disruption kinds, to be returned as part of eligible targets for this disruption
+	// - e.g. apply a CPU pressure and later, apply a container failure for a short duration
+	// NB: it's ALWAYS forbidden to apply the same disruption kind to the same target to avoid unreliable effects due to competing interactions
+	AllowDisruptedTargets bool `json:"allowDisruptedTargets,omitempty"`
 	// +nullable
 	Selector labels.Set `json:"selector,omitempty"` // label selector
 	// +nullable
@@ -49,10 +56,14 @@ type DisruptionSpec struct {
 	Unsafemode      *UnsafemodeSpec   `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
 	StaticTargeting bool              `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
 	// +nullable
+	Triggers DisruptionTriggers `json:"triggers,omitempty"` // alter the pre-injection lifecycle
+	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
-	// +kubebuilder:validation:Enum=pod;node;""
-	// +ddmark:validation:Enum=pod;node;""
+	// Level defines what the disruption will target, either a pod or a node
+	// +kubebuilder:default=pod
+	// +kubebuilder:validation:Enum=pod;node
+	// +ddmark:validation:Enum=pod;node
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
 	Containers []string                   `json:"containers,omitempty"`
 	// +nullable
@@ -75,9 +86,35 @@ type DisruptionSpec struct {
 	Reporting *Reporting `json:"reporting,omitempty"`
 }
 
+// DisruptionTriggers holds the options for changing when injector pods are created, and the timing of when the injection occurs
+type DisruptionTriggers struct {
+	Inject     DisruptionTrigger `json:"inject,omitempty"`
+	CreatePods DisruptionTrigger `json:"createPods,omitempty"`
+}
+
+func (dt DisruptionTriggers) IsZero() bool {
+	return dt.Inject.IsZero() && dt.CreatePods.IsZero()
+}
+
+// +ddmark:validation:ExclusiveFields={NotBefore,Offset}
+type DisruptionTrigger struct {
+	// inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
+	// createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
+	// +nullable
+	NotBefore metav1.Time `json:"notBefore,omitempty"`
+	// inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
+	// pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
+	// +nullable
+	Offset DisruptionDuration `json:"offset,omitempty"`
+}
+
+func (dt DisruptionTrigger) IsZero() bool {
+	return dt.NotBefore.IsZero() && dt.Offset.Duration() == 0
+}
+
 // Reporting provides additional reporting options in order to send a message to a custom slack channel
-// it expect the main controller to have slack notifier enabled
-// it expect slack bot to be added to the defined slack channel
+// it expects the main controller to have the slack notifier enabled
+// it expects a slack bot to be added to the defined slack channel
 type Reporting struct {
 	// SlackChannel is the destination slack channel to send reporting informations to.
 	// It's expected to follow slack naming conventions https://api.slack.com/methods/conversations.create#naming or slack channel ID format
@@ -100,7 +137,7 @@ type Reporting struct {
 
 // EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
 //
-//go:embed *
+//go:embed *.go
 var EmbeddedChaosAPI embed.FS
 
 type DisruptionDuration string
@@ -111,7 +148,6 @@ func (dd DisruptionDuration) MarshalJSON() ([]byte, error) {
 	}
 
 	d, err := time.ParseDuration(string(dd))
-
 	if err != nil {
 		return nil, err
 	}
@@ -152,8 +188,10 @@ func (dd DisruptionDuration) Duration() time.Duration {
 }
 
 type TargetInjection struct {
-	InjectorPodName string                               `json:"injectorPodName,omitempty"`
-	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
+	InjectorPodName string `json:"injectorPodName,omitempty"`
+	// +kubebuilder:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
+	// +ddmark:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
+	InjectionStatus chaostypes.DisruptionTargetInjectionStatus `json:"injectionStatus,omitempty"`
 	// since when this status is in place
 	Since metav1.Time `json:"since,omitempty"`
 }
@@ -176,8 +214,8 @@ func (in TargetInjections) GetTargetNames() []string {
 type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
 	IsInjected       bool `json:"isInjected,omitempty"`
-	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
-	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
+	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
+	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
 	TargetInjections TargetInjections `json:"targetInjections,omitempty"`
@@ -218,9 +256,10 @@ type DisruptionList struct {
 }
 
 // DisruptionPulse contains the active disruption duration and the dormant disruption duration
+// +ddmark:validation:LinkedFields={ActiveDuration,DormantDuration}
 type DisruptionPulse struct {
-	ActiveDuration  DisruptionDuration `json:"activeDuration"`
-	DormantDuration DisruptionDuration `json:"dormantDuration"`
+	ActiveDuration  DisruptionDuration `json:"activeDuration,omitempty"`
+	DormantDuration DisruptionDuration `json:"dormantDuration,omitempty"`
 	InitialDelay    DisruptionDuration `json:"initialDelay,omitempty"`
 }
 
@@ -228,8 +267,23 @@ func init() {
 	SchemeBuilder.Register(&Disruption{}, &DisruptionList{})
 }
 
+func (s *DisruptionSpec) UnmarshalJSON(data []byte) error {
+	type innerSpec DisruptionSpec
+
+	// Unmarshalling does not consider tag default
+	// as we want all manifest to have a default value if undefined, we hence set it here
+	inner := &innerSpec{Level: chaostypes.DisruptionLevelPod}
+	if err := json.Unmarshal(data, &inner); err != nil {
+		return err
+	}
+
+	*s = DisruptionSpec(*inner)
+
+	return nil
+}
+
 // Hash returns the disruption spec JSON hash
-func (s *DisruptionSpec) Hash() (string, error) {
+func (s DisruptionSpec) Hash() (string, error) {
 	// serialize instance spec to JSON
 	specBytes, err := json.Marshal(s)
 	if err != nil {
@@ -240,15 +294,14 @@ func (s *DisruptionSpec) Hash() (string, error) {
 	return fmt.Sprintf("%x", md5.Sum(specBytes)), nil
 }
 
-func (s *DisruptionSpec) HashNoCount() (string, error) {
-	sCopy := s.DeepCopy()
-	sCopy.Count = nil
+func (s DisruptionSpec) HashNoCount() (string, error) {
+	s.Count = nil
 
-	return sCopy.Hash()
+	return s.Hash()
 }
 
 // Validate applies rules for disruption global scope and all subsequent disruption specifications
-func (s *DisruptionSpec) Validate() (retErr error) {
+func (s DisruptionSpec) Validate() (retErr error) {
 	if err := s.validateGlobalDisruptionScope(); err != nil {
 		retErr = multierror.Append(retErr, err)
 	}
@@ -268,7 +321,7 @@ func (s *DisruptionSpec) Validate() (retErr error) {
 }
 
 // Validate applies rules for disruption global scope
-func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
+func (s DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 	// Rule: at least one kind of selector is set
 	if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
 		retErr = multierror.Append(retErr, errors.New("either selector or advancedSelector field must be set"))
@@ -299,7 +352,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible on dns disruptions with no subset of targeted containers"))
 		}
 
-		if s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
+		if s.Level != chaostypes.DisruptionLevelPod {
 			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible with pod level disruptions"))
 		}
 
@@ -313,22 +366,33 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 		retErr = multierror.Append(retErr, errors.New("disk pressure disruptions apply to all containers, specifying certain containers does not isolate the disruption"))
 	}
 
-	// Rule: pulse compatibility
-	if s.Pulse != nil {
-		if s.NodeFailure != nil || s.ContainerFailure != nil {
-			retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
-		}
-
-		if s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
-			retErr = multierror.Append(retErr, fmt.Errorf("pulse activeDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
-		}
-
-		if s.Pulse.DormantDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
-			retErr = multierror.Append(retErr, fmt.Errorf("pulse dormantDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
+	// Rule: DisruptionTrigger
+	if !s.Triggers.IsZero() {
+		if !s.Triggers.Inject.IsZero() && !s.Triggers.CreatePods.IsZero() {
+			if !s.Triggers.Inject.NotBefore.IsZero() && !s.Triggers.CreatePods.NotBefore.IsZero() && s.Triggers.Inject.NotBefore.Before(&s.Triggers.CreatePods.NotBefore) {
+				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.createPods.notBefore of %s. inject.notBefore must come after createPods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
+			}
 		}
 	}
 
-	if s.GRPC != nil && s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
+	// Rule: pulse compatibility
+	if s.Pulse != nil {
+		if s.Pulse.ActiveDuration.Duration() > 0 || s.Pulse.DormantDuration.Duration() > 0 {
+			if s.NodeFailure != nil || s.ContainerFailure != nil {
+				retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
+			}
+		}
+
+		if s.Pulse.ActiveDuration.Duration() != 0 && s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse activeDuration of %s should be greater than %s", s.Pulse.ActiveDuration.Duration(), chaostypes.PulsingDisruptionMinimumDuration))
+		}
+
+		if s.Pulse.DormantDuration.Duration() != 0 && s.Pulse.DormantDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse dormantDuration of %s should be greater than %s", s.Pulse.DormantDuration.Duration(), chaostypes.PulsingDisruptionMinimumDuration))
+		}
+	}
+
+	if s.GRPC != nil && s.Level != chaostypes.DisruptionLevelPod {
 		retErr = multierror.Append(retErr, errors.New("GRPC disruptions can only be applied at the pod level"))
 	}
 
@@ -341,7 +405,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 }
 
 // DisruptionKindPicker returns this DisruptionSpec's instance of a DisruptionKind based on given kind name
-func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName) chaosapi.DisruptionKind {
+func (s DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName) chaosapi.DisruptionKind {
 	var disruptionKind chaosapi.DisruptionKind
 
 	switch kind {
@@ -366,8 +430,8 @@ func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName
 	return disruptionKind
 }
 
-// GetKindNames returns the non-nil disruption kind names for the given disruption
-func (s *DisruptionSpec) GetKindNames() []chaostypes.DisruptionKindName {
+// KindNames returns the non-nil disruption kind names for the given disruption
+func (s DisruptionSpec) KindNames() []chaostypes.DisruptionKindName {
 	kinds := []chaostypes.DisruptionKindName{}
 
 	for _, kind := range chaostypes.DisruptionKindNames {
@@ -407,8 +471,8 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 	return &parsedSpec, nil
 }
 
-// GetDisruptionCount get the number of disruption types per disruption
-func (s *DisruptionSpec) GetDisruptionCount() int {
+// DisruptionCount get the number of disruption types per disruption
+func (s DisruptionSpec) DisruptionCount() int {
 	count := 0
 
 	if s.CPUPressure != nil {
@@ -516,7 +580,6 @@ func DisruptionIsNotReinjectable(kind chaostypes.DisruptionKindName) bool {
 var NoSideEffectDisruptions = map[chaostypes.DisruptionKindName]struct{}{
 	chaostypes.DisruptionKindNodeFailure:      {},
 	chaostypes.DisruptionKindContainerFailure: {},
-	chaostypes.DisruptionKindCPUPressure:      {},
 }
 
 func DisruptionHasNoSideEffects(kind string) bool {
@@ -530,5 +593,46 @@ func DisruptionHasNoSideEffects(kind string) bool {
 // injecting into a pod that has been rescheduled onto a new node
 func ShouldSkipNodeFailureInjection(disKind chaostypes.DisruptionKindName, instance *Disruption, injection TargetInjection) bool {
 	// we should never re-inject a static node failure, as it may be targeting the same pod on a new node
-	return disKind == chaostypes.DisruptionKindNodeFailure && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionInjectionStatusNotInjected
+	return disKind == chaostypes.DisruptionKindNodeFailure && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionTargetInjectionStatusNotInjected
+}
+
+// TargetedContainers returns a map of containers with containerName as a key and containerID in the format '<type>://<container_id>' as a value
+func TargetedContainers(pod corev1.Pod, containerNames []string) (map[string]string, error) {
+	if len(pod.Status.ContainerStatuses) < 1 {
+		return nil, fmt.Errorf("missing container ids for pod '%s'", pod.Name)
+	}
+
+	podContainers := make([]corev1.ContainerStatus, 0, len(pod.Status.ContainerStatuses)+len(pod.Status.InitContainerStatuses))
+	podContainers = append(podContainers, pod.Status.ContainerStatuses...)
+	podContainers = append(podContainers, pod.Status.InitContainerStatuses...)
+
+	if len(containerNames) == 0 {
+		allContainers := make(map[string]string, len(podContainers))
+
+		for _, c := range podContainers {
+			if c.State.Running != nil {
+				allContainers[c.Name] = c.ContainerID
+			}
+		}
+
+		return allContainers, nil
+	}
+
+	allContainers := make(map[string]string, len(podContainers))
+	targetedContainers := make(map[string]string, len(containerNames))
+
+	for _, c := range podContainers {
+		allContainers[c.Name] = c.ContainerID
+	}
+
+	// look for the target in the map
+	for _, containerName := range containerNames {
+		if containerID, existsInPod := allContainers[containerName]; existsInPod {
+			targetedContainers[containerName] = containerID
+		} else {
+			return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, containerName)
+		}
+	}
+
+	return targetedContainers, nil
 }

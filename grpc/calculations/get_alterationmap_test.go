@@ -7,7 +7,7 @@ package calculations_test
 
 import (
 	. "github.com/DataDog/chaos-controller/grpc/calculations"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -43,15 +43,15 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to Alterations
 
 			alterations = FlattenAlterationMap(alterationConfigToQueryPercent)
 
-			Expect(len(alterations)).To(Equal(15))
+			Expect(alterations).To(HaveLen(15))
 
 			altCfg := alterations[0]
 			Expect(altCfg.ErrorToReturn).To(Equal("CANCELED"))
-			Expect(altCfg.OverrideToReturn).To(Equal(""))
+			Expect(altCfg.OverrideToReturn).To(BeEmpty())
 
 			altCfg = alterations[14]
 			Expect(altCfg.ErrorToReturn).To(Equal("CANCELED"))
-			Expect(altCfg.OverrideToReturn).To(Equal(""))
+			Expect(altCfg.OverrideToReturn).To(BeEmpty())
 		})
 	})
 
@@ -64,7 +64,7 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to Alterations
 			alterations = FlattenAlterationMap(alterationConfigToQueryPercent)
 
 			By("having 70 entries", func() {
-				Expect(len(alterations)).To(Equal(70))
+				Expect(alterations).To(HaveLen(70))
 			})
 
 			By("having three alteration types each with the right number of configurations", func() {
@@ -103,7 +103,7 @@ var _ = Describe("get mapping from alterationConfigToQueryPercent to Alterations
 			alterations = FlattenAlterationMap(alterationConfigToQueryPercent)
 
 			By("having 100 entries", func() {
-				Expect(len(alterations)).To(Equal(100))
+				Expect(alterations).To(HaveLen(100))
 			})
 
 			By("having three alteration types each with the right number of configurations", func() {

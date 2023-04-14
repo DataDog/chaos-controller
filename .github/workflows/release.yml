@@ -3,7 +3,7 @@ name: release
 on:
   push:
     tags:
-      - '*'
+      - "*"
 
 jobs:
   goreleaser:
@@ -16,13 +16,16 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.18.x
+          go-version: 1.20.x
       - name: Install Helm
         uses: azure/setup-helm@v1
         with:
           version: v3.6.3
       - name: Generate install manifest
-        run: helm template ./chart/ --set images.controller=datadog/chaos-controller:${GITHUB_REF_NAME} --set images.injector=datadog/chaos-injector:${GITHUB_REF_NAME} --set images.handler=datadog/chaos-handler:${GITHUB_REF_NAME} > ./chart/install.yaml
+        run: >
+          helm template ./chart/
+          --set defaultImage.repo=datadog --set defaultImage.tag=${GITHUB_REF_NAME}
+          > ./chart/install.yaml
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v1
         with:

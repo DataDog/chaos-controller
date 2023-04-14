@@ -7,44 +7,46 @@ package injector_test
 
 import (
 	"os"
-	"time"
 
+	"github.com/DataDog/chaos-controller/api"
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/types"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 )
 
 var _ = Describe("Failure", func() {
 	var (
-		config        DiskFailureInjectorConfig
-		level         types.DisruptionLevel
-		proc          *os.Process
-		inj           Injector
-		spec          v1beta1.DiskFailureSpec
-		commandMock   *MockBPFDiskFailureCommand
-		containerMock *container.MockContainer
+		config      DiskFailureInjectorConfig
+		level       types.DisruptionLevel
+		proc        *os.Process
+		inj         Injector
+		spec        v1beta1.DiskFailureSpec
+		commandMock *BPFDiskFailureCommandMock
+		ctr         *container.ContainerMock
 	)
 
-	JustBeforeEach(func() {
-		const PID = 1
+	const PID = 1
+
+	BeforeEach(func() {
 		proc = &os.Process{Pid: PID}
 
-		containerMock = container.NewMockContainer(GinkgoT())
-		containerMock.EXPECT().PID().Return(PID)
+		ctr = container.NewContainerMock(GinkgoT())
 
-		commandMock = NewMockBPFDiskFailureCommand(GinkgoT())
+		commandMock = NewBPFDiskFailureCommandMock(GinkgoT())
 		commandMock.EXPECT().Run(mock.Anything, mock.Anything).Return(nil)
 
 		config = DiskFailureInjectorConfig{
 			Config: Config{
-				Log:             log,
-				MetricsSink:     ms,
-				Level:           level,
-				TargetContainer: containerMock,
+				Log:         log,
+				MetricsSink: ms,
+				Disruption: api.DisruptionArgs{
+					Level: level,
+				},
+				TargetContainer: ctr,
 			},
 			Cmd: commandMock,
 		}
@@ -52,23 +54,24 @@ var _ = Describe("Failure", func() {
 		spec = v1beta1.DiskFailureSpec{
 			Path: "/",
 		}
-
-		var err error
-		inj, err = NewDiskFailureInjector(spec, config)
-
-		Expect(err).To(BeNil())
 	})
 
 	Describe("injection", func() {
 		JustBeforeEach(func() {
-			Eventually(func() bool {
-				return Expect(inj.Inject()).To(BeNil())
-			}, time.Second*1, time.Second).Should(BeTrue())
+			// instantiate lately so config can be updated in BeforeEach
+			var err error
+			inj, err = NewDiskFailureInjector(spec, config)
+
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(inj.Inject()).To(Succeed())
 		})
 
 		Context("with a pod level", func() {
 			BeforeEach(func() {
-				level = types.DisruptionLevelPod
+				config.Disruption.Level = types.DisruptionLevelPod
+
+				ctr.EXPECT().PID().Return(PID).Once()
 			})
 
 			It("should start the eBPF Disk failure program", func() {
@@ -78,10 +81,11 @@ var _ = Describe("Failure", func() {
 
 		Context("with a node level", func() {
 			BeforeEach(func() {
-				level = types.DisruptionLevelNode
+				config.Disruption.Level = types.DisruptionLevelNode
 			})
 
 			It("should start the eBPF Disk failure program", func() {
+				ctr.AssertNumberOfCalls(GinkgoT(), "PID", 0)
 				commandMock.AssertCalled(GinkgoT(), "Run", 0, "/")
 			})
 		})
