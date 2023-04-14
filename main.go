@@ -35,6 +35,7 @@ import (
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
+	"github.com/DataDog/chaos-controller/o11y/profiler"
 	profilertypes "github.com/DataDog/chaos-controller/o11y/profiler/types"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
 	tracertypes "github.com/DataDog/chaos-controller/o11y/tracer/types"
@@ -385,6 +386,14 @@ func main() {
 
 	if err != nil {
 		logger.Errorw("error while creating tracer sink", "error", err)
+	}
+
+	// profiler sink
+	profiler, err := profiler.GetSink(cfg.Controller.Profiler)
+	defer profiler.Stop()
+
+	if err != nil {
+		logger.Errorw("error while creating profiler sink", "error", err)
 	}
 
 	// target selector
