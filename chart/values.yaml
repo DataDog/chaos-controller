@@ -16,11 +16,13 @@ controller:
   enableSafeguards: true # enable safeguards on targets selection (do not target the node running the controller)
   enableObserver: true # enable observer on targets, notifying of target warning status and events
   metricsSink: noop # metrics driver (noop or datadog)
-  tracerSink: datadog
   tracer:
-    enableTracer: true
+    sink: datadog
+    enable: true
     sampleRate: 1.0
-    enableProfiler: true
+  profiler:
+    sink: datadog
+    enable: true
   notifiers:
     common:
       clusterName: lima
