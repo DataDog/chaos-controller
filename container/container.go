@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+//go:generate mockery --name=Container --filename=container_mock.go
+
 // Container describes a container
 type Container interface {
 	ID() string

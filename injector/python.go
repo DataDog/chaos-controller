@@ -17,8 +17,8 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:generate mockery --name=PythonRunner --inpackage --case=underscore --testonly --disable-version-string --with-expecter
-//go:generate mockery --name=command --inpackage --case=underscore --testonly --disable-version-string --with-expecter
+//go:generate mockery --name=PythonRunner --testonly --filename=mock_python_runner_test.go
+//go:generate mockery --name=command --testonly
 
 // PythonRunner is an interface for executing python3 commands
 type PythonRunner interface {

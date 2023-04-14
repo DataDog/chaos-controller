@@ -23,9 +23,9 @@ import (
 var _ = Describe("Failure", func() {
 	var (
 		config  ContainerFailureInjectorConfig
-		manager *process.ManagerMock
+		manager *process.MockManager
 		proc    *os.Process
-		ctn     *container.ContainerMock
+		ctn     *container.MockContainer
 		inj     Injector
 		spec    v1beta1.ContainerFailureSpec
 	)
@@ -36,13 +36,13 @@ var _ = Describe("Failure", func() {
 		proc = &os.Process{Pid: PID}
 
 		// container
-		ctn = &container.ContainerMock{}
-		ctn.On("PID").Return(uint32(PID))
+		ctn = container.NewMockContainer(GinkgoT())
+		ctn.EXPECT().PID().Return(PID)
 
 		// manager
-		manager = &process.ManagerMock{}
-		manager.On("Find", mock.Anything).Return(proc, nil)
-		manager.On("Signal", mock.Anything, mock.Anything).Return(nil)
+		manager = process.NewMockManager(GinkgoT())
+		manager.EXPECT().Find(mock.Anything).Return(proc, nil)
+		manager.EXPECT().Signal(mock.Anything, mock.Anything).Return(nil)
 
 		config = ContainerFailureInjectorConfig{
 			Config: Config{
@@ -80,6 +80,5 @@ var _ = Describe("Failure", func() {
 				manager.AssertCalled(GinkgoT(), "Signal", proc, syscall.SIGTERM)
 			})
 		})
-
 	})
 })

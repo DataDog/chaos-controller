@@ -1,0 +1,3 @@
+inpackage: True
+disable-version-string: True
+with-expecter: True

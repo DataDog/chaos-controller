@@ -22,30 +22,30 @@ import (
 var _ = Describe("Failure", func() {
 	var (
 		config        DiskPressureInjectorConfig
-		cgroupManager *cgroup.ManagerMock
-		ctn           *container.ContainerMock
-		informer      *disk.InformerMock
+		cgroupManager *cgroup.MockManager
+		ctn           *container.MockContainer
+		informer      *disk.MockInformer
 		inj           Injector
 		spec          v1beta1.DiskPressureSpec
 	)
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = &cgroup.ManagerMock{}
-		cgroupManager.On("Write", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		cgroupManager = cgroup.NewMockManager(GinkgoT())
+		cgroupManager.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// container
-		ctn = &container.ContainerMock{}
+		ctn = container.NewMockContainer(GinkgoT())
 
 		// disk informer
-		informer = &disk.InformerMock{}
-		informer.On("Major").Return(8)
-		informer.On("Source").Return("/dev/sda1")
+		informer = disk.NewMockInformer(GinkgoT())
+		informer.EXPECT().Major().Return(8)
+		informer.EXPECT().Source().Return("/dev/sda1")
 
 		// env vars
 		os.Setenv(env.InjectorMountHost, "foo")
 
-		//config
+		// config
 		config = DiskPressureInjectorConfig{
 			Config: Config{
 				TargetContainer: ctn,
@@ -84,7 +84,7 @@ var _ = Describe("Failure", func() {
 
 		Context("with cgroups v1", func() {
 			BeforeEach(func() {
-				cgroupManager.On("IsCgroupV2").Return(false)
+				cgroupManager.EXPECT().IsCgroupV2().Return(false)
 			})
 
 			It("should throttle disk from cgroup", func() {
@@ -95,7 +95,7 @@ var _ = Describe("Failure", func() {
 
 		Context("with cgroups v2", func() {
 			BeforeEach(func() {
-				cgroupManager.On("IsCgroupV2").Return(true)
+				cgroupManager.EXPECT().IsCgroupV2().Return(true)
 			})
 
 			It("should throttle disk from cgroup", func() {
@@ -112,7 +112,7 @@ var _ = Describe("Failure", func() {
 
 		Context("with cgroups v1", func() {
 			BeforeEach(func() {
-				cgroupManager.On("IsCgroupV2").Return(false)
+				cgroupManager.EXPECT().IsCgroupV2().Return(false)
 			})
 
 			It("should remove throttle from cgroup", func() {
@@ -123,7 +123,7 @@ var _ = Describe("Failure", func() {
 
 		Context("with cgroups v2", func() {
 			BeforeEach(func() {
-				cgroupManager.On("IsCgroupV2").Return(true)
+				cgroupManager.EXPECT().IsCgroupV2().Return(true)
 			})
 
 			It("should throttle disk from cgroup", func() {

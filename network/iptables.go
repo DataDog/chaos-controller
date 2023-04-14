@@ -13,6 +13,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//go:generate mockery --name=Iptables --filename=iptables_mock.go
+
 // Iptables is an interface for interacting with target nat firewall/iptables rules
 type Iptables interface {
 	Clear() error
