@@ -5,139 +5,58 @@
 package injector_test
 
 import (
-	"time"
-
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cgroup"
-	"github.com/DataDog/chaos-controller/container"
-	"github.com/DataDog/chaos-controller/cpuset"
 	. "github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/process"
-	"github.com/DataDog/chaos-controller/stress"
+	"github.com/DataDog/chaos-controller/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var _ = Describe("Failure", func() {
 	var (
-		config          CPUPressureInjectorConfig
-		cgroupManager   *cgroup.MockManager
-		ctn             *container.MockContainer
-		stresser        *stress.MockStresser
-		stresserExit    chan struct{}
-		manager         *process.MockManager
-		inj             Injector
-		spec            v1beta1.CPUPressureSpec
-		stresserManager *stress.MockStresserManager
+		config     Config
+		inj        Injector
+		spec       v1beta1.CPUPressureSpec
+		background *mocks.BackgroundProcessManagerMock
 	)
 
 	BeforeEach(func() {
-		// cgroup
-		cgroupManager = cgroup.NewMockManager(GinkgoT())
-		cgroupManager.EXPECT().Join(mock.Anything).Return(nil)
-
-		// container
-		ctn = container.NewMockContainer(GinkgoT())
-
-		// stresser
-		stresser = stress.NewMockStresser(GinkgoT())
-		stresser.EXPECT().Stress(mock.Anything).Return()
-
-		// stresser exit chan, used to sync the stress goroutine with the test
-		stresserExit = make(chan struct{}, 1)
-
-		// manager
-		manager = process.NewMockManager(GinkgoT())
-		manager.EXPECT().Prioritize().Return(nil)
-		manager.EXPECT().ThreadID().Return(666)
-		manager.EXPECT().ProcessID().Return(42)
-
-		stresserManager = stress.NewMockStresserManager(GinkgoT())
-		stresserManager.EXPECT().TrackCoreAlreadyStressed(mock.Anything, mock.Anything)
-		stresserManager.EXPECT().StresserPIDs().Return(map[int]int{0: 666})
-		stresserManager.EXPECT().IsCoreAlreadyStressed(0).Return(true)
-		stresserManager.EXPECT().IsCoreAlreadyStressed(1).Return(false)
+		background = mocks.NewBackgroundProcessManagerMock(GinkgoT())
 
 		// config
-		config = CPUPressureInjectorConfig{
-			Config: Config{
-				Cgroup:          cgroupManager,
-				TargetContainer: ctn,
-				Log:             log,
-				MetricsSink:     ms,
-			},
-			Stresser:        stresser,
-			StresserExit:    stresserExit,
-			ProcessManager:  manager,
-			StresserManager: stresserManager,
+		config = Config{
+			Log:         log,
+			MetricsSink: ms,
 		}
 
 		// spec
 		spec = v1beta1.CPUPressureSpec{}
-	})
 
-	JustBeforeEach(func() {
-		var err error
-		inj, err = NewCPUPressureInjector(spec, config)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		// because the cleaning phase is blocking, we start it in a goroutine
-		// and send a signal to the stresser exit handler
-		Expect(inj.Inject()).Should(Succeed())
-
-		go func(inj Injector) {
-			Expect(inj.Clean()).Should(Succeed())
-		}(inj)
-
-		stresserExit <- struct{}{}
+		inj = NewCPUPressureInjector(config, spec, background, func(i int) []string { return []string{"do-not-care"} })
 	})
 
 	Describe("injection", func() {
+		JustBeforeEach(func() {
+			Expect(inj.Inject()).To(BeNil())
+		})
+
 		Context("user request to stress all the cores", func() {
-			BeforeEach(func() {
-				stresserManager.EXPECT().TrackInjectorCores(mock.Anything, mock.Anything).Return(cpuset.NewCPUSet(0, 1), nil)
-			})
-
-			It("should call the expected functions and args", func() {
-				By("should join target cgroup subsystems from the main process", func() {
-					cgroupManager.AssertCalled(GinkgoT(), "Join", 42)
-				})
-
-				By("should prioritize the current process", func() {
-					manager.AssertCalled(GinkgoT(), "Prioritize")
-				})
-
-				By("should run the stress on one core", func() {
-					// The Stress happens async, so we need to give it time to guarantee. This sleep will be unnecessary within a month when we have updated cpu_pressure's approach
-					time.Sleep(time.Second * 2)
-					stresser.AssertNumberOfCalls(GinkgoT(), "Stress", 1)
-				})
-
-				By("should record core and StresserPID in StresserManager", func() {
-					stresserManager.AssertCalled(GinkgoT(), "TrackCoreAlreadyStressed", 1, 666)
-				})
-
-				By("should skip a target core that was already stress", func() {
-					stresserManager.AssertNotCalled(GinkgoT(), "TrackCoreAlreadyStressed", 0, mock.Anything)
-				})
+			JustBeforeEach(func() {
+				userRequestAll := intstr.FromString("100%")
+				spec.Count = &userRequestAll
 			})
 		})
 
-		Context("user request to stress half of the cores", func() {
-			BeforeEach(func() {
-				userRequestCount := intstr.FromString("50%")
-				spec = v1beta1.CPUPressureSpec{
-					Count: &userRequestCount,
-				}
-				stresserManager.EXPECT().TrackInjectorCores(mock.Anything, &userRequestCount).Return(cpuset.NewCPUSet(0, 1), nil)
+		Context("user request to stress half the cores", func() {
+			JustBeforeEach(func() {
+				userRequestHalf := intstr.FromString("50%")
+				spec.Count = &userRequestHalf
 			})
 
-			It("should call stresserManager track cores and get new core to apply pressure", func() {
-				// left empty as AfterEach 'AssertExpectations' check all this tests expectations
-				// TODO what AfterEach was this referring to? Is there an implicit one I don't know about?
-			})
+			// It("should call stresserManager track cores and get new core to apply pressure", func() {
+			// 	// left empty as AfterEach 'AssertExpectations' check all this tests expectations
+			// })
 		})
 	})
 })

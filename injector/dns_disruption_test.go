@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 
+	"github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
@@ -74,7 +75,9 @@ var _ = Describe("Failure", func() {
 				MetricsSink:     ms,
 				Netns:           netnsManagerMock,
 				Cgroup:          cgroupManagerMock,
-				Level:           chaostypes.DisruptionLevelNode,
+				Disruption: api.DisruptionArgs{
+					Level: chaostypes.DisruptionLevelNode,
+				},
 			},
 			Iptables:     iptablesMock,
 			PythonRunner: pythonRunner,
@@ -177,12 +180,12 @@ var _ = Describe("Failure", func() {
 
 		Context("disruption is pod-level", func() {
 			BeforeEach(func() {
-				config.Level = chaostypes.DisruptionLevelPod
+				config.Disruption.Level = chaostypes.DisruptionLevelPod
 			})
 
 			Context("on init", func() {
 				BeforeEach(func() {
-					config.OnInit = true
+					config.Disruption.OnInit = true
 				})
 
 				It("should not call cgroup functions", func() {

@@ -5,15 +5,17 @@
 
 package process
 
-import "os"
-
-//go:generate mockery --name=Manager --filename=process_mock.go
+import (
+	"os"
+)
 
 // Manager manages a process
 type Manager interface {
 	Prioritize() error
 	ThreadID() int
 	ProcessID() int
+	Exists(pid int) bool
 	Find(pid int) (*os.Process, error)
 	Signal(process *os.Process, signal os.Signal) error
+	SetAffinity([]int) error
 }

@@ -7,54 +7,30 @@ package injector
 
 import (
 	"fmt"
-	"runtime"
-	"sync"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/process"
-	"github.com/DataDog/chaos-controller/stress"
 	"github.com/DataDog/chaos-controller/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type cpuPressureInjector struct {
-	spec     v1beta1.CPUPressureSpec
-	config   CPUPressureInjectorConfig
-	routines int
-}
-
-// CPUPressureInjectorConfig is the CPU pressure injector config
-type CPUPressureInjectorConfig struct {
-	Config
-	Stresser        stress.Stresser
-	StresserExit    chan struct{}
-	ProcessManager  process.Manager
-	StresserManager stress.StresserManager
+	config                    Config
+	spec                      v1beta1.CPUPressureSpec
+	count                     int
+	backgroundProcessManager  process.BackgroundProcessManager
+	backgroundProcess         process.BackgroundProcess
+	cpuStresserCommandBuilder func(int) []string
 }
 
 // NewCPUPressureInjector creates a CPU pressure injector with the given config
-func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInjectorConfig) (Injector, error) {
-	// create stresser
-	if config.Stresser == nil {
-		config.Stresser = stress.NewCPU(config.DryRun)
-	}
-
-	if config.StresserExit == nil {
-		config.StresserExit = make(chan struct{})
-	}
-
-	// create process manager
-	if config.ProcessManager == nil {
-		config.ProcessManager = process.NewManager(config.DryRun)
-	}
-
-	if config.StresserManager == nil {
-		return nil, fmt.Errorf("StresserManager does not exist")
-	}
-
+func NewCPUPressureInjector(config Config, spec v1beta1.CPUPressureSpec, backgroundProcessManager process.BackgroundProcessManager, cpuStresserCommandBuilder func(int) []string) Injector {
 	return &cpuPressureInjector{
-		spec:   spec,
-		config: config,
-	}, nil
+		config:                    config,
+		spec:                      spec,
+		backgroundProcessManager:  backgroundProcessManager,
+		cpuStresserCommandBuilder: cpuStresserCommandBuilder,
+	}
 }
 
 func (i *cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
@@ -62,100 +38,39 @@ func (i *cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *cpuPressureInjector) Inject() error {
-	// move the injector process to the target cgroup controllers
-	i.config.Log.Infow("joining target cgroups")
+	var (
+		percentage int
+		err        error
+	)
 
-	if err := i.config.Cgroup.Join(i.config.ProcessManager.ProcessID()); err != nil {
-		return fmt.Errorf("failed to join the target cgroup: %w", err)
-	}
-
-	// get cores to stress from cpuset config
-	cores, err := i.config.StresserManager.TrackInjectorCores(i.config.Cgroup, i.spec.Count)
-	if err != nil {
-		return fmt.Errorf("failed to parse CPUSet %w", err)
-	}
-
-	wg := sync.WaitGroup{}
-	succeeded := true
-	mutex := sync.Mutex{}
-
-	// create one stress goroutine per allocated core
-	// each goroutine is locked on its current thread, without any other routines running on it
-	// it allows to have a 1 routine = 1 thread pattern
-	// each thread is then moved to the target cpu and cpuset cgroups so it can be schedule on the target allocated cores
-	// each thread is also niced to the highest priority
-	// because of linux scheduling, each thread will occupy a different core of allocated cores when stressing the cpu
-	for _, core := range cores.ToSlice() {
-		if i.config.StresserManager.IsCoreAlreadyStressed(core) {
-			i.config.Log.Infof("core %d is already stressed, skipping", core)
-			continue
+	if i.spec.Count.Type == intstr.Int { // if a number is provided, calculate a percentage against the whole cpus assigned to current container TODO should we enforce max to 100%?
+		if assignedCPUs, err := i.config.Cgroup.ReadCPUSet(); err != nil {
+			return fmt.Errorf("unable to read CPUSet for current container: %w", err)
+		} else if percentage, err = intstr.GetScaledValueFromIntOrPercent(i.spec.Count, assignedCPUs.Size(), true); err != nil {
+			return fmt.Errorf("unable to caculate stress percentage from number of cpu: %w", err)
 		}
-
-		wg.Add(1)
-
-		go func(core int) {
-			// lock the routine on the current thread
-			runtime.LockOSThread()
-			defer runtime.UnlockOSThread()
-
-			// retrieve current thread PID
-			tid := i.config.ProcessManager.ThreadID()
-
-			if i.prioritizeStresserProcess(core, tid) {
-				mutex.Lock()
-				i.routines++
-				mutex.Unlock()
-				wg.Done()
-				i.startStresser(core, tid)
-			} else {
-				succeeded = false
-				wg.Done()
-			}
-		}(core)
+	} else if percentage, err = intstr.GetScaledValueFromIntOrPercent(i.spec.Count, 100, true); err != nil { // if a percentage is provided, keep it as is
+		return fmt.Errorf("unable to caculate stress percentage from percentage: %w", err)
 	}
 
-	// wait for stress routines to finish initializing
-	wg.Wait()
-
-	if !succeeded {
-		return fmt.Errorf("at least one stresser routine failed to execute")
+	if i.backgroundProcess, err = i.backgroundProcessManager.Start(
+		i.config.TargetContainer.Name(),
+		i.cpuStresserCommandBuilder(percentage)...,
+	); err != nil {
+		return fmt.Errorf("unable to start background process for injector: %w", err)
 	}
 
-	i.config.Log.Infow("all routines have been created successfully, now stressing", "stresserPIDPerCore", i.config.StresserManager.StresserPIDs())
+	i.config.Log.Info("all routines have been created successfully, now stressing in background")
 
 	return nil
 }
 
-func (i *cpuPressureInjector) startStresser(core int, pid int) {
-	i.config.Log.Infow("starting the stresser", "core", core, "pid", pid)
-	i.config.StresserManager.TrackCoreAlreadyStressed(core, pid)
-	i.config.Stresser.Stress(i.config.StresserExit)
-}
-
-func (i *cpuPressureInjector) prioritizeStresserProcess(core int, pid int) bool {
-	i.config.Log.Infow("prioritizing the current stresser process", "core", core, "pid", pid)
-
-	if err := i.config.ProcessManager.Prioritize(); err != nil {
-		i.config.Log.Errorw("failed to prioritize the current stresser process", "error", err, "core", core, "pid", pid)
-		return false
-	}
-
-	return true
-}
-
 func (i *cpuPressureInjector) UpdateConfig(config Config) {
-	i.config.Config = config
+	i.config = config
 }
 
 func (i *cpuPressureInjector) Clean() error {
-	i.config.Log.Infof("killing %d routines", i.routines)
-
-	// exit the stress routines
-	for r := 0; r < i.routines; r++ {
-		i.config.StresserExit <- struct{}{}
-	}
-
-	i.config.Log.Info("all routines has been killed, exiting")
+	i.backgroundProcess.Stop()
 
 	return nil
 }

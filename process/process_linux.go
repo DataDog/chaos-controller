@@ -3,15 +3,13 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023 Datadog, Inc.
 
-//go:build linux
-// +build linux
-
 package process
 
 import (
 	"fmt"
 	"os"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -27,10 +25,18 @@ func NewManager(dryRun bool) Manager {
 	return manager{dryRun}
 }
 
+func (p manager) SetAffinity(cpus []int) error {
+	affinitySet := unix.CPUSet{}
+	for _, cpu := range cpus {
+		affinitySet.Set(cpu)
+	}
+	return unix.SchedSetaffinity(0, &affinitySet)
+}
+
 // Prioritize set the priority of the current process group to the max value (-20)
 func (p manager) Prioritize() error {
-	pgid := syscall.Getpgrp()
-	if err := syscall.Setpriority(syscall.PRIO_PGRP, pgid, maxPriorityValue); err != nil {
+	pgid := unix.Getpgrp()
+	if err := unix.Setpriority(unix.PRIO_PGRP, pgid, maxPriorityValue); err != nil {
 		return err
 	}
 
@@ -39,12 +45,12 @@ func (p manager) Prioritize() error {
 
 // ThreadID returns the caller thread PID
 func (p manager) ThreadID() int {
-	return syscall.Gettid()
+	return unix.Gettid()
 }
 
 // ProcessID returns the caller PID
 func (p manager) ProcessID() int {
-	return syscall.Getpid()
+	return unix.Getpid()
 }
 
 // Find looks for a running process by its pid
@@ -55,6 +61,12 @@ func (p manager) Find(pid int) (*os.Process, error) {
 	}
 
 	return proc, nil
+}
+
+func (p manager) Exists(pid int) bool {
+	process, _ := p.Find(pid)
+	err := p.Signal(process, unix.Signal(0))
+	return err == nil || err == unix.EPERM
 }
 
 // Signal sends the provided signal to the given process

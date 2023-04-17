@@ -31,30 +31,41 @@ type DNSDisruptionInjector struct {
 // DNSDisruptionInjectorConfig contains all needed drivers to create a dns disruption using `iptables`
 type DNSDisruptionInjectorConfig struct {
 	Config
+<<<<<<< Updated upstream
 	Iptables            network.Iptables
 	FileWriter          FileWriter
 	PythonRunner        PythonRunner
 	DisruptionName      string
 	DisruptionNamespace string
 	TargetName          string
+=======
+	IPTables     network.IPTables
+	FileWriter   FileWriter
+	PythonRunner PythonRunner
+>>>>>>> Stashed changes
 }
 
 // NewDNSDisruptionInjector creates a DNSDisruptionInjector object with the given config,
 // missing fields are initialized with the defaults
 func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisruptionInjectorConfig) (Injector, error) {
 	var err error
+<<<<<<< Updated upstream
 	if config.Iptables == nil {
 		config.Iptables, err = network.NewIptables(config.Log, config.DryRun)
+=======
+	if config.IPTables == nil {
+		config.IPTables, err = network.NewIPTables(config.Log, config.Disruption.DryRun)
+>>>>>>> Stashed changes
 	}
 
 	if config.FileWriter == nil {
 		config.FileWriter = standardFileWriter{
-			dryRun: config.DryRun,
+			dryRun: config.Disruption.DryRun,
 		}
 	}
 
 	if config.PythonRunner == nil {
-		config.PythonRunner = newStandardPythonRunner(config.DryRun, config.Log)
+		config.PythonRunner = newStandardPythonRunner(config.Disruption.DryRun, config.Log)
 	}
 
 	return &DNSDisruptionInjector{
@@ -85,27 +96,27 @@ func (i *DNSDisruptionInjector) Inject() error {
 			resolverConfig = append(resolverConfig, fmt.Sprintf("%s %s %s", record.Record.Type, record.Hostname, record.Record.Value))
 		}
 
-		if err := i.config.FileWriter.Write("/tmp/dns.conf", 0644, strings.Join(resolverConfig, "\n")); err != nil {
+		if err := i.config.FileWriter.Write("/tmp/dns.conf", 0o644, strings.Join(resolverConfig, "\n")); err != nil {
 			launchDNSServerErr = fmt.Errorf("unable to write resolver config: %w", err)
 			return
 		}
 
 		cmd := []string{"/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf"}
 
-		if i.config.DisruptionName != "" {
-			cmd = append(cmd, "--log-context-disruption-name", i.config.DisruptionName)
+		if i.config.Disruption.DisruptionName != "" {
+			cmd = append(cmd, "--log-context-disruption-name", i.config.Disruption.DisruptionName)
 		}
 
-		if i.config.DisruptionNamespace != "" {
-			cmd = append(cmd, "--log-context-disruption-namespace", i.config.DisruptionNamespace)
+		if i.config.Disruption.DisruptionNamespace != "" {
+			cmd = append(cmd, "--log-context-disruption-namespace", i.config.Disruption.DisruptionNamespace)
 		}
 
-		if i.config.TargetName != "" {
-			cmd = append(cmd, "--log-context-target-name", i.config.TargetName)
+		if i.config.Disruption.TargetName != "" {
+			cmd = append(cmd, "--log-context-target-name", i.config.Disruption.TargetName)
 		}
 
-		if i.config.TargetNodeName != "" {
-			cmd = append(cmd, "--log-context-target-node-name", i.config.TargetNodeName)
+		if i.config.Disruption.TargetNodeName != "" {
+			cmd = append(cmd, "--log-context-target-node-name", i.config.Disruption.TargetNodeName)
 		}
 
 		if i.config.DNS.DNSServer != "" {
@@ -139,8 +150,8 @@ func (i *DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
 
-	if i.config.Level == chaostypes.DisruptionLevelPod {
-		if i.config.OnInit {
+	if i.config.Disruption.Level == chaostypes.DisruptionLevelPod {
+		if i.config.Disruption.OnInit {
 			// Redirect all dns related traffic in the pod to CHAOS-DNS
 			if err := i.config.Iptables.Intercept("udp", "53", "", "", ""); err != nil {
 				return fmt.Errorf("unable to create new iptables rule: %w", err)
@@ -167,7 +178,7 @@ func (i *DNSDisruptionInjector) Inject() error {
 		}
 	}
 
-	if i.config.Level == chaostypes.DisruptionLevelNode {
+	if i.config.Disruption.Level == chaostypes.DisruptionLevelNode {
 		// Re-route all pods under node except for injector pod itself
 		if err := i.config.Iptables.Intercept("udp", "53", "", "", podIP); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)

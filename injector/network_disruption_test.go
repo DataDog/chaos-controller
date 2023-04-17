@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
@@ -178,8 +179,10 @@ var _ = Describe("Failure", func() {
 				MetricsSink:     ms,
 				Netns:           netnsManager,
 				Cgroup:          cgroupManager,
-				Level:           chaostypes.DisruptionLevelPod,
-				K8sClient:       k8sClient,
+				Disruption: api.DisruptionArgs{
+					Level: chaostypes.DisruptionLevelPod,
+				},
+				K8sClient: k8sClient,
 			},
 			TrafficController: tc,
 			Iptables:          iptables,
@@ -378,7 +381,7 @@ var _ = Describe("Failure", func() {
 
 		Context("node level safeguards", func() {
 			BeforeEach(func() {
-				config.Level = chaostypes.DisruptionLevelNode
+				config.Disruption.Level = chaostypes.DisruptionLevelNode
 			})
 
 			It("should add a filter to redirect SSH traffic on a non-disrupted band", func() {
@@ -411,7 +414,7 @@ var _ = Describe("Failure", func() {
 
 		Context("on pod initialization", func() {
 			BeforeEach(func() {
-				config.OnInit = true
+				config.Disruption.OnInit = true
 			})
 
 			It("should not add a second prio band with the cgroup filter", func() {

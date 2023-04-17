@@ -13,6 +13,20 @@ type DisruptionKindName string
 // DisruptionLevel represents which level the disruption should be injected at
 type DisruptionLevel string
 
+func (l *DisruptionLevel) Set(v string) error {
+	*l = DisruptionLevel(v)
+
+	return nil
+}
+
+func (l *DisruptionLevel) String() string {
+	return string(*l)
+}
+
+func (*DisruptionLevel) Type() string {
+	return "DisruptionLevel"
+}
+
 // DisruptionInjectionStatus represents the injection status of a disruption
 type DisruptionInjectionStatus string
 
@@ -32,6 +46,8 @@ const (
 	DisruptionKindContainerFailure = "container-failure"
 	// DisruptionKindCPUPressure is a CPU pressure disruption
 	DisruptionKindCPUPressure = "cpu-pressure"
+	// DisruptionKindCPUPressureStresser is a CPU pressure stresser disruption
+	DisruptionKindCPUPressureStresser = "cpu-pressure-stresser"
 	// DisruptionKindDiskFailure is a disk failure disruption
 	DisruptionKindDiskFailure = "disk-failure"
 	// DisruptionKindDiskPressure is a disk pressure disruption
@@ -84,16 +100,14 @@ func (d DisruptionKindName) String() string {
 	return string(d)
 }
 
-var (
-	// DisruptionKindNames contains all existing disruption kinds that can be injected
-	DisruptionKindNames = []DisruptionKindName{
-		DisruptionKindNetworkDisruption,
-		DisruptionKindNodeFailure,
-		DisruptionKindContainerFailure,
-		DisruptionKindCPUPressure,
-		DisruptionKindDiskPressure,
-		DisruptionKindDNSDisruption,
-		DisruptionKindGRPCDisruption,
-		DisruptionKindDiskFailure,
-	}
-)
+// DisruptionKindNames contains all existing disruption kinds that can be injected
+var DisruptionKindNames = []DisruptionKindName{
+	DisruptionKindNetworkDisruption,
+	DisruptionKindNodeFailure,
+	DisruptionKindContainerFailure,
+	DisruptionKindCPUPressure,
+	DisruptionKindDiskPressure,
+	DisruptionKindDNSDisruption,
+	DisruptionKindGRPCDisruption,
+	DisruptionKindDiskFailure,
+}

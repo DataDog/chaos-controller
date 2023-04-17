@@ -32,7 +32,7 @@ type ContainerFailureInjectorConfig struct {
 // missing fields being initialized with the defaults
 func NewContainerFailureInjector(spec v1beta1.ContainerFailureSpec, config ContainerFailureInjectorConfig) Injector {
 	if config.ProcessManager == nil {
-		config.ProcessManager = process.NewManager(config.DryRun)
+		config.ProcessManager = process.NewManager(config.Disruption.DryRun)
 	}
 
 	return &containerFailureInjector{
@@ -51,7 +51,6 @@ func (i *containerFailureInjector) Inject() error {
 
 	containerPid := int(i.config.TargetContainer.PID())
 	proc, err := i.config.ProcessManager.Find(containerPid)
-
 	if err != nil {
 		return fmt.Errorf("error while finding the process: %w", err)
 	}

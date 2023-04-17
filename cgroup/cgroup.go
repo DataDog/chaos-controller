@@ -5,12 +5,13 @@
 
 package cgroup
 
-//go:generate mockery --name=Manager --filename=cgroup_mock.go
+import "github.com/DataDog/chaos-controller/cpuset"
 
 // Manager represents a cgroup manager able to join the given cgroup
 type Manager interface {
 	Join(pid int) error
 	Read(controller, file string) (string, error)
+	ReadCPUSet() (cpuset.CPUSet, error)
 	Write(controller, file, data string) error
 	IsCgroupV2() bool
 	RelativePath(controller string) string

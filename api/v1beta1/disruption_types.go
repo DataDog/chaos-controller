@@ -516,7 +516,9 @@ func DisruptionIsNotReinjectable(kind chaostypes.DisruptionKindName) bool {
 var NoSideEffectDisruptions = map[chaostypes.DisruptionKindName]struct{}{
 	chaostypes.DisruptionKindNodeFailure:      {},
 	chaostypes.DisruptionKindContainerFailure: {},
-	chaostypes.DisruptionKindCPUPressure:      {},
+	// TODO: change this and confirm behaviour, this is NOT true as the process lives in another container (even if halt early)
+	// check what is done when not in this
+	chaostypes.DisruptionKindCPUPressure: {},
 }
 
 func DisruptionHasNoSideEffects(kind string) bool {

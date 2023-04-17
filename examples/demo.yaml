@@ -67,52 +67,65 @@ spec:
     metadata:
       annotations:
         app.kubernetes.io/component: client
+        kubectl.kubernetes.io/default-container: curl
       labels:
         app: demo-curl
     spec:
       containers:
         - name: curl
           image: alpine/curl:3.14
-          command: ["/bin/sh"]
+          command: [/bin/sh, -c]
           args:
-            [
-              "-c",
-              "while true; do time curl -vvv --connect-timeout 15 http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; time curl --connect-timeout 15 -vvv https://www.example.com; done",
-            ]
+            - tail -f /dev/null
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - mountPath: /mnt/data
               name: data
-          readinessProbe:
-            exec:
-              command:
-                - curl
-                - -vvv
-                - http://demo.chaos-demo.svc.cluster.local:8080
           resources:
             limits:
-              cpu: 1
-        - name: read-file
-          image: ubuntu:bionic-20220128
-          command: ["/bin/bash"]
+              memory: 512Mi
+              cpu: 500m
+            requests:
+              memory: 512Mi
+              cpu: 500m
+        - name: curl-again
+          image: alpine/curl:3.14
+          command: [/bin/sh, -c]
           args:
-            [
-              "-c",
-              "echo 'create file to read from: /mnt/data/disk-read-file' && dd if=/dev/zero of=/mnt/data/disk-read-file bs=10k count=1; while true; do time dd if=/mnt/data/disk-read-file of=/dev/null iflag=direct; sleep 1; done",
-            ]
+            - tail -f /dev/null
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - mountPath: /mnt/data
               name: data
-        - name: write-file
-          image: ubuntu:bionic-20220128
-          command: ["/bin/bash"]
-          args:
-            [
-              "-c",
-              "while true; do time dd if=/dev/zero of=/mnt/data/disk-write-file bs=10k count=1 oflag=direct; sleep 1; done",
-            ]
-          volumeMounts:
-            - mountPath: /mnt/data
-              name: data
+          resources:
+            limits:
+              memory: 512Mi
+              cpu: 500m
+            requests:
+              memory: 512Mi
+              cpu: 500m
+        # - name: read-file
+        #   image: ubuntu:bionic-20220128
+        #   command: ["/bin/bash"]
+        #   args:
+        #     [
+        #       "-c",
+        #       "echo 'create file to read from: /mnt/data/disk-read-file' && dd if=/dev/zero of=/mnt/data/disk-read-file bs=10k count=1; while true; do time dd if=/mnt/data/disk-read-file of=/dev/null iflag=direct; sleep 1; done",
+        #     ]
+        #   volumeMounts:
+        #     - mountPath: /mnt/data
+        #       name: data
+        # - name: write-file
+        #   image: ubuntu:bionic-20220128
+        #   command: ["/bin/bash"]
+        #   args:
+        #     [
+        #       "-c",
+        #       "while true; do time dd if=/dev/zero of=/mnt/data/disk-write-file bs=10k count=1 oflag=direct; sleep 1; done",
+        #     ]
+        #   volumeMounts:
+        #     - mountPath: /mnt/data
+        #       name: data
       volumes:
         - name: data
           persistentVolumeClaim:
