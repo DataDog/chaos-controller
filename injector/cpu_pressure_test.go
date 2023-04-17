@@ -132,6 +132,7 @@ var _ = Describe("Failure", func() {
 
 			It("should call stresserManager track cores and get new core to apply pressure", func() {
 				// left empty as AfterEach 'AssertExpectations' check all this tests expectations
+				// TODO what AfterEach was this referring to? Is there an implicit one I don't know about?
 			})
 		})
 	})
