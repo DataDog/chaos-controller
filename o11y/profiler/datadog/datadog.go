@@ -15,9 +15,7 @@ type Sink struct{}
 
 // New initiated datadog profiler sink
 func New(cfg types.SinkConfig) (Sink, error) {
-	var err error
-
-	err = profiler.Start(profiler.WithProfileTypes(
+	err := profiler.Start(profiler.WithProfileTypes(
 		profiler.CPUProfile,
 		profiler.HeapProfile,
 		profiler.BlockProfile,
