@@ -13,10 +13,8 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:generate mockery --name=Iptables --filename=iptables_mock.go
-
-// Iptables is an interface for interacting with target nat firewall/iptables rules
-type Iptables interface {
+// IPTables is an interface for interacting with target nat firewall/iptables rules
+type IPTables interface {
 	Clear() error
 	LogConntrack() error
 	RedirectTo(protocol string, port string, destinationIP string) error
@@ -42,8 +40,8 @@ const (
 	chaosChainName = "CHAOS-DNS"
 )
 
-// NewIptables returns an implementation of the Iptables interface that can log
-func NewIptables(log *zap.SugaredLogger, dryRun bool) (Iptables, error) {
+// NewIPTables returns an implementation of the IPTables interface that can log
+func NewIPTables(log *zap.SugaredLogger, dryRun bool) (IPTables, error) {
 	ip, err := goiptables.New()
 
 	return &iptables{

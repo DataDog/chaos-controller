@@ -150,7 +150,7 @@ var _ = Describe("Disruption", func() {
 
 	Context("ValidateCreate", func() {
 		Describe("general errors expectations", func() {
-			ddmarkMock := ddmark.NewMockClient(GinkgoT())
+			ddmarkMock := ddmark.NewClientMock(GinkgoT())
 
 			BeforeEach(func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
@@ -233,7 +233,7 @@ var _ = Describe("Disruption", func() {
 			When("ddmark return an error", func() {
 				It("should catch this error and propagated it", func() {
 					// Arrange
-					ddmarkMockError := ddmark.NewMockClient(GinkgoT())
+					ddmarkMockError := ddmark.NewClientMock(GinkgoT())
 					ddmarkMockError.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{
 						Errors: []error{
 							fmt.Errorf("something bad happened"),
@@ -256,7 +256,7 @@ var _ = Describe("Disruption", func() {
 		})
 
 		Describe("expectations with a disk failure disruption", func() {
-			ddmarkMock := ddmark.NewMockClient(GinkgoT())
+			ddmarkMock := ddmark.NewClientMock(GinkgoT())
 
 			BeforeEach(func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})

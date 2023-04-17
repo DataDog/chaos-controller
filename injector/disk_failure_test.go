@@ -10,8 +10,8 @@ import (
 	"time"
 
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -25,18 +25,18 @@ var _ = Describe("Failure", func() {
 		proc          *os.Process
 		inj           Injector
 		spec          v1beta1.DiskFailureSpec
-		commandMock   *MockBPFDiskFailureCommand
-		containerMock *container.MockContainer
+		commandMock   *mocks.BPFDiskFailureCommandMock
+		containerMock *mocks.ContainerMock
 	)
 
 	JustBeforeEach(func() {
 		const PID = 1
 		proc = &os.Process{Pid: PID}
 
-		containerMock = container.NewMockContainer(GinkgoT())
+		containerMock = mocks.NewContainerMock(GinkgoT())
 		containerMock.EXPECT().PID().Return(PID)
 
-		commandMock = NewMockBPFDiskFailureCommand(GinkgoT())
+		commandMock = mocks.NewBPFDiskFailureCommandMock(GinkgoT())
 		commandMock.EXPECT().Run(mock.Anything, mock.Anything).Return(nil)
 
 		config = DiskFailureInjectorConfig{

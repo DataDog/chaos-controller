@@ -22,8 +22,6 @@ import (
 //go:embed validation_teststruct.go
 var EmbeddedDDMarkAPI embed.FS
 
-//go:generate mockery --name=Client --filename=ddmark_mock.go
-
 // Client interface to manage validation of struct fields
 //
 // Client is the expected way to use DDMark. Create a client with ddmark.NewClient(embed.FS).

@@ -16,11 +16,9 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cgroup"
-	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/netns"
+	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
@@ -37,20 +35,20 @@ const (
 
 var _ = Describe("Failure", func() {
 	var (
-		ctn                                                     *container.MockContainer
+		ctn                                                     *mocks.ContainerMock
 		inj                                                     Injector
 		config                                                  NetworkDisruptionInjectorConfig
 		spec                                                    v1beta1.NetworkDisruptionSpec
-		cgroupManager                                           *cgroup.MockManager
-		isCgroupV2Call                                          *cgroup.MockManager_IsCgroupV2_Call
-		tc                                                      *network.MockTrafficController
-		iptables                                                *network.MockIptables
-		nl                                                      *network.MockNetlinkAdapter
-		nllink1, nllink2, nllink3                               *network.MockNetlinkLink
-		nllink1TxQlenCall, nllink2TxQlenCall, nllink3TxQlenCall *network.MockNetlinkLink_TxQLen_Call
-		nlroute1, nlroute2, nlroute3                            *network.MockNetlinkRoute
-		dns                                                     *network.MockDNSClient
-		netnsManager                                            *netns.MockManager
+		cgroupManager                                           *mocks.CGroupManagerMock
+		isCgroupV2Call                                          *mocks.CGroupManagerMock_IsCgroupV2_Call
+		tc                                                      *network.TrafficControllerMock
+		iptables                                                *network.IPTablesMock
+		nl                                                      *network.NetlinkAdapterMock
+		nllink1, nllink2, nllink3                               *network.NetlinkLinkMock
+		nllink1TxQlenCall, nllink2TxQlenCall, nllink3TxQlenCall *network.NetlinkLinkMock_TxQLen_Call
+		nlroute1, nlroute2, nlroute3                            *network.NetlinkRouteMock
+		dns                                                     *network.DNSClientMock
+		netnsManager                                            *mocks.NetNSManagerMock
 		k8sClient                                               *kubernetes.Clientset
 		fakeService                                             *corev1.Service
 		fakeEndpoint                                            *corev1.Pod
@@ -61,18 +59,18 @@ var _ = Describe("Failure", func() {
 		nilIPNet = nil
 		_, zeroIPNet, _ = net.ParseCIDR("0.0.0.0/0")
 		// cgroup
-		cgroupManager = cgroup.NewMockManager(GinkgoT())
+		cgroupManager = mocks.NewCGroupManagerMock(GinkgoT())
 		cgroupManager.EXPECT().RelativePath(mock.Anything).Return("/kubepod.slice/foo")
 		cgroupManager.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		isCgroupV2Call = cgroupManager.EXPECT().IsCgroupV2().Return(false)
 
 		// netns
-		netnsManager = netns.NewMockManager(GinkgoT())
+		netnsManager = mocks.NewNetNSManagerMock(GinkgoT())
 		netnsManager.EXPECT().Enter().Return(nil)
 		netnsManager.EXPECT().Exit().Return(nil)
 
 		// tc
-		tc = network.NewMockTrafficController(GinkgoT())
+		tc = network.NewTrafficControllerMock(GinkgoT())
 		tc.EXPECT().AddNetem(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.EXPECT().AddPrio(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		tc.EXPECT().AddFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0, nil)
@@ -82,37 +80,37 @@ var _ = Describe("Failure", func() {
 		tc.EXPECT().ClearQdisc(mock.Anything).Return(nil)
 
 		// iptables
-		iptables = network.NewMockIptables(GinkgoT())
+		iptables = network.NewIPTablesMock(GinkgoT())
 		iptables.EXPECT().Clear().Return(nil)
 		iptables.EXPECT().MarkCgroupPath(mock.Anything, mock.Anything).Return(nil)
 		iptables.EXPECT().MarkClassID(mock.Anything, mock.Anything).Return(nil)
 		iptables.EXPECT().LogConntrack().Return(nil)
 
 		// netlink
-		nllink1 = network.NewMockNetlinkLink(GinkgoT())
+		nllink1 = network.NewNetlinkLinkMock(GinkgoT())
 		nllink1.EXPECT().Name().Return("lo")
 		nllink1.EXPECT().SetTxQLen(mock.Anything).Return(nil)
 		nllink1TxQlenCall = nllink1.EXPECT().TxQLen().Return(0)
-		nllink2 = network.NewMockNetlinkLink(GinkgoT())
+		nllink2 = network.NewNetlinkLinkMock(GinkgoT())
 		nllink2.EXPECT().Name().Return("eth0")
 		nllink2.EXPECT().SetTxQLen(mock.Anything).Return(nil)
 		nllink2TxQlenCall = nllink2.EXPECT().TxQLen().Return(0)
-		nllink3 = network.NewMockNetlinkLink(GinkgoT())
+		nllink3 = network.NewNetlinkLinkMock(GinkgoT())
 		nllink3.EXPECT().Name().Return("eth1")
 		nllink3.EXPECT().SetTxQLen(mock.Anything).Return(nil)
 		nllink3TxQlenCall = nllink3.EXPECT().TxQLen().Return(0)
 
-		nlroute1 = network.NewMockNetlinkRoute(GinkgoT())
+		nlroute1 = network.NewNetlinkRouteMock(GinkgoT())
 		nlroute1.EXPECT().Link().Return(nllink1)
 		nlroute1.EXPECT().Gateway().Return(net.IP([]byte{}))
-		nlroute2 = network.NewMockNetlinkRoute(GinkgoT())
+		nlroute2 = network.NewNetlinkRouteMock(GinkgoT())
 		nlroute2.EXPECT().Link().Return(nllink2)
 		nlroute2.EXPECT().Gateway().Return(net.ParseIP(secondGatewayIP))
-		nlroute3 = network.NewMockNetlinkRoute(GinkgoT())
+		nlroute3 = network.NewNetlinkRouteMock(GinkgoT())
 		nlroute3.EXPECT().Link().Return(nllink3)
 		nlroute3.EXPECT().Gateway().Return(net.ParseIP("192.168.1.1"))
 
-		nl = network.NewMockNetlinkAdapter(GinkgoT())
+		nl = network.NewNetlinkAdapterMock(GinkgoT())
 		nl.EXPECT().LinkList().Return([]network.NetlinkLink{nllink1, nllink2, nllink3}, nil)
 		nl.EXPECT().LinkByIndex(0).Return(nllink1, nil)
 		nl.EXPECT().LinkByIndex(1).Return(nllink2, nil)
@@ -123,12 +121,12 @@ var _ = Describe("Failure", func() {
 		nl.EXPECT().DefaultRoutes().Return([]network.NetlinkRoute{nlroute2}, nil)
 
 		// dns
-		dns = network.NewMockDNSClient(GinkgoT())
+		dns = network.NewDNSClientMock(GinkgoT())
 		dns.EXPECT().Resolve("kubernetes.default").Return([]net.IP{net.ParseIP("192.168.0.254")}, nil)
 		dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil)
 
 		// container
-		ctn = container.NewMockContainer(GinkgoT())
+		ctn = mocks.NewContainerMock(GinkgoT())
 
 		// environment variables
 		Expect(os.Setenv(env.InjectorTargetPodHostIP, targetPodHostIP)).To(BeNil())
@@ -182,7 +180,7 @@ var _ = Describe("Failure", func() {
 				K8sClient:       k8sClient,
 			},
 			TrafficController: tc,
-			Iptables:          iptables,
+			IPTables:          iptables,
 			NetlinkAdapter:    nl,
 			DNSClient:         dns,
 		}

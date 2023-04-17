@@ -9,6 +9,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/grpc"
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
+	"github.com/DataDog/chaos-controller/mocks"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/mock"
@@ -48,7 +49,7 @@ var _ = Describe("Test send and clean disruption", func() {
 			},
 		}
 
-		disruptionListenerClient := pb.NewMockDisruptionListenerClient(GinkgoT())
+		disruptionListenerClient := mocks.NewDisruptionListenerClientMock(GinkgoT())
 
 		Specify("calls Disrupt and ResetDisruptions with expected parameters", func() {
 			// define expectations
