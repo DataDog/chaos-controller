@@ -16,11 +16,9 @@ data:
       metricsSink: {{ .Values.controller.metricsSink | quote }}
       tracer:
         sink: {{ .Values.controller.tracer.sink | quote }}
-        enable: {{ .Values.controller.tracer.enable }}
         sampleRate: {{ .Values.controller.tracer.sampleRate }}
       profiler:
         sink: {{ .Values.controller.profiler.sink | quote }}
-        enable: {{ .Values.controller.profiler.enable }}
       enableSafeguards: {{ .Values.controller.enableSafeguards }}
       enableObserver: {{ .Values.controller.enableObserver }}
       notifiers:

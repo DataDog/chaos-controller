@@ -18,11 +18,9 @@ controller:
   metricsSink: noop # metrics driver (noop or datadog)
   tracer:
     sink: noop # tracer driver (noop or datadog)
-    enable: false # enable tracer
     sampleRate: 1.0 # tracer sampling rate
   profiler:
     sink: noop # profiler driver (noop or datadog)
-    enable: false # enable profiler
   notifiers:
     common:
       clusterName: lima

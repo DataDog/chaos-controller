@@ -8,7 +8,6 @@ package types
 // SinkConfig describes a config for a tracer sink config
 type SinkConfig struct {
 	Sink       string
-	Enable     bool
 	SampleRate float64
 }
 

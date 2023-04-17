@@ -287,17 +287,11 @@ func main() {
 	pflag.StringVar(&cfg.Controller.Tracer.Sink, "tracer-sink", "noop", "Tracer sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.tracer.sink", pflag.Lookup("tracer-sink")))
 
-	pflag.BoolVar(&cfg.Controller.Tracer.Enable, "tracer-enable", false, "Enable tracer")
-	handleFatalError(viper.BindPFlag("controller.tracer.enable", pflag.Lookup("tracer-enable")))
-
 	pflag.Float64Var(&cfg.Controller.Tracer.SampleRate, "tracer-samplerate", 1.0, "Sets tracer sampling rate")
 	handleFatalError(viper.BindPFlag("controller.tracer.sampleRate", pflag.Lookup("tracer-samplerate")))
 
 	pflag.StringVar(&cfg.Controller.Profiler.Sink, "profiler-sink", "noop", "profiler sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.profiler.sink", pflag.Lookup("profiler-sink")))
-
-	pflag.BoolVar(&cfg.Controller.Profiler.Enable, "profiler-enable", false, "Enable profiler")
-	handleFatalError(viper.BindPFlag("controller.profiler.enable", pflag.Lookup("profiler-enable")))
 
 	pflag.Parse()
 
@@ -382,18 +376,20 @@ func main() {
 
 	// tracer sink
 	tracer, err := tracer.GetSink(cfg.Controller.Tracer)
-	defer tracer.Stop()
 
 	if err != nil {
 		logger.Errorw("error while creating tracer sink", "error", err)
+	} else {
+		defer tracer.Stop()
 	}
 
 	// profiler sink
 	profiler, err := profiler.GetSink(cfg.Controller.Profiler)
-	defer profiler.Stop()
 
 	if err != nil {
 		logger.Errorw("error while creating profiler sink", "error", err)
+	} else {
+		defer profiler.Stop()
 	}
 
 	// target selector

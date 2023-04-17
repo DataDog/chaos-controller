@@ -17,15 +17,13 @@ type Sink struct{}
 func New(cfg types.SinkConfig) (Sink, error) {
 	var err error
 
-	if cfg.Enable {
-		err = profiler.Start(profiler.WithProfileTypes(
-			profiler.CPUProfile,
-			profiler.HeapProfile,
-			profiler.BlockProfile,
-			profiler.MutexProfile,
-			profiler.GoroutineProfile,
-		))
-	}
+	err = profiler.Start(profiler.WithProfileTypes(
+		profiler.CPUProfile,
+		profiler.HeapProfile,
+		profiler.BlockProfile,
+		profiler.MutexProfile,
+		profiler.GoroutineProfile,
+	))
 
 	return Sink{}, err
 }

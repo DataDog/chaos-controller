@@ -18,12 +18,9 @@ type Sink struct{}
 func New(cfg types.SinkConfig) (Sink, error) {
 	var err error
 
-	if cfg.Enable {
-		tracer.Start(
-			tracer.WithSampler(tracer.NewRateSampler(cfg.SampleRate)),
-		)
-	}
-
+	tracer.Start(
+		tracer.WithSampler(tracer.NewRateSampler(cfg.SampleRate)),
+	)
 	return Sink{}, err
 }
 
