@@ -98,24 +98,26 @@ var _ = Describe("Failure", func() {
 				stresserManager.EXPECT().TrackInjectorCores(mock.Anything, mock.Anything).Return(cpuset.NewCPUSet(0, 1), nil)
 			})
 
-			It("should join target cgroup subsystems from the main process", func() {
-				cgroupManager.AssertCalled(GinkgoT(), "Join", 42)
-			})
+			It("should call the expected functions and args", func() {
+				By("should join target cgroup subsystems from the main process", func() {
+					cgroupManager.AssertCalled(GinkgoT(), "Join", 42)
+				})
 
-			It("should prioritize the current process", func() {
-				manager.AssertCalled(GinkgoT(), "Prioritize")
-			})
+				By("should prioritize the current process", func() {
+					manager.AssertCalled(GinkgoT(), "Prioritize")
+				})
 
-			It("should run the stress on one core", func() {
-				stresser.AssertNumberOfCalls(GinkgoT(), "Stress", 1)
-			})
+				By("should run the stress on one core", func() {
+					stresser.AssertNumberOfCalls(GinkgoT(), "Stress", 1)
+				})
 
-			It("should record core and StresserPID in StresserManager", func() {
-				stresserManager.AssertCalled(GinkgoT(), "TrackCoreAlreadyStressed", 1, 666)
-			})
+				By("should record core and StresserPID in StresserManager", func() {
+					stresserManager.AssertCalled(GinkgoT(), "TrackCoreAlreadyStressed", 1, 666)
+				})
 
-			It("should skip a target core that was already stress", func() {
-				stresserManager.AssertNotCalled(GinkgoT(), "TrackCoreAlreadyStressed", 0, mock.Anything)
+				By("should skip a target core that was already stress", func() {
+					stresserManager.AssertNotCalled(GinkgoT(), "TrackCoreAlreadyStressed", 0, mock.Anything)
+				})
 			})
 		})
 
