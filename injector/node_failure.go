@@ -36,7 +36,7 @@ type NodeFailureInjectorConfig struct {
 func NewNodeFailureInjector(spec v1beta1.NodeFailureSpec, config NodeFailureInjectorConfig) (Injector, error) {
 	if config.FileWriter == nil {
 		config.FileWriter = standardFileWriter{
-			dryRun: config.DryRun,
+			dryRun: config.Disruption.DryRun,
 		}
 	}
 

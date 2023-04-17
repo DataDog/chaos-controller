@@ -51,7 +51,7 @@ func NewDiskPressureInjector(spec v1beta1.DiskPressureSpec, config DiskPressureI
 	}
 
 	// get path from container info if we target a pod
-	if config.Level == types.DisruptionLevelPod {
+	if config.Disruption.Level == types.DisruptionLevelPod {
 		// get host path from mount path
 		path, err = config.TargetContainer.Runtime().HostPath(config.TargetContainer.ID(), spec.Path)
 		if err != nil {

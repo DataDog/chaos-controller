@@ -32,7 +32,7 @@ type ContainerFailureInjectorConfig struct {
 // missing fields being initialized with the defaults
 func NewContainerFailureInjector(spec v1beta1.ContainerFailureSpec, config ContainerFailureInjectorConfig) Injector {
 	if config.ProcessManager == nil {
-		config.ProcessManager = process.NewManager(config.DryRun)
+		config.ProcessManager = process.NewManager(config.Disruption.DryRun)
 	}
 
 	return &containerFailureInjector{
@@ -47,11 +47,9 @@ func (i *containerFailureInjector) GetDisruptionKind() types.DisruptionKindName 
 
 // Inject sends a SIGKILL/SIGTERM signal to the container's PID
 func (i *containerFailureInjector) Inject() error {
-	var err error
-
 	containerPid := int(i.config.TargetContainer.PID())
-	proc, err := i.config.ProcessManager.Find(containerPid)
 
+	proc, err := i.config.ProcessManager.Find(containerPid)
 	if err != nil {
 		return fmt.Errorf("error while finding the process: %w", err)
 	}
@@ -66,7 +64,7 @@ func (i *containerFailureInjector) Inject() error {
 	// Send signal
 	i.config.Log.Infow("injecting a container failure", "signal", sig, "container", containerPid)
 
-	if err = i.config.ProcessManager.Signal(proc, sig); err != nil {
+	if err := i.config.ProcessManager.Signal(proc, sig); err != nil {
 		return fmt.Errorf("error while sending the %s signal to container with PID %d: %w", sig, containerPid, err)
 	}
 
