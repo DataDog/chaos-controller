@@ -21,6 +21,7 @@ func New(cfg types.SinkConfig) (Sink, error) {
 	tracer.Start(
 		tracer.WithSampler(tracer.NewRateSampler(cfg.SampleRate)),
 	)
+
 	return Sink{}, err
 }
 
