@@ -57,7 +57,7 @@ controller:
     enable: false
     namespaceThreshold: 80
     clusterThreshold: 66
-  resources: # resources assinged to the controller pod. may need to be increased when deploying to larger scale clusters
+  resources: # resources assigned to the controller pod. may need to be increased when deploying to larger scale clusters
     cpu: 100m
     memory: 300Mi
 
