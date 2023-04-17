@@ -5,6 +5,8 @@
 package injector_test
 
 import (
+	"time"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
@@ -108,6 +110,8 @@ var _ = Describe("Failure", func() {
 				})
 
 				By("should run the stress on one core", func() {
+					// The Stress happens async, so we need to give it time to guarantee. This sleep will be unnecessary within a month when we have updated cpu_pressure's approach
+					time.Sleep(time.Second * 2)
 					stresser.AssertNumberOfCalls(GinkgoT(), "Stress", 1)
 				})
 
