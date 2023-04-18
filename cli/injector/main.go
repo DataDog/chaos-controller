@@ -459,6 +459,7 @@ func clean(kind string, sendToMetrics bool, reinjectionClean bool) bool {
 }
 
 // pulse pulse disruptions (injection and cleaning)
+// nolint: unparam,staticcheck
 func pulse(isInjected *bool, sleepDuration *time.Duration, action func(string, bool, bool) bool, cmdName string) (func(string, bool, bool) bool, error) {
 	actionName := ""
 

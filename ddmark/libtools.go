@@ -75,11 +75,9 @@ func (c client) initLibrary(embeddedFS embed.FS, apiname string) error {
 				return err
 			}
 
-			if err = fout.Close(); err != nil {
-				return err
-			}
+			err = fout.Close()
 
-			return nil
+			return err
 		})
 
 	if err != nil {

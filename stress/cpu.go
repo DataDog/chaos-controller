@@ -37,6 +37,7 @@ func (c cpu) Stress(exit <-chan struct{}) {
 			return
 		default:
 			// eat cpu
+			// nolint: revive
 			for i := uint64(0); i < 18446744073709551615; i++ {
 				// noop
 			}
