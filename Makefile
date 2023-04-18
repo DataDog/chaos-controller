@@ -15,6 +15,7 @@ LIMA_CONFIG ?= lima
 KUBECTL ?= limactl shell default sudo kubectl
 UNZIP_BINARY ?= sudo unzip
 KUBERNETES_VERSION ?= v1.26.0
+GOLANGCI_LINT_VERSION ?= 1.45.2
 
 # expired disruption gc delay enable to speed up chaos controller disruption removal for e2e testing
 # it's used to check if disruptions are deleted as expected as soon as the expiration delay occurs
@@ -122,9 +123,24 @@ fmt:
 vet:
 	go vet ./...
 
+## install golangci-lint at the correct version if not
+lint-deps:
+ifeq (, $(shell which golangci-lint))
+	@{ \
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v${GOLANGCI_LINT_VERSION} ;\
+	}
+else
+ifneq (${GOLANGCI_LINT_VERSION}, $(shell golangci-lint version --format short))
+	@{ \
+	echo "warning: this projects expects golangci-lint v${GOLANGCI_LINT_VERSION}; it's currently at version" $(shell golangci-lint version --format short) ;\
+	echo "\nresult may differ from CI; fix this by uninstalling golangci-lint and run 'make lint' again\n";\
+	}
+endif
+endif
+
 ## Run golangci-lint against code
-lint:
-	golangci-lint run --timeout 5m0s
+lint: lint-deps
+	golangci-lint run
 
 ## Generate code
 generate: controller-gen

@@ -4,6 +4,7 @@
 # Copyright 2023 Datadog, Inc.
 
 run:
+  timeout: 5m
   skip-files:
     - api/v1beta1/zz_generated.deepcopy.go
     - ".*_test.go"
@@ -55,3 +56,5 @@ issues:
     # revive
     - and that stutters
     - unexported-return
+output:
+  sort-results: true
