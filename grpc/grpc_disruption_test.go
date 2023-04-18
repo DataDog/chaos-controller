@@ -11,7 +11,7 @@ import (
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	"github.com/DataDog/chaos-controller/mocks"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -49,7 +49,11 @@ var _ = Describe("Test send and clean disruption", func() {
 			},
 		}
 
-		disruptionListenerClient := mocks.NewDisruptionListenerClientMock(GinkgoT())
+		var disruptionListenerClient *mocks.DisruptionListenerClientMock
+
+		BeforeEach(func() {
+			disruptionListenerClient = mocks.NewDisruptionListenerClientMock(GinkgoT())
+		})
 
 		Specify("calls Disrupt and ResetDisruptions with expected parameters", func() {
 			// define expectations

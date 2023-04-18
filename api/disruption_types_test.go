@@ -6,14 +6,15 @@
 package api_test
 
 import (
-	"github.com/DataDog/chaos-controller/types"
 	"math/rand"
 	"sort"
 	"time"
 
+	"github.com/DataDog/chaos-controller/types"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

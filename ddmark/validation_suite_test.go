@@ -11,7 +11,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/ddmark"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

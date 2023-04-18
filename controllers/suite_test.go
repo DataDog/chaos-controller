@@ -3,30 +3,14 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023 Datadog, Inc.
 
-/*
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package controllers
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -68,7 +52,7 @@ func TestAPIs(t *testing.T) {
 	RunSpecs(t, "Controller Suite")
 }
 
-var _ = BeforeSuite(func(done Done) {
+var _ = BeforeSuite(func(ctx SpecContext) {
 	var err error
 
 	By("bootstrapping test environment")
@@ -214,12 +198,12 @@ var _ = BeforeSuite(func(done Done) {
 	}
 
 	By("Creating target pods")
-	Expect(k8sClient.Create(context.Background(), targetPodA)).To(BeNil())
-	Expect(k8sClient.Create(context.Background(), targetPodB)).To(BeNil())
+	Expect(k8sClient.Create(ctx, targetPodA)).To(BeNil())
+	Expect(k8sClient.Create(ctx, targetPodB)).To(BeNil())
 
 	By("Waiting for target pods to be ready")
 	Eventually(func() error {
-		running, err := podsAreRunning(targetPodA, targetPodB)
+		running, err := podsAreRunning(ctx, targetPodA, targetPodB)
 		if err != nil {
 			return err
 		}
@@ -230,26 +214,24 @@ var _ = BeforeSuite(func(done Done) {
 
 		return nil
 	}, timeout).Should(Succeed())
+}, NodeTimeout(60*time.Second))
 
-	close(done)
-}, 60)
-
-var _ = AfterSuite(func() {
+var _ = AfterSuite(func(ctx SpecContext) {
 	By("tearing down the test environment")
 
-	_ = k8sClient.Delete(context.Background(), targetPodA)
-	_ = k8sClient.Delete(context.Background(), targetPodB)
+	_ = k8sClient.Delete(ctx, targetPodA)
+	_ = k8sClient.Delete(ctx, targetPodB)
 
 	Expect(testEnv.Stop()).To(BeNil())
 })
 
 // podsAreRunning returns true when all the given pods have all their containers running
-func podsAreRunning(pods ...*corev1.Pod) (bool, error) {
+func podsAreRunning(ctx SpecContext, pods ...*corev1.Pod) (bool, error) {
 	for _, pod := range pods {
 		var p corev1.Pod
 
 		// retrieve pod
-		if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &p); err != nil {
+		if err := k8sClient.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &p); err != nil {
 			return false, fmt.Errorf("error getting pod: %w", err)
 		}
 
@@ -278,12 +260,12 @@ func podsAreRunning(pods ...*corev1.Pod) (bool, error) {
 }
 
 // podsAreNotRunning returns true when all the given pods have all their containers running
-func podsAreNotRunning(pods ...*corev1.Pod) (bool, error) {
+func podsAreNotRunning(ctx SpecContext, pods ...*corev1.Pod) (bool, error) {
 	for _, pod := range pods {
 		var p corev1.Pod
 
 		// retrieve pod
-		if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &p); err != nil {
+		if err := k8sClient.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, &p); err != nil {
 			return true, nil
 		}
 

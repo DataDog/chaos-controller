@@ -10,13 +10,12 @@ import (
 	"os"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -39,14 +38,14 @@ var _ = Describe("Cache Handler verifications", func() {
 	var disruption *v1beta1.Disruption
 	var targetLabels map[string]string
 
-	AfterEach(func() {
+	AfterEach(func(ctx SpecContext) {
 		// delete disruption resource
-		_ = k8sClient.Delete(context.Background(), disruption)
-		Eventually(func() error { return expectChaosPod(disruption, 0) }, timeout*2).Should(Succeed())
-		Eventually(func() error { return k8sClient.Get(context.Background(), instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
+		_ = k8sClient.Delete(ctx, disruption)
+		Eventually(func() error { return expectChaosPod(ctx, disruption, 0) }, timeout*2).Should(Succeed())
+		Eventually(func() error { return k8sClient.Get(ctx, instanceKey, disruption) }, timeout).Should(MatchError("Disruption.chaos.datadoghq.com \"foo\" not found"))
 	})
 
-	JustBeforeEach(func() {
+	JustBeforeEach(func(ctx SpecContext) {
 		if os.Getenv("CGROUPS") == "v2" {
 			if disruption.Spec.Network != nil {
 				Skip("can't run this test in cgroups v2")
@@ -54,12 +53,12 @@ var _ = Describe("Cache Handler verifications", func() {
 		}
 
 		By("Creating disruption resource and waiting for injection to be done")
-		Expect(k8sClient.Create(context.Background(), disruption)).To(BeNil())
+		Expect(k8sClient.Create(ctx, disruption)).To(BeNil())
 
 		Eventually(func() error {
 			// retrieve the previously created disruption
 			d := v1beta1.Disruption{}
-			if err := k8sClient.Get(context.Background(), instanceKey, &d); err != nil {
+			if err := k8sClient.Get(ctx, instanceKey, &d); err != nil {
 				return err
 			}
 
@@ -99,16 +98,16 @@ var _ = Describe("Cache Handler verifications", func() {
 			}
 		})
 
-		It("should target the pod", func() {
+		It("should target the pod", func(ctx SpecContext) {
 			By("Ensuring that the inject pod has been created")
-			Eventually(func() error { return expectChaosPod(disruption, 1) }, timeout).Should(Succeed())
+			Eventually(func() error { return expectChaosPod(ctx, disruption, 1) }, timeout).Should(Succeed())
 		})
 
-		It("should not fire any warning event on disruption", func() {
-			err := k8sClient.Delete(context.Background(), targetPodA)
+		It("should not fire any warning event on disruption", func(ctx SpecContext) {
+			err := k8sClient.Delete(ctx, targetPodA)
 			Expect(err).ShouldNot(HaveOccurred())
 			Eventually(func() error {
-				running, err := podsAreNotRunning(targetPodA)
+				running, err := podsAreNotRunning(ctx, targetPodA)
 				if err != nil {
 					return err
 				}
@@ -121,10 +120,10 @@ var _ = Describe("Cache Handler verifications", func() {
 			}, timeout).Should(Succeed())
 
 			targetPodA.ResourceVersion = ""
-			Expect(k8sClient.Create(context.Background(), targetPodA)).To(BeNil())
+			Expect(k8sClient.Create(ctx, targetPodA)).To(BeNil())
 
 			Eventually(func() error {
-				running, err := podsAreRunning(targetPodA)
+				running, err := podsAreRunning(ctx, targetPodA)
 				if err != nil {
 					return err
 				}
@@ -138,7 +137,7 @@ var _ = Describe("Cache Handler verifications", func() {
 
 			eventList := v1.EventList{}
 
-			err = k8sClient.List(context.Background(), &eventList, &client.ListOptions{
+			err = k8sClient.List(ctx, &eventList, &client.ListOptions{
 				Namespace: targetPodA.Namespace,
 			})
 

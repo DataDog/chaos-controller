@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
@@ -61,70 +61,74 @@ var _ = Describe("Failure", func() {
 		_, zeroIPNet, _ = net.ParseCIDR("0.0.0.0/0")
 		// cgroup
 		cgroupManager = mocks.NewCGroupManagerMock(GinkgoT())
-		cgroupManager.EXPECT().RelativePath(mock.Anything).Return("/kubepod.slice/foo")
-		cgroupManager.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		cgroupManager.EXPECT().RelativePath(mock.Anything).Return("/kubepod.slice/foo").Maybe()
+		cgroupManager.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		isCgroupV2Call = cgroupManager.EXPECT().IsCgroupV2().Return(false)
+		isCgroupV2Call.Maybe()
 
 		// netns
 		netnsManager = mocks.NewNetNSManagerMock(GinkgoT())
-		netnsManager.EXPECT().Enter().Return(nil)
-		netnsManager.EXPECT().Exit().Return(nil)
+		netnsManager.EXPECT().Enter().Return(nil).Maybe()
+		netnsManager.EXPECT().Exit().Return(nil).Maybe()
 
 		// tc
 		tc = network.NewTrafficControllerMock(GinkgoT())
-		tc.EXPECT().AddNetem(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.EXPECT().AddPrio(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.EXPECT().AddFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0, nil)
-		tc.EXPECT().AddFwFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.EXPECT().AddOutputLimit(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-		tc.EXPECT().DeleteFilter(mock.Anything, mock.Anything).Return(nil)
-		tc.EXPECT().ClearQdisc(mock.Anything).Return(nil)
+		tc.EXPECT().AddNetem(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+		tc.EXPECT().AddPrio(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+		tc.EXPECT().AddFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0, nil).Maybe()
+		tc.EXPECT().AddFwFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+		tc.EXPECT().AddOutputLimit(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+		tc.EXPECT().DeleteFilter(mock.Anything, mock.Anything).Return(nil).Maybe()
+		tc.EXPECT().ClearQdisc(mock.Anything).Return(nil).Maybe()
 
 		// iptables
 		iptables = network.NewIPTablesMock(GinkgoT())
-		iptables.EXPECT().Clear().Return(nil)
-		iptables.EXPECT().MarkCgroupPath(mock.Anything, mock.Anything).Return(nil)
-		iptables.EXPECT().MarkClassID(mock.Anything, mock.Anything).Return(nil)
-		iptables.EXPECT().LogConntrack().Return(nil)
+		iptables.EXPECT().Clear().Return(nil).Maybe()
+		iptables.EXPECT().MarkCgroupPath(mock.Anything, mock.Anything).Return(nil).Maybe()
+		iptables.EXPECT().MarkClassID(mock.Anything, mock.Anything).Return(nil).Maybe()
+		iptables.EXPECT().LogConntrack().Return(nil).Maybe()
 
 		// netlink
 		nllink1 = network.NewNetlinkLinkMock(GinkgoT())
-		nllink1.EXPECT().Name().Return("lo")
-		nllink1.EXPECT().SetTxQLen(mock.Anything).Return(nil)
+		nllink1.EXPECT().Name().Return("lo").Maybe()
+		nllink1.EXPECT().SetTxQLen(mock.Anything).Return(nil).Maybe()
 		nllink1TxQlenCall = nllink1.EXPECT().TxQLen().Return(0)
+		nllink1TxQlenCall.Maybe()
 		nllink2 = network.NewNetlinkLinkMock(GinkgoT())
-		nllink2.EXPECT().Name().Return("eth0")
-		nllink2.EXPECT().SetTxQLen(mock.Anything).Return(nil)
+		nllink2.EXPECT().Name().Return("eth0").Maybe()
+		nllink2.EXPECT().SetTxQLen(mock.Anything).Return(nil).Maybe()
 		nllink2TxQlenCall = nllink2.EXPECT().TxQLen().Return(0)
+		nllink2TxQlenCall.Maybe()
 		nllink3 = network.NewNetlinkLinkMock(GinkgoT())
-		nllink3.EXPECT().Name().Return("eth1")
-		nllink3.EXPECT().SetTxQLen(mock.Anything).Return(nil)
+		nllink3.EXPECT().Name().Return("eth1").Maybe()
+		nllink3.EXPECT().SetTxQLen(mock.Anything).Return(nil).Maybe()
 		nllink3TxQlenCall = nllink3.EXPECT().TxQLen().Return(0)
+		nllink3TxQlenCall.Maybe()
 
 		nlroute1 = network.NewNetlinkRouteMock(GinkgoT())
-		nlroute1.EXPECT().Link().Return(nllink1)
-		nlroute1.EXPECT().Gateway().Return(net.IP([]byte{}))
+		nlroute1.EXPECT().Link().Return(nllink1).Maybe()
+		nlroute1.EXPECT().Gateway().Return(net.IP([]byte{})).Maybe()
 		nlroute2 = network.NewNetlinkRouteMock(GinkgoT())
-		nlroute2.EXPECT().Link().Return(nllink2)
-		nlroute2.EXPECT().Gateway().Return(net.ParseIP(secondGatewayIP))
+		nlroute2.EXPECT().Link().Return(nllink2).Maybe()
+		nlroute2.EXPECT().Gateway().Return(net.ParseIP(secondGatewayIP)).Maybe()
 		nlroute3 = network.NewNetlinkRouteMock(GinkgoT())
-		nlroute3.EXPECT().Link().Return(nllink3)
-		nlroute3.EXPECT().Gateway().Return(net.ParseIP("192.168.1.1"))
+		nlroute3.EXPECT().Link().Return(nllink3).Maybe()
+		nlroute3.EXPECT().Gateway().Return(net.ParseIP("192.168.1.1")).Maybe()
 
 		nl = network.NewNetlinkAdapterMock(GinkgoT())
-		nl.EXPECT().LinkList().Return([]network.NetlinkLink{nllink1, nllink2, nllink3}, nil)
-		nl.EXPECT().LinkByIndex(0).Return(nllink1, nil)
-		nl.EXPECT().LinkByIndex(1).Return(nllink2, nil)
-		nl.EXPECT().LinkByIndex(2).Return(nllink3, nil)
-		nl.EXPECT().LinkByName("lo").Return(nllink1, nil)
-		nl.EXPECT().LinkByName("eth0").Return(nllink2, nil)
-		nl.EXPECT().LinkByName("eth1").Return(nllink3, nil)
-		nl.EXPECT().DefaultRoutes().Return([]network.NetlinkRoute{nlroute2}, nil)
+		nl.EXPECT().LinkList().Return([]network.NetlinkLink{nllink1, nllink2, nllink3}, nil).Maybe()
+		nl.EXPECT().LinkByIndex(0).Return(nllink1, nil).Maybe()
+		nl.EXPECT().LinkByIndex(1).Return(nllink2, nil).Maybe()
+		nl.EXPECT().LinkByIndex(2).Return(nllink3, nil).Maybe()
+		nl.EXPECT().LinkByName("lo").Return(nllink1, nil).Maybe()
+		nl.EXPECT().LinkByName("eth0").Return(nllink2, nil).Maybe()
+		nl.EXPECT().LinkByName("eth1").Return(nllink3, nil).Maybe()
+		nl.EXPECT().DefaultRoutes().Return([]network.NetlinkRoute{nlroute2}, nil).Maybe()
 
 		// dns
 		dns = network.NewDNSClientMock(GinkgoT())
-		dns.EXPECT().Resolve("kubernetes.default").Return([]net.IP{net.ParseIP("192.168.0.254")}, nil)
-		dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil)
+		dns.EXPECT().Resolve("kubernetes.default").Return([]net.IP{net.ParseIP("192.168.0.254")}, nil).Maybe()
+		dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil).Maybe()
 
 		// container
 		ctn = mocks.NewContainerMock(GinkgoT())

@@ -5,8 +5,6 @@
 
 package cgroup
 
-//go:generate mockery --name=Manager --filename=cgroup_mock.go
-
 // Manager represents a cgroup manager able to join the given cgroup
 type Manager interface {
 	Join(pid int) error
