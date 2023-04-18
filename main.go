@@ -360,20 +360,20 @@ func main() {
 	ms, err := metrics.GetSink(cfg.Controller.Metrics)
 	if err != nil {
 		logger.Errorw("error while creating metric sink", "error", err)
+	} else {
+		// handle metrics sink client close on exit
+		defer func() {
+			logger.Infow("closing metrics sink client before exiting", "sink", ms.GetSinkName())
+
+			if err := ms.Close(); err != nil {
+				logger.Errorw("error closing metrics sink client", "sink", ms.GetSinkName(), "error", err)
+			}
+		}()
 	}
 
 	if ms.MetricRestart() != nil {
 		logger.Errorw("error sending MetricRestart", "sink", ms.GetSinkName())
 	}
-
-	// handle metrics sink client close on exit
-	defer func() {
-		logger.Infow("closing metrics sink client before exiting", "sink", ms.GetSinkName())
-
-		if err := ms.Close(); err != nil {
-			logger.Errorw("error closing metrics sink client", "sink", ms.GetSinkName(), "error", err)
-		}
-	}()
 
 	// tracer sink
 	if tracer, err := tracer.GetSink(cfg.Controller.Tracer); err != nil {
