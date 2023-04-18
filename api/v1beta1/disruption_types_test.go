@@ -21,19 +21,20 @@ limitations under the License.
 package v1beta1_test
 
 import (
-	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"sort"
+
+	. "github.com/DataDog/chaos-controller/api/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"sort"
 )
 
 var _ = Describe("TargetInjections", func() {
 	Describe("GetTargetNames", func() {
-		var targetInjections v1beta1.TargetInjections
+		var targetInjections TargetInjections
 
 		Context("with three targets", func() {
 			BeforeEach(func() {
-				targetInjections = v1beta1.TargetInjections{"target-1": {}, "target-2": {}, "target-3": {}}
+				targetInjections = TargetInjections{"target-1": {}, "target-2": {}, "target-3": {}}
 			})
 
 			It("should return the list of targets name", func() {
@@ -45,7 +46,7 @@ var _ = Describe("TargetInjections", func() {
 
 		Context("without targets", func() {
 			BeforeEach(func() {
-				targetInjections = v1beta1.TargetInjections{}
+				targetInjections = TargetInjections{}
 			})
 
 			It("should return the list of targets name", func() {
@@ -56,13 +57,12 @@ var _ = Describe("TargetInjections", func() {
 })
 
 var _ = Describe("Check if a target exist into DisruptionStatus targets list", func() {
-	var disruptionStatus *v1beta1.DisruptionStatus
+	var disruptionStatus *DisruptionStatus
 
 	BeforeEach(func() {
-		disruptionStatus = &v1beta1.DisruptionStatus{
-			TargetInjections: v1beta1.TargetInjections{"test-1": {}},
+		disruptionStatus = &DisruptionStatus{
+			TargetInjections: TargetInjections{"test-1": {}},
 		}
-
 	})
 
 	AfterEach(func() {

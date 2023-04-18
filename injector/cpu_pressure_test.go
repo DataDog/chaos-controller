@@ -9,9 +9,9 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
-	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/cpuset"
 	. "github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/stress"
 	. "github.com/onsi/ginkgo"
@@ -24,7 +24,7 @@ var _ = Describe("Failure", func() {
 	var (
 		config          CPUPressureInjectorConfig
 		cgroupManager   *cgroup.MockManager
-		ctn             *container.MockContainer
+		ctn             *mocks.ContainerMock
 		stresser        *stress.MockStresser
 		stresserExit    chan struct{}
 		manager         *process.MockManager
@@ -39,7 +39,7 @@ var _ = Describe("Failure", func() {
 		cgroupManager.EXPECT().Join(mock.Anything).Return(nil)
 
 		// container
-		ctn = container.NewMockContainer(GinkgoT())
+		ctn = mocks.NewContainerMock(GinkgoT())
 
 		// stresser
 		stresser = stress.NewMockStresser(GinkgoT())

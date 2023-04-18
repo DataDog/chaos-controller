@@ -6,8 +6,8 @@
 package container_test
 
 import (
-	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -16,13 +16,13 @@ import (
 var _ = Describe("Container", func() {
 	var (
 		config  Config
-		runtime *container.MockRuntime
+		runtime *mocks.ContainerRuntimeMock
 		ctn     Container
 	)
 
 	BeforeEach(func() {
 		// runtime
-		runtime = container.NewMockRuntime(GinkgoT())
+		runtime = mocks.NewContainerRuntimeMock(GinkgoT())
 		runtime.EXPECT().PID(mock.Anything).Return(uint32(666), nil)
 		runtime.EXPECT().Name(mock.Anything).Return("", nil)
 

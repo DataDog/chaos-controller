@@ -305,8 +305,12 @@ generate-chaosdogfood-protobuf:
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
 	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
 
-generate-mock:
-	go install github.com/vektra/mockery/v2@v2.24.0
+clean-mock:
+	find . -type file -name "*mock*.go" -not -path "./vendor/*" -exec rm {} \;
+	rm -rf mocks/
+
+generate-mock: clean-mock
+	go install github.com/vektra/mockery/v2@v2.25.0
 	go generate ./...
 # First re-generate header, it should complain as just (re)generated mocks does not contains them
 	-$(MAKE) header-check
