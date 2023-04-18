@@ -140,6 +140,7 @@ endif
 
 ## Run golangci-lint against code
 lint: lint-deps
+	$(shell golangci-lint version)
 	golangci-lint run
 
 ## Generate code
