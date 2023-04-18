@@ -375,18 +375,14 @@ func main() {
 	}()
 
 	// tracer sink
-	tracer, err := tracer.GetSink(cfg.Controller.Tracer)
-
-	if err != nil {
+	if tracer, err := tracer.GetSink(cfg.Controller.Tracer); err != nil {
 		logger.Errorw("error while creating tracer sink", "error", err)
 	} else {
 		defer tracer.Stop()
 	}
 
 	// profiler sink
-	profiler, err := profiler.GetSink(cfg.Controller.Profiler)
-
-	if err != nil {
+	if profiler, err := profiler.GetSink(cfg.Controller.Profiler); err != nil {
 		logger.Errorw("error while creating profiler sink", "error", err)
 	} else {
 		defer profiler.Stop()
