@@ -49,12 +49,16 @@ issues:
     - weak random number generator
     - memory aliasing in for loop
     - file inclusion via variable
-    # stylecheck
-    - at least one file in a package should have a package comment
     # golint
     - (comment on exported (method|function|type|const)|should have( a package)? comment|comment should be of the form)
-    # revive
-    - and that stutters
-    - unexported-return
+
+  exclude-rules:
+    - linters:
+        - revive
+      text: "unused-parameter:|and that stutters;|unexported-return:"
+    - linters:
+        - stylecheck
+      text: at least one file in a package should have a package comment
+
 output:
   sort-results: true
