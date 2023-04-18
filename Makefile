@@ -61,6 +61,7 @@ _docker-build-handler:;
 _docker-build-manager:;
 
 # we define the template we expect for each target
+# $(1) is the target name: injector|handler|manager
 define TARGET_template
 $(1): BINARY_NAME=$(1)
 
