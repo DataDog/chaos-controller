@@ -14,8 +14,6 @@ import (
 	"strings"
 )
 
-//go:generate mockery --name=Informer --filename=disk_mock.go
-
 // Informer represents a disk informer giving information about
 // the device
 type Informer interface {

@@ -15,6 +15,7 @@ import (
 	"github.com/DataDog/chaos-controller/log"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestManager(t *testing.T) {
@@ -231,3 +232,19 @@ var _ = Describe("New function", func() {
 		})
 	})
 })
+
+func NewCloudServiceMock(isNewVersionMockValue bool, isNewVersionError error, convertToGenericIPRangesVersion string, convertToGenericIPRangesServiceList []string, convertToGenericIPRanges map[string][]string, convertToGenericIPRangesError error) *CloudProviderIPRangeManagerMock {
+	cloudProviderIPRangeMock := NewCloudProviderIPRangeManagerMock(GinkgoT())
+
+	cloudProviderIPRangeMock.EXPECT().IsNewVersion(mock.Anything, mock.Anything).Return(isNewVersionMockValue, isNewVersionError)
+	cloudProviderIPRangeMock.EXPECT().ConvertToGenericIPRanges(mock.Anything).Return(
+		&types.CloudProviderIPRangeInfo{
+			Version:     convertToGenericIPRangesVersion,
+			IPRanges:    convertToGenericIPRanges,
+			ServiceList: convertToGenericIPRangesServiceList,
+		},
+		convertToGenericIPRangesError,
+	)
+
+	return cloudProviderIPRangeMock
+}

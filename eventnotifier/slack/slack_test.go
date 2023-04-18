@@ -10,6 +10,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
+	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/slack-go/slack"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/authentication/v1"
@@ -33,7 +34,7 @@ func TestNotifier_Notify(t *testing.T) {
 	tests := []struct {
 		name        string
 		callContext callContext
-		setup       func(mock.TestingT, *mockSlackNotifier, callContext)
+		setup       func(mock.TestingT, *mocks.SlackNotifierMock, callContext)
 		wantErr     string
 	}{
 		{
@@ -55,7 +56,7 @@ func TestNotifier_Notify(t *testing.T) {
 				notifType:            types.NotificationInfo,
 				mirrorSlackChannelID: "chaos-notif",
 			},
-			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
+			setup: func(t mock.TestingT, msn *mocks.SlackNotifierMock, args callContext) {
 				msn.EXPECT().PostMessage(
 					args.mirrorSlackChannelID,
 					mock.Anything,
@@ -73,7 +74,7 @@ func TestNotifier_Notify(t *testing.T) {
 				userName:             "valid@email.org",
 				notifType:            types.NotificationWarning,
 			},
-			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
+			setup: func(t mock.TestingT, msn *mocks.SlackNotifierMock, args callContext) {
 				msn.EXPECT().PostMessage(
 					args.mirrorSlackChannelID,
 					mock.Anything,
@@ -107,7 +108,7 @@ func TestNotifier_Notify(t *testing.T) {
 					SlackChannel: "custom-slack-channel",
 				},
 			},
-			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
+			setup: func(t mock.TestingT, msn *mocks.SlackNotifierMock, args callContext) {
 				msn.EXPECT().PostMessage(
 					args.reporting.SlackChannel,
 					mock.Anything,
@@ -142,7 +143,7 @@ func TestNotifier_Notify(t *testing.T) {
 					MinNotificationType: types.NotificationError,
 				},
 			},
-			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
+			setup: func(t mock.TestingT, msn *mocks.SlackNotifierMock, args callContext) {
 				userID := "slack-user-id"
 				getUserEmailCall := msn.EXPECT().GetUserByEmail(args.userName).Return(&slack.User{
 					ID: userID,
@@ -168,7 +169,7 @@ func TestNotifier_Notify(t *testing.T) {
 					SlackChannel: "custom-slack-channel",
 				},
 			},
-			setup: func(t mock.TestingT, msn *mockSlackNotifier, args callContext) {
+			setup: func(t mock.TestingT, msn *mocks.SlackNotifierMock, args callContext) {
 				msn.EXPECT().PostMessage(
 					args.mirrorSlackChannelID,
 					mock.Anything,
@@ -210,7 +211,7 @@ func TestNotifier_Notify(t *testing.T) {
 
 			require := require.New(t)
 
-			slackClient := newMockSlackNotifier(t)
+			slackClient := mocks.NewSlackNotifierMock(t)
 
 			logger, err := zap.NewDevelopment()
 			require.NoError(err)

@@ -5,8 +5,6 @@
 
 package container
 
-//go:generate mockery --name=Runtime --filename=runtime_mock.go
-
 // Runtime is an interface abstracting a container runtime
 // being able to return a container PID from its ID
 type Runtime interface {

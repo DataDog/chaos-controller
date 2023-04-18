@@ -54,7 +54,7 @@ type networkDisruptionInjector struct {
 type NetworkDisruptionInjectorConfig struct {
 	Config
 	TrafficController network.TrafficController
-	Iptables          network.Iptables
+	IPTables          network.IPTables
 	NetlinkAdapter    network.NetlinkAdapter
 	DNSClient         network.DNSClient
 	State             DisruptionState
@@ -94,8 +94,8 @@ type serviceWatcher struct {
 func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config NetworkDisruptionInjectorConfig) (Injector, error) {
 	var err error
 
-	if config.Iptables == nil {
-		config.Iptables, err = network.NewIptables(config.Log, config.DryRun)
+	if config.IPTables == nil {
+		config.IPTables, err = network.NewIPTables(config.Log, config.DryRun)
 		if err != nil {
 			return nil, err
 		}
@@ -175,14 +175,14 @@ func (i *networkDisruptionInjector) Inject() error {
 	// add a conntrack reference to enable it
 	// it consists of adding a noop iptables rule loading the conntrack module so it enables connection tracking in the targeted network namespace
 	// cf. https://thermalcircle.de/doku.php?id=blog:linux:connection_tracking_1_modules_and_hooks for more information on how conntrack works outside of the main network namespace
-	if err := i.config.Iptables.LogConntrack(); err != nil {
+	if err := i.config.IPTables.LogConntrack(); err != nil {
 		return fmt.Errorf("error injecting the conntrack reference iptables rule: %w", err)
 	}
 
 	// mark all packets created by the targeted container with the classifying mark
 	if i.config.Level == types.DisruptionLevelPod && !i.config.OnInit {
 		if i.config.Cgroup.IsCgroupV2() { // cgroup v2 can rely on the single cgroup hierarchy relative path to mark packets
-			if err := i.config.Iptables.MarkCgroupPath(i.config.Cgroup.RelativePath(""), types.InjectorCgroupClassID); err != nil {
+			if err := i.config.IPTables.MarkCgroupPath(i.config.Cgroup.RelativePath(""), types.InjectorCgroupClassID); err != nil {
 				return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
 			}
 		} else { // cgroup v1 needs to mark packets through the net_cls cgroup controller of the container
@@ -190,7 +190,7 @@ func (i *networkDisruptionInjector) Inject() error {
 				return fmt.Errorf("error injecting packet marking in net_cls cgroup: %w", err)
 			}
 
-			if err := i.config.Iptables.MarkClassID(types.InjectorCgroupClassID, types.InjectorCgroupClassID); err != nil {
+			if err := i.config.IPTables.MarkClassID(types.InjectorCgroupClassID, types.InjectorCgroupClassID); err != nil {
 				return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
 			}
 		}
@@ -230,7 +230,7 @@ func (i *networkDisruptionInjector) Clean() error {
 	}
 
 	// remove the conntrack reference to disable conntrack in the network namespace
-	if err := i.config.Iptables.Clear(); err != nil {
+	if err := i.config.IPTables.Clear(); err != nil {
 		return fmt.Errorf("error cleaning iptables rules and chain: %w", err)
 	}
 
