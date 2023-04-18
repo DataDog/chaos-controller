@@ -291,7 +291,7 @@ func main() {
 	handleFatalError(viper.BindPFlag("controller.tracer.sampleRate", pflag.Lookup("tracer-samplerate")))
 
 	pflag.StringVar(&cfg.Controller.Profiler.Sink, "profiler-sink", "noop", "profiler sink (datadog, or noop)")
-	handleFatalError(viper.BindPFlag("controller.profiler.sink", pflag.Lookup("profiler-sink")))
+	handleFatalError(viper.BindPFlag("controller.profilerSink", pflag.Lookup("profiler-sink")))
 
 	pflag.Parse()
 
