@@ -10,7 +10,10 @@ run:
     - ".*_test.go"
     - cpuset/*
 linters:
+  # disable all linters by default
+  disable-all: true
   enable:
+    # default linters
     - errcheck
     - gosimple
     - govet
@@ -18,6 +21,7 @@ linters:
     - staticcheck
     - typecheck
     - unused
+    # extra linters
     - bodyclose
     - depguard
     - dogsled

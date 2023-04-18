@@ -15,7 +15,7 @@ LIMA_CONFIG ?= lima
 KUBECTL ?= limactl shell default sudo kubectl
 UNZIP_BINARY ?= sudo unzip
 KUBERNETES_VERSION ?= v1.26.0
-GOLANGCI_LINT_VERSION ?= 1.45.2 ## this value should be the same as in /.circleci/config.yaml
+GOLANGCI_LINT_VERSION ?= 1.51.0 ## this value should be the same as in /.circleci/config.yaml
 
 # expired disruption gc delay enable to speed up chaos controller disruption removal for e2e testing
 # it's used to check if disruptions are deleted as expected as soon as the expiration delay occurs
