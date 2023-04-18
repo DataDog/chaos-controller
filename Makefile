@@ -125,18 +125,7 @@ vet:
 
 ## install golangci-lint at the correct version if not
 lint-deps:
-ifeq (, $(shell which golangci-lint))
-	@{ \
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v${GOLANGCI_LINT_VERSION} ;\
-	}
-else
-ifneq (${GOLANGCI_LINT_VERSION}, $(shell golangci-lint version --format short))
-	@{ \
-	echo "warning: this projects expects golangci-lint v${GOLANGCI_LINT_VERSION}; it's currently at version" $(shell golangci-lint version --format short) ;\
-	echo "\nresult may differ from CI; fix this by uninstalling golangci-lint and run 'make lint' again\n";\
-	}
-endif
-endif
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
 
 ## Run golangci-lint against code
 lint: lint-deps
