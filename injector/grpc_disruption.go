@@ -44,7 +44,7 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 	return &GRPCDisruptionInjector{
 		spec:       spec,
 		config:     config,
-		serverAddr: config.TargetPodIP + ":" + strconv.Itoa(spec.Port),
+		serverAddr: config.Disruption.TargetPodIP + ":" + strconv.Itoa(spec.Port),
 		timeout:    connectionTimeout,
 	}
 }
@@ -57,7 +57,7 @@ func (i *GRPCDisruptionInjector) GetDisruptionKind() types.DisruptionKindName {
 func (i *GRPCDisruptionInjector) Inject() error {
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
-	if i.config.DryRun {
+	if i.config.Disruption.DryRun {
 		i.config.Log.Infow("adding dry run mode grpc disruption", "spec", i.spec)
 		return nil
 	}
@@ -95,7 +95,7 @@ func (i *GRPCDisruptionInjector) Clean() error {
 
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
-	if i.config.DryRun {
+	if i.config.Disruption.DryRun {
 		i.config.Log.Infow("removing dry run mode grpc disruption", "spec", i.spec)
 		return nil
 	}
@@ -130,7 +130,6 @@ func (i *GRPCDisruptionInjector) connectToServer() (*grpc.ClientConn, error) {
 	defer cancel()
 
 	conn, err := grpc.DialContext(ctx, i.serverAddr, opts...)
-
 	if err != nil {
 		return nil, errors.New("fail to dial: " + i.serverAddr)
 	}

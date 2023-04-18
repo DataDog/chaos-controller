@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/DataDog/chaos-controller/api"
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/mocks"
@@ -41,9 +42,11 @@ var _ = Describe("Failure", func() {
 
 		config = DiskFailureInjectorConfig{
 			Config: Config{
-				Log:             log,
-				MetricsSink:     ms,
-				Level:           level,
+				Log:         log,
+				MetricsSink: ms,
+				Disruption: api.DisruptionArgs{
+					Level: level,
+				},
 				TargetContainer: containerMock,
 			},
 			Cmd: commandMock,
