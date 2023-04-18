@@ -5,6 +5,12 @@
 
 package types
 
+// SinkConfig describes a config for a tracer sink config
+type SinkConfig struct {
+	SinkDriver string
+	SinkApp    string
+}
+
 // SinkDriver represents a sink driver to use
 type SinkDriver string
 

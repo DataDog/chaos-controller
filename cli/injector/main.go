@@ -55,7 +55,7 @@ var (
 	log                  *zap.SugaredLogger
 	dryRun               bool
 	ms                   metrics.Sink
-	sink                 string
+	metricsCfg           metricstypes.SinkConfig
 	level                string
 	rawTargetContainers  []string // contains name:id containers
 	targetContainers     map[string]string
@@ -92,7 +92,7 @@ func init() {
 
 	// basic args
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Enable dry-run mode")
-	rootCmd.PersistentFlags().StringVar(&sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
+	rootCmd.PersistentFlags().StringVar(&metricsCfg.SinkDriver, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().StringVar(&level, "level", "", "Level of injection (either pod or node)")
 	rootCmd.PersistentFlags().StringSliceVar(&rawTargetContainers, "target-containers", []string{}, "Targeted containers")
 	rootCmd.PersistentFlags().StringVar(&targetPodIP, "target-pod-ip", "", "Pod IP of targeted pod")
@@ -157,11 +157,13 @@ func initLogger() {
 func initMetricsSink() {
 	var err error
 
-	ms, err = metrics.GetSink(metricstypes.SinkDriver(sink), metricstypes.SinkAppInjector)
+	metricsCfg.SinkApp = string(metricstypes.SinkAppInjector)
+	ms, err = metrics.GetSink(metricsCfg)
 	if err != nil {
 		log.Errorw("error while creating metric sink, switching to noop sink", "error", err)
+		metricsCfg.SinkDriver = string(metricstypes.SinkDriverNoop)
 
-		ms, _ = metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppInjector)
+		ms, _ = metrics.GetSink(metricsCfg)
 	}
 }
 

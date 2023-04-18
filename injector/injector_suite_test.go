@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/DataDog/chaos-controller/o11y/metrics"
-	"github.com/DataDog/chaos-controller/o11y/metrics/types"
+	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
@@ -23,7 +23,7 @@ var _ = BeforeSuite(func() {
 	z, _ := zap.NewDevelopment()
 	log = z.Sugar()
 	os.Setenv("STATSD_URL", "localhost:54321")
-	ms, _ = metrics.GetSink(types.SinkDriverNoop, types.SinkAppInjector)
+	ms, _ = metrics.GetSink(metricstypes.SinkConfig{SinkDriver: string(metricstypes.SinkDriverNoop), SinkApp: string(metricstypes.SinkAppInjector)})
 })
 
 var _ = AfterSuite(func() {

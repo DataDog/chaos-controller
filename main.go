@@ -78,7 +78,7 @@ type config struct {
 
 type controllerConfig struct {
 	MetricsBindAddr          string                          `json:"metricsBindAddr"`
-	MetricsSink              string                          `json:"metricsSink"`
+	Metrics                  metricstypes.SinkConfig         `json:"Metrics"`
 	ImagePullSecrets         string                          `json:"imagePullSecrets"`
 	ExpiredDisruptionGCDelay time.Duration                   `json:"expiredDisruptionGCDelay"`
 	DefaultDuration          time.Duration                   `json:"defaultDuration"`
@@ -167,7 +167,7 @@ func main() {
 	pflag.DurationVar(&cfg.Controller.DefaultDuration, "default-duration", time.Hour, "Default duration for a disruption with none specified")
 	handleFatalError(viper.BindPFlag("controller.defaultDuration", pflag.Lookup("default-duration")))
 
-	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
+	pflag.StringVar(&cfg.Controller.Metrics.SinkDriver, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
 
 	pflag.StringVar(&cfg.Controller.Notifiers.Common.ClusterName, "notifiers-common-clustername", "", "Cluster Name for notifiers output")
@@ -356,7 +356,8 @@ func main() {
 	}
 
 	// metrics sink
-	ms, err := metrics.GetSink(metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
+	cfg.Controller.Metrics.SinkApp = string(metricstypes.SinkAppController)
+	ms, err := metrics.GetSink(cfg.Controller.Metrics)
 	if err != nil {
 		logger.Errorw("error while creating metric sink", "error", err)
 	}
