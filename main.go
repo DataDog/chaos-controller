@@ -358,6 +358,7 @@ func main() {
 	// metrics sink
 	cfg.Controller.Metrics.SinkApp = string(metricstypes.SinkAppController)
 	ms, err := metrics.GetSink(cfg.Controller.Metrics)
+
 	if err != nil {
 		logger.Errorw("error while creating metric sink", "error", err)
 	} else {

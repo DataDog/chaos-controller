@@ -159,8 +159,10 @@ func initMetricsSink() {
 
 	metricsCfg.SinkApp = string(metricstypes.SinkAppInjector)
 	ms, err = metrics.GetSink(metricsCfg)
+
 	if err != nil {
 		log.Errorw("error while creating metric sink, switching to noop sink", "error", err)
+
 		metricsCfg.SinkDriver = string(metricstypes.SinkDriverNoop)
 
 		ms, _ = metrics.GetSink(metricsCfg)
