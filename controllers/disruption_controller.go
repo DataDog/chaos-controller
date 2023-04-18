@@ -91,7 +91,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
-	rand.Seed(time.Now().UnixNano())
+	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// prepare logger instance context
 	// NOTE: it is valid while we don't do concurrent reconciling
@@ -174,7 +174,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// if not cleaned yet, requeue and reconcile again in 15s-20s
 			// the reason why we don't rely on the exponential backoff here is that it retries too fast at the beginning
 			if !isCleaned {
-				requeueAfter := time.Duration(rand.Intn(5)+15) * time.Second //nolint:gosec
+				requeueAfter := time.Duration(randSource.Intn(5)+15) * time.Second //nolint:gosec
 
 				r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
 
@@ -280,7 +280,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if !injected {
 			// requeue after 15-20 seconds, as default 1ms is too quick here
-			requeueAfter := time.Duration(rand.Intn(5)+15) * time.Second //nolint:gosec
+			requeueAfter := time.Duration(randSource.Intn(5)+15) * time.Second //nolint:gosec
 			r.log.Infow("disruption is not fully injected yet, requeuing", "injectionStatus", instance.Status.InjectionStatus)
 
 			return ctrl.Result{

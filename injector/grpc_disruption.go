@@ -16,6 +16,7 @@ import (
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	"github.com/DataDog/chaos-controller/types"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // Five Seconds timeout before aborting the attempt to connect to server
@@ -122,7 +123,7 @@ func (i *GRPCDisruptionInjector) Clean() error {
 
 func (i *GRPCDisruptionInjector) connectToServer() (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{
-		grpc.WithInsecure(), // Future Work: make secure
+		grpc.WithTransportCredentials(insecure.NewCredentials()), // Future Work: make secure
 		grpc.WithBlock(),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
