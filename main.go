@@ -284,13 +284,13 @@ func main() {
 	pflag.StringVar(&cfg.Controller.CloudProviders.Datadog.IPRangesURL, "cloud-providers-datadog-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
 	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.ipRangesURL", pflag.Lookup("cloud-providers-datadog-iprangesurl")))
 
-	pflag.StringVar(&cfg.Controller.Tracer.Sink, "tracer-sink", "noop", "Tracer sink (datadog, or noop)")
+	pflag.StringVar(&cfg.Controller.Tracer.SinkDriver, "tracer-sink", "noop", "Tracer sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.tracer.sink", pflag.Lookup("tracer-sink")))
 
 	pflag.Float64Var(&cfg.Controller.Tracer.SampleRate, "tracer-samplerate", 1.0, "Sets tracer sampling rate")
 	handleFatalError(viper.BindPFlag("controller.tracer.sampleRate", pflag.Lookup("tracer-samplerate")))
 
-	pflag.StringVar(&cfg.Controller.Profiler.Sink, "profiler-sink", "noop", "profiler sink (datadog, or noop)")
+	pflag.StringVar(&cfg.Controller.Profiler.SinkDriver, "profiler-sink", "noop", "profiler sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.profilerSink", pflag.Lookup("profiler-sink")))
 
 	pflag.Parse()

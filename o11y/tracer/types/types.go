@@ -7,7 +7,7 @@ package types
 
 // SinkConfig describes a config for a tracer sink config
 type SinkConfig struct {
-	Sink       string
+	SinkDriver string
 	SampleRate float64
 }
 
