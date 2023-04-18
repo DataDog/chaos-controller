@@ -196,7 +196,7 @@ jobs:
       - run:
           name: Build and load images
           <<: *working_directory
-          command: make minikube-build-all
+          command: make minikube-load-all
       - run:
           name: Run e2e tests
           <<: *working_directory

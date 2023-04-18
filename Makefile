@@ -1,4 +1,4 @@
-.PHONY: manager injector handler release
+.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all
 .SILENT: release
 
 # Lima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
@@ -37,23 +37,66 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+# we define target specific variables values https://www.gnu.org/software/make/manual/html_node/Target_002dspecific.html
+injector handler: BINARY_PATH=./cli/$(BINARY_NAME)
+manager: BINARY_PATH=main.go
+
+docker-build-injector: IMAGE_TAG=$(INJECTOR_IMAGE)
+docker-build-handler: IMAGE_TAG=$(HANDLER_IMAGE)
+docker-build-manager: IMAGE_TAG=$(MANAGER_IMAGE)
+
+docker-build-ebpf:
+	docker build --platform linux/$(OS_ARCH) --build-arg ARCH=$(OS_ARCH) -t ebpf-builder-$(OS_ARCH) -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
+	-rm -r bin/injector/ebpf/
+	docker run --rm -v $(shell pwd):/app ebpf-builder-$(OS_ARCH)
+
+lima-push-injector lima-push-handler lima-push-manager: FAKE_FOR=COMPLETION
+
+_injector:;
+_handler:;
+_manager: generate
+
+_docker-build-injector: docker-build-ebpf
+_docker-build-handler:;
+_docker-build-manager:;
+
+# we define the template we expect for each target
+# $(1) is the target name: injector|handler|manager
+define TARGET_template
+$(1): BINARY_NAME=$(1)
+
+_$(1)_arm:
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o ./bin/$(1)/$(1)_arm64 $$(BINARY_PATH)
+
+_$(1)_amd:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ./bin/$(1)/$(1)_amd64 $$(BINARY_PATH)
+
+$(1): _$(1) _$(1)_arm _$(1)_amd
+
+docker-build-$(1): _docker-build-$(1) $(1)
+	docker build --build-arg TARGETARCH=$(OS_ARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
+	docker save $$(IMAGE_TAG) -o ./bin/$(1)/$(1).tar.gz
+
+lima-push-$(1): docker-build-$(1)
+	limactl copy ./bin/$(1)/$(1).tar.gz default:/tmp/
+	limactl shell default -- sudo k3s ctr i import /tmp/$(1).tar.gz
+
+minikube-load-$(1): docker-build-$(1)
+	minikube image load --daemon=false --overwrite=true ./bin/$(1)/$(1).tar.gz
+endef
+
+# we define the targers we want to generate make target for
+TARGETS = injector handler manager
+
+# we generate the exact same rules as for target specific variables, hence completion works and no duplication 😎
+$(foreach tgt,$(TARGETS),$(eval $(call TARGET_template,$(tgt))))
+
 # Build actions
-all: manager injector handler
+all: $(TARGETS)
 
-# Build manager binary
-manager: generate
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/manager/manager_amd64 main.go
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/manager/manager_arm64 main.go
-
-# Build injector binary
-injector:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/injector/injector_amd64 ./cli/injector/
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/injector/injector_arm64 ./cli/injector/
-
-# Build handler binary
-handler:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/handler/handler_amd64 ./cli/handler/
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/handler/handler_arm64 ./cli/handler/
+docker-build-all: $(addprefix docker-build-,$(TARGETS))
+lima-push-all: $(addprefix lima-push-,$(TARGETS))
+minikube-load-all: $(addprefix minikube-load-,$(TARGETS))
 
 # Build chaosli
 chaosli:
@@ -132,11 +175,11 @@ generate: controller-gen
 
 # Lima actions
 ## Create a new lima cluster and deploy the chaos-controller into it
-lima-all: lima-start lima-install-cert-manager lima-build-all lima-install
+lima-all: lima-start lima-install-cert-manager lima-push-all lima-install
 	kubens chaos-engineering
 
 ## Rebuild the chaos-controller images, re-install the chart and restart the chaos-controller pods
-lima-redeploy: lima-build-all lima-install lima-restart
+lima-redeploy: lima-push-all lima-install lima-restart
 
 ## Install cert-manager chart
 lima-install-cert-manager:
@@ -168,41 +211,7 @@ lima-uninstall:
 ## Restart the chaos-controller pod
 lima-restart:
 	$(KUBECTL) -n chaos-engineering rollout restart deployment chaos-controller
-
-## Build all images and import them in lima
-lima-build-all: lima-build-manager lima-build-injector lima-build-handler
-
-docker-build-manager: manager
-	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${MANAGER_IMAGE} -f bin/manager/Dockerfile ./bin/manager/
-	docker save ${MANAGER_IMAGE} -o ./bin/manager/manager.tar.gz
-
-docker-build-ebpf:
-	docker build --platform linux/${OS_ARCH} --build-arg ARCH=${OS_ARCH} -t ebpf-builder-${OS_ARCH} -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
-	rm -r bin/injector/ebpf/ || true
-	docker run --rm -v ${shell pwd}:/app ebpf-builder-${OS_ARCH}
-
-docker-build-injector: docker-build-ebpf injector
-	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${INJECTOR_IMAGE} -f bin/injector/Dockerfile ./bin/injector/
-	docker save ${INJECTOR_IMAGE} -o ./bin/injector/injector.tar.gz
-
-docker-build-handler: handler
-	docker build --build-arg TARGETARCH=${OS_ARCH} -t ${HANDLER_IMAGE} -f bin/handler/Dockerfile ./bin/handler/
-	docker save ${HANDLER_IMAGE} -o ./bin/handler/handler.tar.gz
-
-## Build and import the manager image in lima
-lima-build-manager: docker-build-manager
-	limactl copy ./bin/manager/manager.tar.gz default:/tmp/
-	limactl shell default -- sudo k3s ctr i import /tmp/manager.tar.gz
-
-## Build and import the injector image in lima
-lima-build-injector: docker-build-injector
-	limactl copy ./bin/injector/injector.tar.gz default:/tmp/
-	limactl shell default -- sudo k3s ctr i import /tmp/injector.tar.gz
-
-## Build and import the handler image in lima
-lima-build-handler: docker-build-handler
-	limactl copy ./bin/handler/handler.tar.gz default:/tmp/
-	limactl shell default -- sudo k3s ctr i import /tmp/handler.tar.gz
+	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
 
 ## Remove lima references from kubectl config
 lima-kubectx-clean:
@@ -256,18 +265,6 @@ endif
 
 # CI-specific actions
 
-## Minikube builds for e2e tests
-minikube-build-all: minikube-build-manager minikube-build-injector minikube-build-handler
-
-minikube-build-manager: docker-build-manager
-	minikube image load --daemon=false --overwrite=true ./bin/manager/manager.tar.gz
-
-minikube-build-injector: docker-build-injector
-	minikube image load --daemon=false --overwrite=true ./bin/injector/injector.tar.gz
-
-minikube-build-handler: docker-build-handler
-	minikube image load --daemon=false --overwrite=true ./bin/handler/handler.tar.gz
-
 venv:
 	test -d .venv || python3 -m venv .venv
 	source .venv/bin/activate; pip install -qr tasks/requirements.txt
@@ -305,11 +302,11 @@ generate-chaosdogfood-protobuf:
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
 	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
 
-clean-mock:
+clean-mocks:
 	find . -type file -name "*mock*.go" -not -path "./vendor/*" -exec rm {} \;
 	rm -rf mocks/
 
-generate-mock: clean-mock
+generate-mocks: clean-mocks
 	go install github.com/vektra/mockery/v2@v2.25.0
 	go generate ./...
 # First re-generate header, it should complain as just (re)generated mocks does not contains them
