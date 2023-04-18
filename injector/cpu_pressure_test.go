@@ -5,6 +5,8 @@
 package injector_test
 
 import (
+	"time"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
@@ -98,24 +100,28 @@ var _ = Describe("Failure", func() {
 				stresserManager.EXPECT().TrackInjectorCores(mock.Anything, mock.Anything).Return(cpuset.NewCPUSet(0, 1), nil)
 			})
 
-			It("should join target cgroup subsystems from the main process", func() {
-				cgroupManager.AssertCalled(GinkgoT(), "Join", 42)
-			})
+			It("should call the expected functions and args", func() {
+				By("should join target cgroup subsystems from the main process", func() {
+					cgroupManager.AssertCalled(GinkgoT(), "Join", 42)
+				})
 
-			It("should prioritize the current process", func() {
-				manager.AssertCalled(GinkgoT(), "Prioritize")
-			})
+				By("should prioritize the current process", func() {
+					manager.AssertCalled(GinkgoT(), "Prioritize")
+				})
 
-			It("should run the stress on one core", func() {
-				stresser.AssertNumberOfCalls(GinkgoT(), "Stress", 1)
-			})
+				By("should run the stress on one core", func() {
+					// The Stress happens async, so we need to give it time to guarantee. This sleep will be unnecessary within a month when we have updated cpu_pressure's approach
+					time.Sleep(time.Second * 2)
+					stresser.AssertNumberOfCalls(GinkgoT(), "Stress", 1)
+				})
 
-			It("should record core and StresserPID in StresserManager", func() {
-				stresserManager.AssertCalled(GinkgoT(), "TrackCoreAlreadyStressed", 1, 666)
-			})
+				By("should record core and StresserPID in StresserManager", func() {
+					stresserManager.AssertCalled(GinkgoT(), "TrackCoreAlreadyStressed", 1, 666)
+				})
 
-			It("should skip a target core that was already stress", func() {
-				stresserManager.AssertNotCalled(GinkgoT(), "TrackCoreAlreadyStressed", 0, mock.Anything)
+				By("should skip a target core that was already stress", func() {
+					stresserManager.AssertNotCalled(GinkgoT(), "TrackCoreAlreadyStressed", 0, mock.Anything)
+				})
 			})
 		})
 
@@ -130,6 +136,7 @@ var _ = Describe("Failure", func() {
 
 			It("should call stresserManager track cores and get new core to apply pressure", func() {
 				// left empty as AfterEach 'AssertExpectations' check all this tests expectations
+				// TODO what AfterEach was this referring to? Is there an implicit one I don't know about?
 			})
 		})
 	})
