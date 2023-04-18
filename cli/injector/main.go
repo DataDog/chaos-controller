@@ -276,7 +276,7 @@ func initConfig() {
 
 		deadline, err = time.Parse(time.RFC3339, deadlineRaw)
 		if err != nil {
-			deadline = time.Now().Add(time.Hour)
+			deadline = time.Now().Add(time.Minute * 5)
 
 			log.Errorw("unable to determine disruption deadline, will self-terminate in one hour instead", "err", err)
 		}
