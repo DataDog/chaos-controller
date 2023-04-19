@@ -201,7 +201,7 @@ func initConfig() {
 	}
 
 	// assign to the pointer to level the new value to persist it after this method
-	*(&disruptionArgs.Level) = chaostypes.DisruptionLevel(disruptionLevelRaw)
+	disruptionArgs.Level = chaostypes.DisruptionLevel(disruptionLevelRaw)
 
 	switch disruptionArgs.Level {
 	case chaostypes.DisruptionLevelPod:
