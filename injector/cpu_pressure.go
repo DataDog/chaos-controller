@@ -35,7 +35,7 @@ type CPUPressureInjectorConfig struct {
 func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInjectorConfig) (Injector, error) {
 	// create stresser
 	if config.Stresser == nil {
-		config.Stresser = stress.NewCPU(config.DryRun)
+		config.Stresser = stress.NewCPU(config.Disruption.DryRun)
 	}
 
 	if config.StresserExit == nil {
@@ -44,7 +44,7 @@ func NewCPUPressureInjector(spec v1beta1.CPUPressureSpec, config CPUPressureInje
 
 	// create process manager
 	if config.ProcessManager == nil {
-		config.ProcessManager = process.NewManager(config.DryRun)
+		config.ProcessManager = process.NewManager(config.Disruption.DryRun)
 	}
 
 	if config.StresserManager == nil {

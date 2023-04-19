@@ -44,17 +44,17 @@ type DNSDisruptionInjectorConfig struct {
 func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisruptionInjectorConfig) (Injector, error) {
 	var err error
 	if config.IPTables == nil {
-		config.IPTables, err = network.NewIPTables(config.Log, config.DryRun)
+		config.IPTables, err = network.NewIPTables(config.Log, config.Disruption.DryRun)
 	}
 
 	if config.FileWriter == nil {
 		config.FileWriter = standardFileWriter{
-			dryRun: config.DryRun,
+			dryRun: config.Disruption.DryRun,
 		}
 	}
 
 	if config.PythonRunner == nil {
-		config.PythonRunner = newStandardPythonRunner(config.DryRun, config.Log)
+		config.PythonRunner = newStandardPythonRunner(config.Disruption.DryRun, config.Log)
 	}
 
 	return &DNSDisruptionInjector{
@@ -92,20 +92,20 @@ func (i *DNSDisruptionInjector) Inject() error {
 
 		cmd := []string{"/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf"}
 
-		if i.config.DisruptionName != "" {
-			cmd = append(cmd, "--log-context-disruption-name", i.config.DisruptionName)
+		if i.config.Disruption.DisruptionName != "" {
+			cmd = append(cmd, "--log-context-disruption-name", i.config.Disruption.DisruptionName)
 		}
 
-		if i.config.DisruptionNamespace != "" {
-			cmd = append(cmd, "--log-context-disruption-namespace", i.config.DisruptionNamespace)
+		if i.config.Disruption.DisruptionNamespace != "" {
+			cmd = append(cmd, "--log-context-disruption-namespace", i.config.Disruption.DisruptionNamespace)
 		}
 
-		if i.config.TargetName != "" {
-			cmd = append(cmd, "--log-context-target-name", i.config.TargetName)
+		if i.config.Disruption.TargetName != "" {
+			cmd = append(cmd, "--log-context-target-name", i.config.Disruption.TargetName)
 		}
 
-		if i.config.TargetNodeName != "" {
-			cmd = append(cmd, "--log-context-target-node-name", i.config.TargetNodeName)
+		if i.config.Disruption.TargetNodeName != "" {
+			cmd = append(cmd, "--log-context-target-node-name", i.config.Disruption.TargetNodeName)
 		}
 
 		if i.config.DNS.DNSServer != "" {
@@ -139,8 +139,8 @@ func (i *DNSDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to create new iptables rule: %w", err)
 	}
 
-	if i.config.Level == chaostypes.DisruptionLevelPod {
-		if i.config.OnInit {
+	if i.config.Disruption.Level == chaostypes.DisruptionLevelPod {
+		if i.config.Disruption.OnInit {
 			// Redirect all dns related traffic in the pod to CHAOS-DNS
 			if err := i.config.IPTables.Intercept("udp", "53", "", "", ""); err != nil {
 				return fmt.Errorf("unable to create new iptables rule: %w", err)
@@ -167,7 +167,7 @@ func (i *DNSDisruptionInjector) Inject() error {
 		}
 	}
 
-	if i.config.Level == chaostypes.DisruptionLevelNode {
+	if i.config.Disruption.Level == chaostypes.DisruptionLevelNode {
 		// Re-route all pods under node except for injector pod itself
 		if err := i.config.IPTables.Intercept("udp", "53", "", "", podIP); err != nil {
 			return fmt.Errorf("unable to create new iptables rule: %w", err)
