@@ -1,3 +1,120 @@
-inpackage: True
+all: True
+case: underscore
+dir: mocks
 disable-version-string: True
+filename: "{{.PackageName}}_{{.InterfaceNameSnake}}.go"
+mockname: "{{.InterfaceName}}Mock"
+outpkg: mocks
+recursive: True
 with-expecter: True
+
+# How to generate mocks from most preferred to least preferred:
+# mocks/ -- isolate mocks and ease usage of all mocks, do not clutter runtime packages with mocks
+# - if several interfaces with the same name exists in several packages, rename ALL interfaces through `mockname`
+# - if interface is private, rename generated mock through `mockname` to export it
+# <package>/<interface_mock_test> -- interface use package types, mocks are used INSIDE <package>, does not clutter runtime package
+# - provide `dir="{{.InterfaceDir}}"` `inpackage=True` `filename: "{{.InterfaceNameSnake}}_mock_test.go"`
+# <package>/<interface_mock> -- interface use package types, mocks are used OUTSIDE <package>, clutter runtime package
+# - provide `dir="{{.InterfaceDir}}"` `inpackage=True` `filename: "{{.InterfaceNameSnake}}_mock.go"`
+
+# If a new package is created it should be added in `packages` below to have it's interfaces generated
+
+packages:
+  github.com/DataDog/chaos-controller/api: {}
+  github.com/DataDog/chaos-controller/api/v1beta1: {}
+  github.com/DataDog/chaos-controller/cgroup:
+    interfaces:
+      Manager: # needed because we have several Manager interface
+        config:
+          mockname: CGroupManagerMock
+  github.com/DataDog/chaos-controller/cli/chaosli: {}
+  github.com/DataDog/chaos-controller/cli/chaosli/cmd: {}
+  github.com/DataDog/chaos-controller/cli/handler: {}
+  github.com/DataDog/chaos-controller/cli/injector: {}
+  github.com/DataDog/chaos-controller/clientset/v1beta1: {}
+  github.com/DataDog/chaos-controller/cloudservice:
+    interfaces:
+      CloudProviderIPRangeManager: # needed because uses v1beta1 package, hence need to be generated inside it's source package to avoid cycle references in v1beta1 that uses mocks
+        config:
+          inpackage: True
+          dir: "{{.InterfaceDir}}"
+          filename: "{{.InterfaceNameSnake}}_mock_test.go"
+  github.com/DataDog/chaos-controller/cloudservice/aws: {}
+  github.com/DataDog/chaos-controller/cloudservice/datadog: {}
+  github.com/DataDog/chaos-controller/cloudservice/gcp: {}
+  github.com/DataDog/chaos-controller/cloudservice/types: {}
+  github.com/DataDog/chaos-controller/container:
+    interfaces:
+      Runtime: # needed because we have several Runtime interface
+        config:
+          mockname: ContainerRuntimeMock
+  github.com/DataDog/chaos-controller/controllers: {}
+  github.com/DataDog/chaos-controller/cpuset: {}
+  github.com/DataDog/chaos-controller/ddmark:
+    interfaces:
+      Client: # needed because interface contains v1beta1.Disruption that would cause cycle references if used inside mocks (because ddmark is used by v1beta1)
+        config:
+          inpackage: True
+          dir: "{{.InterfaceDir}}"
+          filename: "{{.InterfaceNameSnake}}_mock.go"
+  github.com/DataDog/chaos-controller/disk: {}
+  github.com/DataDog/chaos-controller/dogfood/chaosdogfood: {}
+  github.com/DataDog/chaos-controller/dogfood/client: {}
+  github.com/DataDog/chaos-controller/dogfood/server: {}
+  github.com/DataDog/chaos-controller/ebpf:
+    config:
+      recursive: False # required because folder below exclude all go files
+  github.com/DataDog/chaos-controller/env: {}
+  github.com/DataDog/chaos-controller/eventbroadcaster: {}
+  github.com/DataDog/chaos-controller/eventnotifier: {}
+  github.com/DataDog/chaos-controller/eventnotifier/datadog: {}
+  github.com/DataDog/chaos-controller/eventnotifier/http: {}
+  github.com/DataDog/chaos-controller/eventnotifier/noop: {}
+  github.com/DataDog/chaos-controller/eventnotifier/slack:
+    interfaces:
+      slackNotifier: # needed because interface is private
+        config:
+          mockname: SlackNotifierMock
+  github.com/DataDog/chaos-controller/eventnotifier/types: {}
+  github.com/DataDog/chaos-controller/eventnotifier/utils: {}
+  github.com/DataDog/chaos-controller/grpc: {}
+  github.com/DataDog/chaos-controller/grpc/calculations: {}
+  github.com/DataDog/chaos-controller/grpc/disruptionlistener: {}
+  github.com/DataDog/chaos-controller/injector:
+    interfaces:
+      Injector: # needed because interface uses package types, hence should not be implemented in mocks to avoid import cycles
+        config:
+          inpackage: True
+          dir: "{{.InterfaceDir}}"
+          filename: "{{.InterfaceNameSnake}}_mock_test.go"
+      command: # needed because interface is private
+        config:
+          mockname: CommandMock
+  github.com/DataDog/chaos-controller/log: {}
+  github.com/DataDog/chaos-controller/metrics: {}
+  github.com/DataDog/chaos-controller/metrics/datadog: {}
+  github.com/DataDog/chaos-controller/metrics/noop: {}
+  github.com/DataDog/chaos-controller/metrics/types: {}
+  github.com/DataDog/chaos-controller/netns:
+    interfaces:
+      Manager: # needed because we have several Manager interface
+        config:
+          mockname: NetNSManagerMock
+  github.com/DataDog/chaos-controller/network:
+    config: # needed because most of interfaces in this package uses package types
+      inpackage: True
+      dir: "{{.InterfaceDir}}"
+      filename: "{{.InterfaceNameSnake}}_mock.go"
+  github.com/DataDog/chaos-controller/process:
+    interfaces:
+      Manager: # needed because we have several Manager interface
+        config:
+          mockname: ProcessManagerMock
+      Runtime: # needed because we have several Runtime interface
+        config:
+          mockname: ProcessRuntimeMock
+  github.com/DataDog/chaos-controller/safemode: {}
+  github.com/DataDog/chaos-controller/targetselector: {}
+  github.com/DataDog/chaos-controller/types: {}
+  github.com/DataDog/chaos-controller/utils: {}
+  github.com/DataDog/chaos-controller/webhook: {}

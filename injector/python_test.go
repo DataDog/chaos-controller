@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
@@ -24,7 +25,7 @@ func Test_standardPythonRunner_RunPython(t *testing.T) {
 	tests := []struct {
 		name    string
 		dryRun  bool
-		expect  func(*testing.T, *mockCommand, *observer.ObservedLogs)
+		expect  func(*testing.T, *mocks.CommandMock, *observer.ObservedLogs)
 		wantErr string
 	}{
 		{
@@ -33,16 +34,16 @@ func Test_standardPythonRunner_RunPython(t *testing.T) {
 		},
 		{
 			name: "when starts returns an error, error is returned to the caller",
-			expect: func(t *testing.T, mockCommand *mockCommand, logs *observer.ObservedLogs) {
-				mockCommand.EXPECT().Start().Return(errors.New("start some error"))
+			expect: func(t *testing.T, commandMock *mocks.CommandMock, logs *observer.ObservedLogs) {
+				commandMock.EXPECT().Start().Return(errors.New("start some error"))
 			},
 			wantErr: "unable to start command, encountered error (start some error) using args ([/usr/local/bin/some_python.py -v -i]): ",
 		},
 		{
 			name: "when wait error immediately, error is returned to the caller",
-			expect: func(t *testing.T, mockCommand *mockCommand, logs *observer.ObservedLogs) {
-				mockCommand.EXPECT().Start().Return(nil)
-				mockCommand.EXPECT().Wait().Return(errors.New("wait immediate error"))
+			expect: func(t *testing.T, commandMock *mocks.CommandMock, logs *observer.ObservedLogs) {
+				commandMock.EXPECT().Start().Return(nil)
+				commandMock.EXPECT().Wait().Return(errors.New("wait immediate error"))
 
 				t.Cleanup(func() {
 					logEntries := logs.All()
@@ -54,9 +55,9 @@ func Test_standardPythonRunner_RunPython(t *testing.T) {
 		},
 		{
 			name: "when wait 100ms then return an error, error is returned to the caller",
-			expect: func(t *testing.T, mockCommand *mockCommand, logs *observer.ObservedLogs) {
-				mockCommand.EXPECT().Start().Return(nil)
-				mockCommand.EXPECT().Wait().Call.Return(func() error {
+			expect: func(t *testing.T, commandMock *mocks.CommandMock, logs *observer.ObservedLogs) {
+				commandMock.EXPECT().Start().Return(nil)
+				commandMock.EXPECT().Wait().Call.Return(func() error {
 					return fmt.Errorf("wait early error")
 				}).WaitUntil(time.After(100 * time.Millisecond))
 
@@ -73,9 +74,9 @@ func Test_standardPythonRunner_RunPython(t *testing.T) {
 		},
 		{
 			name: "when wait 500ms then return no error want no error and no additional logs",
-			expect: func(t *testing.T, mockCommand *mockCommand, logs *observer.ObservedLogs) {
-				mockCommand.EXPECT().Start().Return(nil)
-				mockCommand.EXPECT().Wait().Call.Return(func() error {
+			expect: func(t *testing.T, commandMock *mocks.CommandMock, logs *observer.ObservedLogs) {
+				commandMock.EXPECT().Start().Return(nil)
+				commandMock.EXPECT().Wait().Call.Return(func() error {
 					return nil
 				}).WaitUntil(time.After(500 * time.Millisecond))
 
@@ -91,9 +92,9 @@ func Test_standardPythonRunner_RunPython(t *testing.T) {
 		},
 		{
 			name: "when wait 500ms then return an error want no error returned and an error log (later)",
-			expect: func(t *testing.T, mockCommand *mockCommand, logs *observer.ObservedLogs) {
-				mockCommand.EXPECT().Start().Return(nil)
-				mockCommand.EXPECT().Wait().Call.Return(func() error {
+			expect: func(t *testing.T, commandMock *mocks.CommandMock, logs *observer.ObservedLogs) {
+				commandMock.EXPECT().Start().Return(nil)
+				commandMock.EXPECT().Wait().Call.Return(func() error {
 					return errors.New("wait late error")
 				}).WaitUntil(time.After(500 * time.Millisecond))
 
@@ -118,7 +119,7 @@ func Test_standardPythonRunner_RunPython(t *testing.T) {
 			z := zap.New(observer)
 			logger := z.Sugar()
 
-			mockCommand := newMockCommand(t)
+			commandMock := mocks.NewCommandMock(t)
 
 			args := []string{"/usr/local/bin/some_python.py", "-v", "-i"}
 
@@ -126,13 +127,13 @@ func Test_standardPythonRunner_RunPython(t *testing.T) {
 				dryRun: tt.dryRun,
 				log:    logger,
 				newCmd: func(out, err io.Writer, args ...string) command {
-					mockCommand.EXPECT().String().Return(strings.Join(args, " "))
+					commandMock.EXPECT().String().Return(strings.Join(args, " "))
 
 					if tt.expect != nil {
-						tt.expect(t, mockCommand, logs)
+						tt.expect(t, commandMock, logs)
 					}
 
-					return mockCommand
+					return commandMock
 				},
 				maxErrorLines:  1,
 				maxWaitCommand: 250 * time.Millisecond,

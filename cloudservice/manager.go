@@ -220,5 +220,14 @@ func (s *CloudServicesProvidersManager) requestIPRangesFromProvider(url string) 
 		return nil, err
 	}
 
-	return io.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = response.Body.Close(); err != nil {
+		return nil, err
+	}
+
+	return body, nil
 }

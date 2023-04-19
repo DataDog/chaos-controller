@@ -26,8 +26,6 @@ type DiskFailureInjectorConfig struct {
 	Cmd BPFDiskFailureCommand
 }
 
-//go:generate mockery --name=BPFDiskFailureCommand --filename=ebpf_disk_failure_mock.go
-
 type BPFDiskFailureCommand interface {
 	Run(pid int, path string) error
 }
@@ -88,7 +86,7 @@ func (i *DiskFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 
 func (i *DiskFailureInjector) Inject() (err error) {
 	pid := 0
-	if i.config.Level == types.DisruptionLevelPod {
+	if i.config.Disruption.Level == types.DisruptionLevelPod {
 		pid = int(i.config.Config.TargetContainer.PID())
 	}
 

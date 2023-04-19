@@ -54,7 +54,7 @@ type networkDisruptionInjector struct {
 type NetworkDisruptionInjectorConfig struct {
 	Config
 	TrafficController network.TrafficController
-	Iptables          network.Iptables
+	IPTables          network.IPTables
 	NetlinkAdapter    network.NetlinkAdapter
 	DNSClient         network.DNSClient
 	State             DisruptionState
@@ -94,15 +94,15 @@ type serviceWatcher struct {
 func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config NetworkDisruptionInjectorConfig) (Injector, error) {
 	var err error
 
-	if config.Iptables == nil {
-		config.Iptables, err = network.NewIptables(config.Log, config.DryRun)
+	if config.IPTables == nil {
+		config.IPTables, err = network.NewIPTables(config.Log, config.Disruption.DryRun)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if config.TrafficController == nil {
-		config.TrafficController = network.NewTrafficController(config.Log, config.DryRun)
+		config.TrafficController = network.NewTrafficController(config.Log, config.Disruption.DryRun)
 	}
 
 	if config.NetlinkAdapter == nil {
@@ -175,14 +175,14 @@ func (i *networkDisruptionInjector) Inject() error {
 	// add a conntrack reference to enable it
 	// it consists of adding a noop iptables rule loading the conntrack module so it enables connection tracking in the targeted network namespace
 	// cf. https://thermalcircle.de/doku.php?id=blog:linux:connection_tracking_1_modules_and_hooks for more information on how conntrack works outside of the main network namespace
-	if err := i.config.Iptables.LogConntrack(); err != nil {
+	if err := i.config.IPTables.LogConntrack(); err != nil {
 		return fmt.Errorf("error injecting the conntrack reference iptables rule: %w", err)
 	}
 
 	// mark all packets created by the targeted container with the classifying mark
-	if i.config.Level == types.DisruptionLevelPod && !i.config.OnInit {
+	if i.config.Disruption.Level == types.DisruptionLevelPod && !i.config.Disruption.OnInit {
 		if i.config.Cgroup.IsCgroupV2() { // cgroup v2 can rely on the single cgroup hierarchy relative path to mark packets
-			if err := i.config.Iptables.MarkCgroupPath(i.config.Cgroup.RelativePath(""), types.InjectorCgroupClassID); err != nil {
+			if err := i.config.IPTables.MarkCgroupPath(i.config.Cgroup.RelativePath(""), types.InjectorCgroupClassID); err != nil {
 				return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
 			}
 		} else { // cgroup v1 needs to mark packets through the net_cls cgroup controller of the container
@@ -190,7 +190,7 @@ func (i *networkDisruptionInjector) Inject() error {
 				return fmt.Errorf("error injecting packet marking in net_cls cgroup: %w", err)
 			}
 
-			if err := i.config.Iptables.MarkClassID(types.InjectorCgroupClassID, types.InjectorCgroupClassID); err != nil {
+			if err := i.config.IPTables.MarkClassID(types.InjectorCgroupClassID, types.InjectorCgroupClassID); err != nil {
 				return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
 			}
 		}
@@ -230,7 +230,7 @@ func (i *networkDisruptionInjector) Clean() error {
 	}
 
 	// remove the conntrack reference to disable conntrack in the network namespace
-	if err := i.config.Iptables.Clear(); err != nil {
+	if err := i.config.IPTables.Clear(); err != nil {
 		return fmt.Errorf("error cleaning iptables rules and chain: %w", err)
 	}
 
@@ -360,7 +360,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// create a second qdisc to filter packets coming from this specific pod processes only
 	// if the disruption is applied on init, we consider that some more containers may be created within
 	// the pod so we can't scope the disruption to a specific set of containers
-	if i.config.Level == types.DisruptionLevelPod && !i.config.OnInit {
+	if i.config.Disruption.Level == types.DisruptionLevelPod && !i.config.Disruption.OnInit {
 		// create second prio with only 2 bands to filter traffic with a specific mark
 		if err := i.config.TrafficController.AddPrio(interfaces, "1:4", "2:", 2, [16]uint32{}); err != nil {
 			return fmt.Errorf("can't create a new qdisc: %w", err)
@@ -393,7 +393,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// depending on the network configuration, only one of those filters can be useful but we must add all of them
 	// those filters are only added if the related interface has been impacted by a disruption so far
 	// NOTE: those filters must be added after every other filters applied to the interface so they are used first
-	if i.config.Level == types.DisruptionLevelPod {
+	if i.config.Disruption.Level == types.DisruptionLevelPod {
 		// this filter allows the pod to communicate with the default route gateway IP
 		for _, defaultRoute := range defaultRoutes {
 			gatewayIP := &net.IPNet{
@@ -410,7 +410,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nodeIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 		}
-	} else if i.config.Level == types.DisruptionLevelNode {
+	} else if i.config.Disruption.Level == types.DisruptionLevelNode {
 		// GENERIC SAFEGUARDS
 		// allow SSH connections on all interfaces (port 22/tcp)
 		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nil, 22, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
