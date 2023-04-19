@@ -126,13 +126,18 @@ func (h DisruptionTargetWatcherHandler) OnChangeHandleNotifierSink(oldPod, newPo
 		// Send to disruption, broadcast to notifiers
 		for _, event := range lastEvents {
 			if event.Type == eventReason {
-				h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, fmt.Sprintf(chaosv1beta1.Events[eventReason].OnDisruptionTemplateMessage, name))
+
+				h.reconciler.Recorder.AnnotatedEventf(h.disruption, map[string]string{
+					"target_name": name,
+				}, eventType, eventReason, fmt.Sprintf(chaosv1beta1.Events[eventReason].OnDisruptionTemplateMessage, name))
 
 				return
 			}
 		}
 
-		h.reconciler.Recorder.Event(h.disruption, eventType, eventReason, chaosv1beta1.Events[eventReason].OnDisruptionTemplateAggMessage)
+		h.reconciler.Recorder.AnnotatedEventf(h.disruption, map[string]string{
+			"target_name": name,
+		}, eventType, eventReason, chaosv1beta1.Events[eventReason].OnDisruptionTemplateAggMessage)
 	}
 }
 
