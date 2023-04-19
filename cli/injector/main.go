@@ -201,7 +201,7 @@ func initConfig() {
 	}
 
 	// assign to the pointer to level the new value to persist it after this method
-	*(&disruptionArgs.Level) = chaostypes.DisruptionLevel(disruptionLevelRaw)
+	disruptionArgs.Level = chaostypes.DisruptionLevel(disruptionLevelRaw)
 
 	switch disruptionArgs.Level {
 	case chaostypes.DisruptionLevelPod:
@@ -454,6 +454,7 @@ func clean(kind string, sendToMetrics bool, reinjectionClean bool) bool {
 }
 
 // pulse pulse disruptions (injection and cleaning)
+// nolint: unparam,staticcheck
 func pulse(isInjected *bool, sleepDuration *time.Duration, action func(string, bool, bool) bool, cmdName string) (func(string, bool, bool) bool, error) {
 	actionName := ""
 
