@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
@@ -28,7 +29,7 @@ type DisruptionArgs struct {
 	Level                chaostypes.DisruptionLevel
 	Kind                 chaostypes.DisruptionKindName
 	TargetPodIP          string
-	MetricsSink          string
+	Metrics              metricstypes.SinkConfig
 	DisruptionName       string
 	DisruptionNamespace  string
 	TargetName           string
@@ -54,7 +55,7 @@ func AppendArgs(args []string, xargs DisruptionArgs) []string {
 
 	args = append(args,
 		// basic args
-		"--metrics-sink", xargs.MetricsSink,
+		"--metrics-sink-driver", xargs.Metrics.SinkDriver,
 		"--level", string(xargs.Level),
 		"--target-containers", strings.Join(formattedTargetContainers, ","),
 		"--target-pod-ip", xargs.TargetPodIP,
