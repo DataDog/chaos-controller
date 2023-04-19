@@ -14,8 +14,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-//go:generate mockery --name=NetlinkAdapter --filename=netlink_adapter_mock.go
-
 // NetlinkAdapter is an interface being able to read
 // the host network interfaces information
 type NetlinkAdapter interface {
@@ -149,8 +147,6 @@ func (a netlinkAdapter) DefaultRoutes() ([]NetlinkRoute, error) {
 	return defaultRoutes, nil
 }
 
-//go:generate mockery --name=NetlinkLink --filename=netlink_link_mock.go
-
 // NetlinkLink is a host interface
 type NetlinkLink interface {
 	Name() string
@@ -188,8 +184,6 @@ func newNetlinkLink(link netlink.Link) *netlinkLink {
 		txQLen: link.Attrs().TxQLen,
 	}
 }
-
-//go:generate mockery --name=NetlinkRoute --filename=netlink_route_mock.go
 
 // NetlinkRoute is a route attached to a host interface
 type NetlinkRoute interface {

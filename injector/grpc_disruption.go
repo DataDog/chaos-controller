@@ -16,6 +16,7 @@ import (
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	"github.com/DataDog/chaos-controller/types"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // Five Seconds timeout before aborting the attempt to connect to server
@@ -44,7 +45,7 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 	return &GRPCDisruptionInjector{
 		spec:       spec,
 		config:     config,
-		serverAddr: config.TargetPodIP + ":" + strconv.Itoa(spec.Port),
+		serverAddr: config.Disruption.TargetPodIP + ":" + strconv.Itoa(spec.Port),
 		timeout:    connectionTimeout,
 	}
 }
@@ -57,7 +58,7 @@ func (i *GRPCDisruptionInjector) GetDisruptionKind() types.DisruptionKindName {
 func (i *GRPCDisruptionInjector) Inject() error {
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
-	if i.config.DryRun {
+	if i.config.Disruption.DryRun {
 		i.config.Log.Infow("adding dry run mode grpc disruption", "spec", i.spec)
 		return nil
 	}
@@ -95,7 +96,7 @@ func (i *GRPCDisruptionInjector) Clean() error {
 
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
-	if i.config.DryRun {
+	if i.config.Disruption.DryRun {
 		i.config.Log.Infow("removing dry run mode grpc disruption", "spec", i.spec)
 		return nil
 	}
@@ -122,7 +123,7 @@ func (i *GRPCDisruptionInjector) Clean() error {
 
 func (i *GRPCDisruptionInjector) connectToServer() (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{
-		grpc.WithInsecure(), // Future Work: make secure
+		grpc.WithTransportCredentials(insecure.NewCredentials()), // Future Work: make secure
 		grpc.WithBlock(),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
@@ -130,7 +131,6 @@ func (i *GRPCDisruptionInjector) connectToServer() (*grpc.ClientConn, error) {
 	defer cancel()
 
 	conn, err := grpc.DialContext(ctx, i.serverAddr, opts...)
-
 	if err != nil {
 		return nil, errors.New("fail to dial: " + i.serverAddr)
 	}

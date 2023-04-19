@@ -12,33 +12,31 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cgroup"
-	"github.com/DataDog/chaos-controller/container"
-	"github.com/DataDog/chaos-controller/disk"
 	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/mocks"
 )
 
 var _ = Describe("Failure", func() {
 	var (
 		config        DiskPressureInjectorConfig
-		cgroupManager *cgroup.MockManager
-		ctn           *container.MockContainer
-		informer      *disk.MockInformer
+		cgroupManager *mocks.CGroupManagerMock
+		ctn           *mocks.ContainerMock
+		informer      *mocks.InformerMock
 		inj           Injector
 		spec          v1beta1.DiskPressureSpec
 	)
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = cgroup.NewMockManager(GinkgoT())
+		cgroupManager = mocks.NewCGroupManagerMock(GinkgoT())
 		cgroupManager.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// container
-		ctn = container.NewMockContainer(GinkgoT())
+		ctn = mocks.NewContainerMock(GinkgoT())
 
 		// disk informer
-		informer = disk.NewMockInformer(GinkgoT())
+		informer = mocks.NewInformerMock(GinkgoT())
 		informer.EXPECT().Major().Return(8)
 		informer.EXPECT().Source().Return("/dev/sda1")
 

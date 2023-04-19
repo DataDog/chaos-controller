@@ -111,7 +111,6 @@ func (dd DisruptionDuration) MarshalJSON() ([]byte, error) {
 	}
 
 	d, err := time.ParseDuration(string(dd))
-
 	if err != nil {
 		return nil, err
 	}

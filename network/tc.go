@@ -56,8 +56,6 @@ const (
 	tcPriority uint32 = uint32(1000)
 )
 
-//go:generate mockery --name=TrafficController --filename=tc_mock.go
-
 // TrafficController is an interface being able to interact with the host
 // queueing discipline
 type TrafficController interface {
@@ -69,8 +67,6 @@ type TrafficController interface {
 	AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error
 	ClearQdisc(ifaces []string) error
 }
-
-//go:generate mockery --name=tcExecuter --filename=tc_executer_mock.go
 
 type tcExecuter interface {
 	Run(args []string) (exitCode int, stdout string, stderr error)

@@ -18,8 +18,6 @@ type DNSConfig struct {
 	KubeDNS   string
 }
 
-//go:generate mockery --name=DNSClient --filename=dns_mock.go
-
 // DNSClient is a client being able to resolve the given host
 type DNSClient interface {
 	Resolve(host string) ([]net.IP, error)

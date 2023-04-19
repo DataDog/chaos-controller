@@ -49,7 +49,7 @@ executors:
     environment:
       KUBEBUILDER_VERSION: 3.1.0
       KUBEBUILDER_ARCH: amd64
-      GOLANGCI_LINT_VERSION: 1.45.2
+      GOLANGCI_LINT_VERSION: 1.51.0 ## this value should be the same as in the Makefile
       HELM_VERSION: 3.5.4
   golang_large:
     <<: *working_directory
@@ -61,7 +61,7 @@ executors:
     environment:
       KUBEBUILDER_VERSION: 3.1.0
       KUBEBUILDER_ARCH: amd64
-      GOLANGCI_LINT_VERSION: 1.45.2
+      GOLANGCI_LINT_VERSION: 1.51.0
       HELM_VERSION: 3.5.4
   python:
     <<: *working_directory
@@ -102,8 +102,7 @@ jobs:
       - run:
           name: Install golangci-lint tool
           command: |
-            cd /usr/local
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v${GOLANGCI_LINT_VERSION}
+            go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
       - run:
           name: Install helm
           command: |
@@ -196,7 +195,7 @@ jobs:
       - run:
           name: Build and load images
           <<: *working_directory
-          command: make minikube-build-all
+          command: make minikube-load-all
       - run:
           name: Run e2e tests
           <<: *working_directory
