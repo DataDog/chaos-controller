@@ -154,9 +154,6 @@ func main() {
 	pflag.DurationVar(&cfg.Controller.DefaultDuration, "default-duration", time.Hour, "Default duration for a disruption with none specified")
 	handleFatalError(viper.BindPFlag("controller.defaultDuration", pflag.Lookup("default-duration")))
 
-	pflag.StringVar(&cfg.Controller.Metrics.SinkDriver, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
-	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
-
 	pflag.StringVar(&cfg.Controller.Notifiers.Common.ClusterName, "notifiers-common-clustername", "", "Cluster Name for notifiers output")
 	handleFatalError(viper.BindPFlag("controller.notifiers.common.clusterName", pflag.Lookup("notifiers-common-clustername")))
 
@@ -270,6 +267,9 @@ func main() {
 
 	pflag.StringVar(&cfg.Controller.CloudProviders.Datadog.IPRangesURL, "cloud-providers-datadog-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
 	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.ipRangesURL", pflag.Lookup("cloud-providers-datadog-iprangesurl")))
+
+	pflag.StringVar(&cfg.Controller.Metrics.SinkDriver, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
+	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
 
 	pflag.StringVar(&cfg.Controller.Tracer.SinkDriver, "tracer-sink", "noop", "Tracer sink (datadog, or noop)")
 	handleFatalError(viper.BindPFlag("controller.tracer.sink", pflag.Lookup("tracer-sink")))
