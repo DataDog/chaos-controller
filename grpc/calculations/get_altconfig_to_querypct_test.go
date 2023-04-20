@@ -8,7 +8,7 @@ package calculations_test
 import (
 	. "github.com/DataDog/chaos-controller/grpc/calculations"
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -101,7 +101,6 @@ var _ = Describe("get mapping from alterationSpecs to config based on GetPercent
 
 	Context("with one alterations with too few fields specified", func() {
 		It("should fail", func() {
-
 			alterationSpecs = []*pb.AlterationSpec{
 				{
 					ErrorToReturn:    "",

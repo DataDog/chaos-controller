@@ -25,48 +25,6 @@ func (_m *ProcessManagerMock) EXPECT() *ProcessManagerMock_Expecter {
 	return &ProcessManagerMock_Expecter{mock: &_m.Mock}
 }
 
-// Exists provides a mock function with given fields: pid
-func (_m *ProcessManagerMock) Exists(pid int) bool {
-	ret := _m.Called(pid)
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(int) bool); ok {
-		r0 = rf(pid)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
-// ProcessManagerMock_Exists_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Exists'
-type ProcessManagerMock_Exists_Call struct {
-	*mock.Call
-}
-
-// Exists is a helper method to define mock.On call
-//   - pid int
-func (_e *ProcessManagerMock_Expecter) Exists(pid interface{}) *ProcessManagerMock_Exists_Call {
-	return &ProcessManagerMock_Exists_Call{Call: _e.mock.On("Exists", pid)}
-}
-
-func (_c *ProcessManagerMock_Exists_Call) Run(run func(pid int)) *ProcessManagerMock_Exists_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int))
-	})
-	return _c
-}
-
-func (_c *ProcessManagerMock_Exists_Call) Return(_a0 bool) *ProcessManagerMock_Exists_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *ProcessManagerMock_Exists_Call) RunAndReturn(run func(int) bool) *ProcessManagerMock_Exists_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Find provides a mock function with given fields: pid
 func (_m *ProcessManagerMock) Find(pid int) (*os.Process, error) {
 	ret := _m.Called(pid)
@@ -199,48 +157,6 @@ func (_c *ProcessManagerMock_ProcessID_Call) Return(_a0 int) *ProcessManagerMock
 }
 
 func (_c *ProcessManagerMock_ProcessID_Call) RunAndReturn(run func() int) *ProcessManagerMock_ProcessID_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetAffinity provides a mock function with given fields: _a0
-func (_m *ProcessManagerMock) SetAffinity(_a0 []int) error {
-	ret := _m.Called(_a0)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func([]int) error); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// ProcessManagerMock_SetAffinity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAffinity'
-type ProcessManagerMock_SetAffinity_Call struct {
-	*mock.Call
-}
-
-// SetAffinity is a helper method to define mock.On call
-//   - _a0 []int
-func (_e *ProcessManagerMock_Expecter) SetAffinity(_a0 interface{}) *ProcessManagerMock_SetAffinity_Call {
-	return &ProcessManagerMock_SetAffinity_Call{Call: _e.mock.On("SetAffinity", _a0)}
-}
-
-func (_c *ProcessManagerMock_SetAffinity_Call) Run(run func(_a0 []int)) *ProcessManagerMock_SetAffinity_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]int))
-	})
-	return _c
-}
-
-func (_c *ProcessManagerMock_SetAffinity_Call) Return(_a0 error) *ProcessManagerMock_SetAffinity_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *ProcessManagerMock_SetAffinity_Call) RunAndReturn(run func([]int) error) *ProcessManagerMock_SetAffinity_Call {
 	_c.Call.Return(run)
 	return _c
 }

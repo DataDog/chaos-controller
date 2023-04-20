@@ -7,62 +7,85 @@ version: 2.1
 
 commands:
   go_save_cache:
-    description: "Save $GOHOME directory into the cache for the actual revision"
+    description: Save $GOPATH directory as workspace
     steps:
-      - save_cache:
-          key: env-{{ .Revision }}
+      # circleci workspace are meant to be used to share data between jobs
+      # https://circleci.com/docs/workspaces/
+      - persist_to_workspace:
+          # Must be an absolute path, or relative path from working_directory. This is a directory on the container which is
+          # taken to be the root directory of the workspace.
+          root: /home/circleci/go
+          # Must be relative path from root
           paths:
-            - /go
-            - /usr/local/bin/golangci-lint
-            - /usr/local/kubebuilder
-            - /usr/local/bin/helm
+            - .
   go_restore_cache:
-    description: "Restore golang cache"
+    description: Restore golang cache
     steps:
-      - restore_cache:
-          key: env-{{ .Revision }}
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: /home/circleci/go
   python_install_requirements:
-    description: "Install requirements in requirements.txt using pip"
+    description: Install requirements in requirements.txt using pip
     steps:
       - run:
           name: Install Python requirements
           command: pip3 install -r tasks/requirements.txt
   alpine_install_git:
-    description: "Install required dependencies"
+    description: Install required dependencies
     steps:
       - run:
           name: Install git
-          command: apk update && apk add git openssh
+          command: apk add --no-cache git openssh
+  ebpf_builder_save_cache:
+    description: Save ebpf-builder tar for later use
+    parameters:
+      path:
+        type: string
+        default: bin/ebpf-builder/ebpf-builder.tar.gz
+        description: ebpf-builder tar location
+    steps:
+      - run: docker save ebpf-builder-amd64 -o <<parameters.path>>
+      # Here we want to store this for the long term and reuse it in next builds
+      # It aims to speed up the docker build time, like it does already locally
+      # It's safe to reuse as we are caching by using the Dockerfile checksum as part of the key
+      # if key is not found we will fallback to earliest tar available
+      # we will ALWAYS rebuild the image no matter what
+      - save_cache:
+          key: v1-ebpf-builder-{{ checksum "bin/ebpf-builder/Dockerfile" }}
+          paths:
+            - <<parameters.path>>
+  ebpf_builder_restore_cache:
+    description: Restore ebpf-builder tar from cache
+    parameters:
+      path:
+        type: string
+        default: bin/ebpf-builder/ebpf-builder.tar.gz
+        description: ebpf-builder tar location
+    steps:
+      - restore_cache:
+          keys:
+            - v1-ebpf-builder-{{ checksum "bin/ebpf-builder/Dockerfile" }}
+            # if cache for exact version of docker image is not present, then load any most recent one
+            - v1-ebpf-builder-
+      - run: docker load -i <<parameters.path>> || true
 
 templates:
   # sets the working directory to the project path
   working_directory: &working_directory
-    working_directory: /go/src/github.com/DataDog/chaos-controller
+    working_directory: /home/circleci/go/src/github.com/DataDog/chaos-controller
 
 executors:
-  golang:
+  golang: &golang
     <<: *working_directory
     docker:
       # TODO: Publicize the chaos controller ci image to the datadog docker registry
       #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
-      - image: golang:1.18-buster
-    environment:
-      KUBEBUILDER_VERSION: 3.1.0
-      KUBEBUILDER_ARCH: amd64
-      GOLANGCI_LINT_VERSION: 1.51.0 ## this value should be the same as in the Makefile
-      HELM_VERSION: 3.5.4
+      # This is circle ci images, provides default tool installed (like docker) to ease step definition and avoid apt-get/update things
+      # https://circleci.com/docs/circleci-images/#next-gen-language-images
+      - image: cimg/go:1.18
   golang_large:
-    <<: *working_directory
-    docker:
-      # TODO: Publicize the chaos controller ci image to the datadog docker registry
-      #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
-      - image: golang:1.18-buster
-    resource_class: medium+
-    environment:
-      KUBEBUILDER_VERSION: 3.1.0
-      KUBEBUILDER_ARCH: amd64
-      GOLANGCI_LINT_VERSION: 1.51.0
-      HELM_VERSION: 3.5.4
+    <<: *golang
+    resource_class: large
   python:
     <<: *working_directory
     docker:
@@ -72,181 +95,146 @@ executors:
     docker:
       - image: bash:5.0
   ubuntu:
+    <<: *working_directory
     machine:
       image: ubuntu-2004:2022.10.1
+    resource_class: large
 
 jobs:
   # prepares the CI environment by checking out the code,
   # installing a bunch of tools and downloading modules dependencies
   # into the Go home path so we don't have to do it again in other
   # CI jobs
+  # we store binaries in go/bin to ease their usage as it's already in PATH
   prepare-env:
     executor: golang
     steps:
       - checkout
       - run:
-          name: Install kubebuilder
-          command: |
-            cd /usr/local
-            mkdir -p "/usr/local/kubebuilder/bin"
-            curl -L -O "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH}"
-            mv kubebuilder_${KUBEBUILDER_VERSION}_linux_${KUBEBUILDER_ARCH} kubebuilder/bin/
-            export PATH="/usr/local/kubebuilder/bin:${PATH}"
+          name: Install golangci-lint kubebuilder+env helm
+          command: make -j4 install-lint-deps install-kubebuilder install-helm install-controller-gen
       - run:
-          name: Install envtest
-          command: |
-            export ENVTEST_ASSETS_DIR="/usr/local/kubebuilder"
-            mkdir -p ${ENVTEST_ASSETS_DIR}
-            test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.8.3/hack/setup-envtest.sh
-            source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools ${ENVTEST_ASSETS_DIR}; setup_envtest_env ${ENVTEST_ASSETS_DIR};
-      - run:
-          name: Install golangci-lint tool
-          command: |
-            go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
-      - run:
-          name: Install helm
-          command: |
-            cd /usr/local
-            curl -L -O "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz"
-            tar -xvzf helm-v${HELM_VERSION}-linux-amd64.tar.gz
-            mv linux-amd64/helm /usr/local/bin/helm
-            chmod +x /usr/local/bin/helm
-      - run:
-          name: Cache local dependencies
-          command: go mod download
+          name: Install protoc
+          command: make install-protobuf PROTOC_OS=linux
       - go_save_cache
-  # ensures that Go dependencies are up-to-date
-  dependencies:
-    executor: golang
+  # docker build image
+  docker-build:
+    executor: golang_large
+    parameters:
+      target:
+        description: "which target to build"
+        type: string
+    steps:
+      - go_restore_cache
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - when:
+          condition:
+            equal: [injector, << parameters.target >>]
+          steps:
+            - ebpf_builder_restore_cache
+      - run:
+          name: Build docker image for <<parameters.target>>
+          command: make docker-build-<<parameters.target>> USE_VOLUMES=true
+      - when:
+          condition:
+            equal: [injector, << parameters.target >>]
+          steps:
+            - ebpf_builder_save_cache
+      - persist_to_workspace:
+          # Must be an absolute path, or relative path from working_directory. This is a directory on the container which is
+          # taken to be the root directory of the workspace.
+          root: /home/circleci/go
+          # Must be relative path from root
+          paths:
+            - src/github.com/DataDog/chaos-controller/bin/<< parameters.target >>/<< parameters.target >>.tar.gz
+  go-make:
+    executor: <<parameters.executor>>
+    parameters:
+      target:
+        description: "which make target to call"
+        type: string
+      diff-fails:
+        description: "should git diff exit code be checked following ran command"
+        type: boolean
+        default: false
+      executor:
+        type: string
+        default: golang
     steps:
       - go_restore_cache
       - run:
-          name: Ensure dependencies are up-to-date
-          command: |
-            go mod tidy
-            go mod vendor
-            git diff --exit-code
-  # this will fail if changes in packages are checked into git but the updated manifests are not
-  manifests:
-    executor: golang
-    steps:
-      - go_restore_cache
-      - run:
-          name: Ensure manifests are checked into git
-          command: |
-            make manifests
-            git diff --exit-code
-  # vets the code
-  vet:
-    executor: golang
-    steps:
-      - go_restore_cache
-      - run: make vet
-  # formats the code to ensure it complies with Go standards
-  fmt:
-    executor: golang
-    steps:
-      - go_restore_cache
-      - run: make fmt
-  # runs the golangci-lint linters
-  lint:
+          name: run make <<parameters.target>>
+          command: make <<parameters.target>>
+      - when:
+          condition: << parameters.diff-fails >>
+          steps:
+            - run:
+                name: Check diffs following generate
+                command: git diff --exit-code
+  # runs the tests
+  test:
     executor: golang_large
     steps:
       - go_restore_cache
-      - run: make lint
-  # runs the tests
-  test:
-    executor: golang
-    steps:
-      - go_restore_cache
       - run: make test
+      - store_test_results:
+          path: report.xml
   # run e2e tests
   e2e-test:
     executor: ubuntu
     steps:
-      - run:
-          name: Create missing cache directories
-          command: |
-            sudo mkdir -p /go /usr/local/bin /usr/local/kubebuilder
-            sudo chown circleci:circleci /go /usr/local/bin /usr/local/kubebuilder
       - go_restore_cache
       - run:
           name: Wait for Docker Daemon to be up and running
-          command: |
-            for i in 0..9; do
-              docker version
-
-              ret=$?
-              if [ $ret -eq 0 ]; then
-                exit 0
-              fi
-
-              sleep 5
-            done
+          command: timeout 3m /bin/sh -c 'until docker version; do sleep 5; done'
       - run:
           name: Configure Minikube
-          <<: *working_directory
-          command: |
-            make ci-install-minikube
+          command: make ci-install-minikube
       - run:
           name: Install requirements
-          <<: *working_directory
-          command: make controller-gen lima-install-cert-manager KUBECTL="minikube kubectl --"
+          command: make lima-install-cert-manager KUBECTL="minikube kubectl --"
       - run:
           name: Build and load images
-          <<: *working_directory
           command: make minikube-load-all
       - run:
           name: Run e2e tests
-          <<: *working_directory
           command: |
+            export PATH="/home/circleci/go/bin:${PATH}"
             make e2e-test KUBECTL="minikube kubectl --" CLUSTER_NAME="minikube"
           no_output_timeout: 15m
-  # ensures that the file containing 3rd-party licenses is up-to-date
-  third-party-licenses:
+      - store_test_results:
+          path: report.xml
+  python-check:
     executor: python
+    parameters:
+      target:
+        description: "which check to run"
+        type: string
     steps:
       - alpine_install_git
       - checkout
       - python_install_requirements
       - run:
-          name: Ensure 3rd-party licenses are up-to-date
-          command: inv license-check
-      - run: git diff --exit-code
-  # ensures that the license header is present on all the needed files
-  license-header:
-    executor: python
-    steps:
-      - alpine_install_git
-      - checkout
-      - python_install_requirements
+          name: Ensure <<parameters.target>> are up-to-date
+          command: inv <<parameters.target>>
       - run:
-          name: Ensure license header is present
-          command: inv header-check
-  # ensures that the grpc protobuf files genereated by grpc/disruptionlistener/disruptionlistener.proto are up to date
-  disruptionlistener-protobuf:
+          name: Check diffs following generate
+          command: git diff --exit-code
+  protobuf:
     executor: golang
+    parameters:
+      target:
+        description: "which grpc protobuf to generate"
+        type: string
     steps:
-      - checkout
+      - go_restore_cache
       - run:
-          command: |
-            apt-get update
-            apt-get install unzip -y
-            make install-protobuf UNZIP_BINARY=unzip PROTOC_OS=linux
-            make generate-disruptionlistener-protobuf
-      - run: git diff --exit-code ':!go.*'
-  # ensures that the grpc protobuf files genereated by dogfood/chaosdogfood/chaosdogfood.proto are up to date
-  chaosdogfood-protobuf:
-    executor: golang
-    steps:
-      - checkout
+          name: ensures that the grpc protobuf files genereated by dogfood/<<parameters.target>>/<<parameters.target>>.proto are up to date
+          command: make generate-<<parameters.target>>-protobuf
       - run:
-          command: |
-            apt-get update
-            apt-get install unzip -y
-            make install-protobuf UNZIP_BINARY=unzip PROTOC_OS=linux
-            make generate-chaosdogfood-protobuf
-      - run: git diff --exit-code ':!go.*'
+          name: Check diffs following generate
+          command: git diff --exit-code ':!go.*'
   # runs a spellcheck job on documentation for
   doc-spellcheck:
     docker:
@@ -256,36 +244,70 @@ jobs:
       - run:
           name: Spell check
           command: |
-            mdspell --report --en-us --ignore-numbers --ignore-acronyms $(find . -name vendor -prune -o -name '*.md' -print) || echo "please run `make spellcheck` for local testing"
+            mdspell --report --en-us --ignore-numbers --ignore-acronyms $(find . -name vendor -prune -o -name '*.md' -print) || echo "please run 'make spellcheck' for local testing"
 
 workflows:
   version: 2
   test_and_build:
     jobs:
       - prepare-env
-      - dependencies:
-          requires:
-            - prepare-env
-      - manifests:
-          requires:
-            - prepare-env
-      - vet:
-          requires:
-            - prepare-env
-      - fmt:
-          requires:
-            - prepare-env
-      - lint:
-          requires:
-            - prepare-env
+      - docker-build:
+          name: docker-build-injector
+          target: injector
+          requires: [prepare-env]
+      - docker-build:
+          name: docker-build-manager
+          target: manager
+          requires: [prepare-env]
+      - docker-build:
+          name: docker-build-handler
+          target: handler
+          requires: [prepare-env]
+      - go-make:
+          name: dependencies
+          target: godeps
+          diff-fails: true
+          requires: [prepare-env]
+      - go-make:
+          name: manifests
+          target: manifests
+          diff-fails: true
+          requires: [prepare-env]
+      - go-make:
+          name: vet
+          target: vet
+          executor: golang_large
+          requires: [prepare-env]
+      - go-make:
+          name: fmt
+          target: fmt
+          requires: [prepare-env]
+      - go-make:
+          name: lint
+          target: lint
+          executor: golang_large
+          requires: [prepare-env]
       - test:
-          requires:
-            - prepare-env
+          name: test
+          requires: [prepare-env]
       - e2e-test:
+          name: e2e-test
           requires:
-            - prepare-env
-      - third-party-licenses
-      - license-header
-      - disruptionlistener-protobuf
-      - chaosdogfood-protobuf
+            - docker-build-injector
+            - docker-build-manager
+            - docker-build-handler
+      - python-check:
+          name: third-party-licenses
+          target: license-check
+      - python-check:
+          name: license-header
+          target: header-check
+      - protobuf:
+          name: generate-disruptionlistener-protos
+          target: disruptionlistener
+          requires: [prepare-env]
+      - protobuf:
+          name: generate-chaosdogfood-protos
+          target: chaosdogfood
+          requires: [prepare-env]
       - doc-spellcheck

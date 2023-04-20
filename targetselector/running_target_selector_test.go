@@ -12,7 +12,7 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/types"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -108,19 +108,27 @@ func (f fakeClient) SubResource(subResource string) client.SubResourceClient {
 	return nil
 }
 
-var runningPod1 *corev1.Pod
-var runningPod2 *corev1.Pod
-var failedPod *corev1.Pod
-var pendingPod *corev1.Pod
+var (
+	runningPod1 *corev1.Pod
+	runningPod2 *corev1.Pod
+	failedPod   *corev1.Pod
+	pendingPod  *corev1.Pod
+)
 
-var mixedStatusPods []corev1.Pod
-var twoPods []corev1.Pod
+var (
+	mixedStatusPods []corev1.Pod
+	twoPods         []corev1.Pod
+)
 
-var runningNode *corev1.Node
-var failedNode *corev1.Node
+var (
+	runningNode *corev1.Node
+	failedNode  *corev1.Node
+)
 
-var justRunningNodes []corev1.Node
-var mixedNodes []corev1.Node
+var (
+	justRunningNodes []corev1.Node
+	mixedNodes       []corev1.Node
+)
 
 var _ = Describe("Helpers", func() {
 	var c fakeClient

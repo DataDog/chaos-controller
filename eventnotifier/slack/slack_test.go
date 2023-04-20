@@ -12,7 +12,7 @@ import (
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/slack-go/slack"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -213,8 +213,7 @@ func TestNotifier_Notify(t *testing.T) {
 
 			slackClient := mocks.NewSlackNotifierMock(t)
 
-			logger, err := zap.NewDevelopment()
-			require.NoError(err)
+			logger := zaptest.NewLogger(t)
 
 			n := &Notifier{
 				client: slackClient,
