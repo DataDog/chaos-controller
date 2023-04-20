@@ -165,5 +165,9 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		return fmt.Errorf("http notifier: receiving %d status code from sent notification", res.StatusCode)
 	}
 
+	if err = res.Body.Close(); err != nil {
+		return fmt.Errorf("http notifier: error when sending notification: %s", err.Error())
+	}
+
 	return nil
 }

@@ -154,7 +154,7 @@ func explainDiskPressure(spec v1beta1.DisruptionSpec) {
 func explainDNS(spec v1beta1.DisruptionSpec) {
 	dns := spec.DNS
 
-	if dns == nil || len(dns) == 0 {
+	if len(dns) == 0 {
 		return
 	}
 

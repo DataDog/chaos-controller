@@ -16,8 +16,8 @@ import (
 var _ = Describe("Tc", func() {
 	var (
 		tcRunner          tc
-		tcExecuter        *mockTcExecuter
-		tcExecuterRunCall *mockTcExecuter_Run_Call
+		tcExecuter        *tcExecuterMock
+		tcExecuterRunCall *tcExecuterMock_Run_Call
 		ifaces            []string
 		parent            string
 		handle            string
@@ -37,7 +37,7 @@ var _ = Describe("Tc", func() {
 
 	BeforeEach(func() {
 		// fake command executer
-		tcExecuter = newMockTcExecuter(GinkgoT())
+		tcExecuter = newTcExecuterMock(GinkgoT())
 		tcExecuterRunCall = tcExecuter.EXPECT().Run(mock.Anything).Return(0, "", nil)
 
 		// tc runner

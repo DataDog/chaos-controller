@@ -6,6 +6,9 @@
 package injector
 
 import (
+	"time"
+
+	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/metrics"
@@ -34,17 +37,13 @@ type Injector interface {
 
 // Config represents a generic injector config
 type Config struct {
-	DryRun          bool
-	OnInit          bool
-	Log             *zap.SugaredLogger
-	MetricsSink     metrics.Sink
-	Kind            types.DisruptionKindName
-	Level           types.DisruptionLevel
-	TargetContainer container.Container
-	TargetPodIP     string
-	TargetNodeName  string
-	Cgroup          cgroup.Manager
-	Netns           netns.Manager
-	K8sClient       kubernetes.Interface
-	DNS             network.DNSConfig
+	Log                *zap.SugaredLogger
+	MetricsSink        metrics.Sink
+	TargetContainer    container.Container
+	DisruptionDeadline time.Time
+	Cgroup             cgroup.Manager
+	Netns              netns.Manager
+	K8sClient          kubernetes.Interface
+	DNS                network.DNSConfig
+	Disruption         chaosapi.DisruptionArgs
 }

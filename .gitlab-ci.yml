@@ -42,7 +42,7 @@ ci-image:
 
 # main make build
 build:make:
-  <<: *docker-runner
+  <<: *docker-hub-login
   stage: build
   when: always
   variables:
