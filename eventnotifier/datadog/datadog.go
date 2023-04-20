@@ -7,6 +7,7 @@ package datadog
 
 import (
 	"os"
+	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
@@ -52,27 +53,42 @@ func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverDatadog)
 }
 
-func (n *Notifier) buildDatadogEventTags(dis v1beta1.Disruption) {
+func (n *Notifier) buildDatadogEventTags(dis v1beta1.Disruption, event corev1.Event) []string {
+	additionalTags := []string{}
+
 	if team := dis.Spec.Selector.Get("team"); team != "" {
-		n.client.Tags = append(n.client.Tags, "team:"+team)
+		additionalTags = append(additionalTags, "team:"+team)
 	}
 
-	if service := dis.Spec.Selector.Get("app"); service != "" {
-		n.client.Tags = append(n.client.Tags, "service:"+service)
+	if service := dis.Spec.Selector.Get("service"); service != "" {
+		additionalTags = append(additionalTags, "service:"+service)
 	}
+
+	if app := dis.Spec.Selector.Get("app"); app != "" {
+		additionalTags = append(additionalTags, "app:"+app)
+	}
+
+	additionalTags = append(additionalTags, "disruption_name:"+dis.Name)
+
+	if targetName, ok := event.Annotations["target_name"]; ok {
+		additionalTags = append(additionalTags, "target_name:"+targetName)
+	}
+
+	return additionalTags
 }
 
-func (n *Notifier) sendEvent(headerText, bodyText string, alertType statsd.EventAlertType) error {
+func (n *Notifier) sendEvent(headerText, bodyText string, alertType statsd.EventAlertType, tags []string) error {
 	event := statsd.Event{
 		Title:     headerText,
 		Text:      bodyText,
 		AlertType: alertType,
+		Tags:      tags,
 	}
 
 	return n.client.Event(&event)
 }
 
-// NotifyWarning generates a notification for generic k8s events
+// Notify generates a notification for generic k8s events
 func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
 	eventType := statsd.Warning
 
@@ -89,9 +105,9 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 
 	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, notifType)
 	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, false)
+	additionalTags := n.buildDatadogEventTags(dis, event)
 
-	n.buildDatadogEventTags(dis)
-	n.logger.Debugw("notifier: sending notifier event to datadog", "disruption", dis.Name, "eventType", event.Type, "message", bodyText)
+	n.logger.Debugw("notifier: sending notifier event to datadog", "disruptionName", dis.Name, "eventType", event.Type, "message", bodyText, "datadogTags", strings.Join(additionalTags, ", "))
 
-	return n.sendEvent(headerText, bodyText, eventType)
+	return n.sendEvent(headerText, bodyText, eventType, additionalTags)
 }

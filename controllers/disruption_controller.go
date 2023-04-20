@@ -188,7 +188,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// we reach this code when all the cleanup pods have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
 			r.log.Infow("all chaos pods are cleaned up; removing disruption finalizer")
-			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionFinished, "")
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionFinished, "", "")
 			r.clearInstanceSelectorCache(instance)
 			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
@@ -232,7 +232,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
 		if r.ExpiredDisruptionGCDelay != nil && (calculateRemainingDuration(*instance) <= (-1 * *r.ExpiredDisruptionGCDelay)) {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
-			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionGCOver, r.ExpiredDisruptionGCDelay.String())
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionGCOver, r.ExpiredDisruptionGCDelay.String(), "")
 
 			var err error
 
@@ -249,7 +249,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			if r.ExpiredDisruptionGCDelay != nil {
 				requeueDelay := *r.ExpiredDisruptionGCDelay
 
-				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionDurationOver, requeueDelay.String())
+				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionDurationOver, requeueDelay.String(), "")
 				r.log.Debugw("requeuing disruption to check for its expiration", "requeueDelay", requeueDelay.String())
 
 				return ctrl.Result{
@@ -483,7 +483,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	}
 
 	if len(targetChaosPods) == 0 {
-		r.recordEventOnDisruption(instance, chaosv1beta1.EventEmptyDisruption, instance.Name)
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventEmptyDisruption, instance.Name, "")
 
 		return nil
 	}
@@ -504,7 +504,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 
 			// create the pod
 			if err = r.Create(context.Background(), chaosPod); err != nil {
-				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionCreationFailed, instance.Name)
+				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionCreationFailed, instance.Name, target)
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, false))
 
 				return fmt.Errorf("error creating chaos pod: %w", err)
@@ -518,7 +518,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 			}
 
 			// send metrics and events
-			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionChaosPodCreated, instance.Name)
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionChaosPodCreated, instance.Name, target)
 			r.recordEventOnTarget(instance, target, chaosv1beta1.EventDisrupted, chaosPod.Name, instance.Name)
 			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
 		case 1:
@@ -772,7 +772,7 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 		// if the chaos pod finalizer must not be removed and the chaos pod must not be deleted
 		// and the cleanup status must not be ignored, we are stuck and won't be able to remove the disruption
 		r.log.Infow("instance seems stuck on removal for this target, please check manually", "target", target, "chaosPod", chaosPod.Name)
-		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "")
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "", target)
 
 		instance.Status.IsStuckOnRemoval = true
 
@@ -803,7 +803,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	// validate the given label selector to avoid any formatting issues due to special chars
 	if instance.Spec.Selector != nil {
 		if err := validateLabelSelector(instance.Spec.Selector.AsSelector()); err != nil {
-			r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidDisruptionLabelSelector, err.Error())
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidDisruptionLabelSelector, err.Error(), "")
 
 			return err
 		}
@@ -836,7 +836,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 		// If no target was previously found from the selector we don't notify the user of any ignored target, as there is no target anyway
 		if len(matchingTargets) > 0 {
-			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoMoreValidTargets, "")
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoMoreValidTargets, "", "")
 		}
 
 		return nil
@@ -896,7 +896,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 	// return an error if the selector returned no targets
 	if len(healthyMatchingTargets) == 0 {
 		r.log.Infow("the given label selector did not return any targets, skipping", "selector", instance.Spec.Selector)
-		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoTargetsFound, "")
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoTargetsFound, "", "")
 
 		return nil, 0, nil
 	}
@@ -1191,7 +1191,7 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 	}
 }
 
-func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Disruption, eventReason string, optionalMessage string) {
+func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Disruption, eventReason string, optionalMessage string, targetName string) {
 	disEvent := chaosv1beta1.Events[eventReason]
 	message := disEvent.OnDisruptionTemplateMessage
 
@@ -1199,7 +1199,13 @@ func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Di
 		message = fmt.Sprintf(disEvent.OnDisruptionTemplateMessage, optionalMessage)
 	}
 
-	r.Recorder.Event(instance, disEvent.Type, disEvent.Reason, message)
+	if targetName != "" {
+		r.Recorder.AnnotatedEventf(instance, map[string]string{
+			"target_name": targetName,
+		}, disEvent.Type, disEvent.Reason, message)
+	} else {
+		r.Recorder.Event(instance, disEvent.Type, disEvent.Reason, message)
+	}
 }
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
@@ -1211,7 +1217,7 @@ func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disru
 func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Disruption) error {
 	err := instance.Spec.Validate()
 	if err != nil {
-		r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, err.Error())
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, err.Error(), "")
 
 		return err
 	}
