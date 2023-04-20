@@ -7,8 +7,6 @@ package process
 
 import "os"
 
-//go:generate mockery --name=Manager --filename=process_mock.go
-
 // Manager manages a process
 type Manager interface {
 	Prioritize() error

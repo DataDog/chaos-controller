@@ -8,13 +8,10 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/cpuset"
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/mocks"
-	"github.com/DataDog/chaos-controller/process"
-	"github.com/DataDog/chaos-controller/stress"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -23,38 +20,38 @@ import (
 var _ = Describe("Failure", func() {
 	var (
 		config          CPUPressureInjectorConfig
-		cgroupManager   *cgroup.MockManager
+		cgroupManager   *mocks.CGroupManagerMock
 		ctn             *mocks.ContainerMock
-		stresser        *stress.MockStresser
+		stresser        *mocks.StresserMock
 		stresserExit    chan struct{}
-		manager         *process.MockManager
+		manager         *mocks.ProcessManagerMock
 		inj             Injector
 		spec            v1beta1.CPUPressureSpec
-		stresserManager *stress.MockStresserManager
+		stresserManager *mocks.StresserManagerMock
 	)
 
 	BeforeEach(func() {
 		// cgroup
-		cgroupManager = cgroup.NewMockManager(GinkgoT())
+		cgroupManager = mocks.NewCGroupManagerMock(GinkgoT())
 		cgroupManager.EXPECT().Join(mock.Anything).Return(nil)
 
 		// container
 		ctn = mocks.NewContainerMock(GinkgoT())
 
 		// stresser
-		stresser = stress.NewMockStresser(GinkgoT())
+		stresser = mocks.NewStresserMock(GinkgoT())
 		stresser.EXPECT().Stress(mock.Anything).Return()
 
 		// stresser exit chan, used to sync the stress goroutine with the test
 		stresserExit = make(chan struct{}, 1)
 
 		// manager
-		manager = process.NewMockManager(GinkgoT())
+		manager = mocks.NewProcessManagerMock(GinkgoT())
 		manager.EXPECT().Prioritize().Return(nil)
 		manager.EXPECT().ThreadID().Return(666)
 		manager.EXPECT().ProcessID().Return(42)
 
-		stresserManager = stress.NewMockStresserManager(GinkgoT())
+		stresserManager = mocks.NewStresserManagerMock(GinkgoT())
 		stresserManager.EXPECT().TrackCoreAlreadyStressed(mock.Anything, mock.Anything)
 		stresserManager.EXPECT().StresserPIDs().Return(map[int]int{0: 666})
 		stresserManager.EXPECT().IsCoreAlreadyStressed(0).Return(true)

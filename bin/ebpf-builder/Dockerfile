@@ -1,26 +1,23 @@
 FROM ubuntu:22.10
 
-# Define variables.
-ARG GOVERSION=1.19.4
-ARG ARCH=arm64
-
 # Download development environment.
 RUN apt-get update && \
     apt-get install -y \
-        curl \
-        pahole \
-        dwarves \
-        make \
-        clang \
-        libelf-dev \
-        libbpf-dev \
-        llvm
+    curl \
+    pahole \
+    dwarves \
+    make \
+    clang \
+    libelf-dev \
+    libbpf-dev \
+    llvm
 
-RUN if [ "$ARCH" = "amd64" ] ; then apt-get install -y libc6-dev-i386 ; fi
+ARG ARCH=arm64
+RUN ([ "${ARCH}" = "amd64" ] && apt-get install -y libc6-dev-i386) || true
 
 # Install Go specific version.
-RUN apt-get install -y wget && \
-    curl -LO https://golang.org/dl/go${GOVERSION}.linux-${ARCH}.tar.gz && \
+ENV GOVERSION=1.19.4
+RUN curl -LO https://golang.org/dl/go${GOVERSION}.linux-${ARCH}.tar.gz && \
     tar -xf go${GOVERSION}.linux-${ARCH}.tar.gz && \
     mv go/ /usr/local/ && \
     ln -s /usr/local/go/bin/go /usr/local/bin/ && \

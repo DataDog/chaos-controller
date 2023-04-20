@@ -8,7 +8,7 @@ package datadog
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -77,7 +77,6 @@ var _ = Describe("Datadog Parsing", func() {
 
 			By("Ensuring the returned converted IP Ranges is nil")
 			Expect(info).To(BeNil())
-
 		})
 
 		It("Should throw an error on empty ip ranges file", func() {

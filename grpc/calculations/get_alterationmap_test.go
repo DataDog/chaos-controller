@@ -7,7 +7,7 @@ package calculations_test
 
 import (
 	. "github.com/DataDog/chaos-controller/grpc/calculations"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
