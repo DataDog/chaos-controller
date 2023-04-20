@@ -269,16 +269,16 @@ func main() {
 	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.ipRangesURL", pflag.Lookup("cloud-providers-datadog-iprangesurl")))
 
 	pflag.StringVar(&cfg.Controller.Metrics.SinkDriver, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
-	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
+	handleFatalError(viper.BindPFlag("controller.metrics.sinkDriver", pflag.Lookup("metrics-sink")))
 
 	pflag.StringVar(&cfg.Controller.Tracer.SinkDriver, "tracer-sink", "noop", "Tracer sink (datadog, or noop)")
-	handleFatalError(viper.BindPFlag("controller.tracer.sink", pflag.Lookup("tracer-sink")))
+	handleFatalError(viper.BindPFlag("controller.tracer.sinkDriver", pflag.Lookup("tracer-sink")))
 
 	pflag.Float64Var(&cfg.Controller.Tracer.SampleRate, "tracer-samplerate", 1.0, "Sets tracer sampling rate")
 	handleFatalError(viper.BindPFlag("controller.tracer.sampleRate", pflag.Lookup("tracer-samplerate")))
 
 	pflag.StringVar(&cfg.Controller.Profiler.SinkDriver, "profiler-sink", "noop", "profiler sink (datadog, or noop)")
-	handleFatalError(viper.BindPFlag("controller.profilerSink", pflag.Lookup("profiler-sink")))
+	handleFatalError(viper.BindPFlag("controller.profiler.sinkDriver", pflag.Lookup("profiler-sink")))
 
 	pflag.Parse()
 
