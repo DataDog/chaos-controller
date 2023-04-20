@@ -12,6 +12,8 @@ type Manager interface {
 	Prioritize() error
 	ThreadID() int
 	ProcessID() int
+	Exists(pid int) (bool, error)
 	Find(pid int) (*os.Process, error)
 	Signal(process *os.Process, signal os.Signal) error
+	SetAffinity([]int) error
 }

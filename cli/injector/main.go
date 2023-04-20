@@ -27,9 +27,8 @@ import (
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
 	"github.com/DataDog/chaos-controller/pflag"
+	"github.com/DataDog/chaos-controller/process"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"github.com/DataDog/chaos-controller/utils"
-
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -42,8 +41,9 @@ import (
 )
 
 const (
-	readinessProbeFile = "/tmp/readiness_probe"
-	chaosInitContName  = "chaos-handler"
+	readinessProbeFile             = "/tmp/readiness_probe"
+	chaosInitContName              = "chaos-handler"
+	maxDurationWithoutParentSignal = 5 * time.Second
 )
 
 var rootCmd = &cobra.Command{
@@ -56,17 +56,17 @@ var rootCmd = &cobra.Command{
 var (
 	disruptionArgs      chaosapi.DisruptionArgs
 	disruptionLevelRaw  string
+	parentPID           uint32
 	log                 *zap.SugaredLogger
 	ms                  metrics.Sink
 	rawTargetContainers []string // contains name:id containers
-	deadlineRaw         string
-	deadline            time.Time
 	handlerPID          uint32
 	configs             []injector.Config
 	signals             chan os.Signal
 	injectors           []injector.Injector
 	readyToInject       bool
 	clientset           *kubernetes.Clientset
+	deadline            time.Time
 )
 
 func init() {
@@ -75,10 +75,16 @@ func init() {
 		panic(err)
 	}
 
+	deadlineFlag, err := pflag.NewTimeWithFormat(time.RFC3339, &deadline)
+	if err != nil {
+		panic(err)
+	}
+
 	rootCmd.AddCommand(networkDisruptionCmd)
 	rootCmd.AddCommand(nodeFailureCmd)
 	rootCmd.AddCommand(containerFailureCmd)
 	rootCmd.AddCommand(cpuPressureCmd)
+	rootCmd.AddCommand(cpuPressureStressCmd)
 	rootCmd.AddCommand(diskFailureCmd)
 	rootCmd.AddCommand(diskPressureCmd)
 	rootCmd.AddCommand(dnsDisruptionCmd)
@@ -95,10 +101,11 @@ func init() {
 	rootCmd.PersistentFlags().DurationVar(&disruptionArgs.PulseActiveDuration, "pulse-active-duration", time.Duration(0), "Duration of the disruption being active in a pulsing disruption (empty if the disruption is not pulsing)")
 	rootCmd.PersistentFlags().DurationVar(&disruptionArgs.PulseDormantDuration, "pulse-dormant-duration", time.Duration(0), "Duration of the disruption being dormant in a pulsing disruption (empty if the disruption is not pulsing)")
 	rootCmd.PersistentFlags().Var(notInjectedBeforeFlag, "not-injected-before", "")
-	rootCmd.PersistentFlags().StringVar(&deadlineRaw, "deadline", "", "Timestamp at which the disruption must be over by")
+	rootCmd.PersistentFlags().Var(deadlineFlag, string(injector.DeadlineFlag), "RFC3339 time at which the disruption must be over by")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.DNSServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.KubeDNS, "kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.ChaosNamespace, "chaos-namespace", "chaos-engineering", "Namespace that contains this chaos pod")
+	rootCmd.PersistentFlags().Uint32Var(&parentPID, string(injector.ParentPIDFlag), 0, "Parent process PID")
 
 	// log context args
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.DisruptionName, "log-context-disruption-name", "", "Log value: current disruption name")
@@ -146,6 +153,10 @@ func initLogger() {
 		"targetName", disruptionArgs.TargetName,
 		"targetNodeName", disruptionArgs.TargetNodeName,
 	)
+
+	if parentPID != 0 {
+		log = log.With("parent_pid", parentPID)
+	}
 }
 
 // initMetricsSink initializes a metrics sink depending on the given flag
@@ -283,16 +294,8 @@ func initConfig() {
 			return
 		}
 
-		deadline, err = time.Parse(time.RFC3339, deadlineRaw)
-		if err != nil {
-			deadline = time.Now().Add(time.Minute * 5)
-
-			log.Errorw("unable to determine disruption deadline, will self-terminate in one hour instead", "err", err)
-		}
-
 		// generate injector config
 		config := injector.Config{
-			Log:                log,
 			MetricsSink:        ms,
 			TargetContainer:    ctns[i],
 			DisruptionDeadline: deadline,
@@ -302,6 +305,7 @@ func initConfig() {
 			DNS:                dnsConfig,
 			Disruption:         disruptionArgs,
 		}
+		config.Log = log.With("targetLevel", disruptionArgs.Level, "target", config.TargetName()) // targetName is already taken in the initLogger
 
 		configs = append(configs, config)
 	}
@@ -384,35 +388,28 @@ func reinject(cmdName string) error {
 	}
 
 	// We rebuild and update the configuration
-	for ctnName, ctnID := range disruptionArgs.TargetContainers {
-		if ctnName == chaosInitContName && disruptionArgs.OnInit {
+	for i, conf := range configs {
+		if conf.TargetContainer == nil {
 			continue
 		}
 
-		for i, conf := range configs {
-			if conf.TargetContainer == nil || conf.TargetContainer.Name() != ctnName {
-				continue
-			}
-
-			conf.TargetContainer, err = container.New(ctnID)
-			if err != nil {
-				log.Warnw("can't create container object", "error", err)
-
-				continue
-			}
-
-			// create network namespace and cgroup  manager
-			conf.Netns, conf.Cgroup, err = initManagers(conf.TargetContainer.PID())
-			if err != nil {
-				log.Warnw("can't reinitialize netns manager and cgroup manager", "error", err)
-
-				continue
-			}
-
-			injectors[i].UpdateConfig(conf)
-
-			break
+		newContainerID, found := disruptionArgs.TargetContainers[conf.TargetContainer.Name()]
+		if !found {
+			return fmt.Errorf("container %s is not found (old containerID is %s)", conf.TargetContainer.Name(), conf.TargetContainer.ID())
 		}
+
+		if conf.TargetContainer, err = container.New(newContainerID); err != nil {
+			return fmt.Errorf("unable to create a container from containerID %s: %w", newContainerID, err)
+		}
+
+		if conf.Netns, conf.Cgroup, err = initManagers(conf.TargetContainer.PID()); err != nil {
+			return fmt.Errorf("unable to reinitialize netns manager and cgroup manager for containerID %s (PID: %d): %w", conf.TargetContainer.ID(), conf.TargetContainer.PID(), err)
+		}
+
+		// Update disruption args with latest updates from container for every config
+		conf.Disruption = disruptionArgs
+
+		injectors[i].UpdateConfig(conf)
 	}
 
 	// Reinject target
@@ -521,6 +518,8 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	processManager := process.NewManager(disruptionArgs.DryRun)
+
 	log.Infow("injecting the disruption", "kind", cmd.Name())
 
 	injectSuccess := inject(cmd.Name(), true, false)
@@ -541,7 +540,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		// ensure a handler container was found
 		if handlerPID != 0 {
 			// retrieve handler container process to send a signal
-			handlerProcess, err := os.FindProcess(int(handlerPID))
+			handlerProcess, err := processManager.Find(int(handlerPID))
 			if err != nil {
 				log.Errorw("error retrieving handler container process", "error", err)
 			}
@@ -594,6 +593,23 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 			}
 		}
 	default:
+		if parentPID != 0 {
+			log.Info("Process is a child process, SKIPPING watch target and reinject (parent process is responsible for that)...")
+
+			go func() {
+				log.Infow("starting to watch parent ID process existence every 1 second")
+
+				for range time.Tick(1 * time.Second) {
+					if _, err := processManager.Exists(int(parentPID)); err != nil {
+						log.Errorw("an error occurred when looking at parent process, it may no longer exists, exiting...", "error", err)
+						signals <- os.Interrupt
+					}
+				}
+			}()
+
+			break
+		}
+
 		if disruptionArgs.OnInit {
 			log.Debugw("the init container will not get restarted on container restart")
 		}
@@ -606,12 +622,43 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// wait for an exit signal, this is a blocking call
-	select {
-	case sig := <-signals:
-		log.Infow("an exit signal has been received", "signal", sig.String())
-	case <-time.After(getDuration(deadline)):
-		log.Infow("duration has expired")
+	// When it's a child process, we want to quit early in case our parent dies
+	// Below mechanism aims to receive signals sent from parent to have a sliding expiration mechanism to kill ourselves
+	// When no signal are received in allocated duration, child process dies
+	var (
+		parentSignal        chan os.Signal
+		noParentSignalTimer *time.Timer
+	)
+
+	if parentPID != 0 {
+		parentSignal = make(chan os.Signal, 1)
+		signal.Notify(parentSignal, syscall.SIGCONT)
+
+		noParentSignalTimer = time.NewTimer(maxDurationWithoutParentSignal)
+	} else {
+		noParentSignalTimer = time.NewTimer(getDuration(deadline) + 1*time.Minute)
+	}
+
+	log.Warn("waiting for system signals...")
+
+	for {
+		select {
+		case <-parentSignal: // when a channel is nil it waits forever (case when NOT a child process)
+			if !noParentSignalTimer.Stop() {
+				<-noParentSignalTimer.C
+			}
+
+			noParentSignalTimer.Reset(maxDurationWithoutParentSignal)
+		case <-noParentSignalTimer.C:
+			log.Warnf("parent did not sent any signal in the last %v seconds, exiting", maxDurationWithoutParentSignal)
+			return
+		case sig := <-signals:
+			log.Infow("an exit signal has been received, exiting", "signal", sig.String())
+			return
+		case <-time.After(getDuration(deadline)):
+			log.Info("disruption duration has expired, exiting")
+			return
+		}
 	}
 }
 
@@ -742,15 +789,17 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 				continue
 			}
 
-			hasChanged, err := updateTargetContainersAndDetectChange(pod)
+			hasChanged, err := updateTargetContainersAndDetectChange(*pod)
 			if err != nil {
-				return err
+				return fmt.Errorf("an error occurred to detect change: %w", err)
+			} else if !hasChanged {
+				continue
 			}
 
-			if hasChanged {
-				if err := reinject(commandName); err != nil {
-					return err
-				}
+			// if a container is in crashloop, we might fail due to not found stuff
+			// we might want to retry to retrieve pod AND changes later on instead of stopping abruptly
+			if err := reinject(commandName); err != nil {
+				return fmt.Errorf("an error occurred during reinjection: %w", err)
 			}
 		}
 	}
@@ -761,6 +810,13 @@ func cleanAndExit(cmd *cobra.Command, args []string) {
 	// 1 or more injectors failed to clean, we exit
 	if ok := clean(cmd.Name(), true, false); !ok {
 		os.Exit(1)
+	}
+
+	// When the command is considered a child command, we don't expect to cleanup pod level finalizer
+	// it's supposedly done by the main process that spins us up
+	if parentPID != 0 {
+		log.Info("child process cleaned, skipping finalizer removal and exiting")
+		return
 	}
 
 	if err := backoff.RetryNotify(cleanFinalizer, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
@@ -774,7 +830,7 @@ func cleanFinalizer() error {
 	if len(configs) == 0 {
 		err := fmt.Errorf("no configuration available for this disruption")
 
-		log.Warnw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.InjectorPodName), "err", err)
+		log.Warnw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.InjectorPodName), "error", err)
 
 		return err
 	}
@@ -828,35 +884,32 @@ func getPodResourceVersion() (string, error) {
 
 // updateTargetContainersAndDetectChange get all target container infos to determine if one container has changed ID
 // if it has changed ID, the container just restarted and need to be reinjected
-func updateTargetContainersAndDetectChange(pod *v1.Pod) (bool, error) {
+func updateTargetContainersAndDetectChange(pod v1.Pod) (bool, error) {
 	var err error
-
 	// transform map of targetContainer info (name, id) to only an array of names
 	targetContainerNames := []string{}
 	for name := range disruptionArgs.TargetContainers {
 		targetContainerNames = append(targetContainerNames, name)
 	}
 
-	// update map of targetContainer info (name, id)
-	disruptionArgs.TargetContainers, err = utils.GetTargetedContainersInfo(pod, targetContainerNames)
-	if err != nil {
-		log.Warnw("couldn't get containers info. Waiting for next change to reinject", "err", err)
+	log.Debugw("disruption args containers BEFORE updating them", "target_containers", disruptionArgs.TargetContainers)
 
-		return false, err
+	if disruptionArgs.TargetContainers, err = v1beta1.TargetedContainers(pod, targetContainerNames); err != nil {
+		return false, fmt.Errorf("unable to get targeted containers info. Waiting for next change to reinject: %w", err)
 	}
 
-	// Determine if reinjection is needed
-	for ctnName, ctnID := range disruptionArgs.TargetContainers {
-		// we don't check for init containers
-		if ctnName == chaosInitContName && disruptionArgs.OnInit {
-			continue
+	log.Debugw("disruption args containers AFTER updating them", "target_containers", disruptionArgs.TargetContainers)
+
+	for _, conf := range configs {
+		newContainerID, newContainerExists := disruptionArgs.TargetContainers[conf.TargetContainer.Name()]
+
+		parsedNewContainerID, _, err := container.ParseContainerID(newContainerID)
+		if err != nil {
+			return false, fmt.Errorf("unable to parse provided container ID %s: %w", newContainerID, err)
 		}
 
-		for _, conf := range configs {
-			// we check if a container has changed IDs, meaning it was restarted
-			if conf.TargetContainer.Name() != ctnName || conf.TargetContainer.ID() == ctnID {
-				continue
-			}
+		if !newContainerExists || parsedNewContainerID != conf.TargetContainer.ID() {
+			log.Infow("change detected for container", "container_name", conf.TargetContainer.Name(), "new_container_exists", newContainerExists, "new_container_id", newContainerID, "old_container_id", conf.TargetContainer.ID())
 
 			return true, nil
 		}

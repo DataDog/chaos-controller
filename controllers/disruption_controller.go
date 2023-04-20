@@ -20,7 +20,6 @@ import (
 	"github.com/DataDog/chaos-controller/safemode"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"github.com/DataDog/chaos-controller/utils"
 	"github.com/cenkalti/backoff"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -371,10 +370,10 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 	// we divide by the number of active disruption types because we create one pod per target per disruption
 	// ex: we would have 10 pods if we target 50% of all targets with 2 disruption types like network and dns
 	// we also consider a target is not fully injected if not all disruptions are injected in it
-	if instance.Spec.GetDisruptionCount() == 0 {
+	if instance.Spec.DisruptionCount() == 0 {
 		instance.Status.InjectedTargetsCount = 0
 	} else {
-		instance.Status.InjectedTargetsCount = int(math.Floor(float64(readyPodsCount) / float64(instance.Spec.GetDisruptionCount())))
+		instance.Status.InjectedTargetsCount = int(math.Floor(float64(readyPodsCount) / float64(instance.Spec.DisruptionCount())))
 	}
 
 	if err := r.Client.Status().Update(context.Background(), instance); err != nil {
@@ -469,7 +468,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 		targetNodeName = pod.Spec.NodeName
 
 		// get IDs of targeted containers or all containers
-		targetContainers, err = utils.GetTargetedContainersInfo(&pod, instance.Spec.Containers)
+		targetContainers, err = chaosv1beta1.TargetedContainers(&pod, instance.Spec.Containers)
 		if err != nil {
 			dErr := chaostypes.DisruptionError{Err: fmt.Errorf("error getting target pod container ID: %w", err)}
 			dErr.AddContext("targetPodStatus", pod.Status.String())
@@ -1217,7 +1216,7 @@ func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Di
 }
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
-	for _, kind := range instance.Spec.GetKindNames() {
+	for _, kind := range instance.Spec.KindNames() {
 		r.handleMetricSinkError(r.MetricsSink.MetricDisruptionsCount(kind, []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 	}
 }

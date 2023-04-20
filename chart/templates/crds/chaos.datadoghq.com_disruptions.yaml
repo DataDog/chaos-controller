@@ -89,6 +89,9 @@ spec:
                     anyOf:
                     - type: integer
                     - type: string
+                    description: Count represents the number of cores to target either
+                      an integer form or a percentage form appended with a % if empty,
+                      it will be considered to be 100%
                     x-kubernetes-int-or-string: true
                 type: object
               diskFailure:

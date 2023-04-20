@@ -56,8 +56,8 @@ crash.log
 *.json-e
 
 # local certificates
-/local/certDir/*.crt
-/local/certDir/*.key
+*.crt
+*.key
 
 # eBPF
 ebpf/builds/

@@ -11,8 +11,9 @@ metadata:
   annotations:
     chaos.datadoghq.com/environment: "lima"
 spec:
-  duration: 5m
+  level: pod
   selector:
     app: demo-curl
   count: 1
-  cpuPressure: {} # stress 100% of all core assigned to targeted app
+  cpuPressure:
+    count: 1 # stress ALL CORES for at most 1/CORE_COUNT percentage

@@ -6,14 +6,17 @@
 package injector
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/command"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/process"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
@@ -36,7 +39,8 @@ type DNSDisruptionInjectorConfig struct {
 	TargetName          string
 	FileWriter          FileWriter
 	IPTables            network.IPTables
-	PythonRunner        PythonRunner
+	CmdFactory          command.Factory
+	ProcessManager      process.Manager
 }
 
 // NewDNSDisruptionInjector creates a DNSDisruptionInjector object with the given config,
@@ -53,8 +57,12 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 		}
 	}
 
-	if config.PythonRunner == nil {
-		config.PythonRunner = newStandardPythonRunner(config.Disruption.DryRun, config.Log)
+	if config.CmdFactory == nil {
+		config.CmdFactory = command.NewFactory(config.Disruption.DryRun)
+	}
+
+	if config.ProcessManager == nil {
+		config.ProcessManager = process.NewManager(config.Disruption.DryRun)
 	}
 
 	return &DNSDisruptionInjector{
@@ -90,33 +98,36 @@ func (i *DNSDisruptionInjector) Inject() error {
 			return
 		}
 
-		cmd := []string{"/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf"}
+		args := []string{"/usr/local/bin/dns_disruption_resolver.py", "-c", "/tmp/dns.conf"}
 
 		if i.config.Disruption.DisruptionName != "" {
-			cmd = append(cmd, "--log-context-disruption-name", i.config.Disruption.DisruptionName)
+			args = append(args, "--log-context-disruption-name", i.config.Disruption.DisruptionName)
 		}
 
 		if i.config.Disruption.DisruptionNamespace != "" {
-			cmd = append(cmd, "--log-context-disruption-namespace", i.config.Disruption.DisruptionNamespace)
+			args = append(args, "--log-context-disruption-namespace", i.config.Disruption.DisruptionNamespace)
 		}
 
 		if i.config.Disruption.TargetName != "" {
-			cmd = append(cmd, "--log-context-target-name", i.config.Disruption.TargetName)
+			args = append(args, "--log-context-target-name", i.config.Disruption.TargetName)
 		}
 
 		if i.config.Disruption.TargetNodeName != "" {
-			cmd = append(cmd, "--log-context-target-node-name", i.config.Disruption.TargetNodeName)
+			args = append(args, "--log-context-target-node-name", i.config.Disruption.TargetNodeName)
 		}
 
 		if i.config.DNS.DNSServer != "" {
-			cmd = append(cmd, "--dns", i.config.DNS.DNSServer)
+			args = append(args, "--dns", i.config.DNS.DNSServer)
 		}
 
 		if i.config.DNS.KubeDNS != "" {
-			cmd = append(cmd, "--kube-dns", i.config.DNS.KubeDNS)
+			args = append(args, "--kube-dns", i.config.DNS.KubeDNS)
 		}
 
-		if err := i.config.PythonRunner.RunPython(cmd...); err != nil {
+		cmd := i.config.CmdFactory.NewCmd(context.Background(), "/usr/bin/python3", args)
+
+		bgCmd := command.NewBackgroundCmd(cmd, i.config.Log, i.config.ProcessManager)
+		if err := bgCmd.Start(); err != nil {
 			launchDNSServerErr = fmt.Errorf("unable to run resolver: %w", err)
 			return
 		}

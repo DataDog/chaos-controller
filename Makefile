@@ -19,10 +19,11 @@ PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
 # you might also want to change ~/lima.yaml k3s version
 KUBERNETES_MAJOR_VERSION ?= 1.26
 KUBERNETES_VERSION ?= v$(KUBERNETES_MAJOR_VERSION).0
-GOLANGCI_LINT_VERSION ?= 1.51.0
-HELM_VERSION ?= 3.11.3
+GOLANGCI_LINT_VERSION ?= 1.52.2
 KUBEBUILDER_VERSION ?= 3.1.0
 USE_VOLUMES ?= false
+HELM_VERSION ?= 3.11.3
+HELM_VALUES ?= dev.yaml
 
 # expired disruption gc delay enable to speed up chaos controller disruption removal for e2e testing
 # it's used to check if disruptions are deleted as expected as soon as the expiration delay occurs
@@ -204,6 +205,7 @@ ci-install-minikube:
 	minikube status
 
 ## Run e2e tests (against a real cluster)
+## to run them locally you first need to run `make install-kubebuilder`
 e2e-test: generate
 	$(MAKE) lima-install EXPIRED_DISRUPTION_GC_DELAY=10s
 	USE_EXISTING_CLUSTER=true $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=report-$@ \
@@ -250,8 +252,8 @@ lima-install-cert-manager:
 	$(KUBECTL) -n cert-manager rollout status deployment/cert-manager-webhook --timeout=180s
 
 lima-install-demo:
-	kubectl apply -f ./examples/namespace.yaml
-	kubectl apply -f ./examples/demo.yaml
+	$(KUBECTL) apply -f - < ./examples/namespace.yaml
+	$(KUBECTL) apply -f - < ./examples/demo.yaml
 	$(KUBECTL) -n chaos-demo rollout status deployment/demo-curl --timeout=60s
 	$(KUBECTL) -n chaos-demo rollout status deployment/demo-nginx --timeout=60s
 
@@ -261,9 +263,7 @@ lima-install-demo:
 ## we override images for all of our components to the expected namespace
 lima-install: manifests
 	helm template \
-		--set controller.enableSafeguards=false \
-		--set controller.expiredDisruptionGCDelay=${EXPIRED_DISRUPTION_GC_DELAY} \
-		--values ./chart/values/dev.yaml \
+		--values ./chart/values/$(HELM_VALUES) \
 		./chart | $(KUBECTL) apply -f -
 	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
 
@@ -349,7 +349,7 @@ clean-mocks:
 	rm -rf mocks/
 
 generate-mocks: clean-mocks
-	go install github.com/vektra/mockery/v2@v2.25.0
+	go install github.com/vektra/mockery/v2@v2.25.1
 	go generate ./...
 # First re-generate header, it should complain as just (re)generated mocks does not contains them
 	-$(MAKE) header-check
@@ -395,3 +395,10 @@ install-lint-deps:
 
 install-datadog-ci:
 	curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_$(OS)-x64" --output "$(GOBIN)/datadog-ci" && chmod u+x $(GOBIN)/datadog-ci
+
+local:
+	-helm template \
+		./chart | $(KUBECTL) delete -f -
+# kubectl is the binary inside lima
+	$(KUBECTL) apply -f - < ./chart/templates/crds/chaos.datadoghq.com_disruptions.yaml
+	CONTROLLER_NODE_NAME=local go run main.go --config=chart/values/local.yaml

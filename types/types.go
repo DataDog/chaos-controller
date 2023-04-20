@@ -32,6 +32,8 @@ const (
 	DisruptionKindContainerFailure = "container-failure"
 	// DisruptionKindCPUPressure is a CPU pressure disruption
 	DisruptionKindCPUPressure = "cpu-pressure"
+	// DisruptionKindCPUStress is a CPU pressure sub-disruption that stress a single container
+	DisruptionKindCPUStress = "cpu-pressure-stress"
 	// DisruptionKindDiskFailure is a disk failure disruption
 	DisruptionKindDiskFailure = "disk-failure"
 	// DisruptionKindDiskPressure is a disk pressure disruption
@@ -84,16 +86,14 @@ func (d DisruptionKindName) String() string {
 	return string(d)
 }
 
-var (
-	// DisruptionKindNames contains all existing disruption kinds that can be injected
-	DisruptionKindNames = []DisruptionKindName{
-		DisruptionKindNetworkDisruption,
-		DisruptionKindNodeFailure,
-		DisruptionKindContainerFailure,
-		DisruptionKindCPUPressure,
-		DisruptionKindDiskPressure,
-		DisruptionKindDNSDisruption,
-		DisruptionKindGRPCDisruption,
-		DisruptionKindDiskFailure,
-	}
-)
+// DisruptionKindNames contains all existing disruption kinds that can be injected
+var DisruptionKindNames = []DisruptionKindName{
+	DisruptionKindNetworkDisruption,
+	DisruptionKindNodeFailure,
+	DisruptionKindContainerFailure,
+	DisruptionKindCPUPressure,
+	DisruptionKindDiskPressure,
+	DisruptionKindDiskFailure,
+	DisruptionKindDNSDisruption,
+	DisruptionKindGRPCDisruption,
+}

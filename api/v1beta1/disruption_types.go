@@ -23,6 +23,7 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/hashicorp/go-multierror"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -258,7 +259,7 @@ func init() {
 }
 
 // Hash returns the disruption spec JSON hash
-func (s *DisruptionSpec) Hash() (string, error) {
+func (s DisruptionSpec) Hash() (string, error) {
 	// serialize instance spec to JSON
 	specBytes, err := json.Marshal(s)
 	if err != nil {
@@ -269,15 +270,14 @@ func (s *DisruptionSpec) Hash() (string, error) {
 	return fmt.Sprintf("%x", md5.Sum(specBytes)), nil
 }
 
-func (s *DisruptionSpec) HashNoCount() (string, error) {
-	sCopy := s.DeepCopy()
-	sCopy.Count = nil
+func (s DisruptionSpec) HashNoCount() (string, error) {
+	s.Count = nil
 
-	return sCopy.Hash()
+	return s.Hash()
 }
 
 // Validate applies rules for disruption global scope and all subsequent disruption specifications
-func (s *DisruptionSpec) Validate() (retErr error) {
+func (s DisruptionSpec) Validate() (retErr error) {
 	if err := s.validateGlobalDisruptionScope(); err != nil {
 		retErr = multierror.Append(retErr, err)
 	}
@@ -297,7 +297,7 @@ func (s *DisruptionSpec) Validate() (retErr error) {
 }
 
 // Validate applies rules for disruption global scope
-func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
+func (s DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 	// Rule: at least one kind of selector is set
 	if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
 		retErr = multierror.Append(retErr, errors.New("either selector or advancedSelector field must be set"))
@@ -381,7 +381,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 }
 
 // DisruptionKindPicker returns this DisruptionSpec's instance of a DisruptionKind based on given kind name
-func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName) chaosapi.DisruptionKind {
+func (s DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName) chaosapi.DisruptionKind {
 	var disruptionKind chaosapi.DisruptionKind
 
 	switch kind {
@@ -406,8 +406,8 @@ func (s *DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName
 	return disruptionKind
 }
 
-// GetKindNames returns the non-nil disruption kind names for the given disruption
-func (s *DisruptionSpec) GetKindNames() []chaostypes.DisruptionKindName {
+// KindNames returns the non-nil disruption kind names for the given disruption
+func (s DisruptionSpec) KindNames() []chaostypes.DisruptionKindName {
 	kinds := []chaostypes.DisruptionKindName{}
 
 	for _, kind := range chaostypes.DisruptionKindNames {
@@ -447,8 +447,8 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 	return &parsedSpec, nil
 }
 
-// GetDisruptionCount get the number of disruption types per disruption
-func (s *DisruptionSpec) GetDisruptionCount() int {
+// DisruptionCount get the number of disruption types per disruption
+func (s DisruptionSpec) DisruptionCount() int {
 	count := 0
 
 	if s.CPUPressure != nil {
@@ -556,7 +556,6 @@ func DisruptionIsNotReinjectable(kind chaostypes.DisruptionKindName) bool {
 var NoSideEffectDisruptions = map[chaostypes.DisruptionKindName]struct{}{
 	chaostypes.DisruptionKindNodeFailure:      {},
 	chaostypes.DisruptionKindContainerFailure: {},
-	chaostypes.DisruptionKindCPUPressure:      {},
 }
 
 func DisruptionHasNoSideEffects(kind string) bool {
@@ -571,4 +570,40 @@ func DisruptionHasNoSideEffects(kind string) bool {
 func ShouldSkipNodeFailureInjection(disKind chaostypes.DisruptionKindName, instance *Disruption, injection TargetInjection) bool {
 	// we should never re-inject a static node failure, as it may be targeting the same pod on a new node
 	return disKind == chaostypes.DisruptionKindNodeFailure && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionInjectionStatusNotInjected
+}
+
+// TargetedContainers returns a map container with container name as a key an it's runtime agnostic ID as a value
+func TargetedContainers(pod *corev1.Pod, targets []string) (map[string]string, error) {
+	if len(pod.Status.ContainerStatuses) < 1 {
+		return nil, fmt.Errorf("missing container ids for pod '%s'", pod.Name)
+	}
+
+	allContainers := map[string]string{}
+
+	// get all containers IDs, even those who are not running
+	// we might target them later hence we need them
+	for _, c := range append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) {
+		if len(targets) == 0 && c.State.Running == nil { // when creating the disruption, we focus on running container only
+			continue
+		}
+
+		allContainers[c.Name] = c.ContainerID
+	}
+
+	if len(targets) == 0 {
+		return allContainers, nil
+	}
+
+	targetedContainers := map[string]string{}
+
+	// look for the target in the map
+	for _, target := range targets {
+		if id, existsInPod := allContainers[target]; existsInPod {
+			targetedContainers[target] = id
+		} else {
+			return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, target)
+		}
+	}
+
+	return targetedContainers, nil
 }

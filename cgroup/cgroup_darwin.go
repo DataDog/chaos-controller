@@ -8,6 +8,7 @@ package cgroup
 import (
 	"fmt"
 
+	"github.com/DataDog/chaos-controller/cpuset"
 	"go.uber.org/zap"
 )
 
@@ -16,17 +17,18 @@ type cgroup struct {
 	log    *zap.SugaredLogger
 }
 
-// Read reads the given cgroup file data and returns the content as a string
 func (cg cgroup) Read(controller, file string) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
-// Write writes the given data to the given cgroup kind
+func (cg cgroup) ReadCPUSet() (cpuset.CPUSet, error) {
+	return cpuset.NewCPUSet(), fmt.Errorf("not implemented")
+}
+
 func (cg cgroup) Write(controller, file, data string) error {
 	return fmt.Errorf("not implemented")
 }
 
-// Join adds the given PID to all available controllers of the cgroup
 func (cg cgroup) Join(pid int) error {
 	return fmt.Errorf("not implemented")
 }

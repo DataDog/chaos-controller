@@ -42,7 +42,15 @@ func (p manager) Find(pid int) (*os.Process, error) {
 	return nil, errors.New("unsupported")
 }
 
+func (p manager) Exists(pid int) (bool, error) {
+	return false, errors.New("unsupported")
+}
+
 // Signal sends the provided signal to the given process
 func (p manager) Signal(process *os.Process, signal os.Signal) error {
+	return errors.New("unsupported")
+}
+
+func (p manager) SetAffinity([]int) error {
 	return errors.New("unsupported")
 }

@@ -48,7 +48,7 @@ var createCmd = &cobra.Command{
 		}
 
 		path, _ := cmd.Flags().GetString("path")
-		err = os.WriteFile(path, y, 0644) // #nosec
+		err = os.WriteFile(path, y, 0o644) // #nosec
 		if err != nil {
 			fmt.Printf("writeFile err: %v", err)
 		}
@@ -74,7 +74,6 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 	spec := v1beta1.DisruptionSpec{}
 
 	err := promptForKind(&spec)
-
 	if err != nil {
 		return spec, err
 	}
@@ -87,7 +86,7 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 
 	isPulsingCompatible := true
 
-	for _, disruptionKind := range spec.GetKindNames() {
+	for _, disruptionKind := range spec.KindNames() {
 		if disruptionKind == types.DisruptionKindContainerFailure || disruptionKind == types.DisruptionKindNodeFailure {
 			isPulsingCompatible = false
 			break
@@ -741,7 +740,6 @@ For example, if you set both "app=hello-node" and "pod-name=ubuntu-uuid", then n
 
 	for _, s := range selectors {
 		sAsSet, err := labels.ConvertSelectorToLabelsMap(s)
-
 		if err != nil {
 			fmt.Printf("invalid selector string: %v", err)
 			return nil
@@ -768,7 +766,6 @@ For example, if you set both "app=hello-node" and "pod-name=ubuntu-uuid", then n
 
 		for _, f := range filters {
 			fAsSet, err := labels.ConvertSelectorToLabelsMap(f)
-
 			if err != nil {
 				fmt.Printf("invalid selector string: %v", err)
 				return nil
@@ -789,7 +786,6 @@ func getLevel() types.DisruptionLevel {
 		[]string{types.DisruptionLevelNode, types.DisruptionLevelPod},
 		"This will affect targeting with the label selectors, as well as injecting (depending on the disruption kind).",
 	)
-
 	if err != nil {
 		level = types.DisruptionLevelPod
 	}

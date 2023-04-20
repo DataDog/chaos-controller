@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/DataDog/chaos-controller/cpuset"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs2"
@@ -44,13 +45,27 @@ func NewManager(dryRun bool, pid uint32, cgroupMount string, log *zap.SugaredLog
 // Read reads the given cgroup file data and returns the content as a string
 func (cg cgroup) Read(controller, file string) (string, error) {
 	controllerDir := (*cg.manager).Path(controller)
-	content, err := cgroups.ReadFile(controllerDir, file)
 
+	content, err := cgroups.ReadFile(controllerDir, file)
 	if err != nil {
 		return "", err
 	}
 
 	return strings.TrimSuffix(content, "\n"), nil
+}
+
+func (cg cgroup) ReadCPUSet() (cpuset.CPUSet, error) {
+	cpusetFile := "cpuset.effective_cpus"
+	if cg.IsCgroupV2() {
+		cpusetFile = "cpuset.cpus.effective"
+	}
+
+	cpusetCores, err := cg.Read("cpuset", cpusetFile)
+	if err != nil {
+		return cpuset.NewCPUSet(), fmt.Errorf("failed to read the target allocated cpus from the cpuset file '%s': %w", cpusetFile, err)
+	}
+
+	return cpuset.Parse(cpusetCores)
 }
 
 // Write writes the given data to the given cgroup kind

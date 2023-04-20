@@ -5,3 +5,5 @@
 
 controller:
   leaderElection: false
+  defaultDuration: 5m
+  expiredDisruptionGCDelay: 10s

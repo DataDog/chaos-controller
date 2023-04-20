@@ -114,7 +114,6 @@ packages:
         config:
           mockname: ProcessRuntimeMock
   github.com/DataDog/chaos-controller/safemode: {}
-  github.com/DataDog/chaos-controller/stress: {}
   github.com/DataDog/chaos-controller/targetselector: {}
   github.com/DataDog/chaos-controller/types: {}
   github.com/DataDog/chaos-controller/utils: {}
