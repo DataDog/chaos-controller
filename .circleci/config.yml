@@ -9,6 +9,8 @@ commands:
   go_save_cache:
     description: Save $GOPATH directory as workspace
     steps:
+      # circleci workspace are meant to be used to share data between jobs
+      # https://circleci.com/docs/workspaces/
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory. This is a directory on the container which is
           # taken to be the root directory of the workspace.
@@ -43,6 +45,11 @@ commands:
         description: ebpf-builder tar location
     steps:
       - run: docker save ebpf-builder-amd64 -o <<parameters.path>>
+      # Here we want to store this for the long term and reuse it in next builds
+      # It aims to speed up the docker build time, like it does already locally
+      # It's safe to reuse as we are caching by using the Dockerfile checksum as part of the key
+      # if key is not found we will fallback to earliest tar available
+      # we will ALWAYS rebuild the image no matter what
       - save_cache:
           key: v1-ebpf-builder-{{ checksum "bin/ebpf-builder/Dockerfile" }}
           paths:
@@ -73,6 +80,8 @@ executors:
     docker:
       # TODO: Publicize the chaos controller ci image to the datadog docker registry
       #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
+      # This is circle ci images, provides default tool installed (like docker) to ease step definition and avoid apt-get/update things
+      # https://circleci.com/docs/circleci-images/#next-gen-language-images
       - image: cimg/go:1.18
   golang_large:
     <<: *golang

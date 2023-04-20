@@ -51,7 +51,7 @@ var _ = Describe("Failure", func() {
 
 		// pythonRunner
 		pythonRunner := mocks.NewPythonRunnerMock(GinkgoT())
-		pythonRunner.EXPECT().RunPython(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe().Maybe()
+		pythonRunner.EXPECT().RunPython(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
 		// iptables
 		iptablesMock = network.NewIPTablesMock(GinkgoT())
