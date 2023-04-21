@@ -3,9 +3,6 @@
 github.com/AlecAivazis/survey/v2
 github.com/AlecAivazis/survey/v2/core
 github.com/AlecAivazis/survey/v2/terminal
-# github.com/DataDog/datadog-agent/pkg/obfuscate v0.43.0
-## explicit; go 1.12
-github.com/DataDog/datadog-agent/pkg/obfuscate
 # github.com/DataDog/datadog-agent/pkg/remoteconfig/state v0.43.1
 ## explicit; go 1.18
 github.com/DataDog/datadog-agent/pkg/remoteconfig/state
@@ -36,14 +33,6 @@ github.com/DataDog/go-tuf/verify
 # github.com/DataDog/gostackparse v0.5.0
 ## explicit; go 1.16
 github.com/DataDog/gostackparse
-# github.com/DataDog/sketches-go v1.2.1
-## explicit; go 1.15
-github.com/DataDog/sketches-go/ddsketch
-github.com/DataDog/sketches-go/ddsketch/encoding
-github.com/DataDog/sketches-go/ddsketch/mapping
-github.com/DataDog/sketches-go/ddsketch/pb/sketchpb
-github.com/DataDog/sketches-go/ddsketch/stat
-github.com/DataDog/sketches-go/ddsketch/store
 # github.com/Microsoft/go-winio v0.6.0
 ## explicit; go 1.17
 github.com/Microsoft/go-winio
@@ -226,9 +215,6 @@ github.com/docker/go-events
 # github.com/docker/go-units v0.4.0
 ## explicit
 github.com/docker/go-units
-# github.com/dustin/go-humanize v1.0.0
-## explicit
-github.com/dustin/go-humanize
 # github.com/emicklei/go-restful/v3 v3.10.1
 ## explicit; go 1.13
 github.com/emicklei/go-restful/v3
@@ -465,11 +451,6 @@ github.com/opencontainers/selinux/go-selinux
 github.com/opencontainers/selinux/go-selinux/label
 github.com/opencontainers/selinux/pkg/pwalk
 github.com/opencontainers/selinux/pkg/pwalkdir
-# github.com/outcaste-io/ristretto v0.2.1
-## explicit; go 1.12
-github.com/outcaste-io/ristretto
-github.com/outcaste-io/ristretto/z
-github.com/outcaste-io/ristretto/z/simd
 # github.com/pelletier/go-toml/v2 v2.0.6
 ## explicit; go 1.16
 github.com/pelletier/go-toml/v2
@@ -477,9 +458,6 @@ github.com/pelletier/go-toml/v2/internal/characters
 github.com/pelletier/go-toml/v2/internal/danger
 github.com/pelletier/go-toml/v2/internal/tracker
 github.com/pelletier/go-toml/v2/unstable
-# github.com/philhofer/fwd v1.1.1
-## explicit
-github.com/philhofer/fwd
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
@@ -565,9 +543,6 @@ github.com/stretchr/testify/require
 # github.com/subosito/gotenv v1.4.2
 ## explicit; go 1.18
 github.com/subosito/gotenv
-# github.com/tinylib/msgp v1.1.6
-## explicit; go 1.14
-github.com/tinylib/msgp/msgp
 # github.com/vishvananda/netlink v1.2.1-beta.2.0.20220812183158-d44b87fd4d3f
 ## explicit; go 1.12
 github.com/vishvananda/netlink
@@ -696,10 +671,6 @@ golang.org/x/tools/internal/pkgbits
 golang.org/x/tools/internal/tokeninternal
 golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
-# golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
-## explicit; go 1.17
-golang.org/x/xerrors
-golang.org/x/xerrors/internal
 # gomodules.xyz/jsonpatch/v2 v2.2.0
 ## explicit; go 1.12
 gomodules.xyz/jsonpatch/v2
@@ -805,8 +776,6 @@ google.golang.org/protobuf/types/known/timestamppb
 ## explicit; go 1.18
 gopkg.in/DataDog/dd-trace-go.v1/ddtrace
 gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext
-gopkg.in/DataDog/dd-trace-go.v1/ddtrace/internal
-gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer
 gopkg.in/DataDog/dd-trace-go.v1/internal
 gopkg.in/DataDog/dd-trace-go.v1/internal/appsec
 gopkg.in/DataDog/dd-trace-go.v1/internal/appsec/dyngo
@@ -815,14 +784,6 @@ gopkg.in/DataDog/dd-trace-go.v1/internal/appsec/dyngo/instrumentation/grpcsec
 gopkg.in/DataDog/dd-trace-go.v1/internal/appsec/dyngo/instrumentation/httpsec
 gopkg.in/DataDog/dd-trace-go.v1/internal/appsec/dyngo/instrumentation/sharedsec
 gopkg.in/DataDog/dd-trace-go.v1/internal/globalconfig
-gopkg.in/DataDog/dd-trace-go.v1/internal/hostname
-gopkg.in/DataDog/dd-trace-go.v1/internal/hostname/azure
-gopkg.in/DataDog/dd-trace-go.v1/internal/hostname/cachedfetch
-gopkg.in/DataDog/dd-trace-go.v1/internal/hostname/ec2
-gopkg.in/DataDog/dd-trace-go.v1/internal/hostname/ecs
-gopkg.in/DataDog/dd-trace-go.v1/internal/hostname/gce
-gopkg.in/DataDog/dd-trace-go.v1/internal/hostname/httputils
-gopkg.in/DataDog/dd-trace-go.v1/internal/hostname/validate
 gopkg.in/DataDog/dd-trace-go.v1/internal/log
 gopkg.in/DataDog/dd-trace-go.v1/internal/osinfo
 gopkg.in/DataDog/dd-trace-go.v1/internal/remoteconfig
