@@ -347,35 +347,62 @@ func main() {
 	ms, err := metrics.GetSink(cfg.Controller.Metrics)
 
 	if err != nil {
-		logger.Errorw("error while creating metric sink", "error", err)
-	} else {
-		// handle metrics sink client close on exit
-		defer func() {
-			logger.Infow("closing metrics sink client before exiting", "sink", ms.GetSinkName())
+		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
 
-			if err := ms.Close(); err != nil {
-				logger.Errorw("error closing metrics sink client", "sink", ms.GetSinkName(), "error", err)
-			}
-		}()
+		cfg.Controller.Metrics.Sink = string(metricstypes.SinkDriverNoop)
+
+		ms, err = metrics.GetSink(cfg.Controller.Metrics)
+
+		if err != nil {
+			logger.Fatalw("error creating noop metrics sink", "error", err)
+		}
 	}
+
+	// handle metrics sink client close on exit
+	defer func() {
+		logger.Infow("closing metrics sink client before exiting", "sink", ms.GetSinkName())
+
+		if err := ms.Close(); err != nil {
+			logger.Errorw("error closing metrics sink client", "sink", ms.GetSinkName(), "error", err)
+		}
+	}()
 
 	if ms.MetricRestart() != nil {
 		logger.Errorw("error sending MetricRestart", "sink", ms.GetSinkName())
 	}
 
 	// tracer sink
-	if tracer, err := tracer.GetSink(cfg.Controller.Tracer); err != nil {
-		logger.Errorw("error while creating tracer sink", "error", err)
-	} else {
-		defer tracer.Stop()
+	trc, err := tracer.GetSink(cfg.Controller.Tracer)
+
+	if err != nil {
+		logger.Errorw("error while creating tracer sink, switching to noop", "error", err)
+
+		cfg.Controller.Tracer.Sink = string(tracertypes.SinkDriverNoop)
+
+		trc, err = tracer.GetSink(cfg.Controller.Tracer)
+
+		if err != nil {
+			logger.Fatalw("error while creating noop tracer sink", "error", err)
+		}
 	}
+	// handle tracer sink close on exit
+	defer trc.Stop()
 
 	// profiler sink
-	if profiler, err := profiler.GetSink(cfg.Controller.Profiler); err != nil {
-		logger.Errorw("error while creating profiler sink", "error", err)
-	} else {
-		defer profiler.Stop()
+	prfl, err := profiler.GetSink(cfg.Controller.Profiler)
+	if err != nil {
+		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
+
+		cfg.Controller.Profiler.Sink = string(profilertypes.SinkDriverNoop)
+
+		prfl, err = profiler.GetSink(cfg.Controller.Profiler)
+
+		if err != nil {
+			logger.Fatalw("error while creating noop tracer sink", "error", err)
+		}
 	}
+	// handle profiler sink close on exit
+	defer prfl.Stop()
 
 	// target selector
 	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName)
