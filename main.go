@@ -65,7 +65,7 @@ type config struct {
 
 type controllerConfig struct {
 	MetricsBindAddr          string                          `json:"metricsBindAddr"`
-	Metrics                  metricstypes.SinkConfig         `json:"Metrics"`
+	Metrics                  metricstypes.SinkConfig         `json:"metrics"`
 	ImagePullSecrets         string                          `json:"imagePullSecrets"`
 	ExpiredDisruptionGCDelay time.Duration                   `json:"expiredDisruptionGCDelay"`
 	DefaultDuration          time.Duration                   `json:"defaultDuration"`

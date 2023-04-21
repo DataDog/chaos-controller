@@ -5,7 +5,7 @@
 
 package types
 
-// SinkConfig describes a config for a tracer sink config
+// SinkConfig describes a config for a metrics sink
 type SinkConfig struct {
 	Sink string `json:"sink"`
 	App  string `json:"app"`
