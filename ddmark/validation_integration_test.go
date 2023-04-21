@@ -8,7 +8,7 @@ package ddmark_test
 import (
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/hashicorp/go-multierror"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	k8syaml "sigs.k8s.io/yaml"
 )
@@ -28,7 +28,7 @@ minmaxtest:
 			var minmaxYaml string = `
 minmaxtest:
   intfield: 6
-  pintfield: 
+  pintfield:
 `
 			err := validateString(minmaxYaml)
 			Expect(err.Errors).To(HaveLen(0))
@@ -66,7 +66,7 @@ requiredtest:
 			var requiredYaml string = `
 requiredtest:
   intfield: 1
-  pintfield: 
+  pintfield:
 `
 			err := validateString(requiredYaml)
 			Expect(err.Errors).To(HaveLen(5))
@@ -134,7 +134,7 @@ enumtest:
 
 	Context("ExclusiveFields Marker", func() {
 		It("rejects invalid values", func() {
-			var exclusivefieldsYaml = `
+			exclusivefieldsYaml := `
 exclusivefieldstest:
   intfield: 1
   pintfield: 1
@@ -145,18 +145,18 @@ exclusivefieldstest:
 			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("checks out valid values", func() {
-			var exclusivefieldsYaml = `
+			exclusivefieldsYaml := `
 exclusivefieldstest:
-  intfield: 
+  intfield:
   pintfield: 1
   strfield: aa
-  pstrfield: 
+  pstrfield:
 `
 			err := validateString(exclusivefieldsYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("allows latter fields to be set freely", func() {
-			var exclusivefieldsYaml = `
+			exclusivefieldsYaml := `
 exclusivefieldstest:
   bfield: 1
   cfield: 1
@@ -168,10 +168,10 @@ exclusivefieldstest:
 
 	Context("LinkedFields Marker", func() {
 		It("checks out valid all-non-nil values", func() {
-			var linkedfieldsYaml = `
+			linkedfieldsYaml := `
 linkedfieldstest:
   strfield: aa
-  pstrfield: bb  
+  pstrfield: bb
   intfield: 1
   pintfield: 1
   aintfield: [1,2]
@@ -180,7 +180,7 @@ linkedfieldstest:
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("checks out valid all-nil values", func() {
-			var linkedfieldsYaml = `
+			linkedfieldsYaml := `
 linkedfieldstest:
   randomintfield: 1
   strfield:
@@ -193,11 +193,11 @@ linkedfieldstest:
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects both errors - first fields", func() {
-			var linkedfieldsYaml = `
+			linkedfieldsYaml := `
 linkedfieldstest:
   strfield: aa
   pstrfield: aa
-  intfield: 
+  intfield:
   pintfield:
   aintfield:
 `
@@ -205,10 +205,10 @@ linkedfieldstest:
 			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects both errors - second fields", func() {
-			var linkedfieldsYaml = `
+			linkedfieldsYaml := `
 linkedfieldstest:
-  strfield: 
-  pstrfield: 
+  strfield:
+  pstrfield:
   intfield: 1  # is non-nil
   pintfield: 0 # is non-nil
   aintfield:
@@ -217,7 +217,7 @@ linkedfieldstest:
 			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects one error - 0 value is nil on pointer", func() {
-			var linkedfieldsYaml = `
+			linkedfieldsYaml := `
 linkedfieldstest:
   strfield: aa
   pstrfield: aa
@@ -232,7 +232,7 @@ linkedfieldstest:
 
 	Context("AtLeastOneOf Marker", func() {
 		It("no error on all-nil sub-fields (marker not run)", func() {
-			var atLeastOneOfYaml = `
+			atLeastOneOfYaml := `
 atleastoneoftest:
   strfield: "" # is nil
   pstrfield:   # is nil
@@ -244,7 +244,7 @@ atleastoneoftest:
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects out all-nil values twice", func() {
-			var atLeastOneOfYaml = `
+			atLeastOneOfYaml := `
 atleastoneoftest:
   randomintfield: 1
   strfield: "" # is nil
@@ -257,7 +257,7 @@ atleastoneoftest:
 			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects almost-all-nil values once", func() {
-			var atLeastOneOfYaml = `
+			atLeastOneOfYaml := `
 atleastoneoftest:
   strfield:
   pstrfield:
@@ -269,7 +269,7 @@ atleastoneoftest:
 			Expect(err.Errors).To(HaveLen(1))
 		})
 		It("accepts both valid value groups", func() {
-			var atLeastOneOfYaml = `
+			atLeastOneOfYaml := `
 atleastoneoftest:
   strfield:
   pstrfield: a
@@ -281,10 +281,10 @@ atleastoneoftest:
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("accepts both valid value groups", func() {
-			var atLeastOneOfYaml = `
+			atLeastOneOfYaml := `
 atleastoneoftest:
   strfield: a
-  pstrfield: 
+  pstrfield:
   intfield: # is nil
   pintfield:  # is nil
   aintfield: []
@@ -299,7 +299,6 @@ atleastoneoftest:
 func testStructFromYaml(yamlBytes []byte) (ddmark.Teststruct, error) {
 	parsedSpec := ddmark.Teststruct{}
 	err := k8syaml.UnmarshalStrict(yamlBytes, &parsedSpec)
-
 	if err != nil {
 		return ddmark.Teststruct{}, err
 	}

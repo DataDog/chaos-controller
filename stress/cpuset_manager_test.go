@@ -6,31 +6,23 @@
 package stress_test
 
 import (
-	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/cpuset"
+	"github.com/DataDog/chaos-controller/mocks"
 	. "github.com/DataDog/chaos-controller/stress"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var _ = Describe("StresserManager Test", func() {
 	var (
-		log             *zap.SugaredLogger
 		stresserManager StresserManager
-		cgroupManager   *cgroup.MockManager
+		cgroupManager   *mocks.CGroupManagerMock
 	)
 
 	BeforeEach(func() {
-		z, _ := zap.NewDevelopment()
-		log = z.Sugar()
-		stresserManager = NewCPUStresserManager(log)
-
-		// cgroup
-		cgroupManager = cgroup.NewMockManager(GinkgoT())
-		cgroupManager.EXPECT().IsCgroupV2().Return(false)
-		cgroupManager.EXPECT().Read("cpuset", "cpuset.effective_cpus").Return("0-1", nil)
+		stresserManager = NewCPUStresserManager(zaptest.NewLogger(GinkgoT()).Sugar())
 	})
 
 	When("IsCoreAlreadyStress", func() {
@@ -51,6 +43,12 @@ var _ = Describe("StresserManager Test", func() {
 	})
 
 	When("TrackInjectorCores", func() {
+		BeforeEach(func() {
+			cgroupManager = mocks.NewCGroupManagerMock(GinkgoT())
+			cgroupManager.EXPECT().IsCgroupV2().Return(false)
+			cgroupManager.EXPECT().Read("cpuset", "cpuset.effective_cpus").Return("0-1", nil)
+		})
+
 		Context("StresserManager is freshly initialized", func() {
 			It("should track injector cores and return new cores to apply stress", func() {
 				userRequestedCount := intstr.FromInt(2)

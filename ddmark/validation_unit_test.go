@@ -10,12 +10,11 @@ import (
 	. "reflect"
 
 	. "github.com/DataDog/chaos-controller/ddmark"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Validation Rules Cases", func() {
-
 	Context("Maximum test", func() {
 		var maxInt int
 		var max Maximum

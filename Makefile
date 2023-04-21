@@ -1,4 +1,4 @@
-.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all
+.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all e2e-test test lima-install manifests
 .SILENT: release
 
 # Lima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
@@ -13,9 +13,21 @@ HANDLER_IMAGE ?= ${CONTAINERD_REGISTRY_PREFIX}/chaos-handler:latest
 LIMA_PROFILE ?= lima
 LIMA_CONFIG ?= lima
 KUBECTL ?= limactl shell default sudo kubectl
-UNZIP_BINARY ?= sudo unzip
-KUBERNETES_VERSION ?= v1.26.0
-GOLANGCI_LINT_VERSION ?= 1.51.0 ## this value should be the same as in /.circleci/config.yaml
+PROTOC_VERSION = 3.17.3
+PROTOC_OS ?= osx
+PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
+# you might also want to change ~/lima.yaml k3s version
+KUBERNETES_MAJOR_VERSION ?= 1.26
+KUBERNETES_VERSION ?= v$(KUBERNETES_MAJOR_VERSION).0
+GOLANGCI_LINT_VERSION ?= 1.51.0
+HELM_VERSION ?= 3.11.3
+KUBEBUILDER_VERSION ?= 3.1.0
+USE_VOLUMES ?= false
+
+# https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
+GO_TEST = go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going \
+	--cover --coverprofile=cover.profile --randomize-all \
+	--race --trace --json-report=report.json --junit-report=report.xml
 
 # expired disruption gc delay enable to speed up chaos controller disruption removal for e2e testing
 # it's used to check if disruptions are deleted as expected as soon as the expiration delay occurs
@@ -49,7 +61,20 @@ docker-build-manager: IMAGE_TAG=$(MANAGER_IMAGE)
 docker-build-ebpf:
 	docker build --platform linux/$(OS_ARCH) --build-arg ARCH=$(OS_ARCH) -t ebpf-builder-$(OS_ARCH) -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
 	-rm -r bin/injector/ebpf/
-	docker run --rm -v $(shell pwd):/app ebpf-builder-$(OS_ARCH)
+ifeq (true,$(USE_VOLUMES))
+# create a dummy container with volume to store files
+# circleci remote docker does not allow to use volumes, locally we fallbakc to standard volume but can call this target with USE_VOLUMES=true to debug if necessary
+# https://circleci.com/docs/building-docker-images/#mounting-folders
+	-docker rm ebpf-volume
+	-docker create --platform linux/$(OS_ARCH) -v /app --name ebpf-volume ebpf-builder-$(OS_ARCH) /bin/true
+	-docker cp . ebpf-volume:/app
+	-docker rm ebpf-builder
+	docker run --platform linux/$(OS_ARCH) --volumes-from ebpf-volume --name=ebpf-builder ebpf-builder-$(OS_ARCH)
+	docker cp ebpf-builder:/app/bin/injector/ebpf bin/injector/ebpf
+	docker rm ebpf-builder
+else
+	docker run --rm --platform linux/$(OS_ARCH) -v $(shell pwd):/app ebpf-builder-$(OS_ARCH)
+endif
 
 lima-push-injector lima-push-handler lima-push-manager: FAKE_FOR=COMPLETION
 
@@ -82,7 +107,9 @@ lima-push-$(1): docker-build-$(1)
 	limactl copy ./bin/$(1)/$(1).tar.gz default:/tmp/
 	limactl shell default -- sudo k3s ctr i import /tmp/$(1).tar.gz
 
-minikube-load-$(1): docker-build-$(1)
+minikube-load-$(1):
+# let's fail if the file does not exists so we know, mk load is not failing
+	ls -la ./bin/$(1)/$(1).tar.gz
 	minikube image load --daemon=false --overwrite=true ./bin/$(1)/$(1).tar.gz
 endef
 
@@ -106,7 +133,8 @@ chaosli:
 # Tests & CI
 ## Run unit tests
 test: generate manifests
-	CGO_ENABLED=1 go test -race $(shell go list ./... | grep -v chaos-controller/controllers) -coverprofile cover.out
+	$(GO_TEST) -r --compilers=4 --procs=4 --skip-package=controllers --randomize-suites \
+		--timeout=10m --poll-progress-after=5s --poll-progress-interval=5s
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -147,7 +175,8 @@ ci-install-minikube:
 ## Run e2e tests (against a real cluster)
 e2e-test: generate
 	$(MAKE) lima-install EXPIRED_DISRUPTION_GC_DELAY=10s
-	USE_EXISTING_CLUSTER=true CGO_ENABLED=1 go test -race ./controllers/... -coverprofile cover.out
+	USE_EXISTING_CLUSTER=true $(GO_TEST) controllers --timeout=15m --poll-progress-after=15s \
+		--poll-progress-interval=15s
 
 # Test chaosli API portability
 chaosli-test:
@@ -155,7 +184,7 @@ chaosli-test:
 
 # Go actions
 ## Generate manifests e.g. CRD, RBAC etc.
-manifests: controller-gen
+manifests: install-controller-gen
 	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:crdVersions=v1 paths="./..." output:crd:dir=./chart/templates/crds/ output:rbac:dir=./chart/templates/
 
 ## Run go fmt against code
@@ -166,16 +195,13 @@ fmt:
 vet:
 	go vet ./...
 
-## install golangci-lint at the correct version if not
-lint-deps:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
-
 ## Run golangci-lint against code
-lint: lint-deps
+lint: install-lint-deps
+	golangci-lint version
 	golangci-lint run
 
 ## Generate code
-generate: controller-gen
+generate: install-controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
 # Lima actions
@@ -251,23 +277,6 @@ lima-start: lima-kubectx-clean
 lima-install-longhorn:
 	$(KUBECTL) apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.4.0/deploy/longhorn.yaml
 
-# find or download controller-gen
-# download controller-gen if necessary
-controller-gen:
-ifeq (, $(shell which controller-gen))
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.11.3 ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
-CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
-
 # CI-specific actions
 
 venv:
@@ -285,15 +294,11 @@ godeps:
 
 deps: godeps license-check
 
-PROTOC_VERSION = 3.17.3
-PROTOC_OS ?= osx
-PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
-
 install-protobuf:
-	curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
-	$(UNZIP_BINARY) -o ${PROTOC_ZIP} -d /usr/local bin/protoc
-	$(UNZIP_BINARY) -o ${PROTOC_ZIP} -d /usr/local 'include/*'
-	rm -f ${PROTOC_ZIP}
+	curl -sSLo /tmp/${PROTOC_ZIP} https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
+	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} bin/protoc
+	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} 'include/*'
+	rm -f /tmp/${PROTOC_ZIP}
 
 generate-disruptionlistener-protobuf:
 	cd grpc/disruptionlistener && \
@@ -321,3 +326,37 @@ generate-mocks: clean-mocks
 
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
+
+install-kubebuilder:
+# download kubebuilder and install locally.
+	curl -sSLo ${GOPATH}/bin/kubebuilder https://go.kubebuilder.io/dl/latest/$(shell go env GOOS)/$(OS_ARCH)
+	chmod u+x ${GOPATH}/bin/kubebuilder
+# download setup-envtest and install related binaries locally
+	go install -v sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+# setup-envtest use -p path $(KUBERNETES_MAJOR_VERSION).x
+
+install-helm:
+	curl -sSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-v$(HELM_VERSION)-$(shell go env GOOS)-$(OS_ARCH).tar.gz"
+	tar -xvzf /tmp/helm.tar.gz --directory=${GOPATH}/bin --strip-components=1 $(shell go env GOOS)-$(OS_ARCH)/helm
+	rm /tmp/helm.tar.gz
+
+# find or download controller-gen
+# download controller-gen if necessary
+install-controller-gen:
+ifeq (, $(shell which controller-gen))
+	@{ \
+	set -e ;\
+	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$CONTROLLER_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.11.3 ;\
+	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
+	}
+CONTROLLER_GEN=$(GOBIN)/controller-gen
+else
+CONTROLLER_GEN=$(shell which controller-gen)
+endif
+
+## install golangci-lint at the correct version if not
+install-lint-deps:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}

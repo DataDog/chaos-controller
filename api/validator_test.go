@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	k8syaml "sigs.k8s.io/yaml"
@@ -126,7 +126,6 @@ var _ = Describe("Validator", func() {
 func disruptionSpecFromYaml(yamlBytes []byte) (v1beta1.DisruptionSpec, error) {
 	parsedSpec := v1beta1.DisruptionSpec{}
 	err := k8syaml.UnmarshalStrict(yamlBytes, &parsedSpec)
-
 	if err != nil {
 		return v1beta1.DisruptionSpec{}, err
 	}

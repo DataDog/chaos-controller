@@ -9,7 +9,7 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	. "github.com/DataDog/chaos-controller/grpc"
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -53,10 +53,11 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 			},
 		}
 
-		It("should create a list of endpointSpecs with 2 elements", func() {
-			var err error
+		BeforeEach(func() {
 			endpointSpec = GenerateEndpointSpecs(endpointAlterations)
-			Expect(err).To(BeNil())
+		})
+
+		It("should create a list of endpointSpecs with 2 elements", func() {
 			Expect(len(endpointSpec)).To(Equal(2))
 		})
 

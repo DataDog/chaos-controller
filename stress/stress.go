@@ -5,8 +5,6 @@
 
 package stress
 
-//go:generate mockery --name=Stresser --filename=stress_mock.go
-
 // Stresser is a component stresser
 type Stresser interface {
 	// Stress function should not be blocking (and should start goroutines by itself if needed)

@@ -44,6 +44,10 @@ func Execute() {
 	_ = rootCmd.Execute()
 
 	defer func() {
+		if ddMarkClient == nil {
+			return
+		}
+
 		if err := ddMarkClient.CleanupLibraries(); err != nil {
 			log.Fatal(err)
 		}

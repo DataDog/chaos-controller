@@ -11,17 +11,19 @@ import (
 
 	"github.com/DataDog/chaos-controller/metrics"
 	"github.com/DataDog/chaos-controller/metrics/types"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
-var log *zap.SugaredLogger
-var ms metrics.Sink
+var (
+	log *zap.SugaredLogger
+	ms  metrics.Sink
+)
 
 var _ = BeforeSuite(func() {
-	z, _ := zap.NewDevelopment()
-	log = z.Sugar()
+	log = zaptest.NewLogger(GinkgoT()).Sugar()
 	os.Setenv("STATSD_URL", "localhost:54321")
 	ms, _ = metrics.GetSink(types.SinkDriverNoop, types.SinkAppInjector)
 })
