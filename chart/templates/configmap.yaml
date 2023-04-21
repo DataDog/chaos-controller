@@ -14,11 +14,11 @@ data:
       metricsBindAddr: "127.0.0.1:8080"
       leaderElection: true
       metrics:
-        sinkDriver: {{ .Values.controller.metrics.sinkDriver | quote }}
+        sink: {{ .Values.controller.metrics.sink | quote }}
       profiler:
-        sinkDriver: {{ .Values.controller.profiler.sinkDriver | quote }}
+        sink: {{ .Values.controller.profiler.sink | quote }}
       tracer:
-        sinkDriver: {{ .Values.controller.tracer.sinkDriver | quote }}
+        sink: {{ .Values.controller.tracer.sink | quote }}
         sampleRate: {{ .Values.controller.tracer.sampleRate }}
       enableSafeguards: {{ .Values.controller.enableSafeguards }}
       enableObserver: {{ .Values.controller.enableObserver }}

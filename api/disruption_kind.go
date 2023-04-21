@@ -55,7 +55,7 @@ func AppendArgs(args []string, xargs DisruptionArgs) []string {
 
 	args = append(args,
 		// basic args
-		"--metrics-sink-driver", xargs.Metrics.SinkDriver,
+		"--metrics-sink-driver", xargs.Metrics.Sink,
 		"--level", string(xargs.Level),
 		"--target-containers", strings.Join(formattedTargetContainers, ","),
 		"--target-pod-ip", xargs.TargetPodIP,

@@ -7,7 +7,7 @@ package types
 
 // SinkConfig describes a config for a profiler sink config
 type SinkConfig struct {
-	SinkDriver string
+	Sink string `json:"Sink"`
 }
 
 // SinkDriver represents a sink driver to use

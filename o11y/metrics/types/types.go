@@ -7,8 +7,8 @@ package types
 
 // SinkConfig describes a config for a tracer sink config
 type SinkConfig struct {
-	SinkDriver string
-	SinkApp    string
+	Sink string `json:"sink"`
+	App  string `json:"app"`
 }
 
 // SinkDriver represents a sink driver to use

@@ -29,7 +29,7 @@ type Sink struct {
 func New(cfg types.SinkConfig) (Sink, error) {
 	url := os.Getenv("STATSD_URL")
 
-	instance, err := statsd.New(url, statsd.WithTags([]string{"app:" + cfg.SinkApp}))
+	instance, err := statsd.New(url, statsd.WithTags([]string{"app:" + cfg.App}))
 	if err != nil {
 		return Sink{}, err
 	}

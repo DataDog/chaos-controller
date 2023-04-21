@@ -48,12 +48,12 @@ type Sink interface {
 
 // GetSink returns an initiated metrics sink
 func GetSink(cfg types.SinkConfig) (Sink, error) {
-	switch types.SinkDriver(cfg.SinkDriver) {
+	switch types.SinkDriver(cfg.Sink) {
 	case types.SinkDriverDatadog:
 		return datadog.New(cfg)
 	case types.SinkDriverNoop:
 		return noop.New(), nil
 	default:
-		return nil, fmt.Errorf("unsupported metrics sink: %s", cfg.SinkDriver)
+		return nil, fmt.Errorf("unsupported metrics sink: %s", cfg.Sink)
 	}
 }

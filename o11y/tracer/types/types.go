@@ -7,8 +7,8 @@ package types
 
 // SinkConfig describes a config for a tracer sink config
 type SinkConfig struct {
-	SinkDriver string
-	SampleRate float64
+	Sink       string  `json:"Sink"`
+	SampleRate float64 `json:"SampleRate"`
 }
 
 // SinkDriver represents a sink driver to use

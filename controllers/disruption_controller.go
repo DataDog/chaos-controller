@@ -1280,7 +1280,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			PulseInitialDelay:    pulseInitialDelay,
 			PulseActiveDuration:  pulseActiveDuration,
 			PulseDormantDuration: pulseDormantDuration,
-			Metrics:              metricstypes.SinkConfig{SinkDriver: r.MetricsSink.GetSinkName(), SinkApp: string(metricstypes.SinkAppInjector)},
+			Metrics:              metricstypes.SinkConfig{Sink: r.MetricsSink.GetSinkName(), App: string(metricstypes.SinkAppInjector)},
 			AllowedHosts:         allowedHosts,
 			DNSServer:            r.InjectorDNSDisruptionDNSServer,
 			KubeDNS:              r.InjectorDNSDisruptionKubeDNS,
