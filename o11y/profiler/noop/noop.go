@@ -15,7 +15,7 @@ import (
 type Sink struct{}
 
 // New NOOP Sink
-func New(types.SinkConfig) Sink {
+func New() Sink {
 	fmt.Println("NOOP Sink: Profiler Started")
 	return Sink{}
 }

@@ -26,10 +26,10 @@ type Sink struct {
 }
 
 // New instantiate a new datadog statsd provider
-func New(cfg types.SinkConfig) (Sink, error) {
+func New(app types.SinkApp) (Sink, error) {
 	url := os.Getenv("STATSD_URL")
 
-	instance, err := statsd.New(url, statsd.WithTags([]string{"app:" + cfg.App}))
+	instance, err := statsd.New(url, statsd.WithTags([]string{"app:" + string(app)}))
 	if err != nil {
 		return Sink{}, err
 	}

@@ -17,7 +17,6 @@ import (
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
-	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
 	"github.com/DataDog/chaos-controller/safemode"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -1280,7 +1279,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			PulseInitialDelay:    pulseInitialDelay,
 			PulseActiveDuration:  pulseActiveDuration,
 			PulseDormantDuration: pulseDormantDuration,
-			Metrics:              metricstypes.SinkConfig{Sink: r.MetricsSink.GetSinkName(), App: string(metricstypes.SinkAppInjector)},
+			MetricsSink:          r.MetricsSink.GetSinkName(),
 			AllowedHosts:         allowedHosts,
 			DNSServer:            r.InjectorDNSDisruptionDNSServer,
 			KubeDNS:              r.InjectorDNSDisruptionKubeDNS,

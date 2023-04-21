@@ -80,7 +80,7 @@ func init() {
 
 	// basic args
 	rootCmd.PersistentFlags().BoolVar(&disruptionArgs.DryRun, "dry-run", false, "Enable dry-run mode")
-	rootCmd.PersistentFlags().StringVar(&disruptionArgs.Metrics.Sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
+	rootCmd.PersistentFlags().StringVar(&disruptionArgs.MetricsSink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
 	rootCmd.PersistentFlags().StringVar(&disruptionLevelRaw, "level", "", "Level of injection (either pod or node)")
 	rootCmd.PersistentFlags().StringSliceVar(&rawTargetContainers, "target-containers", []string{}, "Targeted containers")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.TargetPodIP, "target-pod-ip", "", "Pod IP of targeted pod")
@@ -145,13 +145,12 @@ func initLogger() {
 func initMetricsSink() {
 	var err error
 
-	ms, err = metrics.GetSink(disruptionArgs.Metrics)
+	ms, err = metrics.GetSink(metricstypes.SinkDriver(disruptionArgs.MetricsSink), metricstypes.SinkAppInjector)
 	if err != nil {
 		log.Errorw("error while creating metric sink, switching to noop sink", "error", err)
 
-		disruptionArgs.Metrics.Sink = string(metricstypes.SinkDriverNoop)
-
-		ms, _ = metrics.GetSink(disruptionArgs.Metrics)
+		ms, err = metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppInjector)
+		log.Errorw("error while creating noop metric sink", "error", err)
 	}
 }
 

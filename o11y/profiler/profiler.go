@@ -13,20 +13,20 @@ import (
 	"github.com/DataDog/chaos-controller/o11y/profiler/types"
 )
 
-// Sink describes a profilerer
+// Sink describes a profiler
 type Sink interface {
 	GetSinkName() string
 	Stop()
 }
 
 // GetSink returns an initiated profiler sink
-func GetSink(cfg types.SinkConfig) (Sink, error) {
-	switch types.SinkDriver(cfg.Sink) {
+func GetSink(driver types.SinkDriver) (Sink, error) {
+	switch driver {
 	case types.SinkDriverDatadog:
-		return datadog.New(cfg)
+		return datadog.New()
 	case types.SinkDriverNoop:
-		return noop.New(cfg), nil
+		return noop.New(), nil
 	default:
-		return nil, fmt.Errorf("unsupported profiler: %s", cfg.Sink)
+		return nil, fmt.Errorf("unsupported profiler: %s", driver)
 	}
 }

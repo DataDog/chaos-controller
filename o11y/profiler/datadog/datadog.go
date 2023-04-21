@@ -14,7 +14,7 @@ import (
 type Sink struct{}
 
 // New initiated datadog profiler sink
-func New(cfg types.SinkConfig) (Sink, error) {
+func New() (Sink, error) {
 	err := profiler.Start(profiler.WithProfileTypes(
 		profiler.CPUProfile,
 		profiler.HeapProfile,

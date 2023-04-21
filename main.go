@@ -22,8 +22,6 @@ import (
 	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
 	"github.com/DataDog/chaos-controller/o11y/profiler"
 	profilertypes "github.com/DataDog/chaos-controller/o11y/profiler/types"
-	"github.com/DataDog/chaos-controller/o11y/tracer"
-	tracertypes "github.com/DataDog/chaos-controller/o11y/tracer/types"
 	"github.com/DataDog/chaos-controller/targetselector"
 	"github.com/DataDog/chaos-controller/utils"
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
@@ -65,7 +63,7 @@ type config struct {
 
 type controllerConfig struct {
 	MetricsBindAddr          string                          `json:"metricsBindAddr"`
-	Metrics                  metricstypes.SinkConfig         `json:"metrics"`
+	MetricsSink              string                          `json:"metricsSink"`
 	ImagePullSecrets         string                          `json:"imagePullSecrets"`
 	ExpiredDisruptionGCDelay time.Duration                   `json:"expiredDisruptionGCDelay"`
 	DefaultDuration          time.Duration                   `json:"defaultDuration"`
@@ -78,8 +76,7 @@ type controllerConfig struct {
 	CloudProviders           cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
 	UserInfoHook             bool                            `json:"userInfoHook"`
 	SafeMode                 safeModeConfig                  `json:"safeMode"`
-	Tracer                   tracertypes.SinkConfig          `json:"tracer"`
-	Profiler                 profilertypes.SinkConfig        `json:"profiler"`
+	ProfilerSink             string                          `json:"profilerSink"`
 }
 
 type controllerWebhookConfig struct {
@@ -268,17 +265,11 @@ func main() {
 	pflag.StringVar(&cfg.Controller.CloudProviders.Datadog.IPRangesURL, "cloud-providers-datadog-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
 	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.ipRangesURL", pflag.Lookup("cloud-providers-datadog-iprangesurl")))
 
-	pflag.StringVar(&cfg.Controller.Metrics.Sink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
-	handleFatalError(viper.BindPFlag("controller.metrics.sink", pflag.Lookup("metrics-sink")))
+	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "metrics sink (datadog, or noop)")
+	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
 
-	pflag.StringVar(&cfg.Controller.Tracer.Sink, "tracer-sink", "noop", "Tracer sink (datadog, or noop)")
-	handleFatalError(viper.BindPFlag("controller.tracer.sink", pflag.Lookup("tracer-sink")))
-
-	pflag.Float64Var(&cfg.Controller.Tracer.SampleRate, "tracer-samplerate", 1.0, "Sets tracer sampling rate")
-	handleFatalError(viper.BindPFlag("controller.tracer.sampleRate", pflag.Lookup("tracer-samplerate")))
-
-	pflag.StringVar(&cfg.Controller.Profiler.Sink, "profiler-sink", "noop", "profiler sink (datadog, or noop)")
-	handleFatalError(viper.BindPFlag("controller.profiler.sink", pflag.Lookup("profiler-sink")))
+	pflag.StringVar(&cfg.Controller.ProfilerSink, "profiler-sink", "noop", "profiler sink (datadog, or noop)")
+	handleFatalError(viper.BindPFlag("controller.profilerSink", pflag.Lookup("profiler-sink")))
 
 	pflag.Parse()
 
@@ -343,15 +334,12 @@ func main() {
 	}
 
 	// metrics sink
-	cfg.Controller.Metrics.App = string(metricstypes.SinkAppController)
-	ms, err := metrics.GetSink(cfg.Controller.Metrics)
+	ms, err := metrics.GetSink(metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
 
 	if err != nil {
 		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
 
-		cfg.Controller.Metrics.Sink = string(metricstypes.SinkDriverNoop)
-
-		ms, err = metrics.GetSink(cfg.Controller.Metrics)
+		ms, err = metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
 
 		if err != nil {
 			logger.Fatalw("error creating noop metrics sink", "error", err)
@@ -371,34 +359,16 @@ func main() {
 		logger.Errorw("error sending MetricRestart", "sink", ms.GetSinkName())
 	}
 
-	// tracer sink
-	trc, err := tracer.GetSink(cfg.Controller.Tracer)
-
-	if err != nil {
-		logger.Errorw("error while creating tracer sink, switching to noop", "error", err)
-
-		cfg.Controller.Tracer.Sink = string(tracertypes.SinkDriverNoop)
-
-		trc, err = tracer.GetSink(cfg.Controller.Tracer)
-
-		if err != nil {
-			logger.Fatalw("error while creating noop tracer sink", "error", err)
-		}
-	}
-	// handle tracer sink close on exit
-	defer trc.Stop()
-
 	// profiler sink
-	prfl, err := profiler.GetSink(cfg.Controller.Profiler)
+	prfl, err := profiler.GetSink(profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
+
 	if err != nil {
 		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
 
-		cfg.Controller.Profiler.Sink = string(profilertypes.SinkDriverNoop)
-
-		prfl, err = profiler.GetSink(cfg.Controller.Profiler)
+		prfl, err = profiler.GetSink(profilertypes.SinkDriverNoop)
 
 		if err != nil {
-			logger.Fatalw("error while creating noop tracer sink", "error", err)
+			logger.Errorw("error while creating noop profiler sink", "error", err)
 		}
 	}
 	// handle profiler sink close on exit

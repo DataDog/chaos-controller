@@ -46,14 +46,14 @@ type Sink interface {
 	MetricOrphanFound(tags []string) error
 }
 
-// GetSink returns an initiated metrics sink
-func GetSink(cfg types.SinkConfig) (Sink, error) {
-	switch types.SinkDriver(cfg.Sink) {
+// GetSink returns an initiated sink
+func GetSink(driver types.SinkDriver, app types.SinkApp) (Sink, error) {
+	switch driver {
 	case types.SinkDriverDatadog:
-		return datadog.New(cfg)
+		return datadog.New(app)
 	case types.SinkDriverNoop:
 		return noop.New(), nil
 	default:
-		return nil, fmt.Errorf("unsupported metrics sink: %s", cfg.Sink)
+		return nil, fmt.Errorf("unsupported metrics sink: %s", driver)
 	}
 }
