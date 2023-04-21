@@ -15,13 +15,8 @@ controller:
   deleteOnly: false # enable delete-only mode
   enableSafeguards: true # enable safeguards on targets selection (do not target the node running the controller)
   enableObserver: true # enable observer on targets, notifying of target warning status and events
-  metrics:
-    sink: noop
-  profiler:
-    sink: noop
-  tracer:
-    sink: noop
-    sampleRate: 1.0
+  metricsSink: noop
+  profilerSink: noop
   notifiers:
     common:
       clusterName: lima
