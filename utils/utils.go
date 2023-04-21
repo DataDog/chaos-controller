@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/cloudservice"
-	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"

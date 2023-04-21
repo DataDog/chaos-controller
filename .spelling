@@ -7,12 +7,12 @@
 15m30s
 45s
 4h30m
+AllowRootDiskFailure
 AtLeastOneOf
 ClusterIP
 ClusterRole
 DaemonSet
 DisableCountTooLarge
-AllowRootDiskFailure
 DisableNeitherHostNorPort
 DynamicTargeting
 ExclusiveFields
@@ -58,6 +58,7 @@ ddmarkers
 demo.yaml
 dequeued
 dequeuing
+dev
 disruptionlistener
 dns
 dogfood

@@ -22,12 +22,13 @@ import (
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/injector"
 	logger "github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/chaos-controller/metrics"
-	"github.com/DataDog/chaos-controller/metrics/types"
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
+
 	"github.com/cenkalti/backoff"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -144,11 +145,12 @@ func initLogger() {
 func initMetricsSink() {
 	var err error
 
-	ms, err = metrics.GetSink(types.SinkDriver(disruptionArgs.MetricsSink), types.SinkAppInjector)
+	ms, err = metrics.GetSink(metricstypes.SinkDriver(disruptionArgs.MetricsSink), metricstypes.SinkAppInjector)
 	if err != nil {
 		log.Errorw("error while creating metric sink, switching to noop sink", "error", err)
 
-		ms, _ = metrics.GetSink(types.SinkDriverNoop, types.SinkAppInjector)
+		ms, err = metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppInjector)
+		log.Errorw("error while creating noop metric sink", "error", err)
 	}
 }
 
