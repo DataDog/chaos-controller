@@ -471,6 +471,8 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 			return nil, err
 		}
 
+		i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service, filter.priority), "interfaces", interfaces)
+
 		builtServices = append(builtServices, filter)
 	}
 
@@ -485,7 +487,7 @@ func (i *networkDisruptionInjector) removeServiceFilter(interfaces []string, tcF
 		}
 	}
 
-	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter on %s", tcFilter.service.String()), "interfaces", strings.Join(interfaces, ", "))
+	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter for service %s with priority %d", tcFilter.service, tcFilter.priority), "interfaces", interfaces)
 
 	return nil
 }
@@ -647,15 +649,15 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		// If this is a headless service, we want to block all traffic to the endpoint IPs
 		watcher.servicePorts = append(watcher.servicePorts, v1.ServicePort{Port: 0})
 	} else {
-		watcher.servicePorts = service.Spec.Ports
+		watcher.servicePorts, _ = watcher.watchedServiceSpec.ExtractAffectedPortsInServicePorts(service)
 	}
 
-	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, service.Spec.Ports, interfaces, flowid)
+	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, watcher.servicePorts, interfaces, flowid)
 	if err != nil {
 		return err
 	}
 
-	nsServicesTcFilters := i.buildServiceFiltersFromService(*service, service.Spec.Ports)
+	nsServicesTcFilters := i.buildServiceFiltersFromService(*service, watcher.servicePorts)
 
 	switch event.Type {
 	case watch.Added:
@@ -714,6 +716,9 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 	}
 
 	tcFiltersFromPod := i.buildServiceFiltersFromPod(*pod, watcher.servicePorts)
+	if len(tcFiltersFromPod) == 0 {
+		return fmt.Errorf("unable to find service %s/%s endpoints to filter", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace)
+	}
 
 	switch event.Type {
 	case watch.Added:
@@ -859,9 +864,11 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 			return fmt.Errorf("error getting the given kubernetes service (%s/%s): %w", serviceSpec.Namespace, serviceSpec.Name, err)
 		}
 
+		servicePorts, _ := serviceSpec.ExtractAffectedPortsInServicePorts(k8sService)
+
 		serviceWatcher := serviceWatcher{
 			watchedServiceSpec:   serviceSpec,
-			servicePorts:         k8sService.Spec.Ports,
+			servicePorts:         servicePorts,
 			labelServiceSelector: labels.SelectorFromValidatedSet(k8sService.Spec.Selector).String(), // keep this information to later create watchers on resources destination
 
 			kubernetesPodEndpointsWatcher: nil,                 // watch pods related to the kubernetes service filtered on

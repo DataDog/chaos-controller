@@ -66,7 +66,11 @@ spec:
     services: # optional, list of destination Kubernetes services to filter on
       - name: foo # service name
         namespace: bar # service namespace
-    cloud:
+      - name: fooo # service name
+        namespace: barr # service namespace
+        ports: # optional, list of the service ports to drop packets on. Empty list means dropping to all ports of the service
+          - 8080
+          - 8081
       aws:
         - service: "S3" # service name as declared in the provider file (see doc for details)
           protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)

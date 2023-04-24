@@ -7,6 +7,7 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -255,6 +256,24 @@ func explainNetworkFailure(spec v1beta1.DisruptionSpec) {
 	for _, data := range network.Services {
 		fmt.Printf("\t\t🎯 Service: %s\n", data.Name)
 		fmt.Printf("\t\t\t⛵️ Namespace: %s\n", data.Namespace)
+
+		if len(data.Ports) > 0 {
+			fmt.Printf("\t\t\t⛵️ Affected ports:\n")
+
+			for _, port := range data.Ports {
+				toPrint := []string{}
+
+				if port.Port != 0 {
+					toPrint = append(toPrint, strconv.Itoa(port.Port))
+				}
+
+				if port.Name != "" {
+					toPrint = append(toPrint, port.Name)
+				}
+
+				fmt.Printf("\t\t\t\t⛵️ Port: (%s)\n", strings.Join(toPrint, "/"))
+			}
+		}
 	}
 
 	if network.Drop != 0 {

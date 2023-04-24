@@ -525,6 +525,46 @@ func getServices() []v1beta1.NetworkDisruptionServiceSpec {
 		service.Name = getInput("What is the name of this service?", "", survey.WithValidator(survey.Required))
 		service.Namespace = getInput("What namespace is this service in?", "", survey.WithValidator(survey.Required))
 
+		hasPorts := confirmOption("Do you want to provide the ports affected by the disruption? (In case of no port defined, all ports of the service will be affected)", "")
+
+		if hasPorts {
+			ports := []v1beta1.NetworkDisruptionServicePortSpec{}
+
+			getServicePort := func() v1beta1.NetworkDisruptionServicePortSpec {
+				port := v1beta1.NetworkDisruptionServicePortSpec{}
+
+				fmt.Println(`We can identify a service port by name or by port value. Providing one of those fields is required to limit impact on specified port.`)
+
+				if confirmOption("Would you like to specify the name for this port?", "This field is optional and is used to find the right port to be affected in case the service has multiple ports") {
+					port.Name = getInput("Please enter the name of the port for this service (or ctrl+c to go back)", "", survey.WithValidator(survey.Required))
+				}
+
+				if confirmOption("Would you like to specify the port value for this port?", "This field is optional and is used to find the right port to be affected in case the service has multiple ports") {
+					port.Port, _ = strconv.Atoi(getInput("Please enter the port value for this service (or ctrl+c to go back)", "", survey.WithValidator(integerValidator), survey.WithValidator(survey.Required)))
+				}
+
+				if port.Name == "" && port.Port == 0 {
+					fmt.Println(`No port name or port value was specified, please provide a port/name or hit CTRL^C to skip this filtering and impact all ports.`)
+
+					return v1beta1.NetworkDisruptionServicePortSpec{}
+				}
+
+				return port
+			}
+
+			if port := getServicePort(); port.Name != "" || port.Port != 0 {
+				ports = append(ports, port)
+			}
+
+			for confirmOption("Would you like to add another k8s service port affected by the disruption?", "") {
+				if port := getServicePort(); port.Name != "" || port.Port != 0 {
+					ports = append(ports, port)
+				}
+			}
+
+			service.Ports = ports
+		}
+
 		return service
 	}
 

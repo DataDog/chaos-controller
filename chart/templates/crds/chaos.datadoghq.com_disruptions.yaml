@@ -407,6 +407,17 @@ spec:
                           type: string
                         namespace:
                           type: string
+                        ports:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                              port:
+                                maximum: 65535
+                                minimum: 0
+                                type: integer
+                            type: object
+                          type: array
                       required:
                       - name
                       - namespace
