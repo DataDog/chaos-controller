@@ -396,22 +396,14 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter for every service and pods filtered on, modify the filter and then delete a filter", func() {
-				priority := uint32(0)
-
 				// Initial setup
 				Eventually(func(g Gomega) {
 					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
-
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
-
 					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 81, network.TCP, network.ConnStateUndefined, "1:4") // priority 1005
 
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
+					// Delete 6 times with [lo, eth0, eth1]. The first 3 times for when we modify a service and the last 3 times because we delete a watched pod
+					tc.AssertNumberOfCalls(GinkgoT(), "DeleteFilter", 6)
 
 				}, time.Second*60, time.Second).Should(Succeed())
 			})
