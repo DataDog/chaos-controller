@@ -10,12 +10,25 @@ import (
 	"os"
 	"time"
 
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
+	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/DataDog/chaos-controller/eventbroadcaster"
+	"github.com/DataDog/chaos-controller/eventnotifier"
+	"github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
+	"github.com/DataDog/chaos-controller/o11y/profiler"
+	profilertypes "github.com/DataDog/chaos-controller/o11y/profiler/types"
+	"github.com/DataDog/chaos-controller/targetselector"
 	"github.com/DataDog/chaos-controller/utils"
+	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -25,16 +38,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
-	"github.com/DataDog/chaos-controller/controllers"
-	"github.com/DataDog/chaos-controller/eventbroadcaster"
-	"github.com/DataDog/chaos-controller/eventnotifier"
-	"github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/chaos-controller/metrics"
-	"github.com/DataDog/chaos-controller/metrics/types"
-	"github.com/DataDog/chaos-controller/targetselector"
-	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 	"github.com/spf13/viper"
 	// +kubebuilder:scaffold:imports
 )
@@ -73,6 +76,7 @@ type controllerConfig struct {
 	CloudProviders           cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
 	UserInfoHook             bool                            `json:"userInfoHook"`
 	SafeMode                 safeModeConfig                  `json:"safeMode"`
+	ProfilerSink             string                          `json:"profilerSink"`
 }
 
 type controllerWebhookConfig struct {
@@ -146,9 +150,6 @@ func main() {
 
 	pflag.DurationVar(&cfg.Controller.DefaultDuration, "default-duration", time.Hour, "Default duration for a disruption with none specified")
 	handleFatalError(viper.BindPFlag("controller.defaultDuration", pflag.Lookup("default-duration")))
-
-	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "Metrics sink (datadog, or noop)")
-	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
 
 	pflag.StringVar(&cfg.Controller.Notifiers.Common.ClusterName, "notifiers-common-clustername", "", "Cluster Name for notifiers output")
 	handleFatalError(viper.BindPFlag("controller.notifiers.common.clusterName", pflag.Lookup("notifiers-common-clustername")))
@@ -264,6 +265,12 @@ func main() {
 	pflag.StringVar(&cfg.Controller.CloudProviders.Datadog.IPRangesURL, "cloud-providers-datadog-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
 	handleFatalError(viper.BindPFlag("controller.cloudProviders.datadog.ipRangesURL", pflag.Lookup("cloud-providers-datadog-iprangesurl")))
 
+	pflag.StringVar(&cfg.Controller.MetricsSink, "metrics-sink", "noop", "metrics sink (datadog, or noop)")
+	handleFatalError(viper.BindPFlag("controller.metricsSink", pflag.Lookup("metrics-sink")))
+
+	pflag.StringVar(&cfg.Controller.ProfilerSink, "profiler-sink", "noop", "profiler sink (datadog, or noop)")
+	handleFatalError(viper.BindPFlag("controller.profilerSink", pflag.Lookup("profiler-sink")))
+
 	pflag.Parse()
 
 	logger, err := log.NewZapLogger()
@@ -327,13 +334,16 @@ func main() {
 	}
 
 	// metrics sink
-	ms, err := metrics.GetSink(types.SinkDriver(cfg.Controller.MetricsSink), types.SinkAppController)
-	if err != nil {
-		logger.Errorw("error while creating metric sink", "error", err)
-	}
+	ms, err := metrics.GetSink(metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
 
-	if ms.MetricRestart() != nil {
-		logger.Errorw("error sending MetricRestart", "sink", ms.GetSinkName())
+	if err != nil {
+		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
+
+		ms, err = metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
+
+		if err != nil {
+			logger.Fatalw("error creating noop metrics sink", "error", err)
+		}
 	}
 
 	// handle metrics sink client close on exit
@@ -344,6 +354,25 @@ func main() {
 			logger.Errorw("error closing metrics sink client", "sink", ms.GetSinkName(), "error", err)
 		}
 	}()
+
+	if ms.MetricRestart() != nil {
+		logger.Errorw("error sending MetricRestart", "sink", ms.GetSinkName())
+	}
+
+	// profiler sink
+	prfl, err := profiler.GetSink(profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
+
+	if err != nil {
+		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
+
+		prfl, err = profiler.GetSink(profilertypes.SinkDriverNoop)
+
+		if err != nil {
+			logger.Errorw("error while creating noop profiler sink", "error", err)
+		}
+	}
+	// handle profiler sink close on exit
+	defer prfl.Stop()
 
 	// target selector
 	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName)

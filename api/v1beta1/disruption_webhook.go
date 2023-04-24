@@ -18,7 +18,7 @@ import (
 	"github.com/DataDog/chaos-controller/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/DataDog/chaos-controller/metrics"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
