@@ -71,6 +71,12 @@ type tcServiceFilter struct {
 	priority uint32 // one priority per tc filters applied, the priority is the same for all interfaces
 }
 
+// tcServiceFilter describes a tc filter
+type tcFilter struct {
+	ip       *net.IPNet
+	priority uint32 // one priority per tc filters applied, the priority is the same for all interfaces
+}
+
 // serviceWatcher
 type serviceWatcher struct {
 	// information about the service watched
@@ -88,6 +94,11 @@ type serviceWatcher struct {
 	kubernetesServiceWatcher       <-chan watch.Event
 	tcFiltersFromNamespaceServices []tcServiceFilter
 	servicesResourceVersion        string
+}
+
+type hostsWatcher struct {
+	// The only identifying info we need are the ip and filter priority
+	hostFilterMap map[v1beta1.NetworkDisruptionHostSpec][]*tcFilter
 }
 
 // NewNetworkDisruptionInjector creates a NetworkDisruptionInjector object with the given config,
@@ -431,7 +442,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	}
 
 	// add filters for allowed hosts
-	if err := i.addFiltersForHosts(interfaces, i.spec.AllowedHosts, "1:1"); err != nil {
+	if _, err := i.addFiltersForHosts(interfaces, i.spec.AllowedHosts, "1:1"); err != nil {
 		return fmt.Errorf("error adding filter for allowed hosts: %w", err)
 	}
 
@@ -444,8 +455,8 @@ func (i *networkDisruptionInjector) applyOperations() error {
 			return fmt.Errorf("can't add a filter: %w", err)
 		}
 	} else {
-		// apply filters for given hosts
-		if err := i.addFiltersForHosts(interfaces, i.spec.Hosts, "1:4"); err != nil {
+		// apply filters for given hosts, re-resolving on a given interval and adding/deleting filters as needed
+		if err := i.handleFiltersForHosts(interfaces, "1:4"); err != nil {
 			return fmt.Errorf("error adding filters for given hosts: %w", err)
 		}
 
@@ -480,15 +491,24 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 	return builtServices, nil
 }
 
-// removeServiceFilter delete tc filters using its priority
+// removeServiceFilter delete tc filters for a k8s service
 func (i *networkDisruptionInjector) removeServiceFilter(interfaces []string, tcFilter tcServiceFilter) error {
-	for _, iface := range interfaces {
-		if err := i.config.TrafficController.DeleteFilter(iface, tcFilter.priority); err != nil {
-			return err
-		}
+	if err := i.removeTcFilter(interfaces, tcFilter.priority); err != nil {
+		return err
 	}
 
 	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter for service %s with priority %d", tcFilter.service, tcFilter.priority), "interfaces", interfaces)
+
+	return nil
+}
+
+// delete tc filters using only its priority
+func (i *networkDisruptionInjector) removeTcFilter(interfaces []string, priority uint32) error {
+	for _, iface := range interfaces {
+		if err := i.config.TrafficController.DeleteFilter(iface, priority); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -892,16 +912,97 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 	return nil
 }
 
+// handleFiltersForServices creates tc filters on given interfaces for hosts in disruption spec classifying matching packets in the given flowid
+func (i *networkDisruptionInjector) handleFiltersForHosts(interfaces []string, flowid string) error {
+	hosts := hostsWatcher{}
+
+	hostFilterMap, err := i.addFiltersForHosts(interfaces, i.spec.Hosts, flowid)
+	if err != nil {
+		return err
+	}
+
+	hosts.hostFilterMap = hostFilterMap
+
+	go i.watchHostChanges(interfaces, hosts, flowid)
+
+	return nil
+}
+
+// watchHostChanges watches for changes to the resolved IP for hosts
+func (i *networkDisruptionInjector) watchHostChanges(interfaces []string, hosts hostsWatcher, flowid string) {
+	for {
+		select {
+		case state := <-i.config.State.State:
+			if state == Cleaned {
+				return
+			}
+		case <-time.After(i.config.HostResolveInterval):
+			changedHosts := []v1beta1.NetworkDisruptionHostSpec{}
+			for host, tcFilters := range hosts.hostFilterMap {
+				newIps, err := resolveHost(i.config.DNSClient, host.Host)
+				if err != nil {
+					// TODO
+				}
+
+				for _, tcF := range tcFilters {
+					if !containsIP(newIps, tcF.ip) {
+						changedHosts = append(changedHosts, host)
+					}
+				}
+			}
+
+			if len(changedHosts) > 0 {
+				// TODO For changed host in changed hosts
+				// first remove all the filters
+				// then add the new filters
+				// then update the hostswatcher
+
+				for _, changedHost := range changedHosts {
+					for _, filter := range hosts.hostFilterMap[changedHost] {
+						err := i.removeTcFilter(interfaces, filter.priority) // TODO get a tcfilter here
+						if err != nil {
+							i.config.Log.Errorw("error removing out of date tc filter", "err", err, "host", changedHost.Host) // TODO
+						}
+					}
+					delete(hosts.hostFilterMap, changedHost)
+				}
+
+				filterMap, err := i.addFiltersForHosts(interfaces, changedHosts, flowid)
+
+				if err != nil {
+					i.config.Log.Errorw("error updating filters for hosts", "hosts", changedHosts, "err", err) // TODO
+				}
+
+				hosts.hostFilterMap = filterMap
+			}
+		}
+	}
+}
+
+func containsIP(ips []*net.IPNet, lookupIP *net.IPNet) bool {
+	for _, ip := range ips {
+		if ip == lookupIP {
+			return true
+		}
+	}
+
+	return false
+}
+
 // addFiltersForHosts creates tc filters on given interfaces for given hosts classifying matching packets in the given flowid
-func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, hosts []v1beta1.NetworkDisruptionHostSpec, flowid string) error {
+func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, hosts []v1beta1.NetworkDisruptionHostSpec, flowid string) (map[v1beta1.NetworkDisruptionHostSpec][]*tcFilter, error) {
+	hostFilterMap := map[v1beta1.NetworkDisruptionHostSpec][]*tcFilter{}
+
 	for _, host := range hosts {
 		// resolve given hosts if needed
 		ips, err := resolveHost(i.config.DNSClient, host.Host)
 		if err != nil {
-			return fmt.Errorf("error resolving given host %s: %w", host.Host, err)
+			return nil, fmt.Errorf("error resolving given host %s: %w", host.Host, err)
 		}
 
 		i.config.Log.Infof("resolved %s as %s", host.Host, ips)
+
+		filtersForHost := []*tcFilter{}
 
 		for _, ip := range ips {
 			var (
@@ -929,13 +1030,20 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 			protocol := network.NewProtocol(host.Protocol)
 
 			// create tc filter
-			if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid); err != nil {
-				return fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
+			priority, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid)
+			if err != nil {
+				return nil, fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
 			}
+
+			filtersForHost = append(filtersForHost, &tcFilter{
+				ip:       ip,
+				priority: priority,
+			})
 		}
+		hostFilterMap[host] = filtersForHost
 	}
 
-	return nil
+	return hostFilterMap, nil
 }
 
 // AddNetem adds network disruptions using the drivers in the networkDisruptionInjector
