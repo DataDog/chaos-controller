@@ -73,6 +73,7 @@ injector:
          # : "internal": use kube-dns for internal hostnames resolution (`.local.` or `.internal.` suffixes), use the DNS server defined in the controller configuration for all other resolutions
          # : "all": use kube-dns for all resolutions
   networkDisruption: # network disruption general configuration
+    hostResolveInterval: 1m # how often to re-resolve the hostnames we are disrupting traffic to
     allowedHosts: [] # list of always allowed hosts (even if explicitly blocked by a network disruption)
     # (here's the expected format, all fields are optional)
     # allowedHosts:

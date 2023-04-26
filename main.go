@@ -108,7 +108,8 @@ type injectorDNSDisruptionConfig struct {
 }
 
 type injectorNetworkDisruptionConfig struct {
-	AllowedHosts []string `json:"allowedHosts"`
+	HostResolveInterval time.Duration `json:"hostResolveInterval"`
+	AllowedHosts        []string      `json:"allowedHosts"`
 }
 
 type handlerConfig struct {
@@ -204,6 +205,9 @@ func main() {
 
 	pflag.StringSliceVar(&cfg.Injector.NetworkDisruption.AllowedHosts, "injector-network-disruption-allowed-hosts", []string{}, "List of hosts always allowed by network disruptions (format: <host>;<port>;<protocol>;<flow>)")
 	handleFatalError(viper.BindPFlag("injector.networkDisruption.allowedHosts", pflag.Lookup("injector-network-disruption-allowed-hosts")))
+
+	pflag.DurationVar(&cfg.Injector.NetworkDisruption.HostResolveInterval, "injector-network-disruption-host-resolve-interval", time.Minute, "How often to re-resolve hostnames specified in a network disruption")
+	handleFatalError(viper.BindPFlag("injector.networkDisruption.hostResolveInterval", pflag.Lookup("injector-network-disruption-host-resolve-interval")))
 
 	pflag.BoolVar(&cfg.Handler.Enabled, "handler-enabled", false, "Enable the chaos handler for on-init disruptions")
 	handleFatalError(viper.BindPFlag("handler.enabled", pflag.Lookup("handler-enabled")))

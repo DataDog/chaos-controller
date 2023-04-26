@@ -41,6 +41,7 @@ type DisruptionArgs struct {
 	PulseInitialDelay    time.Duration
 	PulseActiveDuration  time.Duration
 	PulseDormantDuration time.Duration
+	HostResolveInterval  time.Duration
 }
 
 // AppendArgs is a helper function generating common and global args and appending them to the given args array
@@ -96,6 +97,9 @@ func AppendArgs(args []string, xargs DisruptionArgs) []string {
 	if xargs.Kind == chaostypes.DisruptionKindNetworkDisruption {
 		for _, host := range xargs.AllowedHosts {
 			args = append(args, "--allowed-hosts", host)
+		}
+		if xargs.HostResolveInterval > 0 {
+			args = append(args, "--host-resolve-interval", xargs.HostResolveInterval.String())
 		}
 	}
 

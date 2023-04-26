@@ -53,11 +53,12 @@ type networkDisruptionInjector struct {
 // NetworkDisruptionInjectorConfig contains all needed drivers to create a network disruption using `tc`
 type NetworkDisruptionInjectorConfig struct {
 	Config
-	TrafficController network.TrafficController
-	IPTables          network.IPTables
-	NetlinkAdapter    network.NetlinkAdapter
-	DNSClient         network.DNSClient
-	State             DisruptionState
+	TrafficController   network.TrafficController
+	IPTables            network.IPTables
+	NetlinkAdapter      network.NetlinkAdapter
+	DNSClient           network.DNSClient
+	State               DisruptionState
+	HostResolveInterval time.Duration
 }
 
 type DisruptionState struct {
