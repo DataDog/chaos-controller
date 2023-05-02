@@ -71,7 +71,7 @@ type tcServiceFilter struct {
 	priority uint32 // one priority per tc filters applied, the priority is the same for all interfaces
 }
 
-// tcServiceFilter describes a tc filter
+// tcFilter describes a tc filter
 type tcFilter struct {
 	ip       *net.IPNet
 	priority uint32 // one priority per tc filters applied, the priority is the same for all interfaces
