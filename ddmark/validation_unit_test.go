@@ -235,6 +235,63 @@ var _ = Describe("Validation Rules Cases", func() {
 		})
 	})
 
+	Context("LinkedFieldsValueWithTrigger test", func() {
+		type dummyStruct struct {
+			Field1 string
+			Field2 int
+			Field3 *int
+		}
+
+		// we expect that; if Field1 value is "aaa" then Field 2 value is 12 and Field3 is not nil
+		arr := []string{"Field1=aaa", "Field2=12", "Field3"}
+		linked := LinkedFieldsValueWithTrigger(arr)
+		var fakeObj dummyStruct
+
+		BeforeEach(func() {
+			i := 3
+			var pi *int = &i
+
+			fakeObj = dummyStruct{
+				Field1: "aaa",
+				Field2: 12,
+				Field3: pi,
+			}
+		})
+		It("validates object with all correct fields", func() {
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+		})
+
+		It("validates object with all nil fields", func() {
+			fakeObj.Field1 = ""
+			fakeObj.Field2 = 0
+			fakeObj.Field3 = nil
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+		})
+
+		It("validates object with correct trigger, correct fields (incl. 0-value pointer-int -- it's not-nil)", func() {
+			i := 0
+			var pi *int = &i
+
+			fakeObj.Field3 = pi
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+		})
+
+		It("rejects object with nil pointer value (nil-value pointer int is nil)", func() {
+			fakeObj.Field3 = nil
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+		})
+
+		It("rejects object with one missing value (expected value is value 12)", func() {
+			fakeObj.Field2 = 0
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+		})
+
+		It("rejects object with one incorrect value (expected value is value 12)", func() {
+			fakeObj.Field2 = 1
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+		})
+	})
+
 	Context("AtLeastOneOf test", func() {
 		type dummyStruct struct {
 			Field1 string

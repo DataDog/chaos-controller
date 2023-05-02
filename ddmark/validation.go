@@ -8,6 +8,8 @@ package ddmark
 import (
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 
 	k8smarkers "sigs.k8s.io/controller-tools/pkg/markers"
 )
@@ -24,6 +26,7 @@ func init() {
 
 	addDefinition(ExclusiveFields(nil), k8smarkers.DescribesType)
 	addDefinition(LinkedFields(nil), k8smarkers.DescribesType)
+	addDefinition(LinkedFieldsValueWithTrigger(nil), k8smarkers.DescribesType)
 	addDefinition(AtLeastOneOf(nil), k8smarkers.DescribesType)
 }
 
@@ -45,6 +48,11 @@ type ExclusiveFields []string
 
 // LinkedFields can be applied to structs, and asserts the fields in the list are either all 'nil' or all non-'nil'
 type LinkedFields []string
+
+// LinkedFieldsValueWithTrigger can be applied to structs, and asserts the following:
+// - if first field exists (or has the indicated value), all the following fields need to exist (or have the indicated value)
+// - fields in question can be int or strings
+type LinkedFieldsValueWithTrigger []string
 
 // AtLeastOneOf can be applied to structs, and asserts at least one of the following fields is non-'nil'
 type AtLeastOneOf []string
@@ -163,6 +171,51 @@ func (l LinkedFields) ApplyRule(fieldvalue reflect.Value) error {
 	return nil
 }
 
+func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error {
+	fieldvalue = reflect.Indirect(fieldvalue)
+
+	var matchCount = 0
+	// room for logic to possibly expand the marker to accept multiple trigger values (instead of 1)
+	var c = 1
+
+	if len(l) < 2 {
+		return fmt.Errorf("%v: marker was wrongly defined in struct: less than 2 fields", ruleName(l))
+	}
+
+	structMap, ok := structValueToMap(fieldvalue)
+	if !ok {
+		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(l), fieldvalue.Type(), "struct")
+	}
+
+	for _, markerString := range l[:c] {
+		res, err := l.checkValueExistOrIsValid(markerString, structMap)
+		if err != nil {
+			return err
+		}
+
+		matchCount += res
+	}
+
+	if matchCount != len(l[:c]) {
+		return nil
+	}
+
+	for _, markerString := range l[c:] {
+		res, err := l.checkValueExistOrIsValid(markerString, structMap)
+		if err != nil {
+			return err
+		}
+
+		matchCount += res
+	}
+
+	if matchCount != 0 && matchCount != len(l) {
+		return fmt.Errorf("%v: all of the following fields need to be aligned; either at the given value, nil or non-nil (currently unmatched): %v", ruleName(l), l)
+	}
+
+	return nil
+}
+
 func (r AtLeastOneOf) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 
@@ -240,4 +293,57 @@ func parseIntOrUInt(value reflect.Value) (int, bool) {
 	}
 
 	return fieldInt, ok
+}
+
+func (l LinkedFieldsValueWithTrigger) checkValueExistOrIsValid(item string, structMap map[string]interface{}) (int, error) {
+	// marketItem can either be a fieldName, or fieldName=fieldValue
+	markerItemArr := strings.Split(item, "=")
+
+	switch {
+	// check item is not null
+	case len(markerItemArr) == 1:
+		if structMap[item] != nil {
+			return 1, nil
+		}
+	// check item has described value
+	case len(markerItemArr) == 2:
+		markerSubfieldName, markerSubfieldValue := markerItemArr[0], markerItemArr[1]
+		if structMap[markerSubfieldName] == nil {
+			break
+		}
+
+		if reflect.Indirect(reflect.ValueOf(structMap[markerSubfieldName])).Type().ConvertibleTo(reflect.TypeOf(markerSubfieldValue)) {
+			v := reflect.Indirect(reflect.ValueOf(structMap[markerSubfieldName]))
+			tv := v.Type()
+			t := reflect.TypeOf(markerSubfieldValue)
+
+			var vStr string
+
+			switch tv.Kind() {
+			case reflect.Int:
+				vInt := v.Convert(tv).Interface().(int)
+				vStr = strconv.Itoa(vInt)
+			case reflect.String:
+				vStr = v.Convert(t).Interface().(string)
+			default:
+				return 0, fmt.Errorf("%v: please do not apply this marker to anything else than int or string. Current type: %v", ruleName(l), tv.Name())
+			}
+
+			fmt.Println("expect", markerSubfieldValue, "of type", t, "=> got", v, "of type", tv, "=> converted to", vStr, "of type", reflect.TypeOf(vStr))
+
+			if strings.Compare(markerSubfieldValue, vStr) == 0 {
+				fmt.Println("success !")
+				return 1, nil
+			}
+			fmt.Printf("failed: %+v <=> %+v\n", markerSubfieldValue, vStr)
+
+		} else {
+			return 0, fmt.Errorf("%v: wrong type for value field %v", ruleName(l), markerSubfieldName)
+		}
+	// an item is checked for existence (len = 1) or a given value (len = 2) - any other value (0 or >2) is a wrongly defined marker
+	default:
+		return 0, fmt.Errorf("%v: marker was wrongly defined in struct: please re-read ddmark documentation ", ruleName(l))
+	}
+
+	return 0, nil
 }

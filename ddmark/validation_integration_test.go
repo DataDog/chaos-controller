@@ -230,6 +230,72 @@ linkedfieldstest:
 		})
 	})
 
+	Context("LinkedFieldsValueWithTrigger Marker", func() {
+		// +ddmark:validation:LinkedFieldsValueWithTrigger={StrField=aaa,IntField=2}
+		// +ddmark:validation:LinkedFieldsValueWithTrigger={PStrField=bbb,PIntField=12,AIntField}
+		It("checks out valid all-incorrect initial values", func() {
+			linkedfieldsYaml := `
+linkedfieldsvaluewithtriggertest:
+  strfield: aa      # invalid
+  pstrfield: bb     # invalid
+  intfield: 12
+  pintfield: 1
+  aintfield: [1,2]
+`
+			err := validateString(linkedfieldsYaml)
+			Expect(err.Errors).To(HaveLen(0))
+		})
+		It("checks out valid all-nil initial values", func() {
+			linkedfieldsYaml := `
+linkedfieldsvaluewithtriggertest:
+  randomintfield: 1
+  strfield:
+  pstrfield:
+  intfield: 0 # is nil
+  pintfield:  # is nil
+  aintfield:  # is nil
+`
+			err := validateString(linkedfieldsYaml)
+			Expect(err.Errors).To(HaveLen(0))
+		})
+		It("rejects both errors - nil second fields", func() {
+			linkedfieldsYaml := `
+linkedfieldsvaluewithtriggertest:
+  strfield: aaa
+  pstrfield: bbb
+  intfield:  # is nil
+  pintfield: # is nil
+  aintfield: # is nil
+`
+			err := validateString(linkedfieldsYaml)
+			Expect(err.Errors).To(HaveLen(2))
+		})
+		It("rejects both errors - one second unfit, one second field missing", func() {
+			linkedfieldsYaml := `
+linkedfieldsvaluewithtriggertest:
+  strfield: aaa
+  pstrfield: bbb
+  intfield: 12 # is non-nil
+  pintfield: 0 # is non-nil
+  aintfield:   # is nil
+`
+			err := validateString(linkedfieldsYaml)
+			Expect(err.Errors).To(HaveLen(2))
+		})
+		It("rejects one error - 0 value is nil on pointer", func() {
+			linkedfieldsYaml := `
+linkedfieldsvaluewithtriggertest:
+  strfield: aaa
+  pstrfield: bbb
+  intfield: 0 	 # is nil
+  pintfield: 0     # is non-nil
+  aintfield: [1,2] # is non-nil
+`
+			err := validateString(linkedfieldsYaml)
+			Expect(err.Errors).To(HaveLen(2))
+		})
+	})
+
 	Context("AtLeastOneOf Marker", func() {
 		It("no error on all-nil sub-fields (marker not run)", func() {
 			atLeastOneOfYaml := `
