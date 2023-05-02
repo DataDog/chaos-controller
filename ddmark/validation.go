@@ -188,7 +188,7 @@ func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error 
 	}
 
 	for _, markerString := range l[:c] {
-		res, err := l.checkValueExistOrIsValid(markerString, structMap)
+		res, err := checkValueExistsOrIsValid(markerString, structMap, ruleName(l))
 		if err != nil {
 			return err
 		}
@@ -201,7 +201,7 @@ func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error 
 	}
 
 	for _, markerString := range l[c:] {
-		res, err := l.checkValueExistOrIsValid(markerString, structMap)
+		res, err := checkValueExistsOrIsValid(markerString, structMap, ruleName(l))
 		if err != nil {
 			return err
 		}
@@ -295,18 +295,20 @@ func parseIntOrUInt(value reflect.Value) (int, bool) {
 	return fieldInt, ok
 }
 
-func (l LinkedFieldsValueWithTrigger) checkValueExistOrIsValid(item string, structMap map[string]interface{}) (int, error) {
+// checkValueExistOrIsValid checks if a given string marker item name value exist in a unmarshalled struct (converted to a map by structValueToMap)
+// it returns 1 if the value is found and -if applicable- the required value is valid, 0 otherwise
+func checkValueExistsOrIsValid(markerItem string, structMap map[string]interface{}, ruleName string) (int, error) {
 	// marketItem can either be a fieldName, or fieldName=fieldValue
-	markerItemArr := strings.Split(item, "=")
+	markerItemArr := strings.Split(markerItem, "=")
 
-	switch {
-	// check item is not null
-	case len(markerItemArr) == 1:
-		if structMap[item] != nil {
+	switch len(markerItemArr) {
+	// no given value to respect => check item is not null
+	case 1:
+		if structMap[markerItem] != nil {
 			return 1, nil
 		}
-	// check item has described value
-	case len(markerItemArr) == 2:
+	// a value was required => check item has described value
+	case 2:
 		markerSubfieldName, markerSubfieldValue := markerItemArr[0], markerItemArr[1]
 		if structMap[markerSubfieldName] == nil {
 			break
@@ -326,23 +328,18 @@ func (l LinkedFieldsValueWithTrigger) checkValueExistOrIsValid(item string, stru
 			case reflect.String:
 				vStr = v.Convert(t).Interface().(string)
 			default:
-				return 0, fmt.Errorf("%v: please do not apply this marker to anything else than int or string. Current type: %v", ruleName(l), tv.Name())
+				return 0, fmt.Errorf("%v: please do not apply this marker to anything else than int or string. Current type: %v", ruleName, tv.Name())
 			}
-
-			fmt.Println("expect", markerSubfieldValue, "of type", t, "=> got", v, "of type", tv, "=> converted to", vStr, "of type", reflect.TypeOf(vStr))
 
 			if strings.Compare(markerSubfieldValue, vStr) == 0 {
-				fmt.Println("success !")
 				return 1, nil
 			}
-			fmt.Printf("failed: %+v <=> %+v\n", markerSubfieldValue, vStr)
-
 		} else {
-			return 0, fmt.Errorf("%v: wrong type for value field %v", ruleName(l), markerSubfieldName)
+			return 0, fmt.Errorf("%v: wrong type for value field %v", ruleName, markerSubfieldName)
 		}
 	// an item is checked for existence (len = 1) or a given value (len = 2) - any other value (0 or >2) is a wrongly defined marker
 	default:
-		return 0, fmt.Errorf("%v: marker was wrongly defined in struct: please re-read ddmark documentation ", ruleName(l))
+		return 0, fmt.Errorf("%v: marker was wrongly defined in struct: please re-read marker documentation ", ruleName)
 	}
 
 	return 0, nil
