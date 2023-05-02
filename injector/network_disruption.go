@@ -947,11 +947,19 @@ func (i *networkDisruptionInjector) watchHostChanges(interfaces []string, hosts 
 					continue
 				}
 
+				if len(newIps) != len(tcFilters) {
+					// TODO debug log?
+					// If we have more or fewer IPs than before, we obviously have a change and need to update the tc filters
+					changedHosts = append(changedHosts, host)
+					continue
+				}
+
 				for _, tcF := range tcFilters {
+					// TODO debug log?
 					if !containsIP(newIps, tcF.ip) {
 						// If any of the IPs have changed, lets completely reset the filters for this host
 						// TODO for review should we add more logic to track the individual IPs, and only update the ones needed?
-						// That's more correct, but has more room for bugs due to complexity
+						// That's more correct, but has more room for bugs due to complexity, also we'd have to rewrite addFiltersForHosts?
 						changedHosts = append(changedHosts, host)
 					}
 				}
@@ -962,16 +970,17 @@ func (i *networkDisruptionInjector) watchHostChanges(interfaces []string, hosts 
 					for _, filter := range hosts.hostFilterMap[changedHost] {
 						err := i.removeTcFilter(interfaces, filter.priority)
 						if err != nil {
-							i.config.Log.Errorw("error removing out of date tc filter", "err", err, "host", changedHost.Host) // TODO
+							// TODO test the behavior on missing filters, what happens if we're retrying to remove old filters after failing at i.addFiltersForHosts(interfaces, changedHosts, flowid) and restarting
+							i.config.Log.Errorw("error removing out of date tc filter", "err", err, "host", changedHost.Host) // TODO we could leak these filters
 						}
 					}
-					delete(hosts.hostFilterMap, changedHost)
 				}
 
 				filterMap, err := i.addFiltersForHosts(interfaces, changedHosts, flowid)
 
 				if err != nil {
-					i.config.Log.Errorw("error updating filters for hosts", "hosts", changedHosts, "err", err) // TODO
+					i.config.Log.Errorw("error updating filters for hosts", "hosts", changedHosts, "err", err) // TODO we could have partially applied filters
+					continue
 				}
 
 				for changedHost, filter := range filterMap {
