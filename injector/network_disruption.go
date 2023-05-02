@@ -941,25 +941,26 @@ func (i *networkDisruptionInjector) watchHostChanges(interfaces []string, hosts 
 			for host, tcFilters := range hosts.hostFilterMap {
 				newIps, err := resolveHost(i.config.DNSClient, host.Host)
 				if err != nil {
-					// TODO
+					i.config.Log.Errorw("error resolving Host", "err", err, "host", host.Host)
+
+					// If we can't get a new set of IPs for this host, just move on to the next one
+					continue
 				}
 
 				for _, tcF := range tcFilters {
 					if !containsIP(newIps, tcF.ip) {
+						// If any of the IPs have changed, lets completely reset the filters for this host
+						// TODO for review should we add more logic to track the individual IPs, and only update the ones needed?
+						// That's more correct, but has more room for bugs due to complexity
 						changedHosts = append(changedHosts, host)
 					}
 				}
 			}
 
 			if len(changedHosts) > 0 {
-				// TODO For changed host in changed hosts
-				// first remove all the filters
-				// then add the new filters
-				// then update the hostswatcher
-
 				for _, changedHost := range changedHosts {
 					for _, filter := range hosts.hostFilterMap[changedHost] {
-						err := i.removeTcFilter(interfaces, filter.priority) // TODO get a tcfilter here
+						err := i.removeTcFilter(interfaces, filter.priority)
 						if err != nil {
 							i.config.Log.Errorw("error removing out of date tc filter", "err", err, "host", changedHost.Host) // TODO
 						}
@@ -973,7 +974,9 @@ func (i *networkDisruptionInjector) watchHostChanges(interfaces []string, hosts 
 					i.config.Log.Errorw("error updating filters for hosts", "hosts", changedHosts, "err", err) // TODO
 				}
 
-				hosts.hostFilterMap = filterMap
+				for changedHost, filter := range filterMap {
+					hosts.hostFilterMap[changedHost] = filter
+				}
 			}
 		}
 	}
