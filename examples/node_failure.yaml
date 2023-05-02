@@ -11,6 +11,7 @@ metadata:
   annotations:
     chaos.datadoghq.com/environment: "lima"
 spec:
+  level: node # impact the whole node instead of a single pod
   selector:
     app: demo-curl
   count: 1
