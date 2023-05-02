@@ -170,7 +170,7 @@ exclusivefieldstest:
 		It("checks out valid all-non-nil values", func() {
 			linkedfieldsvalueYaml := `
 linkedfieldsvaluetest:
-  strfield: aa
+  strfield: aaa
   pstrfield: bb
   intfield: 1
   pintfield: 1
@@ -178,6 +178,18 @@ linkedfieldsvaluetest:
 `
 			err := validateString(linkedfieldsvalueYaml)
 			Expect(err.Errors).To(HaveLen(0))
+		})
+		It("rejects invalid requires value for StrField", func() {
+			linkedfieldsvalueYaml := `
+linkedfieldsvaluetest:
+  strfield: notaaa
+  pstrfield: bb
+  intfield: 1
+  pintfield: 1
+  aintfield: [1,2]
+`
+			err := validateString(linkedfieldsvalueYaml)
+			Expect(err.Errors).To(HaveLen(1))
 		})
 		It("checks out valid all-nil values", func() {
 			linkedfieldsvalueYaml := `
@@ -197,7 +209,7 @@ linkedfieldsvaluetest:
 linkedfieldsvaluetest:
   strfield: aa
   pstrfield: aa
-  intfield:
+  intfield: 1
   pintfield:
   aintfield:
 `
@@ -219,7 +231,7 @@ linkedfieldsvaluetest:
 		It("rejects one error - 0 value is nil on pointer", func() {
 			linkedfieldsvalueYaml := `
 linkedfieldsvaluetest:
-  strfield: aa
+  strfield: aaa
   pstrfield: aa
   intfield: 0 	# is nil
   pintfield: 0  # is non-nil

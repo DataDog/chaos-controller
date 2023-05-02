@@ -186,7 +186,7 @@ var _ = Describe("Validation Rules Cases", func() {
 			Field3 *int
 		}
 
-		arr := []string{"Field1", "Field2", "Field3"}
+		arr := []string{"Field1=a", "Field2=2", "Field3"}
 		linked := LinkedFieldsValue(arr)
 		var fakeObj dummyStruct
 
@@ -231,6 +231,11 @@ var _ = Describe("Validation Rules Cases", func() {
 
 		It("rejects object with one missing field (0-value int is nil)", func() {
 			fakeObj.Field2 = 0
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+		})
+
+		It("rejects object with one missing field (Field2 is 3, expected value was 2)", func() {
+			fakeObj.Field2 = 3
 			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
 		})
 	})

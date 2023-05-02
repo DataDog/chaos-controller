@@ -68,7 +68,7 @@ type ExclusiveFieldsTestStruct struct {
 	CField    int
 }
 
-// +ddmark:validation:LinkedFieldsValue={StrField,IntField}
+// +ddmark:validation:LinkedFieldsValue={StrField=aaa,IntField}
 // +ddmark:validation:LinkedFieldsValue={PStrField,PIntField,AIntField}
 type LinkedFieldsValueTestStruct struct {
 	RandomIntField int // allows to actually check all-empty structs
