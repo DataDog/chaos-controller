@@ -25,7 +25,7 @@ func init() {
 	addDefinition(Required(true), k8smarkers.DescribesField)
 
 	addDefinition(ExclusiveFields(nil), k8smarkers.DescribesType)
-	addDefinition(LinkedFields(nil), k8smarkers.DescribesType)
+	addDefinition(LinkedFieldsValue(nil), k8smarkers.DescribesType)
 	addDefinition(LinkedFieldsValueWithTrigger(nil), k8smarkers.DescribesType)
 	addDefinition(AtLeastOneOf(nil), k8smarkers.DescribesType)
 }
@@ -46,8 +46,8 @@ type Required bool
 // ExclusiveFields can be applied to structs, and asserts that the first field can only be non-'nil' iff all of the other fields are 'nil'
 type ExclusiveFields []string
 
-// LinkedFields can be applied to structs, and asserts the fields in the list are either all 'nil' or all non-'nil'
-type LinkedFields []string
+// LinkedFieldsValue can be applied to structs, and asserts the fields in the list are either all 'nil' or all non-'nil'
+type LinkedFieldsValue []string
 
 // LinkedFieldsValueWithTrigger can be applied to structs, and asserts the following:
 // - if first field exists (or has the indicated value), all the following fields need to exist (or have the indicated value)
@@ -148,7 +148,7 @@ func (r Required) ApplyRule(fieldvalue reflect.Value) error {
 	return nil
 }
 
-func (l LinkedFields) ApplyRule(fieldvalue reflect.Value) error {
+func (l LinkedFieldsValue) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 
 	var matchCount = 0
@@ -159,9 +159,12 @@ func (l LinkedFields) ApplyRule(fieldvalue reflect.Value) error {
 	}
 
 	for _, item := range l {
-		if structMap[item] != nil {
-			matchCount++
+		r, err := checkValueExistsOrIsValid(item, structMap, ruleName(l))
+		if err != nil {
+			return err
 		}
+
+		matchCount += r
 	}
 
 	if matchCount != 0 && matchCount != len(l) {

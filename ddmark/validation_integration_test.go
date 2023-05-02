@@ -166,22 +166,22 @@ exclusivefieldstest:
 		})
 	})
 
-	Context("LinkedFields Marker", func() {
+	Context("LinkedFieldsValue Marker", func() {
 		It("checks out valid all-non-nil values", func() {
-			linkedfieldsYaml := `
-linkedfieldstest:
+			linkedfieldsvalueYaml := `
+linkedfieldsvaluetest:
   strfield: aa
   pstrfield: bb
   intfield: 1
   pintfield: 1
   aintfield: [1,2]
 `
-			err := validateString(linkedfieldsYaml)
+			err := validateString(linkedfieldsvalueYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("checks out valid all-nil values", func() {
-			linkedfieldsYaml := `
-linkedfieldstest:
+			linkedfieldsvalueYaml := `
+linkedfieldsvaluetest:
   randomintfield: 1
   strfield:
   pstrfield:
@@ -189,43 +189,43 @@ linkedfieldstest:
   pintfield:  # is nil
   aintfield:
 `
-			err := validateString(linkedfieldsYaml)
+			err := validateString(linkedfieldsvalueYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects both errors - first fields", func() {
-			linkedfieldsYaml := `
-linkedfieldstest:
+			linkedfieldsvalueYaml := `
+linkedfieldsvaluetest:
   strfield: aa
   pstrfield: aa
   intfield:
   pintfield:
   aintfield:
 `
-			err := validateString(linkedfieldsYaml)
+			err := validateString(linkedfieldsvalueYaml)
 			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects both errors - second fields", func() {
-			linkedfieldsYaml := `
-linkedfieldstest:
+			linkedfieldsvalueYaml := `
+linkedfieldsvaluetest:
   strfield:
   pstrfield:
   intfield: 1  # is non-nil
   pintfield: 0 # is non-nil
   aintfield:
 `
-			err := validateString(linkedfieldsYaml)
+			err := validateString(linkedfieldsvalueYaml)
 			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects one error - 0 value is nil on pointer", func() {
-			linkedfieldsYaml := `
-linkedfieldstest:
+			linkedfieldsvalueYaml := `
+linkedfieldsvaluetest:
   strfield: aa
   pstrfield: aa
   intfield: 0 	# is nil
   pintfield: 0  # is non-nil
   aintfield: [1,2]
 `
-			err := validateString(linkedfieldsYaml)
+			err := validateString(linkedfieldsvalueYaml)
 			Expect(err.Errors).To(HaveLen(1))
 		})
 	})
@@ -234,7 +234,7 @@ linkedfieldstest:
 		// +ddmark:validation:LinkedFieldsValueWithTrigger={StrField=aaa,IntField=2}
 		// +ddmark:validation:LinkedFieldsValueWithTrigger={PStrField=bbb,PIntField=12,AIntField}
 		It("checks out valid all-incorrect initial values", func() {
-			linkedfieldsYaml := `
+			linkedfieldsvaluewithtriggerYaml := `
 linkedfieldsvaluewithtriggertest:
   strfield: aa      # invalid
   pstrfield: bb     # invalid
@@ -242,11 +242,11 @@ linkedfieldsvaluewithtriggertest:
   pintfield: 1
   aintfield: [1,2]
 `
-			err := validateString(linkedfieldsYaml)
+			err := validateString(linkedfieldsvaluewithtriggerYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("checks out valid all-nil initial values", func() {
-			linkedfieldsYaml := `
+			linkedfieldsvaluewithtriggerYaml := `
 linkedfieldsvaluewithtriggertest:
   randomintfield: 1
   strfield:
@@ -255,11 +255,11 @@ linkedfieldsvaluewithtriggertest:
   pintfield:  # is nil
   aintfield:  # is nil
 `
-			err := validateString(linkedfieldsYaml)
+			err := validateString(linkedfieldsvaluewithtriggerYaml)
 			Expect(err.Errors).To(HaveLen(0))
 		})
 		It("rejects both errors - nil second fields", func() {
-			linkedfieldsYaml := `
+			linkedfieldsvaluewithtriggerYaml := `
 linkedfieldsvaluewithtriggertest:
   strfield: aaa
   pstrfield: bbb
@@ -267,11 +267,11 @@ linkedfieldsvaluewithtriggertest:
   pintfield: # is nil
   aintfield: # is nil
 `
-			err := validateString(linkedfieldsYaml)
+			err := validateString(linkedfieldsvaluewithtriggerYaml)
 			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects both errors - one second unfit, one second field missing", func() {
-			linkedfieldsYaml := `
+			linkedfieldsvaluewithtriggerYaml := `
 linkedfieldsvaluewithtriggertest:
   strfield: aaa
   pstrfield: bbb
@@ -279,11 +279,11 @@ linkedfieldsvaluewithtriggertest:
   pintfield: 0 # is non-nil
   aintfield:   # is nil
 `
-			err := validateString(linkedfieldsYaml)
+			err := validateString(linkedfieldsvaluewithtriggerYaml)
 			Expect(err.Errors).To(HaveLen(2))
 		})
 		It("rejects one error - 0 value is nil on pointer", func() {
-			linkedfieldsYaml := `
+			linkedfieldsvaluewithtriggerYaml := `
 linkedfieldsvaluewithtriggertest:
   strfield: aaa
   pstrfield: bbb
@@ -291,7 +291,7 @@ linkedfieldsvaluewithtriggertest:
   pintfield: 0     # is non-nil
   aintfield: [1,2] # is non-nil
 `
-			err := validateString(linkedfieldsYaml)
+			err := validateString(linkedfieldsvaluewithtriggerYaml)
 			Expect(err.Errors).To(HaveLen(2))
 		})
 	})

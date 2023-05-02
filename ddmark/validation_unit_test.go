@@ -179,7 +179,7 @@ var _ = Describe("Validation Rules Cases", func() {
 		})
 	})
 
-	Context("LinkedFields test", func() {
+	Context("LinkedFieldsValue test", func() {
 		type dummyStruct struct {
 			Field1 string
 			Field2 int
@@ -187,7 +187,7 @@ var _ = Describe("Validation Rules Cases", func() {
 		}
 
 		arr := []string{"Field1", "Field2", "Field3"}
-		linked := LinkedFields(arr)
+		linked := LinkedFieldsValue(arr)
 		var fakeObj dummyStruct
 
 		BeforeEach(func() {
