@@ -170,10 +170,15 @@ func (l LinkedFieldsValue) ApplyRule(fieldvalue reflect.Value) error {
 	}
 
 	if matchCount != 0 && matchCount != len(l) {
-		return fmt.Errorf("%v: all of the following fields need to be either nil of non-nil (currently unmatched): %v", ruleName(l), l)
+		return l.GenValueCheckError()
 	}
 
 	return nil
+}
+
+func (l LinkedFieldsValue) GenValueCheckError() error {
+	template := "%v: all of the following fields need to be either nil of non-nil (currently unmatched): %v"
+	return fmt.Errorf(template, ruleName(l), l)
 }
 
 func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error {
@@ -219,10 +224,15 @@ func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error 
 	}
 
 	if matchCount != 0 && matchCount != len(l) {
-		return fmt.Errorf("%v: all of the following fields need to be aligned; either at the given value, nil or non-nil (currently unmatched): %v", ruleName(l), l)
+		return l.GenValueCheckError()
 	}
 
 	return nil
+}
+
+func (l LinkedFieldsValueWithTrigger) GenValueCheckError() error {
+	template := "%v: all of the following fields need to be aligned; if the first value is valid / exists, all the following need to either exist or have the indicated value: %v"
+	return fmt.Errorf(template, ruleName(l), l)
 }
 
 func (r AtLeastOneOf) ApplyRule(fieldvalue reflect.Value) error {
@@ -305,7 +315,7 @@ func parseIntOrUInt(value reflect.Value) (int, bool) {
 }
 
 // checkValueExistOrIsValid checks if a given string marker item name value exist in a unmarshalled struct (converted to a map by structValueToMap)
-// it returns 1 if the value is found and -if applicable- the required value is valid, 0 otherwise
+// it returns true if the value is found and -if applicable- the required value is valid, false otherwise
 func checkValueExistsOrIsValid(markerItem string, structMap map[string]interface{}, ruleName string) (bool, error) {
 	// markerItem can either be a fieldName, or fieldName=fieldValue
 	markerSubfieldName, markerSubfieldValue, isValueField := strings.Cut(markerItem, "=")
