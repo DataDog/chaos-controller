@@ -163,6 +163,7 @@ func (l LinkedFieldsValue) ApplyRule(fieldvalue reflect.Value) error {
 		if err != nil {
 			return err
 		}
+
 		if res {
 			matchCount++
 		}
@@ -196,6 +197,7 @@ func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error 
 		if err != nil {
 			return err
 		}
+
 		if res {
 			matchCount++
 		}
@@ -210,6 +212,7 @@ func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error 
 		if err != nil {
 			return err
 		}
+
 		if res {
 			matchCount++
 		}
@@ -304,19 +307,24 @@ func parseIntOrUInt(value reflect.Value) (int, bool) {
 // checkValueExistOrIsValid checks if a given string marker item name value exist in a unmarshalled struct (converted to a map by structValueToMap)
 // it returns 1 if the value is found and -if applicable- the required value is valid, 0 otherwise
 func checkValueExistsOrIsValid(markerItem string, structMap map[string]interface{}, ruleName string) (bool, error) {
-	// marketItem can either be a fieldName, or fieldName=fieldValue
-	markerItemArr := strings.Split(markerItem, "=")
+	// markerItem can either be a fieldName, or fieldName=fieldValue
+	markerSubfieldName, markerSubfieldValue, isValueField := strings.Cut(markerItem, "=")
 
-	switch len(markerItemArr) {
+	switch isValueField {
 	// no given value to respect => check item is not null
-	case 1:
-		if structMap[markerItem] != nil {
+	case false:
+		if structMap[markerSubfieldName] != nil {
 			return true, nil
 		}
 	// a value was required => check item has described value
-	case 2:
-		markerSubfieldName, markerSubfieldValue := markerItemArr[0], markerItemArr[1]
-		if structMap[markerSubfieldName] == nil {
+	case true:
+		val, ok := structMap[markerSubfieldName]
+
+		if ok && val == nil {
+			if markerSubfieldValue == "" {
+				return true, nil
+			}
+
 			break
 		}
 
@@ -343,9 +351,6 @@ func checkValueExistsOrIsValid(markerItem string, structMap map[string]interface
 		} else {
 			return false, fmt.Errorf("%v: wrong type for value field %v", ruleName, markerSubfieldName)
 		}
-	// an item is checked for existence (len = 1) or a given value (len = 2) - any other value (0 or >2) is a wrongly defined marker
-	default:
-		return false, fmt.Errorf("%v: marker was wrongly defined in struct: please re-read marker documentation ", ruleName)
 	}
 
 	return false, nil

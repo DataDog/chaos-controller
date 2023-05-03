@@ -186,8 +186,7 @@ var _ = Describe("Validation Rules Cases", func() {
 			Field3 *int
 		}
 
-		arr := []string{"Field1=a", "Field2=2", "Field3"}
-		linked := LinkedFieldsValue(arr)
+		// fakeObj is a unit test object that will be filled with non-empty values
 		var fakeObj dummyStruct
 
 		BeforeEach(func() {
@@ -200,43 +199,169 @@ var _ = Describe("Validation Rules Cases", func() {
 				Field3: pi,
 			}
 		})
-		It("validates object with all non-nil fields", func() {
-			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+
+		Context("given standard requirements", func() {
+			arr := []string{"Field1", "Field2", "Field3"}
+			linked := LinkedFieldsValue(arr)
+
+			It("is valid with all non-nil fields", func() {
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+			})
+
+			It("is valid if given all nil fields", func() {
+				fakeObj.Field1 = ""
+				fakeObj.Field2 = 0
+				fakeObj.Field3 = nil
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+			})
+
+			It("is valid if given all non-nil fields (0-value pointer int is not-nil)", func() {
+				i := 0
+				var pi *int = &i
+
+				fakeObj.Field3 = pi
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+			})
+
+			It("is invalid if given an empty string value (empty-value string is nil)", func() {
+				fakeObj.Field1 = ""
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+			})
+
+			It("is invalid if given one missing field (zero-int is nil)", func() {
+				fakeObj.Field2 = 0
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+			})
+
+			It("is invalid if given nil pointer (nil pointer is nil)", func() {
+				fakeObj.Field3 = nil
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+			})
 		})
 
-		It("validates object with all nil fields", func() {
-			fakeObj.Field1 = ""
-			fakeObj.Field2 = 0
-			fakeObj.Field3 = nil
-			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+		Context("given values/mixed requirements", func() {
+			arr := []string{"Field1=a", "Field2=2", "Field3"}
+			linked := LinkedFieldsValue(arr)
+
+			It("is valid with all valid/non-nil fields", func() {
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+			})
+
+			It("is valid if given all nil/invalid fields", func() {
+				fakeObj.Field1 = "b"
+				fakeObj.Field2 = 1
+				fakeObj.Field3 = nil
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+			})
+
+			It("is valid if given all non-nil fields (0-value pointer int is not-nil)", func() {
+				i := 0
+				var pi *int = &i
+
+				fakeObj.Field3 = pi
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+			})
+
+			It("is invalid if given empty string value (empty-value string is nil)", func() {
+				fakeObj.Field1 = ""
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+			})
+
+			It("is invalid if given one missing field (Field2 is 0/nil, expected value was 2)", func() {
+				fakeObj.Field2 = 0
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+			})
+
+			It("is invalid if given one incorrect field (Field2 is 3, expected value was 2)", func() {
+				fakeObj.Field2 = 3
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+			})
+
+			It("is invalid if given nil pointer (empty value for Field3)", func() {
+				fakeObj.Field3 = nil
+				Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+			})
 		})
 
-		It("validates object with all non-nil fields (0-value pointer int is not-nil)", func() {
-			i := 0
-			var pi *int = &i
+		Context("given empty value requirements", func() {
+			arr := []string{"Field1=", "Field2="}
+			emptyLinked := LinkedFieldsValue(arr)
 
-			fakeObj.Field3 = pi
-			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+			It("accepts non-empty values for both Field1 and Field2", func() {
+				Expect(emptyLinked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+			})
+
+			Context("with empty string as a valid empty-required value for Field1", func() {
+				BeforeEach(func() {
+					fakeObj.Field1 = ""
+				})
+				It("is valid if Field2 is 0", func() {
+					fakeObj.Field2 = 0
+					Expect(emptyLinked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+				})
+				It("is invalid if Field2 is not 0", func() {
+					fakeObj.Field2 = 1
+					Expect(emptyLinked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+				})
+			})
+			Context("with non-empty string as an invalid empty-required value for Field1", func() {
+				BeforeEach(func() {
+					fakeObj.Field1 = "notempty"
+				})
+				It("is valid if Field2 is not zero", func() {
+					fakeObj.Field2 = 1
+					Expect(emptyLinked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+				})
+				It("is invalid if Field2 is zero", func() {
+					fakeObj.Field2 = 0
+					Expect(emptyLinked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+				})
+
+			})
 		})
 
-		It("rejects object with nil pointer value (nil-value pointer int is nil)", func() {
-			fakeObj.Field3 = nil
-			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
-		})
+		Context("given empty value requirements on pointer field", func() {
+			arr := []string{"Field2=", "Field3="}
+			emptyPointerLinked := LinkedFieldsValue(arr)
 
-		It("rejects object with empty string value (empty-value string is nil)", func() {
-			fakeObj.Field1 = ""
-			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
-		})
+			It("accepts non-empty values for both Field2 and Field3", func() {
+				Expect(emptyPointerLinked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+			})
 
-		It("rejects object with one missing field (0-value int is nil)", func() {
-			fakeObj.Field2 = 0
-			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
-		})
+			Context("with empty pointer as a valid empty-required value for Field3", func() {
+				BeforeEach(func() {
+					fakeObj.Field3 = nil
+				})
 
-		It("rejects object with one missing field (Field2 is 3, expected value was 2)", func() {
-			fakeObj.Field2 = 3
-			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+				It("is valid if Field2 is 0", func() {
+					fakeObj.Field2 = 0
+					Expect(emptyPointerLinked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+				})
+
+				It("is invalid if Field2 is not 0", func() {
+					fakeObj.Field2 = 1
+					Expect(emptyPointerLinked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+				})
+			})
+
+			Context("with valid pointer to a zero int (or any other int) as a not-empty value for Field3", func() {
+				BeforeEach(func() {
+					i := 0
+					pi := &i
+
+					fakeObj.Field3 = pi
+				})
+
+				It("is valid if Field2 is not 0", func() {
+					fakeObj.Field2 = 1
+					Expect(emptyPointerLinked.ApplyRule(ValueOf(fakeObj))).To(BeNil())
+				})
+
+				It("is invalid if Field2 is 0", func() {
+					fakeObj.Field2 = 0
+					Expect(emptyPointerLinked.ApplyRule(ValueOf(fakeObj))).ToNot(BeNil())
+				})
+			})
 		})
 	})
 
