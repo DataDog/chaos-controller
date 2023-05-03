@@ -22,7 +22,7 @@ minmaxtest:
   pintfield: 6
 `
 			err := validateString(minmaxYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 		It("rejects empty pointer value", func() {
 			var minmaxYaml string = `
@@ -31,7 +31,7 @@ minmaxtest:
   pintfield:
 `
 			err := validateString(minmaxYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 		It("checks out valid values", func() {
 			var minmaxYaml string = `
@@ -40,7 +40,7 @@ minmaxtest:
   pintfield: 10
 `
 			err := validateString(minmaxYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 		It("rejects invalid values", func() {
 			var minmaxYaml string = `
@@ -103,7 +103,7 @@ requiredtest:
     a: 1
 `
 			err := validateString(requiredYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 	})
 
@@ -117,7 +117,7 @@ enumtest:
   pintfield: 2
 `
 			err := validateString(enumCorrectYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 		It("rejects invalid values", func() {
 			var enumCorrectYaml string = `
@@ -153,7 +153,7 @@ exclusivefieldstest:
   pstrfield:
 `
 			err := validateString(exclusivefieldsYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 		It("allows latter fields to be set freely", func() {
 			exclusivefieldsYaml := `
@@ -162,7 +162,7 @@ exclusivefieldstest:
   cfield: 1
 `
 			err := validateString(exclusivefieldsYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 	})
 
@@ -177,7 +177,7 @@ linkedfieldsvaluetest:
   aintfield: [1,2]
 `
 			err := validateString(linkedfieldsvalueYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 		It("rejects invalid requires value for StrField", func() {
 			linkedfieldsvalueYaml := `
@@ -202,7 +202,7 @@ linkedfieldsvaluetest:
   aintfield:
 `
 			err := validateString(linkedfieldsvalueYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 		It("rejects both errors - first fields", func() {
 			linkedfieldsvalueYaml := `
@@ -255,7 +255,7 @@ linkedfieldsvaluewithtriggertest:
   aintfield: [1,2]
 `
 			err := validateString(linkedfieldsvaluewithtriggerYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 		It("checks out valid all-nil initial values", func() {
 			linkedfieldsvaluewithtriggerYaml := `
@@ -268,7 +268,7 @@ linkedfieldsvaluewithtriggertest:
   aintfield:  # is nil
 `
 			err := validateString(linkedfieldsvaluewithtriggerYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 		It("rejects both errors - nil second fields", func() {
 			linkedfieldsvaluewithtriggerYaml := `
@@ -319,7 +319,7 @@ atleastoneoftest:
   aintfield:   # is nil
 `
 			err := validateString(atLeastOneOfYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 		It("rejects out all-nil values twice", func() {
 			atLeastOneOfYaml := `
@@ -356,7 +356,7 @@ atleastoneoftest:
   aintfield:
 `
 			err := validateString(atLeastOneOfYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 		It("accepts both valid value groups", func() {
 			atLeastOneOfYaml := `
@@ -368,7 +368,7 @@ atleastoneoftest:
   aintfield: []
 `
 			err := validateString(atLeastOneOfYaml)
-			Expect(err.Errors).To(HaveLen(0))
+			Expect(err.Errors).To(BeEmpty())
 		})
 	})
 })
