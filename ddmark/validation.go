@@ -255,7 +255,7 @@ func Register(reg *k8smarkers.Registry) error {
 // HELPERS
 
 // addDefinition creates and adds a definition to the package's AllDefinition object, containing all markers definitions
-func addDefinition(obj interface{}, targetType k8smarkers.TargetType) {
+func addDefinition(obj DDValidationMarker, targetType k8smarkers.TargetType) {
 	name := rulePrefix + reflect.TypeOf(obj).Name()
 	def, err := k8smarkers.MakeDefinition(name, targetType, obj)
 
