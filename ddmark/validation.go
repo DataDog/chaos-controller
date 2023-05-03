@@ -177,7 +177,7 @@ func (l LinkedFieldsValue) ApplyRule(fieldvalue reflect.Value) error {
 }
 
 func (l LinkedFieldsValue) GenValueCheckError() error {
-	template := "%v: all of the following fields need to be either nil of non-nil (currently unmatched): %v"
+	template := "%v: all of the following fields need to be either nil/at the indicated value or non-nil/not at the indicated value; currently unmatched: %v"
 	return fmt.Errorf(template, ruleName(l), l)
 }
 
@@ -185,7 +185,7 @@ func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error 
 	fieldvalue = reflect.Indirect(fieldvalue)
 
 	var matchCount = 0
-	// room for logic to possibly expand the marker to accept multiple trigger values (instead of 1)
+	// room for logic to possibly expand the marker to accept multiple/combined trigger values (instead of 1)
 	var c = 1
 
 	if len(l) < 2 {
@@ -317,51 +317,55 @@ func parseIntOrUInt(value reflect.Value) (int, bool) {
 // checkValueExistOrIsValid checks if a given string marker item name value exist in a unmarshalled struct (converted to a map by structValueToMap)
 // it returns true if the value is found and -if applicable- the required value is valid, false otherwise
 func checkValueExistsOrIsValid(markerItem string, structMap map[string]interface{}, ruleName string) (bool, error) {
-	// markerItem can either be a fieldName, or fieldName=fieldValue
+	// markerItem can either be fieldName, or fieldName=fieldValue
 	markerSubfieldName, markerSubfieldValue, isValueField := strings.Cut(markerItem, "=")
+	val, fieldExists := structMap[markerSubfieldName]
 
-	switch isValueField {
-	// no given value to respect => check item is not null
-	case false:
+	if !fieldExists {
+		return false, fmt.Errorf("%v: field name %v not found in struct for marker %v", ruleName, markerSubfieldName, markerItem)
+	}
+
+	// no given value to respect => check if item is not nil / not nil
+	if !isValueField {
 		if structMap[markerSubfieldName] != nil {
 			return true, nil
 		}
-	// a value was required => check item has described value
-	case true:
-		val, ok := structMap[markerSubfieldName]
 
-		if ok && val == nil {
-			if markerSubfieldValue == "" {
-				return true, nil
-			}
-
-			break
-		}
-
-		if reflect.Indirect(reflect.ValueOf(structMap[markerSubfieldName])).Type().ConvertibleTo(reflect.TypeOf(markerSubfieldValue)) {
-			v := reflect.Indirect(reflect.ValueOf(structMap[markerSubfieldName]))
-			tv := v.Type()
-			t := reflect.TypeOf(markerSubfieldValue)
-
-			var vStr string
-
-			switch tv.Kind() {
-			case reflect.Int:
-				vInt := v.Convert(tv).Interface().(int)
-				vStr = strconv.Itoa(vInt)
-			case reflect.String:
-				vStr = v.Convert(t).Interface().(string)
-			default:
-				return false, fmt.Errorf("%v: please do not apply this marker to anything else than int or string. Current type: %v", ruleName, tv.Name())
-			}
-
-			if strings.Compare(markerSubfieldValue, vStr) == 0 {
-				return true, nil
-			}
-		} else {
-			return false, fmt.Errorf("%v: wrong type for value field %v", ruleName, markerSubfieldName)
-		}
+		return false, nil
 	}
 
-	return false, nil
+	// a value was required => check if item has described value
+
+	// if field is found in the struct with a nil value, check if marker expected a nil value
+	if val == nil {
+		if markerSubfieldValue == "" {
+			return true, nil
+		}
+
+		return false, nil
+	}
+
+	v := reflect.Indirect(reflect.ValueOf(val))
+	vType := v.Type()
+	stringType := reflect.TypeOf(markerSubfieldValue)
+
+	// this marker uses string comparison so the underlying type has to be convertible to string
+	convertibleToString := vType.ConvertibleTo(stringType)
+	if !convertibleToString {
+		return false, fmt.Errorf("%v: wrong type for value field %v; only int and string are allowed", ruleName, markerSubfieldName)
+	}
+
+	var vStr string
+
+	switch vType.Kind() {
+	case reflect.Int:
+		vInt := v.Convert(vType).Interface().(int)
+		vStr = strconv.Itoa(vInt)
+	case reflect.String:
+		vStr = v.Convert(vType).Interface().(string)
+	default:
+		return false, fmt.Errorf("%v: please do not apply this marker to anything else than int or string. Current type: %v", ruleName, v.Type().Name())
+	}
+
+	return strings.EqualFold(markerSubfieldValue, vStr), nil
 }

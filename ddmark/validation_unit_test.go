@@ -309,19 +309,19 @@ var _ = Describe("Validation Rules Cases", func() {
 				BeforeEach(func() {
 					fakeObj.Field1 = "notempty"
 				})
-				It("is valid if Field2 is not zero", func() {
+				It("is valid if Field2 is not 0", func() {
 					fakeObj.Field2 = 1
 					Expect(linked.ApplyRule(ValueOf(fakeObj))).To(Succeed())
 				})
-				It("is invalid if Field2 is zero", func() {
+				It("is invalid if Field2 is 0", func() {
 					fakeObj.Field2 = 0
 					Expect(linked.ApplyRule(ValueOf(fakeObj))).To(MatchError(linked.GenValueCheckError()))
 				})
-
 			})
 		})
 
 		Context("given empty value requirements on pointer field", func() {
+			// we expect that; if Field2 value is 0 then Field3 value is 0
 			arr := []string{"Field2=", "Field3="}
 			linked := LinkedFieldsValue(arr)
 
@@ -397,17 +397,17 @@ var _ = Describe("Validation Rules Cases", func() {
 					Expect(linked.ApplyRule(ValueOf(fakeObj))).To(Succeed())
 				})
 
-				It("is invalid if one field is nil / missing (nil-value pointer int is nil)", func() {
+				It("is invalid if one value is nil / missing (nil-value pointer int is nil)", func() {
 					fakeObj.Field3 = nil
 					Expect(linked.ApplyRule(ValueOf(fakeObj))).To(MatchError(linked.GenValueCheckError()))
 				})
 
-				It("is invalid if one value is nil / missing (expected value is value 12)", func() {
+				It("is invalid if one value is nil / missing (expected value for Field2 is value 12)", func() {
 					fakeObj.Field2 = 0
 					Expect(linked.ApplyRule(ValueOf(fakeObj))).To(MatchError(linked.GenValueCheckError()))
 				})
 
-				It("is invalid if one value is incorrect (expected value is value 12)", func() {
+				It("is invalid if one value is incorrect (expected value for Field2 is value 12)", func() {
 					fakeObj.Field2 = 1
 					Expect(linked.ApplyRule(ValueOf(fakeObj))).To(MatchError(linked.GenValueCheckError()))
 				})
@@ -427,8 +427,6 @@ var _ = Describe("Validation Rules Cases", func() {
 				})
 
 				It("is valid if all other fields (except the trigger) are correct", func() {
-					fakeObj.Field2 = 0
-					fakeObj.Field3 = nil
 					Expect(linked.ApplyRule(ValueOf(fakeObj))).To(Succeed())
 				})
 
@@ -447,12 +445,10 @@ var _ = Describe("Validation Rules Cases", func() {
 
 			Context("with nil trigger value ('Field1 = \"\"')", func() {
 				BeforeEach(func() {
-					fakeObj.Field1 = "bbb"
+					fakeObj.Field1 = ""
 				})
 
 				It("is valid if all other fields (except the trigger) are correct", func() {
-					fakeObj.Field2 = 0
-					fakeObj.Field3 = nil
 					Expect(linked.ApplyRule(ValueOf(fakeObj))).To(Succeed())
 				})
 

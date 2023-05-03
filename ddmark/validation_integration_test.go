@@ -243,9 +243,7 @@ linkedfieldsvaluetest:
 	})
 
 	Context("LinkedFieldsValueWithTrigger Marker", func() {
-		// +ddmark:validation:LinkedFieldsValueWithTrigger={StrField=aaa,IntField=2}
-		// +ddmark:validation:LinkedFieldsValueWithTrigger={PStrField=bbb,PIntField=12,AIntField}
-		It("checks out valid all-incorrect initial values", func() {
+		It("is valid with incorrect triggers and incorrect other values", func() {
 			linkedfieldsvaluewithtriggerYaml := `
 linkedfieldsvaluewithtriggertest:
   strfield: aa      # invalid
