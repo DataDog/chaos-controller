@@ -218,8 +218,8 @@ type DisruptionList struct {
 
 // DisruptionPulse contains the active disruption duration and the dormant disruption duration
 type DisruptionPulse struct {
-	ActiveDuration  DisruptionDuration `json:"activeDuration"`
-	DormantDuration DisruptionDuration `json:"dormantDuration"`
+	ActiveDuration  DisruptionDuration `json:"activeDuration,omitempty"`
+	DormantDuration DisruptionDuration `json:"dormantDuration,omitempty"`
 	InitialDelay    DisruptionDuration `json:"initialDelay,omitempty"`
 }
 
