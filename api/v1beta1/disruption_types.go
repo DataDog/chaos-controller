@@ -319,12 +319,12 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 			retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
 		}
 
-		if s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
-			retErr = multierror.Append(retErr, fmt.Errorf("pulse activeDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
+		if s.Pulse.ActiveDuration.Duration() != 0 && s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse activeDuration of %s should be greater than %s", s.Pulse.ActiveDuration.Duration(), chaostypes.PulsingDisruptionMinimumDuration))
 		}
 
-		if s.Pulse.DormantDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
-			retErr = multierror.Append(retErr, fmt.Errorf("pulse dormantDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
+		if s.Pulse.DormantDuration.Duration() != 0 && s.Pulse.DormantDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse dormantDuration of %s should be greater than %s", s.Pulse.DormantDuration.Duration(), chaostypes.PulsingDisruptionMinimumDuration))
 		}
 	}
 
