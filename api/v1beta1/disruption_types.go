@@ -217,6 +217,7 @@ type DisruptionList struct {
 }
 
 // DisruptionPulse contains the active disruption duration and the dormant disruption duration
+// +ddmark:validation:LinkedFields={ActiveDuration,DormantDuration}
 type DisruptionPulse struct {
 	ActiveDuration  DisruptionDuration `json:"activeDuration,omitempty"`
 	DormantDuration DisruptionDuration `json:"dormantDuration,omitempty"`
