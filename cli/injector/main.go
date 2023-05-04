@@ -88,6 +88,7 @@ func init() {
 	rootCmd.PersistentFlags().DurationVar(&disruptionArgs.PulseInitialDelay, "pulse-initial-delay", time.Duration(0), "Duration to wait after injector starts before beginning the activeDuration")
 	rootCmd.PersistentFlags().DurationVar(&disruptionArgs.PulseActiveDuration, "pulse-active-duration", time.Duration(0), "Duration of the disruption being active in a pulsing disruption (empty if the disruption is not pulsing)")
 	rootCmd.PersistentFlags().DurationVar(&disruptionArgs.PulseDormantDuration, "pulse-dormant-duration", time.Duration(0), "Duration of the disruption being dormant in a pulsing disruption (empty if the disruption is not pulsing)")
+	rootCmd.PersistentFlags().Int64Var(&disruptionArgs.SynchronizedStart, "synchronized-start", 0, "")
 	rootCmd.PersistentFlags().StringVar(&deadlineRaw, "deadline", "", "Timestamp at which the disruption must be over by")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.DNSServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.KubeDNS, "kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
@@ -488,6 +489,18 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		log.Error("an injector could not be configured successfully during initialization, aborting the injection now")
 
 		return
+	}
+
+	if disruptionArgs.SynchronizedStart > 0 {
+		log.Infow("waiting for synchronized start to begin", "synchronizedDelay", time.Until(time.UnixMilli(disruptionArgs.SynchronizedStart)).String())
+		select {
+		case sig := <-signals:
+			log.Infow("an exit signal has been received", "signal", sig.String())
+
+			return
+		case <-time.After(time.Until(time.UnixMilli(disruptionArgs.SynchronizedStart))):
+			break
+		}
 	}
 
 	if disruptionArgs.PulseInitialDelay > 0 {

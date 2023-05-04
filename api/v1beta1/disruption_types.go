@@ -43,11 +43,12 @@ type DisruptionSpec struct {
 	// +nullable
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	// +nullable
-	Filter          *DisruptionFilter `json:"filter,omitempty"`
-	DryRun          bool              `json:"dryRun,omitempty"`          // enable dry-run mode
-	OnInit          bool              `json:"onInit,omitempty"`          // enable disruption on init
-	Unsafemode      *UnsafemodeSpec   `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
-	StaticTargeting bool              `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
+	Filter            *DisruptionFilter  `json:"filter,omitempty"`
+	DryRun            bool               `json:"dryRun,omitempty"`            // enable dry-run mode
+	OnInit            bool               `json:"onInit,omitempty"`            // enable disruption on init
+	Unsafemode        *UnsafemodeSpec    `json:"unsafeMode,omitempty"`        // unsafemode spec used to turn off safemode safety nets
+	StaticTargeting   bool               `json:"staticTargeting,omitempty"`   // enable dynamic targeting and cluster observation
+	SynchronizedDelay DisruptionDuration `json:"synchronizedDelay,omitempty"` // TODO
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
@@ -310,6 +311,12 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 	// Rule: No specificity of containers on a disk disruption
 	if len(s.Containers) != 0 && s.DiskPressure != nil {
 		retErr = multierror.Append(retErr, errors.New("disk pressure disruptions apply to all containers, specifying certain containers does not isolate the disruption"))
+	}
+
+	// Rule: can't use synchronized delay with dynamic targeting
+
+	if s.SynchronizedDelay.Duration() > 0 && !s.StaticTargeting {
+		retErr = multierror.Append(retErr, errors.New("synchronizedDelay can only be used when staticTargeting is true"))
 	}
 
 	// Rule: pulse compatibility

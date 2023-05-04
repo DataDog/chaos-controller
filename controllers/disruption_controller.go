@@ -1246,6 +1246,11 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
 		}
 
+		var synchronizedStart int64
+		if instance.Spec.SynchronizedDelay.Duration() > 0 {
+			synchronizedStart = instance.CreationTimestamp.Add(instance.Spec.SynchronizedDelay.Duration()).UnixMilli()
+		}
+
 		allowedHosts := r.InjectorNetworkDisruptionAllowedHosts
 
 		// get the ip ranges of cloud provider services
@@ -1279,6 +1284,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			PulseInitialDelay:    pulseInitialDelay,
 			PulseActiveDuration:  pulseActiveDuration,
 			PulseDormantDuration: pulseDormantDuration,
+			SynchronizedStart:    synchronizedStart,
 			MetricsSink:          r.MetricsSink.GetSinkName(),
 			AllowedHosts:         allowedHosts,
 			DNSServer:            r.InjectorDNSDisruptionDNSServer,

@@ -7,6 +7,7 @@ package api
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,6 +42,7 @@ type DisruptionArgs struct {
 	PulseInitialDelay    time.Duration
 	PulseActiveDuration  time.Duration
 	PulseDormantDuration time.Duration
+	SynchronizedStart    int64
 }
 
 // AppendArgs is a helper function generating common and global args and appending them to the given args array
@@ -84,6 +86,10 @@ func AppendArgs(args []string, xargs DisruptionArgs) []string {
 		if xargs.PulseInitialDelay > 0 {
 			args = append(args, "--pulse-initial-delay", xargs.PulseInitialDelay.String())
 		}
+	}
+
+	if xargs.SynchronizedStart > 0 {
+		args = append(args, "--synchronized-start", strconv.FormatInt(xargs.SynchronizedStart, 10))
 	}
 
 	// DNS disruption configs
