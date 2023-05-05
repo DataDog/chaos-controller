@@ -18,8 +18,10 @@ spec:
   staticTargeting: true
   trigger:
     inject:
+      # notBefore: rfc3339 # TODO
       offset: 2m
     pods:
+      # notBefore: rfc3339 # TODO
       offset: 1m # TODO ignored
   containerFailure:
     forced: true
