@@ -77,8 +77,8 @@ type DisruptionSpec struct {
 }
 
 // Reporting provides additional reporting options in order to send a message to a custom slack channel
-// it expect the main controller to have slack notifier enabled
-// it expect slack bot to be added to the defined slack channel
+// it expects the main controller to have the slack notifier enabled
+// it expects a slack bot to be added to the defined slack channel
 type Reporting struct {
 	// SlackChannel is the destination slack channel to send reporting informations to.
 	// It's expected to follow slack naming conventions https://api.slack.com/methods/conversations.create#naming or slack channel ID format
