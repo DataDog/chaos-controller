@@ -1246,9 +1246,20 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
 		}
 
-		var synchronizedStart int64
-		if instance.Spec.SynchronizedDelay.Duration() > 0 {
-			synchronizedStart = instance.CreationTimestamp.Add(instance.Spec.SynchronizedDelay.Duration()).UnixMilli()
+		var notInjectedBefore int64
+		if instance.Spec.Trigger != nil {
+			// validation should have already prevented a situation where both Offset and NotInjectedBefore are set
+			if !instance.Spec.Trigger.NotInjectedBefore.IsZero() {
+				notInjectedBefore = instance.Spec.Trigger.NotInjectedBefore.UnixMilli()
+			}
+
+			if instance.Spec.Trigger.Offset.Duration() > 0 {
+				offsetTime := instance.CreationTimestamp
+				if !instance.Spec.Trigger.NoPodsBefore.IsZero() {
+					offsetTime = instance.Spec.Trigger.NoPodsBefore
+				}
+				notInjectedBefore = offsetTime.Add(instance.Spec.Trigger.Offset.Duration()).UnixMilli()
+			}
 		}
 
 		allowedHosts := r.InjectorNetworkDisruptionAllowedHosts
@@ -1284,7 +1295,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			PulseInitialDelay:    pulseInitialDelay,
 			PulseActiveDuration:  pulseActiveDuration,
 			PulseDormantDuration: pulseDormantDuration,
-			SynchronizedStart:    synchronizedStart,
+			NotInjectedBefore:    notInjectedBefore,
 			MetricsSink:          r.MetricsSink.GetSinkName(),
 			AllowedHosts:         allowedHosts,
 			DNSServer:            r.InjectorDNSDisruptionDNSServer,

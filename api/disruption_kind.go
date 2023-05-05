@@ -42,7 +42,7 @@ type DisruptionArgs struct {
 	PulseInitialDelay    time.Duration
 	PulseActiveDuration  time.Duration
 	PulseDormantDuration time.Duration
-	SynchronizedStart    int64
+	NotInjectedBefore    int64
 }
 
 // AppendArgs is a helper function generating common and global args and appending them to the given args array
@@ -88,8 +88,8 @@ func AppendArgs(args []string, xargs DisruptionArgs) []string {
 		}
 	}
 
-	if xargs.SynchronizedStart > 0 {
-		args = append(args, "--synchronized-start", strconv.FormatInt(xargs.SynchronizedStart, 10))
+	if xargs.NotInjectedBefore > 0 {
+		args = append(args, "--not-injected-before", strconv.FormatInt(xargs.NotInjectedBefore, 10))
 	}
 
 	// DNS disruption configs
