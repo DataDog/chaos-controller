@@ -494,14 +494,22 @@ spec:
                   injector pods are created, and the timing of when the injection
                   occurs
                 properties:
-                  noPodsBefore:
-                    format: date-time
-                    type: string
-                  notInjectedBefore:
-                    format: date-time
-                    type: string
-                  offset:
-                    type: string
+                  inject:
+                    properties:
+                      notBefore:
+                        format: date-time
+                        type: string
+                      offset:
+                        type: string
+                    type: object
+                  pods:
+                    properties:
+                      notBefore:
+                        format: date-time
+                        type: string
+                      offset:
+                        type: string
+                    type: object
                 type: object
               unsafeMode:
                 description: UnsafemodeSpec represents a spec with parameters to turn

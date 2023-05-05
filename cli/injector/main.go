@@ -492,7 +492,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	}
 
 	if disruptionArgs.NotInjectedBefore > 0 {
-		log.Infow("waiting for synchronized start to begin", "synchronizedDelay", time.Until(time.UnixMilli(disruptionArgs.SynchronizedStart)).String())
+		log.Infow("waiting for synchronized start to begin", "timeUntilNotInjectedBefore", time.Until(time.UnixMilli(disruptionArgs.NotInjectedBefore)).String())
 		select {
 		case sig := <-signals:
 			log.Infow("an exit signal has been received", "signal", sig.String())

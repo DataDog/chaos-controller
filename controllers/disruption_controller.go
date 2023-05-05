@@ -1248,17 +1248,19 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 
 		var notInjectedBefore int64
 		if instance.Spec.Trigger != nil {
-			// validation should have already prevented a situation where both Offset and NotInjectedBefore are set
-			if !instance.Spec.Trigger.NotInjectedBefore.IsZero() {
-				notInjectedBefore = instance.Spec.Trigger.NotInjectedBefore.UnixMilli()
-			}
-
-			if instance.Spec.Trigger.Offset.Duration() > 0 {
-				offsetTime := instance.CreationTimestamp
-				if !instance.Spec.Trigger.NoPodsBefore.IsZero() {
-					offsetTime = instance.Spec.Trigger.NoPodsBefore
+			if instance.Spec.Trigger.Inject != nil {
+				// validation should have already prevented a situation where both Offset and NotBefore are set
+				if !instance.Spec.Trigger.Inject.NotBefore.IsZero() {
+					notInjectedBefore = instance.Spec.Trigger.Inject.NotBefore.UnixMilli()
 				}
-				notInjectedBefore = offsetTime.Add(instance.Spec.Trigger.Offset.Duration()).UnixMilli()
+
+				if instance.Spec.Trigger.Inject.Offset.Duration() > 0 {
+					offsetTime := instance.CreationTimestamp
+					if instance.Spec.Trigger.Pods != nil && !instance.Spec.Trigger.Pods.NotBefore.IsZero() {
+						offsetTime = instance.Spec.Trigger.Pods.NotBefore
+					}
+					notInjectedBefore = offsetTime.Add(instance.Spec.Trigger.Inject.Offset.Duration()).UnixMilli()
+				}
 			}
 		}
 

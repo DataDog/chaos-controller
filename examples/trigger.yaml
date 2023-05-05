@@ -16,6 +16,10 @@ spec:
     app: demo-curl
   count: 100%
   staticTargeting: true
-  synchronizedDelay: 1m
+  trigger:
+    inject:
+      offset: 2m
+    pods:
+      offset: 1m # TODO ignored
   containerFailure:
     forced: true

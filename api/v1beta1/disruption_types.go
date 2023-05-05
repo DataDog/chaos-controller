@@ -79,9 +79,21 @@ type DisruptionSpec struct {
 // DisruptionTrigger holds the options for changing when injector pods are created, and the timing of when the injection occurs
 // +ddmark:validation:ExclusiveFields={NotInjectedBefore,Offset}
 type DisruptionTrigger struct {
-	NotInjectedBefore metav1.Time        `json:"notInjectedBefore,omitempty"` // Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
-	NoPodsBefore      metav1.Time        `json:"noPodsBefore,omitempty"`      // Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
-	Offset            DisruptionDuration `json:"offset,omitempty"`            // Identical to NotInjectedBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
+	Inject *DisruptionInjectionTrigger `json:"inject,omitempty"`
+	Pods   *DisruptionPodTrigger       `json:"pods,omitempty"`
+}
+
+// +ddmark:validation:ExclusiveFields={NotBefore,Offset}
+type DisruptionInjectionTrigger struct {
+	NotBefore metav1.Time        `json:"notBefore,omitempty"` // Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
+	Offset    DisruptionDuration `json:"offset,omitempty"`    // Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
+}
+
+// +ddmark:validation:ExclusiveFields={NotBefore,Offset}
+type DisruptionPodTrigger struct {
+	NotBefore metav1.Time        `json:"notBefore,omitempty"` // Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
+	Offset    DisruptionDuration `json:"offset,omitempty"`    // Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
+
 }
 
 // Reporting provides additional reporting options in order to send a message to a custom slack channel
@@ -323,8 +335,10 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 
 	// Rule: DisruptionTrigger TODO
 	if s.Trigger != nil {
-		if !s.Trigger.NotInjectedBefore.IsZero() && !s.Trigger.NoPodsBefore.IsZero() && s.Trigger.NotInjectedBefore.Before(&s.Trigger.NoPodsBefore) {
-			retErr = multierror.Append(retErr, fmt.Errorf("notInjectedBefore is %s, which is before your noPodsBefore of %s. notInjectedBefore must come after noPodsBefore if both are specified", s.Trigger.NotInjectedBefore, s.Trigger.NoPodsBefore))
+		if s.Trigger.Inject != nil && s.Trigger.Pods != nil {
+			if !s.Trigger.Inject.NotBefore.IsZero() && !s.Trigger.Pods.NotBefore.IsZero() && s.Trigger.Inject.NotBefore.Before(&s.Trigger.Pods.NotBefore) {
+				retErr = multierror.Append(retErr, fmt.Errorf("notInjectedBefore is %s, which is before your noPodsBefore of %s. notInjectedBefore must come after noPodsBefore if both are specified", s.Trigger.Inject.NotBefore, s.Trigger.Pods.NotBefore))
+			}
 		}
 	}
 
