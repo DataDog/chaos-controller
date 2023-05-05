@@ -340,7 +340,11 @@ func (in *DisruptionSpec) DeepCopyInto(out *DisruptionSpec) {
 		*out = new(UnsafemodeSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	in.Trigger.DeepCopyInto(&out.Trigger)
+	if in.Trigger != nil {
+		in, out := &in.Trigger, &out.Trigger
+		*out = new(DisruptionTrigger)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Pulse != nil {
 		in, out := &in.Pulse, &out.Pulse
 		*out = new(DisruptionPulse)
