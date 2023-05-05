@@ -43,12 +43,12 @@ type DisruptionSpec struct {
 	// +nullable
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	// +nullable
-	Filter            *DisruptionFilter  `json:"filter,omitempty"`
-	DryRun            bool               `json:"dryRun,omitempty"`            // enable dry-run mode
-	OnInit            bool               `json:"onInit,omitempty"`            // enable disruption on init
-	Unsafemode        *UnsafemodeSpec    `json:"unsafeMode,omitempty"`        // unsafemode spec used to turn off safemode safety nets
-	StaticTargeting   bool               `json:"staticTargeting,omitempty"`   // enable dynamic targeting and cluster observation
-	SynchronizedDelay DisruptionDuration `json:"synchronizedDelay,omitempty"` // TODO
+	Filter          *DisruptionFilter `json:"filter,omitempty"`
+	DryRun          bool              `json:"dryRun,omitempty"`          // enable dry-run mode
+	OnInit          bool              `json:"onInit,omitempty"`          // enable disruption on init
+	Unsafemode      *UnsafemodeSpec   `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
+	StaticTargeting bool              `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
+	Trigger         DisruptionTrigger `json:"trigger,omitempty"`         // alter the pre-injection lifecycle
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
@@ -74,6 +74,14 @@ type DisruptionSpec struct {
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
 	// +nullable
 	Reporting *Reporting `json:"reporting,omitempty"`
+}
+
+// DisruptionTrigger holds the options for changing when injector pods are created, and the timing of when the injection occurs
+// +ddmark:validation:ExclusiveFields={NotInjectedBefore,Offset}
+type DisruptionTrigger struct {
+	NotInjectedBefore metav1.Time        `json:"notInjectedBefore,omitempty"` // Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
+	NoPodsBefore      metav1.Time        `json:"noPodsBefore,omitempty"`      // Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
+	Offset            DisruptionDuration `json:"offset,omitempty"`            // Identical to NotInjectedBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
 }
 
 // Reporting provides additional reporting options in order to send a message to a custom slack channel
