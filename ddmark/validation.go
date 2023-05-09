@@ -271,8 +271,8 @@ func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error 
 }
 
 func (l LinkedFieldsValueWithTrigger) GenValueCheckError() error {
-	template := "%v: all of the following fields need to be aligned; if the first value is valid / exists, all the following need to either exist or have the indicated value: %v"
-	return fmt.Errorf(template, ruleName(l), l)
+	template := "%v: all of the following fields need to be aligned; if %v is set, all the following need to either exist or have the indicated value: %v"
+	return fmt.Errorf(template, ruleName(l), l[0], l[1:])
 }
 
 func (a AtLeastOneOf) ApplyRule(fieldvalue reflect.Value) error {

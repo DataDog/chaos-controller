@@ -38,8 +38,8 @@ const (
 	LinkedFieldsValueTestError0 = "test_suite>LinkedFieldsValueTest - ddmark:validation:LinkedFieldsValue: all of the following fields need to be either nil/at the indicated value or non-nil/not at the indicated value; currently unmatched: [StrField=aaa IntField]"
 	LinkedFieldsValueTestError1 = "test_suite>LinkedFieldsValueTest - ddmark:validation:LinkedFieldsValue: all of the following fields need to be either nil/at the indicated value or non-nil/not at the indicated value; currently unmatched: [PStrField PIntField AIntField]"
 
-	LinkedFieldsValueWithTriggerTestError0 = "test_suite>LinkedFieldsValueWithTriggerTest - ddmark:validation:LinkedFieldsValueWithTrigger: all of the following fields need to be aligned; if the first value is valid / exists, all the following need to either exist or have the indicated value: [StrField=aaa IntField=2]"
-	LinkedFieldsValueWithTriggerTestError1 = "test_suite>LinkedFieldsValueWithTriggerTest - ddmark:validation:LinkedFieldsValueWithTrigger: all of the following fields need to be aligned; if the first value is valid / exists, all the following need to either exist or have the indicated value: [PStrField=bbb PIntField=12 AIntField]"
+	LinkedFieldsValueWithTriggerTestError0 = "test_suite>LinkedFieldsValueWithTriggerTest - ddmark:validation:LinkedFieldsValueWithTrigger: all of the following fields need to be aligned; if StrField=aaa is set, all the following need to either exist or have the indicated value: [IntField=2]"
+	LinkedFieldsValueWithTriggerTestError1 = "test_suite>LinkedFieldsValueWithTriggerTest - ddmark:validation:LinkedFieldsValueWithTrigger: all of the following fields need to be aligned; if PStrField=bbb is set, all the following need to either exist or have the indicated value: [PIntField=12 AIntField]"
 )
 
 var _ = Describe("Validation Integration Tests", func() {
