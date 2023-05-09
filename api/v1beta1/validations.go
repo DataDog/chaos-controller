@@ -68,6 +68,10 @@ func validateServices(k8sClient client.Client, services []NetworkDisruptionServi
 // GetIntOrPercentValueSafely has three return values. The first is the int value of intOrStr, and the second is
 // if that int value is a percentage (true) or simply an integer (false).
 func GetIntOrPercentValueSafely(intOrStr *intstr.IntOrString) (int, bool, error) {
+	if intOrStr == nil {
+		return 0, false, fmt.Errorf("invalid type: pointer is nil")
+	}
+
 	switch intOrStr.Type {
 	case intstr.Int:
 		return intOrStr.IntValue(), false, nil

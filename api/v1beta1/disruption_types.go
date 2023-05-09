@@ -48,7 +48,7 @@ type DisruptionSpec struct {
 	OnInit          bool                `json:"onInit,omitempty"`          // enable disruption on init
 	Unsafemode      *UnsafemodeSpec     `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
 	StaticTargeting bool                `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
-	Trigger         *DisruptionTriggers `json:"trigger,omitempty"`         // alter the pre-injection lifecycle
+	Trigger         *DisruptionTriggers `json:"triggers,omitempty"`        // alter the pre-injection lifecycle
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created

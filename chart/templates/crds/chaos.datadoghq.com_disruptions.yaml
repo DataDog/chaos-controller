@@ -486,7 +486,7 @@ spec:
                 type: object
               staticTargeting:
                 type: boolean
-              trigger:
+              triggers:
                 description: DisruptionTrigger holds the options for changing when
                   injector pods are created, and the timing of when the injection
                   occurs
