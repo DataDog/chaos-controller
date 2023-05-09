@@ -82,10 +82,10 @@ func AppendArgs(args []string, xargs DisruptionArgs) []string {
 	if xargs.PulseActiveDuration > 0 && xargs.PulseDormantDuration > 0 {
 		args = append(args, "--pulse-active-duration", xargs.PulseActiveDuration.String())
 		args = append(args, "--pulse-dormant-duration", xargs.PulseDormantDuration.String())
+	}
 
-		if xargs.PulseInitialDelay > 0 {
-			args = append(args, "--pulse-initial-delay", xargs.PulseInitialDelay.String())
-		}
+	if xargs.PulseInitialDelay > 0 {
+		args = append(args, "--pulse-initial-delay", xargs.PulseInitialDelay.String())
 	}
 
 	if xargs.NotInjectedBefore > 0 {

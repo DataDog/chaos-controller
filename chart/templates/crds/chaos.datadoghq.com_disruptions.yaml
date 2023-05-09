@@ -445,9 +445,6 @@ spec:
                     type: string
                   initialDelay:
                     type: string
-                required:
-                - activeDuration
-                - dormantDuration
                 type: object
               reporting:
                 description: Reporting provides additional reporting options in order

@@ -238,9 +238,10 @@ type DisruptionList struct {
 }
 
 // DisruptionPulse contains the active disruption duration and the dormant disruption duration
+// +ddmark:validation:LinkedFields={ActiveDuration,DormantDuration}
 type DisruptionPulse struct {
-	ActiveDuration  DisruptionDuration `json:"activeDuration"`
-	DormantDuration DisruptionDuration `json:"dormantDuration"`
+	ActiveDuration  DisruptionDuration `json:"activeDuration,omitempty"`
+	DormantDuration DisruptionDuration `json:"dormantDuration,omitempty"`
 	InitialDelay    DisruptionDuration `json:"initialDelay,omitempty"`
 }
 
@@ -344,16 +345,18 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 
 	// Rule: pulse compatibility
 	if s.Pulse != nil {
-		if s.NodeFailure != nil || s.ContainerFailure != nil {
-			retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
+		if s.Pulse.ActiveDuration.Duration() > 0 || s.Pulse.DormantDuration.Duration() > 0 {
+			if s.NodeFailure != nil || s.ContainerFailure != nil {
+				retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
+			}
 		}
 
-		if s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
-			retErr = multierror.Append(retErr, fmt.Errorf("pulse activeDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
+		if s.Pulse.ActiveDuration.Duration() != 0 && s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse activeDuration of %s should be greater than %s", s.Pulse.ActiveDuration.Duration(), chaostypes.PulsingDisruptionMinimumDuration))
 		}
 
-		if s.Pulse.DormantDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
-			retErr = multierror.Append(retErr, fmt.Errorf("pulse dormantDuration should be greater than %s", chaostypes.PulsingDisruptionMinimumDuration))
+		if s.Pulse.DormantDuration.Duration() != 0 && s.Pulse.DormantDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
+			retErr = multierror.Append(retErr, fmt.Errorf("pulse dormantDuration of %s should be greater than %s", s.Pulse.DormantDuration.Duration(), chaostypes.PulsingDisruptionMinimumDuration))
 		}
 	}
 
