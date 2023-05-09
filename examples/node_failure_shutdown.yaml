@@ -11,7 +11,7 @@ metadata:
   annotations:
     chaos.datadoghq.com/environment: "lima"
 spec:
-  level: node # impact the whole node instead of a single pod
+  level: node # selector targets nodes instead of pods. Targeting a pod will impact the node hosting given pod.
   selector:
     app: demo-curl
   count: 1
