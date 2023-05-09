@@ -333,11 +333,29 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 		retErr = multierror.Append(retErr, errors.New("disk pressure disruptions apply to all containers, specifying certain containers does not isolate the disruption"))
 	}
 
-	// Rule: DisruptionTrigger TODO
+	// Rule: DisruptionTrigger
 	if s.Trigger != nil {
 		if s.Trigger.Inject != nil && s.Trigger.Pods != nil {
 			if !s.Trigger.Inject.NotBefore.IsZero() && !s.Trigger.Pods.NotBefore.IsZero() && s.Trigger.Inject.NotBefore.Before(&s.Trigger.Pods.NotBefore) {
-				retErr = multierror.Append(retErr, fmt.Errorf("notInjectedBefore is %s, which is before your noPodsBefore of %s. notInjectedBefore must come after noPodsBefore if both are specified", s.Trigger.Inject.NotBefore, s.Trigger.Pods.NotBefore))
+				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.pods.notBefore of %s. inject.notBefore must come after pods.notBefore if both are specified", s.Trigger.Inject.NotBefore, s.Trigger.Pods.NotBefore))
+			}
+		}
+
+		if s.Trigger.Pods != nil {
+			if !s.Trigger.Pods.NotBefore.IsZero() {
+				now := metav1.Now()
+				if s.Trigger.Pods.NotBefore.Before(&now) {
+					retErr = multierror.Append(retErr, fmt.Errorf("you should not set spec.trigger.pods.notBefore to a time in the past. spec.trigger.pods.notBefore: %s, current timestamp: %s", s.Trigger.Pods.NotBefore.String(), now.String()))
+				}
+			}
+		}
+
+		if s.Trigger.Inject != nil {
+			if !s.Trigger.Inject.NotBefore.IsZero() {
+				now := metav1.Now()
+				if s.Trigger.Inject.NotBefore.Before(&now) {
+					retErr = multierror.Append(retErr, fmt.Errorf("you should not set spec.trigger.inject.notBefore to a time in the past. spec.trigger.inject.notBefore: %s, current timestamp: %s", s.Trigger.Inject.NotBefore.String(), now.String()))
+				}
 			}
 		}
 	}
