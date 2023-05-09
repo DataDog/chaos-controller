@@ -260,6 +260,25 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{Requeue: false}, nil
 		}
 
+		// check if we have reached trigger.pods. If not, skip the rest of reconciliation.
+		if instance.Spec.Trigger != nil && instance.Spec.Trigger.Pods != nil {
+			now := metav1.Now()
+			var noPodsBefore metav1.Time
+			if !instance.Spec.Trigger.Pods.NotBefore.IsZero() {
+				noPodsBefore = instance.Spec.Trigger.Pods.NotBefore
+			}
+
+			if instance.Spec.Trigger.Pods.Offset.Duration() > 0 {
+				noPodsBefore = metav1.NewTime(instance.CreationTimestamp.Add(instance.Spec.Trigger.Pods.Offset.Duration()))
+			}
+
+			if now.Before(&noPodsBefore) {
+				r.log.Debugw("requeuing disruption as we haven't yet reached trigger.pods", "trigger.pods", noPodsBefore)
+
+				return ctrl.Result{Requeue: false}, nil
+			}
+		}
+
 		// retrieve targets from label selector
 		if err := r.selectTargets(instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
