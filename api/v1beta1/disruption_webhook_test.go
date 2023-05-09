@@ -252,6 +252,74 @@ var _ = Describe("Disruption", func() {
 			})
 		})
 
+		Describe("spec.trigger possible errors", func() {
+			BeforeEach(func() {
+				k8sClient = makek8sClientWithDisruptionPod()
+				deleteOnly = false
+			})
+
+			JustBeforeEach(func() {
+				newDisruption = makeValidNetworkDisruption()
+				controllerutil.AddFinalizer(newDisruption, chaostypes.DisruptionFinalizer)
+			})
+
+			AfterEach(func() {
+				k8sClient = nil
+				newDisruption = nil
+			})
+
+			When("notBefore is set past duration", func() {
+				It("should return an error", func() {
+					newDisruption.Spec.Duration = "10m"
+					newDisruption.Spec.Trigger = &DisruptionTriggers{
+						Inject: &DisruptionTrigger{
+							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 15)),
+						},
+					}
+
+					err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("you should not set spec.trigger.*.notBefore to a time farther in the future than the disruption duration"))
+				})
+			})
+
+			When("offset is set larger than duration", func() {
+				It("should return an error", func() {
+					newDisruption.Spec.Duration = "10m"
+					newDisruption.Spec.Trigger = &DisruptionTriggers{
+						Pods: &DisruptionTrigger{
+							Offset: "15m",
+						},
+					}
+
+					err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring(" you should not set spec.trigger.*.offset higher than the disruption duration"))
+				})
+			})
+
+			When("both inject.notBefore is before pods.notBefore are set", func() {
+				It("should return an error", func() {
+					newDisruption.Spec.Duration = "30m"
+					newDisruption.Spec.Trigger = &DisruptionTriggers{
+						Inject: &DisruptionTrigger{
+							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5)),
+						},
+						Pods: &DisruptionTrigger{
+							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 15)),
+						},
+					}
+
+					err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("inject.notBefore must come after pods.notBefore if both are specified"))
+				})
+			})
+		})
+
 		Describe("expectations with a disk failure disruption", func() {
 			BeforeEach(func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})

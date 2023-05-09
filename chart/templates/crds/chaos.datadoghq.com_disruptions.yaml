@@ -500,6 +500,12 @@ spec:
                         type: string
                     type: object
                   pods:
+                    description: 'inject.notBefore: Normal reconciliation and chaos
+                      pod creation will occur, but chaos pods will wait to inject
+                      until NotInjectedBefore. Must be after NoPodsBefore if both
+                      are specified inject.offset: Identical to NotBefore, but specified
+                      as an offset from max(CreationTimestamp, NoPodsBefore) instead
+                      of as a metav1.Time'
                     properties:
                       notBefore:
                         format: date-time
