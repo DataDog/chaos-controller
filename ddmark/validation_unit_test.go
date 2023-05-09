@@ -28,13 +28,13 @@ var _ = Describe("Validation Rules Cases", func() {
 			Expect(max.ApplyRule(ValueOf(-1001))).To(Succeed())
 		})
 		It("rejects small string values", func() {
-			Expect(max.ApplyRule(ValueOf("0"))).ToNot(Succeed())
+			Expect(max.ApplyRule(ValueOf("0"))).To(MatchError(max.GenTypeCheckError(ValueOf("0"))))
 		})
 		It("rejects large string values", func() {
-			Expect(max.ApplyRule(ValueOf("1001"))).ToNot(Succeed())
+			Expect(max.ApplyRule(ValueOf("1001"))).To(MatchError(max.GenTypeCheckError(ValueOf("1001"))))
 		})
 		It("rejects superior values", func() {
-			Expect(max.ApplyRule(ValueOf(maxInt + 1))).ToNot(Succeed())
+			Expect(max.ApplyRule(ValueOf(maxInt + 1))).To(MatchError(max.GenValueCheckError(maxInt + 1)))
 		})
 		It("accepts exact value", func() {
 			Expect(max.ApplyRule(ValueOf(maxInt))).To(Succeed())
@@ -54,13 +54,13 @@ var _ = Describe("Validation Rules Cases", func() {
 		})
 
 		It("rejects large negative values", func() {
-			Expect(min.ApplyRule(ValueOf(-1001))).ToNot(Succeed())
+			Expect(min.ApplyRule(ValueOf(-1001))).To(MatchError(min.GenValueCheckError(-1001)))
 		})
 		It("rejects small string values", func() {
-			Expect(min.ApplyRule(ValueOf("0"))).ToNot(Succeed())
+			Expect(min.ApplyRule(ValueOf("0"))).To(MatchError(min.GenTypeCheckError(ValueOf("0"))))
 		})
 		It("rejects large string values", func() {
-			Expect(min.ApplyRule(ValueOf("1001"))).ToNot(Succeed())
+			Expect(min.ApplyRule(ValueOf("1001"))).To(MatchError(min.GenTypeCheckError(ValueOf("1001"))))
 		})
 		It("accepts superior value", func() {
 			Expect(min.ApplyRule(ValueOf(minInt + 1))).To(Succeed())
@@ -69,7 +69,7 @@ var _ = Describe("Validation Rules Cases", func() {
 			Expect(min.ApplyRule(ValueOf(minInt))).To(Succeed())
 		})
 		It("rejects inferior value", func() {
-			Expect(min.ApplyRule(ValueOf(minInt - 1))).ToNot(Succeed())
+			Expect(min.ApplyRule(ValueOf(minInt - 1))).To(MatchError(min.GenValueCheckError(minInt - 1)))
 		})
 	})
 
@@ -84,25 +84,25 @@ var _ = Describe("Validation Rules Cases", func() {
 			Expect(validStrEnum.ApplyRule(ValueOf(arrStr[0]))).To(Succeed())
 		})
 		It("rejects an invalid string value", func() {
-			Expect(validStrEnum.ApplyRule(ValueOf("notavalue"))).ToNot(Succeed())
+			Expect(validStrEnum.ApplyRule(ValueOf("notavalue"))).To(MatchError(validStrEnum.GenValueCheckError(ValueOf("notavalue"))))
 		})
 		It("rejects an invalid int value", func() {
-			Expect(validStrEnum.ApplyRule(ValueOf(4))).ToNot(Succeed())
+			Expect(validStrEnum.ApplyRule(ValueOf(4))).To(MatchError(validStrEnum.GenTypeCheckError(ValueOf(4))))
 		})
 		It("rejects a combined str value", func() {
-			Expect(validStrEnum.ApplyRule(ValueOf("ab"))).ToNot(Succeed())
+			Expect(validStrEnum.ApplyRule(ValueOf("ab"))).To(MatchError(validStrEnum.GenValueCheckError(ValueOf("ab"))))
 		})
 		It("accepts a valid int value", func() {
 			Expect(validIntEnum.ApplyRule(ValueOf(arrInt[0]))).To(Succeed())
 		})
 		It("rejects an invalid int value", func() {
-			Expect(validIntEnum.ApplyRule(ValueOf(4))).ToNot(Succeed())
+			Expect(validIntEnum.ApplyRule(ValueOf(4))).To(MatchError(validIntEnum.GenValueCheckError(ValueOf(4))))
 		})
 		It("int enum rejects a fitting string value", func() {
-			Expect(validIntEnum.ApplyRule(ValueOf("1"))).ToNot(Succeed())
+			Expect(validIntEnum.ApplyRule(ValueOf("1"))).To(MatchError(validIntEnum.GenValueCheckError(ValueOf("1"))))
 		})
 		It("errors out if enum is empty", func() {
-			Expect(emptyEnum.ApplyRule(ValueOf("any"))).ToNot(Succeed())
+			Expect(emptyEnum.ApplyRule(ValueOf("any"))).To(MatchError(emptyEnum.GenValueCheckError(ValueOf("any"))))
 		})
 	})
 
@@ -111,13 +111,13 @@ var _ = Describe("Validation Rules Cases", func() {
 		const falseRequired Required = Required(false)
 
 		It("true errors given nil", func() {
-			Expect(trueRequired.ApplyRule(ValueOf(nil))).ToNot(Succeed())
+			Expect(trueRequired.ApplyRule(ValueOf(nil))).To(MatchError(trueRequired.GenValueCheckError()))
 		})
 		It("true errors given empty string", func() {
-			Expect(trueRequired.ApplyRule(ValueOf(""))).ToNot(Succeed())
+			Expect(trueRequired.ApplyRule(ValueOf(""))).To(MatchError(trueRequired.GenValueCheckError()))
 		})
 		It("true errors out given 0", func() {
-			Expect(trueRequired.ApplyRule(ValueOf(0))).ToNot(Succeed())
+			Expect(trueRequired.ApplyRule(ValueOf(0))).To(MatchError(trueRequired.GenValueCheckError()))
 		})
 		It("true accepts regular values", func() {
 			Expect(trueRequired.ApplyRule(ValueOf("a"))).To(Succeed())
@@ -152,12 +152,12 @@ var _ = Describe("Validation Rules Cases", func() {
 		})
 
 		It("rejects object with 3+ fields", func() {
-			Expect(excl.ApplyRule(ValueOf(fakeObj))).ToNot(Succeed())
+			Expect(excl.ApplyRule(ValueOf(fakeObj))).To(MatchError(excl.GenValueCheckError()))
 		})
 
 		It("rejects object with 2 fields", func() {
 			fakeObj.Field2 = 0
-			Expect(excl.ApplyRule(ValueOf(fakeObj))).ToNot(Succeed())
+			Expect(excl.ApplyRule(ValueOf(fakeObj))).To(MatchError(excl.GenValueCheckError()))
 		})
 
 		It("validates object with 1 field", func() {
@@ -550,7 +550,7 @@ var _ = Describe("Validation Rules Cases", func() {
 			fakeObj.Field1 = ""
 			fakeObj.Field2 = 0
 			fakeObj.Field3 = nil
-			Expect(linked.ApplyRule(ValueOf(fakeObj))).ToNot(Succeed())
+			Expect(linked.ApplyRule(ValueOf(fakeObj))).To(MatchError(linked.GenValueCheckError()))
 		})
 
 		It("validates object with only 1 value (0-value int is nil, nil-value pointer int is nil)", func() {

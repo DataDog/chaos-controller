@@ -62,14 +62,24 @@ func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
 	fieldInt, ok := parseIntOrUInt(fieldvalue)
 
 	if !ok {
-		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(m), fieldvalue.Type(), "int or uint")
+		return m.GenTypeCheckError(fieldvalue)
 	}
 
 	if int(m) < fieldInt {
-		return fmt.Errorf("%v: field has value %v, max is %v (included)", ruleName(m), fieldInt, m)
+		return m.GenValueCheckError(fieldInt)
 	}
 
 	return nil
+}
+
+func (m Maximum) GenValueCheckError(fieldInt int) error {
+	template := "%v: field has value %v, max is %v (included)"
+	return fmt.Errorf(template, ruleName(m), fieldInt, m)
+}
+
+func (m Maximum) GenTypeCheckError(fieldValue reflect.Value) error {
+	template := "%v: marker applied to wrong type: currently %v, can only be %v"
+	return fmt.Errorf(template, ruleName(m), fieldValue.Type(), "int or uint")
 }
 
 func (m Minimum) ApplyRule(fieldvalue reflect.Value) error {
@@ -77,14 +87,24 @@ func (m Minimum) ApplyRule(fieldvalue reflect.Value) error {
 	fieldInt, ok := parseIntOrUInt(fieldvalue)
 
 	if !ok {
-		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(m), fieldvalue.Type(), "int or uint")
+		return m.GenTypeCheckError(fieldvalue)
 	}
 
 	if int(m) > fieldInt {
-		return fmt.Errorf("%v: field has value %v, min is %v (included)", ruleName(m), fieldInt, m)
+		return m.GenValueCheckError(fieldInt)
 	}
 
 	return nil
+}
+
+func (m Minimum) GenValueCheckError(fieldInt int) error {
+	template := "%v: field has value %v, min is %v (included)"
+	return fmt.Errorf(template, ruleName(m), fieldInt, m)
+}
+
+func (m Minimum) GenTypeCheckError(fieldValue reflect.Value) error {
+	template := "%v: marker applied to wrong type: currently %v, can only be %v"
+	return fmt.Errorf(template, ruleName(m), fieldValue.Type(), "int or uint")
 }
 
 func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
@@ -106,10 +126,15 @@ func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
 	}
 
 	if matchCount >= 1 {
-		return fmt.Errorf("%v: some fields are incompatible, %s can't be set alongside any of %v", ruleName(e), e[0], e[1:])
+		return e.GenValueCheckError()
 	}
 
 	return nil
+}
+
+func (e ExclusiveFields) GenValueCheckError() error {
+	template := "%v: some fields are incompatible, %s can't be set alongside any of %v"
+	return fmt.Errorf(template, ruleName(e), e[0], e[1:])
 }
 
 func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
@@ -117,18 +142,28 @@ func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
 	fieldInterface := fieldvalue.Interface()
 
 	for _, markerInterface := range e {
-		if reflect.ValueOf(markerInterface).Type().ConvertibleTo(fieldvalue.Type()) {
-			markerInterface = reflect.ValueOf(markerInterface).Convert(fieldvalue.Type()).Interface()
-		} else {
-			return fmt.Errorf("%v: Type Error - field needs to be one of %v, currently \"%v\"", ruleName(e), e, fieldvalue)
+		if !reflect.ValueOf(markerInterface).Type().ConvertibleTo(fieldvalue.Type()) {
+			return e.GenTypeCheckError(fieldvalue)
 		}
+
+		markerInterface = reflect.ValueOf(markerInterface).Convert(fieldvalue.Type()).Interface()
 
 		if fieldInterface == markerInterface || reflect.ValueOf(fieldInterface).IsZero() {
 			return nil
 		}
 	}
 
-	return fmt.Errorf("%v: field needs to be one of %v, currently \"%v\"", ruleName(e), e, fieldvalue)
+	return e.GenValueCheckError(fieldvalue)
+}
+
+func (e Enum) GenValueCheckError(fieldValue reflect.Value) error {
+	template := "%v: field needs to be one of %v, currently \"%v\""
+	return fmt.Errorf(template, ruleName(e), e, fieldValue)
+}
+
+func (e Enum) GenTypeCheckError(fieldValue reflect.Value) error {
+	template := "%v: Type Error - field needs to be one of %v, currently \"%v\""
+	return fmt.Errorf(template, ruleName(e), e, fieldValue)
 }
 
 func (r Required) ApplyRule(fieldvalue reflect.Value) error {
@@ -142,10 +177,15 @@ func (r Required) ApplyRule(fieldvalue reflect.Value) error {
 
 	fieldvalue = reflect.Indirect(fieldvalue)
 	if !fieldvalue.IsValid() || fieldvalue.IsZero() {
-		return fmt.Errorf("%v: field is required: currently missing", ruleName(r))
+		return r.GenValueCheckError()
 	}
 
 	return nil
+}
+
+func (r Required) GenValueCheckError() error {
+	template := "%v: field is required: currently missing"
+	return fmt.Errorf(template, ruleName(r))
 }
 
 func (l LinkedFieldsValue) ApplyRule(fieldvalue reflect.Value) error {
@@ -235,21 +275,26 @@ func (l LinkedFieldsValueWithTrigger) GenValueCheckError() error {
 	return fmt.Errorf(template, ruleName(l), l)
 }
 
-func (r AtLeastOneOf) ApplyRule(fieldvalue reflect.Value) error {
+func (a AtLeastOneOf) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 
 	structMap, ok := structValueToMap(fieldvalue)
 	if !ok {
-		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(r), fieldvalue.Type(), "struct")
+		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(a), fieldvalue.Type(), "struct")
 	}
 
-	for _, item := range r {
+	for _, item := range a {
 		if structMap[item] != nil {
 			return nil
 		}
 	}
 
-	return fmt.Errorf("%v: at least one of the following fields need to be non-nil (currently all nil): %v", ruleName(r), r)
+	return a.GenValueCheckError()
+}
+
+func (a AtLeastOneOf) GenValueCheckError() error {
+	template := "%v: at least one of the following fields need to be non-nil (currently all nil): %v"
+	return fmt.Errorf(template, ruleName(a), a)
 }
 
 func Register(reg *k8smarkers.Registry) error {
