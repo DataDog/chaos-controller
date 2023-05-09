@@ -13,6 +13,35 @@ import (
 	k8syaml "sigs.k8s.io/yaml"
 )
 
+const (
+	MinMaxTestErr0 = "test_suite>MinMaxTest>IntField - ddmark:validation:Minimum: field has value 4, min is 5 (included)"
+	MinMaxTestErr1 = "test_suite>MinMaxTest>PIntField - ddmark:validation:Maximum: field has value 11, max is 10 (included)"
+
+	RequiredTestErr0 = "test_suite>RequiredTest>PIntField is required"
+	RequiredTestErr1 = "test_suite>RequiredTest>StrField - ddmark:validation:Required: field is required: currently missing"
+	RequiredTestErr2 = "test_suite>RequiredTest>PStrField is required"
+	RequiredTestErr3 = "test_suite>RequiredTest>StructField - ddmark:validation:Required: field is required: currently missing"
+	RequiredTestErr4 = "test_suite>RequiredTest>PStructField is required"
+	RequiredTestErr5 = "test_suite>RequiredTest>IntField - ddmark:validation:Required: field is required: currently missing"
+
+	EnumTestErr0 = "test_suite>EnumTest>StrField - ddmark:validation:Enum: field needs to be one of [aa bb 11], currently \"notinenum\""
+	EnumTestErr1 = "test_suite>EnumTest>PStrField - ddmark:validation:Enum: field needs to be one of [aa bb 11], currently \"notinenum\""
+	EnumTestErr2 = "test_suite>EnumTest>IntField - ddmark:validation:Enum: field needs to be one of [1 2 3], currently \"4\""
+	EnumTestErr3 = "test_suite>EnumTest>PIntField - ddmark:validation:Enum: field needs to be one of [1 2 3], currently \"4\""
+
+	AtLeastOneOfTestErr0 = "test_suite>AtLeastOneOfTest - ddmark:validation:AtLeastOneOf: at least one of the following fields need to be non-nil (currently all nil): [StrField IntField]"
+	AtLeastOneOfTestErr1 = "test_suite>AtLeastOneOfTest - ddmark:validation:AtLeastOneOf: at least one of the following fields need to be non-nil (currently all nil): [PStrField PIntField AIntField]"
+
+	ExclusiveFieldsTestErr0 = "test_suite>ExclusiveFieldsTest - ddmark:validation:ExclusiveFields: some fields are incompatible, PIntField can't be set alongside any of [PStrField]"
+	ExclusiveFieldsTestErr1 = "test_suite>ExclusiveFieldsTest - ddmark:validation:ExclusiveFields: some fields are incompatible, IntField can't be set alongside any of [StrField]"
+
+	LinkedFieldsValueTestError0 = "test_suite>LinkedFieldsValueTest - ddmark:validation:LinkedFieldsValue: all of the following fields need to be either nil/at the indicated value or non-nil/not at the indicated value; currently unmatched: [StrField=aaa IntField]"
+	LinkedFieldsValueTestError1 = "test_suite>LinkedFieldsValueTest - ddmark:validation:LinkedFieldsValue: all of the following fields need to be either nil/at the indicated value or non-nil/not at the indicated value; currently unmatched: [PStrField PIntField AIntField]"
+
+	LinkedFieldsValueWithTriggerTestError0 = "test_suite>LinkedFieldsValueWithTriggerTest - ddmark:validation:LinkedFieldsValueWithTrigger: all of the following fields need to be aligned; if the first value is valid / exists, all the following need to either exist or have the indicated value: [StrField=aaa IntField=2]"
+	LinkedFieldsValueWithTriggerTestError1 = "test_suite>LinkedFieldsValueWithTriggerTest - ddmark:validation:LinkedFieldsValueWithTrigger: all of the following fields need to be aligned; if the first value is valid / exists, all the following need to either exist or have the indicated value: [PStrField=bbb PIntField=12 AIntField]"
+)
+
 var _ = Describe("Validation Integration Tests", func() {
 	Context("Minimum/Maximum Markers", func() {
 		It("checks out valid values", func() {
@@ -50,6 +79,8 @@ minmaxtest:
 `
 			err := validateString(minmaxYaml)
 			Expect(err.Errors).To(HaveLen(2))
+			Expect(err.Errors[0]).To(MatchError(MinMaxTestErr0))
+			Expect(err.Errors[1]).To(MatchError(MinMaxTestErr1))
 		})
 	})
 
@@ -61,6 +92,11 @@ requiredtest:
 `
 			err := validateString(requiredYaml)
 			Expect(err.Errors).To(HaveLen(5))
+			Expect(err.Errors[0]).To(MatchError(RequiredTestErr0))
+			Expect(err.Errors[1]).To(MatchError(RequiredTestErr1))
+			Expect(err.Errors[2]).To(MatchError(RequiredTestErr2))
+			Expect(err.Errors[3]).To(MatchError(RequiredTestErr3))
+			Expect(err.Errors[4]).To(MatchError(RequiredTestErr4))
 		})
 		It("rejects on all but one missing fields", func() {
 			var requiredYaml string = `
@@ -70,6 +106,11 @@ requiredtest:
 `
 			err := validateString(requiredYaml)
 			Expect(err.Errors).To(HaveLen(5))
+			Expect(err.Errors[0]).To(MatchError(RequiredTestErr0))
+			Expect(err.Errors[1]).To(MatchError(RequiredTestErr1))
+			Expect(err.Errors[2]).To(MatchError(RequiredTestErr2))
+			Expect(err.Errors[3]).To(MatchError(RequiredTestErr3))
+			Expect(err.Errors[4]).To(MatchError(RequiredTestErr4))
 		})
 		It("rejects and counts all 4 missing fields", func() {
 			var requiredYaml string = `
@@ -79,6 +120,10 @@ requiredtest:
 `
 			err := validateString(requiredYaml)
 			Expect(err.Errors).To(HaveLen(4))
+			Expect(err.Errors[0]).To(MatchError(RequiredTestErr1))
+			Expect(err.Errors[1]).To(MatchError(RequiredTestErr2))
+			Expect(err.Errors[2]).To(MatchError(RequiredTestErr3))
+			Expect(err.Errors[3]).To(MatchError(RequiredTestErr4))
 		})
 		It("rejects and counts all 5 missing fields", func() {
 			var requiredYaml string = `
@@ -89,6 +134,10 @@ requiredtest:
 `
 			err := validateString(requiredYaml)
 			Expect(err.Errors).To(HaveLen(4))
+			Expect(err.Errors[0]).To(MatchError(RequiredTestErr5))
+			Expect(err.Errors[1]).To(MatchError(RequiredTestErr1))
+			Expect(err.Errors[2]).To(MatchError(RequiredTestErr2))
+			Expect(err.Errors[3]).To(MatchError(RequiredTestErr3))
 		})
 		It("checks out on valid file", func() {
 			var requiredYaml string = `
@@ -129,6 +178,10 @@ enumtest:
 `
 			err := validateString(enumCorrectYaml)
 			Expect(err.Errors).To(HaveLen(4))
+			Expect(err.Errors[0]).To(MatchError(EnumTestErr0))
+			Expect(err.Errors[1]).To(MatchError(EnumTestErr1))
+			Expect(err.Errors[2]).To(MatchError(EnumTestErr2))
+			Expect(err.Errors[3]).To(MatchError(EnumTestErr3))
 		})
 	})
 
@@ -143,6 +196,8 @@ exclusivefieldstest:
 `
 			err := validateString(exclusivefieldsYaml)
 			Expect(err.Errors).To(HaveLen(2))
+			Expect(err.Errors[0]).To(MatchError(ExclusiveFieldsTestErr0))
+			Expect(err.Errors[1]).To(MatchError(ExclusiveFieldsTestErr1))
 		})
 		It("checks out valid values", func() {
 			exclusivefieldsYaml := `
@@ -190,6 +245,7 @@ linkedfieldsvaluetest:
 `
 			err := validateString(linkedfieldsvalueYaml)
 			Expect(err.Errors).To(HaveLen(1))
+			Expect(err.Errors[0]).To(MatchError(LinkedFieldsValueTestError0))
 		})
 		It("checks out valid all-nil values", func() {
 			linkedfieldsvalueYaml := `
@@ -197,7 +253,7 @@ linkedfieldsvaluetest:
   randomintfield: 1
   strfield:
   pstrfield:
-  intfield: 0 # is nil
+  intfield: 0 # is zero / nil
   pintfield:  # is nil
   aintfield:
 `
@@ -215,6 +271,8 @@ linkedfieldsvaluetest:
 `
 			err := validateString(linkedfieldsvalueYaml)
 			Expect(err.Errors).To(HaveLen(2))
+			Expect(err.Errors[0]).To(MatchError(LinkedFieldsValueTestError0))
+			Expect(err.Errors[1]).To(MatchError(LinkedFieldsValueTestError1))
 		})
 		It("rejects both errors - second fields", func() {
 			linkedfieldsvalueYaml := `
@@ -227,6 +285,8 @@ linkedfieldsvaluetest:
 `
 			err := validateString(linkedfieldsvalueYaml)
 			Expect(err.Errors).To(HaveLen(2))
+			Expect(err.Errors[0]).To(MatchError(LinkedFieldsValueTestError0))
+			Expect(err.Errors[1]).To(MatchError(LinkedFieldsValueTestError1))
 		})
 		It("rejects one error - 0 value is nil on pointer", func() {
 			linkedfieldsvalueYaml := `
@@ -239,6 +299,7 @@ linkedfieldsvaluetest:
 `
 			err := validateString(linkedfieldsvalueYaml)
 			Expect(err.Errors).To(HaveLen(1))
+			Expect(err.Errors[0]).To(MatchError(LinkedFieldsValueTestError0))
 		})
 	})
 
@@ -246,8 +307,8 @@ linkedfieldsvaluetest:
 		It("is valid with incorrect triggers and incorrect other values", func() {
 			linkedfieldsvaluewithtriggerYaml := `
 linkedfieldsvaluewithtriggertest:
-  strfield: aa      # invalid
-  pstrfield: bb     # invalid
+  strfield: aa      # incorrect trigger
+  pstrfield: bb     # incorrect trigger
   intfield: 12
   pintfield: 1
   aintfield: [1,2]
@@ -279,6 +340,8 @@ linkedfieldsvaluewithtriggertest:
 `
 			err := validateString(linkedfieldsvaluewithtriggerYaml)
 			Expect(err.Errors).To(HaveLen(2))
+			Expect(err.Errors[0]).To(MatchError(LinkedFieldsValueWithTriggerTestError0))
+			Expect(err.Errors[1]).To(MatchError(LinkedFieldsValueWithTriggerTestError1))
 		})
 		It("rejects both errors - one second unfit, one second field missing", func() {
 			linkedfieldsvaluewithtriggerYaml := `
@@ -291,6 +354,8 @@ linkedfieldsvaluewithtriggertest:
 `
 			err := validateString(linkedfieldsvaluewithtriggerYaml)
 			Expect(err.Errors).To(HaveLen(2))
+			Expect(err.Errors[0]).To(MatchError(LinkedFieldsValueWithTriggerTestError0))
+			Expect(err.Errors[1]).To(MatchError(LinkedFieldsValueWithTriggerTestError1))
 		})
 		It("rejects one error - 0 value is nil on pointer", func() {
 			linkedfieldsvaluewithtriggerYaml := `
@@ -303,6 +368,8 @@ linkedfieldsvaluewithtriggertest:
 `
 			err := validateString(linkedfieldsvaluewithtriggerYaml)
 			Expect(err.Errors).To(HaveLen(2))
+			Expect(err.Errors[0]).To(MatchError(LinkedFieldsValueWithTriggerTestError0))
+			Expect(err.Errors[1]).To(MatchError(LinkedFieldsValueWithTriggerTestError1))
 		})
 	})
 
@@ -331,6 +398,8 @@ atleastoneoftest:
 `
 			err := validateString(atLeastOneOfYaml)
 			Expect(err.Errors).To(HaveLen(2))
+			Expect(err.Errors[0]).To(MatchError(AtLeastOneOfTestErr0))
+			Expect(err.Errors[1]).To(MatchError(AtLeastOneOfTestErr1))
 		})
 		It("rejects almost-all-nil values once", func() {
 			atLeastOneOfYaml := `
@@ -343,6 +412,7 @@ atleastoneoftest:
 `
 			err := validateString(atLeastOneOfYaml)
 			Expect(err.Errors).To(HaveLen(1))
+			Expect(err.Errors[0]).To(MatchError(AtLeastOneOfTestErr1))
 		})
 		It("accepts both valid value groups", func() {
 			atLeastOneOfYaml := `
@@ -385,13 +455,14 @@ func testStructFromYaml(yamlBytes []byte) (ddmark.Teststruct, error) {
 func validateString(yamlStr string) *multierror.Error {
 	// Teststruct is a test-dedicated struct built strictly for these integration tests
 	var marshalledStruct ddmark.Teststruct
+	var retErr *multierror.Error = &multierror.Error{}
 
 	marshalledStruct, err := testStructFromYaml([]byte(yamlStr))
-	retErr := client.ValidateStructMultierror(marshalledStruct, "test_suite")
-
 	if err != nil {
-		retErr = multierror.Append(retErr, err)
+		return multierror.Append(retErr, err)
 	}
+
+	retErr = multierror.Append(client.ValidateStructMultierror(marshalledStruct, "test_suite"))
 
 	return retErr
 }
