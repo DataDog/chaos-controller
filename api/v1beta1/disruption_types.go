@@ -93,7 +93,6 @@ type DisruptionInjectionTrigger struct {
 type DisruptionPodTrigger struct {
 	NotBefore metav1.Time        `json:"notBefore,omitempty"` // Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
 	Offset    DisruptionDuration `json:"offset,omitempty"`    // Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
-
 }
 
 // Reporting provides additional reporting options in order to send a message to a custom slack channel

@@ -1246,6 +1246,8 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
 		}
 
+		// notInjectedBefore will be used as an argument to tell the chaos pods the earliest timestamp (in milliseconds from Unix epoch) that they can inject
+		// deeply assumes that the chaos-controller and chaos pods are using the same timestamp, but that's okay because anyone responsible uses UTC for all their machines
 		var notInjectedBefore int64
 		if instance.Spec.Trigger != nil {
 			if instance.Spec.Trigger.Inject != nil {
@@ -1255,6 +1257,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 				}
 
 				if instance.Spec.Trigger.Inject.Offset.Duration() > 0 {
+					// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.pods.notBefore
 					offsetTime := instance.CreationTimestamp
 					if instance.Spec.Trigger.Pods != nil && !instance.Spec.Trigger.Pods.NotBefore.IsZero() {
 						offsetTime = instance.Spec.Trigger.Pods.NotBefore
