@@ -13,7 +13,7 @@ metadata:
 spec:
   level: node # selector targets nodes instead of pods. Targeting a pod will impact the node hosting given pod.
   selector:
-    app: demo-curl
+    kubernetes.io/hostname: lima-default
   count: 1
   nodeFailure:
     shutdown: true # shutdown the host (violently) instead of triggering a kernel panic so the host is kept down and not restarted
