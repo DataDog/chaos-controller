@@ -347,7 +347,21 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 				if s.Trigger.Pods.NotBefore.Before(&now) {
 					retErr = multierror.Append(retErr, fmt.Errorf("you should not set spec.trigger.pods.notBefore to a time in the past. spec.trigger.pods.notBefore: %s, current timestamp: %s", s.Trigger.Pods.NotBefore.String(), now.String()))
 				}
+
+				if s.Trigger.Pods.NotBefore.Sub(now.Time) > s.Duration.Duration() {
+					retErr = multierror.Append(retErr,
+						fmt.Errorf("you should not set spec.trigger.pods.notBefore to a time farther in the future than the disruption duration. time until spec.trigger.pods.notBefore: %s, duration: %s",
+							s.Trigger.Pods.NotBefore.Sub(now.Time).String(),
+							s.Duration.Duration().String()))
+				}
+
+				if s.Trigger.Pods.Offset.Duration() > s.Duration.Duration() {
+					retErr = multierror.Append(retErr, fmt.Errorf("you should not set spec.trigger.pods.offset higher than the disruption duration. spec.trigger.pods.offset: %s, duration: %s",
+						s.Trigger.Pods.Offset.Duration().String(),
+						s.Duration.Duration().String()))
+				}
 			}
+
 		}
 
 		if s.Trigger.Inject != nil {
@@ -355,6 +369,19 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 				now := metav1.Now()
 				if s.Trigger.Inject.NotBefore.Before(&now) {
 					retErr = multierror.Append(retErr, fmt.Errorf("you should not set spec.trigger.inject.notBefore to a time in the past. spec.trigger.inject.notBefore: %s, current timestamp: %s", s.Trigger.Inject.NotBefore.String(), now.String()))
+				}
+
+				if s.Trigger.Inject.NotBefore.Sub(now.Time) > s.Duration.Duration() {
+					retErr = multierror.Append(retErr,
+						fmt.Errorf("you should not set spec.trigger.inject.notBefore to a time farther in the future than the disruption duration. time until spec.trigger.inject.notBefore: %s, duration: %s",
+							s.Trigger.Inject.NotBefore.Sub(now.Time).String(),
+							s.Duration.Duration().String()))
+				}
+
+				if s.Trigger.Inject.Offset.Duration() > s.Duration.Duration() {
+					retErr = multierror.Append(retErr, fmt.Errorf("you should not set spec.trigger.inject.offset higher than the disruption duration. spec.trigger.inject.offset: %s, duration: %s",
+						s.Trigger.Inject.Offset.Duration().String(),
+						s.Duration.Duration().String()))
 				}
 			}
 		}
