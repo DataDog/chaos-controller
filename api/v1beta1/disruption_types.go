@@ -43,12 +43,12 @@ type DisruptionSpec struct {
 	// +nullable
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	// +nullable
-	Filter          *DisruptionFilter  `json:"filter,omitempty"`
-	DryRun          bool               `json:"dryRun,omitempty"`          // enable dry-run mode
-	OnInit          bool               `json:"onInit,omitempty"`          // enable disruption on init
-	Unsafemode      *UnsafemodeSpec    `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
-	StaticTargeting bool               `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
-	Trigger         *DisruptionTrigger `json:"trigger,omitempty"`         // alter the pre-injection lifecycle
+	Filter          *DisruptionFilter   `json:"filter,omitempty"`
+	DryRun          bool                `json:"dryRun,omitempty"`          // enable dry-run mode
+	OnInit          bool                `json:"onInit,omitempty"`          // enable disruption on init
+	Unsafemode      *UnsafemodeSpec     `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
+	StaticTargeting bool                `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
+	Trigger         *DisruptionTriggers `json:"trigger,omitempty"`         // alter the pre-injection lifecycle
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
@@ -78,21 +78,19 @@ type DisruptionSpec struct {
 
 // DisruptionTrigger holds the options for changing when injector pods are created, and the timing of when the injection occurs
 // +ddmark:validation:ExclusiveFields={NotInjectedBefore,Offset}
+type DisruptionTriggers struct {
+	Inject *DisruptionTrigger `json:"inject,omitempty"`
+	// inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
+	// inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
+	Pods *DisruptionTrigger `json:"pods,omitempty"`
+	// pods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
+	// pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
+}
+
+// +ddmark:validation:ExclusiveFields={NotBefore,Offset}
 type DisruptionTrigger struct {
-	Inject *DisruptionInjectionTrigger `json:"inject,omitempty"`
-	Pods   *DisruptionPodTrigger       `json:"pods,omitempty"`
-}
-
-// +ddmark:validation:ExclusiveFields={NotBefore,Offset}
-type DisruptionInjectionTrigger struct {
-	NotBefore metav1.Time        `json:"notBefore,omitempty"` // Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
-	Offset    DisruptionDuration `json:"offset,omitempty"`    // Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
-}
-
-// +ddmark:validation:ExclusiveFields={NotBefore,Offset}
-type DisruptionPodTrigger struct {
-	NotBefore metav1.Time        `json:"notBefore,omitempty"` // Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
-	Offset    DisruptionDuration `json:"offset,omitempty"`    // Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
+	NotBefore metav1.Time        `json:"notBefore,omitempty"`
+	Offset    DisruptionDuration `json:"offset,omitempty"`
 }
 
 // Reporting provides additional reporting options in order to send a message to a custom slack channel
@@ -341,48 +339,35 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 			}
 		}
 
-		if s.Trigger.Pods != nil {
-			if !s.Trigger.Pods.NotBefore.IsZero() {
+		triggerTypes := []*DisruptionTrigger{s.Trigger.Inject, s.Trigger.Pods}
+
+		for _, subTrigger := range triggerTypes {
+			if subTrigger == nil {
+				continue
+			}
+
+			if !subTrigger.NotBefore.IsZero() {
 				now := metav1.Now()
-				if s.Trigger.Pods.NotBefore.Before(&now) {
-					retErr = multierror.Append(retErr, fmt.Errorf("you should not set spec.trigger.pods.notBefore to a time in the past. spec.trigger.pods.notBefore: %s, current timestamp: %s", s.Trigger.Pods.NotBefore.String(), now.String()))
-				}
-
-				if s.Trigger.Pods.NotBefore.Sub(now.Time) > s.Duration.Duration() {
+				if subTrigger.NotBefore.Before(&now) {
 					retErr = multierror.Append(retErr,
-						fmt.Errorf("you should not set spec.trigger.pods.notBefore to a time farther in the future than the disruption duration. time until spec.trigger.pods.notBefore: %s, duration: %s",
-							s.Trigger.Pods.NotBefore.Sub(now.Time).String(),
-							s.Duration.Duration().String()))
+						fmt.Errorf("you should not set spec.trigger.*.notBefore to a time in the past. spec.trigger.*.notBefore: %s, current timestamp: %s",
+							subTrigger.NotBefore.String(),
+							now.String()))
 				}
 
-				if s.Trigger.Pods.Offset.Duration() > s.Duration.Duration() {
-					retErr = multierror.Append(retErr, fmt.Errorf("you should not set spec.trigger.pods.offset higher than the disruption duration. spec.trigger.pods.offset: %s, duration: %s",
-						s.Trigger.Pods.Offset.Duration().String(),
-						s.Duration.Duration().String()))
+				if subTrigger.NotBefore.Sub(now.Time) > s.Duration.Duration() {
+					retErr = multierror.Append(retErr,
+						fmt.Errorf("you should not set spec.trigger.*.notBefore to a time farther in the future than the disruption duration. time until spec.trigger.*.notBefore: %s, duration: %s",
+							subTrigger.NotBefore.Sub(now.Time).String(),
+							s.Duration.Duration().String()))
 				}
 			}
 
-		}
-
-		if s.Trigger.Inject != nil {
-			if !s.Trigger.Inject.NotBefore.IsZero() {
-				now := metav1.Now()
-				if s.Trigger.Inject.NotBefore.Before(&now) {
-					retErr = multierror.Append(retErr, fmt.Errorf("you should not set spec.trigger.inject.notBefore to a time in the past. spec.trigger.inject.notBefore: %s, current timestamp: %s", s.Trigger.Inject.NotBefore.String(), now.String()))
-				}
-
-				if s.Trigger.Inject.NotBefore.Sub(now.Time) > s.Duration.Duration() {
-					retErr = multierror.Append(retErr,
-						fmt.Errorf("you should not set spec.trigger.inject.notBefore to a time farther in the future than the disruption duration. time until spec.trigger.inject.notBefore: %s, duration: %s",
-							s.Trigger.Inject.NotBefore.Sub(now.Time).String(),
-							s.Duration.Duration().String()))
-				}
-
-				if s.Trigger.Inject.Offset.Duration() > s.Duration.Duration() {
-					retErr = multierror.Append(retErr, fmt.Errorf("you should not set spec.trigger.inject.offset higher than the disruption duration. spec.trigger.inject.offset: %s, duration: %s",
-						s.Trigger.Inject.Offset.Duration().String(),
+			if subTrigger.Offset.Duration() > s.Duration.Duration() {
+				retErr = multierror.Append(retErr,
+					fmt.Errorf("you should not set spec.trigger.*.offset higher than the disruption duration. spec.trigger.*.offset: %s, duration: %s",
+						subTrigger.Offset.Duration().String(),
 						s.Duration.Duration().String()))
-				}
 			}
 		}
 	}
