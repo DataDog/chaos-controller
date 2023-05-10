@@ -114,3 +114,56 @@ func transformCloudSpecToHostsSpec(cloudManager *cloudservice.CloudServicesProvi
 func isModifiedError(err error) bool {
 	return strings.Contains(err.Error(), "please apply your changes to the latest version and try again")
 }
+
+func TimeUntilCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Duration {
+	if triggers == nil {
+		return time.Duration(0)
+	}
+
+	if triggers.CreatePods == nil {
+		return time.Duration(0)
+	}
+
+	var noPodsBefore time.Time
+
+	// validation should have already prevented a situation where both Offset and NotBefore are set
+	if !triggers.CreatePods.NotBefore.IsZero() {
+		noPodsBefore = triggers.CreatePods.NotBefore.Time
+	}
+
+	if triggers.CreatePods.Offset.Duration() > 0 {
+		noPodsBefore = creationTimestamp.Add(triggers.CreatePods.Offset.Duration())
+	}
+
+	return time.Until(noPodsBefore)
+}
+
+// TimeToInject (for now) returns the unix epoch offset in milliseconds at which we want to inject
+func TimeToInject(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) int64 {
+	if triggers == nil {
+		return 0
+	}
+
+	if triggers.Inject == nil {
+		return 0
+	}
+
+	var notInjectedBefore int64
+
+	// validation should have already prevented a situation where both Offset and NotBefore are set
+	if !triggers.Inject.NotBefore.IsZero() {
+		notInjectedBefore = triggers.Inject.NotBefore.UnixMilli()
+	}
+
+	if triggers.Inject.Offset.Duration() > 0 {
+		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.createPods.notBefore
+		offsetTime := creationTimestamp
+		if triggers.CreatePods != nil && !triggers.CreatePods.NotBefore.IsZero() {
+			offsetTime = triggers.CreatePods.NotBefore.Time
+		}
+
+		notInjectedBefore = offsetTime.Add(triggers.Inject.Offset.Duration()).UnixMilli()
+	}
+
+	return notInjectedBefore
+}
