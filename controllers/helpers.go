@@ -49,7 +49,7 @@ func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int,
 func calculateRemainingDuration(instance v1beta1.Disruption) time.Duration {
 	return calculateDeadline(
 		instance.Spec.Duration.Duration(),
-		instance.ObjectMeta.CreationTimestamp.Time,
+		TimeToCreatePods(instance.Spec.Triggers, instance.ObjectMeta.CreationTimestamp.Time),
 	)
 }
 
@@ -115,13 +115,13 @@ func isModifiedError(err error) bool {
 	return strings.Contains(err.Error(), "please apply your changes to the latest version and try again")
 }
 
-func TimeUntilCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Duration {
+func TimeToCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
 	if triggers == nil {
-		return time.Duration(0)
+		return creationTimestamp
 	}
 
 	if triggers.CreatePods == nil {
-		return time.Duration(0)
+		return creationTimestamp
 	}
 
 	var noPodsBefore time.Time
@@ -135,7 +135,7 @@ func TimeUntilCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp
 		noPodsBefore = creationTimestamp.Add(triggers.CreatePods.Offset.Duration())
 	}
 
-	return time.Until(noPodsBefore)
+	return noPodsBefore
 }
 
 // TimeToInject (for now) returns the unix epoch offset in milliseconds at which we want to inject

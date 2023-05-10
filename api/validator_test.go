@@ -41,7 +41,7 @@ var _ = Describe("Validator", func() {
 				yamlDisruptionSpec.WriteString("\n  corrupt: 100")
 				yamlDisruptionSpec.WriteString("\nduration: 876000h")
 				yamlDisruptionSpec.WriteString("\ntriggers:")
-				yamlDisruptionSpec.WriteString("\n  pods:")
+				yamlDisruptionSpec.WriteString("\n  createPods:")
 				yamlDisruptionSpec.WriteString("\n    notBefore: \"2040-01-02T15:04:05-04:00\"")
 				yamlDisruptionSpec.WriteString("\n    offset: 1m")
 			})

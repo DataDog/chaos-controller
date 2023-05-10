@@ -353,20 +353,6 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 							subTrigger.NotBefore.String(),
 							now.String()))
 				}
-
-				if subTrigger.NotBefore.Sub(now.Time) > s.Duration.Duration() {
-					retErr = multierror.Append(retErr,
-						fmt.Errorf("you should not set spec.trigger.*.notBefore to a time farther in the future than the disruption duration. time until spec.trigger.*.notBefore: %s, duration: %s",
-							subTrigger.NotBefore.Sub(now.Time).String(),
-							s.Duration.Duration().String()))
-				}
-			}
-
-			if subTrigger.Offset.Duration() > s.Duration.Duration() {
-				retErr = multierror.Append(retErr,
-					fmt.Errorf("you should not set spec.trigger.*.offset higher than the disruption duration. spec.trigger.*.offset: %s, duration: %s",
-						subTrigger.Offset.Duration().String(),
-						s.Duration.Duration().String()))
 			}
 		}
 	}
