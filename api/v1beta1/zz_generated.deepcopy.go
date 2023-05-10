@@ -340,8 +340,8 @@ func (in *DisruptionSpec) DeepCopyInto(out *DisruptionSpec) {
 		*out = new(UnsafemodeSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Trigger != nil {
-		in, out := &in.Trigger, &out.Trigger
+	if in.Triggers != nil {
+		in, out := &in.Triggers, &out.Triggers
 		*out = new(DisruptionTriggers)
 		(*in).DeepCopyInto(*out)
 	}
@@ -458,8 +458,8 @@ func (in *DisruptionTriggers) DeepCopyInto(out *DisruptionTriggers) {
 		*out = new(DisruptionTrigger)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Pods != nil {
-		in, out := &in.Pods, &out.Pods
+	if in.CreatePods != nil {
+		in, out := &in.CreatePods, &out.CreatePods
 		*out = new(DisruptionTrigger)
 		(*in).DeepCopyInto(*out)
 	}

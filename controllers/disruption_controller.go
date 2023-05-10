@@ -261,21 +261,22 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// check if we have reached trigger.pods. If not, skip the rest of reconciliation.
-		if instance.Spec.Trigger != nil && instance.Spec.Trigger.Pods != nil {
+		if instance.Spec.Triggers != nil && instance.Spec.Triggers.CreatePods != nil {
 			now := metav1.Now()
 			var noPodsBefore metav1.Time
-			if !instance.Spec.Trigger.Pods.NotBefore.IsZero() {
-				noPodsBefore = instance.Spec.Trigger.Pods.NotBefore
+			if !instance.Spec.Triggers.CreatePods.NotBefore.IsZero() {
+				noPodsBefore = instance.Spec.Triggers.CreatePods.NotBefore
 			}
 
-			if instance.Spec.Trigger.Pods.Offset.Duration() > 0 {
-				noPodsBefore = metav1.NewTime(instance.CreationTimestamp.Add(instance.Spec.Trigger.Pods.Offset.Duration()))
+			if instance.Spec.Triggers.CreatePods.Offset.Duration() > 0 {
+				noPodsBefore = metav1.NewTime(instance.CreationTimestamp.Add(instance.Spec.Triggers.CreatePods.Offset.Duration()))
 			}
 
 			if now.Before(&noPodsBefore) {
 				r.log.Debugw("requeuing disruption as we haven't yet reached trigger.pods", "trigger.pods", noPodsBefore)
 
-				return ctrl.Result{Requeue: false}, nil
+				requeueAfter := time.Until(noPodsBefore.Time)
+				return ctrl.Result{Requeue: false, RequeueAfter: requeueAfter}, nil
 			}
 		}
 
@@ -1269,21 +1270,21 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		// deeply assumes that the chaos-controller and chaos pods are using the same timestamp, but that's okay because anyone responsible uses UTC for all their machines
 		var notInjectedBefore int64
 
-		if instance.Spec.Trigger != nil {
-			if instance.Spec.Trigger.Inject != nil {
+		if instance.Spec.Triggers != nil {
+			if instance.Spec.Triggers.Inject != nil {
 				// validation should have already prevented a situation where both Offset and NotBefore are set
-				if !instance.Spec.Trigger.Inject.NotBefore.IsZero() {
-					notInjectedBefore = instance.Spec.Trigger.Inject.NotBefore.UnixMilli()
+				if !instance.Spec.Triggers.Inject.NotBefore.IsZero() {
+					notInjectedBefore = instance.Spec.Triggers.Inject.NotBefore.UnixMilli()
 				}
 
-				if instance.Spec.Trigger.Inject.Offset.Duration() > 0 {
+				if instance.Spec.Triggers.Inject.Offset.Duration() > 0 {
 					// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.pods.notBefore
 					offsetTime := instance.CreationTimestamp
-					if instance.Spec.Trigger.Pods != nil && !instance.Spec.Trigger.Pods.NotBefore.IsZero() {
-						offsetTime = instance.Spec.Trigger.Pods.NotBefore
+					if instance.Spec.Triggers.CreatePods != nil && !instance.Spec.Triggers.CreatePods.NotBefore.IsZero() {
+						offsetTime = instance.Spec.Triggers.CreatePods.NotBefore
 					}
 
-					notInjectedBefore = offsetTime.Add(instance.Spec.Trigger.Inject.Offset.Duration()).UnixMilli()
+					notInjectedBefore = offsetTime.Add(instance.Spec.Triggers.Inject.Offset.Duration()).UnixMilli()
 				}
 			}
 		}

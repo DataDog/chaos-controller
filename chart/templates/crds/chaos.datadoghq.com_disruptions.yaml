@@ -487,30 +487,46 @@ spec:
               staticTargeting:
                 type: boolean
               triggers:
-                description: DisruptionTrigger holds the options for changing when
+                description: DisruptionTriggers holds the options for changing when
                   injector pods are created, and the timing of when the injection
                   occurs
                 properties:
+                  createPods:
+                    properties:
+                      notBefore:
+                        description: 'inject.notBefore: Normal reconciliation and
+                          chaos pod creation will occur, but chaos pods will wait
+                          to inject until NotInjectedBefore. Must be after NoPodsBefore
+                          if both are specified createPods.notBefore: Will skip reconciliation
+                          until this time, no chaos pods will be created until after
+                          NoPodsBefore'
+                        format: date-time
+                        type: string
+                      offset:
+                        description: 'inject.offset: Identical to NotBefore, but specified
+                          as an offset from max(CreationTimestamp, NoPodsBefore) instead
+                          of as a metav1.Time pods.offset: Identical to NotBefore,
+                          but specified as an offset from CreationTimestamp instead
+                          of as a metav1.Time'
+                        type: string
+                    type: object
                   inject:
                     properties:
                       notBefore:
+                        description: 'inject.notBefore: Normal reconciliation and
+                          chaos pod creation will occur, but chaos pods will wait
+                          to inject until NotInjectedBefore. Must be after NoPodsBefore
+                          if both are specified createPods.notBefore: Will skip reconciliation
+                          until this time, no chaos pods will be created until after
+                          NoPodsBefore'
                         format: date-time
                         type: string
                       offset:
-                        type: string
-                    type: object
-                  pods:
-                    description: 'inject.notBefore: Normal reconciliation and chaos
-                      pod creation will occur, but chaos pods will wait to inject
-                      until NotInjectedBefore. Must be after NoPodsBefore if both
-                      are specified inject.offset: Identical to NotBefore, but specified
-                      as an offset from max(CreationTimestamp, NoPodsBefore) instead
-                      of as a metav1.Time'
-                    properties:
-                      notBefore:
-                        format: date-time
-                        type: string
-                      offset:
+                        description: 'inject.offset: Identical to NotBefore, but specified
+                          as an offset from max(CreationTimestamp, NoPodsBefore) instead
+                          of as a metav1.Time pods.offset: Identical to NotBefore,
+                          but specified as an offset from CreationTimestamp instead
+                          of as a metav1.Time'
                         type: string
                     type: object
                 type: object

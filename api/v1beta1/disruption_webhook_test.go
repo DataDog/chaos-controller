@@ -271,7 +271,7 @@ var _ = Describe("Disruption", func() {
 			When("notBefore is set past duration", func() {
 				It("should return an error", func() {
 					newDisruption.Spec.Duration = "10m"
-					newDisruption.Spec.Trigger = &DisruptionTriggers{
+					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						Inject: &DisruptionTrigger{
 							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 15)),
 						},
@@ -287,8 +287,8 @@ var _ = Describe("Disruption", func() {
 			When("offset is set larger than duration", func() {
 				It("should return an error", func() {
 					newDisruption.Spec.Duration = "10m"
-					newDisruption.Spec.Trigger = &DisruptionTriggers{
-						Pods: &DisruptionTrigger{
+					newDisruption.Spec.Triggers = &DisruptionTriggers{
+						CreatePods: &DisruptionTrigger{
 							Offset: "15m",
 						},
 					}
@@ -303,11 +303,11 @@ var _ = Describe("Disruption", func() {
 			When("both inject.notBefore is before pods.notBefore are set", func() {
 				It("should return an error", func() {
 					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Trigger = &DisruptionTriggers{
+					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						Inject: &DisruptionTrigger{
 							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5)),
 						},
-						Pods: &DisruptionTrigger{
+						CreatePods: &DisruptionTrigger{
 							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 15)),
 						},
 					}

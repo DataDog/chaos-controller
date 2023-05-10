@@ -48,7 +48,7 @@ type DisruptionSpec struct {
 	OnInit          bool                `json:"onInit,omitempty"`          // enable disruption on init
 	Unsafemode      *UnsafemodeSpec     `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
 	StaticTargeting bool                `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
-	Trigger         *DisruptionTriggers `json:"triggers,omitempty"`        // alter the pre-injection lifecycle
+	Triggers        *DisruptionTriggers `json:"triggers,omitempty"`        // alter the pre-injection lifecycle
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
@@ -76,21 +76,20 @@ type DisruptionSpec struct {
 	Reporting *Reporting `json:"reporting,omitempty"`
 }
 
-// DisruptionTrigger holds the options for changing when injector pods are created, and the timing of when the injection occurs
-// +ddmark:validation:ExclusiveFields={NotInjectedBefore,Offset}
+// DisruptionTriggers holds the options for changing when injector pods are created, and the timing of when the injection occurs
 type DisruptionTriggers struct {
-	Inject *DisruptionTrigger `json:"inject,omitempty"`
-	// inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
-	// inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
-	Pods *DisruptionTrigger `json:"pods,omitempty"`
-	// pods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
-	// pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
+	Inject     *DisruptionTrigger `json:"inject,omitempty"`
+	CreatePods *DisruptionTrigger `json:"createPods,omitempty"`
 }
 
 // +ddmark:validation:ExclusiveFields={NotBefore,Offset}
 type DisruptionTrigger struct {
-	NotBefore metav1.Time        `json:"notBefore,omitempty"`
-	Offset    DisruptionDuration `json:"offset,omitempty"`
+	// inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
+	// createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
+	NotBefore metav1.Time `json:"notBefore,omitempty"`
+	// inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
+	// pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
+	Offset DisruptionDuration `json:"offset,omitempty"`
 }
 
 // Reporting provides additional reporting options in order to send a message to a custom slack channel
@@ -332,14 +331,14 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 	}
 
 	// Rule: DisruptionTrigger
-	if s.Trigger != nil {
-		if s.Trigger.Inject != nil && s.Trigger.Pods != nil {
-			if !s.Trigger.Inject.NotBefore.IsZero() && !s.Trigger.Pods.NotBefore.IsZero() && s.Trigger.Inject.NotBefore.Before(&s.Trigger.Pods.NotBefore) {
-				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.pods.notBefore of %s. inject.notBefore must come after pods.notBefore if both are specified", s.Trigger.Inject.NotBefore, s.Trigger.Pods.NotBefore))
+	if s.Triggers != nil {
+		if s.Triggers.Inject != nil && s.Triggers.CreatePods != nil {
+			if !s.Triggers.Inject.NotBefore.IsZero() && !s.Triggers.CreatePods.NotBefore.IsZero() && s.Triggers.Inject.NotBefore.Before(&s.Triggers.CreatePods.NotBefore) {
+				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.pods.notBefore of %s. inject.notBefore must come after pods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
 			}
 		}
 
-		triggerTypes := []*DisruptionTrigger{s.Trigger.Inject, s.Trigger.Pods}
+		triggerTypes := []*DisruptionTrigger{s.Triggers.Inject, s.Triggers.CreatePods}
 
 		for _, subTrigger := range triggerTypes {
 			if subTrigger == nil {
