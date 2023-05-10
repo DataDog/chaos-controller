@@ -334,7 +334,7 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 	if s.Triggers != nil {
 		if s.Triggers.Inject != nil && s.Triggers.CreatePods != nil {
 			if !s.Triggers.Inject.NotBefore.IsZero() && !s.Triggers.CreatePods.NotBefore.IsZero() && s.Triggers.Inject.NotBefore.Before(&s.Triggers.CreatePods.NotBefore) {
-				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.pods.notBefore of %s. inject.notBefore must come after pods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
+				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.createPods.notBefore of %s. inject.notBefore must come after createPods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
 			}
 		}
 
