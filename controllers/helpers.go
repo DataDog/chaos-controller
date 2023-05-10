@@ -115,7 +115,6 @@ func isModifiedError(err error) bool {
 	return strings.Contains(err.Error(), "please apply your changes to the latest version and try again")
 }
 
-// TODO add tests
 func TimeToCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
 	if triggers == nil {
 		return creationTimestamp
@@ -139,7 +138,6 @@ func TimeToCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp ti
 	return noPodsBefore
 }
 
-// TODO add tests
 // TimeToInject (for now) returns the unix epoch offset in milliseconds at which we want to inject
 func TimeToInject(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
 	if triggers == nil {

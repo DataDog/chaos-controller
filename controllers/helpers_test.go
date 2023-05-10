@@ -39,3 +39,13 @@ var _ = Describe("Label Selector Validation", func() {
 		})
 	})
 })
+
+var _ = Describe("Inject and CreatePods Trigger tests", func() {
+	Context("TimeToCreatePods", func() {
+		Fail("unimplemented")
+	})
+
+	Context("TimeToInject", func() {
+		Fail("unimplemented")
+	})
+})
