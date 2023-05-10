@@ -260,24 +260,12 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{Requeue: false}, nil
 		}
 
-		// check if we have reached trigger.pods. If not, skip the rest of reconciliation.
-		if instance.Spec.Triggers != nil && instance.Spec.Triggers.CreatePods != nil {
-			now := metav1.Now()
-			var noPodsBefore metav1.Time
-			if !instance.Spec.Triggers.CreatePods.NotBefore.IsZero() {
-				noPodsBefore = instance.Spec.Triggers.CreatePods.NotBefore
-			}
+		// check if we have reached trigger.createPods. If not, skip the rest of reconciliation.
+		requeueAfter := r.TimeUntilCreatePods(instance.Spec.Triggers, instance.CreationTimestamp.Time)
+		if requeueAfter > 0 {
+			r.log.Debugw("requeuing disruption as we haven't yet reached trigger.createPods", "requeueAfter", requeueAfter.String())
 
-			if instance.Spec.Triggers.CreatePods.Offset.Duration() > 0 {
-				noPodsBefore = metav1.NewTime(instance.CreationTimestamp.Add(instance.Spec.Triggers.CreatePods.Offset.Duration()))
-			}
-
-			if now.Before(&noPodsBefore) {
-				r.log.Debugw("requeuing disruption as we haven't yet reached trigger.pods", "trigger.pods", noPodsBefore)
-
-				requeueAfter := time.Until(noPodsBefore.Time)
-				return ctrl.Result{Requeue: false, RequeueAfter: requeueAfter}, nil
-			}
+			return ctrl.Result{Requeue: false, RequeueAfter: requeueAfter}, nil
 		}
 
 		// retrieve targets from label selector
@@ -1270,6 +1258,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		// deeply assumes that the chaos-controller and chaos pods are using the same timestamp, but that's okay because anyone responsible uses UTC for all their machines
 		var notInjectedBefore int64
 
+		// TODO extract
 		if instance.Spec.Triggers != nil {
 			if instance.Spec.Triggers.Inject != nil {
 				// validation should have already prevented a situation where both Offset and NotBefore are set
@@ -1367,6 +1356,27 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 	}
 
 	r.Recorder.Event(o, chaosv1beta1.Events[disruptionEventReason].Type, chaosv1beta1.Events[disruptionEventReason].Reason, fmt.Sprintf(chaosv1beta1.Events[disruptionEventReason].OnTargetTemplateMessage, chaosPod, optionalMessage))
+}
+
+func (r *DisruptionReconciler) TimeUntilCreatePods(triggers *chaosv1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Duration {
+	if triggers == nil {
+		return time.Duration(0)
+	}
+
+	if triggers.CreatePods == nil {
+		return time.Duration(0)
+	}
+
+	var noPodsBefore time.Time
+	if !triggers.CreatePods.NotBefore.IsZero() {
+		noPodsBefore = triggers.CreatePods.NotBefore.Time
+	}
+
+	if triggers.CreatePods.Offset.Duration() > 0 {
+		noPodsBefore = creationTimestamp.Add(triggers.CreatePods.Offset.Duration())
+	}
+
+	return time.Until(noPodsBefore)
 }
 
 // SetupWithManager setups the current reconciler with the given manager
