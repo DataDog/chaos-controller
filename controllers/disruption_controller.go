@@ -1256,27 +1256,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 
 		// spec.trigger.inject.notBefore will be used as an argument to tell the chaos pods the earliest timestamp (in milliseconds from Unix epoch) that they can inject
 		// deeply assumes that the chaos-controller and chaos pods are using the same timestamp, but that's okay because anyone responsible uses UTC for all their machines
-		var notInjectedBefore int64
-
-		// TODO extract
-		if instance.Spec.Triggers != nil {
-			if instance.Spec.Triggers.Inject != nil {
-				// validation should have already prevented a situation where both Offset and NotBefore are set
-				if !instance.Spec.Triggers.Inject.NotBefore.IsZero() {
-					notInjectedBefore = instance.Spec.Triggers.Inject.NotBefore.UnixMilli()
-				}
-
-				if instance.Spec.Triggers.Inject.Offset.Duration() > 0 {
-					// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.pods.notBefore
-					offsetTime := instance.CreationTimestamp
-					if instance.Spec.Triggers.CreatePods != nil && !instance.Spec.Triggers.CreatePods.NotBefore.IsZero() {
-						offsetTime = instance.Spec.Triggers.CreatePods.NotBefore
-					}
-
-					notInjectedBefore = offsetTime.Add(instance.Spec.Triggers.Inject.Offset.Duration()).UnixMilli()
-				}
-			}
-		}
+		notInjectedBefore := r.TimeToInject(instance.Spec.Triggers, instance.CreationTimestamp.Time)
 
 		allowedHosts := r.InjectorNetworkDisruptionAllowedHosts
 
@@ -1368,6 +1348,8 @@ func (r *DisruptionReconciler) TimeUntilCreatePods(triggers *chaosv1beta1.Disrup
 	}
 
 	var noPodsBefore time.Time
+
+	// validation should have already prevented a situation where both Offset and NotBefore are set
 	if !triggers.CreatePods.NotBefore.IsZero() {
 		noPodsBefore = triggers.CreatePods.NotBefore.Time
 	}
@@ -1377,6 +1359,36 @@ func (r *DisruptionReconciler) TimeUntilCreatePods(triggers *chaosv1beta1.Disrup
 	}
 
 	return time.Until(noPodsBefore)
+}
+
+// TimeToInject (for now) returns the unix epoch offset in milliseconds at which we want to inject
+func (r *DisruptionReconciler) TimeToInject(triggers *chaosv1beta1.DisruptionTriggers, creationTimestamp time.Time) int64 {
+	if triggers == nil {
+		return 0
+	}
+
+	if triggers.Inject == nil {
+		return 0
+	}
+
+	var notInjectedBefore int64
+
+	// validation should have already prevented a situation where both Offset and NotBefore are set
+	if !triggers.Inject.NotBefore.IsZero() {
+		notInjectedBefore = triggers.Inject.NotBefore.UnixMilli()
+	}
+
+	if triggers.Inject.Offset.Duration() > 0 {
+		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.createPods.notBefore
+		offsetTime := creationTimestamp
+		if triggers.CreatePods != nil && !triggers.CreatePods.NotBefore.IsZero() {
+			offsetTime = triggers.CreatePods.NotBefore.Time
+		}
+
+		notInjectedBefore = offsetTime.Add(triggers.Inject.Offset.Duration()).UnixMilli()
+	}
+
+	return notInjectedBefore
 }
 
 // SetupWithManager setups the current reconciler with the given manager
