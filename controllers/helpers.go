@@ -49,7 +49,7 @@ func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int,
 func calculateRemainingDuration(instance v1beta1.Disruption) time.Duration {
 	return calculateDeadline(
 		instance.Spec.Duration.Duration(),
-		TimeToCreatePods(instance.Spec.Triggers, instance.ObjectMeta.CreationTimestamp.Time),
+		TimeToInject(instance.Spec.Triggers, instance.ObjectMeta.CreationTimestamp.Time),
 	)
 }
 
@@ -115,6 +115,7 @@ func isModifiedError(err error) bool {
 	return strings.Contains(err.Error(), "please apply your changes to the latest version and try again")
 }
 
+// TODO add tests
 func TimeToCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
 	if triggers == nil {
 		return creationTimestamp
@@ -138,31 +139,27 @@ func TimeToCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp ti
 	return noPodsBefore
 }
 
+// TODO add tests
 // TimeToInject (for now) returns the unix epoch offset in milliseconds at which we want to inject
-func TimeToInject(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) int64 {
+func TimeToInject(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
 	if triggers == nil {
-		return 0
+		return creationTimestamp
 	}
 
 	if triggers.Inject == nil {
-		return 0
+		return TimeToCreatePods(triggers, creationTimestamp)
 	}
 
-	var notInjectedBefore int64
+	var notInjectedBefore time.Time
 
 	// validation should have already prevented a situation where both Offset and NotBefore are set
 	if !triggers.Inject.NotBefore.IsZero() {
-		notInjectedBefore = triggers.Inject.NotBefore.UnixMilli()
+		notInjectedBefore = triggers.Inject.NotBefore.Time
 	}
 
 	if triggers.Inject.Offset.Duration() > 0 {
-		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.createPods.notBefore
-		offsetTime := creationTimestamp
-		if triggers.CreatePods != nil && !triggers.CreatePods.NotBefore.IsZero() {
-			offsetTime = triggers.CreatePods.NotBefore.Time
-		}
-
-		notInjectedBefore = offsetTime.Add(triggers.Inject.Offset.Duration()).UnixMilli()
+		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.createPods
+		notInjectedBefore = TimeToCreatePods(triggers, creationTimestamp).Add(triggers.Inject.Offset.Duration())
 	}
 
 	return notInjectedBefore
