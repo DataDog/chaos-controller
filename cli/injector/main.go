@@ -26,6 +26,7 @@ import (
 	"github.com/DataDog/chaos-controller/network"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
+	"github.com/DataDog/chaos-controller/pflag"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
 
@@ -69,6 +70,11 @@ var (
 )
 
 func init() {
+	notInjectedBeforeFlag, err := pflag.NewTimeWithFormat(time.RFC3339, &disruptionArgs.NotInjectedBefore)
+	if err != nil {
+		panic(err)
+	}
+
 	rootCmd.AddCommand(networkDisruptionCmd)
 	rootCmd.AddCommand(nodeFailureCmd)
 	rootCmd.AddCommand(containerFailureCmd)
@@ -88,7 +94,7 @@ func init() {
 	rootCmd.PersistentFlags().DurationVar(&disruptionArgs.PulseInitialDelay, "pulse-initial-delay", time.Duration(0), "Duration to wait after injector starts before beginning the activeDuration")
 	rootCmd.PersistentFlags().DurationVar(&disruptionArgs.PulseActiveDuration, "pulse-active-duration", time.Duration(0), "Duration of the disruption being active in a pulsing disruption (empty if the disruption is not pulsing)")
 	rootCmd.PersistentFlags().DurationVar(&disruptionArgs.PulseDormantDuration, "pulse-dormant-duration", time.Duration(0), "Duration of the disruption being dormant in a pulsing disruption (empty if the disruption is not pulsing)")
-	rootCmd.PersistentFlags().Int64Var(&disruptionArgs.NotInjectedBefore, "not-injected-before", 0, "")
+	rootCmd.PersistentFlags().Var(notInjectedBeforeFlag, "not-injected-before", "")
 	rootCmd.PersistentFlags().StringVar(&deadlineRaw, "deadline", "", "Timestamp at which the disruption must be over by")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.DNSServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.KubeDNS, "kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
@@ -491,14 +497,14 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if disruptionArgs.NotInjectedBefore > 0 {
-		log.Infow("waiting for synchronized start to begin", "timeUntilNotInjectedBefore", time.Until(time.UnixMilli(disruptionArgs.NotInjectedBefore)).String())
+	if !disruptionArgs.NotInjectedBefore.IsZero() {
+		log.Infow("waiting for synchronized start to begin", "timeUntilNotInjectedBefore", time.Until(disruptionArgs.NotInjectedBefore).String())
 		select {
 		case sig := <-signals:
 			log.Infow("an exit signal has been received", "signal", sig.String())
 
 			return
-		case <-time.After(time.Until(time.UnixMilli(disruptionArgs.NotInjectedBefore))):
+		case <-time.After(time.Until(disruptionArgs.NotInjectedBefore)):
 			break
 		}
 	}
