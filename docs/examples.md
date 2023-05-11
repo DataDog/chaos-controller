@@ -8,6 +8,7 @@ You can also have a look at the following use cases with examples of disruptions
   - [I want to simulate a flapping failure (injecting and cleaning continuously)](../examples/pulse.yaml)
   - [I want to notify (eg. Slack) on a specific disruption injection](../examples/reporting_network_drop.yaml)
   - [I want my disruption to expire automatically after some time](../examples/timed_disruption.yaml)
+  - [I want the injection to start on all targets simultaneously](../examples/trigger.yaml)
 - Targeting options
   - [I want to select my targets with label selector operators (advanced selector)](../examples/advanced_selector.yaml)
   - [I want to select my targets based on annotations in addition to the label selector](../examples/annotation_filter.yaml)
