@@ -6,7 +6,7 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: network-delay
+  name: delayed-network-drop
   namespace: chaos-demo
   annotations:
     chaos.datadoghq.com/environment: "lima"
@@ -15,14 +15,12 @@ spec:
   selector:
     app: demo-curl
   count: 100%
-  staticTargeting: true
-  duration: 30m
   triggers:
     inject:
       # notBefore: 2023-05-09T11:10:08-04:00 # RFC3339 format
       offset: 2m
-    pods:
-#      notBefore: 2023-05-09T15:15:08-04:00 # RFC3339 format
+    createPods:
+      # notBefore: 2023-05-09T15:15:08-04:00 # RFC3339 format
       offset: 1m
   network:
     drop: 1
