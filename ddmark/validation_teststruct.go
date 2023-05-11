@@ -8,12 +8,13 @@
 package ddmark
 
 type Teststruct struct {
-	MinMaxTest          MinMaxTestStruct
-	RequiredTest        RequiredTestStruct
-	EnumTest            EnumTestStruct
-	ExclusiveFieldsTest ExclusiveFieldsTestStruct
-	LinkedFieldsTest    LinkedFieldsTestStruct
-	AtLeastOneOfTest    AtLeastOneOfTestStruct
+	MinMaxTest                       MinMaxTestStruct
+	RequiredTest                     RequiredTestStruct
+	EnumTest                         EnumTestStruct
+	ExclusiveFieldsTest              ExclusiveFieldsTestStruct
+	LinkedFieldsValueTest            LinkedFieldsValueTestStruct
+	LinkedFieldsValueWithTriggerTest LinkedFieldsValueWithTriggerTestStruct
+	AtLeastOneOfTest                 AtLeastOneOfTestStruct
 }
 
 type MinMaxTestStruct struct {
@@ -67,9 +68,20 @@ type ExclusiveFieldsTestStruct struct {
 	CField    int
 }
 
-// +ddmark:validation:LinkedFields={StrField,IntField}
-// +ddmark:validation:LinkedFields={PStrField,PIntField,AIntField}
-type LinkedFieldsTestStruct struct {
+// +ddmark:validation:LinkedFieldsValue={StrField=aaa,IntField}
+// +ddmark:validation:LinkedFieldsValue={PStrField,PIntField,AIntField}
+type LinkedFieldsValueTestStruct struct {
+	RandomIntField int // allows to actually check all-empty structs
+	StrField       string
+	PStrField      *string
+	IntField       int
+	PIntField      *int
+	AIntField      []int
+}
+
+// +ddmark:validation:LinkedFieldsValueWithTrigger={StrField=aaa,IntField=2}
+// +ddmark:validation:LinkedFieldsValueWithTrigger={PStrField=bbb,PIntField=12,AIntField}
+type LinkedFieldsValueWithTriggerTestStruct struct {
 	RandomIntField int // allows to actually check all-empty structs
 	StrField       string
 	PStrField      *string

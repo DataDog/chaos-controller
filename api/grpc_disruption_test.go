@@ -171,7 +171,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 
 				err := ddMarkClient.ValidateStructMultierror(spec, "grpc_test_suite")
 				Expect(err.Errors).To(HaveLen(1))
-				Expect(err.Errors[0].Error()).To(Equal("grpc_test_suite>Endpoints>>ErrorToReturn - ddmark:validation:Enum: field needs to be one of [OK CANCELED UNKNOWN INVALID_ARGUMENT DEADLINE_EXCEEDED NOT_FOUND ALREADY_EXISTS PERMISSION_DENIED RESOURCE_EXHAUSTED FAILED_PRECONDITION ABORTED OUT_OF_RANGE UNIMPLEMENTED INTERNAL UNAVAILABLE DATA_LOSS UNAUTHENTICATED], currently \"MEOW\""))
+				Expect(err.Errors[0].Error()).To(Equal("grpc_test_suite>Endpoints>>ErrorToReturn - ddmark:validation:Enum: field needs to be one of [OK CANCELED UNKNOWN INVALID_ARGUMENT DEADLINE_EXCEEDED NOT_FOUND ALREADY_EXISTS PERMISSION_DENIED RESOURCE_EXHAUSTED FAILED_PRECONDITION ABORTED OUT_OF_RANGE UNIMPLEMENTED INTERNAL UNAVAILABLE DATA_LOSS UNAUTHENTICATED]"))
 			})
 		})
 
