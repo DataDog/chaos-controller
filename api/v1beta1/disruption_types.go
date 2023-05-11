@@ -87,9 +87,11 @@ type DisruptionTriggers struct {
 type DisruptionTrigger struct {
 	// inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
 	// createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
+	// +nullable
 	NotBefore metav1.Time `json:"notBefore,omitempty"`
 	// inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
 	// pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
+	// +nullable
 	Offset DisruptionDuration `json:"offset,omitempty"`
 }
 

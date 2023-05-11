@@ -501,6 +501,7 @@ spec:
                           until this time, no chaos pods will be created until after
                           NoPodsBefore'
                         format: date-time
+                        nullable: true
                         type: string
                       offset:
                         description: 'inject.offset: Identical to NotBefore, but specified
@@ -508,6 +509,7 @@ spec:
                           of as a metav1.Time pods.offset: Identical to NotBefore,
                           but specified as an offset from CreationTimestamp instead
                           of as a metav1.Time'
+                        nullable: true
                         type: string
                     type: object
                   inject:
@@ -520,6 +522,7 @@ spec:
                           until this time, no chaos pods will be created until after
                           NoPodsBefore'
                         format: date-time
+                        nullable: true
                         type: string
                       offset:
                         description: 'inject.offset: Identical to NotBefore, but specified
@@ -527,6 +530,7 @@ spec:
                           of as a metav1.Time pods.offset: Identical to NotBefore,
                           but specified as an offset from CreationTimestamp instead
                           of as a metav1.Time'
+                        nullable: true
                         type: string
                     type: object
                 type: object
