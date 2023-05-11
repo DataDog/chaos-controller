@@ -77,7 +77,7 @@ func (m Maximum) ValueCheckError() error {
 }
 
 func (m Maximum) TypeCheckError(fieldValue reflect.Value) error {
-	return GenericTypeCheckError(m, fieldValue, "int or uint")
+	return genericTypeCheckError(m, fieldValue, "int or uint")
 }
 
 func (m Minimum) ApplyRule(fieldvalue reflect.Value) error {
@@ -100,7 +100,7 @@ func (m Minimum) ValueCheckError() error {
 }
 
 func (m Minimum) TypeCheckError(fieldValue reflect.Value) error {
-	return GenericTypeCheckError(m, fieldValue, "int or uint")
+	return genericTypeCheckError(m, fieldValue, "int or uint")
 }
 
 func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
@@ -133,7 +133,7 @@ func (e ExclusiveFields) ValueCheckError() error {
 }
 
 func (e ExclusiveFields) TypeCheckError(fieldValue reflect.Value) error {
-	return GenericTypeCheckError(e, fieldValue, "struct")
+	return genericTypeCheckError(e, fieldValue, "struct")
 }
 
 func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
@@ -222,7 +222,7 @@ func (l LinkedFieldsValue) ValueCheckError() error {
 }
 
 func (l LinkedFieldsValue) TypeCheckError(fieldValue reflect.Value) error {
-	return GenericTypeCheckError(l, fieldValue, "struct")
+	return genericTypeCheckError(l, fieldValue, "struct")
 }
 
 func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error {
@@ -280,7 +280,7 @@ func (l LinkedFieldsValueWithTrigger) ValueCheckError() error {
 }
 
 func (l LinkedFieldsValueWithTrigger) TypeCheckError(fieldValue reflect.Value) error {
-	return GenericTypeCheckError(l, fieldValue, "struct")
+	return genericTypeCheckError(l, fieldValue, "struct")
 }
 
 func (a AtLeastOneOf) ApplyRule(fieldvalue reflect.Value) error {
@@ -306,7 +306,7 @@ func (a AtLeastOneOf) ValueCheckError() error {
 }
 
 func (a AtLeastOneOf) TypeCheckError(fieldValue reflect.Value) error {
-	return GenericTypeCheckError(a, fieldValue, "struct")
+	return genericTypeCheckError(a, fieldValue, "struct")
 }
 
 func Register(reg *k8smarkers.Registry) error {
@@ -339,7 +339,7 @@ func ruleName(i interface{}) string {
 }
 
 // genericTypeError returns a generic error for wrong type marker attempt
-func GenericTypeCheckError(i interface{}, fieldValue reflect.Value, expectedTypes string) error {
+func genericTypeCheckError(i interface{}, fieldValue reflect.Value, expectedTypes string) error {
 	return fmt.Errorf("%s: marker applied to wrong type: currently %T, can only be %s", ruleName(i), fieldValue, expectedTypes)
 }
 
@@ -414,7 +414,7 @@ func checkValueExistsOrIsValid(markerItem string, structMap map[string]interface
 	// this marker uses string comparison so the underlying type has to be convertible to string
 	convertibleToString := vType.ConvertibleTo(stringType)
 	if !convertibleToString {
-		return false, fmt.Errorf("%v: wrong type for value field %v; only int and string are allowed", ruleName, markerSubfieldName)
+		return false, fmt.Errorf("%s: wrong type for value field %s; only int and string are allowed", ruleName, markerSubfieldName)
 	}
 
 	var vStr string
@@ -426,7 +426,7 @@ func checkValueExistsOrIsValid(markerItem string, structMap map[string]interface
 	case reflect.String:
 		vStr = v.Convert(vType).Interface().(string)
 	default:
-		return false, fmt.Errorf("%v: please do not apply this marker to anything else than int or string. Current type: %v", ruleName, v.Type().Name())
+		return false, fmt.Errorf("%s: please do not apply this marker to anything else than int or string. Current type: %T", ruleName, v)
 	}
 
 	return strings.EqualFold(markerSubfieldValue, vStr), nil
