@@ -73,13 +73,11 @@ func (m Maximum) ApplyRule(fieldvalue reflect.Value) error {
 }
 
 func (m Maximum) GenValueCheckError(fieldInt int) error {
-	template := "%v: field has value %v, max is %v (included)"
-	return fmt.Errorf(template, ruleName(m), fieldInt, m)
+	return fmt.Errorf("%s: field has value %d, max is %d (included)", ruleName(m), fieldInt, m)
 }
 
 func (m Maximum) GenTypeCheckError(fieldValue reflect.Value) error {
-	template := "%v: marker applied to wrong type: currently %v, can only be %v"
-	return fmt.Errorf(template, ruleName(m), fieldValue.Type(), "int or uint")
+	return genericTypeError(m, fieldValue.Type(), "int or uint")
 }
 
 func (m Minimum) ApplyRule(fieldvalue reflect.Value) error {
@@ -98,13 +96,11 @@ func (m Minimum) ApplyRule(fieldvalue reflect.Value) error {
 }
 
 func (m Minimum) GenValueCheckError(fieldInt int) error {
-	template := "%v: field has value %v, min is %v (included)"
-	return fmt.Errorf(template, ruleName(m), fieldInt, m)
+	return fmt.Errorf("%s: field has value %d, min is %d (included)", ruleName(m), fieldInt, m)
 }
 
 func (m Minimum) GenTypeCheckError(fieldValue reflect.Value) error {
-	template := "%v: marker applied to wrong type: currently %v, can only be %v"
-	return fmt.Errorf(template, ruleName(m), fieldValue.Type(), "int or uint")
+	return genericTypeError(m, fieldValue.Type(), "int or uint")
 }
 
 func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
@@ -114,7 +110,7 @@ func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
 
 	structMap, ok := structValueToMap(fieldvalue)
 	if !ok {
-		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(e), fieldvalue.Type(), "struct")
+		return e.GenTypeCheckError(fieldvalue)
 	}
 
 	if structMap[e[0]] != nil {
@@ -133,8 +129,11 @@ func (e ExclusiveFields) ApplyRule(fieldvalue reflect.Value) error {
 }
 
 func (e ExclusiveFields) GenValueCheckError() error {
-	template := "%v: some fields are incompatible, %s can't be set alongside any of %v"
-	return fmt.Errorf(template, ruleName(e), e[0], e[1:])
+	return fmt.Errorf("%s: some fields are incompatible, %s can't be set alongside any of %s", ruleName(e), e[0], e[1:])
+}
+
+func (e ExclusiveFields) GenTypeCheckError(fieldValue reflect.Value) error {
+	return genericTypeError(e, fieldValue.Type(), "struct")
 }
 
 func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
@@ -157,13 +156,11 @@ func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
 }
 
 func (e Enum) GenValueCheckError(fieldValue reflect.Value) error {
-	template := "%v: field needs to be one of %v, currently \"%v\""
-	return fmt.Errorf(template, ruleName(e), e, fieldValue)
+	return fmt.Errorf("%s: field needs to be one of %v, currently \"%v\"", ruleName(e), e, fieldValue)
 }
 
 func (e Enum) GenTypeCheckError(fieldValue reflect.Value) error {
-	template := "%v: Type Error - field needs to be one of %v, currently \"%v\""
-	return fmt.Errorf(template, ruleName(e), e, fieldValue)
+	return fmt.Errorf("%v: Type Error - field needs to be one of %v, currently \"%v\"", ruleName(e), e, fieldValue)
 }
 
 func (r Required) ApplyRule(fieldvalue reflect.Value) error {
@@ -184,8 +181,7 @@ func (r Required) ApplyRule(fieldvalue reflect.Value) error {
 }
 
 func (r Required) GenValueCheckError() error {
-	template := "%v: field is required: currently missing"
-	return fmt.Errorf(template, ruleName(r))
+	return fmt.Errorf("%s: field is required: currently missing", ruleName(r))
 }
 
 func (l LinkedFieldsValue) ApplyRule(fieldvalue reflect.Value) error {
@@ -195,7 +191,7 @@ func (l LinkedFieldsValue) ApplyRule(fieldvalue reflect.Value) error {
 
 	structMap, ok := structValueToMap(fieldvalue)
 	if !ok {
-		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(l), fieldvalue.Type(), "struct")
+		return l.GenTypeCheckError(fieldvalue)
 	}
 
 	for _, item := range l {
@@ -221,6 +217,10 @@ func (l LinkedFieldsValue) GenValueCheckError() error {
 	return fmt.Errorf(template, ruleName(l), l)
 }
 
+func (l LinkedFieldsValue) GenTypeCheckError(fieldValue reflect.Value) error {
+	return genericTypeError(l, fieldValue.Type(), "struct")
+}
+
 func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 
@@ -229,12 +229,12 @@ func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error 
 	var c = 1
 
 	if len(l) < 2 {
-		return fmt.Errorf("%v: marker was wrongly defined in struct: less than 2 fields", ruleName(l))
+		return fmt.Errorf("%s: marker was wrongly defined in struct: less than 2 fields", ruleName(l))
 	}
 
 	structMap, ok := structValueToMap(fieldvalue)
 	if !ok {
-		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(l), fieldvalue.Type(), "struct")
+		return l.GenTypeCheckError(fieldvalue)
 	}
 
 	for _, markerString := range l[:c] {
@@ -275,12 +275,16 @@ func (l LinkedFieldsValueWithTrigger) GenValueCheckError() error {
 	return fmt.Errorf(template, ruleName(l), l[0], l[1:])
 }
 
+func (l LinkedFieldsValueWithTrigger) GenTypeCheckError(fieldValue reflect.Value) error {
+	return genericTypeError(l, fieldValue.Type(), "struct")
+}
+
 func (a AtLeastOneOf) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 
 	structMap, ok := structValueToMap(fieldvalue)
 	if !ok {
-		return fmt.Errorf("%v: marker applied to wrong type: currently %v, can only be %v", ruleName(a), fieldvalue.Type(), "struct")
+		return a.GenTypeCheckError(fieldvalue)
 	}
 
 	for _, item := range a {
@@ -295,6 +299,10 @@ func (a AtLeastOneOf) ApplyRule(fieldvalue reflect.Value) error {
 func (a AtLeastOneOf) GenValueCheckError() error {
 	template := "%v: at least one of the following fields need to be non-nil (currently all nil): %v"
 	return fmt.Errorf(template, ruleName(a), a)
+}
+
+func (a AtLeastOneOf) GenTypeCheckError(fieldValue reflect.Value) error {
+	return genericTypeError(a, fieldValue.Type(), "struct")
 }
 
 func Register(reg *k8smarkers.Registry) error {
@@ -323,7 +331,12 @@ func addDefinition(obj DDValidationMarker, targetType k8smarkers.TargetType) {
 
 // ruleName takes a marker's object and returns its complete name
 func ruleName(i interface{}) string {
-	return fmt.Sprintf("%v%v", rulePrefix, reflect.TypeOf(i).Name())
+	return fmt.Sprintf("%s%s", rulePrefix, reflect.TypeOf(i).Name())
+}
+
+// genericTypeError returns a generic error for wrong type marker attempt
+func genericTypeError(i interface{}, fieldValueType reflect.Type, expectedTypes string) error {
+	return fmt.Errorf("%s: marker applied to wrong type: currently %T, can only be %s", ruleName(i), fieldValueType, expectedTypes)
 }
 
 // structValueToMap takes a struct value and turns it into a map, allowing more flexible field and value parsing
