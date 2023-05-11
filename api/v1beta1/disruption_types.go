@@ -32,6 +32,7 @@ import (
 // DisruptionSpec defines the desired state of Disruption
 // +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS,DiskFailure}
 // +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS,DiskFailure}
+// +ddmark:validation:LinkedFieldsValueWithTrigger={NodeFailure,Level}
 // +ddmark:validation:AtLeastOneOf={DNS,CPUPressure,Network,NodeFailure,ContainerFailure,DiskPressure,GRPC,DiskFailure}
 // +ddmark:validation:AtLeastOneOf={Selector,AdvancedSelector}
 type DisruptionSpec struct {
