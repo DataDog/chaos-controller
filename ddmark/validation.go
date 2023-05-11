@@ -141,11 +141,10 @@ func (e Enum) ApplyRule(fieldvalue reflect.Value) error {
 	fieldInterface := fieldvalue.Interface()
 
 	for _, markerInterface := range e {
-		if !reflect.ValueOf(markerInterface).Type().ConvertibleTo(fieldvalue.Type()) {
+		markerInterface, isOk := attemptConversion(markerInterface, fieldvalue)
+		if !isOk {
 			return e.TypeCheckError(fieldvalue)
 		}
-
-		markerInterface = reflect.ValueOf(markerInterface).Convert(fieldvalue.Type()).Interface()
 
 		if fieldInterface == markerInterface || reflect.ValueOf(fieldInterface).IsZero() {
 			return nil
@@ -341,6 +340,16 @@ func ruleName(i interface{}) string {
 // genericTypeError returns a generic error for wrong type marker attempt
 func genericTypeCheckError(i interface{}, fieldValue reflect.Value, expectedTypes string) error {
 	return fmt.Errorf("%s: marker applied to wrong type: currently %T, can only be %s", ruleName(i), fieldValue, expectedTypes)
+}
+
+// attemptConversion tries to convert markerInterface to fieldValue's interface type
+func attemptConversion(markerInterface interface{}, fieldValue reflect.Value) (any, bool) {
+	convertible := reflect.ValueOf(markerInterface).Type().ConvertibleTo(fieldValue.Type())
+	if !convertible {
+		return nil, false
+	}
+
+	return reflect.ValueOf(markerInterface).Convert(fieldValue.Type()).Interface(), true
 }
 
 // structValueToMap takes a struct value and turns it into a map, allowing more flexible field and value parsing
