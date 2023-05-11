@@ -40,18 +40,12 @@ var _ = Describe("Validator", func() {
 yamlDisruptionSpec.WriteString(`
 network:
   corrupt: 100
-  duration: 87600h
-  triggers
-    pods:
-      notBefore: 2040-01-02T15:04:05-04:00
-      offset: 1m
+duration: 87600h
+triggers:
+  createPods:
+    notBefore: 2040-01-02T15:04:05-04:00
+    offset: 1m
 `)
-				yamlDisruptionSpec.WriteString("\n  corrupt: 100")
-				yamlDisruptionSpec.WriteString("\nduration: 876000h")
-				yamlDisruptionSpec.WriteString("\ntriggers:")
-				yamlDisruptionSpec.WriteString("\n  createPods:")
-				yamlDisruptionSpec.WriteString("\n    notBefore: \"2040-01-02T15:04:05-04:00\"")
-				yamlDisruptionSpec.WriteString("\n    offset: 1m")
 			})
 
 			It("should not validate", func() {
