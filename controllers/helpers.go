@@ -115,6 +115,8 @@ func isModifiedError(err error) bool {
 	return strings.Contains(err.Error(), "please apply your changes to the latest version and try again")
 }
 
+// TimeToCreatePods takes the DisruptionTriggers field from a Disruption spec, along with the time.Time at which that disruption was created
+// It returns the earliest time.Time at which the chaos-controller should begin creating chaos pods, given the specified DisruptionTriggers
 func TimeToCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
 	if triggers == nil {
 		return creationTimestamp
@@ -138,7 +140,8 @@ func TimeToCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp ti
 	return noPodsBefore
 }
 
-// TimeToInject (for now) returns the unix epoch offset in milliseconds at which we want to inject
+// TimeToInject takes the DisruptionTriggers field from a Disruption spec, along with the time.Time at which that disruption was created
+// It returns the earliest time.Time at which chaos pods should inject into their targets, given the specified DisruptionTriggers
 func TimeToInject(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
 	if triggers == nil {
 		return creationTimestamp
