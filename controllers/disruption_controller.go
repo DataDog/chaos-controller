@@ -1254,8 +1254,6 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
 		}
 
-		// spec.trigger.inject.notBefore will be used as an argument to tell the chaos pods the earliest timestamp (in milliseconds from Unix epoch) that they can inject
-		// deeply assumes that the chaos-controller and chaos pods are using the same timestamp, but that's okay because anyone responsible uses UTC for all their machines
 		notInjectedBefore := TimeToInject(instance.Spec.Triggers, instance.CreationTimestamp.Time)
 
 		allowedHosts := r.InjectorNetworkDisruptionAllowedHosts
