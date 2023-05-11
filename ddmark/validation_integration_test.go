@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	MinMaxTestErr0 = "test_suite>MinMaxTest>IntField - ddmark:validation:Minimum: field has value 4, min is 5 (included)"
-	MinMaxTestErr1 = "test_suite>MinMaxTest>PIntField - ddmark:validation:Maximum: field has value 11, max is 10 (included)"
+	MinMaxTestErr0 = "test_suite>MinMaxTest>IntField - ddmark:validation:Minimum: min value for field is 5 (included)"
+	MinMaxTestErr1 = "test_suite>MinMaxTest>PIntField - ddmark:validation:Maximum: max value for field is 10 (included)"
 
 	RequiredTestErr0 = "test_suite>RequiredTest>PIntField is required"
 	RequiredTestErr1 = "test_suite>RequiredTest>StrField - ddmark:validation:Required: field is required: currently missing"
@@ -24,10 +24,10 @@ const (
 	RequiredTestErr4 = "test_suite>RequiredTest>PStructField is required"
 	RequiredTestErr5 = "test_suite>RequiredTest>IntField - ddmark:validation:Required: field is required: currently missing"
 
-	EnumTestErr0 = "test_suite>EnumTest>StrField - ddmark:validation:Enum: field needs to be one of [aa bb 11], currently \"notinenum\""
-	EnumTestErr1 = "test_suite>EnumTest>PStrField - ddmark:validation:Enum: field needs to be one of [aa bb 11], currently \"notinenum\""
-	EnumTestErr2 = "test_suite>EnumTest>IntField - ddmark:validation:Enum: field needs to be one of [1 2 3], currently \"4\""
-	EnumTestErr3 = "test_suite>EnumTest>PIntField - ddmark:validation:Enum: field needs to be one of [1 2 3], currently \"4\""
+	EnumTestErr0 = "test_suite>EnumTest>StrField - ddmark:validation:Enum: field needs to be one of [aa bb 11]"
+	EnumTestErr1 = "test_suite>EnumTest>PStrField - ddmark:validation:Enum: field needs to be one of [aa bb 11]"
+	EnumTestErr2 = "test_suite>EnumTest>IntField - ddmark:validation:Enum: field needs to be one of [1 2 3]"
+	EnumTestErr3 = "test_suite>EnumTest>PIntField - ddmark:validation:Enum: field needs to be one of [1 2 3]"
 
 	AtLeastOneOfTestErr0 = "test_suite>AtLeastOneOfTest - ddmark:validation:AtLeastOneOf: at least one of the following fields need to be non-nil (currently all nil): [StrField IntField]"
 	AtLeastOneOfTestErr1 = "test_suite>AtLeastOneOfTest - ddmark:validation:AtLeastOneOf: at least one of the following fields need to be non-nil (currently all nil): [PStrField PIntField AIntField]"
