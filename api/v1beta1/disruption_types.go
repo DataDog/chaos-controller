@@ -40,6 +40,11 @@ type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
+	// AllowDisruptedTargets allow pods with one or several other active disruptions, with disruption kinds that does not intersect
+	// with this disruption kinds, to be returned as part of elligible targets for this disruption
+	// - e.g. apply a CPU pressure and later, apply a container failure for a short duration
+	// NB: it's ALWAYS forbidden to apply the same disruption kind to the same target to avoid unreliable effects due to competing interactions
+	AllowDisruptedTargets bool `json:"allowDisruptedTargets,omitempty"`
 	// +nullable
 	Selector labels.Set `json:"selector,omitempty"` // label selector
 	// +nullable
@@ -183,8 +188,10 @@ func (dd DisruptionDuration) Duration() time.Duration {
 }
 
 type TargetInjection struct {
-	InjectorPodName string                               `json:"injectorPodName,omitempty"`
-	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
+	InjectorPodName string `json:"injectorPodName,omitempty"`
+	// +kubebuilder:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
+	// +ddmark:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
+	InjectionStatus chaostypes.DisruptionTargetInjectionStatus `json:"injectionStatus,omitempty"`
 	// since when this status is in place
 	Since metav1.Time `json:"since,omitempty"`
 }
@@ -207,8 +214,8 @@ func (in TargetInjections) GetTargetNames() []string {
 type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
 	IsInjected       bool `json:"isInjected,omitempty"`
-	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
-	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;Injected;PreviouslyInjected
+	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
+	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
 	TargetInjections TargetInjections `json:"targetInjections,omitempty"`
@@ -586,39 +593,44 @@ func DisruptionHasNoSideEffects(kind string) bool {
 // injecting into a pod that has been rescheduled onto a new node
 func ShouldSkipNodeFailureInjection(disKind chaostypes.DisruptionKindName, instance *Disruption, injection TargetInjection) bool {
 	// we should never re-inject a static node failure, as it may be targeting the same pod on a new node
-	return disKind == chaostypes.DisruptionKindNodeFailure && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionInjectionStatusNotInjected
+	return disKind == chaostypes.DisruptionKindNodeFailure && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionTargetInjectionStatusNotInjected
 }
 
-// TargetedContainers returns a map container with container name as a key an it's runtime agnostic ID as a value
-func TargetedContainers(pod *corev1.Pod, targets []string) (map[string]string, error) {
+// TargetedContainers returns a map of containers with containerName as a key and containerID in the format '<type>://<container_id>' as a value
+func TargetedContainers(pod corev1.Pod, containerNames []string) (map[string]string, error) {
 	if len(pod.Status.ContainerStatuses) < 1 {
 		return nil, fmt.Errorf("missing container ids for pod '%s'", pod.Name)
 	}
 
-	allContainers := map[string]string{}
+	podContainers := make([]corev1.ContainerStatus, 0, len(pod.Status.ContainerStatuses)+len(pod.Status.InitContainerStatuses))
+	podContainers = append(podContainers, pod.Status.ContainerStatuses...)
+	podContainers = append(podContainers, pod.Status.InitContainerStatuses...)
 
-	// get all containers IDs, even those who are not running
-	// we might target them later hence we need them
-	for _, c := range append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) {
-		if len(targets) == 0 && c.State.Running == nil { // when creating the disruption, we focus on running container only
-			continue
+	if len(containerNames) == 0 {
+		allContainers := make(map[string]string, len(podContainers))
+
+		for _, c := range podContainers {
+			if c.State.Running != nil {
+				allContainers[c.Name] = c.ContainerID
+			}
 		}
 
-		allContainers[c.Name] = c.ContainerID
-	}
-
-	if len(targets) == 0 {
 		return allContainers, nil
 	}
 
-	targetedContainers := map[string]string{}
+	allContainers := make(map[string]string, len(podContainers))
+	targetedContainers := make(map[string]string, len(containerNames))
+
+	for _, c := range podContainers {
+		allContainers[c.Name] = c.ContainerID
+	}
 
 	// look for the target in the map
-	for _, target := range targets {
-		if id, existsInPod := allContainers[target]; existsInPod {
-			targetedContainers[target] = id
+	for _, containerName := range containerNames {
+		if containerID, existsInPod := allContainers[containerName]; existsInPod {
+			targetedContainers[containerName] = containerID
 		} else {
-			return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, target)
+			return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, containerName)
 		}
 	}
 

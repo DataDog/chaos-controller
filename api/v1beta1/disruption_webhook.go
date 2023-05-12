@@ -49,7 +49,7 @@ var (
 	safemodeEnvironment           string
 )
 
-const SafemodeEnvironmentAnnotation = "chaos.datadoghq.com/environment"
+const SafemodeEnvironmentAnnotation = GroupName + "/environment"
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	var err error
@@ -191,7 +191,7 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	// send informative event to disruption to broadcast
-	recorder.Event(r, Events[EventDisruptionCreated].Type, EventDisruptionCreated, Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+	recorder.Event(r, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 	return nil
 }

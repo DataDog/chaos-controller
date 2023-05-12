@@ -163,12 +163,12 @@ func initLogger() {
 func initMetricsSink() {
 	var err error
 
-	ms, err = metrics.GetSink(metricstypes.SinkDriver(disruptionArgs.MetricsSink), metricstypes.SinkAppInjector)
+	ms, err = metrics.GetSink(log, metricstypes.SinkDriver(disruptionArgs.MetricsSink), metricstypes.SinkAppInjector)
 	if err != nil {
 		log.Errorw("error while creating metric sink, switching to noop sink", "error", err)
 
-		ms, err = metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppInjector)
-		log.Errorw("error while creating noop metric sink", "error", err)
+		ms, err = metrics.GetSink(log, metricstypes.SinkDriverNoop, metricstypes.SinkAppInjector)
+		log.Fatalw("error while creating noop metric sink", "error", err)
 	}
 }
 
@@ -227,7 +227,7 @@ func initConfig() {
 	case chaostypes.DisruptionLevelPod:
 		// check for container ID flag
 		if len(disruptionArgs.TargetContainers) == 0 {
-			log.Error("--target-containers flag must be passed when --level=pod")
+			log.Fatal("--target-containers flag must be passed when --level=pod")
 
 			return
 		}
@@ -236,7 +236,7 @@ func initConfig() {
 			// retrieve container info
 			ctn, err := container.New(containerID)
 			if err != nil {
-				log.Errorw("can't create container object", "error", err)
+				log.Fatalw("can't create container object", "error", err)
 
 				return
 			}
@@ -256,7 +256,7 @@ func initConfig() {
 
 		// check for pod IP flag
 		if disruptionArgs.TargetPodIP == "" {
-			log.Error("--target-pod-ip flag must be passed when --level=pod")
+			log.Fatal("--target-pod-ip flag must be passed when --level=pod")
 
 			return
 		}
@@ -264,7 +264,7 @@ func initConfig() {
 		pids = []uint32{1}
 		ctns = []container.Container{nil}
 	default:
-		log.Errorf("unknown level: %s", disruptionArgs.Level)
+		log.Fatal("unknown level: %s", disruptionArgs.Level)
 
 		return
 	}
@@ -272,14 +272,14 @@ func initConfig() {
 	// create kubernetes clientset
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		log.Errorw("error getting kubernetes client config", "error", err)
+		log.Fatalw("error getting kubernetes client config", "error", err)
 
 		return
 	}
 
 	clientset, err = kubernetes.NewForConfig(config)
 	if err != nil {
-		log.Errorw("error creating kubernetes client", "error", err)
+		log.Fatalw("error creating kubernetes client", "error", err)
 
 		return
 	}
@@ -289,7 +289,7 @@ func initConfig() {
 		// create network namespace manager
 		netnsMgr, cgroupMgr, err := initManagers(pid)
 		if err != nil {
-			log.Errorw(err.Error(), "pid", pid)
+			log.Fatalw("unable to create ns and cgroup managers for pid", "error", err, "pid", pid)
 
 			return
 		}
@@ -543,10 +543,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 			handlerProcess, err := processManager.Find(int(handlerPID))
 			if err != nil {
 				log.Errorw("error retrieving handler container process", "error", err)
-			}
-
-			// send the SIGUSR1 signal
-			if err := handlerProcess.Signal(syscall.SIGUSR1); err != nil {
+			} else if err := handlerProcess.Signal(syscall.SIGUSR1); err != nil { // send the SIGUSR1 signal
 				log.Errorw("error sending a SIGUSR1 signal to the handler container process", "error", err, "pid", handlerPID)
 			}
 		} else {
@@ -615,8 +612,13 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		}
 
 		// we watch for targeted pod containers restart to reinject
-		if err := watchTargetAndReinject(deadline, cmd.Name(), disruptionArgs.PulseActiveDuration, disruptionArgs.PulseDormantDuration); err != nil {
-			log.Errorw("couldn't continue watching targeted pod", "err", err)
+		if err := backoff.RetryNotify(
+			func() error {
+				return watchTargetAndReinject(deadline, cmd.Name(), disruptionArgs.PulseActiveDuration, disruptionArgs.PulseDormantDuration)
+			}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5), func(err error, delay time.Duration) {
+				log.Warnln("couldn't watch targeted pod, retrying", "error", err, "retrying", delay)
+			}); err != nil {
+			log.Errorln("unable to watch targeted pod after several retry, ending...", "error", err)
 		} else {
 			return
 		}
@@ -820,7 +822,7 @@ func cleanAndExit(cmd *cobra.Command, args []string) {
 	}
 
 	if err := backoff.RetryNotify(cleanFinalizer, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3), retryNotifyHandler); err != nil {
-		log.Errorw("couldn't safely remove this pod's finalizer", "err", err)
+		log.Errorw("couldn't safely remove this pod's finalizer", "error", err)
 	}
 
 	log.Info("disruption(s) cleaned, now exiting")
@@ -837,7 +839,7 @@ func cleanFinalizer() error {
 
 	pod, err := configs[0].K8sClient.CoreV1().Pods(disruptionArgs.ChaosNamespace).Get(context.Background(), os.Getenv(env.InjectorPodName), metav1.GetOptions{})
 	if err != nil {
-		log.Warnw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.InjectorPodName), "err", err)
+		log.Warnw("couldn't GET this pod in order to remove its finalizer", "pod", os.Getenv(env.InjectorPodName), "error", err)
 		return err
 	}
 
@@ -845,7 +847,7 @@ func cleanFinalizer() error {
 
 	_, err = configs[0].K8sClient.CoreV1().Pods(disruptionArgs.ChaosNamespace).Update(context.Background(), pod, metav1.UpdateOptions{})
 	if err != nil {
-		log.Warnw("couldn't remove this pod's finalizer", "pod", os.Getenv(env.InjectorPodName), "err", err)
+		log.Warnw("couldn't remove this pod's finalizer", "pod", os.Getenv(env.InjectorPodName), "error", err)
 		return err
 	}
 

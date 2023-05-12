@@ -25,9 +25,11 @@ USE_VOLUMES ?= false
 HELM_VERSION ?= 3.11.3
 HELM_VALUES ?= dev.yaml
 
-# expired disruption gc delay enable to speed up chaos controller disruption removal for e2e testing
-# it's used to check if disruptions are deleted as expected as soon as the expiration delay occurs
-EXPIRED_DISRUPTION_GC_DELAY ?= 10m
+# Additional args to provide to test runner (ginkgo)
+# examples:
+# `make test TEST_ARGS=--until-it-fails` to run tests randomly and repeatedly until a failure might occur (help to detect flaky tests or wrong tests setup)
+# `make test TEST_ARGS=injector` will focus on package injector to run tests
+TEST_ARGS ?=
 
 OS_ARCH=amd64
 ifeq (arm64,$(shell uname -m))
@@ -166,7 +168,7 @@ endif
 test: generate manifests
 	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=report-$@ \
 		GO_TEST_ARGS="-r --compilers=4 --procs=4 --skip-package=controllers \
---randomize-suites --timeout=10m --poll-progress-after=5s --poll-progress-interval=5s"
+--randomize-suites --timeout=10m --poll-progress-after=5s --poll-progress-interval=5s $(TEST_ARGS)"
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -204,10 +206,14 @@ ci-install-minikube:
 	minikube start --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
 	minikube status
 
+SKIP_DEPLOY ?=
+
 ## Run e2e tests (against a real cluster)
 ## to run them locally you first need to run `make install-kubebuilder`
-e2e-test: generate
-	$(MAKE) lima-install EXPIRED_DISRUPTION_GC_DELAY=10s
+e2e-test: generate manifests
+ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
+	$(MAKE) lima-install HELM_VALUES=ci.yaml
+endif
 	USE_EXISTING_CLUSTER=true $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=report-$@ \
 		GO_TEST_ARGS="controllers --timeout=15m --poll-progress-after=15s \
 --poll-progress-interval=15s"

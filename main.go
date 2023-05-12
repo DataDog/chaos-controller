@@ -338,7 +338,7 @@ func main() {
 	if err != nil {
 		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
 
-		ms, err = metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
+		ms, err = metrics.GetSink(logger, metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
 
 		if err != nil {
 			logger.Fatalw("error creating noop metrics sink", "error", err)
@@ -359,11 +359,11 @@ func main() {
 	}
 
 	// profiler sink
-	prfl, err := profiler.GetSink(profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
+	prfl, err := profiler.GetSink(logger, profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
 	if err != nil {
 		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
 
-		prfl, err = profiler.GetSink(profilertypes.SinkDriverNoop)
+		prfl, err = profiler.GetSink(logger, profilertypes.SinkDriverNoop)
 
 		if err != nil {
 			logger.Errorw("error while creating noop profiler sink", "error", err)

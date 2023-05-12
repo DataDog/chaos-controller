@@ -12,10 +12,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
+
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // GroupName is exported for client-go purposes
-const GroupName = "chaos.datadoghq.com"
+const GroupName = chaostypes.GroupName
 
 // APIVersion is exported for client-go purposes
 const APIVersion = "v1beta1"

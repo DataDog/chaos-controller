@@ -659,7 +659,10 @@ func getCount() *intstr.IntOrString {
 }
 
 func getOnInit() bool {
-	onInitExplanations := "An OnInit disruption is a disruption which will be launched on the initialization of your targeted pod(s), enabling the disruption to be working directly at the start of the disrupted pod(s).\nTo make it work, you need to add \"chaos.datadoghq.com/disrupt-on-init: \"true\"\" to the labels of your targeted pod(s) and redeploy them."
+	onInitExplanations := fmt.Sprintf(
+		"An OnInit disruption is a disruption which will be launched on the initialization of your targeted pod(s), enabling the disruption to be working directly at the start of the disrupted pod(s).\nTo make it work, you need to add \"%s: \"true\"\" to the labels of your targeted pod(s) and redeploy them.",
+		types.DisruptOnInitLabel,
+	)
 
 	fmt.Println(onInitExplanations)
 

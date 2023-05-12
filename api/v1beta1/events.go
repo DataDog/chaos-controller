@@ -9,8 +9,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const EventOnTargetTemplate string = "Failing probably caused by disruption %s: "
-const SourceDisruptionComponent string = "disruption-controller"
+const (
+	EventOnTargetTemplate     string = "Failing probably caused by disruption %s: "
+	SourceDisruptionComponent string = "disruption-controller"
+)
 
 type DisruptionEventCategory string
 
@@ -21,9 +23,17 @@ const (
 	DisruptEvent DisruptionEventCategory = "DisruptionEvent"
 )
 
+// DisruptionEventReason is the string that uniquely identify a disruption event
+type DisruptionEventReason string
+
+// MatchEventReason check if provided Kubernetes event match actual reason
+func (r DisruptionEventReason) MatchEventReason(e corev1.Event) bool {
+	return string(r) == e.Reason
+}
+
 type DisruptionEvent struct {
 	Type                           string                  // Warning or Normal
-	Reason                         string                  // Short description of the event
+	Reason                         DisruptionEventReason   // Short description of the event
 	OnTargetTemplateMessage        string                  // Template message to attach to the target resource (pod or node). Empty if the event should not be sent to a target (DisruptEvent only)
 	OnDisruptionTemplateMessage    string                  // We want to separate the aggregated message from the single message to include more info in the single message
 	OnDisruptionTemplateAggMessage string                  // Template message to attach to the disruption. Empty if the event should not be sent on a disruption
@@ -34,43 +44,43 @@ type DisruptionEvent struct {
 const (
 	// Targeted pods related
 	// Warning events
-	EventPodWarningState                      string = "TargetPodInWarningState"
-	EventContainerWarningState                string = "TargetPodContainersInWarningState"
-	EventLivenessProbeChange                  string = "TargetPodLivenessProbe"
-	EventTooManyRestarts                      string = "TargetPodTooManyRestarts"
-	EventReadinessProbeChangeBeforeDisruption string = "EventReadinessProbeChangeBeforeDisruption"
+	EventPodWarningState                      DisruptionEventReason = "TargetPodInWarningState"
+	EventContainerWarningState                DisruptionEventReason = "TargetPodContainersInWarningState"
+	EventLivenessProbeChange                  DisruptionEventReason = "TargetPodLivenessProbe"
+	EventTooManyRestarts                      DisruptionEventReason = "TargetPodTooManyRestarts"
+	EventReadinessProbeChangeBeforeDisruption DisruptionEventReason = "EventReadinessProbeChangeBeforeDisruption"
 	// Normal events
-	EventPodRecoveredState                    string = "RecoveredWarningStateInTargetPod"
-	EventReadinessProbeChangeDuringDisruption string = "EventReadinessProbeChangeDuringDisruption"
+	EventPodRecoveredState                    DisruptionEventReason = "RecoveredWarningStateInTargetPod"
+	EventReadinessProbeChangeDuringDisruption DisruptionEventReason = "EventReadinessProbeChangeDuringDisruption"
 
 	// Targeted nodes related
 	// Warning events
-	EventNodeMemPressureState        string = "TargetNodeUnderMemoryPressure"
-	EventNodeDiskPressureState       string = "TargetNodeUnderDiskPressure"
-	EventNodeUnavailableNetworkState string = "TargetNodeUnavailableNetwork"
-	EventNodeWarningState            string = "TargetNodeInWarningState"
+	EventNodeMemPressureState        DisruptionEventReason = "TargetNodeUnderMemoryPressure"
+	EventNodeDiskPressureState       DisruptionEventReason = "TargetNodeUnderDiskPressure"
+	EventNodeUnavailableNetworkState DisruptionEventReason = "TargetNodeUnavailableNetwork"
+	EventNodeWarningState            DisruptionEventReason = "TargetNodeInWarningState"
 	// Normal events
-	EventNodeRecoveredState string = "RecoveredWarningStateInTargetNode"
+	EventNodeRecoveredState DisruptionEventReason = "RecoveredWarningStateInTargetNode"
 
 	// Disruption related events
 	// Warning events
-	EventEmptyDisruption                string = "EmptyDisruption"
-	EventDisruptionCreationFailed       string = "CreateFailed"
-	EventDisruptionStuckOnRemoval       string = "StuckOnRemoval"
-	EventInvalidDisruptionLabelSelector string = "InvalidLabelSelector"
-	EventDisruptionNoMoreValidTargets   string = "NoMoreTargets"
-	EventDisruptionNoTargetsFound       string = "NoTargetsFound"
-	EventInvalidSpecDisruption          string = "InvalidSpec"
+	EventEmptyDisruption                DisruptionEventReason = "EmptyDisruption"
+	EventDisruptionCreationFailed       DisruptionEventReason = "CreateFailed"
+	EventDisruptionStuckOnRemoval       DisruptionEventReason = "StuckOnRemoval"
+	EventInvalidDisruptionLabelSelector DisruptionEventReason = "InvalidLabelSelector"
+	EventDisruptionNoMoreValidTargets   DisruptionEventReason = "NoMoreTargets"
+	EventDisruptionNoTargetsFound       DisruptionEventReason = "NoTargetsFound"
+	EventInvalidSpecDisruption          DisruptionEventReason = "InvalidSpec"
 	// Normal events
-	EventDisruptionChaosPodCreated string = "ChaosPodCreated"
-	EventDisruptionFinished        string = "Finished"
-	EventDisruptionCreated         string = "Created"
-	EventDisruptionDurationOver    string = "DurationOver"
-	EventDisruptionGCOver          string = "GCOver"
-	EventDisrupted                 string = "Disrupted"
+	EventDisruptionChaosPodCreated DisruptionEventReason = "ChaosPodCreated"
+	EventDisruptionFinished        DisruptionEventReason = "Finished"
+	EventDisruptionCreated         DisruptionEventReason = "Created"
+	EventDisruptionDurationOver    DisruptionEventReason = "DurationOver"
+	EventDisruptionGCOver          DisruptionEventReason = "GCOver"
+	EventDisrupted                 DisruptionEventReason = "Disrupted"
 )
 
-var Events = map[string]DisruptionEvent{
+var Events = map[DisruptionEventReason]DisruptionEvent{
 	EventPodWarningState: {
 		Type:                           corev1.EventTypeWarning,
 		Reason:                         EventPodWarningState,
@@ -251,14 +261,15 @@ func IsNotifiableEvent(event corev1.Event) bool {
 }
 
 func IsRecoveryEvent(event corev1.Event) bool {
-	return event.Reason == EventNodeRecoveredState || event.Reason == EventPodRecoveredState
+	return EventNodeRecoveredState.MatchEventReason(event) || EventPodRecoveredState.MatchEventReason(event)
 }
 
 func IsTargetEvent(event corev1.Event) bool {
-	if _, ok := Events[event.Reason]; !ok {
+	targetEvent, ok := Events[DisruptionEventReason(event.Reason)]
+	if !ok {
 		return false
 	}
 
 	return event.Source.Component == SourceDisruptionComponent &&
-		Events[event.Reason].Category == TargetEvent
+		targetEvent.Category == TargetEvent
 }

@@ -34,6 +34,10 @@ report*.json
 report*.xml
 ginkgo.report
 
+# Output from ginkgo runner of vscode
+ginkgo.report
+cover.profile.*
+
 # Kubernetes Generated files - skip generated files, except for vendored files
 
 !vendor/**/zz_generated.*

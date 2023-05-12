@@ -87,8 +87,8 @@ func (d DisruptionArgs) CreateCmdArgs(args []string) []string {
 		args = append(args, "--pulse-initial-delay", d.PulseInitialDelay.String())
 	}
 
-	if !xargs.NotInjectedBefore.IsZero() {
-		args = append(args, "--not-injected-before", xargs.NotInjectedBefore.Format(time.RFC3339))
+	if !d.NotInjectedBefore.IsZero() {
+		args = append(args, "--not-injected-before", d.NotInjectedBefore.Format(time.RFC3339))
 	}
 
 	// DNS disruption configs

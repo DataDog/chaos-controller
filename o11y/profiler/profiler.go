@@ -11,6 +11,7 @@ import (
 	"github.com/DataDog/chaos-controller/o11y/profiler/datadog"
 	"github.com/DataDog/chaos-controller/o11y/profiler/noop"
 	"github.com/DataDog/chaos-controller/o11y/profiler/types"
+	"go.uber.org/zap"
 )
 
 // Sink describes a profiler
@@ -20,12 +21,12 @@ type Sink interface {
 }
 
 // GetSink returns an initiated profiler sink
-func GetSink(driver types.SinkDriver) (Sink, error) {
+func GetSink(log *zap.SugaredLogger, driver types.SinkDriver) (Sink, error) {
 	switch driver {
 	case types.SinkDriverDatadog:
 		return datadog.New()
 	case types.SinkDriverNoop:
-		return noop.New(), nil
+		return noop.New(log), nil
 	default:
 		return nil, fmt.Errorf("unsupported profiler: %s", driver)
 	}
