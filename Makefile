@@ -353,7 +353,7 @@ clean-mocks:
 	rm -rf mocks/
 
 generate-mocks: clean-mocks
-	go install github.com/vektra/mockery/v2@v2.25.1
+	go install github.com/vektra/mockery/v2@v2.26.1
 	go generate ./...
 # First re-generate header, it should complain as just (re)generated mocks does not contains them
 	-$(MAKE) header-check

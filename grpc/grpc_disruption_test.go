@@ -8,8 +8,8 @@ package grpc_test
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/grpc"
+	"github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
-	"github.com/DataDog/chaos-controller/mocks"
 
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/mock"
@@ -49,10 +49,10 @@ var _ = Describe("Test send and clean disruption", func() {
 			},
 		}
 
-		var disruptionListenerClient *mocks.DisruptionListenerClientMock
+		var disruptionListenerClient *disruptionlistener.DisruptionListenerClientMock
 
 		BeforeEach(func() {
-			disruptionListenerClient = mocks.NewDisruptionListenerClientMock(GinkgoT())
+			disruptionListenerClient = disruptionlistener.NewDisruptionListenerClientMock(GinkgoT())
 		})
 
 		Specify("calls Disrupt and ResetDisruptions with expected parameters", func() {

@@ -10,8 +10,8 @@ import (
 
 	"github.com/DataDog/chaos-controller/api"
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -20,13 +20,13 @@ import (
 
 var _ = Describe("Failure", func() {
 	var (
-		config        DiskFailureInjectorConfig
-		level         types.DisruptionLevel
-		proc          *os.Process
-		inj           Injector
-		spec          v1beta1.DiskFailureSpec
-		commandMock   *mocks.BPFDiskFailureCommandMock
-		containerMock *mocks.ContainerMock
+		config      DiskFailureInjectorConfig
+		level       types.DisruptionLevel
+		proc        *os.Process
+		inj         Injector
+		spec        v1beta1.DiskFailureSpec
+		commandMock *BPFDiskFailureCommandMock
+		ctr         *container.ContainerMock
 	)
 
 	const PID = 1
@@ -34,9 +34,9 @@ var _ = Describe("Failure", func() {
 	BeforeEach(func() {
 		proc = &os.Process{Pid: PID}
 
-		containerMock = mocks.NewContainerMock(GinkgoT())
+		ctr = container.NewContainerMock(GinkgoT())
 
-		commandMock = mocks.NewBPFDiskFailureCommandMock(GinkgoT())
+		commandMock = NewBPFDiskFailureCommandMock(GinkgoT())
 		commandMock.EXPECT().Run(mock.Anything, mock.Anything).Return(nil)
 
 		config = DiskFailureInjectorConfig{
@@ -46,7 +46,7 @@ var _ = Describe("Failure", func() {
 				Disruption: api.DisruptionArgs{
 					Level: level,
 				},
-				TargetContainer: containerMock,
+				TargetContainer: ctr,
 			},
 			Cmd: commandMock,
 		}
@@ -71,7 +71,7 @@ var _ = Describe("Failure", func() {
 			BeforeEach(func() {
 				config.Disruption.Level = types.DisruptionLevelPod
 
-				containerMock.EXPECT().PID().Return(PID).Once()
+				ctr.EXPECT().PID().Return(PID).Once()
 			})
 
 			It("should start the eBPF Disk failure program", func() {
@@ -85,7 +85,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should start the eBPF Disk failure program", func() {
-				containerMock.AssertNumberOfCalls(GinkgoT(), "PID", 0)
+				ctr.AssertNumberOfCalls(GinkgoT(), "PID", 0)
 				commandMock.AssertCalled(GinkgoT(), "Run", 0, "/")
 			})
 		})

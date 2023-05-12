@@ -16,19 +16,18 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/mocks"
 )
 
 var _ = Describe("Failure", func() {
 	var (
 		config NodeFailureInjectorConfig
-		fw     *mocks.FileWriterMock
+		fw     *FileWriterMock
 		inj    Injector
 		spec   v1beta1.NodeFailureSpec
 	)
 
 	BeforeEach(func() {
-		fw = mocks.NewFileWriterMock(GinkgoT())
+		fw = NewFileWriterMock(GinkgoT())
 		fw.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		config = NodeFailureInjectorConfig{
