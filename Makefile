@@ -63,7 +63,7 @@ docker-build-handler: IMAGE_TAG=$(HANDLER_IMAGE)
 docker-build-manager: IMAGE_TAG=$(MANAGER_IMAGE)
 
 docker-build-ebpf:
-	docker build --platform linux/$(OS_ARCH) --build-arg ARCH=$(OS_ARCH) -t ebpf-builder-$(OS_ARCH) -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
+	docker buildx build --platform linux/$(OS_ARCH) --build-arg ARCH=$(OS_ARCH) -t ebpf-builder-$(OS_ARCH) -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
 	-rm -r bin/injector/ebpf/
 ifeq (true,$(USE_VOLUMES))
 # create a dummy container with volume to store files
@@ -104,7 +104,7 @@ _$(1)_amd:
 $(1): _$(1) _$(1)_arm _$(1)_amd
 
 docker-build-$(1): _docker-build-$(1) $(1)
-	docker build --build-arg TARGETARCH=$(OS_ARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
+	docker buildx build --build-arg TARGETARCH=$(OS_ARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
 	docker save $$(IMAGE_TAG) -o ./bin/$(1)/$(1).tar.gz
 
 lima-push-$(1): docker-build-$(1)
@@ -212,7 +212,7 @@ e2e-test: generate
 
 # Test chaosli API portability
 chaosli-test:
-	docker build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
+	docker buildx build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
 
 # Go actions
 ## Generate manifests e.g. CRD, RBAC etc.
