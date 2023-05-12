@@ -10,17 +10,7 @@ package process
 
 import (
 	"errors"
-	"os"
 )
-
-type manager struct {
-	dryRun bool
-}
-
-// NewManager creates a new process manager
-func NewManager(dryRun bool) Manager {
-	return manager{dryRun}
-}
 
 // Prioritize set the priority of the current process group to the max value (-20)
 func (p manager) Prioritize() error {
@@ -35,20 +25,6 @@ func (p manager) ThreadID() int {
 // ProcessID returns the caller PID
 func (p manager) ProcessID() int {
 	return -1
-}
-
-// Find looks for a running process by its pid
-func (p manager) Find(pid int) (*os.Process, error) {
-	return nil, errors.New("unsupported")
-}
-
-func (p manager) Exists(pid int) (bool, error) {
-	return false, errors.New("unsupported")
-}
-
-// Signal sends the provided signal to the given process
-func (p manager) Signal(process *os.Process, signal os.Signal) error {
-	return errors.New("unsupported")
 }
 
 func (p manager) SetAffinity([]int) error {

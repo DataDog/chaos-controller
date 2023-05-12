@@ -6,23 +6,12 @@
 package process
 
 import (
-	"os"
-
 	"golang.org/x/sys/unix"
 )
 
 const (
 	maxPriorityValue = -20
 )
-
-type manager struct {
-	dryRun bool
-}
-
-// NewManager creates a new process manager
-func NewManager(dryRun bool) Manager {
-	return manager{dryRun}
-}
 
 func (p manager) SetAffinity(cpus []int) error {
 	affinitySet := unix.CPUSet{}
@@ -51,37 +40,4 @@ func (p manager) ThreadID() int {
 // ProcessID returns the caller PID
 func (p manager) ProcessID() int {
 	return unix.Getpid()
-}
-
-// Find looks for a running process by its pid
-func (p manager) Find(pid int) (*os.Process, error) {
-	// unix based system never returns an error on find
-	proc, _ := os.FindProcess(pid)
-	return proc, nil
-}
-
-func (p manager) Exists(pid int) (bool, error) {
-	// unix based system never returns an error on find
-	process, _ := p.Find(pid)
-
-	err := p.Signal(process, unix.Signal(0))
-	if err != nil && err != unix.EPERM {
-		return false, err
-	}
-
-	return true, nil
-}
-
-// Signal sends the provided signal to the given process
-func (p manager) Signal(process *os.Process, signal os.Signal) error {
-	// early exit if dry-run mode is enabled
-	if p.dryRun {
-		return nil
-	}
-
-	if err := process.Signal(signal); err != nil {
-		return err
-	}
-
-	return nil
 }
