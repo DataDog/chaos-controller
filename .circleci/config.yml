@@ -75,7 +75,7 @@ templates:
     working_directory: /home/circleci/go/src/github.com/DataDog/chaos-controller
 
 executors:
-  golang: &golang
+  golang:
     <<: *working_directory
     docker:
       # TODO: Publicize the chaos controller ci image to the datadog docker registry
@@ -83,9 +83,7 @@ executors:
       # This is circle ci images, provides default tool installed (like docker) to ease step definition and avoid apt-get/update things
       # https://circleci.com/docs/circleci-images/#next-gen-language-images
       - image: cimg/go:1.20
-  golang_large:
-    <<: *golang
-    resource_class: large
+    resource_class: 2xlarge
   python:
     <<: *working_directory
     docker:
@@ -98,7 +96,7 @@ executors:
     <<: *working_directory
     machine:
       image: ubuntu-2004:2022.10.1
-    resource_class: large
+    resource_class: 2xlarge
 
 jobs:
   # prepares the CI environment by checking out the code,
@@ -119,7 +117,7 @@ jobs:
       - go_save_cache
   # docker build image
   docker-build:
-    executor: golang_large
+    executor: golang
     parameters:
       target:
         description: "which target to build"
@@ -174,7 +172,7 @@ jobs:
                 command: git diff --exit-code
   # runs the tests
   test:
-    executor: golang_large
+    executor: golang
     steps:
       - go_restore_cache
       - run: make test
@@ -275,7 +273,6 @@ workflows:
       - go-make:
           name: vet
           target: vet
-          executor: golang_large
           requires: [prepare-env]
       - go-make:
           name: fmt
@@ -284,7 +281,6 @@ workflows:
       - go-make:
           name: lint
           target: lint
-          executor: golang_large
           requires: [prepare-env]
       - test:
           name: test
