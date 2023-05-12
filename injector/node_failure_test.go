@@ -50,12 +50,12 @@ var _ = Describe("Failure", func() {
 		var err error
 		inj, err = NewNodeFailureInjector(spec, config)
 
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("injection", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(BeNil())
+			Expect(inj.Inject()).To(Succeed())
 			time.Sleep(config.WaitBeforeShutdown * 2)
 		})
 

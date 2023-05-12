@@ -30,8 +30,6 @@ type NotifierSink struct {
 
 // RegisterNotifierSinks builds notifiers sinks and registers them on the given broadcaster
 func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, notifiersConfig eventnotifier.NotifiersConfig, logger *zap.SugaredLogger) (err error) {
-	err = nil
-
 	client := mgr.GetClient()
 
 	notifiers, err := eventnotifier.GetNotifiers(notifiersConfig, logger)

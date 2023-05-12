@@ -233,9 +233,11 @@ func TestNotifier_Notify(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 			}
-			d.SetUserInfo(v1.UserInfo{
+			err := d.SetUserInfo(v1.UserInfo{
 				Username: tt.callContext.userName,
 			})
+			require.NoError(err)
+
 			d.Spec.Reporting = tt.callContext.reporting
 
 			if tt.setup != nil {

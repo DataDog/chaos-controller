@@ -53,7 +53,7 @@ var _ = Describe("New function", func() {
 		manager, err = New(logger, configs)
 
 		By("Ensuring that no error was thrown")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Context("Creating a new manager with all providers enabled", func() {
@@ -152,7 +152,7 @@ var _ = Describe("New function", func() {
 			err := manager.PullIPRanges()
 
 			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should have parsed successfully the service list", func() {
@@ -198,7 +198,7 @@ var _ = Describe("New function", func() {
 
 			By("Ensuring it returns the right ip ranges map when using the GetServicesIPRanges function")
 			ipRanges, err := manager.GetServicesIPRanges(types.CloudProviderAWS, []string{"S3", "EC2"})
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(reflect.DeepEqual(ipRanges, map[string][]string{
 				"S3": {
 					"1.2.3.0/24",
@@ -221,7 +221,7 @@ var _ = Describe("New function", func() {
 
 			By("Ensuring it returns the right ip ranges map when using the GetServicesIPRanges function")
 			ipRanges, err = manager.GetServicesIPRanges(types.CloudProviderGCP, []string{gcp.GoogleCloudService})
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(reflect.DeepEqual(ipRanges, map[string][]string{
 				gcp.GoogleCloudService: {
 					"6.2.3.0/24",

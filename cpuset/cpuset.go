@@ -24,18 +24,18 @@ package cpuset
 import (
 	"bytes"
 	"fmt"
-	"k8s.io/klog/v2"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
+
+	"k8s.io/klog/v2"
 )
 
 // Builder is a mutable builder for CPUSet. Functions that mutate instances
 // of this type are not thread-safe.
 type Builder struct {
 	result CPUSet
-	done   bool
 }
 
 // NewBuilder returns a mutable CPUSet builder.
@@ -50,9 +50,6 @@ func NewBuilder() Builder {
 // Add adds the supplied elements to the result. Calling Add after calling
 // Result has no effect.
 func (b Builder) Add(elems ...int) {
-	if b.done {
-		return
-	}
 	for _, elem := range elems {
 		b.result.elems[elem] = struct{}{}
 	}
@@ -61,7 +58,6 @@ func (b Builder) Add(elems ...int) {
 // Result returns the result CPUSet containing all elements that were
 // previously added to this builder. Subsequent calls to Add have no effect.
 func (b Builder) Result() CPUSet {
-	b.done = true
 	return b.result
 }
 
@@ -73,9 +69,11 @@ type CPUSet struct {
 // NewCPUSet returns a new CPUSet containing the supplied elements.
 func NewCPUSet(cpus ...int) CPUSet {
 	b := NewBuilder()
+
 	for _, c := range cpus {
 		b.Add(c)
 	}
+
 	return b.Result()
 }
 
@@ -105,11 +103,13 @@ func (s CPUSet) Equals(s2 CPUSet) bool {
 // set that match the supplied predicate, without mutating the source set.
 func (s CPUSet) Filter(predicate func(int) bool) CPUSet {
 	b := NewBuilder()
+
 	for cpu := range s.elems {
 		if predicate(cpu) {
 			b.Add(cpu)
 		}
 	}
+
 	return b.Result()
 }
 
@@ -118,23 +118,27 @@ func (s CPUSet) Filter(predicate func(int) bool) CPUSet {
 // set.
 func (s CPUSet) FilterNot(predicate func(int) bool) CPUSet {
 	b := NewBuilder()
+
 	for cpu := range s.elems {
 		if !predicate(cpu) {
 			b.Add(cpu)
 		}
 	}
+
 	return b.Result()
 }
 
 // IsSubsetOf returns true if the supplied set contains all the elements
 func (s CPUSet) IsSubsetOf(s2 CPUSet) bool {
 	result := true
+
 	for cpu := range s.elems {
 		if !s2.Contains(cpu) {
 			result = false
 			break
 		}
 	}
+
 	return result
 }
 
@@ -146,9 +150,11 @@ func (s CPUSet) Union(s2 CPUSet) CPUSet {
 	for cpu := range s.elems {
 		b.Add(cpu)
 	}
+
 	for cpu := range s2.elems {
 		b.Add(cpu)
 	}
+
 	return b.Result()
 }
 
@@ -157,14 +163,17 @@ func (s CPUSet) Union(s2 CPUSet) CPUSet {
 // either source set.
 func (s CPUSet) UnionAll(s2 []CPUSet) CPUSet {
 	b := NewBuilder()
+
 	for cpu := range s.elems {
 		b.Add(cpu)
 	}
+
 	for _, cs := range s2 {
 		for cpu := range cs.elems {
 			b.Add(cpu)
 		}
 	}
+
 	return b.Result()
 }
 
@@ -172,24 +181,27 @@ func (s CPUSet) UnionAll(s2 []CPUSet) CPUSet {
 // that are present in both this set and the supplied set, without mutating
 // either source set.
 func (s CPUSet) Intersection(s2 CPUSet) CPUSet {
-	return s.Filter(func(cpu int) bool { return s2.Contains(cpu) })
+	return s.Filter(s2.Contains)
 }
 
 // Difference returns a new CPU set that contains all of the elements that
 // are present in this set and not the supplied set, without mutating either
 // source set.
 func (s CPUSet) Difference(s2 CPUSet) CPUSet {
-	return s.FilterNot(func(cpu int) bool { return s2.Contains(cpu) })
+	return s.FilterNot(s2.Contains)
 }
 
 // ToSlice returns a slice of integers that contains all elements from
 // this set.
 func (s CPUSet) ToSlice() []int {
 	result := []int{}
+
 	for cpu := range s.elems {
 		result = append(result, cpu)
 	}
+
 	sort.Ints(result)
+
 	return result
 }
 
@@ -197,9 +209,11 @@ func (s CPUSet) ToSlice() []int {
 // this set.
 func (s CPUSet) ToSliceNoSort() []int {
 	result := []int{}
+
 	for cpu := range s.elems {
 		result = append(result, cpu)
 	}
+
 	return result
 }
 
@@ -235,14 +249,17 @@ func (s CPUSet) String() string {
 
 	// construct string from ranges
 	var result bytes.Buffer
+
 	for _, r := range ranges {
 		if r.start == r.end {
 			result.WriteString(strconv.Itoa(r.start))
 		} else {
 			result.WriteString(fmt.Sprintf("%d-%d", r.start, r.end))
 		}
+
 		result.WriteString(",")
 	}
+
 	return strings.TrimRight(result.String(), ",")
 }
 
@@ -254,6 +271,7 @@ func MustParse(s string) CPUSet {
 	if err != nil {
 		klog.Fatalf("unable to parse [%s] as CPUSet: %v", s, err)
 	}
+
 	return res
 }
 
@@ -280,6 +298,7 @@ func Parse(s string) (CPUSet, error) {
 			if err != nil {
 				return NewCPUSet(), err
 			}
+
 			b.Add(elem)
 		} else if len(boundaries) == 2 {
 			// Handle multi-element ranges like "0-5".
@@ -298,14 +317,17 @@ func Parse(s string) (CPUSet, error) {
 			}
 		}
 	}
+
 	return b.Result(), nil
 }
 
 // Clone returns a copy of this CPU set.
 func (s CPUSet) Clone() CPUSet {
 	b := NewBuilder()
+
 	for elem := range s.elems {
 		b.Add(elem)
 	}
+
 	return b.Result()
 }

@@ -235,10 +235,15 @@ fmt:
 vet:
 	go vet ./...
 
+install-lint-deps:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
+
 ## Run golangci-lint against code
 lint: install-lint-deps
-	golangci-lint version
-	golangci-lint run
+# By using GOOS=linux we aim to validate files as if we were on linux
+# you can use a similar trick with gopls to have vs-code linting your linux platform files instead of darwin
+	GOOS=linux golangci-lint run --no-config -E ginkgolinter ./...
+	GOOS=linux golangci-lint run
 
 ## Generate code
 generate: install-controller-gen

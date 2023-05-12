@@ -74,12 +74,12 @@ var _ = Describe("Failure", func() {
 	JustBeforeEach(func() {
 		var err error
 		inj, err = NewDiskPressureInjector(spec, config)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("injection", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(BeNil())
+			Expect(inj.Inject()).ToNot(HaveOccurred())
 		})
 
 		Context("with cgroups v1", func() {
@@ -107,7 +107,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("clean", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Clean()).To(BeNil())
+			Expect(inj.Clean()).To(Succeed())
 		})
 
 		Context("with cgroups v1", func() {

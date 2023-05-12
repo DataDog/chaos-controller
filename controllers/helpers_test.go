@@ -24,27 +24,27 @@ var _ = Describe("Label Selector Validation", func() {
 	Context("validating an empty label selector", func() {
 		It("", func() {
 			selector := labels.Set{}
-			Expect(validateLabelSelector(selector.AsSelector())).ToNot(BeNil())
+			Expect(validateLabelSelector(selector.AsSelector())).ToNot(Succeed())
 		})
 	})
 	Context("validating a good label selector", func() {
 		It("", func() {
 			selector := labels.Set{"foo": "bar"}
-			Expect(validateLabelSelector(selector.AsSelector())).To(BeNil())
+			Expect(validateLabelSelector(selector.AsSelector())).To(Succeed())
 		})
 	})
 	Context("validating special characters in label selector", func() {
 		It("", func() {
 			selector := labels.Set{"foo": "”bar”"}
 			//.AsSelector() should strip invalid characters
-			Expect(validateLabelSelector(selector.AsSelector())).To(BeNil())
+			Expect(validateLabelSelector(selector.AsSelector())).To(Succeed())
 		})
 	})
 	Context("validating too many quotes in label selector", func() {
 		It("", func() {
 			selector := labels.Set{"foo": "\"bar\""}
 			//.AsSelector() should strip invalid characters
-			Expect(validateLabelSelector(selector.AsSelector())).To(BeNil())
+			Expect(validateLabelSelector(selector.AsSelector())).To(Succeed())
 		})
 	})
 })

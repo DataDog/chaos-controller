@@ -34,7 +34,7 @@ var _ = Describe("Container", func() {
 	JustBeforeEach(func() {
 		var err error
 		ctn, err = NewWithConfig("containerd://fake", config)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("loading a container", func() {

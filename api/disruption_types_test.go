@@ -91,7 +91,7 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 
 		It("expects status.TargetInjection to be empty", func() {
 			status.RemoveDeadTargets(matchingTargets)
-			Expect(status.TargetInjections).To(HaveLen(0))
+			Expect(status.TargetInjections).To(BeEmpty())
 		})
 	})
 
@@ -108,7 +108,7 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 
 		It("expects status.TargetInjection to be empty", func() {
 			status.RemoveDeadTargets(matchingTargets)
-			Expect(status.TargetInjections).To(HaveLen(0))
+			Expect(status.TargetInjections).To(BeEmpty())
 		})
 	})
 })

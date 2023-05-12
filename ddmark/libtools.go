@@ -40,7 +40,7 @@ func (c client) initLibrary(embeddedFS embed.FS, apiname string) error {
 
 	folderPath := thisLibPath(apiname)
 
-	if err := os.MkdirAll(folderPath, 0750); err != nil {
+	if err := os.MkdirAll(folderPath, 0o750); err != nil {
 		return fmt.Errorf("ddmark lib setup error: %w", err)
 	}
 
@@ -75,13 +75,8 @@ func (c client) initLibrary(embeddedFS embed.FS, apiname string) error {
 				return err
 			}
 
-			if err = fout.Close(); err != nil {
-				return err
-			}
-
-			return nil
+			return fout.Close()
 		})
-
 	if err != nil {
 		return fmt.Errorf("ddmark lib setup error: %w", err)
 	}

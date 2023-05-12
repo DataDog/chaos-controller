@@ -74,7 +74,7 @@ var _ = Describe("DNS Failure", func() {
 		fileWriter.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
 		// environment variables
-		Expect(os.Setenv(env.InjectorChaosPodIP, "10.0.0.2")).To(BeNil())
+		Expect(os.Setenv(env.InjectorChaosPodIP, "10.0.0.2")).To(Succeed())
 
 		// config
 		config = DNSDisruptionInjectorConfig{
@@ -99,7 +99,7 @@ var _ = Describe("DNS Failure", func() {
 	JustBeforeEach(func() {
 		var err error
 		inj, err = NewDNSDisruptionInjector(spec, config)
-		Expect(err).To(BeNil())
+		Expect(err).To(Succeed())
 	})
 
 	Describe("inj.Inject", func() {
@@ -108,7 +108,7 @@ var _ = Describe("DNS Failure", func() {
 		JustBeforeEach(func() {
 			var err error
 			inj, err = NewDNSDisruptionInjector(spec, config)
-			Expect(err).To(BeNil())
+			Expect(err).To(Succeed())
 			injectError = inj.Inject()
 		})
 
@@ -292,7 +292,7 @@ var _ = Describe("DNS Failure", func() {
 		})
 
 		It("should not return an error", func() {
-			Expect(cleanError).To(BeNil())
+			Expect(cleanError).ToNot(HaveOccurred())
 		})
 
 		It("should enter/exit the target network namespace", func() {

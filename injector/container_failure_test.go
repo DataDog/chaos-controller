@@ -61,7 +61,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("injection", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(BeNil())
+			Expect(inj.Inject()).To(Succeed())
 		})
 
 		Context("with forced enabled", func() {

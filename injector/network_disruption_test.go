@@ -138,7 +138,7 @@ var _ = Describe("Failure", func() {
 		ctn = container.NewContainerMock(GinkgoT())
 
 		// environment variables
-		Expect(os.Setenv(env.InjectorTargetPodHostIP, targetPodHostIP)).To(BeNil())
+		Expect(os.Setenv(env.InjectorTargetPodHostIP, targetPodHostIP)).To(Succeed())
 
 		// fake kubernetes client and resources
 		fakeService = &corev1.Service{
@@ -251,12 +251,12 @@ var _ = Describe("Failure", func() {
 	JustBeforeEach(func() {
 		var err error
 		inj, err = NewNetworkDisruptionInjector(spec, config)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("inj.Inject", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(BeNil())
+			Expect(inj.Inject()).To(Succeed())
 		})
 
 		// general tests that should work for all contexts
@@ -414,7 +414,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			AfterEach(func() {
-				Expect(inj.Clean()).To(BeNil())
+				Expect(inj.Clean()).To(Succeed())
 			})
 		})
 
@@ -456,7 +456,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			AfterEach(func() {
-				Expect(inj.Clean()).To(BeNil())
+				Expect(inj.Clean()).To(Succeed())
 			})
 		})
 
@@ -537,8 +537,8 @@ var _ = Describe("Failure", func() {
 			JustBeforeEach(func() {
 				// When an update event is sent to the injector, the disruption method Clean is called before its Inject method.
 				// If the method Clean is not called the AddNetem operations will stack up.
-				Expect(inj.Clean()).To(BeNil())
-				Expect(inj.Inject()).To(BeNil())
+				Expect(inj.Clean()).To(Succeed())
+				Expect(inj.Inject()).To(Succeed())
 			})
 
 			It("should not stack up AddNetem operations", func() {
@@ -551,7 +551,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("inj.Clean", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Clean()).To(BeNil())
+			Expect(inj.Clean()).To(Succeed())
 		})
 
 		It("should enter the target network namespace", func() {

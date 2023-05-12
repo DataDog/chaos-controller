@@ -25,11 +25,8 @@ func (p manager) SetAffinity(cpus []int) error {
 // Prioritize set the priority of the current process group to the max value (-20)
 func (p manager) Prioritize() error {
 	pgid := unix.Getpgrp()
-	if err := unix.Setpriority(unix.PRIO_PGRP, pgid, maxPriorityValue); err != nil {
-		return err
-	}
 
-	return nil
+	return unix.Setpriority(unix.PRIO_PGRP, pgid, maxPriorityValue)
 }
 
 // ThreadID returns the caller thread PID

@@ -62,7 +62,7 @@ var _ = Describe("Failure", func() {
 			var err error
 			inj, err = NewDiskFailureInjector(spec, config)
 
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(inj.Inject()).To(Succeed())
 		})
