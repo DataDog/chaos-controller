@@ -458,7 +458,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 
 	// retrieve target
 	switch instance.Spec.Level {
-	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
+	case chaostypes.DisruptionLevelPod:
 		pod := corev1.Pod{}
 
 		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
@@ -876,7 +876,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 
 	// select either pods or nodes depending on the disruption level
 	switch instance.Spec.Level {
-	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
+	case chaostypes.DisruptionLevelPod:
 		pods, totalCount, err := r.TargetSelector.GetMatchingPodsOverTotalPods(r.Client, instance)
 		if err != nil {
 			return nil, 0, fmt.Errorf("can't get pods matching the given label selector: %w", err)
@@ -1241,12 +1241,6 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			continue
 		}
 
-		// default level to pod if not specified
-		level := instance.Spec.Level
-		if level == chaostypes.DisruptionLevelUnspecified {
-			level = chaostypes.DisruptionLevelPod
-		}
-
 		pulseActiveDuration, pulseDormantDuration, pulseInitialDelay := time.Duration(0), time.Duration(0), time.Duration(0)
 		if instance.Spec.Pulse != nil {
 			pulseInitialDelay = instance.Spec.Pulse.InitialDelay.Duration()
@@ -1276,7 +1270,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		}
 
 		xargs := chaosapi.DisruptionArgs{
-			Level:                level,
+			Level:                instance.Spec.Level,
 			Kind:                 kind,
 			TargetContainers:     targetContainers,
 			TargetName:           targetName,
@@ -1315,7 +1309,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 	var o runtime.Object
 
 	switch instance.Spec.Level {
-	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
+	case chaostypes.DisruptionLevelPod:
 		p := &corev1.Pod{}
 
 		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {

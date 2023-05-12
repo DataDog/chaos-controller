@@ -55,8 +55,10 @@ type DisruptionSpec struct {
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
-	// +kubebuilder:validation:Enum=pod;node;""
-	// +ddmark:validation:Enum=pod;node;""
+	// Level defines what the disruption will target, either a pod or a node
+	// +kubebuilder:default=pod
+	// +kubebuilder:validation:Enum=pod;node
+	// +ddmark:validation:Enum=pod;node
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
 	Containers []string                   `json:"containers,omitempty"`
 	// +nullable
@@ -258,6 +260,21 @@ func init() {
 	SchemeBuilder.Register(&Disruption{}, &DisruptionList{})
 }
 
+func (s *DisruptionSpec) UnmarshalJSON(data []byte) error {
+	type innerSpec DisruptionSpec
+
+	// Unmarshalling does not consider tag default
+	// as we want all manifest to have a default value if undefined, we hence set it here
+	inner := &innerSpec{Level: chaostypes.DisruptionLevelPod}
+	if err := json.Unmarshal(data, &inner); err != nil {
+		return err
+	}
+
+	*s = DisruptionSpec(*inner)
+
+	return nil
+}
+
 // Hash returns the disruption spec JSON hash
 func (s DisruptionSpec) Hash() (string, error) {
 	// serialize instance spec to JSON
@@ -328,7 +345,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible on dns disruptions with no subset of targeted containers"))
 		}
 
-		if s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
+		if s.Level != chaostypes.DisruptionLevelPod {
 			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible with pod level disruptions"))
 		}
 
@@ -368,7 +385,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 		}
 	}
 
-	if s.GRPC != nil && s.Level != chaostypes.DisruptionLevelPod && s.Level != chaostypes.DisruptionLevelUnspecified {
+	if s.GRPC != nil && s.Level != chaostypes.DisruptionLevelPod {
 		retErr = multierror.Append(retErr, errors.New("GRPC disruptions can only be applied at the pod level"))
 	}
 

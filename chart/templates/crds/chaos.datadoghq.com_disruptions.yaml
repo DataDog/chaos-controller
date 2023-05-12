@@ -211,12 +211,12 @@ spec:
                 - port
                 type: object
               level:
-                description: DisruptionLevel represents which level the disruption
-                  should be injected at
+                default: pod
+                description: Level defines what the disruption will target, either
+                  a pod or a node
                 enum:
                 - pod
                 - node
-                - ""
                 type: string
               network:
                 description: NetworkDisruptionSpec represents a network disruption

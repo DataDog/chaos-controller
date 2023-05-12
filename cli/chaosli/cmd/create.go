@@ -783,11 +783,11 @@ For example, if you set both "app=hello-node" and "pod-name=ubuntu-uuid", then n
 func getLevel() types.DisruptionLevel {
 	level, err := selectInput(
 		"Select the Disruption Level.",
-		[]string{types.DisruptionLevelNode, types.DisruptionLevelPod},
+		[]string{string(types.DisruptionLevelNode), string(types.DisruptionLevelPod)},
 		"This will affect targeting with the label selectors, as well as injecting (depending on the disruption kind).",
 	)
 	if err != nil {
-		level = types.DisruptionLevelPod
+		level = string(types.DisruptionLevelPod)
 	}
 
 	return types.DisruptionLevel(level)

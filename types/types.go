@@ -43,12 +43,10 @@ const (
 	// DisruptionKindGRPCDisruption is a grpc disruption
 	DisruptionKindGRPCDisruption = "grpc-disruption"
 
-	// DisruptionLevelUnspecified is the value used when the level of injection is not specified
-	DisruptionLevelUnspecified = ""
 	// DisruptionLevelPod is a disruption injected at the pod level
-	DisruptionLevelPod = "pod"
+	DisruptionLevelPod DisruptionLevel = "pod"
 	// DisruptionLevelNode is a disruption injected at the node level
-	DisruptionLevelNode = "node"
+	DisruptionLevelNode DisruptionLevel = "node"
 
 	// DisruptionInjectionStatusNotInjected is the value of the injection status of a not yet injected disruption
 	DisruptionInjectionStatusNotInjected DisruptionInjectionStatus = "NotInjected"
