@@ -1,4 +1,4 @@
-.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all e2e-test test lima-install manifests
+.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all e2e-test test lima-install manifests lima-restart
 .SILENT: release
 
 # Lima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
@@ -265,16 +265,20 @@ lima-install: manifests
 	helm template \
 		--values ./chart/values/$(HELM_VALUES) \
 		./chart | $(KUBECTL) apply -f -
+ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
 	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
+endif
 
 ## Uninstall CRDs and controller from a lima k3s cluster
 lima-uninstall:
-	helm template ./chart | $(KUBECTL) delete -f -
+	helm template --values ./chart/values/$(HELM_VALUES) ./chart | $(KUBECTL) delete -f -
 
 ## Restart the chaos-controller pod
 lima-restart:
-	$(KUBECTL) -n chaos-engineering rollout restart deployment chaos-controller
+ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
+	$(KUBECTL) -n chaos-engineering rollout restart deployment/chaos-controller
 	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
+endif
 
 ## Remove lima references from kubectl config
 lima-kubectx-clean:
@@ -389,16 +393,16 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
-## install golangci-lint at the correct version if not
-install-lint-deps:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
-
 install-datadog-ci:
 	curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_$(OS)-x64" --output "$(GOBIN)/datadog-ci" && chmod u+x $(GOBIN)/datadog-ci
 
-local:
-	-helm template \
-		./chart | $(KUBECTL) delete -f -
-# kubectl is the binary inside lima
-	$(KUBECTL) apply -f - < ./chart/templates/crds/chaos.datadoghq.com_disruptions.yaml
+lima-install-local:
+# uninstall using a non local value to ensure deployment is deleted
+	-$(MAKE) lima-uninstall HELM_VALUES=dev.yaml
+	$(MAKE) lima-install HELM_VALUES=local.yaml
+
+pre-debug: generate manifests lima-install-local
+	@echo "now you can launch through vs-code or your favorite IDE a controller in debug with appropriate configuration (--config=chart/values/local.yaml + CONTROLLER_NODE_NAME=local)"
+
+local: generate manifests lima-install-local
 	CONTROLLER_NODE_NAME=local go run main.go --config=chart/values/local.yaml

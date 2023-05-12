@@ -7,10 +7,11 @@
 # more details: https://github.com/DataDog/chaos-controller/blob/main/docs/development.md#debugging-the-controller-locally
 
 controller:
-  metricsBindAddr: 127.0.0.1:8080
-  leaderElection: false
-  metricsSink: noop
+  enabled: false # locally we want everything except the controller to be deployed to we can run it or debug it and still have everything needed inside the cluster
   enableSafeguards: false
+  leaderElection: false
+  metricsBindAddr: 127.0.0.1:8080
+  metricsSink: noop
   notifiers:
     common:
       clusterName: lima
@@ -34,8 +35,8 @@ controller:
       ipRangesURL: https://ip-ranges.datadoghq.com/
   deleteOnly: false
   imagePullSecrets: ""
-  defaultDuration: 1h
-  expiredDisruptionGCDelay: 10m
+  defaultDuration: 3m
+  expiredDisruptionGCDelay: 15s
   webhook:
     certDir: chart/certs
     host: ""
