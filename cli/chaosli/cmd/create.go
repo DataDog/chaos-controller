@@ -6,7 +6,7 @@
 package cmd
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"os"
 	"reflect"
@@ -18,11 +18,12 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/types"
-	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/cli-runtime/pkg/printers"
 )
 
 var createCmd = &cobra.Command{
@@ -35,25 +36,26 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			fmt.Printf("There were some problems when validating your disruption: %v", err)
 		}
-		jsonRep, err := json.MarshalIndent(spec, "", " ")
-		if err != nil {
-			fmt.Printf("json err: %v", err)
+
+		disruption := v1beta1.Disruption{
+			TypeMeta:   v1beta1.TypeMeta,
+			ObjectMeta: askObjectMeta(),
+			Spec:       spec,
 		}
 
-		jsonRep = []byte(fmt.Sprintf(`{"apiVersion": "chaos.datadoghq.com/v1beta1", "kind": "Disruption", "metadata": %s, "spec": %s}`, getMetadata(), jsonRep))
-
-		y, err := yaml.JSONToYAML(jsonRep)
-		if err != nil {
-			fmt.Printf("yaml err: %v", err)
+		b := bytes.Buffer{}
+		if err := (&printers.YAMLPrinter{}).PrintObj(&disruption, &b); err != nil {
+			fmt.Printf("printObj err: %v", err)
+			return
 		}
 
 		path, _ := cmd.Flags().GetString("path")
-		err = os.WriteFile(path, y, 0o644) // #nosec
-		if err != nil {
+		if err = os.WriteFile(path, b.Bytes(), 0o600); err != nil {
 			fmt.Printf("writeFile err: %v", err)
+			return
 		}
 
-		fmt.Printf("We wrote your disruption to %s, thanks!", path)
+		fmt.Printf("We wrote your disruption to %s, thanks!\n", path)
 	},
 }
 
@@ -328,7 +330,7 @@ func getSliceInput(query string, helpText string, opts ...survey.AskOpt) []strin
 	return strings.Split(results, "\n")
 }
 
-func getMetadata() []byte {
+func askObjectMeta() metav1.ObjectMeta {
 	fmt.Println("Last step, you just have to name your disruption, and specify what k8s namespace it should live in.")
 
 	validator := func(val interface{}) error {
@@ -356,7 +358,10 @@ func getMetadata() []byte {
 		survey.WithValidator(validator),
 	)
 
-	return []byte(fmt.Sprintf(`{"name": %s, "namespace": %s}`, name, namespace))
+	return metav1.ObjectMeta{
+		Name:      name,
+		Namespace: namespace,
+	}
 }
 
 func getDNS() v1beta1.DNSDisruptionSpec {

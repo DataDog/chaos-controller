@@ -9,6 +9,7 @@
 package v1beta1
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
@@ -19,6 +20,9 @@ const GroupName = "chaos.datadoghq.com"
 // APIVersion is exported for client-go purposes
 const APIVersion = "v1beta1"
 
+// DisruptionKind is the disruption kind
+const DisruptionKind = "Disruption"
+
 var (
 	// GroupVersion is group version used to register these objects
 	GroupVersion = schema.GroupVersion{Group: GroupName, Version: APIVersion}
@@ -28,4 +32,10 @@ var (
 
 	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
+
+	// TypeMeta is the Disruption Type Meta to create a disruption
+	TypeMeta = metav1.TypeMeta{
+		Kind:       DisruptionKind,
+		APIVersion: GroupVersion.Identifier(),
+	}
 )

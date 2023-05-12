@@ -161,7 +161,7 @@ func (h DisruptionTargetWatcherHandler) getEventsFromCurrentDisruption(kind stri
 	})
 
 	// Keep events sent during the disruption only, no need to filter events coming from the disruption itself
-	if kind != "Disruption" {
+	if kind != chaosv1beta1.DisruptionKind {
 		for i, event := range eventList.Items {
 			if event.Type == corev1.EventTypeWarning && event.Reason == chaosv1beta1.EventDisrupted || event.LastTimestamp.Time.Before(disruptionStateTime) {
 				if i == 0 {

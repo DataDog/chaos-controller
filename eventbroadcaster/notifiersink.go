@@ -71,7 +71,7 @@ func (s *NotifierSink) Patch(oldEvent *corev1.Event, data []byte) (*corev1.Event
 func (s *NotifierSink) getDisruption(event *corev1.Event) (v1beta1.Disruption, error) {
 	dis := v1beta1.Disruption{}
 
-	if event.InvolvedObject.Kind != "Disruption" {
+	if event.InvolvedObject.Kind != v1beta1.DisruptionKind {
 		return v1beta1.Disruption{}, fmt.Errorf("eventnotifier: not a disruption")
 	}
 
