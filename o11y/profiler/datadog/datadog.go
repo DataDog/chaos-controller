@@ -15,13 +15,16 @@ type Sink struct{}
 
 // New initiated datadog profiler sink
 func New() (Sink, error) {
-	err := profiler.Start(profiler.WithProfileTypes(
-		profiler.CPUProfile,
-		profiler.HeapProfile,
-		profiler.BlockProfile,
-		profiler.MutexProfile,
-		profiler.GoroutineProfile,
-	))
+	err := profiler.Start(
+		profiler.WithProfileTypes(
+			profiler.CPUProfile,
+			profiler.HeapProfile,
+			profiler.BlockProfile,
+			profiler.MutexProfile,
+			profiler.GoroutineProfile,
+		),
+		profiler.WithLogStartup(false),
+	)
 
 	return Sink{}, err
 }

@@ -26,6 +26,7 @@ controller:
   enableObserver: true # enable observer on targets, notifying of target warning status and events
   metricsSink: noop
   profilerSink: noop
+  tracerSink: noop
   notifiers:
     common:
       clusterName: lima

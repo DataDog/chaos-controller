@@ -17,11 +17,14 @@ import (
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
+	"github.com/DataDog/chaos-controller/o11y/tracer"
 	"github.com/DataDog/chaos-controller/safemode"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/watchers"
 	"github.com/cenkalti/backoff"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -54,6 +57,7 @@ type DisruptionReconciler struct {
 	Scheme                                *runtime.Scheme
 	Recorder                              record.EventRecorder
 	MetricsSink                           metrics.Sink
+	TracerSink                            tracer.Sink
 	TargetSelector                        targetselector.TargetSelector
 	InjectorAnnotations                   map[string]string
 	InjectorLabels                        map[string]string
@@ -163,6 +167,20 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 		r.log.Errorw("error during the creation of watchers", "error", err)
 	}
 
+	ctx, err = instance.ExtractSpanContext(ctx)
+	if err != nil {
+		r.log.Errorw("did not find span context", "err", err)
+	}
+
+	disruptionSpan := trace.SpanFromContext(ctx)
+	r.log.Debugw("debug parent disruption", "step", "reconcile span start", "disruptionSpan", disruptionSpan, "disruptionSpanContext", disruptionSpan.SpanContext())
+
+	_, reconcileSpan := otel.Tracer("").Start(ctx, "reconcile")
+	defer reconcileSpan.End()
+
+	// allows to sync logs with traces
+	r.log = r.log.With(r.TracerSink.GetLoggableTraceContext(reconcileSpan)...)
+
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
 		return ctrl.Result{}, fmt.Errorf("error handling chaos pods termination: %w", err)
@@ -206,6 +224,18 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.emitKindCountMetrics(instance)
+
+			// close the ongoing disruption tracing Span
+			defer func() {
+				ctx, err := instance.ExtractSpanContext(context.Background())
+				if err != nil {
+					r.log.Errorw("could not end the disruption span", "err", err)
+				}
+
+				r.log.Debugw("debug parent disruption", "step", "disruption span end", "disruptionSpan", disruptionSpan, "disruptionSpanContext", disruptionSpan.SpanContext())
+
+				trace.SpanFromContext(ctx).End()
+			}()
 
 			return ctrl.Result{}, nil
 		}
