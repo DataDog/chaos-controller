@@ -101,7 +101,7 @@ type Reporting struct {
 
 // EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
 //
-//go:embed *
+//go:embed *.go
 var EmbeddedChaosAPI embed.FS
 
 type DisruptionDuration string
