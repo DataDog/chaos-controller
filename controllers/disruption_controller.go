@@ -266,8 +266,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			r.log.Debugw("requeuing disruption as we haven't yet reached trigger.createPods", "requeueAfter", requeueAfter)
 
 			return ctrl.Result{RequeueAfter: requeueAfter}, nil
-```[
-RequeueAfter imply](https://github.com/kubernetes-sigs/controller-runtime/blob/main/pkg/reconcile/reconcile.go#LL32C31-L32C31) `requeue: true`
 		}
 
 		// retrieve targets from label selector
