@@ -117,12 +117,12 @@ func isModifiedError(err error) bool {
 
 // TimeToCreatePods takes the DisruptionTriggers field from a Disruption spec, along with the time.Time at which that disruption was created
 // It returns the earliest time.Time at which the chaos-controller should begin creating chaos pods, given the specified DisruptionTriggers
-func TimeToCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
-	if triggers == nil {
+func TimeToCreatePods(triggers v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
+	if triggers.IsZero() {
 		return creationTimestamp
 	}
 
-	if triggers.CreatePods == nil {
+	if triggers.CreatePods.IsZero() {
 		return creationTimestamp
 	}
 
@@ -142,12 +142,12 @@ func TimeToCreatePods(triggers *v1beta1.DisruptionTriggers, creationTimestamp ti
 
 // TimeToInject takes the DisruptionTriggers field from a Disruption spec, along with the time.Time at which that disruption was created
 // It returns the earliest time.Time at which chaos pods should inject into their targets, given the specified DisruptionTriggers
-func TimeToInject(triggers *v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
-	if triggers == nil {
+func TimeToInject(triggers v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
+	if triggers.IsZero() {
 		return creationTimestamp
 	}
 
-	if triggers.Inject == nil {
+	if triggers.Inject.IsZero() {
 		return TimeToCreatePods(triggers, creationTimestamp)
 	}
 

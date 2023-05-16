@@ -44,12 +44,13 @@ type DisruptionSpec struct {
 	// +nullable
 	AdvancedSelector []metav1.LabelSelectorRequirement `json:"advancedSelector,omitempty"` // advanced label selector
 	// +nullable
-	Filter          *DisruptionFilter   `json:"filter,omitempty"`
-	DryRun          bool                `json:"dryRun,omitempty"`          // enable dry-run mode
-	OnInit          bool                `json:"onInit,omitempty"`          // enable disruption on init
-	Unsafemode      *UnsafemodeSpec     `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
-	StaticTargeting bool                `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
-	Triggers        *DisruptionTriggers `json:"triggers,omitempty"`        // alter the pre-injection lifecycle
+	Filter          *DisruptionFilter `json:"filter,omitempty"`
+	DryRun          bool              `json:"dryRun,omitempty"`          // enable dry-run mode
+	OnInit          bool              `json:"onInit,omitempty"`          // enable disruption on init
+	Unsafemode      *UnsafemodeSpec   `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
+	StaticTargeting bool              `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
+	// +nullable
+	Triggers DisruptionTriggers `json:"triggers,omitempty"` // alter the pre-injection lifecycle
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
@@ -79,8 +80,12 @@ type DisruptionSpec struct {
 
 // DisruptionTriggers holds the options for changing when injector pods are created, and the timing of when the injection occurs
 type DisruptionTriggers struct {
-	Inject     *DisruptionTrigger `json:"inject,omitempty"`
-	CreatePods *DisruptionTrigger `json:"createPods,omitempty"`
+	Inject     DisruptionTrigger `json:"inject,omitempty"`
+	CreatePods DisruptionTrigger `json:"createPods,omitempty"`
+}
+
+func (dt DisruptionTriggers) IsZero() bool {
+	return dt.Inject.IsZero() && dt.CreatePods.IsZero()
 }
 
 // +ddmark:validation:ExclusiveFields={NotBefore,Offset}
@@ -93,6 +98,10 @@ type DisruptionTrigger struct {
 	// pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
 	// +nullable
 	Offset DisruptionDuration `json:"offset,omitempty"`
+}
+
+func (dt DisruptionTrigger) IsZero() bool {
+	return dt.NotBefore.IsZero() && dt.Offset.Duration() == 0
 }
 
 // Reporting provides additional reporting options in order to send a message to a custom slack channel
@@ -334,17 +343,17 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 	}
 
 	// Rule: DisruptionTrigger
-	if s.Triggers != nil {
-		if s.Triggers.Inject != nil && s.Triggers.CreatePods != nil {
+	if !s.Triggers.IsZero() {
+		if !s.Triggers.Inject.IsZero() && !s.Triggers.CreatePods.IsZero() {
 			if !s.Triggers.Inject.NotBefore.IsZero() && !s.Triggers.CreatePods.NotBefore.IsZero() && s.Triggers.Inject.NotBefore.Before(&s.Triggers.CreatePods.NotBefore) {
 				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.createPods.notBefore of %s. inject.notBefore must come after createPods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
 			}
 		}
 
-		triggerTypes := []*DisruptionTrigger{s.Triggers.Inject, s.Triggers.CreatePods}
+		triggerTypes := []DisruptionTrigger{s.Triggers.Inject, s.Triggers.CreatePods}
 
 		for _, subTrigger := range triggerTypes {
-			if subTrigger == nil {
+			if subTrigger.IsZero() {
 				continue
 			}
 

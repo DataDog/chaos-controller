@@ -490,6 +490,7 @@ spec:
                 description: DisruptionTriggers holds the options for changing when
                   injector pods are created, and the timing of when the injection
                   occurs
+                nullable: true
                 properties:
                   createPods:
                     properties:

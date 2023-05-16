@@ -55,15 +55,14 @@ var _ = Describe("Inject and CreatePods Trigger tests", func() {
 		It("should return creationTimestamp if triggers is nil", func() {
 			var triggers v1beta1.DisruptionTriggers
 
-			Expect(TimeToCreatePods(&triggers, creationTimestamp)).Should(Equal(creationTimestamp))
+			Expect(TimeToCreatePods(triggers, creationTimestamp)).Should(Equal(creationTimestamp))
 		})
 
 		It("should return creationTimestamp if triggers.createPods is nil", func() {
-			triggers := &v1beta1.DisruptionTriggers{
-				Inject: &v1beta1.DisruptionTrigger{
+			triggers := v1beta1.DisruptionTriggers{
+				Inject: v1beta1.DisruptionTrigger{
 					Offset: "15m",
 				},
-				CreatePods: nil,
 			}
 
 			Expect(TimeToCreatePods(triggers, creationTimestamp)).Should(Equal(creationTimestamp))
@@ -71,11 +70,11 @@ var _ = Describe("Inject and CreatePods Trigger tests", func() {
 
 		It("should return createPods.notBefore if set", func() {
 			notBefore := time.Now().Add(time.Minute)
-			triggers := &v1beta1.DisruptionTriggers{
-				Inject: &v1beta1.DisruptionTrigger{
+			triggers := v1beta1.DisruptionTriggers{
+				Inject: v1beta1.DisruptionTrigger{
 					Offset: "15m",
 				},
-				CreatePods: &v1beta1.DisruptionTrigger{
+				CreatePods: v1beta1.DisruptionTrigger{
 					NotBefore: metav1.NewTime(notBefore),
 					Offset:    "",
 				},
@@ -86,9 +85,8 @@ var _ = Describe("Inject and CreatePods Trigger tests", func() {
 
 		It("should return a time after creationTimestamp if createPods.offset is set", func() {
 			offsetTime := creationTimestamp.Add(time.Minute * 5)
-			triggers := &v1beta1.DisruptionTriggers{
-				Inject: nil,
-				CreatePods: &v1beta1.DisruptionTrigger{
+			triggers := v1beta1.DisruptionTriggers{
+				CreatePods: v1beta1.DisruptionTrigger{
 					NotBefore: metav1.Time{},
 					Offset:    "5m",
 				},
@@ -102,14 +100,13 @@ var _ = Describe("Inject and CreatePods Trigger tests", func() {
 		It("should return creationTimestamp if triggers is nil", func() {
 			var triggers v1beta1.DisruptionTriggers
 
-			Expect(TimeToInject(&triggers, creationTimestamp)).Should(Equal(creationTimestamp))
+			Expect(TimeToInject(triggers, creationTimestamp)).Should(Equal(creationTimestamp))
 		})
 
 		It("should return triggers.createPods if triggers.inject is nil", func() {
 			notBefore := time.Now().Add(time.Minute)
-			triggers := &v1beta1.DisruptionTriggers{
-				Inject: nil,
-				CreatePods: &v1beta1.DisruptionTrigger{
+			triggers := v1beta1.DisruptionTriggers{
+				CreatePods: v1beta1.DisruptionTrigger{
 					NotBefore: metav1.NewTime(notBefore),
 					Offset:    "",
 				},
@@ -120,12 +117,12 @@ var _ = Describe("Inject and CreatePods Trigger tests", func() {
 
 		It("should return inject.notBefore if set", func() {
 			notBefore := time.Now().Add(time.Minute)
-			triggers := &v1beta1.DisruptionTriggers{
-				Inject: &v1beta1.DisruptionTrigger{
+			triggers := v1beta1.DisruptionTriggers{
+				Inject: v1beta1.DisruptionTrigger{
 					NotBefore: metav1.NewTime(notBefore),
 					Offset:    "1",
 				},
-				CreatePods: &v1beta1.DisruptionTrigger{
+				CreatePods: v1beta1.DisruptionTrigger{
 					NotBefore: metav1.Time{},
 					Offset:    "2m",
 				},
@@ -136,12 +133,11 @@ var _ = Describe("Inject and CreatePods Trigger tests", func() {
 
 		It("should return a time after creationTimestamp if inject.offset is set", func() {
 			offsetTime := creationTimestamp.Add(time.Minute)
-			triggers := &v1beta1.DisruptionTriggers{
-				Inject: &v1beta1.DisruptionTrigger{
+			triggers := v1beta1.DisruptionTriggers{
+				Inject: v1beta1.DisruptionTrigger{
 					NotBefore: metav1.Time{},
 					Offset:    "1m",
 				},
-				CreatePods: nil,
 			}
 
 			Expect(TimeToInject(triggers, creationTimestamp)).Should(Equal(offsetTime))

@@ -254,11 +254,11 @@ var _ = Describe("Disruption", func() {
 			When("triggers.inject.notBefore is before triggers.createPods.notBefore", func() {
 				It("should return an error", func() {
 					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = &DisruptionTriggers{
-						Inject: &DisruptionTrigger{
+					newDisruption.Spec.Triggers = DisruptionTriggers{
+						Inject: DisruptionTrigger{
 							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5)),
 						},
-						CreatePods: &DisruptionTrigger{
+						CreatePods: DisruptionTrigger{
 							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 15)),
 						},
 					}
