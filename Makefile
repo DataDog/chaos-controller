@@ -24,11 +24,6 @@ HELM_VERSION ?= 3.11.3
 KUBEBUILDER_VERSION ?= 3.1.0
 USE_VOLUMES ?= false
 
-# https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
-GO_TEST = go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going \
-	--cover --coverprofile=cover.profile --randomize-all \
-	--race --trace --json-report=report.json --junit-report=report.xml
-
 # expired disruption gc delay enable to speed up chaos controller disruption removal for e2e testing
 # it's used to check if disruptions are deleted as expected as soon as the expiration delay occurs
 EXPIRED_DISRUPTION_GC_DELAY ?= 10m
@@ -36,6 +31,15 @@ EXPIRED_DISRUPTION_GC_DELAY ?= 10m
 OS_ARCH=amd64
 ifeq (arm64,$(shell uname -m))
 OS_ARCH=arm64
+endif
+
+OS = $(shell go env GOOS)
+
+DD_ENV = local
+# https://circleci.com/docs/variables/
+# we rely on standard CI env var to adapt test upload configuration automatically
+ifeq (true,$(CI))
+DD_ENV = ci
 endif
 
 LIMA_CGROUPS=v1
@@ -130,11 +134,38 @@ minikube-load-all: $(addprefix minikube-load-,$(TARGETS))
 chaosli:
 	GOOS=darwin GOARCH=${OS_ARCH} CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_${OS_ARCH} ./cli/chaosli/
 
+# https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
+_ginkgo_test:
+# Run the test and write a file if succeed
+# Do not stop on any error
+	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going \
+		--cover --coverprofile=cover.profile --randomize-all \
+		--race --trace --json-report=$(GO_TEST_REPORT_NAME).json --junit-report=$(GO_TEST_REPORT_NAME).xml \
+		$(GO_TEST_ARGS) \
+			&& touch $(GO_TEST_REPORT_NAME)-succeed
+# Try upload test reports if allowed and necessary prerequisites exists
+ifneq (true,$(GO_TEST_SKIP_UPLOAD)) # you can bypass test upload
+ifdef DATADOG_API_KEY # if no API key bypass is guaranteed
+ifneq (,$(shell which datadog-ci)) # same if no test binary
+	-DD_ENV=$(DD_ENV) datadog-ci junit upload --service chaos-controller $(GO_TEST_REPORT_NAME).xml
+else
+	@echo "datadog-ci binary is not installed, run 'make install-datadog-ci' to upload tests results to datadog"
+endif
+else
+	@echo "DATADOG_API_KEY env var is not defined, create a local API key https://app.datadoghq.com/personal-settings/application-keys if you want to upload your local tests results to datadog"
+endif
+else
+	@echo "datadog-ci junit upload SKIPPED"
+endif
+# Fail if succeed file does not exists
+	[ -f $(GO_TEST_REPORT_NAME)-succeed ] && rm -f $(GO_TEST_REPORT_NAME)-succeed || exit 1
+
 # Tests & CI
 ## Run unit tests
 test: generate manifests
-	$(GO_TEST) -r --compilers=4 --procs=4 --skip-package=controllers --randomize-suites \
-		--timeout=10m --poll-progress-after=5s --poll-progress-interval=5s
+	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=report-$@ \
+		GO_TEST_ARGS="-r --compilers=4 --procs=4 --skip-package=controllers \
+--randomize-suites --timeout=10m --poll-progress-after=5s --poll-progress-interval=5s"
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -175,8 +206,9 @@ ci-install-minikube:
 ## Run e2e tests (against a real cluster)
 e2e-test: generate
 	$(MAKE) lima-install EXPIRED_DISRUPTION_GC_DELAY=10s
-	USE_EXISTING_CLUSTER=true $(GO_TEST) controllers --timeout=15m --poll-progress-after=15s \
-		--poll-progress-interval=15s
+	USE_EXISTING_CLUSTER=true $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=report-$@ \
+		GO_TEST_ARGS="controllers --timeout=15m --poll-progress-after=15s \
+--poll-progress-interval=15s"
 
 # Test chaosli API portability
 chaosli-test:
@@ -329,21 +361,21 @@ release:
 
 install-kubebuilder:
 # download kubebuilder and install locally.
-	curl -sSLo ${GOPATH}/bin/kubebuilder https://go.kubebuilder.io/dl/latest/$(shell go env GOOS)/$(OS_ARCH)
+	curl -sSLo ${GOPATH}/bin/kubebuilder https://go.kubebuilder.io/dl/latest/$(OS)/$(OS_ARCH)
 	chmod u+x ${GOPATH}/bin/kubebuilder
 # download setup-envtest and install related binaries locally
 	go install -v sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 # setup-envtest use -p path $(KUBERNETES_MAJOR_VERSION).x
 
 install-helm:
-	curl -sSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-v$(HELM_VERSION)-$(shell go env GOOS)-$(OS_ARCH).tar.gz"
-	tar -xvzf /tmp/helm.tar.gz --directory=${GOPATH}/bin --strip-components=1 $(shell go env GOOS)-$(OS_ARCH)/helm
+	curl -sSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-v$(HELM_VERSION)-$(OS)-$(OS_ARCH).tar.gz"
+	tar -xvzf /tmp/helm.tar.gz --directory=${GOPATH}/bin --strip-components=1 $(OS)-$(OS_ARCH)/helm
 	rm /tmp/helm.tar.gz
 
 # find or download controller-gen
 # download controller-gen if necessary
 install-controller-gen:
-ifeq (, $(shell which controller-gen))
+ifeq (,$(shell which controller-gen))
 	@{ \
 	set -e ;\
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
@@ -360,3 +392,6 @@ endif
 ## install golangci-lint at the correct version if not
 install-lint-deps:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
+
+install-datadog-ci:
+	curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_$(OS)-x64" --output "$(GOBIN)/datadog-ci" && chmod u+x $(GOBIN)/datadog-ci

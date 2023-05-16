@@ -111,8 +111,8 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install golangci-lint kubebuilder+env helm
-          command: make -j4 install-lint-deps install-kubebuilder install-helm install-controller-gen
+          name: Install binaries
+          command: make -j5 install-lint-deps install-kubebuilder install-helm install-controller-gen install-datadog-ci
       - run:
           name: Install protoc
           command: make install-protobuf PROTOC_OS=linux
@@ -295,6 +295,11 @@ workflows:
             - docker-build-injector
             - docker-build-manager
             - docker-build-handler
+            - test
+            - lint
+            - fmt
+            - vet
+            - dependencies
       - python-check:
           name: third-party-licenses
           target: license-check
