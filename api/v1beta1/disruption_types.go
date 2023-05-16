@@ -349,24 +349,6 @@ func (s *DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.createPods.notBefore of %s. inject.notBefore must come after createPods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
 			}
 		}
-
-		triggerTypes := []DisruptionTrigger{s.Triggers.Inject, s.Triggers.CreatePods}
-
-		for _, subTrigger := range triggerTypes {
-			if subTrigger.IsZero() {
-				continue
-			}
-
-			if !subTrigger.NotBefore.IsZero() {
-				now := metav1.Now()
-				if subTrigger.NotBefore.Before(&now) {
-					retErr = multierror.Append(retErr,
-						fmt.Errorf("you should not set spec.trigger.*.notBefore to a time in the past. spec.trigger.*.notBefore: %s, current timestamp: %s",
-							subTrigger.NotBefore.String(),
-							now.String()))
-				}
-			}
-		}
 	}
 
 	// Rule: pulse compatibility
