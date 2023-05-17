@@ -283,7 +283,7 @@ var _ = Describe("Disruption Controller", func() {
 			ExpectChaosPodsAndStatuses(ctx, 2)
 
 			By("Adding an extra target")
-			extraPod := CreateRunningPod(ctx, *targetPod.DeepCopy())
+			extraPod := <-CreateRunningPod(ctx, *targetPod.DeepCopy())
 
 			ExpectChaosPodsAndStatuses(ctx, 3)
 
@@ -316,6 +316,10 @@ var _ = Describe("Disruption Controller", func() {
 					Drop: 100,
 				},
 			}
+
+			// we don't need any pod, at least let's not create the first one...
+			skipSecondPod = true
+			expectedDisruptionStatus = chaostypes.DisruptionInjectionStatusNotInjected
 		})
 
 		It("should keep on init target pods throughout reconcile loop", func(ctx SpecContext) {
@@ -397,17 +401,13 @@ var _ = Describe("Disruption Controller", func() {
 			By("Missing targets are reported")
 			ExpectDisruptionStatusAndCounts(ctx, chaostypes.DisruptionInjectionStatusPartiallyInjected, 3, 0, 2, 2)
 
-			extraOne, extraTwo := *targetPod.DeepCopy(), *targetPod.DeepCopy()
-			Concurrently{
-				func(ctx SpecContext) {
-					By("creating extra target one")
-					extraOne = CreateRunningPod(ctx, extraOne)
-				},
-				func(ctx SpecContext) {
-					By("creating extra target two")
-					extraTwo = CreateRunningPod(ctx, extraTwo)
-				},
-			}.DoAndWait(ctx)
+			By("creating extra target one")
+			extraOneCreated := CreateRunningPod(ctx, *targetPod.DeepCopy())
+			By("creating extra target two")
+			extraTwoCreated := CreateRunningPod(ctx, *targetPod.DeepCopy())
+
+			By("waiting extra targets to be created and running")
+			extraOne, extraTwo := <-extraOneCreated, <-extraTwoCreated
 
 			By("Additional targets are reported")
 			ExpectDisruptionStatusAndCounts(ctx, chaostypes.DisruptionInjectionStatusInjected, 3, 1, 3, 3)
@@ -554,14 +554,13 @@ var _ = Describe("Disruption Controller", func() {
 			ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPausedPartiallyInjected)
 
 			AddReportEntry("creating the two pods again we reach status injected")
-			Concurrently{
-				func(ctx SpecContext) {
-					targetPod = CreateRunningPod(ctx, targetPod)
-				},
-				func(ctx SpecContext) {
-					anotherTargetPod = CreateRunningPod(ctx, anotherTargetPod)
-				},
-			}.DoAndWait(ctx)
+			targetPodCreated := CreateRunningPod(ctx, targetPod)
+			anotherTargetPodCreated := CreateRunningPod(ctx, anotherTargetPod)
+
+			AddReportEntry("waiting for the two pods to be running")
+			targetPod, anotherTargetPod = <-targetPodCreated, <-anotherTargetPodCreated
+
+			AddReportEntry("waiting for disruption status to be injected again")
 			ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusInjected)
 
 			AddReportEntry("deleting all targets quickly we reach status paused injected or paused partially injected")

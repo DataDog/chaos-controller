@@ -40,6 +40,7 @@ type lightConfig struct {
 	} `yaml:"controller"`
 }
 
+// type Concurrently []func(Gomega, SpecContext) error
 type Concurrently []func(SpecContext)
 
 // DoAndWait will spawn a goroutine for all items in current array
@@ -52,17 +53,17 @@ func (c Concurrently) DoAndWait(ctx SpecContext) {
 	for _, do := range c {
 		do := do
 
-		go func() {
-			GinkgoHelper()
-
+		go func(ctx SpecContext) {
 			defer func() {
 				sync <- struct{}{}
 			}()
 
 			defer GinkgoRecover()
 
+			GinkgoHelper()
+
 			do(ctx)
-		}()
+		}(ctx)
 	}
 
 	for i := 0; i < cap(sync); i++ {
@@ -158,6 +159,7 @@ func ExpectChaosPods(ctx SpecContext, disruption chaosv1beta1.Disruption, count 
 func InjectPodsAndDisruption(ctx SpecContext, wantDisruption chaosv1beta1.Disruption, skipSecondPod bool) (disruption chaosv1beta1.Disruption, targetPod, anotherTargetPod corev1.Pod) {
 	GinkgoHelper()
 
+	var anotherTargetPodCreated <-chan corev1.Pod
 	targetPod = uniquePod()
 	targetPod.Spec.RestartPolicy = corev1.RestartPolicyAlways
 
@@ -167,33 +169,25 @@ func InjectPodsAndDisruption(ctx SpecContext, wantDisruption chaosv1beta1.Disrup
 		anotherTargetPod.Annotations["foo"] = "qux"
 		anotherTargetPod.Spec.Containers = anotherTargetPod.Spec.Containers[0:1]
 		anotherTargetPod.Spec.Volumes = anotherTargetPod.Spec.Volumes[0:1] // second volume is used by second container, hence not needed as we removed it
+		anotherTargetPodCreated = CreateRunningPod(ctx, anotherTargetPod)
+	} else {
+		// if you ask to NOT create the second pod, you will NEVER receive a message, don't wait for it
+		anotherTargetPodCreated = func() <-chan corev1.Pod {
+			return nil
+		}()
 	}
 
-	// var targetPodName, anotherTargetPodName string
-	Concurrently{
-		func(ctx SpecContext) {
-			targetPod = CreateRunningPod(ctx, targetPod)
-		},
-		func(ctx SpecContext) {
-			if skipSecondPod {
-				return
-			}
-
-			anotherTargetPod = CreateRunningPod(ctx, anotherTargetPod)
-		},
-	}.DoAndWait(ctx)
+	targetPod = <-CreateRunningPod(ctx, targetPod)
+	// if we can wait for anotherTargetPod we do
+	// they are still created in parallel
+	// hence waiting time is reduced
+	if anotherTargetPodCreated != nil {
+		anotherTargetPod = <-anotherTargetPodCreated
+	}
 
 	AddReportEntry("both pods created and running with labels", targetPod.Labels)
 
 	disruption = CreateDisruption(ctx, wantDisruption, targetPod)
-	// var podsList corev1.PodList
-	// k8sClient.List(ctx, &podsList, client.MatchingLabels(targetPod.Labels))
-
-	// for _, pod := range podsList.Items {
-	// 	if pod.Name == targetPodName {
-	// 		targetPod = pod
-	// 	} else if
-	// }
 	return
 }
 
@@ -323,11 +317,10 @@ func DeleteDisruption(ctx SpecContext, disruption chaosv1beta1.Disruption) {
 
 // CreateRunningPod create a pod and wait until it status is in phase Running
 // created pod will be automatically deleted on test cleanup
-func CreateRunningPod(ctx SpecContext, pod corev1.Pod) corev1.Pod {
+func CreateRunningPod(ctx SpecContext, pod corev1.Pod) <-chan corev1.Pod {
 	GinkgoHelper()
 
 	pod.ResourceVersion = ""
-
 	if !pod.CreationTimestamp.IsZero() {
 		// once a pod has been created, Name will be set
 		// we mostly use DeepCopy to easily create similar pod and run them, however we want them to follow the initial generate name pattern
@@ -336,33 +329,50 @@ func CreateRunningPod(ctx SpecContext, pod corev1.Pod) corev1.Pod {
 		pod.Name = ""
 	}
 
-	Eventually(k8sClient.Create).WithArguments(&pod).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(Succeed())
+	internalNotifyPodCanBeDeleted := make(chan corev1.Pod, 1)
+	externalNotifyPodIsRunning := make(chan corev1.Pod, 1)
 
-	Eventually(func(ctx SpecContext) error {
-		runningPods, err := podsInPhase(ctx, corev1.PodRunning, pod)
-		if err != nil {
-			return fmt.Errorf("unable to check pods in phase: %w", err)
-		}
+	go func() {
+		defer GinkgoRecover()
 
-		if len(runningPods) == 0 || allContainersAreRunning(ctx, runningPods...) {
-			return nil
-		}
+		GinkgoHelper()
 
-		return fmt.Errorf("some containers are not running in pods")
-	}).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(Succeed())
+		Eventually(k8sClient.Create).WithArguments(&pod).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(Succeed())
+		internalNotifyPodCanBeDeleted <- pod
+
+		Eventually(func(ctx SpecContext) error {
+			runningPods, err := podsInPhase(ctx, corev1.PodRunning, pod)
+			if err != nil {
+				return fmt.Errorf("unable to check pods in phase: %w", err)
+			}
+
+			if len(runningPods) == 0 || allContainersAreRunning(ctx, runningPods...) {
+				return nil
+			}
+
+			return fmt.Errorf("some containers are not running in pods")
+		}).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(Succeed())
+
+		AddReportEntry(fmt.Sprintf("pod %s created", pod.Name))
+
+		externalNotifyPodIsRunning <- pod
+	}()
 
 	DeferCleanup(
-		DeleteRunningPod,
-		corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      pod.Name,
-				Namespace: pod.Namespace,
-			},
-		}, NodeTimeout(k8sAPIServerResponseTimeout))
+		func(ctx SpecContext) {
+			// The cleanup is called
+			// we try to read the buffered channel to delete the pod if already created
+			// we don't wait for the message to be received and SKIP the cleanup if the pod NOT already created
+			// we rely on context cancellation (and namespace deletion) to guarantee cleanup is done as expected in such case
+			select {
+			case pod := <-internalNotifyPodCanBeDeleted:
+				DeleteRunningPod(ctx, pod)
+			default:
+			}
+		},
+		NodeTimeout(k8sAPIServerResponseTimeout))
 
-	AddReportEntry(fmt.Sprintf("pod %s created", pod.Name))
-
-	return pod
+	return externalNotifyPodIsRunning
 }
 
 // DeleteRunningPod delete a pod safely and ignore if pod does not exists
