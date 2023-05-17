@@ -143,14 +143,16 @@ _ginkgo_test:
 # Do not stop on any error
 	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going \
 		--cover --coverprofile=cover.profile --randomize-all \
-		--race --trace --json-report=$(GO_TEST_REPORT_NAME).json --junit-report=$(GO_TEST_REPORT_NAME).xml \
+		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
+		--compilers=4 --procs=4 \
+		--poll-progress-after=10s --poll-progress-interval=10s \
 		$(GO_TEST_ARGS) \
-			&& touch $(GO_TEST_REPORT_NAME)-succeed
+			&& touch report-$(GO_TEST_REPORT_NAME)-succeed
 # Try upload test reports if allowed and necessary prerequisites exists
 ifneq (true,$(GO_TEST_SKIP_UPLOAD)) # you can bypass test upload
 ifdef DATADOG_API_KEY # if no API key bypass is guaranteed
 ifneq (,$(shell which datadog-ci)) # same if no test binary
-	-DD_ENV=$(DD_ENV) datadog-ci junit upload --service chaos-controller $(GO_TEST_REPORT_NAME).xml
+	-DD_ENV=$(DD_ENV) datadog-ci junit upload --service chaos-controller --tags="team:chaos-engineering,type:$(GO_TEST_REPORT_NAME)" report-$(GO_TEST_REPORT_NAME).xml
 else
 	@echo "datadog-ci binary is not installed, run 'make install-datadog-ci' to upload tests results to datadog"
 endif
@@ -161,14 +163,13 @@ else
 	@echo "datadog-ci junit upload SKIPPED"
 endif
 # Fail if succeed file does not exists
-	[ -f $(GO_TEST_REPORT_NAME)-succeed ] && rm -f $(GO_TEST_REPORT_NAME)-succeed || exit 1
+	[ -f report-$(GO_TEST_REPORT_NAME)-succeed ] && rm -f report-$(GO_TEST_REPORT_NAME)-succeed || exit 1
 
 # Tests & CI
 ## Run unit tests
 test: generate manifests
-	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=report-$@ \
-		GO_TEST_ARGS="-r --compilers=4 --procs=4 --skip-package=controllers \
---randomize-suites --timeout=10m --poll-progress-after=5s --poll-progress-interval=5s $(TEST_ARGS)"
+	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
+		GO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -214,9 +215,8 @@ e2e-test: generate manifests
 ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
 	$(MAKE) lima-install HELM_VALUES=ci.yaml
 endif
-	USE_EXISTING_CLUSTER=true $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=report-$@ \
-		GO_TEST_ARGS="controllers --timeout=15m --poll-progress-after=15s \
---poll-progress-interval=15s"
+	USE_EXISTING_CLUSTER=true $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
+		GO_TEST_ARGS="--timeout=15m controllers"
 
 # Test chaosli API portability
 chaosli-test:
