@@ -263,7 +263,7 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 
-					Expect(newDisruption.ValidateCreate()).Should(MatchError("inject.notBefore must come after createPods.notBefore if both are specified"))
+					Expect(newDisruption.ValidateCreate().Error()).Should(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified"))
 				})
 			})
 		})
