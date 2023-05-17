@@ -137,6 +137,10 @@ func TimeToCreatePods(triggers v1beta1.DisruptionTriggers, creationTimestamp tim
 		noPodsBefore = creationTimestamp.Add(triggers.CreatePods.Offset.Duration())
 	}
 
+	if creationTimestamp.After(noPodsBefore) {
+		return creationTimestamp
+	}
+
 	return noPodsBefore
 }
 
@@ -161,6 +165,10 @@ func TimeToInject(triggers v1beta1.DisruptionTriggers, creationTimestamp time.Ti
 	if triggers.Inject.Offset.Duration() > 0 {
 		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.createPods
 		notInjectedBefore = TimeToCreatePods(triggers, creationTimestamp).Add(triggers.Inject.Offset.Duration())
+	}
+
+	if creationTimestamp.After(notInjectedBefore) {
+		return creationTimestamp
 	}
 
 	return notInjectedBefore
