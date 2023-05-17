@@ -346,21 +346,33 @@ var _ = Describe("Disruption Controller", func() {
 				},
 			)
 
-				if len(podList.Items) == 0 {
-					return fmt.Errorf("no target found")
-				}
+			// We create a pod and the disruption concurrently
+			// We expect the pod to be running at some point (thanks to the disruption)
+			Concurrently{
+				func(ctx SpecContext) {
+					// In order to reach the status running, the disruption NEEDS to have a valid effect
+					// Otherwise the pod will stay stuck in init phase with the chaos handler container waiting
+					Expect(<-initPodCreated).ToNot(BeZero())
+				},
+				func(sc SpecContext) {
+					Eventually(func(ctx SpecContext) error {
+						podList := corev1.PodList{}
+						err := k8sClient.List(ctx, &podList, &client.ListOptions{
+							LabelSelector: disruption.Spec.Selector.AsSelector(),
+						})
+						if err != nil {
+							return fmt.Errorf("unable to target pods with selector: %w", err)
+						}
 
-				for _, ctn := range podList.Items[0].Status.InitContainerStatuses {
-					if ctn.State.Running != nil {
-						return fmt.Errorf("chaos-handler container is still running")
-					}
-				}
+						if len(podList.Items) == 0 {
+							return fmt.Errorf("no target found")
+						}
 
-				for _, ctn := range podList.Items[0].Status.ContainerStatuses {
-					if !ctn.Ready {
-						return fmt.Errorf("container %s is not ready", ctn.Name)
-					}
-				}
+						for _, ctn := range podList.Items[0].Status.InitContainerStatuses {
+							if ctn.State.Running != nil {
+								return fmt.Errorf("chaos-handler container is still running")
+							}
+						}
 
 						for _, ctn := range podList.Items[0].Status.ContainerStatuses {
 							if !ctn.Ready {
