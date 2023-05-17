@@ -95,9 +95,11 @@ const (
 	DisruptionInjectionStatusPartiallyInjected DisruptionInjectionStatus = "PartiallyInjected"
 	// DisruptionInjectionStatusInjected is the value of the injection status of a fully injected disruption
 	DisruptionInjectionStatusInjected DisruptionInjectionStatus = "Injected"
-	// DisruptionInjectionStatusPausedPartiallyInjected is the value of the injection when the disruption was partially injected and but is no longer and duration has not expired and disruption is not deleted
+	// DisruptionInjectionStatusPausedPartiallyInjected is the value of the injection when the disruption was partially injected and later, all targets disappeared AND disruption has not yet expired or being deleted.
+	// It imply the disruption could be re-injected at some point if new targets matching provided selector appears
 	DisruptionInjectionStatusPausedPartiallyInjected DisruptionInjectionStatus = "PausedPartiallyInjected"
-	// DisruptionInjectionStatusPausedInjected is the value of the injection status when the disruption was injected but is no longer and duration has not expired and disruption is not deleted
+	// DisruptionInjectionStatusPausedInjected is the value of the injection status when the disruption was injected but is no longer due to target disappearance (and duration has not expired and disruption is not deleted)
+	// It imply the disruption could be re-injected at some point if new targets matching provided selector appears
 	DisruptionInjectionStatusPausedInjected DisruptionInjectionStatus = "PausedInjected"
 	// DisruptionInjectionStatusPreviouslyNotInjected is the value of the injection status after the duration has expired and the disruption was not injected
 	DisruptionInjectionStatusPreviouslyNotInjected DisruptionInjectionStatus = "PreviouslyNotInjected"

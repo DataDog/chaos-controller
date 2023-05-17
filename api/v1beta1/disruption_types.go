@@ -41,7 +41,7 @@ type DisruptionSpec struct {
 	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
 	// AllowDisruptedTargets allow pods with one or several other active disruptions, with disruption kinds that does not intersect
-	// with this disruption kinds, to be returned as part of elligible targets for this disruption
+	// with this disruption kinds, to be returned as part of eligible targets for this disruption
 	// - e.g. apply a CPU pressure and later, apply a container failure for a short duration
 	// NB: it's ALWAYS forbidden to apply the same disruption kind to the same target to avoid unreliable effects due to competing interactions
 	AllowDisruptedTargets bool `json:"allowDisruptedTargets,omitempty"`
