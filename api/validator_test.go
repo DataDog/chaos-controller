@@ -34,6 +34,26 @@ var _ = Describe("Validator", func() {
 		errList = ValidateDisruptionSpecFromString(yamlDisruptionSpec.String())
 	})
 
+	Describe("validating disruption triggers", func() {
+		Context("both offset and notBefore are set", func() {
+			BeforeEach(func() {
+yamlDisruptionSpec.WriteString(`
+network:
+  corrupt: 100
+duration: 87600h
+triggers:
+  createPods:
+    notBefore: 2040-01-02T15:04:05-04:00
+    offset: 1m
+`)
+			})
+
+			It("should not validate", func() {
+				Expect(errList).To(HaveLen(1))
+			})
+		})
+	})
+
 	Describe("validating network spec", func() {
 		BeforeEach(func() {
 			yamlDisruptionSpec.WriteString("\nnetwork:")

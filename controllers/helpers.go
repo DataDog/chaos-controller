@@ -49,7 +49,7 @@ func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int,
 func calculateRemainingDuration(instance v1beta1.Disruption) time.Duration {
 	return calculateDeadline(
 		instance.Spec.Duration.Duration(),
-		instance.ObjectMeta.CreationTimestamp.Time,
+		TimeToInject(instance.Spec.Triggers, instance.ObjectMeta.CreationTimestamp.Time),
 	)
 }
 
@@ -113,4 +113,63 @@ func transformCloudSpecToHostsSpec(cloudManager *cloudservice.CloudServicesProvi
 // So we parse the error message directly
 func isModifiedError(err error) bool {
 	return strings.Contains(err.Error(), "please apply your changes to the latest version and try again")
+}
+
+// TimeToCreatePods takes the DisruptionTriggers field from a Disruption spec, along with the time.Time at which that disruption was created
+// It returns the earliest time.Time at which the chaos-controller should begin creating chaos pods, given the specified DisruptionTriggers
+func TimeToCreatePods(triggers v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
+	if triggers.IsZero() {
+		return creationTimestamp
+	}
+
+	if triggers.CreatePods.IsZero() {
+		return creationTimestamp
+	}
+
+	var noPodsBefore time.Time
+
+	// validation should have already prevented a situation where both Offset and NotBefore are set
+	if !triggers.CreatePods.NotBefore.IsZero() {
+		noPodsBefore = triggers.CreatePods.NotBefore.Time
+	}
+
+	if triggers.CreatePods.Offset.Duration() > 0 {
+		noPodsBefore = creationTimestamp.Add(triggers.CreatePods.Offset.Duration())
+	}
+
+	if creationTimestamp.After(noPodsBefore) {
+		return creationTimestamp
+	}
+
+	return noPodsBefore
+}
+
+// TimeToInject takes the DisruptionTriggers field from a Disruption spec, along with the time.Time at which that disruption was created
+// It returns the earliest time.Time at which chaos pods should inject into their targets, given the specified DisruptionTriggers
+func TimeToInject(triggers v1beta1.DisruptionTriggers, creationTimestamp time.Time) time.Time {
+	if triggers.IsZero() {
+		return creationTimestamp
+	}
+
+	if triggers.Inject.IsZero() {
+		return TimeToCreatePods(triggers, creationTimestamp)
+	}
+
+	var notInjectedBefore time.Time
+
+	// validation should have already prevented a situation where both Offset and NotBefore are set
+	if !triggers.Inject.NotBefore.IsZero() {
+		notInjectedBefore = triggers.Inject.NotBefore.Time
+	}
+
+	if triggers.Inject.Offset.Duration() > 0 {
+		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.createPods
+		notInjectedBefore = TimeToCreatePods(triggers, creationTimestamp).Add(triggers.Inject.Offset.Duration())
+	}
+
+	if creationTimestamp.After(notInjectedBefore) {
+		return creationTimestamp
+	}
+
+	return notInjectedBefore
 }

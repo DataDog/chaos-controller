@@ -260,6 +260,15 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{Requeue: false}, nil
 		}
 
+		// check if we have reached trigger.createPods. If not, skip the rest of reconciliation.
+		requeueAfter := time.Until(TimeToCreatePods(instance.Spec.Triggers, instance.CreationTimestamp.Time))
+		if requeueAfter > (time.Second * 5) {
+			requeueAfter -= (time.Second * 5)
+			r.log.Debugw("requeuing disruption as we haven't yet reached trigger.createPods", "requeueAfter", requeueAfter.String())
+
+			return ctrl.Result{RequeueAfter: requeueAfter}, nil
+		}
+
 		// retrieve targets from label selector
 		if err := r.selectTargets(instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
@@ -1246,6 +1255,8 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
 		}
 
+		notInjectedBefore := TimeToInject(instance.Spec.Triggers, instance.CreationTimestamp.Time)
+
 		allowedHosts := r.InjectorNetworkDisruptionAllowedHosts
 
 		// get the ip ranges of cloud provider services
@@ -1279,6 +1290,7 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 			PulseInitialDelay:    pulseInitialDelay,
 			PulseActiveDuration:  pulseActiveDuration,
 			PulseDormantDuration: pulseDormantDuration,
+			NotInjectedBefore:    notInjectedBefore,
 			MetricsSink:          r.MetricsSink.GetSinkName(),
 			AllowedHosts:         allowedHosts,
 			DNSServer:            r.InjectorDNSDisruptionDNSServer,

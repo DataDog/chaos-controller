@@ -82,7 +82,7 @@ executors:
       #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
       # This is circle ci images, provides default tool installed (like docker) to ease step definition and avoid apt-get/update things
       # https://circleci.com/docs/circleci-images/#next-gen-language-images
-      - image: cimg/go:1.18
+      - image: cimg/go:1.20
   golang_large:
     <<: *golang
     resource_class: large
@@ -247,7 +247,6 @@ jobs:
             mdspell --report --en-us --ignore-numbers --ignore-acronyms $(find . -name vendor -prune -o -name '*.md' -print) || echo "please run 'make spellcheck' for local testing"
 
 workflows:
-  version: 2
   test_and_build:
     jobs:
       - prepare-env
