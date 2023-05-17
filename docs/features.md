@@ -55,6 +55,9 @@ As mentioned above, both options under `spec.triggers`: `spec.triggers.createPod
 When `spec.triggers.createPods.offset` is set, the `offset` is measured from the creationTimestamp of the `Disruption`. This allows you to say `spec.triggers.createPods.offset: 5m`, and the chaos pods won't be created until 5 minutes after the Disruption was created.
 When `spec.triggers.inject.offset` is set, the `offset` is measured from the timestamp of `spec.triggers.createPods` if defined, and if not, it will be measured from the creationTimestamp of the `Disruption`.
 
+Though the name `notBefore` hopefully implies it, we do need to be explicit that these timestamps are the _earliest_ possible time we may create pods or inject failures. Due to the asynchronous nature of kubernetes controllers, it is probable that pod creation
+and thus also injection, could occur after the `notBefore` timestamp.
+
 ## Pulse
 
 The `Disruption` spec takes a `pulse` field. It activates the pulsing mode of the disruptions of type `cpu_pressure`, `disk_pressure`, `dns_disruption`, `grpc_disruption` or `network_disruption`. A "pulsing" disruption is one that alternates between an active injected state, and an inactive dormant state. Previously, one would need to manage the Disruption lifecycle by continually re-creating and deleting a Disruption to achieve the same effect.
