@@ -324,12 +324,27 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should keep on init target pods throughout reconcile loop", func(ctx SpecContext) {
 			By("Ensuring that the on init target is ready and still targeted")
-			Eventually(func(ctx SpecContext) error {
-				podList := corev1.PodList{}
-				err := k8sClient.List(ctx, &podList, &client.ListOptions{
-					LabelSelector: disruption.Spec.Selector.AsSelector(),
-				})
-				Expect(err).ShouldNot(HaveOccurred())
+			initPodCreated := CreateRunningPod(
+				ctx,
+				corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						GenerateName: "on-init-gen-",
+						Namespace:    namespace,
+						Labels: map[string]string{
+							"foo-foo":                     "bar-bar",
+							chaostypes.DisruptOnInitLabel: "true",
+						},
+					},
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Image: "k8s.gcr.io/pause:3.4.1",
+								Name:  "ctn1",
+							},
+						},
+					},
+				},
+			)
 
 				if len(podList.Items) == 0 {
 					return fmt.Errorf("no target found")
