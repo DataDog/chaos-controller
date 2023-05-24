@@ -373,7 +373,7 @@ install-helm:
 	tar -xvzf /tmp/helm.tar.gz --directory=${GOPATH}/bin --strip-components=1 $(OS)-$(OS_ARCH)/helm
 	rm /tmp/helm.tar.gz
 
-# delete controller-gen in order to update it
+# delete controller-gen
 delete-controller-gen:
 ifeq (,$(shell which controller-gen))
 	$(info controller-gen is not installed)
@@ -384,7 +384,7 @@ endif
 # find or download controller-gen
 # download controller-gen if necessary
 install-controller-gen:
-ifeq ($(shell which controller-gen),)
+ifeq (,$(shell which controller-gen))
 	$(info installing controller-gen...)
 	@{ \
 	set -e ;\
