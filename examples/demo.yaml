@@ -71,6 +71,22 @@ spec:
         app: demo-curl
     spec:
       containers:
+        - name: cpu-stress # jump into pod and run `kill -s TERM 7` to confirm re-start apply cpu reinjection
+          image: alpine/curl:3.14
+          command: [/bin/sh, -c]
+          args:
+            - ee(){exit 1}; trap 'ee' TERM; tail -f /dev/null
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /mnt/data
+              name: data
+          resources:
+            limits:
+              memory: 32Mi
+              cpu: 1500m
+            requests:
+              memory: 32Mi
+              cpu: 1500m
         - name: curl
           image: alpine/curl:3.14
           command: ["/bin/sh"]
@@ -90,7 +106,11 @@ spec:
                 - http://demo.chaos-demo.svc.cluster.local:8080
           resources:
             limits:
-              cpu: 1
+              memory: 32Mi
+              cpu: 100m
+            requests:
+              memory: 32Mi
+              cpu: 100m
         - name: read-file
           image: ubuntu:bionic-20220128
           command: ["/bin/bash"]
@@ -102,6 +122,13 @@ spec:
           volumeMounts:
             - mountPath: /mnt/data
               name: data
+          resources:
+            limits:
+              memory: 32Mi
+              cpu: 100m
+            requests:
+              memory: 32Mi
+              cpu: 100m
         - name: write-file
           image: ubuntu:bionic-20220128
           command: ["/bin/bash"]
@@ -113,6 +140,13 @@ spec:
           volumeMounts:
             - mountPath: /mnt/data
               name: data
+          resources:
+            limits:
+              memory: 32Mi
+              cpu: 100m
+            requests:
+              memory: 32Mi
+              cpu: 100m
       volumes:
         - name: data
           persistentVolumeClaim:

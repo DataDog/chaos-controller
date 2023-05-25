@@ -62,6 +62,11 @@ type Update struct {
 	ClientConfigs []string
 }
 
+// isEmpty returns whether or not all the fields of `Update` are empty
+func (u *Update) isEmpty() bool {
+	return len(u.TUFRoots) == 0 && len(u.TUFTargets) == 0 && (u.TargetFiles == nil || len(u.TargetFiles) == 0) && len(u.ClientConfigs) == 0
+}
+
 // Repository is a remote config client used in a downstream process to retrieve
 // remote config updates from an Agent.
 type Repository struct {
@@ -107,6 +112,9 @@ func NewRepository(embeddedRoot []byte) (*Repository, error) {
 
 // NewUnverifiedRepository creates a new remote config repository that will
 // track config files for a client WITHOUT verifying any TUF related metadata.
+//
+// When creating this we pretend we have a root version of 1, as the backend expects
+// to not have to send the initial "embedded" root.
 func NewUnverifiedRepository() (*Repository, error) {
 	configs := make(map[string]map[string]interface{})
 	for _, product := range allProducts {
@@ -118,6 +126,7 @@ func NewUnverifiedRepository() (*Repository, error) {
 		metadata:               make(map[string]Metadata),
 		configs:                configs,
 		tufVerificationEnabled: false,
+		latestRootVersion:      1, // The backend expects us to start with a root version of 1.
 	}, nil
 }
 
@@ -127,6 +136,11 @@ func (r *Repository) Update(update Update) ([]string, error) {
 	var err error
 	var updatedTargets *data.Targets
 	var tmpRootClient *tufRootsClient
+
+	// If there's literally nothing in the update, it's not an error.
+	if update.isEmpty() {
+		return []string{}, nil
+	}
 
 	// TUF: Update the roots and verify the TUF Targets file (optional)
 	//

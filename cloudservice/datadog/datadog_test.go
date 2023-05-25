@@ -32,13 +32,13 @@ var _ = Describe("Datadog Parsing", func() {
 
 		It("should parse the ip range file", func() {
 			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Ensuring that the right version string was parsed")
 			Expect(info.Version).To(Equal("51"))
 
 			By("Ensuring that we have the right info")
-			Expect(len(info.IPRanges["api"])).To(Equal(1))
+			Expect(info.IPRanges["api"]).To(HaveLen(1))
 
 			_, ok := info.IPRanges["fake-product-2"]
 			Expect(ok).To(BeFalse())
@@ -48,7 +48,7 @@ var _ = Describe("Datadog Parsing", func() {
 			newVersion, err := datadogManager.IsNewVersion([]byte(ipRangeFile), "50")
 
 			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Ensuring that the right version string was parsed")
 			Expect(newVersion).To(BeTrue())
@@ -58,7 +58,7 @@ var _ = Describe("Datadog Parsing", func() {
 			newVersion, err := datadogManager.IsNewVersion([]byte(ipRangeFile), "51")
 
 			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Ensuring that the right version string was parsed")
 			Expect(newVersion).To(BeFalse())
@@ -73,7 +73,7 @@ var _ = Describe("Datadog Parsing", func() {
 			info, err := datadogManager.ConvertToGenericIPRanges([]byte(ipRangeFile))
 
 			By("Ensuring that an error was thrown")
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(HaveOccurred())
 
 			By("Ensuring the returned converted IP Ranges is nil")
 			Expect(info).To(BeNil())
@@ -87,10 +87,10 @@ var _ = Describe("Datadog Parsing", func() {
 			_, errIsNewVersion := datadogManager.IsNewVersion([]byte(ipRangeFile), "20")
 
 			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
-			Expect(errConvert).ToNot(BeNil())
+			Expect(errConvert).To(HaveOccurred())
 
 			By("Ensuring that an error was thrown on IsNewVersion")
-			Expect(errIsNewVersion).ToNot(BeNil())
+			Expect(errIsNewVersion).To(HaveOccurred())
 		})
 
 		It("Should throw an error on empty ip ranges file", func() {
@@ -100,10 +100,10 @@ var _ = Describe("Datadog Parsing", func() {
 			_, errIsNewVersion := datadogManager.IsNewVersion(make([]byte, 0), "20")
 
 			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
-			Expect(errConvert).ToNot(BeNil())
+			Expect(errConvert).To(HaveOccurred())
 
 			By("Ensuring that an error was thrown on IsNewVersion")
-			Expect(errIsNewVersion).ToNot(BeNil())
+			Expect(errIsNewVersion).To(HaveOccurred())
 		})
 
 		It("Should throw an error on nil ip ranges file", func() {
@@ -113,10 +113,10 @@ var _ = Describe("Datadog Parsing", func() {
 			_, errIsNewVersion := datadogManager.IsNewVersion(nil, "20")
 
 			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
-			Expect(errConvert).ToNot(BeNil())
+			Expect(errConvert).To(HaveOccurred())
 
 			By("Ensuring that an error was thrown on IsNewVersion")
-			Expect(errIsNewVersion).ToNot(BeNil())
+			Expect(errIsNewVersion).To(HaveOccurred())
 		})
 	})
 })

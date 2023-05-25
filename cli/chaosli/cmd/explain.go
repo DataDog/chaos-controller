@@ -27,10 +27,6 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 		fmt.Println("\tℹ️  has DryRun set to false meaning this disruption WILL run.")
 	}
 
-	if spec.Level == chaostypes.DisruptionLevelUnspecified {
-		spec.Level = chaostypes.DisruptionLevelPod
-	}
-
 	if spec.Level == chaostypes.DisruptionLevelPod {
 		fmt.Println("\tℹ️  will be run on the Pod level, so everything in this disruption is scoped at this level.")
 	} else if spec.Level == chaostypes.DisruptionLevelNode {
@@ -186,7 +182,6 @@ func explainGRPC(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\t\t👩‍⚕️ endpoint: %s ...\n", endpt.TargetEndpoint) //nolint:stylecheck
 
 		alterationToQueryPercent, err := grpccalc.GetPercentagePerAlteration(endpt.Alterations)
-
 		if err != nil {
 			fmt.Printf("\t\t\t💣  this disruption fails with err: %s\n", err.Error())
 		}
@@ -361,8 +356,8 @@ func explanation(path string) {
 
 func init() {
 	explainCmd.Flags().String("path", "", "The path to the disruption file to be explained.")
-	err := explainCmd.MarkFlagRequired("path")
 
+	err := explainCmd.MarkFlagRequired("path")
 	if err != nil {
 		return
 	}

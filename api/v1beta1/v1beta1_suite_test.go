@@ -27,5 +27,5 @@ var _ = BeforeSuite(func() {
 	logger = zaptest.NewLogger(GinkgoT()).Sugar()
 	chaosNamespace = "chaos-engineering"
 
-	metricsSink = noop.New()
+	metricsSink = noop.New(logger)
 })

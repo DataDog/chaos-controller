@@ -65,6 +65,15 @@ spec:
                   type: object
                 nullable: true
                 type: array
+              allowDisruptedTargets:
+                description: 'AllowDisruptedTargets allow pods with one or several
+                  other active disruptions, with disruption kinds that does not intersect
+                  with this disruption kinds, to be returned as part of eligible targets
+                  for this disruption - e.g. apply a CPU pressure and later, apply
+                  a container failure for a short duration NB: it''s ALWAYS forbidden
+                  to apply the same disruption kind to the same target to avoid unreliable
+                  effects due to competing interactions'
+                type: boolean
               containerFailure:
                 description: ContainerFailureSpec represents a container failure injection
                 nullable: true
@@ -89,6 +98,9 @@ spec:
                     anyOf:
                     - type: integer
                     - type: string
+                    description: Count represents the number of cores to target either
+                      an integer form or a percentage form appended with a % if empty,
+                      it will be considered to be 100%
                     x-kubernetes-int-or-string: true
                 type: object
               diskFailure:
@@ -208,12 +220,12 @@ spec:
                 - port
                 type: object
               level:
-                description: DisruptionLevel represents which level the disruption
-                  should be injected at
+                default: pod
+                description: Level defines what the disruption will target, either
+                  a pod or a node
                 enum:
                 - pod
                 - node
-                - ""
                 type: string
               network:
                 description: NetworkDisruptionSpec represents a network disruption
@@ -593,7 +605,11 @@ spec:
                 enum:
                 - NotInjected
                 - PartiallyInjected
+                - PausedPartiallyInjected
                 - Injected
+                - PausedInjected
+                - PreviouslyNotInjected
+                - PreviouslyPartiallyInjected
                 - PreviouslyInjected
                 type: string
               isInjected:
@@ -607,8 +623,12 @@ spec:
                 additionalProperties:
                   properties:
                     injectionStatus:
-                      description: DisruptionInjectionStatus represents the injection
-                        status of a disruption
+                      description: DisruptionTargetInjectionStatus represents the
+                        injection status of the target of a disruption
+                      enum:
+                      - NotInjected
+                      - Injected
+                      - IsStuckOnRemoval
                       type: string
                     injectorPodName:
                       type: string

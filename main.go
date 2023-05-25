@@ -334,12 +334,11 @@ func main() {
 	}
 
 	// metrics sink
-	ms, err := metrics.GetSink(metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
-
+	ms, err := metrics.GetSink(logger, metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
 	if err != nil {
 		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
 
-		ms, err = metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
+		ms, err = metrics.GetSink(logger, metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
 
 		if err != nil {
 			logger.Fatalw("error creating noop metrics sink", "error", err)
@@ -360,12 +359,11 @@ func main() {
 	}
 
 	// profiler sink
-	prfl, err := profiler.GetSink(profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
-
+	prfl, err := profiler.GetSink(logger, profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
 	if err != nil {
 		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
 
-		prfl, err = profiler.GetSink(profilertypes.SinkDriverNoop)
+		prfl, err = profiler.GetSink(logger, profilertypes.SinkDriverNoop)
 
 		if err != nil {
 			logger.Errorw("error while creating noop profiler sink", "error", err)
@@ -419,7 +417,7 @@ func main() {
 
 	cont, err := r.SetupWithManager(mgr, kubeInformerFactory)
 	if err != nil {
-		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
+		logger.Errorw("unable to create controller", "controller", chaosv1beta1.DisruptionKind, "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
 
@@ -447,7 +445,7 @@ func main() {
 		Environment:                   cfg.Controller.SafeMode.Environment,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
+		setupLog.Error(err, "unable to create webhook", "webhook", chaosv1beta1.DisruptionKind)
 		os.Exit(1) //nolint:gocritic
 	}
 

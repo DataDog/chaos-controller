@@ -42,16 +42,12 @@ var _ = Describe("TargetInjections", func() {
 })
 
 var _ = Describe("Check if a target exist into DisruptionStatus targets list", func() {
-	var disruptionStatus *DisruptionStatus
+	var disruptionStatus DisruptionStatus
 
 	BeforeEach(func() {
-		disruptionStatus = &DisruptionStatus{
+		disruptionStatus = DisruptionStatus{
 			TargetInjections: TargetInjections{"test-1": {}},
 		}
-	})
-
-	AfterEach(func() {
-		disruptionStatus = nil
 	})
 
 	Context("with an empty target", func() {

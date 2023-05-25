@@ -173,7 +173,7 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 // TargetIsHealthy returns an error if the given target is unhealthy or does not exist
 func (r runningTargetSelector) TargetIsHealthy(target string, c client.Client, instance *chaosv1beta1.Disruption) error {
 	switch instance.Spec.Level {
-	case chaostypes.DisruptionLevelUnspecified, chaostypes.DisruptionLevelPod:
+	case chaostypes.DisruptionLevelPod:
 		var p corev1.Pod
 
 		// check if target still exists

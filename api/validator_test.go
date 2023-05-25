@@ -71,7 +71,7 @@ triggers:
 			})
 
 			It("should validate", func() {
-				Expect(errList).To(HaveLen(0))
+				Expect(errList).To(BeEmpty())
 			})
 		})
 	})
@@ -95,7 +95,7 @@ triggers:
 			})
 
 			It("should validate", func() {
-				Expect(errList).To(HaveLen(0))
+				Expect(errList).To(BeEmpty())
 			})
 		})
 	})
@@ -127,7 +127,7 @@ var _ = Describe("Validator", func() {
 				spec.Level = chaostypes.DisruptionLevelNode
 			})
 			It("should not validate", func() {
-				Expect(err).To(Not(BeNil()))
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -136,7 +136,7 @@ var _ = Describe("Validator", func() {
 				spec.Level = chaostypes.DisruptionLevelPod
 			})
 			It("should validate", func() {
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})

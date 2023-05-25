@@ -17,9 +17,11 @@ import (
 
 	"github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cgroup"
+	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
@@ -36,12 +38,12 @@ const (
 
 var _ = Describe("Failure", func() {
 	var (
-		ctn                                                     *mocks.ContainerMock
+		ctn                                                     *container.ContainerMock
 		inj                                                     Injector
 		config                                                  NetworkDisruptionInjectorConfig
 		spec                                                    v1beta1.NetworkDisruptionSpec
-		cgroupManager                                           *mocks.CGroupManagerMock
-		isCgroupV2Call                                          *mocks.CGroupManagerMock_IsCgroupV2_Call
+		cgroupManager                                           *cgroup.ManagerMock
+		isCgroupV2Call                                          *cgroup.ManagerMock_IsCgroupV2_Call
 		tc                                                      *network.TrafficControllerMock
 		iptables                                                *network.IPTablesMock
 		nl                                                      *network.NetlinkAdapterMock
@@ -49,7 +51,7 @@ var _ = Describe("Failure", func() {
 		nllink1TxQlenCall, nllink2TxQlenCall, nllink3TxQlenCall *network.NetlinkLinkMock_TxQLen_Call
 		nlroute1, nlroute2, nlroute3                            *network.NetlinkRouteMock
 		dns                                                     *network.DNSClientMock
-		netnsManager                                            *mocks.NetNSManagerMock
+		netnsManager                                            *netns.ManagerMock
 		k8sClient                                               *kubernetes.Clientset
 		fakeService                                             *corev1.Service
 		fakeService2                                            *corev1.Service
@@ -62,14 +64,14 @@ var _ = Describe("Failure", func() {
 		nilIPNet = nil
 		_, zeroIPNet, _ = net.ParseCIDR("0.0.0.0/0")
 		// cgroup
-		cgroupManager = mocks.NewCGroupManagerMock(GinkgoT())
+		cgroupManager = cgroup.NewManagerMock(GinkgoT())
 		cgroupManager.EXPECT().RelativePath(mock.Anything).Return("/kubepod.slice/foo").Maybe()
 		cgroupManager.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		isCgroupV2Call = cgroupManager.EXPECT().IsCgroupV2().Return(false)
 		isCgroupV2Call.Maybe()
 
 		// netns
-		netnsManager = mocks.NewNetNSManagerMock(GinkgoT())
+		netnsManager = netns.NewManagerMock(GinkgoT())
 		netnsManager.EXPECT().Enter().Return(nil).Maybe()
 		netnsManager.EXPECT().Exit().Return(nil).Maybe()
 
@@ -133,10 +135,10 @@ var _ = Describe("Failure", func() {
 		dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil).Maybe()
 
 		// container
-		ctn = mocks.NewContainerMock(GinkgoT())
+		ctn = container.NewContainerMock(GinkgoT())
 
 		// environment variables
-		Expect(os.Setenv(env.InjectorTargetPodHostIP, targetPodHostIP)).To(BeNil())
+		Expect(os.Setenv(env.InjectorTargetPodHostIP, targetPodHostIP)).To(Succeed())
 
 		// fake kubernetes client and resources
 		fakeService = &corev1.Service{
@@ -249,12 +251,12 @@ var _ = Describe("Failure", func() {
 	JustBeforeEach(func() {
 		var err error
 		inj, err = NewNetworkDisruptionInjector(spec, config)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("inj.Inject", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(BeNil())
+			Expect(inj.Inject()).To(Succeed())
 		})
 
 		// general tests that should work for all contexts
@@ -353,6 +355,8 @@ var _ = Describe("Failure", func() {
 		})
 
 		Context("with one service specified", func() {
+			var podsWatcher, servicesWatcher *watch.FakeWatcher
+
 			BeforeEach(func() {
 				spec.Services = []v1beta1.NetworkDisruptionServiceSpec{
 					{
@@ -361,67 +365,62 @@ var _ = Describe("Failure", func() {
 					},
 				}
 
-				podsWatcher := watch.NewFake()
-				servicesWatcher := watch.NewFake()
+				podsWatcher = watch.NewFakeWithChanSize(2, false)
+				servicesWatcher = watch.NewFakeWithChanSize(2, false)
 
 				k8sClient.PrependWatchReactor("pods", testing.DefaultWatchReactor(podsWatcher, nil))
 				k8sClient.PrependWatchReactor("services", testing.DefaultWatchReactor(servicesWatcher, nil))
 
-				// fake watchers for service handling
-				// the below calls are assigning watcher events to channels and are looping endlessly the unit tests if we don't put them in a goroutine
-				go func() {
-					modifiedService := *fakeService
+				// Set up adding 2 services
+				servicesWatcher.Add(fakeService)
 
-					// Set up adding 2 services
-					servicesWatcher.Add(&modifiedService)
+				// Set up adding 2 pods
+				podsWatcher.Add(fakeEndpoint)
 
-					// Set up adding 2 pods
-					podsWatcher.Add(fakeEndpoint)
+				ports := []corev1.ServicePort{
+					{
+						Port:       81,
+						TargetPort: intstr.FromInt(8080),
+						Protocol:   corev1.ProtocolTCP,
+					},
+				}
 
-					ports := []corev1.ServicePort{
-						{
-							Port:       81,
-							TargetPort: intstr.FromInt(8080),
-							Protocol:   corev1.ProtocolTCP,
-						},
-					}
+				updatedFakeService := fakeService.DeepCopy()
+				updatedFakeService.Spec.Ports = ports
 
-					modifiedService.Spec.Ports = ports
+				servicesWatcher.Modify(updatedFakeService)
 
-					servicesWatcher.Modify(&modifiedService)
-
-					// delete the pod 1
-					podsWatcher.Delete(fakeEndpoint)
-				}()
+				// delete the pod 1
+				podsWatcher.Delete(fakeEndpoint)
 			})
 
 			It("should add a filter for every service and pods filtered on, modify the filter and then delete a filter", func() {
+				WatchersAreEmpty(servicesWatcher, podsWatcher)
+
 				priority := uint32(0)
 
-				// Initial setup
-				Eventually(func(g Gomega) {
-					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
-					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
 
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
 
-					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 81, network.TCP, network.ConnStateUndefined, "1:4") // priority 1005
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 81, network.TCP, network.ConnStateUndefined, "1:4") // priority 1005
 
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
-					tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
-
-				}, time.Second*60, time.Second).Should(Succeed())
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
 			})
 
 			AfterEach(func() {
-				Expect(inj.Clean()).To(BeNil())
+				Expect(inj.Clean()).To(Succeed())
 			})
 		})
 
 		Context("with one service and one port specified", func() {
+			var servicesWatcher, podsWatcher *watch.FakeWatcher
+
 			BeforeEach(func() {
 				spec.Services = []v1beta1.NetworkDisruptionServiceSpec{
 					{
@@ -435,33 +434,29 @@ var _ = Describe("Failure", func() {
 					},
 				}
 
-				podsWatcher := watch.NewFake()
-				servicesWatcher := watch.NewFake()
+				podsWatcher = watch.NewFakeWithChanSize(1, false)
+				servicesWatcher = watch.NewFakeWithChanSize(1, false)
 
 				k8sClient.PrependWatchReactor("pods", testing.DefaultWatchReactor(podsWatcher, nil))
 				k8sClient.PrependWatchReactor("services", testing.DefaultWatchReactor(servicesWatcher, nil))
 
-				// fake watchers for service handling
-				// the below calls are assigning watcher events to channels and are looping endlessly the unit tests if we don't put them in a goroutine
-				go func() {
-					// Set up adding 1 service
-					servicesWatcher.Add(fakeService2)
+				// Set up adding 1 service
+				servicesWatcher.Add(fakeService2)
 
-					// Set up adding 1 pod
-					podsWatcher.Add(fakeEndpoint2)
-				}()
+				// Set up adding 1 pod
+				podsWatcher.Add(fakeEndpoint2)
 			})
 
 			It("should add a filter on allowed port, not on not specified port", func() {
-				Eventually(func(g Gomega) {
-					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 8180, network.TCP, network.ConnStateUndefined, "1:4")
-					tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 8181, network.TCP, network.ConnStateUndefined, "1:4")
-					tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
-				}, time.Second*5, time.Second).Should(Succeed())
+				WatchersAreEmpty(servicesWatcher, podsWatcher)
+
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 8180, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 8181, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
 			})
 
 			AfterEach(func() {
-				Expect(inj.Clean()).To(BeNil())
+				Expect(inj.Clean()).To(Succeed())
 			})
 		})
 
@@ -542,8 +537,8 @@ var _ = Describe("Failure", func() {
 			JustBeforeEach(func() {
 				// When an update event is sent to the injector, the disruption method Clean is called before its Inject method.
 				// If the method Clean is not called the AddNetem operations will stack up.
-				Expect(inj.Clean()).To(BeNil())
-				Expect(inj.Inject()).To(BeNil())
+				Expect(inj.Clean()).To(Succeed())
+				Expect(inj.Inject()).To(Succeed())
 			})
 
 			It("should not stack up AddNetem operations", func() {
@@ -556,7 +551,7 @@ var _ = Describe("Failure", func() {
 
 	Describe("inj.Clean", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Clean()).To(BeNil())
+			Expect(inj.Clean()).To(Succeed())
 		})
 
 		It("should enter the target network namespace", func() {
@@ -586,4 +581,20 @@ func buildSingleIPNet(ip string) *net.IPNet {
 func buildSingleIPNetUsingParse(ip string) *net.IPNet {
 	_, r, _ := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
 	return r
+}
+
+func WatchersAreEmpty(watchers ...*watch.FakeWatcher) {
+	Eventually(func() bool {
+		for _, watcher := range watchers {
+			if len(watcher.ResultChan()) != 0 {
+				return false
+			}
+		}
+		return true
+	}).Within(10 * time.Second).ProbeEvery(1 * time.Second).Should(BeTrue())
+
+	// Even if channels are "empty" we could still have not YET computed events
+	// as it's only for tests, we consider it's good enough for now to wait a small amount of time
+	// IRL it's OK to have the disruption injected at an approximate time
+	<-time.After(100 * time.Millisecond)
 }

@@ -273,7 +273,7 @@ var _ = Describe("Disruption", func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 				k8sClient = makek8sClientWithDisruptionPod()
 				recorder = record.NewFakeRecorder(1)
-				metricsSink = noop.New()
+				metricsSink = noop.New(logger)
 				deleteOnly = false
 				enableSafemode = true
 			})
