@@ -1,4 +1,4 @@
-.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all e2e-test test lima-install manifests lima-restart
+.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all e2e-test test lima-install manifests lima-restart delete-controller-gen install-controller-gen update-controller-gen
 .SILENT: release
 
 # Lima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
@@ -16,6 +16,7 @@ KUBECTL ?= limactl shell default sudo kubectl
 PROTOC_VERSION = 3.17.3
 PROTOC_OS ?= osx
 PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
+CONTROLLER_GEN_VERSION = v0.11.3
 # you might also want to change ~/lima.yaml k3s version
 KUBERNETES_MAJOR_VERSION ?= 1.26
 KUBERNETES_VERSION ?= v$(KUBERNETES_MAJOR_VERSION).0
@@ -387,22 +388,54 @@ install-helm:
 	tar -xvzf /tmp/helm.tar.gz --directory=${GOPATH}/bin --strip-components=1 $(OS)-$(OS_ARCH)/helm
 	rm /tmp/helm.tar.gz
 
+# delete controller-gen
+delete-controller-gen:
+ifeq (,$(shell which controller-gen))
+	$(info controller-gen is not installed)
+else
+	rm $(shell which controller-gen)
+endif
+
 # find or download controller-gen
 # download controller-gen if necessary
 install-controller-gen:
 ifeq (,$(shell which controller-gen))
+	$(info installing controller-gen...)
 	@{ \
 	set -e ;\
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	CGO_ENABLED=0 go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.11.3 ;\
+	CGO_ENABLED=0 go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
+ifneq ($(shell controller-gen --version | sed "s/Version:\ //g"), $(CONTROLLER_GEN_VERSION))
+	$(info controller-gen version mismatch)
+	$(info Your Version:    $(shell controller-gen --version | sed "s/Version://g"))
+	$(info Required Version: $(CONTROLLER_GEN_VERSION))
+	$(info updating your version to match required version...)
+	$(MAKE) update-controller-gen
+endif
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
+
+# update controller-gen
+update-controller-gen: delete-controller-gen
+	$(info installing controller-gen...)
+	@{ \
+	set -e ;\
+	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$CONTROLLER_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	CGO_ENABLED=0 go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) ;\
+	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
+	}
+
+## install golangci-lint at the correct version if not
+install-lint-deps:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
 
 install-datadog-ci:
 	curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_$(OS)-x64" --output "$(GOBIN)/datadog-ci" && chmod u+x $(GOBIN)/datadog-ci
