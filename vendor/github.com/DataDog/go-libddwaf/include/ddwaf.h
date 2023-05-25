@@ -4,10 +4,17 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2021 Datadog, Inc.
 
-#ifndef pw_h
-#define pw_h
+#ifndef DDWAF_H
+#define DDWAF_H
 
 #ifdef __cplusplus
+namespace ddwaf{
+class waf;
+class context;
+} // namespace ddwaf
+using ddwaf_handle = ddwaf::waf *;
+using ddwaf_context = ddwaf::context *;
+
 extern "C"
 {
 #endif
@@ -72,14 +79,7 @@ typedef enum
     DDWAF_LOG_OFF,
 } DDWAF_LOG_LEVEL;
 
-#ifdef __cplusplus
-namespace ddwaf{
-class waf;
-class context;
-}
-using ddwaf_handle = ddwaf::waf *;
-using ddwaf_context = ddwaf::context *;
-#else
+#ifndef __cplusplus
 typedef struct _ddwaf_handle* ddwaf_handle;
 typedef struct _ddwaf_context* ddwaf_context;
 #endif
@@ -206,17 +206,31 @@ typedef void (*ddwaf_log_cb)(
  *
  * Initialize a ddwaf instance
  *
- * @param rule ddwaf::object containing the patterns to be used by the WAF. (nonnull)
+ * @param rule ddwaf::object map containing rules, exclusions, rules_override and rules_data. (nonnull)
  * @param config Optional configuration of the WAF. (nullable)
  * @param info Optional ruleset parsing diagnostics. (nullable)
  *
- * @return Handle to the WAF instance.
+ * @return Handle to the WAF instance or NULL on error.
  *
  * @note If config is NULL, default values will be used, including the default
  *       free function (ddwaf_object_free).
  **/
-ddwaf_handle ddwaf_init(const ddwaf_object *rule,
+ddwaf_handle ddwaf_init(const ddwaf_object *ruleset,
     const ddwaf_config* config, ddwaf_ruleset_info *info);
+
+/**
+ * ddwaf_update
+ *
+ * Update a ddwaf instance
+ *
+ * @param rule ddwaf::object map containing rules, exclusions, rules_override and rules_data. (nonnull)
+ * @param info Optional ruleset parsing diagnostics. (nullable)
+ *
+ * @return Handle to the new WAF instance or NULL if there were no new updates
+ *         or there was an error processing the ruleset.
+ **/
+ddwaf_handle ddwaf_update(ddwaf_handle handle, const ddwaf_object *ruleset,
+    ddwaf_ruleset_info *info);
 
 /**
  * ddwaf_destroy
@@ -226,26 +240,6 @@ ddwaf_handle ddwaf_init(const ddwaf_object *rule,
  * @param Handle to the WAF instance.
  */
 void ddwaf_destroy(ddwaf_handle handle);
-
-/**
- * ddwaf_update_rule_data
- *
- * Update existing rules with new rule data.
- *
- * @param handle to the WAF instance.
- * @param data A ddwaf_object with the format [{id, type, [data]}].
- */
-DDWAF_RET_CODE ddwaf_update_rule_data(ddwaf_handle handle, ddwaf_object *data);
-
-/**
- * ddwaf_toggle_rules
- *
- * Enable or disable rules (true -> rule enabled, false -> rule disabled).
- *
- * @param handle to the WAF instance.
- * @param data A ddwaf_object with the format {rule_id : boolean}.
- */
-DDWAF_RET_CODE ddwaf_toggle_rules(ddwaf_handle handle, ddwaf_object *rule_map);
 
 /**
  * ddwaf_ruleset_info_free
@@ -267,18 +261,6 @@ void ddwaf_ruleset_info_free(ddwaf_ruleset_info *info);
  * @return NULL if empty, otherwise a pointer to an array with size elements.
  **/
 const char* const* ddwaf_required_addresses(const ddwaf_handle handle, uint32_t *size);
-/**
- * ddwaf_required_rule_data_ids
- *
- * Get a list of required rule data IDs (if any). The memory is owned by the
- * WAF and should not be freed.
- *
- * @param Handle to the WAF instance.
- * @param size Output parameter in which the size will be returned. The value of
- *             size will be 0 if the return value is NULL.
- * @return NULL if empty, otherwise a pointer to an array with size elements.
- **/
-const char* const* ddwaf_required_rule_data_ids(const ddwaf_handle handle, uint32_t *size);
 
 /**
  * ddwaf_context_init
@@ -623,6 +605,17 @@ uint64_t ddwaf_object_get_unsigned(ddwaf_object *object);
 int64_t ddwaf_object_get_signed(ddwaf_object *object);
 
 /**
+ * ddwaf_object_get_bool
+ *
+ * Returns the boolean contained within the object.
+ *
+ * @param object The object from which to get the boolean.
+ *
+ * @return The boolean or false if the object is not a boolean.
+ **/
+bool ddwaf_object_get_bool(ddwaf_object *object);
+
+/**
  * ddwaf_object_get_index
  *
  * Returns the object contained in the container at the given index.
@@ -668,4 +661,4 @@ bool ddwaf_set_log_cb(ddwaf_log_cb cb, DDWAF_LOG_LEVEL min_level);
 }
 #endif /* __cplusplus */
 
-#endif /* pw_h */
+#endif /*DDWAF_H */

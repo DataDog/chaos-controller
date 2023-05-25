@@ -20,14 +20,24 @@ The `/sys/fs/cgroup` directory of the host must be mounted in the injector pod a
 
 When the injector pod starts:
 
-- It parses the `cpuset.cpus` file (located in the target `cpuset` cgroup) to retrieve cores allocated to the target processes.
-- It calculates the number of cores to apply pressure, by taking user input `Count`.
-- It then creates one goroutine per target core.
-- Each goroutine is locked on the thread they are running on. By doing so, it forces the Go runtime scheduler to create one thread per locked goroutine.
-- Each goroutine joins the target `cpu` and `cpuset` cgroups.
-  - Joining the `cpuset` cgroup is important to both have the same number of allocated cores as the target as well as the same allocated cores so we ensure that the goroutines threads will be scheduled on the same cores as the target processes
-- Each goroutine renices itself to the highest priority (`-20`) so the Linux scheduler will always give it the priority to consume CPU time over other running processes
-- Each goroutine starts an infinite loop to consume as much CPU as possible
+- It creates a dedicated process for each container seen in targeted pod:
+  - We aligned CGroups Join implementation to join all cgroups on V1 and V2
+  - When a container restarts, it imply processes in the same CGroups will be killed (SIGKILL)
+  - To be able to reinject we hence use the standard injector process as an orchestrator that spins up one process per container and re-create them if needed
+- Each newly created process (`/usr/local/bin/chaos-injector cpu-stress`) is hence responsible to perform the stress for a SPECIFIC container:
+  - It parses the `cpuset.cpus` file (located in the target `cpuset` cgroup) to retrieve cores allocated to the targeted container
+  - It calculates the percentage of stress to apply to all cores by taking user input `Count`
+  - It then creates a dedicated goroutine per targeted core
+    - Each goroutine is locked on the thread they are running on and their affinity is defined to a specific core
+    - Each goroutine joins all CGroups
+      - It's important to join cgroup (in particular `cpuset`) to both have the same number of allocated cores as the target as well as the same allocated cores so we ensure that the goroutines threads will be scheduled on the same cores as the target processes
+      - We MUST join the targeted container CGroup and NOT creating another isolated CGroup with the same configuration as linux CPU is fair and ensure two separated processes will have their requested quotas even if one is trying to still all the CPUs
+      - To guarantee the biggest throttling impact we hence need to be seen as part of the targetted process CGroup tree (we can't create a child CGroup either as it would prevent Kubernetes to manage the container as expected)
+    - Each goroutine renices itself to the highest priority (`-20`) so the Linux scheduler will always give it the priority to consume CPU time over other running processes
+    - Each goroutine starts an infinite loop to consume as much CPU as possible
+
+> NB: stressing 100% of the allocated cpuset DOES NOT MEAN stressing 100% of all cores allocated if the defined CPU is below 1 in Kubernetes (e.g. `100m`)
+> NB2: container being part of the same pods can have similar core associated, however we still need to stress each of them like if they were alone, linux CPU scheduler is the one that will throttling us appropriately
 
 <p align="center"><kbd>
     <img src="img/cpu/cgroup_disrupted.png" width=500 align="center" />
@@ -47,8 +57,12 @@ This because those tools are mostly relying on processes they can see to display
 
 Example `sysbench` without the CPU pressure applied:
 
-```
-root@demo-curl-8589cffd98-ccjqg:/# sysbench --test=cpu run
+```sh
+/ # cat /sys/fs/cgroup/cpuset/cpuset.cpus
+0-5
+/ # sysbench cpu run
+sysbench 1.0.20-ac698b5ce3 (using bundled LuaJIT 2.1.0-beta2)
+
 Running the test with following options:
 Number of threads: 1
 Initializing random number generator from current time
@@ -61,28 +75,32 @@ Initializing worker threads...
 Threads started!
 
 CPU speed:
-    events per second:  1177.67
+    events per second:  5519.40
 
 General statistics:
     total time:                          10.0004s
-    total number of events:              11780
+    total number of events:              55201
 
 Latency (ms):
-         min:                                  0.70
-         avg:                                  0.85
-         max:                                 18.00
-         95th percentile:                      1.10
-         sum:                               9975.80
+         min:                                    0.17
+         avg:                                    0.18
+         max:                                    0.64
+         95th percentile:                        0.20
+         sum:                                 9969.81
 
 Threads fairness:
-    events (avg/stddev):           11780.0000/0.00
-    execution time (avg/stddev):   9.9758/0.00
+    events (avg/stddev):           55201.0000/0.00
+    execution time (avg/stddev):   9.9698/0.00
 ```
 
-Example `sysbench` with the CPU pressure applied:
+Example `sysbench` with the 100% `examples/cpu_pressure.yaml` CPU pressure applied:
 
-```
-root@demo-curl-8589cffd98-ccjqg:/# sysbench --test=cpu run
+```sh
+/ # cat /sys/fs/cgroup/cpuset/cpuset.cpus
+0-5
+/ # sysbench cpu run
+sysbench 1.0.20-ac698b5ce3 (using bundled LuaJIT 2.1.0-beta2)
+
 Running the test with following options:
 Number of threads: 1
 Initializing random number generator from current time
@@ -95,40 +113,77 @@ Initializing worker threads...
 Threads started!
 
 CPU speed:
-    events per second:   115.48
+    events per second:   196.13
 
 General statistics:
-    total time:                          10.5973s
-    total number of events:              1224
+    total time:                          10.0024s
+    total number of events:              1962
 
 Latency (ms):
-         min:                                  0.72
-         avg:                                  8.65
-         max:                                906.92
-         95th percentile:                     74.46
-         sum:                              10592.69
+         min:                                    0.17
+         avg:                                    5.09
+         max:                                   77.96
+         95th percentile:                       59.99
+         sum:                                 9979.32
 
 Threads fairness:
-    events (avg/stddev):           1224.0000/0.00
-    execution time (avg/stddev):   10.5927/0.00
+    events (avg/stddev):           1962.0000/0.00
+    execution time (avg/stddev):   9.9793/0.00
+```
+
+Example `sysbench` with the 1/6 core (16% per core) `examples/cpu_pressure.yaml` CPU pressure applied:
+
+```sh
+/ # cat /sys/fs/cgroup/cpuset/cpuset.cpus
+0-5
+/ # sysbench cpu run
+sysbench 1.0.20-ac698b5ce3 (using bundled LuaJIT 2.1.0-beta2)
+
+Running the test with following options:
+Number of threads: 1
+Initializing random number generator from current time
+
+
+Prime numbers limit: 10000
+
+Initializing worker threads...
+
+Threads started!
+
+CPU speed:
+    events per second:  3308.87
+
+General statistics:
+    total time:                          10.0049s
+    total number of events:              33107
+
+Latency (ms):
+         min:                                    0.17
+         avg:                                    0.30
+         max:                                   58.44
+         95th percentile:                        0.21
+         sum:                                 9974.76
+
+Threads fairness:
+    events (avg/stddev):           33107.0000/0.00
+    execution time (avg/stddev):   9.9748/0.00
 ```
 
 ## Manual cleanup instructions
 
 :information_source: All those commands must be executed on the infected host (except for `kubectl`).
 
-- Identify the injector process PID
+- Identify the injector process PIDs
 
-```
-# ps ax | grep injector
-   4376 ?        Ssl    7:42 /app/cmd/cainjector/cainjector --v=2 --leader-election-namespace=kube-system
-1113879 ?        Ssl    0:00 /usr/local/bin/injector node-failure inject --metrics-sink noop --level pod --target-container-ids containerd://cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460,containerd://629c7da02cbcf77c6b7131a59f5be50579d9e374433a444210b6547186dd5f0d --target-pod-ip 10.244.0.8 --chaos-namespace chaos-engineering --log-context-disruption-name dry-run --log-context-disruption-namespace chaos-demo --log-context-target-name demo-curl-547bb9c686-57484 --log-context-target-node-name lima --dry-run
-1117684 pts/0    R+     0:00 grep injector
+```sh
+# ps ax | grep chaos-injector
+1113879 ?        Ssl    0:00 /usr/local/bin/chaos-injector cpu-pressure inject --metrics-sink noop --level pod --target-container-ids containerd://cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460,containerd://629c7da02cbcf77c6b7131a59f5be50579d9e374433a444210b6547186dd5f0d --target-pod-ip 10.244.0.8 --chaos-namespace chaos-engineering --log-context-disruption-name dry-run --log-context-disruption-namespace chaos-demo --log-context-target-name demo-curl-547bb9c686-57484 --log-context-target-node-name lima --dry-run
+1117684 pts/0    R+     0:00 grep chaos-injector
 ```
 
-- Kill the injector process
+- Kill the injector processes
 
-```
+```sh
 # kill 1113879
 ```
 
@@ -136,8 +191,7 @@ _You can SIGKILL the injector process if it is stuck but a standard kill is reco
 
 - Ensure the injector process is gone
 
-```
-# ps ax | grep injector
-   4376 ?        Ssl    7:42 /app/cmd/cainjector/cainjector --v=2 --leader-election-namespace=kube-system
-1119071 pts/0    S+     0:00 grep injector
+```sh
+# ps ax | grep chaos-injector
+1119071 pts/0    S+     0:00 grep chaos-injector
 ```

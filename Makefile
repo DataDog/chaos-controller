@@ -1,4 +1,4 @@
-.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all e2e-test test lima-install manifests delete-controller-gen install-controller-gen update-controller-gen
+.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all e2e-test test lima-install manifests lima-restart delete-controller-gen install-controller-gen update-controller-gen
 .SILENT: release
 
 # Lima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
@@ -20,14 +20,17 @@ CONTROLLER_GEN_VERSION = v0.11.3
 # you might also want to change ~/lima.yaml k3s version
 KUBERNETES_MAJOR_VERSION ?= 1.26
 KUBERNETES_VERSION ?= v$(KUBERNETES_MAJOR_VERSION).0
-GOLANGCI_LINT_VERSION ?= 1.51.0
-HELM_VERSION ?= 3.11.3
+GOLANGCI_LINT_VERSION ?= 1.52.2
 KUBEBUILDER_VERSION ?= 3.1.0
 USE_VOLUMES ?= false
+HELM_VERSION ?= 3.11.3
+HELM_VALUES ?= dev.yaml
 
-# expired disruption gc delay enable to speed up chaos controller disruption removal for e2e testing
-# it's used to check if disruptions are deleted as expected as soon as the expiration delay occurs
-EXPIRED_DISRUPTION_GC_DELAY ?= 10m
+# Additional args to provide to test runner (ginkgo)
+# examples:
+# `make test TEST_ARGS=--until-it-fails` to run tests randomly and repeatedly until a failure might occur (help to detect flaky tests or wrong tests setup)
+# `make test TEST_ARGS=injector` will focus on package injector to run tests
+TEST_ARGS ?=
 
 OS_ARCH=amd64
 ifeq (arm64,$(shell uname -m))
@@ -64,7 +67,7 @@ docker-build-handler: IMAGE_TAG=$(HANDLER_IMAGE)
 docker-build-manager: IMAGE_TAG=$(MANAGER_IMAGE)
 
 docker-build-ebpf:
-	docker build --platform linux/$(OS_ARCH) --build-arg ARCH=$(OS_ARCH) -t ebpf-builder-$(OS_ARCH) -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
+	docker buildx build --platform linux/$(OS_ARCH) --build-arg ARCH=$(OS_ARCH) -t ebpf-builder-$(OS_ARCH) -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
 	-rm -r bin/injector/ebpf/
 ifeq (true,$(USE_VOLUMES))
 # create a dummy container with volume to store files
@@ -105,7 +108,7 @@ _$(1)_amd:
 $(1): _$(1) _$(1)_arm _$(1)_amd
 
 docker-build-$(1): _docker-build-$(1) $(1)
-	docker build --build-arg TARGETARCH=$(OS_ARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
+	docker buildx build --build-arg TARGETARCH=$(OS_ARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
 	docker save $$(IMAGE_TAG) -o ./bin/$(1)/$(1).tar.gz
 
 lima-push-$(1): docker-build-$(1)
@@ -141,14 +144,16 @@ _ginkgo_test:
 # Do not stop on any error
 	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going \
 		--cover --coverprofile=cover.profile --randomize-all \
-		--race --trace --json-report=$(GO_TEST_REPORT_NAME).json --junit-report=$(GO_TEST_REPORT_NAME).xml \
+		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
+		--compilers=4 --procs=4 \
+		--poll-progress-after=10s --poll-progress-interval=10s \
 		$(GO_TEST_ARGS) \
-			&& touch $(GO_TEST_REPORT_NAME)-succeed
+			&& touch report-$(GO_TEST_REPORT_NAME)-succeed
 # Try upload test reports if allowed and necessary prerequisites exists
 ifneq (true,$(GO_TEST_SKIP_UPLOAD)) # you can bypass test upload
 ifdef DATADOG_API_KEY # if no API key bypass is guaranteed
 ifneq (,$(shell which datadog-ci)) # same if no test binary
-	-DD_ENV=$(DD_ENV) datadog-ci junit upload --service chaos-controller $(GO_TEST_REPORT_NAME).xml
+	-DD_ENV=$(DD_ENV) datadog-ci junit upload --service chaos-controller --tags="team:chaos-engineering,type:$(GO_TEST_REPORT_NAME)" report-$(GO_TEST_REPORT_NAME).xml
 else
 	@echo "datadog-ci binary is not installed, run 'make install-datadog-ci' to upload tests results to datadog"
 endif
@@ -159,14 +164,13 @@ else
 	@echo "datadog-ci junit upload SKIPPED"
 endif
 # Fail if succeed file does not exists
-	[ -f $(GO_TEST_REPORT_NAME)-succeed ] && rm -f $(GO_TEST_REPORT_NAME)-succeed || exit 1
+	[ -f report-$(GO_TEST_REPORT_NAME)-succeed ] && rm -f report-$(GO_TEST_REPORT_NAME)-succeed || exit 1
 
 # Tests & CI
 ## Run unit tests
 test: generate manifests
-	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=report-$@ \
-		GO_TEST_ARGS="-r --compilers=4 --procs=4 --skip-package=controllers \
---randomize-suites --timeout=10m --poll-progress-after=5s --poll-progress-interval=5s"
+	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
+		GO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -204,16 +208,20 @@ ci-install-minikube:
 	minikube start --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
 	minikube status
 
+SKIP_DEPLOY ?=
+
 ## Run e2e tests (against a real cluster)
-e2e-test: generate
-	$(MAKE) lima-install EXPIRED_DISRUPTION_GC_DELAY=10s
-	USE_EXISTING_CLUSTER=true $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=report-$@ \
-		GO_TEST_ARGS="controllers --timeout=15m --poll-progress-after=15s \
---poll-progress-interval=15s"
+## to run them locally you first need to run `make install-kubebuilder`
+e2e-test: generate manifests
+ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
+	$(MAKE) lima-install HELM_VALUES=ci.yaml
+endif
+	USE_EXISTING_CLUSTER=true $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
+		GO_TEST_ARGS="--timeout=15m controllers"
 
 # Test chaosli API portability
 chaosli-test:
-	docker build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
+	docker buildx build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
 
 # Go actions
 ## Generate manifests e.g. CRD, RBAC etc.
@@ -228,10 +236,15 @@ fmt:
 vet:
 	go vet ./...
 
+install-lint-deps:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
+
 ## Run golangci-lint against code
 lint: install-lint-deps
-	golangci-lint version
-	golangci-lint run
+# By using GOOS=linux we aim to validate files as if we were on linux
+# you can use a similar trick with gopls to have vs-code linting your linux platform files instead of darwin
+	GOOS=linux golangci-lint run --no-config -E ginkgolinter ./...
+	GOOS=linux golangci-lint run
 
 ## Generate code
 generate: install-controller-gen
@@ -251,8 +264,8 @@ lima-install-cert-manager:
 	$(KUBECTL) -n cert-manager rollout status deployment/cert-manager-webhook --timeout=180s
 
 lima-install-demo:
-	kubectl apply -f ./examples/namespace.yaml
-	kubectl apply -f ./examples/demo.yaml
+	$(KUBECTL) apply -f - < ./examples/namespace.yaml
+	$(KUBECTL) apply -f - < ./examples/demo.yaml
 	$(KUBECTL) -n chaos-demo rollout status deployment/demo-curl --timeout=60s
 	$(KUBECTL) -n chaos-demo rollout status deployment/demo-nginx --timeout=60s
 
@@ -262,20 +275,22 @@ lima-install-demo:
 ## we override images for all of our components to the expected namespace
 lima-install: manifests
 	helm template \
-		--set controller.enableSafeguards=false \
-		--set controller.expiredDisruptionGCDelay=${EXPIRED_DISRUPTION_GC_DELAY} \
-		--values ./chart/values/dev.yaml \
+		--values ./chart/values/$(HELM_VALUES) \
 		./chart | $(KUBECTL) apply -f -
+ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
 	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
+endif
 
 ## Uninstall CRDs and controller from a lima k3s cluster
 lima-uninstall:
-	helm template ./chart | $(KUBECTL) delete -f -
+	helm template --values ./chart/values/$(HELM_VALUES) ./chart | $(KUBECTL) delete -f -
 
 ## Restart the chaos-controller pod
 lima-restart:
-	$(KUBECTL) -n chaos-engineering rollout restart deployment chaos-controller
+ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
+	$(KUBECTL) -n chaos-engineering rollout restart deployment/chaos-controller
 	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
+endif
 
 ## Remove lima references from kubectl config
 lima-kubectx-clean:
@@ -350,7 +365,7 @@ clean-mocks:
 	rm -rf mocks/
 
 generate-mocks: clean-mocks
-	go install github.com/vektra/mockery/v2@v2.25.0
+	go install github.com/vektra/mockery/v2@v2.26.1
 	go generate ./...
 # First re-generate header, it should complain as just (re)generated mocks does not contains them
 	-$(MAKE) header-check
@@ -424,3 +439,14 @@ install-lint-deps:
 
 install-datadog-ci:
 	curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_$(OS)-x64" --output "$(GOBIN)/datadog-ci" && chmod u+x $(GOBIN)/datadog-ci
+
+lima-install-local:
+# uninstall using a non local value to ensure deployment is deleted
+	-$(MAKE) lima-uninstall HELM_VALUES=dev.yaml
+	$(MAKE) lima-install HELM_VALUES=local.yaml
+
+pre-debug: generate manifests lima-install-local
+	@echo "now you can launch through vs-code or your favorite IDE a controller in debug with appropriate configuration (--config=chart/values/local.yaml + CONTROLLER_NODE_NAME=local)"
+
+local: generate manifests lima-install-local
+	CONTROLLER_NODE_NAME=local go run main.go --config=chart/values/local.yaml

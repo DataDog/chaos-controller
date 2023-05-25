@@ -6,7 +6,7 @@
 package cmd
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"os"
 	"reflect"
@@ -18,11 +18,12 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/types"
-	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/cli-runtime/pkg/printers"
 )
 
 var createCmd = &cobra.Command{
@@ -35,25 +36,26 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			fmt.Printf("There were some problems when validating your disruption: %v", err)
 		}
-		jsonRep, err := json.MarshalIndent(spec, "", " ")
-		if err != nil {
-			fmt.Printf("json err: %v", err)
+
+		disruption := v1beta1.Disruption{
+			TypeMeta:   v1beta1.TypeMeta,
+			ObjectMeta: askObjectMeta(),
+			Spec:       spec,
 		}
 
-		jsonRep = []byte(fmt.Sprintf(`{"apiVersion": "chaos.datadoghq.com/v1beta1", "kind": "Disruption", "metadata": %s, "spec": %s}`, getMetadata(), jsonRep))
-
-		y, err := yaml.JSONToYAML(jsonRep)
-		if err != nil {
-			fmt.Printf("yaml err: %v", err)
+		b := bytes.Buffer{}
+		if err := (&printers.YAMLPrinter{}).PrintObj(&disruption, &b); err != nil {
+			fmt.Printf("printObj err: %v", err)
+			return
 		}
 
 		path, _ := cmd.Flags().GetString("path")
-		err = os.WriteFile(path, y, 0644) // #nosec
-		if err != nil {
+		if err = os.WriteFile(path, b.Bytes(), 0o600); err != nil {
 			fmt.Printf("writeFile err: %v", err)
+			return
 		}
 
-		fmt.Printf("We wrote your disruption to %s, thanks!", path)
+		fmt.Printf("We wrote your disruption to %s, thanks!\n", path)
 	},
 }
 
@@ -74,7 +76,6 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 	spec := v1beta1.DisruptionSpec{}
 
 	err := promptForKind(&spec)
-
 	if err != nil {
 		return spec, err
 	}
@@ -87,7 +88,7 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 
 	isPulsingCompatible := true
 
-	for _, disruptionKind := range spec.GetKindNames() {
+	for _, disruptionKind := range spec.KindNames() {
 		if disruptionKind == types.DisruptionKindContainerFailure || disruptionKind == types.DisruptionKindNodeFailure {
 			isPulsingCompatible = false
 			break
@@ -329,7 +330,7 @@ func getSliceInput(query string, helpText string, opts ...survey.AskOpt) []strin
 	return strings.Split(results, "\n")
 }
 
-func getMetadata() []byte {
+func askObjectMeta() metav1.ObjectMeta {
 	fmt.Println("Last step, you just have to name your disruption, and specify what k8s namespace it should live in.")
 
 	validator := func(val interface{}) error {
@@ -357,7 +358,10 @@ func getMetadata() []byte {
 		survey.WithValidator(validator),
 	)
 
-	return []byte(fmt.Sprintf(`{"name": %s, "namespace": %s}`, name, namespace))
+	return metav1.ObjectMeta{
+		Name:      name,
+		Namespace: namespace,
+	}
 }
 
 func getDNS() v1beta1.DNSDisruptionSpec {
@@ -655,7 +659,10 @@ func getCount() *intstr.IntOrString {
 }
 
 func getOnInit() bool {
-	onInitExplanations := "An OnInit disruption is a disruption which will be launched on the initialization of your targeted pod(s), enabling the disruption to be working directly at the start of the disrupted pod(s).\nTo make it work, you need to add \"chaos.datadoghq.com/disrupt-on-init: \"true\"\" to the labels of your targeted pod(s) and redeploy them."
+	onInitExplanations := fmt.Sprintf(
+		"An OnInit disruption is a disruption which will be launched on the initialization of your targeted pod(s), enabling the disruption to be working directly at the start of the disrupted pod(s).\nTo make it work, you need to add \"%s: \"true\"\" to the labels of your targeted pod(s) and redeploy them.",
+		types.DisruptOnInitLabel,
+	)
 
 	fmt.Println(onInitExplanations)
 
@@ -741,7 +748,6 @@ For example, if you set both "app=hello-node" and "pod-name=ubuntu-uuid", then n
 
 	for _, s := range selectors {
 		sAsSet, err := labels.ConvertSelectorToLabelsMap(s)
-
 		if err != nil {
 			fmt.Printf("invalid selector string: %v", err)
 			return nil
@@ -768,7 +774,6 @@ For example, if you set both "app=hello-node" and "pod-name=ubuntu-uuid", then n
 
 		for _, f := range filters {
 			fAsSet, err := labels.ConvertSelectorToLabelsMap(f)
-
 			if err != nil {
 				fmt.Printf("invalid selector string: %v", err)
 				return nil
@@ -786,12 +791,11 @@ For example, if you set both "app=hello-node" and "pod-name=ubuntu-uuid", then n
 func getLevel() types.DisruptionLevel {
 	level, err := selectInput(
 		"Select the Disruption Level.",
-		[]string{types.DisruptionLevelNode, types.DisruptionLevelPod},
+		[]string{string(types.DisruptionLevelNode), string(types.DisruptionLevelPod)},
 		"This will affect targeting with the label selectors, as well as injecting (depending on the disruption kind).",
 	)
-
 	if err != nil {
-		level = types.DisruptionLevelPod
+		level = string(types.DisruptionLevelPod)
 	}
 
 	return types.DisruptionLevel(level)

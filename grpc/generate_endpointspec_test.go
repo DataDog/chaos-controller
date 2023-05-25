@@ -58,7 +58,7 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 		})
 
 		It("should create a list of endpointSpecs with 2 elements", func() {
-			Expect(len(endpointSpec)).To(Equal(2))
+			Expect(endpointSpec).To(HaveLen(2))
 		})
 
 		It("should create and endpointSpec for api_1 with 3 elements", func() {
@@ -71,7 +71,7 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 			}
 
 			Expect(endpointSpec_1).ToNot(BeNil())
-			Expect(len(endpointSpec_1.Alterations)).To(Equal(3))
+			Expect(endpointSpec_1.Alterations).To(HaveLen(3))
 
 			canceled_found := false
 			already_exists_found := false
@@ -109,7 +109,7 @@ var _ = Describe("construct DisruptionListener query for configuring disruptions
 			}
 
 			Expect(endpointSpec_2).ToNot(BeNil())
-			Expect(len(endpointSpec_2.Alterations)).To(Equal(2))
+			Expect(endpointSpec_2.Alterations).To(HaveLen(2))
 
 			permission_denied_found := false
 			not_found_found := false

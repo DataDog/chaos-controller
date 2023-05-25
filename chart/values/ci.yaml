@@ -1,0 +1,14 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2023 Datadog, Inc.
+controller:
+  enableSafeguards: false
+  leaderElection: false
+  # by default we have a relatively long duration of disruption to ensure debug is easier locally
+  # tests requiring to be fast should adapt it when relevant, or delete disruption quicker if they can
+  defaultDuration: 5m
+  expiredDisruptionGCDelay: 30s
+  resources: # resources assigned to the controller pod. may need to be increased when deploying to larger scale clusters
+    cpu: 1
+    memory: 1Gi

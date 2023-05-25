@@ -31,5 +31,5 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	client.CleanupLibraries()
+	Expect(client.CleanupLibraries()).To(Succeed())
 })

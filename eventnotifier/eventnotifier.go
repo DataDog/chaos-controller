@@ -34,7 +34,7 @@ func GetNotifiers(config NotifiersConfig, logger *zap.SugaredLogger) (notifiers 
 	err = nil
 
 	if config.Noop.Enabled {
-		not := noop.New()
+		not := noop.New(logger)
 		notifiers = append(notifiers, not)
 	}
 

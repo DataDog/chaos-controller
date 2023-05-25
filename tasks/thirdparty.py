@@ -71,9 +71,9 @@ def license_check(ctx):
                         license_type = match.license.id
 
             # if the license has already been defined in the CSV, multiple options:
-            # - an error occured during recognition but the license has already been specified, we can keep it
+            # - an error occurred during recognition but the license has already been specified, we can keep it
             # - no error occured but the determined license is different than the one specified in the CSV (update needed)
-            # if it hasn't been defined in the CSV yet but an error occured, just exit
+            # if it hasn't been defined in the CSV yet but an error occurred, just exit
             # otherwise, we're fine
             if parent in existing_deps:
                 existing_license_type = existing_deps[parent]

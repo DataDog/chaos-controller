@@ -41,11 +41,11 @@ var _ = Describe("get mapping from alterationSpecs to config based on GetPercent
 			By("returning no errors", func() {
 				var err error
 				config, err = GetPercentagePerAlteration(alterationSpecs)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			By("returning 3 elements", func() {
-				Expect(len(config)).To(Equal(3))
+				Expect(config).To(HaveLen(3))
 			})
 
 			By("by assigning a query percentage of 20 to CANCELED error", func() {
@@ -156,11 +156,11 @@ var _ = Describe("get mapping from alterationSpecs to config based on GetPercent
 				var err error
 				config, err = GetPercentagePerAlteration(alterationSpecs)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			By("returning 1 element", func() {
-				Expect(len(config)).To(Equal(1))
+				Expect(config).To(HaveLen(1))
 			})
 
 			By("by assigning a query percentage of 40 to CANCELED error", func() {
@@ -189,11 +189,11 @@ var _ = Describe("get mapping from alterationSpecs to config based on GetPercent
 			By("returning no errors", func() {
 				var err error
 				config, err = GetPercentagePerAlteration(alterationSpecs)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			By("returning 1 element", func() {
-				Expect(len(config)).To(Equal(1))
+				Expect(config).To(HaveLen(1))
 			})
 
 			By("by assigning a query percentage of 100 to CANCELED error", func() {
@@ -232,11 +232,11 @@ var _ = Describe("get mapping from alterationSpecs to config based on GetPercent
 			By("returning no errors", func() {
 				var err error
 				config, err = GetPercentagePerAlteration(alterationSpecs)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			By("returning 3 elements", func() {
-				Expect(len(config)).To(Equal(3))
+				Expect(config).To(HaveLen(3))
 			})
 
 			By("by assigning a query percentage of 25 to CANCELED error", func() {
@@ -317,13 +317,13 @@ var _ = Describe("get mapping from alterationSpecs to config based on GetPercent
 			By("returning no errors", func() {
 				var err error
 				config, err = GetPercentagePerAlteration(alterationSpecs)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
 		It("should create a config with correct configs", func() {
 			By("returning 7 elements", func() {
-				Expect(len(config)).To(Equal(7))
+				Expect(config).To(HaveLen(7))
 			})
 
 			By("by assigning a query percentage of 90 to CANCELED error", func() {

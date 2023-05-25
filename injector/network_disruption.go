@@ -48,6 +48,7 @@ type networkDisruptionInjector struct {
 	spec       v1beta1.NetworkDisruptionSpec
 	config     NetworkDisruptionInjectorConfig
 	operations []linkOperation
+	cancel     context.CancelFunc
 }
 
 // NetworkDisruptionInjectorConfig contains all needed drivers to create a network disruption using `tc`
@@ -57,11 +58,6 @@ type NetworkDisruptionInjectorConfig struct {
 	IPTables          network.IPTables
 	NetlinkAdapter    network.NetlinkAdapter
 	DNSClient         network.DNSClient
-	State             DisruptionState
-}
-
-type DisruptionState struct {
-	State chan InjectorState
 }
 
 // tcServiceFilter describes a tc filter, representing the service filtered and its priority
@@ -112,12 +108,6 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 	if config.DNSClient == nil {
 		config.DNSClient = network.NewDNSClient()
 	}
-
-	config.State = DisruptionState{}
-
-	go func() {
-		config.State.State <- Created
-	}()
 
 	return &networkDisruptionInjector{
 		spec:       spec,
@@ -201,10 +191,6 @@ func (i *networkDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
 	}
 
-	go func() {
-		i.config.State.State <- Injected
-	}()
-
 	return nil
 }
 
@@ -214,11 +200,11 @@ func (i *networkDisruptionInjector) UpdateConfig(config Config) {
 
 // Clean removes all the injected disruption in the given container
 func (i *networkDisruptionInjector) Clean() error {
-	defer func() {
-		go func() {
-			i.config.State.State <- Cleaned
-		}()
-	}()
+	// stop all background watchers now
+	if i.cancel != nil {
+		i.cancel()
+		i.cancel = nil
+	}
 
 	// enter container network namespace
 	if err := i.config.Netns.Enter(); err != nil {
@@ -243,7 +229,7 @@ func (i *networkDisruptionInjector) Clean() error {
 	if !i.config.Cgroup.IsCgroupV2() {
 		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0"); err != nil {
 			if os.IsNotExist(err) {
-				i.config.Log.Warnw("unable to find target container's net_cls.classid file, we will assume we cannot find the cgroup path because it is gone", "targetContainerID", i.config.TargetContainer.ID(), "err", err)
+				i.config.Log.Warnw("unable to find target container's net_cls.classid file, we will assume we cannot find the cgroup path because it is gone", "targetContainerID", i.config.TargetContainer.ID(), "error", err)
 				return nil
 			}
 
@@ -775,7 +761,7 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 }
 
 // watchServiceChanges for every changes happening in the kubernetes service destination or in the pods related to the kubernetes service destination, we update the tc service filters
-func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, interfaces []string, flowid string) {
+func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, watcher serviceWatcher, interfaces []string, flowid string) {
 	for {
 		// We create the watcher channels when it's closed
 		if watcher.kubernetesServiceWatcher == nil {
@@ -810,10 +796,8 @@ func (i *networkDisruptionInjector) watchServiceChanges(watcher serviceWatcher, 
 		}
 
 		select {
-		case state := <-i.config.State.State:
-			if state == Cleaned {
-				return
-			}
+		case <-ctx.Done():
+			return
 		case event, ok := <-watcher.kubernetesServiceWatcher: // We have changes in the service watched
 			if !ok { // channel is closed
 				watcher.kubernetesServiceWatcher = nil
@@ -884,8 +868,15 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 		serviceWatchers = append(serviceWatchers, serviceWatcher)
 	}
 
+	if i.cancel != nil {
+		return fmt.Errorf("some watcher goroutines are already launched, call Clean on injector prior to Inject")
+	}
+
+	var ctx context.Context
+	ctx, i.cancel = context.WithCancel(context.Background())
+
 	for _, serviceWatcher := range serviceWatchers {
-		go i.watchServiceChanges(serviceWatcher, interfaces, flowid)
+		go i.watchServiceChanges(ctx, serviceWatcher, interfaces, flowid)
 	}
 
 	return nil

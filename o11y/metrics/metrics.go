@@ -13,6 +13,7 @@ import (
 	"github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	"github.com/DataDog/chaos-controller/o11y/metrics/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"go.uber.org/zap"
 )
 
 // Sink describes a metric sink
@@ -47,12 +48,12 @@ type Sink interface {
 }
 
 // GetSink returns an initiated sink
-func GetSink(driver types.SinkDriver, app types.SinkApp) (Sink, error) {
+func GetSink(log *zap.SugaredLogger, driver types.SinkDriver, app types.SinkApp) (Sink, error) {
 	switch driver {
 	case types.SinkDriverDatadog:
 		return datadog.New(app)
 	case types.SinkDriverNoop:
-		return noop.New(), nil
+		return noop.New(log), nil
 	default:
 		return nil, fmt.Errorf("unsupported metrics sink: %s", driver)
 	}

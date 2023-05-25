@@ -10,6 +10,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -18,26 +19,25 @@ type NotifierNoopConfig struct {
 }
 
 // Notifier describes a NOOP notifier
-type Notifier struct{}
+type Notifier struct {
+	log *zap.SugaredLogger
+}
 
 // New NOOP Notifier
-func New() *Notifier {
-	return &Notifier{}
+func New(log *zap.SugaredLogger) Notifier {
+	return Notifier{
+		log,
+	}
 }
 
 // GetNotifierName returns the driver's name
-func (n *Notifier) GetNotifierName() string {
+func (n Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverNoop)
 }
 
 // NotifyWarning generates a notification for generiv k8s Warning events
-func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
-	notify(fmt.Sprintf("Notifier %s: %s - %s", string(notifType), event.Reason, event.Message), dis.Name)
+func (n Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
+	n.log.Debugf("NOOP: %s for disruption %s\n", fmt.Sprintf("Notifier %s: %s - %s", string(notifType), event.Reason, event.Message), dis.Name)
 
 	return nil
-}
-
-// helper for noop notifier
-func notify(notificationName string, disName string) {
-	fmt.Printf("NOOP: %s for disruption %s\n", notificationName, disName)
 }
