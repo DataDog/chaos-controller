@@ -397,10 +397,11 @@ ifeq (,$(shell which controller-gen))
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 ifneq ($(shell controller-gen --version | sed "s/Version:\ //g"), $(CONTROLLER_GEN_VERSION))
-	$(info Update your controller-gen with update-controller-gen target)
+	$(info controller-gen version mismatch)
 	$(info Your Version:    $(shell controller-gen --version | sed "s/Version://g"))
 	$(info Required Version: $(CONTROLLER_GEN_VERSION))
-	exit -1
+	$(info updating your version to match required version...)
+	$(MAKE) update-controller-gen
 endif
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
