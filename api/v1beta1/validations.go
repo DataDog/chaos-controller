@@ -31,10 +31,9 @@ func validateServices(k8sClient client.Client, services []NetworkDisruptionServi
 			if client.IgnoreNotFound(err) == nil {
 				if service.Namespace == "" || service.Name == "" {
 					return fmt.Errorf("either service namespace or name have not been properly set for this service: %s/%s -> namespace/name", service.Namespace, service.Name)
-				} else {
-					return fmt.Errorf("the service specified in the network disruption (%s/%s) does not exist", service.Namespace, service.Name)
 				}
-
+				
+				return fmt.Errorf("the service specified in the network disruption (%s/%s) does not exist", service.Namespace, service.Name)
 			}
 
 			return fmt.Errorf("error retrieving the specified network disruption service: %w", err)
