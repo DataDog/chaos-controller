@@ -60,7 +60,7 @@ endif
 
 # we define target specific variables values https://www.gnu.org/software/make/manual/html_node/Target_002dspecific.html
 injector handler: BINARY_PATH=./cli/$(BINARY_NAME)
-manager: BINARY_PATH=main.go
+manager: BINARY_PATH=.
 
 docker-build-injector: IMAGE_TAG=$(INJECTOR_IMAGE)
 docker-build-handler: IMAGE_TAG=$(HANDLER_IMAGE)
