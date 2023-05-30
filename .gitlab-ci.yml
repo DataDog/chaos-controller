@@ -56,23 +56,24 @@ build:make:
     - make all docker-build-ebpf
   artifacts:
     paths:
-      - bin/injector/injector_amd64
       - bin/manager/manager_amd64
-      - bin/handler/handler_amd64
-      - bin/injector/injector_arm64
       - bin/manager/manager_arm64
+      - bin/injector/injector_amd64
+      - bin/injector/injector_arm64
+      - bin/handler/handler_amd64
       - bin/handler/handler_arm64
       - bin/injector/ebpf/*
 
 # build the target from the local Dockerfile and push it to the registry
 # replication will depend on the TARGET_LABEL set by parent job
+# we always push images with the exact commit SHA on top of any other TAG based images
 .build-image: &build-image
   <<: *docker-hub-login
   script:
     - docker buildx create --use
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/manager/Dockerfile ./bin/manager/ --push
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/injector/Dockerfile ./bin/injector/ --push
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG} --label target=${TARGET_LABEL} -f bin/handler/Dockerfile ./bin/handler/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG} -t registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${CI_COMMIT_SHA} --label target=${TARGET_LABEL} -f bin/manager/Dockerfile ./bin/manager/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG} -t registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${CI_COMMIT_SHA} --label target=${TARGET_LABEL} -f bin/injector/Dockerfile ./bin/injector/ --push
+    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG} -t registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${CI_COMMIT_SHA} --label target=${TARGET_LABEL} -f bin/handler/Dockerfile ./bin/handler/ --push
   dependencies:
     - build:make
 
