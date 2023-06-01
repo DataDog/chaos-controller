@@ -64,7 +64,6 @@ type config struct {
 type controllerConfig struct {
 	MetricsBindAddr          string                          `json:"metricsBindAddr"`
 	MetricsSink              string                          `json:"metricsSink"`
-	ImagePullSecrets         string                          `json:"imagePullSecrets"`
 	ExpiredDisruptionGCDelay time.Duration                   `json:"expiredDisruptionGCDelay"`
 	DefaultDuration          time.Duration                   `json:"defaultDuration"`
 	DeleteOnly               bool                            `json:"deleteOnly"`
@@ -100,6 +99,7 @@ type injectorConfig struct {
 	ServiceAccount    string                          `json:"serviceAccount"`
 	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
+	ImagePullSecrets  string                          `json:"imagePullSecrets"`
 }
 
 type injectorDNSDisruptionConfig struct {
@@ -142,7 +142,7 @@ func main() {
 	pflag.BoolVar(&cfg.Controller.EnableObserver, "enable-observer", true, "Enable observer on targets")
 	handleFatalError(viper.BindPFlag("controller.enableObserver", pflag.Lookup("enable-observer")))
 
-	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
+	pflag.StringVar(&cfg.Injector.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
 
 	pflag.DurationVar(&cfg.Controller.ExpiredDisruptionGCDelay, "expired-disruption-gc-delay", time.Minute*(-1), "Duration after a disruption expires before being automatically deleted, leave unset to disable")
@@ -404,7 +404,7 @@ func main() {
 		InjectorDNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
-		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
+		ImagePullSecrets:                      cfg.Injector.ImagePullSecrets,
 		ExpiredDisruptionGCDelay:              gcPtr,
 		CacheContextStore:                     make(map[string]controllers.CtxTuple),
 		Reader:                                mgr.GetAPIReader(),

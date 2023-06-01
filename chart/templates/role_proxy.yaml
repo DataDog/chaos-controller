@@ -5,23 +5,17 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
-  name: chaos-injector-role
+  name: chaos-controller-proxy
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - list
-  - get
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - list
-  - get
-  - watch
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create

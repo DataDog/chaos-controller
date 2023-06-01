@@ -8,7 +8,6 @@
 {{- $altName1 := printf "chaos-controller-webhook-service.%s.svc" .Values.chaosNamespace }}
 {{- $altName2 := printf "chaos-controller-webhook-service.%s.svc.cluster.local" .Values.chaosNamespace }}
 {{- $cert := genSignedCert $cn nil (list $altName1 $altName2) 3650 $ca }}
----
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
