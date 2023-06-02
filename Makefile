@@ -226,7 +226,9 @@ chaosli-test:
 # Go actions
 ## Generate manifests e.g. CRD, RBAC etc.
 manifests: install-controller-gen
-	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:crdVersions=v1 paths="./..." output:crd:dir=./chart/templates/crds/ output:rbac:dir=./chart/templates/
+	$(CONTROLLER_GEN) rbac:roleName=chaos-controller crd:crdVersions=v1 paths="./..." output:crd:dir=./chart/templates/generated/ output:rbac:dir=./chart/templates/generated/
+# ensure generated files stays formatted as expected
+	go run github.com/google/yamlfmt/cmd/yamlfmt@v0.9.0 chart/templates/generated
 
 ## Run go fmt against code
 fmt:
@@ -235,9 +237,6 @@ fmt:
 ## Run go vet against code
 vet:
 	go vet ./...
-
-install-lint-deps:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
 
 ## Run golangci-lint against code
 lint: install-lint-deps
@@ -331,22 +330,22 @@ venv:
 	test -d .venv || python3 -m venv .venv
 	source .venv/bin/activate; pip install -qr tasks/requirements.txt
 
-header-check: venv
+header: venv
 	source .venv/bin/activate; inv header-check
 
-license-check: venv
+header-fix:
+# First re-generate header, it should complain as just (re)generated mocks does not contains them
+	-$(MAKE) header
+# Then, re-generate header, it should succeed as now all files contains headers as expected, and command return with an happy exit code
+	$(MAKE) header
+
+license: venv
 	source .venv/bin/activate; inv license-check
 
 godeps:
 	go mod tidy; go mod vendor
 
-deps: godeps license-check
-
-install-protobuf:
-	curl -sSLo /tmp/${PROTOC_ZIP} https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
-	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} bin/protoc
-	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} 'include/*'
-	rm -f /tmp/${PROTOC_ZIP}
+deps: godeps license
 
 generate-disruptionlistener-protobuf:
 	cd grpc/disruptionlistener && \
@@ -367,13 +366,30 @@ clean-mocks:
 generate-mocks: clean-mocks
 	go install github.com/vektra/mockery/v2@v2.26.1
 	go generate ./...
-# First re-generate header, it should complain as just (re)generated mocks does not contains them
-	-$(MAKE) header-check
-# Then, re-generate header, it should succeed as now all files contains headers as expected, and command return with an happy exit code
-	$(MAKE) header-check
+	$(MAKE) header-fix
 
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
+
+lima-install-local:
+# uninstall using a non local value to ensure deployment is deleted
+	-$(MAKE) lima-uninstall HELM_VALUES=dev.yaml
+	$(MAKE) lima-install HELM_VALUES=local.yaml
+
+pre-debug: generate manifests lima-install-local
+	@echo "now you can launch through vs-code or your favorite IDE a controller in debug with appropriate configuration (--config=chart/values/local.yaml + CONTROLLER_NODE_NAME=local)"
+
+local: generate manifests lima-install-local
+	CONTROLLER_NODE_NAME=local go run main.go --config=chart/values/local.yaml
+
+install-protobuf:
+	curl -sSLo /tmp/${PROTOC_ZIP} https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
+	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} bin/protoc
+	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} 'include/*'
+	rm -f /tmp/${PROTOC_ZIP}
+
+install-lint-deps:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
 
 install-kubebuilder:
 # download kubebuilder and install locally.
@@ -385,16 +401,8 @@ install-kubebuilder:
 
 install-helm:
 	curl -sSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-v$(HELM_VERSION)-$(OS)-$(OS_ARCH).tar.gz"
-	tar -xvzf /tmp/helm.tar.gz --directory=${GOPATH}/bin --strip-components=1 $(OS)-$(OS_ARCH)/helm
+	tar -xvzf /tmp/helm.tar.gz --directory=$(GOBIN) --strip-components=1 $(OS)-$(OS_ARCH)/helm
 	rm /tmp/helm.tar.gz
-
-# delete controller-gen
-delete-controller-gen:
-ifeq (,$(shell which controller-gen))
-	$(info controller-gen is not installed)
-else
-	rm $(shell which controller-gen)
-endif
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -409,44 +417,7 @@ ifeq (,$(shell which controller-gen))
 	CGO_ENABLED=0 go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
-CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-ifneq ($(shell controller-gen --version | sed "s/Version:\ //g"), $(CONTROLLER_GEN_VERSION))
-	$(info controller-gen version mismatch)
-	$(info Your Version:    $(shell controller-gen --version | sed "s/Version://g"))
-	$(info Required Version: $(CONTROLLER_GEN_VERSION))
-	$(info updating your version to match required version...)
-	$(MAKE) update-controller-gen
 endif
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
-
-# update controller-gen
-update-controller-gen: delete-controller-gen
-	$(info installing controller-gen...)
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	CGO_ENABLED=0 go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
-
-## install golangci-lint at the correct version if not
-install-lint-deps:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
 
 install-datadog-ci:
 	curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_$(OS)-x64" --output "$(GOBIN)/datadog-ci" && chmod u+x $(GOBIN)/datadog-ci
-
-lima-install-local:
-# uninstall using a non local value to ensure deployment is deleted
-	-$(MAKE) lima-uninstall HELM_VALUES=dev.yaml
-	$(MAKE) lima-install HELM_VALUES=local.yaml
-
-pre-debug: generate manifests lima-install-local
-	@echo "now you can launch through vs-code or your favorite IDE a controller in debug with appropriate configuration (--config=chart/values/local.yaml + CONTROLLER_NODE_NAME=local)"
-
-local: generate manifests lima-install-local
-	CONTROLLER_NODE_NAME=local go run main.go --config=chart/values/local.yaml

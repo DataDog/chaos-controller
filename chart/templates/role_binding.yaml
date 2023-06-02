@@ -2,6 +2,7 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2023 Datadog, Inc.
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -32,6 +33,19 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  name: chaos-controller-proxy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: chaos-controller-proxy
+subjects:
+  - kind: ServiceAccount
+    name: chaos-controller
+    namespace: "{{ .Values.chaosNamespace }}"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
   name: chaos-injector
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -40,30 +54,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: chaos-injector
-    namespace: "{{ .Values.chaosNamespace }}"
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: chaos-controller-manager
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: chaos-controller
-subjects:
-  - kind: ServiceAccount
-    name: chaos-controller
-    namespace: "{{ .Values.chaosNamespace }}"
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: chaos-controller-proxy
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: chaos-controller-proxy
-subjects:
-  - kind: ServiceAccount
-    name: chaos-controller
     namespace: "{{ .Values.chaosNamespace }}"

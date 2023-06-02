@@ -1,4 +1,3 @@
-
 {{/* Generate a full container image name from an image context (repo/name/tag) */}}
 {{/* To provide default values and partial override, do something similar to :
 {{/* - {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.controller.image) }} */}}
