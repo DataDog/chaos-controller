@@ -52,8 +52,8 @@ build:make:
     - apt-get -y install build-essential git
     - curl -O https://dl.google.com/go/${GO_FILENAME}
     - rm -rf /usr/local/go && tar -C /usr/local -xzf ${GO_FILENAME}
-    - export PATH=$PATH:/usr/local/go/bin
-    - make all docker-build-ebpf
+    - export PATH="/usr/local/go/bin:${PATH}"
+    - make GOBIN=/usr/local/go/bin all docker-build-ebpf
   artifacts:
     paths:
       - bin/manager/manager_amd64
