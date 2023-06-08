@@ -12,6 +12,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -59,12 +60,20 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 
 	dis.Annotations = annotations
 
-	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption", trace.WithNewRoot())
-	m.Log.Debugw("debug parent disruption",
-		"step", "reconcile span start",
-		"disruptionSpan", disruptionSpan,
-		"disruptionSpanContext", disruptionSpan.SpanContext(),
-	)
+	userInfo, err := dis.UserInfo()
+	if err != nil {
+		m.Log.Errorw("error getting user info", "error", err)
+
+		userInfo.Username = "generic.chaos.monkey@email.com"
+	}
+
+	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption", trace.WithNewRoot(), trace.WithAttributes(
+		attribute.String("disruption_name", dis.Name),
+		attribute.String("disruption_namespace", dis.Namespace),
+		attribute.String("disruption_user", userInfo.Username),
+	))
+
+	disruptionSpan.AddEvent("disruption start")
 
 	defer disruptionSpan.End()
 
@@ -75,7 +84,7 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 	)
 
 	// writes the traceID and spanID in the annotations of the disruption
-	err := dis.SetSpanContext(ctx)
+	err = dis.SetSpanContext(ctx)
 	if err != nil {
 		m.Log.Errorw("error defining SpanContext", "error", err, "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace)
 	}

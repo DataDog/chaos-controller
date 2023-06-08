@@ -24,6 +24,7 @@ import (
 	"github.com/DataDog/chaos-controller/watchers"
 	"github.com/cenkalti/backoff"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -172,9 +173,21 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 		r.log.Errorw("did not find span context", "err", err)
 	}
 
-	disruptionSpan := trace.SpanFromContext(ctx)
+	userInfo, err := instance.UserInfo()
+	if err != nil {
+		r.log.Errorw("error getting user info", "error", err)
 
-	_, reconcileSpan := otel.Tracer("").Start(ctx, "reconcile")
+		userInfo.Username = "generic.chaos.monkey@email.com"
+	}
+
+	disruptionSpan := trace.SpanFromContext(ctx)
+	_, reconcileSpan := otel.Tracer("").Start(ctx, "reconcile", trace.WithLinks(trace.LinkFromContext(ctx)),
+		trace.WithAttributes(
+			attribute.String("disruption_name", instance.Name),
+			attribute.String("disruption_namespace", instance.Namespace),
+			attribute.String("disruption_user", userInfo.Username),
+		))
+
 	defer reconcileSpan.End()
 
 	r.log.Debugw("debug parent disruption",
