@@ -60,8 +60,19 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 	dis.Annotations = annotations
 
 	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption", trace.WithNewRoot())
+	m.Log.Debugw("debug parent disruption",
+		"step", "reconcile span start",
+		"disruptionSpan", disruptionSpan,
+		"disruptionSpanContext", disruptionSpan.SpanContext(),
+	)
 
-	m.Log.Debugw("debug parent disruption", "step", "disruption span creation", "disruptionSpan", disruptionSpan, "disruptionSpanContext", disruptionSpan.SpanContext())
+	defer disruptionSpan.End()
+
+	m.Log.Debugw("debug parent disruption",
+		"step", "reconcile span start",
+		"disruptionSpan", disruptionSpan,
+		"disruptionSpanContext", disruptionSpan.SpanContext(),
+	)
 
 	// writes the traceID and spanID in the annotations of the disruption
 	err := dis.SetSpanContext(ctx)

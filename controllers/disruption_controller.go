@@ -173,10 +173,17 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 	}
 
 	disruptionSpan := trace.SpanFromContext(ctx)
-	r.log.Debugw("debug parent disruption", "step", "reconcile span start", "disruptionSpan", disruptionSpan, "disruptionSpanContext", disruptionSpan.SpanContext())
 
 	_, reconcileSpan := otel.Tracer("").Start(ctx, "reconcile")
 	defer reconcileSpan.End()
+
+	r.log.Debugw("debug parent disruption",
+		"step", "reconcile span start",
+		"disruptionSpan", disruptionSpan,
+		"disruptionSpanContext", disruptionSpan.SpanContext(),
+		"reconcileSpan", reconcileSpan,
+		"reconcileSpanContext", reconcileSpan.SpanContext(),
+	)
 
 	// allows to sync logs with traces
 	r.log = r.log.With(r.TracerSink.GetLoggableTraceContext(reconcileSpan)...)
@@ -227,14 +234,15 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 
 			// close the ongoing disruption tracing Span
 			defer func() {
-				ctx, err := instance.ExtractSpanContext(context.Background())
-				if err != nil {
-					r.log.Errorw("could not end the disruption span", "err", err)
-				}
+				r.log.Debugw("debug parent disruption",
+					"step", "reconcile span start",
+					"disruptionSpan", disruptionSpan,
+					"disruptionSpanContext", disruptionSpan.SpanContext(),
+					"reconcileSpan", reconcileSpan,
+					"reconcileSpanContext", reconcileSpan.SpanContext(),
+				)
 
-				r.log.Debugw("debug parent disruption", "step", "disruption span end", "disruptionSpan", disruptionSpan, "disruptionSpanContext", disruptionSpan.SpanContext())
-
-				trace.SpanFromContext(ctx).End()
+				disruptionSpan.End()
 			}()
 
 			return ctrl.Result{}, nil
