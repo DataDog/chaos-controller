@@ -182,7 +182,7 @@ slack-notifier-build.on-failure:
     - main
     - tags
 
-.slack-notifier-release-staging:
+.slack-notifier-release-staging: &.slack-notifier-release-staging
   image: registry.ddbuild.io/slack-notifier:sdm
   tags: [ "runner:main" ]
   stage: notify
@@ -192,7 +192,7 @@ slack-notifier-build.on-failure:
     - /usr/local/bin/notify.sh
 
 slack-notifier-release-staging.on-success:
-  extends: .slack-notifier-release-staging
+  <<: .slack-notifier-release-staging
   when: on_success
   variables:
     MESSAGE: ':check: | Staging Image Build Complete | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ][ $CI_COMMIT_SHA ]'
