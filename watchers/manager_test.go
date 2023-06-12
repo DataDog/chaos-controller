@@ -27,7 +27,7 @@ var _ = Describe("Manager of watchers", func() {
 	const methodWatcherGetContextTuple string = "GetContextTuple"
 
 	var (
-		controllerMock              *mocks.ControllerMock
+		controllerMock              *mocks.RuntimeControllerMock
 		ctxTuple                    CtxTuple
 		err                         error
 		readerMock                  *mocks.ReaderMock
@@ -57,7 +57,7 @@ var _ = Describe("Manager of watchers", func() {
 		watcherMock1 = NewWatcherMock(GinkgoT())
 		watcherMock2 = NewWatcherMock(GinkgoT())
 		readerMock = mocks.NewReaderMock(GinkgoT())
-		controllerMock = mocks.NewControllerMock(GinkgoT())
+		controllerMock = mocks.NewRuntimeControllerMock(GinkgoT())
 
 		watcherManager = NewManager(readerMock, controllerMock)
 	})
@@ -481,7 +481,7 @@ var _ = Describe("Manager of watchers", func() {
 	})
 })
 
-func createSingleWatcher(name string, manager Manager, controllerMock *mocks.ControllerMock, tuple CtxTuple, source *mocks.SyncingSourceMock) (watcherMock *WatcherMock) {
+func createSingleWatcher(name string, manager Manager, controllerMock *mocks.RuntimeControllerMock, tuple CtxTuple, source *mocks.SyncingSourceMock) (watcherMock *WatcherMock) {
 	controllerMock.EXPECT().Watch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	watcherMock = NewWatcherMock(GinkgoT())
@@ -505,7 +505,7 @@ func createSingleWatcher(name string, manager Manager, controllerMock *mocks.Con
 	return
 }
 
-func createTwoWatchers(manager Manager, controllerMock *mocks.ControllerMock, watcher1CtxTuple, watcher2CtxTuple CtxTuple, watcher1SyncSource, watcher2SyncSource *mocks.SyncingSourceMock) (watcherMock1, watcherMock2 *WatcherMock) {
+func createTwoWatchers(manager Manager, controllerMock *mocks.RuntimeControllerMock, watcher1CtxTuple, watcher2CtxTuple CtxTuple, watcher1SyncSource, watcher2SyncSource *mocks.SyncingSourceMock) (watcherMock1, watcherMock2 *WatcherMock) {
 	watcherMock1 = createSingleWatcher("watcher1", manager, controllerMock, watcher1CtxTuple, watcher1SyncSource)
 	watcherMock2 = createSingleWatcher("watcher2", manager, controllerMock, watcher2CtxTuple, watcher2SyncSource)
 	return

@@ -57,7 +57,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 
 	JustBeforeEach(func() {
 		// Arrange
-		controllerMock := mocks.NewControllerMock(GinkgoT())
+		controllerMock := mocks.NewRuntimeControllerMock(GinkgoT())
 
 		// Act
 		disruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(controllerMock, watcherFactoryMock, readerMock, logger)

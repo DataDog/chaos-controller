@@ -16,7 +16,7 @@ packages:
     interfaces:
       Controller:
         config:
-          mockname: ControllerMock
+          mockname: RuntimeControllerMock
   sigs.k8s.io/controller-runtime/pkg/client:
     interfaces:
       Reader:

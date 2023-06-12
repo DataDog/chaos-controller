@@ -195,7 +195,6 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionFinished, "", "")
 
 			r.DisruptionsWatchersManager.RemoveAllWatchers(instance)
-
 			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 			if err := r.Update(context.Background(), instance); err != nil {
