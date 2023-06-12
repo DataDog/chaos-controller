@@ -64,7 +64,7 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 	if err != nil {
 		m.Log.Errorw("error getting user info", "error", err)
 
-		userInfo.Username = "generic.chaos.monkey@email.com"
+		userInfo.Username = "did-not-find-user-info@email.com"
 	}
 
 	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption", trace.WithNewRoot(), trace.WithAttributes(
@@ -73,15 +73,9 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 		attribute.String("disruption_user", userInfo.Username),
 	))
 
-	disruptionSpan.AddEvent("disruption start")
-
 	defer disruptionSpan.End()
 
-	m.Log.Debugw("debug parent disruption",
-		"step", "reconcile span start",
-		"disruptionSpan", disruptionSpan,
-		"disruptionSpanContext", disruptionSpan.SpanContext(),
-	)
+	disruptionSpan.AddEvent("disruption start")
 
 	// writes the traceID and spanID in the annotations of the disruption
 	err = dis.SetSpanContext(ctx)
