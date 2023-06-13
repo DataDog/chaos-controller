@@ -6,7 +6,10 @@
 package datadog
 
 import (
+	"github.com/DataDog/chaos-controller/o11y"
 	"github.com/DataDog/chaos-controller/o11y/profiler/types"
+	"go.uber.org/zap"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 )
 
@@ -14,7 +17,10 @@ import (
 type Sink struct{}
 
 // New initiated datadog profiler sink
-func New() (Sink, error) {
+func New(logger *zap.SugaredLogger) (Sink, error) {
+	// the datadog profiler uses the tracer agent
+	ddtrace.UseLogger(o11y.ZapDDLogger{ZapLogger: logger})
+
 	err := profiler.Start(profiler.WithProfileTypes(
 		profiler.CPUProfile,
 		profiler.HeapProfile,
