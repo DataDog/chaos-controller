@@ -180,23 +180,13 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 		userInfo.Username = "generic.chaos.monkey@email.com"
 	}
 
-	disruptionSpan := trace.SpanFromContext(ctx)
-	_, reconcileSpan := otel.Tracer("").Start(ctx, "reconcile", trace.WithLinks(trace.LinkFromContext(ctx)),
+	ctx, reconcileSpan := otel.Tracer("").Start(ctx, "reconcile", trace.WithLinks(trace.LinkFromContext(ctx)),
 		trace.WithAttributes(
 			attribute.String("disruption_name", instance.Name),
 			attribute.String("disruption_namespace", instance.Namespace),
 			attribute.String("disruption_user", userInfo.Username),
 		))
-
 	defer reconcileSpan.End()
-
-	r.log.Debugw("debug parent disruption",
-		"step", "reconcile span start",
-		"disruptionSpan", disruptionSpan,
-		"disruptionSpanContext", disruptionSpan.SpanContext(),
-		"reconcileSpan", reconcileSpan,
-		"reconcileSpanContext", reconcileSpan.SpanContext(),
-	)
 
 	// allows to sync logs with traces
 	r.log = r.log.With(r.TracerSink.GetLoggableTraceContext(reconcileSpan)...)
@@ -247,15 +237,13 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 
 			// close the ongoing disruption tracing Span
 			defer func() {
-				r.log.Debugw("debug parent disruption",
-					"step", "reconcile span start",
-					"disruptionSpan", disruptionSpan,
-					"disruptionSpanContext", disruptionSpan.SpanContext(),
-					"reconcileSpan", reconcileSpan,
-					"reconcileSpanContext", reconcileSpan.SpanContext(),
-				)
+				_, disruptionStopSpan := otel.Tracer("").Start(ctx, "disruption deletion", trace.WithAttributes(
+					attribute.String("disruption_name", instance.Name),
+					attribute.String("disruption_namespace", instance.Namespace),
+					attribute.String("disruption_user", userInfo.Username),
+				))
 
-				disruptionSpan.End()
+				disruptionStopSpan.End()
 			}()
 
 			return ctrl.Result{}, nil

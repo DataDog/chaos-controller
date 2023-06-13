@@ -49,6 +49,13 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
+	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption creation", trace.WithNewRoot(), trace.WithAttributes(
+		attribute.String("disruption_name", dis.Name),
+		attribute.String("disruption_namespace", dis.Namespace),
+		attribute.String("disruption_user", req.UserInfo.Username),
+	))
+	defer disruptionSpan.End()
+
 	// retrieve span context
 	m.Log.Infow("storing span context in annotations", "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace)
 
@@ -60,17 +67,10 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 
 	dis.Annotations = annotations
 
-	userInfo, err := dis.UserInfo()
-	if err != nil {
-		m.Log.Errorw("error getting user info", "error", err)
-
-		userInfo.Username = "did-not-find-user-info@email.com"
-	}
-
 	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption", trace.WithNewRoot(), trace.WithAttributes(
 		attribute.String("disruption_name", dis.Name),
 		attribute.String("disruption_namespace", dis.Namespace),
-		attribute.String("disruption_user", userInfo.Username),
+		attribute.String("disruption_user", req.UserInfo.Username),
 	))
 
 	defer disruptionSpan.End()
@@ -78,7 +78,7 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 	disruptionSpan.AddEvent("disruption start")
 
 	// writes the traceID and spanID in the annotations of the disruption
-	err = dis.SetSpanContext(ctx)
+	err := dis.SetSpanContext(ctx)
 	if err != nil {
 		m.Log.Errorw("error defining SpanContext", "error", err, "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace)
 	}

@@ -102,11 +102,7 @@ func main() {
 	if err != nil {
 		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
 
-		metricsSink, err = metrics.GetSink(logger, metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
-
-		if err != nil {
-			logger.Fatalw("error creating noop metrics sink", "error", err)
-		}
+		metricsSink, _ = metrics.GetSink(logger, metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
 	}
 	// handle metrics sink client close on exit
 	defer func() {
@@ -144,7 +140,7 @@ func main() {
 		}
 	}()
 
-	// initiate Open Telemetry, set it up with the sink Provider
+	// initiate Open Telemetry, set it up with the sink Provider, use TraceContext for propagation through the CRD
 	otel.SetTracerProvider(tracerSink.GetProvider())
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 

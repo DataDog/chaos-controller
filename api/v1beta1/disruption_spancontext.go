@@ -23,10 +23,10 @@ var (
 )
 
 // SpanContext extracts this disruption's span context, injects it in the given context, then returns it
-func (d *Disruption) ExtractSpanContext(ctx context.Context) (context.Context, error) {
+func (r *Disruption) ExtractSpanContext(ctx context.Context) (context.Context, error) {
 	var annotation propagation.MapCarrier
 
-	spanContext, ok := d.Annotations[annotationSpanContextKey]
+	spanContext, ok := r.Annotations[annotationSpanContextKey]
 	if !ok {
 		return ctx, ErrNoSpanContext
 	}
@@ -42,7 +42,7 @@ func (d *Disruption) ExtractSpanContext(ctx context.Context) (context.Context, e
 }
 
 // SetSpanContext store provided spanContext into expected disruption annotation
-func (d *Disruption) SetSpanContext(ctx context.Context) error {
+func (r *Disruption) SetSpanContext(ctx context.Context) error {
 	var annotation = make(propagation.MapCarrier)
 
 	otel.GetTextMapPropagator().Inject(ctx, annotation)
@@ -52,7 +52,7 @@ func (d *Disruption) SetSpanContext(ctx context.Context) error {
 		return fmt.Errorf("unable to marshal span context: %w", err)
 	}
 
-	d.Annotations[annotationSpanContextKey] = string(marshaledAnnotation)
+	r.Annotations[annotationSpanContextKey] = string(marshaledAnnotation)
 
 	return nil
 }
