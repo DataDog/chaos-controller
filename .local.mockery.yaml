@@ -65,4 +65,5 @@ packages:
   github.com/DataDog/chaos-controller/targetselector: {}
   github.com/DataDog/chaos-controller/types: {}
   github.com/DataDog/chaos-controller/utils: {}
+  github.com/DataDog/chaos-controller/watchers: {}
   github.com/DataDog/chaos-controller/webhook: {}

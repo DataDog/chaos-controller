@@ -1,0 +1,56 @@
+all: False
+case: underscore
+disable-version-string: True
+filename: "{{.InterfaceNameSnake}}.go"
+mockname: "{{.InterfaceName}}Mock"
+with-expecter: True
+recursive: False
+dir: mocks
+outpkg: mocks
+inpackage: False
+
+# If you wish to mock an interface from the vendor, you need to define both the package and the specific interface you want to mock.
+
+packages:
+  sigs.k8s.io/controller-runtime/pkg/controller:
+    interfaces:
+      Controller:
+        config:
+          mockname: RuntimeControllerMock
+  sigs.k8s.io/controller-runtime/pkg/client:
+    interfaces:
+      Reader:
+        config:
+          mockname: ReaderMock
+  k8s.io/client-go/tools/record:
+    interfaces:
+      EventRecorder:
+        config:
+          mockname: EventRecorderMock
+  k8s.io/client-go/tools/cache:
+    interfaces:
+      ResourceEventHandler:
+        config:
+          mockname: ResourceEventHandlerMock
+      Controller:
+        config:
+          mockname: CacheControllerMock
+      Watcher:
+        config:
+          mockname: CacheWatcherMock
+      Informer:
+        config:
+          mockname: CacheInformerMock
+  sigs.k8s.io/controller-runtime/pkg/cache:
+    interfaces:
+      Informer:
+        config:
+          mockname: CacheInformerMock
+      Controller:
+        config:
+          disable: True
+  sigs.k8s.io/controller-runtime/pkg/source:
+    interfaces:
+      SyncingSource:
+        config:
+          mockname: SyncingSourceMock

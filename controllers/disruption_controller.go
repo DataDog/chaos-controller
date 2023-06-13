@@ -20,6 +20,7 @@ import (
 	"github.com/DataDog/chaos-controller/safemode"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/watchers"
 	"github.com/cenkalti/backoff"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -69,6 +70,7 @@ type DisruptionReconciler struct {
 	Reader                                client.Reader // Use the k8s API without the cache
 	EnableObserver                        bool          // Enable Observer on targets update with dynamic targeting
 	CloudServicesProvidersManager         *cloudservice.CloudServicesProvidersManager
+	DisruptionsWatchersManager            watchers.DisruptionsWatchersManager
 }
 
 type CtxTuple struct {
@@ -86,7 +88,7 @@ type CtxTuple struct {
 //+kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
 //+kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
 
-func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
+func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
@@ -152,8 +154,12 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if err := r.manageInstanceSelectorCache(instance); err != nil {
-		r.log.Errorw("error managing selector cache", "error", err)
+	if err := r.DisruptionsWatchersManager.RemoveAllOrphanWatchers(); err != nil {
+		r.log.Errorw("error during the deletion of orphan watchers", "error", err)
+	}
+
+	if err := r.DisruptionsWatchersManager.CreateAllWatchers(instance, nil, nil); err != nil {
+		r.log.Errorw("error during the creation of watchers", "error", err)
 	}
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
@@ -187,7 +193,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// we can remove the finalizer and let the resource being garbage collected
 			r.log.Infow("all chaos pods are cleaned up; removing disruption finalizer")
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionFinished, "", "")
-			r.clearInstanceSelectorCache(instance)
+
+			r.DisruptionsWatchersManager.RemoveAllWatchers(instance)
 			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 			if err := r.Update(context.Background(), instance); err != nil {
