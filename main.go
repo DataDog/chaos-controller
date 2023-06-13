@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -24,6 +25,7 @@ import (
 	profilertypes "github.com/DataDog/chaos-controller/o11y/profiler/types"
 	"github.com/DataDog/chaos-controller/targetselector"
 	"github.com/DataDog/chaos-controller/utils"
+	"github.com/DataDog/chaos-controller/watchers"
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 
 	"github.com/fsnotify/fsnotify"
@@ -42,7 +44,8 @@ import (
 	// +kubebuilder:scaffold:imports
 )
 
-//go:generate mockery
+//go:generate mockery  --config .local.mockery.yaml
+//go:generate mockery  --config .vendor.mockery.yaml
 
 var (
 	scheme   = runtime.NewScheme()
@@ -422,6 +425,30 @@ func main() {
 	}
 
 	r.Controller = cont
+
+	watcherFactory := watchers.NewWatcherFactory(logger, ms, r.Client, r.Recorder)
+	r.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, r.Reader, logger)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				logger.Debugw("Initiate the removal of all expired watchers.")
+				r.DisruptionsWatchersManager.RemoveAllExpiredWatchers()
+
+			case <-ctx.Done():
+				// Context canceled, terminate the goroutine
+				return
+			}
+		}
+	}()
+
+	defer cancel()
 
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)

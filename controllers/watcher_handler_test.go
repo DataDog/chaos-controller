@@ -78,7 +78,7 @@ var _ = Describe("Cache Handler", func() {
 			allNamespaceEvents := allNamespaceEvents(ctx)
 
 			By("ensuring WARNING STATE of initial pod WAS NOT fired (we explicitely want such to be removed)")
-			Expect(findEvent(v1beta1.EventContainerWarningState, allNamespaceEvents, initialPodName)).To(BeZero())
+			Expect(findEvent(v1beta1.EventTargetContainerWarningState, allNamespaceEvents, initialPodName)).To(BeZero())
 
 			By("ensuring DISRUPTED event WAS fired for inital target")
 			Expect(findEvent(v1beta1.EventDisrupted, allNamespaceEvents, initialPodName)).ToNot(BeZero())
