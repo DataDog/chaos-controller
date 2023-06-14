@@ -483,7 +483,7 @@ func (i *networkDisruptionInjector) removeServiceFilter(interfaces []string, tcF
 		return err
 	}
 
-	i.config.Log.Infow(fmt.Sprintf("deleted a tc filter for service %s with priority %d", tcFilter.service, tcFilter.priority), "interfaces", interfaces)
+	i.config.Log.Infow("tc filter deleted for all interfaces", "tcServiceFilter", tcFilter, "interfaces", interfaces)
 
 	return nil
 }
