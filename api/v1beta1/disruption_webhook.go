@@ -32,22 +32,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-var logger *zap.SugaredLogger
-var k8sClient client.Client
-var metricsSink metrics.Sink
-var recorder record.EventRecorder
-var deleteOnly bool
-var enableSafemode bool
-var defaultNamespaceThreshold float64
-var defaultClusterThreshold float64
-var handlerEnabled bool
-var defaultDuration time.Duration
-var cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
-var chaosNamespace string
-var ddmarkClient ddmark.Client
-var safemodeEnvironment string
+var (
+	logger                        *zap.SugaredLogger
+	k8sClient                     client.Client
+	metricsSink                   metrics.Sink
+	recorder                      record.EventRecorder
+	deleteOnly                    bool
+	enableSafemode                bool
+	defaultNamespaceThreshold     float64
+	defaultClusterThreshold       float64
+	handlerEnabled                bool
+	defaultDuration               time.Duration
+	cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
+	chaosNamespace                string
+	ddmarkClient                  ddmark.Client
+	safemodeEnvironment           string
+)
 
-const SafemodeEnvironmentAnnotation = "chaos.datadoghq.com/environment"
+const SafemodeEnvironmentAnnotation = GroupName + "/environment"
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	var err error
@@ -189,7 +191,7 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	// send informative event to disruption to broadcast
-	recorder.Event(r, Events[EventDisruptionCreated].Type, EventDisruptionCreated, Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+	recorder.Event(r, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 	return nil
 }
@@ -327,7 +329,7 @@ func (r *Disruption) getMetricsTags() []string {
 	}
 
 	// add kinds
-	for _, kind := range r.Spec.GetKindNames() {
+	for _, kind := range r.Spec.KindNames() {
 		tags = append(tags, "kind:"+string(kind))
 	}
 

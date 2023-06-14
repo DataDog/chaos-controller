@@ -11,8 +11,9 @@ metadata:
   annotations:
     chaos.datadoghq.com/environment: "lima"
 spec:
+  level: node # selector targets nodes instead of pods. Targeting a pod will impact the node hosting given pod.
   selector:
-    app: demo-curl
+    kubernetes.io/hostname: lima-default
   count: 1
   nodeFailure:
     shutdown: false # trigger a kernel panic on the node

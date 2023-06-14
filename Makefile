@@ -1,5 +1,14 @@
-.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all e2e-test test lima-install manifests
+.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all e2e-test test lima-install manifests lima-restart install-controller-gen
 .SILENT: release
+
+GOOS = $(shell go env GOOS)
+GOARCH = $(shell go env GOARCH)
+
+# GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
+GOBIN ?= $(shell go env GOBIN)
+ifeq (,$(GOBIN))
+GOBIN = $(shell go env GOPATH)/bin
+endif
 
 # Lima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
 # https://github.com/abiosoft/colima#interacting-with-image-registry
@@ -19,23 +28,33 @@ PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
 # you might also want to change ~/lima.yaml k3s version
 KUBERNETES_MAJOR_VERSION ?= 1.26
 KUBERNETES_VERSION ?= v$(KUBERNETES_MAJOR_VERSION).0
-GOLANGCI_LINT_VERSION ?= 1.51.0
-HELM_VERSION ?= 3.11.3
 KUBEBUILDER_VERSION ?= 3.1.0
 USE_VOLUMES ?= false
 
-# https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
-GO_TEST = go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going \
-	--cover --coverprofile=cover.profile --randomize-all \
-	--race --trace --json-report=report.json --junit-report=report.xml
+HELM_VALUES ?= dev.yaml
+HELM_VERSION = v3.11.3
+HELM_INSTALLED_VERSION = $(shell (helm version --template="{{ .Version }}" || echo "") | awk '{ print $$1 }')
 
-# expired disruption gc delay enable to speed up chaos controller disruption removal for e2e testing
-# it's used to check if disruptions are deleted as expected as soon as the expiration delay occurs
-EXPIRED_DISRUPTION_GC_DELAY ?= 10m
+GOLANGCI_LINT_VERSION = 1.52.2
+GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
 
-OS_ARCH=amd64
-ifeq (arm64,$(shell uname -m))
-OS_ARCH=arm64
+CONTROLLER_GEN_VERSION = v0.11.4
+CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
+
+MOCKERY_VERSION = 2.28.2
+MOCKERY_INSTALLED_VERSION = $(shell mockery --version --quiet --config="" 2>/dev/null || echo "")
+
+# Additional args to provide to test runner (ginkgo)
+# examples:
+# `make test TEST_ARGS=--until-it-fails` to run tests randomly and repeatedly until a failure might occur (help to detect flaky tests or wrong tests setup)
+# `make test TEST_ARGS=injector` will focus on package injector to run tests
+TEST_ARGS ?=
+
+DD_ENV = local
+# https://circleci.com/docs/variables/
+# we rely on standard CI env var to adapt test upload configuration automatically
+ifeq (true,$(CI))
+DD_ENV = ci
 endif
 
 LIMA_CGROUPS=v1
@@ -43,37 +62,30 @@ ifeq (v2,$(CGROUPS))
 LIMA_CGROUPS=v2
 endif
 
-# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
-else
-GOBIN=$(shell go env GOBIN)
-endif
-
 # we define target specific variables values https://www.gnu.org/software/make/manual/html_node/Target_002dspecific.html
 injector handler: BINARY_PATH=./cli/$(BINARY_NAME)
-manager: BINARY_PATH=main.go
+manager: BINARY_PATH=.
 
 docker-build-injector: IMAGE_TAG=$(INJECTOR_IMAGE)
 docker-build-handler: IMAGE_TAG=$(HANDLER_IMAGE)
 docker-build-manager: IMAGE_TAG=$(MANAGER_IMAGE)
 
 docker-build-ebpf:
-	docker build --platform linux/$(OS_ARCH) --build-arg ARCH=$(OS_ARCH) -t ebpf-builder-$(OS_ARCH) -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
+	docker buildx build --platform linux/$(GOARCH) --build-arg ARCH=$(GOARCH) -t ebpf-builder-$(GOARCH) -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
 	-rm -r bin/injector/ebpf/
 ifeq (true,$(USE_VOLUMES))
 # create a dummy container with volume to store files
 # circleci remote docker does not allow to use volumes, locally we fallbakc to standard volume but can call this target with USE_VOLUMES=true to debug if necessary
 # https://circleci.com/docs/building-docker-images/#mounting-folders
 	-docker rm ebpf-volume
-	-docker create --platform linux/$(OS_ARCH) -v /app --name ebpf-volume ebpf-builder-$(OS_ARCH) /bin/true
+	-docker create --platform linux/$(GOARCH) -v /app --name ebpf-volume ebpf-builder-$(GOARCH) /bin/true
 	-docker cp . ebpf-volume:/app
 	-docker rm ebpf-builder
-	docker run --platform linux/$(OS_ARCH) --volumes-from ebpf-volume --name=ebpf-builder ebpf-builder-$(OS_ARCH)
+	docker run --platform linux/$(GOARCH) --volumes-from ebpf-volume --name=ebpf-builder ebpf-builder-$(GOARCH)
 	docker cp ebpf-builder:/app/bin/injector/ebpf bin/injector/ebpf
 	docker rm ebpf-builder
 else
-	docker run --rm --platform linux/$(OS_ARCH) -v $(shell pwd):/app ebpf-builder-$(OS_ARCH)
+	docker run --rm --platform linux/$(GOARCH) -v $(shell pwd):/app ebpf-builder-$(GOARCH)
 endif
 
 lima-push-injector lima-push-handler lima-push-manager: FAKE_FOR=COMPLETION
@@ -100,7 +112,7 @@ _$(1)_amd:
 $(1): _$(1) _$(1)_arm _$(1)_amd
 
 docker-build-$(1): _docker-build-$(1) $(1)
-	docker build --build-arg TARGETARCH=$(OS_ARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
+	docker buildx build --build-arg TARGETARCH=$(GOARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
 	docker save $$(IMAGE_TAG) -o ./bin/$(1)/$(1).tar.gz
 
 lima-push-$(1): docker-build-$(1)
@@ -130,11 +142,39 @@ minikube-load-all: $(addprefix minikube-load-,$(TARGETS))
 chaosli:
 	GOOS=darwin GOARCH=${OS_ARCH} CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_${OS_ARCH} ./cli/chaosli/
 
+# https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
+_ginkgo_test:
+# Run the test and write a file if succeed
+# Do not stop on any error
+	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going \
+		--cover --coverprofile=cover.profile --randomize-all \
+		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
+		--compilers=4 --procs=4 \
+		--poll-progress-after=10s --poll-progress-interval=10s \
+		$(GO_TEST_ARGS) \
+			&& touch report-$(GO_TEST_REPORT_NAME)-succeed
+# Try upload test reports if allowed and necessary prerequisites exists
+ifneq (true,$(GO_TEST_SKIP_UPLOAD)) # you can bypass test upload
+ifdef DATADOG_API_KEY # if no API key bypass is guaranteed
+ifneq (,$(shell which datadog-ci)) # same if no test binary
+	-DD_ENV=$(DD_ENV) datadog-ci junit upload --service chaos-controller --tags="team:chaos-engineering,type:$(GO_TEST_REPORT_NAME)" report-$(GO_TEST_REPORT_NAME).xml
+else
+	@echo "datadog-ci binary is not installed, run 'make install-datadog-ci' to upload tests results to datadog"
+endif
+else
+	@echo "DATADOG_API_KEY env var is not defined, create a local API key https://app.datadoghq.com/personal-settings/application-keys if you want to upload your local tests results to datadog"
+endif
+else
+	@echo "datadog-ci junit upload SKIPPED"
+endif
+# Fail if succeed file does not exists
+	[ -f report-$(GO_TEST_REPORT_NAME)-succeed ] && rm -f report-$(GO_TEST_REPORT_NAME)-succeed || exit 1
+
 # Tests & CI
 ## Run unit tests
 test: generate manifests
-	$(GO_TEST) -r --compilers=4 --procs=4 --skip-package=controllers --randomize-suites \
-		--timeout=10m --poll-progress-after=5s --poll-progress-interval=5s
+	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
+		GO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -172,20 +212,27 @@ ci-install-minikube:
 	minikube start --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
 	minikube status
 
+SKIP_DEPLOY ?=
+
 ## Run e2e tests (against a real cluster)
-e2e-test: generate
-	$(MAKE) lima-install EXPIRED_DISRUPTION_GC_DELAY=10s
-	USE_EXISTING_CLUSTER=true $(GO_TEST) controllers --timeout=15m --poll-progress-after=15s \
-		--poll-progress-interval=15s
+## to run them locally you first need to run `make install-kubebuilder`
+e2e-test: generate manifests
+ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
+	$(MAKE) lima-install HELM_VALUES=ci.yaml
+endif
+	USE_EXISTING_CLUSTER=true $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
+		GO_TEST_ARGS="--timeout=15m controllers"
 
 # Test chaosli API portability
 chaosli-test:
-	docker build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
+	docker buildx build -f ./cli/chaosli/chaosli.DOCKERFILE -t test-chaosli-image .
 
 # Go actions
 ## Generate manifests e.g. CRD, RBAC etc.
-manifests: install-controller-gen
-	$(CONTROLLER_GEN) rbac:roleName=chaos-controller-role crd:crdVersions=v1 paths="./..." output:crd:dir=./chart/templates/crds/ output:rbac:dir=./chart/templates/
+manifests: install-controller-gen install-yamlfmt
+	controller-gen rbac:roleName=chaos-controller crd:crdVersions=v1 paths="./..." output:crd:dir=./chart/templates/generated/ output:rbac:dir=./chart/templates/generated/
+# ensure generated files stays formatted as expected
+	yamlfmt chart/templates/generated
 
 ## Run go fmt against code
 fmt:
@@ -196,13 +243,15 @@ vet:
 	go vet ./...
 
 ## Run golangci-lint against code
-lint: install-lint-deps
-	golangci-lint version
-	golangci-lint run
+lint: install-golangci-lint
+# By using GOOS=linux we aim to validate files as if we were on linux
+# you can use a similar trick with gopls to have vs-code linting your linux platform files instead of darwin
+	GOOS=linux golangci-lint run --no-config -E ginkgolinter ./...
+	GOOS=linux golangci-lint run
 
 ## Generate code
 generate: install-controller-gen
-	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
+	controller-gen object:headerFile=./hack/boilerplate.go.txt paths="./..."
 
 # Lima actions
 ## Create a new lima cluster and deploy the chaos-controller into it
@@ -218,8 +267,8 @@ lima-install-cert-manager:
 	$(KUBECTL) -n cert-manager rollout status deployment/cert-manager-webhook --timeout=180s
 
 lima-install-demo:
-	kubectl apply -f ./examples/namespace.yaml
-	kubectl apply -f ./examples/demo.yaml
+	$(KUBECTL) apply -f - < ./examples/namespace.yaml
+	$(KUBECTL) apply -f - < ./examples/demo.yaml
 	$(KUBECTL) -n chaos-demo rollout status deployment/demo-curl --timeout=60s
 	$(KUBECTL) -n chaos-demo rollout status deployment/demo-nginx --timeout=60s
 
@@ -229,20 +278,22 @@ lima-install-demo:
 ## we override images for all of our components to the expected namespace
 lima-install: manifests
 	helm template \
-		--set controller.enableSafeguards=false \
-		--set controller.expiredDisruptionGCDelay=${EXPIRED_DISRUPTION_GC_DELAY} \
-		--values ./chart/values/dev.yaml \
+		--values ./chart/values/$(HELM_VALUES) \
 		./chart | $(KUBECTL) apply -f -
+ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
 	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
+endif
 
 ## Uninstall CRDs and controller from a lima k3s cluster
 lima-uninstall:
-	helm template ./chart | $(KUBECTL) delete -f -
+	helm template --values ./chart/values/$(HELM_VALUES) ./chart | $(KUBECTL) delete -f -
 
 ## Restart the chaos-controller pod
 lima-restart:
-	$(KUBECTL) -n chaos-engineering rollout restart deployment chaos-controller
+ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
+	$(KUBECTL) -n chaos-engineering rollout restart deployment/chaos-controller
 	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
+endif
 
 ## Remove lima references from kubectl config
 lima-kubectx-clean:
@@ -283,22 +334,22 @@ venv:
 	test -d .venv || python3 -m venv .venv
 	source .venv/bin/activate; pip install -qr tasks/requirements.txt
 
-header-check: venv
+header: venv
 	source .venv/bin/activate; inv header-check
 
-license-check: venv
+header-fix:
+# First re-generate header, it should complain as just (re)generated mocks does not contains them
+	-$(MAKE) header
+# Then, re-generate header, it should succeed as now all files contains headers as expected, and command return with an happy exit code
+	$(MAKE) header
+
+license: venv
 	source .venv/bin/activate; inv license-check
 
 godeps:
 	go mod tidy; go mod vendor
 
-deps: godeps license-check
-
-install-protobuf:
-	curl -sSLo /tmp/${PROTOC_ZIP} https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
-	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} bin/protoc
-	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} 'include/*'
-	rm -f /tmp/${PROTOC_ZIP}
+deps: godeps license
 
 generate-disruptionlistener-protobuf:
 	cd grpc/disruptionlistener && \
@@ -316,47 +367,92 @@ clean-mocks:
 	find . -type file -name "*mock*.go" -not -path "./vendor/*" -exec rm {} \;
 	rm -rf mocks/
 
-generate-mocks: clean-mocks
-	go install github.com/vektra/mockery/v2@v2.25.0
+generate-mocks: clean-mocks install-mockery
 	go generate ./...
-# First re-generate header, it should complain as just (re)generated mocks does not contains them
-	-$(MAKE) header-check
-# Then, re-generate header, it should succeed as now all files contains headers as expected, and command return with an happy exit code
-	$(MAKE) header-check
+	$(MAKE) header-fix
 
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
 
+lima-install-local:
+# uninstall using a non local value to ensure deployment is deleted
+	-$(MAKE) lima-uninstall HELM_VALUES=dev.yaml
+	$(MAKE) lima-install HELM_VALUES=local.yaml
+
+pre-debug: generate manifests lima-install-local
+	@echo "now you can launch through vs-code or your favorite IDE a controller in debug with appropriate configuration (--config=chart/values/local.yaml + CONTROLLER_NODE_NAME=local)"
+
+local: generate manifests lima-install-local
+	CONTROLLER_NODE_NAME=local go run main.go --config=chart/values/local.yaml
+
+install-protobuf:
+	curl -sSLo /tmp/${PROTOC_ZIP} https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
+	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} bin/protoc
+	unzip -o /tmp/${PROTOC_ZIP} -d ${GOPATH} 'include/*'
+	rm -f /tmp/${PROTOC_ZIP}
+
+install-golangci-lint:
+ifneq ($(GOLANGCI_LINT_VERSION),$(GOLANGCI_LINT_INSTALLED_VERSION))
+	$(info golangci-lint version $(GOLANGCI_LINT_VERSION) is not installed or version differ (v$(GOLANGCI_LINT_VERSION) != $(GOLANGCI_LINT_INSTALLED_VERSION)))
+	$(info installing golangci-lint v$(GOLANGCI_LINT_VERSION)...)
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOBIN) v$(GOLANGCI_LINT_VERSION)
+endif
+
 install-kubebuilder:
 # download kubebuilder and install locally.
-	curl -sSLo ${GOPATH}/bin/kubebuilder https://go.kubebuilder.io/dl/latest/$(shell go env GOOS)/$(OS_ARCH)
-	chmod u+x ${GOPATH}/bin/kubebuilder
+	curl -sSLo $(GOBIN)/kubebuilder https://go.kubebuilder.io/dl/latest/$(GOOS)/$(GOARCH)
+	chmod u+x $(GOBIN)/kubebuilder
 # download setup-envtest and install related binaries locally
 	go install -v sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 # setup-envtest use -p path $(KUBERNETES_MAJOR_VERSION).x
 
 install-helm:
-	curl -sSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-v$(HELM_VERSION)-$(shell go env GOOS)-$(OS_ARCH).tar.gz"
-	tar -xvzf /tmp/helm.tar.gz --directory=${GOPATH}/bin --strip-components=1 $(shell go env GOOS)-$(OS_ARCH)/helm
+ifneq ($(HELM_INSTALLED_VERSION),$(HELM_VERSION))
+	$(info helm version $(HELM_VERSION) is not installed or version differ ($(HELM_VERSION) != $(HELM_INSTALLED_VERSION)))
+	$(info installing helm $(HELM_VERSION)...)
+	curl -sSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-$(HELM_VERSION)-$(GOOS)-$(GOARCH).tar.gz"
+	tar -xvzf /tmp/helm.tar.gz --directory=$(GOBIN) --strip-components=1 $(GOOS)-$(GOARCH)/helm
 	rm /tmp/helm.tar.gz
+endif
 
-# find or download controller-gen
-# download controller-gen if necessary
+# install controller-gen expected version
 install-controller-gen:
-ifeq (, $(shell which controller-gen))
+ifneq ($(CONTROLLER_GEN_INSTALLED_VERSION),$(CONTROLLER_GEN_VERSION))
+	$(info controller-gen version $(CONTROLLER_GEN_VERSION) is not installed or version differ ($(CONTROLLER_GEN_VERSION) != $(CONTROLLER_GEN_INSTALLED_VERSION)))
+	$(info installing controller-gen $(CONTROLLER_GEN_VERSION)...)
 	@{ \
 	set -e ;\
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.11.3 ;\
+	CGO_ENABLED=0 go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
-CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
-## install golangci-lint at the correct version if not
-install-lint-deps:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}
+install-datadog-ci:
+	curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_$(GOOS)-x64" --output "$(GOBIN)/datadog-ci" && chmod u+x $(GOBIN)/datadog-ci
+
+install-mockery:
+# recommended way to install mockery is through their released binaries, NOT go install...
+# https://vektra.github.io/mockery/installation/#github-release
+ifneq ($(MOCKERY_INSTALLED_VERSION),v$(MOCKERY_VERSION))
+	$(info mockery version $(MOCKERY_VERSION) is not installed or version differ (v$(MOCKERY_VERSION) != $(MOCKERY_INSTALLED_VERSION)))
+	$(info installing mockery v$(MOCKERY_VERSION)...)
+	curl -sSLo /tmp/mockery.tar.gz https://github.com/vektra/mockery/releases/download/v$(MOCKERY_VERSION)/mockery_$(MOCKERY_VERSION)_$(GOOS)_$(GOARCH).tar.gz
+	tar -xvzf /tmp/mockery.tar.gz --directory=$(GOBIN) mockery
+	rm /tmp/mockery.tar.gz
+endif
+
+YAMLFMT_ARCH = $(GOARCH)
+ifeq (amd64,$(GOARCH))
+YAMLFMT_ARCH = x86_64
+endif
+
+install-yamlfmt:
+ifeq (,$(wildcard $(GOBIN)/yamlfmt))
+	$(info installing yamlfmt...)
+	curl -sSLo /tmp/yamlfmt.tar.gz https://github.com/google/yamlfmt/releases/download/v0.9.0/yamlfmt_0.9.0_$(GOOS)_$(YAMLFMT_ARCH).tar.gz
+	tar -xvzf /tmp/yamlfmt.tar.gz --directory=$(GOBIN) yamlfmt
+	rm /tmp/yamlfmt.tar.gz
+endif

@@ -9,8 +9,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const EventOnTargetTemplate string = "Failing probably caused by disruption %s: "
-const SourceDisruptionComponent string = "disruption-controller"
+const (
+	EventOnTargetTemplate     string = "Failing probably caused by disruption %s: "
+	SourceDisruptionComponent string = "disruption-controller"
+)
 
 type DisruptionEventCategory string
 
@@ -19,147 +21,161 @@ const (
 	TargetEvent DisruptionEventCategory = "TargetEvent"
 	// Event only attached to the disruption
 	DisruptEvent DisruptionEventCategory = "DisruptionEvent"
+	// Event only attached to a chaos pod
+	ChaosPodEvent DisruptionEventCategory = "ChaosPodEvent"
 )
+
+// DisruptionEventReason is the string that uniquely identify a disruption event
+type DisruptionEventReason string
+
+// MatchEventReason check if provided Kubernetes event match actual reason
+func (r DisruptionEventReason) MatchEventReason(e corev1.Event) bool {
+	return string(r) == e.Reason
+}
 
 type DisruptionEvent struct {
 	Type                           string                  // Warning or Normal
-	Reason                         string                  // Short description of the event
+	Reason                         DisruptionEventReason   // Short description of the event
 	OnTargetTemplateMessage        string                  // Template message to attach to the target resource (pod or node). Empty if the event should not be sent to a target (DisruptEvent only)
 	OnDisruptionTemplateMessage    string                  // We want to separate the aggregated message from the single message to include more info in the single message
 	OnDisruptionTemplateAggMessage string                  // Template message to attach to the disruption. Empty if the event should not be sent on a disruption
-	Category                       DisruptionEventCategory // Either TargetEvent or DisruptionEvent
+	Category                       DisruptionEventCategory // Either TargetEvent, DisruptionEvent or ChaosPodEvent
 }
 
 // Complete list of events sent out by the controller
 const (
 	// Targeted pods related
 	// Warning events
-	EventPodWarningState                      string = "TargetPodInWarningState"
-	EventContainerWarningState                string = "TargetPodContainersInWarningState"
-	EventLivenessProbeChange                  string = "TargetPodLivenessProbe"
-	EventTooManyRestarts                      string = "TargetPodTooManyRestarts"
-	EventReadinessProbeChangeBeforeDisruption string = "EventReadinessProbeChangeBeforeDisruption"
+	EventTargetPodWarningState                      DisruptionEventReason = "TargetPodInWarningState"
+	EventTargetContainerWarningState                DisruptionEventReason = "TargetPodContainersInWarningState"
+	EventTargetLivenessProbeChange                  DisruptionEventReason = "TargetPodLivenessProbe"
+	EventTargetTooManyRestarts                      DisruptionEventReason = "TargetPodTooManyRestarts"
+	EventTargetReadinessProbeChangeBeforeDisruption DisruptionEventReason = "TargetReadinessProbeChangeBeforeDisruption"
 	// Normal events
-	EventPodRecoveredState                    string = "RecoveredWarningStateInTargetPod"
-	EventReadinessProbeChangeDuringDisruption string = "EventReadinessProbeChangeDuringDisruption"
+	EventTargetPodRecoveredState                    DisruptionEventReason = "RecoveredWarningStateInTargetPod"
+	EventTargetReadinessProbeChangeDuringDisruption DisruptionEventReason = "ReadinessProbeChangeDuringDisruption"
 
 	// Targeted nodes related
 	// Warning events
-	EventNodeMemPressureState        string = "TargetNodeUnderMemoryPressure"
-	EventNodeDiskPressureState       string = "TargetNodeUnderDiskPressure"
-	EventNodeUnavailableNetworkState string = "TargetNodeUnavailableNetwork"
-	EventNodeWarningState            string = "TargetNodeInWarningState"
+	EventTargetNodeMemPressureState        DisruptionEventReason = "TargetNodeUnderMemoryPressure"
+	EventTargetNodeDiskPressureState       DisruptionEventReason = "TargetNodeUnderDiskPressure"
+	EventTargetNodeUnavailableNetworkState DisruptionEventReason = "TargetNodeUnavailableNetwork"
+	EventTargetNodeWarningState            DisruptionEventReason = "TargetNodeInWarningState"
 	// Normal events
-	EventNodeRecoveredState string = "RecoveredWarningStateInTargetNode"
+	EventTargetNodeRecoveredState DisruptionEventReason = "RecoveredWarningStateInTargetNode"
 
 	// Disruption related events
 	// Warning events
-	EventEmptyDisruption                string = "EmptyDisruption"
-	EventDisruptionCreationFailed       string = "CreateFailed"
-	EventDisruptionStuckOnRemoval       string = "StuckOnRemoval"
-	EventInvalidDisruptionLabelSelector string = "InvalidLabelSelector"
-	EventDisruptionNoMoreValidTargets   string = "NoMoreTargets"
-	EventDisruptionNoTargetsFound       string = "NoTargetsFound"
-	EventInvalidSpecDisruption          string = "InvalidSpec"
+	EventEmptyDisruption                DisruptionEventReason = "EmptyDisruption"
+	EventDisruptionCreationFailed       DisruptionEventReason = "CreateFailed"
+	EventDisruptionStuckOnRemoval       DisruptionEventReason = "StuckOnRemoval"
+	EventInvalidDisruptionLabelSelector DisruptionEventReason = "InvalidLabelSelector"
+	EventDisruptionNoMoreValidTargets   DisruptionEventReason = "NoMoreTargets"
+	EventDisruptionNoTargetsFound       DisruptionEventReason = "NoTargetsFound"
+	EventInvalidSpecDisruption          DisruptionEventReason = "InvalidSpec"
 	// Normal events
-	EventDisruptionChaosPodCreated string = "ChaosPodCreated"
-	EventDisruptionFinished        string = "Finished"
-	EventDisruptionCreated         string = "Created"
-	EventDisruptionDurationOver    string = "DurationOver"
-	EventDisruptionGCOver          string = "GCOver"
-	EventDisrupted                 string = "Disrupted"
+	EventDisruptionChaosPodCreated DisruptionEventReason = "ChaosPodCreated"
+	EventDisruptionFinished        DisruptionEventReason = "Finished"
+	EventDisruptionCreated         DisruptionEventReason = "Created"
+	EventDisruptionDurationOver    DisruptionEventReason = "DurationOver"
+	EventDisruptionGCOver          DisruptionEventReason = "GCOver"
+	EventDisrupted                 DisruptionEventReason = "Disrupted"
+
+	// Injection related events
+	// Warning events
+	EventChaosPodFailedState DisruptionEventReason = "ChaosPodWarningState"
 )
 
-var Events = map[string]DisruptionEvent{
-	EventPodWarningState: {
+var Events = map[DisruptionEventReason]DisruptionEvent{
+	EventTargetPodWarningState: {
 		Type:                           corev1.EventTypeWarning,
-		Reason:                         EventPodWarningState,
+		Reason:                         EventTargetPodWarningState,
 		OnDisruptionTemplateMessage:    "Targeted pod %s is failing",
 		OnDisruptionTemplateAggMessage: "Targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "pod is failing",
 		Category:                       TargetEvent,
 	},
-	EventContainerWarningState: {
+	EventTargetContainerWarningState: {
 		Type:                           corev1.EventTypeWarning,
-		Reason:                         EventContainerWarningState,
+		Reason:                         EventTargetContainerWarningState,
 		OnDisruptionTemplateMessage:    "Container on targeted pod %s is failing",
 		OnDisruptionTemplateAggMessage: "Containers on targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "containers on pod are failing",
 		Category:                       TargetEvent,
 	},
-	EventLivenessProbeChange: {
+	EventTargetLivenessProbeChange: {
 		Type:                           corev1.EventTypeWarning,
-		Reason:                         EventLivenessProbeChange,
+		Reason:                         EventTargetLivenessProbeChange,
 		OnDisruptionTemplateMessage:    "Liveness probe on targeted pod %s are failing",
 		OnDisruptionTemplateAggMessage: "Liveness probe(s) on targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "liveness probes on pod are failing",
 		Category:                       TargetEvent,
-	}, EventReadinessProbeChangeDuringDisruption: {
+	}, EventTargetReadinessProbeChangeDuringDisruption: {
 		Type:                           corev1.EventTypeNormal,
-		Reason:                         EventReadinessProbeChangeDuringDisruption,
+		Reason:                         EventTargetReadinessProbeChangeDuringDisruption,
 		OnDisruptionTemplateMessage:    "Readiness probe on targeted pod %s is failing",
 		OnDisruptionTemplateAggMessage: "Readiness probes on targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "readiness probes on pod are failing",
 		Category:                       TargetEvent,
-	}, EventReadinessProbeChangeBeforeDisruption: {
+	}, EventTargetReadinessProbeChangeBeforeDisruption: {
 		Type:                           corev1.EventTypeWarning,
-		Reason:                         EventReadinessProbeChangeBeforeDisruption,
+		Reason:                         EventTargetReadinessProbeChangeBeforeDisruption,
 		OnDisruptionTemplateMessage:    "Readiness probe on targeted pod %s is failing",
 		OnDisruptionTemplateAggMessage: "Readiness probes on targeted pod(s) are failing",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "readiness probes on pod are failing",
 		Category:                       TargetEvent,
 	},
-	EventTooManyRestarts: {
+	EventTargetTooManyRestarts: {
 		Type:                           corev1.EventTypeWarning,
-		Reason:                         EventTooManyRestarts,
+		Reason:                         EventTargetTooManyRestarts,
 		OnDisruptionTemplateMessage:    "Targeted pod %s has restarted too many times",
 		OnDisruptionTemplateAggMessage: "Targeted pod(s) have restarted too many times",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "pod has restarted too many times",
 		Category:                       TargetEvent,
 	},
-	EventPodRecoveredState: {
+	EventTargetPodRecoveredState: {
 		Type:                           corev1.EventTypeNormal,
-		Reason:                         EventPodRecoveredState,
+		Reason:                         EventTargetPodRecoveredState,
 		OnDisruptionTemplateMessage:    "Targeted pod %s seems to have recovered",
 		OnDisruptionTemplateAggMessage: "Targeted pod(s) seem to have recovered",
 		OnTargetTemplateMessage:        "pod seems to have recovered from the disruption %s failure",
 		Category:                       TargetEvent,
 	},
-	EventNodeMemPressureState: {
+	EventTargetNodeMemPressureState: {
 		Type:                           corev1.EventTypeWarning,
-		Reason:                         EventNodeMemPressureState,
+		Reason:                         EventTargetNodeMemPressureState,
 		OnDisruptionTemplateMessage:    "Targeted node %s is under memory pressure",
 		OnDisruptionTemplateAggMessage: "Targeted node(s) are under memory pressure",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "node is under memory pressure",
 		Category:                       TargetEvent,
 	},
-	EventNodeDiskPressureState: {
+	EventTargetNodeDiskPressureState: {
 		Type:                           corev1.EventTypeWarning,
-		Reason:                         EventNodeDiskPressureState,
+		Reason:                         EventTargetNodeDiskPressureState,
 		OnDisruptionTemplateMessage:    "Targeted node %s is under disk pressure",
 		OnDisruptionTemplateAggMessage: "Targeted node(s) are under disk pressure",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "node is under disk pressure",
 		Category:                       TargetEvent,
 	},
-	EventNodeUnavailableNetworkState: {
+	EventTargetNodeUnavailableNetworkState: {
 		Type:                           corev1.EventTypeWarning,
-		Reason:                         EventNodeUnavailableNetworkState,
+		Reason:                         EventTargetNodeUnavailableNetworkState,
 		OnDisruptionTemplateMessage:    "Targeted node %s network is unavailable",
 		OnDisruptionTemplateAggMessage: "Targeted node(s) network are unavailable",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "node network is unavaialble",
 		Category:                       TargetEvent,
 	},
-	EventNodeWarningState: {
+	EventTargetNodeWarningState: {
 		Type:                           corev1.EventTypeWarning,
-		Reason:                         EventNodeWarningState,
+		Reason:                         EventTargetNodeWarningState,
 		OnDisruptionTemplateMessage:    "Targeted node %s is not ready",
 		OnDisruptionTemplateAggMessage: "Targeted node(s) are not ready",
 		OnTargetTemplateMessage:        EventOnTargetTemplate + "node is not ready",
 		Category:                       TargetEvent,
 	},
-	EventNodeRecoveredState: {
+	EventTargetNodeRecoveredState: {
 		Type:                           corev1.EventTypeNormal,
-		Reason:                         EventNodeRecoveredState,
+		Reason:                         EventTargetNodeRecoveredState,
 		OnDisruptionTemplateMessage:    "Targeted node %s seems to have recovered",
 		OnDisruptionTemplateAggMessage: "Targeted node(s) seem to have recovered",
 		OnTargetTemplateMessage:        "Node seems to have recovered from the disruption %s failure",
@@ -243,6 +259,13 @@ var Events = map[string]DisruptionEvent{
 		OnTargetTemplateMessage: "Pod %s from disruption %s targeted this resource for injection",
 		Category:                DisruptEvent,
 	},
+	EventChaosPodFailedState: {
+		Type:                           corev1.EventTypeWarning,
+		Reason:                         EventChaosPodFailedState,
+		OnDisruptionTemplateMessage:    "Chaos pod %s is not ready. Phase: '%s'. Reason: '%s'",
+		OnDisruptionTemplateAggMessage: "Chaos pod(s) are not ready",
+		Category:                       ChaosPodEvent,
+	},
 }
 
 // IsNotifiableEvent this event can be broadcasted to our notifiers
@@ -251,14 +274,15 @@ func IsNotifiableEvent(event corev1.Event) bool {
 }
 
 func IsRecoveryEvent(event corev1.Event) bool {
-	return event.Reason == EventNodeRecoveredState || event.Reason == EventPodRecoveredState
+	return EventTargetNodeRecoveredState.MatchEventReason(event) || EventTargetPodRecoveredState.MatchEventReason(event)
 }
 
 func IsTargetEvent(event corev1.Event) bool {
-	if _, ok := Events[event.Reason]; !ok {
+	targetEvent, ok := Events[DisruptionEventReason(event.Reason)]
+	if !ok {
 		return false
 	}
 
 	return event.Source.Component == SourceDisruptionComponent &&
-		Events[event.Reason].Category == TargetEvent
+		targetEvent.Category == TargetEvent
 }

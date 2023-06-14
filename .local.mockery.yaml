@@ -1,0 +1,69 @@
+all: True
+case: underscore
+dir: "{{.InterfaceDir}}"
+inpackage: True
+disable-version-string: True
+filename: "{{.InterfaceNameSnake}}_mock.go"
+mockname: "{{.InterfaceName}}Mock"
+recursive: True
+with-expecter: True
+
+# If a new package is created it should be added in `packages` below to have it's interfaces generated
+
+packages:
+  github.com/DataDog/chaos-controller/api: {}
+  github.com/DataDog/chaos-controller/api/v1beta1: {}
+  github.com/DataDog/chaos-controller/cgroup: {}
+  github.com/DataDog/chaos-controller/cli/chaosli: {}
+  github.com/DataDog/chaos-controller/cli/chaosli/cmd: {}
+  github.com/DataDog/chaos-controller/cli/handler: {}
+  github.com/DataDog/chaos-controller/cli/injector: {}
+  github.com/DataDog/chaos-controller/clientset/v1beta1: {}
+  github.com/DataDog/chaos-controller/cloudservice: {}
+  github.com/DataDog/chaos-controller/cloudservice/aws: {}
+  github.com/DataDog/chaos-controller/cloudservice/datadog: {}
+  github.com/DataDog/chaos-controller/cloudservice/gcp: {}
+  github.com/DataDog/chaos-controller/cloudservice/types: {}
+  github.com/DataDog/chaos-controller/command: {}
+  github.com/DataDog/chaos-controller/container: {}
+  github.com/DataDog/chaos-controller/controllers: {}
+  github.com/DataDog/chaos-controller/cpuset: {}
+  github.com/DataDog/chaos-controller/ddmark: {}
+  github.com/DataDog/chaos-controller/disk: {}
+  github.com/DataDog/chaos-controller/dogfood/chaosdogfood: {}
+  github.com/DataDog/chaos-controller/dogfood/client: {}
+  github.com/DataDog/chaos-controller/dogfood/server: {}
+  github.com/DataDog/chaos-controller/ebpf:
+    config:
+      recursive: False # required because folder below exclude all go files
+  github.com/DataDog/chaos-controller/env: {}
+  github.com/DataDog/chaos-controller/eventbroadcaster: {}
+  github.com/DataDog/chaos-controller/eventnotifier: {}
+  github.com/DataDog/chaos-controller/eventnotifier/datadog: {}
+  github.com/DataDog/chaos-controller/eventnotifier/http: {}
+  github.com/DataDog/chaos-controller/eventnotifier/noop: {}
+  github.com/DataDog/chaos-controller/eventnotifier/slack: {}
+  github.com/DataDog/chaos-controller/eventnotifier/types: {}
+  github.com/DataDog/chaos-controller/eventnotifier/utils: {}
+  github.com/DataDog/chaos-controller/grpc: {}
+  github.com/DataDog/chaos-controller/grpc/calculations: {}
+  github.com/DataDog/chaos-controller/grpc/disruptionlistener: {}
+  github.com/DataDog/chaos-controller/injector: {}
+  github.com/DataDog/chaos-controller/log: {}
+  github.com/DataDog/chaos-controller/o11y/metrics: {}
+  github.com/DataDog/chaos-controller/o11y/metrics/datadog: {}
+  github.com/DataDog/chaos-controller/o11y/metrics/noop: {}
+  github.com/DataDog/chaos-controller/o11y/metrics/types: {}
+  github.com/DataDog/chaos-controller/o11y/profiler: {}
+  github.com/DataDog/chaos-controller/o11y/profiler/datadog: {}
+  github.com/DataDog/chaos-controller/o11y/profiler/noop: {}
+  github.com/DataDog/chaos-controller/o11y/profiler/types: {}
+  github.com/DataDog/chaos-controller/netns: {}
+  github.com/DataDog/chaos-controller/network: {}
+  github.com/DataDog/chaos-controller/process: {}
+  github.com/DataDog/chaos-controller/safemode: {}
+  github.com/DataDog/chaos-controller/targetselector: {}
+  github.com/DataDog/chaos-controller/types: {}
+  github.com/DataDog/chaos-controller/utils: {}
+  github.com/DataDog/chaos-controller/watchers: {}
+  github.com/DataDog/chaos-controller/webhook: {}

@@ -4,14 +4,21 @@
 # Copyright 2023 Datadog, Inc.
 chaosNamespace: chaos-engineering # namespace where any resources get created.
 
-images: # images and tag to pull for each component of the stack
-  controller: k8s.io/chaos-controller:latest
-  injector: k8s.io/chaos-injector:latest
-  handler: k8s.io/chaos-handler:latest
-  proxy: gcr.io/kubebuilder/kube-rbac-proxy:v0.4.1
-  pullSecrets: false # name of the secret object to use when pulling images
+global:
+  oci:
+    registry: k8s.io
+  chaos:
+    defaultImage:
+      repo: to-override
+      tag: latest
+      digest: ""
+      pullSecrets: false # name of the secret object to use when pulling images
 
 controller:
+  image:
+    repo: chaos-controller
+  enabled: true # should the controller and associated webhooks be deployed or not
+  leaderElection: true
   deleteOnly: false # enable delete-only mode
   enableSafeguards: true # enable safeguards on targets selection (do not target the node running the controller)
   enableObserver: true # enable observer on targets, notifying of target warning status and events
@@ -63,15 +70,19 @@ controller:
     memory: 300Mi
 
 injector:
+  image:
+    repo: chaos-injector
   annotations: {} # extra annotations passed to the chaos injector pods
   labels: {} # extra labels passed to the chaos injector pods
   serviceAccount: chaos-injector # service account to use for the chaos injector pods
   dnsDisruption: # dns disruption configuration
     dnsServer: "" # IP address of the upstream dns server
-    kubeDns: "all" # whether to use kube-dns for DNS resolution (default: "all"). Options:
-         # : "off": use the DNS server defined in the controller configuration for all resolutions
-         # : "internal": use kube-dns for internal hostnames resolution (`.local.` or `.internal.` suffixes), use the DNS server defined in the controller configuration for all other resolutions
-         # : "all": use kube-dns for all resolutions
+    kubeDns:
+      all
+      # whether to use kube-dns for DNS resolution (default: "all"). Options:
+      # : "off": use the DNS server defined in the controller configuration for all resolutions
+      # : "internal": use kube-dns for internal hostnames resolution (`.local.` or `.internal.` suffixes), use the DNS server defined in the controller configuration for all other resolutions
+      # : "all": use kube-dns for all resolutions
   networkDisruption: # network disruption general configuration
     hostResolveInterval: 1m # how often to re-resolve the hostnames we are disrupting traffic to
     allowedHosts: [] # list of always allowed hosts (even if explicitly blocked by a network disruption)
@@ -81,7 +92,18 @@ injector:
     #     port: 80
     #     protocol: tcp
     #     flow: egress
-
+    #   - host: 10.0.0.0/8
+    #     port: 81
+    #     protocol: tcp
+    #     flow: ingress
 handler:
+  image:
+    repo: chaos-handler
   enabled: true # enable the chaos handler (required to use the onInit disruption feature)
   timeout: 1m # time the handler init container will wait before exiting if no signal is received
+
+proxy:
+  image:
+    registry: gcr.io
+    repo: kubebuilder/kube-rbac-proxy
+    tag: v0.4.1

@@ -6,3 +6,12 @@ The `nodeFailure` field triggers a kernel panic on the node. Because the node wi
 * `/proc/sysrq-trigger` > `/mnt/sysrq-trigger`
 
 > :warning:️ Node behavior when using this disruption can differ depending on the cloud provider (node may or may not be replaced, restarted, cordoned, etc.).
+
+## Targeting
+
+For clarity purpose, it is mandatory to explicitly set the disruption's `level` field to either `pod` or `node`.
+
+The `nodeFailure` disruption acts on a node. However, the `level` field needs to be adapted for the selector:
+
+- if `level: node` is set, the selector will target nodes and impact those nodes directly.
+- if `level: pod` is set, the selector will targets pods and impact the nodes that host them.

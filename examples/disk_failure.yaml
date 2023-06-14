@@ -8,6 +8,8 @@ kind: Disruption
 metadata:
   name: disk-failure
   namespace: chaos-demo
+  annotations:
+    chaos.datadoghq.com/environment: "lima"
 spec:
   level: pod
   selector:

@@ -2,12 +2,12 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2023 Datadog, Inc.
+{{- if .Values.controller.enabled }}
 {{- $ca := genCA "chaos-controller-webhook-service-ca" 3650 }}
 {{- $cn := "chaos-controller-webhook-service" }}
 {{- $altName1 := printf "chaos-controller-webhook-service.%s.svc" .Values.chaosNamespace }}
 {{- $altName2 := printf "chaos-controller-webhook-service.%s.svc.cluster.local" .Values.chaosNamespace }}
 {{- $cert := genSignedCert $cn nil (list $altName1 $altName2) 3650 $ca }}
----
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
@@ -187,4 +187,5 @@ metadata:
 data:
   tls.crt: {{ b64enc $cert.Cert }}
   tls.key: {{ b64enc $cert.Key }}
+{{- end }}
 {{- end }}

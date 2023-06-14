@@ -2,24 +2,23 @@
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2023 Datadog, Inc.
-
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: chaos-controller-config
-  namespace: {{ .Values.chaosNamespace }}
+  name: chaos-controller
+  namespace: "{{ .Values.chaosNamespace }}"
 data:
   config.yaml: |
     controller:
-      metricsBindAddr: "127.0.0.1:8080"
-      leaderElection: true
+      metricsBindAddr: 127.0.0.1:8080
+      leaderElection: {{ .Values.controller.leaderElection }}
       metricsSink: {{ .Values.controller.metricsSink | quote }}
       profilerSink: {{ .Values.controller.profilerSink | quote }}
       enableSafeguards: {{ .Values.controller.enableSafeguards }}
       enableObserver: {{ .Values.controller.enableObserver }}
       notifiers:
         common:
-          clusterName: {{ .Values.controller.notifiers.common.clusterName | quote }}
+          clusterName: {{ tpl .Values.controller.notifiers.common.clusterName . }}
         noop:
           enabled: {{ .Values.controller.notifiers.noop.enabled }}
         slack:
@@ -29,9 +28,7 @@ data:
         http:
           enabled: {{ .Values.controller.notifiers.http.enabled }}
           url: {{ .Values.controller.notifiers.http.url | quote }}
-          headers: {{- range .Values.controller.notifiers.http.headers }}
-            - {{ . | quote }}
-          {{- end }}
+          headers: {{ .Values.controller.notifiers.http.headers | toJson }}
           headersFilepath: {{ .Values.controller.notifiers.http.headersFilepath | quote }}
         datadog:
           enabled: {{ .Values.controller.notifiers.datadog.enabled }}
@@ -48,25 +45,21 @@ data:
           enabled: {{ .Values.controller.cloudProviders.datadog.enabled }}
           ipRangesURL: {{ .Values.controller.cloudProviders.datadog.ipRangesURL }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
-      imagePullSecrets: {{ .Values.images.pullSecrets }}
       defaultDuration: {{ .Values.controller.defaultDuration }}
       expiredDisruptionGCDelay: {{ .Values.controller.expiredDisruptionGCDelay }}
       userInfoHook: {{ .Values.controller.userInfoHook }}
       webhook:
-        {{- if .Values.controller.webhook.generateCert }}
-        certDir: /tmp/k8s-webhook-server/serving-certs
-        {{- else }}
-        certDir: {{ .Values.controller.webhook.certDir | quote }}
-        {{- end }}
+        certDir: {{ .Values.controller.webhook.generateCert | ternary "/tmp/k8s-webhook-server/serving-certs" (.Values.controller.webhook.certDir | quote)  }}
         host: {{ .Values.controller.webhook.host | quote }}
         port: {{ .Values.controller.webhook.port }}
       safeMode:
-        environment: {{ .Values.controller.safeMode.environment }}
         enable: {{ .Values.controller.safeMode.enable }}
+        environment: {{ tpl .Values.controller.safeMode.environment . }}
         namespaceThreshold: {{ .Values.controller.safeMode.namespaceThreshold }}
         clusterThreshold: {{ .Values.controller.safeMode.clusterThreshold }}
     injector:
-      image: {{ .Values.images.injector | quote }}
+      image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.injector.image }}
+      imagePullSecrets: {{ .Values.injector.image.pullSecrets }}
       {{- if .Values.injector.annotations }}
       annotations:
         {{- range $key, $val := .Values.injector.annotations }}
@@ -89,10 +82,11 @@ data:
         hostResolveInterval: {{ .Values.injector.networkDisruption.hostResolveInterval | quote }}
         allowedHosts:
           {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}
-          - {{ printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") | quote }}
+          {{ $v := printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") -}}
+          - {{ tpl $v $ }}
           {{- end }}
       {{- end }}
     handler:
+      image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.handler.image }}
       enabled: {{ .Values.handler.enabled }}
-      image: {{ .Values.images.handler | quote }}
       timeout: {{ .Values.handler.timeout | quote }}

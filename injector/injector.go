@@ -22,9 +22,10 @@ import (
 type InjectorState string
 
 const (
-	Created  InjectorState = "created"
-	Injected InjectorState = "injected"
-	Cleaned  InjectorState = "cleaned"
+	Created           InjectorState = "created"
+	Injected          InjectorState = "injected"
+	Cleaned           InjectorState = "cleaned"
+	UnknownTargetName               = "unknown target name"
 )
 
 // Injector is an interface being able to inject or clean disruptions
@@ -46,4 +47,20 @@ type Config struct {
 	K8sClient          kubernetes.Interface
 	DNS                network.DNSConfig
 	Disruption         chaosapi.DisruptionArgs
+}
+
+// TargetName returns the name of the target that relates to this configuration
+// node name if the disruption if at the node level
+// target container name if available
+// UnknownTargetName otherwise
+func (c Config) TargetName() string {
+	if c.Disruption.Level == types.DisruptionLevelNode {
+		return c.Disruption.TargetNodeName
+	}
+
+	if c.TargetContainer != nil {
+		return c.TargetContainer.Name()
+	}
+
+	return UnknownTargetName
 }

@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -24,6 +25,7 @@ import (
 	profilertypes "github.com/DataDog/chaos-controller/o11y/profiler/types"
 	"github.com/DataDog/chaos-controller/targetselector"
 	"github.com/DataDog/chaos-controller/utils"
+	"github.com/DataDog/chaos-controller/watchers"
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 
 	"github.com/fsnotify/fsnotify"
@@ -42,7 +44,8 @@ import (
 	// +kubebuilder:scaffold:imports
 )
 
-//go:generate mockery
+//go:generate mockery  --config .local.mockery.yaml
+//go:generate mockery  --config .vendor.mockery.yaml
 
 var (
 	scheme   = runtime.NewScheme()
@@ -64,7 +67,6 @@ type config struct {
 type controllerConfig struct {
 	MetricsBindAddr          string                          `json:"metricsBindAddr"`
 	MetricsSink              string                          `json:"metricsSink"`
-	ImagePullSecrets         string                          `json:"imagePullSecrets"`
 	ExpiredDisruptionGCDelay time.Duration                   `json:"expiredDisruptionGCDelay"`
 	DefaultDuration          time.Duration                   `json:"defaultDuration"`
 	DeleteOnly               bool                            `json:"deleteOnly"`
@@ -100,6 +102,7 @@ type injectorConfig struct {
 	ServiceAccount    string                          `json:"serviceAccount"`
 	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
+	ImagePullSecrets  string                          `json:"imagePullSecrets"`
 }
 
 type injectorDNSDisruptionConfig struct {
@@ -143,7 +146,7 @@ func main() {
 	pflag.BoolVar(&cfg.Controller.EnableObserver, "enable-observer", true, "Enable observer on targets")
 	handleFatalError(viper.BindPFlag("controller.enableObserver", pflag.Lookup("enable-observer")))
 
-	pflag.StringVar(&cfg.Controller.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
+	pflag.StringVar(&cfg.Injector.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 	handleFatalError(viper.BindPFlag("controller.imagePullSecrets", pflag.Lookup("image-pull-secrets")))
 
 	pflag.DurationVar(&cfg.Controller.ExpiredDisruptionGCDelay, "expired-disruption-gc-delay", time.Minute*(-1), "Duration after a disruption expires before being automatically deleted, leave unset to disable")
@@ -338,12 +341,11 @@ func main() {
 	}
 
 	// metrics sink
-	ms, err := metrics.GetSink(metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
-
+	ms, err := metrics.GetSink(logger, metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
 	if err != nil {
 		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
 
-		ms, err = metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
+		ms, err = metrics.GetSink(logger, metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
 
 		if err != nil {
 			logger.Fatalw("error creating noop metrics sink", "error", err)
@@ -364,12 +366,11 @@ func main() {
 	}
 
 	// profiler sink
-	prfl, err := profiler.GetSink(profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
-
+	prfl, err := profiler.GetSink(logger, profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
 	if err != nil {
 		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
 
-		prfl, err = profiler.GetSink(profilertypes.SinkDriverNoop)
+		prfl, err = profiler.GetSink(logger, profilertypes.SinkDriverNoop)
 
 		if err != nil {
 			logger.Errorw("error while creating noop profiler sink", "error", err)
@@ -410,7 +411,7 @@ func main() {
 		InjectorDNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
 		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
-		ImagePullSecrets:                      cfg.Controller.ImagePullSecrets,
+		ImagePullSecrets:                      cfg.Injector.ImagePullSecrets,
 		ExpiredDisruptionGCDelay:              gcPtr,
 		CacheContextStore:                     make(map[string]controllers.CtxTuple),
 		Reader:                                mgr.GetAPIReader(),
@@ -423,11 +424,35 @@ func main() {
 
 	cont, err := r.SetupWithManager(mgr, kubeInformerFactory)
 	if err != nil {
-		logger.Errorw("unable to create controller", "controller", "Disruption", "error", err)
+		logger.Errorw("unable to create controller", "controller", chaosv1beta1.DisruptionKind, "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
 
 	r.Controller = cont
+
+	watcherFactory := watchers.NewWatcherFactory(logger, ms, r.Client, r.Recorder)
+	r.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, r.Reader, logger)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				logger.Debugw("Initiate the removal of all expired watchers.")
+				r.DisruptionsWatchersManager.RemoveAllExpiredWatchers()
+
+			case <-ctx.Done():
+				// Context canceled, terminate the goroutine
+				return
+			}
+		}
+	}()
+
+	defer cancel()
 
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
@@ -451,7 +476,7 @@ func main() {
 		Environment:                   cfg.Controller.SafeMode.Environment,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Disruption")
+		setupLog.Error(err, "unable to create webhook", "webhook", chaosv1beta1.DisruptionKind)
 		os.Exit(1) //nolint:gocritic
 	}
 

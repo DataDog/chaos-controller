@@ -70,18 +70,14 @@ You can run the controller locally (e.g. in your IDE) and point it to an existin
 
 Follow the steps below:
 
-1. Set your Kubernetes context to the required cluster:
+1. Create a `certs` folder under the existing [chart](../chart) directory. Inside `certs` create the local Certificate (e.g. `tls.crt`) and the private key (e.g. `tls.key`) files. These will be used for the webhook. You could generate these or get them from an existing deploy; you will find them in the `chaos-controller-webhook-secret` Secret, in base64 format.
+2. Run the local `make` target:
+
+   ```sh
+   make local
    ```
-   kubectl config use-context <context>
-   ```
-2. Create a `certDir` folder under the existing [local](../local) directory. Inside `certDir` create the local Certificate (e.g. `tls.crt`) and the private key (e.g. `tls.key`) files. These will be used for the webhook. You could generate these or get them from an existing deploy; you will find them in the `chaos-controller-webhook-secret` Secret, in base64 format.
-3. Set the config file in the program arguments:
-   ```
-   --config=local/config.yaml
-   ```
-4. Set the environment variable below. The value does not matter as the safeguards are disabled in the local setup:
-   `CONTROLLER_NODE_NAME=local`
-5. Make sure to delete any resource related to the controller. If the controller is already installed, you can scale its replicas down to 0. You will also need to delete the controller's `ValidatingWebhookConfigurations` and `MutatingWebhookConfigurations` resources.
+
+NB: the above suggested make target will delete ALL resources related to the controller in your local Kubernetes cluster. You will have to reinstall it afterwards by using `make lima-install`.
 
 ## Basic Troubleshooting
 

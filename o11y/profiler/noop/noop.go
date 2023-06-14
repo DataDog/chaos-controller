@@ -6,23 +6,27 @@
 package noop
 
 import (
-	"fmt"
-
 	"github.com/DataDog/chaos-controller/o11y/profiler/types"
+	"go.uber.org/zap"
 )
 
 // Sink describes a no-op profiler sink
-type Sink struct{}
+type Sink struct {
+	log *zap.SugaredLogger
+}
 
 // New NOOP Sink
-func New() Sink {
-	fmt.Println("NOOP Sink: Profiler Started")
-	return Sink{}
+func New(log *zap.SugaredLogger) Sink {
+	log.Debug("NOOP Sink: Profiler Started")
+
+	return Sink{
+		log,
+	}
 }
 
 // Stop profiler
 func (n Sink) Stop() {
-	fmt.Println("NOOP Sink: Profiler Stopped")
+	n.log.Debug("NOOP Sink: Profiler Stopped")
 }
 
 // GetSinkName returns the name of the sink

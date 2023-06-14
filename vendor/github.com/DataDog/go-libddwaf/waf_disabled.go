@@ -11,8 +11,6 @@ package waf
 import (
 	"errors"
 	"time"
-
-	rc "github.com/DataDog/datadog-agent/pkg/remoteconfig/state"
 )
 
 type (
@@ -34,16 +32,16 @@ func Version() string { return "" }
 // NewHandle creates a new instance of the WAF with the given JSON rule.
 func NewHandle([]byte, string, string) (*Handle, error) { return nil, errDisabledReason }
 
+// NewHandleFromRuleSet creates a new instance of the WAF with the given ruleset and key/value regexps for obfuscation.
+func NewHandleFromRuleSet(interface{}, string, string) (*Handle, error) {
+	return nil, errDisabledReason
+}
+
 // Addresses returns the list of addresses the WAF rule is expecting.
 func (*Handle) Addresses() []string { return nil }
 
 // RulesetInfo returns the rules initialization metrics for the current WAF handle
 func (*Handle) RulesetInfo() RulesetInfo { return RulesetInfo{} }
-
-// UpdateRuleData updates the data that some rules reference to.
-// The given rule data must be a raw JSON string of the form
-// [ {rule data #1}, ... {rule data #2} ]
-func (*Handle) UpdateRulesData(data []rc.ASMDataRuleData) error { return errDisabledReason }
 
 // Close the WAF and release the underlying C memory as soon as there are
 // no more WAF contexts using the rule.

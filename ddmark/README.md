@@ -52,10 +52,26 @@ It also allows us to define custom rules to apply to our structures, and focus t
   - `// +ddmark:validation:ExclusiveFields={<fieldName1>,<fieldName2>,...}`
   - Applies to: any `<struct>` type
   - Asserts that `<fieldname1>` can only be non-nil iff all of the other fields are `nil`
-- LinkedFields:
-  - `// +ddmark:validation:LinkedFields={<fieldName1>,<fieldName2>,...}`
-  - Applies to: any `<struct>` type
-  - Asserts the fields in the list are either all `nil` or all non-`nil`
+- LinkedFieldsValue:
+  - without values:
+    -  `// +ddmark:validation:LinkedFieldsValue={<fieldName1>,<fieldName2>,...}`
+    - Applies to: any `<struct>` type
+    - Asserts the fields in the list are either all `nil` or all non-`nil`
+  - with values:
+    - `// +ddmark:validation:LinkedFieldsValue={<fieldName1>=<value>,<fieldName2>,...}`
+    - Applies to: any `<struct>` type -- value checks are only for `string` and `int` subfields
+    - Asserts the fields in the list are either all `nil` (or are *specifically* set to the indicated value) or all non-`nil` (or are ***specifically not*** set to the given value)
+    - Fields with values and without values can be mixed
+- LinkedFieldsValueWithTrigger
+  - without values:
+    - `// +ddmark:validation:LinkedFieldsValueWithTrigger={<fieldName1>, <fieldName2>,...}`
+    - Applies to: any `<struct>` type
+    - Asserts the following: if the first field is non-`nil`, all the following fields have to also be non-`nil`
+  - with values:
+    - `// +ddmark:validation:LinkedFieldsValueWithTrigger={<fieldName1>=<value>, <fieldName2>,...}`
+    - Applies to: any `<struct>` type -- value checks are only for `string` and `int` subfields 
+    - Asserts the following: if the first field is non-`nil` OR is set to the given `<value>`, all the following fields have to also be non-`nil` OR set to their given `<value>`.
+    - Fields with values and without values can be mixed
 - AtLeastOneOf:
   - `// +ddmark:validation:AtLeastOneOf={<fieldName1>,<fieldName2>,...}`
   - Applies to: any `<struct>` type

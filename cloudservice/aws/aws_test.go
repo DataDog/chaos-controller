@@ -26,14 +26,14 @@ var _ = Describe("AWS Parsing", func() {
 
 		It("should parse the ip range file", func() {
 			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Ensuring that the right version string was parsed")
 			Expect(info.Version).To(Equal("1000000000"))
 
 			By("Ensuring that we have the right info")
-			Expect(len(info.IPRanges["AMAZON"])).To(Equal(0))
-			Expect(len(info.IPRanges["S3"])).To(Equal(1))
+			Expect(info.IPRanges["AMAZON"]).To(BeEmpty())
+			Expect(info.IPRanges["S3"]).To(HaveLen(1))
 		})
 
 		It("should error on parsing", func() {
@@ -41,7 +41,7 @@ var _ = Describe("AWS Parsing", func() {
 			_, err := awsManager.ConvertToGenericIPRanges([]byte(ipRangeFile))
 
 			By("Ensuring that error was thrown")
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -53,10 +53,10 @@ var _ = Describe("AWS Parsing", func() {
 
 		It("Should indicate is a new version", func() {
 			By("Ensuring that no error was thrown")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Ensuring that the version is new")
-			Expect(isNewVersion).To(Equal(true))
+			Expect(isNewVersion).To(BeTrue())
 		})
 	})
 
@@ -69,10 +69,10 @@ var _ = Describe("AWS Parsing", func() {
 			_, errIsNewVersion := awsManager.IsNewVersion([]byte(ipRangeFile), "20")
 
 			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
-			Expect(errConvert).ToNot(BeNil())
+			Expect(errConvert).To(HaveOccurred())
 
 			By("Ensuring that an error was thrown on IsNewVersion")
-			Expect(errIsNewVersion).ToNot(BeNil())
+			Expect(errIsNewVersion).To(HaveOccurred())
 		})
 
 		It("Should throw an error on empty ip ranges file", func() {
@@ -82,10 +82,10 @@ var _ = Describe("AWS Parsing", func() {
 			_, errIsNewVersion := awsManager.IsNewVersion(make([]byte, 0), "20")
 
 			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
-			Expect(errConvert).ToNot(BeNil())
+			Expect(errConvert).To(HaveOccurred())
 
 			By("Ensuring that an error was thrown on IsNewVersion")
-			Expect(errIsNewVersion).ToNot(BeNil())
+			Expect(errIsNewVersion).To(HaveOccurred())
 		})
 
 		It("Should throw an error on nil ip ranges file", func() {
@@ -95,10 +95,10 @@ var _ = Describe("AWS Parsing", func() {
 			_, errIsNewVersion := awsManager.IsNewVersion(nil, "20")
 
 			By("Ensuring that an error was thrown on ConvertToGenericIPRanges")
-			Expect(errConvert).ToNot(BeNil())
+			Expect(errConvert).To(HaveOccurred())
 
 			By("Ensuring that an error was thrown on IsNewVersion")
-			Expect(errIsNewVersion).ToNot(BeNil())
+			Expect(errIsNewVersion).To(HaveOccurred())
 		})
 	})
 })

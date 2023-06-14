@@ -35,7 +35,6 @@ import (
 	"unicode"
 	"unsafe"
 
-	rc "github.com/DataDog/datadog-agent/pkg/remoteconfig/state"
 	"go.uber.org/atomic"
 
 	// Do not remove the following imports which allow supporting package
@@ -96,14 +95,16 @@ func NewHandle(jsonRule []byte, keyRegex, valueRegex string) (*Handle, error) {
 	if err := json.Unmarshal(jsonRule, &rule); err != nil {
 		return nil, fmt.Errorf("could not parse the WAF rule: %v", err)
 	}
+	return NewHandleFromRuleSet(rule, keyRegex, valueRegex)
+}
 
+// NewHandleFromRuleSet creates a new instance of the WAF with the given ruleset and key/value regexps for obfuscation.
+func NewHandleFromRuleSet(ruleset interface{}, keyRegex, valueRegex string) (*Handle, error) {
 	// Create a temporary unlimited encoder for the rules
-	const intSize = 32 << (^uint(0) >> 63) // copied from recent versions of math.MaxInt
-	const maxInt = 1<<(intSize-1) - 1      // copied from recent versions of math.MaxInt
 	ruleEncoder := newMaxEncoder()
-	wafRule, err := ruleEncoder.encode(rule)
+	wafRule, err := ruleEncoder.encode(ruleset)
 	if err != nil {
-		return nil, fmt.Errorf("could not encode the JSON WAF rule into a WAF object: %v", err)
+		return nil, fmt.Errorf("could not encode the WAF ruleset into a WAF object: %v", err)
 	}
 	defer freeWO(wafRule)
 
@@ -217,34 +218,6 @@ func (h *Handle) Addresses() []string {
 // RulesetInfo returns the rules initialization metrics for the current WAF handle
 func (h *Handle) RulesetInfo() RulesetInfo {
 	return h.rulesetInfo
-}
-
-// UpdateRulesData updates the data that some rules reference to.
-func (h *Handle) UpdateRulesData(data []rc.ASMDataRuleData) error {
-	encoded, err := newMaxEncoder().encode(data)
-	if err != nil {
-		return fmt.Errorf("could not encode the JSON WAF rule data into a WAF object: %v", err)
-	}
-	defer freeWO(encoded)
-
-	return h.updateRulesData(encoded)
-}
-
-// updateRuleData is the critical section of UpdateRuleData
-func (h *Handle) updateRulesData(data *wafObject) error {
-	// Note about this lock: ddwaf_update_rule_data already is thread-safe to
-	// use, but we chose to lock at the goroutine-level instead in order to
-	// avoid locking OS threads and therefore prevent many other goroutines from
-	// executing during that OS lock. If a goroutine locks due to this handle's
-	// RWMutex, another goroutine gets executed on its OS thread.
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	rc := C.ddwaf_update_rule_data(h.handle, data.ctype())
-	if rc != C.DDWAF_OK {
-		return fmt.Errorf("unexpected error number `%d` while updating the WAF rule data", rc)
-	}
-	return nil
 }
 
 // Close the WAF handle. Note that this call doesn't block until the handle gets

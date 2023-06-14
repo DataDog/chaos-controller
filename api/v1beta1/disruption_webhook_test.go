@@ -250,6 +250,22 @@ var _ = Describe("Disruption", func() {
 					Expect(err.Error()).Should(ContainSubstring("something bad happened"))
 				})
 			})
+
+			When("triggers.inject.notBefore is before triggers.createPods.notBefore", func() {
+				It("should return an error", func() {
+					newDisruption.Spec.Duration = "30m"
+					newDisruption.Spec.Triggers = DisruptionTriggers{
+						Inject: DisruptionTrigger{
+							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5)),
+						},
+						CreatePods: DisruptionTrigger{
+							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 15)),
+						},
+					}
+
+					Expect(newDisruption.ValidateCreate().Error()).Should(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified"))
+				})
+			})
 		})
 
 		Describe("expectations with a disk failure disruption", func() {
@@ -257,7 +273,7 @@ var _ = Describe("Disruption", func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 				k8sClient = makek8sClientWithDisruptionPod()
 				recorder = record.NewFakeRecorder(1)
-				metricsSink = noop.New()
+				metricsSink = noop.New(logger)
 				deleteOnly = false
 				enableSafemode = true
 			})

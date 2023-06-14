@@ -7,7 +7,6 @@ package container
 
 import (
 	"fmt"
-	"strings"
 )
 
 // Container describes a container
@@ -38,20 +37,19 @@ func New(id string) (Container, error) {
 // NewWithConfig creates a new container object with the given config
 // nil fields are defaulted
 func NewWithConfig(id string, config Config) (Container, error) {
-	// parse container id
-	rawID := strings.Split(id, "://")
-	if len(rawID) != 2 {
-		return nil, fmt.Errorf("unrecognized container ID format '%s', expecting 'containerd://<ID>' or 'docker://<ID>'", id)
+	containerID, runtime, err := ParseContainerID(id)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse container ID %s: %w", id, err)
 	}
 
 	// create runtime driver
 	if config.Runtime == nil {
 		var err error
 
-		switch {
-		case strings.HasPrefix(id, "containerd://"):
+		switch runtime {
+		case "containerd":
 			config.Runtime, err = newContainerdRuntime()
-		case strings.HasPrefix(id, "docker://"):
+		case "docker":
 			config.Runtime, err = newDockerRuntime()
 		default:
 			return nil, fmt.Errorf("unsupported container runtime, only docker and containerd are supported")
@@ -63,19 +61,19 @@ func NewWithConfig(id string, config Config) (Container, error) {
 	}
 
 	// retrieve pid from container info
-	pid, err := config.Runtime.PID(rawID[1])
+	pid, err := config.Runtime.PID(containerID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PID: %w", err)
 	}
 
-	name, err := config.Runtime.Name(rawID[1])
+	name, err := config.Runtime.Name(containerID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting container name: %w", err)
 	}
 
 	return container{
 		config: config,
-		id:     rawID[1],
+		id:     containerID,
 		pid:    pid,
 		name:   name,
 	}, nil

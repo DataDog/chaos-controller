@@ -1,0 +1,19 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2023 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-delay-node
+  namespace: chaos-demo
+  annotations:
+    chaos.datadoghq.com/environment: "lima"
+spec:
+  level: node
+  selector:
+    kubernetes.io/hostname: lima-default # when node level is enabled, the selector applies to nodes and not pods
+  count: 1
+  network:
+    delay: 1 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default

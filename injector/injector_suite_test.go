@@ -25,7 +25,7 @@ var (
 var _ = BeforeSuite(func() {
 	log = zaptest.NewLogger(GinkgoT()).Sugar()
 	os.Setenv("STATSD_URL", "localhost:54321")
-	ms, _ = metrics.GetSink(metricstypes.SinkDriverNoop, metricstypes.SinkAppInjector)
+	ms, _ = metrics.GetSink(log, metricstypes.SinkDriverNoop, metricstypes.SinkAppInjector)
 })
 
 var _ = AfterSuite(func() {
