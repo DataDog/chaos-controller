@@ -48,7 +48,7 @@ type networkDisruptionInjector struct {
 	spec       v1beta1.NetworkDisruptionSpec
 	config     NetworkDisruptionInjectorConfig
 	operations []linkOperation
-	cancel     context.CancelFunc
+	cancel     []context.CancelFunc
 }
 
 // NetworkDisruptionInjectorConfig contains all needed drivers to create a network disruption using `tc`
@@ -214,7 +214,9 @@ func (i *networkDisruptionInjector) UpdateConfig(config Config) {
 func (i *networkDisruptionInjector) Clean() error {
 	// stop all background watchers now
 	if i.cancel != nil {
-		i.cancel()
+		for _, cancelFunc := range i.cancel {
+			cancelFunc()
+		}
 		i.cancel = nil
 	}
 
@@ -894,7 +896,8 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 	}
 
 	var ctx context.Context
-	ctx, i.cancel = context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	i.cancel = append(i.cancel, cancelFunc)
 
 	for _, serviceWatcher := range serviceWatchers {
 		go i.watchServiceChanges(ctx, serviceWatcher, interfaces, flowid)
@@ -914,19 +917,21 @@ func (i *networkDisruptionInjector) handleFiltersForHosts(interfaces []string, f
 
 	hosts.hostFilterMap = hostFilterMap
 
-	go i.watchHostChanges(interfaces, hosts, flowid)
+	var ctx context.Context
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	i.cancel = append(i.cancel, cancelFunc)
+
+	go i.watchHostChanges(ctx, interfaces, hosts, flowid)
 
 	return nil
 }
 
 // watchHostChanges watches for changes to the resolved IP for hosts
-func (i *networkDisruptionInjector) watchHostChanges(interfaces []string, hosts hostsWatcher, flowid string) {
+func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interfaces []string, hosts hostsWatcher, flowid string) {
 	for {
 		select {
-		case state := <-i.config.State.State:
-			if state == Cleaned {
-				return
-			}
+		case <-ctx.Done():
+			return
 		case <-time.After(i.config.HostResolveInterval):
 			changedHosts := []v1beta1.NetworkDisruptionHostSpec{}
 			for host, tcFilters := range hosts.hostFilterMap {
