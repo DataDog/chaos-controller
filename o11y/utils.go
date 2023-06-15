@@ -5,14 +5,28 @@
 
 package o11y
 
-import "go.uber.org/zap"
+import (
+	"strings"
+
+	"go.uber.org/zap"
+)
 
 // ZapDDLogger wraps a ZapSugaredLogger to fit Datadog's logger interface.
+// Required to send the tracer and profiler logs through the SugaredLogger.
 type ZapDDLogger struct {
 	ZapLogger *zap.SugaredLogger
 }
 
 // Log sends an error log through the wrapped zap SugaredLogger
 func (ddLogger ZapDDLogger) Log(msg string) {
-	ddLogger.ZapLogger.Error(msg)
+	switch {
+	case strings.Contains(msg, "ERROR"):
+		ddLogger.ZapLogger.Error(msg)
+	case strings.Contains(msg, "WARN"):
+		ddLogger.ZapLogger.Warn(msg)
+	case strings.Contains(msg, "INFO"):
+		ddLogger.ZapLogger.Info(msg)
+	default:
+		ddLogger.ZapLogger.Debug(msg)
+	}
 }
