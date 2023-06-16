@@ -182,7 +182,7 @@ slack-notifier-build.on-failure:
     - main
     - tags
 
-slack-notifier-release-staging: &slack-notifier-release-staging
+.slack-notifier-release-staging: &slack-notifier-release-staging
   image: registry.ddbuild.io/slack-notifier:sdm
   tags: [ "runner:main" ]
   stage: notify
