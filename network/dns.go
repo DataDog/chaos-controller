@@ -40,14 +40,14 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	// and other dns configurations
 	podDNSConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
 	if err != nil {
-		return nil, fmt.Errorf("can't read resolve.conf file: %w", err)
+		return nil, fmt.Errorf("can't read resolv.conf file: %w", err)
 	}
 
 	// also read the node resolv conf file to get search domain
 	// and other dns configurations
 	nodeDNSConfig, err := dns.ClientConfigFromFile("/mnt/host/etc/resolv.conf")
 	if err != nil {
-		return nil, fmt.Errorf("can't read resolve.conf file: %w", err)
+		return nil, fmt.Errorf("can't read resolv.conf file: %w", err)
 	}
 
 	// compute resolvers list
