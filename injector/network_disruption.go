@@ -911,11 +911,6 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 				dstIP = ip
 			}
 
-			// default protocol to tcp if not specified
-			if host.Protocol == "" {
-				host.Protocol = string(network.TCP)
-			}
-
 			// cast connection state
 			connState := network.NewConnState(host.ConnState)
 			for _, protocol := range network.AllProtocols(host.Protocol) {
