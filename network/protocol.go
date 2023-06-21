@@ -17,6 +17,7 @@ const (
 	TCP protocol = "tcp"
 	UDP protocol = "udp"
 	ARP protocol = "arp"
+	ALL protocol = "*"
 )
 
 func (p protocol) String() string {
@@ -27,17 +28,33 @@ type protocolString interface {
 	string | v1.Protocol
 }
 
+func AllProtocols[C protocolString](p C) []protocol {
+	prtcl := newProtocol(p)
+	if prtcl == ALL {
+		return []protocol{
+			TCP,
+			UDP,
+			ARP,
+		}
+	}
+
+	return []protocol{prtcl}
+}
+
 // NewProtocol returns a protocol value based on the given string, possible values are:
-// - tcp: by default if value is not recognised or is tcp
+// - all: by default if value is not recognised
+// - tcp: if provided value is tcp in any case
 // - udp: if provided value is udp in any case
 // - arp: if provided value is arp in any case
-func NewProtocol[C protocolString](protocol C) protocol {
+func newProtocol[C protocolString](protocol C) protocol {
 	switch strings.ToLower(string(protocol)) {
 	case string(UDP):
 		return UDP
 	case string(ARP):
 		return ARP
-	default:
+	case string(TCP):
 		return TCP
+	default:
+		return ALL
 	}
 }
