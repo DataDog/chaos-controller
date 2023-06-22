@@ -25,7 +25,7 @@ func (p protocol) String() string {
 }
 
 type protocolString interface {
-	string | v1.Protocol
+	string | v1.Protocol | protocol
 }
 
 func AllProtocols[C protocolString](p C) []protocol {

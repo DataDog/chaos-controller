@@ -425,8 +425,10 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	if len(i.spec.Hosts) == 0 && len(i.spec.Services) == 0 {
 		_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
 
-		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nullIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:4"); err != nil {
-			return fmt.Errorf("can't add a filter: %w", err)
+		for _, protocol := range network.AllProtocols(network.ALL) {
+			if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nullIP, 0, 0, protocol, network.ConnStateUndefined, "1:4"); err != nil {
+				return fmt.Errorf("can't add a filter: %w", err)
+			}
 		}
 	} else {
 		// apply filters for given hosts
