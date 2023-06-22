@@ -34,7 +34,6 @@ func AllProtocols[C protocolString](p C) []protocol {
 		return []protocol{
 			TCP,
 			UDP,
-			ARP,
 		}
 	}
 
