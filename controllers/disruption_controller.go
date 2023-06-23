@@ -37,7 +37,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -1341,8 +1343,6 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 		// podtoDisruption is a function that maps pods to disruptions. it is meant to be used as an event handler on a pod informer
 		// this function should safely return an empty list of requests to reconcile if the object we receive is not actually a chaos pod
 		// which we determine by checking the object labels for the name and namespace labels that we add to all injector pods
-		disruption := []reconcile.Request{}
-
 		if r.BaseLog != nil {
 			r.BaseLog.Debugw("watching event from pod", "podName", c.GetName(), "podNamespace", c.GetNamespace())
 		}
@@ -1353,11 +1353,7 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 		name := podLabels[chaostypes.DisruptionNameLabel]
 		namespace := podLabels[chaostypes.DisruptionNamespaceLabel]
 
-		if name != "" && namespace != "" {
-			disruption = append(disruption, reconcile.Request{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}})
-		}
-
-		return disruption
+		return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}}}
 	}
 
 	informer := kubeInformerFactory.Core().V1().Pods().Informer()
@@ -1366,7 +1362,41 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 		For(&chaosv1beta1.Disruption{}).
 		WithOptions(controller.Options{RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Second, time.Hour)}).
 		Watches(&source.Informer{Informer: informer}, handler.EnqueueRequestsFromMapFunc(podToDisruption)).
+		WithEventFilter(chaosEventsPredicate()).
 		Build(r)
+}
+
+// chaosEventsPredicate determines if given event is a chaos related one or not
+func chaosEventsPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return shouldTriggerReconcile(e.Object)
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return shouldTriggerReconcile(e.ObjectOld)
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return shouldTriggerReconcile(e.Object)
+		},
+	}
+}
+
+// shouldTriggerReconcile determines whether the currently given object should trigger a reconcile or not
+func shouldTriggerReconcile(o client.Object) bool {
+	if _, ok := o.(*chaosv1beta1.Disruption); ok {
+		return true
+	}
+
+	pod, ok := o.(*corev1.Pod)
+	if !ok {
+		return false
+	}
+
+	podLabels := pod.GetLabels()
+	name := podLabels[chaostypes.DisruptionNameLabel]
+	namespace := podLabels[chaostypes.DisruptionNamespaceLabel]
+
+	return name != "" && namespace != ""
 }
 
 // ReportMetrics reports some controller metrics every minute:
