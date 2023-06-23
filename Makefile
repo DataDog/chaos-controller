@@ -1,4 +1,4 @@
-.PHONY: manager injector handler release generate generate-mocks clean-mocks all lima-push-all lima-redeploy lima-all e2e-test test lima-install manifests lima-restart install-controller-gen
+.PHONY: *
 .SILENT: release
 
 GOOS = $(shell go env GOOS)
@@ -8,6 +8,19 @@ GOARCH = $(shell go env GOARCH)
 GOBIN ?= $(shell go env GOBIN)
 ifeq (,$(GOBIN))
 GOBIN = $(shell go env GOPATH)/bin
+endif
+
+INSTALL_DATADOG_AGENT = false
+LIMA_INSTALL_SINK = noop
+ifdef STAGING_DATADOG_API_KEY
+ifdef STAGING_DATADOG_APP_KEY
+INSTALL_DATADOG_AGENT = true
+LIMA_INSTALL_SINK = datadog
+endif
+endif
+
+ifndef CONTROLLER_APP_VERSION
+CONTROLLER_APP_VERSION = $(shell git rev-parse HEAD)$(shell git diff --quiet || echo '-dirty')
 endif
 
 # Lima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
@@ -21,7 +34,10 @@ HANDLER_IMAGE ?= ${CONTAINERD_REGISTRY_PREFIX}/chaos-handler:latest
 
 LIMA_PROFILE ?= lima
 LIMA_CONFIG ?= lima
-KUBECTL ?= limactl shell default sudo kubectl
+# default instance name will be connected user name
+LIMA_INSTANCE ?= $(shell whoami | tr "." "-")
+
+KUBECTL ?= limactl shell $(LIMA_INSTANCE) sudo kubectl
 PROTOC_VERSION = 3.17.3
 PROTOC_OS ?= osx
 PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
@@ -119,8 +135,8 @@ docker-build-$(1): _docker-build-$(1) $(1)
 	docker save $$(IMAGE_TAG) -o ./bin/$(1)/$(1).tar.gz
 
 lima-push-$(1): docker-build-$(1)
-	limactl copy ./bin/$(1)/$(1).tar.gz default:/tmp/
-	limactl shell default -- sudo k3s ctr i import /tmp/$(1).tar.gz
+	limactl copy ./bin/$(1)/$(1).tar.gz $(LIMA_INSTANCE):/tmp/
+	limactl shell $(LIMA_INSTANCE) -- sudo k3s ctr i import /tmp/$(1).tar.gz
 
 minikube-load-$(1):
 # let's fail if the file does not exists so we know, mk load is not failing
@@ -258,7 +274,7 @@ generate: install-controller-gen
 
 # Lima actions
 ## Create a new lima cluster and deploy the chaos-controller into it
-lima-all: lima-start lima-install-cert-manager lima-push-all lima-install
+lima-all: lima-start lima-install-datadog-agent lima-install-cert-manager lima-push-all lima-install
 	kubens chaos-engineering
 
 ## Rebuild the chaos-controller images, re-install the chart and restart the chaos-controller pods
@@ -281,6 +297,9 @@ lima-install-demo:
 ## we override images for all of our components to the expected namespace
 lima-install: manifests
 	helm template \
+		--set=controller.version=$(CONTROLLER_APP_VERSION) \
+		--set=controller.metricsSink=$(LIMA_INSTALL_SINK) \
+		--set=controller.profilerSink=$(LIMA_INSTALL_SINK) \
 		--values ./chart/values/$(HELM_VALUES) \
 		./chart | $(KUBECTL) apply -f -
 ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
@@ -306,7 +325,7 @@ lima-kubectx-clean:
 	kubectl config unset current-context
 
 lima-kubectx:
-	limactl shell default sudo sed 's/default/lima/g' /etc/rancher/k3s/k3s.yaml >> ~/.kube/config_lima
+	limactl shell $(LIMA_INSTANCE) sudo sed 's/default/lima/g' /etc/rancher/k3s/k3s.yaml > ~/.kube/config_lima
 	KUBECONFIG=${KUBECONFIG}:~/.kube/config:~/.kube/config_lima kubectl config view --flatten > /tmp/config
 	rm ~/.kube/config_lima
 	mv /tmp/config ~/.kube/config
@@ -315,13 +334,13 @@ lima-kubectx:
 
 ## Stop and delete the lima cluster
 lima-stop:
-	limactl stop -f default
-	limactl delete default
+	limactl stop -f $(LIMA_INSTANCE)
+	limactl delete $(LIMA_INSTANCE)
 	$(MAKE) lima-kubectx-clean
 
 ## Start the lima cluster, pre-cleaning kubectl config
 lima-start: lima-kubectx-clean
-	LIMA_CGROUPS=${LIMA_CGROUPS} LIMA_CONFIG=${LIMA_CONFIG} ./scripts/lima_start.sh
+	LIMA_CGROUPS=${LIMA_CGROUPS} LIMA_CONFIG=${LIMA_CONFIG} LIMA_INSTANCE=${LIMA_INSTANCE} ./scripts/lima_start.sh
 	$(MAKE) lima-kubectx
 
 # Longhorn is used as an alternative StorageClass in order to enable "reliable" disk throttling accross various local setup
@@ -474,4 +493,26 @@ install-watchexec:
 ifeq (,$(wildcard $(GOBIN)/gow))
 	$(info installing watchexec...)
 	brew install watchexec
+endif
+
+EXISTING_NAMESPACE = $(shell $(KUBECTL) get ns datadog-agent -oname || echo "")
+
+lima-install-datadog-agent:
+ifeq (true,$(INSTALL_DATADOG_AGENT))
+ifeq (,$(EXISTING_NAMESPACE))
+	$(KUBECTL) create ns datadog-agent
+	helm repo add --force-update datadoghq https://helm.datadoghq.com
+	helm install -n datadog-agent my-datadog-operator datadoghq/datadog-operator
+	$(KUBECTL) create secret -n datadog-agent generic datadog-secret --from-literal api-key=${STAGING_DATADOG_API_KEY} --from-literal app-key=${STAGING_DATADOG_APP_KEY}
+endif
+endif
+	$(KUBECTL) apply -f - < examples/datadog-agent.yaml
+
+open-dd:
+ifeq (true,$(INSTALL_DATADOG_AGENT))
+ifdef STAGING_DD_SITE
+	open "${STAGING_DD_SITE}/infrastructure?host=lima-$(LIMA_INSTANCE)&tab=details"
+else
+	@echo "You need to define STAGING_DD_SITE in your .zshrc or similar to use this feature"
+endif
 endif

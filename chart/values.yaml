@@ -16,6 +16,7 @@ global:
       pullSecrets: false # name of the secret object to use when pulling images
 
 controller:
+  version: ""
   image:
     repo: chaos-controller
   enabled: true # should the controller and associated webhooks be deployed or not

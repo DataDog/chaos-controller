@@ -7,7 +7,7 @@ github.com/AlecAivazis/survey/v2/terminal
 ## explicit; go 1.18
 github.com/DataDog/appsec-internal-go/httpsec
 github.com/DataDog/appsec-internal-go/netip
-# github.com/DataDog/datadog-agent/pkg/remoteconfig/state v0.45.0-rc.1
+# github.com/DataDog/datadog-agent/pkg/remoteconfig/state v0.45.0
 ## explicit; go 1.18
 github.com/DataDog/datadog-agent/pkg/remoteconfig/state
 # github.com/DataDog/datadog-go v4.8.3+incompatible
@@ -16,7 +16,7 @@ github.com/DataDog/datadog-go/statsd
 # github.com/DataDog/datadog-go/v5 v5.1.1
 ## explicit; go 1.13
 github.com/DataDog/datadog-go/v5/statsd
-# github.com/DataDog/go-libddwaf v1.1.0
+# github.com/DataDog/go-libddwaf v1.2.0
 ## explicit; go 1.18
 github.com/DataDog/go-libddwaf
 github.com/DataDog/go-libddwaf/include
@@ -294,8 +294,8 @@ github.com/google/go-cmp/cmp/internal/value
 ## explicit; go 1.12
 github.com/google/gofuzz
 github.com/google/gofuzz/bytesource
-# github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1
-## explicit; go 1.14
+# github.com/google/pprof v0.0.0-20230509042627-b1315fad0c5a
+## explicit; go 1.19
 github.com/google/pprof/profile
 # github.com/google/uuid v1.3.0
 ## explicit
@@ -359,7 +359,7 @@ github.com/mailru/easyjson/jwriter
 # github.com/mattn/go-colorable v0.1.13
 ## explicit; go 1.15
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.17
+# github.com/mattn/go-isatty v0.0.19
 ## explicit; go 1.15
 github.com/mattn/go-isatty
 # github.com/matttproud/golang_protobuf_extensions v1.0.4
@@ -462,7 +462,7 @@ github.com/opencontainers/runtime-spec/specs-go
 github.com/opencontainers/selinux/go-selinux
 github.com/opencontainers/selinux/go-selinux/label
 github.com/opencontainers/selinux/pkg/pwalkdir
-# github.com/pelletier/go-toml/v2 v2.0.6
+# github.com/pelletier/go-toml/v2 v2.0.8
 ## explicit; go 1.16
 github.com/pelletier/go-toml/v2
 github.com/pelletier/go-toml/v2/internal/characters
@@ -499,8 +499,8 @@ github.com/prometheus/procfs/internal/util
 github.com/richardartoul/molecule
 github.com/richardartoul/molecule/src/codec
 github.com/richardartoul/molecule/src/protowire
-# github.com/secure-systems-lab/go-securesystemslib v0.5.0
-## explicit; go 1.17
+# github.com/secure-systems-lab/go-securesystemslib v0.6.0
+## explicit; go 1.20
 github.com/secure-systems-lab/go-securesystemslib/cjson
 # github.com/sirupsen/logrus v1.9.0
 ## explicit; go 1.13
@@ -546,8 +546,8 @@ github.com/spf13/viper/internal/encoding/yaml
 # github.com/stretchr/objx v0.5.0
 ## explicit; go 1.12
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.8.2
-## explicit; go 1.13
+# github.com/stretchr/testify v1.8.3
+## explicit; go 1.20
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
@@ -691,7 +691,7 @@ google.golang.org/appengine/internal/log
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4
+# google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.55.0
@@ -780,7 +780,7 @@ google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/timestamppb
-# gopkg.in/DataDog/dd-trace-go.v1 v1.50.1
+# gopkg.in/DataDog/dd-trace-go.v1 v1.52.0
 ## explicit; go 1.18
 gopkg.in/DataDog/dd-trace-go.v1/ddtrace
 gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext
@@ -800,7 +800,6 @@ gopkg.in/DataDog/dd-trace-go.v1/internal/telemetry
 gopkg.in/DataDog/dd-trace-go.v1/internal/traceprof
 gopkg.in/DataDog/dd-trace-go.v1/internal/version
 gopkg.in/DataDog/dd-trace-go.v1/profiler
-gopkg.in/DataDog/dd-trace-go.v1/profiler/internal
 gopkg.in/DataDog/dd-trace-go.v1/profiler/internal/fastdelta
 gopkg.in/DataDog/dd-trace-go.v1/profiler/internal/immutable
 gopkg.in/DataDog/dd-trace-go.v1/profiler/internal/pproflite
