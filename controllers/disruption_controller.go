@@ -1385,7 +1385,7 @@ func (r *DisruptionReconciler) ReportMetrics() {
 
 		// list disruptions
 		if err := r.Client.List(context.Background(), &l); err != nil {
-			r.log.Errorw("error listing disruptions", "error", err)
+			r.BaseLog.Errorw("error listing disruptions", "error", err)
 			continue
 		}
 
@@ -1395,13 +1395,13 @@ func (r *DisruptionReconciler) ReportMetrics() {
 				stuckOnRemoval++
 
 				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"disruptionName:" + d.Name, "namespace:" + d.Namespace}); err != nil {
-					r.log.Errorw("error sending stuck_on_removal metric", "error", err)
+					r.BaseLog.Errorw("error sending stuck_on_removal metric", "error", err)
 				}
 			}
 
 			chaosPods, err := r.getChaosPods(&d, nil)
 			if err != nil {
-				r.log.Errorw("error listing chaos pods to send pods.gauge metric", "error", err)
+				r.BaseLog.Errorw("error listing chaos pods to send pods.gauge metric", "error", err)
 			}
 
 			chaosPodsCount += len(chaosPods)
@@ -1411,19 +1411,19 @@ func (r *DisruptionReconciler) ReportMetrics() {
 
 		// send metrics
 		if err := r.MetricsSink.MetricStuckOnRemovalGauge(float64(stuckOnRemoval)); err != nil {
-			r.log.Errorw("error sending stuck_on_removal_total metric", "error", err)
+			r.BaseLog.Errorw("error sending stuck_on_removal_total metric", "error", err)
 		}
 
 		if err := r.MetricsSink.MetricDisruptionsGauge(float64(len(l.Items))); err != nil {
-			r.log.Errorw("error sending disruptions.gauge metric", "error", err)
+			r.BaseLog.Errorw("error sending disruptions.gauge metric", "error", err)
 		}
 
 		if err := r.MetricsSink.MetricPodsGauge(float64(chaosPodsCount)); err != nil {
-			r.log.Errorw("error sending pods.gauge metric", "error", err)
+			r.BaseLog.Errorw("error sending pods.gauge metric", "error", err)
 		}
 
 		if err := r.MetricsSink.MetricSelectorCacheGauge(float64(len(r.CacheContextStore))); err != nil {
-			r.log.Errorw("error sending selector.cache.gauge metric", "error", err)
+			r.BaseLog.Errorw("error sending selector.cache.gauge metric", "error", err)
 		}
 	}
 }
