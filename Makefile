@@ -94,7 +94,10 @@ _injector:;
 _handler:;
 _manager: generate
 
-_docker-build-injector: docker-build-ebpf
+_docker-build-injector:
+ifneq (true,$(SKIP_EBPF))
+	$(MAKE) docker-build-ebpf
+endif
 _docker-build-handler:;
 _docker-build-manager:;
 
@@ -286,7 +289,7 @@ endif
 
 ## Uninstall CRDs and controller from a lima k3s cluster
 lima-uninstall:
-	helm template --values ./chart/values/$(HELM_VALUES) ./chart | $(KUBECTL) delete -f -
+	helm template --set=skipNamespace=true --values ./chart/values/$(HELM_VALUES) ./chart | $(KUBECTL) delete -f -
 
 ## Restart the chaos-controller pod
 lima-restart:
@@ -374,16 +377,26 @@ generate-mocks: clean-mocks install-mockery
 release:
 	VERSION=$(VERSION) ./tasks/release.sh
 
-lima-install-local:
+_pre_local: generate manifests
+	@$(shell $(KUBECTL) get deploy chaos-controller 2> /dev/null)
+ifeq (0,$(.SHELLSTATUS))
 # uninstall using a non local value to ensure deployment is deleted
 	-$(MAKE) lima-uninstall HELM_VALUES=dev.yaml
 	$(MAKE) lima-install HELM_VALUES=local.yaml
+	$(KUBECTL) -n chaos-engineering get cm chaos-controller -oyaml | yq '.data["config.yaml"]' > .local.yaml
+	yq -i '.controller.webhook.certDir = "chart/certs"' .local.yaml
+else
+	@echo "Chaos controller is not installed, skipped!"
+endif
 
-pre-debug: generate manifests lima-install-local
+debug: _pre_local
 	@echo "now you can launch through vs-code or your favorite IDE a controller in debug with appropriate configuration (--config=chart/values/local.yaml + CONTROLLER_NODE_NAME=local)"
 
-local: generate manifests lima-install-local
-	CONTROLLER_NODE_NAME=local go run main.go --config=chart/values/local.yaml
+run:
+	CONTROLLER_NODE_NAME=local go run . --config=.local.yaml
+
+watch: _pre_local install-watchexec
+	watchexec make SKIP_EBPF=true lima-push-injector run
 
 install-protobuf:
 	curl -sSLo /tmp/${PROTOC_ZIP} https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
@@ -455,4 +468,10 @@ ifeq (,$(wildcard $(GOBIN)/yamlfmt))
 	curl -sSLo /tmp/yamlfmt.tar.gz https://github.com/google/yamlfmt/releases/download/v0.9.0/yamlfmt_0.9.0_$(GOOS)_$(YAMLFMT_ARCH).tar.gz
 	tar -xvzf /tmp/yamlfmt.tar.gz --directory=$(GOBIN) yamlfmt
 	rm /tmp/yamlfmt.tar.gz
+endif
+
+install-watchexec:
+ifeq (,$(wildcard $(GOBIN)/gow))
+	$(info installing watchexec...)
+	brew install watchexec
 endif

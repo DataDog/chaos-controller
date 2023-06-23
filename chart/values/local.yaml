@@ -42,7 +42,6 @@ controller:
     host: ""
     port: 9443
 injector:
-  image: k8s.io/chaos-injector:latest
   serviceAccount: chaos-injector
   chaosNamespace: chaos-engineering
   dnsDisruption:
@@ -50,5 +49,4 @@ injector:
     kubeDns: all
 handler:
   enabled: true
-  image: k8s.io/chaos-handler:latest
   timeout: 1m

@@ -416,7 +416,7 @@ func main() {
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Minute*5, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Hour*24, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
 
 	cont, err := r.SetupWithManager(mgr, kubeInformerFactory)
 	if err != nil {
@@ -511,7 +511,7 @@ func main() {
 
 	// +kubebuilder:scaffold:builder
 
-	logger.Infow("restarting chaos-controller")
+	logger.Infow("starting chaos-controller")
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		stopCh <- struct{}{} // stop the informer
