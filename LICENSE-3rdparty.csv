@@ -541,7 +541,6 @@ gopkg.in/DataDog/dd-trace-go.v1,gopkg.in/DataDog/dd-trace-go.v1/internal/telemet
 gopkg.in/DataDog/dd-trace-go.v1,gopkg.in/DataDog/dd-trace-go.v1/internal/traceprof,Apache-2.0
 gopkg.in/DataDog/dd-trace-go.v1,gopkg.in/DataDog/dd-trace-go.v1/internal/version,Apache-2.0
 gopkg.in/DataDog/dd-trace-go.v1,gopkg.in/DataDog/dd-trace-go.v1/profiler,Apache-2.0
-gopkg.in/DataDog/dd-trace-go.v1,gopkg.in/DataDog/dd-trace-go.v1/profiler/internal,Apache-2.0
 gopkg.in/DataDog/dd-trace-go.v1,gopkg.in/DataDog/dd-trace-go.v1/profiler/internal/fastdelta,Apache-2.0
 gopkg.in/DataDog/dd-trace-go.v1,gopkg.in/DataDog/dd-trace-go.v1/profiler/internal/immutable,Apache-2.0
 gopkg.in/DataDog/dd-trace-go.v1,gopkg.in/DataDog/dd-trace-go.v1/profiler/internal/pproflite,Apache-2.0

@@ -10,10 +10,10 @@
 #ifdef __cplusplus
 namespace ddwaf{
 class waf;
-class context;
+class context_wrapper;
 } // namespace ddwaf
 using ddwaf_handle = ddwaf::waf *;
-using ddwaf_context = ddwaf::context *;
+using ddwaf_context = ddwaf::context_wrapper *;
 
 extern "C"
 {
@@ -226,8 +226,7 @@ ddwaf_handle ddwaf_init(const ddwaf_object *ruleset,
  * @param rule ddwaf::object map containing rules, exclusions, rules_override and rules_data. (nonnull)
  * @param info Optional ruleset parsing diagnostics. (nullable)
  *
- * @return Handle to the new WAF instance or NULL if there were no new updates
- *         or there was an error processing the ruleset.
+ * @return Handle to the new WAF instance or NULL if there was an error processing the ruleset.
  **/
 ddwaf_handle ddwaf_update(ddwaf_handle handle, const ddwaf_object *ruleset,
     ddwaf_ruleset_info *info);
