@@ -47,7 +47,7 @@ import (
 
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
-	client.Client
+	Client                                client.Client
 	BaseLog                               *zap.SugaredLogger
 	Scheme                                *runtime.Scheme
 	Recorder                              record.EventRecorder
@@ -79,15 +79,14 @@ type CtxTuple struct {
 	DisruptionNamespacedName types.NamespacedName
 }
 
-//+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers,verbs=update
-//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch;list;watch;get
-//+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
-//+kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
-
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=update;patch
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core,resources=events,verbs=list;watch;create;patch
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=pods/status,verbs=update;patch
+// +kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
+// +kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
 func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
@@ -144,7 +143,7 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 		}
 	}()
 
-	if err := r.Get(context.Background(), req.NamespacedName, instance); err != nil {
+	if err := r.Client.Get(context.Background(), req.NamespacedName, instance); err != nil {
 		if client.IgnoreNotFound(err) == nil {
 			// If we're reconciling but without an instance, then we must have been triggered by the pod informer
 			// We should check for and delete any orphaned chaos pods
@@ -186,7 +185,7 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 				return ctrl.Result{
 					Requeue:      true,
 					RequeueAfter: requeueAfter,
-				}, r.Update(context.Background(), instance)
+				}, r.Client.Update(context.Background(), instance)
 			}
 
 			// we reach this code when all the cleanup pods have succeeded
@@ -197,7 +196,7 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 			r.DisruptionsWatchersManager.RemoveAllWatchers(instance)
 			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
-			if err := r.Update(context.Background(), instance); err != nil {
+			if err := r.Client.Update(context.Background(), instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("error removing disruption finalizer: %w", err)
 			}
 
@@ -228,7 +227,7 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
-		if err := r.Update(context.Background(), instance); err != nil {
+		if err := r.Client.Update(context.Background(), instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error adding disruption finalizer: %w", err)
 		}
 
@@ -312,7 +311,7 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 				Requeue:      true,
 				RequeueAfter: disruptionEndAt,
 			},
-			r.Update(context.Background(), instance)
+			r.Client.Update(context.Background(), instance)
 	}
 
 	// stop the reconcile loop, there's nothing else to do
@@ -504,7 +503,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	case chaostypes.DisruptionLevelPod:
 		pod := corev1.Pod{}
 
-		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
+		if err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
 			return fmt.Errorf("error getting target to inject: %w", err)
 		}
 
@@ -554,7 +553,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 			r.log.Infow("creating chaos pod", "target", target, "chaosPodArgs", chaosPodArgs)
 
 			// create the pod
-			if err = r.Create(context.Background(), &targetChaosPod); err != nil {
+			if err = r.Client.Create(context.Background(), &targetChaosPod); err != nil {
 				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionCreationFailed, instance.Name, target)
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, false))
 
@@ -616,7 +615,7 @@ func (r *DisruptionReconciler) waitForPodCreation(pod *corev1.Pod) error {
 	expBackoff.MaxElapsedTime = 30 * time.Second
 
 	return backoff.Retry(func() error {
-		err := r.Get(context.Background(), types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, pod)
+		err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, pod)
 		if client.IgnoreNotFound(err) != nil {
 			return backoff.Permanent(err)
 		}
@@ -727,7 +726,7 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1
 		r.handleChaosPodTermination(instance, chaosPod)
 	}
 
-	return r.Status().Update(context.Background(), instance)
+	return r.Client.Status().Update(context.Background(), instance)
 }
 
 func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) {
@@ -910,7 +909,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	instance.Status.SelectedTargetsCount = len(instance.Status.TargetInjections)
 	instance.Status.IgnoredTargetsCount = totalAvailableTargetsCount - targetsCount
 
-	return r.Status().Update(context.Background(), instance)
+	return r.Client.Status().Update(context.Background(), instance)
 }
 
 // getMatchingTargets fetches all existing target fitting the disruption's selector
@@ -1316,7 +1315,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 	case chaostypes.DisruptionLevelPod:
 		p := &corev1.Pod{}
 
-		if err := r.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {
+		if err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {
 			r.log.Errorw("event failed to be registered on target", "error", err, "target", target)
 		}
 
@@ -1324,7 +1323,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 	case chaostypes.DisruptionLevelNode:
 		n := &corev1.Node{}
 
-		if err := r.Get(context.Background(), types.NamespacedName{Name: target}, n); err != nil {
+		if err := r.Client.Get(context.Background(), types.NamespacedName{Name: target}, n); err != nil {
 			r.log.Errorw("event failed to be registered on target", "error", err, "target", target)
 		}
 
