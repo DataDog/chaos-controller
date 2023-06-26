@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "86"
+    meta.helm.sh/release-name: chaos-controller
+    meta.helm.sh/release-namespace: chaos-engineering
+    vpa.datadoghq.com/updateMode: "false"
+  labels:
+    admission.datadoghq.com/mutate-pods: "true"
+    admission.datadoghq.com/validate-pods: "true"
+    admission.datadoghq.com/validate-services: "true"
+    app: chaos-controller
+    app.kubernetes.io/managed-by: Helm
+    chart_name: chaos-controller
+    chart_version: 2.0.0
+    tags.datadoghq.com/env: staging
+    tags.datadoghq.com/service: chaos-controller
+    team: chaos-engineering
+  name: chaos-controller
+  namespace: chaos-engineering
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: chaos-controller
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        ad.datadoghq.com/tags: '{"cnab.installation":"helm/v1::chaos-controller.chaos-engineering.entei.us1.staging.dog","git.branch":"dd-source","git.commit.sha":"e8f919d173f617c58ef265ee04c9b1bbf7a31363"}'
+        kubectl.kubernetes.io/default-container: manager
+        kubectl.kubernetes.io/restartedAt: "2022-11-03T14:46:42+01:00"
+      labels:
+        admission.datadoghq.com/enabled: "true"
+        admission.datadoghq.com/mutate-resources-using-vpa: "false"
+        app: chaos-controller
+        chart_name: chaos-controller
+        tags.datadoghq.com/env: staging
+        tags.datadoghq.com/service: chaos-controller
+        team: chaos-engineering
+    spec:
+      containers:
+        - args:
+            - --secure-listen-address=0.0.0.0:8443
+            - --upstream=http://127.0.0.1:8080/
+            - --logtostderr=true
+            - --v=10
+          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.4.0
+          imagePullPolicy: IfNotPresent
+          name: kube-rbac-proxy
+          ports:
+            - containerPort: 8443
+              name: https
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 50m
+              memory: 64Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        - args:
+            - --config=/etc/chaos-controller/config.yaml
+          command:
+            - /usr/local/bin/manager
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: CONTROLLER_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: SECRET_NAME
+              value: chaos-controller-webhook-server-secret
+          image: k8s.io/chaos-controller:latest
+          imagePullPolicy: IfNotPresent
+          name: manager
+          ports:
+            - containerPort: 9443
+              name: webhook-server
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            runAsUser: 0
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /etc/chaos-controller
+              name: config
+              readOnly: true
+            - mountPath: /tmp/k8s-webhook-server/serving-certs
+              name: cert
+              readOnly: true
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: chaos-controller
+      serviceAccountName: chaos-controller
+      terminationGracePeriodSeconds: 10
+      tolerations:
+        - effect: NoSchedule
+          key: node
+          operator: Equal
+          value: nodeless
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: chaos-controller
+          name: config
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: chaos-controller-webhook-secret

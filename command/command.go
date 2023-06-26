@@ -161,10 +161,8 @@ func (w *backgroundCmd) Start() error {
 	go func() {
 		w.log.Debug("new process created, monitoring newly created process exit status")
 
-		if err := <-w.chErr; err != nil {
-			if err.Error() != "signal: killed" {
-				w.log.Errorw("background command exited with an error", "error", err)
-			}
+		if err := <-w.chErr; err != nil && err.Error() != "signal: killed" {
+			w.log.Errorw("background command exited with an error", "error", err)
 		} else {
 			w.log.Info("background command exited successfully")
 		}
