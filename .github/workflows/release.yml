@@ -24,7 +24,7 @@ jobs:
       - name: Generate install manifest
         run: >
           helm template ./chart/
-          --set defaultImage.repo=datadog --set defaultImage.tag=${GITHUB_REF_NAME}
+          --set global.oci.registry=datadog --set global.chaos.defaultImage.tag=${GITHUB_REF_NAME}
           > ./chart/install.yaml
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v1
