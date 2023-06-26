@@ -30,7 +30,7 @@ var _ = Describe("Tc", func() {
 		priomap           [16]uint32
 		srcIP, dstIP      *net.IPNet
 		srcPort, dstPort  int
-		protocol          protocol
+		protoc            protocol
 		connState         connState
 		flowid            string
 	)
@@ -67,7 +67,7 @@ var _ = Describe("Tc", func() {
 		}
 		srcPort = 12345
 		dstPort = 80
-		protocol = newProtocol("TCP")
+		protoc = newProtocol(ALL)
 		connState = ConnStateNew
 		flowid = "1:2"
 	})
@@ -118,8 +118,10 @@ var _ = Describe("Tc", func() {
 
 	Describe("AddFilter", func() {
 		JustBeforeEach(func() {
-			_, err := tcRunner.AddFilter(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid)
-			Expect(err).ShouldNot(HaveOccurred())
+			for _, protocol := range AllProtocols(protoc) {
+				_, err := tcRunner.AddFilter(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid)
+				Expect(err).ShouldNot(HaveOccurred())
+			}
 		})
 
 		Context("add a filter on packets going to IP 10.0.0.1 and port 80 with flowid 1:4 on egress traffic", func() {
@@ -130,6 +132,7 @@ var _ = Describe("Tc", func() {
 
 			It("should execute", func() {
 				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "priority", "1001", "root", "flower", "ip_proto", "tcp", "dst_ip", "10.0.0.1/32", "dst_port", "80", "ct_state", "+trk+new", "flowid", "1:2"})
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "priority", "1002", "root", "flower", "ip_proto", "udp", "dst_ip", "10.0.0.1/32", "dst_port", "80", "ct_state", "+trk+new", "flowid", "1:2"})
 			})
 		})
 
@@ -141,12 +144,14 @@ var _ = Describe("Tc", func() {
 
 			It("should execute", func() {
 				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "priority", "1001", "root", "flower", "ip_proto", "tcp", "src_ip", "192.168.0.1/32", "src_port", "12345", "ct_state", "+trk+new", "flowid", "1:2"})
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "priority", "1002", "root", "flower", "ip_proto", "udp", "src_ip", "192.168.0.1/32", "src_port", "12345", "ct_state", "+trk+new", "flowid", "1:2"})
 			})
 		})
 
 		Context("add a filter on packets leaving IP 192.168.0.1 port 12345 and going to IP 10.0.0.1 port 80 with flowid 1:4 on egress traffic", func() {
 			It("should execute", func() {
 				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "priority", "1001", "root", "flower", "ip_proto", "tcp", "src_ip", "192.168.0.1/32", "dst_ip", "10.0.0.1/32", "src_port", "12345", "dst_port", "80", "ct_state", "+trk+new", "flowid", "1:2"})
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "priority", "1002", "root", "flower", "ip_proto", "udp", "src_ip", "192.168.0.1/32", "dst_ip", "10.0.0.1/32", "src_port", "12345", "dst_port", "80", "ct_state", "+trk+new", "flowid", "1:2"})
 			})
 		})
 	})
