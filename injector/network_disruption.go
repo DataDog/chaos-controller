@@ -45,10 +45,11 @@ func (n networkDisruptionService) String() string {
 
 // networkDisruptionInjector describes a network disruption
 type networkDisruptionInjector struct {
-	spec       v1beta1.NetworkDisruptionSpec
-	config     NetworkDisruptionInjectorConfig
-	operations []linkOperation
-	cancel     []context.CancelFunc
+	spec                 v1beta1.NetworkDisruptionSpec
+	config               NetworkDisruptionInjectorConfig
+	operations           []linkOperation
+	serviceWatcherCancel context.CancelFunc
+	hostWatcherCancel    context.CancelFunc
 }
 
 // NetworkDisruptionInjectorConfig contains all needed drivers to create a network disruption using `tc`
@@ -213,12 +214,16 @@ func (i *networkDisruptionInjector) UpdateConfig(config Config) {
 // Clean removes all the injected disruption in the given container
 func (i *networkDisruptionInjector) Clean() error {
 	// stop all background watchers now
-	if i.cancel != nil {
-		for _, cancelFunc := range i.cancel {
-			cancelFunc()
-		}
+	if i.serviceWatcherCancel != nil {
+		i.serviceWatcherCancel()
 
-		i.cancel = nil
+		i.serviceWatcherCancel = nil
+	}
+
+	if i.hostWatcherCancel != nil {
+		i.hostWatcherCancel()
+
+		i.hostWatcherCancel = nil
 	}
 
 	// enter container network namespace
@@ -896,13 +901,13 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 		serviceWatchers = append(serviceWatchers, serviceWatcher)
 	}
 
-	if i.cancel != nil {
-		return fmt.Errorf("some watcher goroutines are already launched, call Clean on injector prior to Inject")
+	if i.serviceWatcherCancel != nil {
+		return fmt.Errorf("some service watcher goroutines are already launched, call Clean on injector prior to Inject")
 	}
 
 	var ctx context.Context
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	i.cancel = append(i.cancel, cancelFunc)
+	i.serviceWatcherCancel = cancelFunc
 
 	for _, serviceWatcher := range serviceWatchers {
 		go i.watchServiceChanges(ctx, serviceWatcher, interfaces, flowid)
@@ -924,7 +929,7 @@ func (i *networkDisruptionInjector) handleFiltersForHosts(interfaces []string, f
 
 	var ctx context.Context
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	i.cancel = append(i.cancel, cancelFunc)
+	i.hostWatcherCancel = cancelFunc
 
 	go i.watchHostChanges(ctx, interfaces, hosts, flowid)
 
