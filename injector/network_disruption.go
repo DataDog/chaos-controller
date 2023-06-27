@@ -216,13 +216,11 @@ func (i *networkDisruptionInjector) Clean() error {
 	// stop all background watchers now
 	if i.serviceWatcherCancel != nil {
 		i.serviceWatcherCancel()
-
 		i.serviceWatcherCancel = nil
 	}
 
 	if i.hostWatcherCancel != nil {
 		i.hostWatcherCancel()
-
 		i.hostWatcherCancel = nil
 	}
 
@@ -954,18 +952,16 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				}
 
 				if len(newIps) != len(tcFilters) {
-					// TODO debug log?
+					i.config.Log.Debugw(fmt.Sprintf("%d ips found, expected %d. will update filters for host", len(newIps), len(tcFilters)), "host", host.Host)
 					// If we have more or fewer IPs than before, we obviously have a change and need to update the tc filters
 					changedHosts = append(changedHosts, host)
 					continue
 				}
 
 				for _, tcF := range tcFilters {
-					// TODO debug log?
 					if !containsIP(newIps, tcF.ip) {
 						// If any of the IPs have changed, lets completely reset the filters for this host
-						// TODO for review should we add more logic to track the individual IPs, and only update the ones needed?
-						// That's more correct, but has more room for bugs due to complexity, also we'd have to rewrite addFiltersForHosts?
+						i.config.Log.Debugw("new ip found, will update filters for host", "host", host.Host)
 						changedHosts = append(changedHosts, host)
 					}
 				}
