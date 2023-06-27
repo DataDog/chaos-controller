@@ -94,7 +94,7 @@ type serviceWatcher struct {
 
 type hostsWatcher struct {
 	// The only identifying info we need are the ip and filter priority
-	hostFilterMap map[v1beta1.NetworkDisruptionHostSpec][]*tcFilter
+	hostFilterMap map[v1beta1.NetworkDisruptionHostSpec][]tcFilter
 }
 
 // NewNetworkDisruptionInjector creates a NetworkDisruptionInjector object with the given config,
@@ -1002,8 +1002,8 @@ func containsIP(ips []*net.IPNet, lookupIP *net.IPNet) bool {
 }
 
 // addFiltersForHosts creates tc filters on given interfaces for given hosts classifying matching packets in the given flowid
-func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, hosts []v1beta1.NetworkDisruptionHostSpec, flowid string) (map[v1beta1.NetworkDisruptionHostSpec][]*tcFilter, error) {
-	hostFilterMap := map[v1beta1.NetworkDisruptionHostSpec][]*tcFilter{}
+func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, hosts []v1beta1.NetworkDisruptionHostSpec, flowid string) (map[v1beta1.NetworkDisruptionHostSpec][]tcFilter, error) {
+	hostFilterMap := map[v1beta1.NetworkDisruptionHostSpec][]tcFilter{}
 
 	for _, host := range hosts {
 		// resolve given hosts if needed
@@ -1014,7 +1014,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 
 		i.config.Log.Infof("resolved %s as %s", host.Host, ips)
 
-		filtersForHost := []*tcFilter{}
+		filtersForHost := []tcFilter{}
 
 		for _, ip := range ips {
 			var (
@@ -1041,7 +1041,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 					return nil, fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
 				}
 
-				filtersForHost = append(filtersForHost, &tcFilter{
+				filtersForHost = append(filtersForHost, tcFilter{
 					ip:       ip,
 					priority: priority,
 				})
