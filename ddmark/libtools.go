@@ -14,30 +14,21 @@ import (
 
 // thisLibPath defines the local path for a given go library
 func thisLibPath(apiname string) string {
-	// commonLibPath is "$GOPATH/src/ddmarktemp/*api-name*"
 	commonLibPath := genCommonLibPath()
 	folderPath := fmt.Sprintf("%v/%v/", commonLibPath, apiname)
 
 	return folderPath
 }
 
-// genCommonLibPath defines the local path for all ddmark-copied libraries
+// genCommonLibPath defines the local path for all ddmark-copied libraries.
+// CommonLibPath is "/var/tmp/ddmarktemp"
 func genCommonLibPath() string {
-	return fmt.Sprintf("%v/%v/%v", os.Getenv("GOPATH"), "src", "ddmarktemp")
+	return fmt.Sprintf("/%v/%v/%v", "var", "tmp", "ddmarktemp")
 }
 
 // initLibrary copies a binary-embedded API into a custom folder in GOPATH.
 // This way, it can be read by ddmark.
 func (c client) initLibrary(embeddedFS embed.FS, apiname string) error {
-	if _, isGoInstalled := os.LookupEnv("GOPATH"); !isGoInstalled {
-		err := fmt.Errorf("ddmark lib setup error: please make sure go (1.18 or higher) is installed and the GOPATH is set")
-		return err
-	}
-
-	if err := os.Setenv("GO111MODULE", "off"); err != nil {
-		return fmt.Errorf("ddmark lib setup error: %w", err)
-	}
-
 	folderPath := thisLibPath(apiname)
 
 	if err := os.MkdirAll(folderPath, 0o750); err != nil {

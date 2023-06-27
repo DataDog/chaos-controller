@@ -10,9 +10,11 @@ import (
 	"crypto/sha256"
 	"embed"
 	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/hashicorp/go-multierror"
+	"golang.org/x/tools/go/packages"
 	k8sloader "sigs.k8s.io/controller-tools/pkg/loader"
 	k8smarkers "sigs.k8s.io/controller-tools/pkg/markers"
 )
@@ -115,7 +117,7 @@ func (c client) ValidateStructMultierror(marshalledStruct interface{}, filePath 
 		localStructPkgs = append(localStructPkgs, thisLibPath(pkg.APIName))
 	}
 
-	pkgs, err = k8sloader.LoadRoots(localStructPkgs...)
+	pkgs, err = k8sloader.LoadRootsWithConfig(&packages.Config{Env: append(os.Environ(), "GO111MODULE=off")}, localStructPkgs...)
 
 	if err != nil {
 		return multierror.Append(retErr, fmt.Errorf("error loading markers from crd validation: \n\t%v", err))
