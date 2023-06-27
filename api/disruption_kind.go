@@ -103,6 +103,7 @@ func (d DisruptionArgs) CreateCmdArgs(args []string) []string {
 		for _, host := range d.AllowedHosts {
 			args = append(args, "--allowed-hosts", host)
 		}
+
 		if d.HostResolveInterval > 0 {
 			args = append(args, "--host-resolve-interval", d.HostResolveInterval.String())
 		}

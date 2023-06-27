@@ -217,6 +217,7 @@ func (i *networkDisruptionInjector) Clean() error {
 		for _, cancelFunc := range i.cancel {
 			cancelFunc()
 		}
+
 		i.cancel = nil
 	}
 
@@ -1046,8 +1047,8 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 					priority: priority,
 				})
 			}
-
 		}
+
 		hostFilterMap[host] = filtersForHost
 	}
 
