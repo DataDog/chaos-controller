@@ -977,8 +977,11 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 					for _, filter := range hosts.hostFilterMap[changedHost] {
 						err := i.removeTcFilter(interfaces, filter.priority)
 						if err != nil {
-							// TODO test the behavior on missing filters, what happens if we're retrying to remove old filters after failing at i.addFiltersForHosts(interfaces, changedHosts, flowid) and restarting
-							i.config.Log.Errorw("error removing out of date tc filter", "err", err, "host", changedHost.Host) // TODO we could leak these filters
+							if strings.Contains(err.Error(), "Filter with specified priority/protocol not found") {
+								i.config.Log.Warnw("could not find outdated tc filter", "err", err, "host", changedHost.Host, "filter.ip", filter.ip, "filter.priority", filter.priority)
+							} else {
+								i.config.Log.Errorw("error removing out of date tc filter", "err", err, "host", changedHost.Host) // Clean() removes the entire qdiscs, thus there is no risk of leaking any filters here if Clean succeeds
+							}
 						}
 					}
 				}
@@ -986,7 +989,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				filterMap, err := i.addFiltersForHosts(interfaces, changedHosts, flowid)
 
 				if err != nil {
-					i.config.Log.Errorw("error updating filters for hosts", "hosts", changedHosts, "err", err) // TODO we could have partially applied filters
+					i.config.Log.Errorw("error updating filters for hosts", "hosts", changedHosts, "err", err)
 					continue
 				}
 
