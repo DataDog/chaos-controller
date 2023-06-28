@@ -942,6 +942,11 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 			return
 		case <-time.After(i.config.HostResolveInterval):
 			changedHosts := []v1beta1.NetworkDisruptionHostSpec{}
+			if err := i.config.Netns.Enter(); err != nil {
+				i.config.Log.Errorw("unable to enter the given container network namespace", "err", err)
+				continue
+			}
+
 			for host, tcFilters := range hosts.hostFilterMap {
 				newIps, err := resolveHost(i.config.DNSClient, host.Host)
 				if err != nil {
@@ -988,6 +993,10 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				for changedHost, filter := range filterMap {
 					hosts.hostFilterMap[changedHost] = filter
 				}
+			}
+
+			if err := i.config.Netns.Exit(); err != nil {
+				i.config.Log.Errorw("unable to exit the given container network namespace", "err", err)
 			}
 		}
 	}
