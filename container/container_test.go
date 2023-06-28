@@ -23,7 +23,6 @@ var _ = Describe("Container", func() {
 		// runtime
 		runtime = NewRuntimeMock(GinkgoT())
 		runtime.EXPECT().PID(mock.Anything).Return(uint32(666), nil)
-		runtime.EXPECT().Name(mock.Anything).Return("", nil)
 
 		// config
 		config = Config{
@@ -33,13 +32,14 @@ var _ = Describe("Container", func() {
 
 	JustBeforeEach(func() {
 		var err error
-		ctn, err = NewWithConfig("containerd://fake", config)
+		ctn, err = NewWithConfig("containerd://fake", "fake-name", config)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("loading a container", func() {
 		It("should return a container object with parsed info", func() {
 			Expect(ctn.ID()).To(Equal("fake"))
+			Expect(ctn.Name()).To(Equal("fake-name"))
 			Expect(ctn.PID()).To(Equal(uint32(666)))
 		})
 	})
