@@ -32,23 +32,14 @@ packages:
       ResourceEventHandler:
         config:
           mockname: ResourceEventHandlerMock
-      Controller:
-        config:
-          mockname: CacheControllerMock
       Watcher:
         config:
           mockname: CacheWatcherMock
-      Informer:
-        config:
-          mockname: CacheInformerMock
   sigs.k8s.io/controller-runtime/pkg/cache:
     interfaces:
       Informer:
         config:
           mockname: CacheInformerMock
-      Controller:
-        config:
-          disable: True
   sigs.k8s.io/controller-runtime/pkg/source:
     interfaces:
       SyncingSource:
