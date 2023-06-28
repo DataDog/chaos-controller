@@ -942,6 +942,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 			return
 		case <-time.After(i.config.HostResolveInterval):
 			changedHosts := []v1beta1.NetworkDisruptionHostSpec{}
+
 			if err := i.config.Netns.Enter(); err != nil {
 				i.config.Log.Errorw("unable to enter the given container network namespace", "err", err)
 				continue
@@ -960,6 +961,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 					i.config.Log.Debugw(fmt.Sprintf("%d ips found, expected %d. will update filters for host", len(newIps), len(tcFilters)), "host", host.Host)
 					// If we have more or fewer IPs than before, we obviously have a change and need to update the tc filters
 					changedHosts = append(changedHosts, host)
+
 					continue
 				}
 
