@@ -15,7 +15,6 @@ import (
 type Runtime interface {
 	PID(id string) (uint32, error)
 	HostPath(id, path string) (string, error)
-	Name(id string) (string, error)
 }
 
 // ParseContainerID extract from given id the containerID and runtime

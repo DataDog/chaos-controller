@@ -30,13 +30,13 @@ type container struct {
 }
 
 // New creates a new container object with default config
-func New(id string) (Container, error) {
-	return NewWithConfig(id, Config{})
+func New(id, name string) (Container, error) {
+	return NewWithConfig(id, name, Config{})
 }
 
 // NewWithConfig creates a new container object with the given config
 // nil fields are defaulted
-func NewWithConfig(id string, config Config) (Container, error) {
+func NewWithConfig(id, name string, config Config) (Container, error) {
 	containerID, runtime, err := ParseContainerID(id)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse container ID %s: %w", id, err)
@@ -64,11 +64,6 @@ func NewWithConfig(id string, config Config) (Container, error) {
 	pid, err := config.Runtime.PID(containerID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PID: %w", err)
-	}
-
-	name, err := config.Runtime.Name(containerID)
-	if err != nil {
-		return nil, fmt.Errorf("error getting container name: %w", err)
 	}
 
 	return container{
