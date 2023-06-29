@@ -59,9 +59,10 @@ packer_cache/
 crash.log
 *.json-e
 
-# local certificates
+# local certificates & config
 *.crt
 *.key
+.local.yaml
 
 # eBPF
 ebpf/builds/

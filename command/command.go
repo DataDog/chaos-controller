@@ -6,6 +6,7 @@ package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -161,7 +162,7 @@ func (w *backgroundCmd) Start() error {
 		w.log.Debug("new process created, monitoring newly created process exit status")
 
 		if err := <-w.chErr; err != nil {
-			w.log.Errorw("background command exited with an error", "error", err)
+			w.log.Warn("background command exited with an error", "error", err)
 		} else {
 			w.log.Info("background command exited successfully")
 		}
@@ -206,7 +207,11 @@ func (w *backgroundCmd) KeepAlive() {
 			}
 
 			if err := w.processManager.Signal(process, syscall.SIGCONT); err != nil {
-				w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
+				if errors.Is(err, os.ErrProcessDone) {
+					w.log.Infof("process is already finished, skipping sending SIGCONT from now on")
+				} else {
+					w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
+				}
 
 				w.resetTicker()
 

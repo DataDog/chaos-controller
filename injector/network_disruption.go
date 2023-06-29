@@ -696,7 +696,7 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 	// keep track of resource version to continue watching pods when the watcher has timed out
 	// at the right resource already computed.
 	if event.Type == watch.Bookmark {
-		watcher.servicesResourceVersion = pod.ResourceVersion
+		watcher.podsResourceVersion = pod.ResourceVersion
 
 		return nil
 	}
