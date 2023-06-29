@@ -8,6 +8,13 @@ kind: Deployment
 metadata:
   name: chaos-controller
   namespace: {{ .Values.chaosNamespace }}
+  labels:
+    app: chaos-controller
+    chart_name: "{{ .Chart.Name }}"
+    chart_version: "{{ .Chart.Version }}"
+    tags.datadoghq.com/env: dev
+    tags.datadoghq.com/service: chaos-controller
+    tags.datadoghq.com/version: {{ .Values.controller.version | default .Values.controller.image.tag }}
 spec:
   replicas: 1
   selector:
@@ -17,10 +24,16 @@ spec:
     metadata:
       labels:
         app: chaos-controller
+        chart_name: "{{ .Chart.Name }}"
+        chart_version: "{{ .Chart.Version }}"
+        admission.datadoghq.com/enabled: "true"
+        tags.datadoghq.com/env: dev
+        tags.datadoghq.com/service: chaos-controller
+        tags.datadoghq.com/version: {{ .Values.controller.version | default .Values.controller.image.tag }}
       annotations:
         kubectl.kubernetes.io/default-container: manager
     spec:
-      serviceAccount: chaos-controller
+      serviceAccountName: chaos-controller
       containers:
       - name: kube-rbac-proxy
         image: {{ template "chaos-controller.format-image" .Values.proxy.image }}
@@ -33,6 +46,13 @@ spec:
         ports:
         - containerPort: 8443
           name: https
+        resources:
+          limits:
+            cpu: 50m
+            memory: 64Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
       - name: manager
         image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.controller.image }}
         imagePullPolicy: IfNotPresent
@@ -41,10 +61,21 @@ spec:
         args:
         - --config=/etc/chaos-controller/config.yaml
         env:
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
           - name: CONTROLLER_NODE_NAME
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+          - name: TRACE_AGENT_URL
+            value: $(HOST_IP):8126
         ports:
         - containerPort: {{ .Values.controller.webhook.port }}
           name: webhook-server
@@ -63,6 +94,8 @@ spec:
         - mountPath: /etc/chaos-controller
           name: config
           readOnly: true
+        securityContext:
+          runAsUser: 0
       {{- if .Values.controller.image.pullSecrets }}
       imagePullSecrets:
         - name: {{ .Values.controller.image.pullSecrets }}

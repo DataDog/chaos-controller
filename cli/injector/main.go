@@ -232,16 +232,16 @@ func initConfig() {
 			return
 		}
 
-		for _, containerID := range disruptionArgs.TargetContainers {
+		for containerName, containerID := range disruptionArgs.TargetContainers {
 			// retrieve container info
-			ctn, err := container.New(containerID)
+			ctn, err := container.New(containerID, containerName)
 			if err != nil {
 				log.Fatalw("can't create container object", "error", err)
 
 				return
 			}
 
-			log.Infow("injector targeting container", "containerID", containerID, "container name", ctn.Name())
+			log.Infow("injector targeting container", "containerID", containerID, "containerName", containerName)
 
 			pid := ctn.PID()
 
@@ -398,7 +398,7 @@ func reinject(cmdName string) error {
 			return fmt.Errorf("container %s is not found (old containerID is %s)", conf.TargetContainer.Name(), conf.TargetContainer.ID())
 		}
 
-		if conf.TargetContainer, err = container.New(newContainerID); err != nil {
+		if conf.TargetContainer, err = container.New(newContainerID, conf.TargetContainer.Name()); err != nil {
 			return fmt.Errorf("unable to create a container from containerID %s: %w", newContainerID, err)
 		}
 

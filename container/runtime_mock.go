@@ -74,58 +74,6 @@ func (_c *RuntimeMock_HostPath_Call) RunAndReturn(run func(string, string) (stri
 	return _c
 }
 
-// Name provides a mock function with given fields: id
-func (_m *RuntimeMock) Name(id string) (string, error) {
-	ret := _m.Called(id)
-
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
-		return rf(id)
-	}
-	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(id)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(id)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// RuntimeMock_Name_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Name'
-type RuntimeMock_Name_Call struct {
-	*mock.Call
-}
-
-// Name is a helper method to define mock.On call
-//   - id string
-func (_e *RuntimeMock_Expecter) Name(id interface{}) *RuntimeMock_Name_Call {
-	return &RuntimeMock_Name_Call{Call: _e.mock.On("Name", id)}
-}
-
-func (_c *RuntimeMock_Name_Call) Run(run func(id string)) *RuntimeMock_Name_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *RuntimeMock_Name_Call) Return(_a0 string, _a1 error) *RuntimeMock_Name_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *RuntimeMock_Name_Call) RunAndReturn(run func(string) (string, error)) *RuntimeMock_Name_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // PID provides a mock function with given fields: id
 func (_m *RuntimeMock) PID(id string) (uint32, error) {
 	ret := _m.Called(id)

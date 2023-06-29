@@ -50,6 +50,56 @@ Once you have installed the above requirements, run the `make lima-all` command 
 
 Once the instance is started, you can log into it using either the `lima` or its longer form `limactl shell default` commands.
 
+#### Change default lima instance
+
+We are not using `default` as our instance name on lima anymore.
+
+The alias `lima` can still be used as before to quickkly jump on your instance shell (e.g. `lima uname -a`)
+
+More specifically:
+
+```text
+Usage: lima [COMMAND...]
+
+lima is an alias for "limactl shell default".
+The instance name ("default") can be changed by specifying $LIMA_INSTANCE.
+
+The shell and initial workdir inside the instance can be specified via $LIMA_SHELL
+and $LIMA_WORKDIR.
+
+See `limactl shell --help` for further information.
+
+```
+
+Just define `export LIMA_INSTANCE=$(whoami | tr "." "-")` into your `.zshrc` or similar.
+
+### Installing Datadog Agent in local cluster
+
+In case you have a Datadog account and want to install the Datadog Agent into your local cluster to retrieve logs/metrics/traces from it:
+
+- Create an API key [here](https://app.datadoghq.com/organization-settings/api-keys)
+- Create an APP key [here](https://app.datadoghq.com/organization-settings/application-keys)
+- Store them securely and add them to your `.zshrc`:
+
+> NB: it is recommended to properly tag/isolate your local workload from your PROD workload, check with your Datadog account admin how to adapt tagging accordingly and confirmm which configuration should be applied to your Datadog Agent
+
+```bash
+security add-generic-password -a ${USER} -s staging_datadog_api_key -w
+security add-generic-password -a ${USER} -s staging_datadog_app_key -w
+# security delete-generic-password -a ${USER} -s staging_datadog_api_key
+# security delete-generic-password -a ${USER} -s staging_datadog_app_key
+# in your .zshrc or similar you can then do:
+export STAGING_DATADOG_API_KEY=$(security find-generic-password -a ${USER} -s staging_datadog_api_key -w)
+export STAGING_DATADOG_APP_KEY=$(security find-generic-password -a ${USER} -s staging_datadog_app_key -w)
+# choose appropriate site here: https://docs.datadoghq.com/getting_started/site/
+# only for `make open-dd`
+export STAGING_DD_SITE=https://app.datadoghq.com
+
+```
+
+- Run `make lima-install-datadog-agent`
+- Run `make open-dd` to open your default browser to the infrastructure page of your host
+
 ### Deploying local changes to Lima: `make lima-redeploy`
 
 To deploy changes made to the controller code or chart, run the `make lima-redeploy` command that will run the following targets:
@@ -154,7 +204,7 @@ The end-to-end tests will create a set of dummy pods in the `default` namespace 
 In case you have a Datadog account and want to push the tests results to it, you can do the following:
 
 - Create an API key [here](https://app.datadoghq.com/organization-settings/api-keys)
-- Store it securily and add it to your `.zshrc`:
+- Store it securely and add it to your `.zshrc`:
 
 ```bash
 security add-generic-password -a ${USER} -s datadog_api_key -w
