@@ -37,6 +37,7 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
 	// +kubebuilder:scaffold:imports
 
 	"go.opentelemetry.io/otel"
@@ -200,7 +201,7 @@ func main() {
 
 	r.Controller = cont
 
-	watcherFactory := watchers.NewWatcherFactory(logger, ms, r.Client, r.Recorder)
+	watcherFactory := watchers.NewWatcherFactory(logger, metricsSink, r.Client, r.Recorder)
 	r.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, r.Reader, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())

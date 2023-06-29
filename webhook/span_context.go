@@ -49,7 +49,7 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption creation", trace.WithNewRoot(), trace.WithAttributes(
+	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption", trace.WithNewRoot(), trace.WithAttributes(
 		attribute.String("disruption_name", dis.Name),
 		attribute.String("disruption_namespace", dis.Namespace),
 		attribute.String("disruption_user", req.UserInfo.Username),
@@ -66,16 +66,6 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 	}
 
 	dis.Annotations = annotations
-
-	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption", trace.WithNewRoot(), trace.WithAttributes(
-		attribute.String("disruption_name", dis.Name),
-		attribute.String("disruption_namespace", dis.Namespace),
-		attribute.String("disruption_user", req.UserInfo.Username),
-	))
-
-	defer disruptionSpan.End()
-
-	disruptionSpan.AddEvent("disruption start")
 
 	// writes the traceID and spanID in the annotations of the disruption
 	err := dis.SetSpanContext(ctx)

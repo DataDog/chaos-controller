@@ -94,7 +94,7 @@ type CtxTuple struct {
 // +kubebuilder:rbac:groups=core,resources=pods/status,verbs=update;patch
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
 // +kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
-func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (res ctrl.Result, err error) {
+func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
@@ -177,7 +177,7 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 	if err != nil {
 		r.log.Errorw("error getting user info", "error", err)
 
-		userInfo.Username = "generic.chaos.monkey@email.com"
+		userInfo.Username = "did-not-find-user-info@email.com"
 	}
 
 	ctx, reconcileSpan := otel.Tracer("").Start(ctx, "reconcile", trace.WithLinks(trace.LinkFromContext(ctx)),

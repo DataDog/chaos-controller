@@ -185,7 +185,6 @@ webhooks:
     - CREATE
     resources:
     - disruptions
-    - disruptions/status
 ---
 {{- if not .Values.controller.webhook.generateCert }}
 apiVersion: cert-manager.io/v1
