@@ -255,7 +255,7 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 
 	mainFS.DurationVar(&cfg.Injector.NetworkDisruption.HostResolveInterval, "injector-network-disruption-host-resolve-interval", time.Minute, "How often to re-resolve hostnames specified in a network disruption")
 
-	if err := viper.BindPFlag("injector.networkDisruption.hostResolveInterval", pflag.Lookup("injector-network-disruption-host-resolve-interval")); err != nil {
+	if err := viper.BindPFlag("injector.networkDisruption.hostResolveInterval", mainFS.Lookup("injector-network-disruption-host-resolve-interval")); err != nil {
 		return cfg, err
 	}
 
