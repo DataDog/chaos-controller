@@ -154,7 +154,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if client.IgnoreNotFound(err) == nil {
 			// If we're reconciling but without an instance, then we must have been triggered by the pod informer
 			// We should check for and delete any orphaned chaos pods
-			err = r.handleOrphanedChaosPods(req)
+			err = r.handleOrphanedChaosPods(ctx, req)
 		}
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -192,7 +192,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	r.log = r.log.With(r.TracerSink.GetLoggableTraceContext(reconcileSpan)...)
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
-	if err := r.handleChaosPodsTermination(instance); err != nil {
+	if err := r.handleChaosPodsTermination(ctx, instance); err != nil {
 		return ctrl.Result{}, fmt.Errorf("error handling chaos pods termination: %w", err)
 	}
 
@@ -200,7 +200,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if !instance.DeletionTimestamp.IsZero() {
 		// the instance is being deleted, clean it if the finalizer is still present
 		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
-			isCleaned, err := r.cleanDisruption(instance)
+			isCleaned, err := r.cleanDisruption(ctx, instance)
 			if err != nil {
 				return ctrl.Result{}, fmt.Errorf("error cleaning disruption: %w", err)
 			}
@@ -287,7 +287,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 			return ctrl.Result{Requeue: true}, err
 		} else if calculateRemainingDuration(*instance) <= 0 {
-			if err := r.updateInjectionStatus(instance); err != nil {
+			if err := r.updateInjectionStatus(ctx, instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 			}
 
@@ -316,12 +316,12 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// retrieve targets from label selector
-		if err := r.selectTargets(instance); err != nil {
+		if err := r.selectTargets(ctx, instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error selecting targets: %w", err)
 		}
 
 		// start injections
-		if err := r.startInjection(instance); err != nil {
+		if err := r.startInjection(ctx, instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error creating chaos pods to start the disruption: %w", err)
 		}
 
@@ -330,7 +330,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// update resource status injection
 		// requeue the request if the disruption is not fully notFullyInjected yet
-		err := r.updateInjectionStatus(instance)
+		err := r.updateInjectionStatus(ctx, instance)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 		} else if instance.Status.InjectionStatus.NotFullyInjected() {
@@ -364,7 +364,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 // - an instance with at least one chaos pod as "ready" is considered as "partially injected"
 // - an instance with no ready chaos pods is considered as "not injected"
 // - an instance expired will have previously defined status prefixed with "previously"
-func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disruption) (err error) {
+func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instance *chaosv1beta1.Disruption) (err error) {
 	r.log.Debugw("checking if injection status needs to be updated", "injectionStatus", instance.Status.InjectionStatus)
 
 	defer func() {
@@ -374,7 +374,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 	readyPodsCount := 0
 
 	// get chaos pods
-	chaosPods, err := r.getChaosPods(instance, nil)
+	chaosPods, err := r.getChaosPods(ctx, instance, nil)
 	if err != nil {
 		return fmt.Errorf("error getting instance chaos pods: %w", err)
 	}
@@ -474,11 +474,11 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 }
 
 // startInjection creates non-existing chaos pod for the given disruption
-func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption) error {
+func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *chaosv1beta1.Disruption) error {
 	// chaosPodsMap is used to check if a target's chaos pods already exist or not
 	chaosPodsMap := make(map[string]map[string]bool, len(instance.Status.TargetInjections))
 
-	chaosPods, err := r.getChaosPods(instance, nil)
+	chaosPods, err := r.getChaosPods(ctx, instance, nil)
 	if err != nil {
 		return fmt.Errorf("error getting chaos pods: %w", err)
 	}
@@ -490,7 +490,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 
 	for _, chaosPod := range chaosPods {
 		if !instance.Status.HasTarget(chaosPod.Labels[chaostypes.TargetLabel]) {
-			r.deleteChaosPod(instance, chaosPod)
+			r.deleteChaosPod(ctx, instance, chaosPod)
 		} else {
 			chaosPodsMap[chaosPod.Labels[chaostypes.TargetLabel]][chaosPod.Labels[chaostypes.DisruptionKindLabel]] = true
 		}
@@ -516,7 +516,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 				continue
 			}
 
-			if err = r.createChaosPods(instance, targetName); err != nil {
+			if err = r.createChaosPods(ctx, instance, targetName); err != nil {
 				if !errors.IsNotFound(err) {
 					return fmt.Errorf("error creating chaos pods: %w", err)
 				}
@@ -532,7 +532,7 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 }
 
 // createChaosPods attempts to create all the chaos pods for a given target. If a given chaos pod already exists, it is not recreated.
-func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption, target string) error {
+func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *chaosv1beta1.Disruption, target string) error {
 	var err error
 
 	targetNodeName := ""
@@ -568,7 +568,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	}
 
 	// generate injection pods specs
-	targetChaosPods, err := r.generateChaosPods(instance, target, targetNodeName, targetContainers, targetPodIP)
+	targetChaosPods, err := r.generateChaosPods(ctx, instance, target, targetNodeName, targetContainers, targetPodIP)
 	if err != nil {
 		return fmt.Errorf("error generating chaos pods: %w", err)
 	}
@@ -582,7 +582,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 	// create injection pods
 	for _, targetChaosPod := range targetChaosPods {
 		// check if an injection pod already exists for the given (instance, namespace, disruption kind) tuple
-		found, err := r.getChaosPods(instance, targetChaosPod.Labels)
+		found, err := r.getChaosPods(ctx, instance, targetChaosPod.Labels)
 		if err != nil {
 			return fmt.Errorf("error getting existing chaos pods: %w", err)
 		}
@@ -669,11 +669,11 @@ func (r *DisruptionReconciler) waitForPodCreation(pod *corev1.Pod) error {
 // for each existing chaos pod for the given instance, the function will delete the chaos pod to trigger its cleanup phase
 // the function returns true when no more chaos pods are existing (meaning that it keeps returning false if some pods
 // are deleted but still present)
-func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption) (bool, error) {
+func (r *DisruptionReconciler) cleanDisruption(ctx context.Context, instance *chaosv1beta1.Disruption) (bool, error) {
 	cleaned := true
 
 	// get already existing chaos pods for the given disruption
-	chaosPods, err := r.getChaosPods(instance, nil)
+	chaosPods, err := r.getChaosPods(ctx, instance, nil)
 	if err != nil {
 		return false, err
 	}
@@ -686,19 +686,19 @@ func (r *DisruptionReconciler) cleanDisruption(instance *chaosv1beta1.Disruption
 
 	// terminate running chaos pods to trigger cleanup
 	for _, chaosPod := range chaosPods {
-		r.deleteChaosPod(instance, chaosPod)
+		r.deleteChaosPod(ctx, instance, chaosPod)
 	}
 
 	return cleaned, nil
 }
 
-func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
+func (r *DisruptionReconciler) handleOrphanedChaosPods(ctx context.Context, req ctrl.Request) error {
 	ls := make(map[string]string)
 
 	ls[chaostypes.DisruptionNameLabel] = req.Name
 	ls[chaostypes.DisruptionNamespaceLabel] = req.Namespace
 
-	chaosPods, err := r.getChaosPods(nil, ls)
+	chaosPods, err := r.getChaosPods(ctx, nil, ls)
 	if err != nil {
 		return err
 	}
@@ -752,9 +752,9 @@ func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
 // if a finalizer can't be removed because none of the conditions above are fulfilled, the instance is flagged
 // as stuck on removal and the pod finalizer won't be removed unless someone does it manually
 // the pod target will be moved to ignored targets, so it is not picked up by the next reconcile loop
-func (r *DisruptionReconciler) handleChaosPodsTermination(instance *chaosv1beta1.Disruption) error {
+func (r *DisruptionReconciler) handleChaosPodsTermination(ctx context.Context, instance *chaosv1beta1.Disruption) error {
 	// get already existing chaos pods for the given disruption
-	chaosPods, err := r.getChaosPods(instance, nil)
+	chaosPods, err := r.getChaosPods(ctx, instance, nil)
 	if err != nil {
 		return err
 	}
@@ -884,7 +884,7 @@ func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta
 // targets will only be selected once per instance
 // the chosen targets names will be reflected in the instance status
 // subsequent calls to this function will always return the same targets as the first call
-func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) error {
+func (r *DisruptionReconciler) selectTargets(ctx context.Context, instance *chaosv1beta1.Disruption) error {
 	if len(instance.Status.TargetInjections) != 0 && instance.Spec.StaticTargeting {
 		return nil
 	}
@@ -914,7 +914,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	}
 
 	// filter matching targets to only get eligible ones
-	eligibleTargets, err := r.getEligibleTargets(instance, matchingTargets)
+	eligibleTargets, err := r.getEligibleTargets(ctx, instance, matchingTargets)
 	if err != nil {
 		return fmt.Errorf("error getting eligible targets: %w", err)
 	}
@@ -996,7 +996,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 }
 
 // deleteChaosPods deletes a chaos pod using the client
-func (r *DisruptionReconciler) deleteChaosPod(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) {
+func (r *DisruptionReconciler) deleteChaosPod(ctx context.Context, instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) {
 	// delete the chaos pod only if it has not been deleted already
 	if chaosPod.DeletionTimestamp.IsZero() {
 		r.log.Infow("terminating chaos pod to trigger cleanup", "chaosPod", chaosPod.Name)
@@ -1009,8 +1009,8 @@ func (r *DisruptionReconciler) deleteChaosPod(instance *chaosv1beta1.Disruption,
 	}
 }
 
-func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error) {
-	return chaosv1beta1.GetChaosPods(context.Background(), r.log, r.ChaosNamespace, r.Client, instance, ls)
+func (r *DisruptionReconciler) getChaosPods(ctx context.Context, instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error) {
+	return chaosv1beta1.GetChaosPods(ctx, r.log, r.ChaosNamespace, r.Client, instance, ls)
 }
 
 // generatePod generates a pod from a generic pod template in the same namespace
@@ -1275,7 +1275,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 }
 
 // generateChaosPods generates a chaos pod for the given instance and disruption kind if set
-func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, targetContainers map[string]string, targetPodIP string) ([]corev1.Pod, error) {
+func (r *DisruptionReconciler) generateChaosPods(ctx context.Context, instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, targetContainers map[string]string, targetPodIP string) ([]corev1.Pod, error) {
 	pods := []corev1.Pod{}
 
 	// generate chaos pods for each possible disruptions
@@ -1468,7 +1468,7 @@ func (r *DisruptionReconciler) ReportMetrics() {
 				}
 			}
 
-			chaosPods, err := r.getChaosPods(&d, nil)
+			chaosPods, err := r.getChaosPods(context.Background(), &d, nil)
 			if err != nil {
 				r.BaseLog.Errorw("error listing chaos pods to send pods.gauge metric", "error", err)
 			}

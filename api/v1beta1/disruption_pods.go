@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -19,6 +20,9 @@ import (
 // GetChaosPods returns chaos pods owned by the given instance and having the given labels
 // both instance and label set are optional but at least one must be provided
 func GetChaosPods(ctx context.Context, log *zap.SugaredLogger, chaosNamespace string, k8sClient client.Client, instance *Disruption, ls labels.Set) ([]corev1.Pod, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "GetChaosPods")
+	defer span.End()
+
 	pods := &corev1.PodList{}
 
 	if k8sClient == nil {

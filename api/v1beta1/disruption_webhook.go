@@ -201,7 +201,10 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	logger := logger.With("disruptionName", r.Name, "disruptionNamespace", r.Namespace)
 	logger.Debugw("validating updated disruption", "spec", r.Spec)
 
-	var err error
+	ctx, err := r.SpanContext(context.Background())
+	if err != nil {
+		logger.Errorf("error getting disruption span context: %w", err)
+	}
 
 	oldDisruption := old.(*Disruption)
 
@@ -209,7 +212,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	// we should NOT always prevent finalizer removal because chaos controller reconcile loop will go through this mutating webhook when perfoming updates
 	// and need to be able to remove the finalizer to enable the disruption to be garbage collected on successful removal
 	if controllerutil.ContainsFinalizer(oldDisruption, chaostypes.DisruptionFinalizer) && !controllerutil.ContainsFinalizer(r, chaostypes.DisruptionFinalizer) {
-		oldPods, err := GetChaosPods(context.Background(), logger, chaosNamespace, k8sClient, oldDisruption, nil)
+		oldPods, err := GetChaosPods(ctx, logger, chaosNamespace, k8sClient, oldDisruption, nil)
 		if err != nil {
 			return fmt.Errorf("error getting disruption pods: %w", err)
 		}

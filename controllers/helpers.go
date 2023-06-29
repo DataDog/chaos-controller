@@ -6,6 +6,7 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"regexp"
@@ -226,7 +227,7 @@ func TimeToInject(triggers chaosv1beta1.DisruptionTriggers, creationTimestamp ti
 
 // getEligibleTargets returns targets which can be targeted by the given instance from the given targets pool
 // it skips ignored targets and targets being already targeted by another disruption
-func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disruption, potentialTargets []string) (eligibleTargets chaosv1beta1.TargetInjections, err error) {
+func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance *chaosv1beta1.Disruption, potentialTargets []string) (eligibleTargets chaosv1beta1.TargetInjections, err error) {
 	defer func() {
 		r.log.Debugw("getting eligible targets for disruption injection", "potential_targets", potentialTargets, "eligible_targets", eligibleTargets, "error", err)
 	}()
@@ -247,7 +248,7 @@ func (r *DisruptionReconciler) getEligibleTargets(instance *chaosv1beta1.Disrupt
 			targetLabels[chaostypes.DisruptionNamespaceLabel] = instance.Namespace // filter with current instance namespace (to avoid getting pods having the same name but living in different namespaces)
 		}
 
-		chaosPods, err := r.getChaosPods(nil, targetLabels)
+		chaosPods, err := r.getChaosPods(ctx, nil, targetLabels)
 		if err != nil {
 			return nil, fmt.Errorf("error getting chaos pods targeting the given target (%s): %w", target, err)
 		}
