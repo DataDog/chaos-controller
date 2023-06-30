@@ -22,6 +22,8 @@ import (
 	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
 	"github.com/DataDog/chaos-controller/o11y/profiler"
 	profilertypes "github.com/DataDog/chaos-controller/o11y/profiler/types"
+	"github.com/DataDog/chaos-controller/o11y/tracer"
+	tracertypes "github.com/DataDog/chaos-controller/o11y/tracer/types"
 	"github.com/DataDog/chaos-controller/targetselector"
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/DataDog/chaos-controller/watchers"
@@ -35,7 +37,11 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
 	// +kubebuilder:scaffold:imports
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 //go:generate mockery  --config .local.mockery.yaml
@@ -93,44 +99,55 @@ func main() {
 		logger.Errorw("error(s) while creating notifiers", "error", err)
 	}
 
-	// metrics sink
-	ms, err := metrics.GetSink(logger, metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
+	metricsSink, err := metrics.GetSink(logger, metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
 	if err != nil {
 		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
 
-		ms, err = metrics.GetSink(logger, metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
-
-		if err != nil {
-			logger.Fatalw("error creating noop metrics sink", "error", err)
-		}
+		metricsSink, _ = metrics.GetSink(logger, metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
 	}
-
 	// handle metrics sink client close on exit
 	defer func() {
-		logger.Infow("closing metrics sink client before exiting", "sink", ms.GetSinkName())
+		logger.Infow("closing metrics sink client before exiting", "sink", metricsSink.GetSinkName())
 
-		if err := ms.Close(); err != nil {
-			logger.Errorw("error closing metrics sink client", "sink", ms.GetSinkName(), "error", err)
+		if err := metricsSink.Close(); err != nil {
+			logger.Errorw("error closing metrics sink client", "sink", metricsSink.GetSinkName(), "error", err)
 		}
 	}()
 
-	if ms.MetricRestart() != nil {
-		logger.Errorw("error sending MetricRestart", "sink", ms.GetSinkName())
-	}
-
-	// profiler sink
-	prfl, err := profiler.GetSink(logger, profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
+	profilerSink, err := profiler.GetSink(logger, profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
 	if err != nil {
 		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
 
-		prfl, err = profiler.GetSink(logger, profilertypes.SinkDriverNoop)
-
-		if err != nil {
-			logger.Errorw("error while creating noop profiler sink", "error", err)
-		}
+		profilerSink, _ = profiler.GetSink(logger, profilertypes.SinkDriverNoop)
 	}
 	// handle profiler sink close on exit
-	defer prfl.Stop()
+	defer func() {
+		logger.Infow("closing profiler sink client before exiting", "sink", profilerSink.GetSinkName())
+		profilerSink.Stop()
+	}()
+
+	tracerSink, err := tracer.GetSink(logger, tracertypes.SinkDriver(cfg.Controller.TracerSink))
+	if err != nil {
+		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
+
+		tracerSink, _ = tracer.GetSink(logger, tracertypes.SinkDriverNoop)
+	}
+	// handle tracer sink close on exit
+	defer func() {
+		logger.Infow("closing tracer sink client before exiting", "sink", tracerSink.GetSinkName())
+
+		if err := tracerSink.Stop(); err != nil {
+			logger.Errorw("error closing tracer sink client", "sink", metricsSink.GetSinkName(), "error", err)
+		}
+	}()
+
+	// initiate Open Telemetry, set it up with the sink Provider, use TraceContext for propagation through the CRD
+	otel.SetTracerProvider(tracerSink.GetProvider())
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	if err = metricsSink.MetricRestart(); err != nil {
+		logger.Errorw("error sending MetricRestart", "sink", metricsSink.GetSinkName(), "err", err)
+	}
 
 	// target selector
 	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName)
@@ -154,7 +171,8 @@ func main() {
 		BaseLog:                               logger,
 		Scheme:                                mgr.GetScheme(),
 		Recorder:                              mgr.GetEventRecorderFor(chaosv1beta1.SourceDisruptionComponent),
-		MetricsSink:                           ms,
+		MetricsSink:                           metricsSink,
+		TracerSink:                            tracerSink,
 		TargetSelector:                        targetSelector,
 		InjectorAnnotations:                   cfg.Injector.Annotations,
 		InjectorLabels:                        cfg.Injector.Labels,
@@ -183,7 +201,7 @@ func main() {
 
 	r.Controller = cont
 
-	watcherFactory := watchers.NewWatcherFactory(logger, ms, r.Client, r.Recorder)
+	watcherFactory := watchers.NewWatcherFactory(logger, metricsSink, r.Client, r.Recorder)
 	r.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, r.Reader, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -216,7 +234,7 @@ func main() {
 	setupWebhookConfig := utils.SetupWebhookWithManagerConfig{
 		Manager:                       mgr,
 		Logger:                        logger,
-		MetricsSink:                   ms,
+		MetricsSink:                   metricsSink,
 		Recorder:                      r.Recorder,
 		NamespaceThresholdFlag:        cfg.Controller.SafeMode.NamespaceThreshold,
 		ClusterThresholdFlag:          cfg.Controller.SafeMode.ClusterThreshold,
@@ -254,6 +272,13 @@ func main() {
 			},
 		})
 	}
+
+	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-span-context", &webhook.Admission{
+		Handler: &chaoswebhook.SpanContextMutator{
+			Client: mgr.GetClient(),
+			Log:    logger,
+		},
+	})
 
 	// erase/close caches contexts
 	defer func() {

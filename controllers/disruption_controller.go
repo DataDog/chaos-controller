@@ -17,11 +17,15 @@ import (
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
+	"github.com/DataDog/chaos-controller/o11y/tracer"
 	"github.com/DataDog/chaos-controller/safemode"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/watchers"
 	"github.com/cenkalti/backoff"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -54,6 +58,7 @@ type DisruptionReconciler struct {
 	Scheme                                *runtime.Scheme
 	Recorder                              record.EventRecorder
 	MetricsSink                           metrics.Sink
+	TracerSink                            tracer.Sink
 	TargetSelector                        targetselector.TargetSelector
 	InjectorAnnotations                   map[string]string
 	InjectorLabels                        map[string]string
@@ -89,7 +94,7 @@ type CtxTuple struct {
 // +kubebuilder:rbac:groups=core,resources=pods/status,verbs=update;patch
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
 // +kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
-func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (res ctrl.Result, err error) {
+func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	instance := &chaosv1beta1.Disruption{}
 	tsStart := time.Now()
 
@@ -163,6 +168,29 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 		r.log.Errorw("error during the creation of watchers", "error", err)
 	}
 
+	ctx, err = instance.SpanContext(ctx)
+	if err != nil {
+		r.log.Errorw("did not find span context", "err", err)
+	}
+
+	userInfo, err := instance.UserInfo()
+	if err != nil {
+		r.log.Errorw("error getting user info", "error", err)
+
+		userInfo.Username = "did-not-find-user-info@email.com"
+	}
+
+	ctx, reconcileSpan := otel.Tracer("").Start(ctx, "reconcile", trace.WithLinks(trace.LinkFromContext(ctx)),
+		trace.WithAttributes(
+			attribute.String("disruption_name", instance.Name),
+			attribute.String("disruption_namespace", instance.Namespace),
+			attribute.String("disruption_user", userInfo.Username),
+		))
+	defer reconcileSpan.End()
+
+	// allows to sync logs with traces
+	r.log = r.log.With(r.TracerSink.GetLoggableTraceContext(reconcileSpan)...)
+
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(instance); err != nil {
 		return ctrl.Result{}, fmt.Errorf("error handling chaos pods termination: %w", err)
@@ -206,6 +234,17 @@ func (r *DisruptionReconciler) Reconcile(_ context.Context, req ctrl.Request) (r
 			r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 			r.emitKindCountMetrics(instance)
+
+			// close the ongoing disruption tracing Span
+			defer func() {
+				_, disruptionStopSpan := otel.Tracer("").Start(ctx, "disruption deletion", trace.WithAttributes(
+					attribute.String("disruption_name", instance.Name),
+					attribute.String("disruption_namespace", instance.Namespace),
+					attribute.String("disruption_user", userInfo.Username),
+				))
+
+				disruptionStopSpan.End()
+			}()
 
 			return ctrl.Result{}, nil
 		}
