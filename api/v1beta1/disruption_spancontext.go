@@ -23,7 +23,7 @@ var (
 )
 
 // SpanContext extracts this disruption's span context, injects it in the given context, then returns it
-func (r *Disruption) ExtractSpanContext(ctx context.Context) (context.Context, error) {
+func (r *Disruption) SpanContext(ctx context.Context) (context.Context, error) {
 	var annotation propagation.MapCarrier
 
 	spanContext, ok := r.Annotations[annotationSpanContextKey]

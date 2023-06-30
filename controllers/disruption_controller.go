@@ -168,7 +168,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		r.log.Errorw("error during the creation of watchers", "error", err)
 	}
 
-	ctx, err = instance.ExtractSpanContext(ctx)
+	ctx, err = instance.SpanContext(ctx)
 	if err != nil {
 		r.log.Errorw("did not find span context", "err", err)
 	}
