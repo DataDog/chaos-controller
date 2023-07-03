@@ -11,13 +11,12 @@ FROM gcr.io/distroless/python3-debian11:latest
 
 # binaries used by the chaos-injector, ran as commmands
 COPY --from=binaries /usr/bin/df /usr/bin/ls /usr/bin/test /usr/bin/
-COPY --from=binaries /usr/sbin/iptables /usr/sbin/ip /usr/sbin/
+COPY --from=binaries /usr/sbin/iptables /usr/sbin/
 COPY --from=binaries /sbin/tc /sbin/tc
 
 # libraries used by above mentioned binaries (mostly GLIBC related)
-ARG LIBARCH
-COPY --from=binaries /lib/ld-linux-${LIBARCH}.so.1 /lib/
-COPY --from=binaries /usr/lib/ld-linux-${LIBARCH}.so.1 /usr/lib/
+ARG LIBCOPYSRC LIBCOPYDST LIBARCH
+COPY --from=binaries ${LIBCOPYSRC} ${LIBCOPYDST}
 COPY --from=binaries /lib/tc /lib/tc/
 COPY --from=binaries /usr/lib/tc /usr/lib/tc/
 COPY --from=binaries /lib/${LIBARCH}-linux-gnu /lib/${LIBARCH}-linux-gnu/
