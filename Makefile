@@ -1,8 +1,19 @@
 .PHONY: *
 .SILENT: release
 
+NOW_ISO8601 = $(shell date -u +"%Y-%m-%dT%H:%M:%S")
+
 GOOS = $(shell go env GOOS)
 GOARCH = $(shell go env GOARCH)
+
+LIBARCH = aarch64
+LIBCOPYSRC = /lib/ld-linux-${LIBARCH}.so.1
+LIBCOPYDST = /lib/
+ifeq (amd64,$(GOARCH))
+LIBARCH = x86_64
+LIBCOPYSRC = /lib64/ld-linux-x86-64.so.2
+LIBCOPYDST = /lib64/
+endif
 
 # GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
 GOBIN ?= $(shell go env GOBIN)
@@ -136,7 +147,7 @@ _$(1)_amd:
 $(1): _$(1) _$(1)_arm _$(1)_amd
 
 docker-build-$(1): _docker-build-$(1) $(1)
-	docker buildx build --build-arg TARGETARCH=$(GOARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
+	docker buildx build --build-arg BUILDSTAMP=$(NOW_ISO8601) --build-arg LIBARCH=$(LIBARCH) --build-arg TARGETARCH=$(GOARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
 	docker save $$(IMAGE_TAG) -o ./bin/$(1)/$(1).tar.gz
 
 lima-push-$(1): docker-build-$(1)

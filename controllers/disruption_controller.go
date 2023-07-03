@@ -1055,7 +1055,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 					FailureThreshold: 5,
 					ProbeHandler: corev1.ProbeHandler{
 						Exec: &corev1.ExecAction{
-							Command: []string{"cat", "/tmp/readiness_probe"},
+							Command: []string{"test", "-f", "/tmp/readiness_probe"},
 						},
 					},
 				},

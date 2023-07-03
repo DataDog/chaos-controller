@@ -14,7 +14,7 @@ metadata:
     chart_version: "{{ .Chart.Version }}"
     tags.datadoghq.com/env: dev
     tags.datadoghq.com/service: chaos-controller
-    tags.datadoghq.com/version: {{ .Values.controller.version | default .Values.controller.image.tag }}
+    tags.datadoghq.com/version: {{ .Values.controller.version | default .Values.controller.image.tag | default .Values.global.chaos.defaultImage.tag }}
 spec:
   replicas: 1
   selector:
@@ -29,7 +29,7 @@ spec:
         admission.datadoghq.com/enabled: "true"
         tags.datadoghq.com/env: dev
         tags.datadoghq.com/service: chaos-controller
-        tags.datadoghq.com/version: {{ .Values.controller.version | default .Values.controller.image.tag }}
+        tags.datadoghq.com/version: {{ .Values.controller.version | default .Values.controller.image.tag | default .Values.global.chaos.defaultImage.tag }}
       annotations:
         kubectl.kubernetes.io/default-container: manager
     spec:
@@ -53,6 +53,12 @@ spec:
           requests:
             cpu: 50m
             memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 65532
+          runAsGroup: 65532
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
       - name: manager
         image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.controller.image }}
         imagePullPolicy: IfNotPresent
@@ -76,6 +82,13 @@ spec:
                 fieldPath: status.hostIP
           - name: TRACE_AGENT_URL
             value: $(HOST_IP):8126
+          # Below GOXXXX env var are required by go runtime
+          - name: GOROOT
+            value: /usr/local/go
+          - name: GOPATH
+            value: /tmp/go
+          - name: GOCACHE
+            value: /tmp/go-build
         ports:
         - containerPort: {{ .Values.controller.webhook.port }}
           name: webhook-server
@@ -84,18 +97,26 @@ spec:
           limits:
             cpu: {{ .Values.controller.resources.cpu }}
             memory: {{ .Values.controller.resources.memory }}
+            ephemeral-storage: {{ .Values.controller.resources.ephemeralStorage }}
           requests:
             cpu: {{ .Values.controller.resources.cpu }}
             memory: {{ .Values.controller.resources.memory }}
+            ephemeral-storage: {{ .Values.controller.resources.ephemeralStorage }}
         volumeMounts:
-        - mountPath: /tmp/k8s-webhook-server/serving-certs
-          name: cert
-          readOnly: true
-        - mountPath: /etc/chaos-controller
-          name: config
-          readOnly: true
+          - mountPath: /tmp/k8s-webhook-server/serving-certs
+            name: cert
+            readOnly: true
+          - mountPath: /etc/chaos-controller
+            name: config
+            readOnly: true
+          - name: ephemeral
+            mountPath: /tmp
         securityContext:
-          runAsUser: 0
+          runAsUser: 65532
+          runAsGroup: 65532
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
       {{- if .Values.controller.image.pullSecrets }}
       imagePullSecrets:
         - name: {{ .Values.controller.image.pullSecrets }}
@@ -109,4 +130,7 @@ spec:
       - name: config
         configMap:
           name: chaos-controller
+      - name: ephemeral
+        emptyDir:
+          sizeLimit: 521Mi
 {{- end }}

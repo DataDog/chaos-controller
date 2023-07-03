@@ -78,20 +78,18 @@ func NewClient(embeddedFS ...embed.FS) (Client, error) {
 }
 
 // initializeMarkers creates and sets up the controller-tools Collector instance for ddmark.
-func initializeMarkers() *k8smarkers.Collector {
-	col := &k8smarkers.Collector{}
-	reg := &k8smarkers.Registry{}
+func initializeMarkers() (*k8smarkers.Collector, error) {
+	reg := k8smarkers.Registry{}
 
 	// takes all the markers definition found in the ddmark/validation package, prior to analyzing the packages
-	err := Register(reg)
+	err := Register(&reg)
 	if err != nil {
-		fmt.Printf("\nerror loading markers from crd validation: %v", err)
-		return col
+		return nil, fmt.Errorf("unable to register registry: %w", err)
 	}
 
-	col.Registry = reg
-
-	return col
+	return &k8smarkers.Collector{
+		Registry: &reg,
+	}, nil
 }
 
 // ValidateStruct applies struct markers found in structPkgs struct definitions to a marshalledStruct object.
@@ -103,32 +101,28 @@ func (c client) ValidateStruct(marshalledStruct interface{}, filePath string) []
 // ValidateStructMultierror is the parent function of ValidateStruct.
 // It allows users to leverage the multierror package for error management.
 func (c client) ValidateStructMultierror(marshalledStruct interface{}, filePath string) (retErr *multierror.Error) {
-	col := initializeMarkers()
+	col, err := initializeMarkers()
+	if err != nil {
+		return multierror.Append(fmt.Errorf("error initializing markers:\n\t%w", err))
+	}
 
-	var err error
-
-	var pkgs []*k8sloader.Package
-
-	localStructPkgs := []string{}
-
+	localStructPkgs := make([]string, 0, len(c.markedLibs))
 	for _, pkg := range c.markedLibs {
 		localStructPkgs = append(localStructPkgs, thisLibPath(pkg.APIName))
 	}
 
-	pkgs, err = k8sloader.LoadRoots(localStructPkgs...)
+	var pkgs []*k8sloader.Package
 
-	if err != nil {
-		return multierror.Append(retErr, fmt.Errorf("error loading markers from crd validation: \n\t%w", err))
+	if pkgs, err = k8sloader.LoadRoots(localStructPkgs...); err != nil {
+		return multierror.Append(fmt.Errorf("error loading markers from crd validation:\n\t%w", err))
 	}
 
 	typesMap := getAllPackageTypes(pkgs, col)
 	if len(typesMap) == 0 {
-		retErr = multierror.Append(retErr, fmt.Errorf("%v: loaded classes are empty or not found", filePath))
+		retErr = multierror.Append(retErr, fmt.Errorf("loaded classes are empty or not found:\n\t%s", filePath))
 	}
 
-	retErr = multierror.Append(retErr, validateStruct(marshalledStruct, typesMap, nil, filePath, col))
-
-	return retErr
+	return multierror.Append(retErr, validateStruct(marshalledStruct, typesMap, nil, filePath, col))
 }
 
 // validateStruct is an internal recursive function that recursively applies markers rules to types and fields.

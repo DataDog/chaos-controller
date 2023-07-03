@@ -1,21 +1,12 @@
 # Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
 *.so
 *.dylib
 *.tar.gz
 bin/injector/injector*
-bin/injector/bpf-disk-failure*
-bin/injector*
+bin/injector/ebpf
 bin/manager/manager*
-bin/manager*
 bin/handler/handler*
-bin/handler*
-bin/chaosli/chaosli.tar.gz
-bin/chaosli/chaosli_darwin_amd64
-bin/chaosli/chaosli_darwin_amd64.sha256sum
-bin/chaosli/chaosli_darwin_arm64*
+bin/chaosli/chaosli*
 chart/install.yaml
 dogfood/bin
 out
@@ -53,11 +44,6 @@ cover.profile.*
 
 # output of chaosli create
 disruption.yaml
-
-# packer
-packer_cache/
-crash.log
-*.json-e
 
 # local certificates & config
 *.crt
