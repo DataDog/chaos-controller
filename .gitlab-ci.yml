@@ -45,15 +45,11 @@ build:make:
   <<: *docker-hub-login
   stage: build
   when: always
-  variables:
-    GO_FILENAME: go1.20.5.linux-amd64.tar.gz
   script:
     - apt-get update
-    - apt-get -y install build-essential git
-    - curl -O https://dl.google.com/go/${GO_FILENAME}
-    - rm -rf /usr/local/go && tar -C /usr/local -xzf ${GO_FILENAME}
+    - apt-get install -y --no-install-recommends build-essential git
     - export PATH="/usr/local/go/bin:${PATH}"
-    - make GOBIN=/usr/local/go/bin all docker-build-ebpf
+    - make GOBIN=/usr/local/go/bin install-go all docker-build-ebpf
   artifacts:
     paths:
       - bin/manager/manager_amd64

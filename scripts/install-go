@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# install-go is called either by the CI or from inside a multi-arch container
+# we define a default value to TARGETARCH to ease CI definition (as we stick to amd64 for now only there)
+# TARGETARCH is the arg automatically provided by docker buildx when doing multi-platform build
+# https://docs.docker.com/engine/reference/builder/#automatic-platform-args-in-the-global-scope
+# hence it will be defined appropriately when this target will be executed into a multi-arch container
+
+tmp_go="/tmp/go.tar.gz"
+url="https://dl.google.com/go/go${BUILDGOVERSION}.linux-${TARGETARCH:-amd64}.tar.gz"
+
+echo "Downloading go from ${url}"
+
+curl -sSLo "${tmp_go}" "${url}"
+tar -C /usr/local -xzf "${tmp_go}"
+ln -s /usr/local/go/bin/go /usr/local/bin/
+rm -f "${tmp_go}"

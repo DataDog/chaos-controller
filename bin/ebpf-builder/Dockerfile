@@ -12,19 +12,19 @@ RUN apt-get update && \
     libbpf-dev \
     llvm
 
-ARG ARCH=arm64
-RUN ([ "${ARCH}" = "amd64" ] && apt-get install -y libc6-dev-i386) || true
+ARG TARGETARCH
+RUN ([ "${TARGETARCH}" = "amd64" ] && apt-get install -y libc6-dev-i386) || true
 
-# Install Go specific version.
-ENV GOVERSION=1.19.4
-RUN curl -LO https://golang.org/dl/go${GOVERSION}.linux-${ARCH}.tar.gz && \
-    tar -xf go${GOVERSION}.linux-${ARCH}.tar.gz && \
-    mv go/ /usr/local/ && \
-    ln -s /usr/local/go/bin/go /usr/local/bin/ && \
-    rm -f go${GOVERSION}.linux-${ARCH}.tar.gz
+# Provide expected go version through build arg
+ARG BUILDGOVERSION
+# We defined TARGETARCH and BUILDGOVERSION as env so they can be seen by the make install-go target
+ENV TARGETARCH=${TARGETARCH} \
+    BUILDGOVERSION=${BUILDGOVERSION}
+WORKDIR /tmp
+COPY ./scripts/install-go /tmp/install-go
+RUN /tmp/install-go && rm -f /tmp/install-go
 
 # Setup working directory.
-RUN mkdir -p /app
 WORKDIR /app/ebpf
 
 # Execute build command.

@@ -6,6 +6,10 @@ NOW_ISO8601 = $(shell date -u +"%Y-%m-%dT%H:%M:%S")
 GOOS = $(shell go env GOOS)
 GOARCH = $(shell go env GOARCH)
 
+# change also circleci go build version "cimb/go:" if you change the version below
+# https://github.com/DataDog/chaos-controller/blob/main/.circleci/config.yml#L85
+BUILDGOVERSION = 1.20.5
+
 LIBARCH = aarch64
 LIBCOPYSRC = /lib/ld-linux-${LIBARCH}.so.1
 LIBCOPYDST = /lib/
@@ -103,7 +107,7 @@ docker-build-handler: IMAGE_TAG=$(HANDLER_IMAGE)
 docker-build-manager: IMAGE_TAG=$(MANAGER_IMAGE)
 
 docker-build-ebpf:
-	docker buildx build --platform linux/$(GOARCH) --build-arg ARCH=$(GOARCH) -t ebpf-builder-$(GOARCH) -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
+	docker buildx build --platform linux/$(GOARCH) --build-arg BUILDGOVERSION=$(BUILDGOVERSION) -t ebpf-builder-$(GOARCH) -f bin/ebpf-builder/Dockerfile .
 	-rm -r bin/injector/ebpf/
 ifeq (true,$(USE_VOLUMES))
 # create a dummy container with volume to store files
@@ -147,7 +151,7 @@ _$(1)_amd:
 $(1): _$(1) _$(1)_arm _$(1)_amd
 
 docker-build-$(1): _docker-build-$(1) $(1)
-	docker buildx build --build-arg BUILDSTAMP=$(NOW_ISO8601) --build-arg LIBARCH=$(LIBARCH) --build-arg TARGETARCH=$(GOARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
+	docker buildx build --build-arg BUILDGOVERSION=$(BUILDGOVERSION) --build-arg BUILDSTAMP=$(NOW_ISO8601) --build-arg LIBARCH=$(LIBARCH) --build-arg LIBCOPYSRC=$(LIBCOPYSRC) --build-arg LIBCOPYDST=$(LIBCOPYDST) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
 	docker save $$(IMAGE_TAG) -o ./bin/$(1)/$(1).tar.gz
 
 lima-push-$(1): docker-build-$(1)
@@ -508,10 +512,13 @@ ifeq (,$(wildcard $(GOBIN)/yamlfmt))
 endif
 
 install-watchexec:
-ifeq (,$(wildcard $(GOBIN)/gow))
+ifeq (,$(wildcard $(GOBIN)/watchexec))
 	$(info installing watchexec...)
 	brew install watchexec
 endif
+
+install-go:
+	BUILDGOVERSION=$(BUILDGOVERSION) ./scripts/install-go
 
 EXISTING_NAMESPACE = $(shell $(KUBECTL) get ns datadog-agent -oname || echo "")
 
