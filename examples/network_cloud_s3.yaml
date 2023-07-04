@@ -6,17 +6,17 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: network-ingress
+  name: network-cloud
   namespace: chaos-demo
   annotations:
     chaos.datadoghq.com/environment: "lima"
 spec:
   level: pod
   selector:
-    app: demo-nginx
-  count: 1
+    app: demo-curl
+  count: 100%
   network:
-    drop: 100
-    hosts:
-      - port: 80
-        flow: ingress # disrupt incoming traffic instead of outgoing (requires at least a port or a host to be specified, only works for TCP, please read implementation details before using to know the current limitations)
+    cloud:
+      aws:
+        - service: S3 # service name as declared in the provider file (see doc for details)
+    drop: 100 # percentage of outgoing packets to drop

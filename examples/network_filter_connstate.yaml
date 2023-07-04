@@ -1,0 +1,24 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2023 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-filter-connstate
+  namespace: chaos-demo
+  annotations:
+    chaos.datadoghq.com/environment: "lima"
+spec:
+  level: pod
+  selector:
+    app: demo-curl
+  count: 1
+  network:
+    drop: 100
+    hosts: # filter on hosts (an IP, a port, a protocol, or a combination of those)
+      - host: 10.0.0.0/8 # optional, the destination host to filter on (can be an IP, a CIDR or a hostname)
+        port: 8080 # optional, the destination port to filter on
+        protocol: tcp # optional, the protocol to filter on (can be tcp or udp)
+        connState: new # optional, the connection state to filter on (can be new or est (established))

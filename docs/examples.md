@@ -28,7 +28,7 @@ You can also have a look at the following use cases with examples of disruptions
   - [I want to corrupt packets going out from my pods](../examples/network_corrupt.yaml)
   - [I want to add network latency to packets going out from my pods](../examples/network_delay.yaml)
   - [I want to restrict the outgoing bandwidth of my pods](../examples/network_bandwidth_limitation.yaml)
-  - [I want to disrupt packets going to a specific host, port or Kubernetes service](../examples/network_filters.yaml)
+  - [I want to disrupt packets going to a specific host, port or Kubernetes service](../examples/network_filter_service.yaml)
   - [I want to disrupt packets going to a specific cloud managed service](../examples/network_cloud.yaml)
 - [CPU pressure](/docs/cpu_pressure.md)
   - [I want to put CPU pressure against my pods](../examples/cpu_pressure.yaml)

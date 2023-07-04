@@ -6,7 +6,7 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: network-filters
+  name: network-filter-service
   namespace: chaos-demo
   annotations:
     chaos.datadoghq.com/environment: "lima"
@@ -17,15 +17,10 @@ spec:
   count: 1
   network:
     drop: 100
-    hosts: # filter on hosts (an IP, a port, a protocol, or a combination of those)
-      - host: 1.2.3.4 # optional, the destination host to filter on (can be an IP, a CIDR or a hostname)
-        port: 80 # optional, the destination port to filter on
-        protocol: tcp # optional, the protocol to filter on (can be tcp or udp)
-        connState: new # optional, the connection state to filter on (can be new or est (established))
     services: # filter on Kubernetes services; this will correctly handle the port differences in node vs. pod-level disruptions
       - name: demo # service name
         namespace: chaos-demo # service namespace
         ports: # optional. List of affected ports. No list means all ports are affected
           - name: regular # optional. Name of the port, used to identify the port affected. You need to specify at least one of each name or port.
-            port: 8080 # optional. Value of the port, used to identify the port affected. 
+            port: 8080 # optional. Value of the port, used to identify the port affected.
           - port: 8081

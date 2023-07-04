@@ -19,7 +19,7 @@ spec:
     drop: 100 # percentage of outgoing packets to drop
     hosts: # optional, list of destination hosts to filter on
       - host: 10.0.0.0/8 # optional, IP, CIDR or hostname to filter on
-        port: 80 # optional, port to drop packets on
+        port: 8080 # optional, port to drop packets on
         protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
     allowedHosts: # optional, list of excluded hosts which would not be disrupted
       - host: 10.0.0.1 # optional, IP, CIDR or hostname to filter on
