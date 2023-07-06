@@ -160,8 +160,8 @@ func main() {
 
 	cloudProviderManager.StartPeriodicPull()
 
-	// create reconciler
-	r := &controllers.DisruptionReconciler{
+	// create disruption reconciler
+	disruptionReconciler := &controllers.DisruptionReconciler{
 		Client:                                mgr.GetClient(),
 		BaseLog:                               logger,
 		Scheme:                                mgr.GetScheme(),
@@ -188,15 +188,15 @@ func main() {
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Hour*24, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
 
-	cont, err := r.SetupWithManager(mgr, kubeInformerFactory)
+	cont, err := disruptionReconciler.SetupWithManager(mgr, kubeInformerFactory)
 	if err != nil {
 		logger.Fatalw("unable to create controller", "controller", chaosv1beta1.DisruptionKind, "error", err)
 	}
 
-	r.Controller = cont
+	disruptionReconciler.Controller = cont
 
-	watcherFactory := watchers.NewWatcherFactory(logger, metricsSink, mgr.GetAPIReader(), r.Recorder)
-	r.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, r.Reader, logger)
+	watcherFactory := watchers.NewWatcherFactory(logger, metricsSink, mgr.GetAPIReader(), disruptionReconciler.Recorder)
+	disruptionReconciler.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, disruptionReconciler.Reader, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -208,7 +208,7 @@ func main() {
 			select {
 			case <-ticker.C:
 				logger.Debugw("Initiate the removal of all expired watchers.")
-				r.DisruptionsWatchersManager.RemoveAllExpiredWatchers()
+				disruptionReconciler.DisruptionsWatchersManager.RemoveAllExpiredWatchers()
 
 			case <-ctx.Done():
 				// Context canceled, terminate the goroutine
@@ -222,7 +222,19 @@ func main() {
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
 
-	go r.ReportMetrics()
+	go disruptionReconciler.ReportMetrics()
+
+	// create disruption schedule reconciler
+	disruptionScheduleReconciler := &controllers.DisruptionScheduleReconciler{
+		Client:  mgr.GetClient(),
+		BaseLog: logger,
+		Scheme:  mgr.GetScheme(),
+	}
+
+	if err := disruptionScheduleReconciler.SetupWithManager(mgr); err != nil {
+		logger.Errorw("unable to create controller", "controller", "DisruptionSchedule", "error", err)
+		os.Exit(1) //nolint:gocritic
+	}
 
 	// register disruption validating webhook
 	setupWebhookConfig := utils.SetupWebhookWithManagerConfig{
@@ -230,7 +242,7 @@ func main() {
 		Logger:                        logger,
 		MetricsSink:                   metricsSink,
 		TracerSink:                    tracerSink,
-		Recorder:                      r.Recorder,
+		Recorder:                      disruptionReconciler.Recorder,
 		NamespaceThresholdFlag:        cfg.Controller.SafeMode.NamespaceThreshold,
 		ClusterThresholdFlag:          cfg.Controller.SafeMode.ClusterThreshold,
 		EnableSafemodeFlag:            cfg.Controller.SafeMode.Enable,
@@ -276,7 +288,7 @@ func main() {
 
 	// erase/close caches contexts
 	defer func() {
-		for _, contextTuple := range r.CacheContextStore {
+		for _, contextTuple := range disruptionReconciler.CacheContextStore {
 			contextTuple.CancelFunc()
 		}
 
