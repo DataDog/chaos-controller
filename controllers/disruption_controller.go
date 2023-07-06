@@ -386,7 +386,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 
 	terminationStatus := disruptionTerminationStatus(*instance, chaosPods)
 	if terminationStatus != tsNotTerminated {
-		switch instance.Status.InjectionStatus {
+		switch status {
 		case
 			chaostypes.DisruptionInjectionStatusInjected,
 			chaostypes.DisruptionInjectionStatusPausedInjected,
