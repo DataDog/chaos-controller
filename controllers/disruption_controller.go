@@ -412,7 +412,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 				status = chaostypes.DisruptionInjectionStatusPreviouslyNotInjected
 			}
 		default:
-			return fmt.Errorf("unable to transition from disruption injection status %s, unknown injection status, termination status is %d", instance.Status.InjectionStatus, terminationStatus)
+			return fmt.Errorf("unable to transition from disruption injection status %s, unknown injection status, termination status is %d", status, terminationStatus)
 		}
 	} else if len(chaosPods) > 0 {
 		// consider the disruption "partially injected" if we found at least one pod
