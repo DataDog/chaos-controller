@@ -11,12 +11,15 @@ variables:
   HANDLER_IMAGE_NAME: chaos-handler
 
 stages:
-  - ci-image
   - build
   - release-staging
   - release-prod
   - release-public
   - notify
+
+.install-make: &install-make
+  - apt-get update
+  - apt-get install -y --no-install-recommends build-essential git
 
 .docker-runner: &docker-runner
   image: registry.ddbuild.io/docker-push:1.7.0
@@ -30,24 +33,13 @@ stages:
     - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_login --with-decryption --query "Parameter.Value" --out text)
     - aws ssm get-parameter --region us-east-1 --name ci.chaos-engineering.docker_hub_pwd --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin docker.io
 
-# CI image
-ci-image:
-  <<: *docker-hub-login
-  stage: ci-image
-  when: manual
-  except: [tags, schedules]
-  script:
-    - docker buildx create --use
-    - docker buildx build --platform linux/amd64,linux/arm64 --tag registry.ddbuild.io/ci/chaos-controller:$CURRENT_CI_IMAGE ci --push
-
 # main make build
 build:make:
   <<: *docker-hub-login
   stage: build
   when: always
   script:
-    - apt-get update
-    - apt-get install -y --no-install-recommends build-essential git
+    - *install-make
     - export PATH="/usr/local/go/bin:${PATH}"
     - make GOBIN=/usr/local/go/bin install-go all docker-build-ebpf
   artifacts:
@@ -67,9 +59,13 @@ build:make:
   <<: *docker-hub-login
   script:
     - docker buildx create --use
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG} -t registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${CI_COMMIT_SHA} --label target=${TARGET_LABEL} -f bin/manager/Dockerfile ./bin/manager/ --push
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG} -t registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${CI_COMMIT_SHA} --label target=${TARGET_LABEL} -f bin/injector/Dockerfile ./bin/injector/ --push
-    - docker buildx build --platform linux/amd64,linux/arm64 -t registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG} -t registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${CI_COMMIT_SHA} --label target=${TARGET_LABEL} -f bin/handler/Dockerfile ./bin/handler/ --push
+    - *install-make
+    - >
+      make docker-build-only-all \
+        CONTAINER_REGISTRY=registry.ddbuild.io \
+        CONTAINER_TAG=${TAG} \
+        CONTAINER_VERSION=${CI_COMMIT_SHA} \
+        CONTAINER_BUILD_EXTRA_ARGS="--platform=linux/amd64,linux/arm64 --label target=${TARGET_LABEL} --push"
   dependencies:
     - build:make
 

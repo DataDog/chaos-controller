@@ -78,8 +78,6 @@ executors:
   golang:
     <<: *working_directory
     docker:
-      # TODO: Publicize the chaos controller ci image to the datadog docker registry
-      #- image: datadog/chaos-controller-runner-circle:<< pipeline.parameters.CURRENT_CI_IMAGE >>
       # This is circle ci images, provides default tool installed (like docker) to ease step definition and avoid apt-get/update things
       # https://circleci.com/docs/circleci-images/#next-gen-language-images
       - image: cimg/go:1.20.5

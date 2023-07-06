@@ -5,7 +5,9 @@ RUN apt-get update && \
     # coreutils => df
     # iptables => iptables libs
     # libelf1 => EBPF libs
-    apt-get -y install --no-install-recommends iproute2 coreutils iptables libelf1 tree
+    apt-get -y install --no-install-recommends iproute2 coreutils iptables libelf1 tree && \
+    # make copy from binaries unified and possible
+    mkdir -p /lib64
 
 FROM gcr.io/distroless/python3-debian11:latest
 
@@ -15,12 +17,14 @@ COPY --from=binaries /usr/sbin/iptables /usr/sbin/
 COPY --from=binaries /sbin/tc /sbin/tc
 
 # libraries used by above mentioned binaries (mostly GLIBC related)
-ARG LIBCOPYSRC LIBCOPYDST LIBARCH
-COPY --from=binaries ${LIBCOPYSRC} ${LIBCOPYDST}
+COPY --from=binaries /lib/ld-linux-aarch64.so.[1]  /lib/
+COPY --from=binaries /lib64/ld-linux-x86-64.so.[2] /lib64/
 COPY --from=binaries /lib/tc /lib/tc/
 COPY --from=binaries /usr/lib/tc /usr/lib/tc/
-COPY --from=binaries /lib/${LIBARCH}-linux-gnu /lib/${LIBARCH}-linux-gnu/
-COPY --from=binaries /usr/lib/${LIBARCH}-linux-gnu /usr/lib/${LIBARCH}-linux-gnu/
+COPY --from=binaries /lib/aarch64-linux-gn[u] /lib/aarch64-linux-gnu/
+COPY --from=binaries /lib/x86_64-linux-gn[u] /lib/x86_64-linux-gnu/
+COPY --from=binaries /usr/lib/aarch64-linux-gn[u] /usr/lib/aarch64-linux-gnu/
+COPY --from=binaries /usr/lib/x86_64-linux-gn[u] /usr/lib/x86_64-linux-gnu/
 
 # no more sh
 COPY --from=binaries /usr/bin/test /bin/sh
