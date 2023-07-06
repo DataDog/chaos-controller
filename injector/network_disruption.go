@@ -425,8 +425,10 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	if len(i.spec.Hosts) == 0 && len(i.spec.Services) == 0 {
 		_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
 
-		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nullIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:4"); err != nil {
-			return fmt.Errorf("can't add a filter: %w", err)
+		for _, protocol := range network.AllProtocols(network.ALL) {
+			if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nullIP, 0, 0, protocol, network.ConnStateUndefined, "1:4"); err != nil {
+				return fmt.Errorf("can't add a filter: %w", err)
+			}
 		}
 	} else {
 		// apply filters for given hosts
@@ -452,9 +454,11 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 	for _, filter := range filters {
 		i.config.Log.Infow("found service endpoint", "resolvedEndpoint", filter.service.String(), "resolvedService", serviceName)
 
-		filter.priority, err = i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, filter.service.ip, 0, filter.service.port, network.NewProtocol(filter.service.protocol), network.ConnStateUndefined, flowid)
-		if err != nil {
-			return nil, err
+		for _, protocol := range network.AllProtocols(filter.service.protocol) {
+			filter.priority, err = i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, filter.service.ip, 0, filter.service.port, protocol, network.ConnStateUndefined, flowid)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service, filter.priority), "interfaces", interfaces)
@@ -692,7 +696,7 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 	// keep track of resource version to continue watching pods when the watcher has timed out
 	// at the right resource already computed.
 	if event.Type == watch.Bookmark {
-		watcher.servicesResourceVersion = pod.ResourceVersion
+		watcher.podsResourceVersion = pod.ResourceVersion
 
 		return nil
 	}
@@ -909,18 +913,13 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 				dstIP = ip
 			}
 
-			// default protocol to tcp if not specified
-			if host.Protocol == "" {
-				host.Protocol = string(network.TCP)
-			}
-
 			// cast connection state
 			connState := network.NewConnState(host.ConnState)
-			protocol := network.NewProtocol(host.Protocol)
-
-			// create tc filter
-			if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid); err != nil {
-				return fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
+			for _, protocol := range network.AllProtocols(host.Protocol) {
+				// create tc filter
+				if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid); err != nil {
+					return fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
+				}
 			}
 		}
 	}

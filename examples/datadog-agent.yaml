@@ -1,0 +1,50 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2023 Datadog, Inc.
+kind: DatadogAgent
+apiVersion: datadoghq.com/v2alpha1
+metadata:
+  name: datadog
+  namespace: datadog-agent
+spec:
+  global:
+    logLevel: debug
+    site: datadoghq.com
+    credentials:
+      apiSecret:
+        secretName: datadog-secret
+        keyName: api-key
+      appSecret:
+        secretName: datadog-secret
+        keyName: app-key
+  features:
+    apm:
+      enabled: true
+      hostPortConfig:
+        enabled: true
+    liveProcessCollection:
+      enabled: true
+    logCollection:
+      enabled: true
+      containerCollectAll: true
+    admissionController:
+      enabled: true
+      agentCommunicationMode: hostip
+    externalMetricsServer:
+      enabled: true
+    npm:
+      enabled: true
+      enableConntrack: true
+      collectDNSStats: true
+    oomKill:
+      enabled: true
+    eventCollection:
+      collectKubernetesEvents: true
+  override:
+    clusterAgent:
+      image:
+        name: gcr.io/datadoghq/cluster-agent:latest
+    nodeAgent:
+      image:
+        name: gcr.io/datadoghq/agent:latest

@@ -46,7 +46,7 @@ build:make:
   stage: build
   when: always
   variables:
-    GO_FILENAME: go1.20.4.linux-amd64.tar.gz
+    GO_FILENAME: go1.20.5.linux-amd64.tar.gz
   script:
     - apt-get update
     - apt-get -y install build-essential git
@@ -182,9 +182,9 @@ slack-notifier-build.on-failure:
     - main
     - tags
 
-slack-notifier-release-staging: &slack-notifier-release-staging
+.slack-notifier-release-staging: &slack-notifier-release-staging
   image: registry.ddbuild.io/slack-notifier:sdm
-  tags: [ "runner:main" ]
+  tags: ["runner:main"]
   stage: notify
   only:
     - /^.*-staging$/
@@ -195,10 +195,10 @@ slack-notifier-release-staging.on-success:
   <<: *slack-notifier-release-staging
   when: on_success
   variables:
-    MESSAGE: ':check: | Staging Image Build Complete | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ][ $CI_COMMIT_SHA ]'
+    MESSAGE: ":check: | Staging Image Build Complete | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ][ $CI_COMMIT_SHA ]"
 
 slack-notifier-release-staging.on-failure:
   <<: *slack-notifier-release-staging
   when: on_failure
   variables:
-    MESSAGE: ':siren: | Staging Image Build Failed | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ][ $CI_COMMIT_SHA ] :siren:'
+    MESSAGE: ":siren: | Staging Image Build Failed | [ $CI_PROJECT_NAME ][ $CI_COMMIT_REF_NAME ][ $CI_COMMIT_SHA ] :siren:"
