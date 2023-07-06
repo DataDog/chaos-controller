@@ -8,8 +8,10 @@ package datadog
 import (
 	"strconv"
 
+	"github.com/DataDog/chaos-controller/o11y"
 	"github.com/DataDog/chaos-controller/o11y/tracer/types"
 	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 
 	ddotel "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/opentelemetry"
 	ddtracer "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -21,10 +23,11 @@ type Sink struct {
 }
 
 // New initiated datadog tracer sink
-func New() Sink {
+func New(log *zap.SugaredLogger) Sink {
 	provider := ddotel.NewTracerProvider(
 		ddtracer.WithProfilerCodeHotspots(true),
 		ddtracer.WithLogStartup(false),
+		ddtracer.WithLogger(o11y.ZapDDLogger{ZapLogger: log}),
 	)
 
 	return Sink{provider: provider}

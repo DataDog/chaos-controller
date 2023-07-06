@@ -17,7 +17,9 @@ import (
 type Sink struct{}
 
 // New initiated datadog profiler sink
-func New() (Sink, error) {
+func New(log *zap.SugaredLogger) (Sink, error) {
+	ddtrace.UseLogger(o11y.ZapDDLogger{ZapLogger: log})
+
 	err := profiler.Start(
 		profiler.WithProfileTypes(
 			profiler.CPUProfile,
