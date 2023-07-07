@@ -64,7 +64,7 @@ HELM_INSTALLED_VERSION = $(shell (helm version --template="{{ .Version }}" || ec
 GOLANGCI_LINT_VERSION = 1.52.2
 GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
 
-CONTROLLER_GEN_VERSION = v0.11.4
+CONTROLLER_GEN_VERSION = v0.12.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
 
 MOCKERY_VERSION = 2.28.2
