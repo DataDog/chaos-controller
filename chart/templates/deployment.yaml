@@ -34,103 +34,101 @@ spec:
         kubectl.kubernetes.io/default-container: manager
     spec:
       serviceAccountName: chaos-controller
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
       containers:
-      - name: kube-rbac-proxy
-        image: {{ template "chaos-controller.format-image" .Values.proxy.image }}
-        imagePullPolicy: IfNotPresent
-        args:
-        - --secure-listen-address=0.0.0.0:8443
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v=10
-        ports:
-        - containerPort: 8443
-          name: https
-        resources:
-          limits:
-            cpu: 50m
-            memory: 64Mi
-          requests:
-            cpu: 50m
-            memory: 64Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          runAsUser: 65532
-          runAsGroup: 65532
-          runAsNonRoot: true
-          readOnlyRootFilesystem: true
-      - name: manager
-        image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.controller.image }}
-        imagePullPolicy: IfNotPresent
-        command:
-        - /usr/local/bin/manager
-        args:
-        - --config=/etc/chaos-controller/config.yaml
-        env:
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: CONTROLLER_NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          - name: HOST_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.hostIP
-          - name: TRACE_AGENT_URL
-            value: $(HOST_IP):8126
-          # Below GOXXXX env var are required by go runtime
-          - name: GOROOT
-            value: /usr/local/go
-          - name: GOPATH
-            value: /tmp/go
-          - name: GOCACHE
-            value: /tmp/go-build
-        ports:
-        - containerPort: {{ .Values.controller.webhook.port }}
-          name: webhook-server
-          protocol: TCP
-        resources:
-          limits:
-            cpu: {{ .Values.controller.resources.cpu }}
-            memory: {{ .Values.controller.resources.memory }}
-            ephemeral-storage: {{ .Values.controller.resources.ephemeralStorage }}
-          requests:
-            cpu: {{ .Values.controller.resources.cpu }}
-            memory: {{ .Values.controller.resources.memory }}
-            ephemeral-storage: {{ .Values.controller.resources.ephemeralStorage }}
-        volumeMounts:
-          - mountPath: /tmp/k8s-webhook-server/serving-certs
-            name: cert
-            readOnly: true
-          - mountPath: /etc/chaos-controller
-            name: config
-            readOnly: true
-          - name: ephemeral
-            mountPath: /tmp
-        securityContext:
-          runAsUser: 65532
-          runAsGroup: 65532
-          runAsNonRoot: true
-          readOnlyRootFilesystem: true
-          allowPrivilegeEscalation: false
+        - name: kube-rbac-proxy
+          image: {{ template "chaos-controller.format-image" .Values.proxy.image }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - --secure-listen-address=0.0.0.0:8443
+            - --upstream=http://127.0.0.1:8080/
+            - --logtostderr=true
+            - --v=10
+          ports:
+            - containerPort: 8443
+              name: https
+          resources:
+            limits:
+              cpu: 50m
+              memory: 64Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+        - name: manager
+          image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.controller.image }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - /usr/local/bin/manager
+          args:
+            - --config=/etc/chaos-controller/config.yaml
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONTROLLER_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.hostIP
+            - name: TRACE_AGENT_URL
+              value: $(HOST_IP):8126
+            # Below GOXXXX env var are required by go runtime
+            - name: GOROOT
+              value: /usr/local/go
+            - name: GOPATH
+              value: /tmp/go
+            - name: GOCACHE
+              value: /tmp/go-build
+          ports:
+            - containerPort: {{ .Values.controller.webhook.port }}
+              name: webhook-server
+              protocol: TCP
+          resources:
+            limits:
+              cpu: {{ .Values.controller.resources.cpu }}
+              memory: {{ .Values.controller.resources.memory }}
+              ephemeral-storage: {{ .Values.controller.resources.ephemeralStorage }}
+            requests:
+              cpu: {{ .Values.controller.resources.cpu }}
+              memory: {{ .Values.controller.resources.memory }}
+              ephemeral-storage: {{ .Values.controller.resources.ephemeralStorage }}
+          volumeMounts:
+            - mountPath: /tmp/k8s-webhook-server/serving-certs
+              name: cert
+              readOnly: true
+            - mountPath: /etc/chaos-controller
+              name: config
+              readOnly: true
+            - name: ephemeral
+              mountPath: /tmp
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
       {{- if .Values.controller.image.pullSecrets }}
       imagePullSecrets:
         - name: {{ .Values.controller.image.pullSecrets }}
       {{- end }}
       terminationGracePeriodSeconds: 10
       volumes:
-      - name: cert
-        secret:
-          defaultMode: 420
-          secretName: chaos-controller-webhook-secret
-      - name: config
-        configMap:
-          name: chaos-controller
-      - name: ephemeral
-        emptyDir:
-          sizeLimit: 521Mi
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: chaos-controller-webhook-secret
+        - name: config
+          configMap:
+            name: chaos-controller
+        - name: ephemeral
+          emptyDir:
+            sizeLimit: 521Mi
 {{- end }}
