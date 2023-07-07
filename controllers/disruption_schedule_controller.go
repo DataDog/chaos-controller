@@ -21,11 +21,19 @@ type DisruptionScheduleReconciler struct {
 	BaseLog *zap.SugaredLogger
 }
 
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptionschedules,verbs=list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptionschedules/status,verbs=update;patch
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptionschedules/finalizers,verbs=update
 func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
-	r.BaseLog.Info("RECONCILING")
+	instance := &chaosv1beta1.DisruptionSchedule{}
+
+	// retrieve schedule
+	if err := r.Client.Get(context.Background(), req.NamespacedName, instance); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if !instance.DeletionTimestamp.IsZero() {
+		// NOTE: add a finalizer if anything needs to be written here
+	} else {
+		// TODO: @diyara
+	}
 
 	return ctrl.Result{}, nil
 }
