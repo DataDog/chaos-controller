@@ -26,7 +26,6 @@ type Sink struct {
 func New(log *zap.SugaredLogger) Sink {
 	provider := ddotel.NewTracerProvider(
 		ddtracer.WithProfilerCodeHotspots(true),
-		ddtracer.WithLogStartup(false),
 		ddtracer.WithLogger(o11y.ZapDDLogger{ZapLogger: log}),
 	)
 
