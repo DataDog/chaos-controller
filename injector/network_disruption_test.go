@@ -359,7 +359,7 @@ var _ = Describe("Failure", func() {
 			BeforeEach(func() {
 				spec.Hosts = []v1beta1.NetworkDisruptionHostSpec{
 					{
-						Host:      testHostIP,
+						Host:      "testhost",
 						Port:      80,
 						Protocol:  "tcp",
 						ConnState: "new",
