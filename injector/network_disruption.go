@@ -968,7 +968,8 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				for _, tcF := range tcFilters {
 					if !containsIP(newIps, tcF.ip) {
 						// If any of the IPs have changed, lets completely reset the filters for this host
-						i.config.Log.Debugw("new ip found, will update filters for host", "host", host.Host)
+						i.config.Log.Debugw("outdated ip found, will update filters for host", "host", host.Host, "outdatedIP", tcF.ip.String())
+
 						changedHosts = append(changedHosts, host)
 					}
 				}
@@ -1009,7 +1010,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 
 func containsIP(ips []*net.IPNet, lookupIP *net.IPNet) bool {
 	for _, ip := range ips {
-		if ip == lookupIP {
+		if ip.String() == lookupIP.String() { // Need to compare the final strings with subnets
 			return true
 		}
 	}
