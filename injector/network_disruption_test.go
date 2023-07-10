@@ -229,10 +229,11 @@ var _ = Describe("Failure", func() {
 				},
 				K8sClient: k8sClient,
 			},
-			TrafficController: tc,
-			IPTables:          iptables,
-			NetlinkAdapter:    nl,
-			DNSClient:         dns,
+			TrafficController:   tc,
+			IPTables:            iptables,
+			NetlinkAdapter:      nl,
+			DNSClient:           dns,
+			HostResolveInterval: time.Millisecond * 500,
 		}
 
 		spec = v1beta1.NetworkDisruptionSpec{
@@ -351,6 +352,31 @@ var _ = Describe("Failure", func() {
 			It("should add a filter to redirect targeted traffic on all interfaces on the disrupted band filter on given hosts as destination IP", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(testHostIP), 0, 80, network.TCP, network.ConnStateNew, "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse("2.2.2.2"), 0, 443, network.TCP, network.ConnStateEstablished, "1:4")
+			})
+		})
+
+		FContext("when resolved host IPs change", func() {
+			BeforeEach(func() {
+				spec.Hosts = []v1beta1.NetworkDisruptionHostSpec{
+					{
+						Host:      testHostIP,
+						Port:      80,
+						Protocol:  "tcp",
+						ConnState: "new",
+					},
+				}
+			})
+
+			It("should update the filters", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(testHostIP), 0, 80, network.TCP, network.ConnStateNew, "1:4")
+
+				const newTestHostIP = "2.2.2.2"
+				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(newTestHostIP)}, nil).Maybe()
+				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
+
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", []string{"lo", "eth0", "eth1"}, "")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(newTestHostIP), 0, 80, network.TCP, network.ConnStateNew, "1:4")
+
 			})
 		})
 
