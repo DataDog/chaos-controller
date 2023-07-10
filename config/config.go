@@ -39,6 +39,7 @@ type controllerConfig struct {
 	UserInfoHook             bool                            `json:"userInfoHook"`
 	SafeMode                 safeModeConfig                  `json:"safeMode"`
 	ProfilerSink             string                          `json:"profilerSink"`
+	TracerSink               string                          `json:"tracerSink"`
 }
 
 type controllerWebhookConfig struct {
@@ -385,6 +386,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.StringVar(&cfg.Controller.ProfilerSink, "profiler-sink", "noop", "profiler sink (datadog, or noop)")
 
 	if err := viper.BindPFlag("controller.profilerSink", mainFS.Lookup("profiler-sink")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Controller.TracerSink, "tracer-sink", "noop", "tracer sink (datadog, or noop)")
+
+	if err := viper.BindPFlag("controller.tracerSink", mainFS.Lookup("tracer-sink")); err != nil {
 		return cfg, err
 	}
 

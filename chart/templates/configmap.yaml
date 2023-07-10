@@ -14,6 +14,7 @@ data:
       leaderElection: {{ .Values.controller.leaderElection }}
       metricsSink: {{ .Values.controller.metricsSink | quote }}
       profilerSink: {{ .Values.controller.profilerSink | quote }}
+      tracerSink: {{ .Values.controller.tracerSink | quote }}
       enableSafeguards: {{ .Values.controller.enableSafeguards }}
       enableObserver: {{ .Values.controller.enableObserver }}
       notifiers:
