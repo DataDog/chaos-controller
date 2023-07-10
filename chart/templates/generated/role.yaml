@@ -10,6 +10,7 @@ rules:
     verbs:
       - create
       - delete
+      - get
       - list
       - patch
       - update
@@ -25,6 +26,7 @@ rules:
     resources:
       - disruptions/status
     verbs:
+      - get
       - patch
       - update
   - apiGroups:
@@ -33,6 +35,7 @@ rules:
       - events
     verbs:
       - create
+      - get
       - list
       - patch
       - watch
@@ -41,6 +44,7 @@ rules:
     resources:
       - nodes
     verbs:
+      - get
       - list
       - watch
   - apiGroups:
@@ -50,6 +54,7 @@ rules:
     verbs:
       - create
       - delete
+      - get
       - list
       - patch
       - update
@@ -59,6 +64,7 @@ rules:
     resources:
       - pods/status
     verbs:
+      - get
       - patch
       - update
   - apiGroups:
@@ -66,5 +72,6 @@ rules:
     resources:
       - services
     verbs:
+      - get
       - list
       - watch
