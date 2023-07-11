@@ -11,6 +11,7 @@ import (
 	"math"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -72,6 +73,15 @@ type tcServiceFilter struct {
 type tcFilter struct {
 	ip       *net.IPNet
 	priority uint32 // one priority per tc filters applied, the priority is the same for all interfaces
+}
+
+func (t tcFilter) String() string {
+	ip := ""
+	if t.ip != nil {
+		ip = t.ip.String()
+	}
+
+	return fmt.Sprintf("ip=%s; priority=%s", ip, strconv.FormatUint(uint64(t.priority), 10))
 }
 
 // serviceWatcher
@@ -957,13 +967,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 					continue
 				}
 
-				if len(newIps) != len(tcFilters) {
-					i.config.Log.Debugw(fmt.Sprintf("%d ips found, expected %d. will update filters for host", len(newIps), len(tcFilters)), "host", host.Host)
-					// If we have more or fewer IPs than before, we obviously have a change and need to update the tc filters
-					changedHosts = append(changedHosts, host)
-
-					continue
-				}
+				oldIps := []*net.IPNet{}
 
 				for _, tcF := range tcFilters {
 					if !containsIP(newIps, tcF.ip) {
@@ -971,7 +975,20 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 						i.config.Log.Debugw("outdated ip found, will update filters for host", "host", host.Host, "outdatedIP", tcF.ip.String())
 
 						changedHosts = append(changedHosts, host)
+
+						continue
 					}
+
+					// We may have multiple tc filters for a single IP, we need to build just a list of IPs so we can check the count
+					if !containsIP(oldIps, tcF.ip) {
+						oldIps = append(oldIps, tcF.ip)
+					}
+				}
+
+				if len(newIps) != len(oldIps) {
+					i.config.Log.Debugw(fmt.Sprintf("%d ips found, expected %d. will update filters for host", len(newIps), len(oldIps)), "host", host.Host, "newIPs", newIps, "oldIps", oldIps)
+					// If we have more or fewer IPs than before, we obviously have a change and need to update the tc filters
+					changedHosts = append(changedHosts, host)
 				}
 			}
 

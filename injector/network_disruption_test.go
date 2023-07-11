@@ -359,23 +359,21 @@ var _ = Describe("Failure", func() {
 			BeforeEach(func() {
 				spec.Hosts = []v1beta1.NetworkDisruptionHostSpec{
 					{
-						Host:      "testhost",
-						Port:      80,
-						Protocol:  "tcp",
-						ConnState: "new",
+						Host: "testhost",
+						Port: 80,
 					},
 				}
 			})
 
 			It("should update the filters", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(testHostIP), 0, 80, network.TCP, network.ConnStateNew, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 
 				const newTestHostIP = "2.2.2.2"
 				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(newTestHostIP)}, nil).Maybe()
 				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
 
 				tc.AssertCalled(GinkgoT(), "DeleteFilter", []string{"lo", "eth0", "eth1"}, "")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(newTestHostIP), 0, 80, network.TCP, network.ConnStateNew, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(newTestHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 
 			})
 		})
