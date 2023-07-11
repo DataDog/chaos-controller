@@ -132,7 +132,7 @@ var _ = Describe("Failure", func() {
 		// dns
 		dns = network.NewDNSClientMock(GinkgoT())
 		dns.EXPECT().Resolve("kubernetes.default").Return([]net.IP{net.ParseIP("192.168.0.254")}, nil).Maybe()
-		dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil).Maybe()
+		dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil).Once()
 
 		// container
 		ctn = container.NewContainerMock(GinkgoT())
@@ -355,7 +355,7 @@ var _ = Describe("Failure", func() {
 			})
 		})
 
-		FContext("when resolved host IPs change", func() {
+		Context("when resolved host IPs change", func() {
 			BeforeEach(func() {
 				spec.Hosts = []v1beta1.NetworkDisruptionHostSpec{
 					{
@@ -372,7 +372,9 @@ var _ = Describe("Failure", func() {
 				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(newTestHostIP)}, nil).Maybe()
 				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
 
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", []string{"lo", "eth0", "eth1"}, "")
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", uint32(0))
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", uint32(0))
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", uint32(0))
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(newTestHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 
 			})

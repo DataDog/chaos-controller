@@ -84,6 +84,15 @@ func (t tcFilter) String() string {
 	return fmt.Sprintf("ip=%s; priority=%s", ip, strconv.FormatUint(uint64(t.priority), 10))
 }
 
+func FiltersToStrings(t []tcFilter) []string {
+	filterStrings := []string{}
+	for _, filter := range t {
+		filterStrings = append(filterStrings, filter.String())
+	}
+
+	return filterStrings
+}
+
 // serviceWatcher
 type serviceWatcher struct {
 	// information about the service watched
@@ -958,6 +967,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				continue
 			}
 
+		perHost:
 			for host, tcFilters := range hosts.hostFilterMap {
 				newIps, err := resolveHost(i.config.DNSClient, host.Host)
 				if err != nil {
@@ -976,7 +986,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 
 						changedHosts = append(changedHosts, host)
 
-						continue
+						continue perHost
 					}
 
 					// We may have multiple tc filters for a single IP, we need to build just a list of IPs so we can check the count
@@ -1082,6 +1092,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 			}
 		}
 
+		i.config.Log.Debugw("tc filters created for host", "host", host, "filters", FiltersToStrings(filtersForHost))
 		hostFilterMap[host] = filtersForHost
 	}
 
