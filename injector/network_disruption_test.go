@@ -132,7 +132,6 @@ var _ = Describe("Failure", func() {
 		// dns
 		dns = network.NewDNSClientMock(GinkgoT())
 		dns.EXPECT().Resolve("kubernetes.default").Return([]net.IP{net.ParseIP("192.168.0.254")}, nil).Maybe()
-		dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil).Once()
 
 		// container
 		ctn = container.NewContainerMock(GinkgoT())
@@ -363,6 +362,8 @@ var _ = Describe("Failure", func() {
 						Port: 80,
 					},
 				}
+
+				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil).Once()
 			})
 
 			It("should update the filters", func() {
