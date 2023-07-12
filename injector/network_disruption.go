@@ -970,7 +970,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 			}
 
 		perHost:
-			for host, tcFilters := range hosts.hostFilterMap {
+			for host, currentTcFilters := range hosts.hostFilterMap {
 				newIps, err := resolveHost(i.config.DNSClient, host.Host)
 				if err != nil {
 					i.config.Log.Errorw("error resolving Host", "err", err, "host", host.Host)
@@ -981,10 +981,10 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 
 				oldIps := []*net.IPNet{}
 
-				for _, tcF := range tcFilters {
-					if !containsIP(newIps, tcF.ip) {
+				for _, currentTcFilter := range currentTcFilters {
+					if !containsIP(newIps, currentTcFilter.ip) {
 						// If any of the IPs have changed, lets completely reset the filters for this host
-						i.config.Log.Debugw("outdated ip found, will update filters for host", "host", host.Host, "outdatedIP", tcF.ip.String())
+						i.config.Log.Debugw("outdated ip found, will update filters for host", "host", host.Host, "outdatedIP", currentTcFilter.ip.String())
 
 						changedHosts = append(changedHosts, host)
 
@@ -992,8 +992,8 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 					}
 
 					// We may have multiple tc filters for a single IP, we need to build just a list of IPs so we can check the count
-					if !containsIP(oldIps, tcF.ip) {
-						oldIps = append(oldIps, tcF.ip)
+					if !containsIP(oldIps, currentTcFilter.ip) {
+						oldIps = append(oldIps, currentTcFilter.ip)
 					}
 				}
 
@@ -1007,8 +1007,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 			if len(changedHosts) > 0 {
 				for _, changedHost := range changedHosts {
 					for _, filter := range hosts.hostFilterMap[changedHost] {
-						err := i.removeTcFilter(interfaces, filter.priority)
-						if err != nil {
+						if err := i.removeTcFilter(interfaces, filter.priority); err != nil {
 							if strings.Contains(err.Error(), "Filter with specified priority/protocol not found") {
 								i.config.Log.Warnw("could not find outdated tc filter", "err", err, "host", changedHost.Host, "filter.ip", filter.ip, "filter.priority", filter.priority)
 							} else {
