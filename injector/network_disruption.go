@@ -957,6 +957,7 @@ func (i *networkDisruptionInjector) handleFiltersForHosts(interfaces []string, f
 
 // watchHostChanges watches for changes to the resolved IP for hosts
 func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interfaces []string, hosts hostsWatcher, flowid string) {
+	hostWatcherLog := i.config.Log.With("retryInterval", i.config.HostResolveInterval.String())
 	for {
 		select {
 		case <-ctx.Done():
@@ -965,7 +966,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 			changedHosts := []v1beta1.NetworkDisruptionHostSpec{}
 
 			if err := i.config.Netns.Enter(); err != nil {
-				i.config.Log.Errorw("unable to enter the given container network namespace", "err", err)
+				hostWatcherLog.Errorw("unable to enter the given container network namespace, retrying on next watch occurrence", "err", err)
 				continue
 			}
 
@@ -973,7 +974,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 			for host, currentTcFilters := range hosts.hostFilterMap {
 				newIps, err := resolveHost(i.config.DNSClient, host.Host)
 				if err != nil {
-					i.config.Log.Errorw("error resolving Host", "err", err, "host", host.Host)
+					hostWatcherLog.Errorw("error resolving Host", "err", err, "host", host.Host)
 
 					// If we can't get a new set of IPs for this host, just move on to the next one
 					continue
@@ -984,7 +985,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				for _, currentTcFilter := range currentTcFilters {
 					if !containsIP(newIps, currentTcFilter.ip) {
 						// If any of the IPs have changed, lets completely reset the filters for this host
-						i.config.Log.Debugw("outdated ip found, will update filters for host", "host", host.Host, "outdatedIP", currentTcFilter.ip.String())
+						hostWatcherLog.Debugw("outdated ip found, will update filters for host", "host", host.Host, "outdatedIP", currentTcFilter.ip.String())
 
 						changedHosts = append(changedHosts, host)
 
@@ -998,7 +999,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				}
 
 				if len(newIps) != len(oldIps) {
-					i.config.Log.Debugw(fmt.Sprintf("%d ips found, expected %d. will update filters for host", len(newIps), len(oldIps)), "host", host.Host, "newIPs", newIps, "oldIps", oldIps)
+					hostWatcherLog.Debugw(fmt.Sprintf("%d ips found, expected %d. will update filters for host", len(newIps), len(oldIps)), "host", host.Host, "newIPs", newIps, "oldIps", oldIps)
 					// If we have more or fewer IPs than before, we obviously have a change and need to update the tc filters
 					changedHosts = append(changedHosts, host)
 				}
@@ -1009,9 +1010,9 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 					for _, filter := range hosts.hostFilterMap[changedHost] {
 						if err := i.removeTcFilter(interfaces, filter.priority); err != nil {
 							if strings.Contains(err.Error(), "Filter with specified priority/protocol not found") {
-								i.config.Log.Warnw("could not find outdated tc filter", "err", err, "host", changedHost.Host, "filter.ip", filter.ip, "filter.priority", filter.priority)
+								hostWatcherLog.Warnw("could not find outdated tc filter", "err", err, "host", changedHost.Host, "filter.ip", filter.ip, "filter.priority", filter.priority)
 							} else {
-								i.config.Log.Errorw("error removing out of date tc filter", "err", err, "host", changedHost.Host) // Clean() removes the entire qdiscs, thus there is no risk of leaking any filters here if Clean succeeds
+								hostWatcherLog.Errorw("error removing out of date tc filter", "err", err, "host", changedHost.Host) // Clean() removes the entire qdiscs, thus there is no risk of leaking any filters here if Clean succeeds
 							}
 						}
 					}
@@ -1020,7 +1021,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				filterMap, err := i.addFiltersForHosts(interfaces, changedHosts, flowid)
 
 				if err != nil {
-					i.config.Log.Errorw("error updating filters for hosts", "hosts", changedHosts, "err", err)
+					hostWatcherLog.Errorw("error updating filters for hosts", "hosts", changedHosts, "err", err)
 					continue
 				}
 
@@ -1030,7 +1031,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 			}
 
 			if err := i.config.Netns.Exit(); err != nil {
-				i.config.Log.Errorw("unable to exit the given container network namespace", "err", err)
+				hostWatcherLog.Errorw("unable to exit the given container network namespace", "err", err)
 			}
 		}
 	}
