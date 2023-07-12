@@ -84,13 +84,15 @@ func (t tcFilter) String() string {
 	return fmt.Sprintf("ip=%s; priority=%s", ip, strconv.FormatUint(uint64(t.priority), 10))
 }
 
-func FiltersToStrings(t []tcFilter) []string {
+type tcFilters []tcFilter
+
+func (t tcFilters) String() string {
 	filterStrings := []string{}
 	for _, filter := range t {
 		filterStrings = append(filterStrings, filter.String())
 	}
 
-	return filterStrings
+	return strings.Join(filterStrings, ";")
 }
 
 // serviceWatcher
@@ -114,7 +116,7 @@ type serviceWatcher struct {
 
 type hostsWatcher struct {
 	// The only identifying info we need are the ip and filter priority
-	hostFilterMap map[v1beta1.NetworkDisruptionHostSpec][]tcFilter
+	hostFilterMap map[v1beta1.NetworkDisruptionHostSpec]tcFilters
 }
 
 // NewNetworkDisruptionInjector creates a NetworkDisruptionInjector object with the given config,
@@ -1046,8 +1048,8 @@ func containsIP(ips []*net.IPNet, lookupIP *net.IPNet) bool {
 }
 
 // addFiltersForHosts creates tc filters on given interfaces for given hosts classifying matching packets in the given flowid
-func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, hosts []v1beta1.NetworkDisruptionHostSpec, flowid string) (map[v1beta1.NetworkDisruptionHostSpec][]tcFilter, error) {
-	hostFilterMap := map[v1beta1.NetworkDisruptionHostSpec][]tcFilter{}
+func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, hosts []v1beta1.NetworkDisruptionHostSpec, flowid string) (map[v1beta1.NetworkDisruptionHostSpec]tcFilters, error) {
+	hostFilterMap := map[v1beta1.NetworkDisruptionHostSpec]tcFilters{}
 
 	for _, host := range hosts {
 		// resolve given hosts if needed
@@ -1058,7 +1060,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 
 		i.config.Log.Infof("resolved %s as %s", host.Host, ips)
 
-		filtersForHost := []tcFilter{}
+		filtersForHost := tcFilters{}
 
 		for _, ip := range ips {
 			var (
@@ -1092,7 +1094,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 			}
 		}
 
-		i.config.Log.Debugw("tc filters created for host", "host", host, "filters", FiltersToStrings(filtersForHost))
+		i.config.Log.Debugw("tc filters created for host", "host", host, "filters", filtersForHost)
 		hostFilterMap[host] = filtersForHost
 	}
 

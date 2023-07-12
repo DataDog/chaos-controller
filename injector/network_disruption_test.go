@@ -377,7 +377,6 @@ var _ = Describe("Failure", func() {
 				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", uint32(0))
 				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", uint32(0))
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(newTestHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
-
 			})
 		})
 
