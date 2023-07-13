@@ -33,6 +33,15 @@ type DisruptionScheduleList struct {
 }
 
 type DisruptionScheduleSpec struct {
+	//+kubebuilder:validation:MinLength=0
+	// The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
+	Schedule string `json:"schedule"`
+
+	// Specifies the Disruption that will be created when executing a DisruptionShedule.
+	DisruptionTemplate Disruption `json:"disruptionTemplate"`
 }
 type DisruptionScheduleStatus struct {
+	// The last time when the disruption was last successfully scheduled.
+	// +optional
+	LastScheduleTime *metav1.Time `json:"lastScheduleTime,omitempty"`
 }
