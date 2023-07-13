@@ -372,7 +372,7 @@ func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 	}
 
 	if errOnInject {
-		log.Errorf("an injector could not inject the disruption successfully, please look at the logs above for more details")
+		log.Error("an injector could not inject the disruption successfully, please look at the logs above for more details")
 	}
 
 	return !errOnInject
@@ -581,7 +581,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 				case <-time.After(sleepDuration):
 					action, err = pulse(&isInjected, &sleepDuration, action, cmd.Name())
 					if err != nil {
-						log.Errorf(err.Error())
+						log.Errorw("an error occurred when calling pulse", "error", err)
 
 						// break of PulsingLoop only
 						break pulsingLoop

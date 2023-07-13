@@ -814,36 +814,44 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 
 // watchServiceChanges for every changes happening in the kubernetes service destination or in the pods related to the kubernetes service destination, we update the tc service filters
 func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, watcher serviceWatcher, interfaces []string, flowid string) {
+	log := i.config.Log.With("serviceNamespace", watcher.watchedServiceSpec.Namespace, "serviceName", watcher.watchedServiceSpec.Name)
+
 	for {
 		// We create the watcher channels when it's closed
 		if watcher.kubernetesServiceWatcher == nil {
+			log := log.With("watcher", "kubernetesServiceWatcher")
+
 			serviceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
 				ResourceVersion:     watcher.servicesResourceVersion,
 				AllowWatchBookmarks: true,
 			})
 			if err != nil {
-				i.config.Log.Errorf("error watching the changes for the given kubernetes service (%s/%s): %w", watcher.watchedServiceSpec.Namespace, watcher.watchedServiceSpec.Name, err)
+				log.Errorw("error watching the changes for the given kubernetes service", "error", err)
 
 				return
 			}
 
-			i.config.Log.Infow("starting kubernetes service watch", "serviceName", watcher.watchedServiceSpec.Name, "serviceNamespace", watcher.watchedServiceSpec.Namespace)
+			log.Infow("starting kubernetes service watch")
+
 			watcher.kubernetesServiceWatcher = serviceWatcher.ResultChan()
 		}
 
 		if watcher.kubernetesPodEndpointsWatcher == nil {
+			log := log.With("watcher", "kubernetesPodEndpointsWatcher")
+
 			podsWatcher, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
 				LabelSelector:       watcher.labelServiceSelector,
 				ResourceVersion:     watcher.podsResourceVersion,
 				AllowWatchBookmarks: true,
 			})
 			if err != nil {
-				i.config.Log.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", watcher.watchedServiceSpec.Namespace, watcher.watchedServiceSpec.Name, err)
+				log.Errorw("error watching the list of pods for the given kubernetes service", "error", err)
 
 				return
 			}
 
-			i.config.Log.Infow("starting kubernetes pods watch", "serviceName", watcher.watchedServiceSpec.Name, "serviceNamespace", watcher.watchedServiceSpec.Namespace)
+			log.Infow("starting kubernetes pods watch")
+
 			watcher.kubernetesPodEndpointsWatcher = podsWatcher.ResultChan()
 		}
 
@@ -854,13 +862,14 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 			if !ok { // channel is closed
 				watcher.kubernetesServiceWatcher = nil
 			} else {
-				i.config.Log.Debugw(fmt.Sprintf("changes in service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
+				log := log.With("watcher", "kubernetesServiceWatcher")
+				log.Debugw("changes in service", "eventType", event.Type)
 
 				if err := i.handleKubernetesServiceChanges(event, &watcher, interfaces, flowid); err != nil {
-					i.config.Log.Errorf("couldn't apply changes to tc filters: %w... Rebuilding watcher", err)
+					log.Errorw("couldn't apply changes to tc filters: Rebuilding watcher", "error", err)
 
 					if _, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromNamespaceServices, watcher.tcFiltersFromNamespaceServices); err != nil {
-						i.config.Log.Errorf("couldn't clean list of tc filters: %w", err)
+						log.Errorw("couldn't clean list of tc filters", "error", err)
 					}
 
 					watcher.kubernetesServiceWatcher = nil // restart the watcher in case of error
@@ -871,13 +880,14 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 			if !ok { // channel is closed
 				watcher.kubernetesPodEndpointsWatcher = nil
 			} else {
-				i.config.Log.Debugw(fmt.Sprintf("changes in pods of service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
+				log := log.With("watcher", "kubernetesPodEndpointsWatcher")
+				log.Debugw(fmt.Sprintf("changes in pods of service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
 
 				if err := i.handleKubernetesPodsChanges(event, &watcher, interfaces, flowid); err != nil {
-					i.config.Log.Errorf("couldn't apply changes to tc filters: %w... Rebuilding watcher", err)
+					log.Errorw("couldn't apply changes to tc filters: Rebuilding watcher", "error", err)
 
 					if _, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromPodEndpoints, watcher.tcFiltersFromPodEndpoints); err != nil {
-						i.config.Log.Errorf("couldn't clean list of tc filters: %w", err)
+						log.Errorw("couldn't clean list of tc filters", "error", err)
 					}
 
 					watcher.kubernetesPodEndpointsWatcher = nil // restart the watcher in case of error

@@ -96,7 +96,6 @@ type CtxTuple struct {
 // +kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
 func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	instance := &chaosv1beta1.Disruption{}
-	tsStart := time.Now()
 
 	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -110,19 +109,20 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// reconcile metrics
 	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
 
-	defer func() func() {
-		return func() {
-			tags := []string{}
-			if instance.Name != "" {
-				tags = append(tags, "disruptionName:"+instance.Name, "namespace:"+instance.Namespace)
-			}
-
-			r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
+	defer func(tsStart time.Time) {
+		tags := []string{}
+		if instance.Name != "" {
+			tags = append(tags, "disruptionName:"+instance.Name, "namespace:"+instance.Namespace)
 		}
-	}()()
+
+		r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
+	}(time.Now())
 
 	defer func() {
-		if err == nil {
+		panicInfo := recover()
+		if panicInfo != nil {
+			err = fmt.Errorf("a panic occurred during reconcile:\n\tpanic: %v\n\n\terror: %w", panicInfo, err)
+		} else if err == nil {
 			return
 		}
 
@@ -170,7 +170,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	ctx, err = instance.SpanContext(ctx)
 	if err != nil {
-		r.log.Errorw("did not find span context", "err", err)
+		r.log.Errorw("did not find span context", "error", err)
 	}
 
 	userInfo, err := instance.UserInfo()

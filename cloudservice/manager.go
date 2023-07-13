@@ -103,7 +103,7 @@ func (s *CloudServicesProvidersManager) StartPeriodicPull() {
 				}
 			case <-time.After(s.periodicPullInterval):
 				if err := s.PullIPRanges(); err != nil {
-					s.log.Errorf(err.Error())
+					s.log.Errorw("an error occurred when pulling IP ranges", "error", err)
 				}
 			}
 		}

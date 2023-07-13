@@ -34,7 +34,7 @@ func init() {
 func ValidateDisruption(path string) error {
 	_, err := DisruptionFromFile(path)
 	if err != nil {
-		return fmt.Errorf("error reading from disruption at %v: %v", path, err)
+		return fmt.Errorf("error reading from disruption at %v: %w", path, err)
 	}
 
 	fmt.Println("file is valid !")

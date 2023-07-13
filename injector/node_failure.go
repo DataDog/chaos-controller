@@ -96,7 +96,7 @@ func (i *nodeFailureInjector) Inject() error {
 		}
 
 		if err != nil {
-			i.config.Log.Errorf("error while writing to the sysrq trigger file (%s): %v", i.sysrqTriggerPath, err)
+			i.config.Log.Errorw("error while writing to the sysrq trigger file: %v", "sysrqTriggerPath", i.sysrqTriggerPath, "error", err)
 		}
 	}()
 
