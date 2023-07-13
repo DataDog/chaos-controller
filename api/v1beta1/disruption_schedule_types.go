@@ -37,11 +37,32 @@ type DisruptionScheduleSpec struct {
 	// The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule string `json:"schedule"`
 
+	// TargetResource specifies the resource to run disruptions against.
+	// It can only be a Deployment or StatefulSet.
+	TargetResource TargetResource `json:"TargetResource"`
+
 	// Specifies the Disruption that will be created when executing a DisruptionShedule.
 	DisruptionTemplate Disruption `json:"disruptionTemplate"`
 }
+
+// TargetResource specifies the long-lived resource to be targeted for disruptions.
+// Disruptions are intended to exist semi-permanently, and thus appropriate targets can only be other long-lived resources,
+// such as StatefulSets or Deployments.
+type TargetResource struct {
+	// Kind specifies the type of the long-lived resource. Allowed values: "Deployment", "StatefulSet".
+	// +kubebuilder:validation:Enum=Deployment;StatefulSet
+	Kind string `json:"kind"`
+
+	// Name specifies the name of the specific instance of the long-lived resource to be targeted.
+	Name string `json:"name"`
+}
+
 type DisruptionScheduleStatus struct {
 	// The last time when the disruption was last successfully scheduled.
 	// +optional
 	LastScheduleTime *metav1.Time `json:"lastScheduleTime,omitempty"`
+
+	// Time when the target resource was previously missing.
+	// +optional
+	TargetResourcePreviouslytMissing *metav1.Time `json:"targetResourcePreviouslytMissing,omitempty"`
 }
