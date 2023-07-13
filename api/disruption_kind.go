@@ -41,6 +41,7 @@ type DisruptionArgs struct {
 	PulseInitialDelay    time.Duration
 	PulseActiveDuration  time.Duration
 	PulseDormantDuration time.Duration
+	HostResolveInterval  time.Duration
 	NotInjectedBefore    time.Time
 }
 
@@ -101,6 +102,10 @@ func (d DisruptionArgs) CreateCmdArgs(args []string) []string {
 	if d.Kind == chaostypes.DisruptionKindNetworkDisruption {
 		for _, host := range d.AllowedHosts {
 			args = append(args, "--allowed-hosts", host)
+		}
+
+		if d.HostResolveInterval > 0 {
+			args = append(args, "--host-resolve-interval", d.HostResolveInterval.String())
 		}
 	}
 

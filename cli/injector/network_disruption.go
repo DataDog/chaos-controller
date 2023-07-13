@@ -6,6 +6,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
 	"github.com/spf13/cobra"
@@ -25,6 +27,7 @@ var networkDisruptionCmd = &cobra.Command{
 		delay, _ := cmd.Flags().GetUint("delay")
 		delayJitter, _ := cmd.Flags().GetUint("delay-jitter")
 		bandwidthLimit, _ := cmd.Flags().GetInt("bandwidth-limit")
+		hostResolveInterval, _ := cmd.Flags().GetDuration("host-resolve-interval")
 
 		// prepare injectors
 		for i, config := range configs {
@@ -64,7 +67,7 @@ var networkDisruptionCmd = &cobra.Command{
 			}
 
 			// generate injector
-			inj, err := injector.NewNetworkDisruptionInjector(spec, injector.NetworkDisruptionInjectorConfig{Config: config})
+			inj, err := injector.NewNetworkDisruptionInjector(spec, injector.NetworkDisruptionInjectorConfig{Config: config, HostResolveInterval: hostResolveInterval})
 			if err != nil {
 				log.Fatalw("error initializing the network disruption injector: %w", err)
 			}
@@ -84,4 +87,5 @@ func init() {
 	networkDisruptionCmd.Flags().Uint("delay", 0, "Delay to add to the given container in ms")
 	networkDisruptionCmd.Flags().Uint("delay-jitter", 0, "Sub-command for Delay; adds specified jitter to delay time")
 	networkDisruptionCmd.Flags().Int("bandwidth-limit", 0, "Bandwidth limit in bytes")
+	networkDisruptionCmd.Flags().Duration("host-resolve-interval", time.Minute, "Interval to resolve hostnames")
 }
