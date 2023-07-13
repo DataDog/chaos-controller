@@ -25,7 +25,7 @@ type DisruptionScheduleReconciler struct {
 }
 
 const (
-	ScheduledTimeAnnotation     = chaosv1beta1.GroupName + "/scheduled-at"
+	ScheduledAtAnnotation       = chaosv1beta1.GroupName + "/scheduled-at"
 	DisruptionScheduleNameLabel = chaosv1beta1.GroupName + "/disruption-schedule-name"
 )
 
@@ -91,7 +91,7 @@ func (r *DisruptionScheduleReconciler) getMostRecentScheduleTime(disruptions *ch
 
 // getScheduledTimeForDisruption returns the scheduled time for a particular disruption
 func (r *DisruptionScheduleReconciler) getScheduledTimeForDisruption(disruption *chaosv1beta1.Disruption) (*time.Time, error) {
-	timeRaw := disruption.Annotations[ScheduledTimeAnnotation]
+	timeRaw := disruption.Annotations[ScheduledAtAnnotation]
 	if len(timeRaw) == 0 {
 		return nil, nil
 	}
