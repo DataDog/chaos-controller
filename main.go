@@ -146,7 +146,7 @@ func main() {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	if err = metricsSink.MetricRestart(); err != nil {
-		logger.Errorw("error sending MetricRestart", "sink", metricsSink.GetSinkName(), "err", err)
+		logger.Errorw("error sending MetricRestart", "sink", metricsSink.GetSinkName(), "error", err)
 	}
 
 	// target selector
@@ -160,7 +160,7 @@ func main() {
 	// initialize the cloud provider manager which will handle ip ranges files updates
 	cloudProviderManager, err := cloudservice.New(logger, cfg.Controller.CloudProviders)
 	if err != nil {
-		handleFatalError(fmt.Errorf("error initializing CloudProviderManager: %s", err.Error()))
+		handleFatalError(fmt.Errorf("error initializing CloudProviderManager: %w", err))
 	}
 
 	cloudProviderManager.StartPeriodicPull()

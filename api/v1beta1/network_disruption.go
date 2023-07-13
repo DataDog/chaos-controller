@@ -367,7 +367,7 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 		if len(parsedHost) > 1 && parsedHost[1] != "" {
 			port, err = strconv.Atoi(parsedHost[1])
 			if err != nil {
-				return nil, fmt.Errorf("unexpected port parameter in %s: %v", host, err)
+				return nil, fmt.Errorf("unexpected port parameter in %s: %w", host, err)
 			}
 		}
 

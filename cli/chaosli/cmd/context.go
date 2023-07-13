@@ -182,7 +182,7 @@ func getPods(disruption v1beta1.Disruption) (v1.PodList, error) {
 
 	pods, err := clientset.CoreV1().Pods(disruption.ObjectMeta.Namespace).List(context.TODO(), options)
 	if err != nil {
-		return v1.PodList{}, fmt.Errorf("errored when attempted to get list of pods: %v", err)
+		return v1.PodList{}, fmt.Errorf("errored when attempted to get list of pods: %w", err)
 	}
 
 	return *pods, nil
@@ -195,7 +195,7 @@ func getNodes(disruption v1beta1.Disruption) (v1.NodeList, error) {
 
 	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
 	if err != nil {
-		return v1.NodeList{}, fmt.Errorf("errored when attempted to get list of nodes: %v", err)
+		return v1.NodeList{}, fmt.Errorf("errored when attempted to get list of nodes: %w", err)
 	}
 
 	return *nodes, nil
@@ -384,12 +384,12 @@ func setKubeconfig() error {
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		return fmt.Errorf("failed to Build the kubeconfiguration: %v", err)
+		return fmt.Errorf("failed to Build the kubeconfiguration: %w", err)
 	}
 
 	clientset, err = kubernetes.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("failed to create clientset: %v", err)
+		return fmt.Errorf("failed to create clientset: %w", err)
 	}
 
 	return nil

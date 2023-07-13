@@ -180,7 +180,7 @@ func (w *watcher) Start() error {
 	// start the cache in a goroutine
 	go func() {
 		if err := w.cache.Start(cacheCtx); err != nil {
-			w.config.Log.Errorf("could not start the watcher. Error: %w", err)
+			w.config.Log.Errorw("could not start the watcher", "error", err)
 		}
 	}()
 
