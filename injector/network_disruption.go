@@ -958,6 +958,7 @@ func (i *networkDisruptionInjector) handleFiltersForHosts(interfaces []string, f
 // watchHostChanges watches for changes to the resolved IP for hosts
 func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interfaces []string, hosts hostsWatcher, flowid string) {
 	hostWatcherLog := i.config.Log.With("retryInterval", i.config.HostResolveInterval.String())
+
 	for {
 		select {
 		case <-ctx.Done():

@@ -33,7 +33,8 @@ import (
 )
 
 const (
-	secondGatewayIP, targetPodHostIP, testHostIP, clusterIP, podIP = "192.168.0.1", "10.0.0.2", "1.1.1.1", "172.16.0.1", "10.1.0.4"
+	secondGatewayIP, targetPodHostIP, clusterIP, podIP = "192.168.0.1", "10.0.0.2", "172.16.0.1", "10.1.0.4"
+	testHostIP, testHostIPTwo, testHostIPThree         = "1.1.1.1", "2.2.2.2", "3.3.3.3"
 )
 
 var _ = Describe("Failure", func() {
@@ -354,7 +355,7 @@ var _ = Describe("Failure", func() {
 			})
 		})
 
-		Context("when resolved host IPs change", func() {
+		Context("host watcher", func() {
 			BeforeEach(func() {
 				spec.Hosts = []v1beta1.NetworkDisruptionHostSpec{
 					{
@@ -363,20 +364,54 @@ var _ = Describe("Failure", func() {
 					},
 				}
 
-				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil).Once()
+				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP), net.ParseIP(testHostIPTwo)}, nil).Once()
 			})
 
-			It("should update the filters", func() {
+			It("should update the filters when the IP changes", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPTwo), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 
-				const newTestHostIP = "2.2.2.2"
-				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(newTestHostIP)}, nil).Maybe()
+				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIPTwo), net.ParseIP(testHostIPThree)}, nil).Maybe()
 				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
 
 				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", uint32(0))
 				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", uint32(0))
 				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", uint32(0))
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(newTestHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPThree), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+			})
+
+			It("should update the filters when new IPs are added", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPTwo), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+
+				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP), net.ParseIP(testHostIPTwo), net.ParseIP(testHostIPThree)}, nil).Maybe()
+				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
+
+				tc.AssertNotCalled(GinkgoT(), "DeleteFilter")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPThree), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+			})
+
+			It("should update the filters when IPs are removed", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPTwo), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+
+				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil).Maybe()
+				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
+
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", uint32(0))
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", uint32(0))
+				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", uint32(0))
+			})
+
+			It("should not update the filters when IPs do not change", func() {
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPTwo), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+
+				tc.AssertNotCalled(GinkgoT(), "DeleteFilter")
+			})
+
+			AfterEach(func() {
+				Expect(inj.Clean()).To(Succeed())
 			})
 		})
 
