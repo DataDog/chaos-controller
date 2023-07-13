@@ -8,6 +8,7 @@ package injector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -65,8 +66,7 @@ func (i *GRPCDisruptionInjector) Inject() error {
 
 	conn, err := i.connectToServer()
 	if err != nil {
-		i.config.Log.Errorf(err.Error())
-		return err
+		return fmt.Errorf("an error occurred when connecting to server (inject): %w", err)
 	}
 
 	// as long as we managed to dial the server, then we have to assume we're injected
@@ -103,8 +103,7 @@ func (i *GRPCDisruptionInjector) Clean() error {
 
 	conn, err := i.connectToServer()
 	if err != nil {
-		i.config.Log.Errorf(err.Error())
-		return err
+		return fmt.Errorf("an error occurred when connecting to server (clean): %w", err)
 	}
 
 	i.config.Log.Infow("removing grpc disruption", "spec", i.spec)

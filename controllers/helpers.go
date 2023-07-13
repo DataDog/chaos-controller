@@ -33,7 +33,7 @@ func getScaledValueFromIntOrPercent(intOrPercent *intstr.IntOrString, total int,
 
 	value, isPercent, err := chaosv1beta1.GetIntOrPercentValueSafely(intOrPercent)
 	if err != nil {
-		return 0, fmt.Errorf("invalid value for IntOrString: %v", err)
+		return 0, fmt.Errorf("invalid value for IntOrString: %w", err)
 	}
 
 	if isPercent {

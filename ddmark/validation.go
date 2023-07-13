@@ -15,8 +15,10 @@ import (
 )
 
 // AllDefinitions contains all marker definitions for this package.
-var AllDefinitions []*k8smarkers.Definition
-var rulePrefix = "ddmark:validation:"
+var (
+	AllDefinitions []*k8smarkers.Definition
+	rulePrefix     = "ddmark:validation:"
+)
 
 func init() {
 	addDefinition(Maximum(0), k8smarkers.DescribesField)
@@ -190,7 +192,7 @@ func (r Required) TypeCheckError(fieldValue reflect.Value) error {
 func (l LinkedFieldsValue) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 
-	var matchCount = 0
+	matchCount := 0
 
 	structMap, ok := structValueToMap(fieldvalue)
 	if !ok {
@@ -227,9 +229,9 @@ func (l LinkedFieldsValue) TypeCheckError(fieldValue reflect.Value) error {
 func (l LinkedFieldsValueWithTrigger) ApplyRule(fieldvalue reflect.Value) error {
 	fieldvalue = reflect.Indirect(fieldvalue)
 
-	var matchCount = 0
+	matchCount := 0
 	// room for logic to possibly expand the marker to accept multiple/combined trigger values (instead of 1)
-	var c = 1
+	c := 1
 
 	if len(l) < 2 {
 		return fmt.Errorf("%s: marker was wrongly defined in struct: less than 2 fields", ruleName(l))
@@ -323,8 +325,8 @@ func Register(reg *k8smarkers.Registry) error {
 // addDefinition creates and adds a definition to the package's AllDefinition object, containing all markers definitions
 func addDefinition(obj DDValidationMarker, targetType k8smarkers.TargetType) {
 	name := rulePrefix + reflect.TypeOf(obj).Name()
-	def, err := k8smarkers.MakeDefinition(name, targetType, obj)
 
+	def, err := k8smarkers.MakeDefinition(name, targetType, obj)
 	if err != nil {
 		panic(err)
 	}

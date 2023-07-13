@@ -118,7 +118,7 @@ func (c client) ValidateStructMultierror(marshalledStruct interface{}, filePath 
 	pkgs, err = k8sloader.LoadRoots(localStructPkgs...)
 
 	if err != nil {
-		return multierror.Append(retErr, fmt.Errorf("error loading markers from crd validation: \n\t%v", err))
+		return multierror.Append(retErr, fmt.Errorf("error loading markers from crd validation: \n\t%w", err))
 	}
 
 	typesMap := getAllPackageTypes(pkgs, col)

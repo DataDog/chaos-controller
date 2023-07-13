@@ -449,23 +449,23 @@ func (s DisruptionSpec) KindNames() []chaostypes.DisruptionKindName {
 func ReadUnmarshal(path string) (*Disruption, error) {
 	fullPath, err := filepath.Abs(path)
 	if err != nil {
-		return nil, fmt.Errorf("error finding absolute path: %v", err)
+		return nil, fmt.Errorf("error finding absolute path: %w", err)
 	}
 
 	yaml, err := os.Open(filepath.Clean(fullPath))
 	if err != nil {
-		return nil, fmt.Errorf("could not open yaml file at %s: %v", fullPath, err)
+		return nil, fmt.Errorf("could not open yaml file at %s: %w", fullPath, err)
 	}
 
 	yamlBytes, err := io.ReadAll(yaml)
 	if err != nil {
-		return nil, fmt.Errorf("could not read yaml file: %v ", err)
+		return nil, fmt.Errorf("could not read yaml file: %w", err)
 	}
 
 	parsedSpec := Disruption{}
 
 	if err = goyaml.UnmarshalStrict(yamlBytes, &parsedSpec); err != nil {
-		return nil, fmt.Errorf("could not unmarshal yaml file to Disruption: %v", err)
+		return nil, fmt.Errorf("could not unmarshal yaml file to Disruption: %w", err)
 	}
 
 	return &parsedSpec, nil
