@@ -11,8 +11,11 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -101,6 +104,22 @@ func (r *DisruptionScheduleReconciler) getScheduledTimeForDisruption(disruption 
 		return nil, err
 	}
 	return &timeParsed, nil
+}
+
+func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (bool, error) {
+	var targetObj client.Object
+	switch instance.Spec.TargetResource.Kind {
+	case "Deployment":
+		targetObj = &appsv1.Deployment{}
+	case "StatefulSet":
+		targetObj = &appsv1.StatefulSet{}
+	}
+
+	err := r.Client.Get(ctx, types.NamespacedName{
+		Name:      instance.Spec.TargetResource.Name,
+		Namespace: instance.Namespace,
+	}, targetObj)
+	return errors.IsNotFound(err), err
 }
 
 // SetupWithManager setups the current reconciler with the given manager
