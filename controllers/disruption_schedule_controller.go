@@ -7,6 +7,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -54,6 +55,16 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 		if err := r.updateLastScheduleTime(ctx, instance, disruptions); err != nil {
 			r.log.Errorw("unable to update LastScheduleTime of DisruptionSchedule status", "DisruptionSchedule", instance.Name, "err", err)
+			return ctrl.Result{}, err
+		}
+
+		if err := r.updateTargetResourcePreviouslyMissing(ctx, instance); err != nil {
+			if err.Error() == "disruption schedule deleted" {
+				// The instance has been deleted, reconciliation can be skipped
+				return ctrl.Result{}, nil
+			}
+			// Error occurred during status update or deletion, requeue
+			r.log.Errorw("failed to handle target resource status", "DisruptionSchedule", instance.Name, "err", err)
 			return ctrl.Result{}, err
 		}
 	}
@@ -120,6 +131,52 @@ func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Con
 		Namespace: instance.Namespace,
 	}, targetObj)
 	return errors.IsNotFound(err), err
+}
+
+func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
+	targetResourceExists, err := r.checkTargetResourceExists(ctx, instance)
+	if !targetResourceExists {
+		r.log.Warnw("target does not exist, this schedule will be deleted if that continues", "error", err)
+		if instance.Status.TargetResourcePreviouslytMissing == nil {
+			r.log.Warnw("target is missing for the first time, updating status", "targetPreviouslyMissing", instance.Status.TargetResourcePreviouslytMissing)
+			return r.handleTargetResourceFirstMissing(ctx, instance)
+		}
+		if time.Since(instance.Status.TargetResourcePreviouslytMissing.Time) > time.Hour*24 {
+			r.log.Errorw("target has been missing for over one day, deleting this schedule",
+				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslytMissing.Time))
+			return r.handleTargetResourceMissingOverOneDay(ctx, instance)
+		}
+	} else {
+		if instance.Status.TargetResourcePreviouslytMissing != nil {
+			r.log.Infow("target was previously missing, but now present. updating the status accordingly")
+			return r.handleTargetResourceNowPresent(ctx, instance)
+		}
+	}
+
+	return nil
+}
+
+func (r *DisruptionScheduleReconciler) handleTargetResourceFirstMissing(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
+	instance.Status.TargetResourcePreviouslytMissing = &metav1.Time{Time: time.Now()}
+	if err := r.Client.Status().Update(ctx, instance); err != nil {
+		return fmt.Errorf("failed to update status: %w", err)
+	}
+	return nil
+}
+
+func (r *DisruptionScheduleReconciler) handleTargetResourceMissingOverOneDay(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
+	if err := r.Client.Delete(ctx, instance); err != nil {
+		return fmt.Errorf("failed to delete instance: %w", err)
+	}
+	return fmt.Errorf("disruption schedule deleted")
+}
+
+func (r *DisruptionScheduleReconciler) handleTargetResourceNowPresent(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
+	instance.Status.TargetResourcePreviouslytMissing = nil
+	if err := r.Client.Status().Update(ctx, instance); err != nil {
+		return fmt.Errorf("failed to update status: %w", err)
+	}
+	return nil
 }
 
 // SetupWithManager setups the current reconciler with the given manager
