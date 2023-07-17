@@ -58,14 +58,16 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 
-		if err := r.updateTargetResourcePreviouslyMissing(ctx, instance); err != nil {
-			if err.Error() == "disruption schedule deleted" {
-				// The instance has been deleted, reconciliation can be skipped
-				return ctrl.Result{}, nil
-			}
+		// _ is targetResourceNotFound, which will be used later to requeue according to the schedule
+		_, instanceDeleted, err := r.updateTargetResourcePreviouslyMissing(ctx, instance)
+		if err != nil {
 			// Error occurred during status update or deletion, requeue
 			r.log.Errorw("failed to handle target resource status", "DisruptionSchedule", instance.Name, "err", err)
 			return ctrl.Result{}, err
+		}
+		if instanceDeleted {
+			// The instance has been deleted, reconciliation can be skipped
+			return ctrl.Result{}, nil
 		}
 	}
 
@@ -90,6 +92,7 @@ func (r *DisruptionScheduleReconciler) updateLastScheduleTime(ctx context.Contex
 	} else {
 		instance.Status.LastScheduleTime = nil
 	}
+	r.log.Infow("found most recent schedule time", "instance.Status.LastScheduleTime", instance.Status.LastScheduleTime)
 	return r.Client.Status().Update(ctx, instance)
 }
 
@@ -143,26 +146,28 @@ func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Con
 	return errors.IsNotFound(err), err
 }
 
-func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
+func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (bool, bool, error) {
+	disruptionScheduleDeleted := false
 	targetResourceNotFound, err := r.checkTargetResourceExists(ctx, instance)
 	if targetResourceNotFound {
 		r.log.Warnw("target does not exist, this schedule will be deleted if that continues", "error", err)
 		if instance.Status.TargetResourcePreviouslyMissing == nil {
 			r.log.Warnw("target is missing for the first time, updating status", "targetPreviouslyMissing", instance.Status.TargetResourcePreviouslyMissing)
-			return r.handleTargetResourceFirstMissing(ctx, instance)
+			return targetResourceNotFound, disruptionScheduleDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
 		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > time.Hour*24 {
 			r.log.Errorw("target has been missing for over one day, deleting this schedule",
 				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
-			return r.handleTargetResourceMissingOverOneDay(ctx, instance)
+			disruptionScheduleDeleted = true
+			return targetResourceNotFound, disruptionScheduleDeleted, r.handleTargetResourceMissingOverOneDay(ctx, instance)
 		}
 	} else {
 		if instance.Status.TargetResourcePreviouslyMissing != nil {
 			r.log.Infow("target was previously missing, but now present. updating the status accordingly")
-			return r.handleTargetResourceNowPresent(ctx, instance)
+			return targetResourceNotFound, disruptionScheduleDeleted, r.handleTargetResourceNowPresent(ctx, instance)
 		}
 	}
-	return nil
+	return targetResourceNotFound, disruptionScheduleDeleted, nil
 }
 
 func (r *DisruptionScheduleReconciler) handleTargetResourceFirstMissing(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
@@ -177,7 +182,7 @@ func (r *DisruptionScheduleReconciler) handleTargetResourceMissingOverOneDay(ctx
 	if err := r.Client.Delete(ctx, instance); err != nil {
 		return fmt.Errorf("failed to delete instance: %w", err)
 	}
-	return fmt.Errorf("disruption schedule deleted")
+	return nil
 }
 
 func (r *DisruptionScheduleReconciler) handleTargetResourceNowPresent(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
