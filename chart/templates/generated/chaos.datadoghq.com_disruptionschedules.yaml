@@ -28,7 +28,606 @@ spec:
               type: string
             metadata:
               type: object
+            spec:
+              properties:
+                disruptionTemplate:
+                  description: Specifies the Disruption that will be created when executing a DisruptionShedule.
+                  properties:
+                    apiVersion:
+                      description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+                      type: string
+                    kind:
+                      description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                      type: string
+                    metadata:
+                      type: object
+                    spec:
+                      description: DisruptionSpec defines the desired state of Disruption
+                      properties:
+                        advancedSelector:
+                          items:
+                            description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                            properties:
+                              key:
+                                description: key is the label key that the selector applies to.
+                                type: string
+                              operator:
+                                description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                type: string
+                              values:
+                                description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                              - key
+                              - operator
+                            type: object
+                          nullable: true
+                          type: array
+                        allowDisruptedTargets:
+                          description: 'AllowDisruptedTargets allow pods with one or several other active disruptions, with disruption kinds that does not intersect with this disruption kinds, to be returned as part of eligible targets for this disruption - e.g. apply a CPU pressure and later, apply a container failure for a short duration NB: it''s ALWAYS forbidden to apply the same disruption kind to the same target to avoid unreliable effects due to competing interactions'
+                          type: boolean
+                        containerFailure:
+                          description: ContainerFailureSpec represents a container failure injection
+                          nullable: true
+                          properties:
+                            forced:
+                              type: boolean
+                          type: object
+                        containers:
+                          items:
+                            type: string
+                          type: array
+                        count:
+                          anyOf:
+                            - type: integer
+                            - type: string
+                          x-kubernetes-int-or-string: true
+                        cpuPressure:
+                          description: CPUPressureSpec represents a cpu pressure disruption
+                          nullable: true
+                          properties:
+                            count:
+                              anyOf:
+                                - type: integer
+                                - type: string
+                              description: Count represents the number of cores to target either an integer form or a percentage form appended with a % if empty, it will be considered to be 100%
+                              x-kubernetes-int-or-string: true
+                          type: object
+                        diskFailure:
+                          description: DiskFailureSpec represents a disk failure disruption
+                          nullable: true
+                          properties:
+                            path:
+                              type: string
+                          required:
+                            - path
+                          type: object
+                        diskPressure:
+                          description: DiskPressureSpec represents a disk pressure disruption
+                          nullable: true
+                          properties:
+                            path:
+                              type: string
+                            throttling:
+                              description: DiskPressureThrottlingSpec represents a throttle on read and write disk operations
+                              properties:
+                                readBytesPerSec:
+                                  type: integer
+                                writeBytesPerSec:
+                                  type: integer
+                              type: object
+                          required:
+                            - path
+                            - throttling
+                          type: object
+                        dns:
+                          description: DNSDisruptionSpec represents a dns disruption
+                          items:
+                            description: HostRecordPair represents a hostname and a corresponding dns record override
+                            properties:
+                              hostname:
+                                type: string
+                              record:
+                                description: DNSRecord represents a type of DNS Record, such as A or CNAME, and the value of that record
+                                properties:
+                                  type:
+                                    type: string
+                                  value:
+                                    type: string
+                                required:
+                                  - type
+                                  - value
+                                type: object
+                            required:
+                              - hostname
+                              - record
+                            type: object
+                          nullable: true
+                          type: array
+                        dryRun:
+                          type: boolean
+                        duration:
+                          type: string
+                        filter:
+                          nullable: true
+                          properties:
+                            annotations:
+                              additionalProperties:
+                                type: string
+                              description: Set is a map of label:value. It implements Labels.
+                              type: object
+                          type: object
+                        grpc:
+                          description: GRPCDisruptionSpec represents a gRPC disruption
+                          nullable: true
+                          properties:
+                            endpoints:
+                              items:
+                                description: EndpointAlteration represents an endpoint to disrupt and the corresponding error to return
+                                properties:
+                                  endpoint:
+                                    type: string
+                                  error:
+                                    enum:
+                                      - OK
+                                      - CANCELED
+                                      - UNKNOWN
+                                      - INVALID_ARGUMENT
+                                      - DEADLINE_EXCEEDED
+                                      - NOT_FOUND
+                                      - ALREADY_EXISTS
+                                      - PERMISSION_DENIED
+                                      - RESOURCE_EXHAUSTED
+                                      - FAILED_PRECONDITION
+                                      - ABORTED
+                                      - OUT_OF_RANGE
+                                      - UNIMPLEMENTED
+                                      - INTERNAL
+                                      - UNAVAILABLE
+                                      - DATA_LOSS
+                                      - UNAUTHENTICATED
+                                    type: string
+                                  override:
+                                    type: string
+                                  queryPercent:
+                                    maximum: 100
+                                    minimum: 0
+                                    type: integer
+                                required:
+                                  - endpoint
+                                type: object
+                              type: array
+                            port:
+                              maximum: 65535
+                              minimum: 1
+                              type: integer
+                          required:
+                            - endpoints
+                            - port
+                          type: object
+                        level:
+                          default: pod
+                          description: Level defines what the disruption will target, either a pod or a node
+                          enum:
+                            - pod
+                            - node
+                          type: string
+                        network:
+                          description: NetworkDisruptionSpec represents a network disruption injection
+                          nullable: true
+                          properties:
+                            allowedHosts:
+                              items:
+                                properties:
+                                  connState:
+                                    enum:
+                                      - new
+                                      - est
+                                      - ""
+                                    type: string
+                                  flow:
+                                    enum:
+                                      - ingress
+                                      - egress
+                                      - ""
+                                    type: string
+                                  host:
+                                    type: string
+                                  port:
+                                    maximum: 65535
+                                    minimum: 0
+                                    type: integer
+                                  protocol:
+                                    enum:
+                                      - tcp
+                                      - udp
+                                      - ""
+                                    type: string
+                                type: object
+                              nullable: true
+                              type: array
+                            bandwidthLimit:
+                              minimum: 0
+                              type: integer
+                            cloud:
+                              nullable: true
+                              properties:
+                                aws:
+                                  items:
+                                    properties:
+                                      connState:
+                                        enum:
+                                          - new
+                                          - est
+                                          - ""
+                                        type: string
+                                      flow:
+                                        enum:
+                                          - ingress
+                                          - egress
+                                          - ""
+                                        type: string
+                                      protocol:
+                                        enum:
+                                          - tcp
+                                          - udp
+                                          - ""
+                                        type: string
+                                      service:
+                                        type: string
+                                    required:
+                                      - service
+                                    type: object
+                                  type: array
+                                datadog:
+                                  items:
+                                    properties:
+                                      connState:
+                                        enum:
+                                          - new
+                                          - est
+                                          - ""
+                                        type: string
+                                      flow:
+                                        enum:
+                                          - ingress
+                                          - egress
+                                          - ""
+                                        type: string
+                                      protocol:
+                                        enum:
+                                          - tcp
+                                          - udp
+                                          - ""
+                                        type: string
+                                      service:
+                                        type: string
+                                    required:
+                                      - service
+                                    type: object
+                                  type: array
+                                gcp:
+                                  items:
+                                    properties:
+                                      connState:
+                                        enum:
+                                          - new
+                                          - est
+                                          - ""
+                                        type: string
+                                      flow:
+                                        enum:
+                                          - ingress
+                                          - egress
+                                          - ""
+                                        type: string
+                                      protocol:
+                                        enum:
+                                          - tcp
+                                          - udp
+                                          - ""
+                                        type: string
+                                      service:
+                                        type: string
+                                    required:
+                                      - service
+                                    type: object
+                                  type: array
+                              type: object
+                            corrupt:
+                              maximum: 100
+                              minimum: 0
+                              type: integer
+                            delay:
+                              maximum: 60000
+                              minimum: 0
+                              type: integer
+                            delayJitter:
+                              maximum: 100
+                              minimum: 0
+                              type: integer
+                            disableDefaultAllowedHosts:
+                              type: boolean
+                            drop:
+                              maximum: 100
+                              minimum: 0
+                              type: integer
+                            duplicate:
+                              maximum: 100
+                              minimum: 0
+                              type: integer
+                            flow:
+                              enum:
+                                - egress
+                                - ingress
+                              type: string
+                            hosts:
+                              items:
+                                properties:
+                                  connState:
+                                    enum:
+                                      - new
+                                      - est
+                                      - ""
+                                    type: string
+                                  flow:
+                                    enum:
+                                      - ingress
+                                      - egress
+                                      - ""
+                                    type: string
+                                  host:
+                                    type: string
+                                  port:
+                                    maximum: 65535
+                                    minimum: 0
+                                    type: integer
+                                  protocol:
+                                    enum:
+                                      - tcp
+                                      - udp
+                                      - ""
+                                    type: string
+                                type: object
+                              nullable: true
+                              type: array
+                            port:
+                              maximum: 65535
+                              minimum: 0
+                              nullable: true
+                              type: integer
+                            services:
+                              items:
+                                properties:
+                                  name:
+                                    type: string
+                                  namespace:
+                                    type: string
+                                  ports:
+                                    items:
+                                      properties:
+                                        name:
+                                          type: string
+                                        port:
+                                          maximum: 65535
+                                          minimum: 0
+                                          type: integer
+                                      type: object
+                                    type: array
+                                required:
+                                  - name
+                                  - namespace
+                                type: object
+                              nullable: true
+                              type: array
+                          type: object
+                        nodeFailure:
+                          description: NodeFailureSpec represents a node failure injection
+                          nullable: true
+                          properties:
+                            shutdown:
+                              type: boolean
+                          type: object
+                        onInit:
+                          type: boolean
+                        pulse:
+                          description: DisruptionPulse contains the active disruption duration and the dormant disruption duration
+                          nullable: true
+                          properties:
+                            activeDuration:
+                              type: string
+                            dormantDuration:
+                              type: string
+                            initialDelay:
+                              type: string
+                          type: object
+                        reporting:
+                          description: Reporting provides additional reporting options in order to send a message to a custom slack channel it expects the main controller to have the slack notifier enabled it expects a slack bot to be added to the defined slack channel
+                          nullable: true
+                          properties:
+                            minNotificationType:
+                              description: MinNotificationType is the minimal notification type we want to receive informations for In order of importance it's Info, Success, Warning, Error Default level is considered Success, meaning all info will be ignored
+                              enum:
+                                - Info
+                                - Success
+                                - Warning
+                                - Error
+                              type: string
+                            purpose:
+                              description: Purpose determines contextual informations about the disruption a brief context to determines disruption goal
+                              minLength: 10
+                              type: string
+                            slackChannel:
+                              description: SlackChannel is the destination slack channel to send reporting informations to. It's expected to follow slack naming conventions https://api.slack.com/methods/conversations.create#naming or slack channel ID format
+                              maxLength: 80
+                              pattern: (^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
+                              type: string
+                          type: object
+                        selector:
+                          additionalProperties:
+                            type: string
+                          description: Set is a map of label:value. It implements Labels.
+                          nullable: true
+                          type: object
+                        staticTargeting:
+                          type: boolean
+                        triggers:
+                          description: DisruptionTriggers holds the options for changing when injector pods are created, and the timing of when the injection occurs
+                          nullable: true
+                          properties:
+                            createPods:
+                              properties:
+                                notBefore:
+                                  description: 'inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore'
+                                  format: date-time
+                                  nullable: true
+                                  type: string
+                                offset:
+                                  description: 'inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time'
+                                  nullable: true
+                                  type: string
+                              type: object
+                            inject:
+                              properties:
+                                notBefore:
+                                  description: 'inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore'
+                                  format: date-time
+                                  nullable: true
+                                  type: string
+                                offset:
+                                  description: 'inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time'
+                                  nullable: true
+                                  type: string
+                              type: object
+                          type: object
+                        unsafeMode:
+                          description: UnsafemodeSpec represents a spec with parameters to turn off specific safety nets designed to catch common traps or issues running a disruption All of these are turned off by default, so disabling safety nets requires manually changing these booleans to true
+                          properties:
+                            allowRootDiskFailure:
+                              type: boolean
+                            config:
+                              description: Config represents any configurable parameters for the safetynets, all of which have defaults
+                              properties:
+                                countTooLarge:
+                                  description: CountTooLargeConfig represents the configuration for the countTooLarge safetynet
+                                  properties:
+                                    clusterThreshold:
+                                      maximum: 100
+                                      minimum: 1
+                                      type: integer
+                                    namespaceThreshold:
+                                      maximum: 100
+                                      minimum: 1
+                                      type: integer
+                                  type: object
+                              type: object
+                            disableAll:
+                              type: boolean
+                            disableCountTooLarge:
+                              type: boolean
+                            disableNeitherHostNorPort:
+                              type: boolean
+                            disableSpecificContainDisk:
+                              type: boolean
+                          type: object
+                      required:
+                        - count
+                      type: object
+                    status:
+                      description: DisruptionStatus defines the observed state of Disruption
+                      properties:
+                        desiredTargetsCount:
+                          description: Number of targets we want to target (count)
+                          type: integer
+                        ignoredTargetsCount:
+                          description: Targets ignored by the disruption, (not in a ready state, already targeted, not in the count percentage...)
+                          type: integer
+                        injectedTargetsCount:
+                          description: Number of targets with a chaos pod ready
+                          type: integer
+                        injectionStatus:
+                          description: DisruptionInjectionStatus represents the injection status of a disruption
+                          enum:
+                            - NotInjected
+                            - PartiallyInjected
+                            - PausedPartiallyInjected
+                            - Injected
+                            - PausedInjected
+                            - PreviouslyNotInjected
+                            - PreviouslyPartiallyInjected
+                            - PreviouslyInjected
+                          type: string
+                        isInjected:
+                          type: boolean
+                        isStuckOnRemoval:
+                          type: boolean
+                        selectedTargetsCount:
+                          description: Actual targets selected by the disruption
+                          type: integer
+                        targetInjections:
+                          additionalProperties:
+                            properties:
+                              injectionStatus:
+                                description: DisruptionTargetInjectionStatus represents the injection status of the target of a disruption
+                                enum:
+                                  - NotInjected
+                                  - Injected
+                                  - IsStuckOnRemoval
+                                type: string
+                              injectorPodName:
+                                type: string
+                              since:
+                                description: since when this status is in place
+                                format: date-time
+                                type: string
+                            type: object
+                          description: TargetInjections map of target injection
+                          nullable: true
+                          type: object
+                      required:
+                        - desiredTargetsCount
+                        - ignoredTargetsCount
+                        - injectedTargetsCount
+                        - selectedTargetsCount
+                      type: object
+                  type: object
+                schedule:
+                  description: The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
+                  minLength: 0
+                  type: string
+                targetResource:
+                  description: TargetResource specifies the resource to run disruptions against. It can only be a Deployment or StatefulSet.
+                  properties:
+                    kind:
+                      description: 'Kind specifies the type of the long-lived resource. Allowed values: "Deployment", "StatefulSet".'
+                      enum:
+                        - Deployment
+                        - StatefulSet
+                      type: string
+                    name:
+                      description: Name specifies the name of the specific instance of the long-lived resource to be targeted.
+                      type: string
+                  required:
+                    - kind
+                    - name
+                  type: object
+              required:
+                - disruptionTemplate
+                - schedule
+                - targetResource
+              type: object
             status:
+              properties:
+                TargetResourcePreviouslyMissing:
+                  description: Time when the target resource was previously missing.
+                  format: date-time
+                  type: string
+                lastScheduleTime:
+                  description: The last time when the disruption was last successfully scheduled.
+                  format: date-time
+                  type: string
               type: object
           type: object
       served: true

@@ -4,6 +4,14 @@ metadata:
   name: chaos-controller
 rules:
   - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - statefulsets
+    verbs:
+      - list
+      - watch
+  - apiGroups:
       - chaos.datadoghq.com
     resources:
       - disruptions
