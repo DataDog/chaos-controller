@@ -235,6 +235,7 @@ func main() {
 		Manager:                       mgr,
 		Logger:                        logger,
 		MetricsSink:                   metricsSink,
+		TracerSink:                    tracerSink,
 		Recorder:                      r.Recorder,
 		NamespaceThresholdFlag:        cfg.Controller.SafeMode.NamespaceThreshold,
 		ClusterThresholdFlag:          cfg.Controller.SafeMode.ClusterThreshold,

@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/ddmark"
-	"github.com/DataDog/chaos-controller/o11y/metrics/noop"
+	metricsnoop "github.com/DataDog/chaos-controller/o11y/metrics/noop"
+	tracernoop "github.com/DataDog/chaos-controller/o11y/tracer/noop"
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/client-go/tools/record"
@@ -159,6 +160,7 @@ var _ = Describe("Disruption", func() {
 		Describe("general errors expectations", func() {
 			BeforeEach(func() {
 				k8sClient = makek8sClientWithDisruptionPod()
+				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
 			})
 
@@ -273,7 +275,8 @@ var _ = Describe("Disruption", func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 				k8sClient = makek8sClientWithDisruptionPod()
 				recorder = record.NewFakeRecorder(1)
-				metricsSink = noop.New(logger)
+				metricsSink = metricsnoop.New(logger)
+				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
 				enableSafemode = true
 			})

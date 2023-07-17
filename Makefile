@@ -300,6 +300,7 @@ lima-install: manifests
 		--set=controller.version=$(CONTROLLER_APP_VERSION) \
 		--set=controller.metricsSink=$(LIMA_INSTALL_SINK) \
 		--set=controller.profilerSink=$(LIMA_INSTALL_SINK) \
+		--set=controller.tracerSink=$(LIMA_INSTALL_SINK) \
 		--values ./chart/values/$(HELM_VALUES) \
 		./chart | $(KUBECTL) apply -f -
 ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
