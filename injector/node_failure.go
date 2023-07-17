@@ -52,7 +52,7 @@ func NewNodeFailureInjector(spec v1beta1.NodeFailureSpec, config NodeFailureInje
 	}
 
 	if config.WaitBeforeShutdown == 0 {
-		config.WaitBeforeShutdown = 10 * time.Second
+		config.WaitBeforeShutdown = 31 * time.Second
 	}
 
 	return &nodeFailureInjector{
@@ -82,7 +82,7 @@ func (i *nodeFailureInjector) Inject() error {
 	}
 
 	// Trigger kernel panic
-	i.config.Log.Infow("the injector will write to the sysrq trigger file in 10s")
+	i.config.Log.Infof("the injector will write to the sysrq trigger file in %v", i.config.WaitBeforeShutdown)
 	i.config.Log.Infow("from this point, if no fatal log occurs, the injection succeeded and the system will crash")
 	_ = i.config.Log.Sync() // If we can't flush the logger, why would logging the error help? so we just ignore
 
