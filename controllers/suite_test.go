@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	// +kubebuilder:scaffold:imports
 )
@@ -89,13 +90,20 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(restConfig).ToNot(BeNil())
 
-	Eventually(func(ctx SpecContext) error {
-		k8sClient, err = client.New(restConfig, client.Options{
-			Scheme: scheme.Scheme,
-		})
+	// we use manager to create a Kubernetes client in order to benefit from informer pattern
+	// we expect only list/watch instead of get
+	// this will be more effective than polling CI k8s API server regularly
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:             scheme.Scheme,
+		MetricsBindAddress: "0",
+	})
+	Expect(err).ToNot(HaveOccurred())
 
-		return err
-	}).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(Succeed())
+	go mgr.Start(ctrl.SetupSignalHandler())
+
+	Eventually(mgr.GetCache().WaitForCacheSync).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(BeTrue())
+
+	k8sClient = mgr.GetClient()
 
 	// Create namespace according to parallelization (and cleanup it on test cleanup)
 	namespace := corev1.Namespace{

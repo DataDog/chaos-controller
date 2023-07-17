@@ -30,7 +30,7 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const (
-	disruptionPotentialChangesEvery = 5 * time.Second
+	disruptionPotentialChangesEvery = time.Second
 )
 
 type lightConfig struct {
