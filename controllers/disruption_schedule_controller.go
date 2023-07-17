@@ -57,7 +57,7 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	if err := r.updateLastScheduleTime(ctx, instance, disruptions); err != nil {
-		r.log.Errorw("unable to update LastScheduleTime of DisruptionSchedule status", "DisruptionSchedule", instance.Name, "err", err)
+		r.log.Errorw("unable to update LastScheduleTime of DisruptionSchedule status", "err", err)
 		return ctrl.Result{}, err
 	}
 
@@ -65,7 +65,7 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	_, instanceDeleted, err := r.updateTargetResourcePreviouslyMissing(ctx, instance)
 	if err != nil {
 		// Error occurred during status update or deletion, requeue
-		r.log.Errorw("failed to handle target resource status", "DisruptionSchedule", instance.Name, "err", err)
+		r.log.Errorw("failed to handle target resource status",  "err", err)
 		return ctrl.Result{}, err
 	}
 
@@ -82,7 +82,7 @@ func (r *DisruptionScheduleReconciler) getChildDisruptions(ctx context.Context, 
 	labelSelector := labels.SelectorFromSet(labels.Set{DisruptionScheduleNameLabel: instance.Name})
 
 	if err := r.Client.List(ctx, disruptions, client.InNamespace(instance.Namespace), &client.ListOptions{LabelSelector: labelSelector}); err != nil {
-		r.log.Errorw("unable to list Disruptions", "DisruptionSchedule", instance.Name, "err", err)
+		r.log.Errorw("unable to list Disruptions", "err", err)
 		return disruptions, err
 	}
 
