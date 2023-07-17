@@ -68,7 +68,7 @@ import (
 // +kubebuilder:rbac:groups=core,resources=pods/status,verbs=update;patch
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
 // +kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
-// +kubebuilder:rbac:groups=apps,resources=deployments;statefulsets,verbs=list
+// +kubebuilder:rbac:groups=apps,resources=deployments;statefulsets,verbs=list;watch
 
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
