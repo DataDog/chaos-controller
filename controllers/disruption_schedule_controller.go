@@ -139,6 +139,10 @@ func (r *DisruptionScheduleReconciler) getScheduledTimeForDisruption(disruption 
 	return &timeParsed, nil
 }
 
+// checkTargetResourceExists checks whether the target resource exists.
+// It returns two values:
+// - 'targetResourceNotFound' (bool): Indicates whether the target resource is currently not found.
+// - 'error': Represents any error that occurred during the execution of the function.
 func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (bool, error) {
 	var targetObj client.Object
 
@@ -157,6 +161,11 @@ func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Con
 	return errors.IsNotFound(err), err
 }
 
+// updateTargetResourcePreviouslyMissing is responsible for updating the status when the target resource was previously missing.
+// The function returns three values:
+// - 'targetResourceNotFound' (bool): Indicates whether the target resource is currently not found.
+// - 'disruptionScheduleDeleted' (bool): Indicates whether the disruption schedule was deleted due to the target resource being missing for more than the expiration duration.
+// - 'error': Represents any error that occurred during the execution of the function.
 func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (bool, bool, error) {
 	disruptionScheduleDeleted := false
 	targetResourceNotFound, err := r.checkTargetResourceExists(ctx, instance)
@@ -187,6 +196,8 @@ func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx
 	return targetResourceNotFound, disruptionScheduleDeleted, nil
 }
 
+// handleTargetResourceFirstMissing handles the scenario when the target resource is missing for the first time.
+// It updates the status of the DisruptionSchedule instance.
 func (r *DisruptionScheduleReconciler) handleTargetResourceFirstMissing(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
 	instance.Status.TargetResourcePreviouslyMissing = &metav1.Time{Time: time.Now()}
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
@@ -196,6 +207,8 @@ func (r *DisruptionScheduleReconciler) handleTargetResourceFirstMissing(ctx cont
 	return nil
 }
 
+// handleTargetResourceMissingPastExpiration handles the scenario when the target resource has been missing for more than the expiration period.
+// It deletes the DisruptionSchedule instance.
 func (r *DisruptionScheduleReconciler) handleTargetResourceMissingPastExpiration(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
 	if err := r.Client.Delete(ctx, instance); err != nil {
 		return fmt.Errorf("failed to delete instance: %w", err)
@@ -204,6 +217,8 @@ func (r *DisruptionScheduleReconciler) handleTargetResourceMissingPastExpiration
 	return nil
 }
 
+// handleTargetResourceNowPresent handles the scenario when the target resource was previously missing but is now present.
+// It updates the status of the DisruptionSchedule instance.
 func (r *DisruptionScheduleReconciler) handleTargetResourceNowPresent(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
 	instance.Status.TargetResourcePreviouslyMissing = nil
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
