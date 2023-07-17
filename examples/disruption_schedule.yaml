@@ -10,3 +10,18 @@ metadata:
   namespace: chaos-demo
   annotations:
     chaos.datadoghq.com/environment: "lima"
+spec:
+  schedule: "*/15 * * * *"
+  targetResource:
+    kind: Deployment
+    name: demo
+  disruptionTemplate:
+    apiVersion: chaos.datadoghq.com/v1beta1
+    kind: Disruption
+    spec:
+      level: pod
+      selector:
+        app: demo-curl
+      count: 1
+      network:
+        drop: 100 # percentage of outgoing packets to drop

@@ -39,16 +39,16 @@ type DisruptionScheduleSpec struct {
 
 	// TargetResource specifies the resource to run disruptions against.
 	// It can only be a Deployment or StatefulSet.
-	TargetResource TargetResource `json:"targetResource"`
+	TargetResource TargetResourceSpec `json:"targetResource"`
 
 	// Specifies the Disruption that will be created when executing a DisruptionShedule.
-	DisruptionTemplate Disruption `json:"disruptionTemplate"`
+	DisruptionTemplate DisruptionSpec `json:"disruptionTemplate"`
 }
 
 // TargetResource specifies the long-lived resource to be targeted for disruptions.
 // Disruptions are intended to exist semi-permanently, and thus appropriate targets can only be other long-lived resources,
 // such as StatefulSets or Deployments.
-type TargetResource struct {
+type TargetResourceSpec struct {
 	// Kind specifies the type of the long-lived resource. Allowed values: "Deployment", "StatefulSet".
 	// +kubebuilder:validation:Enum=Deployment;StatefulSet
 	Kind string `json:"kind"`
