@@ -19,7 +19,7 @@ func init() {
 type DisruptionSchedule struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              DisruptionScheduleSpec   `json:",inline"`
+	Spec              DisruptionScheduleSpec   `json:"spec,omitempty"`
 	Status            DisruptionScheduleStatus `json:"status,omitempty"`
 }
 
