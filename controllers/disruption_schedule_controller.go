@@ -30,8 +30,9 @@ type DisruptionScheduleReconciler struct {
 }
 
 const (
-	ScheduledAtAnnotation       = chaosv1beta1.GroupName + "/scheduled-at"
-	DisruptionScheduleNameLabel = chaosv1beta1.GroupName + "/disruption-schedule-name"
+	ScheduledAtAnnotation          = chaosv1beta1.GroupName + "/scheduled-at"
+	DisruptionScheduleNameLabel    = chaosv1beta1.GroupName + "/disruption-schedule-name"
+	TargetResourceMissingThreshold = time.Hour * 24
 )
 
 func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
@@ -179,7 +180,7 @@ func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx
 			return targetResourceNotFound, disruptionScheduleDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
 
-		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > time.Hour*24 {
+		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > TargetResourceMissingThreshold {
 			r.log.Errorw("target has been missing for over one day, deleting this schedule",
 				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
 
