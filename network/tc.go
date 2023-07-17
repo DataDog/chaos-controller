@@ -64,15 +64,59 @@ type TrafficController interface {
 	AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, prot protocol, state connState, flowid string) (uint32, error)
 	DeleteFilter(iface string, priority uint32) error
 	AddFwFilter(ifaces []string, parent string, handle string, flowid string) error
+	AddBPFFilter(ifaces []string, parent string, obj string, flowid string) error
+	ConfigBPFFilter(cmd executor, args ...string) error
 	AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error
 	ClearQdisc(ifaces []string) error
 }
 
-type tcExecuter interface {
+type executor interface {
 	Run(args []string) (exitCode int, stdout string, stderr error)
 }
 
-type defaultTcExecuter struct {
+type ebpfConfigExecutor struct {
+	program string
+	log     *zap.SugaredLogger
+	dryRun  bool
+}
+
+// NewBPFConfigExecutor create a new instance of an executor responsible of executing eBPF program for tc.
+func NewBPFConfigExecutor(programPath string, log *zap.SugaredLogger, dryRun bool) executor {
+	return ebpfConfigExecutor{
+		program: programPath,
+		log:     log,
+		dryRun:  dryRun,
+	}
+}
+
+// Run executes the given args using the provided eBPF config program
+// and returns a wrapped error containing both the error returned by the execution and
+// the stderr content
+func (e ebpfConfigExecutor) Run(args []string) (int, string, error) {
+	// parse args and execute
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd := exec.Command(e.program, args...)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	// run command
+	e.log.Debugf("running eBPF config command: %v", cmd.String())
+
+	// early exit if dry-run mode is enabled
+	if e.dryRun {
+		return 0, "", nil
+	}
+
+	err := cmd.Run()
+	if err != nil {
+		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
+	}
+
+	return cmd.ProcessState.ExitCode(), stdout.String(), err
+}
+
+type defaultTcExecutor struct {
 	log    *zap.SugaredLogger
 	dryRun bool
 }
@@ -80,7 +124,7 @@ type defaultTcExecuter struct {
 // Run executes the given args using the tc command
 // and returns a wrapped error containing both the error returned by the execution and
 // the stderr content
-func (e defaultTcExecuter) Run(args []string) (int, string, error) {
+func (e defaultTcExecutor) Run(args []string) (int, string, error) {
 	// parse args and execute
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -105,16 +149,23 @@ func (e defaultTcExecuter) Run(args []string) (int, string, error) {
 }
 
 type tc struct {
-	executer         tcExecuter
+	executer         executor
 	tcFilterPriority uint32     // keep track of the highest tc filter priority
 	tcFilterMutex    sync.Mutex // since we increment tcFilterPriority in goroutines we use a mutex to lock and unlock
+}
+
+func (t *tc) ConfigBPFFilter(cmd executor, args ...string) error {
+	if _, _, err := cmd.Run(args); err != nil {
+		return err
+	}
+	return nil
 }
 
 // NewTrafficController creates a standard traffic controller using tc
 // and being able to log
 func NewTrafficController(log *zap.SugaredLogger, dryRun bool) TrafficController {
 	return &tc{
-		executer: defaultTcExecuter{
+		executer: defaultTcExecutor{
 			log:    log,
 			dryRun: dryRun,
 		},
@@ -255,6 +306,16 @@ func (t *tc) AddFilter(ifaces []string, parent string, handle string, srcIP, dst
 	}
 
 	return priority, nil
+}
+
+func (t *tc) AddBPFFilter(ifaces []string, parent string, obj string, flowid string) error {
+	for _, iface := range ifaces {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "", 0, "", "bpf", "obj "+obj+" flowid "+flowid)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (t *tc) DeleteFilter(iface string, priority uint32) error {

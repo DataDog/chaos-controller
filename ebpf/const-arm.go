@@ -9,4 +9,3 @@
 package ebpf
 
 const SysOpenat = "__arm64_sys_openat"
-const DiskFailureObjName = "bpf-disk-failure-arm64.bpf.o"

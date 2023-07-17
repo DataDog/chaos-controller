@@ -5,6 +5,7 @@
 package network
 
 import (
+	"fmt"
 	"net"
 	"time"
 
@@ -16,8 +17,8 @@ import (
 var _ = Describe("Tc", func() {
 	var (
 		tcRunner          tc
-		tcExecuter        *tcExecuterMock
-		tcExecuterRunCall *tcExecuterMock_Run_Call
+		tcExecuter        *executorMock
+		tcExecuterRunCall *executorMock_Run_Call
 		ifaces            []string
 		parent            string
 		handle            string
@@ -36,8 +37,8 @@ var _ = Describe("Tc", func() {
 	)
 
 	BeforeEach(func() {
-		// fake command executer
-		tcExecuter = newTcExecuterMock(GinkgoT())
+		// fake command executor
+		tcExecuter = newExecutorMock(GinkgoT())
 		tcExecuterRunCall = tcExecuter.EXPECT().Run(mock.Anything).Return(0, "", nil)
 
 		// tc runner
@@ -152,6 +153,39 @@ var _ = Describe("Tc", func() {
 			It("should execute", func() {
 				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "priority", "1001", "root", "flower", "ip_proto", "tcp", "src_ip", "192.168.0.1/32", "dst_ip", "10.0.0.1/32", "src_port", "12345", "dst_port", "80", "ct_state", "+trk+new", "flowid", "1:2"})
 				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "priority", "1002", "root", "flower", "ip_proto", "udp", "src_ip", "192.168.0.1/32", "dst_ip", "10.0.0.1/32", "src_port", "12345", "dst_port", "80", "ct_state", "+trk+new", "flowid", "1:2"})
+			})
+		})
+	})
+
+	Describe("AddBPFFilter", func() {
+		var err error
+		JustBeforeEach(func() {
+			err = tcRunner.AddBPFFilter(ifaces, parent, "file.bpf.obj", flowid)
+		})
+
+		Context("add an eBPF filter", func() {
+			BeforeEach(func() {
+				srcIP = nil
+				srcPort = 0
+			})
+
+			It("should load the eBPF program", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "root", "bpf", "obj", "file.bpf.obj", "flowid", "1:2"})
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "eth0", "root", "bpf", "obj", "file.bpf.obj", "flowid", "1:2"})
+			})
+
+			It("should not return an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
+			When("the Run function of the executor return an error", func() {
+				BeforeEach(func() {
+					tcExecuterRunCall.Return(1, "", fmt.Errorf("error")).Once()
+				})
+
+				It("should propagate the error", func() {
+					Expect(err).Should(HaveOccurred())
+				})
 			})
 		})
 	})

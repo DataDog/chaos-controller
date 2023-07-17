@@ -3,6 +3,7 @@ package libbpfgo
 /*
 #cgo LDFLAGS: -lelf -lz
 #include "libbpfgo.h"
+#include "syscall.h"
 */
 import "C"
 
@@ -24,6 +25,8 @@ const (
 	// Maximum number of channels (RingBuffers + PerfBuffers) supported
 	maxEventChannels = 512
 )
+
+type FD uint32
 
 // MajorVersion returns the major semver version of libbpf.
 func MajorVersion() int {
@@ -55,6 +58,13 @@ type BPFMap struct {
 	bpfMap *C.struct_bpf_map
 	fd     C.int
 	module *Module
+}
+
+type BpfMapInfo struct {
+	Type       int
+	KeySize    int
+	ValueSize  int
+	MaxEntries int
 }
 
 type MapType uint32
@@ -355,6 +365,43 @@ func NewModuleFromFileArgs(args NewModuleArgs) (*Module, error) {
 		obj: obj,
 		elf: f,
 	}, nil
+}
+
+func GetMapByName(name string) (*BPFMap, error) {
+	startId := C.uint(0)
+	nextId := C.uint(0)
+
+	for {
+		err := C.bpf_map_get_next_id(startId, &nextId)
+		if err != 0 {
+			return nil, fmt.Errorf("could not get the map: %w", syscall.Errno(-err))
+		}
+
+		startId = nextId + 1
+
+		fd := C.bpf_map_get_fd_by_id(nextId)
+		if fd < 0 {
+			return nil, fmt.Errorf("could not get the file descriptor of %s", name)
+		}
+
+		info := C.struct_bpf_map_info{}
+		infolen := C.uint(unsafe.Sizeof(info))
+		err = C.bpf_obj_get_info_by_fd(fd, unsafe.Pointer(&info), &infolen)
+		if err != 0 {
+			return nil, fmt.Errorf("could not get the map info: %w", syscall.Errno(-err))
+		}
+
+		mapName := C.GoString((*C.char)(unsafe.Pointer(&info.name[0])))
+		if mapName != name {
+			continue
+		}
+
+		return &BPFMap{
+			name: name,
+			fd:   fd,
+		}, nil
+	}
+	return nil, fmt.Errorf("the %s map does not exists", name)
 }
 
 func NewModuleFromBuffer(bpfObjBuff []byte, bpfObjName string) (*Module, error) {

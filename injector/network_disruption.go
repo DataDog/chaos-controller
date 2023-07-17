@@ -280,7 +280,7 @@ func (i *networkDisruptionInjector) Clean() error {
 }
 
 // applyOperations applies the added operations by building a tc tree
-// Here's what happen on tc side:
+// Here's what happen on tc side without eBPF filtering:
 //   - a first prio qdisc will be created and attached to root
 //     it'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol
 //   - a second prio qdisc will be created and attached to the first one
@@ -304,6 +304,37 @@ func (i *networkDisruptionInjector) Clean() error {
 //	      |- (3:) <-- first operation
 //	        |- (4:) <-- second operation
 //	          ...
+//
+// Here's what happen on tc side with eBPF filtering:
+//   - a first prio qdisc will be created and attached to root
+//     it'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol
+//   - a second prio qdisc will be created and attached to the first one
+//     it'll be used to apply the second eBPF filter, filtering on method and path
+//   - a third prio qdisc will be created and attached to the second one
+//     it'll be used to apply the third filter, filtering on packet mark to identify packets coming from the targeted process
+//   - operations will be chained to the third band of the third prio qdisc
+//   - an fw filter will be created to classify packets according to their mark (if any)
+//   - an eBOF filter will be created to classify packets according to their method and path (if any)
+//   - a filter will be created to redirect traffic related to the specified host(s) through the last prio band
+//     if no host, port or protocol is specified, a filter redirecting all the traffic (0.0.0.0/0) to the disrupted band will be created
+//   - a last filter will be created to redirect traffic related to the local node through a not disrupted band
+//
+// Here's the tc tree representation:
+// root (1:) <-- prio qdisc with 4 bands with a filter classifying packets matching the given dst ip, src/dst ports and protocol with class 1:4
+//
+//	|- (1:1) <-- first band
+//	|- (1:2) <-- second band
+//	|- (1:3) <-- third band
+//	|- (1:4) <-- fourth band
+//	  |- (2:) <-- prio qdisc with 2 bands with an eBPF filter to classify packets according to their method and path
+//	    |- (2:1) <-- first band
+//	    |- (2:2) <-- second band
+//	      |- (3:) <-- prio qdisc with 2 bands with an fw filter to classify packets according to their mark (packets with mark 2:2 will be affected by operations)
+//	        |- (3:1) <-- first band
+//	        |- (3:2) <-- second band
+//	          |- (4:) <-- first operation
+//	            |- (5:) <-- second operation
+//		          ...
 func (i *networkDisruptionInjector) applyOperations() error {
 	// get interfaces
 	links, err := i.config.NetlinkAdapter.LinkList()
@@ -391,14 +422,43 @@ func (i *networkDisruptionInjector) applyOperations() error {
 			return fmt.Errorf("can't create a new qdisc: %w", err)
 		}
 
-		// create fw filter to classify packets based on their mark
-		if err := i.config.TrafficController.AddFwFilter(interfaces, "2:0", types.InjectorCgroupClassID, "2:2"); err != nil {
-			return fmt.Errorf("can't create the fw filter: %w", err)
+		if i.spec.Method != "ALL" || i.spec.Path != "/" {
+			// create a third prio with only 2 bands to filter traffic with a specific mark
+			if err := i.config.TrafficController.AddPrio(interfaces, "2:2", "3:", 2, [16]uint32{}); err != nil {
+				return fmt.Errorf("can't create a new qdisc: %w", err)
+			}
+
+			// create fw filter to classify packets based on their mark
+			if err := i.config.TrafficController.AddFwFilter(interfaces, "3:0", types.InjectorCgroupClassID, "3:2"); err != nil {
+				return fmt.Errorf("can't create the fw filter: %w", err)
+			}
+
+			// create fw eBPF filter to classify packets based on http method and/or path
+			if err := i.config.TrafficController.AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-failure.bpf.o", "2:2"); err != nil {
+				return fmt.Errorf("can't create the fw filter: %w", err)
+			}
+
+			// run the program responsible to configure the map of the eBPF tc filter
+			bpfConfigExecutor := network.NewBPFConfigExecutor("/usr/local/bin/bpf-network-failure", i.config.Log, i.config.Disruption.DryRun)
+			err = i.config.TrafficController.ConfigBPFFilter(bpfConfigExecutor, "-f", i.spec.Path, "-m", strings.ToUpper(i.spec.Method))
+			if err != nil {
+				return fmt.Errorf("could not update the configuration of the bpf-network-failure filter: %w", err)
+			}
+
+			// parent 3:2 refers to the 2nd band of the 3nd prio qdisc
+			// handle starts from 4 because 1, 2 are used by the 3 prio qdiscs
+			parent = "3:2"
+			handle = uint32(4)
+		} else {
+			// create fw filter to classify packets based on their mark
+			if err := i.config.TrafficController.AddFwFilter(interfaces, "2:0", types.InjectorCgroupClassID, "2:2"); err != nil {
+				return fmt.Errorf("can't create the fw filter: %w", err)
+			}
+			// parent 2:2 refers to the 2nd band of the 2nd prio qdisc
+			// handle starts from 3 because 1 and 2 are used by the 2 prio qdiscs
+			parent = "2:2"
+			handle = uint32(3)
 		}
-		// parent 2:2 refers to the 2nd band of the 2nd prio qdisc
-		// handle starts from 3 because 1 and 2 are used by the 2 prio qdiscs
-		parent = "2:2"
-		handle = uint32(3)
 	}
 
 	// add operations

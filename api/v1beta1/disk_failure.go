@@ -15,7 +15,7 @@ type DiskFailureSpec struct {
 	Path string `json:"path"`
 }
 
-const MaxPathCharacters = 62
+const MaxDiskPathCharacters = 62
 
 // Validate validates args for the given disruption
 func (s *DiskFailureSpec) Validate() error {
@@ -25,8 +25,8 @@ func (s *DiskFailureSpec) Validate() error {
 		return fmt.Errorf("the path of the disk failure disruption must not be empty")
 	}
 
-	if len(path) > MaxPathCharacters {
-		return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters", MaxPathCharacters)
+	if len(path) > MaxDiskPathCharacters {
+		return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters", MaxDiskPathCharacters)
 	}
 
 	return nil

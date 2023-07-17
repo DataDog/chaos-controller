@@ -9,4 +9,3 @@
 package ebpf
 
 const SysOpenat = "__x64_sys_openat"
-const DiskFailureObjName = "bpf-disk-failure-amd64.bpf.o"
