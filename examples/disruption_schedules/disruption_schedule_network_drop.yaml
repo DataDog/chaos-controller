@@ -16,12 +16,8 @@ spec:
     kind: Deployment
     name: demo
   disruptionTemplate:
-    apiVersion: chaos.datadoghq.com/v1beta1
-    kind: Disruption
-    spec:
-      level: pod
-      selector:
-        app: demo-curl
-      count: 1
-      network:
-        drop: 100 # percentage of outgoing packets to drop
+    level: pod
+    count: 1
+    network:
+      drop: 100 # percentage of outgoing packets to drop
+    duration: 10s # Disruption will time out after 10 seconds
