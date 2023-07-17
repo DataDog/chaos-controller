@@ -41,7 +41,7 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	instance := &chaosv1beta1.DisruptionSchedule{}
 
 	// retrieve schedule
-	if err := r.Client.Get(context.Background(), req.NamespacedName, instance); err != nil {
+	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
