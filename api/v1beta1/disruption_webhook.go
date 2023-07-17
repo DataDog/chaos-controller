@@ -16,9 +16,11 @@ import (
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
+	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/DataDog/chaos-controller/o11y/metrics"
+	"github.com/DataDog/chaos-controller/o11y/tracer"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
@@ -36,6 +38,7 @@ var (
 	logger                        *zap.SugaredLogger
 	k8sClient                     client.Client
 	metricsSink                   metrics.Sink
+	tracerSink                    tracer.Sink
 	recorder                      record.EventRecorder
 	deleteOnly                    bool
 	enableSafemode                bool
@@ -63,6 +66,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	*logger = *setupWebhookConfig.Logger.With("source", "admission-controller")
 	k8sClient = setupWebhookConfig.Manager.GetClient()
 	metricsSink = setupWebhookConfig.MetricsSink
+	tracerSink = setupWebhookConfig.TracerSink
 	recorder = setupWebhookConfig.Recorder
 	deleteOnly = setupWebhookConfig.DeleteOnlyFlag
 	enableSafemode = setupWebhookConfig.EnableSafemodeFlag
@@ -98,7 +102,15 @@ var _ webhook.Validator = &Disruption{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateCreate() error {
 	logger := logger.With("disruptionName", r.Name, "disruptionNamespace", r.Namespace)
-	logger.Debugw("validating created disruption", "spec", r.Spec)
+
+	ctx, err := r.SpanContext(context.Background())
+	if err != nil {
+		logger.Errorw("did not find span context", "err", err)
+	} else {
+		logger = logger.With(tracerSink.GetLoggableTraceContext(trace.SpanFromContext(ctx)))
+	}
+
+	logger.Infow("validating created disruption", "spec", r.Spec)
 
 	// delete-only mode, reject everything trying to be created
 	if deleteOnly {

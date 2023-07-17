@@ -31,7 +31,7 @@ func New() Sink {
 }
 
 // GetLoggableTraceContext returns a Datadog-friendly trace context for logs
-// It allows to connect logs with corresponding traces and spans
+// It allows to connect logs with corresponding traces and spans.
 func (Sink) GetLoggableTraceContext(span trace.Span) []interface{} {
 	stringLogContext := []string{
 		"dd.trace_id", convertTraceID(span.SpanContext().TraceID().String()),

@@ -19,7 +19,7 @@ import (
 type Sink interface {
 	// GetProvider returns the sink's current tracer provider for otel
 	GetProvider() trace.TracerProvider
-	// GetLoggableTraceContext returns current span context in a log-friendly way
+	// GetLoggableTraceContext returns current span context in a log-friendly way.
 	GetLoggableTraceContext(trace.Span) []interface{}
 	// GetSinkName returns the current sink name
 	GetSinkName() string
