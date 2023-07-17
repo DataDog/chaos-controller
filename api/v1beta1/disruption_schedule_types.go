@@ -64,5 +64,5 @@ type DisruptionScheduleStatus struct {
 
 	// Time when the target resource was previously missing.
 	// +optional
-	TargetResourcePreviouslytMissing *metav1.Time `json:"targetResourcePreviouslytMissing,omitempty"`
+	TargetResourcePreviouslyMissing *metav1.Time `json:"TargetResourcePreviouslyMissing,omitempty"`
 }

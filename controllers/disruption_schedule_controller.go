@@ -137,17 +137,17 @@ func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx
 	targetResourceExists, err := r.checkTargetResourceExists(ctx, instance)
 	if !targetResourceExists {
 		r.log.Warnw("target does not exist, this schedule will be deleted if that continues", "error", err)
-		if instance.Status.TargetResourcePreviouslytMissing == nil {
-			r.log.Warnw("target is missing for the first time, updating status", "targetPreviouslyMissing", instance.Status.TargetResourcePreviouslytMissing)
+		if instance.Status.TargetResourcePreviouslyMissing == nil {
+			r.log.Warnw("target is missing for the first time, updating status", "targetPreviouslyMissing", instance.Status.TargetResourcePreviouslyMissing)
 			return r.handleTargetResourceFirstMissing(ctx, instance)
 		}
-		if time.Since(instance.Status.TargetResourcePreviouslytMissing.Time) > time.Hour*24 {
+		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > time.Hour*24 {
 			r.log.Errorw("target has been missing for over one day, deleting this schedule",
-				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslytMissing.Time))
+				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
 			return r.handleTargetResourceMissingOverOneDay(ctx, instance)
 		}
 	} else {
-		if instance.Status.TargetResourcePreviouslytMissing != nil {
+		if instance.Status.TargetResourcePreviouslyMissing != nil {
 			r.log.Infow("target was previously missing, but now present. updating the status accordingly")
 			return r.handleTargetResourceNowPresent(ctx, instance)
 		}
@@ -157,7 +157,7 @@ func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx
 }
 
 func (r *DisruptionScheduleReconciler) handleTargetResourceFirstMissing(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
-	instance.Status.TargetResourcePreviouslytMissing = &metav1.Time{Time: time.Now()}
+	instance.Status.TargetResourcePreviouslyMissing = &metav1.Time{Time: time.Now()}
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}
@@ -172,7 +172,7 @@ func (r *DisruptionScheduleReconciler) handleTargetResourceMissingOverOneDay(ctx
 }
 
 func (r *DisruptionScheduleReconciler) handleTargetResourceNowPresent(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
-	instance.Status.TargetResourcePreviouslytMissing = nil
+	instance.Status.TargetResourcePreviouslyMissing = nil
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}
