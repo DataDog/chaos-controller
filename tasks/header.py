@@ -29,6 +29,7 @@ files_to_skip = [
     "api/v1beta1/zz_generated.deepcopy.go",
     "bin/injector/dns_disruption_resolver.py",
     "chart/templates/generated/chaos.datadoghq.com_disruptions.yaml",
+    "chart/templates/generated/chaos.datadoghq.com_disruptionschedules.yaml",
     "chart/templates/generated/role.yaml",
     "cpuset/cpuset.go",
     "grpc/disruptionlistener/disruptionlistener_grpc.pb.go",
