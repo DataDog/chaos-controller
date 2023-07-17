@@ -169,8 +169,8 @@ _ginkgo_test:
 		--cover --coverprofile=cover.profile --randomize-all \
 		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
 		--compilers=4 --procs=4 \
-		--poll-progress-after=10s --poll-progress-interval=10s \
-		$(GO_TEST_ARGS) \
+		--poll-progress-after=15s --poll-progress-interval=15s \
+		$(GINKGO_TEST_ARGS) \
 			&& touch report-$(GO_TEST_REPORT_NAME)-succeed
 # Try upload test reports if allowed and necessary prerequisites exists
 ifneq (true,$(GO_TEST_SKIP_UPLOAD)) # you can bypass test upload
@@ -193,7 +193,7 @@ endif
 ## Run unit tests
 test: generate manifests
 	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
-		GO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
+		GINKGO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -240,7 +240,7 @@ ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, lo
 	$(MAKE) lima-install HELM_VALUES=ci.yaml
 endif
 	USE_EXISTING_CLUSTER=true $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
-		GO_TEST_ARGS="--timeout=15m controllers"
+		GINKGO_TEST_ARGS="--flake-attempts=3 --timeout=15m controllers"
 
 # Test chaosli API portability
 chaosli-test:

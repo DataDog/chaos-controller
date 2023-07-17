@@ -298,7 +298,7 @@ var _ = Describe("Disruption Controller", func() {
 		BeforeEach(func(ctx SpecContext) {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				DryRun:   true,
-				Duration: "1m",
+				Duration: shortDisruptionDuration,
 				Count:    &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
@@ -476,7 +476,7 @@ var _ = Describe("Disruption Controller", func() {
 		BeforeEach(func() {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				DryRun:   true,
-				Duration: "1m",
+				Duration: shortDisruptionDuration,
 				Count:    &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
