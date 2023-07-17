@@ -15,6 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -47,10 +48,9 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if !instance.DeletionTimestamp.IsZero() {
 		// NOTE: add a finalizer if anything needs to be written here
 	} else {
-		disruptions := &chaosv1beta1.DisruptionList{}
-		if err := r.Client.List(ctx, disruptions, client.InNamespace(instance.Namespace), client.MatchingFields{DisruptionScheduleNameLabel: instance.Name}); err != nil {
-			r.log.Errorw("unable to list Disruptions", "DisruptionSchedule", instance.Name, "err", err)
-			return ctrl.Result{}, err
+		disruptions, err := r.getChildDisruptions(ctx, instance)
+		if err != nil {
+			return ctrl.Result{}, nil
 		}
 
 		if err := r.updateLastScheduleTime(ctx, instance, disruptions); err != nil {
@@ -70,6 +70,16 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *DisruptionScheduleReconciler) getChildDisruptions(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (*chaosv1beta1.DisruptionList, error) {
+	disruptions := &chaosv1beta1.DisruptionList{}
+	labelSelector := labels.SelectorFromSet(labels.Set{DisruptionScheduleNameLabel: instance.Name})
+	if err := r.Client.List(ctx, disruptions, client.InNamespace(instance.Namespace), &client.ListOptions{LabelSelector: labelSelector}); err != nil {
+		r.log.Errorw("unable to list Disruptions", "DisruptionSchedule", instance.Name, "err", err)
+		return nil, err
+	}
+	return disruptions, nil
 }
 
 // updateLastScheduleTime updates the LastScheduleTime in the status of a DisruptionSchedule instance based on the most recent schedule time among the given disruptions
