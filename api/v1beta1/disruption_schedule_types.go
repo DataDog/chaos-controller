@@ -39,7 +39,7 @@ type DisruptionScheduleSpec struct {
 
 	// TargetResource specifies the resource to run disruptions against.
 	// It can only be a Deployment or StatefulSet.
-	TargetResource TargetResource `json:"TargetResource"`
+	TargetResource TargetResource `json:"targetResource"`
 
 	// Specifies the Disruption that will be created when executing a DisruptionShedule.
 	DisruptionTemplate Disruption `json:"disruptionTemplate"`
