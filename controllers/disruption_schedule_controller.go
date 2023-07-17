@@ -144,8 +144,8 @@ func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Con
 }
 
 func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) error {
-	targetResourceExists, err := r.checkTargetResourceExists(ctx, instance)
-	if !targetResourceExists {
+	targetResourceNotFound, err := r.checkTargetResourceExists(ctx, instance)
+	if targetResourceNotFound {
 		r.log.Warnw("target does not exist, this schedule will be deleted if that continues", "error", err)
 		if instance.Status.TargetResourcePreviouslyMissing == nil {
 			r.log.Warnw("target is missing for the first time, updating status", "targetPreviouslyMissing", instance.Status.TargetResourcePreviouslyMissing)
@@ -162,7 +162,6 @@ func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx
 			return r.handleTargetResourceNowPresent(ctx, instance)
 		}
 	}
-
 	return nil
 }
 
