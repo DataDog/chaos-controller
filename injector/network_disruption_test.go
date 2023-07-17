@@ -618,7 +618,7 @@ var _ = Describe("Failure", func() {
 				interfaces := []string{"lo", "eth0", "eth1"}
 				spec.Method = method
 				spec.Path = path
-				tc.EXPECT().AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-failure.bpf.o", "2:2").Return(nil).Once()
+				tc.EXPECT().AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2").Return(nil).Once()
 				tc.EXPECT().ConfigBPFFilter(mock.Anything, "-f", path, "-m", strings.ToUpper(method)).Return(nil).Once()
 
 				var err error
@@ -637,7 +637,7 @@ var _ = Describe("Failure", func() {
 				tc.AssertCalled(GinkgoT(), "AddFwFilter", interfaces, "3:0", "0x00020002", "3:2")
 
 				By("adding an BPF filter to classify packets according to their method")
-				tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "2:0", "/usr/local/bin/bpf-network-failure.bpf.o", "2:2")
+				tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2")
 
 				By("configuring the BPF filter")
 				tc.AssertCalled(GinkgoT(), "ConfigBPFFilter", mock.Anything, "-f", path, "-m", strings.ToUpper(method))

@@ -6,10 +6,8 @@
 package network
 
 import (
-	"bytes"
 	"fmt"
 	"net"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -70,84 +68,6 @@ type TrafficController interface {
 	ClearQdisc(ifaces []string) error
 }
 
-type executor interface {
-	Run(args []string) (exitCode int, stdout string, stderr error)
-}
-
-type ebpfConfigExecutor struct {
-	program string
-	log     *zap.SugaredLogger
-	dryRun  bool
-}
-
-// NewBPFConfigExecutor create a new instance of an executor responsible of executing eBPF program for tc.
-func NewBPFConfigExecutor(programPath string, log *zap.SugaredLogger, dryRun bool) executor {
-	return ebpfConfigExecutor{
-		program: programPath,
-		log:     log,
-		dryRun:  dryRun,
-	}
-}
-
-// Run executes the given args using the provided eBPF config program
-// and returns a wrapped error containing both the error returned by the execution and
-// the stderr content
-func (e ebpfConfigExecutor) Run(args []string) (int, string, error) {
-	// parse args and execute
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	cmd := exec.Command(e.program, args...)
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-
-	// run command
-	e.log.Debugf("running eBPF config command: %v", cmd.String())
-
-	// early exit if dry-run mode is enabled
-	if e.dryRun {
-		return 0, "", nil
-	}
-
-	err := cmd.Run()
-	if err != nil {
-		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
-	}
-
-	return cmd.ProcessState.ExitCode(), stdout.String(), err
-}
-
-type defaultTcExecutor struct {
-	log    *zap.SugaredLogger
-	dryRun bool
-}
-
-// Run executes the given args using the tc command
-// and returns a wrapped error containing both the error returned by the execution and
-// the stderr content
-func (e defaultTcExecutor) Run(args []string) (int, string, error) {
-	// parse args and execute
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	cmd := exec.Command(tcPath, args...)
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-
-	// run command
-	e.log.Debugf("running tc command: %v", cmd.String())
-
-	// early exit if dry-run mode is enabled
-	if e.dryRun {
-		return 0, "", nil
-	}
-
-	err := cmd.Run()
-	if err != nil {
-		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
-	}
-
-	return cmd.ProcessState.ExitCode(), stdout.String(), err
-}
-
 type tc struct {
 	executer         executor
 	tcFilterPriority uint32     // keep track of the highest tc filter priority
@@ -158,6 +78,7 @@ func (t *tc) ConfigBPFFilter(cmd executor, args ...string) error {
 	if _, _, err := cmd.Run(args); err != nil {
 		return err
 	}
+
 	return nil
 }
 

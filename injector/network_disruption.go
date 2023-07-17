@@ -434,15 +434,16 @@ func (i *networkDisruptionInjector) applyOperations() error {
 			}
 
 			// create fw eBPF filter to classify packets based on http method and/or path
-			if err := i.config.TrafficController.AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-failure.bpf.o", "2:2"); err != nil {
+			if err := i.config.TrafficController.AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2"); err != nil {
 				return fmt.Errorf("can't create the fw filter: %w", err)
 			}
 
 			// run the program responsible to configure the map of the eBPF tc filter
-			bpfConfigExecutor := network.NewBPFConfigExecutor("/usr/local/bin/bpf-network-failure", i.config.Log, i.config.Disruption.DryRun)
+			bpfConfigExecutor := network.NewBPFTCFilterConfigExecutor(i.config.Log, i.config.Disruption.DryRun)
 			err = i.config.TrafficController.ConfigBPFFilter(bpfConfigExecutor, "-f", i.spec.Path, "-m", strings.ToUpper(i.spec.Method))
+
 			if err != nil {
-				return fmt.Errorf("could not update the configuration of the bpf-network-failure filter: %w", err)
+				return fmt.Errorf("could not update the configuration of the bpf-network-tc-filter filter: %w", err)
 			}
 
 			// parent 3:2 refers to the 2nd band of the 3nd prio qdisc
