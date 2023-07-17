@@ -148,9 +148,9 @@ func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Con
 	var targetObj client.Object
 
 	switch instance.Spec.TargetResource.Kind {
-	case "Deployment":
+	case "deployment":
 		targetObj = &appsv1.Deployment{}
-	case "StatefulSet":
+	case "statefulset":
 		targetObj = &appsv1.StatefulSet{}
 	}
 
