@@ -65,7 +65,7 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	_, instanceDeleted, err := r.updateTargetResourcePreviouslyMissing(ctx, instance)
 	if err != nil {
 		// Error occurred during status update or deletion, requeue
-		r.log.Errorw("failed to handle target resource status",  "err", err)
+		r.log.Errorw("failed to handle target resource status", "err", err)
 		return ctrl.Result{}, err
 	}
 
@@ -165,7 +165,7 @@ func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx
 		r.log.Warnw("target does not exist, this schedule will be deleted if that continues", "error", err)
 
 		if instance.Status.TargetResourcePreviouslyMissing == nil {
-			r.log.Warnw("target is missing for the first time, updating status", "targetPreviouslyMissing", instance.Status.TargetResourcePreviouslyMissing)
+			r.log.Warnw("target is missing for the first time, updating status")
 
 			return targetResourceNotFound, disruptionScheduleDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
