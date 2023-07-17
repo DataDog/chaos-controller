@@ -177,7 +177,7 @@ jobs:
       - go_restore_cache
       - run: make test
       - store_test_results:
-          path: report.xml
+          path: report-test.xml
   # run e2e tests
   e2e-test:
     executor: ubuntu
@@ -202,7 +202,7 @@ jobs:
             make e2e-test GOBIN=/home/circleci/go/bin KUBECTL="minikube kubectl --" CLUSTER_NAME="minikube"
           no_output_timeout: 15m
       - store_test_results:
-          path: report.xml
+          path: report-e2e-test.xml
   python-check:
     executor: python
     parameters:
