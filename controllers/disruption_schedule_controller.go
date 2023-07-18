@@ -53,16 +53,6 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	disruptions, err := r.getChildDisruptions(ctx, instance)
-	if err != nil {
-		return ctrl.Result{}, nil
-	}
-
-	if err := r.updateLastScheduleTime(ctx, instance, disruptions); err != nil {
-		r.log.Errorw("unable to update LastScheduleTime of DisruptionSchedule status", "err", err)
-		return ctrl.Result{}, err
-	}
-
 	// _ is targetResourceNotFound, which will be used later to requeue according to the schedule
 	_, instanceDeleted, err := r.updateTargetResourcePreviouslyMissing(ctx, instance)
 	if err != nil {
@@ -74,6 +64,16 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if instanceDeleted {
 		// The instance has been deleted, reconciliation can be skipped
 		return ctrl.Result{}, nil
+	}
+
+	disruptions, err := r.getChildDisruptions(ctx, instance)
+	if err != nil {
+		return ctrl.Result{}, nil
+	}
+
+	if err := r.updateLastScheduleTime(ctx, instance, disruptions); err != nil {
+		r.log.Errorw("unable to update LastScheduleTime of DisruptionSchedule status", "err", err)
+		return ctrl.Result{}, err
 	}
 
 	// Get the next scheduled run, or the time of the unproccessed run
