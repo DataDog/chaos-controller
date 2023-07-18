@@ -95,6 +95,17 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{RequeueAfter: nextRun.Sub(time.Now())}, nil
 	}
 
+	r.log.Infow("current run", missedRun)
+	tooLate := false
+	if instance.Spec.StartingDeadlineSeconds != nil {
+		tooLate = missedRun.Add(time.Duration(*instance.Spec.StartingDeadlineSeconds) * time.Second).Before(time.Now())
+	}
+
+	if tooLate {
+		r.log.Infow("missed starting deadline for last run, sleeping till next")
+		return scheduledResult, nil
+	}
+
 	return ctrl.Result{}, nil
 }
 
