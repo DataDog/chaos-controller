@@ -225,6 +225,37 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 			)
 		})
 	})
+	When("'HasHTTPFilters' method is called", func() {
+		Context("with default method and path", func() {
+			It("should return false", func() {
+				// Arrange
+				disruptionSpec := NetworkDisruptionSpec{
+					Hosts:    []NetworkDisruptionHostSpec{},
+					Services: []NetworkDisruptionServiceSpec{},
+					Method:   DefaultNetworkMethodFilter,
+					Path:     DefaultNetworkPathFilter,
+				}
+
+				// Action && Assert
+				Expect(disruptionSpec.HasHTTPFilters()).To(BeFalse())
+			})
+		})
+		DescribeTable("with custom method and/or path",
+			func(path, method string) {
+				// Arrange
+				disruptionSpec := NetworkDisruptionSpec{
+					Method: method,
+					Path:   path,
+				}
+
+				// Action && Assert
+				Expect(disruptionSpec.HasHTTPFilters()).Should(BeTrue())
+			},
+			Entry("custom method", DefaultNetworkPathFilter, "get"),
+			Entry("custom path", "/test", DefaultNetworkMethodFilter),
+			Entry("custom path and method", "/test", "delete"),
+		)
+	})
 })
 
 func randStringRunes(n int) string {
