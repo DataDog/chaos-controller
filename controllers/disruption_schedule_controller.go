@@ -53,7 +53,7 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	// _ is targetResourceNotFound, which will be used later to requeue according to the schedule
+	// _ is targetResourceExists, which will be used later to requeue according to the schedule
 	_, instanceDeleted, err := r.updateTargetResourcePreviouslyMissing(ctx, instance)
 	if err != nil {
 		// Error occurred during status update or deletion, requeue
@@ -172,7 +172,7 @@ func (r *DisruptionScheduleReconciler) getScheduledTimeForDisruption(disruption 
 
 // checkTargetResourceExists checks whether the target resource exists.
 // It returns two values:
-// - 'targetResourceNotFound' (bool): Indicates whether the target resource is currently not found.
+// - 'bool': Indicates whether the target resource is currently found.
 // - 'error': Represents any error that occurred during the execution of the function.
 func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (bool, error) {
 	var targetObj client.Object
@@ -189,25 +189,35 @@ func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Con
 		Namespace: instance.Namespace,
 	}, targetObj)
 
-	return errors.IsNotFound(err), err
+	if errors.IsNotFound(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // updateTargetResourcePreviouslyMissing is responsible for updating the status when the target resource was previously missing.
 // The function returns three values:
-// - 'targetResourceNotFound' (bool): Indicates whether the target resource is currently not found.
+// - 'targetResourceExists' (bool): Indicates whether the target resource is currently found.
 // - 'disruptionScheduleDeleted' (bool): Indicates whether the disruption schedule was deleted due to the target resource being missing for more than the expiration duration.
 // - 'error': Represents any error that occurred during the execution of the function.
 func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (bool, bool, error) {
 	disruptionScheduleDeleted := false
-	targetResourceNotFound, err := r.checkTargetResourceExists(ctx, instance)
+	targetResourceExists, err := r.checkTargetResourceExists(ctx, instance)
 
-	if targetResourceNotFound {
+	if err != nil {
+		return targetResourceExists, disruptionScheduleDeleted, err
+	}
+
+	if !targetResourceExists {
 		r.log.Warnw("target does not exist, this schedule will be deleted if that continues", "error", err)
 
 		if instance.Status.TargetResourcePreviouslyMissing == nil {
 			r.log.Warnw("target is missing for the first time, updating status")
 
-			return targetResourceNotFound, disruptionScheduleDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
+			return targetResourceExists, disruptionScheduleDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
 
 		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > TargetResourceMissingThreshold {
@@ -216,15 +226,15 @@ func (r *DisruptionScheduleReconciler) updateTargetResourcePreviouslyMissing(ctx
 
 			disruptionScheduleDeleted = true
 
-			return targetResourceNotFound, disruptionScheduleDeleted, r.handleTargetResourceMissingPastExpiration(ctx, instance)
+			return targetResourceExists, disruptionScheduleDeleted, r.handleTargetResourceMissingPastExpiration(ctx, instance)
 		}
 	} else if instance.Status.TargetResourcePreviouslyMissing != nil {
 		r.log.Infow("target was previously missing, but now present. updating the status accordingly")
 
-		return targetResourceNotFound, disruptionScheduleDeleted, r.handleTargetResourceNowPresent(ctx, instance)
+		return targetResourceExists, disruptionScheduleDeleted, r.handleTargetResourceNowPresent(ctx, instance)
 	}
 
-	return targetResourceNotFound, disruptionScheduleDeleted, nil
+	return targetResourceExists, disruptionScheduleDeleted, nil
 }
 
 // handleTargetResourceFirstMissing handles the scenario when the target resource is missing for the first time.
