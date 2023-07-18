@@ -87,15 +87,14 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	scheduledResult := ctrl.Result{RequeueAfter: nextRun.Sub(time.Now())} // save this so we can re-use it elsewhere
-	r.log.Infow("now", time.Now(), "next run", nextRun)
+	scheduledResult := ctrl.Result{RequeueAfter: time.Until(nextRun)} // save this so we can re-use it elsewhere
+	r.log.Infow("upcoming disruption", "nextRun", nextRun.Format(time.UnixDate), "now", time.Now().Format(time.UnixDate), "timeUntil", time.Until(nextRun))
 
 	if missedRun.IsZero() {
 		r.log.Infow("no upcoming scheduled times, sleeping until next")
-		return ctrl.Result{RequeueAfter: nextRun.Sub(time.Now())}, nil
+		return ctrl.Result{RequeueAfter: time.Until(nextRun)}, nil
 	}
 
-	r.log.Infow("current run", missedRun)
 	tooLate := false
 	if instance.Spec.StartingDeadlineSeconds != nil {
 		tooLate = missedRun.Add(time.Duration(*instance.Spec.StartingDeadlineSeconds) * time.Second).Before(time.Now())
