@@ -246,7 +246,7 @@ ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, lo
 	$(MAKE) lima-install HELM_VALUES=ci.yaml
 endif
 	E2E_TEST_CLUSTER_NAME=$(E2E_TEST_CLUSTER_NAME) E2E_TEST_KUBECTL_CONTEXT=$(E2E_TEST_KUBECTL_CONTEXT) $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
-		GINKGO_TEST_ARGS="--flake-attempts=5 --timeout=15m controllers"
+		GINKGO_TEST_ARGS="--flake-attempts=3 --timeout=25m controllers"
 
 # Test chaosli API portability
 chaosli-test:

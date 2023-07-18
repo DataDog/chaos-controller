@@ -10,8 +10,8 @@ controller:
   defaultDuration: 5m
   expiredDisruptionGCDelay: 30s
   resources: # resources assigned to the controller pod. may need to be increased when deploying to larger scale clusters
-    cpu: 3
-    memory: 6Gi
+    cpu: 1
+    memory: 2Gi
 
 injector:
   labels:
