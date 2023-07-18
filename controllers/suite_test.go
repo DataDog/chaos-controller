@@ -99,8 +99,11 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 
 	bgCtx, cancel := context.WithCancel(context.Background())
 	go func() {
+		defer GinkgoRecover()
+		GinkgoHelper()
+
 		if err := mgr.Start(bgCtx); err != nil {
-			log.Fatal("unable to start manager, test can't be ran")
+			Fail(fmt.Sprintf("unable to start manager, test can't be ran: %v", err))
 		}
 	}()
 	DeferCleanup(cancel)

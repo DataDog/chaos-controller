@@ -96,7 +96,7 @@ executors:
     <<: *working_directory
     machine:
       image: ubuntu-2004:2022.10.1
-    resource_class: 2xlarge
+    resource_class: xlarge
 
 jobs:
   # prepares the CI environment by checking out the code,
