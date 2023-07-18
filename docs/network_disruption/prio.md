@@ -154,6 +154,40 @@ Finally, we apply a filter to enqueue all packets to class `1:4` whenever the `d
 
 ### Network Disruption implementation for pod level with eBPF filters
 
+> Requirements
+
+The Linux kernel must support eBPF. To verify if the kernel supports eBPF, the following options should be defined:
+
+```shell
+CONFIG_BPF=y
+CONFIG_HAVE_EBPF_JIT=y
+CONFIG_ARCH_WANT_DEFAULT_BPF_JIT=y
+CONFIG_BPF_SYSCALL=y
+CONFIG_BPF_JIT=y
+CONFIG_BPF_JIT_ALWAYS_ON=y
+CONFIG_BPF_JIT_DEFAULT_ON=y
+CONFIG_BPF_UNPRIV_DEFAULT_OFF=y
+CONFIG_BPF_LSM=y
+CONFIG_CGROUP_BPF=y
+CONFIG_IPV6_SEG6_BPF=y
+CONFIG_NETFILTER_XT_MATCH_BPF=m
+CONFIG_BPFILTER=y
+CONFIG_BPFILTER_UMH=m
+CONFIG_NET_CLS_BPF=m
+CONFIG_NET_ACT_BPF=m
+CONFIG_BPF_STREAM_PARSER=y
+CONFIG_LWTUNNEL_BPF=y
+CONFIG_BPF_EVENTS=y
+CONFIG_BPF_KPROBE_OVERRIDE=y
+CONFIG_TEST_BPF=m
+```
+
+Depending on your system, you'll find the kernel config in any one of these:
+- /proc/config.gz
+- /boot/config
+- /boot/config-$(uname -r)
+
+
 Tc can use eBPF filters in order to intercept packets at the application layer and allow the access to the payload of packets.
 Network disruption used eBPF filters to apply disruption by filtering with `method` and/or `path`:
 
