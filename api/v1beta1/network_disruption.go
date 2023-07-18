@@ -25,8 +25,10 @@ const (
 	// When not specifying an index for the hashtable created when we use u32 filters, the default id for this hashtable is 0x800.
 	// However, the maximum id being 0xFFF, we can only have 2048 different ids, so 2048 tc filters with u32.
 	// https://github.com/torvalds/linux/blob/v5.19/net/sched/cls_u32.c#L689-L690
-	MaximumTCFilters         = 2048
-	MaxNetworkPathCharacters = 100
+	MaximumTCFilters           = 2048
+	MaxNetworkPathCharacters   = 100
+	DefaultNetworkMethodFilter = "ALL"
+	DefaultNetworkPathFilter   = "/"
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
@@ -174,7 +176,7 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 			retErr = multierror.Append(retErr, fmt.Errorf("the path specification at the network disruption level is not valid; should not exceed 100 characters"))
 		}
 
-		if s.Path[0] != '/' {
+		if string(s.Path[0]) != DefaultNetworkPathFilter {
 			retErr = multierror.Append(retErr, fmt.Errorf("the path specification at the network disruption level is not valid; should start with a /"))
 		}
 
@@ -353,6 +355,11 @@ func (s *NetworkDisruptionSpec) Format() string {
 	networkDescription += filterDescriptions[len(filterDescriptions)-1]
 
 	return networkDescription
+}
+
+// HasHTTPFilters return true if a custom method or path is defined, else return false
+func (s *NetworkDisruptionSpec) HasHTTPFilters() bool {
+	return s.Method != DefaultNetworkMethodFilter || s.Path != DefaultNetworkPathFilter
 }
 
 // TransformToCloudMap for ease of computing when transforming the cloud services ip ranges to a list of hosts to disrupt

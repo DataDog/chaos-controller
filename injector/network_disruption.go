@@ -422,7 +422,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 			return fmt.Errorf("can't create a new qdisc: %w", err)
 		}
 
-		if i.spec.Method != "ALL" || i.spec.Path != "/" {
+		if i.spec.HasHTTPFilters() {
 			// create a third prio with only 2 bands to filter traffic with a specific mark
 			if err := i.config.TrafficController.AddPrio(interfaces, "2:2", "3:", 2, [16]uint32{}); err != nil {
 				return fmt.Errorf("can't create a new qdisc: %w", err)
