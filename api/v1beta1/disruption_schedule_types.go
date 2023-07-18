@@ -32,6 +32,7 @@ type DisruptionScheduleList struct {
 	Items           []DisruptionSchedule `json:"items"`
 }
 
+// DisruptionScheduleSpec defines the desired state of DisruptionSchedule
 type DisruptionScheduleSpec struct {
 	// +kubebuilder:validation:MinLength=0
 	// +kubebuilder:validation:Required
@@ -74,6 +75,7 @@ type TargetResourceSpec struct {
 	Name string `json:"name"`
 }
 
+// DisruptionScheduleStatus defines the observed state of DisruptionSchedule
 type DisruptionScheduleStatus struct {
 	// The last time when the disruption was last successfully scheduled.
 	// +nullable
