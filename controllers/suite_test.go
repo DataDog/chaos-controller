@@ -6,6 +6,7 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -50,16 +51,6 @@ var (
 	log                      *zap.SugaredLogger
 )
 
-func init() {
-	if envClusterName, ok := os.LookupEnv("CLUSTER_NAME"); ok {
-		clusterName = envClusterName
-		contextName = envClusterName
-	} else {
-		clusterName = "lima-default"
-		contextName = "lima"
-	}
-}
-
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -67,6 +58,13 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(ctx SpecContext) {
+	if envClusterName, envKubeContext := os.Getenv("E2E_TEST_CLUSTER_NAME"), os.Getenv("E2E_TEST_KUBECTL_CONTEXT"); envClusterName != "" && envKubeContext != "" {
+		clusterName = envClusterName
+		contextName = envKubeContext
+	} else {
+		Fail("E2E_TEST_CLUSTER_NAME and E2E_TEST_KUBECTL_CONTEXT env vars must be provided")
+	}
+
 	log = zaptest.NewLogger(GinkgoT()).Sugar()
 
 	ciValues, err := os.ReadFile("../chart/values/ci.yaml")
@@ -99,7 +97,13 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	go mgr.Start(ctrl.SetupSignalHandler())
+	bgCtx, cancel := context.WithCancel(context.Background())
+	go func() {
+		if err := mgr.Start(bgCtx); err != nil {
+			log.Fatal("unable to start manager, test can't be ran")
+		}
+	}()
+	DeferCleanup(cancel)
 
 	Eventually(mgr.GetCache().WaitForCacheSync).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(BeTrue())
 

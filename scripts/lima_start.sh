@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # start the lima instance with the given image and get the kube config
-limactl start --tty=false --name="${LIMA_INSTANCE}" "./${LIMA_CONFIG}.yaml"
+limactl start --tty=false --name="${LIMA_INSTANCE}" - <"./${LIMA_CONFIG}.yaml"
 
 # for cgroups v1, reconfigure grub and restart the instance
 # we need to both call the reboot command and do a lima stop/start

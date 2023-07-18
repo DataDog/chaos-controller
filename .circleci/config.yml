@@ -199,7 +199,7 @@ jobs:
           name: Run e2e tests
           command: |
             export PATH="/home/circleci/go/bin:${PATH}"
-            make e2e-test GOBIN=/home/circleci/go/bin KUBECTL="minikube kubectl --" CLUSTER_NAME="minikube"
+            make e2e-test GOBIN=/home/circleci/go/bin KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube"
           no_output_timeout: 15m
       - store_test_results:
           path: report-e2e-test.xml

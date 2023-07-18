@@ -10,5 +10,10 @@ controller:
   defaultDuration: 5m
   expiredDisruptionGCDelay: 30s
   resources: # resources assigned to the controller pod. may need to be increased when deploying to larger scale clusters
-    cpu: 1
-    memory: 1Gi
+    cpu: 3
+    memory: 6Gi
+
+injector:
+  labels:
+    # If Datadog agent is installed, Datadog admission controller will inject some env vars automatically
+    admission.datadoghq.com/enabled: "true"
