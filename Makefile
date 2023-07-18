@@ -233,7 +233,8 @@ spellcheck-format-spelling:
 ci-install-minikube:
 	curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
 	sudo dpkg -i minikube_latest_amd64.deb
-	minikube start --cpus='max' --memory='max' --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
+# adapt here according to circleCI VM resource_class https://circleci.com/docs/configuration-reference/#linuxvm-execution-environment
+	minikube start --cpus='6' --memory='28672' --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
 	minikube status
 
 SKIP_DEPLOY ?=
