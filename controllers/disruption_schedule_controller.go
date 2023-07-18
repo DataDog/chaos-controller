@@ -11,6 +11,7 @@ import (
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/robfig/cron"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -72,6 +73,17 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	if instanceDeleted {
 		// The instance has been deleted, reconciliation can be skipped
+		return ctrl.Result{}, nil
+	}
+
+	// Get the next scheduled run, or the time of the unproccessed run
+	// If there are multiple unmet start times, only start last one
+	// _, _ are missedRun and nextRun which will be used later to requeue according to the schedule
+	_, _, err = r.getNextSchedule(instance, time.Now())
+	if err != nil {
+		r.log.Errorw("Unable to figure out disruption schedule", "err", err)
+		// we don't really care about requeuing until we get an update that
+		// fixes the schedule, so don't return an error
 		return ctrl.Result{}, nil
 	}
 
@@ -227,6 +239,50 @@ func (r *DisruptionScheduleReconciler) handleTargetResourceNowPresent(ctx contex
 	}
 
 	return nil
+}
+
+// getNextSchedule calculates the next scheduled time for a disruption instance based on its cron schedule and the current time.
+// It returns the last missed schedule time, the next scheduled time, and any error encountered during parsing the schedule.
+func (r *DisruptionScheduleReconciler) getNextSchedule(instance *chaosv1beta1.DisruptionSchedule, now time.Time) (lastMissed time.Time, next time.Time, err error) {
+	starts := 0
+	sched, err := cron.ParseStandard(instance.Spec.Schedule)
+
+	if err != nil {
+		r.log.Errorw("Unparseable schedule", "schedule", instance.Spec.Schedule, "err", err)
+		return time.Time{}, time.Time{}, err
+	}
+
+	var earliestTime time.Time
+	if instance.Status.LastScheduleTime != nil {
+		earliestTime = instance.Status.LastScheduleTime.Time
+	} else {
+		earliestTime = instance.ObjectMeta.CreationTimestamp.Time
+	}
+
+	if instance.Spec.StartingDeadlineSeconds != nil {
+		// controller is not going to schedule anything below this point
+		schedulingDeadline := now.Add(-time.Second * time.Duration(*instance.Spec.StartingDeadlineSeconds))
+
+		if schedulingDeadline.After(earliestTime) {
+			earliestTime = schedulingDeadline
+		}
+	}
+
+	if earliestTime.After(now) {
+		return time.Time{}, sched.Next(now), nil
+	}
+
+	for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
+		lastMissed = t
+		starts++
+
+		if starts > 100 {
+			// We can't get the most recent times so just return an empty slice
+			return time.Time{}, time.Time{}, fmt.Errorf("too many missed start times (> 100)")
+		}
+	}
+
+	return lastMissed, sched.Next(now), nil
 }
 
 // SetupWithManager setups the current reconciler with the given manager

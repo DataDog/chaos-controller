@@ -528,14 +528,20 @@ spec:
                   description: The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
                   minLength: 0
                   type: string
+                startingDeadlineSeconds:
+                  description: Optional deadline in seconds for starting the disruption if it misses scheduled time for any reason.  Missed disruption executions will be counted as failed ones.
+                  format: int64
+                  minimum: 0
+                  nullable: true
+                  type: integer
                 targetResource:
-                  description: TargetResource specifies the resource to run disruptions against. It can only be a Deployment or StatefulSet.
+                  description: TargetResource specifies the resource to run disruptions against. It can only be a deployment or statefulset.
                   properties:
                     kind:
-                      description: 'Kind specifies the type of the long-lived resource. Allowed values: "Deployment", "StatefulSet".'
+                      description: 'Kind specifies the type of the long-lived resource. Allowed values: "deployment", "statefulset".'
                       enum:
-                        - Deployment
-                        - StatefulSet
+                        - deployment
+                        - statefulset
                       type: string
                     name:
                       description: Name specifies the name of the specific instance of the long-lived resource to be targeted.
@@ -554,10 +560,12 @@ spec:
                 TargetResourcePreviouslyMissing:
                   description: Time when the target resource was previously missing.
                   format: date-time
+                  nullable: true
                   type: string
                 lastScheduleTime:
                   description: The last time when the disruption was last successfully scheduled.
                   format: date-time
+                  nullable: true
                   type: string
               type: object
           type: object

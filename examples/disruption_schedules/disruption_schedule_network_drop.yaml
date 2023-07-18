@@ -13,8 +13,8 @@ metadata:
 spec:
   schedule: "*/15 * * * *"
   targetResource:
-    kind: Deployment
-    name: demo
+    kind: deployment
+    name: demo-curl
   disruptionTemplate:
     level: pod
     count: 1
