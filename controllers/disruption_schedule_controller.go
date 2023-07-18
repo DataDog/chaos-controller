@@ -175,11 +175,11 @@ func (r *DisruptionScheduleReconciler) getScheduledTimeForDisruption(disruption 
 	return &timeParsed, nil
 }
 
-// checkTargetResourceExists checks whether the target resource exists.
+// getTargetResource retrieves the target resource specified in the DisruptionSchedule.
 // It returns two values:
-// - 'bool': Indicates whether the target resource is currently found.
-// - 'error': Represents any error that occurred during the execution of the function.
-func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (bool, error) {
+// - 'client.Object': Represents the target resource (Deployment or StatefulSet).
+// - 'error': Any error encountered during retrieval.
+func (r *DisruptionScheduleReconciler) getTargetResource(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (client.Object, error) {
 	var targetObj client.Object
 
 	switch instance.Spec.TargetResource.Kind {
@@ -193,6 +193,16 @@ func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Con
 		Name:      instance.Spec.TargetResource.Name,
 		Namespace: instance.Namespace,
 	}, targetObj)
+
+	return targetObj, err
+}
+
+// checkTargetResourceExists checks whether the target resource exists.
+// It returns two values:
+// - 'bool': Indicates whether the target resource is currently found.
+// - 'error': Represents any error that occurred during the execution of the function.
+func (r *DisruptionScheduleReconciler) checkTargetResourceExists(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (bool, error) {
+	_, err := r.getTargetResource(ctx, instance)
 
 	if errors.IsNotFound(err) {
 		return false, nil
