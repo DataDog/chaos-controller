@@ -79,12 +79,20 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	// Get the next scheduled run, or the time of the unproccessed run
 	// If there are multiple unmet start times, only start last one
 	// _, _ are missedRun and nextRun which will be used later to requeue according to the schedule
-	_, _, err = r.getNextSchedule(instance, time.Now())
+	missedRun, nextRun, err := r.getNextSchedule(instance, time.Now())
 	if err != nil {
 		r.log.Errorw("Unable to figure out disruption schedule", "err", err)
 		// we don't really care about requeuing until we get an update that
 		// fixes the schedule, so don't return an error
 		return ctrl.Result{}, nil
+	}
+
+	scheduledResult := ctrl.Result{RequeueAfter: nextRun.Sub(time.Now())} // save this so we can re-use it elsewhere
+	r.log.Infow("now", time.Now(), "next run", nextRun)
+
+	if missedRun.IsZero() {
+		r.log.Infow("no upcoming scheduled times, sleeping until next")
+		return ctrl.Result{RequeueAfter: nextRun.Sub(time.Now())}, nil
 	}
 
 	return ctrl.Result{}, nil
