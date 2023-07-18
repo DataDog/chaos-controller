@@ -291,11 +291,6 @@ workflows:
             - docker-build-injector
             - docker-build-manager
             - docker-build-handler
-            - test
-            - lint
-            - fmt
-            - vet
-            - dependencies
       - python-check:
           name: third-party-licenses
           target: license-check
