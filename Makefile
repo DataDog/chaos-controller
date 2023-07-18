@@ -170,7 +170,7 @@ chaosli:
 _ginkgo_test:
 # Run the test and write a file if succeed
 # Do not stop on any error
-	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going \
+	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going --vv \
 		--cover --coverprofile=cover.profile --randomize-all \
 		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
 		--compilers=4 --procs=4 \
