@@ -109,12 +109,22 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return scheduledResult, nil
 	}
 
-	if err := r.createDisruption(ctx, instance, missedRun); err != nil {
+	disruptionCreated, err := r.createDisruption(ctx, instance, missedRun)
+	if err != nil {
 		r.log.Errorw("unable to create Disruption for DisruptionSchedule", "err", err)
 		return scheduledResult, err
 	}
 
-	r.log.Infow("created Disruption for DisruptionSchedule run")
+	if disruptionCreated {
+		r.log.Infow("created Disruption for DisruptionSchedule run")
+
+		instance.Status.LastScheduleTime = &metav1.Time{Time: missedRun}
+
+		if err := r.Client.Status().Update(ctx, instance); err != nil {
+			r.log.Errorw("unable to update LastScheduleTime of DisruptionSchedule status", "err", err)
+			return ctrl.Result{}, err
+		}
+	}
 
 	return scheduledResult, nil
 }
@@ -354,8 +364,11 @@ func (r *DisruptionScheduleReconciler) getSelectors(ctx context.Context, instanc
 
 // createDisruption creates a Disruption object based on the provided DisruptionSchedule,
 // sets the necessary metadata and spec fields, and creates the object in the Kubernetes cluster.
-// It returns an error if any operation fails.
-func (r *DisruptionScheduleReconciler) createDisruption(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule, scheduledTime time.Time) error {
+// The function returns two values:
+// - bool: A boolean indicating whether the creation was successful.
+// - error: An error if any operation fails.
+func (r *DisruptionScheduleReconciler) createDisruption(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule, scheduledTime time.Time) (bool, error) {
+	created := false
 	name := fmt.Sprintf("disruption-schedule-%s", instance.Name)
 
 	disruption := &chaosv1beta1.Disruption{
@@ -376,7 +389,7 @@ func (r *DisruptionScheduleReconciler) createDisruption(ctx context.Context, ins
 
 	selectors, err := r.getSelectors(ctx, instance)
 	if err != nil {
-		return err
+		return created, err
 	}
 
 	disruption.Labels[DisruptionScheduleNameLabel] = instance.Name
@@ -387,10 +400,16 @@ func (r *DisruptionScheduleReconciler) createDisruption(ctx context.Context, ins
 	}
 
 	if err := ctrl.SetControllerReference(instance, disruption, r.Scheme); err != nil {
-		return err
+		return created, err
 	}
 
-	return r.Client.Create(ctx, disruption)
+	if err := r.Client.Create(ctx, disruption); err != nil {
+		return created, err
+	}
+
+	created = true
+
+	return created, nil
 }
 
 // SetupWithManager setups the current reconciler with the given manager
