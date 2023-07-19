@@ -96,7 +96,7 @@ executors:
     <<: *working_directory
     machine:
       image: ubuntu-2004:2022.10.1
-    resource_class: 2xlarge
+    resource_class: xlarge # if you change the resource_class here, please adapt Makefile/minikube start cpu/memory accordingly
 
 jobs:
   # prepares the CI environment by checking out the code,
@@ -177,7 +177,7 @@ jobs:
       - go_restore_cache
       - run: make test
       - store_test_results:
-          path: report.xml
+          path: report-test.xml
   # run e2e tests
   e2e-test:
     executor: ubuntu
@@ -199,10 +199,10 @@ jobs:
           name: Run e2e tests
           command: |
             export PATH="/home/circleci/go/bin:${PATH}"
-            make e2e-test GOBIN=/home/circleci/go/bin KUBECTL="minikube kubectl --" CLUSTER_NAME="minikube"
+            make e2e-test GOBIN=/home/circleci/go/bin KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube"
           no_output_timeout: 15m
       - store_test_results:
-          path: report.xml
+          path: report-e2e-test.xml
   python-check:
     executor: python
     parameters:
@@ -291,11 +291,6 @@ workflows:
             - docker-build-injector
             - docker-build-manager
             - docker-build-handler
-            - test
-            - lint
-            - fmt
-            - vet
-            - dependencies
       - python-check:
           name: third-party-licenses
           target: license-check

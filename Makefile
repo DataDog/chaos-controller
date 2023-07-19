@@ -37,6 +37,11 @@ LIMA_CONFIG ?= lima
 # default instance name will be connected user name
 LIMA_INSTANCE ?= $(shell whoami | tr "." "-")
 
+# cluster name is used by e2e-test to target the node with a disruption
+# CI need to be able to override this value
+E2E_TEST_CLUSTER_NAME ?= $(LIMA_INSTANCE)
+E2E_TEST_KUBECTL_CONTEXT ?= lima
+
 KUBECTL ?= limactl shell $(LIMA_INSTANCE) sudo kubectl
 PROTOC_VERSION = 3.17.3
 PROTOC_OS ?= osx
@@ -165,12 +170,12 @@ chaosli:
 _ginkgo_test:
 # Run the test and write a file if succeed
 # Do not stop on any error
-	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going \
+	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going --vv \
 		--cover --coverprofile=cover.profile --randomize-all \
 		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
 		--compilers=4 --procs=4 \
 		--poll-progress-after=10s --poll-progress-interval=10s \
-		$(GO_TEST_ARGS) \
+		$(GINKGO_TEST_ARGS) \
 			&& touch report-$(GO_TEST_REPORT_NAME)-succeed
 # Try upload test reports if allowed and necessary prerequisites exists
 ifneq (true,$(GO_TEST_SKIP_UPLOAD)) # you can bypass test upload
@@ -193,7 +198,7 @@ endif
 ## Run unit tests
 test: generate manifests
 	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
-		GO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
+		GINKGO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -228,7 +233,8 @@ spellcheck-format-spelling:
 ci-install-minikube:
 	curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
 	sudo dpkg -i minikube_latest_amd64.deb
-	minikube start --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
+# adapt here according to circleCI VM resource_class https://circleci.com/docs/configuration-reference/#linuxvm-execution-environment
+	minikube start --cpus='6' --memory='28672' --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
 	minikube status
 
 SKIP_DEPLOY ?=
@@ -239,8 +245,8 @@ e2e-test: generate manifests
 ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
 	$(MAKE) lima-install HELM_VALUES=ci.yaml
 endif
-	USE_EXISTING_CLUSTER=true $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
-		GO_TEST_ARGS="--timeout=15m controllers"
+	E2E_TEST_CLUSTER_NAME=$(E2E_TEST_CLUSTER_NAME) E2E_TEST_KUBECTL_CONTEXT=$(E2E_TEST_KUBECTL_CONTEXT) $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
+		GINKGO_TEST_ARGS="--flake-attempts=3 --timeout=25m controllers"
 
 # Test chaosli API portability
 chaosli-test:

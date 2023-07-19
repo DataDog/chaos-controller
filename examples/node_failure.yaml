@@ -13,7 +13,7 @@ metadata:
 spec:
   level: node # selector targets nodes instead of pods. Targeting a pod will impact the node hosting given pod.
   selector:
-    kubernetes.io/hostname: lima-default
+    node.kubernetes.io/instance-type: k3s
   count: 1
   nodeFailure:
     shutdown: false # trigger a kernel panic on the node

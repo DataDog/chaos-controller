@@ -6,6 +6,7 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -25,6 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	// +kubebuilder:scaffold:imports
 )
@@ -49,16 +51,6 @@ var (
 	log                      *zap.SugaredLogger
 )
 
-func init() {
-	if envClusterName, ok := os.LookupEnv("CLUSTER_NAME"); ok {
-		clusterName = envClusterName
-		contextName = envClusterName
-	} else {
-		clusterName = "lima-default"
-		contextName = "lima"
-	}
-}
-
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -66,6 +58,13 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(ctx SpecContext) {
+	if envClusterName, envKubeContext := os.Getenv("E2E_TEST_CLUSTER_NAME"), os.Getenv("E2E_TEST_KUBECTL_CONTEXT"); envClusterName != "" && envKubeContext != "" {
+		clusterName = envClusterName
+		contextName = envKubeContext
+	} else {
+		Fail("E2E_TEST_CLUSTER_NAME and E2E_TEST_KUBECTL_CONTEXT env vars must be provided")
+	}
+
 	log = zaptest.NewLogger(GinkgoT()).Sugar()
 
 	ciValues, err := os.ReadFile("../chart/values/ci.yaml")
@@ -89,13 +88,29 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(restConfig).ToNot(BeNil())
 
-	Eventually(func(ctx SpecContext) error {
-		k8sClient, err = client.New(restConfig, client.Options{
-			Scheme: scheme.Scheme,
-		})
+	// we use manager to create a Kubernetes client in order to benefit from informer pattern
+	// we expect only list/watch instead of get
+	// this will be more effective than polling CI k8s API server regularly
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:             scheme.Scheme,
+		MetricsBindAddress: "0",
+	})
+	Expect(err).ToNot(HaveOccurred())
 
-		return err
-	}).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(Succeed())
+	bgCtx, cancel := context.WithCancel(context.Background())
+	go func() {
+		defer GinkgoRecover()
+		GinkgoHelper()
+
+		if err := mgr.Start(bgCtx); err != nil {
+			Fail(fmt.Sprintf("unable to start manager, test can't be ran: %v", err))
+		}
+	}()
+	DeferCleanup(cancel)
+
+	Eventually(mgr.GetCache().WaitForCacheSync).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(BeTrue())
+
+	k8sClient = mgr.GetClient()
 
 	// Create namespace according to parallelization (and cleanup it on test cleanup)
 	namespace := corev1.Namespace{

@@ -13,6 +13,6 @@ metadata:
 spec:
   level: node # impact the whole node instead of a single pod
   selector:
-    kubernetes.io/hostname: lima-default # when node level is enabled, the selector applies to nodes and not pods
+    node.kubernetes.io/instance-type: k3s # when node level is enabled, the selector applies to nodes and not pods
   count: 1
   cpuPressure: {}

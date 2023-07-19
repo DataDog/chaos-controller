@@ -13,7 +13,7 @@ metadata:
 spec:
   level: node
   selector:
-    kubernetes.io/hostname: lima-default # when node level is enabled, the selector applies to nodes and not pods
+    node.kubernetes.io/instance-type: k3s # when node level is enabled, the selector applies to nodes and not pods
   count: 1
   network:
     delay: 1 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default

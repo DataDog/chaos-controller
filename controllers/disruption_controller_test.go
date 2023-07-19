@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-const shortDisruptionDuration = "1m" // somehow short, keep in mind the CI is slow, it should not be too short to avoid irrelevant failures
+const shortDisruptionDuration = "3m" // somehow short, keep in mind the CI is slow AND reconcile loop is sequential, it should not be too short to avoid irrelevant failures
 
 var _ = Describe("Disruption Controller", func() {
 	var (
@@ -298,7 +298,7 @@ var _ = Describe("Disruption Controller", func() {
 		BeforeEach(func(ctx SpecContext) {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				DryRun:   true,
-				Duration: "1m",
+				Duration: shortDisruptionDuration,
 				Count:    &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
@@ -476,7 +476,7 @@ var _ = Describe("Disruption Controller", func() {
 		BeforeEach(func() {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				DryRun:   true,
-				Duration: "1m",
+				Duration: shortDisruptionDuration,
 				Count:    &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,

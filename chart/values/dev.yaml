@@ -8,7 +8,7 @@ controller:
   leaderElection: false
   resources: # resources assigned to the controller pod. may need to be increased when deploying to larger scale clusters
     cpu: 1
-    memory: 1Gi
+    memory: 2Gi
 
 injector:
   labels:

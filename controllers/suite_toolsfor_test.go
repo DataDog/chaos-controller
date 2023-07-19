@@ -235,7 +235,7 @@ func ExpectDisruptionStatus(ctx SpecContext, disruption chaosv1beta1.Disruption,
 			return StopTryingNotRetryableKubernetesError(err, false, false)
 		}
 
-		AddReportEntry(fmt.Sprintf("disruption %s has injection status %v", disruption.Name, disruption.Status.InjectionStatus))
+		AddReportEntry(fmt.Sprintf("disruption %s has injection status [%v] (expected: %+v)", disruption.Name, disruption.Status.InjectionStatus, statuses))
 
 		disruptionStatus := false
 		for _, status := range statuses {

@@ -47,6 +47,9 @@ injector:
   dnsDisruption:
     dnsServer: ""
     kubeDns: all
+  labels:
+    # If Datadog agent is installed, Datadog admission controller will inject some env vars automatically
+    admission.datadoghq.com/enabled: "true"
 handler:
   enabled: true
   timeout: 1m
