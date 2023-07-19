@@ -195,7 +195,7 @@ func main() {
 
 	r.Controller = cont
 
-	watcherFactory := watchers.NewWatcherFactory(logger, metricsSink, r.Client, r.Recorder)
+	watcherFactory := watchers.NewWatcherFactory(logger, metricsSink, mgr.GetAPIReader(), r.Recorder)
 	r.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, r.Reader, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
