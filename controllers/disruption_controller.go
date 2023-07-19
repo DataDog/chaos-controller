@@ -41,7 +41,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -1377,7 +1376,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 }
 
 // SetupWithManager setups the current reconciler with the given manager
-func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) (controller.Controller, error) {
+func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory, restrictToNamespace string) (controller.Controller, error) {
 	podToDisruption := func(c client.Object) []reconcile.Request {
 		// podtoDisruption is a function that maps pods to disruptions. it is meant to be used as an event handler on a pod informer
 		// this function should safely return an empty list of requests to reconcile if the object we receive is not actually a chaos pod
@@ -1401,23 +1400,24 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 		For(&chaosv1beta1.Disruption{}).
 		WithOptions(controller.Options{RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Second, time.Hour)}).
 		Watches(&source.Informer{Informer: informer}, handler.EnqueueRequestsFromMapFunc(podToDisruption)).
-		WithEventFilter(chaosEventsPredicate()).
+		WithEventFilter(chaosEventsPredicate(restrictToNamespace)).
 		Build(r)
 }
 
 // chaosEventsPredicate determines if given event is a chaos related one or not
-func chaosEventsPredicate() predicate.Predicate {
-	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return shouldTriggerReconcile(e.Object)
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			return shouldTriggerReconcile(e.ObjectOld)
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return shouldTriggerReconcile(e.Object)
-		},
+func chaosEventsPredicate(restrictToNamespace string) predicate.Predicate {
+	chaosResourcePredicate := predicate.NewPredicateFuncs(shouldTriggerReconcile)
+
+	if restrictToNamespace != "" {
+		return predicate.And(
+			predicate.NewPredicateFuncs(
+				func(e client.Object) bool {
+					return e.GetNamespace() == restrictToNamespace
+				}),
+			chaosResourcePredicate)
 	}
+
+	return chaosResourcePredicate
 }
 
 // shouldTriggerReconcile determines whether the currently given object should trigger a reconcile or not

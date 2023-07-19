@@ -3,10 +3,16 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2023 Datadog, Inc.
 ---
+{{- $roleSuffix := "" }}
+{{- if .Values.namespaceMode }}
+{{- $roleSuffix = printf "-%s" .Values.chaosNamespace }}
+{{- end }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: chaos-controller
+  name: chaos-controller{{ $roleSuffix }}
+  labels:
+    app: chaos-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -17,23 +23,11 @@ subjects:
     namespace: "{{ .Values.chaosNamespace }}"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: chaos-controller-leader-election
-  namespace: "{{ .Values.chaosNamespace }}"
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: chaos-controller-leader-election
-subjects:
-  - kind: ServiceAccount
-    name: chaos-controller
-    namespace: "{{ .Values.chaosNamespace }}"
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: chaos-controller-proxy
+  name: chaos-controller-proxy{{ $roleSuffix }}
+  labels:
+    app: chaos-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -46,7 +40,9 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: chaos-injector
+  name: chaos-injector{{ $roleSuffix }}
+  labels:
+    app: chaos-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -54,4 +50,20 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: chaos-injector
+    namespace: "{{ .Values.chaosNamespace }}"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: chaos-controller-leader-election
+  namespace: "{{ .Values.chaosNamespace }}"
+  labels:
+    app: chaos-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: chaos-controller-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: chaos-controller
     namespace: "{{ .Values.chaosNamespace }}"

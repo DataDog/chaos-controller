@@ -8,14 +8,22 @@
 {{- $altName1 := printf "chaos-controller-webhook-service.%s.svc" .Values.chaosNamespace }}
 {{- $altName2 := printf "chaos-controller-webhook-service.%s.svc.cluster.local" .Values.chaosNamespace }}
 {{- $cert := genSignedCert $cn nil (list $altName1 $altName2) 3650 $ca }}
+{{- $webhookSuffix := "" }}
+{{- $webhookScope := "Cluster" }}
+{{- if .Values.namespaceMode }}
+{{- $webhookSuffix = printf "-%s" .Values.chaosNamespace }}
+{{- $webhookScope = "Namespaced" }}
+{{- end }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
+  labels:
+    app: chaos-controller
   annotations:
   {{- if not .Values.controller.webhook.generateCert }}
     cert-manager.io/inject-ca-from: {{ .Values.chaosNamespace }}/chaos-controller-serving-cert
   {{- end }}
-  name: chaos-controller
+  name: chaos-controller{{ $webhookSuffix }}
 webhooks:
 - clientConfig:
   {{- if not .Values.controller.webhook.generateCert }}
@@ -42,15 +50,18 @@ webhooks:
     - DELETE
     resources:
     - disruptions
+    scope: {{ $webhookScope }}
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
+  labels:
+    app: chaos-controller
   annotations:
   {{- if not .Values.controller.webhook.generateCert }}
     cert-manager.io/inject-ca-from: {{ .Values.chaosNamespace }}/chaos-controller-serving-cert
   {{- end }}
-  name: chaos-controller
+  name: chaos-controller{{ $webhookSuffix }}
 webhooks:
 - clientConfig:
   {{- if not .Values.controller.webhook.generateCert }}
@@ -75,16 +86,19 @@ webhooks:
       - CREATE
     resources:
       - disruptions
+    scope: {{ $webhookScope }}
 ---
 {{- if .Values.handler.enabled }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
+  labels:
+    app: chaos-controller
   annotations:
   {{- if not .Values.controller.webhook.generateCert }}
     cert-manager.io/inject-ca-from: {{ .Values.chaosNamespace }}/chaos-controller-serving-cert
   {{- end }}
-  name: chaos-controller-pod-chaos-handler
+  name: chaos-controller-pod-chaos-handler{{ $webhookSuffix }}
 webhooks:
 - clientConfig:
   {{- if not .Values.controller.webhook.generateCert }}
@@ -113,17 +127,20 @@ webhooks:
     - CREATE
     resources:
     - pods
+    scope: {{ $webhookScope }}
 {{- end }}
 ---
 {{- if .Values.controller.userInfoHook }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
+  labels:
+    app: chaos-controller
   annotations:
   {{- if not .Values.controller.webhook.generateCert }}
     cert-manager.io/inject-ca-from: {{ .Values.chaosNamespace }}/chaos-controller-serving-cert
   {{- end }}
-  name: chaos-controller-disruption-user-info
+  name: chaos-controller-disruption-user-info{{ $webhookSuffix }}
 webhooks:
 - clientConfig:
   {{- if not .Values.controller.webhook.generateCert }}
@@ -150,16 +167,19 @@ webhooks:
     resources:
     - disruptions
     - disruptions/status
+    scope: {{ $webhookScope }}
 {{- end }}
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
+  labels:
+    app: chaos-controller
   annotations:
   {{- if not .Values.controller.webhook.generateCert }}
     cert-manager.io/inject-ca-from: {{ .Values.chaosNamespace }}/chaos-controller-serving-cert
   {{- end }}
-  name: chaos-controller-disruption-span-context
+  name: chaos-controller-disruption-span-context{{ $webhookSuffix }}
 webhooks:
 - clientConfig:
   {{- if not .Values.controller.webhook.generateCert }}
@@ -185,6 +205,7 @@ webhooks:
     - CREATE
     resources:
     - disruptions
+    scope: {{ $webhookScope }}
 ---
 {{- if not .Values.controller.webhook.generateCert }}
 apiVersion: cert-manager.io/v1

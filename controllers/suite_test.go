@@ -19,10 +19,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -74,6 +70,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 
 	// We use ginkgo process identifier to shard our tests among namespaces
 	// it enables us to speed up things
+	// creation of namespaces and associated resources are expected to be made by Makefile
 	namespace = fmt.Sprintf("e2e-test-%d", GinkgoParallelProcess())
 
 	// +kubebuilder:scaffold:scheme
@@ -111,23 +108,4 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Eventually(mgr.GetCache().WaitForCacheSync).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(BeTrue())
 
 	k8sClient = mgr.GetClient()
-
-	// Create namespace according to parallelization (and cleanup it on test cleanup)
-	namespace := corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace,
-		},
-	}
-	Eventually(k8sClient.Create).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).WithArguments(&namespace).Should(WithTransform(client.IgnoreAlreadyExists, Succeed()))
-	DeferCleanup(func(ctx SpecContext, nsName corev1.Namespace) {
-		// We do not only DELETE the namespace
-		Eventually(k8sClient.Delete).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).WithArguments(&nsName).Should(WithTransform(client.IgnoreNotFound, Succeed()))
-
-		// But we also WAIT for it's completed deletion to ensure repetitive tests (--until-it-fails) do not face terminated namespace errors
-		Eventually(k8sClient.Get).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).
-			WithArguments(types.NamespacedName{
-				Name: nsName.Name,
-			}, &nsName).
-			Should(WithTransform(apierrors.IsNotFound, BeTrue()))
-	}, namespace)
-}, NodeTimeout(time.Minute))
+})

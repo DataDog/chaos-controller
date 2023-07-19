@@ -8,6 +8,8 @@ kind: Role
 metadata:
   name: chaos-controller-leader-election
   namespace: "{{ .Values.chaosNamespace }}"
+  labels:
+    app: chaos-controller
 rules:
   - apiGroups:
       - ""

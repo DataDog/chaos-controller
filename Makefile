@@ -41,6 +41,13 @@ LIMA_INSTANCE ?= $(shell whoami | tr "." "-")
 # CI need to be able to override this value
 E2E_TEST_CLUSTER_NAME ?= $(LIMA_INSTANCE)
 E2E_TEST_KUBECTL_CONTEXT ?= lima
+E2E_TEST_PROCS := 4
+E2E_TEST_NUMBERS = $(shell seq 1 ${E2E_TEST_PROCS})
+E2E_TEST_NAMESPACES := $(addprefix e2e-test-,${E2E_TEST_NUMBERS})
+
+
+CHAOS_NAMESPACE ?= chaos-engineering
+NAMESPACE_MODE ?= false
 
 KUBECTL ?= limactl shell $(LIMA_INSTANCE) sudo kubectl
 PROTOC_VERSION = 3.17.3
@@ -237,16 +244,46 @@ ci-install-minikube:
 	minikube start --cpus='6' --memory='28672' --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
 	minikube status
 
-SKIP_DEPLOY ?=
+# this target aims to uninstall any cluster wide installation of chaos-controller and associated resources
+# then install one chaos-controller per e2e-test namespace
+# this target should be able to run locally and in CI to ease troubleshooting
+e2e-test-install-cluster:
+	$(KUBECTL) -n chaos-engineering delete ValidatingWebhookConfiguration,MutatingWebhookConfiguration,deploy -l app=chaos-controller
+	-$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
+	helm template \
+		./chart | yq 'select(.kind == "CustomResourceDefinition")' | $(KUBECTL) apply -f -
+	for namespace in ${E2E_TEST_NAMESPACES} ; do \
+				$(MAKE) e2e-test-install-one CHAOS_NAMESPACE=$${namespace}; \
+	done
+	for namespace in ${E2E_TEST_NAMESPACES} ; do \
+				$(KUBECTL) -n $${namespace} rollout status deployment/chaos-controller --timeout=60s; \
+	done
+
+e2e-test-install-one:
+	helm template \
+		--set=controller.version=$(CONTROLLER_APP_VERSION) \
+		--set=controller.metricsSink=noop \
+		--set=controller.profilerSink=noop \
+		--set=controller.tracerSink=noop \
+		--set=chaosNamespace=$(CHAOS_NAMESPACE) \
+		--set=namespaceMode=true \
+		--values ./chart/values/ci.yaml \
+		./chart | yq 'select(.kind != "CustomResourceDefinition")' | tee /dev/stdout | $(KUBECTL) apply -f -
+
+# this target aims to cleanup any e2e-test dedicated installation (per namespace chaos-controller and associated namespaces)
+# after running it, you may want to reinstall cluster-wide chaos-controller through `make lima-install`
+e2e-test-uninstall-cluster:
+	$(KUBECTL) delete ClusterRole,ClusterRoleBinding,ValidatingWebhookConfiguration,MutatingWebhookConfiguration -l app=chaos-controller
+	$(KUBECTL) delete ns ${E2E_TEST_NAMESPACES}
 
 ## Run e2e tests (against a real cluster)
-## to run them locally you first need to run `make install-kubebuilder`
+## to run them locally like in CI you first need to run:
+## - `make e2e-test-install-cluster` this will install one chaos controller per namespace
+## after them, you should run to get back to a normal installation:
+## - `make e2e-test-uninstall-cluster lima-install`
 e2e-test: generate manifests
-ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
-	$(MAKE) lima-install HELM_VALUES=ci.yaml
-endif
 	E2E_TEST_CLUSTER_NAME=$(E2E_TEST_CLUSTER_NAME) E2E_TEST_KUBECTL_CONTEXT=$(E2E_TEST_KUBECTL_CONTEXT) $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
-		GINKGO_TEST_ARGS="--flake-attempts=3 --timeout=25m controllers"
+		GINKGO_TEST_ARGS="--flake-attempts=3 --timeout=25m --procs=$(E2E_TEST_PROCS) controllers"
 
 # Test chaosli API portability
 chaosli-test:
@@ -307,21 +344,22 @@ lima-install: manifests
 		--set=controller.metricsSink=$(LIMA_INSTALL_SINK) \
 		--set=controller.profilerSink=$(LIMA_INSTALL_SINK) \
 		--set=controller.tracerSink=$(LIMA_INSTALL_SINK) \
+		--set=chaosNamespace=$(CHAOS_NAMESPACE) \
 		--values ./chart/values/$(HELM_VALUES) \
 		./chart | $(KUBECTL) apply -f -
 ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
-	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
+	$(KUBECTL) -n $(CHAOS_NAMESPACE) rollout status deployment/chaos-controller --timeout=60s
 endif
 
 ## Uninstall CRDs and controller from a lima k3s cluster
 lima-uninstall:
-	helm template --set=skipNamespace=true --values ./chart/values/$(HELM_VALUES) ./chart | $(KUBECTL) delete -f -
+	helm template --set=skipNamespace=true --set=chaosNamespace=$(CHAOS_NAMESPACE) --values ./chart/values/$(HELM_VALUES) ./chart | $(KUBECTL) delete -f -
 
 ## Restart the chaos-controller pod
 lima-restart:
 ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
-	$(KUBECTL) -n chaos-engineering rollout restart deployment/chaos-controller
-	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
+	$(KUBECTL) -n $(CHAOS_NAMESPACE) rollout restart deployment/chaos-controller
+	$(KUBECTL) -n $(CHAOS_NAMESPACE) rollout status deployment/chaos-controller --timeout=60s
 endif
 
 ## Remove lima references from kubectl config
@@ -409,7 +447,7 @@ ifeq (0,$(.SHELLSTATUS))
 # uninstall using a non local value to ensure deployment is deleted
 	-$(MAKE) lima-uninstall HELM_VALUES=dev.yaml
 	$(MAKE) lima-install HELM_VALUES=local.yaml
-	$(KUBECTL) -n chaos-engineering get cm chaos-controller -oyaml | yq '.data["config.yaml"]' > .local.yaml
+	$(KUBECTL) -n $(CHAOS_NAMESPACE) get cm chaos-controller -oyaml | yq '.data["config.yaml"]' > .local.yaml
 	yq -i '.controller.webhook.certDir = "chart/certs"' .local.yaml
 else
 	@echo "Chaos controller is not installed, skipped!"

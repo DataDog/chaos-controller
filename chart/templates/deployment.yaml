@@ -76,6 +76,8 @@ spec:
                 fieldPath: status.hostIP
           - name: TRACE_AGENT_URL
             value: $(HOST_IP):8126
+          - name: NAMESPACE_MODE
+            value: {{ .Values.namespaceMode | quote }}
         ports:
         - containerPort: {{ .Values.controller.webhook.port }}
           name: webhook-server

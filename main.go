@@ -76,6 +76,15 @@ func main() {
 		logger.Fatalw("unable to create a valid configuration", "error", err)
 	}
 
+	controllerNamespace := ""
+	// if defined, it will only watch resources coming form this namespace and will override chaos namespace by it
+	namespaceMode := os.Getenv("NAMESPACE_MODE") == "true"
+	if namespaceMode {
+		controllerNamespace = cfg.Injector.ChaosNamespace
+	}
+
+	logger = logger.With("controller_namespace", controllerNamespace, "namespace_mode", namespaceMode)
+
 	broadcaster := eventbroadcaster.EventBroadcaster()
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -193,7 +202,7 @@ func main() {
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Hour*24, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
 
-	cont, err := r.SetupWithManager(mgr, kubeInformerFactory)
+	cont, err := r.SetupWithManager(mgr, kubeInformerFactory, controllerNamespace)
 	if err != nil {
 		logger.Errorw("unable to create controller", "controller", chaosv1beta1.DisruptionKind, "error", err)
 		os.Exit(1) //nolint:gocritic

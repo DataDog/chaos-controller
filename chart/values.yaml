@@ -3,6 +3,7 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2023 Datadog, Inc.
 chaosNamespace: chaos-engineering # namespace where any resources get created.
+namespaceMode: false # if true, chaos controller will only watch resources related to provided chaosNamespace
 skipNamespace: false # omit namespace declaration
 
 global:
