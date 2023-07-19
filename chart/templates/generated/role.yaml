@@ -15,6 +15,18 @@ rules:
       - chaos.datadoghq.com
     resources:
       - disruptions
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - chaos.datadoghq.com
+    resources:
+      - disruptions
       - disruptionschedules
     verbs:
       - create
@@ -27,8 +39,22 @@ rules:
       - chaos.datadoghq.com
     resources:
       - disruptions/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - chaos.datadoghq.com
+    resources:
+      - disruptions/finalizers
       - disruptionschedules/finalizers
     verbs:
+      - update
+  - apiGroups:
+      - chaos.datadoghq.com
+    resources:
+      - disruptions/status
+    verbs:
+      - get
+      - patch
       - update
   - apiGroups:
       - chaos.datadoghq.com
@@ -44,6 +70,7 @@ rules:
       - events
     verbs:
       - create
+      - get
       - list
       - patch
       - watch
@@ -62,6 +89,7 @@ rules:
     verbs:
       - create
       - delete
+      - get
       - list
       - patch
       - update
@@ -71,6 +99,7 @@ rules:
     resources:
       - pods/status
     verbs:
+      - get
       - patch
       - update
   - apiGroups:
@@ -78,5 +107,6 @@ rules:
     resources:
       - services
     verbs:
+      - get
       - list
       - watch
