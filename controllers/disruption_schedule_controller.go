@@ -110,7 +110,13 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return scheduledResult, nil
 	}
 
-	return ctrl.Result{}, nil
+	if err := r.createDisruption(ctx, instance, missedRun); err != nil {
+		r.log.Errorw("unable to create Disruption for DisruptionSchedule", "err", err)
+		return scheduledResult, err
+	}
+
+	r.log.Infow("created Disruption for DisruptionSchedule run")
+	return scheduledResult, nil
 }
 
 func (r *DisruptionScheduleReconciler) getChildDisruptions(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (*chaosv1beta1.DisruptionList, error) {
@@ -326,6 +332,65 @@ func (r *DisruptionScheduleReconciler) getNextSchedule(instance *chaosv1beta1.Di
 	}
 
 	return lastMissed, sched.Next(now), nil
+}
+
+// getSelectors retrieves the labels of the target resource specified in the DisruptionSchedule.
+// The function returns two values:
+// - labels.Set: A set of labels of the target resource which will be used as the selectors for Disruption.
+// - error: An error if the target resource or labels retrieval fails.
+func (r *DisruptionScheduleReconciler) getSelectors(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule) (labels.Set, error) {
+	targetObj, err := r.getTargetResource(ctx, instance)
+	if err != nil {
+		return nil, err
+	}
+
+	labels := targetObj.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+
+	return labels, nil
+}
+
+// createDisruption creates a Disruption object based on the provided DisruptionSchedule,
+// sets the necessary metadata and spec fields, and creates the object in the Kubernetes cluster.
+// It returns an error if any operation fails.
+func (r *DisruptionScheduleReconciler) createDisruption(ctx context.Context, instance *chaosv1beta1.DisruptionSchedule, scheduledTime time.Time) error {
+	name := fmt.Sprintf("disruption-schedule-%s", instance.Name)
+
+	disruption := &chaosv1beta1.Disruption{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   instance.Namespace,
+			Labels:      make(map[string]string),
+			Annotations: make(map[string]string),
+		},
+		Spec: *instance.Spec.DisruptionTemplate.DeepCopy(),
+	}
+
+	for k, v := range instance.Annotations {
+		disruption.Annotations[k] = v
+	}
+
+	disruption.Annotations[ScheduledAtAnnotation] = scheduledTime.Format(time.RFC3339)
+
+	selectors, err := r.getSelectors(ctx, instance)
+	if err != nil {
+		return err
+	}
+
+	disruption.Labels[DisruptionScheduleNameLabel] = instance.Name
+
+	// overwriting selectors
+	for k, v := range selectors {
+		disruption.Spec.Selector[k] = v
+	}
+
+	if err := ctrl.SetControllerReference(instance, disruption, r.Scheme); err != nil {
+		return err
+	}
+
+	return r.Client.Create(ctx, disruption)
 }
 
 // SetupWithManager setups the current reconciler with the given manager
