@@ -29,6 +29,7 @@ spec:
             metadata:
               type: object
             spec:
+              description: DisruptionScheduleSpec defines the desired state of DisruptionSchedule
               properties:
                 disruptionTemplate:
                   description: Specifies the Disruption that will be created when executing a DisruptionShedule.
@@ -556,6 +557,7 @@ spec:
                 - targetResource
               type: object
             status:
+              description: DisruptionScheduleStatus defines the observed state of DisruptionSchedule
               properties:
                 TargetResourcePreviouslyMissing:
                   description: Time when the target resource was previously missing.

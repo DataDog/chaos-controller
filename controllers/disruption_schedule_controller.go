@@ -78,17 +78,16 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// Get the next scheduled run, or the time of the unproccessed run
 	// If there are multiple unmet start times, only start last one
-	// _, _ are missedRun and nextRun which will be used later to requeue according to the schedule
 	missedRun, nextRun, err := r.getNextSchedule(instance, time.Now())
 	if err != nil {
-		r.log.Errorw("Unable to figure out disruption schedule", "err", err)
+		r.log.Errorw("unable to figure out disruption schedule", "err", err)
 		// we don't really care about requeuing until we get an update that
 		// fixes the schedule, so don't return an error
 		return ctrl.Result{}, nil
 	}
 
 	scheduledResult := ctrl.Result{RequeueAfter: time.Until(nextRun)} // save this so we can re-use it elsewhere
-	r.log.Infow("upcoming disruption", "nextRun", nextRun.Format(time.UnixDate), "now", time.Now().Format(time.UnixDate), "timeUntil", time.Until(nextRun))
+	r.log.Infow("upcoming disruption details", "nextRun", nextRun.Format(time.UnixDate), "currentTime", time.Now().Format(time.UnixDate))
 
 	if missedRun.IsZero() {
 		r.log.Infow("no upcoming scheduled times, sleeping until next")
@@ -116,6 +115,7 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	r.log.Infow("created Disruption for DisruptionSchedule run")
+
 	return scheduledResult, nil
 }
 
@@ -150,7 +150,7 @@ func (r *DisruptionScheduleReconciler) getMostRecentScheduleTime(disruptions *ch
 	for _, disruption := range disruptions.Items {
 		scheduledTimeForDisruption, err := r.getScheduledTimeForDisruption(&disruption)
 		if err != nil {
-			r.log.Errorw("unable to parse schedule time for child disruption", "err", err, "disruption", &disruption)
+			r.log.Errorw("unable to parse schedule time for child disruption", "err", err, "disruption", disruption.Name)
 			continue
 		}
 
