@@ -163,7 +163,7 @@ func (d DisruptionTargetHandler) OnChangeHandleNotifierSink(oldPod, newPod *core
 	}
 }
 
-func (d DisruptionTargetHandler) getEventsFromCurrentDisruption(kind string, objectMeta metav1.ObjectMeta, disruptionStateTime time.Time) ([]corev1.Event, error) {
+func (d DisruptionTargetHandler) getEventsFromCurrentDisruption(kind string, objectMeta metav1.ObjectMeta, disruptionStartTime time.Time) ([]corev1.Event, error) {
 	eventList := &corev1.EventList{}
 	fieldSelector := fields.Set{
 		"involvedObject.kind": kind,
@@ -186,7 +186,7 @@ func (d DisruptionTargetHandler) getEventsFromCurrentDisruption(kind string, obj
 	// Keep events sent during the disruption only, no need to filter events coming from the disruption itself
 	if kind != "Disruption" {
 		for i, event := range eventList.Items {
-			if event.Type == corev1.EventTypeWarning && event.Reason == string(v1beta1.EventDisrupted) || event.LastTimestamp.Time.Before(disruptionStateTime) {
+			if event.Type == corev1.EventTypeWarning && event.Reason == string(v1beta1.EventDisrupted) || event.LastTimestamp.Time.Before(disruptionStartTime) {
 				if i == 0 {
 					return []corev1.Event{}, nil
 				}
