@@ -107,7 +107,7 @@ func (r *Disruption) ValidateCreate() error {
 	if err != nil {
 		logger.Errorw("did not find span context", "err", err)
 	} else {
-		logger = logger.With(tracerSink.GetLoggableTraceContext(trace.SpanFromContext(ctx)))
+		logger = logger.With(tracerSink.GetLoggableTraceContext(trace.SpanFromContext(ctx))...)
 	}
 
 	logger.Infow("validating created disruption", "spec", r.Spec)
