@@ -65,8 +65,10 @@ var networkDisruptionCmd = &cobra.Command{
 					Delay:          delay,
 					DelayJitter:    delayJitter,
 					BandwidthLimit: bandwidthLimit,
-					Method:         method,
-					Path:           path,
+					HTTP: &v1beta1.NetworkHTTPFilters{
+						Method: method,
+						Path:   path,
+					},
 				}
 			}
 

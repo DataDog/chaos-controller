@@ -17,5 +17,6 @@ spec:
   count: 1
   network:
     drop: 100 # percentage of outgoing packets to drop
-    method: get
-    path: /
+    http:
+      method: get
+      path: /

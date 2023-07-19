@@ -440,7 +440,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 
 			// run the program responsible to configure the map of the eBPF tc filter
 			bpfConfigExecutor := network.NewBPFTCFilterConfigExecutor(i.config.Log, i.config.Disruption.DryRun)
-			err = i.config.TrafficController.ConfigBPFFilter(bpfConfigExecutor, "-f", i.spec.Path, "-m", strings.ToUpper(i.spec.Method))
+			err = i.config.TrafficController.ConfigBPFFilter(bpfConfigExecutor, "-f", i.spec.HTTP.Path, "-m", strings.ToUpper(i.spec.HTTP.Method))
 
 			if err != nil {
 				return fmt.Errorf("could not update the configuration of the bpf-network-tc-filter filter: %w", err)

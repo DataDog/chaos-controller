@@ -380,19 +380,24 @@ spec:
                         type: object
                       nullable: true
                       type: array
-                    method:
-                      enum:
-                        - all
-                        - delete
-                        - get
-                        - head
-                        - options
-                        - patch
-                        - post
-                        - put
-                      type: string
-                    path:
-                      type: string
+                    http:
+                      description: NetworkHTTPFilters contains http filters
+                      nullable: true
+                      properties:
+                        method:
+                          enum:
+                            - all
+                            - delete
+                            - get
+                            - head
+                            - options
+                            - patch
+                            - post
+                            - put
+                          type: string
+                        path:
+                          type: string
+                      type: object
                     port:
                       maximum: 65535
                       minimum: 0

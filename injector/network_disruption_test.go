@@ -247,8 +247,10 @@ var _ = Describe("Failure", func() {
 			Delay:          1000,
 			DelayJitter:    100,
 			BandwidthLimit: 10000,
-			Method:         v1beta1.DefaultNetworkMethodFilter,
-			Path:           v1beta1.DefaultNetworkPathFilter,
+			HTTP: &v1beta1.NetworkHTTPFilters{
+				Method: v1beta1.DefaultNetworkMethodFilter,
+				Path:   v1beta1.DefaultNetworkPathFilter,
+			},
 		}
 	})
 
@@ -616,8 +618,8 @@ var _ = Describe("Failure", func() {
 			func(method, path string) {
 				// Arrange
 				interfaces := []string{"lo", "eth0", "eth1"}
-				spec.Method = method
-				spec.Path = path
+				spec.HTTP.Method = method
+				spec.HTTP.Path = path
 				tc.EXPECT().AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2").Return(nil).Once()
 				tc.EXPECT().ConfigBPFFilter(mock.Anything, "-f", path, "-m", strings.ToUpper(method)).Return(nil).Once()
 

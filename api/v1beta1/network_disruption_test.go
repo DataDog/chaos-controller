@@ -147,7 +147,9 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 				func(path string) {
 					// Arrange
 					disruptionSpec := NetworkDisruptionSpec{
-						Path: path,
+						HTTP: &NetworkHTTPFilters{
+							Path: path,
+						},
 					}
 
 					// Action
@@ -167,7 +169,9 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 				func(invalidPath, expectedErrorMessage string) {
 					// Arrange
 					disruptionSpec := NetworkDisruptionSpec{
-						Path: invalidPath,
+						HTTP: &NetworkHTTPFilters{
+							Path: invalidPath,
+						},
 					}
 
 					// Action
@@ -232,8 +236,10 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 				disruptionSpec := NetworkDisruptionSpec{
 					Hosts:    []NetworkDisruptionHostSpec{},
 					Services: []NetworkDisruptionServiceSpec{},
-					Method:   DefaultNetworkMethodFilter,
-					Path:     DefaultNetworkPathFilter,
+					HTTP: &NetworkHTTPFilters{
+						Method: DefaultNetworkMethodFilter,
+						Path:   DefaultNetworkPathFilter,
+					},
 				}
 
 				// Action && Assert
@@ -244,8 +250,10 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 			func(path, method string) {
 				// Arrange
 				disruptionSpec := NetworkDisruptionSpec{
-					Method: method,
-					Path:   path,
+					HTTP: &NetworkHTTPFilters{
+						Method: method,
+						Path:   path,
+					},
 				}
 
 				// Action && Assert

@@ -187,6 +187,7 @@ Depending on your system, you'll find the kernel config in any one of these:
 - /boot/config
 - /boot/config-$(uname -r)
 
+#### Pod level visualization
 
 Tc can use eBPF filters in order to intercept packets at the application layer and allow the access to the payload of packets.
 Network disruption used eBPF filters to apply disruption by filtering with `method` and/or `path`:
@@ -203,8 +204,9 @@ spec:
       - 10.0.1.254/31
     port: 80
     protocol: tcp
-    method: get <-- eBPF filter
-    path: /test <-- eBPF filter
+    http:
+        method: get <-- eBPF filter
+        path: /test <-- eBPF filter
     flow: egress
     delay: 1000
     delayJitter: 5
