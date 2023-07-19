@@ -6,10 +6,8 @@
 package network
 
 import (
-	"bytes"
 	"fmt"
 	"net"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -64,57 +62,31 @@ type TrafficController interface {
 	AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, prot protocol, state connState, flowid string) (uint32, error)
 	DeleteFilter(iface string, priority uint32) error
 	AddFwFilter(ifaces []string, parent string, handle string, flowid string) error
+	AddBPFFilter(ifaces []string, parent string, obj string, flowid string) error
+	ConfigBPFFilter(cmd executor, args ...string) error
 	AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error
 	ClearQdisc(ifaces []string) error
 }
 
-type tcExecuter interface {
-	Run(args []string) (exitCode int, stdout string, stderr error)
-}
-
-type defaultTcExecuter struct {
-	log    *zap.SugaredLogger
-	dryRun bool
-}
-
-// Run executes the given args using the tc command
-// and returns a wrapped error containing both the error returned by the execution and
-// the stderr content
-func (e defaultTcExecuter) Run(args []string) (int, string, error) {
-	// parse args and execute
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	cmd := exec.Command(tcPath, args...)
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-
-	// run command
-	e.log.Debugf("running tc command: %v", cmd.String())
-
-	// early exit if dry-run mode is enabled
-	if e.dryRun {
-		return 0, "", nil
-	}
-
-	err := cmd.Run()
-	if err != nil {
-		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
-	}
-
-	return cmd.ProcessState.ExitCode(), stdout.String(), err
-}
-
 type tc struct {
-	executer         tcExecuter
+	executer         executor
 	tcFilterPriority uint32     // keep track of the highest tc filter priority
 	tcFilterMutex    sync.Mutex // since we increment tcFilterPriority in goroutines we use a mutex to lock and unlock
+}
+
+func (t *tc) ConfigBPFFilter(cmd executor, args ...string) error {
+	if _, _, err := cmd.Run(args); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // NewTrafficController creates a standard traffic controller using tc
 // and being able to log
 func NewTrafficController(log *zap.SugaredLogger, dryRun bool) TrafficController {
 	return &tc{
-		executer: defaultTcExecuter{
+		executer: defaultTcExecutor{
 			log:    log,
 			dryRun: dryRun,
 		},
@@ -255,6 +227,16 @@ func (t *tc) AddFilter(ifaces []string, parent string, handle string, srcIP, dst
 	}
 
 	return priority, nil
+}
+
+func (t *tc) AddBPFFilter(ifaces []string, parent string, obj string, flowid string) error {
+	for _, iface := range ifaces {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "", 0, "", "bpf", "obj "+obj+" flowid "+flowid)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (t *tc) DeleteFilter(iface string, priority uint32) error {

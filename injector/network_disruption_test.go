@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -246,6 +247,8 @@ var _ = Describe("Failure", func() {
 			Delay:          1000,
 			DelayJitter:    100,
 			BandwidthLimit: 10000,
+			Method:         "ALL",
+			Path:           "/",
 		}
 	})
 
@@ -608,6 +611,41 @@ var _ = Describe("Failure", func() {
 				tc.AssertNumberOfCalls(GinkgoT(), "AddNetem", 2)
 			})
 		})
+
+		DescribeTable("with method and path filters",
+			func(method, path string) {
+				// Arrange
+				interfaces := []string{"lo", "eth0", "eth1"}
+				spec.Method = method
+				spec.Path = path
+				tc.EXPECT().AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2").Return(nil).Once()
+				tc.EXPECT().ConfigBPFFilter(mock.Anything, "-f", path, "-m", strings.ToUpper(method)).Return(nil).Once()
+
+				var err error
+				inj, err = NewNetworkDisruptionInjector(spec, config)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// Action
+				Expect(inj.Inject()).To(Succeed())
+
+				// Assert
+				By("creating two prio bands")
+				tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "1:4", "2:", uint32(2), mock.Anything)
+				tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "2:2", "3:", uint32(2), mock.Anything)
+
+				By("adding an fw filter to classify packets according to their classid set by iptables mark")
+				tc.AssertCalled(GinkgoT(), "AddFwFilter", interfaces, "3:0", "0x00020002", "3:2")
+
+				By("adding an BPF filter to classify packets according to their method")
+				tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2")
+
+				By("configuring the BPF filter")
+				tc.AssertCalled(GinkgoT(), "ConfigBPFFilter", mock.Anything, "-f", path, "-m", strings.ToUpper(method))
+			},
+			Entry("With a GET method and / path", "get", "/"),
+			Entry("With a DELETE method and / path", "delete", "/"),
+			Entry("With a POST method and /test path", "post", "/test"),
+		)
 	})
 
 	Describe("inj.Clean", func() {

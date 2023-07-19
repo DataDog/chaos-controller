@@ -8,6 +8,7 @@ package v1beta1
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -24,7 +25,8 @@ const (
 	// When not specifying an index for the hashtable created when we use u32 filters, the default id for this hashtable is 0x800.
 	// However, the maximum id being 0xFFF, we can only have 2048 different ids, so 2048 tc filters with u32.
 	// https://github.com/torvalds/linux/blob/v5.19/net/sched/cls_u32.c#L689-L690
-	MaximumTCFilters = 2048
+	MaximumTCFilters         = 2048
+	MaxNetworkPathCharacters = 100
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
@@ -76,6 +78,10 @@ type NetworkDisruptionSpec struct {
 	// +kubebuilder:validation:Enum=egress;ingress
 	// +ddmark:validation:Enum=egress;ingress
 	DeprecatedFlow string `json:"flow,omitempty"`
+	// +kubebuilder:validation:Enum=all;delete;get;head;options;patch;post;put
+	// +ddmark:validation:Enum=all;delete;get;head;options;patch;post;put
+	Method string `json:"method,omitempty"`
+	Path   string `json:"path,omitempty"`
 }
 
 type NetworkDisruptionHostSpec struct {
@@ -163,6 +169,20 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 		retErr = multierror.Append(retErr, fmt.Errorf("the flow specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
 	}
 
+	if s.Path != "" {
+		if len(s.Path) > MaxNetworkPathCharacters {
+			retErr = multierror.Append(retErr, fmt.Errorf("the path specification at the network disruption level is not valid; should not exceed 100 characters"))
+		}
+
+		if s.Path[0] != '/' {
+			retErr = multierror.Append(retErr, fmt.Errorf("the path specification at the network disruption level is not valid; should start with a /"))
+		}
+
+		if regexp.MustCompile(`\s`).MatchString(s.Path) {
+			retErr = multierror.Append(retErr, fmt.Errorf("the path specification at the network disruption level is not valid; should not contains spaces"))
+		}
+	}
+
 	return multierror.Prefix(retErr, "Network:")
 }
 
@@ -202,6 +222,14 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 		}
 
 		args = append(args, "--services", fmt.Sprintf("%s;%s%s", service.Name, service.Namespace, ports))
+	}
+
+	if s.Path != "" {
+		args = append(args, "--path", s.Path)
+	}
+
+	if s.Method != "" {
+		args = append(args, "--method", s.Method)
 	}
 
 	return args

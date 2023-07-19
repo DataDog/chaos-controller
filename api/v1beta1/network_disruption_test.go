@@ -8,131 +8,231 @@ package v1beta1
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"math/rand"
 )
 
-var _ = Describe("NetworkDisruption Format test", func() {
-	When("NetworkDisruption has filters", func() {
-		It("expects good formatting for multiple hosts", func() {
-			disruptionSpec := NetworkDisruptionSpec{
-				Hosts: []NetworkDisruptionHostSpec{
-					{
-						Host: "1.2.3.4",
-						Port: 9000,
-					},
-					{
-						Host: "2.2.3.4",
-						Port: 8000,
-						Flow: "ingress",
-					},
-				},
-				Drop: 100,
-			}
+const SpacesErrorMessagePrefix = "should not contains spaces"
 
-			expected := "Network disruption dropping 100% of the traffic going to 1.2.3.4:9000 and coming from 2.2.3.4:8000"
-			result := disruptionSpec.Format()
-
-			Expect(result).To(Equal(expected))
-		})
-
-		It("expects good formatting for multiple services", func() {
-			disruptionSpec := NetworkDisruptionSpec{
-				Services: []NetworkDisruptionServiceSpec{
-					{
-						Name:      "demo-service",
-						Namespace: "demo-namespace",
-					},
-					{
-						Name:      "demo-worker",
-						Namespace: "demo-namespace",
-					},
-				},
-				Corrupt: 100,
-			}
-
-			expected := "Network disruption corrupting 100% of the traffic going to demo-service/demo-namespace and going to demo-worker/demo-namespace"
-			result := disruptionSpec.Format()
-
-			Expect(result).To(Equal(expected))
-		})
-
-		It("expects good formatting for cloud network disruption", func() {
-			disruptionSpec := NetworkDisruptionSpec{
-				Cloud: &NetworkDisruptionCloudSpec{
-					AWSServiceList: &[]NetworkDisruptionCloudServiceSpec{
+var _ = Describe("NetworkDisruptionSpec", func() {
+	When("'Format' method is called", func() {
+		Context("with filters", func() {
+			It("expects good formatting for multiple hosts", func() {
+				disruptionSpec := NetworkDisruptionSpec{
+					Hosts: []NetworkDisruptionHostSpec{
 						{
-							ServiceName: "S3",
+							Host: "1.2.3.4",
+							Port: 9000,
+						},
+						{
+							Host: "2.2.3.4",
+							Port: 8000,
+							Flow: "ingress",
 						},
 					},
-					DatadogServiceList: &[]NetworkDisruptionCloudServiceSpec{
+					Drop: 100,
+				}
+
+				expected := "Network disruption dropping 100% of the traffic going to 1.2.3.4:9000 and coming from 2.2.3.4:8000"
+				result := disruptionSpec.Format()
+
+				Expect(result).To(Equal(expected))
+			})
+
+			It("expects good formatting for multiple services", func() {
+				disruptionSpec := NetworkDisruptionSpec{
+					Services: []NetworkDisruptionServiceSpec{
 						{
-							ServiceName: "synthetics",
+							Name:      "demo-service",
+							Namespace: "demo-namespace",
+						},
+						{
+							Name:      "demo-worker",
+							Namespace: "demo-namespace",
 						},
 					},
-				},
-				Delay:       100,
-				DelayJitter: 50,
-			}
+					Corrupt: 100,
+				}
 
-			expected := "Network disruption delaying of 100ms the traffic with 50ms of delay jitter going to S3 and going to synthetics"
-			result := disruptionSpec.Format()
+				expected := "Network disruption corrupting 100% of the traffic going to demo-service/demo-namespace and going to demo-worker/demo-namespace"
+				result := disruptionSpec.Format()
 
-			Expect(result).To(Equal(expected))
+				Expect(result).To(Equal(expected))
+			})
+
+			It("expects good formatting for cloud network disruption", func() {
+				disruptionSpec := NetworkDisruptionSpec{
+					Cloud: &NetworkDisruptionCloudSpec{
+						AWSServiceList: &[]NetworkDisruptionCloudServiceSpec{
+							{
+								ServiceName: "S3",
+							},
+						},
+						DatadogServiceList: &[]NetworkDisruptionCloudServiceSpec{
+							{
+								ServiceName: "synthetics",
+							},
+						},
+					},
+					Delay:       100,
+					DelayJitter: 50,
+				}
+
+				expected := "Network disruption delaying of 100ms the traffic with 50ms of delay jitter going to S3 and going to synthetics"
+				result := disruptionSpec.Format()
+
+				Expect(result).To(Equal(expected))
+			})
+
+			It("expects good formatting for a big network disruption", func() {
+				disruptionSpec := NetworkDisruptionSpec{
+					Hosts: []NetworkDisruptionHostSpec{
+						{
+							Host: "1.2.3.4",
+							Port: 9000,
+						},
+						{
+							Host: "2.2.3.4",
+							Port: 8000,
+							Flow: "ingress",
+						},
+					},
+					Services: []NetworkDisruptionServiceSpec{
+						{
+							Name:      "demo-service",
+							Namespace: "demo-namespace",
+						},
+						{
+							Name:      "demo-worker",
+							Namespace: "demo-namespace",
+						},
+					},
+					Cloud: &NetworkDisruptionCloudSpec{
+						AWSServiceList: &[]NetworkDisruptionCloudServiceSpec{
+							{
+								ServiceName: "S3",
+							},
+						},
+						DatadogServiceList: &[]NetworkDisruptionCloudServiceSpec{
+							{
+								ServiceName: "synthetics",
+							},
+						},
+					},
+					Corrupt: 100,
+				}
+
+				expected := "Network disruption corrupting 100% of the traffic going to 1.2.3.4:9000, coming from 2.2.3.4:8000, going to demo-service/demo-namespace, going to demo-worker/demo-namespace, going to S3 and going to synthetics"
+				result := disruptionSpec.Format()
+
+				Expect(result).To(Equal(expected))
+			})
+
+			It("expects no formatting for empty network disruption", func() {
+				disruptionSpec := NetworkDisruptionSpec{
+					Hosts:    []NetworkDisruptionHostSpec{},
+					Services: []NetworkDisruptionServiceSpec{},
+				}
+
+				expected := ""
+				result := disruptionSpec.Format()
+
+				Expect(result).To(Equal(expected))
+			})
 		})
 
-		It("expects good formatting for a big network disruption", func() {
-			disruptionSpec := NetworkDisruptionSpec{
-				Hosts: []NetworkDisruptionHostSpec{
-					{
-						Host: "1.2.3.4",
-						Port: 9000,
-					},
-					{
-						Host: "2.2.3.4",
-						Port: 8000,
-						Flow: "ingress",
-					},
-				},
-				Services: []NetworkDisruptionServiceSpec{
-					{
-						Name:      "demo-service",
-						Namespace: "demo-namespace",
-					},
-					{
-						Name:      "demo-worker",
-						Namespace: "demo-namespace",
-					},
-				},
-				Cloud: &NetworkDisruptionCloudSpec{
-					AWSServiceList: &[]NetworkDisruptionCloudServiceSpec{
-						{
-							ServiceName: "S3",
-						},
-					},
-					DatadogServiceList: &[]NetworkDisruptionCloudServiceSpec{
-						{
-							ServiceName: "synthetics",
-						},
-					},
-				},
-				Corrupt: 100,
-			}
+	})
+	When("'Validate' method is called", func() {
+		Describe("test path field cases", func() {
+			DescribeTable("with valid paths",
+				func(path string) {
+					// Arrange
+					disruptionSpec := NetworkDisruptionSpec{
+						Path: path,
+					}
 
-			expected := "Network disruption corrupting 100% of the traffic going to 1.2.3.4:9000, coming from 2.2.3.4:8000, going to demo-service/demo-namespace, going to demo-worker/demo-namespace, going to S3 and going to synthetics"
-			result := disruptionSpec.Format()
+					// Action
+					err := disruptionSpec.Validate()
 
-			Expect(result).To(Equal(expected))
+					// Assert
+					Expect(err).ShouldNot(HaveOccurred())
+				},
+				Entry("with a random path",
+					"/"+randStringRunes(99),
+				),
+				Entry("with a simple path",
+					"/",
+				),
+			)
+			DescribeTable("with invalid paths",
+				func(invalidPath, expectedErrorMessage string) {
+					// Arrange
+					disruptionSpec := NetworkDisruptionSpec{
+						Path: invalidPath,
+					}
+
+					// Action
+					err := disruptionSpec.Validate()
+
+					// Assert
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("the path specification at the network disruption level is not valid; " + expectedErrorMessage))
+				},
+				Entry("When the path exceeding the limit",
+					"/"+randStringRunes(100),
+					"should not exceed 100 characters",
+				),
+				Entry("When the path does not start with /",
+					"invalid-path",
+					"should start with a /",
+				),
+				Entry("When the path contains spaces",
+					"/invalid path",
+					SpacesErrorMessagePrefix,
+				),
+				Entry("When the path is empty",
+					"  ",
+					SpacesErrorMessagePrefix,
+				),
+				Entry("When the path contains a spaces at the end",
+					"/ ",
+					SpacesErrorMessagePrefix,
+				),
+				Entry("When the path contains a spaces at the start",
+					" /",
+					SpacesErrorMessagePrefix,
+				),
+			)
 		})
+		Describe("test deprecated fields cases", func() {
+			port := 8080
+			DescribeTable("with deprecated field defined",
+				func(invalidDisruptionSpec NetworkDisruptionSpec, expectedErrorMessage string) {
+					// Action
+					err := invalidDisruptionSpec.Validate()
 
-		It("expects no formatting for empty network disruption", func() {
-			disruptionSpec := NetworkDisruptionSpec{
-				Hosts:    []NetworkDisruptionHostSpec{},
-				Services: []NetworkDisruptionServiceSpec{},
-			}
-
-			expected := ""
-			result := disruptionSpec.Format()
-
-			Expect(result).To(Equal(expected))
+					// Assert
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring(expectedErrorMessage))
+				},
+				Entry("When the DeprecatedPort is defined",
+					NetworkDisruptionSpec{DeprecatedPort: &port},
+					"the port specification at the network disruption level is deprecated; apply to network disruption hosts instead",
+				),
+				Entry("When the DeprecatedFlow is defined",
+					NetworkDisruptionSpec{DeprecatedFlow: "lorem"},
+					"the flow specification at the network disruption level is deprecated; apply to network disruption hosts instead",
+				),
+			)
 		})
 	})
 })
+
+func randStringRunes(n int) string {
+	letterRunes := []rune("/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
