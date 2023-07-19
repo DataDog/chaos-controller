@@ -1,8 +1,14 @@
 .PHONY: *
 .SILENT: release
 
+NOW_ISO8601 = $(shell date -u +"%Y-%m-%dT%H:%M:%S")
+
 GOOS = $(shell go env GOOS)
 GOARCH = $(shell go env GOARCH)
+
+# change also circleci go build version "cimb/go:" if you change the version below
+# https://github.com/DataDog/chaos-controller/blob/main/.circleci/config.yml#L85
+BUILDGOVERSION = 1.20.5
 
 # GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
 GOBIN ?= $(shell go env GOBIN)
@@ -19,18 +25,17 @@ LIMA_INSTALL_SINK = datadog
 endif
 endif
 
-ifndef CONTROLLER_APP_VERSION
-CONTROLLER_APP_VERSION = $(shell git rev-parse HEAD)$(shell git diff --quiet || echo '-dirty')
-endif
-
 # Lima requires to have images built on a specific namespace to be shared to the Kubernetes cluster when using containerd runtime
 # https://github.com/abiosoft/colima#interacting-with-image-registry
-CONTAINERD_REGISTRY_PREFIX ?= k8s.io
+CONTAINER_REGISTRY ?= k8s.io
+CONTAINER_TAG ?= latest
+CONTAINER_VERSION ?= $(shell git rev-parse HEAD)$(shell git diff --quiet || echo '-dirty')
+CONTAINER_BUILD_EXTRA_ARGS ?=
 
 # Image URL to use all building/pushing image targets
-MANAGER_IMAGE ?= ${CONTAINERD_REGISTRY_PREFIX}/chaos-controller:latest
-INJECTOR_IMAGE ?= ${CONTAINERD_REGISTRY_PREFIX}/chaos-injector:latest
-HANDLER_IMAGE ?= ${CONTAINERD_REGISTRY_PREFIX}/chaos-handler:latest
+MANAGER_IMAGE ?= ${CONTAINER_REGISTRY}/chaos-controller
+INJECTOR_IMAGE ?= ${CONTAINER_REGISTRY}/chaos-injector
+HANDLER_IMAGE ?= ${CONTAINER_REGISTRY}/chaos-handler
 
 LIMA_PROFILE ?= lima
 LIMA_CONFIG ?= lima
@@ -59,7 +64,7 @@ HELM_INSTALLED_VERSION = $(shell (helm version --template="{{ .Version }}" || ec
 GOLANGCI_LINT_VERSION = 1.52.2
 GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
 
-CONTROLLER_GEN_VERSION = v0.11.4
+CONTROLLER_GEN_VERSION = v0.12.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
 
 MOCKERY_VERSION = 2.28.2
@@ -87,12 +92,12 @@ endif
 injector handler: BINARY_PATH=./cli/$(BINARY_NAME)
 manager: BINARY_PATH=.
 
-docker-build-injector: IMAGE_TAG=$(INJECTOR_IMAGE)
-docker-build-handler: IMAGE_TAG=$(HANDLER_IMAGE)
-docker-build-manager: IMAGE_TAG=$(MANAGER_IMAGE)
+docker-build-injector docker-build-only-injector: CONTAINER_NAME=$(INJECTOR_IMAGE)
+docker-build-handler docker-build-only-handler: CONTAINER_NAME=$(HANDLER_IMAGE)
+docker-build-manager docker-build-only-manager: CONTAINER_NAME=$(MANAGER_IMAGE)
 
 docker-build-ebpf:
-	docker buildx build --platform linux/$(GOARCH) --build-arg ARCH=$(GOARCH) -t ebpf-builder-$(GOARCH) -f bin/ebpf-builder/Dockerfile ./bin/ebpf-builder/
+	docker buildx build --platform linux/$(GOARCH) --build-arg BUILDGOVERSION=$(BUILDGOVERSION) -t ebpf-builder-$(GOARCH) -f bin/ebpf-builder/Dockerfile .
 	-rm -r bin/injector/ebpf/
 ifeq (true,$(USE_VOLUMES))
 # create a dummy container with volume to store files
@@ -135,9 +140,17 @@ _$(1)_amd:
 
 $(1): _$(1) _$(1)_arm _$(1)_amd
 
-docker-build-$(1): _docker-build-$(1) $(1)
-	docker buildx build --build-arg TARGETARCH=$(GOARCH) -t $$(IMAGE_TAG) -f bin/$(1)/Dockerfile ./bin/$(1)/
-	docker save $$(IMAGE_TAG) -o ./bin/$(1)/$(1).tar.gz
+docker-build-$(1): _docker-build-$(1) $(1) docker-build-only-$(1)
+	docker save $$(CONTAINER_NAME):$(CONTAINER_TAG) -o ./bin/$(1)/$(1).tar.gz
+
+docker-build-only-$(1):
+	docker buildx build \
+		--build-arg BUILDGOVERSION=$(BUILDGOVERSION) \
+		--build-arg BUILDSTAMP=$(NOW_ISO8601) \
+		-t $$(CONTAINER_NAME):$(CONTAINER_TAG) \
+		-t $$(CONTAINER_NAME):$(CONTAINER_VERSION) \
+		$(CONTAINER_BUILD_EXTRA_ARGS) \
+		-f bin/$(1)/Dockerfile ./bin/$(1)/
 
 lima-push-$(1): docker-build-$(1)
 	limactl copy ./bin/$(1)/$(1).tar.gz $(LIMA_INSTANCE):/tmp/
@@ -159,6 +172,7 @@ $(foreach tgt,$(TARGETS),$(eval $(call TARGET_template,$(tgt))))
 all: $(TARGETS)
 
 docker-build-all: $(addprefix docker-build-,$(TARGETS))
+docker-build-only-all: $(addprefix docker-build-only-,$(TARGETS))
 lima-push-all: $(addprefix lima-push-,$(TARGETS))
 minikube-load-all: $(addprefix minikube-load-,$(TARGETS))
 
@@ -297,13 +311,12 @@ lima-install-demo:
 	$(KUBECTL) -n chaos-demo rollout status deployment/demo-curl --timeout=60s
 	$(KUBECTL) -n chaos-demo rollout status deployment/demo-nginx --timeout=60s
 
-
 ## Install CRDs and controller into a lima k3s cluster
 ## In order to use already built images inside the containerd runtime
 ## we override images for all of our components to the expected namespace
 lima-install: manifests
 	helm template \
-		--set=controller.version=$(CONTROLLER_APP_VERSION) \
+		--set=controller.version=$(CONTAINER_VERSION) \
 		--set=controller.metricsSink=$(LIMA_INSTALL_SINK) \
 		--set=controller.profilerSink=$(LIMA_INSTALL_SINK) \
 		--set=controller.tracerSink=$(LIMA_INSTALL_SINK) \
@@ -497,10 +510,13 @@ ifeq (,$(wildcard $(GOBIN)/yamlfmt))
 endif
 
 install-watchexec:
-ifeq (,$(wildcard $(GOBIN)/gow))
+ifeq (,$(wildcard $(GOBIN)/watchexec))
 	$(info installing watchexec...)
 	brew install watchexec
 endif
+
+install-go:
+	BUILDGOVERSION=$(BUILDGOVERSION) ./scripts/install-go
 
 EXISTING_NAMESPACE = $(shell $(KUBECTL) get ns datadog-agent -oname || echo "")
 

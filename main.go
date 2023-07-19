@@ -7,7 +7,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -47,10 +46,7 @@ import (
 //go:generate mockery  --config .local.mockery.yaml
 //go:generate mockery  --config .vendor.mockery.yaml
 
-var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
-)
+var scheme = runtime.NewScheme()
 
 func init() {
 	// +kubebuilder:scaffold:scheme
@@ -61,7 +57,7 @@ func init() {
 func main() {
 	logger, err := log.NewZapLogger()
 	if err != nil {
-		setupLog.Error(err, "error creating controller logger")
+		ctrl.Log.WithName("setup").Error(err, "error creating controller logger")
 		os.Exit(1)
 	}
 
@@ -89,8 +85,7 @@ func main() {
 		CertDir:            cfg.Controller.Webhook.CertDir,
 	})
 	if err != nil {
-		logger.Errorw("unable to start manager", "error", err)
-		os.Exit(1)
+		logger.Fatalw("unable to start manager", "error", err)
 	}
 
 	// event notifiers
@@ -160,7 +155,7 @@ func main() {
 	// initialize the cloud provider manager which will handle ip ranges files updates
 	cloudProviderManager, err := cloudservice.New(logger, cfg.Controller.CloudProviders)
 	if err != nil {
-		handleFatalError(fmt.Errorf("error initializing CloudProviderManager: %w", err))
+		logger.Fatalw("error initializing CloudProviderManager", "error", err)
 	}
 
 	cloudProviderManager.StartPeriodicPull()
@@ -195,8 +190,7 @@ func main() {
 
 	cont, err := r.SetupWithManager(mgr, kubeInformerFactory)
 	if err != nil {
-		logger.Errorw("unable to create controller", "controller", chaosv1beta1.DisruptionKind, "error", err)
-		os.Exit(1) //nolint:gocritic
+		logger.Fatalw("unable to create controller", "controller", chaosv1beta1.DisruptionKind, "error", err)
 	}
 
 	r.Controller = cont
@@ -248,8 +242,7 @@ func main() {
 		Environment:                   cfg.Controller.SafeMode.Environment,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", chaosv1beta1.DisruptionKind)
-		os.Exit(1) //nolint:gocritic
+		logger.Fatalw("unable to create webhook", "webhook", chaosv1beta1.DisruptionKind, "error", err)
 	}
 
 	if cfg.Handler.Enabled {
@@ -299,15 +292,6 @@ func main() {
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		stopCh <- struct{}{} // stop the informer
 
-		logger.Errorw("problem running manager", "error", err)
-		os.Exit(1) //nolint:gocritic
-	}
-}
-
-// handleFatalError logs the given error and exits if err is not nil
-func handleFatalError(err error) {
-	if err != nil {
-		setupLog.Error(err, "fatal error occurred on setup")
-		os.Exit(1)
+		logger.Fatalw("problem running manager", "error", err)
 	}
 }

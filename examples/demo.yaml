@@ -50,6 +50,13 @@ spec:
             httpGet:
               path: /
               port: 80
+          resources:
+            limits:
+              memory: 32Mi
+              cpu: 10m
+            requests:
+              memory: 32Mi
+              cpu: 10m
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -77,9 +84,6 @@ spec:
           args:
             - ee(){exit 1}; trap 'ee' TERM; tail -f /dev/null
           imagePullPolicy: IfNotPresent
-          volumeMounts:
-            - mountPath: /mnt/data
-              name: data
           resources:
             limits:
               memory: 32Mi
@@ -89,36 +93,36 @@ spec:
               cpu: 1500m
         - name: curl
           image: alpine/curl:3.14
-          command: ["/bin/sh"]
+          command: [/bin/sh]
           args:
-            [
-              "-c",
-              "while true; do time curl -vvv --connect-timeout 15 http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; time curl --connect-timeout 15 -vvv https://www.example.com; done",
-            ]
-          volumeMounts:
-            - mountPath: /mnt/data
-              name: data
-          readinessProbe:
-            exec:
-              command:
-                - curl
-                - -vvv
-                - http://demo.chaos-demo.svc.cluster.local:8080
+            - -c
+            - while true; do time curl -vvv --connect-timeout 15 http://demo.chaos-demo.svc.cluster.local:8080; sleep 1; done
           resources:
             limits:
               memory: 32Mi
-              cpu: 100m
+              cpu: 10m
             requests:
               memory: 32Mi
-              cpu: 100m
+              cpu: 10m
+        - name: curl-remote
+          image: alpine/curl:3.14
+          command: [/bin/sh]
+          args:
+            - -c
+            - while true; do time curl --connect-timeout 15 -vvv https://www.example.com; sleep 1; done
+          resources:
+            limits:
+              memory: 32Mi
+              cpu: 10m
+            requests:
+              memory: 32Mi
+              cpu: 10m
         - name: read-file
           image: ubuntu:bionic-20220128
           command: ["/bin/bash"]
           args:
-            [
-              "-c",
-              "echo 'create file to read from: /mnt/data/disk-read-file' && dd if=/dev/zero of=/mnt/data/disk-read-file bs=10k count=1; while true; do time dd if=/mnt/data/disk-read-file of=/dev/null iflag=direct; sleep 1; done",
-            ]
+            - -c
+            - "echo 'create file to read from: /mnt/data/disk-read-file' && dd if=/dev/zero of=/mnt/data/disk-read-file bs=10k count=1; while true; do time dd if=/mnt/data/disk-read-file of=/dev/null iflag=direct; sleep 1; done"
           volumeMounts:
             - mountPath: /mnt/data
               name: data
@@ -133,10 +137,8 @@ spec:
           image: ubuntu:bionic-20220128
           command: ["/bin/bash"]
           args:
-            [
-              "-c",
-              "while true; do time dd if=/dev/zero of=/mnt/data/disk-write-file bs=10k count=1 oflag=direct; sleep 1; done",
-            ]
+            - -c
+            - while true; do time dd if=/dev/zero of=/mnt/data/disk-write-file bs=10k count=1 oflag=direct; sleep 1; done
           volumeMounts:
             - mountPath: /mnt/data
               name: data

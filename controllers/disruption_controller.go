@@ -5,6 +5,15 @@
 
 package controllers
 
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;patch
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
+
 import (
 	"context"
 	"fmt"
@@ -86,14 +95,6 @@ type CtxTuple struct {
 	DisruptionNamespacedName types.NamespacedName
 }
 
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=update;patch
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core,resources=events,verbs=list;watch;create;patch
-// +kubebuilder:rbac:groups=core,resources=pods,verbs=list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=pods/status,verbs=update;patch
-// +kubebuilder:rbac:groups=core,resources=nodes,verbs=list;watch
-// +kubebuilder:rbac:groups=core,resources=services,verbs=list;watch
 func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	instance := &chaosv1beta1.Disruption{}
 
@@ -1055,7 +1056,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 					FailureThreshold: 5,
 					ProbeHandler: corev1.ProbeHandler{
 						Exec: &corev1.ExecAction{
-							Command: []string{"cat", "/tmp/readiness_probe"},
+							Command: []string{"test", "-f", "/tmp/readiness_probe"},
 						},
 					},
 				},

@@ -264,6 +264,8 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should scale up then down properly", func(ctx SpecContext) {
 			ExpectChaosPodsAndStatuses := func(ctx SpecContext, count int) {
+				GinkgoHelper()
+
 				Concurrently{
 					func(ctx SpecContext) {
 						By("Ensuring that the chaos pods have been created")
@@ -415,6 +417,8 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should scale up and down with the right number of targets count", func(ctx SpecContext) {
 			ExpectDisruptionStatusAndCounts := func(ctx SpecContext, status chaostypes.DisruptionInjectionStatus, a, b, c, d int) {
+				GinkgoHelper()
+
 				Concurrently{
 					func(ctx SpecContext) {
 						ExpectDisruptionStatusCounts(ctx, disruption, a, b, c, d)

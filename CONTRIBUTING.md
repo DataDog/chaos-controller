@@ -48,7 +48,7 @@ Once you have installed the above requirements, run the `make lima-all` command 
 - `make lima-build` to build the chaos-controller images
 - `make lima-install` to render and apply the chaos-controller helm chart
 
-Once the instance is started, you can log into it using either the `lima` or its longer form `limactl shell default` commands.
+Once the instance is started, you can log into it using either the `lima` or its longer form `limactl shell <$LIMA_INSTANCE>` commands.
 
 #### Change default lima instance
 
@@ -104,7 +104,7 @@ export STAGING_DD_SITE=https://app.datadoghq.com
 
 To deploy changes made to the controller code or chart, run the `make lima-redeploy` command that will run the following targets:
 
-- `make lima-build` to build the chaos-controller images
+- `make lima-push-all` to build the chaos-controller images locally, and push them into the k3s cluster
 - `make lima-install` to render and apply the chaos-controller helm chart
 - `make lima-restart` to restart the chaos-controller manager pod
 
@@ -215,7 +215,7 @@ export DATADOG_API_KEY=$(security find-generic-password -a ${USER} -s datadog_ap
 
 - Install `datadog-ci` by running `make install-datadog-ci`
 
-- Run tests `make test || make e2e-test`
+- Run tests `make test && make e2e-test`
 
 - Go to Datadog you [test-services](https://app.datadoghq.com/ci/test-services?env=local&view=branches&paused=false)
 
