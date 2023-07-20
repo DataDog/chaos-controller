@@ -6,11 +6,12 @@
 package watchers_test
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
-	"testing"
+	"go.uber.org/zap/zaptest"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -18,9 +19,7 @@ var logger *zap.SugaredLogger
 
 var _ = BeforeSuite(func() {
 	// Arrange
-	observer, _ := observer.New(zap.InfoLevel)
-	z := zap.New(observer)
-	logger = z.Sugar()
+	logger = zaptest.NewLogger(GinkgoT()).Sugar()
 })
 
 func TestAPIs(t *testing.T) {

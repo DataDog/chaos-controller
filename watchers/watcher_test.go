@@ -132,6 +132,10 @@ var _ = Describe("watcher", func() {
 				cacheMock.Wg.Add(1)
 				err = watcher.Start()
 				cacheMock.Wg.Wait()
+
+				ctxTuple, _ := watcher.GetContextTuple()
+				Expect(ctxTuple.DisruptionNamespacedName.Name).Should(Equal(namespaceName.Name))
+				Expect(ctxTuple.DisruptionNamespacedName.Namespace).Should(Equal(namespaceName.Namespace))
 			})
 		})
 
