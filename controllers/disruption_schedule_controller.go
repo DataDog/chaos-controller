@@ -107,6 +107,7 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	r.log.Infow("processing current run", "currentRun", missedRun.Format(time.UnixDate))
+
 	tooLate := false
 	if instance.Spec.StartingDeadlineSeconds != nil {
 		tooLate = missedRun.Add(time.Duration(*instance.Spec.StartingDeadlineSeconds) * time.Second).Before(time.Now())
