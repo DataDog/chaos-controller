@@ -119,6 +119,7 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	disruptionCreated, err := r.createDisruption(ctx, instance, missedRun)
+
 	if err != nil {
 		r.log.Warnw(fmt.Sprintf("failed to create a disruption, scheduling next check in %s", requeueTime), "err", err)
 		return scheduledResult, err
@@ -403,6 +404,10 @@ func (r *DisruptionScheduleReconciler) createDisruption(ctx context.Context, ins
 	disruption.Labels[DisruptionScheduleNameLabel] = instance.Name
 
 	// overwriting selectors
+	if disruption.Spec.Selector == nil {
+		disruption.Spec.Selector = make(map[string]string)
+	}
+
 	for k, v := range selectors {
 		disruption.Spec.Selector[k] = v
 	}
