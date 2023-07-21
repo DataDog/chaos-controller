@@ -86,42 +86,46 @@ func (r *DisruptionScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	scheduledResult := ctrl.Result{RequeueAfter: time.Until(nextRun)} // save this so we can re-use it elsewhere
-	r.log.Infow("upcoming disruption details", "nextRun", nextRun.Format(time.UnixDate), "currentTime", time.Now().Format(time.UnixDate))
+	// Calculate the requeue time
+	scheduledResult := ctrl.Result{RequeueAfter: time.Until(nextRun)}
+	requeueTime := scheduledResult.RequeueAfter.Round(time.Second)
+
+	r.log.Infow("calculated next scheduled run", "nextRun", nextRun.Format(time.UnixDate), "now", time.Now().Format(time.UnixDate))
 
 	if missedRun.IsZero() {
-		r.log.Infow("no upcoming scheduled times, sleeping until next")
-		return ctrl.Result{RequeueAfter: time.Until(nextRun)}, nil
-	}
-
-	if len(disruptions.Items) > 0 {
-		r.log.Infow("multiple disruptions cannot run at the same time, skipping", "numActiveDisruptions", len(disruptions.Items))
+		r.log.Infow(fmt.Sprintf("no missed runs detected, scheduling next check in %s", requeueTime))
 		return scheduledResult, nil
 	}
 
+	if len(disruptions.Items) > 0 {
+		r.log.Infow(fmt.Sprintf("cannot start a new disruption as a prior one is still running, scheduling next check in %s", requeueTime), "numActiveDisruptions", len(disruptions.Items))
+		return scheduledResult, nil
+	}
+
+	r.log.Infow("processing current run", "currentRun", missedRun.Format(time.UnixDate))
 	tooLate := false
 	if instance.Spec.StartingDeadlineSeconds != nil {
 		tooLate = missedRun.Add(time.Duration(*instance.Spec.StartingDeadlineSeconds) * time.Second).Before(time.Now())
 	}
 
 	if tooLate {
-		r.log.Infow("missed starting deadline for last run, sleeping till next")
+		r.log.Infow(fmt.Sprintf("missed schedule to start a disruption at %s, scheduling next check in %s", missedRun, requeueTime))
 		return scheduledResult, nil
 	}
 
 	disruptionCreated, err := r.createDisruption(ctx, instance, missedRun)
 	if err != nil {
-		r.log.Errorw("unable to create Disruption for DisruptionSchedule", "err", err)
+		r.log.Warnw(fmt.Sprintf("failed to create a disruption, scheduling next check in %s", requeueTime), "err", err)
 		return scheduledResult, err
 	}
 
 	if disruptionCreated {
-		r.log.Infow("created Disruption for DisruptionSchedule run")
+		r.log.Infow("created Disruption")
 
 		instance.Status.LastScheduleTime = &metav1.Time{Time: missedRun}
 
 		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			r.log.Errorw("unable to update LastScheduleTime of DisruptionSchedule status", "err", err)
+			r.log.Errorw("unable to update LastScheduleTime of DisruptionSchedule status, requeue", "err", err)
 			return ctrl.Result{}, err
 		}
 	}
