@@ -243,12 +243,14 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 		args = append(args, "--services", fmt.Sprintf("%s;%s%s", service.Name, service.Namespace, ports))
 	}
 
-	if s.HTTP.Path != "" {
-		args = append(args, "--path", s.HTTP.Path)
-	}
+	if s.HTTP != nil {
+		if s.HTTP.Path != "" {
+			args = append(args, "--path", s.HTTP.Path)
+		}
 
-	if s.HTTP.Method != "" {
-		args = append(args, "--method", s.HTTP.Method)
+		if s.HTTP.Method != "" {
+			args = append(args, "--method", s.HTTP.Method)
+		}
 	}
 
 	return args
