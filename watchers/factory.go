@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -59,11 +60,12 @@ func (f factory) NewChaosPodWatcher(name string, disruption *v1beta1.Disruption,
 
 	// Create a new watcher configuration object
 	watcherConfig := WatcherConfig{
-		Name:         name,
-		Handler:      &handler,
-		ObjectType:   &corev1.Pod{},
-		CacheOptions: cacheOptions,
-		Log:          f.log,
+		Name:           name,
+		Handler:        &handler,
+		ObjectType:     &corev1.Pod{},
+		CacheOptions:   cacheOptions,
+		Log:            f.log,
+		NamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
 	}
 
 	return NewWatcher(watcherConfig, cacheMock, nil)
@@ -89,11 +91,12 @@ func (f factory) NewDisruptionTargetWatcher(name string, enableObserver bool, di
 
 	// Create a new watcher configuration object
 	watcherConfig := WatcherConfig{
-		Name:         name,
-		Handler:      &handler,
-		ObjectType:   &corev1.Pod{},
-		CacheOptions: cacheOptions,
-		Log:          f.log,
+		Name:           name,
+		Handler:        &handler,
+		ObjectType:     &corev1.Pod{},
+		CacheOptions:   cacheOptions,
+		Log:            f.log,
+		NamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
 	}
 
 	return NewWatcher(watcherConfig, cacheMock, nil)

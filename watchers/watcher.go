@@ -54,7 +54,7 @@ type WatcherConfig struct {
 	Name string
 
 	// Namespace of the resource to watch.
-	Namespace types.NamespacedName
+	NamespacedName types.NamespacedName
 
 	// ObjectType of the object to watch.
 	ObjectType client.Object
@@ -115,7 +115,7 @@ func NewWatcher(config WatcherConfig, cacheMock k8scontrollercache.Cache, cacheC
 	// Used by unit test to allow mocking
 	if cacheContextMockFunc != nil {
 		cacheCtx, cacheCancelFunc := cacheContextMockFunc()
-		watcherInstance.ctxTuple = CtxTuple{cacheCancelFunc, cacheCtx, config.Namespace}
+		watcherInstance.ctxTuple = CtxTuple{cacheCancelFunc, cacheCtx, config.NamespacedName}
 	}
 
 	return &watcherInstance, nil
@@ -175,7 +175,7 @@ func (w *watcher) Start() error {
 
 	// create context and cancel function for the watcher
 	cacheCtx, cacheCancelFunc := context.WithCancel(context.Background())
-	w.ctxTuple = CtxTuple{cacheCancelFunc, cacheCtx, w.config.Namespace}
+	w.ctxTuple = CtxTuple{cacheCancelFunc, cacheCtx, w.config.NamespacedName}
 
 	// start the cache in a goroutine
 	go func() {

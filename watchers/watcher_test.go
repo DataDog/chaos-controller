@@ -8,6 +8,8 @@ package watchers_test
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/DataDog/chaos-controller/watchers"
 	. "github.com/onsi/ginkgo/v2"
@@ -19,7 +21,6 @@ import (
 	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"sync"
 )
 
 type CacheMock struct {
@@ -95,12 +96,12 @@ var _ = Describe("watcher", func() {
 
 	JustBeforeEach(func() {
 		var config = watchers.WatcherConfig{
-			Name:         watcherName,
-			Handler:      handlerMock,
-			ObjectType:   targetObjectType,
-			Namespace:    namespaceName,
-			CacheOptions: k8scache.Options{},
-			Log:          logger,
+			Name:           watcherName,
+			Handler:        handlerMock,
+			ObjectType:     targetObjectType,
+			NamespacedName: namespaceName,
+			CacheOptions:   k8scache.Options{},
+			Log:            logger,
 		}
 
 		watcher, err = watchers.NewWatcher(config, &cacheMock, cacheContextFunc)
@@ -131,6 +132,10 @@ var _ = Describe("watcher", func() {
 				cacheMock.Wg.Add(1)
 				err = watcher.Start()
 				cacheMock.Wg.Wait()
+
+				ctxTuple, _ := watcher.GetContextTuple()
+				Expect(ctxTuple.DisruptionNamespacedName.Name).Should(Equal(namespaceName.Name))
+				Expect(ctxTuple.DisruptionNamespacedName.Namespace).Should(Equal(namespaceName.Namespace))
 			})
 		})
 
