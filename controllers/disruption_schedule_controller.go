@@ -154,11 +154,10 @@ func (r *DisruptionScheduleReconciler) updateLastScheduleTime(ctx context.Contex
 	mostRecentScheduleTime := r.getMostRecentScheduleTime(disruptions) // find the last run so we can update the status
 	if mostRecentScheduleTime != nil {
 		instance.Status.LastScheduleTime = &metav1.Time{Time: *mostRecentScheduleTime}
-	} else {
-		instance.Status.LastScheduleTime = nil
+		return r.Client.Status().Update(ctx, instance)
 	}
 
-	return r.Client.Status().Update(ctx, instance)
+	return nil // No need to update if mostRecentScheduleTime is nil
 }
 
 // getMostRecentScheduleTime returns the pointer to the most recent scheduled time among a list of disruptions
