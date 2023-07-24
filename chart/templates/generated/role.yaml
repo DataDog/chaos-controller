@@ -19,6 +19,7 @@ rules:
     verbs:
       - create
       - delete
+      - get
       - list
       - patch
       - update
@@ -34,31 +35,6 @@ rules:
       - chaos.datadoghq.com
     resources:
       - disruptioncrons/status
-      - disruptions/status
-    verbs:
-      - patch
-      - update
-  - apiGroups:
-      - chaos.datadoghq.com
-    resources:
-      - disruptions
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - chaos.datadoghq.com
-    resources:
-      - disruptions/finalizers
-    verbs:
-      - update
-  - apiGroups:
-      - chaos.datadoghq.com
-    resources:
       - disruptions/status
     verbs:
       - get
