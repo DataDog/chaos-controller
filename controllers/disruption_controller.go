@@ -5,14 +5,15 @@
 
 package controllers
 
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers,verbs=update
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions;disruptioncrons,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status;disruptioncrons/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers;disruptioncrons/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;patch
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
+// +kubebuilder:rbac:groups=apps,resources=deployments;statefulsets,verbs=list;watch
 
 import (
 	"context"

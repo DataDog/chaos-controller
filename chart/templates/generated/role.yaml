@@ -4,8 +4,17 @@ metadata:
   name: chaos-controller
 rules:
   - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - statefulsets
+    verbs:
+      - list
+      - watch
+  - apiGroups:
       - chaos.datadoghq.com
     resources:
+      - disruptioncrons
       - disruptions
     verbs:
       - create
@@ -18,12 +27,14 @@ rules:
   - apiGroups:
       - chaos.datadoghq.com
     resources:
+      - disruptioncrons/finalizers
       - disruptions/finalizers
     verbs:
       - update
   - apiGroups:
       - chaos.datadoghq.com
     resources:
+      - disruptioncrons/status
       - disruptions/status
     verbs:
       - get

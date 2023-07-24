@@ -1,0 +1,23 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2023 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: DisruptionCron
+metadata:
+  name: network-drop
+  namespace: chaos-demo
+  annotations:
+    chaos.datadoghq.com/environment: "lima"
+spec:
+  schedule: "*/15 * * * *"
+  targetResource:
+    kind: deployment
+    name: demo-curl
+  disruptionTemplate:
+    level: pod
+    count: 1
+    network:
+      drop: 100 # percentage of outgoing packets to drop
+    duration: 10s # disruption will time out after 10 seconds
