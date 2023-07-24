@@ -398,7 +398,7 @@ func (r *DisruptionCronReconciler) getSelectors(ctx context.Context, instance *c
 // - error: An error if any operation fails, such as when selectors of the target resource retrieval fails.
 func (r *DisruptionCronReconciler) getDisruptionFromTemplate(ctx context.Context, instance *chaosv1beta1.DisruptionCron, scheduledTime time.Time) (*chaosv1beta1.Disruption, error) {
 	// Disruption names are deterministic for a given nominal start time to avoid creating the same disruption more than once
-	name := fmt.Sprintf("chaos-disruption-cron-%s", instance.Name)
+	name := fmt.Sprintf("disruption-cron-%s", instance.Name)
 
 	disruption := &chaosv1beta1.Disruption{
 		ObjectMeta: metav1.ObjectMeta{
