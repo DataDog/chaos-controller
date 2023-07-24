@@ -225,6 +225,32 @@ I recommend to read the `Network Disruption implementation for pod level` to und
 - a **second prio qdisc** will be created and attached to the first one. It'll be used to apply the second eBPF filter, filtering on method and path.
 - a **third prio qdisc** will be created and attached to the second one. It'll be used to apply the third filter, filtering on packet mark to identify packets coming from the targeted process.
 
+## How to debug tc eBPF program?
+
+> Manually
+
+- The **first step** is to apply the network disruption with a custom HTTP **path** and/or **method** like:
+```
+spec:
+level: pod
+selector:
+app: demo
+count: 1
+network:
+hosts:
+- 10.0.1.254/31
+port: 80
+protocol: tcp
+http:
+method: get <-- eBPF filter
+path: /test <-- eBPF filter
+flow: egress
+delay: 1000
+delayJitter: 5
+```
+- The **next step**  is to mount the network of the targeted container `nsenter --target PID --net`
+- The **last step** is to execute the `tc exec bpf debug` command to display print of the eBPF program.
+
 ## More documentation about `tc`
 
 * [tc](https://linux.die.net/man/8/tc)
