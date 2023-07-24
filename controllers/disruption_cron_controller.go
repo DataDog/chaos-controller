@@ -42,26 +42,27 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	instance := &chaosv1beta1.DisruptionCron{}
 
-	// retrieve a DisruptionCron instance
+	// Fetch DisruptionCron instance
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if !instance.DeletionTimestamp.IsZero() {
-		// NOTE: add a finalizer if anything needs to be written here
-		// The DisruptionCron is being deleted.
+		// Add finalizer here if required
 		return ctrl.Result{}, nil
 	}
 
+	// Update the DisruptionCron status based on the presence of the target resource
+	// If the target resource has been missing for longer than the TargetResourceMissingThreshold, delete the instance
 	targetResourceExists, instanceDeleted, err := r.updateTargetResourcePreviouslyMissing(ctx, instance)
 	if err != nil {
-		// Error occurred during status update or deletion, requeue
+		// Log error and requeue if status update or deletion fails
 		r.log.Errorw("failed to handle target resource status", "err", err)
 		return ctrl.Result{}, err
 	}
 
 	if instanceDeleted {
-		// The instance has been deleted, reconciliation can be skipped
+		// Skip reconciliation since the instance has been deleted
 		return ctrl.Result{}, nil
 	}
 
@@ -70,27 +71,32 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
+	// Update the DisruptionCron status with the time when the last disruption was successfully scheduled
 	if err := r.updateLastScheduleTime(ctx, instance, disruptions); err != nil {
 		r.log.Errorw("unable to update LastScheduleTime of DisruptionCron status", "err", err)
 		return ctrl.Result{}, err
 	}
 
-	// Get the next scheduled run, or the time of the unproccessed run
-	// If there are multiple unmet start times, only start last one
+	// Get next scheduled run or time of unprocessed run
+	// If multiple unmet start times exist, start the last one
 	missedRun, nextRun, err := r.getNextSchedule(instance, time.Now())
 	if err != nil {
 		r.log.Errorw("unable to figure out DisruptionCron schedule", "err", err)
-		// we don't really care about requeuing until we get an update that
-		// fixes the schedule, so don't return an error
+		// Don't requeue until schedule update is received
 		return ctrl.Result{}, nil
 	}
 
-	// Calculate the requeue time
+	// Calculate next requeue time
 	scheduledResult := ctrl.Result{RequeueAfter: time.Until(nextRun)}
 	requeueTime := scheduledResult.RequeueAfter.Round(time.Second)
 
 	r.log.Infow("calculated next scheduled run", "nextRun", nextRun.Format(time.UnixDate), "now", time.Now().Format(time.UnixDate))
 
+	// Run a new disruption if the following conditions are met:
+	// 1. It's on schedule
+	// 2. The target resource is available
+	// 3. It's not blocked by another disruption already running
+	// 4. It's not past the deadline
 	if missedRun.IsZero() {
 		r.log.Infow(fmt.Sprintf("no missed runs detected, scheduling next check in %s", requeueTime))
 		return scheduledResult, nil
@@ -106,8 +112,6 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return scheduledResult, nil
 	}
 
-	r.log.Infow("processing current run", "currentRun", missedRun.Format(time.UnixDate))
-
 	tooLate := false
 	if instance.Spec.StartingDeadlineSeconds != nil {
 		tooLate = missedRun.Add(time.Duration(*instance.Spec.StartingDeadlineSeconds) * time.Second).Before(time.Now())
@@ -118,6 +122,9 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return scheduledResult, nil
 	}
 
+	r.log.Infow("processing current run", "currentRun", missedRun.Format(time.UnixDate))
+
+	// Create disruption for current run
 	disruptionCreated, err := r.createDisruption(ctx, instance, missedRun)
 
 	if err != nil {
@@ -125,6 +132,13 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return scheduledResult, err
 	}
 
+	// ------------------------------------------------------------------ //
+	// If this process restarts at this point (after posting a disruption, but
+	// before updating the status), we might try to start the disruption again
+	// the next time. To prevent this, we use the same disruption name for every
+	// execution, acting as a lock to prevent creating the disruption twice.
+
+	// Add the just-started disruption to the status
 	if disruptionCreated {
 		r.log.Infow("created Disruption")
 
@@ -139,6 +153,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return scheduledResult, nil
 }
 
+// getChildDisruptions fetches all disruptions associated with the given DisruptionCron instance.
+// Most of the time, this will return an empty list as disruptions are typically short-lived objects.
 func (r *DisruptionCronReconciler) getChildDisruptions(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (*chaosv1beta1.DisruptionList, error) {
 	disruptions := &chaosv1beta1.DisruptionList{}
 	labelSelector := labels.SelectorFromSet(labels.Set{DisruptionCronNameLabel: instance.Name})
@@ -151,7 +167,8 @@ func (r *DisruptionCronReconciler) getChildDisruptions(ctx context.Context, inst
 	return disruptions, nil
 }
 
-// updateLastScheduleTime updates the LastScheduleTime in the status of a DisruptionCron instance based on the most recent schedule time among the given disruptions
+// updateLastScheduleTime updates the LastScheduleTime in the status of a DisruptionCron instance
+// based on the most recent schedule time among the given disruptions.
 func (r *DisruptionCronReconciler) updateLastScheduleTime(ctx context.Context, instance *chaosv1beta1.DisruptionCron, disruptions *chaosv1beta1.DisruptionList) error {
 	mostRecentScheduleTime := r.getMostRecentScheduleTime(disruptions) // find the last run so we can update the status
 	if mostRecentScheduleTime != nil {
@@ -162,7 +179,7 @@ func (r *DisruptionCronReconciler) updateLastScheduleTime(ctx context.Context, i
 	return nil // No need to update if mostRecentScheduleTime is nil
 }
 
-// getMostRecentScheduleTime returns the pointer to the most recent scheduled time among a list of disruptions
+// getMostRecentScheduleTime returns the most recent scheduled time from a list of disruptions.
 func (r *DisruptionCronReconciler) getMostRecentScheduleTime(disruptions *chaosv1beta1.DisruptionList) *time.Time {
 	var mostRecentScheduleTime *time.Time
 
@@ -200,10 +217,10 @@ func (r *DisruptionCronReconciler) getScheduledTimeForDisruption(disruption *cha
 	return &timeParsed, nil
 }
 
-// getTargetResource retrieves the target resource specified in the DisruptionCron.
+// getTargetResource retrieves the target resource specified in the DisruptionCron instance.
 // It returns two values:
-// - 'client.Object': Represents the target resource (Deployment or StatefulSet).
-// - 'error': Any error encountered during retrieval.
+// - client.Object: Represents the target resource (Deployment or StatefulSet).
+// - error: Any error encountered during retrieval.
 func (r *DisruptionCronReconciler) getTargetResource(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (client.Object, error) {
 	var targetObj client.Object
 
@@ -224,8 +241,8 @@ func (r *DisruptionCronReconciler) getTargetResource(ctx context.Context, instan
 
 // checkTargetResourceExists checks whether the target resource exists.
 // It returns two values:
-// - 'bool': Indicates whether the target resource is currently found.
-// - 'error': Represents any error that occurred during the execution of the function.
+// - bool: Indicates whether the target resource is currently found.
+// - error: Represents any error that occurred during the execution of the function.
 func (r *DisruptionCronReconciler) checkTargetResourceExists(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (bool, error) {
 	_, err := r.getTargetResource(ctx, instance)
 
@@ -238,11 +255,11 @@ func (r *DisruptionCronReconciler) checkTargetResourceExists(ctx context.Context
 	return true, nil
 }
 
-// updateTargetResourcePreviouslyMissing is responsible for updating the status when the target resource was previously missing.
+// updateTargetResourcePreviouslyMissing updates the status when the target resource was previously missing.
 // The function returns three values:
-// - 'targetResourceExists' (bool): Indicates whether the target resource is currently found.
-// - 'disruptionCronDeleted' (bool): Indicates whether the disruption scron was deleted due to the target resource being missing for more than the expiration duration.
-// - 'error': Represents any error that occurred during the execution of the function.
+// - bool: Indicates whether the target resource is currently found.
+// - bool: Indicates whether the disruptioncron was deleted due to the target resource being missing for more than the expiration duration.
+// - error: Represents any error that occurred during the execution of the function.
 func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (bool, bool, error) {
 	disruptionCronDeleted := false
 	targetResourceExists, err := r.checkTargetResourceExists(ctx, instance)
@@ -353,9 +370,9 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 	return lastMissed, sched.Next(now), nil
 }
 
-// getSelectors retrieves the labels of the target resource specified in the DisruptionCron.
+// getSelectors retrieves the labels of the target resource specified in the DisruptionCron instance.
 // The function returns two values:
-// - labels.Set: A set of labels of the target resource which will be used as the selectors for Disruption.
+// - labels.Set: A set of labels of the target resource which will be used as the selectors for a Disruption.
 // - error: An error if the target resource or labels retrieval fails.
 func (r *DisruptionCronReconciler) getSelectors(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (labels.Set, error) {
 	targetObj, err := r.getTargetResource(ctx, instance)
