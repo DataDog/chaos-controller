@@ -248,8 +248,8 @@ var _ = Describe("Failure", func() {
 			DelayJitter:    100,
 			BandwidthLimit: 10000,
 			HTTP: &v1beta1.NetworkHTTPFilters{
-				Method: v1beta1.DefaultNetworkMethodFilter,
-				Path:   v1beta1.DefaultNetworkPathFilter,
+				Method: v1beta1.DefaultHTTPMethodFilter,
+				Path:   v1beta1.DefaultHTTPPathFilter,
 			},
 		}
 	})

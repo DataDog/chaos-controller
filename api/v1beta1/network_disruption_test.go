@@ -230,15 +230,21 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 		})
 	})
 	When("'HasHTTPFilters' method is called", func() {
+		Context("with a nil NetworkHTTPFilters field", func() {
+			It("should return false", func() {
+				disruptionSpec := NetworkDisruptionSpec{}
+
+				// Action && Assert
+				Expect(disruptionSpec.HasHTTPFilters()).To(BeFalse())
+			})
+		})
 		Context("with default method and path", func() {
 			It("should return false", func() {
 				// Arrange
 				disruptionSpec := NetworkDisruptionSpec{
-					Hosts:    []NetworkDisruptionHostSpec{},
-					Services: []NetworkDisruptionServiceSpec{},
 					HTTP: &NetworkHTTPFilters{
-						Method: DefaultNetworkMethodFilter,
-						Path:   DefaultNetworkPathFilter,
+						Method: DefaultHTTPMethodFilter,
+						Path:   DefaultHTTPPathFilter,
 					},
 				}
 
@@ -259,8 +265,8 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 				// Action && Assert
 				Expect(disruptionSpec.HasHTTPFilters()).Should(BeTrue())
 			},
-			Entry("custom method", DefaultNetworkPathFilter, "get"),
-			Entry("custom path", "/test", DefaultNetworkMethodFilter),
+			Entry("custom method", DefaultHTTPPathFilter, "get"),
+			Entry("custom path", "/test", DefaultHTTPMethodFilter),
 			Entry("custom path and method", "/test", "delete"),
 		)
 	})
