@@ -224,15 +224,15 @@ func main() {
 
 	go disruptionReconciler.ReportMetrics()
 
-	// create disruption schedule reconciler
-	disruptionScheduleReconciler := &controllers.DisruptionScheduleReconciler{
+	// create disruption cron reconciler
+	disruptionCronReconciler := &controllers.DisruptionCronReconciler{
 		Client:  mgr.GetClient(),
 		BaseLog: logger,
 		Scheme:  mgr.GetScheme(),
 	}
 
-	if err := disruptionScheduleReconciler.SetupWithManager(mgr); err != nil {
-		logger.Errorw("unable to create controller", "controller", "DisruptionSchedule", "error", err)
+	if err := disruptionCronReconciler.SetupWithManager(mgr); err != nil {
+		logger.Errorw("unable to create controller", "controller", "DisruptionCron", "error", err)
 		os.Exit(1) //nolint:gocritic
 	}
 

@@ -3,22 +3,22 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.12.0
-  name: disruptionschedules.chaos.datadoghq.com
+  name: disruptioncrons.chaos.datadoghq.com
 spec:
   group: chaos.datadoghq.com
   names:
-    kind: DisruptionSchedule
-    listKind: DisruptionScheduleList
-    plural: disruptionschedules
+    kind: DisruptionCron
+    listKind: DisruptionCronList
+    plural: disruptioncrons
     shortNames:
-      - disch
-    singular: disruptionschedule
+      - dicron
+    singular: disruptioncron
   scope: Namespaced
   versions:
     - name: v1beta1
       schema:
         openAPIV3Schema:
-          description: DisruptionSchedule is the Schema for the disruptions API
+          description: DisruptionCron is the Schema for the disruptioncron API
           properties:
             apiVersion:
               description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
@@ -29,10 +29,10 @@ spec:
             metadata:
               type: object
             spec:
-              description: DisruptionScheduleSpec defines the desired state of DisruptionSchedule
+              description: DisruptionCronSpec defines the desired state of DisruptionCron
               properties:
                 disruptionTemplate:
-                  description: Specifies the Disruption that will be created when executing a DisruptionShedule.
+                  description: Specifies the Disruption that will be created when executing a disruptioncron.
                   properties:
                     advancedSelector:
                       items:
@@ -557,7 +557,7 @@ spec:
                 - targetResource
               type: object
             status:
-              description: DisruptionScheduleStatus defines the observed state of DisruptionSchedule
+              description: DisruptionCronStatus defines the observed state of DisruptionCron
               properties:
                 TargetResourcePreviouslyMissing:
                   description: Time when the target resource was previously missing.

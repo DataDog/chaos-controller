@@ -14,11 +14,11 @@ rules:
   - apiGroups:
       - chaos.datadoghq.com
     resources:
+      - disruptioncrons
       - disruptions
     verbs:
       - create
       - delete
-      - get
       - list
       - patch
       - update
@@ -26,11 +26,26 @@ rules:
   - apiGroups:
       - chaos.datadoghq.com
     resources:
+      - disruptioncrons/finalizers
+      - disruptions/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - chaos.datadoghq.com
+    resources:
+      - disruptioncrons/status
+      - disruptions/status
+    verbs:
+      - patch
+      - update
+  - apiGroups:
+      - chaos.datadoghq.com
+    resources:
       - disruptions
-      - disruptionschedules
     verbs:
       - create
       - delete
+      - get
       - list
       - patch
       - update
@@ -44,24 +59,9 @@ rules:
   - apiGroups:
       - chaos.datadoghq.com
     resources:
-      - disruptions/finalizers
-      - disruptionschedules/finalizers
-    verbs:
-      - update
-  - apiGroups:
-      - chaos.datadoghq.com
-    resources:
       - disruptions/status
     verbs:
       - get
-      - patch
-      - update
-  - apiGroups:
-      - chaos.datadoghq.com
-    resources:
-      - disruptions/status
-      - disruptionschedules/status
-    verbs:
       - patch
       - update
   - apiGroups:

@@ -4,9 +4,9 @@
 # Copyright 2023 Datadog, Inc.
 
 apiVersion: chaos.datadoghq.com/v1beta1
-kind: DisruptionSchedule
+kind: DisruptionCron
 metadata:
-  name: schedule-example
+  name: network-drop
   namespace: chaos-demo
   annotations:
     chaos.datadoghq.com/environment: "lima"
@@ -20,4 +20,4 @@ spec:
     count: 1
     network:
       drop: 100 # percentage of outgoing packets to drop
-    duration: 10s # Disruption will time out after 10 seconds
+    duration: 10s # disruption will time out after 10 seconds

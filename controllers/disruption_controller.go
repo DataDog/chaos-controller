@@ -60,9 +60,9 @@ import (
 	"github.com/DataDog/chaos-controller/env"
 )
 
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions;disruptionschedules,verbs=list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status;disruptionschedules/status,verbs=update;patch
-// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers;disruptionschedules/finalizers,verbs=update
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions;disruptioncrons,verbs=list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status;disruptioncrons/status,verbs=update;patch
+// +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/finalizers;disruptioncrons/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=events,verbs=list;watch;create;patch
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods/status,verbs=update;patch

@@ -8,32 +8,32 @@ package v1beta1
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 func init() {
-	SchemeBuilder.Register(&DisruptionSchedule{}, &DisruptionScheduleList{})
+	SchemeBuilder.Register(&DisruptionCron{}, &DisruptionCronList{})
 }
 
 //+kubebuilder:object:root=true
 
-// DisruptionSchedule is the Schema for the disruptions API
-// +kubebuilder:resource:shortName=disch
+// DisruptionCron is the Schema for the disruptioncron API
+// +kubebuilder:resource:shortName=dicron
 // +kubebuilder:subresource:status
-type DisruptionSchedule struct {
+type DisruptionCron struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              DisruptionScheduleSpec   `json:"spec,omitempty"`
-	Status            DisruptionScheduleStatus `json:"status,omitempty"`
+	Spec              DisruptionCronSpec   `json:"spec,omitempty"`
+	Status            DisruptionCronStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// DisruptionScheduleList contains a list of DisruptionSchedule
-type DisruptionScheduleList struct {
+// DisruptionCronList contains a list of DisruptionCron
+type DisruptionCronList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DisruptionSchedule `json:"items"`
+	Items           []DisruptionCron `json:"items"`
 }
 
-// DisruptionScheduleSpec defines the desired state of DisruptionSchedule
-type DisruptionScheduleSpec struct {
+// DisruptionCronSpec defines the desired state of DisruptionCron
+type DisruptionCronSpec struct {
 	// +kubebuilder:validation:MinLength=0
 	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
@@ -54,7 +54,7 @@ type DisruptionScheduleSpec struct {
 
 	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
-	// Specifies the Disruption that will be created when executing a DisruptionShedule.
+	// Specifies the Disruption that will be created when executing a disruptioncron.
 	DisruptionTemplate DisruptionSpec `json:"disruptionTemplate"`
 }
 
@@ -75,8 +75,8 @@ type TargetResourceSpec struct {
 	Name string `json:"name"`
 }
 
-// DisruptionScheduleStatus defines the observed state of DisruptionSchedule
-type DisruptionScheduleStatus struct {
+// DisruptionCronStatus defines the observed state of DisruptionCron
+type DisruptionCronStatus struct {
 	// The last time when the disruption was last successfully scheduled.
 	// +nullable
 	LastScheduleTime *metav1.Time `json:"lastScheduleTime,omitempty"`
