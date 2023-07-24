@@ -201,13 +201,13 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
-		ticker := time.NewTicker(time.Minute)
+		ticker := time.NewTicker(time.Minute * 5)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ticker.C:
-				logger.Debugw("Initiate the removal of all expired watchers.")
+				logger.Debugw("Check if we need to remove of any expired watchers...")
 				r.DisruptionsWatchersManager.RemoveAllExpiredWatchers()
 
 			case <-ctx.Done():
