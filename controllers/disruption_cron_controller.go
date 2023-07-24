@@ -125,12 +125,19 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	r.log.Infow("processing current run", "currentRun", missedRun.Format(time.UnixDate))
 
 	// Create disruption for current run
-	disruptionCreated, err := r.createDisruption(ctx, instance, missedRun)
-
+	disruption, err := r.getDisruptionFromTemplate(ctx, instance, missedRun)
 	if err != nil {
-		r.log.Warnw(fmt.Sprintf("failed to create a disruption, scheduling next check in %s", requeueTime), "err", err)
-		return scheduledResult, err
+		r.log.Warnw("unable to construct disruption from template", "err", err)
+		// Don't requeue until update to the spec is received
+		return scheduledResult, nil
 	}
+
+	if err := r.Client.Create(ctx, disruption); err != nil {
+		r.log.Warnw("unable to create Disruption for DisruptionCron", "disruption", disruption, "err", err)
+		return ctrl.Result{}, err
+	}
+
+	r.log.Infow("created Disruption for DisruptionCron run", "disruptionName", disruption.Name)
 
 	// ------------------------------------------------------------------ //
 	// If this process restarts at this point (after posting a disruption, but
@@ -138,16 +145,12 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// the next time. To prevent this, we use the same disruption name for every
 	// execution, acting as a lock to prevent creating the disruption twice.
 
-	// Add the just-started disruption to the status
-	if disruptionCreated {
-		r.log.Infow("created Disruption")
+	// Add the start time of the just initiated disruption to the status
+	instance.Status.LastScheduleTime = &metav1.Time{Time: missedRun}
 
-		instance.Status.LastScheduleTime = &metav1.Time{Time: missedRun}
-
-		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			r.log.Errorw("unable to update LastScheduleTime of DisruptionCron status, requeue", "err", err)
-			return ctrl.Result{}, err
-		}
+	if err := r.Client.Status().Update(ctx, instance); err != nil {
+		r.log.Warnw("unable to update LastScheduleTime of DisruptionCron status", "err", err)
+		return ctrl.Result{}, err
 	}
 
 	return scheduledResult, nil
@@ -388,13 +391,13 @@ func (r *DisruptionCronReconciler) getSelectors(ctx context.Context, instance *c
 	return labels, nil
 }
 
-// createDisruption creates a Disruption object based on the provided DisruptionCron,
-// sets the necessary metadata and spec fields, and creates the object in the Kubernetes cluster.
+// getDisruptionFromTemplate creates a Disruption object based on a DisruptionCron instance and a scheduledTime.
+// The selectors of the Disruption object are overwritten with the selectors of the target resource.
 // The function returns two values:
-// - bool: A boolean indicating whether the creation was successful.
-// - error: An error if any operation fails.
-func (r *DisruptionCronReconciler) createDisruption(ctx context.Context, instance *chaosv1beta1.DisruptionCron, scheduledTime time.Time) (bool, error) {
-	created := false
+// - *chaosv1beta1.Disruption: A pointer to the created Disruption object. The object is not created in the Kubernetes cluster.
+// - error: An error if any operation fails, such as when selectors of the target resource retrieval fails.
+func (r *DisruptionCronReconciler) getDisruptionFromTemplate(ctx context.Context, instance *chaosv1beta1.DisruptionCron, scheduledTime time.Time) (*chaosv1beta1.Disruption, error) {
+	// Disruption names are deterministic for a given nominal start time to avoid creating the same disruption more than once
 	name := fmt.Sprintf("chaos-disruption-cron-%s", instance.Name)
 
 	disruption := &chaosv1beta1.Disruption{
@@ -413,14 +416,27 @@ func (r *DisruptionCronReconciler) createDisruption(ctx context.Context, instanc
 
 	disruption.Annotations[ScheduledAtAnnotation] = scheduledTime.Format(time.RFC3339)
 
-	selectors, err := r.getSelectors(ctx, instance)
-	if err != nil {
-		return created, err
-	}
-
 	disruption.Labels[DisruptionCronNameLabel] = instance.Name
 
-	// overwriting selectors
+	if err := r.overwriteDisruptionSelectors(ctx, instance, disruption); err != nil {
+		return nil, err
+	}
+
+	if err := ctrl.SetControllerReference(instance, disruption, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return disruption, nil
+}
+
+// overwriteDisruptionSelectors replaces the Disruption's selectors with the ones from the target resource
+func (r *DisruptionCronReconciler) overwriteDisruptionSelectors(ctx context.Context, instance *chaosv1beta1.DisruptionCron, disruption *chaosv1beta1.Disruption) error {
+	// Get selectors from target resource
+	selectors, err := r.getSelectors(ctx, instance)
+	if err != nil {
+		return err
+	}
+
 	if disruption.Spec.Selector == nil {
 		disruption.Spec.Selector = make(map[string]string)
 	}
@@ -429,17 +445,7 @@ func (r *DisruptionCronReconciler) createDisruption(ctx context.Context, instanc
 		disruption.Spec.Selector[k] = v
 	}
 
-	if err := ctrl.SetControllerReference(instance, disruption, r.Scheme); err != nil {
-		return created, err
-	}
-
-	if err := r.Client.Create(ctx, disruption); err != nil {
-		return created, err
-	}
-
-	created = true
-
-	return created, nil
+	return nil
 }
 
 // SetupWithManager setups the current reconciler with the given manager
