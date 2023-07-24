@@ -207,7 +207,7 @@ func main() {
 		for {
 			select {
 			case <-ticker.C:
-				logger.Debugw("Check if we need to remove of any expired watchers...")
+				logger.Debugw("Check if we need to remove any expired watchers...")
 				r.DisruptionsWatchersManager.RemoveAllExpiredWatchers()
 
 			case <-ctx.Done():
