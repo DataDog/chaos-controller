@@ -75,11 +75,8 @@ type tc struct {
 }
 
 func (t *tc) ConfigBPFFilter(cmd executor, args ...string) error {
-	if _, _, err := cmd.Run(args); err != nil {
-		return err
-	}
-
-	return nil
+	_, _, err := cmd.Run(args)
+	return err
 }
 
 // NewTrafficController creates a standard traffic controller using tc
