@@ -27,6 +27,51 @@ func (_m *TrafficControllerMock) EXPECT() *TrafficControllerMock_Expecter {
 	return &TrafficControllerMock_Expecter{mock: &_m.Mock}
 }
 
+// AddBPFFilter provides a mock function with given fields: ifaces, parent, obj, flowid
+func (_m *TrafficControllerMock) AddBPFFilter(ifaces []string, parent string, obj string, flowid string) error {
+	ret := _m.Called(ifaces, parent, obj, flowid)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string, string, string, string) error); ok {
+		r0 = rf(ifaces, parent, obj, flowid)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// TrafficControllerMock_AddBPFFilter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddBPFFilter'
+type TrafficControllerMock_AddBPFFilter_Call struct {
+	*mock.Call
+}
+
+// AddBPFFilter is a helper method to define mock.On call
+//   - ifaces []string
+//   - parent string
+//   - obj string
+//   - flowid string
+func (_e *TrafficControllerMock_Expecter) AddBPFFilter(ifaces interface{}, parent interface{}, obj interface{}, flowid interface{}) *TrafficControllerMock_AddBPFFilter_Call {
+	return &TrafficControllerMock_AddBPFFilter_Call{Call: _e.mock.On("AddBPFFilter", ifaces, parent, obj, flowid)}
+}
+
+func (_c *TrafficControllerMock_AddBPFFilter_Call) Run(run func(ifaces []string, parent string, obj string, flowid string)) *TrafficControllerMock_AddBPFFilter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string), args[1].(string), args[2].(string), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *TrafficControllerMock_AddBPFFilter_Call) Return(_a0 error) *TrafficControllerMock_AddBPFFilter_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *TrafficControllerMock_AddBPFFilter_Call) RunAndReturn(run func([]string, string, string, string) error) *TrafficControllerMock_AddBPFFilter_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AddFilter provides a mock function with given fields: ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, prot, state, flowid
 func (_m *TrafficControllerMock) AddFilter(ifaces []string, parent string, handle string, srcIP *net.IPNet, dstIP *net.IPNet, srcPort int, dstPort int, prot protocol, state connState, flowid string) (uint32, error) {
 	ret := _m.Called(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, prot, state, flowid)
@@ -311,6 +356,63 @@ func (_c *TrafficControllerMock_ClearQdisc_Call) Return(_a0 error) *TrafficContr
 }
 
 func (_c *TrafficControllerMock_ClearQdisc_Call) RunAndReturn(run func([]string) error) *TrafficControllerMock_ClearQdisc_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ConfigBPFFilter provides a mock function with given fields: cmd, args
+func (_m *TrafficControllerMock) ConfigBPFFilter(cmd executor, args ...string) error {
+	_va := make([]interface{}, len(args))
+	for _i := range args {
+		_va[_i] = args[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, cmd)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(executor, ...string) error); ok {
+		r0 = rf(cmd, args...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// TrafficControllerMock_ConfigBPFFilter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConfigBPFFilter'
+type TrafficControllerMock_ConfigBPFFilter_Call struct {
+	*mock.Call
+}
+
+// ConfigBPFFilter is a helper method to define mock.On call
+//   - cmd executor
+//   - args ...string
+func (_e *TrafficControllerMock_Expecter) ConfigBPFFilter(cmd interface{}, args ...interface{}) *TrafficControllerMock_ConfigBPFFilter_Call {
+	return &TrafficControllerMock_ConfigBPFFilter_Call{Call: _e.mock.On("ConfigBPFFilter",
+		append([]interface{}{cmd}, args...)...)}
+}
+
+func (_c *TrafficControllerMock_ConfigBPFFilter_Call) Run(run func(cmd executor, args ...string)) *TrafficControllerMock_ConfigBPFFilter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(executor), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *TrafficControllerMock_ConfigBPFFilter_Call) Return(_a0 error) *TrafficControllerMock_ConfigBPFFilter_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *TrafficControllerMock_ConfigBPFFilter_Call) RunAndReturn(run func(executor, ...string) error) *TrafficControllerMock_ConfigBPFFilter_Call {
 	_c.Call.Return(run)
 	return _c
 }

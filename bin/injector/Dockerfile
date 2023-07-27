@@ -30,7 +30,6 @@ COPY --from=binaries /usr/lib/x86_64-linux-gn[u] /usr/lib/x86_64-linux-gnu/
 COPY --from=binaries /usr/bin/test /bin/sh
 
 ARG TARGETARCH
-ENV BPF_DISK_FAILURE_NAME "bpf-disk-failure-${TARGETARCH}"
 
 COPY injector_${TARGETARCH} /usr/local/bin/chaos-injector
 COPY injector_${TARGETARCH} /usr/local/bin/injector

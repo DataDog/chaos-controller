@@ -8,6 +8,7 @@ package v1beta1
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -24,7 +25,10 @@ const (
 	// When not specifying an index for the hashtable created when we use u32 filters, the default id for this hashtable is 0x800.
 	// However, the maximum id being 0xFFF, we can only have 2048 different ids, so 2048 tc filters with u32.
 	// https://github.com/torvalds/linux/blob/v5.19/net/sched/cls_u32.c#L689-L690
-	MaximumTCFilters = 2048
+	MaximumTCFilters         = 2048
+	MaxNetworkPathCharacters = 100
+	DefaultHTTPMethodFilter  = "ALL"
+	DefaultHTTPPathFilter    = "/"
 )
 
 // NetworkDisruptionSpec represents a network disruption injection
@@ -76,6 +80,16 @@ type NetworkDisruptionSpec struct {
 	// +kubebuilder:validation:Enum=egress;ingress
 	// +ddmark:validation:Enum=egress;ingress
 	DeprecatedFlow string `json:"flow,omitempty"`
+	// +nullable
+	HTTP *NetworkHTTPFilters `json:"http,omitempty"`
+}
+
+// NetworkHTTPFilters contains http filters
+type NetworkHTTPFilters struct {
+	// +kubebuilder:validation:Enum=all;delete;get;head;options;patch;post;put
+	// +ddmark:validation:Enum=all;delete;get;head;options;patch;post;put
+	Method string `json:"method,omitempty"`
+	Path   string `json:"path,omitempty"`
 }
 
 type NetworkDisruptionHostSpec struct {
@@ -134,6 +148,25 @@ type NetworkDisruptionCloudServiceSpec struct {
 	ConnState string `json:"connState,omitempty"`
 }
 
+// Validate validates args for the given http filters.
+func (s *NetworkHTTPFilters) Validate() error {
+	if s.Path != "" {
+		if len(s.Path) > MaxNetworkPathCharacters {
+			return fmt.Errorf("the path specification at the network disruption level is not valid; should not exceed 100 characters")
+		}
+
+		if regexp.MustCompile(`\s`).MatchString(s.Path) {
+			return fmt.Errorf("the path specification at the network disruption level is not valid; should not contains spaces")
+		}
+
+		if string(s.Path[0]) != DefaultHTTPPathFilter {
+			return fmt.Errorf("the path specification at the network disruption level is not valid; should start with a /")
+		}
+	}
+
+	return nil
+}
+
 // Validate validates args for the given disruption
 func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 	if k8sClient != nil {
@@ -161,6 +194,12 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 
 	if s.DeprecatedFlow != "" {
 		retErr = multierror.Append(retErr, fmt.Errorf("the flow specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
+	}
+
+	if s.HTTP != nil {
+		if err := s.HTTP.Validate(); err != nil {
+			retErr = multierror.Append(retErr, err)
+		}
 	}
 
 	return multierror.Prefix(retErr, "Network:")
@@ -202,6 +241,16 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 		}
 
 		args = append(args, "--services", fmt.Sprintf("%s;%s%s", service.Name, service.Namespace, ports))
+	}
+
+	if s.HTTP != nil {
+		if s.HTTP.Path != "" {
+			args = append(args, "--path", s.HTTP.Path)
+		}
+
+		if s.HTTP.Method != "" {
+			args = append(args, "--method", s.HTTP.Method)
+		}
 	}
 
 	return args
@@ -325,6 +374,11 @@ func (s *NetworkDisruptionSpec) Format() string {
 	networkDescription += filterDescriptions[len(filterDescriptions)-1]
 
 	return networkDescription
+}
+
+// HasHTTPFilters return true if a custom method or path is defined, else return false
+func (s *NetworkDisruptionSpec) HasHTTPFilters() bool {
+	return s.HTTP != nil && (s.HTTP.Method != DefaultHTTPMethodFilter || s.HTTP.Path != DefaultHTTPPathFilter)
 }
 
 // TransformToCloudMap for ease of computing when transforming the cloud services ip ranges to a list of hosts to disrupt

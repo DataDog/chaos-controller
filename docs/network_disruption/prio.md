@@ -152,6 +152,105 @@ We first filter for all packets related to `gateway IP` and `node IP` and send t
 
 Finally, we apply a filter to enqueue all packets to class `1:4` whenever the `destination IP` is encompassed by the `hosts` field (see [this documentation](../../docs/network_disruption/hosts-and-services.md) for more details). In this case, a filter is applied for `10.0.1.254/32` and another for `10.0.1.255/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0` and no traffic is ends up in class `2:1`.
 
+### Network Disruption implementation for pod level with eBPF filters
+
+> Requirements
+
+The Linux kernel must support eBPF. To verify if the kernel supports eBPF, the following options should be defined:
+
+```shell
+CONFIG_BPF=y
+CONFIG_HAVE_EBPF_JIT=y
+CONFIG_ARCH_WANT_DEFAULT_BPF_JIT=y
+CONFIG_BPF_SYSCALL=y
+CONFIG_BPF_JIT=y
+CONFIG_BPF_JIT_ALWAYS_ON=y
+CONFIG_BPF_JIT_DEFAULT_ON=y
+CONFIG_BPF_UNPRIV_DEFAULT_OFF=y
+CONFIG_BPF_LSM=y
+CONFIG_CGROUP_BPF=y
+CONFIG_IPV6_SEG6_BPF=y
+CONFIG_NETFILTER_XT_MATCH_BPF=m
+CONFIG_BPFILTER=y
+CONFIG_BPFILTER_UMH=m
+CONFIG_NET_CLS_BPF=m
+CONFIG_NET_ACT_BPF=m
+CONFIG_BPF_STREAM_PARSER=y
+CONFIG_LWTUNNEL_BPF=y
+CONFIG_BPF_EVENTS=y
+CONFIG_BPF_KPROBE_OVERRIDE=y
+CONFIG_TEST_BPF=m
+```
+
+Depending on your system, you'll find the kernel config in any one of these:
+- /proc/config.gz
+- /boot/config
+- /boot/config-$(uname -r)
+
+#### Pod level visualization
+
+Tc can use eBPF filters in order to intercept packets at the application layer and allow the access to the payload of packets.
+Network disruption used eBPF filters to apply disruption by filtering with `method` and/or `path`:
+
+Now, let us take the following pod level disruption spec with new filters:
+```
+spec:
+  level: pod
+  selector:
+    app: demo
+  count: 1
+  network:
+    hosts:
+      - 10.0.1.254/31
+    port: 80
+    protocol: tcp
+    http:
+        method: get <-- eBPF filter
+        path: /test <-- eBPF filter
+    flow: egress
+    delay: 1000
+    delayJitter: 5
+```
+
+In this example, the disruption will be applied only for requests with the `/test` **path prefix** and with the `get` **method**. All packets not matching criteria will not be disrupted.
+
+I recommend to read the `Network Disruption implementation for pod level` to understand the following schema:
+
+<p align="center"><kbd>
+    <img src="../../docs/img/network_prio/pod/filter_ebpf.png" height=330 width=650 />
+    <img src="../../docs/img/network_prio/pod/filter_ebpf-2.png" height=330 width=auto/>
+</kbd></p>
+
+- a **first prio qdisc** will be created and attached to root. It'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol.
+- a **second prio qdisc** will be created and attached to the first one. It'll be used to apply the second eBPF filter, filtering on method and path.
+- a **third prio qdisc** will be created and attached to the second one. It'll be used to apply the third filter, filtering on packet mark to identify packets coming from the targeted process.
+
+## How to debug tc eBPF program?
+
+> Manually
+
+- The **first step** is to apply the network disruption with a custom HTTP **path** and/or **method** like:
+```
+spec:
+level: pod
+selector:
+app: demo
+count: 1
+network:
+hosts:
+- 10.0.1.254/31
+port: 80
+protocol: tcp
+http:
+method: get <-- eBPF filter
+path: /test <-- eBPF filter
+flow: egress
+delay: 1000
+delayJitter: 5
+```
+- The **next step**  is to mount the network of the targeted container `nsenter --target PID --net`
+- The **last step** is to execute the `tc exec bpf debug` command to display print of the eBPF program.
+
 ## More documentation about `tc`
 
 * [tc](https://linux.die.net/man/8/tc)
