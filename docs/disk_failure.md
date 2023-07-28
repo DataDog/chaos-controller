@@ -130,6 +130,56 @@ spec:
     path: /
 ```
 
+### Override exit code
+
+It is possible to override the exit code of the `openat` syscall with the following spec:
+
+```yaml
+---
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: example
+  namespace: example
+spec:
+  level: pod
+  selector:
+    app: example
+  count: 1
+  containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
+    - container-1
+  diskFailure:
+    path: /
+    openat:
+      exit_code: EACCES # <-- Override the exit code by EACCES. Default: ENOENT
+```
+
+List of allowed exit codes:
+- EACCES
+- EDQUOT
+- EEXIST
+- EFAULT
+- EFBIG
+- EINTR
+- EISDIR
+- ELOOP
+- EMFILE
+- ENAMETOOLONG
+- ENFILE
+- ENODEV
+- ENOENT
+- ENOMEM
+- ENOSPC
+- ENOTDIR
+- ENXIO
+- EOVERFLOW
+- EPERM
+- EROFS
+- ETXTBSY
+- EWOULDBLOCK
+
+To know more about exit codes you can refer to this [page](https://linux.die.net/man/2/open) in the section `Errors` bellow `Return Value`.
+
 ## eBPF Architecture
 
 <p align="center">

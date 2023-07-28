@@ -89,6 +89,39 @@ spec:
                       description: DiskFailureSpec represents a disk failure disruption
                       nullable: true
                       properties:
+                        openat:
+                          description: OpenatSyscallSpec syscall specs
+                          nullable: true
+                          properties:
+                            exitCode:
+                              description: 'Refer to this documentation: https://linux.die.net/man/2/open'
+                              enum:
+                                - EACCES
+                                - EDQUOT
+                                - EEXIST
+                                - EFAULT
+                                - EFBIG
+                                - EINTR
+                                - EISDIR
+                                - ELOOP
+                                - EMFILE
+                                - ENAMETOOLONG
+                                - ENFILE
+                                - ENODEV
+                                - ENOENT
+                                - ENOMEM
+                                - ENOSPC
+                                - ENOTDIR
+                                - ENXIO
+                                - EOVERFLOW
+                                - EPERM
+                                - EROFS
+                                - ETXTBSY
+                                - EWOULDBLOCK
+                              type: string
+                          required:
+                            - exitCode
+                          type: object
                         path:
                           type: string
                       required:

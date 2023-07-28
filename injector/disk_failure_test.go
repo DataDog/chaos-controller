@@ -37,7 +37,7 @@ var _ = Describe("Failure", func() {
 		ctr = container.NewContainerMock(GinkgoT())
 
 		commandMock = NewBPFDiskFailureCommandMock(GinkgoT())
-		commandMock.EXPECT().Run(mock.Anything, mock.Anything).Return(nil)
+		commandMock.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		config = DiskFailureInjectorConfig{
 			Config: Config{
@@ -75,7 +75,27 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should start the eBPF Disk failure program", func() {
-				commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/")
+				commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/", 0)
+			})
+
+			Context("with custom OpenatSyscall exit code", func() {
+				BeforeEach(func() {
+					spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{ExitCode: "EACCES"}
+				})
+
+				It("should start with a valid exit code", func() {
+					commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/", 13)
+				})
+			})
+
+			Context("with an empty custom OpenatSyscall exit code", func() {
+				BeforeEach(func() {
+					spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{}
+				})
+
+				It("should start with a valid exit code", func() {
+					commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/", 0)
+				})
 			})
 		})
 
@@ -86,7 +106,27 @@ var _ = Describe("Failure", func() {
 
 			It("should start the eBPF Disk failure program", func() {
 				ctr.AssertNumberOfCalls(GinkgoT(), "PID", 0)
-				commandMock.AssertCalled(GinkgoT(), "Run", 0, "/")
+				commandMock.AssertCalled(GinkgoT(), "Run", 0, "/", 0)
+			})
+
+			Context("with custom OpenatSyscall exit code", func() {
+				BeforeEach(func() {
+					spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{ExitCode: "EEXIST"}
+				})
+
+				It("should start with a valid exit code", func() {
+					commandMock.AssertCalled(GinkgoT(), "Run", 0, "/", 17)
+				})
+			})
+
+			Context("with an empty custom OpenatSyscall exit code", func() {
+				BeforeEach(func() {
+					spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{}
+				})
+
+				It("should start with a valid exit code", func() {
+					commandMock.AssertCalled(GinkgoT(), "Run", 0, "/", 0)
+				})
 			})
 		})
 	})

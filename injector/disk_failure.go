@@ -6,6 +6,7 @@
 package injector
 
 import (
+	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -27,7 +28,7 @@ type DiskFailureInjectorConfig struct {
 }
 
 type BPFDiskFailureCommand interface {
-	Run(pid int, path string) error
+	Run(pid int, path string, exitCode int) error
 }
 
 type bPFDiskFailureCommand struct {
@@ -36,11 +37,15 @@ type bPFDiskFailureCommand struct {
 
 const EBPFDiskFailureCmd = "bpf-disk-failure"
 
-func (d bPFDiskFailureCommand) Run(pid int, path string) (err error) {
+func (d bPFDiskFailureCommand) Run(pid int, path string, exitCode int) error {
 	commandPath := []string{"-p", strconv.Itoa(pid)}
 
 	if path != "" {
 		commandPath = append(commandPath, "-f", path)
+	}
+
+	if exitCode != 0 {
+		commandPath = append(commandPath, "-c", fmt.Sprintf("%v", exitCode))
 	}
 
 	execCmd := exec.Command(EBPFDiskFailureCmd, commandPath...)
@@ -52,7 +57,7 @@ func (d bPFDiskFailureCommand) Run(pid int, path string) (err error) {
 	)
 
 	go func() {
-		err = execCmd.Run()
+		err := execCmd.Run()
 		if err != nil {
 			d.log.Errorw(
 				"error during the disk failure",
@@ -63,7 +68,7 @@ func (d bPFDiskFailureCommand) Run(pid int, path string) (err error) {
 		}
 	}()
 
-	return
+	return nil
 }
 
 // NewDiskFailureInjector creates a disk failure injector with the given config
@@ -84,15 +89,19 @@ func (i *DiskFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindDiskFailure
 }
 
-func (i *DiskFailureInjector) Inject() (err error) {
+func (i *DiskFailureInjector) Inject() error {
 	pid := 0
 	if i.config.Disruption.Level == types.DisruptionLevelPod {
 		pid = int(i.config.Config.TargetContainer.PID())
 	}
 
-	err = i.config.Cmd.Run(pid, i.spec.Path)
+	exitCode := 0
 
-	return
+	if i.spec.OpenatSyscall != nil {
+		exitCode = i.spec.OpenatSyscall.GetExitCodeInt()
+	}
+
+	return i.config.Cmd.Run(pid, i.spec.Path, exitCode)
 }
 
 func (i *DiskFailureInjector) UpdateConfig(config Config) {

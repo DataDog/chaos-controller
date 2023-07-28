@@ -24,6 +24,7 @@ import (
 
 var nFlag = flag.Uint64("p", 0, "Process to disrupt")
 var nPath = flag.String("f", "/", "Filter path")
+var nExitCode = flag.Uint64("c", 1, "Exit code")
 
 var logger *zap.SugaredLogger
 
@@ -100,6 +101,12 @@ func initGlobalVariables(bpfModule *bpf.Module) {
 
 	path := []byte(*nPath)
 	if err := bpfModule.InitGlobalVariable("filter_path", path); err != nil {
+		must(err)
+	}
+
+	var exitCode uint32
+	exitCode = uint32(*nExitCode)
+	if err := bpfModule.InitGlobalVariable("exit_code", exitCode); err != nil {
 		must(err)
 	}
 

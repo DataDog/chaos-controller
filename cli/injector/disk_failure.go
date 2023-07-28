@@ -20,9 +20,13 @@ var diskFailureCmd = &cobra.Command{
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		path, _ := cmd.Flags().GetString("path")
+		exitCode, _ := cmd.Flags().GetString("exit-code")
 
 		spec := v1beta1.DiskFailureSpec{
 			Path: path,
+			OpenatSyscall: &v1beta1.OpenatSyscallSpec{
+				ExitCode: exitCode,
+			},
 		}
 
 		// create injectors
@@ -48,4 +52,5 @@ var diskFailureCmd = &cobra.Command{
 
 func init() {
 	diskFailureCmd.Flags().String("path", "", "Path to apply the disk failure")
+	diskFailureCmd.Flags().String("exit-code", "", "Exit code to return")
 }
