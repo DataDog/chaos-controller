@@ -40,7 +40,7 @@ var _ = Describe("DiskFailureSpec", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).Should(Equal(expectedError))
 			},
-			Entry("with a valid path not exceeding 62 characters",
+			Entry("with a path exceeding 62 characters",
 				DiskFailureSpec{
 					Path: randStringRunes(rand.IntnRange(63, 10000)),
 				},
