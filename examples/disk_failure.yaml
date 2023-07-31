@@ -17,3 +17,5 @@ spec:
   count: 1
   diskFailure:
     path: /mnt/
+    openat:
+      exitCode: ENOENT

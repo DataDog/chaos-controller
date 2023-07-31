@@ -21,13 +21,13 @@ func (_m *BPFDiskFailureCommandMock) EXPECT() *BPFDiskFailureCommandMock_Expecte
 	return &BPFDiskFailureCommandMock_Expecter{mock: &_m.Mock}
 }
 
-// Run provides a mock function with given fields: pid, path
-func (_m *BPFDiskFailureCommandMock) Run(pid int, path string) error {
-	ret := _m.Called(pid, path)
+// Run provides a mock function with given fields: pid, path, exitCode
+func (_m *BPFDiskFailureCommandMock) Run(pid int, path string, exitCode int) error {
+	ret := _m.Called(pid, path, exitCode)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int, string) error); ok {
-		r0 = rf(pid, path)
+	if rf, ok := ret.Get(0).(func(int, string, int) error); ok {
+		r0 = rf(pid, path, exitCode)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -43,13 +43,14 @@ type BPFDiskFailureCommandMock_Run_Call struct {
 // Run is a helper method to define mock.On call
 //   - pid int
 //   - path string
-func (_e *BPFDiskFailureCommandMock_Expecter) Run(pid interface{}, path interface{}) *BPFDiskFailureCommandMock_Run_Call {
-	return &BPFDiskFailureCommandMock_Run_Call{Call: _e.mock.On("Run", pid, path)}
+//   - exitCode int
+func (_e *BPFDiskFailureCommandMock_Expecter) Run(pid interface{}, path interface{}, exitCode interface{}) *BPFDiskFailureCommandMock_Run_Call {
+	return &BPFDiskFailureCommandMock_Run_Call{Call: _e.mock.On("Run", pid, path, exitCode)}
 }
 
-func (_c *BPFDiskFailureCommandMock_Run_Call) Run(run func(pid int, path string)) *BPFDiskFailureCommandMock_Run_Call {
+func (_c *BPFDiskFailureCommandMock_Run_Call) Run(run func(pid int, path string, exitCode int)) *BPFDiskFailureCommandMock_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int), args[1].(string))
+		run(args[0].(int), args[1].(string), args[2].(int))
 	})
 	return _c
 }
@@ -59,7 +60,7 @@ func (_c *BPFDiskFailureCommandMock_Run_Call) Return(_a0 error) *BPFDiskFailureC
 	return _c
 }
 
-func (_c *BPFDiskFailureCommandMock_Run_Call) RunAndReturn(run func(int, string) error) *BPFDiskFailureCommandMock_Run_Call {
+func (_c *BPFDiskFailureCommandMock_Run_Call) RunAndReturn(run func(int, string, int) error) *BPFDiskFailureCommandMock_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

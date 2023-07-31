@@ -9,6 +9,7 @@
 const volatile pid_t target_pid = 0;
 const volatile pid_t exclude_pid;
 const volatile char filter_path[61];
+const volatile pid_t exit_code = ENOENT;
 
 struct data_t {
     u32 ppid;
@@ -93,7 +94,7 @@ int injection_disk_failure(struct pt_regs *ctx)
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &data, 100);
 
     // Override return of process with an -ENOENT error.
-    bpf_override_return(ctx, -ENOENT);
+    bpf_override_return(ctx, -exit_code);
 
     return 0;
 }
