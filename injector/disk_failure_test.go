@@ -52,7 +52,7 @@ var _ = Describe("Failure", func() {
 		}
 
 		spec = v1beta1.DiskFailureSpec{
-			Path: "/",
+			Paths: []string{"/"},
 		}
 	})
 
@@ -76,6 +76,17 @@ var _ = Describe("Failure", func() {
 
 			It("should start the eBPF Disk failure program", func() {
 				commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/", 0)
+			})
+
+			Context("with multiple valid paths", func() {
+				BeforeEach(func() {
+					spec.Paths = []string{"/test", "/toto"}
+				})
+
+				It("should run two eBPF program per paths", func() {
+					commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/test", 0)
+					commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/toto", 0)
+				})
 			})
 
 			Context("with custom OpenatSyscall exit code", func() {

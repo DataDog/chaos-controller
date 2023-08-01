@@ -18,6 +18,50 @@ type OpenatSyscallSpec struct {
 	ExitCode string `json:"exitCode"`
 }
 
+// DiskFailureSpec represents a disk failure disruption
+type DiskFailureSpec struct {
+	// +kubebuilder:validation:Required
+	// +ddmark:validation:Required=true
+	Paths []string `json:"paths"`
+	// +nullable
+	OpenatSyscall *OpenatSyscallSpec `json:"openat,omitempty"`
+}
+
+const MaxDiskPathCharacters = 62
+
+// Validate validates args for the given disruption
+func (s *DiskFailureSpec) Validate() error {
+	for _, path := range s.Paths {
+		path := strings.TrimSpace(path)
+
+		if path == "" {
+			return fmt.Errorf("the path of the disk failure disruption must not be empty")
+		}
+
+		if len(path) > MaxDiskPathCharacters {
+			return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters", MaxDiskPathCharacters)
+		}
+	}
+
+	return nil
+}
+
+// GenerateArgs generates injection or cleanup pod arguments for the given spec
+func (s *DiskFailureSpec) GenerateArgs() (args []string) {
+	args = append(args, "disk-failure")
+	for _, path := range s.Paths {
+		args = append(args, "--path", strings.TrimSpace(path))
+	}
+
+	if s.OpenatSyscall != nil {
+		if s.OpenatSyscall.ExitCode != "" {
+			args = append(args, "--exit-code", s.OpenatSyscall.ExitCode)
+		}
+	}
+
+	return args
+}
+
 // GetExitCodeInt return the integer value of a linux exit code.
 func (oss *OpenatSyscallSpec) GetExitCodeInt() int {
 	switch oss.ExitCode {
@@ -68,43 +112,4 @@ func (oss *OpenatSyscallSpec) GetExitCodeInt() int {
 	default:
 		return 0
 	}
-}
-
-// DiskFailureSpec represents a disk failure disruption
-type DiskFailureSpec struct {
-	Path string `json:"path"`
-	// +nullable
-	OpenatSyscall *OpenatSyscallSpec `json:"openat,omitempty"`
-}
-
-const MaxDiskPathCharacters = 62
-
-// Validate validates args for the given disruption
-func (s *DiskFailureSpec) Validate() error {
-	path := strings.TrimSpace(s.Path)
-
-	if path == "" {
-		return fmt.Errorf("the path of the disk failure disruption must not be empty")
-	}
-
-	if len(path) > MaxDiskPathCharacters {
-		return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters", MaxDiskPathCharacters)
-	}
-
-	return nil
-}
-
-// GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *DiskFailureSpec) GenerateArgs() (args []string) {
-	args = append(args, "disk-failure")
-	path := strings.TrimSpace(s.Path)
-	args = append(args, "--path", path)
-
-	if s.OpenatSyscall != nil {
-		if s.OpenatSyscall.ExitCode != "" {
-			args = append(args, "--exit-code", s.OpenatSyscall.ExitCode)
-		}
-	}
-
-	return args
 }

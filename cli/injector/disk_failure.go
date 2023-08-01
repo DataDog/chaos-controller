@@ -19,11 +19,11 @@ var diskFailureCmd = &cobra.Command{
 	Short: "Disk failure subcommands",
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		path, _ := cmd.Flags().GetString("path")
+		paths, _ := cmd.Flags().GetStringArray("path")
 		exitCode, _ := cmd.Flags().GetString("exit-code")
 
 		spec := v1beta1.DiskFailureSpec{
-			Path: path,
+			Paths: paths,
 			OpenatSyscall: &v1beta1.OpenatSyscallSpec{
 				ExitCode: exitCode,
 			},
@@ -34,7 +34,7 @@ var diskFailureCmd = &cobra.Command{
 			inj, err := injector.NewDiskFailureInjector(spec, injector.DiskFailureInjectorConfig{Config: config})
 			if err != nil {
 				if errors.Is(errors.Unwrap(err), os.ErrNotExist) {
-					log.Fatalw("error initializing the disk failure injector because the given path does not exist", "error", err)
+					log.Fatalw("error initializing the disk failure injector because given path does not exist", "error", err)
 				} else {
 					log.Fatalw("error initializing the disk failure injector", "error", err)
 				}
@@ -51,6 +51,6 @@ var diskFailureCmd = &cobra.Command{
 }
 
 func init() {
-	diskFailureCmd.Flags().String("path", "", "Path to apply the disk failure")
+	diskFailureCmd.Flags().StringArray("path", []string{}, "Path to apply the disk failure")
 	diskFailureCmd.Flags().String("exit-code", "", "Exit code to return")
 }

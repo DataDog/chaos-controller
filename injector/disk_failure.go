@@ -101,7 +101,13 @@ func (i *DiskFailureInjector) Inject() error {
 		exitCode = i.spec.OpenatSyscall.GetExitCodeInt()
 	}
 
-	return i.config.Cmd.Run(pid, i.spec.Path, exitCode)
+	for _, path := range i.spec.Paths {
+		if err := i.config.Cmd.Run(pid, path, exitCode); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (i *DiskFailureInjector) UpdateConfig(config Config) {
