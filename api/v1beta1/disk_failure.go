@@ -27,6 +27,7 @@ type DiskFailureSpec struct {
 	OpenatSyscall *OpenatSyscallSpec `json:"openat,omitempty"`
 }
 
+// MaxDiskPathCharacters is used to limit the number of characters due to the eBPF memory kernel limitation.
 const MaxDiskPathCharacters = 62
 
 // Validate validates args for the given disruption
@@ -39,7 +40,7 @@ func (s *DiskFailureSpec) Validate() error {
 		}
 
 		if len(path) > MaxDiskPathCharacters {
-			return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters", MaxDiskPathCharacters)
+			return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters, found %d", MaxDiskPathCharacters, len(path))
 		}
 	}
 

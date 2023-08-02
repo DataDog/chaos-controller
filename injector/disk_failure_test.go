@@ -6,7 +6,9 @@
 package injector_test
 
 import (
+	"github.com/DataDog/chaos-controller/command"
 	"os"
+	"strconv"
 
 	"github.com/DataDog/chaos-controller/api"
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -18,15 +20,15 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-var _ = Describe("Failure", func() {
+var _ = Describe("Disk Failure", func() {
 	var (
-		config      DiskFailureInjectorConfig
-		level       types.DisruptionLevel
-		proc        *os.Process
-		inj         Injector
-		spec        v1beta1.DiskFailureSpec
-		commandMock *BPFDiskFailureCommandMock
-		ctr         *container.ContainerMock
+		config         DiskFailureInjectorConfig
+		level          types.DisruptionLevel
+		proc           *os.Process
+		inj            Injector
+		spec           v1beta1.DiskFailureSpec
+		cmdFactoryMock *command.FactoryMock
+		containerMock  *container.ContainerMock
 	)
 
 	const PID = 1
@@ -34,10 +36,15 @@ var _ = Describe("Failure", func() {
 	BeforeEach(func() {
 		proc = &os.Process{Pid: PID}
 
-		ctr = container.NewContainerMock(GinkgoT())
+		containerMock = container.NewContainerMock(GinkgoT())
 
-		commandMock = NewBPFDiskFailureCommandMock(GinkgoT())
-		commandMock.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		cmd := command.NewCmdMock(GinkgoT())
+		cmd.EXPECT().DryRun().Return(false).Maybe()
+		cmd.EXPECT().Start().Return(nil).Maybe()
+		cmd.EXPECT().Wait().Return(nil).Maybe()
+		cmd.EXPECT().PID().Return(41).Maybe()
+		cmdFactoryMock = command.NewFactoryMock(GinkgoT())
+		cmdFactoryMock.EXPECT().NewCmd(mock.Anything, mock.Anything, mock.Anything).Return(cmd).Maybe()
 
 		config = DiskFailureInjectorConfig{
 			Config: Config{
@@ -46,9 +53,9 @@ var _ = Describe("Failure", func() {
 				Disruption: api.DisruptionArgs{
 					Level: level,
 				},
-				TargetContainer: ctr,
+				TargetContainer: containerMock,
 			},
-			Cmd: commandMock,
+			CmdFactory: cmdFactoryMock,
 		}
 
 		spec = v1beta1.DiskFailureSpec{
@@ -71,11 +78,14 @@ var _ = Describe("Failure", func() {
 			BeforeEach(func() {
 				config.Disruption.Level = types.DisruptionLevelPod
 
-				ctr.EXPECT().PID().Return(PID).Once()
+				containerMock.EXPECT().PID().Return(PID).Once()
 			})
 
 			It("should start the eBPF Disk failure program", func() {
-				commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/", 0)
+				cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+					"-p", strconv.Itoa(proc.Pid),
+					"-f", "/",
+				})
 			})
 
 			Context("with multiple valid paths", func() {
@@ -84,8 +94,14 @@ var _ = Describe("Failure", func() {
 				})
 
 				It("should run two eBPF program per paths", func() {
-					commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/test", 0)
-					commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/toto", 0)
+					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+						"-p", strconv.Itoa(proc.Pid),
+						"-f", "/test",
+					})
+					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+						"-p", strconv.Itoa(proc.Pid),
+						"-f", "/toto",
+					})
 				})
 			})
 
@@ -95,7 +111,11 @@ var _ = Describe("Failure", func() {
 				})
 
 				It("should start with a valid exit code", func() {
-					commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/", 13)
+					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+						"-p", strconv.Itoa(proc.Pid),
+						"-f", "/",
+						"-c", "13",
+					})
 				})
 			})
 
@@ -105,7 +125,10 @@ var _ = Describe("Failure", func() {
 				})
 
 				It("should start with a valid exit code", func() {
-					commandMock.AssertCalled(GinkgoT(), "Run", proc.Pid, "/", 0)
+					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+						"-p", strconv.Itoa(proc.Pid),
+						"-f", "/",
+					})
 				})
 			})
 		})
@@ -116,8 +139,11 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should start the eBPF Disk failure program", func() {
-				ctr.AssertNumberOfCalls(GinkgoT(), "PID", 0)
-				commandMock.AssertCalled(GinkgoT(), "Run", 0, "/", 0)
+				containerMock.AssertNumberOfCalls(GinkgoT(), "PID", 0)
+				cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+					"-p", strconv.Itoa(0),
+					"-f", "/",
+				})
 			})
 
 			Context("with custom OpenatSyscall exit code", func() {
@@ -126,7 +152,11 @@ var _ = Describe("Failure", func() {
 				})
 
 				It("should start with a valid exit code", func() {
-					commandMock.AssertCalled(GinkgoT(), "Run", 0, "/", 17)
+					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+						"-p", strconv.Itoa(0),
+						"-f", "/",
+						"-c", "17",
+					})
 				})
 			})
 
@@ -136,7 +166,10 @@ var _ = Describe("Failure", func() {
 				})
 
 				It("should start with a valid exit code", func() {
-					commandMock.AssertCalled(GinkgoT(), "Run", 0, "/", 0)
+					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+						"-p", strconv.Itoa(0),
+						"-f", "/",
+					})
 				})
 			})
 		})

@@ -6,6 +6,7 @@
 package v1beta1_test
 
 import (
+	"fmt"
 	. "github.com/DataDog/chaos-controller/api/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -31,6 +32,8 @@ var _ = Describe("DiskFailureSpec", func() {
 			),
 		)
 
+		pathGreaterThan62Characters := randStringRunes(rand.IntnRange(63, 10000))
+
 		DescribeTable("error cases",
 			func(df DiskFailureSpec, expectedError string) {
 				// Action
@@ -42,9 +45,9 @@ var _ = Describe("DiskFailureSpec", func() {
 			},
 			Entry("with a path exceeding 62 characters",
 				DiskFailureSpec{
-					Paths: []string{randStringRunes(rand.IntnRange(1, 62)), randStringRunes(rand.IntnRange(63, 10000))},
+					Paths: []string{randStringRunes(rand.IntnRange(1, 62)), pathGreaterThan62Characters},
 				},
-				"the path of the disk failure disruption must not exceed 62 characters",
+				fmt.Sprintf("the path of the disk failure disruption must not exceed 62 characters, found %d", len(pathGreaterThan62Characters)),
 			),
 			Entry("with an empty path",
 				DiskFailureSpec{

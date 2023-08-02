@@ -6,14 +6,14 @@
 package injector
 
 import (
+	"context"
 	"fmt"
-	"os/exec"
 	"strconv"
-	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/command"
+	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/types"
-	"go.uber.org/zap"
 )
 
 type DiskFailureInjector struct {
@@ -24,59 +24,20 @@ type DiskFailureInjector struct {
 // DiskFailureInjectorConfig is the disk pressure injector config
 type DiskFailureInjectorConfig struct {
 	Config
-	Cmd BPFDiskFailureCommand
-}
-
-type BPFDiskFailureCommand interface {
-	Run(pid int, path string, exitCode int) error
-}
-
-type bPFDiskFailureCommand struct {
-	log *zap.SugaredLogger
+	CmdFactory     command.Factory
+	ProcessManager process.Manager
 }
 
 const EBPFDiskFailureCmd = "bpf-disk-failure"
 
-func (d bPFDiskFailureCommand) Run(pid int, path string, exitCode int) error {
-	commandPath := []string{"-p", strconv.Itoa(pid)}
-
-	if path != "" {
-		commandPath = append(commandPath, "-f", path)
-	}
-
-	if exitCode != 0 {
-		commandPath = append(commandPath, "-c", fmt.Sprintf("%v", exitCode))
-	}
-
-	execCmd := exec.Command(EBPFDiskFailureCmd, commandPath...)
-
-	d.log.Infow(
-		"injecting disk failure",
-		zap.String("command", EBPFDiskFailureCmd),
-		zap.String("args", strings.Join(commandPath, " ")),
-	)
-
-	go func() {
-		err := execCmd.Run()
-		if err != nil {
-			d.log.Errorw(
-				"error during the disk failure",
-				zap.String("command", EBPFDiskFailureCmd),
-				zap.String("args", strings.Join(commandPath, " ")),
-				zap.String("error", err.Error()),
-			)
-		}
-	}()
-
-	return nil
-}
-
 // NewDiskFailureInjector creates a disk failure injector with the given config
 func NewDiskFailureInjector(spec v1beta1.DiskFailureSpec, config DiskFailureInjectorConfig) (Injector, error) {
-	if config.Cmd == nil {
-		config.Cmd = &bPFDiskFailureCommand{
-			log: config.Log,
-		}
+	if config.CmdFactory == nil {
+		config.CmdFactory = command.NewFactory(config.Disruption.DryRun)
+	}
+
+	if config.ProcessManager == nil {
+		config.ProcessManager = process.NewManager(config.Disruption.DryRun)
 	}
 
 	return &DiskFailureInjector{
@@ -102,8 +63,22 @@ func (i *DiskFailureInjector) Inject() error {
 	}
 
 	for _, path := range i.spec.Paths {
-		if err := i.config.Cmd.Run(pid, path, exitCode); err != nil {
-			return err
+		args := []string{"-p", strconv.Itoa(pid)}
+
+		if path != "" {
+			args = append(args, "-f", path)
+		}
+
+		if exitCode != 0 {
+			args = append(args, "-c", fmt.Sprintf("%v", exitCode))
+		}
+
+		cmd := i.config.CmdFactory.NewCmd(context.Background(), EBPFDiskFailureCmd, args)
+
+		bgCmd := command.NewBackgroundCmd(cmd, i.config.Log, i.config.ProcessManager)
+		if err := bgCmd.Start(); err != nil {
+			launchDNSServerErr = fmt.Errorf("unable to run eBPF disk failure: %w", err)
+			return nil
 		}
 	}
 
