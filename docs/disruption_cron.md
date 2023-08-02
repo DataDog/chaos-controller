@@ -50,7 +50,7 @@ The `.spec.targetResource` field specifies which resource to run disruptions aga
 The `.spec.disruptionTemplate` defines a template for the Disruptions that the DisruptionCron creates, and it is required.
 Its schema is identical to a `DisruptionSpec` of the `Disruption` CRD. [Detailed examples](examples.md) of various Disruption types, including their respective manifests, are readily available for reference.
 
-### Deadline for delayed job start
+### Deadline for delayed disruption start
 The `.spec.StartingDeadlineSeconds` field is optional. This field defines a deadline (in whole seconds) for starting the Disruption. If a scheduled Disruption misses its start time for any reason and exceeds the deadline, that particular instance of the Disruption is skipped but future occurrences remain scheduled.
 If Disruptions exceed their deadline, they are considered as failed. Without a specified `startingDeadlineSeconds`, Disruptions have no deadline and can start at any delay. If `startingDeadlineSeconds` is defined, any delay exceeding this limit will cause the Disruption to be skipped. 
 For example, a value of 200 allows a Disruption to start up to 200 seconds after the actual schedule.
