@@ -4,7 +4,7 @@
 The `DisruptionCron` is a Custom Resource Definition (CRD) that enables scheduling `Disruptions` against the Kubernetes resources at specified intervals. This tool enhances the process of chaos engineering by providing a means to continually assess a system's resilience against a wide array of potential disruptions, thereby reducing the necessity for manual intervention.
 
 ## Usage
-To schedule a disruption in a cluster, run `kubectl apply -f <disruption_cron_file.yaml>`. To halt the scheduled disruptions, use `kubectl delete -f <disruption_cron_file>.yaml`.
+To schedule a disruption in a cluster, run `kubectl apply -f <disruption_cron_file>.yaml`. To halt the scheduled disruptions, use `kubectl delete -f <disruption_cron_file>.yaml`.
 
 ## Example
 The following DisruptionCron manifest example triggers node failure disruptions every 15 minutes:
@@ -29,15 +29,17 @@ spec:
 ## Writing a DisruptionCron spec
 ### Schedule syntax
 The `.spec.schedule` field is required. The value of that field follows the [Cron](https://en.wikipedia.org/wiki/Cron) syntax:
+```
 # ┌───────────── minute (0 - 59)
 # │ ┌───────────── hour (0 - 23)
 # │ │ ┌───────────── day of the month (1 - 31)
 # │ │ │ ┌───────────── month (1 - 12)
 # │ │ │ │ ┌───────────── day of the week (0 - 6) (Sunday to Saturday;
 # │ │ │ │ │                                   7 is also Sunday on some systems)
-# │ │ │ │ │
+# │ │ │ │ │                                   OR sun, mon, tue, wed, thu, fri, sat
 # │ │ │ │ │
 # * * * * *
+```
 For instance, `0 12 * * 5` states that the task must be started every Friday at noon.
 To generate CronJob schedule expressions, you can also use web tools like [crontab.guru](https://crontab.guru/).
 
