@@ -161,7 +161,7 @@ metadata:
   namespace: chaos-demo
 spec:
   ports:
-    - name: regular
+    - name: regular-port
       port: 8080
       targetPort: 80
       protocol: TCP

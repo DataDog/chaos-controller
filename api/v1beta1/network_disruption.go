@@ -470,21 +470,19 @@ func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisrupt
 
 		for _, unparsedPort := range parsedService[2:] {
 			// <port-value>-<port-name>
-			parsedPort := strings.Split(unparsedPort, "-")
-			if len(parsedPort) != 2 {
+			portValue, portName, ok := strings.Cut(unparsedPort, "-")
+			if !ok {
 				return nil, fmt.Errorf("service port format is expected to follow '<port-value>-<port-name>', unexpected format detected: %s", unparsedPort)
 			}
 
-			port, err := strconv.Atoi(parsedPort[0])
+			port, err := strconv.Atoi(portValue)
 			if err != nil {
 				return nil, fmt.Errorf("port format is expected to be a valid integer, unexpected format detected in service port: %s", unparsedPort)
 			}
 
-			name := parsedPort[1]
-
 			ports = append(ports, NetworkDisruptionServicePortSpec{
 				Port: port,
-				Name: name,
+				Name: portName,
 			})
 		}
 
