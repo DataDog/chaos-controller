@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"fmt"
+	authv1 "k8s.io/api/authentication/v1"
 	"time"
 
 	"github.com/DataDog/chaos-controller/ddmark"
@@ -106,6 +107,18 @@ var _ = Describe("Disruption", func() {
 			When("nothing is updated", func() {
 				It("should succeed", func() {
 					Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+				})
+			})
+
+			When("userInfo annotation is updated", func() {
+				BeforeEach(func() {
+					Expect(newDisruption.SetUserInfo(authv1.UserInfo{})).ShouldNot(HaveOccurred())
+				})
+
+				It("should failed", func() {
+					err := newDisruption.ValidateUpdate(oldDisruption)
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(Equal("the user info annotation is immutable"))
 				})
 			})
 
@@ -376,7 +389,7 @@ var _ = Describe("Disruption", func() {
 
 // makeValidNetworkDisruption is a helper that constructs a valid Disruption suited for basic webhook validation testing
 func makeValidNetworkDisruption() *Disruption {
-	return &Disruption{
+	disruption := Disruption{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testDisruptionName,
 			Namespace: chaosNamespace,
@@ -394,6 +407,21 @@ func makeValidNetworkDisruption() *Disruption {
 			},
 		},
 	}
+
+	disruption.Annotations = map[string]string{}
+
+	if err := disruption.SetUserInfo(authv1.UserInfo{
+		Username: "lorem",
+		UID:      "ipsum",
+		Groups:   []string{"some"},
+		Extra: map[string]authv1.ExtraValue{
+			"dolores": []string{"sit"},
+		},
+	}); err != nil {
+		Expect(err).ShouldNot(HaveOccurred())
+	}
+
+	return &disruption
 }
 
 // makeValidDiskFailureDisruption is a helper that constructs a valid Disruption suited for basic webhook validation testing

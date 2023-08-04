@@ -217,6 +217,10 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 
 	oldDisruption := old.(*Disruption)
 
+	if err := r.validateUserInfo(oldDisruption); err != nil {
+		return err
+	}
+
 	// ensure finalizer removal is only allowed if no related chaos pods exists
 	// we should NOT always prevent finalizer removal because chaos controller reconcile loop will go through this mutating webhook when perfoming updates
 	// and need to be able to remove the finalizer to enable the disruption to be garbage collected on successful removal
@@ -291,6 +295,24 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 	// send validation metric
 	if err := metricsSink.MetricValidationUpdated(r.getMetricsTags()); err != nil {
 		logger.Errorw("error sending a metric", "error", err)
+	}
+
+	return nil
+}
+
+func (r *Disruption) validateUserInfo(oldDisruption *Disruption) error {
+	userInfo, err := r.UserInfo()
+	if err != nil {
+		return err
+	}
+
+	oldUserInfo, err := oldDisruption.UserInfo()
+	if err != nil {
+		return err
+	}
+
+	if fmt.Sprintf("%v", userInfo) != fmt.Sprintf("%v", oldUserInfo) {
+		return fmt.Errorf("the user info annotation is immutable")
 	}
 
 	return nil
