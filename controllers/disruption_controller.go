@@ -38,7 +38,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -126,23 +126,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			err = fmt.Errorf("a panic occurred during reconcile:\n\tpanic: %v\n\n\terror: %w", panicInfo, err)
 		} else if err == nil {
 			return
-		}
-
-		unwrappedError, ok := err.(chaostypes.DisruptionError)
-		if ok {
-			errorContext := unwrappedError.Context()
-			wraps := make([]interface{}, 0, len(errorContext)+2)
-			wraps = append(wraps, "err", unwrappedError)
-
-			for key, value := range errorContext {
-				wraps = append(wraps, key, value)
-			}
-
-			if isModifiedError(unwrappedError) {
-				r.log.Infow("a retryable error occurred in reconcile loop", wraps...)
-			} else {
-				r.log.Errorw("an error occurred in reconcile loop", wraps...)
-			}
 		}
 
 		if isModifiedError(err) {
@@ -519,8 +502,9 @@ func (r *DisruptionReconciler) startInjection(instance *chaosv1beta1.Disruption)
 			}
 
 			if err = r.createChaosPods(instance, targetName); err != nil {
-				if !errors.IsNotFound(err) {
-					return fmt.Errorf("error creating chaos pods: %w", err)
+				if !apierrors.IsNotFound(err) {
+					return err
+					//return fmt.Errorf("error creating chaos pods: %w", err)
 				}
 
 				r.log.Warnw("could not create chaos pod", "error", err)
@@ -555,10 +539,9 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 		// get IDs of targeted containers or all containers
 		targetContainers, err = chaosv1beta1.TargetedContainers(pod, instance.Spec.Containers)
 		if err != nil {
-			dErr := chaostypes.DisruptionError{Err: fmt.Errorf("error getting target pod container ID: %w", err)}
-			dErr.AddContext("targetPodStatus", pod.Status.String())
-			dErr.AddContext("targetPodName", target)
-			dErr.AddContext("targetPodNamespace", instance.Namespace)
+			dErr := fmt.Errorf("error getting %s target pod %s/%s container ID: %w", pod.Status.String(), pod.Namespace, pod.Name, err)
+
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, dErr.Error(), pod.Name)
 
 			return dErr
 		}
@@ -714,7 +697,7 @@ func (r *DisruptionReconciler) handleOrphanedChaosPods(req ctrl.Request) error {
 		r.log.Infow("checking if we can clean up orphaned chaos pod", "chaosPod", chaosPod.Name, "target", target)
 
 		// if target doesn't exist, we can try to clean up the chaos pod
-		if err := r.Client.Get(context.Background(), types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); errors.IsNotFound(err) {
+		if err := r.Client.Get(context.Background(), types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); apierrors.IsNotFound(err) {
 			r.log.Warnw("orphaned chaos pod detected, will attempt to delete", "chaosPod", chaosPod.Name)
 			controllerutil.RemoveFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer)
 
@@ -786,7 +769,7 @@ func (r *DisruptionReconciler) handleChaosPodTermination(instance *chaosv1beta1.
 	// ignore it if it is not ready anymore
 	err := r.TargetSelector.TargetIsHealthy(target, r.Client, instance)
 	if err != nil {
-		if errors.IsNotFound(err) || strings.ToLower(err.Error()) == "pod is not running" || strings.ToLower(err.Error()) == "node is not ready" {
+		if apierrors.IsNotFound(err) || strings.ToLower(err.Error()) == "pod is not running" || strings.ToLower(err.Error()) == "node is not ready" {
 			// if the target is not in a good shape, we still run the cleanup phase but we don't check for any issues happening during
 			// the cleanup to avoid blocking the disruption deletion for nothing
 			r.log.Infow("target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", "target", target)
