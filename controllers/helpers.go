@@ -66,7 +66,7 @@ func disruptionTerminationStatus(instance chaosv1beta1.Disruption, chaosPods []c
 
 	// a definitive state (expired duration or deletion) imply a definitively deleted injection
 	// and should be returned prior to a temporarily terminated state
-	if calculateRemainingDuration(instance) < 0 || !instance.DeletionTimestamp.IsZero() {
+	if calculateRemainingDuration(instance) <= 0 || !instance.DeletionTimestamp.IsZero() {
 		return tsDefinitivelyTerminated
 	}
 
