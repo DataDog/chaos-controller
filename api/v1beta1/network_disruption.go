@@ -326,7 +326,18 @@ func (s *NetworkDisruptionSpec) Format() string {
 
 	// Add services to description
 	for _, service := range s.Services {
-		filterDescriptions = append(filterDescriptions, fmt.Sprintf(" going to %s/%s", service.Name, service.Namespace))
+		portsDescription := ""
+		for _, port := range service.Ports {
+			portsDescription = fmt.Sprintf("%s%s/%d,", portsDescription, port.Name, port.Port)
+		}
+		if len(service.Ports) > 0 {
+			plural := ""
+			if len(service.Ports) > 1 {
+				plural = "s"
+			}
+			portsDescription = fmt.Sprintf(" on port%s %s", plural, portsDescription[:len(portsDescription)-1])
+		}
+		filterDescriptions = append(filterDescriptions, fmt.Sprintf(" going to %s/%s%s", service.Name, service.Namespace, portsDescription))
 	}
 
 	// Add cloud services to description
@@ -453,6 +464,7 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 	return parsedHosts, nil
 }
 
+// TODO add a literal parsing test
 // NetworkDisruptionServiceSpecFromString parses the given services to service specs
 // The expected format for services is <serviceName>;<serviceNamespace>
 func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisruptionServiceSpec, error) {

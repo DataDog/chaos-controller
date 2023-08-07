@@ -49,12 +49,18 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 						{
 							Name:      "demo-worker",
 							Namespace: "demo-namespace",
+							Ports: []NetworkDisruptionServicePortSpec{
+								{
+									Name: "worker-port",
+									Port: 8180,
+								},
+							},
 						},
 					},
 					Corrupt: 100,
 				}
 
-				expected := "Network disruption corrupting 100% of the traffic going to demo-service/demo-namespace and going to demo-worker/demo-namespace"
+				expected := "Network disruption corrupting 100% of the traffic going to demo-service/demo-namespace and going to demo-worker/demo-namespace on port worker-port/8180"
 				result := disruptionSpec.Format()
 
 				Expect(result).To(Equal(expected))
@@ -101,6 +107,12 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 						{
 							Name:      "demo-service",
 							Namespace: "demo-namespace",
+							Ports: []NetworkDisruptionServicePortSpec{
+								{
+									Name: "demo-service-port",
+									Port: 8180,
+								},
+							},
 						},
 						{
 							Name:      "demo-worker",
@@ -122,7 +134,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 					Corrupt: 100,
 				}
 
-				expected := "Network disruption corrupting 100% of the traffic going to 1.2.3.4:9000, coming from 2.2.3.4:8000, going to demo-service/demo-namespace, going to demo-worker/demo-namespace, going to S3 and going to synthetics"
+				expected := "Network disruption corrupting 100% of the traffic going to 1.2.3.4:9000, coming from 2.2.3.4:8000, going to demo-service/demo-namespace on port demo-service-port/8180, going to demo-worker/demo-namespace, going to S3 and going to synthetics"
 				result := disruptionSpec.Format()
 
 				Expect(result).To(Equal(expected))
