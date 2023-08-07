@@ -6,9 +6,10 @@
 package v1beta1
 
 import (
+	"math/rand"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"math/rand"
 )
 
 const SpacesErrorMessagePrefix = "should not contains spaces"
