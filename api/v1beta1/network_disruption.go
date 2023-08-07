@@ -464,7 +464,6 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 	return parsedHosts, nil
 }
 
-// TODO add a literal parsing test
 // NetworkDisruptionServiceSpecFromString parses the given services to service specs
 // The expected format for services is <serviceName>;<serviceNamespace>
 func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisruptionServiceSpec, error) {

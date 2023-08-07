@@ -285,7 +285,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 	})
 	When("NetworkDisruptionServiceSpecFromString is called", func() {
 		It("handles ports with non-alpha names", func() {
-			expected := NetworkDisruptionServiceSpec{
+			expected := []NetworkDisruptionServiceSpec{{
 				Name:      "demo-service",
 				Namespace: "demo-namespace",
 				Ports: []NetworkDisruptionServicePortSpec{
@@ -297,9 +297,9 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 						Port: 8180,
 					},
 				},
-			}
+			}}
 
-			testString := []string{"demo-service;demo-namespace;8080-demo-port;8180"}
+			testString := []string{"demo-service;demo-namespace;8080-demo-port;8180-"}
 
 			actual, err := NetworkDisruptionServiceSpecFromString(testString)
 			Expect(err).Should(BeNil())
