@@ -302,7 +302,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 			testString := []string{"demo-service;demo-namespace;8080-demo-port;8180-"}
 
 			actual, err := NetworkDisruptionServiceSpecFromString(testString)
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(actual).Should(Equal(expected))
 		})
 	})
