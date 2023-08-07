@@ -327,16 +327,20 @@ func (s *NetworkDisruptionSpec) Format() string {
 	// Add services to description
 	for _, service := range s.Services {
 		portsDescription := ""
+
 		for _, port := range service.Ports {
 			portsDescription = fmt.Sprintf("%s%s/%d,", portsDescription, port.Name, port.Port)
 		}
+
 		if len(service.Ports) > 0 {
 			plural := ""
 			if len(service.Ports) > 1 {
 				plural = "s"
 			}
+
 			portsDescription = fmt.Sprintf(" on port%s %s", plural, portsDescription[:len(portsDescription)-1])
 		}
+
 		filterDescriptions = append(filterDescriptions, fmt.Sprintf(" going to %s/%s%s", service.Name, service.Namespace, portsDescription))
 	}
 
