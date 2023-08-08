@@ -24,6 +24,7 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
+	"k8s.io/api/authentication/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -301,12 +302,17 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 }
 
 func (r *Disruption) validateUserInfo(oldDisruption *Disruption) error {
-	userInfo, err := r.UserInfo()
+	oldUserInfo, err := oldDisruption.UserInfo()
 	if err != nil {
-		return err
+		return nil
 	}
 
-	oldUserInfo, err := oldDisruption.UserInfo()
+	emptyUserInfo := fmt.Sprintf("%v", v1beta1.UserInfo{})
+	if fmt.Sprintf("%v", oldUserInfo) == emptyUserInfo {
+		return nil
+	}
+
+	userInfo, err := r.UserInfo()
 	if err != nil {
 		return err
 	}

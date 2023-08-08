@@ -111,14 +111,63 @@ var _ = Describe("Disruption", func() {
 			})
 
 			When("userInfo annotation is updated", func() {
-				BeforeEach(func() {
-					Expect(newDisruption.SetUserInfo(authv1.UserInfo{})).ShouldNot(HaveOccurred())
+				Context("with an old disruption without user info", func() {
+					It("should allow the update", func() {
+						// Arrange
+						delete(oldDisruption.Annotations, annotationUserInfoKey)
+
+						// Action
+						err := newDisruption.ValidateUpdate(oldDisruption)
+
+						// Arrange
+						By("not return an error")
+						Expect(err).ShouldNot(HaveOccurred())
+					})
 				})
 
-				It("should failed", func() {
-					err := newDisruption.ValidateUpdate(oldDisruption)
-					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(Equal("the user info annotation is immutable"))
+				Context("with an old disruption with an empty user info", func() {
+					When("the user info of the new disruption is updated ", func() {
+						It("should not allow the update", func() {
+							// Arrange
+							Expect(newDisruption.SetUserInfo(authv1.UserInfo{})).Should(Succeed())
+
+							// Action
+							err := newDisruption.ValidateUpdate(oldDisruption)
+
+							// Arrange
+							By("return an error")
+							Expect(err).Should(HaveOccurred())
+							Expect(err.Error()).Should(Equal("the user info annotation is immutable"))
+						})
+					})
+					When("the user info of the new disruption is empty too", func() {
+						It("should allow the update", func() {
+							// Arrange
+							Expect(oldDisruption.SetUserInfo(authv1.UserInfo{})).Should(Succeed())
+							Expect(newDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem"})).Should(Succeed())
+
+							// Action
+							Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+						})
+					})
+				})
+
+				Context("with an old disruption with a valid user info", func() {
+					When("the user info of the new disruption is updated", func() {
+						It("should not allow the update", func() {
+							// Arrange
+							Expect(oldDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem"})).Should(Succeed())
+							Expect(newDisruption.SetUserInfo(authv1.UserInfo{Username: "ipsum"})).Should(Succeed())
+
+							// Action
+							err := newDisruption.ValidateUpdate(oldDisruption)
+
+							// Arrange
+							By("return an error")
+							Expect(err).Should(HaveOccurred())
+							Expect(err.Error()).Should(Equal("the user info annotation is immutable"))
+						})
+					})
 				})
 			})
 
