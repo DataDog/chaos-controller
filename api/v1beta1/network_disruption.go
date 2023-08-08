@@ -333,12 +333,7 @@ func (s *NetworkDisruptionSpec) Format() string {
 		}
 
 		if len(service.Ports) > 0 {
-			plural := ""
-			if len(service.Ports) > 1 {
-				plural = "s"
-			}
-
-			portsDescription = fmt.Sprintf(" on port%s %s", plural, portsDescription[:len(portsDescription)-1])
+			portsDescription = fmt.Sprintf(" on port(s) %s", portsDescription[:len(portsDescription)-1])
 		}
 
 		filterDescriptions = append(filterDescriptions, fmt.Sprintf(" going to %s/%s%s", service.Name, service.Namespace, portsDescription))
