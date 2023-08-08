@@ -47,13 +47,39 @@ spec:
     shutdown: false # do not force the node to be kept down
 ```
 
-To disrupt your cluster, run `kubectl apply -f <disruption_file.yaml>`. You can clean up the disruption with `kubectl delete -f <disruption_file>.yaml`. For your safety, we recommend you get started with the `dry-run` mode enabled.
+To disrupt your cluster, run `kubectl apply -f <disruption_file>.yaml`. You can clean up the disruption with `kubectl delete -f <disruption_file>.yaml`. For your safety, we recommend you get started with the `dry-run` mode enabled.
 
 > :open_book: The [features guide](docs/features.md) details all the features of the Chaos Controller.
 
 > :open_book: The [examples guide](docs/examples.md) contains a list of various disruption files that you can use.
 
 > Check out [Chaosli](./cli/chaosli/README.md) if you want some help understanding/creating disruption configurations.
+
+## Chaos Scheduling
+The Chaos Controller has expanded its capabilities by introducing disruption scheduling, enhancing your ability to automate and test system resilience consistently. Instead of manual creation and deletion, use `DisruptionCron` to regularly disrupt long-lived Kubernetes resources like `Deployments` and `StatefulSets`.
+
+### Example:
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: DisruptionCron
+metadata:
+  name: node-failure
+  namespace: chaos-demo
+spec:
+  schedule: "*/15 * * * *" # every 15 minutes
+  targetResource: 
+    kind: deployment
+    name: demo-curl
+  disruptionTemplate:
+    count: 1 
+    duration: 1h 
+    nodeFailure:
+      shutdown: false
+```
+
+To schedule disruption in your cluster, run `kubectl apply -f <disruption_cron_file>.yaml`. To stop, run `kubectl delete -f <disruption_cron_file>.yaml`.
+
+> :mag_right: For a comprehensive guide and more detailed use cases, delve into the [DisruptionCron guide](docs/disruption_cron.md).
 
 ## Contributing
 
