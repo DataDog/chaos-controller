@@ -79,7 +79,7 @@ spec:
 
 To schedule disruption in your cluster, run `kubectl apply -f <disruption_cron_file>.yaml`. To stop, run `kubectl delete -f <disruption_cron_file>.yaml`.
 
-> :mag_right: For a comprehensive guide and more detailed use cases, delve into the [DisruptionCron guide](docs/disruption_cron.md).
+> :mag_right: Check out [DisruptionCron guide](docs/disruption_cron.md) for more detailed information on how to schedule disruptions.
 
 ## Contributing
 
