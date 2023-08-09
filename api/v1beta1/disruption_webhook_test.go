@@ -119,7 +119,7 @@ var _ = Describe("Disruption", func() {
 						// Action
 						err := newDisruption.ValidateUpdate(oldDisruption)
 
-						// Arrange
+						// Assert
 						By("not return an error")
 						Expect(err).ShouldNot(HaveOccurred())
 					})
@@ -134,7 +134,7 @@ var _ = Describe("Disruption", func() {
 							// Action
 							err := newDisruption.ValidateUpdate(oldDisruption)
 
-							// Arrange
+							// Assert
 							By("return an error")
 							Expect(err).Should(HaveOccurred())
 							Expect(err.Error()).Should(Equal("the user info annotation is immutable"))
@@ -162,7 +162,7 @@ var _ = Describe("Disruption", func() {
 							// Action
 							err := newDisruption.ValidateUpdate(oldDisruption)
 
-							// Arrange
+							// Assert
 							By("return an error")
 							Expect(err).Should(HaveOccurred())
 							Expect(err.Error()).Should(Equal("the user info annotation is immutable"))
