@@ -44,16 +44,18 @@ For instance, `0 12 * * 5` states that the task must be started every Friday at 
 To generate CronJob schedule expressions, you can also use web tools like [crontab.guru](https://crontab.guru/).
 
 ### Target resource
-The `.spec.targetResource` field specifies which resource to run disruptions against, and is required. Since DisruptionCrons are designed to be semi-permanent, they're best used to target other long-lasting resources. As such, the `.spec.targetResource.kind` field can only be set to either `deployment` or `statefulset`. At runtime, a pod from either of these resources is randomly selected for disruption.
+The `.spec.targetResource` field specifies which resource to run disruptions against, and is required. Since DisruptionCrons are designed to be semi-permanent, they're best used to target other long-lasting resources. As such, the `.spec.targetResource.kind` field can only be set to either `deployment` or `statefulset`. At runtime, pods from either of these resources are randomly selected for disruption.
 
 ### Disruption template
 The `.spec.disruptionTemplate` defines a template for the Disruptions that the DisruptionCron creates, and it is required.
 Its schema is identical to a `DisruptionSpec` of the `Disruption` CRD. [Detailed examples](examples.md) of various Disruption types, including their respective manifests, are readily available for reference.
 
-### Deadline for delayed disruption start
-The `.spec.StartingDeadlineSeconds` field is optional. This field defines a deadline (in whole seconds) for starting the Disruption. If a scheduled Disruption misses its start time for any reason and exceeds the deadline, that particular instance of the Disruption is skipped but future occurrences remain scheduled.
-If Disruptions exceed their deadline, they are considered as failed. Without a specified `startingDeadlineSeconds`, Disruptions have no deadline and can start at any delay. If `startingDeadlineSeconds` is defined, any delay exceeding this limit will cause the Disruption to be skipped. 
-For example, a value of 200 allows a Disruption to start up to 200 seconds after the actual schedule.
+### Tolerance for delayed disruption start
+The `.spec.delayedStartTolerance`  field is optional. It establishes a time threshold for starting the Disruption. It accepts values in the format of golang's `time.Duration`, like "45s", "15m30s", or "4h30m".
+
+If a Disruption doesn't start on time and goes beyond this threshold, that particular instance of the Disruption is skipped but future occurrences remain scheduled. When there's no specified `delayedStartTolerance`, there's no time limit, and Disruptions can begin after any delay.
+
+For instance, with a setting of "200s", the Disruption can begin up to 200 seconds past its scheduled time."
 
 ## Why use DisruptionCron?
 DisruptionCron facilitates chaos engineering by automating and scheduling chaos experiments. This promotes continual resilience improvement and proactive vulnerability detection, thereby mitigating risks and potential costs associated with unexpected system failures.
