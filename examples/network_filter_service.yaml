@@ -21,6 +21,6 @@ spec:
       - name: demo # service name
         namespace: chaos-demo # service namespace
         ports: # optional. List of affected ports. No list means all ports are affected
-          - name: regular # optional. Name of the port, used to identify the port affected. You need to specify at least one of each name or port.
+          - name: regular-port # optional. Name of the port, used to identify the port affected. You need to specify at least one of each name or port.
             port: 8080 # optional. Value of the port, used to identify the port affected.
           - port: 8081

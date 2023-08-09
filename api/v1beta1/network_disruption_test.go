@@ -6,9 +6,10 @@
 package v1beta1
 
 import (
+	"math/rand"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"math/rand"
 )
 
 const SpacesErrorMessagePrefix = "should not contains spaces"
@@ -48,12 +49,18 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 						{
 							Name:      "demo-worker",
 							Namespace: "demo-namespace",
+							Ports: []NetworkDisruptionServicePortSpec{
+								{
+									Name: "worker-port",
+									Port: 8180,
+								},
+							},
 						},
 					},
 					Corrupt: 100,
 				}
 
-				expected := "Network disruption corrupting 100% of the traffic going to demo-service/demo-namespace and going to demo-worker/demo-namespace"
+				expected := "Network disruption corrupting 100% of the traffic going to demo-service/demo-namespace and going to demo-worker/demo-namespace on port(s) worker-port/8180"
 				result := disruptionSpec.Format()
 
 				Expect(result).To(Equal(expected))
@@ -100,6 +107,12 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 						{
 							Name:      "demo-service",
 							Namespace: "demo-namespace",
+							Ports: []NetworkDisruptionServicePortSpec{
+								{
+									Name: "demo-service-port",
+									Port: 8180,
+								},
+							},
 						},
 						{
 							Name:      "demo-worker",
@@ -121,7 +134,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 					Corrupt: 100,
 				}
 
-				expected := "Network disruption corrupting 100% of the traffic going to 1.2.3.4:9000, coming from 2.2.3.4:8000, going to demo-service/demo-namespace, going to demo-worker/demo-namespace, going to S3 and going to synthetics"
+				expected := "Network disruption corrupting 100% of the traffic going to 1.2.3.4:9000, coming from 2.2.3.4:8000, going to demo-service/demo-namespace on port(s) demo-service-port/8180, going to demo-worker/demo-namespace, going to S3 and going to synthetics"
 				result := disruptionSpec.Format()
 
 				Expect(result).To(Equal(expected))
@@ -269,6 +282,29 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 			Entry("custom path", "/test", DefaultHTTPMethodFilter),
 			Entry("custom path and method", "/test", "delete"),
 		)
+	})
+	When("NetworkDisruptionServiceSpecFromString is called", func() {
+		It("handles ports with non-alpha names", func() {
+			expected := []NetworkDisruptionServiceSpec{{
+				Name:      "demo-service",
+				Namespace: "demo-namespace",
+				Ports: []NetworkDisruptionServicePortSpec{
+					{
+						Name: "demo-port",
+						Port: 8080,
+					},
+					{
+						Port: 8180,
+					},
+				},
+			}}
+
+			testString := []string{"demo-service;demo-namespace;8080-demo-port;8180-"}
+
+			actual, err := NetworkDisruptionServiceSpecFromString(testString)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(actual).Should(Equal(expected))
+		})
 	})
 })
 

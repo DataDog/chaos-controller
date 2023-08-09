@@ -36,6 +36,7 @@ import (
 const (
 	secondGatewayIP, targetPodHostIP, clusterIP, podIP = "192.168.0.1", "10.0.0.2", "172.16.0.1", "10.1.0.4"
 	testHostIP, testHostIPTwo, testHostIPThree         = "1.1.1.1", "2.2.2.2", "3.3.3.3"
+	fakeService2PortName                               = "foo2-port"
 )
 
 var _ = Describe("Failure", func() {
@@ -152,6 +153,7 @@ var _ = Describe("Failure", func() {
 				ClusterIP: clusterIP,
 				Ports: []corev1.ServicePort{
 					{
+						Name:       "test-port-name",
 						Port:       80,
 						TargetPort: intstr.FromInt(8080),
 						Protocol:   corev1.ProtocolTCP,
@@ -173,6 +175,7 @@ var _ = Describe("Failure", func() {
 				ClusterIP: clusterIP,
 				Ports: []corev1.ServicePort{
 					{
+						Name:       fakeService2PortName,
 						Port:       8180,
 						TargetPort: intstr.FromInt(8080),
 						Protocol:   corev1.ProtocolTCP,
@@ -494,6 +497,7 @@ var _ = Describe("Failure", func() {
 						Namespace: "bar",
 						Ports: []v1beta1.NetworkDisruptionServicePortSpec{
 							{
+								Name: fakeService2PortName,
 								Port: 8180,
 							},
 						},
