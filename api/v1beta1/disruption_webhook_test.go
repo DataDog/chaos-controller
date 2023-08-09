@@ -235,6 +235,36 @@ var _ = Describe("Disruption", func() {
 				})
 			})
 
+			When("disruption selectors are invalid", func() {
+				It("should return an error", func() {
+					invalidDisruption := newDisruption.DeepCopy()
+					invalidDisruption.Spec.Selector = map[string]string{"app": "demo-{nginx}"}
+
+					err := invalidDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(Equal("1 error occurred:\n\t* Spec: unable to parse requirement: values[0][app]: Invalid value: \"demo-{nginx}\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
+					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
+				})
+			})
+
+			When("disruption advanced selectors are invalid", func() {
+				It("should return an error", func() {
+					invalidDisruption := newDisruption.DeepCopy()
+					invalidDisruption.Spec.AdvancedSelector = []metav1.LabelSelectorRequirement{{
+						Key:      "app",
+						Operator: "NotIn",
+						Values:   []string{"*nginx"},
+					}}
+
+					err := invalidDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(Equal("1 error occurred:\n\t* Spec: error parsing given advanced selector to requirements: values[0][app]: Invalid value: \"*nginx\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
+					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
+				})
+			})
+
 			When("ddmark return an error", func() {
 				It("should catch this error and propagated it", func() {
 					// Arrange
