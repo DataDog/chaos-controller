@@ -630,7 +630,7 @@ func TargetedContainers(pod corev1.Pod, containerNames []string) (map[string]str
 		if containerID, existsInPod := allContainers[containerName]; existsInPod {
 			targetedContainers[containerName] = containerID
 		} else {
-			return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, containerName)
+			return nil, fmt.Errorf("could not find specified container in pod (pod: %s, targetContainer: %s)", pod.ObjectMeta.Name, containerName)
 		}
 	}
 

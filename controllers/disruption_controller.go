@@ -539,7 +539,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 		// get IDs of targeted containers or all containers
 		targetContainers, err = chaosv1beta1.TargetedContainers(pod, instance.Spec.Containers)
 		if err != nil {
-			dErr := fmt.Errorf("error getting %s target pod %s/%s container ID: %w", pod.Status.String(), pod.Namespace, pod.Name, err)
+			dErr := fmt.Errorf("error getting target pod's container ID: %w", err)
 
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, dErr.Error(), pod.Name)
 
