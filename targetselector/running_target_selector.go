@@ -13,7 +13,6 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
@@ -238,31 +237,12 @@ func GetLabelSelectorFromInstance(instance *chaosv1beta1.Disruption) (labels.Sel
 
 	// add advanced selectors
 	if instance.Spec.AdvancedSelector != nil {
-		for _, req := range instance.Spec.AdvancedSelector {
-			var op selection.Operator
-
-			// parse the operator to convert it from one package to another
-			switch req.Operator {
-			case metav1.LabelSelectorOpIn:
-				op = selection.In
-			case metav1.LabelSelectorOpNotIn:
-				op = selection.NotIn
-			case metav1.LabelSelectorOpExists:
-				op = selection.Exists
-			case metav1.LabelSelectorOpDoesNotExist:
-				op = selection.DoesNotExist
-			default:
-				return nil, fmt.Errorf("error parsing advanced selector operator %s: must be either In, NotIn, Exists or DoesNotExist", req.Operator)
-			}
-
-			// generate and add the requirement to the selector
-			parsedReq, err := labels.NewRequirement(req.Key, op, req.Values)
-			if err != nil {
-				return nil, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
-			}
-
-			selector = selector.Add(*parsedReq)
+		reqs, err := chaosv1beta1.AdvancedSelectorsToRequirements(instance.Spec.AdvancedSelector)
+		if err != nil {
+			return nil, err
 		}
+
+		selector = selector.Add(reqs...)
 	}
 
 	// if the disruption is supposed to be injected on pod init
