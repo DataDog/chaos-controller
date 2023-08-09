@@ -40,11 +40,10 @@ type DisruptionCronSpec struct {
 	// The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule string `json:"schedule"`
 
-	//+kubebuilder:validation:Minimum=0
 	// Optional deadline in seconds for starting the disruption if it misses scheduled
 	// time for any reason.  Missed disruption executions will be counted as failed ones.
 	// +nullable
-	StartingDeadlineSeconds *int64 `json:"startingDeadlineSeconds,omitempty"`
+	DelayedStartTolerance DisruptionDuration `json:"delayedStartTolerance,omitempty"`
 
 	// +kubebuilder:validation:Required
 	// +ddmark:validation:Required=true
