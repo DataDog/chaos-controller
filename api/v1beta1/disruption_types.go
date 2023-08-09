@@ -323,6 +323,7 @@ func (s DisruptionSpec) Validate() (retErr error) {
 
 func AdvancedSelectorsToRequirements(advancedSelectors []metav1.LabelSelectorRequirement) ([]labels.Requirement, error) {
 	reqs := []labels.Requirement{}
+
 	for _, req := range advancedSelectors {
 		var op selection.Operator
 
