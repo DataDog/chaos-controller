@@ -3,6 +3,9 @@
 ## Overview
 The `DisruptionCron` is a Custom Resource Definition (CRD) that enables scheduling `Disruptions` against the Kubernetes resources at specified intervals. This tool enhances the process of chaos engineering by providing a means to continually assess a system's resilience against a wide array of potential disruptions, thereby reducing the necessity for manual intervention.
 
+## Why use DisruptionCron?
+DisruptionCron facilitates chaos engineering by automating and scheduling chaos experiments. This promotes continual resilience improvement and proactive vulnerability detection, thereby mitigating risks and potential costs associated with unexpected system failures.
+
 ## Usage
 To schedule a disruption in a cluster, run `kubectl apply -f <disruption_cron_file>.yaml`. To halt the scheduled disruptions, use `kubectl delete -f <disruption_cron_file>.yaml`.
 
@@ -56,6 +59,3 @@ The `.spec.delayedStartTolerance`  field is optional. It establishes a time thre
 If a Disruption doesn't start on time and goes beyond this threshold, that particular instance of the Disruption is skipped but future occurrences remain scheduled. When there's no specified `delayedStartTolerance`, there's no time limit, and Disruptions can begin after any delay.
 
 For instance, with a setting of "200s", the Disruption can begin up to 200 seconds past its scheduled time."
-
-## Why use DisruptionCron?
-DisruptionCron facilitates chaos engineering by automating and scheduling chaos experiments. This promotes continual resilience improvement and proactive vulnerability detection, thereby mitigating risks and potential costs associated with unexpected system failures.
