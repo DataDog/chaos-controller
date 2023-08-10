@@ -28,7 +28,7 @@ That means it can extend or even modify the way the kernel behaves. It is useful
 With eBPF it is possible to catch openat syscall and override the result with a `-ENOENT` error code.
 
 The disruption has the following additional field:
-* **Path**: Prefix used to filter `openat` system calls by path. Does not support wildcard and cannot exceed `62` characters due to eBPF kernel limitation. A validation is in place to avoid the usage of a path greater than this limit.
+* **Paths**: Prefix used to filter `openat` system calls by path. Does not support wildcard and cannot exceed `62` characters due to eBPF kernel limitation. A validation is in place to avoid the usage of a path greater than this limit. It is possible to define multiple paths. 
 
 Support two kind of levels:
 * **Node**: Intercept all `openat` system calls of nodes matching the selector.
@@ -48,7 +48,8 @@ spec:
     app: example
   count: 1
   diskFailure:
-    path: /sub/path
+    paths:
+      - /sub/path
 ```
 
 > Invalid disruption
@@ -66,7 +67,8 @@ spec:
     app: example
   count: 1
   diskFailure:
-    path: / # <----- Denied!
+    paths: 
+      - / # <----- Denied!
 ```
 
 To allow the `"/"` path, the safe-mode has to be disabled. :warning: This is not recommended at all
@@ -87,7 +89,8 @@ spec:
   unsafeMode:
     AllowRootDiskFailure: true
   diskFailure:
-    path: / # <----- Allowed
+    paths: 
+      - / # <----- Allowed
 ```
 
 * **Pod**: Intercept all `openat` system  calls of the main process of the containers and its children. Allow to filter by container name too:
@@ -107,7 +110,8 @@ spec:
     app: example
   count: 1
   diskFailure:
-    path: /
+    paths: 
+      - /
 ```
 
 > Disrupt a single container
@@ -127,7 +131,8 @@ spec:
   containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
     - container-1
   diskFailure:
-    path: /
+    paths: 
+      - /
 ```
 
 ### Override exit code
@@ -149,7 +154,8 @@ spec:
   containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
     - container-1
   diskFailure:
-    path: /
+    paths: 
+      - /
     openat:
       exit_code: EACCES # <-- Override the exit code by EACCES. Default: ENOENT
 ```

@@ -435,8 +435,8 @@ func getDiskFailure() *v1beta1.DiskFailureSpec {
 
 	spec := &v1beta1.DiskFailureSpec{}
 
-	spec.Path = getInput("Add a filter path prefix matcher",
-		"The filter path is a strict prefix matcher and avoid a program to access file or directory with this prefix. Currently it does not support wildcards and could not exceed 62 characters.",
+	spec.Paths = getSliceInput("Add a filter paths prefix matcher",
+		"The filter paths is a strict prefix matcher and avoid a program to access files or directories with this prefixes. Currently it does not support wildcards and could not exceed 62 characters.",
 	)
 
 	return spec

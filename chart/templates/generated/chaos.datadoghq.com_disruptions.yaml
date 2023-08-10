@@ -119,10 +119,12 @@ spec:
                       required:
                         - exitCode
                       type: object
-                    path:
-                      type: string
+                    paths:
+                      items:
+                        type: string
+                      type: array
                   required:
-                    - path
+                    - paths
                   type: object
                 diskPressure:
                   description: DiskPressureSpec represents a disk pressure disruption

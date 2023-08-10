@@ -6,6 +6,7 @@
 package v1beta1_test
 
 import (
+	"fmt"
 	. "github.com/DataDog/chaos-controller/api/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -21,15 +22,17 @@ var _ = Describe("DiskFailureSpec", func() {
 			},
 			Entry("with a valid path not exceeding 62 characters",
 				DiskFailureSpec{
-					Path: randStringRunes(rand.IntnRange(1, 62)),
+					Paths: []string{randStringRunes(rand.IntnRange(1, 62)), randStringRunes(rand.IntnRange(1, 62))},
 				},
 			),
 			Entry("with a valid path containing spaces",
 				DiskFailureSpec{
-					Path: "   " + randStringRunes(rand.IntnRange(61, 62)) + "   ",
+					Paths: []string{"   " + randStringRunes(rand.IntnRange(61, 62)) + "   ", randStringRunes(rand.IntnRange(1, 62))},
 				},
 			),
 		)
+
+		pathGreaterThan62Characters := randStringRunes(rand.IntnRange(63, 10000))
 
 		DescribeTable("error cases",
 			func(df DiskFailureSpec, expectedError string) {
@@ -42,19 +45,19 @@ var _ = Describe("DiskFailureSpec", func() {
 			},
 			Entry("with a path exceeding 62 characters",
 				DiskFailureSpec{
-					Path: randStringRunes(rand.IntnRange(63, 10000)),
+					Paths: []string{randStringRunes(rand.IntnRange(1, 62)), pathGreaterThan62Characters},
 				},
-				"the path of the disk failure disruption must not exceed 62 characters",
+				fmt.Sprintf("the path of the disk failure disruption must not exceed 62 characters, found %d", len(pathGreaterThan62Characters)),
 			),
 			Entry("with an empty path",
 				DiskFailureSpec{
-					Path: "",
+					Paths: []string{""},
 				},
 				"the path of the disk failure disruption must not be empty",
 			),
 			Entry("with a blank path",
 				DiskFailureSpec{
-					Path: "   ",
+					Paths: []string{randStringRunes(rand.IntnRange(1, 62)), "   "},
 				},
 				"the path of the disk failure disruption must not be empty",
 			),
@@ -75,32 +78,38 @@ var _ = Describe("DiskFailureSpec", func() {
 			},
 			Entry("with a '/' path",
 				DiskFailureSpec{
-					Path: "/",
+					Paths: []string{"/"},
 				},
 				[]string{"--path", "/"},
 			),
 			Entry("with a '/sub/path/'",
 				DiskFailureSpec{
-					Path: "/sub/path/",
+					Paths: []string{"/sub/path/"},
 				},
 				[]string{"--path", "/sub/path/"},
 			),
+			Entry("with multiple paths",
+				DiskFailureSpec{
+					Paths: []string{"/path-1", "/path-2"},
+				},
+				[]string{"--path", "/path-1", "--path", "/path-2"},
+			),
 			Entry("with a path containing spaces",
 				DiskFailureSpec{
-					Path: "  /  ",
+					Paths: []string{"  /  "},
 				},
 				[]string{"--path", "/"},
 			),
 			Entry("with an EACCES exit code",
 				DiskFailureSpec{
-					Path:          "/",
+					Paths:         []string{"/"},
 					OpenatSyscall: &OpenatSyscallSpec{ExitCode: "EACCES"},
 				},
 				[]string{"--path", "/", "--exit-code", "EACCES"},
 			),
 			Entry("with an empty exit code",
 				DiskFailureSpec{
-					Path:          "/",
+					Paths:         []string{"/"},
 					OpenatSyscall: &OpenatSyscallSpec{},
 				},
 				[]string{"--path", "/"},
