@@ -113,8 +113,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	tooLate := false
-	if instance.Spec.StartingDeadlineSeconds != nil {
-		tooLate = missedRun.Add(time.Duration(*instance.Spec.StartingDeadlineSeconds) * time.Second).Before(time.Now())
+	if instance.Spec.DelayedStartTolerance.Duration() > 0 {
+		tooLate = missedRun.Add(instance.Spec.DelayedStartTolerance.Duration()).Before(time.Now())
 	}
 
 	if tooLate {
@@ -347,9 +347,9 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 		earliestTime = instance.ObjectMeta.CreationTimestamp.Time
 	}
 
-	if instance.Spec.StartingDeadlineSeconds != nil {
+	if instance.Spec.DelayedStartTolerance.Duration() > 0 {
 		// controller is not going to schedule anything below this point
-		schedulingDeadline := now.Add(-time.Second * time.Duration(*instance.Spec.StartingDeadlineSeconds))
+		schedulingDeadline := now.Add(-instance.Spec.DelayedStartTolerance.Duration())
 
 		if schedulingDeadline.After(earliestTime) {
 			earliestTime = schedulingDeadline
