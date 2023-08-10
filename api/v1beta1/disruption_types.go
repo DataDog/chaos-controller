@@ -321,6 +321,9 @@ func (s DisruptionSpec) Validate() (retErr error) {
 	return multierror.Prefix(retErr, "Spec:")
 }
 
+// AdvancedSelectorsToRequirements converts a slice of LabelSelectorRequirements into a slice of Requirements
+// and returns an error if any of those LabelSelectorRequirements are invalid. It's used for translating
+// user specified advanced selectors into real requirements for selecting targets
 func AdvancedSelectorsToRequirements(advancedSelectors []metav1.LabelSelectorRequirement) ([]labels.Requirement, error) {
 	reqs := []labels.Requirement{}
 
