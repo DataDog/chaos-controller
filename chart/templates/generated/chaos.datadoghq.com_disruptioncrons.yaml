@@ -31,6 +31,10 @@ spec:
             spec:
               description: DisruptionCronSpec defines the desired state of DisruptionCron
               properties:
+                delayedStartTolerance:
+                  description: Optional deadline in seconds for starting the disruption if it misses scheduled time for any reason.  Missed disruption executions will be counted as failed ones.
+                  nullable: true
+                  type: string
                 disruptionTemplate:
                   description: Specifies the Disruption that will be created when executing a disruptioncron.
                   properties:
@@ -582,12 +586,6 @@ spec:
                   description: The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
                   minLength: 0
                   type: string
-                startingDeadlineSeconds:
-                  description: Optional deadline in seconds for starting the disruption if it misses scheduled time for any reason.  Missed disruption executions will be counted as failed ones.
-                  format: int64
-                  minimum: 0
-                  nullable: true
-                  type: integer
                 targetResource:
                   description: TargetResource specifies the resource to run disruptions against. It can only be a deployment or statefulset.
                   properties:
