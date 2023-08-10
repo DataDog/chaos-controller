@@ -30,6 +30,7 @@ files_to_skip = [
     "bin/injector/dns_disruption_resolver.py",
     "chart/templates/generated/chaos.datadoghq.com_disruptions.yaml",
     "chart/templates/generated/chaos.datadoghq.com_disruptioncrons.yaml",
+    "chart/templates/generated/chaos.datadoghq.com_disruptionrollouts.yaml",
     "chart/templates/generated/role.yaml",
     "cpuset/cpuset.go",
     "grpc/disruptionlistener/disruptionlistener_grpc.pb.go",

@@ -236,6 +236,18 @@ func main() {
 		os.Exit(1) //nolint:gocritic
 	}
 
+	// create disruption rollout reconciler
+	disruptionRolloutReconciler := &controllers.DisruptionRolloutReconciler{
+		Client:  mgr.GetClient(),
+		BaseLog: logger,
+		Scheme:  mgr.GetScheme(),
+	}
+
+	if err := disruptionRolloutReconciler.SetupWithManager(mgr); err != nil {
+		logger.Errorw("unable to create controller", "controller", "DisruptionRollout", "error", err)
+		os.Exit(1) //nolint:gocritic
+	}
+
 	// register disruption validating webhook
 	setupWebhookConfig := utils.SetupWebhookWithManagerConfig{
 		Manager:                       mgr,
