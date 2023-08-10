@@ -58,7 +58,7 @@ type DisruptionCronSpec struct {
 }
 
 // TargetResource specifies the long-lived resource to be targeted for disruptions.
-// Disruptions are intended to exist semi-permanently, and thus appropriate targets can only be other long-lived resources,
+// DisruptionCrons are intended to exist semi-permanently, and thus appropriate targets can only be other long-lived resources,
 // such as statefulsets or deployment.
 type TargetResourceSpec struct {
 	// +kubebuilder:validation:Enum=deployment;statefulset
