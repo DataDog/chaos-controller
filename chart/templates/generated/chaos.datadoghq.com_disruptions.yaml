@@ -588,6 +588,7 @@ spec:
                   description: Number of targets with a chaos pod ready
                   type: integer
                 injectionStatus:
+                  default: NotInjected
                   description: DisruptionInjectionStatus represents the injection status of a disruption
                   enum:
                     - NotInjected
