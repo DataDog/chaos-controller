@@ -16,6 +16,8 @@ spec:
     app: demo-curl
   count: 1
   diskFailure:
-    path: /mnt/
+    paths: 
+      - /mnt/data/disk-read
+      - /mnt/data/disk-write
     openat:
       exitCode: ENOENT

@@ -561,8 +561,10 @@ func safetyNetAllowRootDiskFailure(r *Disruption) (bool, string) {
 		return false, ""
 	}
 
-	if strings.TrimSpace(r.Spec.DiskFailure.Path) == "/" {
-		return true, "the specified path for the disk failure disruption targeting a node must not be \"/\"."
+	for _, path := range r.Spec.DiskFailure.Paths {
+		if strings.TrimSpace(path) == "/" {
+			return true, "the specified path for the disk failure disruption targeting a node must not be \"/\"."
+		}
 	}
 
 	return false, ""

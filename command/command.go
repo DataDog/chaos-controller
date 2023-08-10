@@ -2,6 +2,7 @@
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023 Datadog, Inc.
+
 package command
 
 import (
@@ -12,7 +13,7 @@ import (
 	"os/exec"
 	"sync"
 	"syscall"
-	time "time"
+	"time"
 
 	"github.com/DataDog/chaos-controller/process"
 	"go.uber.org/zap"
@@ -197,7 +198,7 @@ func (w *backgroundCmd) KeepAlive() {
 
 			<-w.safeTicker().C
 
-			process, err := w.processManager.Find(w.pid)
+			proc, err := w.processManager.Find(w.pid)
 			if err != nil {
 				w.log.Errorw("an error occurred when trying to Find process, stopping to monitor background process, ticker removed", "error", err)
 
@@ -206,7 +207,7 @@ func (w *backgroundCmd) KeepAlive() {
 				return
 			}
 
-			if err := w.processManager.Signal(process, syscall.SIGCONT); err != nil {
+			if err := w.processManager.Signal(proc, syscall.SIGCONT); err != nil {
 				if errors.Is(err, os.ErrProcessDone) {
 					w.log.Infof("process is already finished, skipping sending SIGCONT from now on")
 				} else {
@@ -251,12 +252,12 @@ func (w *backgroundCmd) Stop() error {
 
 	w.log.Infow("sending SIGTERM to background process")
 
-	process, err := w.processManager.Find(w.pid)
+	proc, err := w.processManager.Find(w.pid)
 	if err != nil {
 		return fmt.Errorf("an error occurred while finding signal with pid %d: %w", w.pid, err)
 	}
 
-	err = w.processManager.Signal(process, syscall.SIGTERM)
+	err = w.processManager.Signal(proc, syscall.SIGTERM)
 	if err != nil {
 		return fmt.Errorf("an error occurred while sending SIGTERM signal to process with pid %d: %w", w.pid, err)
 	}
