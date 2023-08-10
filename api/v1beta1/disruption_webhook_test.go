@@ -360,7 +360,7 @@ var _ = Describe("Disruption", func() {
 				Context("with the '/' path", func() {
 					It("should deny the usage of '/' path", func() {
 						// Arrange
-						newDisruption.Spec.DiskFailure.Path = "/"
+						newDisruption.Spec.DiskFailure.Paths = []string{"/test", "/"}
 
 						// Action
 						err := newDisruption.ValidateCreate()
@@ -374,7 +374,7 @@ var _ = Describe("Disruption", func() {
 				Context("with the '  /  ' path", func() {
 					It("should deny the usage of '   /   ' path", func() {
 						// Arrange
-						newDisruption.Spec.DiskFailure.Path = "   /   "
+						newDisruption.Spec.DiskFailure.Paths = []string{"/test", "   /   "}
 
 						// Action
 						err := newDisruption.ValidateCreate()
@@ -408,7 +408,7 @@ var _ = Describe("Disruption", func() {
 				Context("with the '/' path", func() {
 					It("should allow the usage of this path", func() {
 						// Arrange
-						newDisruption.Spec.DiskFailure.Path = "/"
+						newDisruption.Spec.DiskFailure.Paths = []string{"/test", "/"}
 
 						// Action
 						err := newDisruption.ValidateCreate()
@@ -489,7 +489,7 @@ func makeValidDiskFailureDisruption() *Disruption {
 				"namespace": "random",
 			},
 			DiskFailure: &DiskFailureSpec{
-				Path: "/",
+				Paths: []string{"/"},
 			},
 		},
 	}
