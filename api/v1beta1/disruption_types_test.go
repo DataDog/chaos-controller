@@ -11,6 +11,9 @@ import (
 	. "github.com/DataDog/chaos-controller/api/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 var _ = Describe("TargetInjections", func() {
@@ -37,6 +40,72 @@ var _ = Describe("TargetInjections", func() {
 			It("should return the list of targets name", func() {
 				Expect(targetInjections.GetTargetNames()).Should(BeEquivalentTo([]string{}))
 			})
+		})
+	})
+})
+
+var _ = Describe("AdvancedSelectorsToRequirements", func() {
+	Context("valid advancedselectors", func() {
+		It("should return valid requirements", func() {
+			advancedSelectors := []metav1.LabelSelectorRequirement{
+				{
+					Key:      "service",
+					Operator: "NotIn",
+					Values:   []string{"foo", "bar"},
+				},
+				{
+					Key:      "app",
+					Operator: "Exists",
+					Values:   nil,
+				},
+			}
+
+			req1, err := labels.NewRequirement("service", selection.NotIn, []string{"foo", "bar"})
+			Expect(err).ShouldNot(HaveOccurred())
+
+			req2, err := labels.NewRequirement("app", selection.Exists, nil)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			expected := []labels.Requirement{
+				*req1,
+				*req2,
+			}
+
+			req, err := AdvancedSelectorsToRequirements(advancedSelectors)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(req).Should(Equal(expected))
+		})
+	})
+
+	Context("invalid operator", func() {
+		It("should return an error", func() {
+			advancedSelectors := []metav1.LabelSelectorRequirement{
+				{
+					Key:      "app",
+					Operator: "CouldBe",
+					Values:   []string{"foobaz"},
+				},
+			}
+
+			_, err := AdvancedSelectorsToRequirements(advancedSelectors)
+			Expect(err).Should(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("error parsing advanced selector operator CouldBe: must be either In, NotIn, Exists or DoesNotExist"))
+		})
+	})
+
+	Context("invalid values", func() {
+		It("should return an error", func() {
+			advancedSelectors := []metav1.LabelSelectorRequirement{
+				{
+					Key:      "app",
+					Operator: "In",
+					Values:   []string{"*", "{hash}"},
+				},
+			}
+
+			_, err := AdvancedSelectorsToRequirements(advancedSelectors)
+			Expect(err).Should(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("error parsing given advanced selector to requirements"))
 		})
 	})
 })
