@@ -639,8 +639,8 @@ class RuleEngine2:
             if result is not None:
                 response_data = result
 
-                # Return Nonefound if the rule says "none"
-                if response_data.lower() == 'none':
+                # Return Nonefound if the rule says "none" or "nxdomain"
+                if response_data.lower() in ('none','nxdomain') :
                     return NONEFOUND(query).make_packet()
 
                 response = CASE[query.type](query, response_data)
