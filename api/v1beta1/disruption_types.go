@@ -216,6 +216,7 @@ type DisruptionStatus struct {
 	IsInjected       bool `json:"isInjected,omitempty"`
 	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
 	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
+	// +kubebuilder:default=NotInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
 	TargetInjections TargetInjections `json:"targetInjections,omitempty"`
@@ -630,7 +631,7 @@ func TargetedContainers(pod corev1.Pod, containerNames []string) (map[string]str
 		if containerID, existsInPod := allContainers[containerName]; existsInPod {
 			targetedContainers[containerName] = containerID
 		} else {
-			return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, containerName)
+			return nil, fmt.Errorf("could not find specified container in pod (pod: %s, targetContainer: %s)", pod.ObjectMeta.Name, containerName)
 		}
 	}
 
