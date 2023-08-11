@@ -56,6 +56,8 @@ To disrupt your cluster, run `kubectl apply -f <disruption_file>.yaml`. You can 
 > Check out [Chaosli](./cli/chaosli/README.md) if you want some help understanding/creating disruption configurations.
 
 ## Chaos Scheduling
+> New feature in `8.0.0`
+
 The Chaos Controller has expanded its capabilities by introducing disruption scheduling, enhancing your ability to automate and test system resilience consistently. Instead of manual creation and deletion, use `DisruptionCron` to regularly disrupt long-lived Kubernetes resources like `Deployments` and `StatefulSets`.
 
 ### Example:
