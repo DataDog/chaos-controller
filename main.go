@@ -227,19 +227,20 @@ func main() {
 	deploymentInformer := globalInformerFactory.Apps().V1().Deployments().Informer()
 	statefullsetInformer := globalInformerFactory.Apps().V1().StatefulSets().Informer()
 
-	handler := watchers.NewDeploymentStatefulSetHandler(mgr.GetClient(), logger)
+	deploymentHandler := watchers.NewDeploymentHandler(mgr.GetClient(), logger)
+	statefulsetHandler := watchers.NewStatefulSetHandler(mgr.GetClient(), logger)
 
 	_, err = deploymentInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    handler.OnAdd,
-		UpdateFunc: handler.OnUpdate,
+		AddFunc:    deploymentHandler.OnAdd,
+		UpdateFunc: deploymentHandler.OnUpdate,
 	})
 	if err != nil {
 		logger.Fatalw("unable to add event handler for Deployments", "error", err)
 	}
 
 	_, err = statefullsetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    handler.OnAdd,
-		UpdateFunc: handler.OnUpdate,
+		AddFunc:    statefulsetHandler.OnAdd,
+		UpdateFunc: statefulsetHandler.OnUpdate,
 	})
 	if err != nil {
 		logger.Fatalw("unable to add event handler for StatefulSets", "error", err)
