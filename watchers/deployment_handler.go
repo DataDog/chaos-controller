@@ -28,8 +28,26 @@ func NewDeploymentHandler(client client.Client, logger *zap.SugaredLogger) Deplo
 }
 
 // OnAdd is a handler function for the add of a deployment
-func (h DeploymentHandler) OnAdd(_ interface{}) {
+func (h DeploymentHandler) OnAdd(obj interface{}) {
+	deployment, ok := obj.(*appsv1.Deployment)
 
+	// If the object is not a deployment, do nothing
+	if !ok {
+		return
+	}
+
+	// If deployment doesn't have associated disruption rollout, do nothing
+	hasDisruptionRollout, err := h.hasAssociatedDisruptionRollout(deployment)
+	if err != nil {
+		h.log.Errorw("Error checking associated DisruptionRollout on deployment addition", "error", err)
+		return
+	}
+
+	if !hasDisruptionRollout {
+		return
+	}
+
+	h.updateDisruptionRolloutStatus(deployment)
 }
 
 // OnUpdate is a handler function for the update of a deployment
