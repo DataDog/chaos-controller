@@ -229,15 +229,21 @@ func main() {
 
 	handler := watchers.NewDeploymentStatefulSetHandler(mgr.GetClient(), logger)
 
-	deploymentInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = deploymentInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    handler.OnAdd,
 		UpdateFunc: handler.OnUpdate,
 	})
+	if err != nil {
+		logger.Fatalw("unable to add event handler for Deployments", "error", err)
+	}
 
-	statefullsetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = statefullsetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    handler.OnAdd,
 		UpdateFunc: handler.OnUpdate,
 	})
+	if err != nil {
+		logger.Fatalw("unable to add event handler for StatefulSets", "error", err)
+	}
 
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
@@ -269,7 +275,7 @@ func main() {
 		os.Exit(1) //nolint:gocritic
 	}
 
-	// Add the indexer on target resource for disruption rollouts
+	// add the indexer on target resource for disruption rollouts
 	err = mgr.GetCache().IndexField(context.Background(), &chaosv1beta1.DisruptionRollout{}, "targetResource", func(obj client.Object) []string {
 		dr, ok := obj.(*chaosv1beta1.DisruptionRollout)
 		if !ok {
