@@ -65,6 +65,11 @@ func (h DeploymentHandler) OnUpdate(oldObj, newObj interface{}) {
 	h.updateDisruptionRolloutStatus(newDeployment)
 }
 
+// OnDelete is a handler function for the delete of a deployment
+func (h DeploymentHandler) OnDelete(_ interface{}) {
+	// Do nothing on delete event
+}
+
 func (h DeploymentHandler) fetchAssociatedDisruptionRollouts(deployment *appsv1.Deployment) (*chaosv1beta1.DisruptionRolloutList, error) {
 	indexedValue := "Deployment" + "-" + deployment.Namespace + "-" + deployment.Name
 

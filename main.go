@@ -233,6 +233,7 @@ func main() {
 	_, err = deploymentInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    deploymentHandler.OnAdd,
 		UpdateFunc: deploymentHandler.OnUpdate,
+		DeleteFunc: deploymentHandler.OnDelete,
 	})
 	if err != nil {
 		logger.Fatalw("unable to add event handler for Deployments", "error", err)
@@ -241,6 +242,7 @@ func main() {
 	_, err = statefullsetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    statefulsetHandler.OnAdd,
 		UpdateFunc: statefulsetHandler.OnUpdate,
+		DeleteFunc: statefulsetHandler.OnDelete,
 	})
 	if err != nil {
 		logger.Fatalw("unable to add event handler for StatefulSets", "error", err)

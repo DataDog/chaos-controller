@@ -18,11 +18,16 @@ func NewStatefulSetHandler(client client.Client, logger *zap.SugaredLogger) Stat
 	}
 }
 
-// OnAdd is a handler function for the add of a deployment
+// OnAdd is a handler function for the add of a statefulset
 func (h StatefulSetHandler) OnAdd(_ interface{}) {
 
 }
 
-// OnUpdate is a handler function for the update of a deployment
+// OnUpdate is a handler function for the update of a statefulset
 func (h StatefulSetHandler) OnUpdate(oldObj, newObj interface{}) {
+}
+
+// OnDelete is a handler function for the delete of a statefulset
+func (h StatefulSetHandler) OnDelete(_ interface{}) {
+	// Do nothing on delete event
 }
