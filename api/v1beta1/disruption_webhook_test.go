@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"fmt"
+	authv1 "k8s.io/api/authentication/v1"
 	"time"
 
 	"github.com/DataDog/chaos-controller/ddmark"
@@ -106,6 +107,67 @@ var _ = Describe("Disruption", func() {
 			When("nothing is updated", func() {
 				It("should succeed", func() {
 					Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+				})
+			})
+
+			When("userInfo annotation is updated", func() {
+				Context("with an old disruption without user info", func() {
+					It("should allow the update", func() {
+						// Arrange
+						delete(oldDisruption.Annotations, annotationUserInfoKey)
+
+						// Action
+						err := newDisruption.ValidateUpdate(oldDisruption)
+
+						// Assert
+						By("not return an error")
+						Expect(err).ShouldNot(HaveOccurred())
+					})
+				})
+
+				Context("with an old disruption with an empty user info", func() {
+					When("the user info of the new disruption is updated ", func() {
+						It("should not allow the update", func() {
+							// Arrange
+							Expect(newDisruption.SetUserInfo(authv1.UserInfo{})).Should(Succeed())
+
+							// Action
+							err := newDisruption.ValidateUpdate(oldDisruption)
+
+							// Assert
+							By("return an error")
+							Expect(err).Should(HaveOccurred())
+							Expect(err.Error()).Should(Equal("the user info annotation is immutable"))
+						})
+					})
+					When("the user info of the new disruption is empty too", func() {
+						It("should allow the update", func() {
+							// Arrange
+							Expect(oldDisruption.SetUserInfo(authv1.UserInfo{})).Should(Succeed())
+							Expect(newDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem"})).Should(Succeed())
+
+							// Action
+							Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+						})
+					})
+				})
+
+				Context("with an old disruption with a valid user info", func() {
+					When("the user info of the new disruption is updated", func() {
+						It("should not allow the update", func() {
+							// Arrange
+							Expect(oldDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem"})).Should(Succeed())
+							Expect(newDisruption.SetUserInfo(authv1.UserInfo{Username: "ipsum"})).Should(Succeed())
+
+							// Action
+							err := newDisruption.ValidateUpdate(oldDisruption)
+
+							// Assert
+							By("return an error")
+							Expect(err).Should(HaveOccurred())
+							Expect(err.Error()).Should(Equal("the user info annotation is immutable"))
+						})
+					})
 				})
 			})
 
@@ -231,6 +293,36 @@ var _ = Describe("Disruption", func() {
 					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(Equal("1 error occurred:\n\t* Spec: either selector or advancedSelector field must be set\n\n"))
+					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
+				})
+			})
+
+			When("disruption selectors are invalid", func() {
+				It("should return an error", func() {
+					invalidDisruption := newDisruption.DeepCopy()
+					invalidDisruption.Spec.Selector = map[string]string{"app": "demo-{nginx}"}
+
+					err := invalidDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(Equal("1 error occurred:\n\t* Spec: unable to parse requirement: values[0][app]: Invalid value: \"demo-{nginx}\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
+					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
+				})
+			})
+
+			When("disruption advanced selectors are invalid", func() {
+				It("should return an error", func() {
+					invalidDisruption := newDisruption.DeepCopy()
+					invalidDisruption.Spec.AdvancedSelector = []metav1.LabelSelectorRequirement{{
+						Key:      "app",
+						Operator: "NotIn",
+						Values:   []string{"*nginx"},
+					}}
+
+					err := invalidDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(Equal("1 error occurred:\n\t* Spec: error parsing given advanced selector to requirements: values[0][app]: Invalid value: \"*nginx\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
 					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
 				})
 			})
@@ -376,7 +468,7 @@ var _ = Describe("Disruption", func() {
 
 // makeValidNetworkDisruption is a helper that constructs a valid Disruption suited for basic webhook validation testing
 func makeValidNetworkDisruption() *Disruption {
-	return &Disruption{
+	disruption := Disruption{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testDisruptionName,
 			Namespace: chaosNamespace,
@@ -394,6 +486,21 @@ func makeValidNetworkDisruption() *Disruption {
 			},
 		},
 	}
+
+	disruption.Annotations = map[string]string{}
+
+	if err := disruption.SetUserInfo(authv1.UserInfo{
+		Username: "lorem",
+		UID:      "ipsum",
+		Groups:   []string{"some"},
+		Extra: map[string]authv1.ExtraValue{
+			"dolores": []string{"sit"},
+		},
+	}); err != nil {
+		Expect(err).ShouldNot(HaveOccurred())
+	}
+
+	return &disruption
 }
 
 // makeValidDiskFailureDisruption is a helper that constructs a valid Disruption suited for basic webhook validation testing

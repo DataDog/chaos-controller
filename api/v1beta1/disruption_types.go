@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	goyaml "sigs.k8s.io/yaml"
 )
@@ -216,6 +217,7 @@ type DisruptionStatus struct {
 	IsInjected       bool `json:"isInjected,omitempty"`
 	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
 	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
+	// +kubebuilder:default=NotInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
 	TargetInjections TargetInjections `json:"targetInjections,omitempty"`
@@ -320,11 +322,61 @@ func (s DisruptionSpec) Validate() (retErr error) {
 	return multierror.Prefix(retErr, "Spec:")
 }
 
+// AdvancedSelectorsToRequirements converts a slice of LabelSelectorRequirements into a slice of Requirements
+// and returns an error if any of those LabelSelectorRequirements are invalid. It's used for translating
+// user specified advanced selectors into real requirements for selecting targets
+func AdvancedSelectorsToRequirements(advancedSelectors []metav1.LabelSelectorRequirement) ([]labels.Requirement, error) {
+	reqs := []labels.Requirement{}
+
+	for _, req := range advancedSelectors {
+		var op selection.Operator
+
+		// parse the operator to convert it from one package to another
+		switch req.Operator {
+		case metav1.LabelSelectorOpIn:
+			op = selection.In
+		case metav1.LabelSelectorOpNotIn:
+			op = selection.NotIn
+		case metav1.LabelSelectorOpExists:
+			op = selection.Exists
+		case metav1.LabelSelectorOpDoesNotExist:
+			op = selection.DoesNotExist
+		default:
+			return nil, fmt.Errorf("error parsing advanced selector operator %s: must be either In, NotIn, Exists or DoesNotExist", req.Operator)
+		}
+
+		// generate and add the requirement to the selector
+		parsedReq, err := labels.NewRequirement(req.Key, op, req.Values)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing given advanced selector to requirements: %w", err)
+		}
+
+		reqs = append(reqs, *parsedReq)
+	}
+
+	return reqs, nil
+}
+
 // Validate applies rules for disruption global scope
 func (s DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 	// Rule: at least one kind of selector is set
 	if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
 		retErr = multierror.Append(retErr, errors.New("either selector or advancedSelector field must be set"))
+	}
+
+	// Rule: selectors must be valid
+	if !s.Selector.AsSelector().Empty() {
+		_, err := labels.ParseToRequirements(s.Selector.AsSelector().String())
+		if err != nil {
+			retErr = multierror.Append(retErr, err)
+		}
+	}
+
+	if len(s.AdvancedSelector) > 0 {
+		_, err := AdvancedSelectorsToRequirements(s.AdvancedSelector)
+		if err != nil {
+			retErr = multierror.Append(retErr, err)
+		}
 	}
 
 	// Rule: no targeted container if disruption is node-level
@@ -630,7 +682,7 @@ func TargetedContainers(pod corev1.Pod, containerNames []string) (map[string]str
 		if containerID, existsInPod := allContainers[containerName]; existsInPod {
 			targetedContainers[containerName] = containerID
 		} else {
-			return nil, fmt.Errorf("could not find specified container in pod (pod: %s, target: %s)", pod.ObjectMeta.Name, containerName)
+			return nil, fmt.Errorf("could not find specified container in pod (pod: %s, targetContainer: %s)", pod.ObjectMeta.Name, containerName)
 		}
 	}
 
