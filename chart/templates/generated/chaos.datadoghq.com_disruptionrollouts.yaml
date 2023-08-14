@@ -605,12 +605,19 @@ spec:
             status:
               description: DisruptionRolloutStatus defines the observed state of DisruptionRollout
               properties:
+                latestContainersHash:
+                  additionalProperties:
+                    type: string
+                  description: LatestContainersHash provides a map of the latest observed hashes for each Container of the TargetResource. The key is the name of the Container, and the value is its MD5 hash.
+                  type: object
+                latestInitContainersHash:
+                  additionalProperties:
+                    type: string
+                  description: LatestInitContainersHash provides a map of the latest observed hashes for each InitContainer of the TargetResource. The key is the name of the InitContainer, and the value is its MD5 hash.
+                  type: object
                 podSpecChangeTimestamp:
-                  description: PodSpecChangeTimestamp captures the time when a change in the pod spec was detected.
+                  description: LastModificationTimestamp captures the time when a change in the containers of the TargetResource was detected.
                   format: date-time
-                  type: string
-                targetResourcePodSpecHash:
-                  description: TargetResourcePodSpecHash represents the MD5 hash of the pod spec of the target resource.
                   type: string
               type: object
           type: object

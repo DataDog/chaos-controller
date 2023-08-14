@@ -55,11 +55,17 @@ type DisruptionRolloutSpec struct {
 
 // DisruptionRolloutStatus defines the observed state of DisruptionRollout
 type DisruptionRolloutStatus struct {
-	// TargetResourcePodSpecHash represents the MD5 hash of the pod spec
-	// of the target resource.
-	TargetResourcePodSpecHash string `json:"targetResourcePodSpecHash,omitempty"`
+	// LatestInitContainersHash provides a map of the latest observed hashes for
+	// each InitContainer of the TargetResource.
+	// The key is the name of the InitContainer, and the value is its MD5 hash.
+	LatestInitContainersHash map[string]string `json:"latestInitContainersHash,omitempty"`
 
-	// PodSpecChangeTimestamp captures the time when a change in the pod spec
-	// was detected.
-	PodSpecChangeTimestamp metav1.Time `json:"podSpecChangeTimestamp,omitempty"`
+	// LatestContainersHash provides a map of the latest observed hashes for
+	// each Container of the TargetResource.
+	// The key is the name of the Container, and the value is its MD5 hash.
+	LatestContainersHash map[string]string `json:"latestContainersHash,omitempty"`
+
+	// LastModificationTimestamp captures the time when a change in the containers
+	// of the TargetResource was detected.
+	LastModificationTimestamp metav1.Time `json:"podSpecChangeTimestamp,omitempty"`
 }

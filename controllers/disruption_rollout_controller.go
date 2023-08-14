@@ -25,6 +25,15 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	r.log = r.BaseLog.With("disruptionRolloutNamespace", req.Namespace, "disruptionRolloutName", req.Name)
 	r.log.Info("Reconciling DisruptionRollout")
 
+	instance := &chaosv1beta1.DisruptionRollout{}
+
+	// Fetch DisruptionCron instance
+	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	r.log.Infow("Object", "DisruptionRollout", instance)
+
 	return ctrl.Result{}, nil
 }
 
