@@ -5,7 +5,12 @@
 package watchers
 
 import (
+	context "context"
+
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -23,15 +28,113 @@ func NewStatefulSetHandler(client client.Client, logger *zap.SugaredLogger) Stat
 }
 
 // OnAdd is a handler function for the add of a statefulset
-func (h StatefulSetHandler) OnAdd(_ interface{}) {
+func (h StatefulSetHandler) OnAdd(obj interface{}) {
+	statefulset, ok := obj.(*appsv1.StatefulSet)
 
+	// If the object is not a statefulset, do nothing
+	if !ok {
+		return
+	}
+
+	// If statefulset doesn't have associated disruption rollout, do nothing
+	hasDisruptionRollout, err := h.hasAssociatedDisruptionRollout(statefulset)
+	if err != nil {
+		return
+	}
+
+	if !hasDisruptionRollout {
+		return
+	}
+
+	initContainersHash, containersHash, err := HashPodSpec(&statefulset.Spec.Template.Spec)
+	if err != nil {
+		return
+	}
+
+	err = h.updateDisruptionRolloutStatus(statefulset, initContainersHash, containersHash)
+	if err != nil {
+		return
+	}
 }
 
 // OnUpdate is a handler function for the update of a statefulset
 func (h StatefulSetHandler) OnUpdate(oldObj, newObj interface{}) {
+	// Convert oldObj and newObj to Deployment objects
+	oldStatefulSet, okOldStatefulSet := oldObj.(*appsv1.StatefulSet)
+	newStatefulSet, okNewStatefulSet := newObj.(*appsv1.StatefulSet)
+
+	// If both old and new are not statefulsets, do nothing
+	if !okOldStatefulSet || !okNewStatefulSet {
+		return
+	}
+
+	// If statefulset doesn't have associated disruption rollout, do nothing
+	hasDisruptionRollout, err := h.hasAssociatedDisruptionRollout(newStatefulSet)
+	if !hasDisruptionRollout || err != nil {
+		return
+	}
+
+	// If containers have't changed, do nothing
+	containersChanged, initContainersHash, containersHash, err := ContainersChanged(&oldStatefulSet.Spec.Template.Spec, &newStatefulSet.Spec.Template.Spec, h.log)
+	if !containersChanged || err != nil {
+		return
+	}
+
+	err = h.updateDisruptionRolloutStatus(newStatefulSet, initContainersHash, containersHash)
+	if err != nil {
+		return
+	}
+
 }
 
 // OnDelete is a handler function for the delete of a statefulset
 func (h StatefulSetHandler) OnDelete(_ interface{}) {
 	// Do nothing on delete event
+}
+
+func (h StatefulSetHandler) fetchAssociatedDisruptionRollouts(statefulset *appsv1.StatefulSet) (*chaosv1beta1.DisruptionRolloutList, error) {
+	indexedValue := "statefulset" + "-" + statefulset.Namespace + "-" + statefulset.Name
+
+	disruptionRollouts := &chaosv1beta1.DisruptionRolloutList{}
+	err := h.Client.List(context.Background(), disruptionRollouts, client.MatchingFields{"targetResource": indexedValue})
+
+	if err != nil {
+		h.log.Errorw("unable to fetch DisruptionRollouts using index", "error", err, "indexedValue", indexedValue)
+		return nil, err
+	}
+
+	return disruptionRollouts, nil
+}
+
+func (h StatefulSetHandler) hasAssociatedDisruptionRollout(statefulset *appsv1.StatefulSet) (bool, error) {
+	disruptionRollouts, err := h.fetchAssociatedDisruptionRollouts(statefulset)
+	if err != nil {
+		h.log.Errorw("unable to check for associated DisruptionRollout", "StatefulSet", statefulset.Name, "error", err)
+		return false, err
+	}
+
+	return len(disruptionRollouts.Items) > 0, nil
+}
+
+func (h StatefulSetHandler) updateDisruptionRolloutStatus(statefulset *appsv1.StatefulSet, initContainersHash, containersHash map[string]string) error {
+	disruptionRollouts, err := h.fetchAssociatedDisruptionRollouts(statefulset)
+	if err != nil {
+		return err
+	}
+
+	for _, dr := range disruptionRollouts.Items {
+		// TODO: Since informers chache objects,
+		// I don't think I still need to record container hashes
+		dr.Status.LatestInitContainersHash = initContainersHash
+		dr.Status.LatestContainersHash = containersHash
+		dr.Status.LastModificationTimestamp = metav1.Now()
+
+		err = h.Client.Status().Update(context.TODO(), &dr)
+		if err != nil {
+			h.log.Errorw("unable to update DisruptionRollout status", "DisruptionRollout", dr.Name, "error", err)
+			return err
+		}
+	}
+
+	return nil
 }
