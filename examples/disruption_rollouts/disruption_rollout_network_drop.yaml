@@ -1,0 +1,17 @@
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: DisruptionRollout
+metadata:
+  name: network-drop
+  namespace: chaos-demo
+  annotations:
+    chaos.datadoghq.com/environment: "lima"
+spec:
+  targetResource:
+    kind: deployment
+    name: demo-curl
+  disruptionTemplate:
+    level: pod
+    count: 1
+    network:
+      drop: 100 # percentage of outgoing packets to drop
+    duration: 10s # disruption will time out after 10 seconds
