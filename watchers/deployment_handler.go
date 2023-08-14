@@ -127,8 +127,6 @@ func (h DeploymentHandler) UpdateDisruptionRolloutStatus(deployment *appsv1.Depl
 	}
 
 	for _, dr := range disruptionRollouts.Items {
-		// TODO: Since informers chache objects,
-		// I don't think I still need to record container hashes
 		dr.Status.LatestInitContainersHash = initContainersHash
 		dr.Status.LatestContainersHash = containersHash
 		dr.Status.LastModificationTimestamp = metav1.Now()
