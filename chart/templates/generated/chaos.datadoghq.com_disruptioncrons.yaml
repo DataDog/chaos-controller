@@ -32,7 +32,7 @@ spec:
               description: DisruptionCronSpec defines the desired state of DisruptionCron
               properties:
                 delayedStartTolerance:
-                  description: Optional deadline in seconds for starting the disruption if it misses scheduled time for any reason.  Missed disruption executions will be counted as failed ones.
+                  description: Optional deadline for starting the disruption if it misses scheduled time for any reason.  Missed disruption executions will be counted as failed ones.
                   nullable: true
                   type: string
                 disruptionTemplate:
