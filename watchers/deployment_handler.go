@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -54,6 +55,8 @@ func (h DeploymentHandler) OnUpdate(oldObj, newObj interface{}) {
 	if oldHash != newHash {
 		return
 	}
+
+	h.updateDisruptionRolloutStatus(newDeployment)
 }
 
 func (h DeploymentHandler) fetchAssociatedDisruptionRollouts(deployment *appsv1.Deployment) (*chaosv1beta1.DisruptionRolloutList, error) {
@@ -77,6 +80,23 @@ func (h DeploymentHandler) hasAssociatedDisruptionRollout(deployment *appsv1.Dep
 	}
 
 	return len(disruptionRollouts.Items) > 0
+}
+
+func (h DeploymentHandler) updateDisruptionRolloutStatus(deployment *appsv1.Deployment) {
+	disruptionRollouts, err := h.fetchAssociatedDisruptionRollouts(deployment)
+	if err != nil {
+		return
+	}
+
+	for _, dr := range disruptionRollouts.Items {
+		dr.Status.TargetResourcePodSpecHash = hashPodSpec(&deployment.Spec.Template.Spec)
+		dr.Status.PodSpecChangeTimestamp = metav1.Now()
+
+		err = h.Client.Status().Update(context.TODO(), &dr)
+		if err != nil {
+			h.log.Errorw("unable to update DisruptionRollout status", "DisruptionRollout", dr.Name, "error", err)
+		}
+	}
 }
 
 func hashPodSpec(spec *corev1.PodSpec) string {
