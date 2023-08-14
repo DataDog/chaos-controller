@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/tools/cache"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -219,8 +220,26 @@ func main() {
 
 	defer cancel()
 
+	// create deployment and statefulset informers
+	globalInformerFactory := kubeinformers.NewSharedInformerFactory(informerClient, time.Hour*24)
+	deploymentInformer := globalInformerFactory.Apps().V1().Deployments().Informer()
+	statefullsetInformer := globalInformerFactory.Apps().V1().StatefulSets().Informer()
+
+	handler := watchers.NewDeploymentStatefulSetHandler(mgr.GetClient(), logger)
+
+	deploymentInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    handler.OnAdd,
+		UpdateFunc: handler.OnUpdate,
+	})
+
+	statefullsetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    handler.OnAdd,
+		UpdateFunc: handler.OnUpdate,
+	})
+
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
+	globalInformerFactory.Start(stopCh)
 
 	go disruptionReconciler.ReportMetrics()
 
