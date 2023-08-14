@@ -42,7 +42,7 @@ func (h DeploymentHandler) OnAdd(obj interface{}) {
 	}
 
 	// If deployment doesn't have associated disruption rollout, do nothing
-	hasDisruptionRollout, err := h.hasAssociatedDisruptionRollout(deployment)
+	hasDisruptionRollout, err := h.HasAssociatedDisruptionRollout(deployment)
 	if err != nil {
 		return
 	}
@@ -56,7 +56,7 @@ func (h DeploymentHandler) OnAdd(obj interface{}) {
 		return
 	}
 
-	err = h.updateDisruptionRolloutStatus(deployment, initContainersHash, containersHash)
+	err = h.UpdateDisruptionRolloutStatus(deployment, initContainersHash, containersHash)
 	if err != nil {
 		return
 	}
@@ -74,7 +74,7 @@ func (h DeploymentHandler) OnUpdate(oldObj, newObj interface{}) {
 	}
 
 	// If deployment doesn't have associated disruption rollout, do nothing
-	hasDisruptionRollout, err := h.hasAssociatedDisruptionRollout(newDeployment)
+	hasDisruptionRollout, err := h.HasAssociatedDisruptionRollout(newDeployment)
 	if !hasDisruptionRollout || err != nil {
 		return
 	}
@@ -85,9 +85,8 @@ func (h DeploymentHandler) OnUpdate(oldObj, newObj interface{}) {
 		return
 	}
 
-	err = h.updateDisruptionRolloutStatus(newDeployment, initContainersHash, containersHash)
+	err = h.UpdateDisruptionRolloutStatus(newDeployment, initContainersHash, containersHash)
 	if err != nil {
-		h.log.Errorw("error updating DisruptionRollout status on deployment update", "error", err, "Deployment", newDeployment.Name)
 		return
 	}
 }
@@ -97,7 +96,7 @@ func (h DeploymentHandler) OnDelete(_ interface{}) {
 	// Do nothing on delete event
 }
 
-func (h DeploymentHandler) fetchAssociatedDisruptionRollouts(deployment *appsv1.Deployment) (*chaosv1beta1.DisruptionRolloutList, error) {
+func (h DeploymentHandler) FetchAssociatedDisruptionRollouts(deployment *appsv1.Deployment) (*chaosv1beta1.DisruptionRolloutList, error) {
 	indexedValue := "deployment" + "-" + deployment.Namespace + "-" + deployment.Name
 
 	disruptionRollouts := &chaosv1beta1.DisruptionRolloutList{}
@@ -111,8 +110,8 @@ func (h DeploymentHandler) fetchAssociatedDisruptionRollouts(deployment *appsv1.
 	return disruptionRollouts, nil
 }
 
-func (h DeploymentHandler) hasAssociatedDisruptionRollout(deployment *appsv1.Deployment) (bool, error) {
-	disruptionRollouts, err := h.fetchAssociatedDisruptionRollouts(deployment)
+func (h DeploymentHandler) HasAssociatedDisruptionRollout(deployment *appsv1.Deployment) (bool, error) {
+	disruptionRollouts, err := h.FetchAssociatedDisruptionRollouts(deployment)
 	if err != nil {
 		h.log.Errorw("unable to check for associated DisruptionRollout", "Deployment", deployment.Name, "error", err)
 		return false, err
@@ -121,8 +120,8 @@ func (h DeploymentHandler) hasAssociatedDisruptionRollout(deployment *appsv1.Dep
 	return len(disruptionRollouts.Items) > 0, nil
 }
 
-func (h DeploymentHandler) updateDisruptionRolloutStatus(deployment *appsv1.Deployment, initContainersHash, containersHash map[string]string) error {
-	disruptionRollouts, err := h.fetchAssociatedDisruptionRollouts(deployment)
+func (h DeploymentHandler) UpdateDisruptionRolloutStatus(deployment *appsv1.Deployment, initContainersHash, containersHash map[string]string) error {
+	disruptionRollouts, err := h.FetchAssociatedDisruptionRollouts(deployment)
 	if err != nil {
 		return err
 	}

@@ -37,7 +37,7 @@ func (h StatefulSetHandler) OnAdd(obj interface{}) {
 	}
 
 	// If statefulset doesn't have associated disruption rollout, do nothing
-	hasDisruptionRollout, err := h.hasAssociatedDisruptionRollout(statefulset)
+	hasDisruptionRollout, err := h.HasAssociatedDisruptionRollout(statefulset)
 	if err != nil {
 		return
 	}
@@ -51,7 +51,7 @@ func (h StatefulSetHandler) OnAdd(obj interface{}) {
 		return
 	}
 
-	err = h.updateDisruptionRolloutStatus(statefulset, initContainersHash, containersHash)
+	err = h.UpdateDisruptionRolloutStatus(statefulset, initContainersHash, containersHash)
 	if err != nil {
 		return
 	}
@@ -69,7 +69,7 @@ func (h StatefulSetHandler) OnUpdate(oldObj, newObj interface{}) {
 	}
 
 	// If statefulset doesn't have associated disruption rollout, do nothing
-	hasDisruptionRollout, err := h.hasAssociatedDisruptionRollout(newStatefulSet)
+	hasDisruptionRollout, err := h.HasAssociatedDisruptionRollout(newStatefulSet)
 	if !hasDisruptionRollout || err != nil {
 		return
 	}
@@ -80,7 +80,7 @@ func (h StatefulSetHandler) OnUpdate(oldObj, newObj interface{}) {
 		return
 	}
 
-	err = h.updateDisruptionRolloutStatus(newStatefulSet, initContainersHash, containersHash)
+	err = h.UpdateDisruptionRolloutStatus(newStatefulSet, initContainersHash, containersHash)
 	if err != nil {
 		return
 	}
@@ -92,7 +92,7 @@ func (h StatefulSetHandler) OnDelete(_ interface{}) {
 	// Do nothing on delete event
 }
 
-func (h StatefulSetHandler) fetchAssociatedDisruptionRollouts(statefulset *appsv1.StatefulSet) (*chaosv1beta1.DisruptionRolloutList, error) {
+func (h StatefulSetHandler) FetchAssociatedDisruptionRollouts(statefulset *appsv1.StatefulSet) (*chaosv1beta1.DisruptionRolloutList, error) {
 	indexedValue := "statefulset" + "-" + statefulset.Namespace + "-" + statefulset.Name
 
 	disruptionRollouts := &chaosv1beta1.DisruptionRolloutList{}
@@ -106,8 +106,8 @@ func (h StatefulSetHandler) fetchAssociatedDisruptionRollouts(statefulset *appsv
 	return disruptionRollouts, nil
 }
 
-func (h StatefulSetHandler) hasAssociatedDisruptionRollout(statefulset *appsv1.StatefulSet) (bool, error) {
-	disruptionRollouts, err := h.fetchAssociatedDisruptionRollouts(statefulset)
+func (h StatefulSetHandler) HasAssociatedDisruptionRollout(statefulset *appsv1.StatefulSet) (bool, error) {
+	disruptionRollouts, err := h.FetchAssociatedDisruptionRollouts(statefulset)
 	if err != nil {
 		h.log.Errorw("unable to check for associated DisruptionRollout", "StatefulSet", statefulset.Name, "error", err)
 		return false, err
@@ -116,8 +116,8 @@ func (h StatefulSetHandler) hasAssociatedDisruptionRollout(statefulset *appsv1.S
 	return len(disruptionRollouts.Items) > 0, nil
 }
 
-func (h StatefulSetHandler) updateDisruptionRolloutStatus(statefulset *appsv1.StatefulSet, initContainersHash, containersHash map[string]string) error {
-	disruptionRollouts, err := h.fetchAssociatedDisruptionRollouts(statefulset)
+func (h StatefulSetHandler) UpdateDisruptionRolloutStatus(statefulset *appsv1.StatefulSet, initContainersHash, containersHash map[string]string) error {
+	disruptionRollouts, err := h.FetchAssociatedDisruptionRollouts(statefulset)
 	if err != nil {
 		return err
 	}
