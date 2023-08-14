@@ -44,7 +44,13 @@ func (h DeploymentHandler) OnUpdate(oldObj, newObj interface{}) {
 	}
 
 	// If deployment doesn't have associated disruption rollout, do nothing
-	if !h.hasAssociatedDisruptionRollout(newDeployment) {
+	hasDisruptionRollout, err := h.hasAssociatedDisruptionRollout(newDeployment)
+	if err != nil {
+		h.log.Errorw("unable to check for associated DisruptionRollout", "error", err)
+		return
+	}
+
+	if !hasDisruptionRollout {
 		return
 	}
 
@@ -73,13 +79,13 @@ func (h DeploymentHandler) fetchAssociatedDisruptionRollouts(deployment *appsv1.
 	return disruptionRollouts, nil
 }
 
-func (h DeploymentHandler) hasAssociatedDisruptionRollout(deployment *appsv1.Deployment) bool {
+func (h DeploymentHandler) hasAssociatedDisruptionRollout(deployment *appsv1.Deployment) (bool, error) {
 	disruptionRollouts, err := h.fetchAssociatedDisruptionRollouts(deployment)
 	if err != nil {
-		return false
+		return false, err
 	}
 
-	return len(disruptionRollouts.Items) > 0
+	return len(disruptionRollouts.Items) > 0, nil
 }
 
 func (h DeploymentHandler) updateDisruptionRolloutStatus(deployment *appsv1.Deployment) {
