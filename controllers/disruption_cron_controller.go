@@ -66,7 +66,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	disruptions, err := r.getChildDisruptions(ctx, instance)
+	disruptions, err := getChildDisruptions(ctx, r.Client, r.log, instance.Namespace, DisruptionCronNameLabel, instance.Name)
 	if err != nil {
 		return ctrl.Result{}, nil
 	}
@@ -154,20 +154,6 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	return scheduledResult, nil
-}
-
-// getChildDisruptions fetches all disruptions associated with the given DisruptionCron instance.
-// Most of the time, this will return an empty list as disruptions are typically short-lived objects.
-func (r *DisruptionCronReconciler) getChildDisruptions(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (*chaosv1beta1.DisruptionList, error) {
-	disruptions := &chaosv1beta1.DisruptionList{}
-	labelSelector := labels.SelectorFromSet(labels.Set{DisruptionCronNameLabel: instance.Name})
-
-	if err := r.Client.List(ctx, disruptions, client.InNamespace(instance.Namespace), &client.ListOptions{LabelSelector: labelSelector}); err != nil {
-		r.log.Errorw("unable to list Disruptions", "err", err)
-		return disruptions, err
-	}
-
-	return disruptions, nil
 }
 
 // updateLastScheduleTime updates the LastScheduleTime in the status of a DisruptionCron instance
