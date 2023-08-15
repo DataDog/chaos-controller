@@ -59,3 +59,19 @@ func checkTargetResourceExists(ctx context.Context, cl client.Client, targetReso
 
 	return true, nil
 }
+
+// getSelectors retrieves the labels of the specified target resource (Deployment or StatefulSet).
+// Returns a set of labels to be used as Disruption selectors and an error if retrieval fails.
+func getSelectors(ctx context.Context, cl client.Client, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) (labels.Set, error) {
+	targetObj, err := getTargetResource(ctx, cl, targetResource, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	labels := targetObj.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+
+	return labels, nil
+}

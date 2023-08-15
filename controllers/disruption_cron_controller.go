@@ -14,7 +14,6 @@ import (
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -318,24 +317,6 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 	return lastMissed, sched.Next(now), nil
 }
 
-// getSelectors retrieves the labels of the target resource specified in the DisruptionCron instance.
-// The function returns two values:
-// - labels.Set: A set of labels of the target resource which will be used as the selectors for a Disruption.
-// - error: An error if the target resource or labels retrieval fails.
-func (r *DisruptionCronReconciler) getSelectors(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (labels.Set, error) {
-	targetObj, err := getTargetResource(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	labels := targetObj.GetLabels()
-	if labels == nil {
-		labels = make(map[string]string)
-	}
-
-	return labels, nil
-}
-
 // getDisruptionFromTemplate creates a Disruption object based on a DisruptionCron instance and a scheduledTime.
 // The selectors of the Disruption object are overwritten with the selectors of the target resource.
 // The function returns two values:
@@ -377,7 +358,7 @@ func (r *DisruptionCronReconciler) getDisruptionFromTemplate(ctx context.Context
 // overwriteDisruptionSelectors replaces the Disruption's selectors with the ones from the target resource
 func (r *DisruptionCronReconciler) overwriteDisruptionSelectors(ctx context.Context, instance *chaosv1beta1.DisruptionCron, disruption *chaosv1beta1.Disruption) error {
 	// Get selectors from target resource
-	selectors, err := r.getSelectors(ctx, instance)
+	selectors, err := getSelectors(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
 	if err != nil {
 		return err
 	}
