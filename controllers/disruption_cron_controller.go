@@ -13,12 +13,10 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
-	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -206,34 +204,12 @@ func (r *DisruptionCronReconciler) getScheduledTimeForDisruption(disruption *cha
 	return &timeParsed, nil
 }
 
-// getTargetResource retrieves the target resource specified in the DisruptionCron instance.
-// It returns two values:
-// - client.Object: Represents the target resource (Deployment or StatefulSet).
-// - error: Any error encountered during retrieval.
-func (r *DisruptionCronReconciler) getTargetResource(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (client.Object, error) {
-	var targetObj client.Object
-
-	switch instance.Spec.TargetResource.Kind {
-	case "deployment":
-		targetObj = &appsv1.Deployment{}
-	case "statefulset":
-		targetObj = &appsv1.StatefulSet{}
-	}
-
-	err := r.Client.Get(ctx, types.NamespacedName{
-		Name:      instance.Spec.TargetResource.Name,
-		Namespace: instance.Namespace,
-	}, targetObj)
-
-	return targetObj, err
-}
-
 // checkTargetResourceExists checks whether the target resource exists.
 // It returns two values:
 // - bool: Indicates whether the target resource is currently found.
 // - error: Represents any error that occurred during the execution of the function.
 func (r *DisruptionCronReconciler) checkTargetResourceExists(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (bool, error) {
-	_, err := r.getTargetResource(ctx, instance)
+	_, err := getTargetResource(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
 
 	if errors.IsNotFound(err) {
 		return false, nil
@@ -364,7 +340,7 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 // - labels.Set: A set of labels of the target resource which will be used as the selectors for a Disruption.
 // - error: An error if the target resource or labels retrieval fails.
 func (r *DisruptionCronReconciler) getSelectors(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (labels.Set, error) {
-	targetObj, err := r.getTargetResource(ctx, instance)
+	targetObj, err := getTargetResource(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
 	if err != nil {
 		return nil, err
 	}

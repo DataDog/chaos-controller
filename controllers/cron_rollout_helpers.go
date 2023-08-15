@@ -6,7 +6,6 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,4 +23,24 @@ func getChildDisruptions(ctx context.Context, cl client.Client, log *zap.Sugared
 	}
 
 	return disruptions, nil
+}
+
+// getTargetResource retrieves the specified target resource (Deployment or StatefulSet).
+// It returns the target resource object and any error encountered during retrieval.
+func getTargetResource(ctx context.Context, cl client.Client, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) (client.Object, error) {
+	var targetObj client.Object
+
+	switch targetResource.Kind {
+	case "deployment":
+		targetObj = &appsv1.Deployment{}
+	case "statefulset":
+		targetObj = &appsv1.StatefulSet{}
+	}
+
+	err := cl.Get(ctx, types.NamespacedName{
+		Name:      targetResource.Name,
+		Namespace: namespace,
+	}, targetObj)
+
+	return targetObj, err
 }
