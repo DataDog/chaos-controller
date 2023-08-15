@@ -6,6 +6,7 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,4 +44,18 @@ func getTargetResource(ctx context.Context, cl client.Client, targetResource *ch
 	}, targetObj)
 
 	return targetObj, err
+}
+
+// checkTargetResourceExists determines if the target resource exists.
+// Returns a boolean indicating presence and an error if one occurs.
+func checkTargetResourceExists(ctx context.Context, cl client.Client, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) (bool, error) {
+	_, err := getTargetResource(ctx, cl, targetResource, namespace)
+
+	if errors.IsNotFound(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

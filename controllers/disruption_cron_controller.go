@@ -13,7 +13,6 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -204,22 +203,6 @@ func (r *DisruptionCronReconciler) getScheduledTimeForDisruption(disruption *cha
 	return &timeParsed, nil
 }
 
-// checkTargetResourceExists checks whether the target resource exists.
-// It returns two values:
-// - bool: Indicates whether the target resource is currently found.
-// - error: Represents any error that occurred during the execution of the function.
-func (r *DisruptionCronReconciler) checkTargetResourceExists(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (bool, error) {
-	_, err := getTargetResource(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
-
-	if errors.IsNotFound(err) {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
 // updateTargetResourcePreviouslyMissing updates the status when the target resource was previously missing.
 // The function returns three values:
 // - bool: Indicates whether the target resource is currently found.
@@ -227,7 +210,7 @@ func (r *DisruptionCronReconciler) checkTargetResourceExists(ctx context.Context
 // - error: Represents any error that occurred during the execution of the function.
 func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (bool, bool, error) {
 	disruptionCronDeleted := false
-	targetResourceExists, err := r.checkTargetResourceExists(ctx, instance)
+	targetResourceExists, err := checkTargetResourceExists(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
 
 	if err != nil {
 		return targetResourceExists, disruptionCronDeleted, err
