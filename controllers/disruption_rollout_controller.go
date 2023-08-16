@@ -83,6 +83,20 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
+	// Create disruption
+	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, time.Now())
+	if err != nil {
+		r.log.Warnw("unable to construct disruption from template", "err", err)
+		return ctrl.Result{}, nil
+	}
+
+	if err := r.Client.Create(ctx, disruption); err != nil {
+		r.log.Warnw("unable to create Disruption for DisruptionRollout", "disruption", disruption, "err", err)
+		return ctrl.Result{}, err
+	}
+
+	r.log.Infow("created Disruption for DisruptionRollout run", "disruptionName", disruption.Name)
+
 	return ctrl.Result{}, nil
 }
 

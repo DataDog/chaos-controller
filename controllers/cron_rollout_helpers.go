@@ -95,7 +95,7 @@ func GetSelectors(ctx context.Context, cl client.Client, targetResource *chaosv1
 // CreateBaseDisruption generates a basic Disruption object using the provided owner and disruptionSpec.
 // The returned Disruption object has its basic details set, but it's not saved or stored anywhere yet.
 func CreateBaseDisruption(owner metav1.Object, disruptionSpec *chaosv1beta1.DisruptionSpec) *chaosv1beta1.Disruption {
-	name := fmt.Sprintf("disruption-cron-%s", owner.GetName())
+	name := GenerateDisruptionName(owner)
 
 	return &chaosv1beta1.Disruption{
 		ObjectMeta: metav1.ObjectMeta{
@@ -155,4 +155,17 @@ func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme 
 	}
 
 	return disruption, nil
+}
+
+// GenerateDisruptionName produces a disruption name based on the specific CR controller, that's invoking it.
+// It returns a formatted string name.
+func GenerateDisruptionName(owner metav1.Object) string {
+	switch typedOwner := owner.(type) {
+	case *chaosv1beta1.DisruptionCron:
+		return fmt.Sprintf("disruption-cron-%s", typedOwner.GetName())
+	case *chaosv1beta1.DisruptionRollout:
+		return fmt.Sprintf("disruption-rollout-%s", typedOwner.GetName())
+	}
+
+	return ""
 }
