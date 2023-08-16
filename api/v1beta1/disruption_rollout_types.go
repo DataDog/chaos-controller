@@ -58,16 +58,23 @@ type DisruptionRolloutStatus struct {
 	// LatestInitContainersHash provides a map of the latest observed hashes for
 	// each InitContainer of the TargetResource.
 	// The key is the name of the InitContainer, and the value is its MD5 hash.
+	// +nullable
 	LatestInitContainersHash map[string]string `json:"latestInitContainersHash,omitempty"`
 
 	// LatestContainersHash provides a map of the latest observed hashes for
 	// each Container of the TargetResource.
 	// The key is the name of the Container, and the value is its MD5 hash.
+	// +nullable
 	LatestContainersHash map[string]string `json:"latestContainersHash,omitempty"`
 
 	// LastModificationTimestamp captures the time when a change in the containers
 	// of the TargetResource was detected.
+	// +nullable
 	LastModificationTimestamp metav1.Time `json:"podSpecChangeTimestamp,omitempty"`
+
+	// The last time when the disruption was last successfully scheduled.
+	// +nullable
+	LastScheduleTime *metav1.Time `json:"lastScheduleTime,omitempty"`
 
 	// Time when the target resource was previously missing.
 	// +nullable
