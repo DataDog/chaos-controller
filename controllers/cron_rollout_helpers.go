@@ -157,3 +157,41 @@ func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme 
 
 	return disruption, nil
 }
+
+// getScheduledTimeForDisruption returns the scheduled time for a particular disruption.
+func getScheduledTimeForDisruption(disruption *chaosv1beta1.Disruption) (*time.Time, error) {
+	timeRaw := disruption.Annotations[ScheduledAtAnnotation]
+	if len(timeRaw) == 0 {
+		return nil, nil
+	}
+
+	timeParsed, err := time.Parse(time.RFC3339, timeRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	return &timeParsed, nil
+}
+
+// getMostRecentScheduleTime returns the most recent scheduled time from a list of disruptions.
+func GetMostRecentScheduleTime(log *zap.SugaredLogger, disruptions *chaosv1beta1.DisruptionList) *time.Time {
+	var mostRecentScheduleTime *time.Time
+
+	for _, disruption := range disruptions.Items {
+		scheduledTimeForDisruption, err := getScheduledTimeForDisruption(&disruption)
+		if err != nil {
+			log.Errorw("unable to parse schedule time for child disruption", "err", err, "disruption", disruption.Name)
+			continue
+		}
+
+		if scheduledTimeForDisruption != nil {
+			if mostRecentScheduleTime == nil {
+				mostRecentScheduleTime = scheduledTimeForDisruption
+			} else if mostRecentScheduleTime.Before(*scheduledTimeForDisruption) {
+				mostRecentScheduleTime = scheduledTimeForDisruption
+			}
+		}
+	}
+
+	return mostRecentScheduleTime
+}
