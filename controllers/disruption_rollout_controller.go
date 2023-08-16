@@ -111,6 +111,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	// Create disruption
 	scheduledTime := time.Now()
 	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, scheduledTime)
+
 	if err != nil {
 		r.log.Warnw("unable to construct disruption from template", "err", err)
 		return scheduledResult, nil
