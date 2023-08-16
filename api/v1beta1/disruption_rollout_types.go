@@ -68,4 +68,8 @@ type DisruptionRolloutStatus struct {
 	// LastModificationTimestamp captures the time when a change in the containers
 	// of the TargetResource was detected.
 	LastModificationTimestamp metav1.Time `json:"podSpecChangeTimestamp,omitempty"`
+
+	// Time when the target resource was previously missing.
+	// +nullable
+	TargetResourcePreviouslyMissing *metav1.Time `json:"targetResourcePreviouslyMissing,omitempty"`
 }
