@@ -13,12 +13,8 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -29,12 +25,6 @@ type DisruptionCronReconciler struct {
 	BaseLog *zap.SugaredLogger
 	log     *zap.SugaredLogger
 }
-
-const (
-	ScheduledAtAnnotation          = chaosv1beta1.GroupName + "/scheduled-at"
-	DisruptionCronNameLabel        = chaosv1beta1.GroupName + "/disruption-cron-name"
-	TargetResourceMissingThreshold = time.Hour * 24
-)
 
 func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	r.log = r.BaseLog.With("disruptionCronNamespace", req.Namespace, "disruptionCronName", req.Name)
@@ -66,7 +56,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	disruptions, err := r.getChildDisruptions(ctx, instance)
+	disruptions, err := GetChildDisruptions(ctx, r.Client, r.log, instance.Namespace, DisruptionCronNameLabel, instance.Name)
 	if err != nil {
 		return ctrl.Result{}, nil
 	}
@@ -125,7 +115,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	r.log.Infow("processing current run", "currentRun", missedRun.Format(time.UnixDate))
 
 	// Create disruption for current run
-	disruption, err := r.getDisruptionFromTemplate(ctx, instance, missedRun)
+	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, missedRun)
 	if err != nil {
 		r.log.Warnw("unable to construct disruption from template", "err", err)
 		// Don't requeue until update to the spec is received
@@ -154,20 +144,6 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	return scheduledResult, nil
-}
-
-// getChildDisruptions fetches all disruptions associated with the given DisruptionCron instance.
-// Most of the time, this will return an empty list as disruptions are typically short-lived objects.
-func (r *DisruptionCronReconciler) getChildDisruptions(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (*chaosv1beta1.DisruptionList, error) {
-	disruptions := &chaosv1beta1.DisruptionList{}
-	labelSelector := labels.SelectorFromSet(labels.Set{DisruptionCronNameLabel: instance.Name})
-
-	if err := r.Client.List(ctx, disruptions, client.InNamespace(instance.Namespace), &client.ListOptions{LabelSelector: labelSelector}); err != nil {
-		r.log.Errorw("unable to list Disruptions", "err", err)
-		return disruptions, err
-	}
-
-	return disruptions, nil
 }
 
 // updateLastScheduleTime updates the LastScheduleTime in the status of a DisruptionCron instance
@@ -220,44 +196,6 @@ func (r *DisruptionCronReconciler) getScheduledTimeForDisruption(disruption *cha
 	return &timeParsed, nil
 }
 
-// getTargetResource retrieves the target resource specified in the DisruptionCron instance.
-// It returns two values:
-// - client.Object: Represents the target resource (Deployment or StatefulSet).
-// - error: Any error encountered during retrieval.
-func (r *DisruptionCronReconciler) getTargetResource(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (client.Object, error) {
-	var targetObj client.Object
-
-	switch instance.Spec.TargetResource.Kind {
-	case "deployment":
-		targetObj = &appsv1.Deployment{}
-	case "statefulset":
-		targetObj = &appsv1.StatefulSet{}
-	}
-
-	err := r.Client.Get(ctx, types.NamespacedName{
-		Name:      instance.Spec.TargetResource.Name,
-		Namespace: instance.Namespace,
-	}, targetObj)
-
-	return targetObj, err
-}
-
-// checkTargetResourceExists checks whether the target resource exists.
-// It returns two values:
-// - bool: Indicates whether the target resource is currently found.
-// - error: Represents any error that occurred during the execution of the function.
-func (r *DisruptionCronReconciler) checkTargetResourceExists(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (bool, error) {
-	_, err := r.getTargetResource(ctx, instance)
-
-	if errors.IsNotFound(err) {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
 // updateTargetResourcePreviouslyMissing updates the status when the target resource was previously missing.
 // The function returns three values:
 // - bool: Indicates whether the target resource is currently found.
@@ -265,7 +203,7 @@ func (r *DisruptionCronReconciler) checkTargetResourceExists(ctx context.Context
 // - error: Represents any error that occurred during the execution of the function.
 func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (bool, bool, error) {
 	disruptionCronDeleted := false
-	targetResourceExists, err := r.checkTargetResourceExists(ctx, instance)
+	targetResourceExists, err := CheckTargetResourceExists(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
 
 	if err != nil {
 		return targetResourceExists, disruptionCronDeleted, err
@@ -371,81 +309,6 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 	}
 
 	return lastMissed, sched.Next(now), nil
-}
-
-// getSelectors retrieves the labels of the target resource specified in the DisruptionCron instance.
-// The function returns two values:
-// - labels.Set: A set of labels of the target resource which will be used as the selectors for a Disruption.
-// - error: An error if the target resource or labels retrieval fails.
-func (r *DisruptionCronReconciler) getSelectors(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (labels.Set, error) {
-	targetObj, err := r.getTargetResource(ctx, instance)
-	if err != nil {
-		return nil, err
-	}
-
-	labels := targetObj.GetLabels()
-	if labels == nil {
-		labels = make(map[string]string)
-	}
-
-	return labels, nil
-}
-
-// getDisruptionFromTemplate creates a Disruption object based on a DisruptionCron instance and a scheduledTime.
-// The selectors of the Disruption object are overwritten with the selectors of the target resource.
-// The function returns two values:
-// - *chaosv1beta1.Disruption: A pointer to the created Disruption object. The object is not created in the Kubernetes cluster.
-// - error: An error if any operation fails, such as when selectors of the target resource retrieval fails.
-func (r *DisruptionCronReconciler) getDisruptionFromTemplate(ctx context.Context, instance *chaosv1beta1.DisruptionCron, scheduledTime time.Time) (*chaosv1beta1.Disruption, error) {
-	// Disruption names are deterministic for a given nominal start time to avoid creating the same disruption more than once
-	name := fmt.Sprintf("disruption-cron-%s", instance.Name)
-
-	disruption := &chaosv1beta1.Disruption{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
-			Namespace:   instance.Namespace,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		Spec: *instance.Spec.DisruptionTemplate.DeepCopy(),
-	}
-
-	for k, v := range instance.Annotations {
-		disruption.Annotations[k] = v
-	}
-
-	disruption.Annotations[ScheduledAtAnnotation] = scheduledTime.Format(time.RFC3339)
-
-	disruption.Labels[DisruptionCronNameLabel] = instance.Name
-
-	if err := r.overwriteDisruptionSelectors(ctx, instance, disruption); err != nil {
-		return nil, err
-	}
-
-	if err := ctrl.SetControllerReference(instance, disruption, r.Scheme); err != nil {
-		return nil, err
-	}
-
-	return disruption, nil
-}
-
-// overwriteDisruptionSelectors replaces the Disruption's selectors with the ones from the target resource
-func (r *DisruptionCronReconciler) overwriteDisruptionSelectors(ctx context.Context, instance *chaosv1beta1.DisruptionCron, disruption *chaosv1beta1.Disruption) error {
-	// Get selectors from target resource
-	selectors, err := r.getSelectors(ctx, instance)
-	if err != nil {
-		return err
-	}
-
-	if disruption.Spec.Selector == nil {
-		disruption.Spec.Selector = make(map[string]string)
-	}
-
-	for k, v := range selectors {
-		disruption.Spec.Selector[k] = v
-	}
-
-	return nil
 }
 
 // SetupWithManager setups the current reconciler with the given manager
