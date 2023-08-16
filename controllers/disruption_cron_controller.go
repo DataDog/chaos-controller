@@ -149,51 +149,13 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 // updateLastScheduleTime updates the LastScheduleTime in the status of a DisruptionCron instance
 // based on the most recent schedule time among the given disruptions.
 func (r *DisruptionCronReconciler) updateLastScheduleTime(ctx context.Context, instance *chaosv1beta1.DisruptionCron, disruptions *chaosv1beta1.DisruptionList) error {
-	mostRecentScheduleTime := r.getMostRecentScheduleTime(disruptions) // find the last run so we can update the status
+	mostRecentScheduleTime := GetMostRecentScheduleTime(r.log, disruptions) // find the last run so we can update the status
 	if mostRecentScheduleTime != nil {
 		instance.Status.LastScheduleTime = &metav1.Time{Time: *mostRecentScheduleTime}
 		return r.Client.Status().Update(ctx, instance)
 	}
 
 	return nil // No need to update if mostRecentScheduleTime is nil
-}
-
-// getMostRecentScheduleTime returns the most recent scheduled time from a list of disruptions.
-func (r *DisruptionCronReconciler) getMostRecentScheduleTime(disruptions *chaosv1beta1.DisruptionList) *time.Time {
-	var mostRecentScheduleTime *time.Time
-
-	for _, disruption := range disruptions.Items {
-		scheduledTimeForDisruption, err := r.getScheduledTimeForDisruption(&disruption)
-		if err != nil {
-			r.log.Errorw("unable to parse schedule time for child disruption", "err", err, "disruption", disruption.Name)
-			continue
-		}
-
-		if scheduledTimeForDisruption != nil {
-			if mostRecentScheduleTime == nil {
-				mostRecentScheduleTime = scheduledTimeForDisruption
-			} else if mostRecentScheduleTime.Before(*scheduledTimeForDisruption) {
-				mostRecentScheduleTime = scheduledTimeForDisruption
-			}
-		}
-	}
-
-	return mostRecentScheduleTime
-}
-
-// getScheduledTimeForDisruption returns the scheduled time for a particular disruption
-func (r *DisruptionCronReconciler) getScheduledTimeForDisruption(disruption *chaosv1beta1.Disruption) (*time.Time, error) {
-	timeRaw := disruption.Annotations[ScheduledAtAnnotation]
-	if len(timeRaw) == 0 {
-		return nil, nil
-	}
-
-	timeParsed, err := time.Parse(time.RFC3339, timeRaw)
-	if err != nil {
-		return nil, err
-	}
-
-	return &timeParsed, nil
 }
 
 // updateTargetResourcePreviouslyMissing updates the status when the target resource was previously missing.
