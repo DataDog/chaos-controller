@@ -74,15 +74,21 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Run a new disruption if the following conditions are met:
 	// 1. The target resource is available
-	// 2. The target resource update has not been tested
-	// 3. It's not blocked by another disruption already running
-	// 4. It's not past the deadline
+	// 2. The target resource has been updated
+	// 3. The target resource update has not been tested
+	// 4. It's not blocked by another disruption already running
+	// 5. It's not past the deadline
 	if !targetResourceExists {
 		r.log.Infow(fmt.Sprintf("target resource is missing, scheduling next check in %s", requeueTime))
 		return scheduledResult, nil
 	}
 
-	if instance.Status.LastModificationTimestamp.Before(instance.Status.LastScheduleTime) {
+	if !r.targetResourceUpdated(&instance.Status) {
+		r.log.Infow("target resource hasn't been modified yet, sleeping")
+		return ctrl.Result{}, nil
+	}
+
+	if instance.Status.LastContainerChangeTime.Before(instance.Status.LastScheduleTime) || instance.Status.LastContainerChangeTime.Equal(instance.Status.LastScheduleTime) {
 		r.log.Infow("target resource update has already been tested, sleeping")
 		return ctrl.Result{}, nil
 	}
@@ -93,8 +99,8 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	tooLate := false
-	if instance.Spec.DelayedStartTolerance.Duration() > 0 && !instance.Status.LastModificationTimestamp.IsZero() {
-		tooLate = instance.Status.LastModificationTimestamp.Add(instance.Spec.DelayedStartTolerance.Duration()).Before(time.Now())
+	if instance.Spec.DelayedStartTolerance.Duration() > 0 && !instance.Status.LastContainerChangeTime.IsZero() {
+		tooLate = instance.Status.LastContainerChangeTime.Add(instance.Spec.DelayedStartTolerance.Duration()).Before(time.Now())
 	}
 
 	if tooLate {
@@ -215,6 +221,21 @@ func (r *DisruptionRolloutReconciler) handleTargetResourceNowPresent(ctx context
 	}
 
 	return nil
+}
+
+// targetResourceUpdated checks whether the target resource has been updated or not.
+func (r *DisruptionRolloutReconciler) targetResourceUpdated(status *chaosv1beta1.DisruptionRolloutStatus) bool {
+	if status == nil {
+		return false
+	}
+
+	if status.LatestInitContainersHash == nil &&
+		status.LatestContainersHash == nil &&
+		status.LastContainerChangeTime == nil {
+		return false
+	}
+
+	return true
 }
 
 // SetupWithManager setups the current reconciler with the given manager

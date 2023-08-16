@@ -510,7 +510,10 @@ func (in *DisruptionRolloutStatus) DeepCopyInto(out *DisruptionRolloutStatus) {
 			(*out)[key] = val
 		}
 	}
-	in.LastModificationTimestamp.DeepCopyInto(&out.LastModificationTimestamp)
+	if in.LastContainerChangeTime != nil {
+		in, out := &in.LastContainerChangeTime, &out.LastContainerChangeTime
+		*out = (*in).DeepCopy()
+	}
 	if in.LastScheduleTime != nil {
 		in, out := &in.LastScheduleTime, &out.LastScheduleTime
 		*out = (*in).DeepCopy()

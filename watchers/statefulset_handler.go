@@ -6,6 +6,7 @@ package watchers
 
 import (
 	context "context"
+	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
@@ -124,7 +125,7 @@ func (h StatefulSetHandler) UpdateDisruptionRolloutStatus(statefulset *appsv1.St
 	for _, dr := range disruptionRollouts.Items {
 		dr.Status.LatestInitContainersHash = initContainersHash
 		dr.Status.LatestContainersHash = containersHash
-		dr.Status.LastModificationTimestamp = metav1.Now()
+		dr.Status.LastContainerChangeTime = &metav1.Time{Time: time.Now()}
 
 		err = h.Client.Status().Update(context.TODO(), &dr)
 		if err != nil {

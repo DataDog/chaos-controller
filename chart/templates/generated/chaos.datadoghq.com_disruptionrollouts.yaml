@@ -605,6 +605,11 @@ spec:
             status:
               description: DisruptionRolloutStatus defines the observed state of DisruptionRollout
               properties:
+                lastContainerChangeTime:
+                  description: LastModificationTimestamp captures the time when a change in the containers of the TargetResource was detected.
+                  format: date-time
+                  nullable: true
+                  type: string
                 lastScheduleTime:
                   description: The last time when the disruption was last successfully scheduled.
                   format: date-time
@@ -622,11 +627,6 @@ spec:
                   description: LatestInitContainersHash provides a map of the latest observed hashes for each InitContainer of the TargetResource. The key is the name of the InitContainer, and the value is its MD5 hash.
                   nullable: true
                   type: object
-                podSpecChangeTimestamp:
-                  description: LastModificationTimestamp captures the time when a change in the containers of the TargetResource was detected.
-                  format: date-time
-                  nullable: true
-                  type: string
                 targetResourcePreviouslyMissing:
                   description: Time when the target resource was previously missing.
                   format: date-time
