@@ -7,6 +7,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -29,6 +30,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	r.log.Info("Reconciling DisruptionRollout")
 
 	instance := &chaosv1beta1.DisruptionRollout{}
+	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// Fetch DisruptionRollout instance
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
@@ -59,18 +61,23 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
+	// Calculate next requeue time
+	requeueAfter := time.Duration(randSource.Intn(5)+15) * time.Second //nolint:gosec
+	requeueTime := requeueAfter.Round(time.Second)
+	scheduledResult := ctrl.Result{RequeueAfter: requeueAfter}
+
 	// Run a new disruption if the following conditions are met:
 	// 1. The target resource is available
 	// 2. It's not blocked by another disruption already running
 	// 3. It's not past the deadline
 	if !targetResourceExists {
-		r.log.Infow("target resource is missing, sleeping")
-		return ctrl.Result{}, err
+		r.log.Infow(fmt.Sprintf("target resource is missing, scheduling next check in %s", requeueTime))
+		return scheduledResult, nil
 	}
 
 	if len(disruptions.Items) > 0 {
-		r.log.Infow("cannot start a new disruption as a pr:qior one is still running, sleeping", "numActiveDisruptions", len(disruptions.Items))
-		return ctrl.Result{}, err
+		r.log.Infow(fmt.Sprintf("cannot start a new disruption as a prior one is still running, scheduling next check in %s", requeueTime), "numActiveDisruptions", len(disruptions.Items))
+		return scheduledResult, nil
 	}
 
 	tooLate := false
@@ -80,14 +87,14 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	if tooLate {
 		r.log.Infow("missed schedule to start a disruption, sleeping")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, nil
 	}
 
 	// Create disruption
 	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, time.Now())
 	if err != nil {
 		r.log.Warnw("unable to construct disruption from template", "err", err)
-		return ctrl.Result{}, nil
+		return scheduledResult, nil
 	}
 
 	if err := r.Client.Create(ctx, disruption); err != nil {
