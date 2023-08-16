@@ -61,6 +61,12 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
+	// Update the DisruptionRollout status with the time when the last disruption was successfully scheduled
+	if err := r.updateLastScheduleTime(ctx, instance, disruptions); err != nil {
+		r.log.Errorw("unable to update LastScheduleTime of DisruptionCron status", "err", err)
+		return ctrl.Result{}, err
+	}
+
 	// Calculate next requeue time
 	requeueAfter := time.Duration(randSource.Intn(5)+15) * time.Second //nolint:gosec
 	requeueTime := requeueAfter.Round(time.Second)
@@ -68,11 +74,17 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Run a new disruption if the following conditions are met:
 	// 1. The target resource is available
-	// 2. It's not blocked by another disruption already running
-	// 3. It's not past the deadline
+	// 2. The target resource update has not been tested
+	// 3. It's not blocked by another disruption already running
+	// 4. It's not past the deadline
 	if !targetResourceExists {
 		r.log.Infow(fmt.Sprintf("target resource is missing, scheduling next check in %s", requeueTime))
 		return scheduledResult, nil
+	}
+
+	if instance.Status.LastModificationTimestamp.Before(instance.Status.LastScheduleTime) {
+		r.log.Infow("target resource update has already been tested, sleeping")
+		return ctrl.Result{}, nil
 	}
 
 	if len(disruptions.Items) > 0 {
@@ -91,7 +103,8 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	// Create disruption
-	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, time.Now())
+	scheduledTime := time.Now()
+	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, scheduledTime)
 	if err != nil {
 		r.log.Warnw("unable to construct disruption from template", "err", err)
 		return scheduledResult, nil
@@ -104,7 +117,33 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	r.log.Infow("created Disruption for DisruptionRollout run", "disruptionName", disruption.Name)
 
+	// ------------------------------------------------------------------ //
+	// If this process restarts at this point (after posting a disruption, but
+	// before updating the status), we might try to start the disruption again
+	// the next time. To prevent this, we use the same disruption name for every
+	// execution, acting as a lock to prevent creating the disruption twice.
+
+	// Add the start time of the just initiated disruption to the status
+	instance.Status.LastScheduleTime = &metav1.Time{Time: scheduledTime}
+
+	if err := r.Client.Status().Update(ctx, instance); err != nil {
+		r.log.Warnw("unable to update LastScheduleTime of DisruptionCron status", "err", err)
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
+}
+
+// updateLastScheduleTime updates the LastScheduleTime in the status of a DisruptionRollout instance
+// based on the most recent schedule time among the given disruptions.
+func (r *DisruptionRolloutReconciler) updateLastScheduleTime(ctx context.Context, instance *chaosv1beta1.DisruptionRollout, disruptions *chaosv1beta1.DisruptionList) error {
+	mostRecentScheduleTime := GetMostRecentScheduleTime(r.log, disruptions) // find the last run so we can update the status
+	if mostRecentScheduleTime != nil {
+		instance.Status.LastScheduleTime = &metav1.Time{Time: *mostRecentScheduleTime}
+		return r.Client.Status().Update(ctx, instance)
+	}
+
+	return nil // No need to update if mostRecentScheduleTime is nil
 }
 
 // updateTargetResourcePreviouslyMissing updates the status when the target resource was previously missing.
