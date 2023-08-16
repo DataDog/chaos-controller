@@ -511,6 +511,10 @@ func (in *DisruptionRolloutStatus) DeepCopyInto(out *DisruptionRolloutStatus) {
 		}
 	}
 	in.LastModificationTimestamp.DeepCopyInto(&out.LastModificationTimestamp)
+	if in.LastScheduleTime != nil {
+		in, out := &in.LastScheduleTime, &out.LastScheduleTime
+		*out = (*in).DeepCopy()
+	}
 	if in.TargetResourcePreviouslyMissing != nil {
 		in, out := &in.TargetResourcePreviouslyMissing, &out.TargetResourcePreviouslyMissing
 		*out = (*in).DeepCopy()
