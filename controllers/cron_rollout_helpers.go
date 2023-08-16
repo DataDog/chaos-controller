@@ -95,7 +95,7 @@ func GetSelectors(ctx context.Context, cl client.Client, targetResource *chaosv1
 // createBaseDisruption generates a basic Disruption object using the provided owner and disruptionSpec.
 // The returned Disruption object has its basic details set, but it's not saved or stored anywhere yet.
 func createBaseDisruption(owner metav1.Object, disruptionSpec *chaosv1beta1.DisruptionSpec) *chaosv1beta1.Disruption {
-	name := GenerateDisruptionName(owner)
+	name := generateDisruptionName(owner)
 
 	return &chaosv1beta1.Disruption{
 		ObjectMeta: metav1.ObjectMeta{
@@ -141,10 +141,11 @@ func overwriteDisruptionSelectors(ctx context.Context, cl client.Client, disrupt
 // CreateDisruptionFromTemplate constructs a Disruption object based on the provided owner, disruptionSpec, and targetResource.
 // The function sets annotations, overwrites selectors, and associates the Disruption with its owner.
 // It returns the constructed Disruption or an error if any step fails.
-func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time, ownerLabel string) (*chaosv1beta1.Disruption, error) {
+func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time) (*chaosv1beta1.Disruption, error) {
 	disruption := createBaseDisruption(owner, disruptionSpec)
 
-	disruption.Labels[ownerLabel] = owner.GetName()
+	ownerNameLabel := getOwnerNameLabel(owner)
+	disruption.Labels[ownerNameLabel] = owner.GetName()
 
 	setDisruptionAnnotations(disruption, owner, scheduledTime)
 
@@ -159,14 +160,27 @@ func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme 
 	return disruption, nil
 }
 
-// GenerateDisruptionName produces a disruption name based on the specific CR controller, that's invoking it.
+// generateDisruptionName produces a disruption name based on the specific CR controller, that's invoking it.
 // It returns a formatted string name.
-func GenerateDisruptionName(owner metav1.Object) string {
+func generateDisruptionName(owner metav1.Object) string {
 	switch typedOwner := owner.(type) {
 	case *chaosv1beta1.DisruptionCron:
 		return fmt.Sprintf("disruption-cron-%s", typedOwner.GetName())
 	case *chaosv1beta1.DisruptionRollout:
 		return fmt.Sprintf("disruption-rollout-%s", typedOwner.GetName())
+	}
+
+	return ""
+}
+
+// getOwnerNameLabel derives the appropriate label for the owner CR.
+// It returns the label string.
+func getOwnerNameLabel(owner metav1.Object) string {
+	switch owner.(type) {
+	case *chaosv1beta1.DisruptionCron:
+		return DisruptionCronNameLabel
+	case *chaosv1beta1.DisruptionRollout:
+		return DisruptionRolloutNameLabel
 	}
 
 	return ""
