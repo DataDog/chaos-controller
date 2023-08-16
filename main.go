@@ -260,7 +260,7 @@ func main() {
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
 	globalInformerFactory.Start(stopCh)
-	
+
 	go disruptionReconciler.ReportMetrics()
 
 	// create disruption cron reconciler
