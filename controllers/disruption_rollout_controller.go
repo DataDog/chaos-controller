@@ -59,6 +59,30 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
+	// Run a new disruption if the following conditions are met:
+	// 1. The target resource is available
+	// 2. It's not blocked by another disruption already running
+	// 3. It's not past the deadline
+	if !targetResourceExists {
+		r.log.Infow("target resource is missing, sleeping")
+		return ctrl.Result{}, err
+	}
+
+	if len(disruptions.Items) > 0 {
+		r.log.Infow("cannot start a new disruption as a pr:qior one is still running, sleeping", "numActiveDisruptions", len(disruptions.Items))
+		return ctrl.Result{}, err
+	}
+
+	tooLate := false
+	if instance.Spec.DelayedStartTolerance.Duration() > 0 && !instance.Status.LastModificationTimestamp.IsZero() {
+		tooLate = instance.Status.LastModificationTimestamp.Add(instance.Spec.DelayedStartTolerance.Duration()).Before(time.Now())
+	}
+
+	if tooLate {
+		r.log.Infow("missed schedule to start a disruption, sleeping")
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
