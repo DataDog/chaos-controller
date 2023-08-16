@@ -32,7 +32,10 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	r.log.Infow("Object", "DisruptionRollout", instance)
+	if !instance.DeletionTimestamp.IsZero() {
+		// Add finalizer here if required
+		return ctrl.Result{}, nil
+	}
 
 	return ctrl.Result{}, nil
 }
