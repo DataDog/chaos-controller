@@ -248,10 +248,6 @@ func main() {
 		logger.Fatalw("unable to add event handler for StatefulSets", "error", err)
 	}
 
-	stopCh := make(chan struct{})
-	kubeInformerFactory.Start(stopCh)
-	globalInformerFactory.Start(stopCh)
-
 	// wait for the all informer caches to be synced
 	synced := globalInformerFactory.WaitForCacheSync(ctx.Done())
 	for informerType, ok := range synced {
@@ -261,6 +257,10 @@ func main() {
 		}
 	}
 
+	stopCh := make(chan struct{})
+	kubeInformerFactory.Start(stopCh)
+	globalInformerFactory.Start(stopCh)
+	
 	go disruptionReconciler.ReportMetrics()
 
 	// create disruption cron reconciler
