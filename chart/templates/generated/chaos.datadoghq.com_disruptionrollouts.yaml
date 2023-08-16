@@ -619,6 +619,11 @@ spec:
                   description: LastModificationTimestamp captures the time when a change in the containers of the TargetResource was detected.
                   format: date-time
                   type: string
+                targetResourcePreviouslyMissing:
+                  description: Time when the target resource was previously missing.
+                  format: date-time
+                  nullable: true
+                  type: string
               type: object
           type: object
       served: true

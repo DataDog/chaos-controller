@@ -610,13 +610,13 @@ spec:
             status:
               description: DisruptionCronStatus defines the observed state of DisruptionCron
               properties:
-                TargetResourcePreviouslyMissing:
-                  description: Time when the target resource was previously missing.
+                lastScheduleTime:
+                  description: The last time when the disruption was last successfully scheduled.
                   format: date-time
                   nullable: true
                   type: string
-                lastScheduleTime:
-                  description: The last time when the disruption was last successfully scheduled.
+                targetResourcePreviouslyMissing:
+                  description: Time when the target resource was previously missing.
                   format: date-time
                   nullable: true
                   type: string
