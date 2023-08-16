@@ -17,8 +17,7 @@ import (
 
 type StatefulSetHandler struct {
 	Client client.Client
-
-	log *zap.SugaredLogger
+	log    *zap.SugaredLogger
 }
 
 func NewStatefulSetHandler(client client.Client, logger *zap.SugaredLogger) StatefulSetHandler {

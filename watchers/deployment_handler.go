@@ -22,8 +22,7 @@ import (
 
 type DeploymentHandler struct {
 	Client client.Client
-
-	log *zap.SugaredLogger
+	log    *zap.SugaredLogger
 }
 
 func NewDeploymentHandler(client client.Client, logger *zap.SugaredLogger) DeploymentHandler {

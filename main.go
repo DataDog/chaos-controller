@@ -225,7 +225,7 @@ func main() {
 	// create deployment and statefulset informers
 	globalInformerFactory := kubeinformers.NewSharedInformerFactory(informerClient, time.Hour*24)
 	deploymentInformer := globalInformerFactory.Apps().V1().Deployments().Informer()
-	statefullsetInformer := globalInformerFactory.Apps().V1().StatefulSets().Informer()
+	statefulsetInformer := globalInformerFactory.Apps().V1().StatefulSets().Informer()
 
 	deploymentHandler := watchers.NewDeploymentHandler(mgr.GetClient(), logger)
 	statefulsetHandler := watchers.NewStatefulSetHandler(mgr.GetClient(), logger)
@@ -239,7 +239,7 @@ func main() {
 		logger.Fatalw("unable to add event handler for Deployments", "error", err)
 	}
 
-	_, err = statefullsetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = statefulsetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    statefulsetHandler.OnAdd,
 		UpdateFunc: statefulsetHandler.OnUpdate,
 		DeleteFunc: statefulsetHandler.OnDelete,
@@ -251,6 +251,15 @@ func main() {
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
 	globalInformerFactory.Start(stopCh)
+
+	// wait for the all informer caches to be synced
+	synced := globalInformerFactory.WaitForCacheSync(ctx.Done())
+	for informerType, ok := range synced {
+		if !ok {
+			logger.Errorw("failed to wait for informer cache to sync", "informer", informerType)
+			return
+		}
+	}
 
 	go disruptionReconciler.ReportMetrics()
 
