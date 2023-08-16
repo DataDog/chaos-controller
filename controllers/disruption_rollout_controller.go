@@ -49,6 +49,16 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
+	if instanceDeleted {
+		// Skip reconciliation since the instance has been deleted
+		return ctrl.Result{}, nil
+	}
+
+	disruptions, err := GetChildDisruptions(ctx, r.Client, r.log, instance.Namespace, DisruptionRolloutNameLabel, instance.Name)
+	if err != nil {
+		return ctrl.Result{}, nil
+	}
+
 	return ctrl.Result{}, nil
 }
 
