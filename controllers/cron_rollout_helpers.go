@@ -91,9 +91,9 @@ func GetSelectors(ctx context.Context, cl client.Client, targetResource *chaosv1
 	return labels, nil
 }
 
-// CreateBaseDisruption generates a basic Disruption object using the provided owner and disruptionSpec.
+// createBaseDisruption generates a basic Disruption object using the provided owner and disruptionSpec.
 // The returned Disruption object has its basic details set, but it's not saved or stored anywhere yet.
-func CreateBaseDisruption(owner metav1.Object, disruptionSpec *chaosv1beta1.DisruptionSpec) *chaosv1beta1.Disruption {
+func createBaseDisruption(owner metav1.Object, disruptionSpec *chaosv1beta1.DisruptionSpec) *chaosv1beta1.Disruption {
 	name := fmt.Sprintf("disruption-cron-%s", owner.GetName())
 
 	return &chaosv1beta1.Disruption{
@@ -107,9 +107,9 @@ func CreateBaseDisruption(owner metav1.Object, disruptionSpec *chaosv1beta1.Disr
 	}
 }
 
-// SetDisruptionAnnotations updates the annotations of a given Disruption object with those of its owner.
+// setDisruptionAnnotations updates the annotations of a given Disruption object with those of its owner.
 // Additionally, it sets a scheduled time annotation using the provided scheduledTime.
-func SetDisruptionAnnotations(disruption *chaosv1beta1.Disruption, owner metav1.Object, scheduledTime time.Time) {
+func setDisruptionAnnotations(disruption *chaosv1beta1.Disruption, owner metav1.Object, scheduledTime time.Time) {
 	for k, v := range owner.GetAnnotations() {
 		disruption.Annotations[k] = v
 	}
@@ -117,9 +117,9 @@ func SetDisruptionAnnotations(disruption *chaosv1beta1.Disruption, owner metav1.
 	disruption.Annotations[ScheduledAtAnnotation] = scheduledTime.Format(time.RFC3339)
 }
 
-// OverwriteDisruptionSelectors updates the selectors of a given Disruption object based on the provided targetResource.
+// overwriteDisruptionSelectors updates the selectors of a given Disruption object based on the provided targetResource.
 // Returns an error if fetching selectors from the target resource fails.
-func OverwriteDisruptionSelectors(ctx context.Context, cl client.Client, disruption *chaosv1beta1.Disruption, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) error {
+func overwriteDisruptionSelectors(ctx context.Context, cl client.Client, disruption *chaosv1beta1.Disruption, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) error {
 	// Get selectors from target resource
 	selectors, err := GetSelectors(ctx, cl, targetResource, namespace)
 	if err != nil {
@@ -141,13 +141,13 @@ func OverwriteDisruptionSelectors(ctx context.Context, cl client.Client, disrupt
 // The function sets annotations, overwrites selectors, and associates the Disruption with its owner.
 // It returns the constructed Disruption or an error if any step fails.
 func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time, ownerLabel string) (*chaosv1beta1.Disruption, error) {
-	disruption := CreateBaseDisruption(owner, disruptionSpec)
+	disruption := createBaseDisruption(owner, disruptionSpec)
 
 	disruption.Labels[ownerLabel] = owner.GetName()
 
-	SetDisruptionAnnotations(disruption, owner, scheduledTime)
+	setDisruptionAnnotations(disruption, owner, scheduledTime)
 
-	if err := OverwriteDisruptionSelectors(ctx, cl, disruption, targetResource, owner.GetNamespace()); err != nil {
+	if err := overwriteDisruptionSelectors(ctx, cl, disruption, targetResource, owner.GetNamespace()); err != nil {
 		return nil, err
 	}
 
