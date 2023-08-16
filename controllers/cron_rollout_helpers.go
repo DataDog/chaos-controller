@@ -140,8 +140,10 @@ func OverwriteDisruptionSelectors(ctx context.Context, cl client.Client, disrupt
 // CreateDisruptionFromTemplate constructs a Disruption object based on the provided owner, disruptionSpec, and targetResource.
 // The function sets annotations, overwrites selectors, and associates the Disruption with its owner.
 // It returns the constructed Disruption or an error if any step fails.
-func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time) (*chaosv1beta1.Disruption, error) {
+func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time, ownerLabel string) (*chaosv1beta1.Disruption, error) {
 	disruption := CreateBaseDisruption(owner, disruptionSpec)
+
+	disruption.Labels[ownerLabel] = owner.GetName()
 
 	SetDisruptionAnnotations(disruption, owner, scheduledTime)
 
