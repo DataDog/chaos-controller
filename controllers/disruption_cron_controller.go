@@ -56,7 +56,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	disruptions, err := getChildDisruptions(ctx, r.Client, r.log, instance.Namespace, DisruptionCronNameLabel, instance.Name)
+	disruptions, err := GetChildDisruptions(ctx, r.Client, r.log, instance.Namespace, DisruptionCronNameLabel, instance.Name)
 	if err != nil {
 		return ctrl.Result{}, nil
 	}
@@ -115,7 +115,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	r.log.Infow("processing current run", "currentRun", missedRun.Format(time.UnixDate))
 
 	// Create disruption for current run
-	disruption, err := createDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, missedRun)
+	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, missedRun)
 	if err != nil {
 		r.log.Warnw("unable to construct disruption from template", "err", err)
 		// Don't requeue until update to the spec is received
@@ -203,7 +203,7 @@ func (r *DisruptionCronReconciler) getScheduledTimeForDisruption(disruption *cha
 // - error: Represents any error that occurred during the execution of the function.
 func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (bool, bool, error) {
 	disruptionCronDeleted := false
-	targetResourceExists, err := checkTargetResourceExists(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
+	targetResourceExists, err := CheckTargetResourceExists(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
 
 	if err != nil {
 		return targetResourceExists, disruptionCronDeleted, err
