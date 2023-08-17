@@ -94,6 +94,8 @@ func (h DeploymentHandler) OnDelete(_ interface{}) {
 func (h DeploymentHandler) FetchAssociatedDisruptionRollouts(deployment *appsv1.Deployment) (*chaosv1beta1.DisruptionRolloutList, error) {
 	indexedValue := "deployment" + "-" + deployment.Namespace + "-" + deployment.Name
 
+	// It would be more efficient to use label selectors,
+	// however it would require a webhook to add those labels when new rollouts are created
 	disruptionRollouts := &chaosv1beta1.DisruptionRolloutList{}
 	err := h.Client.List(context.Background(), disruptionRollouts, client.MatchingFields{"targetResource": indexedValue})
 
