@@ -131,7 +131,7 @@ func (h DeploymentHandler) UpdateDisruptionRolloutStatus(deployment *appsv1.Depl
 		dr.Status.LatestContainersHash = containersHash
 		dr.Status.LastContainerChangeTime = &metav1.Time{Time: time.Now()}
 
-		err = h.Client.Status().Update(context.TODO(), &dr)
+		err = h.Client.Status().Update(context.Background(), &dr)
 		if err != nil {
 			h.log.Errorw("unable to update DisruptionRollout status", "DisruptionRollout", dr.Name, "error", err)
 			return err
