@@ -89,7 +89,10 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	if instance.Status.LastContainerChangeTime.Before(instance.Status.LastScheduleTime) || instance.Status.LastContainerChangeTime.Equal(instance.Status.LastScheduleTime) {
-		r.log.Infow("target resource update has already been tested, sleeping")
+		r.log.Infow("target resource update has already been tested, sleeping",
+			"LastContainerChangeTime", instance.Status.LastContainerChangeTime,
+			"LastScheduleTime", instance.Status.LastScheduleTime)
+
 		return ctrl.Result{}, nil
 	}
 
@@ -104,7 +107,10 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	if tooLate {
-		r.log.Infow("missed schedule to start a disruption, sleeping")
+		r.log.Infow("missed schedule to start a disruption, sleeping",
+			"LastContainerChangeTime", instance.Status.LastContainerChangeTime,
+			"DelayedStartTolerance", instance.Spec.DelayedStartTolerance)
+
 		return ctrl.Result{}, nil
 	}
 
