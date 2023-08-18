@@ -49,6 +49,7 @@ until the specified timestamp before injecting the failure. However, they will s
 to delete the `Disruption` before any failure injection occurs. This also helps us to, but does not guarantee, deliver simultaneous injection of failure across all targets. The chaos pods do not directly synchronize with each other or with the chaos-controller, so clock skew can be an issue here.
 
 As mentioned above, both options under `spec.triggers`: `spec.triggers.createPods` and `spec.triggers.inject` themselves have two mutually exclusive options:
+
 - `notBefore` takes an RFC3339 formatted timestamp string, eg., "2023-05-09T11:10:08-04:00". This is an absolute value, that must be _after_ the creationTimestamp of the `Disruption`.
 - `offset` which takes a golang time.Duration [string, e.g., "45s", "15m30s", "4h30m".](https://pkg.go.dev/time#ParseDuration). This is a relative value, and thus is more convenient when re-using a `Disruption` yaml.
 
@@ -113,7 +114,11 @@ Any setup/config error will be logged at controller startup.
 
 ### Slack
 
-The `slack` notifier requires a slack API Token to connect to your org's slack workspace. It will use the disruption's creator username in kubernetes (based on your authentication method) as an email address to send a DM on slack as 'Disruption Status Bot'. **The email address used to authentify on the kubernetes cluster and create the disruption needs to be the same used on the slack workspace** or the notification will be ignored.
+The `slack` notifier requires a slack API Token to connect to your org's slack workspace.
+
+It will use the disruption's creator username in kubernetes (based on your authentication method) as an email address to send a DM on slack as 'Disruption Status Bot'. **The email address used to authentify on the kubernetes cluster and create the disruption needs to be the same used on the slack workspace** or the notification will be ignored.
+
+In addition to that, you can receive notifications on the disruption itself by filling the `reporting` field (See the [disruption reporting section](#disruption-reporting)).
 
 ### Datadog
 
@@ -177,5 +182,5 @@ reporting: # optional, add custom notification for this disruption
   purpose:
     | # required, purpose/contextual informations to explain reasons of the disruption launch, can contain markdown formatting
     *full network drop*: _aims to validate retry capabilities of demo-curl_. Contact #team-test for more informations.
-  notificationTypeLevel: Info # optional, minimal notification type to be notified, default is Success, available options are Info, Success, Warning, Error
+  minNotificationType: Info # optional, minimal notification type to be notified, default is Success, available options are Info, Success, Warning, Error
 ```
