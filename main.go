@@ -228,7 +228,6 @@ func main() {
 	go disruptionReconciler.ReportMetrics()
 
 	if cfg.Controller.DisruptionRolloutEnabled {
-
 		// create deployment and statefulset informers
 		globalInformerFactory := kubeinformers.NewSharedInformerFactory(informerClient, time.Hour*24)
 		deploymentInformer := globalInformerFactory.Apps().V1().Deployments().Informer()
@@ -305,7 +304,6 @@ func main() {
 			logger.Errorw("unable to create controller", "controller", "DisruptionCron", "error", err)
 			os.Exit(1) //nolint:gocritic
 		}
-
 	}
 
 	// register disruption validating webhook

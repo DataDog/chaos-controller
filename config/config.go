@@ -397,6 +397,18 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
+	mainFS.BoolVar(&cfg.Controller.DisruptionCronEnabled, "disruption-cron-enabled", false, "Enable the DisruptionCron CRD and its controller")
+
+	if err := viper.BindPFlag("controller.disruptionCronEnabled", mainFS.Lookup("disruption-cron-enabled")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.DisruptionRolloutEnabled, "disruption-rollout-enabled", false, "Enable the DisruptionRollout CRD and its controller")
+
+	if err := viper.BindPFlag("controller.disruptionRolloutEnabled", mainFS.Lookup("disruption-rollout-enabled")); err != nil {
+		return cfg, err
+	}
+
 	err := preConfigFS.Parse(osArgs)
 	if err != nil {
 		return cfg, fmt.Errorf("unable to retrieve configuration parse from provided flag: %w", err)
