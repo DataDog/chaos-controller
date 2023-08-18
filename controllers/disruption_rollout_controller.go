@@ -89,7 +89,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	if instance.Status.LastContainerChangeTime.Before(instance.Status.LastScheduleTime) || instance.Status.LastContainerChangeTime.Equal(instance.Status.LastScheduleTime) {
-		r.log.Infow("target resource update has already been tested, sleeping",
+		r.log.Debugw("target resource update has already been tested, sleeping",
 			"LastContainerChangeTime", instance.Status.LastContainerChangeTime,
 			"LastScheduleTime", instance.Status.LastScheduleTime)
 
