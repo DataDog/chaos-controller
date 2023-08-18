@@ -37,7 +37,7 @@ var _ = Describe("Validator", func() {
 	Describe("validating disruption triggers", func() {
 		Context("both offset and notBefore are set", func() {
 			BeforeEach(func() {
-yamlDisruptionSpec.WriteString(`
+				yamlDisruptionSpec.WriteString(`
 network:
   corrupt: 100
 duration: 87600h

@@ -3,22 +3,22 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.12.0
-  name: disruptioncrons.chaos.datadoghq.com
+  name: disruptionrollouts.chaos.datadoghq.com
 spec:
   group: chaos.datadoghq.com
   names:
-    kind: DisruptionCron
-    listKind: DisruptionCronList
-    plural: disruptioncrons
+    kind: DisruptionRollout
+    listKind: DisruptionRolloutList
+    plural: disruptionrollouts
     shortNames:
-      - dicron
-    singular: disruptioncron
+      - diroll
+    singular: disruptionrollout
   scope: Namespaced
   versions:
     - name: v1beta1
       schema:
         openAPIV3Schema:
-          description: DisruptionCron is the Schema for the disruptioncron API
+          description: DisruptionRollout is the Schema for the disruptionrollout API
           properties:
             apiVersion:
               description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
@@ -29,14 +29,14 @@ spec:
             metadata:
               type: object
             spec:
-              description: DisruptionCronSpec defines the desired state of DisruptionCron
+              description: DisruptionRolloutSpec defines the desired state of DisruptionRollout
               properties:
                 delayedStartTolerance:
-                  description: Optional deadline for starting the disruption if it misses scheduled time for any reason.  Missed disruption executions will be counted as failed ones.
+                  description: DelayedStartTolerance specifies the allowed deadline to start the disruption after detecting a change in the target resource. If the disruption does not start within this duration, the execution is considered failed.
                   nullable: true
                   type: string
                 disruptionTemplate:
-                  description: Specifies the Disruption that will be created when executing a disruptioncron.
+                  description: Specifies the Disruption that will be created when executing a disruptionrollout.
                   properties:
                     advancedSelector:
                       items:
@@ -582,10 +582,6 @@ spec:
                   required:
                     - count
                   type: object
-                schedule:
-                  description: The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
-                  minLength: 0
-                  type: string
                 targetResource:
                   description: TargetResource specifies the resource to run disruptions against. It can only be a deployment or statefulset.
                   properties:
@@ -604,17 +600,33 @@ spec:
                   type: object
               required:
                 - disruptionTemplate
-                - schedule
                 - targetResource
               type: object
             status:
-              description: DisruptionCronStatus defines the observed state of DisruptionCron
+              description: DisruptionRolloutStatus defines the observed state of DisruptionRollout
               properties:
+                lastContainerChangeTime:
+                  description: LastModificationTimestamp captures the time when a change in the containers of the TargetResource was detected.
+                  format: date-time
+                  nullable: true
+                  type: string
                 lastScheduleTime:
                   description: The last time when the disruption was last successfully scheduled.
                   format: date-time
                   nullable: true
                   type: string
+                latestContainersHash:
+                  additionalProperties:
+                    type: string
+                  description: LatestContainersHash provides a map of the latest observed hashes for each Container of the TargetResource. The key is the name of the Container, and the value is its MD5 hash.
+                  nullable: true
+                  type: object
+                latestInitContainersHash:
+                  additionalProperties:
+                    type: string
+                  description: LatestInitContainersHash provides a map of the latest observed hashes for each InitContainer of the TargetResource. The key is the name of the InitContainer, and the value is its MD5 hash.
+                  nullable: true
+                  type: object
                 targetResourcePreviouslyMissing:
                   description: Time when the target resource was previously missing.
                   format: date-time

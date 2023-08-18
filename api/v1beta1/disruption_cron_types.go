@@ -40,8 +40,8 @@ type DisruptionCronSpec struct {
 	// The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule string `json:"schedule"`
 
-	// Optional deadline in seconds for starting the disruption if it misses scheduled
-	// time for any reason.  Missed disruption executions will be counted as failed ones.
+	// Optional deadline for starting the disruption if it misses scheduled time
+	// for any reason.  Missed disruption executions will be counted as failed ones.
 	// +nullable
 	DelayedStartTolerance DisruptionDuration `json:"delayedStartTolerance,omitempty"`
 
@@ -82,5 +82,5 @@ type DisruptionCronStatus struct {
 
 	// Time when the target resource was previously missing.
 	// +nullable
-	TargetResourcePreviouslyMissing *metav1.Time `json:"TargetResourcePreviouslyMissing,omitempty"`
+	TargetResourcePreviouslyMissing *metav1.Time `json:"targetResourcePreviouslyMissing,omitempty"`
 }
