@@ -4,7 +4,7 @@
 # Copyright 2023 Datadog, Inc.
 apiVersion: v1
 kind: ConfigMap
-metadata:
+metadata: 
   name: chaos-controller
   namespace: "{{ .Values.chaosNamespace }}"
 data:
@@ -58,6 +58,8 @@ data:
         environment: {{ tpl .Values.controller.safeMode.environment . }}
         namespaceThreshold: {{ .Values.controller.safeMode.namespaceThreshold }}
         clusterThreshold: {{ .Values.controller.safeMode.clusterThreshold }}
+      disruptionCronEnabled: {{ .Values.controller.disruptionCronEnabled }}
+      disruptionRolloutEnabled: {{ .Values.controller.disruptionRolloutEnabled }}
     injector:
       image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.injector.image }}
       imagePullSecrets: {{ .Values.injector.image.pullSecrets }}

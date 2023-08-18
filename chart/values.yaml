@@ -72,6 +72,8 @@ controller:
     cpu: 100m
     memory: 300Mi
     ephemeralStorage: 1Gi
+  disruptionCronEnabled: true
+  disruptionRolloutEnabled: false
 
 injector:
   image:

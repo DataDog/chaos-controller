@@ -222,82 +222,90 @@ func main() {
 
 	defer cancel()
 
-	// create deployment and statefulset informers
-	globalInformerFactory := kubeinformers.NewSharedInformerFactory(informerClient, time.Hour*24)
-	deploymentInformer := globalInformerFactory.Apps().V1().Deployments().Informer()
-	statefulsetInformer := globalInformerFactory.Apps().V1().StatefulSets().Informer()
-
-	deploymentHandler := watchers.NewDeploymentHandler(mgr.GetClient(), logger)
-	statefulsetHandler := watchers.NewStatefulSetHandler(mgr.GetClient(), logger)
-
-	_, err = deploymentInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    deploymentHandler.OnAdd,
-		UpdateFunc: deploymentHandler.OnUpdate,
-		DeleteFunc: deploymentHandler.OnDelete,
-	})
-	if err != nil {
-		logger.Fatalw("unable to add event handler for Deployments", "error", err)
-	}
-
-	_, err = statefulsetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    statefulsetHandler.OnAdd,
-		UpdateFunc: statefulsetHandler.OnUpdate,
-		DeleteFunc: statefulsetHandler.OnDelete,
-	})
-	if err != nil {
-		logger.Fatalw("unable to add event handler for StatefulSets", "error", err)
-	}
-
-	// wait for the all informer caches to be synced
-	synced := globalInformerFactory.WaitForCacheSync(ctx.Done())
-	for informerType, ok := range synced {
-		if !ok {
-			logger.Errorw("failed to wait for informer cache to sync", "informer", informerType)
-			return
-		}
-	}
-
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
-	globalInformerFactory.Start(stopCh)
 
 	go disruptionReconciler.ReportMetrics()
 
-	// create disruption cron reconciler
-	disruptionCronReconciler := &controllers.DisruptionCronReconciler{
-		Client:  mgr.GetClient(),
-		BaseLog: logger,
-		Scheme:  mgr.GetScheme(),
-	}
+	if cfg.Controller.DisruptionRolloutEnabled {
 
-	if err := disruptionCronReconciler.SetupWithManager(mgr); err != nil {
-		logger.Errorw("unable to create controller", "controller", "DisruptionCron", "error", err)
-		os.Exit(1) //nolint:gocritic
-	}
+		// create deployment and statefulset informers
+		globalInformerFactory := kubeinformers.NewSharedInformerFactory(informerClient, time.Hour*24)
+		deploymentInformer := globalInformerFactory.Apps().V1().Deployments().Informer()
+		statefulsetInformer := globalInformerFactory.Apps().V1().StatefulSets().Informer()
 
-	// create disruption rollout reconciler
-	disruptionRolloutReconciler := &controllers.DisruptionRolloutReconciler{
-		Client:  mgr.GetClient(),
-		BaseLog: logger,
-		Scheme:  mgr.GetScheme(),
-	}
+		deploymentHandler := watchers.NewDeploymentHandler(mgr.GetClient(), logger)
+		statefulsetHandler := watchers.NewStatefulSetHandler(mgr.GetClient(), logger)
 
-	if err := disruptionRolloutReconciler.SetupWithManager(mgr); err != nil {
-		logger.Errorw("unable to create controller", "controller", "DisruptionRollout", "error", err)
-		os.Exit(1) //nolint:gocritic
-	}
-
-	// add the indexer on target resource for disruption rollouts
-	err = mgr.GetCache().IndexField(context.Background(), &chaosv1beta1.DisruptionRollout{}, "targetResource", func(obj client.Object) []string {
-		dr, ok := obj.(*chaosv1beta1.DisruptionRollout)
-		if !ok {
-			return []string{""}
+		_, err = deploymentInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    deploymentHandler.OnAdd,
+			UpdateFunc: deploymentHandler.OnUpdate,
+			DeleteFunc: deploymentHandler.OnDelete,
+		})
+		if err != nil {
+			logger.Fatalw("unable to add event handler for Deployments", "error", err)
 		}
-		targetResource := fmt.Sprintf("%s-%s-%s", dr.Spec.TargetResource.Kind, dr.GetNamespace(), dr.Spec.TargetResource.Name)
-		return []string{targetResource}
-	})
-	if err != nil {
-		logger.Fatalw("unable to add index", "controller", "DisruptionRollout", "error", err)
+
+		_, err = statefulsetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    statefulsetHandler.OnAdd,
+			UpdateFunc: statefulsetHandler.OnUpdate,
+			DeleteFunc: statefulsetHandler.OnDelete,
+		})
+		if err != nil {
+			logger.Fatalw("unable to add event handler for StatefulSets", "error", err)
+		}
+
+		// wait for the deployment and statefulset informer caches to be synced
+		synced := globalInformerFactory.WaitForCacheSync(ctx.Done())
+		for informerType, ok := range synced {
+			if !ok {
+				logger.Errorw("failed to wait for informer cache to sync", "informer", informerType)
+				return
+			}
+		}
+
+		// start the deployment and statefulset informers
+		globalInformerFactory.Start(stopCh)
+
+		// create disruption rollout reconciler
+		disruptionRolloutReconciler := &controllers.DisruptionRolloutReconciler{
+			Client:  mgr.GetClient(),
+			BaseLog: logger,
+			Scheme:  mgr.GetScheme(),
+		}
+
+		if err := disruptionRolloutReconciler.SetupWithManager(mgr); err != nil {
+			logger.Errorw("unable to create controller", "controller", "DisruptionRollout", "error", err)
+			os.Exit(1) //nolint:gocritic
+		}
+
+		// add the indexer on target resource for disruption rollouts
+		err = mgr.GetCache().IndexField(context.Background(), &chaosv1beta1.DisruptionRollout{}, "targetResource", func(obj client.Object) []string {
+			dr, ok := obj.(*chaosv1beta1.DisruptionRollout)
+			if !ok {
+				return []string{""}
+			}
+			targetResource := fmt.Sprintf("%s-%s-%s", dr.Spec.TargetResource.Kind, dr.GetNamespace(), dr.Spec.TargetResource.Name)
+			return []string{targetResource}
+		})
+		if err != nil {
+			logger.Fatalw("unable to add index", "controller", "DisruptionRollout", "error", err)
+		}
+	}
+
+	if cfg.Controller.DisruptionCronEnabled {
+		// create disruption cron reconciler
+		disruptionCronReconciler := &controllers.DisruptionCronReconciler{
+			Client:  mgr.GetClient(),
+			BaseLog: logger,
+			Scheme:  mgr.GetScheme(),
+		}
+
+		if err := disruptionCronReconciler.SetupWithManager(mgr); err != nil {
+			logger.Errorw("unable to create controller", "controller", "DisruptionCron", "error", err)
+			os.Exit(1) //nolint:gocritic
+		}
+
 	}
 
 	// register disruption validating webhook

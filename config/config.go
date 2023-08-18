@@ -40,6 +40,8 @@ type controllerConfig struct {
 	SafeMode                 safeModeConfig                  `json:"safeMode"`
 	ProfilerSink             string                          `json:"profilerSink"`
 	TracerSink               string                          `json:"tracerSink"`
+	DisruptionCronEnabled    bool                            `json:"disruptionCronEnabled"`
+	DisruptionRolloutEnabled bool                            `json:"disruptionRolloutEnabled"`
 }
 
 type controllerWebhookConfig struct {
