@@ -4,7 +4,7 @@
 # Copyright 2023 Datadog, Inc.
 apiVersion: v1
 kind: ConfigMap
-metadata: 
+metadata:
   name: chaos-controller
   namespace: "{{ .Values.chaosNamespace }}"
 data:
