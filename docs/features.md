@@ -116,7 +116,7 @@ Any setup/config error will be logged at controller startup.
 
 The `slack` notifier requires a slack API Token to connect to your org's slack workspace.
 
-It will use the disruption's creator username in kubernetes (based on your authentication method) as an email address to send a DM on slack as 'Disruption Status Bot'. **The email address used to authentify on the kubernetes cluster and create the disruption needs to be the same used on the slack workspace** or the notification will be ignored.
+It will use the disruption's creator username in kubernetes (based on your authentication method) as the email address of the person to send a DM on slack. The DM will come from the slack username 'Disruption Status Bot'. **The email address used to authentify on the kubernetes cluster and create the disruption needs to be the same used on the slack workspace** or the notification will be ignored.
 
 In addition to that, you can receive notifications on the disruption itself by filling the `reporting` field (See the [disruption reporting section](#disruption-reporting)).
 
