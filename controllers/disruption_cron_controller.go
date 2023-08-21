@@ -115,7 +115,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	r.log.Infow("processing current run", "currentRun", missedRun.Format(time.UnixDate))
 
 	// Create disruption for current run
-	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, missedRun, DisruptionCronNameLabel)
+	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, missedRun)
+
 	if err != nil {
 		r.log.Warnw("unable to construct disruption from template", "err", err)
 		// Don't requeue until update to the spec is received

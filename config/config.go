@@ -40,6 +40,8 @@ type controllerConfig struct {
 	SafeMode                 safeModeConfig                  `json:"safeMode"`
 	ProfilerSink             string                          `json:"profilerSink"`
 	TracerSink               string                          `json:"tracerSink"`
+	DisruptionCronEnabled    bool                            `json:"disruptionCronEnabled"`
+	DisruptionRolloutEnabled bool                            `json:"disruptionRolloutEnabled"`
 }
 
 type controllerWebhookConfig struct {
@@ -392,6 +394,18 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.StringVar(&cfg.Controller.TracerSink, "tracer-sink", "noop", "tracer sink (datadog, or noop)")
 
 	if err := viper.BindPFlag("controller.tracerSink", mainFS.Lookup("tracer-sink")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.DisruptionCronEnabled, "disruption-cron-enabled", false, "Enable the DisruptionCron CRD and its controller")
+
+	if err := viper.BindPFlag("controller.disruptionCronEnabled", mainFS.Lookup("disruption-cron-enabled")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.DisruptionRolloutEnabled, "disruption-rollout-enabled", false, "Enable the DisruptionRollout CRD and its controller")
+
+	if err := viper.BindPFlag("controller.disruptionRolloutEnabled", mainFS.Lookup("disruption-rollout-enabled")); err != nil {
 		return cfg, err
 	}
 

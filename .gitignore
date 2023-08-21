@@ -52,3 +52,6 @@ disruption.yaml
 
 # eBPF
 ebpf/builds/
+
+# DS_Store
+.DS_Store
