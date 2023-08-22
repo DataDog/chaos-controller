@@ -184,9 +184,9 @@ func (d Sink) MetricOrphanFound(tags []string) error {
 	return d.metricWithStatus(metricPrefixController+"orphan.found", tags)
 }
 
-// MetricCacheTriggered signals a selector cache trigger
-func (d Sink) MetricSelectorCacheTriggered(tags []string) error {
-	return d.metricWithStatus(metricPrefixController+"selector.cache.triggered", tags)
+// MetricWatcherCalls is a counter of watcher calls.
+func (d Sink) MetricWatcherCalls(tags []string) error {
+	return d.metricWithStatus(metricPrefixController+"watcher.calls", tags)
 }
 
 // MetricSelectorCacheGauge reports how many caches are still in the cache array to prevent leaks

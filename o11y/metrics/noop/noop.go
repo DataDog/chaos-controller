@@ -191,9 +191,9 @@ func (n Sink) MetricOrphanFound(tags []string) error {
 	return nil
 }
 
-// MetricCacheTriggered signals a selector cache trigger
-func (n Sink) MetricSelectorCacheTriggered(tags []string) error {
-	n.log.Debugf("NOOP: MetricCacheTriggered %s\n", tags)
+// MetricWatcherCalls count the number of watcher calls
+func (n Sink) MetricWatcherCalls(tags []string) error {
+	n.log.Debugf("NOOP: MetricWatcherCalls %s\n", tags)
 
 	return nil
 }

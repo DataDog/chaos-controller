@@ -56,7 +56,7 @@ func (f factory) NewChaosPodWatcher(name string, disruption *v1beta1.Disruption,
 	}
 
 	// Create a new handler for this watcher instance
-	handler := NewChaosPodHandler(f.recorder, disruption, f.log)
+	handler := NewChaosPodHandler(f.recorder, disruption, f.log, NewWatcherMetricsHandler(f.metricSinks, f.log))
 
 	// Create a new watcher configuration object
 	watcherConfig := WatcherConfig{
@@ -81,12 +81,13 @@ func (f factory) NewDisruptionTargetWatcher(name string, enableObserver bool, di
 
 	// Create a new handler for this watcher instance
 	handler := DisruptionTargetHandler{
-		recorder:       f.recorder,
-		reader:         f.reader,
-		enableObserver: enableObserver,
-		disruption:     disruption,
-		metricsSink:    f.metricSinks,
-		log:            f.log,
+		recorder:              f.recorder,
+		reader:                f.reader,
+		enableObserver:        enableObserver,
+		disruption:            disruption,
+		watcherMetricsHandler: NewWatcherMetricsHandler(f.metricSinks, f.log),
+		metricsSink:           f.metricSinks,
+		log:                   f.log,
 	}
 
 	// Create a new watcher configuration object
@@ -146,5 +147,6 @@ func newChaosPodCacheOptions(disruption *v1beta1.Disruption) (k8scache.Options, 
 		SelectorsByObject: k8scache.SelectorsByObject{
 			&corev1.Pod{}: {Label: labels.SelectorFromValidatedSet(ls)},
 		},
+		Namespace: disruption.Namespace,
 	}, nil
 }

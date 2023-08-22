@@ -10,12 +10,14 @@ import (
 	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	"github.com/DataDog/chaos-controller/types"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/watchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/record"
+	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
 var _ = Describe("Watcher factory", func() {
@@ -67,6 +69,21 @@ var _ = Describe("Watcher factory", func() {
 
 			It("should create the watcher with the expected name", func() {
 				Expect(watcher.GetName()).Should(Equal(watcherName))
+			})
+
+			It("should have a valid k8s cache options", func() {
+				expectedObjectSelector := k8scache.ObjectSelector{Label: labels.SelectorFromValidatedSet(map[string]string{
+					chaostypes.DisruptionNameLabel:      disruption.Name,
+					chaostypes.DisruptionNamespaceLabel: disruption.Namespace,
+				})}
+
+				By("having the same object selector")
+				for _, selectorByObject := range watcher.GetConfig().CacheOptions.SelectorsByObject {
+					Expect(selectorByObject).Should(Equal(expectedObjectSelector))
+				}
+
+				By("having the same namespace")
+				Expect(watcher.GetConfig().CacheOptions.Namespace).Should(Equal(disruption.Namespace))
 			})
 		})
 

@@ -18,6 +18,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+type WatcherEventType string
+
+const (
+	WatcherAddEvent    WatcherEventType = "Add"
+	WatcherUpdateEvent WatcherEventType = "Update"
+	WatcherDeleteEvent WatcherEventType = "Delete"
+)
+
 // Watcher is an interface that describes the methods provided by a Kubernetes resource watcher.
 type Watcher interface {
 	// Clean cancels the context associated with the watcher, stopping the syncing of resources and freeing up resources.
@@ -37,6 +45,9 @@ type Watcher interface {
 
 	// Start starts the watcher by creating an informer from the watcher's cache and adding a resource event handler to the informer.
 	Start() error
+
+	// GetConfig return the current config of the Watcher instance.
+	GetConfig() WatcherConfig
 }
 
 // WatcherConfig holds configuration values used to create a new Watcher instance.
@@ -188,4 +199,9 @@ func (w *watcher) Start() error {
 	w.cacheSource = source.NewKindWithCache(w.config.ObjectType, w.cache)
 
 	return nil
+}
+
+// GetConfig return the configuration of the Watcher instance
+func (w *watcher) GetConfig() WatcherConfig {
+	return w.config
 }
