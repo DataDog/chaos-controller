@@ -6,13 +6,15 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -67,7 +69,7 @@ func GetTargetResource(ctx context.Context, cl client.Client, targetResource *ch
 func CheckTargetResourceExists(ctx context.Context, cl client.Client, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) (bool, error) {
 	_, err := GetTargetResource(ctx, cl, targetResource, namespace)
 
-	if errors.IsNotFound(err) {
+	if apierrors.IsNotFound(err) {
 		return false, nil
 	} else if err != nil {
 		return false, err
@@ -84,7 +86,18 @@ func GetSelectors(ctx context.Context, cl client.Client, targetResource *chaosv1
 		return nil, err
 	}
 
-	labels := targetObj.GetLabels()
+	// retrieve pod template spec from targeted resource
+	podSpec := corev1.PodTemplateSpec{}
+	switch o := targetObj.(type) {
+	case *appsv1.Deployment:
+		podSpec = o.Spec.Template
+	case *appsv1.StatefulSet:
+		podSpec = o.Spec.Template
+	default:
+		return nil, errors.New("error getting target resource pod template labels")
+	}
+
+	labels := podSpec.GetLabels()
 	if labels == nil {
 		labels = make(map[string]string)
 	}

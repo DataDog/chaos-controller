@@ -365,13 +365,13 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 	}
 
 	status := instance.Status.InjectionStatus
-	if status == "" {
+	if status == chaostypes.DisruptionInjectionStatusInitial {
 		status = chaostypes.DisruptionInjectionStatusNotInjected
 	}
 
 	terminationStatus := disruptionTerminationStatus(*instance, chaosPods)
 	if terminationStatus != tsNotTerminated {
-		switch instance.Status.InjectionStatus {
+		switch status {
 		case
 			chaostypes.DisruptionInjectionStatusInjected,
 			chaostypes.DisruptionInjectionStatusPausedInjected,
@@ -397,7 +397,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 				status = chaostypes.DisruptionInjectionStatusPreviouslyNotInjected
 			}
 		default:
-			return fmt.Errorf("unable to transition from disruption injection status %s, unknown injection status, termination status is %d", instance.Status.InjectionStatus, terminationStatus)
+			return fmt.Errorf("unable to transition from disruption injection status %s, unknown injection status, termination status is %d", status, terminationStatus)
 		}
 	} else if len(chaosPods) > 0 {
 		// consider the disruption "partially injected" if we found at least one pod
@@ -559,6 +559,12 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 
 	if len(targetChaosPods) == 0 {
 		r.recordEventOnDisruption(instance, chaosv1beta1.EventEmptyDisruption, instance.Name, "")
+
+		return nil
+	}
+
+	if calculateRemainingDuration(*instance).Seconds() < 1 {
+		r.log.Debugw("skipping creation of chaos pods, remaining duration is too small", "remainingDuration", calculateRemainingDuration(*instance).String())
 
 		return nil
 	}
@@ -999,7 +1005,7 @@ func (r *DisruptionReconciler) getChaosPods(instance *chaosv1beta1.Disruption, l
 
 // generatePod generates a pod from a generic pod template in the same namespace
 // and on the same node as the given pod
-func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, kind chaostypes.DisruptionKindName) (pod corev1.Pod, shouldCreatePod bool) {
+func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, args []string, kind chaostypes.DisruptionKindName) (pod corev1.Pod) {
 	// volume host path type definitions
 	hostPathDirectory := corev1.HostPathDirectory
 	hostPathFile := corev1.HostPathFile
@@ -1013,10 +1019,6 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	activeDeadlineSeconds := int64(calculateRemainingDuration(*instance).Seconds()) + 10
 	args = append(args,
 		"--deadline", time.Now().Add(calculateRemainingDuration(*instance)).Format(time.RFC3339))
-
-	if activeDeadlineSeconds < 1 {
-		return pod, false
-	}
 
 	podSpec := corev1.PodSpec{
 		HostPID:                       true,                      // enable host pid
@@ -1214,7 +1216,7 @@ func (r *DisruptionReconciler) generatePod(instance *chaosv1beta1.Disruption, ta
 	// add finalizer to the pod so it is not deleted before we can control its exit status
 	controllerutil.AddFinalizer(&pod, chaostypes.ChaosPodFinalizer)
 
-	return pod, true
+	return pod
 }
 
 // handleMetricSinkError logs the given metric sink error if it is not nil
@@ -1323,10 +1325,8 @@ func (r *DisruptionReconciler) generateChaosPods(instance *chaosv1beta1.Disrupti
 		args := xargs.CreateCmdArgs(subspec.GenerateArgs())
 
 		// append pod to chaos pods
-		pod, shouldCreatePod := r.generatePod(instance, targetName, targetNodeName, args, kind)
-		if shouldCreatePod {
-			pods = append(pods, pod)
-		}
+		pod := r.generatePod(instance, targetName, targetNodeName, args, kind)
+		pods = append(pods, pod)
 	}
 
 	return pods, nil

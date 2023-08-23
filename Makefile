@@ -528,8 +528,8 @@ ifeq (,$(EXISTING_NAMESPACE))
 	helm install -n datadog-agent my-datadog-operator datadoghq/datadog-operator
 	$(KUBECTL) create secret -n datadog-agent generic datadog-secret --from-literal api-key=${STAGING_DATADOG_API_KEY} --from-literal app-key=${STAGING_DATADOG_APP_KEY}
 endif
-endif
 	$(KUBECTL) apply -f - < examples/datadog-agent.yaml
+endif
 
 open-dd:
 ifeq (true,$(INSTALL_DATADOG_AGENT))
