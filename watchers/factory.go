@@ -31,32 +31,32 @@ type Factory interface {
 }
 
 type factory struct {
-	log         *zap.SugaredLogger
-	metricSinks metrics.Sink
-	reader      client.Reader
-	recorder    record.EventRecorder
+	config FactoryConfig
+}
+
+type FactoryConfig struct {
+	Log            *zap.SugaredLogger
+	MetricSink     metrics.Sink
+	Reader         client.Reader
+	Recorder       record.EventRecorder
+	ChaosNamespace string
 }
 
 // NewWatcherFactory creates a new instance of the factory for creating new watcher instances.
-func NewWatcherFactory(logger *zap.SugaredLogger, metricSinks metrics.Sink, reader client.Reader, recorder record.EventRecorder) Factory {
-	return factory{
-		log:         logger,
-		metricSinks: metricSinks,
-		reader:      reader,
-		recorder:    recorder,
-	}
+func NewWatcherFactory(config FactoryConfig) Factory {
+	return factory{config: config}
 }
 
 // NewChaosPodWatcher creates a new watcher instance for chaos pods.
 func (f factory) NewChaosPodWatcher(name string, disruption *v1beta1.Disruption, cacheMock k8scache.Cache) (Watcher, error) {
 	// Add instance specific labels if provided
-	cacheOptions, err := newChaosPodCacheOptions(disruption)
+	cacheOptions, err := f.newChaosPodCacheOptions(disruption)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create a new handler for this watcher instance
-	handler := NewChaosPodHandler(f.recorder, disruption, f.log, NewWatcherMetricsHandler(f.metricSinks, f.log))
+	handler := NewChaosPodHandler(f.config.Recorder, disruption, f.config.Log, NewWatcherMetricsAdapter(f.config.MetricSink, f.config.Log))
 
 	// Create a new watcher configuration object
 	watcherConfig := WatcherConfig{
@@ -64,7 +64,7 @@ func (f factory) NewChaosPodWatcher(name string, disruption *v1beta1.Disruption,
 		Handler:        &handler,
 		ObjectType:     &corev1.Pod{},
 		CacheOptions:   cacheOptions,
-		Log:            f.log,
+		Log:            f.config.Log,
 		NamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
 	}
 
@@ -81,13 +81,12 @@ func (f factory) NewDisruptionTargetWatcher(name string, enableObserver bool, di
 
 	// Create a new handler for this watcher instance
 	handler := DisruptionTargetHandler{
-		recorder:              f.recorder,
-		reader:                f.reader,
-		enableObserver:        enableObserver,
-		disruption:            disruption,
-		watcherMetricsHandler: NewWatcherMetricsHandler(f.metricSinks, f.log),
-		metricsSink:           f.metricSinks,
-		log:                   f.log,
+		recorder:       f.config.Recorder,
+		reader:         f.config.Reader,
+		enableObserver: enableObserver,
+		disruption:     disruption,
+		metricsAdapter: NewWatcherMetricsAdapter(f.config.MetricSink, f.config.Log),
+		log:            f.config.Log,
 	}
 
 	// Create a new watcher configuration object
@@ -96,7 +95,7 @@ func (f factory) NewDisruptionTargetWatcher(name string, enableObserver bool, di
 		Handler:        &handler,
 		ObjectType:     &corev1.Pod{},
 		CacheOptions:   cacheOptions,
-		Log:            f.log,
+		Log:            f.config.Log,
 		NamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
 	}
 
@@ -131,7 +130,7 @@ func newDisruptionTargetCacheOptions(disruption *v1beta1.Disruption) (k8scache.O
 
 // newChaosPodCacheOptions creates the cache options for a ChaosPodWatcher based on the given disruption object.
 // It adds specific labels to the options so that only pods associated with the disruption are watched and cached.
-func newChaosPodCacheOptions(disruption *v1beta1.Disruption) (k8scache.Options, error) {
+func (f factory) newChaosPodCacheOptions(disruption *v1beta1.Disruption) (k8scache.Options, error) {
 	ls := make(map[string]string, 2)
 
 	// Add the disruption name and namespace labels to the label set for this watcher's cache
@@ -147,6 +146,6 @@ func newChaosPodCacheOptions(disruption *v1beta1.Disruption) (k8scache.Options, 
 		SelectorsByObject: k8scache.SelectorsByObject{
 			&corev1.Pod{}: {Label: labels.SelectorFromValidatedSet(ls)},
 		},
-		Namespace: disruption.Namespace,
+		Namespace: f.config.ChaosNamespace,
 	}, nil
 }

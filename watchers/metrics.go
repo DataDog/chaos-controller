@@ -12,26 +12,26 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// WatcherMetricsHandler is in charge of watcher metrics.
-type WatcherMetricsHandler interface {
+// WatcherMetricsAdapter is in charge of watcher metrics.
+type WatcherMetricsAdapter interface {
 	OnChange(disruption *v1beta1.Disruption, watcherName string, pod *corev1.Pod, node *corev1.Node, okPod bool, okNode bool, event WatcherEventType)
 }
 
-type watcherMetricsHandler struct {
+type watcherMetricsAdapter struct {
 	metricsSink metrics.Sink
 	log         *zap.SugaredLogger
 }
 
-// NewWatcherMetricsHandler constructor of WatcherMetricsHandler
-func NewWatcherMetricsHandler(metricsSink metrics.Sink, log *zap.SugaredLogger) WatcherMetricsHandler {
-	return &watcherMetricsHandler{
+// NewWatcherMetricsAdapter constructor of WatcherMetricsAdapter
+func NewWatcherMetricsAdapter(metricsSink metrics.Sink, log *zap.SugaredLogger) WatcherMetricsAdapter {
+	return &watcherMetricsAdapter{
 		metricsSink: metricsSink,
 		log:         log,
 	}
 }
 
 // OnChange increment the watcher.calls metrics with
-func (m watcherMetricsHandler) OnChange(disruption *v1beta1.Disruption, watcherName string, pod *corev1.Pod, node *corev1.Node, okPod bool, okNode bool, event WatcherEventType) {
+func (m watcherMetricsAdapter) OnChange(disruption *v1beta1.Disruption, watcherName string, pod *corev1.Pod, node *corev1.Node, okPod bool, okNode bool, event WatcherEventType) {
 	tags := []string{
 		"disruptionName:" + disruption.Name,
 		"namespace:" + disruption.Namespace,

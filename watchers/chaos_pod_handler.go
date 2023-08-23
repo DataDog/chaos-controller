@@ -25,19 +25,19 @@ type ChaosPodHandler struct {
 	// log is the logger.
 	log *zap.SugaredLogger
 
-	// metricsHandler is used for metric instrumentation
-	metricsHandler WatcherMetricsHandler
+	// metricsAdapter is used for metric instrumentation
+	metricsAdapter WatcherMetricsAdapter
 }
 
 const ChaosPodHandlerName = "ChaosPodHandler"
 
 // NewChaosPodHandler creates a new instance of ChaosPodHandler
-func NewChaosPodHandler(recorder record.EventRecorder, disruption *chaosv1beta1.Disruption, logger *zap.SugaredLogger, metricsHandler WatcherMetricsHandler) ChaosPodHandler {
+func NewChaosPodHandler(recorder record.EventRecorder, disruption *chaosv1beta1.Disruption, logger *zap.SugaredLogger, metricsAdapter WatcherMetricsAdapter) ChaosPodHandler {
 	return ChaosPodHandler{
 		disruption:     disruption,
 		log:            logger,
 		recorder:       recorder,
-		metricsHandler: metricsHandler,
+		metricsAdapter: metricsAdapter,
 	}
 }
 
@@ -57,7 +57,7 @@ func (w ChaosPodHandler) OnUpdate(oldObj, newObj interface{}) {
 		return
 	}
 
-	w.metricsHandler.OnChange(w.disruption, ChaosPodHandlerName, newPod, nil, okNewPod, false, WatcherUpdateEvent)
+	w.metricsAdapter.OnChange(w.disruption, ChaosPodHandlerName, newPod, nil, okNewPod, false, WatcherUpdateEvent)
 
 	// If the old and new phase are the same, do nothing
 	if oldPod.Status.Phase == newPod.Status.Phase {

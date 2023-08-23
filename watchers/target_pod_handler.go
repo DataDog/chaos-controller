@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,13 +24,12 @@ import (
 
 // DisruptionTargetHandler struct used to manage what to do when changes occur on the watched objects in the cache
 type DisruptionTargetHandler struct {
-	recorder              record.EventRecorder
-	reader                client.Reader
-	enableObserver        bool
-	disruption            *v1beta1.Disruption
-	metricsSink           metrics.Sink
-	log                   *zap.SugaredLogger
-	watcherMetricsHandler WatcherMetricsHandler
+	recorder       record.EventRecorder
+	reader         client.Reader
+	enableObserver bool
+	disruption     *v1beta1.Disruption
+	log            *zap.SugaredLogger
+	metricsAdapter WatcherMetricsAdapter
 }
 
 const DisruptionTargetHandlerName = "DisruptionTargetHandler"
@@ -98,7 +96,7 @@ func (d DisruptionTargetHandler) OnUpdate(oldObj, newObj interface{}) {
 
 // OnChangeHandleMetricsSink Trigger Metric Sink on changes in the targets
 func (d DisruptionTargetHandler) OnChangeHandleMetricsSink(pod *corev1.Pod, node *corev1.Node, okPod, okNode bool, event WatcherEventType) {
-	d.watcherMetricsHandler.OnChange(d.disruption, DisruptionTargetHandlerName, pod, node, okPod, okNode, event)
+	d.metricsAdapter.OnChange(d.disruption, DisruptionTargetHandlerName, pod, node, okPod, okNode, event)
 }
 
 // OnChangeHandleNotifierSink Trigger Notifier Sink on changes in the targets

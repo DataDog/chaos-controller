@@ -186,7 +186,7 @@ func (d Sink) MetricOrphanFound(tags []string) error {
 
 // MetricWatcherCalls is a counter of watcher calls.
 func (d Sink) MetricWatcherCalls(tags []string) error {
-	return d.metricWithStatus(metricPrefixController+"watcher.calls", tags)
+	return d.metricWithStatus(metricPrefixController+"watcher.calls_total", tags)
 }
 
 // MetricSelectorCacheGauge reports how many caches are still in the cache array to prevent leaks

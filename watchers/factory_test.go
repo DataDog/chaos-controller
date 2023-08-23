@@ -20,6 +20,11 @@ import (
 	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
+const (
+	watcherName    = "name"
+	chaosNamespace = "chaos-namespace"
+)
+
 var _ = Describe("Watcher factory", func() {
 	var (
 		disruption        chaosv1beta1.Disruption
@@ -32,14 +37,19 @@ var _ = Describe("Watcher factory", func() {
 		cacheMock         *CacheMock
 	)
 
-	const watcherName = "name"
-
 	BeforeEach(func() {
 		cacheMock = &CacheMock{}
 	})
 
 	JustBeforeEach(func() {
-		watcherFactory = watchers.NewWatcherFactory(logger, &noopSink, &readerMock, eventRecorderMock)
+		config := watchers.FactoryConfig{
+			Log:            logger,
+			MetricSink:     &noopSink,
+			Reader:         &readerMock,
+			Recorder:       eventRecorderMock,
+			ChaosNamespace: chaosNamespace,
+		}
+		watcherFactory = watchers.NewWatcherFactory(config)
 	})
 
 	It("should not be nil", func() {
@@ -83,7 +93,7 @@ var _ = Describe("Watcher factory", func() {
 				}
 
 				By("having the same namespace")
-				Expect(watcher.GetConfig().CacheOptions.Namespace).Should(Equal(disruption.Namespace))
+				Expect(watcher.GetConfig().CacheOptions.Namespace).Should(Equal(chaosNamespace))
 			})
 		})
 

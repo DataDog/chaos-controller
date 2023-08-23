@@ -28,7 +28,7 @@ var _ = Describe("Chaos Pod watcher", func() {
 			chaosPodHandler    watchers.ChaosPodHandler
 			disruption         *v1beta1.Disruption
 			eventRecorder      record.EventRecorder
-			metricsHandlerMock *watchers.MetricsHandlerMock
+			metricsAdapterMock *watchers.WatcherMetricsAdapterMock
 		)
 
 		JustBeforeEach(func() {
@@ -40,11 +40,11 @@ var _ = Describe("Chaos Pod watcher", func() {
 				},
 			}
 			eventRecorder = record.NewFakeRecorder(bufferSize)
-			metricsHandlerMock = watchers.NewMetricsHandlerMock(GinkgoT())
-			metricsHandlerMock.EXPECT().OnWatcherChange(
+			metricsAdapterMock = watchers.NewWatcherMetricsAdapterMock(GinkgoT())
+			metricsAdapterMock.EXPECT().OnChange(
 				mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 			).Maybe()
-			chaosPodHandler = watchers.NewChaosPodHandler(eventRecorder, disruption, logger, metricsHandlerMock)
+			chaosPodHandler = watchers.NewChaosPodHandler(eventRecorder, disruption, logger, metricsAdapterMock)
 		})
 
 		Describe("on Add", func() {

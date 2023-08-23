@@ -64,7 +64,7 @@ var _ = Describe("Metrics", func() {
 
 			By("by increment the watcher calls metric")
 			metricsSinkMock.EXPECT().MetricWatcherCalls(expectedTags).Return(nil)
-			metricsHandler := watchers.NewWatcherMetricsHandler(metricsSinkMock, logger)
+			metricsHandler := watchers.NewWatcherMetricsAdapter(metricsSinkMock, logger)
 
 			// Action
 			metricsHandler.OnChange(disruption, watcherName, pod, node, okPod, okNode, event)
@@ -90,7 +90,7 @@ var _ = Describe("Metrics", func() {
 				// Arrange
 				metricsSinkMock := metrics.NewSinkMock(GinkgoT())
 				metricsSinkMock.EXPECT().MetricWatcherCalls(mock.Anything).Return(fmt.Errorf("an error happened"))
-				metricsHandler := watchers.NewWatcherMetricsHandler(metricsSinkMock, logger)
+				metricsHandler := watchers.NewWatcherMetricsAdapter(metricsSinkMock, logger)
 
 				// Action
 				metricsHandler.OnChange(disruption, watcherName, nil, nil, false, false, watchers.WatcherAddEvent)
