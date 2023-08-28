@@ -8,6 +8,7 @@ package webhook
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -39,7 +40,7 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 	if m.decoder == nil {
 		m.Log.Errorw("webhook decoder seems to be nil while it should not, aborting")
 
-		return admission.Errored(http.StatusInternalServerError, nil)
+		return admission.Errored(http.StatusInternalServerError, errors.New("decoder was nil"))
 	}
 
 	// decode object

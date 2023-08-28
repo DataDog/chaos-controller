@@ -38,6 +38,7 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	// +kubebuilder:scaffold:imports
@@ -78,14 +79,18 @@ func main() {
 	broadcaster := eventbroadcaster.EventBroadcaster()
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: cfg.Controller.MetricsBindAddr,
-		LeaderElection:     cfg.Controller.LeaderElection,
-		LeaderElectionID:   "75ec2fa4.datadoghq.com",
-		EventBroadcaster:   broadcaster,
-		Host:               cfg.Controller.Webhook.Host,
-		Port:               cfg.Controller.Webhook.Port,
-		CertDir:            cfg.Controller.Webhook.CertDir,
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: cfg.Controller.MetricsBindAddr,
+		},
+		LeaderElection:   cfg.Controller.LeaderElection,
+		LeaderElectionID: "75ec2fa4.datadoghq.com",
+		EventBroadcaster: broadcaster,
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Host:    cfg.Controller.Webhook.Host,
+			Port:    cfg.Controller.Webhook.Port,
+			CertDir: cfg.Controller.Webhook.CertDir,
+		}),
 	})
 	if err != nil {
 		logger.Fatalw("unable to start manager", "error", err)

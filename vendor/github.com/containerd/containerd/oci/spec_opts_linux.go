@@ -1,6 +1,3 @@
-//go:build linux
-// +build linux
-
 /*
    Copyright The containerd Authors.
 
@@ -63,67 +60,6 @@ func WithDevices(devicePath, containerPath, permissions string) SpecOpts {
 	}
 }
 
-// WithMemorySwap sets the container's swap in bytes
-func WithMemorySwap(swap int64) SpecOpts {
-	return func(ctx context.Context, _ Client, c *containers.Container, s *Spec) error {
-		setResources(s)
-		if s.Linux.Resources.Memory == nil {
-			s.Linux.Resources.Memory = &specs.LinuxMemory{}
-		}
-		s.Linux.Resources.Memory.Swap = &swap
-		return nil
-	}
-}
-
-// WithPidsLimit sets the container's pid limit or maximum
-func WithPidsLimit(limit int64) SpecOpts {
-	return func(ctx context.Context, _ Client, c *containers.Container, s *Spec) error {
-		setResources(s)
-		if s.Linux.Resources.Pids == nil {
-			s.Linux.Resources.Pids = &specs.LinuxPids{}
-		}
-		s.Linux.Resources.Pids.Limit = limit
-		return nil
-	}
-}
-
-// WithCPUShares sets the container's cpu shares
-func WithCPUShares(shares uint64) SpecOpts {
-	return func(ctx context.Context, _ Client, c *containers.Container, s *Spec) error {
-		setCPU(s)
-		s.Linux.Resources.CPU.Shares = &shares
-		return nil
-	}
-}
-
-// WithCPUs sets the container's cpus/cores for use by the container
-func WithCPUs(cpus string) SpecOpts {
-	return func(ctx context.Context, _ Client, c *containers.Container, s *Spec) error {
-		setCPU(s)
-		s.Linux.Resources.CPU.Cpus = cpus
-		return nil
-	}
-}
-
-// WithCPUsMems sets the container's cpu mems for use by the container
-func WithCPUsMems(mems string) SpecOpts {
-	return func(ctx context.Context, _ Client, c *containers.Container, s *Spec) error {
-		setCPU(s)
-		s.Linux.Resources.CPU.Mems = mems
-		return nil
-	}
-}
-
-// WithCPUCFS sets the container's Completely fair scheduling (CFS) quota and period
-func WithCPUCFS(quota int64, period uint64) SpecOpts {
-	return func(ctx context.Context, _ Client, c *containers.Container, s *Spec) error {
-		setCPU(s)
-		s.Linux.Resources.CPU.Quota = &quota
-		s.Linux.Resources.CPU.Period = &period
-		return nil
-	}
-}
-
 // WithAllCurrentCapabilities propagates the effective capabilities of the caller process to the container process.
 // The capability set may differ from WithAllKnownCapabilities when running in a container.
 var WithAllCurrentCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
@@ -134,13 +70,12 @@ var WithAllCurrentCapabilities = func(ctx context.Context, client Client, c *con
 	return WithCapabilities(caps)(ctx, client, c, s)
 }
 
-// WithAllKnownCapabilities sets all the the known linux capabilities for the container process
+// WithAllKnownCapabilities sets all the known linux capabilities for the container process
 var WithAllKnownCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
 	caps := cap.Known()
 	return WithCapabilities(caps)(ctx, client, c, s)
 }
 
-// WithoutRunMount removes the `/run` inside the spec
-func WithoutRunMount(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
-	return WithoutMounts("/run")(ctx, client, c, s)
+func escapeAndCombineArgs(args []string) string {
+	panic("not supported")
 }

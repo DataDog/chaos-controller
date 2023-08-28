@@ -27,6 +27,7 @@ const (
 	stateCreatedBy
 	stateCreatedByFunc
 	stateCreatedByFile
+	stateOriginatingFrom
 )
 
 // Parse parses a goroutines stack trace dump as produced by runtime.Stack().
@@ -69,17 +70,30 @@ func Parse(r io.Reader) ([]*Goroutine, []error) {
 
 	statemachine:
 		switch state {
-		case stateHeader:
+		case stateHeader, stateOriginatingFrom:
 			// Ignore lines that don't look like goroutine headers. This helps with
 			// leading/trailing whitespace but also in case we encountered an error
 			// during the previous goroutine and need to seek to the beginning of the
 			// next one.
-			if !bytes.HasPrefix(line, goroutinePrefix) {
-				continue
+			if state == stateHeader {
+				if !bytes.HasPrefix(line, goroutinePrefix) {
+					continue
+				}
+				g = parseGoroutineHeader(line[len(goroutinePrefix):])
+				goroutines = append(goroutines, g)
+			}
+			if state == stateOriginatingFrom {
+				ancestorIDStr := line[len(originatingFromPrefix) : len(line)-2]
+				ancestorID, err := strconv.Atoi(string(ancestorIDStr))
+				if err != nil {
+					abortGoroutine(err.Error())
+					continue
+				}
+				ancestorG := &Goroutine{ID: ancestorID}
+				g.Ancestor = ancestorG
+				g = ancestorG
 			}
 
-			g = parseGoroutineHeader(line[len(goroutinePrefix):])
-			goroutines = append(goroutines, g)
 			state = stateStackFunc
 			if g == nil {
 				abortGoroutine("invalid goroutine header")
@@ -91,6 +105,10 @@ func Parse(r io.Reader) ([]*Goroutine, []error) {
 					g.FramesElided = true
 					state = stateCreatedBy
 					continue
+				}
+				if bytes.HasPrefix(line, originatingFromPrefix) {
+					state = stateOriginatingFrom
+					goto statemachine
 				}
 				abortGoroutine("invalid function call")
 				continue
@@ -129,9 +147,10 @@ func Parse(r io.Reader) ([]*Goroutine, []error) {
 }
 
 var (
-	goroutinePrefix = []byte("goroutine ")
-	createdByPrefix = []byte("created by ")
-	framesElided    = []byte("...additional frames elided...")
+	goroutinePrefix       = []byte("goroutine ")
+	createdByPrefix       = []byte("created by ")
+	originatingFromPrefix = []byte("[originating from goroutine ")
+	framesElided          = []byte("...additional frames elided...")
 )
 
 var goroutineHeader = regexp.MustCompile(
@@ -234,35 +253,52 @@ func parseFunc(line []byte, state parserState) *Frame {
 //
 // Example Update:
 // &Frame{File: "/root/go1.15.6.linux.amd64/src/net/http/server.go", Line: 2969}
-func parseFile(line []byte, f *Frame) bool {
-	if len(line) == 0 || line[0] != '\t' {
+//
+// Note: The +0x36c is the relative pc offset from the function entry pc. It's
+// omitted if it's 0.
+func parseFile(line []byte, f *Frame) (ret bool) {
+	if len(line) < 2 || line[0] != '\t' {
 		return false
 	}
-
 	line = line[1:]
-	for i, c := range line {
-		if c == ':' {
-			if f.File != "" {
-				return false
-			}
-			f.File = string(line[0:i])
-		} else if c == ' ' || i+1 == len(line) {
-			if f.File == "" {
-				return false
-			}
-			var end int
-			if c == ' ' {
-				end = i
-			} else {
-				end = i + 1
-			}
 
-			var err error
-			f.Line, err = strconv.Atoi(string(line[len(f.File)+1 : end]))
-			return err == nil
+	const (
+		stateFilename = iota
+		stateColon
+		stateLine
+	)
+
+	var state = stateFilename
+	for i, c := range line {
+		switch state {
+		case stateFilename:
+			if c == ':' {
+				state = stateColon
+			}
+		case stateColon:
+			if isDigit(c) {
+				f.File = string(line[0 : i-1])
+				f.Line = int(c - '0')
+				state = stateLine
+				ret = true
+			} else {
+				state = stateFilename
+			}
+		case stateLine:
+			if c == ' ' {
+				return true
+			} else if !isDigit(c) {
+				return false
+			}
+			f.Line = f.Line*10 + int(c-'0')
 		}
+
 	}
-	return false
+	return
+}
+
+func isDigit(c byte) bool {
+	return c >= '0' && c <= '9'
 }
 
 // Goroutine represents a single goroutine and its stack after extracting it
@@ -289,6 +325,9 @@ type Goroutine struct {
 	FramesElided bool
 	// CreatedBy is the frame that created this goroutine, nil for main().
 	CreatedBy *Frame
+	// Ancestors are the Goroutines that created this goroutine.
+	// See GODEBUG=tracebackancestors=n in https://pkg.go.dev/runtime.
+	Ancestor *Goroutine `json:"Ancestor,omitempty"`
 }
 
 // Frame is a single call frame on the stack.

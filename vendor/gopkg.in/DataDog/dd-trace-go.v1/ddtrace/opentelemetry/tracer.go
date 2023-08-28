@@ -10,16 +10,14 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 
+	oteltrace "go.opentelemetry.io/otel/trace"
+
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/telemetry"
-
-	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 var _ oteltrace.Tracer = (*oteltracer)(nil)
-
-var telemetryTags = []string{`"integration_name":"otel"`}
 
 type oteltracer struct {
 	provider *TracerProvider
@@ -52,7 +50,7 @@ func (t *oteltracer) Start(ctx context.Context, spanName string, opts ...oteltra
 	if opts, ok := spanOptionsFromContext(ctx); ok {
 		ddopts = append(ddopts, opts...)
 	}
-	telemetry.GlobalClient.Count(telemetry.NamespaceTracers, "spans_created", 1.0, telemetryTags, true)
+	telemetry.GlobalClient.Count(telemetry.NamespaceTracers, "otel.spans_created", 1.0, nil, true)
 	s := tracer.StartSpan(spanName, ddopts...)
 	os := oteltrace.Span(&span{
 		Span:       s,

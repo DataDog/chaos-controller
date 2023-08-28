@@ -24,19 +24,22 @@ func NewCacheOutboundOp(system string, opts ...Option) *Schema {
 }
 
 func (c *cacheOutboundOp) V0() string {
-	if c.cfg.overrideV0 != nil {
-		return *c.cfg.overrideV0
+	if v, ok := c.cfg.versionOverrides[SchemaV0]; ok {
+		return v
 	}
 	return c.V1()
 }
 
 func (c *cacheOutboundOp) V1() string {
+	if v, ok := c.cfg.versionOverrides[SchemaV1]; ok {
+		return v
+	}
 	return fmt.Sprintf("%s.command", c.system)
 }
 
 // NewMemcachedOutboundOp creates a new schema for Memcached (cache) outbound operations.
 func NewMemcachedOutboundOp(opts ...Option) *Schema {
-	newOpts := append([]Option{WithOverrideV0("memcached.query")}, opts...)
+	newOpts := append([]Option{WithVersionOverride(SchemaV0, "memcached.query")}, opts...)
 	return NewCacheOutboundOp("memcached", newOpts...)
 }
 

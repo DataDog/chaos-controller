@@ -36,7 +36,7 @@ func NewChaosPodHandler(recorder record.EventRecorder, disruption *chaosv1beta1.
 }
 
 // OnAdd is a handler function for the add of the chaos pod
-func (w ChaosPodHandler) OnAdd(_ interface{}) {
+func (w ChaosPodHandler) OnAdd(_ interface{}, _ bool) {
 	// Do nothing on add event
 }
 

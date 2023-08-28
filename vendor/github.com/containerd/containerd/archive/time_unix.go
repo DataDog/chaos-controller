@@ -1,5 +1,4 @@
 //go:build !windows
-// +build !windows
 
 /*
    Copyright The containerd Authors.
@@ -20,11 +19,10 @@
 package archive
 
 import (
+	"fmt"
 	"time"
 
 	"golang.org/x/sys/unix"
-
-	"github.com/pkg/errors"
 )
 
 func chtimes(path string, atime, mtime time.Time) error {
@@ -33,7 +31,7 @@ func chtimes(path string, atime, mtime time.Time) error {
 	utimes[1] = unix.NsecToTimespec(mtime.UnixNano())
 
 	if err := unix.UtimesNanoAt(unix.AT_FDCWD, path, utimes[0:], unix.AT_SYMLINK_NOFOLLOW); err != nil {
-		return errors.Wrapf(err, "failed call to UtimesNanoAt for %s", path)
+		return fmt.Errorf("failed call to UtimesNanoAt for %s: %w", path, err)
 	}
 
 	return nil
