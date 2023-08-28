@@ -44,7 +44,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -52,10 +51,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
@@ -1361,30 +1357,11 @@ func (r *DisruptionReconciler) recordEventOnTarget(instance *chaosv1beta1.Disrup
 }
 
 // SetupWithManager setups the current reconciler with the given manager
-func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) (controller.Controller, error) {
-	podToDisruption := func(c client.Object) []reconcile.Request {
-		// podtoDisruption is a function that maps pods to disruptions. it is meant to be used as an event handler on a pod informer
-		// this function should safely return an empty list of requests to reconcile if the object we receive is not actually a chaos pod
-		// which we determine by checking the object labels for the name and namespace labels that we add to all injector pods
-		if r.BaseLog != nil {
-			r.BaseLog.Debugw("watching event from pod", "podName", c.GetName(), "podNamespace", c.GetNamespace())
-		}
-
-		r.handleMetricSinkError(r.MetricsSink.MetricInformed([]string{"podName:" + c.GetName(), "podNamespace:" + c.GetNamespace()}))
-
-		podLabels := c.GetLabels()
-		name := podLabels[chaostypes.DisruptionNameLabel]
-		namespace := podLabels[chaostypes.DisruptionNamespaceLabel]
-
-		return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}}}
-	}
-
-	informer := kubeInformerFactory.Core().V1().Pods().Informer()
+func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager) (controller.Controller, error) {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
 		WithOptions(controller.Options{RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Second, time.Hour)}).
-		Watches(&source.Informer{Informer: informer}, handler.EnqueueRequestsFromMapFunc(podToDisruption)).
 		WithEventFilter(chaosEventsPredicate()).
 		Build(r)
 }
