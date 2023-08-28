@@ -32,7 +32,7 @@ type ChaosPodHandler struct {
 const ChaosPodHandlerName = "ChaosPodHandler"
 
 // NewChaosPodHandler creates a new instance of ChaosPodHandler
-func NewChaosPodHandler(recorder record.EventRecorder, disruption *chaosv1beta1.Disruption, logger *zap.SugaredLogger, metricsAdapter WatcherMetricsAdapter) ChaosPodHandler {
+func NewChaosPodHandler(disruption *chaosv1beta1.Disruption, recorder record.EventRecorder, logger *zap.SugaredLogger, metricsAdapter WatcherMetricsAdapter) ChaosPodHandler {
 	return ChaosPodHandler{
 		disruption:     disruption,
 		log:            logger,

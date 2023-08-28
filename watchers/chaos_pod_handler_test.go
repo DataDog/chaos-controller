@@ -44,7 +44,7 @@ var _ = Describe("Chaos Pod watcher", func() {
 			metricsAdapterMock.EXPECT().OnChange(
 				mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything,
 			).Maybe()
-			chaosPodHandler = watchers.NewChaosPodHandler(eventRecorder, disruption, logger, metricsAdapterMock)
+			chaosPodHandler = watchers.NewChaosPodHandler(disruption, eventRecorder, logger, metricsAdapterMock)
 		})
 
 		Describe("on Add", func() {

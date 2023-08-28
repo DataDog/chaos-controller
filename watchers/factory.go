@@ -30,9 +30,7 @@ type Factory interface {
 	NewDisruptionTargetWatcher(name string, enableObserver bool, disruption *v1beta1.Disruption, cacheMock k8scache.Cache) (Watcher, error)
 }
 
-type factory struct {
-	config FactoryConfig
-}
+type factory struct{ config FactoryConfig }
 
 type FactoryConfig struct {
 	Log            *zap.SugaredLogger
@@ -56,7 +54,7 @@ func (f factory) NewChaosPodWatcher(name string, disruption *v1beta1.Disruption,
 	}
 
 	// Create a new handler for this watcher instance
-	handler := NewChaosPodHandler(f.config.Recorder, disruption, f.config.Log, NewWatcherMetricsAdapter(f.config.MetricSink, f.config.Log))
+	handler := NewChaosPodHandler(disruption, f.config.Recorder, f.config.Log, NewWatcherMetricsAdapter(f.config.MetricSink, f.config.Log))
 
 	// Create a new watcher configuration object
 	watcherConfig := WatcherConfig{
