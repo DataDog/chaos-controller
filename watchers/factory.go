@@ -30,42 +30,40 @@ type Factory interface {
 	NewDisruptionTargetWatcher(name string, enableObserver bool, disruption *v1beta1.Disruption, cacheMock k8scache.Cache) (Watcher, error)
 }
 
-type factory struct {
-	log         *zap.SugaredLogger
-	metricSinks metrics.Sink
-	reader      client.Reader
-	recorder    record.EventRecorder
+type factory struct{ config FactoryConfig }
+
+type FactoryConfig struct {
+	Log            *zap.SugaredLogger
+	MetricSink     metrics.Sink
+	Reader         client.Reader
+	Recorder       record.EventRecorder
+	ChaosNamespace string
 }
 
 // NewWatcherFactory creates a new instance of the factory for creating new watcher instances.
-func NewWatcherFactory(logger *zap.SugaredLogger, metricSinks metrics.Sink, reader client.Reader, recorder record.EventRecorder) Factory {
-	return factory{
-		log:         logger,
-		metricSinks: metricSinks,
-		reader:      reader,
-		recorder:    recorder,
-	}
+func NewWatcherFactory(config FactoryConfig) Factory {
+	return factory{config: config}
 }
 
 // NewChaosPodWatcher creates a new watcher instance for chaos pods.
 func (f factory) NewChaosPodWatcher(name string, disruption *v1beta1.Disruption, cacheMock k8scache.Cache) (Watcher, error) {
 	// Add instance specific labels if provided
-	cacheOptions, err := newChaosPodCacheOptions(disruption)
+	cacheOptions, err := f.newChaosPodCacheOptions(disruption)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create a new handler for this watcher instance
-	handler := NewChaosPodHandler(f.recorder, disruption, f.log)
+	handler := NewChaosPodHandler(disruption, f.config.Recorder, f.config.Log, NewWatcherMetricsAdapter(f.config.MetricSink, f.config.Log))
 
 	// Create a new watcher configuration object
 	watcherConfig := WatcherConfig{
-		Name:           name,
-		Handler:        &handler,
-		ObjectType:     &corev1.Pod{},
-		CacheOptions:   cacheOptions,
-		Log:            f.log,
-		NamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
+		Name:                     name,
+		Handler:                  &handler,
+		ObjectType:               &corev1.Pod{},
+		CacheOptions:             cacheOptions,
+		Log:                      f.config.Log,
+		DisruptionNamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
 	}
 
 	return NewWatcher(watcherConfig, cacheMock, nil)
@@ -81,22 +79,28 @@ func (f factory) NewDisruptionTargetWatcher(name string, enableObserver bool, di
 
 	// Create a new handler for this watcher instance
 	handler := DisruptionTargetHandler{
-		recorder:       f.recorder,
-		reader:         f.reader,
+		recorder:       f.config.Recorder,
+		reader:         f.config.Reader,
 		enableObserver: enableObserver,
 		disruption:     disruption,
-		metricsSink:    f.metricSinks,
-		log:            f.log,
+		metricsAdapter: NewWatcherMetricsAdapter(f.config.MetricSink, f.config.Log),
+		log:            f.config.Log,
+	}
+
+	// targetObjectType can either be a pod or a node
+	var targetObjectType client.Object = &corev1.Pod{}
+	if disruption.Spec.Level == chaostypes.DisruptionLevelNode {
+		targetObjectType = &corev1.Node{}
 	}
 
 	// Create a new watcher configuration object
 	watcherConfig := WatcherConfig{
-		Name:           name,
-		Handler:        &handler,
-		ObjectType:     &corev1.Pod{},
-		CacheOptions:   cacheOptions,
-		Log:            f.log,
-		NamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
+		Name:                     name,
+		Handler:                  &handler,
+		ObjectType:               targetObjectType,
+		CacheOptions:             cacheOptions,
+		Log:                      f.config.Log,
+		DisruptionNamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
 	}
 
 	return NewWatcher(watcherConfig, cacheMock, nil)
@@ -130,7 +134,7 @@ func newDisruptionTargetCacheOptions(disruption *v1beta1.Disruption) (k8scache.O
 
 // newChaosPodCacheOptions creates the cache options for a ChaosPodWatcher based on the given disruption object.
 // It adds specific labels to the options so that only pods associated with the disruption are watched and cached.
-func newChaosPodCacheOptions(disruption *v1beta1.Disruption) (k8scache.Options, error) {
+func (f factory) newChaosPodCacheOptions(disruption *v1beta1.Disruption) (k8scache.Options, error) {
 	ls := make(map[string]string, 2)
 
 	// Add the disruption name and namespace labels to the label set for this watcher's cache
@@ -146,5 +150,6 @@ func newChaosPodCacheOptions(disruption *v1beta1.Disruption) (k8scache.Options, 
 		SelectorsByObject: k8scache.SelectorsByObject{
 			&corev1.Pod{}: {Label: labels.SelectorFromValidatedSet(ls)},
 		},
+		Namespace: f.config.ChaosNamespace,
 	}, nil
 }

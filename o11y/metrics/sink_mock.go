@@ -880,48 +880,6 @@ func (_c *SinkMock_MetricSelectorCacheGauge_Call) RunAndReturn(run func(float64)
 	return _c
 }
 
-// MetricSelectorCacheTriggered provides a mock function with given fields: tags
-func (_m *SinkMock) MetricSelectorCacheTriggered(tags []string) error {
-	ret := _m.Called(tags)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func([]string) error); ok {
-		r0 = rf(tags)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// SinkMock_MetricSelectorCacheTriggered_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricSelectorCacheTriggered'
-type SinkMock_MetricSelectorCacheTriggered_Call struct {
-	*mock.Call
-}
-
-// MetricSelectorCacheTriggered is a helper method to define mock.On call
-//   - tags []string
-func (_e *SinkMock_Expecter) MetricSelectorCacheTriggered(tags interface{}) *SinkMock_MetricSelectorCacheTriggered_Call {
-	return &SinkMock_MetricSelectorCacheTriggered_Call{Call: _e.mock.On("MetricSelectorCacheTriggered", tags)}
-}
-
-func (_c *SinkMock_MetricSelectorCacheTriggered_Call) Run(run func(tags []string)) *SinkMock_MetricSelectorCacheTriggered_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]string))
-	})
-	return _c
-}
-
-func (_c *SinkMock_MetricSelectorCacheTriggered_Call) Return(_a0 error) *SinkMock_MetricSelectorCacheTriggered_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *SinkMock_MetricSelectorCacheTriggered_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricSelectorCacheTriggered_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // MetricStuckOnRemoval provides a mock function with given fields: tags
 func (_m *SinkMock) MetricStuckOnRemoval(tags []string) error {
 	ret := _m.Called(tags)
@@ -1170,6 +1128,48 @@ func (_c *SinkMock_MetricValidationUpdated_Call) Return(_a0 error) *SinkMock_Met
 }
 
 func (_c *SinkMock_MetricValidationUpdated_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricValidationUpdated_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MetricWatcherCalls provides a mock function with given fields: tags
+func (_m *SinkMock) MetricWatcherCalls(tags []string) error {
+	ret := _m.Called(tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricWatcherCalls_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricWatcherCalls'
+type SinkMock_MetricWatcherCalls_Call struct {
+	*mock.Call
+}
+
+// MetricWatcherCalls is a helper method to define mock.On call
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricWatcherCalls(tags interface{}) *SinkMock_MetricWatcherCalls_Call {
+	return &SinkMock_MetricWatcherCalls_Call{Call: _e.mock.On("MetricWatcherCalls", tags)}
+}
+
+func (_c *SinkMock_MetricWatcherCalls_Call) Run(run func(tags []string)) *SinkMock_MetricWatcherCalls_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricWatcherCalls_Call) Return(_a0 error) *SinkMock_MetricWatcherCalls_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricWatcherCalls_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricWatcherCalls_Call {
 	_c.Call.Return(run)
 	return _c
 }
