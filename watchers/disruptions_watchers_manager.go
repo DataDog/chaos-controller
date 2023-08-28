@@ -52,7 +52,7 @@ const (
 )
 
 var watchersNames = []WatcherName{
-	// ChaosPodWatcherName,
+	ChaosPodWatcherName,
 	DisruptionTargetWatcherName,
 }
 
