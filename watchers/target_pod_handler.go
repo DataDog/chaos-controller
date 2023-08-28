@@ -75,7 +75,7 @@ func (d DisruptionTargetHandler) OnUpdate(oldObj, newObj interface{}) {
 	oldNode, okOldNode := oldObj.(*corev1.Node)
 	newNode, okNewNode := newObj.(*corev1.Node)
 
-	oldTargetName, oldTargetKind := getTargetNameAndKind(oldPod)
+	oldTargetName, oldTargetKind := getTargetNameAndKind(oldObj)
 	newTargetName, newTargetKind := getTargetNameAndKind(newObj)
 
 	d.log.Debugw("DisruptionTargetHandler UPDATE",
