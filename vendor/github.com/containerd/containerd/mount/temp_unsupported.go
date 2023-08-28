@@ -1,5 +1,4 @@
-//go:build windows
-// +build windows
+//go:build windows || darwin
 
 /*
    Copyright The containerd Authors.

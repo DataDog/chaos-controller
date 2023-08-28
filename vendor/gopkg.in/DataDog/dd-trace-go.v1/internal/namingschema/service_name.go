@@ -7,44 +7,44 @@ package namingschema
 
 import "gopkg.in/DataDog/dd-trace-go.v1/internal/globalconfig"
 
-// NewDefaultServiceName returns a Schema with the standard logic to be used for contrib span service names
+// NewServiceNameSchema returns a Schema with the standard logic to be used for contrib span service names
 // (in-code override > DD_SERVICE environment variable > integration default name).
-// If you need to support older versions not following this logic, you can use WithV0Override option to override this behavior.
-func NewDefaultServiceName(fallbackName string, opts ...Option) *Schema {
+// If you need to support older versions not following this logic, you can use WithVersionOverride option to override this behavior.
+func NewServiceNameSchema(userOverride, defaultName string, opts ...Option) *Schema {
 	cfg := &config{}
 	for _, opt := range opts {
 		opt(cfg)
 	}
 	return New(&standardServiceNameSchema{
-		fallbackName:         fallbackName,
-		useGlobalServiceName: UseGlobalServiceName(),
-		cfg:                  cfg,
+		userOverride: userOverride,
+		defaultName:  defaultName,
+		cfg:          cfg,
 	})
 }
 
 type standardServiceNameSchema struct {
-	fallbackName         string
-	useGlobalServiceName bool
-	cfg                  *config
+	userOverride string
+	defaultName  string
+	cfg          *config
 }
 
 func (s *standardServiceNameSchema) V0() string {
-	// the override function for V0 is used by contribs to introduce their default service names (i.e. "kafka, mongo, etc.")
-	// when V0 is used. The extra flag useGlobalServiceName allows to disable these default service names even when V0
-	// is used.
-	if s.cfg.overrideV0 == nil || s.useGlobalServiceName {
-		return s.getName()
-	}
-	return *s.cfg.overrideV0
+	return s.getName(SchemaV0)
 }
 
 func (s *standardServiceNameSchema) V1() string {
-	return s.getName()
+	return s.getName(SchemaV1)
 }
 
-func (s *standardServiceNameSchema) getName() string {
+func (s *standardServiceNameSchema) getName(v Version) string {
+	if val, ok := s.cfg.versionOverrides[v]; ok {
+		return val
+	}
+	if s.userOverride != "" {
+		return s.userOverride
+	}
 	if svc := globalconfig.ServiceName(); svc != "" {
 		return svc
 	}
-	return s.fallbackName
+	return s.defaultName
 }

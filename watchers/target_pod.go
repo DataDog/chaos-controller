@@ -34,7 +34,7 @@ type DisruptionTargetHandler struct {
 }
 
 // OnAdd new target
-func (d DisruptionTargetHandler) OnAdd(obj interface{}) {
+func (d DisruptionTargetHandler) OnAdd(obj interface{}, _ bool) {
 	pod, okPod := obj.(*corev1.Pod)
 	node, okNode := obj.(*corev1.Node)
 

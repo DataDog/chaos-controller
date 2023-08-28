@@ -185,7 +185,7 @@ func (w *watcher) Start() error {
 	}()
 
 	// create a SyncingSource for the controller
-	w.cacheSource = source.NewKindWithCache(w.config.ObjectType, w.cache)
+	w.cacheSource = source.Kind(w.cache, w.config.ObjectType)
 
 	return nil
 }

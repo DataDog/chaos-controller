@@ -113,7 +113,7 @@ func newDisruptionTargetCacheOptions(disruption *v1beta1.Disruption) (k8scache.O
 	// If the disruption level is "node", watch for Node objects matching the label selector
 	if disruption.Spec.Level == chaostypes.DisruptionLevelNode {
 		return k8scache.Options{
-			SelectorsByObject: k8scache.SelectorsByObject{
+			ByObject: map[client.Object]k8scache.ByObject{
 				&corev1.Node{}: {Label: disCompleteSelector},
 			},
 		}, nil
@@ -121,10 +121,12 @@ func newDisruptionTargetCacheOptions(disruption *v1beta1.Disruption) (k8scache.O
 
 	// If the disruption level is not "node", watch for Pod objects matching the label selector in the disruption's namespace
 	return k8scache.Options{
-		SelectorsByObject: k8scache.SelectorsByObject{
+		ByObject: map[client.Object]k8scache.ByObject{
 			&corev1.Pod{}: {Label: disCompleteSelector},
 		},
-		Namespace: disruption.Namespace,
+		DefaultNamespaces: map[string]k8scache.Config{
+			disruption.Namespace: {},
+		},
 	}, nil
 }
 
@@ -143,7 +145,7 @@ func newChaosPodCacheOptions(disruption *v1beta1.Disruption) (k8scache.Options, 
 
 	// Define the cache options for this watcher with the provided labels for Pods
 	return k8scache.Options{
-		SelectorsByObject: k8scache.SelectorsByObject{
+		ByObject: map[client.Object]k8scache.ByObject{
 			&corev1.Pod{}: {Label: labels.SelectorFromValidatedSet(ls)},
 		},
 	}, nil
