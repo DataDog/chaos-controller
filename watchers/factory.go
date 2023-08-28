@@ -88,14 +88,9 @@ func (f factory) NewDisruptionTargetWatcher(name string, enableObserver bool, di
 	}
 
 	// targetObjectType can either be a pod or a node
-	var targetObjectType client.Object
-
-	switch disruption.Spec.Level {
-	case chaostypes.DisruptionLevelNode:
+	var targetObjectType client.Object = &corev1.Pod{}
+	if disruption.Spec.Level == chaostypes.DisruptionLevelNode {
 		targetObjectType = &corev1.Node{}
-	case chaostypes.DisruptionLevelPod:
-	default:
-		targetObjectType = &corev1.Pod{}
 	}
 
 	// Create a new watcher configuration object
