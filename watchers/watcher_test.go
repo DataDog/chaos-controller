@@ -96,12 +96,12 @@ var _ = Describe("watcher", func() {
 
 	JustBeforeEach(func() {
 		var config = watchers.WatcherConfig{
-			Name:           watcherName,
-			Handler:        handlerMock,
-			ObjectType:     targetObjectType,
-			NamespacedName: namespaceName,
-			CacheOptions:   k8scache.Options{},
-			Log:            logger,
+			Name:                     watcherName,
+			Handler:                  handlerMock,
+			ObjectType:               targetObjectType,
+			DisruptionNamespacedName: namespaceName,
+			CacheOptions:             k8scache.Options{},
+			Log:                      logger,
 		}
 
 		watcher, err = watchers.NewWatcher(config, &cacheMock, cacheContextFunc)

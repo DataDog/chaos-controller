@@ -109,6 +109,47 @@ func (_c *WatcherMock_GetCacheSource_Call) RunAndReturn(run func() (source.Synci
 	return _c
 }
 
+// GetConfig provides a mock function with given fields:
+func (_m *WatcherMock) GetConfig() WatcherConfig {
+	ret := _m.Called()
+
+	var r0 WatcherConfig
+	if rf, ok := ret.Get(0).(func() WatcherConfig); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(WatcherConfig)
+	}
+
+	return r0
+}
+
+// WatcherMock_GetConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetConfig'
+type WatcherMock_GetConfig_Call struct {
+	*mock.Call
+}
+
+// GetConfig is a helper method to define mock.On call
+func (_e *WatcherMock_Expecter) GetConfig() *WatcherMock_GetConfig_Call {
+	return &WatcherMock_GetConfig_Call{Call: _e.mock.On("GetConfig")}
+}
+
+func (_c *WatcherMock_GetConfig_Call) Run(run func()) *WatcherMock_GetConfig_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *WatcherMock_GetConfig_Call) Return(_a0 WatcherConfig) *WatcherMock_GetConfig_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *WatcherMock_GetConfig_Call) RunAndReturn(run func() WatcherConfig) *WatcherMock_GetConfig_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetContextTuple provides a mock function with given fields:
 func (_m *WatcherMock) GetContextTuple() (CtxTuple, error) {
 	ret := _m.Called()

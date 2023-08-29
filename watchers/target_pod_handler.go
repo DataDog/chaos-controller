@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,9 +28,11 @@ type DisruptionTargetHandler struct {
 	reader         client.Reader
 	enableObserver bool
 	disruption     *v1beta1.Disruption
-	metricsSink    metrics.Sink
 	log            *zap.SugaredLogger
+	metricsAdapter WatcherMetricsAdapter
 }
+
+const DisruptionTargetHandlerName = "DisruptionTargetHandler"
 
 // OnAdd new target
 func (d DisruptionTargetHandler) OnAdd(obj interface{}) {
@@ -47,7 +48,7 @@ func (d DisruptionTargetHandler) OnAdd(obj interface{}) {
 		"targetKind", targetKind,
 	)
 
-	d.OnChangeHandleMetricsSink(pod, node, okPod, okNode)
+	d.OnChangeHandleMetricsSink(pod, node, okPod, okNode, WatcherAddEvent)
 }
 
 // OnDelete target
@@ -64,7 +65,7 @@ func (d DisruptionTargetHandler) OnDelete(obj interface{}) {
 		"targetKind", targetKind,
 	)
 
-	d.OnChangeHandleMetricsSink(pod, node, okPod, okNode)
+	d.OnChangeHandleMetricsSink(pod, node, okPod, okNode, WatcherDeleteEvent)
 }
 
 // OnUpdate target
@@ -74,7 +75,7 @@ func (d DisruptionTargetHandler) OnUpdate(oldObj, newObj interface{}) {
 	oldNode, okOldNode := oldObj.(*corev1.Node)
 	newNode, okNewNode := newObj.(*corev1.Node)
 
-	oldTargetName, oldTargetKind := getTargetNameAndKind(oldPod)
+	oldTargetName, oldTargetKind := getTargetNameAndKind(oldObj)
 	newTargetName, newTargetKind := getTargetNameAndKind(newObj)
 
 	d.log.Debugw("DisruptionTargetHandler UPDATE",
@@ -86,7 +87,7 @@ func (d DisruptionTargetHandler) OnUpdate(oldObj, newObj interface{}) {
 		"newTargetKind", newTargetKind,
 	)
 
-	d.OnChangeHandleMetricsSink(newPod, newNode, okNewPod, okNewNode)
+	d.OnChangeHandleMetricsSink(newPod, newNode, okNewPod, okNewNode, WatcherUpdateEvent)
 
 	if d.enableObserver {
 		d.OnChangeHandleNotifierSink(oldPod, newPod, oldNode, newNode, okOldPod, okNewPod, okOldNode, okNewNode)
@@ -94,15 +95,8 @@ func (d DisruptionTargetHandler) OnUpdate(oldObj, newObj interface{}) {
 }
 
 // OnChangeHandleMetricsSink Trigger Metric Sink on changes in the targets
-func (d DisruptionTargetHandler) OnChangeHandleMetricsSink(pod *corev1.Pod, node *corev1.Node, okPod, okNode bool) {
-	switch {
-	case okPod:
-		d.handleMetricSinkError(d.metricsSink.MetricSelectorCacheTriggered([]string{"disruptionName:" + d.disruption.Name, "namespace:" + d.disruption.Namespace, "event:add", "targetKind:pod", "target:" + pod.Name}))
-	case okNode:
-		d.handleMetricSinkError(d.metricsSink.MetricSelectorCacheTriggered([]string{"disruptionName:" + d.disruption.Name, "namespace:" + d.disruption.Namespace, "event:add", "targetKind:node", "target:" + node.Name}))
-	default:
-		d.handleMetricSinkError(d.metricsSink.MetricSelectorCacheTriggered([]string{"disruptionName:" + d.disruption.Name, "namespace:" + d.disruption.Namespace, "event:add", "targetKind:object"}))
-	}
+func (d DisruptionTargetHandler) OnChangeHandleMetricsSink(pod *corev1.Pod, node *corev1.Node, okPod, okNode bool, event WatcherEventType) {
+	d.metricsAdapter.OnChange(d.disruption, DisruptionTargetHandlerName, pod, node, okPod, okNode, event)
 }
 
 // OnChangeHandleNotifierSink Trigger Notifier Sink on changes in the targets
@@ -477,13 +471,6 @@ func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newN
 	}
 
 	return eventsToSend
-}
-
-// handleMetricSinkError logs the given metric sink error if it is not nil
-func (d DisruptionTargetHandler) handleMetricSinkError(err error) {
-	if err != nil {
-		d.log.Errorw("error sending a metric", "error", err)
-	}
 }
 
 // getTargetNameAnd kind return the name and the kind of object

@@ -36,7 +36,7 @@ type Sink interface {
 	MetricDisruptionsGauge(gauge float64) error
 	MetricDisruptionsCount(kind chaostypes.DisruptionKindName, tags []string) error
 	MetricSelectorCacheGauge(gauge float64) error
-	MetricSelectorCacheTriggered(tags []string) error
+	MetricWatcherCalls(tags []string) error
 	MetricPodsGauge(gauge float64) error
 	MetricRestart() error
 	MetricValidationFailed(tags []string) error

@@ -199,7 +199,14 @@ func main() {
 
 	disruptionReconciler.Controller = cont
 
-	watcherFactory := watchers.NewWatcherFactory(logger, metricsSink, mgr.GetAPIReader(), disruptionReconciler.Recorder)
+	watchersFactoryConfig := watchers.FactoryConfig{
+		Log:            logger,
+		MetricSink:     metricsSink,
+		Reader:         mgr.GetAPIReader(),
+		Recorder:       disruptionReconciler.Recorder,
+		ChaosNamespace: cfg.Injector.ChaosNamespace,
+	}
+	watcherFactory := watchers.NewWatcherFactory(watchersFactoryConfig)
 	disruptionReconciler.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, disruptionReconciler.Reader, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())

@@ -12,6 +12,7 @@ import (
 	"github.com/DataDog/chaos-controller/watchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -24,9 +25,10 @@ var _ = Describe("Chaos Pod watcher", func() {
 		)
 
 		var (
-			chaosPodHandler watchers.ChaosPodHandler
-			disruption      *v1beta1.Disruption
-			eventRecorder   record.EventRecorder
+			chaosPodHandler    watchers.ChaosPodHandler
+			disruption         *v1beta1.Disruption
+			eventRecorder      record.EventRecorder
+			metricsAdapterMock *watchers.WatcherMetricsAdapterMock
 		)
 
 		JustBeforeEach(func() {
@@ -38,7 +40,11 @@ var _ = Describe("Chaos Pod watcher", func() {
 				},
 			}
 			eventRecorder = record.NewFakeRecorder(bufferSize)
-			chaosPodHandler = watchers.NewChaosPodHandler(eventRecorder, disruption, logger)
+			metricsAdapterMock = watchers.NewWatcherMetricsAdapterMock(GinkgoT())
+			metricsAdapterMock.EXPECT().OnChange(
+				mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything,
+			).Maybe()
+			chaosPodHandler = watchers.NewChaosPodHandler(disruption, eventRecorder, logger, metricsAdapterMock)
 		})
 
 		Describe("on Add", func() {
