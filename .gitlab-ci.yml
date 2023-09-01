@@ -57,6 +57,9 @@ build:make:
 # we always push images with the exact commit SHA on top of any other TAG based images
 .build-image: &build-image
   <<: *docker-hub-login
+  id_tokens:
+    DDSIGN_ID_TOKEN:
+      aud: image-integrity
   script:
     - docker buildx create --use
     - *install-make
