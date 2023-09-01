@@ -14,6 +14,7 @@ import (
 	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 	"go.uber.org/zap"
 
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	corev1 "k8s.io/api/core/v1"
@@ -39,6 +40,10 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 
 		broadcaster.StartRecordingToSink(&NotifierSink{client: client, notifier: notifier, logger: logger})
 	}
+
+	corev1Client, _ := corev1client.NewForConfig(mgr.GetConfig())
+
+	broadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: corev1Client.Events("")})
 
 	return
 }

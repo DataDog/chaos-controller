@@ -28,6 +28,7 @@ import (
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/DataDog/chaos-controller/watchers"
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
+	corev1 "k8s.io/api/core/v1"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	kubeinformers "k8s.io/client-go/informers"
@@ -75,21 +76,21 @@ func main() {
 		logger.Fatalw("unable to create a valid configuration", "error", err)
 	}
 
-	broadcaster := eventbroadcaster.EventBroadcaster()
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: cfg.Controller.MetricsBindAddr,
 		LeaderElection:     cfg.Controller.LeaderElection,
 		LeaderElectionID:   "75ec2fa4.datadoghq.com",
-		EventBroadcaster:   broadcaster,
 		Host:               cfg.Controller.Webhook.Host,
 		Port:               cfg.Controller.Webhook.Port,
 		CertDir:            cfg.Controller.Webhook.CertDir,
 	})
+
 	if err != nil {
 		logger.Fatalw("unable to start manager", "error", err)
 	}
+
+	broadcaster := eventbroadcaster.EventBroadcaster()
 
 	// event notifiers
 	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.Notifiers, logger)
@@ -168,7 +169,7 @@ func main() {
 		Client:                                mgr.GetClient(),
 		BaseLog:                               logger,
 		Scheme:                                mgr.GetScheme(),
-		Recorder:                              mgr.GetEventRecorderFor(chaosv1beta1.SourceDisruptionComponent),
+		Recorder:                              broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionComponent}),
 		MetricsSink:                           metricsSink,
 		TracerSink:                            tracerSink,
 		TargetSelector:                        targetSelector,
@@ -362,6 +363,10 @@ func main() {
 			Log:    logger,
 		},
 	})
+
+	// for safety purposes: as long as no event is emitted and mgr.Start(ctx.Context) isn't
+	// called, the broadcaster isn't actually initiated
+	defer broadcaster.Shutdown()
 
 	// erase/close caches contexts
 	defer func() {
