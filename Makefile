@@ -156,7 +156,7 @@ docker-build-only-$(1):
 		-f bin/$(1)/Dockerfile ./bin/$(1)/
 
 	if [ "$${SIGN_IMAGE}" = "true" ]; then \
-		ddsign sign $$(CONTAINER_NAME):$(CONTAINER_TAG) --docker-metadata-file ./bin/$(1)/docker-metadata.json \
+		ddsign sign $$(CONTAINER_NAME):$(CONTAINER_TAG) --docker-metadata-file ./bin/$(1)/docker-metadata.json; \
 	fi
 
 lima-push-$(1): docker-build-$(1)
