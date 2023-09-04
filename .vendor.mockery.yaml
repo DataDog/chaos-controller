@@ -12,6 +12,11 @@ inpackage: False
 # If you wish to mock an interface from the vendor, you need to define both the package and the specific interface you want to mock.
 
 packages:
+  net/http:
+    interfaces:
+      RoundTripper:
+        config:
+          mockname: RoundTripperMock
   sigs.k8s.io/controller-runtime/pkg/controller:
     interfaces:
       Controller:
@@ -22,6 +27,9 @@ packages:
       Reader:
         config:
           mockname: ReaderMock
+      Client:
+        config:
+          mockname: K8SClientMock
   k8s.io/client-go/tools/record:
     interfaces:
       EventRecorder:

@@ -52,6 +52,6 @@ type SetupWebhookWithManagerConfig struct {
 	HandlerEnabledFlag            bool
 	DefaultDurationFlag           time.Duration
 	ChaosNamespace                string
-	CloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
+	CloudServicesProvidersManager cloudservice.CloudServicesProvidersManager
 	Environment                   string
 }

@@ -47,7 +47,7 @@ var (
 	defaultClusterThreshold       float64
 	handlerEnabled                bool
 	defaultDuration               time.Duration
-	cloudServicesProvidersManager *cloudservice.CloudServicesProvidersManager
+	cloudServicesProvidersManager cloudservice.CloudServicesProvidersManager
 	chaosNamespace                string
 	ddmarkClient                  ddmark.Client
 	safemodeEnvironment           string
