@@ -116,5 +116,5 @@ qdisc noqueue 0: dev eth0 root refcnt 2
 **Clean iptables rules**
 
 ```
-iptables -t mangle -D OUTPUT -m cgroup --path /kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460 -j MARK --set-mark 131074
+iptables -t mangle -D POSTROUTING -m cgroup --path /kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460 -j MARK --set-mark 131074
 ```
