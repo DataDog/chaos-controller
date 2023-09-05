@@ -57,8 +57,8 @@ kubectl get -ojson pod demo-curl-547bb9c686-57484 | jq '.status.containerStatuse
 
 ```
 # iptables-save | grep -- '-j CHAOS-DNS'
--A OUTPUT -p udp -m cgroup --cgroup 1048592 -m udp --dport 53 -j CHAOS-DNS
-# iptables -t nat -D OUTPUT -p udp -m cgroup --cgroup 1048592 -m udp --dport 53 -j CHAOS-DNS
+-A POSTROUTING -p udp -m cgroup --cgroup 1048592 -m udp --dport 53 -j CHAOS-DNS
+# iptables -t nat -D POSTROUTING -p udp -m cgroup --cgroup 1048592 -m udp --dport 53 -j CHAOS-DNS
 ```
 
 * Remove iptables `CHAOS-DNS` chain
