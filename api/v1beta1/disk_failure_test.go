@@ -41,7 +41,7 @@ var _ = Describe("DiskFailureSpec", func() {
 
 				// Assert
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).Should(Equal(expectedError))
+				Expect(err).To(MatchError(expectedError))
 			},
 			Entry("with a path exceeding 62 characters",
 				DiskFailureSpec{

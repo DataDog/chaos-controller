@@ -16,7 +16,6 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/env"
-	"github.com/DataDog/chaos-controller/helpers"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -36,7 +35,7 @@ import (
 // ChaosPodService is an interface that defines methods for managing chaos pods of a disruption on Kubernetes pods.
 type ChaosPodService interface {
 	// GetChaosPodsOfDisruption retrieves a list chaos pods of a disruption for the given labels.
-	GetChaosPodsOfDisruption(context context.Context, instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error)
+	GetChaosPodsOfDisruption(ctx context.Context, instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error)
 
 	// HandleChaosPodTermination handles the termination of a chaos pod during a disruption event.
 	HandleChaosPodTermination(disruption *chaosv1beta1.Disruption, pod *corev1.Pod) (bool, error)
@@ -54,7 +53,7 @@ type ChaosPodService interface {
 	GetPodInjectorArgs(pod corev1.Pod) []string
 
 	// CreatePod creates a pod in the Kubernetes cluster.
-	CreatePod(pod *corev1.Pod) error
+	CreatePod(ctx context.Context, pod *corev1.Pod) error
 
 	// WaitForPodCreation waits for a pod to be created in the Kubernetes cluster.
 	WaitForPodCreation(pod corev1.Pod) error
@@ -90,9 +89,17 @@ type chaosPodService struct {
 	config ChaosPodServiceConfig
 }
 
-var chaosPodAllowedErrors = map[string]bool{
-	"pod is not running": true,
-	"node is not ready":  true,
+type ChaosPodAllowedErrors map[string]struct{}
+
+func (c ChaosPodAllowedErrors) isNotAllowed(errorMsg string) bool {
+	_, allowed := chaosPodAllowedErrors[errorMsg]
+
+	return !allowed
+}
+
+var chaosPodAllowedErrors = ChaosPodAllowedErrors{
+	"pod is not running": {},
+	"node is not ready":  {},
 }
 
 // NewChaosPodService create a new chaos pod service instance with the provided configuration.
@@ -107,14 +114,14 @@ func NewChaosPodService(config ChaosPodServiceConfig) (ChaosPodService, error) {
 }
 
 // CreatePod creates a pod in the Kubernetes cluster.
-func (m *chaosPodService) CreatePod(pod *corev1.Pod) error {
-	return m.config.Client.Create(context.Background(), pod)
+func (m *chaosPodService) CreatePod(ctx context.Context, pod *corev1.Pod) error {
+	return m.config.Client.Create(ctx, pod)
 }
 
 // GetChaosPodsOfDisruption retrieves a list of chaos-related pods affected by a disruption event,
 // filtered by the provided labels.
-func (m *chaosPodService) GetChaosPodsOfDisruption(context context.Context, instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error) {
-	return chaosv1beta1.GetChaosPods(context, m.config.Log, m.config.ChaosNamespace, m.config.Client, instance, ls)
+func (m *chaosPodService) GetChaosPodsOfDisruption(ctx context.Context, instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error) {
+	return chaosv1beta1.GetChaosPods(ctx, m.config.Log, m.config.ChaosNamespace, m.config.Client, instance, ls)
 }
 
 // HandleChaosPodTermination handles the termination of a chaos-related pod during a disruption event.
@@ -129,7 +136,7 @@ func (m *chaosPodService) HandleChaosPodTermination(disruption *chaosv1beta1.Dis
 	// Check if the target of the disruption is healthy (running and ready).
 	if err := m.config.TargetSelector.TargetIsHealthy(target, m.config.Client, disruption); err != nil {
 		// return the error unless we have a specific reason to ignore it.
-		if !apierrors.IsNotFound(err) && !chaosPodAllowedErrors[strings.ToLower(err.Error())] {
+		if !apierrors.IsNotFound(err) && chaosPodAllowedErrors.isNotAllowed(strings.ToLower(err.Error())) {
 			return false, err
 		}
 
@@ -137,6 +144,16 @@ func (m *chaosPodService) HandleChaosPodTermination(disruption *chaosv1beta1.Dis
 		m.config.Log.Infow("Target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", "target", target)
 
 		// Remove the finalizer for the chaos pod since cleanup won't be fully reliable.
+		if err := m.removeFinalizerForChaosPod(chaosPod); err != nil {
+			return false, err
+		}
+
+		return true, nil
+	}
+
+	// It is always safe to remove some chaos pods. It is usually hard to tell if these chaos pods have
+	// succeeded or not, but they have no possibility of leaving side effects, so we choose to always remove the finalizer.
+	if chaosv1beta1.DisruptionHasNoSideEffects(chaosPod.Labels[chaostypes.DisruptionKindLabel]) {
 		if err := m.removeFinalizerForChaosPod(chaosPod); err != nil {
 			return false, err
 		}
@@ -188,14 +205,14 @@ func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.D
 			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
 		}
 
-		notInjectedBefore := helpers.TimeToInject(instance.Spec.Triggers, instance.CreationTimestamp.Time)
+		notInjectedBefore := instance.TimeToInject(instance.CreationTimestamp.Time)
 
 		allowedHosts := m.config.Injector.NetworkDisruptionAllowedHosts
 
 		// get the ip ranges of cloud provider services
 		if instance.Spec.Network != nil {
 			if instance.Spec.Network.Cloud != nil {
-				hosts, err := helpers.TransformCloudSpecToHostsSpec(m.config.CloudServicesProvidersManager, instance.Spec.Network.Cloud)
+				hosts, err := chaosv1beta1.TransformCloudSpecToHostsSpec(m.config.CloudServicesProvidersManager, instance.Spec.Network.Cloud)
 				if err != nil {
 					return nil, err
 				}
@@ -254,10 +271,10 @@ func (m *chaosPodService) GenerateChaosPodOfDisruption(disruption *chaosv1beta1.
 
 	// Chaos pods will clean themselves automatically when duration expires, so we set activeDeadlineSeconds to ten seconds after that
 	// to give time for cleaning
-	activeDeadlineSeconds := int64(helpers.CalculateRemainingDurationOfDisruption(*disruption).Seconds()) + 10
+	activeDeadlineSeconds := int64(disruption.CalculateRemainingDuration().Seconds()) + 10
 
 	args = append(args,
-		"--deadline", time.Now().Add(helpers.CalculateRemainingDurationOfDisruption(*disruption)).Format(time.RFC3339))
+		"--deadline", time.Now().Add(disruption.CalculateRemainingDuration()).Format(time.RFC3339))
 
 	chaosPod = corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -277,7 +294,7 @@ func (m *chaosPodService) GenerateChaosPodOfDisruption(disruption *chaosv1beta1.
 
 // GetPodInjectorArgs retrieves the arguments used by the "injector" container in a chaos pod.
 func (m *chaosPodService) GetPodInjectorArgs(chaosPod corev1.Pod) []string {
-	var chaosPodArgs []string
+	chaosPodArgs := []string{}
 
 	if len(chaosPod.Spec.Containers) == 0 {
 		m.config.Log.Errorw("no containers found in chaos pod spec", "chaosPodSpec", chaosPod.Spec)
@@ -349,7 +366,7 @@ func (m *chaosPodService) HandleOrphanedChaosPods(req ctrl.Request) error {
 
 			// if the chaos pod still exists after having its finalizer removed, delete it
 			if err = m.deletePod(pod); err != nil {
-				if helpers.IsModifiedError(err) {
+				if chaosv1beta1.IsUpdateConflictError(err) {
 					m.config.Log.Infow("retryable error deleting orphaned chaos pod", "error", err, "chaosPod", pod.Name)
 				} else {
 					m.config.Log.Errorw("error deleting orphaned chaos pod", "error", err, "chaosPod", pod.Name)

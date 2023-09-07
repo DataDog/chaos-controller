@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023 Datadog, Inc.
 
-package builders
+package builderstest_test
 
 import (
 	"time"
@@ -83,14 +83,14 @@ func (b *ChaosPodBuilder) WithDeletion() *ChaosPodBuilder {
 }
 
 // WithChaosPodLabels sets chaos-related labels.
-func (b *ChaosPodBuilder) WithChaosPodLabels(name, namespace, target string, kind types.DisruptionKindName) *ChaosPodBuilder {
+func (b *ChaosPodBuilder) WithChaosPodLabels(name, namespace, target, kind string) *ChaosPodBuilder {
 	b.modifiers = append(
 		b.modifiers,
 		func() {
 			b.Labels[types.DisruptionNameLabel] = name
 			b.Labels[types.DisruptionNamespaceLabel] = namespace
 			b.Labels[types.TargetLabel] = target
-			b.Labels[types.DisruptionKindLabel] = string(kind)
+			b.Labels[types.DisruptionKindLabel] = kind
 		})
 
 	return b

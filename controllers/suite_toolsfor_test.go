@@ -11,7 +11,6 @@ import (
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/helpers"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
@@ -86,7 +85,7 @@ func calcDisruptionGoneTimeout(disruption chaosv1beta1.Disruption) time.Duration
 			Fail("an existing disruption should have a non-zero duration")
 		}
 
-		if remainingDisruptionDuration := helpers.CalculateRemainingDurationOfDisruption(disruption); remainingDisruptionDuration > 0 {
+		if remainingDisruptionDuration := disruption.CalculateRemainingDuration(); remainingDisruptionDuration > 0 {
 			disruptionDuration = remainingDisruptionDuration
 		}
 	}
@@ -422,7 +421,7 @@ func PickFirstChaodPod(ctx SpecContext, disruption chaosv1beta1.Disruption) core
 func ExpectChaosPodToDisappear(ctx SpecContext, chaosPodKey types.NamespacedName, disruption chaosv1beta1.Disruption) {
 	Eventually(k8sClient.Get).
 		WithContext(ctx).WithArguments(chaosPodKey, &corev1.Pod{}).
-		Within(helpers.CalculateRemainingDurationOfDisruption(disruption)).ProbeEvery(disruptionPotentialChangesEvery).
+		Within(disruption.CalculateRemainingDuration()).ProbeEvery(disruptionPotentialChangesEvery).
 		Should(WithTransform(apierrors.IsNotFound, BeTrue()))
 }
 

@@ -25,7 +25,6 @@ import (
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/helpers"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
 	"github.com/DataDog/chaos-controller/safemode"
@@ -111,7 +110,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return
 		}
 
-		if helpers.IsModifiedError(err) {
+		if chaosv1beta1.IsUpdateConflictError(err) {
 			r.log.Infow("a retryable error occurred in reconcile loop", "error", err)
 		} else {
 			r.log.Errorw("an error occurred in reconcile loop", "error", err)
@@ -243,7 +242,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
 		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the duration's deadline. We compare it to negative ExpiredDisruptionGCDelay,
 		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
-		if r.ExpiredDisruptionGCDelay != nil && (helpers.CalculateRemainingDurationOfDisruption(*instance) <= (-1 * *r.ExpiredDisruptionGCDelay)) {
+		if r.ExpiredDisruptionGCDelay != nil && (instance.CalculateRemainingDuration() <= (-1 * *r.ExpiredDisruptionGCDelay)) {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionGCOver, r.ExpiredDisruptionGCDelay.String(), "")
 
@@ -254,7 +253,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 
 			return ctrl.Result{Requeue: true}, err
-		} else if helpers.CalculateRemainingDurationOfDisruption(*instance) <= 0 {
+		} else if instance.CalculateRemainingDuration() <= 0 {
 			if err := r.updateInjectionStatus(instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 			}
@@ -275,7 +274,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// check if we have reached trigger.createPods. If not, skip the rest of reconciliation.
-		requeueAfter := time.Until(helpers.TimeToCreatePods(instance.Spec.Triggers, instance.CreationTimestamp.Time))
+		requeueAfter := time.Until(instance.TimeToCreatePods(instance.CreationTimestamp.Time))
 		if requeueAfter > (time.Second * 5) {
 			requeueAfter -= (time.Second * 5)
 			r.log.Debugw("requeuing disruption as we haven't yet reached trigger.createPods", "requeueAfter", requeueAfter.String())
@@ -312,7 +311,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}, nil
 		}
 
-		disruptionEndAt := helpers.CalculateRemainingDurationOfDisruption(*instance) + time.Second
+		disruptionEndAt := instance.CalculateRemainingDuration() + time.Second
 
 		r.log.Infow("requeuing disruption to check once expired", "requeueDelay", disruptionEndAt)
 
@@ -352,15 +351,15 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		status = chaostypes.DisruptionInjectionStatusNotInjected
 	}
 
-	terminationStatus := helpers.DisruptionTerminationStatus(*instance, chaosPods)
-	if terminationStatus != helpers.TSNotTerminated {
+	terminationStatus := instance.GetTerminationStatus(chaosPods)
+	if terminationStatus != chaosv1beta1.TSNotTerminated {
 		switch status {
 		case
 			chaostypes.DisruptionInjectionStatusInjected,
 			chaostypes.DisruptionInjectionStatusPausedInjected,
 			chaostypes.DisruptionInjectionStatusPreviouslyInjected:
 			status = chaostypes.DisruptionInjectionStatusPausedInjected
-			if terminationStatus == helpers.TSDefinitivelyTerminated {
+			if terminationStatus == chaosv1beta1.TSDefinitivelyTerminated {
 				status = chaostypes.DisruptionInjectionStatusPreviouslyInjected
 			}
 		case
@@ -368,7 +367,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 			chaostypes.DisruptionInjectionStatusPausedPartiallyInjected,
 			chaostypes.DisruptionInjectionStatusPreviouslyPartiallyInjected:
 			status = chaostypes.DisruptionInjectionStatusPausedPartiallyInjected
-			if terminationStatus == helpers.TSDefinitivelyTerminated {
+			if terminationStatus == chaosv1beta1.TSDefinitivelyTerminated {
 				status = chaostypes.DisruptionInjectionStatusPreviouslyPartiallyInjected
 			}
 		case
@@ -376,7 +375,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 			chaostypes.DisruptionInjectionStatusPreviouslyNotInjected:
 			// NB: we can't be PausedNotInjected, it's NotInjected
 			status = chaostypes.DisruptionInjectionStatusNotInjected
-			if terminationStatus == helpers.TSDefinitivelyTerminated {
+			if terminationStatus == chaosv1beta1.TSDefinitivelyTerminated {
 				status = chaostypes.DisruptionInjectionStatusPreviouslyNotInjected
 			}
 		default:
@@ -546,8 +545,8 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 		return nil
 	}
 
-	if helpers.CalculateRemainingDurationOfDisruption(*instance).Seconds() < 1 {
-		r.log.Debugw("skipping creation of chaos pods, remaining duration is too small", "remainingDuration", helpers.CalculateRemainingDurationOfDisruption(*instance).String())
+	if instance.CalculateRemainingDuration().Seconds() < 1 {
+		r.log.Debugw("skipping creation of chaos pods, remaining duration is too small", "remainingDuration", instance.CalculateRemainingDuration().String())
 
 		return nil
 	}
@@ -567,7 +566,7 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 			r.log.Infow("creating chaos pod", "target", target, "chaosPodArgs", chaosPodArgs)
 
 			// create the pod
-			if err = r.ChaosPodService.CreatePod(&targetChaosPod); err != nil {
+			if err = r.ChaosPodService.CreatePod(context.Background(), &targetChaosPod); err != nil {
 				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionCreationFailed, instance.Name, target)
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, false))
 
@@ -707,7 +706,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 
 	// validate the given label selector to avoid any formatting issues due to special chars
 	if instance.Spec.Selector != nil {
-		if err := helpers.ValidateLabelSelector(instance.Spec.Selector.AsSelector()); err != nil {
+		if err := targetselector.ValidateLabelSelector(instance.Spec.Selector.AsSelector()); err != nil {
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidDisruptionLabelSelector, err.Error(), "")
 
 			return err
@@ -722,7 +721,7 @@ func (r *DisruptionReconciler) selectTargets(instance *chaosv1beta1.Disruption) 
 	instance.Status.RemoveDeadTargets(matchingTargets)
 
 	// instance.Spec.Count is a string that either represents a percentage or a value, we do the translation here
-	targetsCount, err := helpers.GetScaledValueFromIntOrPercent(instance.Spec.Count, len(matchingTargets), true)
+	targetsCount, err := instance.GetTargetsCountAsInt(len(matchingTargets), true)
 	if err != nil {
 		targetsCount = instance.Spec.Count.IntValue()
 	}

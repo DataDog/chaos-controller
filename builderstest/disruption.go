@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023 Datadog, Inc.
 
-package builders
+package builderstest_test
 
 import (
 	"time"
@@ -11,6 +11,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/types"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // DisruptionBuilder is a struct used to build a disruption instance.
@@ -30,6 +31,28 @@ func NewDisruptionBuilder() *DisruptionBuilder {
 			},
 		},
 	}).WithCreation(30 * time.Second)
+}
+
+// WithDisruptionTriggers sets the specified triggers of disruption.
+func (b *DisruptionBuilder) WithDisruptionTriggers(triggers v1beta1.DisruptionTriggers) *DisruptionBuilder {
+	b.modifiers = append(
+		b.modifiers,
+		func() {
+			b.Spec.Triggers = triggers
+		})
+
+	return b
+}
+
+// WithCount sets the specified count.
+func (b *DisruptionBuilder) WithCount(count *intstr.IntOrString) *DisruptionBuilder {
+	b.modifiers = append(
+		b.modifiers,
+		func() {
+			b.Spec.Count = count
+		})
+
+	return b
 }
 
 // WithDisruptionKind sets the specified kind of disruption in the DisruptionBuilder's spec.
@@ -98,6 +121,17 @@ func (b *DisruptionBuilder) WithCreation(past time.Duration) *DisruptionBuilder 
 		b.modifiers,
 		func() {
 			b.CreationTimestamp = v1.NewTime(time.Now().Add(-past))
+		})
+
+	return b
+}
+
+// WithDuration sets the duration timestamp.
+func (b *DisruptionBuilder) WithDuration(duration v1beta1.DisruptionDuration) *DisruptionBuilder {
+	b.modifiers = append(
+		b.modifiers,
+		func() {
+			b.Spec.Duration = duration
 		})
 
 	return b

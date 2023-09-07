@@ -8,13 +8,12 @@ package services_test
 import (
 	"context"
 	"fmt"
-	"github.com/DataDog/chaos-controller/builders"
-	"github.com/DataDog/chaos-controller/helpers"
 	"net/http"
 	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	builderstest "github.com/DataDog/chaos-controller/builderstest"
 	"github.com/DataDog/chaos-controller/cloudservice"
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/mocks"
@@ -75,11 +74,12 @@ var _ = Describe("Chaos Pod Service", func() {
 		metricsSinkMock = metrics.NewSinkMock(GinkgoT())
 		cloudServicesProvidersManagerMock = cloudservice.NewCloudServicesProvidersManagerMock(GinkgoT())
 		chaosPodServiceConfig = services.ChaosPodServiceConfig{
-			Client:         k8sClientMock,
-			Log:            logger,
-			ChaosNamespace: DefaultChaosNamespace,
-			MetricsSink:    metricsSinkMock,
-			TargetSelector: targetSelectorMock,
+			Client:                        k8sClientMock,
+			Log:                           logger,
+			ChaosNamespace:                DefaultChaosNamespace,
+			MetricsSink:                   metricsSinkMock,
+			TargetSelector:                targetSelectorMock,
+			CloudServicesProvidersManager: cloudServicesProvidersManagerMock,
 		}
 		disruption = chaosv1beta1.Disruption{
 			ObjectMeta: metav1.ObjectMeta{
@@ -90,7 +90,7 @@ var _ = Describe("Chaos Pod Service", func() {
 	})
 
 	JustBeforeEach(func() {
-		// Arrange
+		// Action
 		chaosPodService, err = services.NewChaosPodService(chaosPodServiceConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
@@ -118,7 +118,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				// Assert
 				By("return an error")
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(Equal("you must provide a non nil Kubernetes client"))
+				Expect(err).To(MatchError("you must provide a non nil Kubernetes client"))
 
 				By("not return a chaos pod service")
 				Expect(chaosPodService).To(BeNil())
@@ -143,55 +143,56 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			BeforeEach(func() {
 				// Arrange
-				firstChaosPod = builders.NewPodBuilder("pod-1", DefaultChaosNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").Build()
-				secondChaosPod = builders.NewPodBuilder("pod-2", DefaultChaosNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").Build()
-				nonChaosPod = builders.NewPodBuilder(nonChaosPodName, DefaultChaosNamespace).Build()
+				firstChaosPod = builderstest.NewPodBuilder("pod-1", DefaultChaosNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").Build()
+				secondChaosPod = builderstest.NewPodBuilder("pod-2", DefaultChaosNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").Build()
+				nonChaosPod = builderstest.NewPodBuilder(nonChaosPodName, DefaultChaosNamespace).Build()
 
 				fakeClient = fake.NewClientBuilder().WithObjects(chaosPodsObjects...).Build()
 				chaosPodServiceConfig.Client = fakeClient
 			})
 
-			JustBeforeEach(func() {
-				// Action
-				chaosPods, err = chaosPodService.GetChaosPodsOfDisruption(context.Background(), nil, labels.Set{})
-			})
+			Context("with a nil disruption and an empty label set", func() {
 
-			Describe("success cases", func() {
+				JustBeforeEach(func() {
+					// Action
+					chaosPods, err = chaosPodService.GetChaosPodsOfDisruption(context.Background(), nil, labels.Set{})
+				})
 
-				DescribeTable("should return a list of two chaos pods", func(ls labels.Set) {
-					// Arrange
-					chaosPodService, err := services.NewChaosPodService(chaosPodServiceConfig)
-					Expect(err).ShouldNot(HaveOccurred())
+				Describe("success cases", func() {
 
-					disruption = builders.NewDisruptionBuilder().WithNamespace(DefaultNamespace).WithName(DefaultDisruptionName).Build()
+					DescribeTable("should return a list of two chaos pods", func(ls labels.Set) {
+						// Arrange
+						chaosPodService, err := services.NewChaosPodService(chaosPodServiceConfig)
+						Expect(err).ShouldNot(HaveOccurred())
 
-					//	Action
-					chaosPods, err := chaosPodService.GetChaosPodsOfDisruption(context.Background(), &disruption, ls)
+						disruption = builderstest.NewDisruptionBuilder().WithNamespace(DefaultNamespace).WithName(DefaultDisruptionName).Build()
 
-					// Assert
-					By("not return an error")
-					Expect(err).ShouldNot(HaveOccurred())
+						// Action
+						chaosPods, err := chaosPodService.GetChaosPodsOfDisruption(context.Background(), &disruption, ls)
 
-					By("return a list of two pods")
-					Expect(chaosPods).ToNot(BeEmpty())
-					Expect(chaosPods).Should(HaveLen(2))
+						// Assert
+						By("not return an error")
+						Expect(err).ShouldNot(HaveOccurred())
 
-					for _, chaosPod := range chaosPods {
-						Expect(chaosPod).ToNot(Equal(nonChaosPodName))
-						Expect(chaosPod.Namespace).Should(Equal(DefaultChaosNamespace))
-						Expect(chaosPod.Labels[chaostypes.DisruptionNameLabel]).Should(Equal(DefaultDisruptionName))
-						Expect(chaosPod.Labels[chaostypes.DisruptionNamespaceLabel]).Should(Equal(DefaultNamespace))
-					}
-				},
-					Entry("with an empty label set",
-						labels.Set{},
-					),
-					Entry("with a nil label set",
-						nil,
-					),
-				)
+						By("return a list of two pods")
+						Expect(chaosPods).ToNot(BeEmpty())
+						Expect(chaosPods).Should(HaveLen(2))
 
-				Context("with a nil disruption and a label set", func() {
+						for _, chaosPod := range chaosPods {
+							Expect(chaosPod).ToNot(Equal(nonChaosPodName))
+							Expect(chaosPod.Namespace).Should(Equal(DefaultChaosNamespace))
+							Expect(chaosPod.Labels[chaostypes.DisruptionNameLabel]).Should(Equal(DefaultDisruptionName))
+							Expect(chaosPod.Labels[chaostypes.DisruptionNamespaceLabel]).Should(Equal(DefaultNamespace))
+						}
+					},
+						Entry("with an empty label set",
+							labels.Set{},
+						),
+						Entry("with a nil label set",
+							nil,
+						),
+					)
+
 					It("should return a list of all chaos pods", func() {
 						// Assert
 						By("not return an error")
@@ -202,26 +203,25 @@ var _ = Describe("Chaos Pod Service", func() {
 						Expect(chaosPods).Should(HaveLen(len(chaosPodsObjects)))
 					})
 				})
-			})
 
-			Describe("failed cases", func() {
-				When("the k8s client return an error", func() {
+				Describe("failed cases", func() {
+					When("the k8s client return an error", func() {
 
-					BeforeEach(func() {
-						// Arrange
-						clientMock := mocks.NewK8SClientMock(GinkgoT())
-						clientMock.EXPECT().List(mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
-						chaosPodServiceConfig.Client = clientMock
-					})
+						BeforeEach(func() {
+							// Arrange
+							k8sClientMock.EXPECT().List(mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("error"))
+							chaosPodServiceConfig.Client = k8sClientMock
+						})
 
-					It("should propagate the error", func() {
-						// Assert
-						By("return the error")
-						Expect(err).Should(HaveOccurred())
-						Expect(err.Error()).Should(Equal("error listing owned pods: error"))
+						It("should propagate the error", func() {
+							// Assert
+							By("return the error")
+							Expect(err).Should(HaveOccurred())
+							Expect(err).To(MatchError("error listing owned pods: error"))
 
-						By("return an empty list of chaos pods")
-						Expect(chaosPods).To(BeEmpty())
+							By("return an empty list of chaos pods")
+							Expect(chaosPods).To(BeEmpty())
+						})
 					})
 				})
 			})
@@ -232,12 +232,12 @@ var _ = Describe("Chaos Pod Service", func() {
 
 		var (
 			isFinalizerRemoved bool
-			cpBuilder          *builders.ChaosPodBuilder
+			cpBuilder          *builderstest.ChaosPodBuilder
 		)
 
 		BeforeEach(func() {
 			// Arrange
-			cpBuilder = builders.NewPodBuilder("test-1", DefaultChaosNamespace)
+			cpBuilder = builderstest.NewPodBuilder("test-1", DefaultChaosNamespace)
 			targetSelectorMock.EXPECT().TargetIsHealthy(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		})
 
@@ -249,16 +249,18 @@ var _ = Describe("Chaos Pod Service", func() {
 			isFinalizerRemoved, err = chaosPodService.HandleChaosPodTermination(&disruption, &chaosPod)
 		})
 
-		DescribeTable("success cases", func(chaosPodBuilder *builders.ChaosPodBuilder) {
+		DescribeTable("success cases", func(chaosPodBuilder *builderstest.ChaosPodBuilder) {
 			// Arrange
-			chaosPod := chaosPodBuilder.WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().Build()
+			chaosPod := chaosPodBuilder.WithDeletion().WithChaosFinalizer().Build()
 			target := chaosPod.Labels[chaostypes.TargetLabel]
 
 			By("update the chaos pod object without the finalizer")
 			k8sClientMock.EXPECT().Update(mock.Anything, &chaosPod).Return(nil)
 
 			By("check if the TargetIsHealthy")
+			targetSelectorMock.ExpectedCalls = nil
 			targetSelectorMock.EXPECT().TargetIsHealthy(target, k8sClientMock, &disruption).Return(nil)
+			chaosPodServiceConfig.TargetSelector = targetSelectorMock
 
 			chaosPodService, err := services.NewChaosPodService(chaosPodServiceConfig)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -274,42 +276,82 @@ var _ = Describe("Chaos Pod Service", func() {
 			Expect(chaosPod.GetFinalizers()).Should(Equal([]string{}))
 			Expect(isRemoved).To(BeTrue())
 		},
-			Entry("with a success pod", builders.NewPodBuilder(
-				"test",
-				DefaultNamespace,
-			).WithStatusPhase(v1.PodSucceeded)),
-			Entry("with a pending pod", builders.NewPodBuilder(
-				"test",
-				DefaultNamespace,
-			).WithStatusPhase(v1.PodPending)),
-			Entry("with a failed pod", builders.NewPodBuilder(
-				"test",
-				DefaultNamespace,
-			).WithStatusPhase(v1.PodFailed)),
-			Entry("with failed a pod exceeding its activeDeadlineSeconds", builders.NewPodBuilder(
-				"test",
-				DefaultNamespace,
-			).WithStatus(v1.PodStatus{
-				Phase:             v1.PodFailed,
-				Reason:            "DeadlineExceeded",
-				ContainerStatuses: []v1.ContainerStatus{{}},
-			})),
-			Entry("with a failed pod and an container injector in error state", builders.NewPodBuilder(
-				"test",
-				DefaultNamespace,
-			).WithStatus(v1.PodStatus{
-				Phase: v1.PodFailed,
-				ContainerStatuses: []v1.ContainerStatus{
-					{
-						Name: "injector",
-						State: v1.ContainerState{
-							Terminated: &v1.ContainerStateTerminated{
-								Reason: "StartError",
+			Entry(
+				"with a success pod",
+				builderstest.NewPodBuilder(
+					"test",
+					DefaultNamespace,
+				).WithStatusPhase(v1.PodSucceeded)),
+			Entry(
+				"with a pending pod",
+				builderstest.NewPodBuilder(
+					"test",
+					DefaultNamespace,
+				).WithStatusPhase(v1.PodPending)),
+			Entry(
+				"with a failed pod",
+				builderstest.NewPodBuilder(
+					"test",
+					DefaultNamespace,
+				).WithStatusPhase(v1.PodFailed)),
+			Entry(
+				"with failed a pod exceeding its activeDeadlineSeconds",
+				builderstest.NewPodBuilder(
+					"test",
+					DefaultNamespace,
+				).WithStatus(v1.PodStatus{
+					Phase:             v1.PodFailed,
+					Reason:            "DeadlineExceeded",
+					ContainerStatuses: []v1.ContainerStatus{{}},
+				})),
+			Entry(
+				"with a failed pod and an container injector in error state",
+				builderstest.NewPodBuilder(
+					"test",
+					DefaultNamespace,
+				).WithStatus(v1.PodStatus{
+					Phase: v1.PodFailed,
+					ContainerStatuses: []v1.ContainerStatus{
+						{
+							Name: "injector",
+							State: v1.ContainerState{
+								Terminated: &v1.ContainerStateTerminated{
+									Reason: "StartError",
+								},
 							},
 						},
 					},
-				},
-			})),
+				})),
+			Entry(
+				"with pod and an container injector in error state",
+				builderstest.NewPodBuilder(
+					"test",
+					DefaultNamespace,
+				).WithStatus(v1.PodStatus{
+					Phase: v1.PodFailed,
+					ContainerStatuses: []v1.ContainerStatus{
+						{
+							Name: "injector",
+							State: v1.ContainerState{
+								Terminated: &v1.ContainerStateTerminated{
+									Reason: "StartError",
+								},
+							},
+						},
+					},
+				})),
+			Entry(
+				"with node failure running chaos pod",
+				builderstest.NewPodBuilder(
+					"test",
+					DefaultNamespace,
+				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", chaostypes.DisruptionKindNodeFailure).WithStatusPhase(v1.PodRunning)),
+			Entry(
+				"with container failure running chaos pod",
+				builderstest.NewPodBuilder(
+					"test",
+					DefaultNamespace,
+				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", chaostypes.DisruptionKindContainerFailure).WithStatusPhase(v1.PodRunning)),
 		)
 
 		DescribeTable("failures", func(chaosPod v1.Pod) {
@@ -337,19 +379,19 @@ var _ = Describe("Chaos Pod Service", func() {
 			Expect(isRemoved).To(BeFalse())
 		},
 			Entry("with a running pod",
-				builders.NewPodBuilder(
+				builderstest.NewPodBuilder(
 					"test",
 					DefaultNamespace,
 				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().WithStatusPhase(v1.PodRunning).Build()),
 			Entry("with a failed pod with containers",
-				builders.NewPodBuilder(
+				builderstest.NewPodBuilder(
 					"test",
 					DefaultNamespace,
 				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().WithStatusPhase(
 					v1.PodFailed,
 				).WithContainerStatuses([]v1.ContainerStatus{{Name: "test-1"}}).Build()),
 			Entry("with a failed pod with containers and a running injector",
-				builders.NewPodBuilder(
+				builderstest.NewPodBuilder(
 					"test",
 					DefaultNamespace,
 				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().WithStatusPhase(
@@ -360,99 +402,98 @@ var _ = Describe("Chaos Pod Service", func() {
 		Context("with a chaos pod ready to be deleted", func() {
 
 			BeforeEach(func() {
-				cpBuilder = builders.NewPodBuilder("test", DefaultNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer()
+				cpBuilder = builderstest.NewPodBuilder("test", DefaultNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer()
 			})
 
-			When("the target is not healthy return an unexpected error", func() {
-
-				BeforeEach(func() {
+			Describe("success cases", func() {
+				DescribeTable("when the TargetIsHealthy return an allowed error", func(targetErrStatus metav1.Status) {
 					// Arrange
-					targetSelectorMock = targetselector.NewTargetSelectorMock(GinkgoT())
-					targetSelectorMock.EXPECT().TargetIsHealthy(mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("an error happend"))
-					chaosPodServiceConfig.TargetSelector = targetSelectorMock
-				})
+					By("check if the target is healthy")
+					errorStatus := errors.StatusError{ErrStatus: targetErrStatus}
 
-				It("should not remove the finalizer", func() {
-					// Assert
-					By("return an error")
-					Expect(err).Should(HaveOccurred())
-
-					By("not update the chaos pod object")
-					k8sClientMock.AssertNotCalled(GinkgoT(), "Update")
-
-					By("not remove the finalizer")
-					Expect(chaosPod.GetFinalizers()).Should(Equal([]string{chaostypes.ChaosPodFinalizer}))
-					Expect(isFinalizerRemoved).To(BeFalse())
-				})
-
-			})
-
-			DescribeTable("when the TargetIsHealthy return an allowed error", func(targetErrStatus metav1.Status) {
-				// Arrange
-				By("check if the target is healthy")
-				errorStatus := errors.StatusError{ErrStatus: targetErrStatus}
-
-				targetSelectorMock = targetselector.NewTargetSelectorMock(GinkgoT())
-				targetSelectorMock.EXPECT().TargetIsHealthy(mock.Anything, mock.Anything, mock.Anything).Return(&errorStatus)
-
-				By("update the chaos pod object without the finalizer")
-				k8sClientMock.EXPECT().Update(mock.Anything, &chaosPod).Return(nil)
-
-				chaosPodServiceConfig.TargetSelector = targetSelectorMock
-
-				chaosPodService, err := services.NewChaosPodService(chaosPodServiceConfig)
-				Expect(err).ShouldNot(HaveOccurred())
-
-				// Action
-				isRemoved, err := chaosPodService.HandleChaosPodTermination(&disruption, &chaosPod)
-
-				// Assert
-				By("not return an error")
-				Expect(err).ShouldNot(HaveOccurred())
-
-				By("remove the finalizer")
-				Expect(chaosPod.GetFinalizers()).Should(Equal([]string{}))
-				Expect(isRemoved).To(BeTrue())
-			},
-				Entry("not found target", metav1.Status{
-					Message: "Not found",
-					Reason:  metav1.StatusReasonNotFound,
-					Code:    http.StatusNotFound,
-				}),
-				Entry("pod is not running", metav1.Status{
-					Message: "pod is not running",
-				}),
-				Entry("node is not ready", metav1.Status{
-					Message: "node is not ready",
-				}))
-
-			When("when the removeFinalizerForChaosPod return an error", func() {
-
-				BeforeEach(func() {
-					// Arrange
-					errorStatus := errors.StatusError{ErrStatus: metav1.Status{
-						Message: "node is not ready",
-					}}
-					targetSelectorMock = targetselector.NewTargetSelectorMock(GinkgoT())
+					targetSelectorMock.ExpectedCalls = nil
 					targetSelectorMock.EXPECT().TargetIsHealthy(mock.Anything, mock.Anything, mock.Anything).Return(&errorStatus)
-					chaosPodServiceConfig.TargetSelector = targetSelectorMock
 
-					k8sClientMock = mocks.NewK8SClientMock(GinkgoT())
-					k8sClientMock.EXPECT().Update(mock.Anything, mock.Anything).Return(fmt.Errorf("an error happened"))
-					chaosPodServiceConfig.Client = k8sClientMock
-				})
+					By("update the chaos pod object without the finalizer")
+					k8sClientMock.EXPECT().Update(mock.Anything, &chaosPod).Return(nil)
 
-				It("should not remove the finalizer", func() {
+					chaosPodService, err := services.NewChaosPodService(chaosPodServiceConfig)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					// Action
+					isRemoved, err := chaosPodService.HandleChaosPodTermination(&disruption, &chaosPod)
+
 					// Assert
-					By("return an error")
-					Expect(err).Should(HaveOccurred())
+					By("not return an error")
+					Expect(err).ShouldNot(HaveOccurred())
 
-					By("not remove the finalizer")
-					Expect(isFinalizerRemoved).To(BeFalse())
-				})
+					By("remove the finalizer")
+					Expect(chaosPod.GetFinalizers()).Should(Equal([]string{}))
+					Expect(isRemoved).To(BeTrue())
+				},
+					Entry("not found target", metav1.Status{
+						Message: "Not found",
+						Reason:  metav1.StatusReasonNotFound,
+						Code:    http.StatusNotFound,
+					}),
+					Entry("pod is not running", metav1.Status{
+						Message: "pod is not running",
+					}),
+					Entry("node is not ready", metav1.Status{
+						Message: "node is not ready",
+					}))
 			})
 
-			Context("with a pod in a succeeded phase", func() {
+			Describe("error cases", func() {
+				When("the target is not healthy return an unexpected error", func() {
+
+					BeforeEach(func() {
+						// Arrange
+						targetSelectorMock.ExpectedCalls = nil
+						targetSelectorMock.EXPECT().TargetIsHealthy(mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("an error happend"))
+					})
+
+					It("should not remove the finalizer", func() {
+						// Assert
+						By("return an error")
+						Expect(err).Should(HaveOccurred())
+
+						By("not update the chaos pod object")
+						k8sClientMock.AssertNotCalled(GinkgoT(), "Update")
+
+						By("not remove the finalizer")
+						Expect(chaosPod.GetFinalizers()).Should(Equal([]string{chaostypes.ChaosPodFinalizer}))
+						Expect(isFinalizerRemoved).To(BeFalse())
+					})
+
+				})
+
+				When("when the removeFinalizerForChaosPod return an error", func() {
+
+					BeforeEach(func() {
+						// Arrange
+						errorStatus := errors.StatusError{ErrStatus: metav1.Status{
+							Message: "node is not ready",
+						}}
+						targetSelectorMock.ExpectedCalls = nil
+						targetSelectorMock.EXPECT().TargetIsHealthy(mock.Anything, mock.Anything, mock.Anything).Return(&errorStatus)
+
+						k8sClientMock.EXPECT().Update(mock.Anything, mock.Anything).Return(fmt.Errorf("an error happened"))
+					})
+
+					It("should not remove the finalizer", func() {
+						// Assert
+						By("return an error")
+						Expect(err).Should(HaveOccurred())
+
+						By("not remove the finalizer")
+						Expect(isFinalizerRemoved).To(BeFalse())
+					})
+				})
+
+			})
+
+			Context("with a succeeded pod", func() {
 
 				BeforeEach(func() {
 					// Arrange
@@ -463,8 +504,6 @@ var _ = Describe("Chaos Pod Service", func() {
 
 					BeforeEach(func() {
 						// Arrange
-						targetSelectorMock.EXPECT().TargetIsHealthy(mock.Anything, mock.Anything, mock.Anything).Return(nil)
-
 						k8sClientMock.EXPECT().Update(mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("could not update"))
 					})
 
@@ -476,13 +515,33 @@ var _ = Describe("Chaos Pod Service", func() {
 				})
 
 			})
+
+			Context("with a running node failure chaos pod ", func() {
+				BeforeEach(func() {
+					cpBuilder.WithStatusPhase(v1.PodRunning).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", chaostypes.DisruptionKindNodeFailure)
+				})
+
+				When("the k8s client return an error during the update", func() {
+
+					BeforeEach(func() {
+						// Arrange
+						k8sClientMock.EXPECT().Update(mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("could not update"))
+					})
+
+					It("should propagate the error", func() {
+						// Assert
+						Expect(err).Should(HaveOccurred())
+						Expect(isFinalizerRemoved).To(BeFalse())
+					})
+				})
+			})
 		})
 
 		Context("with a chaos pod not being deleted", func() {
 
 			BeforeEach(func() {
 				// Arrange
-				chaosPod = builders.NewPodBuilder("test", DefaultNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithChaosFinalizer().Build()
+				chaosPod = builderstest.NewPodBuilder("test", DefaultNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithChaosFinalizer().Build()
 			})
 
 			It("should not remove the finalizer", func() {
@@ -500,7 +559,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			BeforeEach(func() {
 				// Arrange
-				chaosPod = builders.NewPodBuilder("test", DefaultNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().Build()
+				chaosPod = builderstest.NewPodBuilder("test", DefaultNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().Build()
 			})
 
 			It("should not remove the finalizer", func() {
@@ -523,13 +582,14 @@ var _ = Describe("Chaos Pod Service", func() {
 		)
 
 		JustBeforeEach(func() {
-			// Assert
+			// Action
 			isDeleted = chaosPodService.DeletePod(pod)
 		})
 
 		Context("with a pod not marked to be deleted", func() {
+
 			BeforeEach(func() {
-				pod = builders.NewPodBuilder("test", DefaultNamespace).Build()
+				pod = builderstest.NewPodBuilder("test", DefaultNamespace).Build()
 			})
 
 			Describe("success cases", func() {
@@ -589,7 +649,7 @@ var _ = Describe("Chaos Pod Service", func() {
 		var (
 			targetContainers                             map[string]string
 			DefaultInjectorNetworkDisruptionAllowedHosts []string
-			dBuilder                                     *builders.DisruptionBuilder
+			dBuilder                                     *builderstest.DisruptionBuilder
 			args                                         chaosapi.DisruptionArgs
 			expectedArgs                                 []string
 			disruptionKindName                           chaostypes.DisruptionKindName
@@ -597,7 +657,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 		BeforeEach(func() {
 			// Arrange
-			dBuilder = builders.NewDisruptionBuilder()
+			dBuilder = builderstest.NewDisruptionBuilder()
 			targetContainers = map[string]string{"test": "test"}
 			DefaultInjectorNetworkDisruptionAllowedHosts = []string{"10.10.10.10", "11.11.11.11"}
 			chaosPodServiceConfig.Injector = services.ChaosPodServiceInjectorConfig{
@@ -636,13 +696,12 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			disruption = dBuilder.WithDisruptionKind(disruptionKindName).WithNamespace(DefaultNamespace).Build()
 
-			notInjectedBefore := helpers.TimeToInject(disruption.Spec.Triggers, disruption.CreationTimestamp.Time)
+			notInjectedBefore := disruption.TimeToInject(disruption.CreationTimestamp.Time)
 
 			subSpec := disruption.Spec.DisruptionKindPicker(disruptionKindName)
 
 			args.Kind = disruptionKindName
 			args.Level = disruption.Spec.Level
-			args.Kind = disruptionKindName
 			args.TargetContainers = targetContainers
 			args.DryRun = disruption.Spec.DryRun
 			args.DisruptionName = disruption.Name
@@ -650,7 +709,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			args.NotInjectedBefore = notInjectedBefore
 
 			expectedArgs = args.CreateCmdArgs(subSpec.GenerateArgs())
-			expectedArgs = append(expectedArgs, "--deadline", time.Now().Add(helpers.CalculateRemainingDurationOfDisruption(disruption)).Format(time.RFC3339))
+			expectedArgs = append(expectedArgs, "--deadline", time.Now().Add(disruption.CalculateRemainingDuration()).Format(time.RFC3339))
 
 			// Action
 			chaosPods, err = chaosPodService.GenerateChaosPodsOfDisruption(&disruption, DefaultTargetName, DefaultTargetNodeName, targetContainers, DefaultTargetPodIp)
@@ -676,14 +735,14 @@ var _ = Describe("Chaos Pod Service", func() {
 				Expect(chaosPods).To(HaveLen(expectedNumberOfChaosPods))
 			},
 				Entry("disruption with two kinds",
-					builders.NewDisruptionBuilder().WithDisruptionKind(
+					builderstest.NewDisruptionBuilder().WithDisruptionKind(
 						chaostypes.DisruptionKindNodeFailure,
 					).WithDisruptionKind(
 						chaostypes.DisruptionKindDiskFailure,
 					).Build(),
 					2,
 				), Entry("disruption with one kind",
-					builders.NewDisruptionBuilder().WithDisruptionKind(
+					builderstest.NewDisruptionBuilder().WithDisruptionKind(
 						chaostypes.DisruptionKindNodeFailure,
 					).Build(),
 					1,
@@ -765,8 +824,6 @@ var _ = Describe("Chaos Pod Service", func() {
 									"10.0.0.0-10.10.10.10",
 								},
 							}, nil).Once()
-
-							chaosPodServiceConfig.CloudServicesProvidersManager = cloudServicesProvidersManagerMock
 						})
 
 						It("should succeed", func() {
@@ -784,14 +841,10 @@ var _ = Describe("Chaos Pod Service", func() {
 
 					When("the cloud manager return an error during the fetching of services ip ranges", func() {
 						BeforeEach(func() {
-							cloudServicesProvidersManagerMock = cloudservice.NewCloudServicesProvidersManagerMock(GinkgoT())
 							cloudServicesProvidersManagerMock.EXPECT().GetServicesIPRanges(
 								mock.Anything,
 								mock.Anything,
 							).Return(nil, fmt.Errorf("an error happened"))
-							chaosPodServiceConfig.CloudServicesProvidersManager = cloudServicesProvidersManagerMock
-
-							chaosPodServiceConfig.MetricsSink = metrics.NewSinkMock(GinkgoT())
 						})
 
 						It("should propagate the error", func() {
@@ -815,7 +868,6 @@ var _ = Describe("Chaos Pod Service", func() {
 						args.PulseActiveDuration = pulseActiveDuration
 						args.PulseDormantDuration = pulseDormantDuration
 						args.PulseInitialDelay = pulseInitialDelay
-
 					})
 
 					It("should succeed", func() {
@@ -837,10 +889,10 @@ var _ = Describe("Chaos Pod Service", func() {
 	Describe("GenerateChaosPodOfDisruption", func() {
 		var (
 			DefaultTerminationGracePeriod = int64(60)
-			DefaultActiveDeadlineSeconds  = int64(helpers.CalculateRemainingDurationOfDisruption(disruption).Seconds()) + 10
+			DefaultActiveDeadlineSeconds  = int64(disruption.CalculateRemainingDuration().Seconds()) + 10
 			DefaultExpectedArgs           = []string{
 				"toto",
-				"--deadline", time.Now().Add(helpers.CalculateRemainingDurationOfDisruption(disruption)).Format(time.RFC3339),
+				"--deadline", time.Now().Add(disruption.CalculateRemainingDuration()).Format(time.RFC3339),
 			}
 			DefaultInjectorAnnotation = map[string]string{
 				"lorem": "ipsum",
@@ -896,7 +948,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			Expect(controllerutil.ContainsFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer)).To(BeTrue())
 		},
 			Entry("chaos pod without image pull secrets",
-				builders.NewPodBuilder(
+				builderstest.NewPodBuilder(
 					"pod-1",
 					DefaultChaosNamespace,
 				).WithChaosSpec(
@@ -911,7 +963,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				).Build(),
 				EmptyInjectorLabels),
 			Entry("chaos pod with image pull secrets",
-				builders.NewPodBuilder(
+				builderstest.NewPodBuilder(
 					"pod-1",
 					DefaultChaosNamespace,
 				).WithChaosSpec(
@@ -930,7 +982,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				}).Build(),
 				EmptyInjectorLabels),
 			Entry("chaos pod with injector labels",
-				builders.NewPodBuilder(
+				builderstest.NewPodBuilder(
 					"pod-1",
 					DefaultChaosNamespace,
 				).WithChaosSpec(
@@ -958,30 +1010,46 @@ var _ = Describe("Chaos Pod Service", func() {
 
 		Describe("success cases", func() {
 			Context("with a single chaos pod", func() {
-				BeforeEach(func() {
-					// Arrange
-					chaosPod = builders.NewPodBuilder("test-1", DefaultNamespace).WithChaosSpec(
-						DefaultTargetNodeName,
-						int64(60),
-						int64(60),
-						[]string{
+
+				Context("with a single container with args", func() {
+					BeforeEach(func() {
+						// Arrange
+						chaosPod = builderstest.NewPodBuilder("test-1", DefaultNamespace).WithChaosSpec(
+							DefaultTargetNodeName,
+							int64(60),
+							int64(60),
+							[]string{
+								"1",
+								"2",
+							},
+							DefaultHostPathDirectory,
+							DefaultPathFile,
+							DefaultInjectorServiceAccount,
+							DefaultInjectorImage,
+						).Build()
+					})
+
+					It("should return the chaos pod args", func() {
+						// Assert
+						Expect(chaosPodArgs).Should(Equal([]string{
 							"1",
 							"2",
-						},
-						DefaultHostPathDirectory,
-						DefaultPathFile,
-						DefaultInjectorServiceAccount,
-						DefaultInjectorImage,
-					).Build()
+						}))
+					})
 				})
 
-				It("should return the chaos pod args", func() {
-					// Assert
-					Expect(chaosPodArgs).Should(Equal([]string{
-						"1",
-						"2",
-					}))
+				Context("without container", func() {
+					BeforeEach(func() {
+						// Arrange
+						chaosPod = builderstest.NewPodBuilder("test-1", DefaultNamespace).Build()
+					})
+
+					It("should return an empty args", func() {
+						// Assert
+						Expect(chaosPodArgs).Should(Equal([]string{}))
+					})
 				})
+
 			})
 		})
 	})
@@ -989,12 +1057,12 @@ var _ = Describe("Chaos Pod Service", func() {
 	Describe("CreatePod", func() {
 		BeforeEach(func() {
 			// Arrange
-			chaosPod = builders.NewPodBuilder("test-1", DefaultNamespace).Build()
+			chaosPod = builderstest.NewPodBuilder("test-1", DefaultNamespace).Build()
 		})
 
 		JustBeforeEach(func() {
 			// Action
-			err = chaosPodService.CreatePod(&chaosPod)
+			err = chaosPodService.CreatePod(context.Background(), &chaosPod)
 		})
 
 		Describe("success case", func() {
@@ -1037,7 +1105,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			BeforeEach(func() {
 				// Arrange
-				chaosPod = builders.NewPodBuilder("test-1", DefaultNamespace).Build()
+				chaosPod = builderstest.NewPodBuilder("test-1", DefaultNamespace).Build()
 			})
 
 			Describe("success cases", func() {
@@ -1114,9 +1182,9 @@ var _ = Describe("Chaos Pod Service", func() {
 				BeforeEach(func() {
 					// Arrange
 					chaosPods = []v1.Pod{
-						builders.NewPodBuilder("test-1", DefaultNamespace).WithChaosFinalizer().WithChaosPodLabels(DefaultDisruptionName, DefaultDisruptionName, DefaultTargetName, chaostypes.DisruptionKindDiskFailure).Build(),
-						builders.NewPodBuilder("test-2", DefaultNamespace).WithChaosFinalizer().WithChaosPodLabels(DefaultDisruptionName, DefaultDisruptionName, DefaultTargetName, chaostypes.DisruptionKindDiskFailure).Build(),
-						builders.NewPodBuilder("test-3", DefaultNamespace).WithChaosFinalizer().WithChaosPodLabels(DefaultDisruptionName, DefaultDisruptionName, DefaultTargetName, chaostypes.DisruptionKindDiskFailure).Build(),
+						builderstest.NewPodBuilder("test-1", DefaultNamespace).WithChaosFinalizer().WithChaosPodLabels(DefaultDisruptionName, DefaultDisruptionName, DefaultTargetName, chaostypes.DisruptionKindDiskFailure).Build(),
+						builderstest.NewPodBuilder("test-2", DefaultNamespace).WithChaosFinalizer().WithChaosPodLabels(DefaultDisruptionName, DefaultDisruptionName, DefaultTargetName, chaostypes.DisruptionKindDiskFailure).Build(),
+						builderstest.NewPodBuilder("test-3", DefaultNamespace).WithChaosFinalizer().WithChaosPodLabels(DefaultDisruptionName, DefaultDisruptionName, DefaultTargetName, chaostypes.DisruptionKindDiskFailure).Build(),
 					}
 				})
 
@@ -1282,7 +1350,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 				BeforeEach(func() {
 					chaosPods = []v1.Pod{
-						builders.NewPodBuilder("test-1", DefaultNamespace).WithChaosFinalizer().WithChaosPodLabels(DefaultDisruptionName, DefaultDisruptionName, DefaultTargetName, chaostypes.DisruptionKindDiskFailure).Build(),
+						builderstest.NewPodBuilder("test-1", DefaultNamespace).WithChaosFinalizer().WithChaosPodLabels(DefaultDisruptionName, DefaultDisruptionName, DefaultTargetName, chaostypes.DisruptionKindDiskFailure).Build(),
 					}
 				})
 
@@ -1322,7 +1390,7 @@ var _ = Describe("Chaos Pod Service", func() {
 					BeforeEach(func() {
 						// Arrange
 						chaosPods := []v1.Pod{
-							builders.NewPodBuilder("test-1", DefaultNamespace).WithChaosFinalizer().WithChaosPodLabels(DefaultDisruptionName, DefaultDisruptionName, DefaultTargetName, chaostypes.DisruptionKindDiskFailure).Build(),
+							builderstest.NewPodBuilder("test-1", DefaultNamespace).WithChaosFinalizer().WithChaosPodLabels(DefaultDisruptionName, DefaultDisruptionName, DefaultTargetName, chaostypes.DisruptionKindDiskFailure).Build(),
 						}
 
 						By("list the existing chaos pods matching criteria")

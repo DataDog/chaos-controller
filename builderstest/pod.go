@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023 Datadog, Inc.
 
-package builders
+package builderstest_test
 
 import v1 "k8s.io/api/core/v1"
 
