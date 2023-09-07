@@ -71,21 +71,24 @@ spec:
         ports: # optional, list of the service ports to drop packets on. Empty list means dropping to all ports of the service
           - 8080
           - 8081
-      aws:
-        - service: "S3" # service name as declared in the provider file (see doc for details)
-          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
-          flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
-          connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
-      gcp:
-        - service: "Google" # service name as declared in the provider file (see doc for details)
-          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
-          flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
-          connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
-      datadog:
-        - service: "synthetics" # service name as declared in the provider file (see doc for details)
-          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
-          flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
-          connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
+    aws:
+      - service: "S3" # service name as declared in the provider file (see doc for details)
+        protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+        flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
+        connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
+    gcp:
+      - service: "Google" # service name as declared in the provider file (see doc for details)
+        protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+        flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
+        connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
+    datadog:
+      - service: "synthetics" # service name as declared in the provider file (see doc for details)
+        protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+        flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
+        connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
+    http: # http filters
+      method: get # http method to filter on
+      path: / # requested path to filter on
     drop: 10 # "mandatory", at least one of `bandwidthLimit`, `delay`, `drop`, `corrupt`, or `duplicate` must be specified; probability to drop packets (between 0 and 100)
     corrupt: 5 # probability to corrupt packets (between 0 and 100)
     delay: 1000 # latency to apply to packets in ms

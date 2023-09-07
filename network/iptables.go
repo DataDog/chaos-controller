@@ -156,12 +156,12 @@ func (i *iptables) Intercept(protocol string, port string, cgroupPath string, cg
 
 // MarkCgroupPath marks the packets created from the given cgroup path with the given mark
 func (i *iptables) MarkCgroupPath(cgroupPath string, mark string) error {
-	return i.insert("mangle", "OUTPUT", "-m", "cgroup", "--path", cgroupPath, "-j", "MARK", "--set-mark", mark)
+	return i.insert("mangle", "POSTROUTING", "-m", "cgroup", "--path", cgroupPath, "-j", "MARK", "--set-mark", mark)
 }
 
 // MarkClassID marks the packets created with the given classid with the given mark
 func (i *iptables) MarkClassID(classID string, mark string) error {
-	return i.insert("mangle", "OUTPUT", "-m", "cgroup", "--cgroup", classID, "-j", "MARK", "--set-mark", mark)
+	return i.insert("mangle", "POSTROUTING", "-m", "cgroup", "--cgroup", classID, "-j", "MARK", "--set-mark", mark)
 }
 
 // insert creates a new iptables rule definition, stores it

@@ -17,3 +17,6 @@ spec:
   count: 1
   network:
     drop: 100 # percentage of outgoing packets to drop
+    http: # http filters
+      method: get # http method to filter on
+      path: / # requested path to filter on
