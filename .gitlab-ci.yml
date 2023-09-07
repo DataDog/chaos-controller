@@ -57,6 +57,9 @@ build:make:
 # we always push images with the exact commit SHA on top of any other TAG based images
 .build-image: &build-image
   <<: *docker-hub-login
+  id_tokens:
+    DDSIGN_ID_TOKEN:
+      aud: image-integrity
   script:
     - docker buildx create --use
     - *install-make
@@ -65,7 +68,8 @@ build:make:
         CONTAINER_REGISTRY=registry.ddbuild.io \
         CONTAINER_TAG=${TAG} \
         CONTAINER_VERSION=${CI_COMMIT_SHA} \
-        CONTAINER_BUILD_EXTRA_ARGS="--platform=linux/amd64,linux/arm64 --label target=${TARGET_LABEL} --push"
+        CONTAINER_BUILD_EXTRA_ARGS="--platform=linux/amd64,linux/arm64 --label target=${TARGET_LABEL} --push" \
+        SIGN_IMAGE=true
   dependencies:
     - build:make
 

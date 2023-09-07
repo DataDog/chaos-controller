@@ -32,6 +32,8 @@ CONTAINER_TAG ?= latest
 CONTAINER_VERSION ?= $(shell git rev-parse HEAD)$(shell git diff --quiet || echo '-dirty')
 CONTAINER_BUILD_EXTRA_ARGS ?=
 
+SIGN_IMAGE ?= false
+
 # Image URL to use all building/pushing image targets
 MANAGER_IMAGE ?= ${CONTAINER_REGISTRY}/chaos-controller
 INJECTOR_IMAGE ?= ${CONTAINER_REGISTRY}/chaos-injector
@@ -149,8 +151,13 @@ docker-build-only-$(1):
 		--build-arg BUILDSTAMP=$(NOW_ISO8601) \
 		-t $$(CONTAINER_NAME):$(CONTAINER_TAG) \
 		-t $$(CONTAINER_NAME):$(CONTAINER_VERSION) \
+		--metadata-file ./bin/$(1)/docker-metadata.json \
 		$(CONTAINER_BUILD_EXTRA_ARGS) \
 		-f bin/$(1)/Dockerfile ./bin/$(1)/
+
+	if [ "$${SIGN_IMAGE}" = "true" ]; then \
+		ddsign sign $$(CONTAINER_NAME):$(CONTAINER_VERSION) --docker-metadata-file ./bin/$(1)/docker-metadata.json; \
+	fi
 
 lima-push-$(1): docker-build-$(1)
 	limactl copy ./bin/$(1)/$(1).tar.gz $(LIMA_INSTANCE):/tmp/
