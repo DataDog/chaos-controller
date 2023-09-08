@@ -274,7 +274,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// check if we have reached trigger.createPods. If not, skip the rest of reconciliation.
-		requeueAfter := time.Until(instance.TimeToCreatePods(instance.CreationTimestamp.Time))
+		requeueAfter := time.Until(instance.TimeToCreatePods())
 		if requeueAfter > (time.Second * 5) {
 			requeueAfter -= (time.Second * 5)
 			r.log.Debugw("requeuing disruption as we haven't yet reached trigger.createPods", "requeueAfter", requeueAfter.String())

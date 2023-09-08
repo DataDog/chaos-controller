@@ -205,7 +205,7 @@ func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.D
 			pulseDormantDuration = instance.Spec.Pulse.DormantDuration.Duration()
 		}
 
-		notInjectedBefore := instance.TimeToInject(instance.CreationTimestamp.Time)
+		notInjectedBefore := instance.TimeToInject()
 
 		allowedHosts := m.config.Injector.NetworkDisruptionAllowedHosts
 

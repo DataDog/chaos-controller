@@ -710,7 +710,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			disruption := dBuilder.WithDisruptionKind(disruptionKindName).WithNamespace(DefaultNamespace).Build()
 
-			notInjectedBefore := disruption.TimeToInject(disruption.CreationTimestamp.Time)
+			notInjectedBefore := disruption.TimeToInject()
 
 			subSpec := disruption.Spec.DisruptionKindPicker(disruptionKindName)
 

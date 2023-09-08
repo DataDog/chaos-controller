@@ -257,17 +257,17 @@ type Disruption struct {
 	Status DisruptionStatus `json:"status,omitempty"`
 }
 
-// TimeToInject calculates the time at which the disruption should be injected based on the provided creationTimestamp.
+// TimeToInject calculates the time at which the disruption should be injected based on its own creationTimestamp.
 // It considers the specified triggers for injection timing in the disruption's specification.
-func (r *Disruption) TimeToInject(creationTimestamp time.Time) time.Time {
+func (r *Disruption) TimeToInject() time.Time {
 	triggers := r.Spec.Triggers
 
 	if triggers.IsZero() {
-		return creationTimestamp
+		return r.CreationTimestamp.Time
 	}
 
 	if triggers.Inject.IsZero() {
-		return r.TimeToCreatePods(creationTimestamp)
+		return r.TimeToCreatePods()
 	}
 
 	var notInjectedBefore time.Time
@@ -279,11 +279,11 @@ func (r *Disruption) TimeToInject(creationTimestamp time.Time) time.Time {
 
 	if triggers.Inject.Offset.Duration() > 0 {
 		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.createPods
-		notInjectedBefore = r.TimeToCreatePods(creationTimestamp).Add(triggers.Inject.Offset.Duration())
+		notInjectedBefore = r.TimeToCreatePods().Add(triggers.Inject.Offset.Duration())
 	}
 
-	if creationTimestamp.After(notInjectedBefore) {
-		return creationTimestamp
+	if r.CreationTimestamp.Time.After(notInjectedBefore) {
+		return r.CreationTimestamp.Time
 	}
 
 	return notInjectedBefore
@@ -291,15 +291,15 @@ func (r *Disruption) TimeToInject(creationTimestamp time.Time) time.Time {
 
 // TimeToCreatePods takes the DisruptionTriggers field from a Disruption spec, along with the time.Time at which that disruption was created
 // It returns the earliest time.Time at which the chaos-controller should begin creating chaos pods, given the specified DisruptionTriggers
-func (r *Disruption) TimeToCreatePods(creationTimestamp time.Time) time.Time {
+func (r *Disruption) TimeToCreatePods() time.Time {
 	triggers := r.Spec.Triggers
 
 	if triggers.IsZero() {
-		return creationTimestamp
+		return r.CreationTimestamp.Time
 	}
 
 	if triggers.CreatePods.IsZero() {
-		return creationTimestamp
+		return r.CreationTimestamp.Time
 	}
 
 	var noPodsBefore time.Time
@@ -310,11 +310,11 @@ func (r *Disruption) TimeToCreatePods(creationTimestamp time.Time) time.Time {
 	}
 
 	if triggers.CreatePods.Offset.Duration() > 0 {
-		noPodsBefore = creationTimestamp.Add(triggers.CreatePods.Offset.Duration())
+		noPodsBefore = r.CreationTimestamp.Add(triggers.CreatePods.Offset.Duration())
 	}
 
-	if creationTimestamp.After(noPodsBefore) {
-		return creationTimestamp
+	if r.CreationTimestamp.After(noPodsBefore) {
+		return r.CreationTimestamp.Time
 	}
 
 	return noPodsBefore
@@ -324,7 +324,7 @@ func (r *Disruption) TimeToCreatePods(creationTimestamp time.Time) time.Time {
 func (r *Disruption) RemainingDuration() time.Duration {
 	return r.calculateDeadline(
 		r.Spec.Duration.Duration(),
-		r.TimeToInject(r.ObjectMeta.CreationTimestamp.Time),
+		r.TimeToInject(),
 	)
 }
 

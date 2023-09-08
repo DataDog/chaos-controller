@@ -30,7 +30,7 @@ func NewDisruptionBuilder() *DisruptionBuilder {
 				Duration: "1m", // per spec definition a valid disruption going to the reconcile loop MUST have a duration, let's not test wrong test cases
 			},
 		},
-	}).WithCreation(30 * time.Second)
+	}).WithCreationDuration(30 * time.Second)
 }
 
 // WithDisruptionTriggers sets the specified triggers of disruption.
@@ -115,12 +115,23 @@ func (b *DisruptionBuilder) Reset() *DisruptionBuilder {
 	return b
 }
 
-// WithCreation adjusts the creation timestamp.
-func (b *DisruptionBuilder) WithCreation(past time.Duration) *DisruptionBuilder {
+// WithCreationDuration adjusts the creation timestamp.
+func (b *DisruptionBuilder) WithCreationDuration(past time.Duration) *DisruptionBuilder {
 	b.modifiers = append(
 		b.modifiers,
 		func() {
 			b.CreationTimestamp = v1.NewTime(time.Now().Add(-past))
+		})
+
+	return b
+}
+
+// WithCreationTime adjusts the creation timestamp.
+func (b *DisruptionBuilder) WithCreationTime(creationTimestamp time.Time) *DisruptionBuilder {
+	b.modifiers = append(
+		b.modifiers,
+		func() {
+			b.CreationTimestamp = v1.NewTime(creationTimestamp)
 		})
 
 	return b

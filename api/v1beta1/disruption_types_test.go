@@ -149,197 +149,196 @@ var _ = Describe("Disruption", func() {
 		notBeforeTime            = defaultCreationTimestamp.Add(time.Minute)
 	)
 
-	Describe("TimeToInject", func() {
+	DescribeTable("TimeToInject", func(disruptionBuilder *builderstest.DisruptionBuilder, expectedTime time.Time) {
+		// Arrange
+		disruption := disruptionBuilder.WithCreationTime(defaultCreationTimestamp).Build()
 
-		DescribeTable("TimeToInject", func(disruptionBuilder *builderstest.DisruptionBuilder, inputTime, expectedTime time.Time) {
-			// Arrange
-			disruption := disruptionBuilder.Build()
+		// Action && Assert
+		Expect(disruption.TimeToInject()).To(Equal(expectedTime))
+	},
+		Entry(
+			"should return creationTimestamp if triggers is nil",
+			builderstest.NewDisruptionBuilder(), defaultCreationTimestamp),
+		Entry(
+			"should return triggers.createPods if triggers.inject is nil",
+			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
+				CreatePods: DisruptionTrigger{
+					NotBefore: metav1.NewTime(notBeforeTime),
+					Offset:    "",
+				},
+			}), notBeforeTime),
+		Entry(
+			"should return inject.notBefore if set",
+			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
+				Inject: DisruptionTrigger{
+					NotBefore: metav1.NewTime(notBeforeTime),
+					Offset:    "1",
+				},
+				CreatePods: DisruptionTrigger{
+					NotBefore: metav1.Time{},
+					Offset:    "2m",
+				},
+			}), notBeforeTime),
+		Entry(
+			"should return a time after creationTimestamp if inject.offset is set",
+			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
+				Inject: DisruptionTrigger{
+					NotBefore: metav1.Time{},
+					Offset:    "1m",
+				},
+			}), notBeforeTime),
+		Entry(
+			"should return creationTimestamp if inject.NotBefore is before creationTimestamp",
+			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
+				CreatePods: DisruptionTrigger{
+					NotBefore: metav1.NewTime(defaultCreationTimestamp.Add(-time.Minute)),
+				},
+			}), defaultCreationTimestamp),
+		Entry(
+			"should return creationTimestamp + 5 minutes if createPods.NotBefore is set",
+			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
+				CreatePods: DisruptionTrigger{
+					NotBefore: metav1.Time{},
+					Offset:    "5m",
+				},
+			}), defaultCreationTimestamp.Add(time.Minute*5)),
+		Entry(
+			"should return creationTimestamp + 5 minutes if createPods.NotBefore is set",
+			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
+				CreatePods: DisruptionTrigger{
+					NotBefore: metav1.NewTime(defaultCreationTimestamp.Add(-time.Minute * 5)),
+				},
+			}), defaultCreationTimestamp),
+	)
 
-			// Action && Assert
-			Expect(disruption.TimeToInject(inputTime)).To(Equal(expectedTime))
-		},
-			Entry(
-				"should return creationTimestamp if triggers is nil",
-				builderstest.NewDisruptionBuilder(), defaultCreationTimestamp, defaultCreationTimestamp),
-			Entry(
-				"should return triggers.createPods if triggers.inject is nil",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					CreatePods: DisruptionTrigger{
-						NotBefore: metav1.NewTime(notBeforeTime),
-						Offset:    "",
-					},
-				}), defaultCreationTimestamp, notBeforeTime),
-			Entry(
-				"should return inject.notBefore if set",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					Inject: DisruptionTrigger{
-						NotBefore: metav1.NewTime(notBeforeTime),
-						Offset:    "1",
-					},
-					CreatePods: DisruptionTrigger{
-						NotBefore: metav1.Time{},
-						Offset:    "2m",
-					},
-				}), defaultCreationTimestamp, notBeforeTime),
-			Entry(
-				"should return a time after creationTimestamp if inject.offset is set",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					Inject: DisruptionTrigger{
-						NotBefore: metav1.Time{},
-						Offset:    "1m",
-					},
-				}), defaultCreationTimestamp, notBeforeTime),
-			Entry(
-				"should return creationTimestamp if inject.NotBefore is before creationTimestamp",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					CreatePods: DisruptionTrigger{
-						NotBefore: metav1.NewTime(defaultCreationTimestamp.Add(-time.Minute)),
-					},
-				}), defaultCreationTimestamp, defaultCreationTimestamp),
-			Entry(
-				"should return creationTimestamp if createPods.NotBefore is set",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					CreatePods: DisruptionTrigger{
-						NotBefore: metav1.Time{},
-						Offset:    "5m",
-					},
-				}), defaultCreationTimestamp, defaultCreationTimestamp.Add(time.Minute*5)),
-		)
-	})
+	DescribeTable("TimeToCreatePods", func(disruptionBuilder *builderstest.DisruptionBuilder, expectedTime time.Time) {
+		// Arrange
+		disruption := disruptionBuilder.WithCreationTime(defaultCreationTimestamp).Build()
 
-	Describe("TimeToCreatePods", func() {
+		// Action && Assert
+		Expect(disruption.TimeToCreatePods()).To(Equal(expectedTime))
+	},
+		Entry(
+			"should return creationTimestamp if triggers is nil",
+			builderstest.NewDisruptionBuilder(),
+			defaultCreationTimestamp),
+		Entry(
+			"should return creationTimestamp if triggers.createPods is nil",
+			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
+				Inject: DisruptionTrigger{
+					Offset: "15m",
+				},
+			}),
+			defaultCreationTimestamp),
+		Entry(
+			"should return createPods.notBefore if set",
+			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
+				Inject: DisruptionTrigger{
+					Offset: "15m",
+				},
+				CreatePods: DisruptionTrigger{
+					NotBefore: metav1.NewTime(notBeforeTime),
+					Offset:    "",
+				},
+			}),
+			notBeforeTime),
+		Entry(
+			"should return a time after creationTimestamp if createPods.offset is set",
+			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
+				CreatePods: DisruptionTrigger{
+					NotBefore: metav1.Time{},
+					Offset:    "5m",
+				},
+			}),
+			defaultCreationTimestamp.Add(time.Minute*5)),
+	)
 
-		DescribeTable("TimeToCreatePods", func(disruptionBuilder *builderstest.DisruptionBuilder, creationTimestamp, expectedTime time.Time) {
-			// Arrange
-			disruption := disruptionBuilder.Build()
+	DescribeTable("TerminationStatus", func(disruptionBuilder *builderstest.DisruptionBuilder, pods builderstest.PodsBuilder, expectedTerminationStatus TerminationStatus) {
+		// Arrange
+		disruption := disruptionBuilder.Build()
 
-			// Action && Assert
-			Expect(disruption.TimeToCreatePods(creationTimestamp)).To(Equal(expectedTime))
-		},
-			Entry(
-				"should return creationTimestamp if triggers is nil",
-				builderstest.NewDisruptionBuilder(), defaultCreationTimestamp, defaultCreationTimestamp),
-			Entry(
-				"should return creationTimestamp if triggers.createPods is nil",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					Inject: DisruptionTrigger{
-						Offset: "15m",
-					},
-				}), defaultCreationTimestamp, defaultCreationTimestamp),
-			Entry(
-				"should return createPods.notBefore if set",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					Inject: DisruptionTrigger{
-						Offset: "15m",
-					},
-					CreatePods: DisruptionTrigger{
-						NotBefore: metav1.NewTime(notBeforeTime),
-						Offset:    "",
-					},
-				}), defaultCreationTimestamp, notBeforeTime),
-			Entry(
-				"should return a time after creationTimestamp if createPods.offset is set",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					CreatePods: DisruptionTrigger{
-						NotBefore: metav1.Time{},
-						Offset:    "5m",
-					},
-				}), defaultCreationTimestamp, defaultCreationTimestamp.Add(time.Minute*5)),
-		)
-	})
+		// Action && Assert
+		Expect(disruption.TerminationStatus(pods.Build())).To(Equal(expectedTerminationStatus))
+	},
+		Entry(
+			"not yet created disruption IS NOT terminated",
+			builderstest.NewDisruptionBuilder().Reset(),
+			nil,
+			TSNotTerminated),
+		Entry(
+			"1s before deadline, disruption IS NOT terminated",
+			builderstest.NewDisruptionBuilder().WithCreationDuration(time.Minute-time.Second),
+			builderstest.NewPodsBuilder(),
+			TSNotTerminated),
+		Entry(
+			"1s after deadline, disruption IS definitively terminated",
+			builderstest.NewDisruptionBuilder().WithCreationDuration(time.Minute+time.Second),
+			builderstest.NewPodsBuilder(),
+			TSDefinitivelyTerminated),
+		Entry(
+			"half duration disruption IS NOT terminated",
+			builderstest.NewDisruptionBuilder(),
+			builderstest.NewPodsBuilder(),
+			TSNotTerminated),
+		Entry(
+			"at deadline, disruption IS definitively terminated (however even ns before it is not)",
+			builderstest.NewDisruptionBuilder().WithCreationDuration(time.Minute),
+			builderstest.NewPodsBuilder(),
+			TSDefinitivelyTerminated),
+		Entry(
+			"deleted disruption IS definitively terminated",
+			builderstest.NewDisruptionBuilder().WithCreationDuration(time.Minute).WithDeletion(),
+			builderstest.NewPodsBuilder(),
+			TSDefinitivelyTerminated),
+		Entry(
+			"one chaos pod exited out of two IS NOT terminated",
+			builderstest.NewDisruptionBuilder(),
+			builderstest.NewPodsBuilder().One().Terminated().Parent(),
+			TSNotTerminated),
+		Entry(
+			"all chaos pods exited IS temporarily terminated",
+			builderstest.NewDisruptionBuilder(),
+			builderstest.NewPodsBuilder().One().Terminated().Parent().Two().Terminated().Parent(),
+			TSTemporarilyTerminated),
+		Entry(
+			"no pod injected is temporarily terminated",
+			builderstest.NewDisruptionBuilder().WithInjectionStatus(chaostypes.DisruptionInjectionStatusInjected),
+			nil,
+			TSTemporarilyTerminated),
+		Entry(
+			"no pod partially injected is temporarily terminated",
+			builderstest.NewDisruptionBuilder().WithInjectionStatus(chaostypes.DisruptionInjectionStatusPartiallyInjected),
+			nil,
+			TSTemporarilyTerminated),
+		Entry(
+			"no pod NOT injected is not terminated",
+			builderstest.NewDisruptionBuilder().WithInjectionStatus(chaostypes.DisruptionInjectionStatusNotInjected),
+			nil,
+			TSNotTerminated),
+		Entry(
+			"no pod initial injection status is not terminated",
+			builderstest.NewDisruptionBuilder(),
+			nil,
+			TSNotTerminated),
+	)
 
-	Describe("TerminationStatus", func() {
+	DescribeTable("RemainingDuration", func(disruptionBuilder *builderstest.DisruptionBuilder, expectedRemainingDuration time.Duration) {
+		// Arrange
+		disruption := disruptionBuilder.Build()
 
-		DescribeTable("TerminationStatus", func(disruptionBuilder *builderstest.DisruptionBuilder, pods builderstest.PodsBuilder, expectedTerminationStatus TerminationStatus) {
-			// Arrange
-			disruption := disruptionBuilder.Build()
-
-			// Action && Assert
-			Expect(disruption.TerminationStatus(pods.Build())).To(Equal(expectedTerminationStatus))
-		},
-			Entry(
-				"not yet created disruption IS NOT terminated",
-				builderstest.NewDisruptionBuilder().Reset(),
-				nil,
-				TSNotTerminated),
-			Entry(
-				"1s before deadline, disruption IS NOT terminated",
-				builderstest.NewDisruptionBuilder().WithCreation(time.Minute-time.Second),
-				builderstest.NewPodsBuilder(),
-				TSNotTerminated),
-			Entry(
-				"1s after deadline, disruption IS definitively terminated",
-				builderstest.NewDisruptionBuilder().WithCreation(time.Minute+time.Second),
-				builderstest.NewPodsBuilder(),
-				TSDefinitivelyTerminated),
-			Entry(
-				"half duration disruption IS NOT terminated",
-				builderstest.NewDisruptionBuilder(),
-				builderstest.NewPodsBuilder(),
-				TSNotTerminated),
-			Entry(
-				"at deadline, disruption IS definitively terminated (however even ns before it is not)",
-				builderstest.NewDisruptionBuilder().WithCreation(time.Minute),
-				builderstest.NewPodsBuilder(),
-				TSDefinitivelyTerminated),
-			Entry(
-				"deleted disruption IS definitively terminated",
-				builderstest.NewDisruptionBuilder().WithCreation(time.Minute).WithDeletion(),
-				builderstest.NewPodsBuilder(),
-				TSDefinitivelyTerminated),
-			Entry(
-				"one chaos pod exited out of two IS NOT terminated",
-				builderstest.NewDisruptionBuilder(),
-				builderstest.NewPodsBuilder().One().Terminated().Parent(),
-				TSNotTerminated),
-			Entry(
-				"all chaos pods exited IS temporarily terminated",
-				builderstest.NewDisruptionBuilder(),
-				builderstest.NewPodsBuilder().One().Terminated().Parent().Two().Terminated().Parent(),
-				TSTemporarilyTerminated),
-			Entry(
-				"no pod injected is temporarily terminated",
-				builderstest.NewDisruptionBuilder().WithInjectionStatus(chaostypes.DisruptionInjectionStatusInjected),
-				nil,
-				TSTemporarilyTerminated),
-			Entry(
-				"no pod partially injected is temporarily terminated",
-				builderstest.NewDisruptionBuilder().WithInjectionStatus(chaostypes.DisruptionInjectionStatusPartiallyInjected),
-				nil,
-				TSTemporarilyTerminated),
-			Entry(
-				"no pod NOT injected is not terminated",
-				builderstest.NewDisruptionBuilder().WithInjectionStatus(chaostypes.DisruptionInjectionStatusNotInjected),
-				nil,
-				TSNotTerminated),
-			Entry(
-				"no pod initial injection status is not terminated",
-				builderstest.NewDisruptionBuilder(),
-				nil,
-				TSNotTerminated),
-		)
-	})
-
-	Describe("RemainingDuration", func() {
-
-		DescribeTable("RemainingDuration", func(disruptionBuilder *builderstest.DisruptionBuilder, expectedRemainingDuration time.Duration) {
-			// Arrange
-			disruption := disruptionBuilder.Build()
-
-			// Action && Assert
-			remainingDuration := disruption.RemainingDuration().Round(time.Second).Truncate(2 * time.Second)
-			Expect(remainingDuration).To(Equal(expectedRemainingDuration))
-		},
-			Entry(
-				"should return 30 remaining duration seconds with a disruption created 30 seconds ago with a 1m duration",
-				builderstest.NewDisruptionBuilder().WithCreation(30*time.Second).WithDuration("1m"),
-				30*time.Second),
-			Entry(
-				"should return 90 remaining duration seconds with a disruption created 30 seconds ago with a 2m duration",
-				builderstest.NewDisruptionBuilder().WithCreation(30*time.Second).WithDuration("2m"),
-				90*time.Second),
-		)
-	})
+		// Action && Assert
+		remainingDuration := disruption.RemainingDuration().Round(time.Second).Truncate(2 * time.Second)
+		Expect(remainingDuration).To(Equal(expectedRemainingDuration))
+	},
+		Entry(
+			"should return 30 remaining duration seconds with a disruption created 30 seconds ago with a 1m duration",
+			builderstest.NewDisruptionBuilder().WithCreationDuration(30*time.Second).WithDuration("1m"),
+			30*time.Second),
+		Entry(
+			"should return 90 remaining duration seconds with a disruption created 30 seconds ago with a 2m duration",
+			builderstest.NewDisruptionBuilder().WithCreationDuration(30*time.Second).WithDuration("2m"),
+			90*time.Second),
+	)
 
 	Describe("GetTargetsCountAsInt", func() {
 
