@@ -85,7 +85,7 @@ func calcDisruptionGoneTimeout(disruption chaosv1beta1.Disruption) time.Duration
 			Fail("an existing disruption should have a non-zero duration")
 		}
 
-		if remainingDisruptionDuration := disruption.CalculateRemainingDuration(); remainingDisruptionDuration > 0 {
+		if remainingDisruptionDuration := disruption.RemainingDuration(); remainingDisruptionDuration > 0 {
 			disruptionDuration = remainingDisruptionDuration
 		}
 	}
@@ -421,7 +421,7 @@ func PickFirstChaodPod(ctx SpecContext, disruption chaosv1beta1.Disruption) core
 func ExpectChaosPodToDisappear(ctx SpecContext, chaosPodKey types.NamespacedName, disruption chaosv1beta1.Disruption) {
 	Eventually(k8sClient.Get).
 		WithContext(ctx).WithArguments(chaosPodKey, &corev1.Pod{}).
-		Within(disruption.CalculateRemainingDuration()).ProbeEvery(disruptionPotentialChangesEvery).
+		Within(disruption.RemainingDuration()).ProbeEvery(disruptionPotentialChangesEvery).
 		Should(WithTransform(apierrors.IsNotFound, BeTrue()))
 }
 

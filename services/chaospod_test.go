@@ -723,7 +723,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			args.NotInjectedBefore = notInjectedBefore
 
 			expectedArgs = args.CreateCmdArgs(subSpec.GenerateArgs())
-			expectedArgs = append(expectedArgs, "--deadline", time.Now().Add(disruption.CalculateRemainingDuration()).Format(time.RFC3339))
+			expectedArgs = append(expectedArgs, "--deadline", time.Now().Add(disruption.RemainingDuration()).Format(time.RFC3339))
 
 			// Action
 			chaosPods, err = chaosPodService.GenerateChaosPodsOfDisruption(&disruption, DefaultTargetName, DefaultTargetNodeName, targetContainers, DefaultTargetPodIp)
@@ -912,10 +912,10 @@ var _ = Describe("Chaos Pod Service", func() {
 
 		BeforeEach(func() {
 			DefaultTerminationGracePeriod = int64(60)
-			DefaultActiveDeadlineSeconds = int64(disruption.CalculateRemainingDuration().Seconds()) + 10
+			DefaultActiveDeadlineSeconds = int64(disruption.RemainingDuration().Seconds()) + 10
 			DefaultExpectedArgs = []string{
 				"toto",
-				"--deadline", time.Now().Add(disruption.CalculateRemainingDuration()).Format(time.RFC3339),
+				"--deadline", time.Now().Add(disruption.RemainingDuration()).Format(time.RFC3339),
 			}
 			DefaultInjectorAnnotation = map[string]string{
 				"lorem": "ipsum",

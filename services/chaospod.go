@@ -271,10 +271,10 @@ func (m *chaosPodService) GenerateChaosPodOfDisruption(disruption *chaosv1beta1.
 
 	// Chaos pods will clean themselves automatically when duration expires, so we set activeDeadlineSeconds to ten seconds after that
 	// to give time for cleaning
-	activeDeadlineSeconds := int64(disruption.CalculateRemainingDuration().Seconds()) + 10
+	activeDeadlineSeconds := int64(disruption.RemainingDuration().Seconds()) + 10
 
 	args = append(args,
-		"--deadline", time.Now().Add(disruption.CalculateRemainingDuration()).Format(time.RFC3339))
+		"--deadline", time.Now().Add(disruption.RemainingDuration()).Format(time.RFC3339))
 
 	chaosPod = corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

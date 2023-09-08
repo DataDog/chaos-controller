@@ -248,14 +248,14 @@ var _ = Describe("Disruption", func() {
 		)
 	})
 
-	Describe("GetTerminationStatus", func() {
+	Describe("TerminationStatus", func() {
 
-		DescribeTable("GetTerminationStatus", func(disruptionBuilder *builderstest.DisruptionBuilder, pods builderstest.PodsBuilder, expectedTerminationStatus TerminationStatus) {
+		DescribeTable("TerminationStatus", func(disruptionBuilder *builderstest.DisruptionBuilder, pods builderstest.PodsBuilder, expectedTerminationStatus TerminationStatus) {
 			// Arrange
 			disruption := disruptionBuilder.Build()
 
 			// Action && Assert
-			Expect(disruption.GetTerminationStatus(pods.Build())).To(Equal(expectedTerminationStatus))
+			Expect(disruption.TerminationStatus(pods.Build())).To(Equal(expectedTerminationStatus))
 		},
 			Entry(
 				"not yet created disruption IS NOT terminated",
@@ -320,14 +320,14 @@ var _ = Describe("Disruption", func() {
 		)
 	})
 
-	Describe("CalculateRemainingDuration", func() {
+	Describe("RemainingDuration", func() {
 
-		DescribeTable("CalculateRemainingDuration", func(disruptionBuilder *builderstest.DisruptionBuilder, expectedRemainingDuration time.Duration) {
+		DescribeTable("RemainingDuration", func(disruptionBuilder *builderstest.DisruptionBuilder, expectedRemainingDuration time.Duration) {
 			// Arrange
 			disruption := disruptionBuilder.Build()
 
 			// Action && Assert
-			remainingDuration := disruption.CalculateRemainingDuration().Round(time.Second).Truncate(2 * time.Second)
+			remainingDuration := disruption.RemainingDuration().Round(time.Second).Truncate(2 * time.Second)
 			Expect(remainingDuration).To(Equal(expectedRemainingDuration))
 		},
 			Entry(

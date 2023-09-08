@@ -242,7 +242,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// If the disruption is at least r.ExpiredDisruptionGCDelay older than when its duration ended, then we should delete it.
 		// calculateRemainingDurationSeconds returns the seconds until (or since, if negative) the duration's deadline. We compare it to negative ExpiredDisruptionGCDelay,
 		// and if less than that, it means we have exceeded the deadline by at least ExpiredDisruptionGCDelay, so we can delete
-		if r.ExpiredDisruptionGCDelay != nil && (instance.CalculateRemainingDuration() <= (-1 * *r.ExpiredDisruptionGCDelay)) {
+		if r.ExpiredDisruptionGCDelay != nil && (instance.RemainingDuration() <= (-1 * *r.ExpiredDisruptionGCDelay)) {
 			r.log.Infow("disruption has lived for more than its duration, it will now be deleted.", "duration", instance.Spec.Duration)
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionGCOver, r.ExpiredDisruptionGCDelay.String(), "")
 
@@ -253,7 +253,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 
 			return ctrl.Result{Requeue: true}, err
-		} else if instance.CalculateRemainingDuration() <= 0 {
+		} else if instance.RemainingDuration() <= 0 {
 			if err := r.updateInjectionStatus(instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
 			}
@@ -311,7 +311,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}, nil
 		}
 
-		disruptionEndAt := instance.CalculateRemainingDuration() + time.Second
+		disruptionEndAt := instance.RemainingDuration() + time.Second
 
 		r.log.Infow("requeuing disruption to check once expired", "requeueDelay", disruptionEndAt)
 
@@ -351,7 +351,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(instance *chaosv1beta1.Disr
 		status = chaostypes.DisruptionInjectionStatusNotInjected
 	}
 
-	terminationStatus := instance.GetTerminationStatus(chaosPods)
+	terminationStatus := instance.TerminationStatus(chaosPods)
 	if terminationStatus != chaosv1beta1.TSNotTerminated {
 		switch status {
 		case
@@ -545,8 +545,8 @@ func (r *DisruptionReconciler) createChaosPods(instance *chaosv1beta1.Disruption
 		return nil
 	}
 
-	if instance.CalculateRemainingDuration().Seconds() < 1 {
-		r.log.Debugw("skipping creation of chaos pods, remaining duration is too small", "remainingDuration", instance.CalculateRemainingDuration().String())
+	if instance.RemainingDuration().Seconds() < 1 {
+		r.log.Debugw("skipping creation of chaos pods, remaining duration is too small", "remainingDuration", instance.RemainingDuration().String())
 
 		return nil
 	}

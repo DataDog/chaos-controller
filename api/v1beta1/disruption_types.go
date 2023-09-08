@@ -320,8 +320,8 @@ func (r *Disruption) TimeToCreatePods(creationTimestamp time.Time) time.Time {
 	return noPodsBefore
 }
 
-// CalculateRemainingDuration return the remaining duration of the disruption.
-func (r *Disruption) CalculateRemainingDuration() time.Duration {
+// RemainingDuration return the remaining duration of the disruption.
+func (r *Disruption) RemainingDuration() time.Duration {
 	return r.calculateDeadline(
 		r.Spec.Duration.Duration(),
 		r.TimeToInject(r.ObjectMeta.CreationTimestamp.Time),
@@ -337,8 +337,8 @@ func (r *Disruption) calculateDeadline(duration time.Duration, creationTime time
 	return timeout.Sub(now)
 }
 
-// GetTerminationStatus determines the termination status of a disruption based on various factors.
-func (r *Disruption) GetTerminationStatus(chaosPods []corev1.Pod) TerminationStatus {
+// TerminationStatus determines the termination status of a disruption based on various factors.
+func (r *Disruption) TerminationStatus(chaosPods []corev1.Pod) TerminationStatus {
 	// a not yet created disruption is neither temporary nor definitively ended
 	if r.CreationTimestamp.IsZero() {
 		return TSNotTerminated
@@ -346,7 +346,7 @@ func (r *Disruption) GetTerminationStatus(chaosPods []corev1.Pod) TerminationSta
 
 	// a definitive state (expired duration or deletion) imply a definitively deleted injection
 	// and should be returned prior to a temporarily terminated state
-	if r.CalculateRemainingDuration() <= 0 || !r.DeletionTimestamp.IsZero() {
+	if r.RemainingDuration() <= 0 || !r.DeletionTimestamp.IsZero() {
 		return TSDefinitivelyTerminated
 	}
 
