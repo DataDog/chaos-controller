@@ -185,7 +185,7 @@ minikube-load-all: $(addprefix minikube-load-,$(TARGETS))
 
 # Build chaosli
 chaosli:
-	GOOS=darwin GOARCH=${OS_ARCH} CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_${OS_ARCH} ./cli/chaosli/
+	GOOS=darwin GOARCH=${GOARCH} CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_${GOARCH} ./cli/chaosli/
 
 # https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
 _ginkgo_test:
