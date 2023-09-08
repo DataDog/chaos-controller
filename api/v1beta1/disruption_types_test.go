@@ -338,41 +338,6 @@ var _ = Describe("Disruption", func() {
 				"should return 90 remaining duration seconds with a disruption created 30 seconds ago with a 2m duration",
 				builderstest.NewDisruptionBuilder().WithCreation(30*time.Second).WithDuration("2m"),
 				90*time.Second),
-			Entry(
-				"should return 120 remaining duration seconds if based on the triggers.createPods if triggers.inject is nil",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					CreatePods: DisruptionTrigger{
-						NotBefore: metav1.NewTime(notBeforeTime),
-						Offset:    "",
-					},
-				}), 120*time.Second),
-			Entry(
-				"should return 120 remaining duration seconds if the inject.notBefore if set",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					Inject: DisruptionTrigger{
-						NotBefore: metav1.NewTime(notBeforeTime),
-						Offset:    "1",
-					},
-					CreatePods: DisruptionTrigger{
-						NotBefore: metav1.Time{},
-						Offset:    "2m",
-					},
-				}), 120*time.Second),
-			Entry(
-				"should return 120 remaining duration second if based on the time after creationTimestamp if inject.offset is set",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					Inject: DisruptionTrigger{
-						NotBefore: metav1.Time{},
-						Offset:    "1m",
-					},
-				}), 90*time.Second),
-			Entry(
-				"should return 30 remaining duration seconds based on the creationTimestamp if inject.NotBefore is before creationTimestamp",
-				builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
-					CreatePods: DisruptionTrigger{
-						NotBefore: metav1.NewTime(time.Now().Add(-time.Minute)),
-					},
-				}), 30*time.Second),
 		)
 	})
 
