@@ -20,7 +20,7 @@ var MaxDepth = uint(10)
 
 // MaxLength of the string representation of an object.
 // If MaxLength is set to 0, the Object will not be truncated.
-var MaxLength = 40000000
+var MaxLength = 4000
 
 /*
 By default, all objects (even those that implement fmt.Stringer and fmt.GoStringer) are recursively inspected to generate output.
