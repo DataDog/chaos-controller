@@ -11,6 +11,7 @@ chart/install.yaml
 dogfood/bin
 out
 dist
+docker-metadata.json
 
 # Test binary, build with `go test -c`
 *.test
