@@ -167,6 +167,37 @@ var _ = Describe("Chaos Pod Service", func() {
 				chaosPodServiceConfig.Client = fakeClient
 			})
 
+			DescribeTable("success cases", func(ls labels.Set) {
+				// Arrange
+				chaosPodService, err := services.NewChaosPodService(chaosPodServiceConfig)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// Action
+				chaosPods, err := chaosPodService.GetChaosPodsOfDisruption(context.Background(), disruption, ls)
+
+				// Assert
+				By("not return an error")
+				Expect(err).ShouldNot(HaveOccurred())
+
+				By("return a list of two pods")
+				Expect(chaosPods).ToNot(BeEmpty())
+				Expect(chaosPods).Should(HaveLen(2))
+
+				for _, chaosPod := range chaosPods {
+					Expect(chaosPod).ToNot(Equal(nonChaosPodName))
+					Expect(chaosPod.Namespace).Should(Equal(DefaultChaosNamespace))
+					Expect(chaosPod.Labels[chaostypes.DisruptionNameLabel]).Should(Equal(DefaultDisruptionName))
+					Expect(chaosPod.Labels[chaostypes.DisruptionNamespaceLabel]).Should(Equal(DefaultNamespace))
+				}
+			},
+				Entry("with an empty label set",
+					labels.Set{},
+				),
+				Entry("with a nil label set",
+					nil,
+				),
+			)
+
 			Context("with a nil disruption and an empty label set", func() {
 
 				BeforeEach(func() {
@@ -175,40 +206,6 @@ var _ = Describe("Chaos Pod Service", func() {
 				})
 
 				Describe("success cases", func() {
-
-					DescribeTable("should return a list of two chaos pods", func(ls labels.Set) {
-						// Arrange
-						chaosPodService, err := services.NewChaosPodService(chaosPodServiceConfig)
-						Expect(err).ShouldNot(HaveOccurred())
-
-						disruption := builderstest.NewDisruptionBuilder().WithNamespace(DefaultNamespace).WithName(DefaultDisruptionName).Build()
-
-						// Action
-						chaosPods, err := chaosPodService.GetChaosPodsOfDisruption(context.Background(), &disruption, ls)
-
-						// Assert
-						By("not return an error")
-						Expect(err).ShouldNot(HaveOccurred())
-
-						By("return a list of two pods")
-						Expect(chaosPods).ToNot(BeEmpty())
-						Expect(chaosPods).Should(HaveLen(2))
-
-						for _, chaosPod := range chaosPods {
-							Expect(chaosPod).ToNot(Equal(nonChaosPodName))
-							Expect(chaosPod.Namespace).Should(Equal(DefaultChaosNamespace))
-							Expect(chaosPod.Labels[chaostypes.DisruptionNameLabel]).Should(Equal(DefaultDisruptionName))
-							Expect(chaosPod.Labels[chaostypes.DisruptionNamespaceLabel]).Should(Equal(DefaultNamespace))
-						}
-					},
-						Entry("with an empty label set",
-							labels.Set{},
-						),
-						Entry("with a nil label set",
-							nil,
-						),
-					)
-
 					It("should return a list of all chaos pods", func() {
 						// Assert
 						By("not return an error")
@@ -993,22 +990,22 @@ var _ = Describe("Chaos Pod Service", func() {
 					DefaultChaosNamespace,
 				),
 				EmptyInjectorLabels),
-			//Entry("chaos pod with image pull secrets",
-			//	builderstest.NewPodBuilder(
-			//		"pod-1",
-			//		DefaultChaosNamespace,
-			//	).WithPullSecrets([]v1.LocalObjectReference{
-			//		{
-			//			Name: DefaultImagePullSecrets,
-			//		},
-			//	}),
-			//	EmptyInjectorLabels),
-			//Entry("chaos pod with injector labels",
-			//	builderstest.NewPodBuilder(
-			//		"pod-1",
-			//		DefaultChaosNamespace,
-			//	).WithLabels(DefaultInjectorLabels),
-			//	DefaultInjectorLabels)
+			Entry("chaos pod with image pull secrets",
+				builderstest.NewPodBuilder(
+					"pod-1",
+					DefaultChaosNamespace,
+				).WithPullSecrets([]v1.LocalObjectReference{
+					{
+						Name: DefaultImagePullSecrets,
+					},
+				}),
+				EmptyInjectorLabels),
+			Entry("chaos pod with injector labels",
+				builderstest.NewPodBuilder(
+					"pod-1",
+					DefaultChaosNamespace,
+				).WithLabels(DefaultInjectorLabels),
+				DefaultInjectorLabels),
 		)
 	})
 
