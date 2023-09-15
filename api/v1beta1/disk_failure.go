@@ -61,6 +61,7 @@ func (s *DiskFailureSpec) validatePaths() error {
 			return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters, found %d", MaxDiskPathCharacters, len(path))
 		}
 	}
+
 	return nil
 }
 
@@ -73,6 +74,7 @@ func (s *DiskFailureSpec) validateProbability() error {
 
 	probabilityStr := strings.TrimSuffix(s.Probability, "%")
 	probabilityInt, err := strconv.Atoi(probabilityStr)
+
 	if err != nil {
 		return probabilityError
 	}
