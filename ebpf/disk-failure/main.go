@@ -23,10 +23,10 @@ import (
 	"go.uber.org/zap"
 )
 
-var nFlag = flag.Uint64("p", 0, "Process to disrupt")
-var nPath = flag.String("f", "/", "Filter path")
+var nPid = flag.Uint64("process", 0, "Process to disrupt")
+var nPath = flag.String("path", "/", "Filter path")
 var nProbability = flag.Uint64("probability", 100, "Probability to disrupt")
-var nExitCode = flag.Uint64("c", 1, "Exit code")
+var nExitCode = flag.Uint64("exit-code", 1, "Exit code")
 
 var logger *zap.SugaredLogger
 
@@ -96,7 +96,7 @@ func initGlobalVariables(bpfModule *bpf.Module) {
 
 	// Set the PID
 	var pid uint32
-	pid = uint32(*nFlag)
+	pid = uint32(*nPid)
 	if err := bpfModule.InitGlobalVariable("target_pid", pid); err != nil {
 		must(err)
 	}

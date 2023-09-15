@@ -84,8 +84,8 @@ var _ = Describe("Disk Failure", func() {
 
 			It("should start the eBPF Disk failure program", func() {
 				cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-					"-p", strconv.Itoa(proc.Pid),
-					"-f", "/",
+					"-process", strconv.Itoa(proc.Pid),
+					"-path", "/",
 					"-probability", "100",
 				})
 			})
@@ -97,13 +97,13 @@ var _ = Describe("Disk Failure", func() {
 
 				It("should run two eBPF program per paths", func() {
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-p", strconv.Itoa(proc.Pid),
-						"-f", "/test",
+						"-process", strconv.Itoa(proc.Pid),
+						"-path", "/test",
 						"-probability", "100",
 					})
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-p", strconv.Itoa(proc.Pid),
-						"-f", "/toto",
+						"-process", strconv.Itoa(proc.Pid),
+						"-path", "/toto",
 						"-probability", "100",
 					})
 				})
@@ -116,9 +116,9 @@ var _ = Describe("Disk Failure", func() {
 
 				It("should start with a valid exit code", func() {
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-p", strconv.Itoa(proc.Pid),
-						"-f", "/",
-						"-c", "13",
+						"-process", strconv.Itoa(proc.Pid),
+						"-path", "/",
+						"-exit-code", "13",
 						"-probability", "100",
 					})
 				})
@@ -131,8 +131,8 @@ var _ = Describe("Disk Failure", func() {
 
 				It("should start with a valid exit code", func() {
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-p", strconv.Itoa(proc.Pid),
-						"-f", "/",
+						"-process", strconv.Itoa(proc.Pid),
+						"-path", "/",
 						"-probability", "100",
 					})
 				})
@@ -145,8 +145,8 @@ var _ = Describe("Disk Failure", func() {
 
 				It("should start with a 50 probability", func() {
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-p", strconv.Itoa(proc.Pid),
-						"-f", "/",
+						"-process", strconv.Itoa(proc.Pid),
+						"-path", "/",
 						"-probability", "50",
 					})
 				})
@@ -161,8 +161,8 @@ var _ = Describe("Disk Failure", func() {
 			It("should start the eBPF Disk failure program", func() {
 				containerMock.AssertNumberOfCalls(GinkgoT(), "PID", 0)
 				cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-					"-p", strconv.Itoa(0),
-					"-f", "/",
+					"-process", strconv.Itoa(0),
+					"-path", "/",
 					"-probability", "100",
 				})
 			})
@@ -174,9 +174,9 @@ var _ = Describe("Disk Failure", func() {
 
 				It("should start with a valid exit code", func() {
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-p", strconv.Itoa(0),
-						"-f", "/",
-						"-c", "17",
+						"-process", strconv.Itoa(0),
+						"-path", "/",
+						"-exit-code", "17",
 						"-probability", "100",
 					})
 				})
@@ -189,8 +189,8 @@ var _ = Describe("Disk Failure", func() {
 
 				It("should start with a valid exit code", func() {
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-p", strconv.Itoa(0),
-						"-f", "/",
+						"-process", strconv.Itoa(0),
+						"-path", "/",
 						"-probability", "100",
 					})
 				})
