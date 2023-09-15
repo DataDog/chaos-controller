@@ -7,6 +7,7 @@ package v1beta1_test
 
 import (
 	"fmt"
+
 	. "github.com/DataDog/chaos-controller/api/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -22,12 +23,14 @@ var _ = Describe("DiskFailureSpec", func() {
 			},
 			Entry("with a valid path not exceeding 62 characters",
 				DiskFailureSpec{
-					Paths: []string{randStringRunes(rand.IntnRange(1, 62)), randStringRunes(rand.IntnRange(1, 62))},
+					Paths:       []string{randStringRunes(rand.IntnRange(1, 62)), randStringRunes(rand.IntnRange(1, 62))},
+					Probability: "100%",
 				},
 			),
-			Entry("with a valid path containing spaces",
+			Entry("with a valid path containing spaces and a random probability percentage",
 				DiskFailureSpec{
-					Paths: []string{"   " + randStringRunes(rand.IntnRange(61, 62)) + "   ", randStringRunes(rand.IntnRange(1, 62))},
+					Paths:       []string{"   " + randStringRunes(rand.IntnRange(61, 62)) + "   ", randStringRunes(rand.IntnRange(1, 62))},
+					Probability: fmt.Sprintf("%d%%", rand.IntnRange(1, 100)),
 				},
 			),
 		)
@@ -35,32 +38,123 @@ var _ = Describe("DiskFailureSpec", func() {
 		pathGreaterThan62Characters := randStringRunes(rand.IntnRange(63, 10000))
 
 		DescribeTable("error cases",
-			func(df DiskFailureSpec, expectedError string) {
+			func(df DiskFailureSpec, expectedErrors []string) {
 				// Action
 				err := df.Validate()
 
 				// Assert
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).Should(Equal(expectedError))
+				for _, expectedError := range expectedErrors {
+					Expect(err.Error()).Should(ContainSubstring(expectedError))
+				}
 			},
 			Entry("with a path exceeding 62 characters",
 				DiskFailureSpec{
-					Paths: []string{randStringRunes(rand.IntnRange(1, 62)), pathGreaterThan62Characters},
+					Paths:       []string{randStringRunes(rand.IntnRange(1, 62)), pathGreaterThan62Characters},
+					Probability: "100%",
 				},
-				fmt.Sprintf("the path of the disk failure disruption must not exceed 62 characters, found %d", len(pathGreaterThan62Characters)),
+				[]string{
+					fmt.Sprintf("the path of the disk failure disruption must not exceed 62 characters, found %d", len(pathGreaterThan62Characters)),
+				},
 			),
 			Entry("with an empty path",
 				DiskFailureSpec{
-					Paths: []string{""},
+					Paths:       []string{""},
+					Probability: "100%",
 				},
-				"the path of the disk failure disruption must not be empty",
+				[]string{
+					"the path of the disk failure disruption must not be empty",
+				},
 			),
 			Entry("with a blank path",
 				DiskFailureSpec{
 					Paths: []string{randStringRunes(rand.IntnRange(1, 62)), "   "},
 				},
-				"the path of the disk failure disruption must not be empty",
+				[]string{
+					"the path of the disk failure disruption must not be empty",
+				},
 			),
+			Entry("with an empty probability",
+				DiskFailureSpec{
+					Paths:       []string{"/"},
+					Probability: "",
+				},
+				[]string{
+					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+				}),
+			Entry("with an empty probability",
+				DiskFailureSpec{
+					Paths:       []string{"/"},
+					Probability: "%",
+				},
+				[]string{
+					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+				}),
+			Entry("with a negative probability",
+				DiskFailureSpec{
+					Paths:       []string{"/"},
+					Probability: fmt.Sprintf("-%d%%", rand.IntnRange(0, 1000)),
+				},
+				[]string{
+					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+				}),
+			Entry("with a probability greater than 100%",
+				DiskFailureSpec{
+					Paths:       []string{"/"},
+					Probability: "101%",
+				},
+				[]string{
+					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+				}),
+			Entry("with a probability equals to 0%",
+				DiskFailureSpec{
+					Paths:       []string{"/"},
+					Probability: "0%",
+				},
+				[]string{
+					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+				}),
+			Entry("with a probability as a non percentage",
+				DiskFailureSpec{
+					Paths:       []string{"/"},
+					Probability: "10",
+				},
+				[]string{
+					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+				}),
+			Entry("with a probability as a non number",
+				DiskFailureSpec{
+					Paths:       []string{"/"},
+					Probability: "lorem%",
+				},
+				[]string{
+					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+				}),
+			Entry("with a probability as a float",
+				DiskFailureSpec{
+					Paths:       []string{"/"},
+					Probability: "100.0%",
+				},
+				[]string{
+					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+				}),
+			Entry("with an invalid suffix",
+				DiskFailureSpec{
+					Paths:       []string{"/"},
+					Probability: "100%1231",
+				},
+				[]string{
+					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+				}),
+			Entry("with a invalid probability and and invalid path",
+				DiskFailureSpec{
+					Paths:       []string{""},
+					Probability: "",
+				},
+				[]string{
+					"the path of the disk failure disruption must not be empty",
+					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+				}),
 		)
 	})
 
@@ -78,41 +172,47 @@ var _ = Describe("DiskFailureSpec", func() {
 			},
 			Entry("with a '/' path",
 				DiskFailureSpec{
-					Paths: []string{"/"},
+					Paths:       []string{"/"},
+					Probability: "100%",
 				},
-				[]string{"--path", "/"},
+				[]string{"--path", "/", "--probability", "100%"},
 			),
 			Entry("with a '/sub/path/'",
 				DiskFailureSpec{
-					Paths: []string{"/sub/path/"},
+					Paths:       []string{"/sub/path/"},
+					Probability: "100%",
 				},
-				[]string{"--path", "/sub/path/"},
+				[]string{"--path", "/sub/path/", "--probability", "100%"},
 			),
 			Entry("with multiple paths",
 				DiskFailureSpec{
-					Paths: []string{"/path-1", "/path-2"},
+					Paths:       []string{"/path-1", "/path-2"},
+					Probability: "100%",
 				},
-				[]string{"--path", "/path-1", "--path", "/path-2"},
+				[]string{"--path", "/path-1", "--path", "/path-2", "--probability", "100%"},
 			),
 			Entry("with a path containing spaces",
 				DiskFailureSpec{
-					Paths: []string{"  /  "},
+					Paths:       []string{"  /  "},
+					Probability: "100%",
 				},
-				[]string{"--path", "/"},
+				[]string{"--path", "/", "--probability", "100%"},
 			),
 			Entry("with an EACCES exit code",
 				DiskFailureSpec{
 					Paths:         []string{"/"},
 					OpenatSyscall: &OpenatSyscallSpec{ExitCode: "EACCES"},
+					Probability:   "100%",
 				},
-				[]string{"--path", "/", "--exit-code", "EACCES"},
+				[]string{"--path", "/", "--exit-code", "EACCES", "--probability", "100%"},
 			),
 			Entry("with an empty exit code",
 				DiskFailureSpec{
 					Paths:         []string{"/"},
 					OpenatSyscall: &OpenatSyscallSpec{},
+					Probability:   "100%",
 				},
-				[]string{"--path", "/"},
+				[]string{"--path", "/", "--probability", "100%"},
 			),
 		)
 	})

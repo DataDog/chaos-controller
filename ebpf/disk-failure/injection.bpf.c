@@ -10,6 +10,10 @@ const volatile pid_t target_pid = 0;
 const volatile pid_t exclude_pid;
 const volatile char filter_path[61];
 const volatile pid_t exit_code = ENOENT;
+const volatile int probability = 100;
+
+unsigned int hits = 0;
+unsigned  int disruptedHits = 0;
 
 struct data_t {
     u32 ppid;
@@ -81,6 +85,21 @@ int injection_disk_failure(struct pt_regs *ctx)
         return 0;
     }
 #endif
+
+    if (probability != 100) {
+        if (hits != 0) {
+            unsigned long long scaled_disruptedHits = disruptedHits * 100;
+            unsigned long long scaled_hits = hits;
+
+            if ((scaled_disruptedHits / scaled_hits) > probability) {
+                hits++;
+                return 0;
+            }
+        }
+
+        hits++;
+        disruptedHits++;
+    }
 
     data.ppid = ppid;
     data.pid = pid;

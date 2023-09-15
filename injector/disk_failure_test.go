@@ -6,12 +6,12 @@
 package injector_test
 
 import (
-	"github.com/DataDog/chaos-controller/command"
 	"os"
 	"strconv"
 
 	"github.com/DataDog/chaos-controller/api"
-	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/command"
 	"github.com/DataDog/chaos-controller/container"
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/types"
@@ -59,7 +59,8 @@ var _ = Describe("Disk Failure", func() {
 		}
 
 		spec = v1beta1.DiskFailureSpec{
-			Paths: []string{"/"},
+			Paths:       []string{"/"},
+			Probability: "100%",
 		}
 	})
 
@@ -85,6 +86,7 @@ var _ = Describe("Disk Failure", func() {
 				cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
 					"-p", strconv.Itoa(proc.Pid),
 					"-f", "/",
+					"-probability", "100",
 				})
 			})
 
@@ -97,10 +99,12 @@ var _ = Describe("Disk Failure", func() {
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
 						"-p", strconv.Itoa(proc.Pid),
 						"-f", "/test",
+						"-probability", "100",
 					})
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
 						"-p", strconv.Itoa(proc.Pid),
 						"-f", "/toto",
+						"-probability", "100",
 					})
 				})
 			})
@@ -115,6 +119,7 @@ var _ = Describe("Disk Failure", func() {
 						"-p", strconv.Itoa(proc.Pid),
 						"-f", "/",
 						"-c", "13",
+						"-probability", "100",
 					})
 				})
 			})
@@ -128,6 +133,21 @@ var _ = Describe("Disk Failure", func() {
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
 						"-p", strconv.Itoa(proc.Pid),
 						"-f", "/",
+						"-probability", "100",
+					})
+				})
+			})
+
+			Context("with a custom probability", func() {
+				BeforeEach(func() {
+					spec.Probability = "50%"
+				})
+
+				It("should start with a 50 probability", func() {
+					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+						"-p", strconv.Itoa(proc.Pid),
+						"-f", "/",
+						"-probability", "50",
 					})
 				})
 			})
@@ -143,6 +163,7 @@ var _ = Describe("Disk Failure", func() {
 				cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
 					"-p", strconv.Itoa(0),
 					"-f", "/",
+					"-probability", "100",
 				})
 			})
 
@@ -156,6 +177,7 @@ var _ = Describe("Disk Failure", func() {
 						"-p", strconv.Itoa(0),
 						"-f", "/",
 						"-c", "17",
+						"-probability", "100",
 					})
 				})
 			})
@@ -169,6 +191,7 @@ var _ = Describe("Disk Failure", func() {
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
 						"-p", strconv.Itoa(0),
 						"-f", "/",
+						"-probability", "100",
 					})
 				})
 			})

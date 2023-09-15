@@ -7,26 +7,23 @@ package v1beta1
 
 import (
 	"fmt"
-	authv1 "k8s.io/api/authentication/v1"
 	"time"
 
 	"github.com/DataDog/chaos-controller/ddmark"
 	metricsnoop "github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	tracernoop "github.com/DataDog/chaos-controller/o11y/tracer/noop"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/hashicorp/go-multierror"
-	"github.com/stretchr/testify/mock"
-	"k8s.io/client-go/tools/record"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	chaostypes "github.com/DataDog/chaos-controller/types"
-
+	"github.com/stretchr/testify/mock"
+	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -519,7 +516,8 @@ func makeValidDiskFailureDisruption() *Disruption {
 				"namespace": "random",
 			},
 			DiskFailure: &DiskFailureSpec{
-				Paths: []string{"/"},
+				Paths:       []string{"/"},
+				Probability: "100%",
 			},
 		},
 	}

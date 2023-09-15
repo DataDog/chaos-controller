@@ -7,7 +7,10 @@ package v1beta1
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 // OpenatSyscallSpec syscall specs
@@ -25,23 +28,57 @@ type DiskFailureSpec struct {
 	Paths []string `json:"paths"`
 	// +nullable
 	OpenatSyscall *OpenatSyscallSpec `json:"openat,omitempty"`
+	// +kubebuilder:validation:Required
+	// +ddmark:validation:Required=true
+	Probability string `json:"probability"`
 }
 
 // MaxDiskPathCharacters is used to limit the number of characters due to the eBPF memory kernel limitation.
 const MaxDiskPathCharacters = 62
 
 // Validate validates args for the given disruption
-func (s *DiskFailureSpec) Validate() error {
-	for _, path := range s.Paths {
-		path := strings.TrimSpace(path)
+func (s *DiskFailureSpec) Validate() (retErr error) {
+	if err := s.validatePaths(); err != nil {
+		retErr = multierror.Append(retErr, err)
+	}
 
-		if path == "" {
+	if err := s.validateProbability(); err != nil {
+		retErr = multierror.Append(retErr, err)
+	}
+
+	return
+}
+
+func (s *DiskFailureSpec) validatePaths() error {
+	for _, path := range s.Paths {
+		trimSpacePath := strings.TrimSpace(path)
+
+		if trimSpacePath == "" {
 			return fmt.Errorf("the path of the disk failure disruption must not be empty")
 		}
 
-		if len(path) > MaxDiskPathCharacters {
+		if len(trimSpacePath) > MaxDiskPathCharacters {
 			return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters, found %d", MaxDiskPathCharacters, len(path))
 		}
+	}
+	return nil
+}
+
+func (s *DiskFailureSpec) validateProbability() error {
+	probabilityError := fmt.Errorf("the probability of the disk failure disruption should be a percentage within the range of 1%% to 100%%")
+
+	if !strings.HasSuffix(s.Probability, "%") {
+		return probabilityError
+	}
+
+	probabilityStr := strings.TrimSuffix(s.Probability, "%")
+	probabilityInt, err := strconv.Atoi(probabilityStr)
+	if err != nil {
+		return probabilityError
+	}
+
+	if probabilityInt <= 0 || probabilityInt > 100 {
+		return probabilityError
 	}
 
 	return nil
@@ -59,6 +96,8 @@ func (s *DiskFailureSpec) GenerateArgs() (args []string) {
 			args = append(args, "--exit-code", s.OpenatSyscall.ExitCode)
 		}
 	}
+
+	args = append(args, "--probability", s.Probability)
 
 	return args
 }

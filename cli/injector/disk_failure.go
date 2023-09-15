@@ -21,12 +21,14 @@ var diskFailureCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 		paths, _ := cmd.Flags().GetStringArray("path")
 		exitCode, _ := cmd.Flags().GetString("exit-code")
+		probability, _ := cmd.Flags().GetString("probability")
 
 		spec := v1beta1.DiskFailureSpec{
 			Paths: paths,
 			OpenatSyscall: &v1beta1.OpenatSyscallSpec{
 				ExitCode: exitCode,
 			},
+			Probability: probability,
 		}
 
 		// create injectors
@@ -52,5 +54,6 @@ var diskFailureCmd = &cobra.Command{
 
 func init() {
 	diskFailureCmd.Flags().StringArray("path", []string{}, "Path to apply the disk failure")
+	diskFailureCmd.Flags().String("probability", "100%", "Probability to apply disk failure")
 	diskFailureCmd.Flags().String("exit-code", "", "Exit code to return")
 }
