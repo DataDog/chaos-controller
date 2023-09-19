@@ -24,7 +24,7 @@ import (
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/hashicorp/go-multierror"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -329,7 +329,7 @@ func (r *Disruption) RemainingDuration() time.Duration {
 }
 
 func (r *Disruption) calculateDeadline(duration time.Duration, creationTime time.Time) time.Duration {
-	// first we must calculate the timout from when the disruption was created, not from now
+	// first we must calculate the timeout from when the disruption was created, not from now
 	timeout := creationTime.Add(duration)
 	now := time.Now() // rather not take the risk that the time changes by a second during this function
 
@@ -339,7 +339,7 @@ func (r *Disruption) calculateDeadline(duration time.Duration, creationTime time
 
 // TerminationStatus determines the termination status of a disruption based on various factors.
 func (r *Disruption) TerminationStatus(chaosPods []corev1.Pod) TerminationStatus {
-	// a not yet created disruption is neither temporary nor definitively ended
+	// a not yet created disruption is neither temporarily nor definitively ended
 	if r.CreationTimestamp.IsZero() {
 		return TSNotTerminated
 	}
@@ -382,7 +382,7 @@ func (r *Disruption) TerminationStatus(chaosPods []corev1.Pod) TerminationStatus
 // // if it is a string value which is either non-numeric or numeric but lacking a trailing '%' it returns an error.
 func (r *Disruption) GetTargetsCountAsInt(targetTotal int, roundUp bool) (int, error) {
 	if r.Spec.Count == nil {
-		return 0, k8serrors.NewBadRequest("nil value for IntOrString")
+		return 0, apierrors.NewBadRequest("nil value for IntOrString")
 	}
 
 	return intstr.GetScaledValueFromIntOrPercent(r.Spec.Count, targetTotal, roundUp)

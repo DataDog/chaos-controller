@@ -172,7 +172,7 @@ var _ = Describe("Disruption", func() {
 			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
 				Inject: DisruptionTrigger{
 					NotBefore: metav1.NewTime(notBeforeTime),
-					Offset:    "1",
+					Offset:    "",
 				},
 				CreatePods: DisruptionTrigger{
 					NotBefore: metav1.Time{},
@@ -195,7 +195,7 @@ var _ = Describe("Disruption", func() {
 				},
 			}), defaultCreationTimestamp),
 		Entry(
-			"should return creationTimestamp + 5 minutes if createPods.NotBefore is set",
+			"should return creationTimestamp + 5 minutes if createPods.offset is set",
 			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
 				CreatePods: DisruptionTrigger{
 					NotBefore: metav1.Time{},
@@ -203,7 +203,7 @@ var _ = Describe("Disruption", func() {
 				},
 			}), defaultCreationTimestamp.Add(time.Minute*5)),
 		Entry(
-			"should return creationTimestamp + 5 minutes if createPods.NotBefore is set",
+			"should return creationTimestamp + 5 minutes if createPods.NotBefore is before creationTimestamp",
 			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(DisruptionTriggers{
 				CreatePods: DisruptionTrigger{
 					NotBefore: metav1.NewTime(defaultCreationTimestamp.Add(-time.Minute * 5)),
