@@ -245,7 +245,7 @@ func main() {
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
 
-	go disruptionReconciler.ReportMetrics()
+	go disruptionReconciler.ReportMetrics(ctx)
 
 	if cfg.Controller.DisruptionRolloutEnabled {
 		// create deployment and statefulset informers

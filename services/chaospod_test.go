@@ -258,7 +258,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			chaosPod = cpBuilder.Build()
 
 			// Action
-			isFinalizerRemoved, err = chaosPodService.HandleChaosPodTermination(disruption, &chaosPod)
+			isFinalizerRemoved, err = chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
 		})
 
 		DescribeTable("success cases", func(chaosPodBuilder *builderstest.ChaosPodBuilder) {
@@ -277,7 +277,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Action
-			isRemoved, err := chaosPodService.HandleChaosPodTermination(disruption, &chaosPod)
+			isRemoved, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
 
 			// Assert
 			By("not return an error")
@@ -376,7 +376,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Action
-			isRemoved, err := chaosPodService.HandleChaosPodTermination(disruption, &chaosPod)
+			isRemoved, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
 
 			// Assert
 			By("not return an error")
@@ -432,7 +432,7 @@ var _ = Describe("Chaos Pod Service", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 
 					// Action
-					isRemoved, err := chaosPodService.HandleChaosPodTermination(disruption, &chaosPod)
+					isRemoved, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
 
 					// Assert
 					By("not return an error")
@@ -594,7 +594,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 		JustBeforeEach(func() {
 			// Action
-			isDeleted = chaosPodService.DeletePod(pod)
+			isDeleted = chaosPodService.DeletePod(context.Background(), pod)
 		})
 
 		Context("with a pod not marked to be deleted", func() {
@@ -1109,7 +1109,7 @@ var _ = Describe("Chaos Pod Service", func() {
 	Describe("WaitForPodCreation", func() {
 		JustBeforeEach(func() {
 			// Action
-			err = chaosPodService.WaitForPodCreation(chaosPod)
+			err = chaosPodService.WaitForPodCreation(context.Background(), chaosPod)
 		})
 
 		Context("with a single pod", func() {
@@ -1184,7 +1184,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 		JustBeforeEach(func() {
 			// Action
-			err = chaosPodService.HandleOrphanedChaosPods(DefaultReq)
+			err = chaosPodService.HandleOrphanedChaosPods(context.Background(), DefaultReq)
 		})
 
 		Describe("success cases", func() {

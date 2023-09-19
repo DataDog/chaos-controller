@@ -38,10 +38,10 @@ type ChaosPodService interface {
 	GetChaosPodsOfDisruption(ctx context.Context, instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error)
 
 	// HandleChaosPodTermination handles the termination of a chaos pod during a disruption event.
-	HandleChaosPodTermination(disruption *chaosv1beta1.Disruption, pod *corev1.Pod) (bool, error)
+	HandleChaosPodTermination(ctx context.Context, disruption *chaosv1beta1.Disruption, pod *corev1.Pod) (bool, error)
 
 	// DeletePod deletes a pod from the Kubernetes cluster.
-	DeletePod(pod corev1.Pod) bool
+	DeletePod(ctx context.Context, pod corev1.Pod) bool
 
 	// GenerateChaosPodOfDisruption generates a pod for the disruption.
 	GenerateChaosPodOfDisruption(disruption *chaosv1beta1.Disruption, targetName, targetNodeName string, args []string, kind chaostypes.DisruptionKindName) corev1.Pod
@@ -56,10 +56,10 @@ type ChaosPodService interface {
 	CreatePod(ctx context.Context, pod *corev1.Pod) error
 
 	// WaitForPodCreation waits for a pod to be created in the Kubernetes cluster.
-	WaitForPodCreation(pod corev1.Pod) error
+	WaitForPodCreation(ctx context.Context, pod corev1.Pod) error
 
 	// HandleOrphanedChaosPods handles orphaned chaos pods based on a controller request.
-	HandleOrphanedChaosPods(req ctrl.Request) error
+	HandleOrphanedChaosPods(ctx context.Context, req ctrl.Request) error
 }
 
 // ChaosPodServiceInjectorConfig contains configuration options for the injector.
@@ -125,7 +125,7 @@ func (m *chaosPodService) GetChaosPodsOfDisruption(ctx context.Context, instance
 }
 
 // HandleChaosPodTermination handles the termination of a chaos-related pod during a disruption event.
-func (m *chaosPodService) HandleChaosPodTermination(disruption *chaosv1beta1.Disruption, chaosPod *corev1.Pod) (bool, error) {
+func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disruption *chaosv1beta1.Disruption, chaosPod *corev1.Pod) (bool, error) {
 	// Ignore chaos pods that are not being deleted or no longer have the finalizer.
 	if chaosPod.DeletionTimestamp.IsZero() || !controllerutil.ContainsFinalizer(chaosPod, chaostypes.ChaosPodFinalizer) {
 		return false, nil
@@ -144,7 +144,7 @@ func (m *chaosPodService) HandleChaosPodTermination(disruption *chaosv1beta1.Dis
 		m.config.Log.Infow("Target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", "target", target)
 
 		// Remove the finalizer for the chaos pod since cleanup won't be fully reliable.
-		if err := m.removeFinalizerForChaosPod(chaosPod); err != nil {
+		if err := m.removeFinalizerForChaosPod(ctx, chaosPod); err != nil {
 			return false, err
 		}
 
@@ -154,7 +154,7 @@ func (m *chaosPodService) HandleChaosPodTermination(disruption *chaosv1beta1.Dis
 	// It is always safe to remove some chaos pods. It is usually hard to tell if these chaos pods have
 	// succeeded or not, but they have no possibility of leaving side effects, so we choose to always remove the finalizer.
 	if chaosv1beta1.DisruptionHasNoSideEffects(chaosPod.Labels[chaostypes.DisruptionKindLabel]) {
-		if err := m.removeFinalizerForChaosPod(chaosPod); err != nil {
+		if err := m.removeFinalizerForChaosPod(ctx, chaosPod); err != nil {
 			return false, err
 		}
 
@@ -167,7 +167,7 @@ func (m *chaosPodService) HandleChaosPodTermination(disruption *chaosv1beta1.Dis
 	}
 
 	// Remove the finalizer for the chaos pod since cleanup was successful.
-	if err := m.removeFinalizerForChaosPod(chaosPod); err != nil {
+	if err := m.removeFinalizerForChaosPod(ctx, chaosPod); err != nil {
 		return false, err
 	}
 
@@ -176,8 +176,8 @@ func (m *chaosPodService) HandleChaosPodTermination(disruption *chaosv1beta1.Dis
 
 // DeletePod attempts to delete the specified pod from the Kubernetes cluster.
 // Returns true if deletion was successful, otherwise returns false.
-func (m *chaosPodService) DeletePod(pod corev1.Pod) bool {
-	if err := m.deletePod(pod); err != nil {
+func (m *chaosPodService) DeletePod(ctx context.Context, pod corev1.Pod) bool {
+	if err := m.deletePod(ctx, pod); err != nil {
 		m.config.Log.Errorw("Error terminating chaos pod", "error", err, "chaosPod", pod.Name)
 
 		return false
@@ -318,13 +318,13 @@ func (m *chaosPodService) GetPodInjectorArgs(chaosPod corev1.Pod) []string {
 // WaitForPodCreation waits for the given pod to be created
 // it tries to get the pod using an exponential backoff with a max retry interval of 1 second and a max duration of 30 seconds
 // if an unexpected error occurs (an error other than a "not found" error), the retry loop is stopped
-func (m *chaosPodService) WaitForPodCreation(pod corev1.Pod) error {
+func (m *chaosPodService) WaitForPodCreation(ctx context.Context, pod corev1.Pod) error {
 	expBackoff := backoff.NewExponentialBackOff()
 	expBackoff.MaxInterval = time.Second
 	expBackoff.MaxElapsedTime = 30 * time.Second
 
 	return backoff.Retry(func() error {
-		err := m.config.Client.Get(context.Background(), types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, &pod)
+		err := m.config.Client.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, &pod)
 		if client.IgnoreNotFound(err) != nil {
 			return backoff.Permanent(err)
 		}
@@ -334,7 +334,7 @@ func (m *chaosPodService) WaitForPodCreation(pod corev1.Pod) error {
 }
 
 // HandleOrphanedChaosPods handles orphaned chaos pods related to a specific disruption.
-func (m *chaosPodService) HandleOrphanedChaosPods(req ctrl.Request) error {
+func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.Request) error {
 	ls := make(map[string]string)
 
 	// Set labels for filtering chaos pods related to the specified disruption.
@@ -342,7 +342,7 @@ func (m *chaosPodService) HandleOrphanedChaosPods(req ctrl.Request) error {
 	ls[chaostypes.DisruptionNamespaceLabel] = req.Namespace
 
 	// Retrieve chaos pods matching the specified labels.
-	pods, err := m.GetChaosPodsOfDisruption(context.Background(), nil, ls)
+	pods, err := m.GetChaosPodsOfDisruption(ctx, nil, ls)
 	if err != nil {
 		return err
 	}
@@ -357,15 +357,15 @@ func (m *chaosPodService) HandleOrphanedChaosPods(req ctrl.Request) error {
 		m.config.Log.Infow("checking if we can clean up orphaned chaos pod", "chaosPod", pod.Name, "target", target)
 
 		// if target doesn't exist, we can try to clean up the chaos pod
-		if err = m.config.Client.Get(context.Background(), types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); apierrors.IsNotFound(err) {
+		if err = m.config.Client.Get(ctx, types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); apierrors.IsNotFound(err) {
 			m.config.Log.Warnw("orphaned chaos pod detected, will attempt to delete", "chaosPod", pod.Name)
 
-			if err = m.removeFinalizerForChaosPod(&pod); err != nil {
+			if err = m.removeFinalizerForChaosPod(ctx, &pod); err != nil {
 				continue
 			}
 
 			// if the chaos pod still exists after having its finalizer removed, delete it
-			if err = m.deletePod(pod); err != nil {
+			if err = m.deletePod(ctx, pod); err != nil {
 				if chaosv1beta1.IsUpdateConflictError(err) {
 					m.config.Log.Infow("retryable error deleting orphaned chaos pod", "error", err, "chaosPod", pod.Name)
 				} else {
@@ -569,10 +569,10 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 	return podSpec
 }
 
-func (m *chaosPodService) removeFinalizerForChaosPod(chaosPod *corev1.Pod) error {
+func (m *chaosPodService) removeFinalizerForChaosPod(ctx context.Context, chaosPod *corev1.Pod) error {
 	controllerutil.RemoveFinalizer(chaosPod, chaostypes.ChaosPodFinalizer)
 
-	if err := m.config.Client.Update(context.Background(), chaosPod); err != nil {
+	if err := m.config.Client.Update(ctx, chaosPod); err != nil {
 		if strings.Contains(err.Error(), "latest version and try again") {
 			m.config.Log.Debugw("cannot remove chaos pod finalizer, need to re-reconcile", "error", err)
 		} else {
@@ -626,10 +626,10 @@ func (m *chaosPodService) handleMetricSinkError(err error) {
 	}
 }
 
-func (m *chaosPodService) deletePod(pod corev1.Pod) error {
+func (m *chaosPodService) deletePod(ctx context.Context, pod corev1.Pod) error {
 	// Attempt to delete the pod using the Kubernetes client.
 	// Ignore "not found" errors using client.IgnoreNotFound to avoid returning an error if the pod is already deleted.
-	if err := m.config.Client.Delete(context.Background(), &pod); client.IgnoreNotFound(err) != nil {
+	if err := m.config.Client.Delete(ctx, &pod); client.IgnoreNotFound(err) != nil {
 		return err
 	}
 
