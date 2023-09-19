@@ -1010,7 +1010,7 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 // it skips ignored targets and targets being already targeted by another disruption
 func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance *chaosv1beta1.Disruption, potentialTargets []string) (eligibleTargets chaosv1beta1.TargetInjections, err error) {
 	defer func() {
-		r.log.Debugw("getting eligible targets for disruption injection", "potential_targets", potentialTargets, "eligible_targets", eligibleTargets, "error", err)
+		r.log.Debugw("getting eligible targets for disruption injection", "potentialTargets", potentialTargets, "eligibleTargets", eligibleTargets, "error", err)
 	}()
 
 	eligibleTargets = make(chaosv1beta1.TargetInjections)
@@ -1038,7 +1038,7 @@ func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance 
 		if len(chaosPods) != 0 {
 			if !instance.Spec.AllowDisruptedTargets {
 				r.log.Infow(`disruption spec does not allow to use already disrupted targets with ANY kind of existing disruption, skipping...
-NB: you can specify "spec.allowDisruptedTargets: true" to allow a new disruption without any disruption kind intersection to target the same pod`, "target", target, "target_labels", targetLabels)
+NB: you can specify "spec.allowDisruptedTargets: true" to allow a new disruption without any disruption kind intersection to target the same pod`, "target", target, "targetLabels", targetLabels)
 
 				continue
 			}
@@ -1057,7 +1057,7 @@ NB: you can specify "spec.allowDisruptedTargets: true" to allow a new disruption
 			}
 
 			if len(intersectionOfKinds) != 0 {
-				r.log.Infow("target is already disrupted by at least one provided kind, skipping", "target", target, "target_labels", targetLabels, "target_disrupted_by_kinds", targetDisruptedByKinds, "intersection_of_kinds", intersectionOfKinds)
+				r.log.Infow("target is already disrupted by at least one provided kind, skipping", "target", target, "targetLabels", targetLabels, "targetDisruptedByKinds", targetDisruptedByKinds, "intersectionOfKinds", intersectionOfKinds)
 
 				continue
 			}
