@@ -29,7 +29,7 @@ With eBPF it is possible to catch openat syscall and override the result with a 
 
 The disruption has the following additional field:
 * **Paths**: Prefix used to filter `openat` system calls by path. Does not support wildcard and cannot exceed `62` characters due to eBPF kernel limitation. A validation is in place to avoid the usage of a path greater than this limit. It is possible to define multiple paths. 
-* **Probability**: Define a percentage of failures. It should be a percentage within the range of 1% to 100%.  For example, a Probability field set to 80% will disturb 80% of syscalls by paths.
+* **Probability**: Define a percentage of failures. Default value: **100%**. It should be a percentage within the range of 1% to 100%.  For example, a Probability field set to 80% will disturb 80% of syscalls by paths.
 
 Support two kind of levels:
 * **Node**: Intercept all `openat` system calls of nodes matching the selector.
