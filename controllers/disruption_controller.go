@@ -655,12 +655,11 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(ctx context.Context, i
 }
 
 func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) {
-	// ignore chaos pods not being deleted or not having the finalizer anymore
-	if chaosPod.DeletionTimestamp.IsZero() || !controllerutil.ContainsFinalizer(&chaosPod, chaostypes.ChaosPodFinalizer) {
+	// ignore chaos pods not being deleted
+	if chaosPod.DeletionTimestamp.IsZero() {
 		return
 	}
 
-	// ignore chaos pods not being deleted or not having the finalizer anymore
 	isFinalizerRemoved, err := r.ChaosPodService.HandleChaosPodTermination(ctx, instance, &chaosPod)
 	if err != nil {
 		r.log.Errorw("could not handle the chaos pod termination", "error", err, "chaosPod", chaosPod.Name)

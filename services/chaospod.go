@@ -126,8 +126,13 @@ func (m *chaosPodService) GetChaosPodsOfDisruption(ctx context.Context, instance
 
 // HandleChaosPodTermination handles the termination of a chaos-related pod during a disruption event.
 func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disruption *chaosv1beta1.Disruption, chaosPod *corev1.Pod) (bool, error) {
-	// Ignore chaos pods that are not being deleted or no longer have the finalizer.
-	if chaosPod.DeletionTimestamp.IsZero() || !controllerutil.ContainsFinalizer(chaosPod, chaostypes.ChaosPodFinalizer) {
+	// Ignore chaos pods not having the finalizer anymore
+	if !controllerutil.ContainsFinalizer(chaosPod, chaostypes.ChaosPodFinalizer) {
+		return true, nil
+	}
+
+	// Ignore chaos pods that are not being deleted
+	if chaosPod.DeletionTimestamp.IsZero() {
 		return false, nil
 	}
 
@@ -573,7 +578,7 @@ func (m *chaosPodService) removeFinalizerForChaosPod(ctx context.Context, chaosP
 	controllerutil.RemoveFinalizer(chaosPod, chaostypes.ChaosPodFinalizer)
 
 	if err := m.config.Client.Update(ctx, chaosPod); err != nil {
-		if strings.Contains(err.Error(), "latest version and try again") {
+		if chaosv1beta1.IsUpdateConflictError(err) {
 			m.config.Log.Debugw("cannot remove chaos pod finalizer, need to re-reconcile", "error", err)
 		} else {
 			m.config.Log.Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)

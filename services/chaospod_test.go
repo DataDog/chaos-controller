@@ -136,6 +136,7 @@ var _ = Describe("Chaos Pod Service", func() {
 		)
 
 		BeforeEach(func() {
+			// Arrange
 			labelSets = labels.Set{}
 		})
 
@@ -201,6 +202,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			Context("with a nil disruption and an empty label set", func() {
 
 				BeforeEach(func() {
+					// Arrange
 					disruption = nil
 					labelSets = labels.Set{}
 				})
@@ -413,7 +415,8 @@ var _ = Describe("Chaos Pod Service", func() {
 		Context("with a chaos pod ready to be deleted", func() {
 
 			BeforeEach(func() {
-				cpBuilder = builderstest.NewPodBuilder("test", DefaultNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer()
+				// Arrange
+				cpBuilder.WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer()
 			})
 
 			Describe("success cases", func() {
@@ -529,6 +532,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			Context("with a running node failure chaos pod ", func() {
 				BeforeEach(func() {
+					// Arrange
 					cpBuilder.WithStatusPhase(v1.PodRunning).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", chaostypes.DisruptionKindNodeFailure)
 				})
 
@@ -552,7 +556,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			BeforeEach(func() {
 				// Arrange
-				chaosPod = builderstest.NewPodBuilder("test", DefaultNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithChaosFinalizer().Build()
+				cpBuilder.WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithChaosFinalizer()
 			})
 
 			It("should not remove the finalizer", func() {
@@ -570,7 +574,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			BeforeEach(func() {
 				// Arrange
-				chaosPod = builderstest.NewPodBuilder("test", DefaultNamespace).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().Build()
+				cpBuilder.WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().Build()
 			})
 
 			It("should not remove the finalizer", func() {
@@ -578,9 +582,11 @@ var _ = Describe("Chaos Pod Service", func() {
 				By("not returning an error")
 				Expect(err).ShouldNot(HaveOccurred())
 
-				By("not removing the finalizer")
+				By("not try to remove finalizer because it is already deleted")
 				k8sClientMock.AssertNotCalled(GinkgoT(), "Update", mock.Anything, mock.Anything)
-				Expect(isFinalizerRemoved).To(BeFalse())
+
+				By("return true because the finalizer is already removed")
+				Expect(isFinalizerRemoved).To(BeTrue())
 			})
 		})
 	})
@@ -600,6 +606,7 @@ var _ = Describe("Chaos Pod Service", func() {
 		Context("with a pod not marked to be deleted", func() {
 
 			BeforeEach(func() {
+				// Arrange
 				pod = builderstest.NewPodBuilder("test", DefaultNamespace).Build()
 			})
 
@@ -764,6 +771,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			Context("with a disk failure disruption", func() {
 
 				BeforeEach(func() {
+					// Arrange
 					disruptionKindName = chaostypes.DisruptionKindDiskFailure
 				})
 
@@ -803,9 +811,9 @@ var _ = Describe("Chaos Pod Service", func() {
 				})
 
 				Context("with a network cloud spec", func() {
-					var (
-						serviceName string
-					)
+
+					var serviceName string
+
 					BeforeEach(func() {
 						// Arrange
 						serviceName = "GCP"
@@ -827,6 +835,7 @@ var _ = Describe("Chaos Pod Service", func() {
 					Context("nominal cases", func() {
 
 						BeforeEach(func() {
+							// Arrange
 							cloudServicesProvidersManagerMock.EXPECT().GetServicesIPRanges(
 								cloudtypes.CloudProviderName(serviceName),
 								[]string{serviceName},
@@ -852,6 +861,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 					When("the cloud manager return an error during the fetching of services ip ranges", func() {
 						BeforeEach(func() {
+							// Arrange
 							cloudServicesProvidersManagerMock.EXPECT().GetServicesIPRanges(
 								mock.Anything,
 								mock.Anything,
@@ -908,6 +918,7 @@ var _ = Describe("Chaos Pod Service", func() {
 		)
 
 		BeforeEach(func() {
+			// Arrange
 			DefaultTerminationGracePeriod = int64(60)
 			DefaultActiveDeadlineSeconds = int64(disruption.RemainingDuration().Seconds()) + 10
 			DefaultExpectedArgs = []string{
@@ -1010,9 +1021,8 @@ var _ = Describe("Chaos Pod Service", func() {
 	})
 
 	Describe("GetPodInjectorArgs", func() {
-		var (
-			chaosPodArgs []string
-		)
+
+		var chaosPodArgs []string
 
 		JustBeforeEach(func() {
 			// Action
@@ -1360,6 +1370,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			Context("with a single chaos pod", func() {
 
 				BeforeEach(func() {
+					// Arrange
 					chaosPods = []v1.Pod{
 						builderstest.NewPodBuilder("test-1", DefaultNamespace).WithChaosFinalizer().WithChaosPodLabels(DefaultDisruptionName, DefaultDisruptionName, DefaultTargetName, chaostypes.DisruptionKindDiskFailure).Build(),
 					}
