@@ -28,9 +28,7 @@ type DiskFailureSpec struct {
 	Paths []string `json:"paths"`
 	// +nullable
 	OpenatSyscall *OpenatSyscallSpec `json:"openat,omitempty"`
-	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
-	Probability string `json:"probability"`
+	Probability   string             `json:"probability,omitempty"`
 }
 
 // MaxDiskPathCharacters is used to limit the number of characters due to the eBPF memory kernel limitation.
@@ -66,21 +64,27 @@ func (s *DiskFailureSpec) validatePaths() error {
 }
 
 func (s *DiskFailureSpec) validateProbability() error {
-	probabilityError := fmt.Errorf("the probability of the disk failure disruption should be a percentage within the range of 1%% to 100%%")
+	if s.Probability == "" {
+		return nil
+	}
 
 	if !strings.HasSuffix(s.Probability, "%") {
-		return probabilityError
+		return fmt.Errorf("the probability percentage of the disk failure disruption should be suffixed by a %%. Input: %s", s.Probability)
 	}
 
 	probabilityStr := strings.TrimSuffix(s.Probability, "%")
 	probabilityInt, err := strconv.Atoi(probabilityStr)
 
 	if err != nil {
-		return probabilityError
+		return fmt.Errorf("the probability percentage of the disk failure disruption can't be converted to int: %w", err)
 	}
 
-	if probabilityInt <= 0 || probabilityInt > 100 {
-		return probabilityError
+	if probabilityInt > 100 {
+		return fmt.Errorf("the probability percentage of the disk failure disruption should be lesser or equal to 100%%. Input: %s", s.Probability)
+	}
+
+	if probabilityInt <= 0 {
+		return fmt.Errorf("the probability percentage of the disk failure disruption should be greater than 0%%. Input: %s", s.Probability)
 	}
 
 	return nil
@@ -99,7 +103,11 @@ func (s *DiskFailureSpec) GenerateArgs() (args []string) {
 		}
 	}
 
-	args = append(args, "--probability", s.Probability)
+	if s.Probability != "" {
+		args = append(args, "--probability", s.Probability)
+	} else {
+		args = append(args, "--probability", "100%")
+	}
 
 	return args
 }

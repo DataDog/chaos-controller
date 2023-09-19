@@ -13,7 +13,7 @@ const volatile pid_t exit_code = ENOENT;
 const volatile int probability = 100;
 
 unsigned int hits = 0;
-unsigned  int disruptedHits = 0;
+unsigned int disruptedHits = 0;
 
 struct data_t {
     u32 ppid;

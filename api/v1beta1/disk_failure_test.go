@@ -23,8 +23,7 @@ var _ = Describe("DiskFailureSpec", func() {
 			},
 			Entry("with a valid path not exceeding 62 characters",
 				DiskFailureSpec{
-					Paths:       []string{randStringRunes(rand.IntnRange(1, 62)), randStringRunes(rand.IntnRange(1, 62))},
-					Probability: "100%",
+					Paths: []string{randStringRunes(rand.IntnRange(1, 62)), randStringRunes(rand.IntnRange(1, 62))},
 				},
 			),
 			Entry("with a valid path containing spaces and a random probability percentage",
@@ -33,9 +32,15 @@ var _ = Describe("DiskFailureSpec", func() {
 					Probability: fmt.Sprintf("%d%%", rand.IntnRange(1, 100)),
 				},
 			),
+			Entry("with a valid path and an empty probability",
+				DiskFailureSpec{
+					Paths:       []string{"/"},
+					Probability: "",
+				}),
 		)
 
 		pathGreaterThan62Characters := randStringRunes(rand.IntnRange(63, 10000))
+		randomNegativeProbability := fmt.Sprintf("-%d%%", rand.IntnRange(0, 1000))
 
 		DescribeTable("error cases",
 			func(df DiskFailureSpec, expectedErrors []string) {
@@ -77,26 +82,18 @@ var _ = Describe("DiskFailureSpec", func() {
 			Entry("with an empty probability",
 				DiskFailureSpec{
 					Paths:       []string{"/"},
-					Probability: "",
-				},
-				[]string{
-					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
-				}),
-			Entry("with an empty probability",
-				DiskFailureSpec{
-					Paths:       []string{"/"},
 					Probability: "%",
 				},
 				[]string{
-					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+					"the probability percentage of the disk failure disruption can't be converted to int:",
 				}),
 			Entry("with a negative probability",
 				DiskFailureSpec{
 					Paths:       []string{"/"},
-					Probability: fmt.Sprintf("-%d%%", rand.IntnRange(0, 1000)),
+					Probability: randomNegativeProbability,
 				},
 				[]string{
-					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+					fmt.Sprintf("the probability percentage of the disk failure disruption should be greater than 0%%. Input: %s", randomNegativeProbability),
 				}),
 			Entry("with a probability greater than 100%",
 				DiskFailureSpec{
@@ -104,7 +101,7 @@ var _ = Describe("DiskFailureSpec", func() {
 					Probability: "101%",
 				},
 				[]string{
-					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+					"the probability percentage of the disk failure disruption should be lesser or equal to 100%. Input: 101%",
 				}),
 			Entry("with a probability equals to 0%",
 				DiskFailureSpec{
@@ -112,7 +109,7 @@ var _ = Describe("DiskFailureSpec", func() {
 					Probability: "0%",
 				},
 				[]string{
-					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+					"the probability percentage of the disk failure disruption should be greater than 0%. Input: 0%",
 				}),
 			Entry("with a probability as a non percentage",
 				DiskFailureSpec{
@@ -120,7 +117,7 @@ var _ = Describe("DiskFailureSpec", func() {
 					Probability: "10",
 				},
 				[]string{
-					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+					"the probability percentage of the disk failure disruption should be suffixed by a %. Input: 10",
 				}),
 			Entry("with a probability as a non number",
 				DiskFailureSpec{
@@ -128,7 +125,7 @@ var _ = Describe("DiskFailureSpec", func() {
 					Probability: "lorem%",
 				},
 				[]string{
-					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+					"the probability percentage of the disk failure disruption can't be converted to int:",
 				}),
 			Entry("with a probability as a float",
 				DiskFailureSpec{
@@ -136,7 +133,7 @@ var _ = Describe("DiskFailureSpec", func() {
 					Probability: "100.0%",
 				},
 				[]string{
-					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+					"the probability percentage of the disk failure disruption can't be converted to int:",
 				}),
 			Entry("with an invalid suffix",
 				DiskFailureSpec{
@@ -144,16 +141,16 @@ var _ = Describe("DiskFailureSpec", func() {
 					Probability: "100%1231",
 				},
 				[]string{
-					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+					"the probability percentage of the disk failure disruption should be suffixed by a %. Input: 100%1231",
 				}),
 			Entry("with a invalid probability and and invalid path",
 				DiskFailureSpec{
 					Paths:       []string{""},
-					Probability: "",
+					Probability: "12%12",
 				},
 				[]string{
 					"the path of the disk failure disruption must not be empty",
-					"the probability of the disk failure disruption should be a percentage within the range of 1% to 100%",
+					"the probability percentage of the disk failure disruption should be suffixed by a %. Input: 12%12",
 				}),
 		)
 	})
@@ -170,6 +167,12 @@ var _ = Describe("DiskFailureSpec", func() {
 				// Assert
 				Expect(args).Should(Equal(expectedArgs))
 			},
+			Entry("with a '/' path and an empty probability",
+				DiskFailureSpec{
+					Paths: []string{"/"},
+				},
+				[]string{"--path", "/", "--probability", "100%"},
+			),
 			Entry("with a '/' path",
 				DiskFailureSpec{
 					Paths:       []string{"/"},

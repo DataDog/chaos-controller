@@ -134,7 +134,6 @@ spec:
                           type: string
                       required:
                         - paths
-                        - probability
                       type: object
                     diskPressure:
                       description: DiskPressureSpec represents a disk pressure disruption
