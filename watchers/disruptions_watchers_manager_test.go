@@ -156,7 +156,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 					It("should return an error", func() {
 						// Act
 						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).Should(Equal("NewDisruptionTargetWatcher error"))
+						Expect(err).To(MatchError("NewDisruptionTargetWatcher error"))
 					})
 				})
 
@@ -173,7 +173,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 
 					It("should return an error", func() {
 						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).Should(Equal("NewChaosPodWatcher error message"))
+						Expect(err).To(MatchError("NewChaosPodWatcher error message"))
 					})
 				})
 
@@ -189,7 +189,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 
 					It("should return an error", func() {
 						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).Should(Equal("failed to create watcher: disruptionTargetWatcher message"))
+						Expect(err).To(MatchError("failed to create watcher: disruptionTargetWatcher message"))
 					})
 				})
 
@@ -205,7 +205,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 
 					It("should return an error", func() {
 						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).Should(Equal("failed to create watcher: chaosPodWatcher error"))
+						Expect(err).To(MatchError("failed to create watcher: chaosPodWatcher error"))
 					})
 				})
 			})
@@ -223,7 +223,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 
 				// Assert
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(Equal("the disruption is not valid. It should contain a name and a namespace"))
+				Expect(err).To(MatchError("the disruption is not valid. It should contain a name and a namespace"))
 			})
 		})
 	})

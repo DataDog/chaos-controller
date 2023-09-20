@@ -110,7 +110,7 @@ var _ = Describe("Watcher factory", func() {
 
 			It("should return an error", func() {
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(Equal("the disruption fields name and namespace of the ObjectMeta field are required"))
+				Expect(err).To(MatchError("the disruption fields name and namespace of the ObjectMeta field are required"))
 			})
 		})
 	})

@@ -24,6 +24,7 @@ import (
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/hashicorp/go-multierror"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -92,6 +93,14 @@ type DisruptionTriggers struct {
 	Inject     DisruptionTrigger `json:"inject,omitempty"`
 	CreatePods DisruptionTrigger `json:"createPods,omitempty"`
 }
+
+type TerminationStatus uint8
+
+const (
+	TSNotTerminated TerminationStatus = iota
+	TSTemporarilyTerminated
+	TSDefinitivelyTerminated
+)
 
 func (dt DisruptionTriggers) IsZero() bool {
 	return dt.Inject.IsZero() && dt.CreatePods.IsZero()
@@ -246,6 +255,137 @@ type Disruption struct {
 
 	Spec   DisruptionSpec   `json:"spec,omitempty"`
 	Status DisruptionStatus `json:"status,omitempty"`
+}
+
+// TimeToInject calculates the time at which the disruption should be injected based on its own creationTimestamp.
+// It considers the specified triggers for injection timing in the disruption's specification.
+func (r *Disruption) TimeToInject() time.Time {
+	triggers := r.Spec.Triggers
+
+	if triggers.IsZero() {
+		return r.CreationTimestamp.Time
+	}
+
+	if triggers.Inject.IsZero() {
+		return r.TimeToCreatePods()
+	}
+
+	var notInjectedBefore time.Time
+
+	// validation should have already prevented a situation where both Offset and NotBefore are set
+	if !triggers.Inject.NotBefore.IsZero() {
+		notInjectedBefore = triggers.Inject.NotBefore.Time
+	}
+
+	if triggers.Inject.Offset.Duration() > 0 {
+		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.createPods
+		notInjectedBefore = r.TimeToCreatePods().Add(triggers.Inject.Offset.Duration())
+	}
+
+	if r.CreationTimestamp.Time.After(notInjectedBefore) {
+		return r.CreationTimestamp.Time
+	}
+
+	return notInjectedBefore
+}
+
+// TimeToCreatePods takes the DisruptionTriggers field from a Disruption spec, along with the time.Time at which that disruption was created
+// It returns the earliest time.Time at which the chaos-controller should begin creating chaos pods, given the specified DisruptionTriggers
+func (r *Disruption) TimeToCreatePods() time.Time {
+	triggers := r.Spec.Triggers
+
+	if triggers.IsZero() {
+		return r.CreationTimestamp.Time
+	}
+
+	if triggers.CreatePods.IsZero() {
+		return r.CreationTimestamp.Time
+	}
+
+	var noPodsBefore time.Time
+
+	// validation should have already prevented a situation where both Offset and NotBefore are set
+	if !triggers.CreatePods.NotBefore.IsZero() {
+		noPodsBefore = triggers.CreatePods.NotBefore.Time
+	}
+
+	if triggers.CreatePods.Offset.Duration() > 0 {
+		noPodsBefore = r.CreationTimestamp.Add(triggers.CreatePods.Offset.Duration())
+	}
+
+	if r.CreationTimestamp.After(noPodsBefore) {
+		return r.CreationTimestamp.Time
+	}
+
+	return noPodsBefore
+}
+
+// RemainingDuration return the remaining duration of the disruption.
+func (r *Disruption) RemainingDuration() time.Duration {
+	return r.calculateDeadline(
+		r.Spec.Duration.Duration(),
+		r.TimeToInject(),
+	)
+}
+
+func (r *Disruption) calculateDeadline(duration time.Duration, creationTime time.Time) time.Duration {
+	// first we must calculate the timeout from when the disruption was created, not from now
+	timeout := creationTime.Add(duration)
+	now := time.Now() // rather not take the risk that the time changes by a second during this function
+
+	// return the number of seconds between now and the deadline
+	return timeout.Sub(now)
+}
+
+// TerminationStatus determines the termination status of a disruption based on various factors.
+func (r *Disruption) TerminationStatus(chaosPods []corev1.Pod) TerminationStatus {
+	// a not yet created disruption is neither temporarily nor definitively ended
+	if r.CreationTimestamp.IsZero() {
+		return TSNotTerminated
+	}
+
+	// a definitive state (expired duration or deletion) imply a definitively deleted injection
+	// and should be returned prior to a temporarily terminated state
+	if r.RemainingDuration() <= 0 || !r.DeletionTimestamp.IsZero() {
+		return TSDefinitivelyTerminated
+	}
+
+	if len(chaosPods) == 0 {
+		// we were never injected, we are hence not terminated if we reach here
+		if r.Status.InjectionStatus.NeverInjected() {
+			return TSNotTerminated
+		}
+
+		// we were injected before hence temporarily not terminated
+		return TSTemporarilyTerminated
+	}
+
+	// if all pods exited successfully, we can consider the disruption is ended already
+	// it can be caused by either an appromixative date sync (in a distributed infra it's hard)
+	// or by deletion of targets leading to deletion of injectors
+	// injection terminated with an error are considered NOT terminated
+	for _, chaosPod := range chaosPods {
+		for _, containerStatuses := range chaosPod.Status.ContainerStatuses {
+			if containerStatuses.State.Terminated == nil || containerStatuses.State.Terminated.ExitCode != 0 {
+				return TSNotTerminated
+			}
+		}
+	}
+
+	// this MIGHT be a temporary status, that could become definitive once disruption is expired or deleted
+	return TSTemporarilyTerminated
+}
+
+// GetTargetsCountAsInt This function returns a scaled value from the spec.Count IntOrString type. If the count
+// // is a percentage string value it's treated as a percentage and scaled appropriately
+// // in accordance to the total, if it's an int value it's treated as a simple value and
+// // if it is a string value which is either non-numeric or numeric but lacking a trailing '%' it returns an error.
+func (r *Disruption) GetTargetsCountAsInt(targetTotal int, roundUp bool) (int, error) {
+	if r.Spec.Count == nil {
+		return 0, apierrors.NewBadRequest("nil value for IntOrString")
+	}
+
+	return intstr.GetScaledValueFromIntOrPercent(r.Spec.Count, targetTotal, roundUp)
 }
 
 // +kubebuilder:object:root=true

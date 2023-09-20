@@ -137,7 +137,7 @@ var _ = Describe("Disruption", func() {
 							// Assert
 							By("return an error")
 							Expect(err).Should(HaveOccurred())
-							Expect(err.Error()).Should(Equal("the user info annotation is immutable"))
+							Expect(err).To(MatchError("the user info annotation is immutable"))
 						})
 					})
 					When("the user info of the new disruption is empty too", func() {
@@ -165,7 +165,7 @@ var _ = Describe("Disruption", func() {
 							// Assert
 							By("return an error")
 							Expect(err).Should(HaveOccurred())
-							Expect(err.Error()).Should(Equal("the user info annotation is immutable"))
+							Expect(err).To(MatchError("the user info annotation is immutable"))
 						})
 					})
 				})
@@ -292,7 +292,7 @@ var _ = Describe("Disruption", func() {
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(Equal("1 error occurred:\n\t* Spec: either selector or advancedSelector field must be set\n\n"))
+					Expect(err).To(MatchError("1 error occurred:\n\t* Spec: either selector or advancedSelector field must be set\n\n"))
 					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
 				})
 			})
@@ -305,7 +305,7 @@ var _ = Describe("Disruption", func() {
 					err := invalidDisruption.ValidateCreate()
 
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(Equal("1 error occurred:\n\t* Spec: unable to parse requirement: values[0][app]: Invalid value: \"demo-{nginx}\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
+					Expect(err).To(MatchError("1 error occurred:\n\t* Spec: unable to parse requirement: values[0][app]: Invalid value: \"demo-{nginx}\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
 					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
 				})
 			})
@@ -322,7 +322,7 @@ var _ = Describe("Disruption", func() {
 					err := invalidDisruption.ValidateCreate()
 
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(Equal("1 error occurred:\n\t* Spec: error parsing given advanced selector to requirements: values[0][app]: Invalid value: \"*nginx\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
+					Expect(err).To(MatchError("1 error occurred:\n\t* Spec: error parsing given advanced selector to requirements: values[0][app]: Invalid value: \"*nginx\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
 					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
 				})
 			})

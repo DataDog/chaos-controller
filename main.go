@@ -24,6 +24,7 @@ import (
 	profilertypes "github.com/DataDog/chaos-controller/o11y/profiler/types"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
 	tracertypes "github.com/DataDog/chaos-controller/o11y/tracer/types"
+	"github.com/DataDog/chaos-controller/services"
 	"github.com/DataDog/chaos-controller/targetselector"
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/DataDog/chaos-controller/watchers"
@@ -157,36 +158,49 @@ func main() {
 	}
 
 	// initialize the cloud provider manager which will handle ip ranges files updates
-	cloudProviderManager, err := cloudservice.New(logger, cfg.Controller.CloudProviders)
+	cloudProviderManager, err := cloudservice.New(logger, cfg.Controller.CloudProviders, nil)
 	if err != nil {
 		logger.Fatalw("error initializing CloudProviderManager", "error", err)
 	}
 
 	cloudProviderManager.StartPeriodicPull()
 
+	chaosPodService, err := services.NewChaosPodService(services.ChaosPodServiceConfig{
+		Client:         mgr.GetClient(),
+		Log:            logger,
+		ChaosNamespace: cfg.Injector.ChaosNamespace,
+		TargetSelector: targetSelector,
+		Injector: services.ChaosPodServiceInjectorConfig{
+			ServiceAccount:                cfg.Injector.ServiceAccount,
+			Image:                         cfg.Injector.Image,
+			Annotations:                   cfg.Injector.Annotations,
+			Labels:                        cfg.Injector.Labels,
+			NetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
+			DNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
+			DNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
+			ImagePullSecrets:              cfg.Injector.ImagePullSecrets,
+		},
+		ImagePullSecrets:              cfg.Injector.ImagePullSecrets,
+		MetricsSink:                   metricsSink,
+		CloudServicesProvidersManager: cloudProviderManager,
+	})
+
+	if err != nil {
+		logger.Fatalw("error initializing ChaosPodService", "error", err)
+	}
+
 	// create disruption reconciler
 	disruptionReconciler := &controllers.DisruptionReconciler{
-		Client:                                mgr.GetClient(),
-		BaseLog:                               logger,
-		Scheme:                                mgr.GetScheme(),
-		Recorder:                              broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionComponent}),
-		MetricsSink:                           metricsSink,
-		TracerSink:                            tracerSink,
-		TargetSelector:                        targetSelector,
-		InjectorAnnotations:                   cfg.Injector.Annotations,
-		InjectorLabels:                        cfg.Injector.Labels,
-		InjectorServiceAccount:                cfg.Injector.ServiceAccount,
-		InjectorImage:                         cfg.Injector.Image,
-		ChaosNamespace:                        cfg.Injector.ChaosNamespace,
-		InjectorDNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
-		InjectorDNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
-		InjectorNetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
-		ImagePullSecrets:                      cfg.Injector.ImagePullSecrets,
-		ExpiredDisruptionGCDelay:              gcPtr,
-		CacheContextStore:                     make(map[string]controllers.CtxTuple),
-		Reader:                                mgr.GetAPIReader(),
-		EnableObserver:                        cfg.Controller.EnableObserver,
-		CloudServicesProvidersManager:         cloudProviderManager,
+		Client:                   mgr.GetClient(),
+		BaseLog:                  logger,
+		Scheme:                   mgr.GetScheme(),
+		Recorder:                 broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionComponent}),
+		MetricsSink:              metricsSink,
+		TracerSink:               tracerSink,
+		TargetSelector:           targetSelector,
+		ExpiredDisruptionGCDelay: gcPtr,
+		CacheContextStore:        make(map[string]controllers.CtxTuple),
+		ChaosPodService:          chaosPodService,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
@@ -197,8 +211,6 @@ func main() {
 		logger.Fatalw("unable to create controller", "controller", chaosv1beta1.DisruptionKind, "error", err)
 	}
 
-	disruptionReconciler.Controller = cont
-
 	watchersFactoryConfig := watchers.FactoryConfig{
 		Log:            logger,
 		MetricSink:     metricsSink,
@@ -207,7 +219,7 @@ func main() {
 		ChaosNamespace: cfg.Injector.ChaosNamespace,
 	}
 	watcherFactory := watchers.NewWatcherFactory(watchersFactoryConfig)
-	disruptionReconciler.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, disruptionReconciler.Reader, logger)
+	disruptionReconciler.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, mgr.GetAPIReader(), logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -233,7 +245,7 @@ func main() {
 	stopCh := make(chan struct{})
 	kubeInformerFactory.Start(stopCh)
 
-	go disruptionReconciler.ReportMetrics()
+	go disruptionReconciler.ReportMetrics(ctx)
 
 	if cfg.Controller.DisruptionRolloutEnabled {
 		// create deployment and statefulset informers
