@@ -229,7 +229,7 @@ var _ = Describe("Manager of watchers", func() {
 
 			It("should return an error", func() {
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(Equal("the watcher 1 does not exist"))
+				Expect(err).To(MatchError("the watcher 1 does not exist"))
 			})
 		})
 	})

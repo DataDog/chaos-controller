@@ -10,12 +10,11 @@ import (
 	"strings"
 	"time"
 
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,7 +85,7 @@ func calcDisruptionGoneTimeout(disruption chaosv1beta1.Disruption) time.Duration
 			Fail("an existing disruption should have a non-zero duration")
 		}
 
-		if remainingDisruptionDuration := calculateRemainingDuration(disruption); remainingDisruptionDuration > 0 {
+		if remainingDisruptionDuration := disruption.RemainingDuration(); remainingDisruptionDuration > 0 {
 			disruptionDuration = remainingDisruptionDuration
 		}
 	}
@@ -422,7 +421,7 @@ func PickFirstChaodPod(ctx SpecContext, disruption chaosv1beta1.Disruption) core
 func ExpectChaosPodToDisappear(ctx SpecContext, chaosPodKey types.NamespacedName, disruption chaosv1beta1.Disruption) {
 	Eventually(k8sClient.Get).
 		WithContext(ctx).WithArguments(chaosPodKey, &corev1.Pod{}).
-		Within(calculateRemainingDuration(disruption)).ProbeEvery(disruptionPotentialChangesEvery).
+		Within(disruption.RemainingDuration()).ProbeEvery(disruptionPotentialChangesEvery).
 		Should(WithTransform(apierrors.IsNotFound, BeTrue()))
 }
 

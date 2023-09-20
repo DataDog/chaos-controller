@@ -50,7 +50,7 @@ var _ = Describe("DiskFailureSpec", func() {
 				// Assert
 				Expect(err).To(HaveOccurred())
 				for _, expectedError := range expectedErrors {
-					Expect(err.Error()).Should(ContainSubstring(expectedError))
+					Expect(err.Error()).To(ContainSubstring(expectedError))
 				}
 			},
 			Entry("with a path exceeding 62 characters",

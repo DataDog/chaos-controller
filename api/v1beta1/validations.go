@@ -117,3 +117,11 @@ func ValidateCount(count *intstr.IntOrString) error {
 
 	return nil
 }
+
+// IsUpdateConflictError tells us if this error is of the form:
+// "Operation cannot be fulfilled on disruptions.chaos.datadoghq.com "chaos-network-drop": the object has been modified; please apply your changes to the latest version and try again"
+// Sadly this doesn't seem to be one of the errors checkable with a function from "k8s.io/apimachinery/pkg/api/errors"
+// So we parse the error message directly
+func IsUpdateConflictError(err error) bool {
+	return strings.Contains(err.Error(), "please apply your changes to the latest version and try again")
+}

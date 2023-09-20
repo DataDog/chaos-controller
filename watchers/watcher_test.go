@@ -151,7 +151,7 @@ var _ = Describe("watcher", func() {
 
 				// Assert
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(Equal("error getting informer from cache. Error: get informer error"))
+				Expect(err).To(MatchError("error getting informer from cache. Error: get informer error"))
 			})
 		})
 
@@ -167,7 +167,7 @@ var _ = Describe("watcher", func() {
 				err = watcher.Start()
 
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(Equal("error adding event handler to the informer. Error: informer error"))
+				Expect(err).To(MatchError("error adding event handler to the informer. Error: informer error"))
 			})
 		})
 
@@ -285,7 +285,7 @@ var _ = Describe("watcher", func() {
 
 			It("should return an error", func() {
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(Equal("the watcher should be started with its Start method in order to initialise the cache source"))
+				Expect(err).To(MatchError("the watcher should be started with its Start method in order to initialise the cache source"))
 			})
 
 			It("should return nil", func() {
@@ -309,7 +309,7 @@ var _ = Describe("watcher", func() {
 
 				// Assert
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(Equal("the watcher should be started with its Start method in order to initialize the context tuple"))
+				Expect(err).To(MatchError("the watcher should be started with its Start method in order to initialize the context tuple"))
 			})
 		})
 
