@@ -38,7 +38,7 @@ type ChaosPodService interface {
 	GetChaosPodsOfDisruption(ctx context.Context, instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error)
 
 	// HandleChaosPodTermination handles the termination of a chaos pod during a disruption event.
-	HandleChaosPodTermination(ctx context.Context, disruption *chaosv1beta1.Disruption, pod *corev1.Pod) (bool, error)
+	HandleChaosPodTermination(ctx context.Context, disruption *chaosv1beta1.Disruption, pod *corev1.Pod) (stuckOnRemoval bool, err error)
 
 	// DeletePod deletes a pod from the Kubernetes cluster.
 	DeletePod(ctx context.Context, pod corev1.Pod) bool
@@ -125,10 +125,10 @@ func (m *chaosPodService) GetChaosPodsOfDisruption(ctx context.Context, instance
 }
 
 // HandleChaosPodTermination handles the termination of a chaos-related pod during a disruption event.
-func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disruption *chaosv1beta1.Disruption, chaosPod *corev1.Pod) (bool, error) {
+func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disruption *chaosv1beta1.Disruption, chaosPod *corev1.Pod) (stuckOnRemoval bool, err error) {
 	// Ignore chaos pods not having the finalizer anymore
 	if !controllerutil.ContainsFinalizer(chaosPod, chaostypes.ChaosPodFinalizer) {
-		return true, nil
+		return false, nil
 	}
 
 	// Ignore chaos pods that are not being deleted
@@ -149,34 +149,63 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 		m.config.Log.Infow("Target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", "target", target)
 
 		// Remove the finalizer for the chaos pod since cleanup won't be fully reliable.
-		if err := m.removeFinalizerForChaosPod(ctx, chaosPod); err != nil {
-			return false, err
-		}
-
-		return true, nil
+		err = m.removeFinalizerForChaosPod(ctx, chaosPod)
+		return false, err
 	}
 
 	// It is always safe to remove some chaos pods. It is usually hard to tell if these chaos pods have
 	// succeeded or not, but they have no possibility of leaving side effects, so we choose to always remove the finalizer.
 	if chaosv1beta1.DisruptionHasNoSideEffects(chaosPod.Labels[chaostypes.DisruptionKindLabel]) {
-		if err := m.removeFinalizerForChaosPod(ctx, chaosPod); err != nil {
-			return false, err
-		}
-
-		return true, nil
-	}
-
-	// If the finalizer cannot be removed yet, return without removing it.
-	if m.isFinalizerNotRemovableForChaosPod(chaosPod) {
-		return false, nil
-	}
-
-	// Remove the finalizer for the chaos pod since cleanup was successful.
-	if err := m.removeFinalizerForChaosPod(ctx, chaosPod); err != nil {
+		err = m.removeFinalizerForChaosPod(ctx, chaosPod)
 		return false, err
 	}
 
-	return true, nil
+	shouldRemoveFinalizer := false
+
+	switch chaosPod.Status.Phase {
+	case corev1.PodSucceeded, corev1.PodPending:
+		// we can remove the pod and the finalizer, so that it'll be garbage collected
+		shouldRemoveFinalizer = true
+	case corev1.PodFailed:
+		// we need to determine if we can remove it safely or if we need to block disruption deletion
+		// check if a container has been created (if not, the disruption was not injected)
+		if len(chaosPod.Status.ContainerStatuses) == 0 {
+			shouldRemoveFinalizer = true
+		}
+
+		// if the pod died only because it exceeded its activeDeadlineSeconds, we can remove the finalizer
+		if chaosPod.Status.Reason == "DeadlineExceeded" {
+			shouldRemoveFinalizer = true
+		}
+
+		// check if the container was able to start or not
+		// if not, we can safely delete the pod since the disruption was not injected
+		for _, cs := range chaosPod.Status.ContainerStatuses {
+			if cs.Name != "injector" {
+				continue
+			}
+
+			if cs.State.Terminated != nil && cs.State.Terminated.Reason == "StartError" {
+				shouldRemoveFinalizer = true
+			}
+
+			break
+		}
+	default:
+		// If we're in this default case, then the chaos pod is not yet in a "terminated" state
+		// It's likely still cleaning up the relevant disruption, in which case we aren't ready
+		// to try to remove the finalizer, or to mark it as StuckOnRemoval, so we should just return here.
+		// And check again next time we reconcile.
+		return false, nil
+	}
+
+	if shouldRemoveFinalizer {
+		// Remove the finalizer for the chaos pod since cleanup was successful.
+		err = m.removeFinalizerForChaosPod(ctx, chaosPod)
+		return false, err
+	} else {
+		return true, nil
+	}
 }
 
 // DeletePod attempts to delete the specified pod from the Kubernetes cluster.
@@ -590,41 +619,6 @@ func (m *chaosPodService) removeFinalizerForChaosPod(ctx context.Context, chaosP
 	}
 
 	return nil
-}
-
-func (m *chaosPodService) isFinalizerNotRemovableForChaosPod(chaosPod *corev1.Pod) bool {
-	switch chaosPod.Status.Phase {
-	case corev1.PodSucceeded, corev1.PodPending:
-		// we can remove the pod and the finalizer, so that it'll be garbage collected
-		return false
-	case corev1.PodFailed:
-		// we need to determine if we can remove it safely or if we need to block disruption deletion
-		// check if a container has been created (if not, the disruption was not injected)
-		if len(chaosPod.Status.ContainerStatuses) == 0 {
-			return false
-		}
-
-		// if the pod died only because it exceeded its activeDeadlineSeconds, we can remove the finalizer
-		if chaosPod.Status.Reason == "DeadlineExceeded" {
-			return false
-		}
-
-		// check if the container was able to start or not
-		// if not, we can safely delete the pod since the disruption was not injected
-		for _, cs := range chaosPod.Status.ContainerStatuses {
-			if cs.Name != "injector" {
-				continue
-			}
-
-			if cs.State.Terminated != nil && cs.State.Terminated.Reason == "StartError" {
-				return false
-			}
-
-			break
-		}
-	}
-
-	return true
 }
 
 func (m *chaosPodService) handleMetricSinkError(err error) {
