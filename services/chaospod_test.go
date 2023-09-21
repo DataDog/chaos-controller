@@ -279,7 +279,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Action
-			isRemoved, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
+			isStuckOnRemoval, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
 
 			// Assert
 			By("not return an error")
@@ -287,7 +287,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			By("remove the finalizer")
 			Expect(chaosPod.GetFinalizers()).Should(Equal([]string{}))
-			Expect(isRemoved).To(BeTrue())
+			Expect(isStuckOnRemoval).To(BeFalse())
 		},
 			Entry(
 				"with a success pod",
