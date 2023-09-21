@@ -367,7 +367,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", chaostypes.DisruptionKindContainerFailure).WithStatusPhase(v1.PodRunning)),
 		)
 
-		DescribeTable("failures", func(chaosPod v1.Pod) {
+		DescribeTable("failures", func(chaosPod v1.Pod, expectedStuck bool) {
 			// Arrange
 			target := chaosPod.Labels[chaostypes.TargetLabel]
 
@@ -378,7 +378,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Action
-			isRemoved, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
+			isStuckOnRemoval, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
 
 			// Assert
 			By("not return an error")
@@ -389,27 +389,30 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			By("not remove the finalizer")
 			Expect(chaosPod.GetFinalizers()).Should(Equal([]string{chaostypes.ChaosPodFinalizer}))
-			Expect(isRemoved).To(BeFalse())
+			Expect(isStuckOnRemoval).To(Equal(expectedStuck))
 		},
 			Entry("with a running pod",
 				builderstest.NewPodBuilder(
 					"test",
 					DefaultNamespace,
-				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().WithStatusPhase(v1.PodRunning).Build()),
+				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().WithStatusPhase(v1.PodRunning).Build(),
+				false),
 			Entry("with a failed pod with containers",
 				builderstest.NewPodBuilder(
 					"test",
 					DefaultNamespace,
 				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().WithStatusPhase(
 					v1.PodFailed,
-				).WithContainerStatuses([]v1.ContainerStatus{{Name: "test-1"}}).Build()),
+				).WithContainerStatuses([]v1.ContainerStatus{{Name: "test-1"}}).Build(),
+				true),
 			Entry("with a failed pod with containers and a running injector",
 				builderstest.NewPodBuilder(
 					"test",
 					DefaultNamespace,
 				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().WithStatusPhase(
 					v1.PodFailed,
-				).WithContainerStatuses([]v1.ContainerStatus{{Name: "injector"}}).Build()),
+				).WithContainerStatuses([]v1.ContainerStatus{{Name: "injector"}}).Build(),
+				true),
 		)
 
 		Context("with a chaos pod ready to be deleted", func() {
