@@ -150,6 +150,7 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 
 		// Remove the finalizer for the chaos pod since cleanup won't be fully reliable.
 		err = m.removeFinalizerForChaosPod(ctx, chaosPod)
+
 		return false, err
 	}
 
@@ -203,9 +204,9 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 		// Remove the finalizer for the chaos pod since cleanup was successful.
 		err = m.removeFinalizerForChaosPod(ctx, chaosPod)
 		return false, err
-	} else {
-		return true, nil
 	}
+
+	return true, nil
 }
 
 // DeletePod attempts to delete the specified pod from the Kubernetes cluster.
