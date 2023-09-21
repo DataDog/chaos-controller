@@ -182,6 +182,8 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 // DeletePod attempts to delete the specified pod from the Kubernetes cluster.
 // Returns true if deletion was successful, otherwise returns false.
 func (m *chaosPodService) DeletePod(ctx context.Context, pod corev1.Pod) bool {
+	m.config.Log.Infow("terminating chaos pod to trigger cleanup", "chaosPod", pod.Name)
+
 	if err := m.deletePod(ctx, pod); err != nil {
 		m.config.Log.Errorw("Error terminating chaos pod", "error", err, "chaosPod", pod.Name)
 
