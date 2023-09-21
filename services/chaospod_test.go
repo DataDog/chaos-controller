@@ -495,12 +495,10 @@ var _ = Describe("Chaos Pod Service", func() {
 						k8sClientMock.EXPECT().Update(mock.Anything, mock.Anything).Return(fmt.Errorf("an error happened"))
 					})
 
-					It("should not remove the finalizer", func() {
+					It("should propagate the error", func() {
 						// Assert
 						By("return an error")
 						Expect(err).Should(HaveOccurred())
-
-						By("not remove the finalizer")
 						Expect(isStuckOnRemoval).To(BeFalse())
 					})
 				})
@@ -559,12 +557,12 @@ var _ = Describe("Chaos Pod Service", func() {
 				cpBuilder.WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithChaosFinalizer()
 			})
 
-			It("should not remove the finalizer", func() {
+			It("should not be StuckOnRemoval", func() {
 				// Assert
 				By("not return an error")
 				Expect(err).ShouldNot(HaveOccurred())
 
-				By("not remove the finalizer")
+				By("not be Stuck")
 				k8sClientMock.AssertNotCalled(GinkgoT(), "Update", mock.Anything, mock.Anything)
 				Expect(isStuckOnRemoval).To(BeFalse())
 			})
@@ -585,7 +583,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				By("not try to remove finalizer because it is already deleted")
 				k8sClientMock.AssertNotCalled(GinkgoT(), "Update", mock.Anything, mock.Anything)
 
-				By("return true because the finalizer is already removed")
+				By("return false because the finalizer is already removed")
 				Expect(isStuckOnRemoval).To(BeFalse())
 			})
 		})
