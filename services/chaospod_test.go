@@ -245,8 +245,8 @@ var _ = Describe("Chaos Pod Service", func() {
 	Describe("HandleChaosPodTermination", func() {
 
 		var (
-			isFinalizerRemoved bool
-			cpBuilder          *builderstest.ChaosPodBuilder
+			isStuckOnRemoval bool
+			cpBuilder        *builderstest.ChaosPodBuilder
 		)
 
 		BeforeEach(func() {
@@ -260,7 +260,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			chaosPod = cpBuilder.Build()
 
 			// Action
-			isFinalizerRemoved, err = chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
+			isStuckOnRemoval, err = chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
 		})
 
 		DescribeTable("success cases", func(chaosPodBuilder *builderstest.ChaosPodBuilder) {
@@ -477,7 +477,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 						By("not remove the finalizer")
 						Expect(chaosPod.GetFinalizers()).Should(Equal([]string{chaostypes.ChaosPodFinalizer}))
-						Expect(isFinalizerRemoved).To(BeFalse())
+						Expect(isStuckOnRemoval).To(BeFalse())
 					})
 
 				})
@@ -501,7 +501,7 @@ var _ = Describe("Chaos Pod Service", func() {
 						Expect(err).Should(HaveOccurred())
 
 						By("not remove the finalizer")
-						Expect(isFinalizerRemoved).To(BeFalse())
+						Expect(isStuckOnRemoval).To(BeFalse())
 					})
 				})
 
@@ -524,7 +524,7 @@ var _ = Describe("Chaos Pod Service", func() {
 					It("should propagate the error", func() {
 						// Assert
 						Expect(err).Should(HaveOccurred())
-						Expect(isFinalizerRemoved).To(BeFalse())
+						Expect(isStuckOnRemoval).To(BeFalse())
 					})
 				})
 
@@ -546,7 +546,7 @@ var _ = Describe("Chaos Pod Service", func() {
 					It("should propagate the error", func() {
 						// Assert
 						Expect(err).Should(HaveOccurred())
-						Expect(isFinalizerRemoved).To(BeFalse())
+						Expect(isStuckOnRemoval).To(BeFalse())
 					})
 				})
 			})
@@ -566,7 +566,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 				By("not remove the finalizer")
 				k8sClientMock.AssertNotCalled(GinkgoT(), "Update", mock.Anything, mock.Anything)
-				Expect(isFinalizerRemoved).To(BeFalse())
+				Expect(isStuckOnRemoval).To(BeFalse())
 			})
 		})
 
@@ -586,7 +586,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				k8sClientMock.AssertNotCalled(GinkgoT(), "Update", mock.Anything, mock.Anything)
 
 				By("return true because the finalizer is already removed")
-				Expect(isFinalizerRemoved).To(BeTrue())
+				Expect(isStuckOnRemoval).To(BeFalse())
 			})
 		})
 	})
