@@ -245,8 +245,8 @@ var _ = Describe("Chaos Pod Service", func() {
 	Describe("HandleChaosPodTermination", func() {
 
 		var (
-			isFinalizerRemoved bool
-			cpBuilder          *builderstest.ChaosPodBuilder
+			isStuckOnRemoval bool
+			cpBuilder        *builderstest.ChaosPodBuilder
 		)
 
 		BeforeEach(func() {
@@ -260,7 +260,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			chaosPod = cpBuilder.Build()
 
 			// Action
-			isFinalizerRemoved, err = chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
+			isStuckOnRemoval, err = chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
 		})
 
 		DescribeTable("success cases", func(chaosPodBuilder *builderstest.ChaosPodBuilder) {
@@ -279,7 +279,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Action
-			isRemoved, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
+			isStuckOnRemoval, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
 
 			// Assert
 			By("not return an error")
@@ -287,7 +287,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			By("remove the finalizer")
 			Expect(chaosPod.GetFinalizers()).Should(Equal([]string{}))
-			Expect(isRemoved).To(BeTrue())
+			Expect(isStuckOnRemoval).To(BeFalse())
 		},
 			Entry(
 				"with a success pod",
@@ -367,7 +367,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", chaostypes.DisruptionKindContainerFailure).WithStatusPhase(v1.PodRunning)),
 		)
 
-		DescribeTable("failures", func(chaosPod v1.Pod) {
+		DescribeTable("failures", func(chaosPod v1.Pod, expectedStuck bool) {
 			// Arrange
 			target := chaosPod.Labels[chaostypes.TargetLabel]
 
@@ -378,7 +378,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Action
-			isRemoved, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
+			isStuckOnRemoval, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
 
 			// Assert
 			By("not return an error")
@@ -389,27 +389,30 @@ var _ = Describe("Chaos Pod Service", func() {
 
 			By("not remove the finalizer")
 			Expect(chaosPod.GetFinalizers()).Should(Equal([]string{chaostypes.ChaosPodFinalizer}))
-			Expect(isRemoved).To(BeFalse())
+			Expect(isStuckOnRemoval).To(Equal(expectedStuck))
 		},
 			Entry("with a running pod",
 				builderstest.NewPodBuilder(
 					"test",
 					DefaultNamespace,
-				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().WithStatusPhase(v1.PodRunning).Build()),
+				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().WithStatusPhase(v1.PodRunning).Build(),
+				false),
 			Entry("with a failed pod with containers",
 				builderstest.NewPodBuilder(
 					"test",
 					DefaultNamespace,
 				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().WithStatusPhase(
 					v1.PodFailed,
-				).WithContainerStatuses([]v1.ContainerStatus{{Name: "test-1"}}).Build()),
+				).WithContainerStatuses([]v1.ContainerStatus{{Name: "test-1"}}).Build(),
+				true),
 			Entry("with a failed pod with containers and a running injector",
 				builderstest.NewPodBuilder(
 					"test",
 					DefaultNamespace,
 				).WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithDeletion().WithChaosFinalizer().WithStatusPhase(
 					v1.PodFailed,
-				).WithContainerStatuses([]v1.ContainerStatus{{Name: "injector"}}).Build()),
+				).WithContainerStatuses([]v1.ContainerStatus{{Name: "injector"}}).Build(),
+				true),
 		)
 
 		Context("with a chaos pod ready to be deleted", func() {
@@ -435,7 +438,7 @@ var _ = Describe("Chaos Pod Service", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 
 					// Action
-					isRemoved, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
+					isStuckOnRemoval, err := chaosPodService.HandleChaosPodTermination(context.Background(), disruption, &chaosPod)
 
 					// Assert
 					By("not return an error")
@@ -443,7 +446,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 					By("remove the finalizer")
 					Expect(chaosPod.GetFinalizers()).Should(Equal([]string{}))
-					Expect(isRemoved).To(BeTrue())
+					Expect(isStuckOnRemoval).To(BeFalse())
 				},
 					Entry("not found target", metav1.Status{
 						Message: "Not found",
@@ -477,7 +480,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 						By("not remove the finalizer")
 						Expect(chaosPod.GetFinalizers()).Should(Equal([]string{chaostypes.ChaosPodFinalizer}))
-						Expect(isFinalizerRemoved).To(BeFalse())
+						Expect(isStuckOnRemoval).To(BeFalse())
 					})
 
 				})
@@ -495,13 +498,11 @@ var _ = Describe("Chaos Pod Service", func() {
 						k8sClientMock.EXPECT().Update(mock.Anything, mock.Anything).Return(fmt.Errorf("an error happened"))
 					})
 
-					It("should not remove the finalizer", func() {
+					It("should propagate the error", func() {
 						// Assert
 						By("return an error")
 						Expect(err).Should(HaveOccurred())
-
-						By("not remove the finalizer")
-						Expect(isFinalizerRemoved).To(BeFalse())
+						Expect(isStuckOnRemoval).To(BeFalse())
 					})
 				})
 
@@ -524,7 +525,7 @@ var _ = Describe("Chaos Pod Service", func() {
 					It("should propagate the error", func() {
 						// Assert
 						Expect(err).Should(HaveOccurred())
-						Expect(isFinalizerRemoved).To(BeFalse())
+						Expect(isStuckOnRemoval).To(BeFalse())
 					})
 				})
 
@@ -546,7 +547,7 @@ var _ = Describe("Chaos Pod Service", func() {
 					It("should propagate the error", func() {
 						// Assert
 						Expect(err).Should(HaveOccurred())
-						Expect(isFinalizerRemoved).To(BeFalse())
+						Expect(isStuckOnRemoval).To(BeFalse())
 					})
 				})
 			})
@@ -559,14 +560,14 @@ var _ = Describe("Chaos Pod Service", func() {
 				cpBuilder.WithChaosPodLabels(DefaultDisruptionName, DefaultNamespace, "", "").WithChaosFinalizer()
 			})
 
-			It("should not remove the finalizer", func() {
+			It("should not be StuckOnRemoval", func() {
 				// Assert
 				By("not return an error")
 				Expect(err).ShouldNot(HaveOccurred())
 
-				By("not remove the finalizer")
+				By("not be Stuck")
 				k8sClientMock.AssertNotCalled(GinkgoT(), "Update", mock.Anything, mock.Anything)
-				Expect(isFinalizerRemoved).To(BeFalse())
+				Expect(isStuckOnRemoval).To(BeFalse())
 			})
 		})
 
@@ -585,8 +586,8 @@ var _ = Describe("Chaos Pod Service", func() {
 				By("not try to remove finalizer because it is already deleted")
 				k8sClientMock.AssertNotCalled(GinkgoT(), "Update", mock.Anything, mock.Anything)
 
-				By("return true because the finalizer is already removed")
-				Expect(isFinalizerRemoved).To(BeTrue())
+				By("return false because the finalizer is already removed")
+				Expect(isStuckOnRemoval).To(BeFalse())
 			})
 		})
 	})

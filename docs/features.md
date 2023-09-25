@@ -99,6 +99,7 @@ It can be handy to disrupt packets on pod initialization, meaning before contain
 - redeploy your pod with the specific label `chaos.datadoghq.com/disrupt-on-init` to hold it in the initialization state
   - the chaos-controller will inject an init containers name `chaos-handler` as the first init container in your pod
   - this init container is lightweight and does nothing but waiting for a `SIGUSR1` signal to complete successfully
+    - thus, until a disruption targets the pod with the init container, it will do nothing but wait until it times out. The init container has no k8s api access, and does no proactive searching for existing disruption resources.
 - apply your disruption [with the init mode on](../examples/on_init.yaml)
   - the chaos pod will inject the disruption and unstuck your pod from the pending state
 

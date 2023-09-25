@@ -660,27 +660,25 @@ func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, in
 		return
 	}
 
-	isFinalizerRemoved, err := r.ChaosPodService.HandleChaosPodTermination(ctx, instance, &chaosPod)
+	isStuckOnRemoval, err := r.ChaosPodService.HandleChaosPodTermination(ctx, instance, &chaosPod)
 	if err != nil {
 		r.log.Errorw("could not handle the chaos pod termination", "error", err, "chaosPod", chaosPod.Name)
 
 		return
 	}
 
-	if isFinalizerRemoved {
-		return
+	if isStuckOnRemoval {
+		target := chaosPod.Labels[chaostypes.TargetLabel]
+
+		// if the chaos pod finalizer must not be removed and the chaos pod must not be deleted
+		// and the cleanup status must not be ignored, we are stuck and won't be able to remove the disruption
+		r.log.Infow("instance seems stuck on removal for this target, please check manually", "target", target, "chaosPod", chaosPod.Name)
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "", target)
+
+		instance.Status.IsStuckOnRemoval = true
+
+		r.updateTargetInjectionStatus(instance, chaosPod, chaostypes.DisruptionTargetInjectionStatusStatusIsStuckOnRemoval, *chaosPod.DeletionTimestamp)
 	}
-
-	target := chaosPod.Labels[chaostypes.TargetLabel]
-
-	// if the chaos pod finalizer must not be removed and the chaos pod must not be deleted
-	// and the cleanup status must not be ignored, we are stuck and won't be able to remove the disruption
-	r.log.Infow("instance seems stuck on removal for this target, please check manually", "target", target, "chaosPod", chaosPod.Name)
-	r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "", target)
-
-	instance.Status.IsStuckOnRemoval = true
-
-	r.updateTargetInjectionStatus(instance, chaosPod, chaostypes.DisruptionTargetInjectionStatusStatusIsStuckOnRemoval, *chaosPod.DeletionTimestamp)
 }
 
 func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod, status chaostypes.DisruptionTargetInjectionStatus, since metav1.Time) {
