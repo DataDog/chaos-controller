@@ -31,6 +31,10 @@ data:
           url: {{ .Values.controller.notifiers.http.url | quote }}
           headers: {{ .Values.controller.notifiers.http.headers | toJson }}
           headersFilepath: {{ .Values.controller.notifiers.http.headersFilepath | quote }}
+          hasDetails: {{ .Values.controller.notifiers.http.hasDetails }}
+          filteredReasons: {{ .Values.controller.notifiers.http.filteredReasons | toJson }}
+          authURL: {{ .Values.controller.notifiers.http.authURL | quote }}
+          authHeaders: {{ .Values.controller.notifiers.http.authHeaders | toJson }}
         datadog:
           enabled: {{ .Values.controller.notifiers.datadog.enabled }}
       cloudProviders:
