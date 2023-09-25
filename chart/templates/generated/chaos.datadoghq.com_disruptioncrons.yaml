@@ -130,6 +130,8 @@ spec:
                           items:
                             type: string
                           type: array
+                        probability:
+                          type: string
                       required:
                         - paths
                       type: object

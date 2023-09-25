@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/command"
@@ -63,15 +64,17 @@ func (i *DiskFailureInjector) Inject() error {
 	}
 
 	for _, path := range i.spec.Paths {
-		args := []string{"-p", strconv.Itoa(pid)}
+		args := []string{"-process", strconv.Itoa(pid)}
 
 		if path != "" {
-			args = append(args, "-f", path)
+			args = append(args, "-path", path)
 		}
 
 		if exitCode != 0 {
-			args = append(args, "-c", fmt.Sprintf("%v", exitCode))
+			args = append(args, "-exit-code", fmt.Sprintf("%v", exitCode))
 		}
+
+		args = append(args, "-probability", strings.TrimSuffix(i.spec.Probability, "%"))
 
 		cmd := i.config.CmdFactory.NewCmd(context.Background(), EBPFDiskFailureCmd, args)
 

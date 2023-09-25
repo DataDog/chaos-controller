@@ -13,18 +13,20 @@ import (
 	"bytes"
 	"encoding/binary"
 	"flag"
+	"os"
+	"os/signal"
+
 	"github.com/DataDog/chaos-controller/ebpf"
 	"github.com/DataDog/chaos-controller/log"
 	bpf "github.com/aquasecurity/libbpfgo"
 	"github.com/aquasecurity/libbpfgo/helpers"
 	"go.uber.org/zap"
-	"os"
-	"os/signal"
 )
 
-var nFlag = flag.Uint64("p", 0, "Process to disrupt")
-var nPath = flag.String("f", "/", "Filter path")
-var nExitCode = flag.Uint64("c", 1, "Exit code")
+var nPid = flag.Uint64("process", 0, "Process to disrupt")
+var nPath = flag.String("path", "/", "Filter path")
+var nProbability = flag.Uint64("probability", 100, "Probability to disrupt")
+var nExitCode = flag.Uint64("exit-code", 1, "Exit code")
 
 var logger *zap.SugaredLogger
 
@@ -94,7 +96,7 @@ func initGlobalVariables(bpfModule *bpf.Module) {
 
 	// Set the PID
 	var pid uint32
-	pid = uint32(*nFlag)
+	pid = uint32(*nPid)
 	if err := bpfModule.InitGlobalVariable("target_pid", pid); err != nil {
 		must(err)
 	}
@@ -107,6 +109,12 @@ func initGlobalVariables(bpfModule *bpf.Module) {
 	var exitCode uint32
 	exitCode = uint32(*nExitCode)
 	if err := bpfModule.InitGlobalVariable("exit_code", exitCode); err != nil {
+		must(err)
+	}
+
+	var probability uint32
+	probability = uint32(*nProbability)
+	if err := bpfModule.InitGlobalVariable("probability", probability); err != nil {
 		must(err)
 	}
 

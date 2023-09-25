@@ -7,7 +7,10 @@ package v1beta1
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 // OpenatSyscallSpec syscall specs
@@ -25,23 +28,63 @@ type DiskFailureSpec struct {
 	Paths []string `json:"paths"`
 	// +nullable
 	OpenatSyscall *OpenatSyscallSpec `json:"openat,omitempty"`
+	Probability   string             `json:"probability,omitempty"`
 }
 
 // MaxDiskPathCharacters is used to limit the number of characters due to the eBPF memory kernel limitation.
 const MaxDiskPathCharacters = 62
 
 // Validate validates args for the given disruption
-func (s *DiskFailureSpec) Validate() error {
-	for _, path := range s.Paths {
-		path := strings.TrimSpace(path)
+func (s *DiskFailureSpec) Validate() (retErr error) {
+	if err := s.validatePaths(); err != nil {
+		retErr = multierror.Append(retErr, err)
+	}
 
-		if path == "" {
+	if err := s.validateProbability(); err != nil {
+		retErr = multierror.Append(retErr, err)
+	}
+
+	return
+}
+
+func (s *DiskFailureSpec) validatePaths() error {
+	for _, path := range s.Paths {
+		trimSpacePath := strings.TrimSpace(path)
+
+		if trimSpacePath == "" {
 			return fmt.Errorf("the path of the disk failure disruption must not be empty")
 		}
 
-		if len(path) > MaxDiskPathCharacters {
+		if len(trimSpacePath) > MaxDiskPathCharacters {
 			return fmt.Errorf("the path of the disk failure disruption must not exceed %d characters, found %d", MaxDiskPathCharacters, len(path))
 		}
+	}
+
+	return nil
+}
+
+func (s *DiskFailureSpec) validateProbability() error {
+	if s.Probability == "" {
+		return nil
+	}
+
+	if !strings.HasSuffix(s.Probability, "%") {
+		return fmt.Errorf("the probability percentage of the disk failure disruption should be suffixed by a %%. Input: %s", s.Probability)
+	}
+
+	probabilityStr := strings.TrimSuffix(s.Probability, "%")
+	probabilityInt, err := strconv.Atoi(probabilityStr)
+
+	if err != nil {
+		return fmt.Errorf("the probability percentage of the disk failure disruption can't be converted to int: %w", err)
+	}
+
+	if probabilityInt > 100 {
+		return fmt.Errorf("the probability percentage of the disk failure disruption should be lesser or equal to 100%%. Input: %s", s.Probability)
+	}
+
+	if probabilityInt <= 0 {
+		return fmt.Errorf("the probability percentage of the disk failure disruption should be greater than 0%%. Input: %s", s.Probability)
 	}
 
 	return nil
@@ -58,6 +101,12 @@ func (s *DiskFailureSpec) GenerateArgs() (args []string) {
 		if s.OpenatSyscall.ExitCode != "" {
 			args = append(args, "--exit-code", s.OpenatSyscall.ExitCode)
 		}
+	}
+
+	if s.Probability != "" {
+		args = append(args, "--probability", s.Probability)
+	} else {
+		args = append(args, "--probability", "100%")
 	}
 
 	return args

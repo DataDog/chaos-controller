@@ -21,3 +21,4 @@ spec:
       - /mnt/data/disk-write
     openat:
       exitCode: ENOENT
+    probability: 100%
