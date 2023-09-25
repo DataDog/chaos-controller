@@ -24,17 +24,17 @@ func (_m *CloudProviderIPRangeManagerMock) EXPECT() *CloudProviderIPRangeManager
 	return &CloudProviderIPRangeManagerMock_Expecter{mock: &_m.Mock}
 }
 
-// ConvertToGenericIPRanges provides a mock function with given fields: _a0
-func (_m *CloudProviderIPRangeManagerMock) ConvertToGenericIPRanges(_a0 []byte) (*types.CloudProviderIPRangeInfo, error) {
-	ret := _m.Called(_a0)
+// ConvertToGenericIPRanges provides a mock function with given fields: ipRangeData
+func (_m *CloudProviderIPRangeManagerMock) ConvertToGenericIPRanges(ipRangeData []byte) (*types.CloudProviderIPRangeInfo, error) {
+	ret := _m.Called(ipRangeData)
 
 	var r0 *types.CloudProviderIPRangeInfo
 	var r1 error
 	if rf, ok := ret.Get(0).(func([]byte) (*types.CloudProviderIPRangeInfo, error)); ok {
-		return rf(_a0)
+		return rf(ipRangeData)
 	}
 	if rf, ok := ret.Get(0).(func([]byte) *types.CloudProviderIPRangeInfo); ok {
-		r0 = rf(_a0)
+		r0 = rf(ipRangeData)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.CloudProviderIPRangeInfo)
@@ -42,7 +42,7 @@ func (_m *CloudProviderIPRangeManagerMock) ConvertToGenericIPRanges(_a0 []byte) 
 	}
 
 	if rf, ok := ret.Get(1).(func([]byte) error); ok {
-		r1 = rf(_a0)
+		r1 = rf(ipRangeData)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -56,12 +56,12 @@ type CloudProviderIPRangeManagerMock_ConvertToGenericIPRanges_Call struct {
 }
 
 // ConvertToGenericIPRanges is a helper method to define mock.On call
-//   - _a0 []byte
-func (_e *CloudProviderIPRangeManagerMock_Expecter) ConvertToGenericIPRanges(_a0 interface{}) *CloudProviderIPRangeManagerMock_ConvertToGenericIPRanges_Call {
-	return &CloudProviderIPRangeManagerMock_ConvertToGenericIPRanges_Call{Call: _e.mock.On("ConvertToGenericIPRanges", _a0)}
+//   - ipRangeData []byte
+func (_e *CloudProviderIPRangeManagerMock_Expecter) ConvertToGenericIPRanges(ipRangeData interface{}) *CloudProviderIPRangeManagerMock_ConvertToGenericIPRanges_Call {
+	return &CloudProviderIPRangeManagerMock_ConvertToGenericIPRanges_Call{Call: _e.mock.On("ConvertToGenericIPRanges", ipRangeData)}
 }
 
-func (_c *CloudProviderIPRangeManagerMock_ConvertToGenericIPRanges_Call) Run(run func(_a0 []byte)) *CloudProviderIPRangeManagerMock_ConvertToGenericIPRanges_Call {
+func (_c *CloudProviderIPRangeManagerMock_ConvertToGenericIPRanges_Call) Run(run func(ipRangeData []byte)) *CloudProviderIPRangeManagerMock_ConvertToGenericIPRanges_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].([]byte))
 	})
@@ -78,23 +78,23 @@ func (_c *CloudProviderIPRangeManagerMock_ConvertToGenericIPRanges_Call) RunAndR
 	return _c
 }
 
-// IsNewVersion provides a mock function with given fields: _a0, _a1
-func (_m *CloudProviderIPRangeManagerMock) IsNewVersion(_a0 []byte, _a1 string) (bool, error) {
-	ret := _m.Called(_a0, _a1)
+// IsNewVersion provides a mock function with given fields: ipRangeData, version
+func (_m *CloudProviderIPRangeManagerMock) IsNewVersion(ipRangeData []byte, version string) (bool, error) {
+	ret := _m.Called(ipRangeData, version)
 
 	var r0 bool
 	var r1 error
 	if rf, ok := ret.Get(0).(func([]byte, string) (bool, error)); ok {
-		return rf(_a0, _a1)
+		return rf(ipRangeData, version)
 	}
 	if rf, ok := ret.Get(0).(func([]byte, string) bool); ok {
-		r0 = rf(_a0, _a1)
+		r0 = rf(ipRangeData, version)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
 	if rf, ok := ret.Get(1).(func([]byte, string) error); ok {
-		r1 = rf(_a0, _a1)
+		r1 = rf(ipRangeData, version)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -108,13 +108,13 @@ type CloudProviderIPRangeManagerMock_IsNewVersion_Call struct {
 }
 
 // IsNewVersion is a helper method to define mock.On call
-//   - _a0 []byte
-//   - _a1 string
-func (_e *CloudProviderIPRangeManagerMock_Expecter) IsNewVersion(_a0 interface{}, _a1 interface{}) *CloudProviderIPRangeManagerMock_IsNewVersion_Call {
-	return &CloudProviderIPRangeManagerMock_IsNewVersion_Call{Call: _e.mock.On("IsNewVersion", _a0, _a1)}
+//   - ipRangeData []byte
+//   - version string
+func (_e *CloudProviderIPRangeManagerMock_Expecter) IsNewVersion(ipRangeData interface{}, version interface{}) *CloudProviderIPRangeManagerMock_IsNewVersion_Call {
+	return &CloudProviderIPRangeManagerMock_IsNewVersion_Call{Call: _e.mock.On("IsNewVersion", ipRangeData, version)}
 }
 
-func (_c *CloudProviderIPRangeManagerMock_IsNewVersion_Call) Run(run func(_a0 []byte, _a1 string)) *CloudProviderIPRangeManagerMock_IsNewVersion_Call {
+func (_c *CloudProviderIPRangeManagerMock_IsNewVersion_Call) Run(run func(ipRangeData []byte, version string)) *CloudProviderIPRangeManagerMock_IsNewVersion_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].([]byte), args[1].(string))
 	})
