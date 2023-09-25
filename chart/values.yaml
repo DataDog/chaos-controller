@@ -43,6 +43,7 @@ controller:
       url: ""
       headersFilepath: ""
       headers: []
+      hasDetails: true
   cloudProviders: # cloud providers specific disruptions configuration
     disableAll: false # disable all cloud providers disruption, it overrides per cloud provider configuration (you can't disable all + enable one)
     pullInterval: 24h # pull interval used by the controller to update ip ranges files

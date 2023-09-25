@@ -33,6 +33,10 @@ type NotifierSink struct {
 func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, notifiersConfig eventnotifier.NotifiersConfig, logger *zap.SugaredLogger) (err error) {
 	client := mgr.GetClient()
 
+	if notifiersConfig.Common.Client == nil {
+		notifiersConfig.Common.Client = client
+	}
+
 	notifiers, err := eventnotifier.GetNotifiers(notifiersConfig, logger)
 
 	for _, notifier := range notifiers {
@@ -49,6 +53,8 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 }
 
 func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
+	s.logger.Debugw("create event", "event", event)
+
 	dis, err := s.getDisruption(event)
 	if err != nil {
 		return event, nil
@@ -59,14 +65,18 @@ func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 		return event, nil
 	}
 
+	s.logger.Debugw("notify happened for event", "event", event)
+
 	return event, nil
 }
 
 func (s *NotifierSink) Update(event *corev1.Event) (*corev1.Event, error) {
+	s.logger.Debugw("update event", "event", event)
 	return event, nil
 }
 
 func (s *NotifierSink) Patch(oldEvent *corev1.Event, data []byte) (*corev1.Event, error) {
+	s.logger.Debugw("patch event", "event", oldEvent)
 	return oldEvent, nil
 }
 
