@@ -13,28 +13,30 @@ import (
 var _ = Describe("DNSDisruptionSpec", func() {
 	When("'Validate' method is called", func() {
 		Describe("test regex validation cases", func() {
-			disruptionSpec := DNSDisruptionSpec{
-				{
-					Hostname: "hostname.tld",
-					Record: DNSRecord{
-						Type:  "",
-						Value: "",
+			It("errors only on invalid regex", func() {
+				disruptionSpec := DNSDisruptionSpec{
+					{
+						Hostname: "hostname.tld",
+						Record: DNSRecord{
+							Type:  "",
+							Value: "",
+						},
 					},
-				},
-			}
+				}
 
-			err := disruptionSpec.Validate()
-			Expect(err).ToNot(HaveOccurred())
+				err := disruptionSpec.Validate()
+				Expect(err).ToNot(HaveOccurred())
 
-			disruptionSpec[0].Hostname = "*.hostname.tld"
+				disruptionSpec[0].Hostname = "*.hostname.tld"
 
-			err = disruptionSpec.Validate()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("not a valid regular expression"))
+				err = disruptionSpec.Validate()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("not a valid regular expression"))
 
-			disruptionSpec[0].Hostname = ".*.hostname.tld"
-			err = disruptionSpec.Validate()
-			Expect(err).ToNot(HaveOccurred())
+				disruptionSpec[0].Hostname = ".*.hostname.tld"
+				err = disruptionSpec.Validate()
+				Expect(err).ToNot(HaveOccurred())
+			})
 		})
 	})
 })
