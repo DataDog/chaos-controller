@@ -64,13 +64,14 @@ type ChaosPodService interface {
 
 // ChaosPodServiceInjectorConfig contains configuration options for the injector.
 type ChaosPodServiceInjectorConfig struct {
-	ServiceAccount                string            // Service account to be used by the injector.
-	Image                         string            // Image to be used for the injector.
-	Annotations, Labels           map[string]string // Annotations and labels to be applied to injected pods.
-	NetworkDisruptionAllowedHosts []string          // List of hosts allowed during network disruption.
-	DNSDisruptionDNSServer        string            // DNS server to be used for DNS disruption.
-	DNSDisruptionKubeDNS          string            // KubeDNS server to be used for DNS disruption.
-	ImagePullSecrets              string            // Image pull secrets for the injector.
+	ServiceAccount                         string            // Service account to be used by the injector.
+	Image                                  string            // Image to be used for the injector.
+	Annotations, Labels                    map[string]string // Annotations and labels to be applied to injected pods.
+	NetworkDisruptionAllowedHosts          []string          // List of hosts allowed during all network disruptions.
+	NetworkDisruptionNodeLevelAllowedHosts []string          // List of hosts allowed during node level network disruptions
+	DNSDisruptionDNSServer                 string            // DNS server to be used for DNS disruption.
+	DNSDisruptionKubeDNS                   string            // KubeDNS server to be used for DNS disruption.
+	ImagePullSecrets                       string            // Image pull secrets for the injector.
 }
 
 // ChaosPodServiceConfig contains configuration options for the chaosPodService.
@@ -245,6 +246,7 @@ func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.D
 		notInjectedBefore := instance.TimeToInject()
 
 		allowedHosts := m.config.Injector.NetworkDisruptionAllowedHosts
+		nodeLevelAllowedHosts := m.config.Injector.NetworkDisruptionNodeLevelAllowedHosts
 
 		// get the ip ranges of cloud provider services
 		if instance.Spec.Network != nil {
@@ -264,25 +266,26 @@ func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.D
 		}
 
 		xargs := chaosapi.DisruptionArgs{
-			Level:                instance.Spec.Level,
-			Kind:                 kind,
-			TargetContainers:     targetContainers,
-			TargetName:           targetName,
-			TargetNodeName:       targetNodeName,
-			TargetPodIP:          targetPodIP,
-			DryRun:               instance.Spec.DryRun,
-			DisruptionName:       instance.Name,
-			DisruptionNamespace:  instance.Namespace,
-			OnInit:               instance.Spec.OnInit,
-			PulseInitialDelay:    pulseInitialDelay,
-			PulseActiveDuration:  pulseActiveDuration,
-			PulseDormantDuration: pulseDormantDuration,
-			NotInjectedBefore:    notInjectedBefore,
-			MetricsSink:          m.config.MetricsSink.GetSinkName(),
-			AllowedHosts:         allowedHosts,
-			DNSServer:            m.config.Injector.DNSDisruptionDNSServer,
-			KubeDNS:              m.config.Injector.DNSDisruptionKubeDNS,
-			ChaosNamespace:       m.config.ChaosNamespace,
+			Level:                 instance.Spec.Level,
+			Kind:                  kind,
+			TargetContainers:      targetContainers,
+			TargetName:            targetName,
+			TargetNodeName:        targetNodeName,
+			TargetPodIP:           targetPodIP,
+			DryRun:                instance.Spec.DryRun,
+			DisruptionName:        instance.Name,
+			DisruptionNamespace:   instance.Namespace,
+			OnInit:                instance.Spec.OnInit,
+			PulseInitialDelay:     pulseInitialDelay,
+			PulseActiveDuration:   pulseActiveDuration,
+			PulseDormantDuration:  pulseDormantDuration,
+			NotInjectedBefore:     notInjectedBefore,
+			MetricsSink:           m.config.MetricsSink.GetSinkName(),
+			AllowedHosts:          allowedHosts,
+			NodeLevelAllowedHosts: nodeLevelAllowedHosts,
+			DNSServer:             m.config.Injector.DNSDisruptionDNSServer,
+			KubeDNS:               m.config.Injector.DNSDisruptionKubeDNS,
+			ChaosNamespace:        m.config.ChaosNamespace,
 		}
 
 		args := xargs.CreateCmdArgs(subspec.GenerateArgs())

@@ -74,8 +74,9 @@ type injectorDNSDisruptionConfig struct {
 }
 
 type injectorNetworkDisruptionConfig struct {
-	AllowedHosts        []string      `json:"allowedHosts"`
-	HostResolveInterval time.Duration `json:"hostResolveInterval"`
+	AllowedHosts          []string      `json:"allowedHosts"`
+	NodeLevelAllowedHosts []string      `json:"nodeLevelAllowedHosts"`
+	HostResolveInterval   time.Duration `json:"hostResolveInterval"`
 }
 
 type handlerConfig struct {
@@ -250,9 +251,15 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
-	mainFS.StringSliceVar(&cfg.Injector.NetworkDisruption.AllowedHosts, "injector-network-disruption-allowed-hosts", []string{}, "List of hosts always allowed by network disruptions (format: <host>;<port>;<protocol>;<flow>)")
+	mainFS.StringSliceVar(&cfg.Injector.NetworkDisruption.AllowedHosts, "injector-network-disruption-allowed-hosts", []string{}, "List of hosts always allowed by all network disruptions (format: <host>;<port>;<protocol>;<flow>)")
 
 	if err := viper.BindPFlag("injector.networkDisruption.allowedHosts", mainFS.Lookup("injector-network-disruption-allowed-hosts")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringSliceVar(&cfg.Injector.NetworkDisruption.NodeLevelAllowedHosts, "injector-network-disruption-node-level-allowed-hosts", []string{}, "List of hosts always allowed by node level network disruptions (format: <host>;<port>;<protocol>;<flow>)")
+
+	if err := viper.BindPFlag("injector.networkDisruption.nodeLevelAllowedHosts", mainFS.Lookup("injector-network-disruption-node-level-allowed-hosts")); err != nil {
 		return cfg, err
 	}
 

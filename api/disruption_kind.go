@@ -23,26 +23,27 @@ type DisruptionKind interface {
 }
 
 type DisruptionArgs struct {
-	AllowedHosts         []string
-	TargetContainers     map[string]string
-	Level                chaostypes.DisruptionLevel
-	Kind                 chaostypes.DisruptionKindName
-	TargetPodIP          string
-	MetricsSink          string
-	DisruptionName       string
-	DisruptionNamespace  string
-	TargetName           string
-	TargetNodeName       string
-	DNSServer            string
-	KubeDNS              string
-	ChaosNamespace       string
-	DryRun               bool
-	OnInit               bool
-	PulseInitialDelay    time.Duration
-	PulseActiveDuration  time.Duration
-	PulseDormantDuration time.Duration
-	HostResolveInterval  time.Duration
-	NotInjectedBefore    time.Time
+	AllowedHosts          []string
+	NodeLevelAllowedHosts []string
+	TargetContainers      map[string]string
+	Level                 chaostypes.DisruptionLevel
+	Kind                  chaostypes.DisruptionKindName
+	TargetPodIP           string
+	MetricsSink           string
+	DisruptionName        string
+	DisruptionNamespace   string
+	TargetName            string
+	TargetNodeName        string
+	DNSServer             string
+	KubeDNS               string
+	ChaosNamespace        string
+	DryRun                bool
+	OnInit                bool
+	PulseInitialDelay     time.Duration
+	PulseActiveDuration   time.Duration
+	PulseDormantDuration  time.Duration
+	HostResolveInterval   time.Duration
+	NotInjectedBefore     time.Time
 }
 
 // CreateCmdArgs is a helper function generating common and global args and appending them to the given args array
@@ -100,6 +101,12 @@ func (d DisruptionArgs) CreateCmdArgs(args []string) []string {
 
 	// append allowed hosts for network disruptions
 	if d.Kind == chaostypes.DisruptionKindNetworkDisruption {
+		if d.Level == chaostypes.DisruptionLevelNode {
+			for _, host := range d.NodeLevelAllowedHosts {
+				args = append(args, "--allowed-hosts", host)
+			}
+		}
+
 		for _, host := range d.AllowedHosts {
 			args = append(args, "--allowed-hosts", host)
 		}
