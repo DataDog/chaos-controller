@@ -18,8 +18,8 @@ var _ = Describe("DNSDisruptionSpec", func() {
 					{
 						Hostname: "hostname.tld",
 						Record: DNSRecord{
-							Type:  "",
-							Value: "",
+							Type:  "A",
+							Value: "1.2.3.4",
 						},
 					},
 				}
