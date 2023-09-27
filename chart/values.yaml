@@ -92,6 +92,7 @@ injector:
   networkDisruption: # network disruption general configuration
     hostResolveInterval: 1m # how often to re-resolve the hostnames we are disrupting traffic to
     allowedHosts: [] # list of always allowed hosts (even if explicitly blocked by a network disruption)
+    nodeLevelAllowedHosts: [] # list of always allowed hosts during node level network disruptions. Can be disrupted at the pod level.
     # (here's the expected format, all fields are optional)
     # allowedHosts:
     #   - host: 10.0.0.0/8

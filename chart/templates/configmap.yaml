@@ -88,6 +88,11 @@ data:
           {{ $v := printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") -}}
           - {{ tpl $v $ }}
           {{- end }}
+        nodeLevelAllowedHosts:
+          {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}
+          {{ $v := printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") -}}
+          - {{ tpl $v $ }}
+          {{- end }}
       {{- end }}
     handler:
       image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.handler.image }}
