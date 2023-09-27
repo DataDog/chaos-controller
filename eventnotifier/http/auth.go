@@ -71,6 +71,10 @@ func (b bearerAuthTokenProvider) AuthToken(ctx context.Context) (string, error) 
 		return "", fmt.Errorf("error when reading token: %w", err)
 	}
 
+	if b.TokenPath == "" {
+		return string(tokenBytes), nil
+	}
+
 	value := gjson.Get(string(tokenBytes), b.TokenPath)
 	if value.Exists() {
 		return value.String(), nil

@@ -15,6 +15,7 @@ import (
 	"net/mail"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -53,17 +54,17 @@ type Notifier struct {
 }
 
 type HTTPNotifierEvent struct {
-	NotificationTitle  string                   `json:"notification-title"`
-	NotificationType   types.NotificationType   `json:"notification-type"`
-	EventMessage       string                   `json:"event-message"`
-	InvolvedObjectKind string                   `json:"involved-object-kind"`
-	DisruptionName     string                   `json:"disruption-name"`
-	Cluster            string                   `json:"cluster"`
-	Namespace          string                   `json:"namespace"`
-	TargetsCount       int                      `json:"targets-count"`
-	Username           string                   `json:"username,omitempty"`
-	UserEmail          string                   `json:"user-email,omitempty"`
-	Details            HTTPNotifierEventDetails `json:"details,omitempty"`
+	NotificationTitle  string                    `json:"notification-title"`
+	NotificationType   types.NotificationType    `json:"notification-type"`
+	EventMessage       string                    `json:"event-message"`
+	InvolvedObjectKind string                    `json:"involved-object-kind"`
+	DisruptionName     string                    `json:"disruption-name"`
+	Cluster            string                    `json:"cluster"`
+	Namespace          string                    `json:"namespace"`
+	TargetsCount       int                       `json:"targets-count"`
+	Username           string                    `json:"username,omitempty"`
+	UserEmail          string                    `json:"user-email,omitempty"`
+	Details            *HTTPNotifierEventDetails `json:"details,omitempty"`
 }
 
 // HTTPNotifierEventDetails contains detailed informations we might or might not keep in the long term
@@ -183,7 +184,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 	}
 
 	if n.hasDetails {
-		notif.Details = HTTPNotifierEventDetails{
+		notif.Details = &HTTPNotifierEventDetails{
 			Disruption: dis,
 			Targets:    make([]HTTPNotifierEventTarget, 0, len(dis.Status.TargetInjections)),
 		}
@@ -194,32 +195,39 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 				DisruptionPodName: targetInjection.InjectorPodName,
 			}
 
-			if dis.Spec.Level == chaostypes.DisruptionLevelNode {
-				node := corev1.Node{}
-				if err := n.common.Client.Get(context.Background(), coretypes.NamespacedName{Namespace: dis.Namespace, Name: targetName}, &node); err != nil {
-					if apierrors.IsNotFound(err) {
-						continue
+			if n.common.Client != nil {
+				if dis.Spec.Level == chaostypes.DisruptionLevelNode {
+					node := corev1.Node{}
+					if err := n.common.Client.Get(context.Background(), coretypes.NamespacedName{Namespace: dis.Namespace, Name: targetName}, &node); err != nil {
+						if apierrors.IsNotFound(err) {
+							continue
+						}
+
+						return err
 					}
 
-					return err
-				}
+					target.Labels = node.Labels
+				} else {
+					pod := corev1.Pod{}
+					if err := n.common.Client.Get(context.Background(), coretypes.NamespacedName{Namespace: dis.Namespace, Name: targetName}, &pod); err != nil {
+						if apierrors.IsNotFound(err) {
+							continue
+						}
 
-				target.Labels = node.Labels
-			} else {
-				pod := corev1.Pod{}
-				if err := n.common.Client.Get(context.Background(), coretypes.NamespacedName{Namespace: dis.Namespace, Name: targetName}, &pod); err != nil {
-					if apierrors.IsNotFound(err) {
-						continue
+						return err
 					}
 
-					return err
+					target.Labels = pod.Labels
 				}
-
-				target.Labels = pod.Labels
 			}
 
 			notif.Details.Targets = append(notif.Details.Targets, target)
 		}
+
+		// Ensure we return consistent ordered results (looping over a map does not provide a consistent ordering)
+		sort.Slice(notif.Details.Targets, func(i, j int) bool {
+			return notif.Details.Targets[i].Name < notif.Details.Targets[j].Name
+		})
 	}
 
 	body, err := json.Marshal(notif)

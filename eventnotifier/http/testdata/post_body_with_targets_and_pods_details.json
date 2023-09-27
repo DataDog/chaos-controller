@@ -1,0 +1,62 @@
+{
+  "notification-title": "Disruption '' received a notification.",
+  "notification-type": "Info",
+  "event-message": "Disruption '' emitted the event : ",
+  "involved-object-kind": "",
+  "disruption-name": "",
+  "cluster": "",
+  "namespace": "",
+  "targets-count": 2,
+  "details": {
+    "disruption": {
+      "metadata": {
+        "creationTimestamp": null
+      },
+      "spec": {
+        "count": null,
+        "triggers": {
+          "inject": {
+            "notBefore": null
+          },
+          "createPods": {
+            "notBefore": null
+          }
+        }
+      },
+      "status": {
+        "targetInjections": {
+          "target-podA": {
+            "injectorPodName": "chaos-podA",
+            "since": null
+          },
+          "target-podB": {
+            "injectorPodName": "chaos-podB",
+            "since": null
+          }
+        },
+        "selectedTargetsCount": 0,
+        "ignoredTargetsCount": 0,
+        "injectedTargetsCount": 0,
+        "desiredTargetsCount": 0
+      }
+    },
+    "targets": [
+      {
+        "name": "target-podA",
+        "labels": {
+          "label-name": "target-podA",
+          "label-namespace": ""
+        },
+        "disruption-pod-name": "chaos-podA"
+      },
+      {
+        "name": "target-podB",
+        "labels": {
+          "label-name": "target-podB",
+          "label-namespace": ""
+        },
+        "disruption-pod-name": "chaos-podB"
+      }
+    ]
+  }
+}

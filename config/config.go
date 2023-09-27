@@ -202,6 +202,36 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
+	mainFS.BoolVar(&cfg.Controller.Notifiers.HTTP.HasDetails, "notifiers-http-has-details", false, "WARNING/ALPHA: Provide additional details in http body payload sent")
+
+	if err := viper.BindPFlag("controller.notifiers.http.hasDetails", mainFS.Lookup("notifiers-http-has-details")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringSliceVar(&cfg.Controller.Notifiers.HTTP.FilteredReasons, "notifiers-http-filtered-reasons", []string{}, "WARNING/ALPHA: Only send http notification for provided reasons")
+
+	if err := viper.BindPFlag("controller.notifiers.http.filteredReasons", mainFS.Lookup("notifiers-http-filtered-reasons")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.AuthURL, "notifiers-http-auth-url", "", "WARNING/ALPHA: First perform an HTTP request to dynamically retrieve auth information before sending http notification")
+
+	if err := viper.BindPFlag("controller.notifiers.http.authURL", mainFS.Lookup("notifiers-http-auth-url")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringSliceVar(&cfg.Controller.Notifiers.HTTP.AuthHeaders, "notifiers-http-auth-headers", []string{}, "WARNING/ALPHA: HTTP headers to provide to auth request")
+
+	if err := viper.BindPFlag("controller.notifiers.http.authHeaders", mainFS.Lookup("notifiers-http-auth-headers")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.AuthTokenPath, "notifiers-http-auth-token-path", "", "WARNING/ALPHA: Extract bearer token from provided JSON path (using GJSON)")
+
+	if err := viper.BindPFlag("controller.notifiers.http.authTokenPath", mainFS.Lookup("notifiers-http-auth-token-path")); err != nil {
+		return cfg, err
+	}
+
 	mainFS.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 
 	if err := viper.BindPFlag("injector.annotations", mainFS.Lookup("injector-annotations")); err != nil {
