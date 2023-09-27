@@ -24,6 +24,7 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	coretypes "k8s.io/apimachinery/pkg/types"
 )
 
@@ -36,6 +37,7 @@ type NotifierHTTPConfig struct {
 	FilteredReasons []string
 	AuthURL         string
 	AuthHeaders     []string
+	AuthTokenPath   string
 }
 
 // Notifier describes a HTTP notifier
@@ -127,7 +129,7 @@ func New(commonConfig types.NotifiersCommonConfig, httpConfig NotifierHTTPConfig
 			return nil, fmt.Errorf("notifier http: invalid headers for auth: %w", err)
 		}
 
-		authTokenProvider = NewBearerAuthTokenProvider(logger, client, httpConfig.AuthURL, authHeaders)
+		authTokenProvider = NewBearerAuthTokenProvider(logger, client, httpConfig.AuthURL, authHeaders, httpConfig.AuthTokenPath)
 	}
 
 	return &Notifier{
@@ -192,10 +194,13 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 				DisruptionPodName: targetInjection.InjectorPodName,
 			}
 
-			// TODO: should we store label before????
 			if dis.Spec.Level == chaostypes.DisruptionLevelNode {
 				node := corev1.Node{}
 				if err := n.common.Client.Get(context.Background(), coretypes.NamespacedName{Namespace: dis.Namespace, Name: targetName}, &node); err != nil {
+					if apierrors.IsNotFound(err) {
+						continue
+					}
+
 					return err
 				}
 
@@ -203,6 +208,10 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 			} else {
 				pod := corev1.Pod{}
 				if err := n.common.Client.Get(context.Background(), coretypes.NamespacedName{Namespace: dis.Namespace, Name: targetName}, &pod); err != nil {
+					if apierrors.IsNotFound(err) {
+						continue
+					}
+
 					return err
 				}
 

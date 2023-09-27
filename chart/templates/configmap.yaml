@@ -35,6 +35,7 @@ data:
           filteredReasons: {{ .Values.controller.notifiers.http.filteredReasons | toJson }}
           authURL: {{ .Values.controller.notifiers.http.authURL | quote }}
           authHeaders: {{ .Values.controller.notifiers.http.authHeaders | toJson }}
+          authTokenPath: {{ .Values.controller.notifiers.http.authTokenPath | quote }}
         datadog:
           enabled: {{ .Values.controller.notifiers.datadog.enabled }}
       cloudProviders:

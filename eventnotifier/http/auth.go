@@ -12,6 +12,8 @@ import (
 	"net/http"
 
 	"go.uber.org/zap"
+
+	"github.com/tidwall/gjson"
 )
 
 type BearerAuthTokenProvider interface {
@@ -22,18 +24,20 @@ type BearerAuthTokenProvider interface {
 var _ BearerAuthTokenProvider = bearerAuthTokenProvider{}
 
 type bearerAuthTokenProvider struct {
-	Logger  *zap.SugaredLogger
-	URL     string
-	Client  *http.Client
-	Headers map[string]string
+	Logger    *zap.SugaredLogger
+	URL       string
+	Client    *http.Client
+	Headers   map[string]string
+	TokenPath string
 }
 
-func NewBearerAuthTokenProvider(logger *zap.SugaredLogger, client *http.Client, url string, headers map[string]string) BearerAuthTokenProvider {
+func NewBearerAuthTokenProvider(logger *zap.SugaredLogger, client *http.Client, url string, headers map[string]string, tokenPath string) BearerAuthTokenProvider {
 	return bearerAuthTokenProvider{
 		logger,
 		url,
 		client,
 		headers,
+		tokenPath,
 	}
 }
 
@@ -67,5 +71,10 @@ func (b bearerAuthTokenProvider) AuthToken(ctx context.Context) (string, error) 
 		return "", fmt.Errorf("error when reading token: %w", err)
 	}
 
-	return string(tokenBytes), nil
+	value := gjson.Get(string(tokenBytes), b.TokenPath)
+	if value.Exists() {
+		return value.String(), nil
+	}
+
+	return "", fmt.Errorf("auth response body does not contains expected token path %s", b.TokenPath)
 }
