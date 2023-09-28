@@ -8,6 +8,7 @@ package v1beta1
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -33,6 +34,10 @@ func (s DNSDisruptionSpec) Validate() (retErr error) {
 	for _, pair := range s {
 		if pair.Hostname == "" {
 			retErr = multierror.Append(retErr, errors.New("no hostname specified in dns disruption"))
+		}
+
+		if _, err := regexp.Compile(pair.Hostname); err != nil {
+			retErr = multierror.Append(retErr, fmt.Errorf("hostname \"%s\" not a valid regular expression: %w", pair.Hostname, err))
 		}
 
 		if pair.Record.Type != "A" && pair.Record.Type != "CNAME" {

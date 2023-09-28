@@ -29,6 +29,7 @@ With eBPF it is possible to catch openat syscall and override the result with a 
 
 The disruption has the following additional field:
 * **Paths**: Prefix used to filter `openat` system calls by path. Does not support wildcard and cannot exceed `62` characters due to eBPF kernel limitation. A validation is in place to avoid the usage of a path greater than this limit. It is possible to define multiple paths. 
+* **Probability**: Define a percentage of failures. Default value: **100%**. It should be a percentage within the range of 1% to 100%.  For example, a Probability field set to 80% will disturb 80% of syscalls by paths.
 
 Support two kind of levels:
 * **Node**: Intercept all `openat` system calls of nodes matching the selector.
@@ -50,6 +51,7 @@ spec:
   diskFailure:
     paths:
       - /sub/path
+    probability: 100%
 ```
 
 > Invalid disruption
@@ -69,6 +71,7 @@ spec:
   diskFailure:
     paths: 
       - / # <----- Denied!
+    probability: 100%
 ```
 
 To allow the `"/"` path, the safe-mode has to be disabled. :warning: This is not recommended at all
@@ -91,6 +94,7 @@ spec:
   diskFailure:
     paths: 
       - / # <----- Allowed
+    probability: 100%
 ```
 
 * **Pod**: Intercept all `openat` system  calls of the main process of the containers and its children. Allow to filter by container name too:
@@ -112,6 +116,7 @@ spec:
   diskFailure:
     paths: 
       - /
+    probability: 100%
 ```
 
 > Disrupt a single container
@@ -133,6 +138,7 @@ spec:
   diskFailure:
     paths: 
       - /
+    probability: 100%
 ```
 
 ### Override exit code
@@ -156,6 +162,7 @@ spec:
   diskFailure:
     paths: 
       - /
+    probability: 100%
     openat:
       exit_code: EACCES # <-- Override the exit code by EACCES. Default: ENOENT
 ```
