@@ -89,7 +89,7 @@ data:
           - {{ tpl $v $ }}
           {{- end }}
         nodeLevelAllowedHosts:
-          {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}
+          {{- range $index, $allowedHost := .Values.injector.networkDisruption.nodeLevelAllowedHosts }}
           {{ $v := printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") -}}
           - {{ tpl $v $ }}
           {{- end }}
