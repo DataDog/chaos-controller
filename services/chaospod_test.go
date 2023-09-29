@@ -728,7 +728,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			args.NotInjectedBefore = notInjectedBefore
 
 			expectedArgs = args.CreateCmdArgs(subSpec.GenerateArgs())
-			expectedArgs = append(expectedArgs, "--deadline", time.Now().Add(time.Second*2).Add(disruption.RemainingDuration()).Format(time.RFC3339))
+			expectedArgs = append(expectedArgs, "--deadline", time.Now().Add(chaostypes.InjectorPadDuration).Add(disruption.RemainingDuration()).Format(time.RFC3339))
 
 			// Action
 			chaosPods, err = chaosPodService.GenerateChaosPodsOfDisruption(&disruption, DefaultTargetName, DefaultTargetNodeName, targetContainers, DefaultTargetPodIp)
