@@ -108,6 +108,8 @@ need to resolve the service's hostname via a separate service resolution system.
 It is sometimes handy to disrupt all packets going to a whole CIDR but excluding some of them. You have two ways to exclude some hosts from being disrupted in a network disruption:
 * from the disruption itself, so it applies to this disruption only
 * from the controller, so it applies to all network disruptions even when not specified explicitly
+  * from the controller's config map, under `injector.networkDisruption` you can set `.allowedHosts` or `.nodeLevelAllowedHosts` to exclude hosts from all disruptions. 
+ The latter field only applies during node level disruptions, and won't be applied to any pod level disruptions.
 
 ### From the disruption
 
