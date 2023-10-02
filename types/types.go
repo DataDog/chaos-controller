@@ -125,6 +125,9 @@ const (
 	ChaosPodFinalizer   = finalizerPrefix + "/chaos-pod"
 
 	PulsingDisruptionMinimumDuration = 500 * time.Millisecond
+	// InjectorPadDuration is the length of time we extend the injector's duration on top of the disruption's duration,
+	// in order to ensure the manager stops the disruption prior to the injectors dying
+	InjectorPadDuration = 2 * time.Second
 
 	// InjectorCgroupClassID is linked to the TC tree in the injector network disruption.
 	// Also used in the DNS Disruption to allow combined Network + DNS Disruption
