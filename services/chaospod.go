@@ -310,8 +310,11 @@ func (m *chaosPodService) GenerateChaosPodOfDisruption(disruption *chaosv1beta1.
 	// to give time for cleaning
 	activeDeadlineSeconds := int64(disruption.RemainingDuration().Seconds()) + 10
 
+	// It can cause abnormalities in the status of a Disruption if injector pods consider themselves complete in the ~second before the chaos-controller believes the disruption is complete.
+	// To avoid making our termination state machine logic more complicated, we will pad the injector pod duration by two seconds.
+	// See https://github.com/DataDog/chaos-controller/issues/748
 	args = append(args,
-		"--deadline", time.Now().Add(disruption.RemainingDuration()).Format(time.RFC3339))
+		"--deadline", time.Now().Add(chaostypes.InjectorPadDuration).Add(disruption.RemainingDuration()).Format(time.RFC3339))
 
 	chaosPod = corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
