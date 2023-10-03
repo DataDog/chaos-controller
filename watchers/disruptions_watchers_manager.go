@@ -114,7 +114,7 @@ func (d disruptionsWatchersManager) RemoveAllWatchers(disruption *v1beta1.Disrup
 
 	// If the Watcher Manager does not exist just do nothing.
 	if watcherManager == nil {
-		d.log.Debugw("could not remove all watchers", "disruptionName", disruption.Name, "namespacedName", namespacedName)
+		d.log.Debugw("could not remove all watchers", "disruptionName", disruption.Name, "disruptionNamespace", disruption.Namespace)
 		return
 	}
 
@@ -123,7 +123,7 @@ func (d disruptionsWatchersManager) RemoveAllWatchers(disruption *v1beta1.Disrup
 	// Remove the Watcher Manager from the map.
 	delete(d.watchersManagers, namespacedName)
 
-	d.log.Infow("all watchers have been removed", "disruptionName", disruption.Name, "namespacedName", disruption.Namespace)
+	d.log.Infow("all watchers have been removed", "disruptionName", disruption.Name, "disruptionNamespace", disruption.Namespace)
 }
 
 // RemoveAllOrphanWatchers removes all Watchers associated with a none existing Disruption.
@@ -143,7 +143,7 @@ func (d disruptionsWatchersManager) RemoveAllOrphanWatchers() error {
 			// Remove the watcher manager from the stored managers
 			delete(d.watchersManagers, namespacedName)
 
-			d.log.Infow("all watchers have been removed", "disruptionName", namespacedName.Name, "namespacedName", namespacedName)
+			d.log.Infow("all watchers have been removed", "disruptionName", namespacedName.Name, "disruptionNamespace", namespacedName.Namespace)
 		}
 	}
 
@@ -206,12 +206,12 @@ func getDisruptionNamespacedName(disruption *v1beta1.Disruption) types.Namespace
 func (d disruptionsWatchersManager) getWatcherManager(disruptionNamespacedName types.NamespacedName) Manager {
 	// If we have already created a watcher manager for this disruption, use it
 	if cachedWatcherManager := d.watchersManagers[disruptionNamespacedName]; cachedWatcherManager != nil {
-		d.log.Debugw("Load watcher manager from the cache", "disruptionName", disruptionNamespacedName.Name, "namespacedName", disruptionNamespacedName.Namespace)
+		d.log.Debugw("Load watcher manager from the cache", "disruptionName", disruptionNamespacedName.Name, "disruptionNamespace", disruptionNamespacedName.Namespace)
 
 		return cachedWatcherManager
 	}
 
-	d.log.Debugw("Creating a new watcher manager", "disruptionName", disruptionNamespacedName.Name, "namespacedName", disruptionNamespacedName.Namespace)
+	d.log.Debugw("Creating a new watcher manager", "disruptionName", disruptionNamespacedName.Name, "disruptionNamespace", disruptionNamespacedName.Namespace)
 
 	// Otherwise, create a new watcher manager
 	return NewManager(d.reader, d.controller)
