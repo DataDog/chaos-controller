@@ -64,8 +64,19 @@ func (i *iptables) Clear() error {
 	for _, r := range i.injectedRules {
 		i.log.Infow("deleting injected iptables rule", "chain", r.chain, "table", r.table, "rulespec", r.rulespec)
 
+		exists, err := i.ip.ChainExists(r.table, r.chain)
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			i.log.Infow("iptables chain doesn't exist anymore, skipping cleaning", "table", r.table, "chain", r.chain)
+
+			continue
+		}
+
 		// skip if it does not exist anymore for idempotency
-		exists, err := i.ip.Exists(r.table, r.chain, r.rulespec...)
+		exists, err = i.ip.Exists(r.table, r.chain, r.rulespec...)
 		if err != nil {
 			return err
 		}
