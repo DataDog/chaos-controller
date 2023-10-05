@@ -79,6 +79,10 @@ func NewDiskPressureInjector(spec v1beta1.DiskPressureSpec, config DiskPressureI
 	}, nil
 }
 
+func (i *diskPressureInjector) TargetName() string {
+	return i.config.TargetName()
+}
+
 func (i *diskPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindDiskPressure
 }
