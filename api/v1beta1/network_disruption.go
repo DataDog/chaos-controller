@@ -8,6 +8,7 @@ package v1beta1
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,11 +28,32 @@ const (
 	// When not specifying an index for the hashtable created when we use u32 filters, the default id for this hashtable is 0x800.
 	// However, the maximum id being 0xFFF, we can only have 2048 different ids, so 2048 tc filters with u32.
 	// https://github.com/torvalds/linux/blob/v5.19/net/sched/cls_u32.c#L689-L690
-	MaximumTCFilters         = 2048
-	MaxNetworkPathCharacters = 100
-	DefaultHTTPMethodFilter  = "ALL"
-	DefaultHTTPPathFilter    = "/"
+	MaximumTCFilters             = 2048
+	MaxNetworkPathCharacters     = 90
+	MaxNetworkPaths              = 20
+	MaxNetworkMethods            = 9
+	DefaultHTTPPathFilter        = "/"
+	HTTPMethodsFilterErrorPrefix = "the methods specification at the network disruption level is not valid; "
+	HTTPPathsFilterErrorPrefix   = "the paths specification at the network disruption level is not valid; "
 )
+
+var allowedHTTPMethods = map[string]struct{}{
+	http.MethodPost:    {},
+	http.MethodGet:     {},
+	http.MethodTrace:   {},
+	http.MethodOptions: {},
+	http.MethodPut:     {},
+	http.MethodPatch:   {},
+	http.MethodConnect: {},
+	http.MethodHead:    {},
+	http.MethodDelete:  {},
+}
+
+type HTTPMethods []string
+
+type HTTPPaths []HTTPPath
+
+type HTTPPath string
 
 // NetworkDisruptionSpec represents a network disruption injection
 // +ddmark:validation:AtLeastOneOf={BandwidthLimit,Drop,Delay,Corrupt,Duplicate}
@@ -88,10 +110,10 @@ type NetworkDisruptionSpec struct {
 
 // NetworkHTTPFilters contains http filters
 type NetworkHTTPFilters struct {
-	// +kubebuilder:validation:Enum=all;delete;get;head;options;patch;post;put
-	// +ddmark:validation:Enum=all;delete;get;head;options;patch;post;put
-	Method string `json:"method,omitempty"`
-	Path   string `json:"path,omitempty"`
+	DeprecatedMethod string      `json:"method,omitempty"`
+	DeprecatedPath   HTTPPath    `json:"path,omitempty"`
+	Methods          HTTPMethods `json:"methods,omitempty"`
+	Paths            HTTPPaths   `json:"paths,omitempty"`
 }
 
 type NetworkDisruptionHostSpec struct {
@@ -150,23 +172,118 @@ type NetworkDisruptionCloudServiceSpec struct {
 	ConnState string `json:"connState,omitempty"`
 }
 
-// Validate validates args for the given http filters.
-func (s *NetworkHTTPFilters) Validate() error {
-	if s.Path != "" {
-		if len(s.Path) > MaxNetworkPathCharacters {
-			return fmt.Errorf("the path specification at the network disruption level is not valid; should not exceed 100 characters")
-		}
+func (p HTTPPath) validate() error {
+	if len(p) > MaxNetworkPathCharacters {
+		return fmt.Errorf("the paths specification at the network disruption level is not valid; should not exceed 100 characters")
+	}
 
-		if regexp.MustCompile(`\s`).MatchString(s.Path) {
-			return fmt.Errorf("the path specification at the network disruption level is not valid; should not contains spaces")
-		}
+	if regexp.MustCompile(`\s`).MatchString(string(p)) {
+		return fmt.Errorf("the paths specification at the network disruption level is not valid; should not contains spaces")
+	}
 
-		if string(s.Path[0]) != DefaultHTTPPathFilter {
-			return fmt.Errorf("the path specification at the network disruption level is not valid; should start with a /")
-		}
+	if string(p[0]) != DefaultHTTPPathFilter {
+		return fmt.Errorf("the paths specification at the network disruption level is not valid; should start with a /")
 	}
 
 	return nil
+}
+
+func (paths HTTPPaths) isNotDefault() bool {
+	if len(paths) == 0 || len(paths) > 1 {
+		return false
+	}
+
+	return paths[0] != DefaultHTTPPathFilter
+}
+
+func (h HTTPMethods) isNotEmpty() bool {
+	return len(h) >= 1
+}
+
+// validate validates args for the given http filters.
+func (s *NetworkHTTPFilters) validate() (retErr error) {
+	if s.DeprecatedPath != "" {
+		retErr = multierror.Append(retErr, fmt.Errorf("the Path specification at the HTTP network disruption level is deprecated; use Paths HTTP field instead"))
+	}
+
+	if s.DeprecatedMethod != "" {
+		retErr = multierror.Append(retErr, fmt.Errorf("the Method specification at the HTTP network disruption level is deprecated; use Methods HTTP field instead"))
+	}
+
+	if len(s.Paths) > MaxNetworkPaths {
+		retErr = multierror.Append(retErr, fmt.Errorf(HTTPPathsFilterErrorPrefix+"the number of paths must not be greater than %d; Number of paths: %d", MaxNetworkPaths, len(s.Paths)))
+	} else if len(s.Paths) > 0 {
+		visitedPaths := make(map[HTTPPath]struct {
+			count int
+		})
+
+		isMultiplePath := false
+		if len(s.Paths) > 1 {
+			isMultiplePath = true
+		}
+
+		for _, path := range s.Paths {
+			visitedPath, isVisited := visitedPaths[path]
+			if isVisited {
+				visitedPath.count++
+				visitedPaths[path] = visitedPath
+				continue
+			}
+
+			visitedPath.count++
+			visitedPaths[path] = visitedPath
+
+			if isMultiplePath && path == DefaultHTTPPathFilter {
+				retErr = multierror.Append(retErr, fmt.Errorf(HTTPPathsFilterErrorPrefix+"no needs to define other paths if the / path is defined because it already catches all paths"))
+			}
+
+			if err := path.validate(); err != nil {
+				retErr = multierror.Append(retErr, err)
+			}
+		}
+
+		for path, visitedPath := range visitedPaths {
+			if visitedPath.count > 1 {
+				retErr = multierror.Append(retErr, fmt.Errorf(HTTPPathsFilterErrorPrefix+"should not contain duplicated paths. Count: %d; Path: %s", visitedPath.count, path))
+				delete(visitedPaths, path)
+			}
+		}
+	}
+
+	if len(s.Methods) > MaxNetworkMethods {
+		retErr = multierror.Append(retErr, fmt.Errorf(HTTPMethodsFilterErrorPrefix+"the number of methods must not be greater than %d; Number of methods: %d", MaxNetworkMethods, len(s.Methods)))
+	} else if len(s.Methods) > 0 {
+		visitedMethods := make(map[string]struct {
+			count int
+		})
+
+		for _, method := range s.Methods {
+			if _, ok := allowedHTTPMethods[method]; !ok {
+				err := fmt.Errorf(HTTPMethodsFilterErrorPrefix+"should be a GET, DELETE, POST, PUT, HEAD, PATCH, CONNECT, OPTIONS or TRACE. Invalid value: %s", method)
+				retErr = multierror.Append(retErr, err)
+				continue
+			}
+
+			visitedMethod, isVisited := visitedMethods[method]
+			if isVisited {
+				visitedMethod.count++
+				visitedMethods[method] = visitedMethod
+				continue
+			}
+
+			visitedMethod.count++
+			visitedMethods[method] = visitedMethod
+		}
+
+		for method, visitedMethod := range visitedMethods {
+			if visitedMethod.count > 1 {
+				retErr = multierror.Append(retErr, fmt.Errorf(HTTPMethodsFilterErrorPrefix+"should not contain duplicated methods. Count: %d; Method: %s", visitedMethod.count, method))
+				delete(visitedMethods, method)
+			}
+		}
+	}
+
+	return retErr
 }
 
 // Validate validates args for the given disruption
@@ -199,7 +316,7 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 	}
 
 	if s.HTTP != nil {
-		if err := s.HTTP.Validate(); err != nil {
+		if err := s.HTTP.validate(); err != nil {
 			retErr = multierror.Append(retErr, err)
 		}
 	}
@@ -246,12 +363,12 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 	}
 
 	if s.HTTP != nil {
-		if s.HTTP.Path != "" {
-			args = append(args, "--path", s.HTTP.Path)
+		for _, path := range s.HTTP.Paths {
+			args = append(args, "--path", string(path))
 		}
 
-		if s.HTTP.Method != "" {
-			args = append(args, "--method", s.HTTP.Method)
+		for _, method := range s.HTTP.Methods {
+			args = append(args, "--method", method)
 		}
 	}
 
@@ -390,7 +507,7 @@ func (s *NetworkDisruptionSpec) Format() string {
 
 // HasHTTPFilters return true if a custom method or path is defined, else return false
 func (s *NetworkDisruptionSpec) HasHTTPFilters() bool {
-	return s.HTTP != nil && (s.HTTP.Method != DefaultHTTPMethodFilter || s.HTTP.Path != DefaultHTTPPathFilter)
+	return s.HTTP != nil && (s.HTTP.Methods.isNotEmpty() || s.HTTP.Paths.isNotDefault())
 }
 
 // TransformToCloudMap for ease of computing when transforming the cloud services ip ranges to a list of hosts to disrupt

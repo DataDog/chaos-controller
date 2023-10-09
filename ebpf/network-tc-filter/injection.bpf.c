@@ -6,75 +6,97 @@
 // +build ignore
 #include "injection.bpf.h"
 
-#define MAX_PATH_LEN 100
+#define MAX_PATH_LEN 90
 #define MAX_METHOD_LEN 8
+#define MAX_PATHS_ENTRIES 20
+#define MAX_METHODS_ENTRIES 9
 
-// Define the eBPF map to store the flags
 struct {
-    __uint(type, BPF_MAP_TYPE_ARRAY);
-    __uint(max_entries, 2);
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_METHODS_ENTRIES);
+    __type(key, int);
+    __type(value, char[MAX_METHOD_LEN]);
+} filter_methods SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_PATHS_ENTRIES);
     __type(key, int);
     __type(value, char[MAX_PATH_LEN]);
-} flags_map SEC(".maps");
+} filter_paths SEC(".maps");
 
 
 static __always_inline bool  validate_path(char* path) {
-    // Get the expected path
-    __u32 expected_path_key = 0;
-    char expected_path[MAX_PATH_LEN];
-    bpf_probe_read_kernel_str(&expected_path, sizeof(expected_path), bpf_map_lookup_elem(&flags_map, &expected_path_key));
+     for (__u32 i = 0; i < MAX_PATHS_ENTRIES; i++) {
+        // Get the expected path
+        char expected_path[MAX_PATH_LEN];
+        __u32 key = i; // Used to avoid runtime infinity loop error.
+        int err = bpf_probe_read_kernel(&expected_path, sizeof(expected_path), bpf_map_lookup_elem(&filter_paths, &key));
+        if (err != 0) {
+            printt("could not get the path. Key: %d. Map: filter_paths", i);
+            break;
+        }
 
-    // Consider the path is not valid if the expected path is not defined.
-    if (expected_path[0] == NULL)
-        return false;
+        char request_path[MAX_PATH_LEN];
+        bpf_probe_read_kernel_str(&request_path, sizeof(request_path), path);
 
-    // Get the path of the response.
-    char request_path[MAX_PATH_LEN];
-    bpf_probe_read_kernel_str(&request_path, sizeof(request_path), path);
+        // Check if the prefix match the method.
+        for (int i = 0; i < MAX_PATH_LEN; ++i) {
+            // Break the loop if the prefix is completed
+            if (expected_path[i] == NULL)
+                return true;
 
-    // Check if the prefix match the path.
-    return has_prefix(request_path, expected_path);
+            // If the prefix does not match the str return false
+            if (expected_path[i] != request_path[i])
+                break;
+        }
+     }
+
+    return false;
 }
 
 static __always_inline bool  validate_method(char* method) {
-     // Get the expected method.
-     __u32 expected_method_key = 1;
-     char expected_method[MAX_METHOD_LEN];
-     bpf_probe_read_kernel_str(&expected_method, sizeof(expected_method), bpf_map_lookup_elem(&flags_map, &expected_method_key));
+     for (__u32 i = 0; i < MAX_METHODS_ENTRIES; i++) {
+        // Get the expected method
+        char expected_method[MAX_METHOD_LEN];
+        __u32 key = i; // Used to avoid runtime infinity loop error
+        int err = bpf_probe_read_kernel(&expected_method, sizeof(expected_method), bpf_map_lookup_elem(&filter_methods, &key));
+        if (err != 0) {
+            printt("could not get the method. Key: %d. Map: filter_methods", i);
+            break;
+        }
 
-     // Don't apply the tc rule if the method is not defined.
-     if (expected_method[0] == NULL)
-         return false;
+        // Check if the prefix match the method.
+        for (int i = 0; i < MAX_METHOD_LEN; ++i) {
+            // Break the loop if the prefix is completed
+            if (expected_method[i] == NULL)
+                return true;
 
-     // If the method is ALL apply the next tc rule.
-     if ((expected_method[0] == 'A') && (expected_method[1] == 'L') && (expected_method[2] == 'L'))
-         return true;
+            // If the prefix does not match the str return false
+            if (expected_method[i] != method[i])
+                break;
+        }
+     }
 
-     // Get the method of the request to compare it with the expected method.
-     char request_method[MAX_METHOD_LEN];
-     bpf_probe_read_kernel_str(&request_method, sizeof(request_method), method);
-
-     // Check if the prefix match the method.
-     return has_prefix(request_method, expected_method);
+    return false;
 }
 
-SEC("classifier")
-int cls_entry(struct __sk_buff *skb)
+SEC("classifier_methods")
+int cls_classifier_methods(struct __sk_buff *skb)
 {
     skb_info_t skb_info;
 
     if (!read_conn_tuple_skb(skb, &skb_info))
         return 0;
 
-    char p[HTTP_BUFFER_SIZE];
-    http_packet_t packet_type;
-
-    if (skb->len - skb_info.data_off < HTTP_BUFFER_SIZE) {
+    if (skb->len - skb_info.data_off < DEFAULT_HTTP_BUFFER_SIZE) {
         printt("http buffer reach the limit");
         return 0;
     }
 
-    for (int i = 0; i < HTTP_BUFFER_SIZE; i++) {
+    char p[DEFAULT_HTTP_BUFFER_SIZE];
+
+    for (int i = 0; i < DEFAULT_HTTP_BUFFER_SIZE; i++) {
         p[i] = load_byte(skb, skb_info.data_off + i);
     }
 
@@ -84,16 +106,43 @@ int cls_entry(struct __sk_buff *skb)
        return 0;
     }
 
-    int i;
+    if (validate_method(method)) {
+        printt("MATCH METHOD %s!", method);
+        return -1;
+    }
+
+    // Don't apply the next tc rule.
+    return 0;
+}
+
+SEC("classifier_paths")
+int cls_classifier_paths(struct __sk_buff *skb)
+{
+    skb_info_t skb_info;
+
+    if (!read_conn_tuple_skb(skb, &skb_info))
+        return 0;
+
+    if (skb->len - skb_info.data_off < LARGE_HTTP_BUFFER_SIZE) {
+        printt("http buffer reach the limit");
+        return 0;
+    }
+
+    char p[LARGE_HTTP_BUFFER_SIZE];
+
+    for (int i = 0; i < LARGE_HTTP_BUFFER_SIZE; i++) {
+        p[i] = load_byte(skb, skb_info.data_off + i);
+    }
+
     char path[MAX_PATH_LEN];
     int path_length = 0;
 
     // Extract the path from the response
-    for (i = 0; i < HTTP_BUFFER_SIZE; i++) {
+    for (int i = 0; i < LARGE_HTTP_BUFFER_SIZE; i++) {
         if (p[i] == ' ') {
             i++;
             // Find the end of the path
-            while (i < HTTP_BUFFER_SIZE && p[i] != ' ' && path_length < MAX_PATH_LEN - 1) {
+            while (i < LARGE_HTTP_BUFFER_SIZE && p[i] != ' ' && path_length < MAX_PATH_LEN - 1) {
                 path[path_length] = p[i];
                 path_length++;
                 i++;
@@ -105,14 +154,8 @@ int cls_entry(struct __sk_buff *skb)
         }
     }
 
-    printt("PATH: %s", path);
-
-    if (!validate_path(path)) {
-        return 0;
-    }
-
-    if (validate_method(method)) {
-        printt("DISRUPTED PATH %s!", path);
+    if (validate_path(path)) {
+        printt("MATCH PATH %s!", path);
         return -1;
     }
 

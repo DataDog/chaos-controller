@@ -15,106 +15,72 @@ package main
 import "C"
 
 import (
-	"flag"
+	goflag "flag"
 	"fmt"
-	"github.com/DataDog/chaos-controller/log"
-	"go.uber.org/zap"
-	"syscall"
 	"unsafe"
+
+	"github.com/DataDog/chaos-controller/log"
+	"github.com/aquasecurity/libbpfgo"
+	flag "github.com/spf13/pflag"
+	"go.uber.org/zap"
 )
 
 var (
-	err     error
-	logger  *zap.SugaredLogger
-	nMethod = flag.String("m", "ALL", "Filter method")
-	nPath   = flag.String("f", "/", "Filter path")
+	err      error
+	logger   *zap.SugaredLogger
+	nMethods = flag.StringArray("method", []string{}, "Filter by http method: GET, DELETE, POST, PUT, HEAD, PATCH, CONNECT, OPTIONS or TRACE")
+	nPaths   = flag.StringArray("path", []string{"/"}, "Filter by http path. Default: /")
 )
 
-const ValueSize = 100
-const MapName = "flags_map"
-
-type BPFMap struct {
-	name string
-	fd   C.int
-}
-
-func (b *BPFMap) Update(key, value unsafe.Pointer) error {
-	errC := C.bpf_map_update_elem(b.fd, key, value, C.ulonglong(0))
-	if errC != 0 {
-		return fmt.Errorf("failed to update map %s: %w", b.name, syscall.Errno(-errC))
-	}
-	return nil
-}
+const MaxPathLen = 90
+const MaxMethodLen = 8
+const PathsBPFMapName = "filter_paths"
+const MethodsBPFMapName = "filter_methods"
 
 func main() {
+	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	flag.Parse()
-	path := []byte(*nPath)
-	method := []byte(*nMethod)
 	logger, err = log.NewZapLogger()
 	if err != nil {
 		logger.Fatalf("could not initialize the logger: %w", err, err)
 	}
 
-	bpfMap, err := GetMapByName("flags_map")
-	if err != nil {
-		logger.Fatalf("could not get the flags_map: %w", err, err)
+	if err := populateBPFMap(MethodsBPFMapName, *nMethods, MaxMethodLen); err != nil {
+		logger.Fatalf("could not populate %s map: %w", MethodsBPFMapName, err)
 	}
 
-	// Update the path
-	if err = updateMap(uint32(0), path, ValueSize, bpfMap); err != nil {
-		logger.Fatalf("could not update the path: %w", err)
+	logger.Info("the %s is successfully updated", MethodsBPFMapName)
+
+	if err := populateBPFMap(PathsBPFMapName, *nPaths, MaxPathLen); err != nil {
+		logger.Fatalf("could not populate %s map: %w", PathsBPFMapName, err)
 	}
 
-	// Update the method
-	if err = updateMap(uint32(1), method, ValueSize, bpfMap); err != nil {
-		logger.Fatalf("could not update the method: %w", err)
-	}
-
-	logger.Infof("the %s map is updated", MapName)
+	logger.Info("the %s is successfully updated", PathsBPFMapName)
 }
 
-func updateMap(key uint32, value []byte, valueSize int, bpfMap *BPFMap) error {
+func populateBPFMap(mapName string, fields []string, fieldSize int) error {
+	bpfMapIds, err := libbpfgo.GetMapsIDsByName(mapName)
+	if err != nil {
+		return fmt.Errorf("could not get maps ids of %s maps: %w", mapName, err)
+	}
+
+	bpfMap, err := libbpfgo.GetMapByID(bpfMapIds[0])
+	if err != nil {
+		return fmt.Errorf("could not get the %s map: %w", mapName, err)
+	}
+
+	for i, field := range fields {
+		if err := updateMap(uint32(i), []byte(field), fieldSize, bpfMap); err != nil {
+			return fmt.Errorf("could not update the %d field with %s value %s map: %w", i, field, mapName, err)
+		}
+	}
+
+	return nil
+}
+
+func updateMap(key uint32, value []byte, valueSize int, bpfMap *libbpfgo.BPFMapLow) error {
 	valueBytes := make([]byte, valueSize)
 	copy(valueBytes[:len(value)], value)
 
-	logger.Debugf("UPDATE MAP %s key: %s, value: %s, value size: %d\n", bpfMap.name, key, value, valueSize)
-
 	return bpfMap.Update(unsafe.Pointer(&key), unsafe.Pointer(&valueBytes[0]))
-}
-
-func GetMapByName(name string) (*BPFMap, error) {
-	startId := C.uint(0)
-	nextId := C.uint(0)
-
-	for {
-		err := C.bpf_map_get_next_id(startId, &nextId)
-		if err != 0 {
-			return nil, fmt.Errorf("could not get the map: %w", syscall.Errno(-err))
-		}
-
-		startId = nextId + 1
-
-		fd := C.bpf_map_get_fd_by_id(nextId)
-		if fd < 0 {
-			return nil, fmt.Errorf("could not get the file descriptor of %s", name)
-		}
-
-		info := C.struct_bpf_map_info{}
-		infolen := C.uint(unsafe.Sizeof(info))
-		err = C.bpf_obj_get_info_by_fd(fd, unsafe.Pointer(&info), &infolen)
-		if err != 0 {
-			return nil, fmt.Errorf("could not get the map info: %w", syscall.Errno(-err))
-		}
-
-		mapName := C.GoString((*C.char)(unsafe.Pointer(&info.name[0])))
-		if mapName != name {
-			continue
-		}
-
-		return &BPFMap{
-			name: name,
-			fd:   fd,
-		}, nil
-	}
-	return nil, fmt.Errorf("the %s map does not exists", name)
 }

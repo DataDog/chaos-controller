@@ -28,8 +28,8 @@ var networkDisruptionCmd = &cobra.Command{
 		delayJitter, _ := cmd.Flags().GetUint("delay-jitter")
 		bandwidthLimit, _ := cmd.Flags().GetInt("bandwidth-limit")
 		hostResolveInterval, _ := cmd.Flags().GetDuration("host-resolve-interval")
-		method, _ := cmd.Flags().GetString("method")
-		path, _ := cmd.Flags().GetString("path")
+		methods, _ := cmd.Flags().GetStringArray("method")
+		paths, _ := cmd.Flags().GetStringArray("path")
 
 		// prepare injectors
 		for i, config := range configs {
@@ -55,6 +55,11 @@ var networkDisruptionCmd = &cobra.Command{
 					log.Fatalw("error parsing services", "error", err)
 				}
 
+				httpPaths := v1beta1.HTTPPaths{}
+				for _, path := range paths {
+					httpPaths = append(httpPaths, v1beta1.HTTPPath(path))
+				}
+
 				spec = v1beta1.NetworkDisruptionSpec{
 					Hosts:          parsedHosts,
 					AllowedHosts:   parsedAllowedHosts,
@@ -66,8 +71,8 @@ var networkDisruptionCmd = &cobra.Command{
 					DelayJitter:    delayJitter,
 					BandwidthLimit: bandwidthLimit,
 					HTTP: &v1beta1.NetworkHTTPFilters{
-						Method: method,
-						Path:   path,
+						Methods: methods,
+						Paths:   httpPaths,
 					},
 				}
 			}
@@ -94,6 +99,6 @@ func init() {
 	networkDisruptionCmd.Flags().Uint("delay-jitter", 0, "Sub-command for Delay; adds specified jitter to delay time")
 	networkDisruptionCmd.Flags().Int("bandwidth-limit", 0, "Bandwidth limit in bytes")
 	networkDisruptionCmd.Flags().Duration("host-resolve-interval", time.Minute, "Interval to resolve hostnames")
-	networkDisruptionCmd.Flags().String("method", "ALL", "Filter by http method")
-	networkDisruptionCmd.Flags().String("path", "/", "Filter by path and must not exceed 100 characters")
+	networkDisruptionCmd.Flags().StringArray("method", []string{}, "Filter by http method: GET, DELETE, POST, CREATE, PUT, HEAD, PATCH, CONNECT, OPTIONS or TRACE")
+	networkDisruptionCmd.Flags().StringArray("path", []string{v1beta1.DefaultHTTPPathFilter}, "Filter by path and must not exceed 100 characters")
 }
