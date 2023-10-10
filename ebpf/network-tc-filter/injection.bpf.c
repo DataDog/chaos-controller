@@ -12,14 +12,14 @@
 #define MAX_METHODS_ENTRIES 9
 
 struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(type, BPF_MAP_TYPE_ARRAY);
     __uint(max_entries, MAX_METHODS_ENTRIES);
     __type(key, int);
     __type(value, char[MAX_METHOD_LEN]);
 } filter_methods SEC(".maps");
 
 struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(type, BPF_MAP_TYPE_ARRAY);
     __uint(max_entries, MAX_PATHS_ENTRIES);
     __type(key, int);
     __type(value, char[MAX_PATH_LEN]);
