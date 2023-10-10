@@ -17,6 +17,7 @@ import "C"
 import (
 	goflag "flag"
 	"fmt"
+	"syscall"
 	"unsafe"
 
 	"github.com/DataDog/chaos-controller/log"
@@ -71,11 +72,12 @@ func populateBPFMap(mapName string, fields []string, fieldSize int) error {
 
 	for i, field := range fields {
 		if err := updateMap(uint32(i), []byte(field), fieldSize, bpfMap); err != nil {
+			closeMap(bpfMap)
 			return fmt.Errorf("could not update the %d field with %s value %s map: %w", i, field, mapName, err)
 		}
 	}
 
-	return nil
+	return closeMap(bpfMap)
 }
 
 func updateMap(key uint32, value []byte, valueSize int, bpfMap *libbpfgo.BPFMapLow) error {
@@ -83,4 +85,12 @@ func updateMap(key uint32, value []byte, valueSize int, bpfMap *libbpfgo.BPFMapL
 	copy(valueBytes[:len(value)], value)
 
 	return bpfMap.Update(unsafe.Pointer(&key), unsafe.Pointer(&valueBytes[0]))
+}
+
+func closeMap(bpfMap *libbpfgo.BPFMapLow) error {
+	if err := syscall.Close(bpfMap.FileDescriptor()); err != nil {
+		return fmt.Errorf("failed to close the file descriptor of the %s map with %d id: %w", bpfMap.Name(), bpfMap.FileDescriptor(), err)
+	}
+
+	return nil
 }
