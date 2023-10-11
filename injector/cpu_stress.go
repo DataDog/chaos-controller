@@ -32,6 +32,10 @@ func NewCPUStressInjector(config Config, percentage int, process process.Manager
 	}
 }
 
+func (c *cpuStressInjector) TargetName() string {
+	return c.config.TargetName()
+}
+
 func (*cpuStressInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindCPUStress
 }

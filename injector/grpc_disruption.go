@@ -51,6 +51,10 @@ func NewGRPCDisruptionInjector(spec v1beta1.GRPCDisruptionSpec, config GRPCDisru
 	}
 }
 
+func (i *GRPCDisruptionInjector) TargetName() string {
+	return i.config.TargetName()
+}
+
 func (i *GRPCDisruptionInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindGRPCDisruption
 }

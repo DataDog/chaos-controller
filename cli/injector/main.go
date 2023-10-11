@@ -354,7 +354,7 @@ func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 				}
 			}
 
-			log.Errorw("disruption injection failed", "error", err)
+			log.Errorw("disruption injection failed", "error", err, "target", inj.TargetName())
 		} else {
 			if sendToMetrics {
 				if reinjection {

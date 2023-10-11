@@ -63,6 +63,10 @@ func NewNodeFailureInjector(spec v1beta1.NodeFailureSpec, config NodeFailureInje
 	}, nil
 }
 
+func (i *nodeFailureInjector) TargetName() string {
+	return i.config.TargetName()
+}
+
 func (i *nodeFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindNodeFailure
 }
