@@ -414,7 +414,6 @@ golang.org/x/oauth2,golang.org/x/oauth2/internal,BSD-3-Clause
 golang.org/x/sync,golang.org/x/sync/errgroup,BSD-3-Clause
 golang.org/x/sync,golang.org/x/sync/semaphore,BSD-3-Clause
 golang.org/x/sys,golang.org/x/sys/execabs,BSD-3-Clause
-golang.org/x/sys,golang.org/x/sys/internal/unsafeheader,BSD-3-Clause
 golang.org/x/sys,golang.org/x/sys/plan9,BSD-3-Clause
 golang.org/x/sys,golang.org/x/sys/unix,BSD-3-Clause
 golang.org/x/sys,golang.org/x/sys/windows,BSD-3-Clause
