@@ -174,7 +174,7 @@ type NetworkDisruptionCloudServiceSpec struct {
 
 func (p HTTPPath) validate() error {
 	if len(p) > MaxNetworkPathCharacters {
-		return fmt.Errorf("the paths specification at the network disruption level is not valid; should not exceed 100 characters")
+		return fmt.Errorf("the paths specification at the network disruption level is not valid; should not exceed %d characters", MaxNetworkPathCharacters)
 	}
 
 	if regexp.MustCompile(`\s`).MatchString(string(p)) {
@@ -203,83 +203,104 @@ func (h HTTPMethods) isNotEmpty() bool {
 // validate validates args for the given http filters.
 func (s *NetworkHTTPFilters) validate() (retErr error) {
 	if s.DeprecatedPath != "" {
-		retErr = multierror.Append(retErr, fmt.Errorf("the Path specification at the HTTP network disruption level is deprecated; use Paths HTTP field instead"))
+		retErr = multierror.Append(retErr, fmt.Errorf("the Path specification at the HTTP network disruption level is no longer supported; use Paths HTTP field instead"))
 	}
 
 	if s.DeprecatedMethod != "" {
-		retErr = multierror.Append(retErr, fmt.Errorf("the Method specification at the HTTP network disruption level is deprecated; use Methods HTTP field instead"))
+		retErr = multierror.Append(retErr, fmt.Errorf("the Method specification at the HTTP network disruption level is no longer supported; use Methods HTTP field instead"))
 	}
 
-	if len(s.Paths) > MaxNetworkPaths {
-		retErr = multierror.Append(retErr, fmt.Errorf(HTTPPathsFilterErrorPrefix+"the number of paths must not be greater than %d; Number of paths: %d", MaxNetworkPaths, len(s.Paths)))
-	} else if len(s.Paths) > 0 {
-		visitedPaths := make(map[HTTPPath]struct {
-			count int
-		})
+	retErr = s.validatePaths(retErr)
 
-		isMultiplePath := false
-		if len(s.Paths) > 1 {
-			isMultiplePath = true
-		}
+	retErr = s.validateMethods(retErr)
 
-		for _, path := range s.Paths {
-			visitedPath, isVisited := visitedPaths[path]
-			if isVisited {
-				visitedPath.count++
-				visitedPaths[path] = visitedPath
-				continue
-			}
+	return retErr
+}
 
-			visitedPath.count++
-			visitedPaths[path] = visitedPath
-
-			if isMultiplePath && path == DefaultHTTPPathFilter {
-				retErr = multierror.Append(retErr, fmt.Errorf(HTTPPathsFilterErrorPrefix+"no needs to define other paths if the / path is defined because it already catches all paths"))
-			}
-
-			if err := path.validate(); err != nil {
-				retErr = multierror.Append(retErr, err)
-			}
-		}
-
-		for path, visitedPath := range visitedPaths {
-			if visitedPath.count > 1 {
-				retErr = multierror.Append(retErr, fmt.Errorf(HTTPPathsFilterErrorPrefix+"should not contain duplicated paths. Count: %d; Path: %s", visitedPath.count, path))
-				delete(visitedPaths, path)
-			}
-		}
-	}
-
+func (s *NetworkHTTPFilters) validateMethods(retErr error) error {
 	if len(s.Methods) > MaxNetworkMethods {
 		retErr = multierror.Append(retErr, fmt.Errorf(HTTPMethodsFilterErrorPrefix+"the number of methods must not be greater than %d; Number of methods: %d", MaxNetworkMethods, len(s.Methods)))
-	} else if len(s.Methods) > 0 {
-		visitedMethods := make(map[string]struct {
-			count int
-		})
 
-		for _, method := range s.Methods {
-			if _, ok := allowedHTTPMethods[method]; !ok {
-				err := fmt.Errorf(HTTPMethodsFilterErrorPrefix+"should be a GET, DELETE, POST, PUT, HEAD, PATCH, CONNECT, OPTIONS or TRACE. Invalid value: %s", method)
-				retErr = multierror.Append(retErr, err)
-				continue
-			}
+		return retErr
+	}
 
-			visitedMethod, isVisited := visitedMethods[method]
-			if isVisited {
-				visitedMethod.count++
-				visitedMethods[method] = visitedMethod
-				continue
-			}
+	if len(s.Methods) == 0 {
+		return retErr
+	}
+	visitedMethods := make(map[string]struct {
+		count int
+	})
 
-			visitedMethod.count++
-			visitedMethods[method] = visitedMethod
+	for _, method := range s.Methods {
+		if _, ok := allowedHTTPMethods[method]; !ok {
+			err := fmt.Errorf(HTTPMethodsFilterErrorPrefix+"should be a GET, DELETE, POST, PUT, HEAD, PATCH, CONNECT, OPTIONS or TRACE. Invalid value: %s", method)
+			retErr = multierror.Append(retErr, err)
+			continue
 		}
 
-		for method, visitedMethod := range visitedMethods {
-			if visitedMethod.count > 1 {
-				retErr = multierror.Append(retErr, fmt.Errorf(HTTPMethodsFilterErrorPrefix+"should not contain duplicated methods. Count: %d; Method: %s", visitedMethod.count, method))
-				delete(visitedMethods, method)
-			}
+		visitedMethod, isVisited := visitedMethods[method]
+		if isVisited {
+			visitedMethod.count++
+			visitedMethods[method] = visitedMethod
+			continue
+		}
+
+		visitedMethod.count++
+		visitedMethods[method] = visitedMethod
+	}
+
+	for method, visitedMethod := range visitedMethods {
+		if visitedMethod.count > 1 {
+			retErr = multierror.Append(retErr, fmt.Errorf(HTTPMethodsFilterErrorPrefix+"should not contain duplicated methods. Count: %d; Method: %s", visitedMethod.count, method))
+		}
+	}
+
+	return retErr
+}
+
+func (s *NetworkHTTPFilters) validatePaths(retErr error) error {
+	if len(s.Paths) > MaxNetworkPaths {
+		retErr = multierror.Append(retErr, fmt.Errorf(HTTPPathsFilterErrorPrefix+"the number of paths must not be greater than %d; Number of paths: %d", MaxNetworkPaths, len(s.Paths)))
+
+		return retErr
+	}
+
+	if len(s.Paths) == 0 {
+		return retErr
+	}
+
+	visitedPaths := make(map[HTTPPath]struct {
+		count int
+	})
+
+	isMultiplePath := false
+	if len(s.Paths) > 1 {
+		isMultiplePath = true
+	}
+
+	for _, path := range s.Paths {
+		visitedPath, isVisited := visitedPaths[path]
+		if isVisited {
+			visitedPath.count++
+			visitedPaths[path] = visitedPath
+			continue
+		}
+
+		visitedPath.count++
+		visitedPaths[path] = visitedPath
+
+		if isMultiplePath && path == DefaultHTTPPathFilter {
+			retErr = multierror.Append(retErr, fmt.Errorf(HTTPPathsFilterErrorPrefix+"no needs to define other paths if the / path is defined because it already catches all paths"))
+		}
+
+		if err := path.validate(); err != nil {
+			retErr = multierror.Append(retErr, err)
+		}
+	}
+
+	for path, visitedPath := range visitedPaths {
+		if visitedPath.count > 1 {
+			retErr = multierror.Append(retErr, fmt.Errorf(HTTPPathsFilterErrorPrefix+"should not contain duplicated paths. Count: %d; Path: %s", visitedPath.count, path))
 		}
 	}
 

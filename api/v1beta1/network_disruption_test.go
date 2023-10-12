@@ -233,7 +233,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 					},
 					Entry("When the path exceeding the limit",
 						HTTPPaths{HTTPPath("/" + randStringRunes(MaxNetworkPathCharacters))},
-						"should not exceed 100 characters",
+						fmt.Sprintf("should not exceed %d characters", MaxNetworkPathCharacters),
 					),
 					Entry("When the path does not start with /",
 						HTTPPaths{"invalid-path"},
@@ -328,7 +328,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 							DeprecatedMethod: "ALL",
 						},
 					},
-					"the Method specification at the HTTP network disruption level is deprecated; use Methods HTTP field instead",
+					"the Method specification at the HTTP network disruption level is no longer supported; use Methods HTTP field instead",
 				),
 				Entry("When the DeprecatedPath is defined",
 					NetworkDisruptionSpec{
@@ -336,7 +336,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 							DeprecatedPath: DefaultHTTPPathFilter,
 						},
 					},
-					"the Path specification at the HTTP network disruption level is deprecated; use Paths HTTP field instead",
+					"the Path specification at the HTTP network disruption level is no longer supported; use Paths HTTP field instead",
 				),
 			)
 		})
@@ -465,7 +465,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 				HTTPPaths{HTTPPath("/" + randStringRunes(MaxNetworkPathCharacters))},
 				HTTPMethods{"lorem"},
 				[]string{
-					"should not exceed 100 characters",
+					fmt.Sprintf("should not exceed %d characters", MaxNetworkPathCharacters),
 					"should be a GET, DELETE, POST, PUT, HEAD, PATCH, CONNECT, OPTIONS or TRACE. Invalid value: lorem",
 				},
 			),
