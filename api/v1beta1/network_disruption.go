@@ -227,6 +227,7 @@ func (s *NetworkHTTPFilters) validateMethods(retErr error) error {
 	if len(s.Methods) == 0 {
 		return retErr
 	}
+
 	visitedMethods := make(map[string]struct {
 		count int
 	})
@@ -235,6 +236,7 @@ func (s *NetworkHTTPFilters) validateMethods(retErr error) error {
 		if _, ok := allowedHTTPMethods[method]; !ok {
 			err := fmt.Errorf(HTTPMethodsFilterErrorPrefix+"should be a GET, DELETE, POST, PUT, HEAD, PATCH, CONNECT, OPTIONS or TRACE. Invalid value: %s", method)
 			retErr = multierror.Append(retErr, err)
+
 			continue
 		}
 
@@ -242,6 +244,7 @@ func (s *NetworkHTTPFilters) validateMethods(retErr error) error {
 		if isVisited {
 			visitedMethod.count++
 			visitedMethods[method] = visitedMethod
+
 			continue
 		}
 
@@ -283,6 +286,7 @@ func (s *NetworkHTTPFilters) validatePaths(retErr error) error {
 		if isVisited {
 			visitedPath.count++
 			visitedPaths[path] = visitedPath
+
 			continue
 		}
 
