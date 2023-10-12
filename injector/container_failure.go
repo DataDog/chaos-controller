@@ -41,6 +41,10 @@ func NewContainerFailureInjector(spec v1beta1.ContainerFailureSpec, config Conta
 	}
 }
 
+func (i *containerFailureInjector) TargetName() string {
+	return i.config.TargetName()
+}
+
 func (i *containerFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindContainerFailure
 }

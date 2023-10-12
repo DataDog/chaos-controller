@@ -32,6 +32,7 @@ const (
 type Injector interface {
 	GetDisruptionKind() types.DisruptionKindName
 	Inject() error
+	TargetName() string
 	UpdateConfig(config Config)
 	Clean() error
 }

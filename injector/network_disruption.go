@@ -154,6 +154,10 @@ func (i *networkDisruptionInjector) GetDisruptionKind() types.DisruptionKindName
 	return types.DisruptionKindNetworkDisruption
 }
 
+func (i *networkDisruptionInjector) TargetName() string {
+	return i.config.TargetName()
+}
+
 // Inject injects the given network disruption into the given container
 func (i *networkDisruptionInjector) Inject() error {
 	// enter target network namespace

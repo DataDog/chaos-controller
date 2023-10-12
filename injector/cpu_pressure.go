@@ -47,6 +47,10 @@ func NewCPUPressureInjector(config Config, count string, injectorCmdFactory Inje
 	}
 }
 
+func (i *cpuPressureInjector) TargetName() string {
+	return i.config.TargetName()
+}
+
 func (i *cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindCPUPressure
 }

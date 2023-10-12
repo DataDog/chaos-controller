@@ -47,6 +47,10 @@ func NewDiskFailureInjector(spec v1beta1.DiskFailureSpec, config DiskFailureInje
 	}, nil
 }
 
+func (i *DiskFailureInjector) TargetName() string {
+	return i.config.TargetName()
+}
+
 func (i *DiskFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 	return types.DisruptionKindDiskFailure
 }
