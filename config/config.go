@@ -306,28 +306,28 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 
 	mainFS.StringVar(&cfg.Controller.SafeMode.Environment, "safemode-environment", "", "Specify the 'location' this controller is run in. All disruptions must have an annotation of chaos.datadoghq.com/environment configured with this location to be allowed to create")
 
-	if err := viper.BindPFlag("conroller.safemode.environment", mainFS.Lookup("safemode-environment")); err != nil {
+	if err := viper.BindPFlag("controller.safeMode.environment", mainFS.Lookup("safemode-environment")); err != nil {
 		return cfg, err
 	}
 
 	mainFS.BoolVar(&cfg.Controller.SafeMode.Enable, "safemode-enable", true,
 		"Enable or disable the safemode functionality of the chaos-controller")
 
-	if err := viper.BindPFlag("controller.safemode.enable", mainFS.Lookup("safemode-enable")); err != nil {
+	if err := viper.BindPFlag("controller.safeMode.enable", mainFS.Lookup("safemode-enable")); err != nil {
 		return cfg, err
 	}
 
 	mainFS.IntVar(&cfg.Controller.SafeMode.NamespaceThreshold, "safemode-namespace-threshold", 80,
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a namespace.")
 
-	if err := viper.BindPFlag("controller.safemode.namespaceThreshold", mainFS.Lookup("safemode-namespace-threshold")); err != nil {
+	if err := viper.BindPFlag("controller.safeMode.namespaceThreshold", mainFS.Lookup("safemode-namespace-threshold")); err != nil {
 		return cfg, err
 	}
 
 	mainFS.IntVar(&cfg.Controller.SafeMode.ClusterThreshold, "safemode-cluster-threshold", 66,
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
 
-	if err := viper.BindPFlag("controller.safemode.clusterThreshold", mainFS.Lookup("safemode-cluster-threshold")); err != nil {
+	if err := viper.BindPFlag("controller.safeMode.clusterThreshold", mainFS.Lookup("safemode-cluster-threshold")); err != nil {
 		return cfg, err
 	}
 
