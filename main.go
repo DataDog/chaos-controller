@@ -201,6 +201,7 @@ func main() {
 		ExpiredDisruptionGCDelay: gcPtr,
 		CacheContextStore:        make(map[string]controllers.CtxTuple),
 		ChaosPodService:          chaosPodService,
+		DisruptionsDeleteTimeout: cfg.Controller.DisruptionDeleteTimeout,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())

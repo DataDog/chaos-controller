@@ -42,6 +42,7 @@ type controllerConfig struct {
 	TracerSink               string                          `json:"tracerSink"`
 	DisruptionCronEnabled    bool                            `json:"disruptionCronEnabled"`
 	DisruptionRolloutEnabled bool                            `json:"disruptionRolloutEnabled"`
+	DisruptionDeleteTimeout  time.Duration                   `json:"disruptionDeleteTimeout"`
 }
 
 type controllerWebhookConfig struct {
@@ -406,6 +407,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.BoolVar(&cfg.Controller.DisruptionRolloutEnabled, "disruption-rollout-enabled", false, "Enable the DisruptionRollout CRD and its controller")
 
 	if err := viper.BindPFlag("controller.disruptionRolloutEnabled", mainFS.Lookup("disruption-rollout-enabled")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.DurationVar(&cfg.Controller.DisruptionDeleteTimeout, "disruption-delete-timeout", time.Minute*(-1), "If the deletion time of the disruption is greater than the delete timeout, the disruption is marked as stuck on removal")
+
+	if err := viper.BindPFlag("controller.disruptionDeleteTimeout", mainFS.Lookup("disruption-delete-timeout")); err != nil {
 		return cfg, err
 	}
 
