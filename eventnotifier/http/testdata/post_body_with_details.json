@@ -1,0 +1,34 @@
+{
+  "notification-title": "Disruption '' received a notification.",
+  "notification-type": "Info",
+  "event-message": "Disruption '' emitted the event : ",
+  "involved-object-kind": "",
+  "disruption-name": "",
+  "cluster": "",
+  "namespace": "",
+  "targets-count": 0,
+  "details": {
+    "disruption": {
+      "metadata": {
+        "creationTimestamp": null
+      },
+      "spec": {
+        "count": null,
+        "triggers": {
+          "inject": {
+            "notBefore": null
+          },
+          "createPods": {
+            "notBefore": null
+          }
+        }
+      },
+      "status": {
+        "selectedTargetsCount": 0,
+        "ignoredTargetsCount": 0,
+        "injectedTargetsCount": 0,
+        "desiredTargetsCount": 0
+      }
+    }
+  }
+}

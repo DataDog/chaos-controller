@@ -8,7 +8,7 @@ package eventnotifier
 import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/datadog"
-	http "github.com/DataDog/chaos-controller/eventnotifier/http"
+	"github.com/DataDog/chaos-controller/eventnotifier/http"
 	"github.com/DataDog/chaos-controller/eventnotifier/noop"
 	"github.com/DataDog/chaos-controller/eventnotifier/slack"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"

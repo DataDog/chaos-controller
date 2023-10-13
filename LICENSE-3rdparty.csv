@@ -355,6 +355,9 @@ github.com/stretchr/testify,github.com/stretchr/testify/assert,MIT
 github.com/stretchr/testify,github.com/stretchr/testify/mock,MIT
 github.com/stretchr/testify,github.com/stretchr/testify/require,MIT
 github.com/subosito/gotenv,github.com/subosito/gotenv,MIT
+github.com/tidwall/gjson,github.com/tidwall/gjson,MIT
+github.com/tidwall/match,github.com/tidwall/match,MIT
+github.com/tidwall/pretty,github.com/tidwall/pretty,MIT
 github.com/tinylib/msgp,github.com/tinylib/msgp/msgp,MIT
 github.com/vishvananda/netlink,github.com/vishvananda/netlink,Apache-2.0
 github.com/vishvananda/netlink,github.com/vishvananda/netlink/nl,Apache-2.0

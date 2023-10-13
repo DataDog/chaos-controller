@@ -5,8 +5,11 @@
 
 package types
 
+import "sigs.k8s.io/controller-runtime/pkg/client"
+
 type NotifiersCommonConfig struct {
 	ClusterName string
+	Client      client.Client
 }
 
 type NotifierDriver string

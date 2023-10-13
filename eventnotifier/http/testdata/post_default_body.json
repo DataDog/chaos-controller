@@ -1,0 +1,10 @@
+{
+  "notification-title": "Disruption '' received a notification.",
+  "notification-type": "Info",
+  "event-message": "Disruption '' emitted the event : ",
+  "involved-object-kind": "",
+  "disruption-name": "",
+  "cluster": "",
+  "namespace": "",
+  "targets-count": 0
+}
