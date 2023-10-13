@@ -54,7 +54,7 @@ Once the instance is started, you can log into it using either the `lima` or its
 
 We are not using `default` as our instance name on lima anymore.
 
-The alias `lima` can still be used as before to quickkly jump on your instance shell (e.g. `lima uname -a`)
+The alias `lima` can still be used as before to quickly jump on your instance shell (e.g. `lima uname -a`)
 
 More specifically:
 
@@ -81,7 +81,7 @@ In case you have a Datadog account and want to install the Datadog Agent into yo
 - Create an APP key [here](https://app.datadoghq.com/organization-settings/application-keys)
 - Store them securely and add them to your `.zshrc`:
 
-> NB: it is recommended to properly tag/isolate your local workload from your PROD workload, check with your Datadog account admin how to adapt tagging accordingly and confirmm which configuration should be applied to your Datadog Agent
+> NB: it is recommended to properly tag/isolate your local workload from your PROD workload, check with your Datadog account admin how to adapt tagging accordingly and confirm which configuration should be applied to your Datadog Agent
 
 ```bash
 security add-generic-password -a ${USER} -s staging_datadog_api_key -w

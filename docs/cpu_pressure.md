@@ -32,7 +32,7 @@ When the injector pod starts:
     - Each goroutine joins all CGroups
       - It's important to join cgroup (in particular `cpuset`) to both have the same number of allocated cores as the target as well as the same allocated cores so we ensure that the goroutines threads will be scheduled on the same cores as the target processes
       - We MUST join the targeted container CGroup and NOT creating another isolated CGroup with the same configuration as linux CPU is fair and ensure two separated processes will have their requested quotas even if one is trying to still all the CPUs
-      - To guarantee the biggest throttling impact we hence need to be seen as part of the targetted process CGroup tree (we can't create a child CGroup either as it would prevent Kubernetes to manage the container as expected)
+      - To guarantee the biggest throttling impact we hence need to be seen as part of the targeted process CGroup tree (we can't create a child CGroup either as it would prevent Kubernetes to manage the container as expected)
     - Each goroutine renices itself to the highest priority (`-20`) so the Linux scheduler will always give it the priority to consume CPU time over other running processes
     - Each goroutine starts an infinite loop to consume as much CPU as possible
 

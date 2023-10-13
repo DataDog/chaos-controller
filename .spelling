@@ -5,15 +5,21 @@
 # where filename is relative to this configuration file
 1.20.x
 15m30s
+200s
 45s
 4h30m
 AllowRootDiskFailure
 AtLeastOneOf
+CPUs
 ClusterIP
 ClusterRole
+Cron
+CronJob
 DaemonSet
 DisableCountTooLarge
 DisableNeitherHostNorPort
+DisruptionCron
+DisruptionCrons
 DynamicTargeting
 ExclusiveFields
 IPs
@@ -53,6 +59,8 @@ configs
 containerd
 contributing.md
 cpu
+cpuset
+creationTimestamp
 csv
 datadog
 ddmark
@@ -80,6 +88,7 @@ filepath
 finalizer
 finalizers
 gRPC
+golang
 golang's
 golangci-lint
 goog.json
@@ -133,6 +142,7 @@ protoc
 qdisc
 qdiscs
 re-enqueued
+reinject
 reinjected
 reinjection
 renices
@@ -146,6 +156,7 @@ structs
 subcommand
 subfields
 syscall
+syscalls
 targetable
 tbf
 tc
@@ -153,8 +164,11 @@ tc-prio
 technicals
 thirdparty.py
 time.Duration
+timestamp
+timestamps
 udp
 uint
+uname
 unconfigured
 unintuitive
 unmarshalled
