@@ -23,7 +23,7 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 	var status *v1beta1.DisruptionStatus
 
 	BeforeEach(func() {
-		rand.Seed(time.Now().UnixNano())
+		rand.New(rand.NewSource(time.Now().UnixNano()))
 		status = &v1beta1.DisruptionStatus{
 			TargetInjections: makeValidTargetInjections(),
 		}
@@ -144,7 +144,7 @@ var _ = Describe("DisruptionStatus.AddTargets Test", func() {
 	var eligibleTargets v1beta1.TargetInjections
 
 	BeforeEach(func() {
-		rand.Seed(time.Now().UnixNano())
+		rand.New(rand.NewSource(time.Now().UnixNano()))
 		status = &v1beta1.DisruptionStatus{
 			TargetInjections: makeValidTargetInjections(),
 		}
@@ -223,7 +223,7 @@ var _ = Describe("DisruptionStatus.RemoveTargets Test", func() {
 	var status *v1beta1.DisruptionStatus
 
 	BeforeEach(func() {
-		rand.Seed(time.Now().UnixNano())
+		rand.New(rand.NewSource(time.Now().UnixNano()))
 		status = &v1beta1.DisruptionStatus{
 			TargetInjections: makeValidTargetInjections(),
 		}

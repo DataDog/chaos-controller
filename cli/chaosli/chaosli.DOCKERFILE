@@ -1,5 +1,5 @@
 # ---------------------------------------
-FROM amd64/golang:1.18-alpine as build
+FROM amd64/golang:1.20-alpine as build
 
 ENV GOARCH=amd64 
 ENV CGO_ENABLED=0
@@ -16,7 +16,7 @@ RUN go build \
     ./cli/chaosli
 
 # ---------------------------------------
-FROM amd64/golang:1.18-alpine as bin
+FROM amd64/golang:1.20-alpine as bin
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser

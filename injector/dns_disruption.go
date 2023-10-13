@@ -71,6 +71,10 @@ func NewDNSDisruptionInjector(spec v1beta1.DNSDisruptionSpec, config DNSDisrupti
 	}, err
 }
 
+func (i *DNSDisruptionInjector) TargetName() string {
+	return i.config.Config.TargetName()
+}
+
 func (i *DNSDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindName {
 	return chaostypes.DisruptionKindDNSDisruption
 }

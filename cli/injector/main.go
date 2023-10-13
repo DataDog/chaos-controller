@@ -8,7 +8,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"strings"
@@ -354,7 +353,7 @@ func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 				}
 			}
 
-			log.Errorw("disruption injection failed", "error", err)
+			log.Errorw("disruption injection failed", "error", err, "target", inj.TargetName())
 		} else {
 			if sendToMetrics {
 				if reinjection {
@@ -529,7 +528,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	if injectSuccess {
 		log.Infof("disruption(s) injected, now waiting for an exit signal")
 
-		if err := ioutil.WriteFile(readinessProbeFile, []byte("1"), 0o400); err != nil {
+		if err := os.WriteFile(readinessProbeFile, []byte("1"), 0o400); err != nil {
 			log.Errorw("error writing readiness probe file", "error", err)
 		}
 	}
