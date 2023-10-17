@@ -158,15 +158,20 @@ var _ = Describe("Tc", func() {
 	})
 
 	Describe("AddBPFFilter", func() {
-		var err error
+		var (
+			err     error
+			section string
+		)
+
 		JustBeforeEach(func() {
-			err = tcRunner.AddBPFFilter(ifaces, parent, "file.bpf.obj", flowid)
+			err = tcRunner.AddBPFFilter(ifaces, parent, "file.bpf.obj", flowid, section)
 		})
 
-		Context("add an eBPF filter", func() {
+		Context("without section", func() {
 			BeforeEach(func() {
 				srcIP = nil
 				srcPort = 0
+				section = ""
 			})
 
 			It("should load the eBPF program", func() {
@@ -186,6 +191,23 @@ var _ = Describe("Tc", func() {
 				It("should propagate the error", func() {
 					Expect(err).Should(HaveOccurred())
 				})
+			})
+		})
+
+		Context("with section", func() {
+			BeforeEach(func() {
+				srcIP = nil
+				srcPort = 0
+				section = "custom"
+			})
+
+			It("should load the eBPF program", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "root", "bpf", "obj", "file.bpf.obj", "sec", "custom", "flowid", "1:2"})
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "eth0", "root", "bpf", "obj", "file.bpf.obj", "sec", "custom", "flowid", "1:2"})
+			})
+
+			It("should not return an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
 			})
 		})
 	})

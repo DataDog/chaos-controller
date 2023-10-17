@@ -8,13 +8,10 @@ package injector_test
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"time"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -25,6 +22,9 @@ import (
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -251,8 +251,8 @@ var _ = Describe("Failure", func() {
 			DelayJitter:    100,
 			BandwidthLimit: 10000,
 			HTTP: &v1beta1.NetworkHTTPFilters{
-				Method: v1beta1.DefaultHTTPMethodFilter,
-				Path:   v1beta1.DefaultHTTPPathFilter,
+				Methods: v1beta1.HTTPMethods{},
+				Paths:   v1beta1.HTTPPaths{v1beta1.DefaultHTTPPathFilter},
 			},
 		}
 	})
@@ -619,13 +619,27 @@ var _ = Describe("Failure", func() {
 		})
 
 		DescribeTable("with method and path filters",
-			func(method, path string) {
+			func(methods v1beta1.HTTPMethods, paths v1beta1.HTTPPaths) {
 				// Arrange
 				interfaces := []string{"lo", "eth0", "eth1"}
-				spec.HTTP.Method = method
-				spec.HTTP.Path = path
-				tc.EXPECT().AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2").Return(nil).Once()
-				tc.EXPECT().ConfigBPFFilter(mock.Anything, "-f", path, "-m", strings.ToUpper(method)).Return(nil).Once()
+
+				spec.HTTP.Methods = methods
+				spec.HTTP.Paths = paths
+
+				tc.EXPECT().AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2", "classifier_methods").Return(nil).Once()
+				tc.EXPECT().AddBPFFilter(interfaces, "3:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "3:2", "classifier_paths").Return(nil).Once()
+
+				configBPFArgs := []interface{}{}
+
+				for _, path := range paths {
+					configBPFArgs = append(configBPFArgs, "--path", string(path))
+				}
+
+				for _, method := range methods {
+					configBPFArgs = append(configBPFArgs, "--method", strings.ToUpper(method))
+				}
+
+				tc.EXPECT().ConfigBPFFilter(mock.Anything, configBPFArgs...).Return(nil)
 
 				var err error
 				inj, err = NewNetworkDisruptionInjector(spec, config)
@@ -635,22 +649,40 @@ var _ = Describe("Failure", func() {
 				Expect(inj.Inject()).To(Succeed())
 
 				// Assert
-				By("creating two prio bands")
+				By("creating three prio bands")
 				tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "1:4", "2:", uint32(2), mock.Anything)
 				tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "2:2", "3:", uint32(2), mock.Anything)
+				tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "3:2", "4:", uint32(2), mock.Anything)
 
 				By("adding an fw filter to classify packets according to their classid set by iptables mark")
-				tc.AssertCalled(GinkgoT(), "AddFwFilter", interfaces, "3:0", "0x00020002", "3:2")
+				tc.AssertCalled(GinkgoT(), "AddFwFilter", interfaces, "4:0", "0x00020002", "4:2")
 
 				By("adding an BPF filter to classify packets according to their method")
-				tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2")
+				tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2", "classifier_methods")
+
+				By("adding an BPF filter to classify packets according to their path")
+				tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "3:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "3:2", "classifier_paths")
 
 				By("configuring the BPF filter")
-				tc.AssertCalled(GinkgoT(), "ConfigBPFFilter", mock.Anything, "-f", path, "-m", strings.ToUpper(method))
+				expectedConfigBPFArgs := append([]interface{}{mock.Anything}, configBPFArgs...)
+				tc.AssertCalled(GinkgoT(), "ConfigBPFFilter", expectedConfigBPFArgs...)
 			},
-			Entry("With a GET method and / path", "get", "/"),
-			Entry("With a DELETE method and / path", "delete", "/"),
-			Entry("With a POST method and /test path", "post", "/test"),
+			Entry("With a HTTPMethodGET method and / path",
+				v1beta1.HTTPMethods{http.MethodGet},
+				v1beta1.HTTPPaths{v1beta1.DefaultHTTPPathFilter},
+			),
+			Entry("With a DELETE method and / path",
+				v1beta1.HTTPMethods{http.MethodDelete},
+				v1beta1.HTTPPaths{v1beta1.DefaultHTTPPathFilter},
+			),
+			Entry("With a POST method and /test path",
+				v1beta1.HTTPMethods{http.MethodPost},
+				v1beta1.HTTPPaths{"/test"},
+			),
+			Entry("With a POST and delete methods and /test path",
+				v1beta1.HTTPMethods{http.MethodPost, "delete"},
+				v1beta1.HTTPPaths{"/test"},
+			),
 		)
 	})
 

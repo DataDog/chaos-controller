@@ -27,13 +27,13 @@ func (_m *TrafficControllerMock) EXPECT() *TrafficControllerMock_Expecter {
 	return &TrafficControllerMock_Expecter{mock: &_m.Mock}
 }
 
-// AddBPFFilter provides a mock function with given fields: ifaces, parent, obj, flowid
-func (_m *TrafficControllerMock) AddBPFFilter(ifaces []string, parent string, obj string, flowid string) error {
-	ret := _m.Called(ifaces, parent, obj, flowid)
+// AddBPFFilter provides a mock function with given fields: ifaces, parent, obj, flowid, section
+func (_m *TrafficControllerMock) AddBPFFilter(ifaces []string, parent string, obj string, flowid string, section string) error {
+	ret := _m.Called(ifaces, parent, obj, flowid, section)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func([]string, string, string, string) error); ok {
-		r0 = rf(ifaces, parent, obj, flowid)
+	if rf, ok := ret.Get(0).(func([]string, string, string, string, string) error); ok {
+		r0 = rf(ifaces, parent, obj, flowid, section)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -51,13 +51,14 @@ type TrafficControllerMock_AddBPFFilter_Call struct {
 //   - parent string
 //   - obj string
 //   - flowid string
-func (_e *TrafficControllerMock_Expecter) AddBPFFilter(ifaces interface{}, parent interface{}, obj interface{}, flowid interface{}) *TrafficControllerMock_AddBPFFilter_Call {
-	return &TrafficControllerMock_AddBPFFilter_Call{Call: _e.mock.On("AddBPFFilter", ifaces, parent, obj, flowid)}
+//   - section string
+func (_e *TrafficControllerMock_Expecter) AddBPFFilter(ifaces interface{}, parent interface{}, obj interface{}, flowid interface{}, section interface{}) *TrafficControllerMock_AddBPFFilter_Call {
+	return &TrafficControllerMock_AddBPFFilter_Call{Call: _e.mock.On("AddBPFFilter", ifaces, parent, obj, flowid, section)}
 }
 
-func (_c *TrafficControllerMock_AddBPFFilter_Call) Run(run func(ifaces []string, parent string, obj string, flowid string)) *TrafficControllerMock_AddBPFFilter_Call {
+func (_c *TrafficControllerMock_AddBPFFilter_Call) Run(run func(ifaces []string, parent string, obj string, flowid string, section string)) *TrafficControllerMock_AddBPFFilter_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]string), args[1].(string), args[2].(string), args[3].(string))
+		run(args[0].([]string), args[1].(string), args[2].(string), args[3].(string), args[4].(string))
 	})
 	return _c
 }
@@ -67,7 +68,7 @@ func (_c *TrafficControllerMock_AddBPFFilter_Call) Return(_a0 error) *TrafficCon
 	return _c
 }
 
-func (_c *TrafficControllerMock_AddBPFFilter_Call) RunAndReturn(run func([]string, string, string, string) error) *TrafficControllerMock_AddBPFFilter_Call {
+func (_c *TrafficControllerMock_AddBPFFilter_Call) RunAndReturn(run func([]string, string, string, string, string) error) *TrafficControllerMock_AddBPFFilter_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -6,7 +6,8 @@
 #include "./bpf_endian.h"
 
 // This determines the size of the payload fragment that is captured for each HTTP request
-#define HTTP_BUFFER_SIZE 25
+#define DEFAULT_HTTP_BUFFER_SIZE 25
+#define LARGE_HTTP_BUFFER_SIZE 100
 
 // IPv6 over bluebook
 #define ETH_P_IPV6      0x86DD
@@ -154,6 +155,10 @@ static __always_inline char*  get_method(char* p) {
         method = "OPTIONS";
     } else if ((p[0] == 'P') && (p[1] == 'A') && (p[2] == 'T') && (p[3] == 'C') && (p[4] == 'H')) {
         method = "PATCH";
+    } else if ((p[0] == 'C') && (p[1] == 'O') && (p[2] == 'N') && (p[3] == 'N') && (p[4] == 'E') && (p[5] == 'C') && (p[6] == 'T')) {
+        method = "CONNECT";
+    } else if ((p[0] == 'T') && (p[1] == 'R') && (p[2] == 'A') && (p[3] == 'C') && (p[4] == 'E')) {
+        method = "TRACE";
     }
 
     return method;

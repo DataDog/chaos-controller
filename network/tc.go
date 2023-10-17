@@ -62,7 +62,7 @@ type TrafficController interface {
 	AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, prot protocol, state connState, flowid string) (uint32, error)
 	DeleteFilter(iface string, priority uint32) error
 	AddFwFilter(ifaces []string, parent string, handle string, flowid string) error
-	AddBPFFilter(ifaces []string, parent string, obj string, flowid string) error
+	AddBPFFilter(ifaces []string, parent string, obj string, flowid string, section string) error
 	ConfigBPFFilter(cmd executor, args ...string) error
 	AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error
 	ClearQdisc(ifaces []string) error
@@ -226,9 +226,16 @@ func (t *tc) AddFilter(ifaces []string, parent string, handle string, srcIP, dst
 	return priority, nil
 }
 
-func (t *tc) AddBPFFilter(ifaces []string, parent string, obj string, flowid string) error {
+func (t *tc) AddBPFFilter(ifaces []string, parent string, obj string, flowid string, section string) error {
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "", 0, "", "bpf", "obj "+obj+" flowid "+flowid)); err != nil {
+		var cmd []string
+		if section == "" {
+			cmd = buildCmd("filter", iface, parent, "", 0, "", "bpf", "obj "+obj+" flowid "+flowid)
+		} else {
+			cmd = buildCmd("filter", iface, parent, "", 0, "", "bpf", "obj "+obj+" sec "+section+" flowid "+flowid)
+		}
+
+		if _, _, err := t.executer.Run(cmd); err != nil {
 			return err
 		}
 	}
