@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/mail"
 	"os"
@@ -72,7 +72,7 @@ func New(commonConfig types.NotifiersCommonConfig, httpConfig NotifierHTTPConfig
 			return nil, fmt.Errorf("headers file not found: %w", err)
 		}
 
-		readHeaders, err := ioutil.ReadAll(headersFile)
+		readHeaders, err := io.ReadAll(headersFile)
 		if err != nil {
 			return nil, fmt.Errorf("headers file could not be read: %w", err)
 		}
