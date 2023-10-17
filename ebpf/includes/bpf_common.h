@@ -23,22 +23,6 @@
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-static __always_inline bool has_prefix(char* str, char* prefix) {
-    int prefix_len = 0;
-    prefix_len = (int) (sizeof(prefix) / sizeof(prefix[0])) - 1;
-    for (int i = 0; i < prefix_len; ++i) {
-        // Break the loop if the prefix is completed
-        if (prefix[i] == NULL)
-            break;
-
-        // If the prefix does not match the str return false
-        if (prefix[i] != str[i])
-            return false;
-    }
-    return true;
-}
-
-
 #ifndef printt
 # define printt(fmt, ...)						\
 	({								\

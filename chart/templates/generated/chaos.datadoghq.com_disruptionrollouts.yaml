@@ -429,18 +429,17 @@ spec:
                           nullable: true
                           properties:
                             method:
-                              enum:
-                                - all
-                                - delete
-                                - get
-                                - head
-                                - options
-                                - patch
-                                - post
-                                - put
                               type: string
+                            methods:
+                              items:
+                                type: string
+                              type: array
                             path:
                               type: string
+                            paths:
+                              items:
+                                type: string
+                              type: array
                           type: object
                         port:
                           maximum: 65535

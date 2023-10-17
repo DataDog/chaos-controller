@@ -190,7 +190,9 @@ Depending on your system, you'll find the kernel config in any one of these:
 #### Pod level visualization
 
 Tc can use eBPF filters in order to intercept packets at the application layer and allow the access to the payload of packets.
-Network disruption used eBPF filters to apply disruption by filtering with `method` and/or `path`:
+Network disruption used eBPF filters to apply disruption by filtering with `methods` and/or `paths`:
+- **Path** should be a validate HTTP path starting with a `/` and should not exceed `90` characters.
+- **Method** can be a GET, DELETE, POST, PUT, HEAD, PATCH, CONNECT, OPTIONS or TRACE.
 
 Now, let us take the following pod level disruption spec with new filters:
 ```
@@ -205,8 +207,10 @@ spec:
     port: 80
     protocol: tcp
     http:
-        method: get <-- eBPF filter
-        path: /test <-- eBPF filter
+        methods:
+          - get <-- eBPF filter
+        paths:
+          - /test <-- eBPF filter
     flow: egress
     delay: 1000
     delayJitter: 5
@@ -222,8 +226,9 @@ I recommend to read the `Network Disruption implementation for pod level` to und
 </kbd></p>
 
 - a **first prio qdisc** will be created and attached to root. It'll be used to apply the first filter, filtering on packet IP destination, source/destination ports and protocol.
-- a **second prio qdisc** will be created and attached to the first one. It'll be used to apply the second eBPF filter, filtering on method and path.
-- a **third prio qdisc** will be created and attached to the second one. It'll be used to apply the third filter, filtering on packet mark to identify packets coming from the targeted process.
+- a **second prio qdisc** will be created and attached to the first one. It'll be used to apply the eBPF filter, filtering on methods.
+- a **third prio qdisc** will be created and attached to the first one. It'll be used to apply the eBPF filter, filtering on paths.
+- a **fourth prio qdisc** will be created and attached to the second one. It'll be used to apply the fourth filter, filtering on packet mark to identify packets coming from the targeted process.
 
 ## How to debug tc eBPF program?
 
@@ -232,21 +237,23 @@ I recommend to read the `Network Disruption implementation for pod level` to und
 - The **first step** is to apply the network disruption with a custom HTTP **path** and/or **method** like:
 ```
 spec:
-level: pod
-selector:
-app: demo
-count: 1
-network:
-hosts:
-- 10.0.1.254/31
-port: 80
-protocol: tcp
-http:
-method: get <-- eBPF filter
-path: /test <-- eBPF filter
-flow: egress
-delay: 1000
-delayJitter: 5
+  level: pod
+  selector:
+    app: demo
+  count: 1
+  network:
+    hosts:
+      - 10.0.1.254/31
+    port: 80
+    protocol: tcp
+    http:
+      methods: 
+        - get <-- eBPF filter
+      paths: 
+        - /test <-- eBPF filter
+    flow: egress
+    delay: 1000
+    delayJitter: 5
 ```
 - The **next step**  is to mount the network of the targeted container `nsenter --target PID --net`
 - The **last step** is to execute the `tc exec bpf debug` command to display print of the eBPF program.
