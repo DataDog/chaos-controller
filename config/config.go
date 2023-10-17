@@ -25,23 +25,24 @@ type config struct {
 }
 
 type controllerConfig struct {
-	MetricsBindAddr          string                          `json:"metricsBindAddr"`
-	MetricsSink              string                          `json:"metricsSink"`
-	ExpiredDisruptionGCDelay time.Duration                   `json:"expiredDisruptionGCDelay"`
-	DefaultDuration          time.Duration                   `json:"defaultDuration"`
-	DeleteOnly               bool                            `json:"deleteOnly"`
-	EnableSafeguards         bool                            `json:"enableSafeguards"`
-	EnableObserver           bool                            `json:"enableObserver"`
-	LeaderElection           bool                            `json:"leaderElection"`
-	Webhook                  controllerWebhookConfig         `json:"webhook"`
-	Notifiers                eventnotifier.NotifiersConfig   `json:"notifiersConfig"`
-	CloudProviders           cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
-	UserInfoHook             bool                            `json:"userInfoHook"`
-	SafeMode                 safeModeConfig                  `json:"safeMode"`
-	ProfilerSink             string                          `json:"profilerSink"`
-	TracerSink               string                          `json:"tracerSink"`
-	DisruptionCronEnabled    bool                            `json:"disruptionCronEnabled"`
-	DisruptionRolloutEnabled bool                            `json:"disruptionRolloutEnabled"`
+	MetricsBindAddr           string                          `json:"metricsBindAddr"`
+	MetricsSink               string                          `json:"metricsSink"`
+	ExpiredDisruptionGCDelay  time.Duration                   `json:"expiredDisruptionGCDelay"`
+	DefaultDuration           time.Duration                   `json:"defaultDuration"`
+	DeleteOnly                bool                            `json:"deleteOnly"`
+	EnableSafeguards          bool                            `json:"enableSafeguards"`
+	EnableObserver            bool                            `json:"enableObserver"`
+	LeaderElection            bool                            `json:"leaderElection"`
+	Webhook                   controllerWebhookConfig         `json:"webhook"`
+	Notifiers                 eventnotifier.NotifiersConfig   `json:"notifiersConfig"`
+	CloudProviders            cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
+	UserInfoHook              bool                            `json:"userInfoHook"`
+	SafeMode                  safeModeConfig                  `json:"safeMode"`
+	ProfilerSink              string                          `json:"profilerSink"`
+	TracerSink                string                          `json:"tracerSink"`
+	DisruptionCronEnabled     bool                            `json:"disruptionCronEnabled"`
+	DisruptionRolloutEnabled  bool                            `json:"disruptionRolloutEnabled"`
+	DisruptionDeletionTimeout time.Duration                   `json:"disruptionDeletionTimeout"`
 }
 
 type controllerWebhookConfig struct {
@@ -83,6 +84,8 @@ type handlerConfig struct {
 	Image   string        `json:"image"`
 	Timeout time.Duration `json:"timeout"`
 }
+
+const DefaultDisruptionDeletionTimeout = time.Minute * 15
 
 func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	var (
@@ -406,6 +409,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.BoolVar(&cfg.Controller.DisruptionRolloutEnabled, "disruption-rollout-enabled", false, "Enable the DisruptionRollout CRD and its controller")
 
 	if err := viper.BindPFlag("controller.disruptionRolloutEnabled", mainFS.Lookup("disruption-rollout-enabled")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.DurationVar(&cfg.Controller.DisruptionDeletionTimeout, "disruption-deletion-timeout", DefaultDisruptionDeletionTimeout, "If the deletion time of the disruption is greater than the delete timeout, the disruption is marked as stuck on removal")
+
+	if err := viper.BindPFlag("controller.disruptionDeletionTimeout", mainFS.Lookup("disruption-deletion-timeout")); err != nil {
 		return cfg, err
 	}
 

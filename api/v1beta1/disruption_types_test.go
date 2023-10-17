@@ -449,4 +449,16 @@ var _ = Describe("Disruption", func() {
 				"invalid value for IntOrString",
 			))
 	})
+
+	DescribeTable("IsDeletionExpired", func(disruptionBuilder *builderstest.DisruptionBuilder, timeoutDuration time.Duration, expectedResult bool) {
+		// Arrange
+		disruption := disruptionBuilder.Build()
+
+		// Action && Assert
+		Expect(disruption.IsDeletionExpired(timeoutDuration)).To(Equal(expectedResult))
+	},
+		Entry("with an none deleted disruption", builderstest.NewDisruptionBuilder(), time.Minute*10, false),
+		Entry("with a disruption marked to be deleted not exceeding the timeout limit", builderstest.NewDisruptionBuilder().WithDeletion(), time.Minute*10, false),
+		Entry("with a disruption marked to be deleted exceeding the timeout limit", builderstest.NewDisruptionBuilder().WithDeletion(), time.Minute*(-1), true),
+	)
 })

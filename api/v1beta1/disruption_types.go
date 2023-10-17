@@ -388,6 +388,17 @@ func (r *Disruption) GetTargetsCountAsInt(targetTotal int, roundUp bool) (int, e
 	return intstr.GetScaledValueFromIntOrPercent(r.Spec.Count, targetTotal, roundUp)
 }
 
+// IsDeletionExpired checks if a Disruption resource has exceeded a specified deletion timeout duration
+// for deletion. It returns true if the resource should be considered deleted based on
+// the DeletionTimestamp and the deletion timeout duration.
+func (r *Disruption) IsDeletionExpired(deletionTimeout time.Duration) bool {
+	if r.DeletionTimestamp.IsZero() {
+		return false
+	}
+
+	return time.Now().After(r.DeletionTimestamp.Add(deletionTimeout))
+}
+
 // +kubebuilder:object:root=true
 
 // DisruptionList contains a list of Disruption

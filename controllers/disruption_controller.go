@@ -70,6 +70,7 @@ type DisruptionReconciler struct {
 	CacheContextStore          map[string]CtxTuple
 	DisruptionsWatchersManager watchers.DisruptionsWatchersManager
 	ChaosPodService            services.ChaosPodService
+	DisruptionsDeletionTimeout time.Duration
 }
 
 type CtxTuple struct {
@@ -167,6 +168,20 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if !instance.DeletionTimestamp.IsZero() {
 		// the instance is being deleted, clean it if the finalizer is still present
 		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
+			// Check if the deletion time has expired for the 'instance' and it's not stuck on removal.
+			if instance.IsDeletionExpired(r.DisruptionsDeletionTimeout) && !instance.Status.IsStuckOnRemoval {
+				instance.Status.IsStuckOnRemoval = true
+
+				r.log.Infow("instance seems stuck on removal, the deletion time expired, please check manually")
+
+				// Update the status of the 'instance' to reflect that it's stuck on removal.
+				if err := r.Client.Status().Update(ctx, instance); err != nil {
+					return ctrl.Result{}, fmt.Errorf("error marking the disruption stuck on removal: %w", err)
+				}
+
+				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "", "")
+			}
+
 			isCleaned, err := r.cleanDisruption(ctx, instance)
 			if err != nil {
 				return ctrl.Result{}, fmt.Errorf("error cleaning disruption: %w", err)
