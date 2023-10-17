@@ -85,6 +85,8 @@ type handlerConfig struct {
 	Timeout time.Duration `json:"timeout"`
 }
 
+const DefaultDisruptionDeletionTimeout = time.Minute * 15
+
 func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	var (
 		configPath string
@@ -410,7 +412,7 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
-	mainFS.DurationVar(&cfg.Controller.DisruptionDeletionTimeout, "disruption-deletion-timeout", time.Minute*(-1), "If the deletion time of the disruption is greater than the delete timeout, the disruption is marked as stuck on removal")
+	mainFS.DurationVar(&cfg.Controller.DisruptionDeletionTimeout, "disruption-deletion-timeout", DefaultDisruptionDeletionTimeout, "If the deletion time of the disruption is greater than the delete timeout, the disruption is marked as stuck on removal")
 
 	if err := viper.BindPFlag("controller.disruptionDeletionTimeout", mainFS.Lookup("disruption-deletion-timeout")); err != nil {
 		return cfg, err
