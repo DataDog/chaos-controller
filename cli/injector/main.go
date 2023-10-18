@@ -62,6 +62,7 @@ var (
 	handlerPID          uint32
 	configs             []injector.Config
 	signals             chan os.Signal
+	injectorCtx         context.Context
 	injectors           []injector.Injector
 	readyToInject       bool
 	clientset           *kubernetes.Clientset
@@ -115,8 +116,8 @@ func init() {
 	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "level")
 	cobra.OnInitialize(initLogger)
 	cobra.OnInitialize(initMetricsSink)
-	cobra.OnInitialize(initConfig)
 	cobra.OnInitialize(initExitSignalsHandler)
+	cobra.OnInitialize(initConfig)
 }
 
 func main() {
@@ -304,6 +305,7 @@ func initConfig() {
 			K8sClient:          clientset,
 			DNS:                dnsConfig,
 			Disruption:         disruptionArgs,
+			InjectorCtx:        injectorCtx,
 		}
 		config.Log = log.With("targetLevel", disruptionArgs.Level, "target", config.TargetName()) // targetName is already taken in the initLogger
 
@@ -321,6 +323,22 @@ func initExitSignalsHandler() {
 	// as no matter how many SIGINT or SIGTERMs we receive, we want to carry out the same action: clean and die
 	signals = make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
+	var injectorCancelFunc context.CancelFunc
+	injectorCtx, injectorCancelFunc = context.WithCancel(context.Background())
+
+	// In case the inject phase manages to take more than the disruption duration + activeDeadlineSeconds
+	// we can end up receiving a sigkill during inject, leaving us stuck on removal. To prevent this, we pass a context
+	// to the injector config that can be cancelled if we receive any early exit signals. Injectors with possible length injects should
+	// take care to check if this context has been cancelled. After cancelling that context, we return the exit signal to the signals channel
+	// so that the appropriate handlers that trigger cleanup can begin
+	go func() {
+		sig := <-signals
+
+		injectorCancelFunc()
+
+		go func() { signals <- sig }()
+	}()
 }
 
 // initPodWatch initializes the target pod watcher
