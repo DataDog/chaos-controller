@@ -1157,6 +1157,12 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 	hostFilterMap := map[v1beta1.NetworkDisruptionHostSpec]tcFilters{}
 
 	for _, host := range hosts {
+		if err := i.config.InjectorCtx.Err(); err != nil {
+			i.config.Log.Warnw("interrupting adding filters for hosts", "err", err)
+
+			return nil, nil
+		}
+
 		// resolve given hosts if needed
 		ips, err := resolveHost(i.config.DNSClient, host.Host)
 		if err != nil {

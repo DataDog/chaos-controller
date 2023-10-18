@@ -6,6 +6,7 @@
 package injector
 
 import (
+	"context"
 	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
@@ -48,6 +49,7 @@ type Config struct {
 	K8sClient          kubernetes.Interface
 	DNS                network.DNSConfig
 	Disruption         chaosapi.DisruptionArgs
+	InjectorCtx        context.Context
 }
 
 // TargetName returns the name of the target that relates to this configuration

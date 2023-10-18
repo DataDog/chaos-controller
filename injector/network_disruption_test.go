@@ -6,6 +6,7 @@
 package injector_test
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -231,7 +232,8 @@ var _ = Describe("Failure", func() {
 				Disruption: api.DisruptionArgs{
 					Level: chaostypes.DisruptionLevelPod,
 				},
-				K8sClient: k8sClient,
+				K8sClient:   k8sClient,
+				InjectorCtx: context.Background(),
 			},
 			TrafficController:   tc,
 			IPTables:            iptables,
