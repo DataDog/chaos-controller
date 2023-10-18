@@ -346,6 +346,10 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 		}
 	}
 
+	if s.BandwidthLimit > 0 && s.BandwidthLimit < 32 {
+		retErr = multierror.Append(retErr, fmt.Errorf("bandwidthLimits below 32 bytes are not supported"))
+	}
+
 	return multierror.Prefix(retErr, "Network:")
 }
 
