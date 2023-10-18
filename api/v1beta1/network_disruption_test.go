@@ -442,6 +442,22 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 			})
 		})
 
+		Describe("test option limits", func() {
+			It("rejects bandwidthLimits below 32 bytes", func() {
+				disruptionSpec := NetworkDisruptionSpec{BandwidthLimit: 0}
+				err := disruptionSpec.Validate()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				disruptionSpec.BandwidthLimit = 32
+				err = disruptionSpec.Validate()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				disruptionSpec.BandwidthLimit = 16
+				err = disruptionSpec.Validate()
+				Expect(err).Should(HaveOccurred())
+			})
+		})
+
 		DescribeTable("multi error cases",
 			func(invalidPaths HTTPPaths, invalidMethods HTTPMethods, expectedErrorMessages []string) {
 				// Arrange
