@@ -324,8 +324,8 @@ func initExitSignalsHandler() {
 	signals = make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
-	var cancelFunc context.CancelFunc
-	injectorCtx, cancelFunc = context.WithCancel(context.Background())
+	var injectorCancelFunc context.CancelFunc
+	injectorCtx, injectorCancelFunc = context.WithCancel(context.Background())
 
 	// In case the inject phase manages to take more than the disruption duration + activeDeadlineSeconds
 	// we can end up receiving a sigkill during inject, leaving us stuck on removal. To prevent this, we pass a context
@@ -335,7 +335,7 @@ func initExitSignalsHandler() {
 	go func() {
 		sig := <-signals
 
-		cancelFunc()
+		injectorCancelFunc()
 
 		go func() { signals <- sig }()
 	}()
