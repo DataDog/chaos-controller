@@ -95,7 +95,7 @@ func (t *tc) AddNetem(ifaces []string, parent string, handle string, delay time.
 	params := ""
 
 	if delay.Milliseconds() != 0 {
-		params = fmt.Sprintf("%s delay %dms %dms distribution normal", params, delay.Milliseconds(), delayJitter.Milliseconds())
+		params = fmt.Sprintf("%s delay %dms %dms", params, delay.Milliseconds(), delayJitter.Milliseconds())
 	}
 
 	if drop != 0 {
