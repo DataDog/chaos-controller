@@ -92,11 +92,11 @@ func (a netlinkAdapter) LinkList(useLocalhost bool, log *zap.SugaredLogger) ([]N
 			!strings.HasPrefix(link.Attrs().Name, "enp") &&
 			!strings.HasPrefix(link.Attrs().Name, "enx") &&
 			!strings.HasPrefix(link.Attrs().Name, "eth") &&
-			!strings.HasPrefix(link.Attrs().Name, "localhost") {
+			!strings.HasPrefix(link.Attrs().Name, "lo") {
 			continue
 		}
 
-		if !useLocalhost && strings.HasPrefix(link.Attrs().Name, "localhost") {
+		if !useLocalhost && strings.HasPrefix(link.Attrs().Name, "lo") {
 			continue
 		}
 
