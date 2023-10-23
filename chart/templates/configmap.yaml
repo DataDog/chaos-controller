@@ -60,7 +60,7 @@ data:
         clusterThreshold: {{ .Values.controller.safeMode.clusterThreshold }}
       disruptionCronEnabled: {{ .Values.controller.disruptionCronEnabled }}
       disruptionRolloutEnabled: {{ .Values.controller.disruptionRolloutEnabled }}
-      disruptionDeleteTimeout: {{ .Values.controller.disruptionDeleteTimeout }}
+      disruptionDeletionTimeout: {{ .Values.controller.disruptionDeletionTimeout }}
     injector:
       image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.injector.image }}
       imagePullSecrets: {{ .Values.injector.image.pullSecrets }}
