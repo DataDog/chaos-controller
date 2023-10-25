@@ -73,6 +73,7 @@ func NewNetlinkAdapter() NetlinkAdapter {
 }
 
 // LinkList lists links used in the routing tables for IPv4 only
+// the useLocalhost parameter, when set to true, means we will return the localhost interface, if found
 func (a netlinkAdapter) LinkList(useLocalhost bool, log *zap.SugaredLogger) ([]NetlinkLink, error) {
 	// retrieve links from indexes and cast them
 	links, err := netlink.LinkList()
