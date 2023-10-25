@@ -156,7 +156,9 @@ Finally, we apply a filter to enqueue all packets to class `1:4` whenever the `d
 
 > Requirements
 
-The Linux kernel must support eBPF. To verify if the kernel supports eBPF, the following options should be defined:
+ℹ️ The disruption will verify whether the node meets the necessary eBPF requirements to execute an eBPF program. In case the node lacks the necessary requirements, it will log an error message that includes details about missing kernel options or unsupported map types.
+
+To implement network disruption, it's essential to ensure that the Linux kernel supports eBPF. To ensure the kernel supports eBPF, the following kernel configuration options should be defined:
 
 ```shell
 CONFIG_BPF=y
@@ -183,9 +185,10 @@ CONFIG_TEST_BPF=m
 ```
 
 Depending on your system, you'll find the kernel config in any one of these:
-- /proc/config.gz
-- /boot/config
-- /boot/config-$(uname -r)
+- `cat /proc/config.gz`
+- `cat /boot/config`
+- `cat /boot/config-$(uname -r)`
+- `bpftool -j feature`
 
 #### Pod level visualization
 

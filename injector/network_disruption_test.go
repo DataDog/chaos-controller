@@ -18,6 +18,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/ebpf"
 	"github.com/DataDog/chaos-controller/env"
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/netns"
@@ -45,6 +46,7 @@ var _ = Describe("Failure", func() {
 		ctn                                                     *container.ContainerMock
 		inj                                                     Injector
 		config                                                  NetworkDisruptionInjectorConfig
+		err                                                     error
 		spec                                                    v1beta1.NetworkDisruptionSpec
 		cgroupManager                                           *cgroup.ManagerMock
 		isCgroupV2Call                                          *cgroup.ManagerMock_IsCgroupV2_Call
@@ -62,6 +64,7 @@ var _ = Describe("Failure", func() {
 		fakeEndpoint                                            *corev1.Pod
 		fakeEndpoint2                                           *corev1.Pod
 		zeroIPNet, nilIPNet                                     *net.IPNet
+		BPFConfigInformerMock                                   *ebpf.ConfigInformerMock
 	)
 
 	BeforeEach(func() {
@@ -73,6 +76,11 @@ var _ = Describe("Failure", func() {
 		cgroupManager.EXPECT().Write(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		isCgroupV2Call = cgroupManager.EXPECT().IsCgroupV2().Return(false)
 		isCgroupV2Call.Maybe()
+
+		// ebpf config informer
+		BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
+		BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(nil).Maybe()
+		BPFConfigInformerMock.EXPECT().GetMapTypes().Return(ebpf.MapTypes{HaveArrayMapType: true}).Maybe()
 
 		// netns
 		netnsManager = netns.NewManagerMock(GinkgoT())
@@ -240,6 +248,7 @@ var _ = Describe("Failure", func() {
 			NetlinkAdapter:      nl,
 			DNSClient:           dns,
 			HostResolveInterval: time.Millisecond * 500,
+			BPFConfigInformer:   BPFConfigInformerMock,
 		}
 
 		spec = v1beta1.NetworkDisruptionSpec{
@@ -260,14 +269,17 @@ var _ = Describe("Failure", func() {
 	})
 
 	JustBeforeEach(func() {
-		var err error
 		inj, err = NewNetworkDisruptionInjector(spec, config)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("inj.Inject", func() {
 		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(Succeed())
+			err = inj.Inject()
+		})
+
+		It("should not raise an error", func() {
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		// general tests that should work for all contexts
@@ -303,6 +315,10 @@ var _ = Describe("Failure", func() {
 				isCgroupV2Call.Return(true)
 			})
 
+			It("should not raise an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
 			It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
 				iptables.AssertCalled(GinkgoT(), "MarkCgroupPath", "/kubepod.slice/foo", chaostypes.InjectorCgroupClassID)
 			})
@@ -325,6 +341,10 @@ var _ = Describe("Failure", func() {
 				nllink1TxQlenCall.Return(1000)
 				nllink2TxQlenCall.Return(1000)
 				nllink3TxQlenCall.Return(1000)
+			})
+
+			It("should not raise an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
 			})
 
 			It("should not set and clear the interface qlen", func() {
@@ -359,6 +379,10 @@ var _ = Describe("Failure", func() {
 				}
 			})
 
+			It("should not raise an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
 			It("should add a filter to redirect targeted traffic on all interfaces on the disrupted band filter on given hosts as destination IP", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(testHostIP), 0, 80, network.TCP, network.ConnStateNew, "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse("2.2.2.2"), 0, 443, network.TCP, network.ConnStateEstablished, "1:4")
@@ -375,6 +399,10 @@ var _ = Describe("Failure", func() {
 				}
 
 				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP), net.ParseIP(testHostIPTwo)}, nil).Once()
+			})
+
+			It("should not raise an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
 			})
 
 			It("should update the filters when the IP changes", func() {
@@ -465,6 +493,10 @@ var _ = Describe("Failure", func() {
 				podsWatcher.Delete(fakeEndpoint)
 			})
 
+			It("should not raise an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
 			It("should add a filter for every service and pods filtered on, modify the filter and then delete a filter", func() {
 				WatchersAreEmpty(servicesWatcher, podsWatcher)
 
@@ -519,6 +551,10 @@ var _ = Describe("Failure", func() {
 				podsWatcher.Add(fakeEndpoint2)
 			})
 
+			It("should not raise an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
 			It("should add a filter on allowed port, not on not specified port", func() {
 				WatchersAreEmpty(servicesWatcher, podsWatcher)
 
@@ -548,6 +584,10 @@ var _ = Describe("Failure", func() {
 				config.Disruption.Level = chaostypes.DisruptionLevelNode
 			})
 
+			It("should not raise an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
 			It("should add a filter to redirect SSH traffic on a non-disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, nilIPNet, 22, 0, network.TCP, network.ConnStateUndefined, "1:1")
 			})
@@ -571,6 +611,10 @@ var _ = Describe("Failure", func() {
 				}
 			})
 
+			It("should not raise an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
 			It("should add a filter to redirect all traffic on main interfaces on the disrupted band with specified port as source port", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", zeroIPNet, nilIPNet, 80, 0, network.TCP, network.ConnStateUndefined, "1:4")
 			})
@@ -579,6 +623,10 @@ var _ = Describe("Failure", func() {
 		Context("on pod initialization", func() {
 			BeforeEach(func() {
 				config.Disruption.OnInit = true
+			})
+
+			It("should not raise an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
 			})
 
 			It("should not add a second prio band with the cgroup filter", func() {
@@ -600,6 +648,10 @@ var _ = Describe("Failure", func() {
 				}
 			})
 
+			It("should not raise an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
 			It("should add a filter to redirect traffic going to 8.8.8.8/32 on port 53 on the not disrupted band", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse("8.8.8.8"), 0, 53, network.TCP, network.ConnStateUndefined, "1:1")
 			})
@@ -613,6 +665,10 @@ var _ = Describe("Failure", func() {
 				Expect(inj.Inject()).To(Succeed())
 			})
 
+			It("should not raise an error", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
 			It("should not stack up AddNetem operations", func() {
 				tc.AssertCalled(GinkgoT(), "AddNetem", []string{"lo", "eth0", "eth1"}, "2:2", mock.Anything, time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
 				// The first call come from the first injection and the second is form the last injection. So the sum of calls si two.
@@ -620,72 +676,140 @@ var _ = Describe("Failure", func() {
 			})
 		})
 
-		DescribeTable("with method and path filters",
-			func(methods v1beta1.HTTPMethods, paths v1beta1.HTTPPaths) {
-				// Arrange
-				interfaces := []string{"lo", "eth0", "eth1"}
+		Context("with method and path filters", func() {
+			DescribeTable("success cases",
+				func(methods v1beta1.HTTPMethods, paths v1beta1.HTTPPaths) {
+					// Arrange
+					interfaces := []string{"lo", "eth0", "eth1"}
 
-				spec.HTTP.Methods = methods
-				spec.HTTP.Paths = paths
+					spec.HTTP.Methods = methods
+					spec.HTTP.Paths = paths
 
-				tc.EXPECT().AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2", "classifier_methods").Return(nil).Once()
-				tc.EXPECT().AddBPFFilter(interfaces, "3:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "3:2", "classifier_paths").Return(nil).Once()
+					BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
+					BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(nil).Maybe()
+					BPFConfigInformerMock.EXPECT().GetMapTypes().Return(ebpf.MapTypes{HaveArrayMapType: true}).Once()
+					config.BPFConfigInformer = BPFConfigInformerMock
 
-				configBPFArgs := []interface{}{}
+					// tc
+					tc.EXPECT().AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2", "classifier_methods").Return(nil).Once()
+					tc.EXPECT().AddBPFFilter(interfaces, "3:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "3:2", "classifier_paths").Return(nil).Once()
 
-				for _, path := range paths {
-					configBPFArgs = append(configBPFArgs, "--path", string(path))
-				}
+					configBPFArgs := []interface{}{}
 
-				for _, method := range methods {
-					configBPFArgs = append(configBPFArgs, "--method", strings.ToUpper(method))
-				}
+					for _, path := range paths {
+						configBPFArgs = append(configBPFArgs, "--path", string(path))
+					}
 
-				tc.EXPECT().ConfigBPFFilter(mock.Anything, configBPFArgs...).Return(nil)
+					for _, method := range methods {
+						configBPFArgs = append(configBPFArgs, "--method", strings.ToUpper(method))
+					}
 
-				var err error
-				inj, err = NewNetworkDisruptionInjector(spec, config)
-				Expect(err).ShouldNot(HaveOccurred())
+					tc.EXPECT().ConfigBPFFilter(mock.Anything, configBPFArgs...).Return(nil)
 
-				// Action
-				Expect(inj.Inject()).To(Succeed())
+					var err error
+					inj, err = NewNetworkDisruptionInjector(spec, config)
+					Expect(err).ShouldNot(HaveOccurred())
 
-				// Assert
-				By("creating three prio bands")
-				tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "1:4", "2:", uint32(2), mock.Anything)
-				tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "2:2", "3:", uint32(2), mock.Anything)
-				tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "3:2", "4:", uint32(2), mock.Anything)
+					// Action
+					Expect(inj.Inject()).To(Succeed())
 
-				By("adding an fw filter to classify packets according to their classid set by iptables mark")
-				tc.AssertCalled(GinkgoT(), "AddFwFilter", interfaces, "4:0", "0x00020002", "4:2")
+					// Assert
+					By("creating three prio bands")
+					tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "1:4", "2:", uint32(2), mock.Anything)
+					tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "2:2", "3:", uint32(2), mock.Anything)
+					tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "3:2", "4:", uint32(2), mock.Anything)
 
-				By("adding an BPF filter to classify packets according to their method")
-				tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2", "classifier_methods")
+					By("adding an fw filter to classify packets according to their classid set by iptables mark")
+					tc.AssertCalled(GinkgoT(), "AddFwFilter", interfaces, "4:0", "0x00020002", "4:2")
 
-				By("adding an BPF filter to classify packets according to their path")
-				tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "3:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "3:2", "classifier_paths")
+					By("adding an BPF filter to classify packets according to their method")
+					tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2", "classifier_methods")
 
-				By("configuring the BPF filter")
-				expectedConfigBPFArgs := append([]interface{}{mock.Anything}, configBPFArgs...)
-				tc.AssertCalled(GinkgoT(), "ConfigBPFFilter", expectedConfigBPFArgs...)
-			},
-			Entry("With a HTTPMethodGET method and / path",
-				v1beta1.HTTPMethods{http.MethodGet},
-				v1beta1.HTTPPaths{v1beta1.DefaultHTTPPathFilter},
-			),
-			Entry("With a DELETE method and / path",
-				v1beta1.HTTPMethods{http.MethodDelete},
-				v1beta1.HTTPPaths{v1beta1.DefaultHTTPPathFilter},
-			),
-			Entry("With a POST method and /test path",
-				v1beta1.HTTPMethods{http.MethodPost},
-				v1beta1.HTTPPaths{"/test"},
-			),
-			Entry("With a POST and delete methods and /test path",
-				v1beta1.HTTPMethods{http.MethodPost, "delete"},
-				v1beta1.HTTPPaths{"/test"},
-			),
-		)
+					By("adding an BPF filter to classify packets according to their path")
+					tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "3:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "3:2", "classifier_paths")
+
+					By("configuring the BPF filter")
+					expectedConfigBPFArgs := append([]interface{}{mock.Anything}, configBPFArgs...)
+					tc.AssertCalled(GinkgoT(), "ConfigBPFFilter", expectedConfigBPFArgs...)
+				},
+				Entry("With a HTTPMethodGET method and / path",
+					v1beta1.HTTPMethods{http.MethodGet},
+					v1beta1.HTTPPaths{v1beta1.DefaultHTTPPathFilter},
+				),
+				Entry("With a DELETE method and / path",
+					v1beta1.HTTPMethods{http.MethodDelete},
+					v1beta1.HTTPPaths{v1beta1.DefaultHTTPPathFilter},
+				),
+				Entry("With a POST method and /test path",
+					v1beta1.HTTPMethods{http.MethodPost},
+					v1beta1.HTTPPaths{"/test"},
+				),
+				Entry("With a POST and delete methods and /test path",
+					v1beta1.HTTPMethods{http.MethodPost, "delete"},
+					v1beta1.HTTPPaths{"/test"},
+				),
+			)
+
+			Describe("error cases", func() {
+				BeforeEach(func() {
+					spec.HTTP.Methods = v1beta1.HTTPMethods{http.MethodGet}
+					spec.HTTP.Paths = v1beta1.HTTPPaths{v1beta1.DefaultHTTPPathFilter}
+				})
+
+				When("the node does not have eBPF requirements", func() {
+					BeforeEach(func() {
+						// Arrange
+						BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
+						BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(fmt.Errorf("an error happened")).Once()
+						config.BPFConfigInformer = BPFConfigInformerMock
+					})
+
+					It("should return the error", func() {
+						Expect(err).Should(HaveOccurred())
+						Expect(err).To(MatchError("an error happened"))
+					})
+				})
+
+				When("the bpf map type array is not supported", func() {
+					BeforeEach(func() {
+						BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
+						BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(nil).Once()
+						BPFConfigInformerMock.EXPECT().GetMapTypes().Return(ebpf.MapTypes{
+							HaveHashMapType:                true,
+							HaveArrayMapType:               false,
+							HaveProgArrayMapType:           true,
+							HavePerfEventArrayMapType:      true,
+							HavePercpuHashMapType:          true,
+							HavePercpuArrayMapType:         true,
+							HaveStackTraceMapType:          true,
+							HaveCgroupArrayMapType:         true,
+							HaveLruHashMapType:             true,
+							HaveLruPercpuHashMapType:       true,
+							HaveLpmTrieMapType:             true,
+							HaveArrayOfMapsMapType:         true,
+							HaveHashOfMapsMapType:          true,
+							HaveDevmapMapType:              true,
+							HaveSockmapMapType:             true,
+							HaveCpumapMapType:              true,
+							HaveXskmapMapType:              true,
+							HaveSockhashMapType:            true,
+							HaveCgroupStorageMapType:       true,
+							HaveReuseportSockarrayMapType:  true,
+							HavePercpuCgroupStorageMapType: true,
+							HaveQueueMapType:               true,
+							HaveStackMapType:               true,
+						})
+						config.BPFConfigInformer = BPFConfigInformerMock
+					})
+
+					It("should return an error", func() {
+						Expect(err).Should(HaveOccurred())
+						Expect(err).To(MatchError("the disk failure needs the array map type, but the kernel does not support this type of map"))
+					})
+				})
+			})
+
+		})
 	})
 
 	Describe("inj.Clean", func() {

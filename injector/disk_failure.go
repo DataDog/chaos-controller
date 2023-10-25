@@ -13,6 +13,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/command"
+	"github.com/DataDog/chaos-controller/ebpf"
 	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/types"
 )
@@ -25,8 +26,9 @@ type DiskFailureInjector struct {
 // DiskFailureInjectorConfig is the disk pressure injector config
 type DiskFailureInjectorConfig struct {
 	Config
-	CmdFactory     command.Factory
-	ProcessManager process.Manager
+	CmdFactory        command.Factory
+	ProcessManager    process.Manager
+	BPFConfigInformer ebpf.ConfigInformer
 }
 
 const EBPFDiskFailureCmd = "bpf-disk-failure"
@@ -39,6 +41,15 @@ func NewDiskFailureInjector(spec v1beta1.DiskFailureSpec, config DiskFailureInje
 
 	if config.ProcessManager == nil {
 		config.ProcessManager = process.NewManager(config.Disruption.DryRun)
+	}
+
+	if config.BPFConfigInformer == nil {
+		var err error
+		config.BPFConfigInformer, err = ebpf.NewConfigInformer(config.Log, config.Disruption.DryRun, nil, nil, nil)
+
+		if err != nil {
+			return nil, fmt.Errorf("could not create an instance of eBPF config informer for the disk failure disruption: %w", err)
+		}
 	}
 
 	return &DiskFailureInjector{
@@ -56,6 +67,14 @@ func (i *DiskFailureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *DiskFailureInjector) Inject() error {
+	if err := i.config.BPFConfigInformer.ValidateRequiredSystemConfig(); err != nil {
+		return fmt.Errorf("the disk failure needs a kernel supporting eBPF programs: %w", err)
+	}
+
+	if !i.config.BPFConfigInformer.GetMapTypes().HavePerfEventArrayMapType {
+		return fmt.Errorf("the disk failure needs the perf event array map type, but the current kernel does not support this type of map")
+	}
+
 	pid := 0
 	if i.config.Disruption.Level == types.DisruptionLevelPod {
 		pid = int(i.config.Config.TargetContainer.PID())
@@ -84,8 +103,7 @@ func (i *DiskFailureInjector) Inject() error {
 
 		bgCmd := command.NewBackgroundCmd(cmd, i.config.Log, i.config.ProcessManager)
 		if err := bgCmd.Start(); err != nil {
-			launchDNSServerErr = fmt.Errorf("unable to run eBPF disk failure: %w", err)
-			return nil
+			return fmt.Errorf("unable to run the eBPF disk failure: %w", err)
 		}
 	}
 
