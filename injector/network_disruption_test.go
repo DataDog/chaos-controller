@@ -124,7 +124,7 @@ var _ = Describe("Failure", func() {
 		nlroute3.EXPECT().Gateway().Return(net.ParseIP("192.168.1.1")).Maybe()
 
 		nl = network.NewNetlinkAdapterMock(GinkgoT())
-		nl.EXPECT().LinkList().Return([]network.NetlinkLink{nllink1, nllink2, nllink3}, nil).Maybe()
+		nl.EXPECT().LinkList(mock.Anything, mock.Anything).Return([]network.NetlinkLink{nllink1, nllink2, nllink3}, nil).Maybe()
 		nl.EXPECT().LinkByIndex(0).Return(nllink1, nil).Maybe()
 		nl.EXPECT().LinkByIndex(1).Return(nllink2, nil).Maybe()
 		nl.EXPECT().LinkByIndex(2).Return(nllink3, nil).Maybe()
