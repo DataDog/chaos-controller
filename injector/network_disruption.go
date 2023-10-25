@@ -348,6 +348,7 @@ func (i *networkDisruptionInjector) Clean() error {
 func (i *networkDisruptionInjector) applyOperations() error {
 	// get interfaces
 	useLocalhost := i.config.Disruption.Level == types.DisruptionLevelPod
+
 	links, err := i.config.NetlinkAdapter.LinkList(useLocalhost, i.config.Log)
 	if err != nil {
 		return fmt.Errorf("error listing interfaces: %w", err)
@@ -1239,6 +1240,7 @@ func (i *networkDisruptionInjector) clearOperations() error {
 
 	// get all interfaces
 	useLocalhost := i.config.Disruption.Level == types.DisruptionLevelPod
+
 	links, err := i.config.NetlinkAdapter.LinkList(useLocalhost, i.config.Log)
 	if err != nil {
 		return fmt.Errorf("can't get interfaces per IP map: %w", err)
