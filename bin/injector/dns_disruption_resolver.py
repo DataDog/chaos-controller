@@ -639,13 +639,12 @@ class RuleEngine2:
             if result is not None:
                 response_data = result
 
+                logger.info("Matched Request - %s - %s", query.domain.decode(), response_data)
                 # Return Nonefound if the rule says "none" or "nxdomain"
                 if response_data.lower() in ('none','nxdomain') :
                     return NONEFOUND(query).make_packet()
 
                 response = CASE[query.type](query, response_data)
-
-                logger.info("Matched Request - %s", query.domain.decode())
                 return response.make_packet()
 
         # if we got here, we didn't match.
