@@ -62,33 +62,22 @@ func (i *iptables) Clear() error {
 
 	// remove previously injected rules
 	for _, r := range i.injectedRules {
-		i.log.Infow("deleting injected iptables rule", "chain", r.chain, "table", r.table, "rulespec", r.rulespec)
-
-		exists, err := i.ip.ChainExists(r.table, r.chain)
-		if err != nil {
-			return err
-		}
-
-		if !exists {
-			i.log.Infow("iptables chain doesn't exist anymore, skipping cleaning", "table", r.table, "chain", r.chain)
-
-			continue
-		}
-
-		// skip if it does not exist anymore for idempotency
-		exists, err = i.ip.Exists(r.table, r.chain, r.rulespec...)
-		if err != nil {
-			return err
-		}
-
-		if !exists {
-			i.log.Infow("iptables rule doesn't exist anymore, skipping cleaning", "table", r.table, "chain", r.chain, "rulespec", r.rulespec)
-
-			continue
-		}
+		i.log.Infow("trying to delete injected iptables rule", "chain", r.chain, "table", r.table, "rulespec", r.rulespec)
 
 		// delete rule
 		if err := i.ip.Delete(r.table, r.chain, r.rulespec...); err != nil {
+			// skip if it does not exist anymore for idempotency
+			exists, existsErr := i.ip.Exists(r.table, r.chain, r.rulespec...)
+			if existsErr != nil {
+				return fmt.Errorf("unable to determine if iptables rule exists: %w; unable to delete iptables rule: %w", existsErr, err)
+			}
+
+			if !exists {
+				i.log.Infow("iptables rule doesn't exist anymore, skipping cleaning", "table", r.table, "chain", r.chain, "rulespec", r.rulespec)
+
+				continue
+			}
+
 			return err
 		}
 	}
