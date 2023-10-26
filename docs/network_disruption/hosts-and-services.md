@@ -125,7 +125,7 @@ It can be configured easily [in the chart values.yaml file](../../chart/values.y
 
 ## Q: What are the default excluded hosts?
 
-These can be disabled by setting `network.disableDefaultAllowedHosts: false` in your Disruption's spec.
+These can be disabled by setting `network.disableDefaultAllowedHosts: true` in your Disruption's spec.
 
 ### Pod level network disruptions
 
