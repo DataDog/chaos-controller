@@ -11,13 +11,14 @@ import (
 	"strings"
 
 	"github.com/vishvananda/netlink"
+	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 )
 
 // NetlinkAdapter is an interface being able to read
 // the host network interfaces information
 type NetlinkAdapter interface {
-	LinkList() ([]NetlinkLink, error)
+	LinkList(useLocalhost bool, log *zap.SugaredLogger) ([]NetlinkLink, error)
 	LinkByIndex(index int) (NetlinkLink, error)
 	LinkByName(name string) (NetlinkLink, error)
 	DefaultRoutes() ([]NetlinkRoute, error)
@@ -72,7 +73,8 @@ func NewNetlinkAdapter() NetlinkAdapter {
 }
 
 // LinkList lists links used in the routing tables for IPv4 only
-func (a netlinkAdapter) LinkList() ([]NetlinkLink, error) {
+// the useLocalhost parameter, when set to true, means we will return the localhost interface, if found
+func (a netlinkAdapter) LinkList(useLocalhost bool, log *zap.SugaredLogger) ([]NetlinkLink, error) {
 	// retrieve links from indexes and cast them
 	links, err := netlink.LinkList()
 	if err != nil {
@@ -82,6 +84,7 @@ func (a netlinkAdapter) LinkList() ([]NetlinkLink, error) {
 	nlinks := []NetlinkLink{}
 
 	for _, link := range links {
+		log.Debugw("listing available links...", "linkName", link.Attrs().Name)
 		// ignore non local ethernet interfaces according to
 		// the v197 systemd/udev naming standards
 		// https://systemd.io/PREDICTABLE_INTERFACE_NAMES/
@@ -89,7 +92,12 @@ func (a netlinkAdapter) LinkList() ([]NetlinkLink, error) {
 			!strings.HasPrefix(link.Attrs().Name, "ens") &&
 			!strings.HasPrefix(link.Attrs().Name, "enp") &&
 			!strings.HasPrefix(link.Attrs().Name, "enx") &&
-			!strings.HasPrefix(link.Attrs().Name, "eth") {
+			!strings.HasPrefix(link.Attrs().Name, "eth") &&
+			!strings.HasPrefix(link.Attrs().Name, "lo") {
+			continue
+		}
+
+		if !useLocalhost && strings.HasPrefix(link.Attrs().Name, "lo") {
 			continue
 		}
 
