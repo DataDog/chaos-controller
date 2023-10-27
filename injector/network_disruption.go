@@ -175,7 +175,7 @@ func (i *networkDisruptionInjector) Inject() error {
 		}
 
 		if !i.config.BPFConfigInformer.GetMapTypes().HaveArrayMapType {
-			return fmt.Errorf("the disk failure needs the array map type, but the kernel does not support this type of map")
+			return fmt.Errorf("the http network failure needs the array map type, but the kernel does not support this type of map")
 		}
 	}
 

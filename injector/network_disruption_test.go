@@ -804,7 +804,7 @@ var _ = Describe("Failure", func() {
 
 					It("should return an error", func() {
 						Expect(err).Should(HaveOccurred())
-						Expect(err).To(MatchError("the disk failure needs the array map type, but the kernel does not support this type of map"))
+						Expect(err).To(MatchError("the http network failure needs the array map type, but the kernel does not support this type of map"))
 					})
 				})
 			})
