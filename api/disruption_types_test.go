@@ -115,26 +115,26 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 
 func makeValidTargetInjections() v1beta1.TargetInjections {
 	return v1beta1.TargetInjections{
-		"target-1": v1beta1.TargetInjection{
+		"target-1": {v1beta1.TargetInjection{
 			InjectorPodName: "pod-1",
 			InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-		},
-		"target-2": v1beta1.TargetInjection{
+		}},
+		"target-2": {v1beta1.TargetInjection{
 			InjectorPodName: "pod-2",
 			InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-		},
-		"target-3": v1beta1.TargetInjection{
+		}},
+		"target-3": {v1beta1.TargetInjection{
 			InjectorPodName: "pod-3",
 			InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-		},
-		"target-4": v1beta1.TargetInjection{
+		}},
+		"target-4": {v1beta1.TargetInjection{
 			InjectorPodName: "pod-4",
 			InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-		},
-		"target-5": v1beta1.TargetInjection{
+		}},
+		"target-5": {v1beta1.TargetInjection{
 			InjectorPodName: "pod-6",
 			InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-		},
+		}},
 	}
 }
 
@@ -170,26 +170,26 @@ var _ = Describe("DisruptionStatus.AddTargets Test", func() {
 		When("eligibleTargets 5 new targets", func() {
 			BeforeEach(func() {
 				eligibleTargets = v1beta1.TargetInjections{
-					"target-6": v1beta1.TargetInjection{
+					"target-6": {v1beta1.TargetInjection{
 						InjectorPodName: "pod-6",
 						InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-					},
-					"target-7": v1beta1.TargetInjection{
+					}},
+					"target-7": {v1beta1.TargetInjection{
 						InjectorPodName: "pod-7",
 						InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-					},
-					"target-8": v1beta1.TargetInjection{
+					}},
+					"target-8": {v1beta1.TargetInjection{
 						InjectorPodName: "pod-8",
 						InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-					},
-					"target-9": v1beta1.TargetInjection{
+					}},
+					"target-9": {v1beta1.TargetInjection{
 						InjectorPodName: "pod-9",
 						InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-					},
-					"target-10": v1beta1.TargetInjection{
+					}},
+					"target-10": {v1beta1.TargetInjection{
 						InjectorPodName: "pod-10",
 						InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-					},
+					}},
 				}
 			})
 

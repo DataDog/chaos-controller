@@ -198,7 +198,8 @@ func (dd DisruptionDuration) Duration() time.Duration {
 }
 
 type TargetInjection struct {
-	InjectorPodName string `json:"injectorPodName,omitempty"`
+	InjectorPodName    string `json:"injectorPodName,omitempty"`
+	DisruptionKindName string `json:"disruptionKindName,omitempty"`
 	// +kubebuilder:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
 	// +ddmark:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
 	InjectionStatus chaostypes.DisruptionTargetInjectionStatus `json:"injectionStatus,omitempty"`
@@ -206,8 +207,29 @@ type TargetInjection struct {
 	Since metav1.Time `json:"since,omitempty"`
 }
 
+type TargetInjectorList []TargetInjection
+
 // TargetInjections map of target injection
-type TargetInjections map[string]TargetInjection
+type TargetInjections map[string]TargetInjectorList
+
+// GetInjectionWithDisruptionKind searches for a TargetInjection in the list with a specific DisruptionKindName.
+//
+// Parameters:
+//   - kindName: The DisruptionKindName to search for in the list.
+//
+// Returns:
+//   - *TargetInjection: A pointer to the TargetInjection with the matching DisruptionKindName, or nil if not found.
+func (l TargetInjectorList) GetInjectionWithDisruptionKind(kindName chaostypes.DisruptionKindName) *TargetInjection {
+	for _, injector := range l {
+		if injector.DisruptionKindName != kindName.String() {
+			continue
+		}
+
+		return &injector
+	}
+
+	return nil
+}
 
 // GetTargetNames return the name of targets
 func (in TargetInjections) GetTargetNames() []string {
@@ -218,6 +240,26 @@ func (in TargetInjections) GetTargetNames() []string {
 	}
 
 	return names
+}
+
+// NotFullyInjected checks if any of the TargetInjections in the list are not fully injected.
+//
+// Returns:
+//   - bool: true if any TargetInjection is not fully injected, false if all are fully injected or the list is empty.
+func (in TargetInjections) NotFullyInjected() bool {
+	if len(in) == 0 {
+		return true
+	}
+
+	for _, injectors := range in {
+		for _, i := range injectors {
+			if i.InjectionStatus != chaostypes.DisruptionTargetInjectionStatusInjected {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // DisruptionStatus defines the observed state of Disruption
