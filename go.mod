@@ -11,7 +11,7 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/containerd/containerd v1.5.18
 	github.com/coreos/go-iptables v0.6.0
-	github.com/docker/docker v23.0.6+incompatible
+	github.com/docker/docker v24.0.7+incompatible
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/go-logr/logr v1.2.4
 	github.com/google/uuid v1.3.0
