@@ -709,13 +709,13 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 }
 
 // UpdateHostsOnCloudDisruption from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
-func (n *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager cloudservice.CloudServicesProvidersManager) error {
-	if n.Cloud == nil {
+func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager cloudservice.CloudServicesProvidersManager) error {
+	if s.Cloud == nil {
 		return nil
 	}
 
 	hosts := []NetworkDisruptionHostSpec{}
-	clouds := n.Cloud.TransformToCloudMap()
+	clouds := s.Cloud.TransformToCloudMap()
 
 	for cloudName, serviceList := range clouds {
 		var serviceListNames []string
@@ -741,10 +741,10 @@ func (n *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager clouds
 		}
 	}
 
-	if n.Hosts == nil {
-		n.Hosts = hosts
+	if s.Hosts == nil {
+		s.Hosts = hosts
 	} else {
-		n.Hosts = append(n.Hosts, hosts...)
+		s.Hosts = append(s.Hosts, hosts...)
 	}
 
 	return nil
