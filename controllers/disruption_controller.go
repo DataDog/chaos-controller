@@ -484,6 +484,9 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 		r.log.Infow("starting targets injection", "targets", instance.Status.TargetInjections)
 	}
 
+	// keep track of cloud hosts
+	injectionHasCloudHosts := false
+
 	// iterate through target + existing disruption kind -- to ensure all chaos pods exist
 	for targetName, injections := range instance.Status.TargetInjections {
 		for _, disKind := range chaostypes.DisruptionKindNames {
@@ -506,7 +509,7 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 				continue
 			}
 
-			if err = r.createChaosPods(ctx, instance, targetName); err != nil {
+			if err = r.createChaosPods(ctx, instance, targetName, &injectionHasCloudHosts); err != nil {
 				if !apierrors.IsNotFound(err) {
 					return fmt.Errorf("error creating chaos pods: %w", err)
 				}
@@ -522,7 +525,7 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 }
 
 // createChaosPods attempts to create all the chaos pods for a given target. If a given chaos pod already exists, it is not recreated.
-func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *chaosv1beta1.Disruption, target string) error {
+func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *chaosv1beta1.Disruption, target string, injectionHasCloudHosts *bool) error {
 	var err error
 
 	targetNodeName := ""
@@ -557,7 +560,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 	}
 
 	// generate injection pods specs
-	targetChaosPods, err := r.ChaosPodService.GenerateChaosPodsOfDisruption(instance, target, targetNodeName, targetContainers, targetPodIP)
+	targetChaosPods, err := r.ChaosPodService.GenerateChaosPodsOfDisruption(instance, target, targetNodeName, targetContainers, targetPodIP, injectionHasCloudHosts)
 	if err != nil {
 		return fmt.Errorf("error generating chaos pods: %w", err)
 	}

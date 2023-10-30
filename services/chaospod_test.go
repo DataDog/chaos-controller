@@ -52,6 +52,10 @@ const (
 	DefaultMetricsSinkName                = "name"
 )
 
+var (
+	DefaultHasCloudHosts bool = false
+)
+
 var _ = Describe("Chaos Pod Service", func() {
 
 	var (
@@ -731,7 +735,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			expectedArgs = append(expectedArgs, "--deadline", time.Now().Add(chaostypes.InjectorPadDuration).Add(disruption.RemainingDuration()).Format(time.RFC3339))
 
 			// Action
-			chaosPods, err = chaosPodService.GenerateChaosPodsOfDisruption(&disruption, DefaultTargetName, DefaultTargetNodeName, targetContainers, DefaultTargetPodIp)
+			chaosPods, err = chaosPodService.GenerateChaosPodsOfDisruption(&disruption, DefaultTargetName, DefaultTargetNodeName, targetContainers, DefaultTargetPodIp, &DefaultHasCloudHosts)
 		})
 
 		Describe("success cases", func() {
@@ -744,7 +748,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 
 				// Action
-				chaosPods, err := chaosPodService.GenerateChaosPodsOfDisruption(&disruption, DefaultTargetName, DefaultTargetNodeName, targetContainers, DefaultTargetPodIp)
+				chaosPods, err := chaosPodService.GenerateChaosPodsOfDisruption(&disruption, DefaultTargetName, DefaultTargetNodeName, targetContainers, DefaultTargetPodIp, &DefaultHasCloudHosts)
 
 				// Assert
 				By("not return an error")

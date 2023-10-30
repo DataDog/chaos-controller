@@ -45,7 +45,7 @@ Once you have installed the above requirements, run the `make lima-all` command 
 - `make lima-start` to create the lima vm with containerd and Kubernetes (backed by k3s)
 - `make lima-kubectx` to add the lima Kubernetes cluster config to your local configs and switch to the lima context
 - `make lima-install-cert-manager` to install cert-manager
-- `make lima-build` to build the chaos-controller images
+- `make lima-push-all` to build and push the chaos-controller images
 - `make lima-install` to render and apply the chaos-controller helm chart
 
 Once the instance is started, you can log into it using either the `lima` or its longer form `limactl shell <$LIMA_INSTANCE>` commands.
