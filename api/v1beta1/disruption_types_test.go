@@ -60,15 +60,22 @@ var _ = Describe("TargetInjections", func() {
 		Context("with three targets fully injected", func() {
 			BeforeEach(func() {
 				targetInjections = TargetInjections{
-					"target-1": {{
-						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
-					}},
-					"target-2": {{
-						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
-					}},
-					"target-3": {{
-						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
-					}}}
+					"target-1": {
+						chaostypes.DisruptionKindDiskFailure: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+					},
+					"target-2": {
+						chaostypes.DisruptionKindNetworkDisruption: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+					},
+					"target-3": {
+						chaostypes.DisruptionKindCPUPressure: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+					},
+				}
 			})
 
 			It("should return false", func() {
@@ -79,15 +86,22 @@ var _ = Describe("TargetInjections", func() {
 		Context("with two targets injected and one not injected", func() {
 			BeforeEach(func() {
 				targetInjections = TargetInjections{
-					"target-1": {{
-						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
-					}},
-					"target-2": {{
-						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusNotInjected,
-					}},
-					"target-3": {{
-						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
-					}}}
+					"target-1": {
+						chaostypes.DisruptionKindDiskFailure: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+					},
+					"target-2": {
+						chaostypes.DisruptionKindNetworkDisruption: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusNotInjected,
+						},
+					},
+					"target-3": {
+						chaostypes.DisruptionKindCPUPressure: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+					},
+				}
 			})
 
 			It("should return true", func() {
@@ -98,11 +112,14 @@ var _ = Describe("TargetInjections", func() {
 		Context("with a single targets with one chaos pod injected and one not injected", func() {
 			BeforeEach(func() {
 				targetInjections = TargetInjections{
-					"target-1": {{
-						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
-					}, {
-						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusNotInjected,
-					}},
+					"target-1": {
+						chaostypes.DisruptionKindDiskFailure: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+						chaostypes.DisruptionKindNetworkDisruption: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusNotInjected,
+						},
+					},
 				}
 			})
 
@@ -123,42 +140,39 @@ var _ = Describe("TargetInjections", func() {
 	})
 })
 
-var _ = Describe("TargetInjectorList", func() {
+var _ = Describe("TargetInjectorMap", func() {
 	Describe("GetInjectionWithDisruptionKind", func() {
 		var (
-			targetInjectorList TargetInjectorList
-			expectedKind       chaostypes.DisruptionKindName
-			injector           *TargetInjection
+			targetInjectorMap TargetInjectorMap
+			expectedKind      chaostypes.DisruptionKindName
+			injector          *TargetInjection
 		)
 
 		JustBeforeEach(func() {
-			injector = targetInjectorList.GetInjectionWithDisruptionKind(expectedKind)
+			injector = targetInjectorMap.GetInjectionWithDisruptionKind(expectedKind)
 		})
 
 		Context("with two injectors", func() {
 			BeforeEach(func() {
-				targetInjectorList = TargetInjectorList{
-					{
-						InjectorPodName:    "chaos-pod-1",
-						DisruptionKindName: chaostypes.DisruptionKindDiskFailure,
-						InjectionStatus:    chaostypes.DisruptionTargetInjectionStatusInjected,
-					}, {
-						InjectorPodName:    "chaos-pod-2",
-						DisruptionKindName: chaostypes.DisruptionKindNetworkDisruption,
-						InjectionStatus:    chaostypes.DisruptionTargetInjectionStatusInjected,
+				targetInjectorMap = TargetInjectorMap{
+					chaostypes.DisruptionKindDiskFailure: {
+						InjectorPodName: "chaos-pod-1",
+						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+					},
+					chaostypes.DisruptionKindNetworkDisruption: {
+						InjectorPodName: "chaos-pod-2",
+						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
 					},
 				}
 			})
 
 			When("the disruption kind match", func() {
-
 				BeforeEach(func() {
 					expectedKind = chaostypes.DisruptionKindNetworkDisruption
 				})
 
 				It("should return the chaos-pod-2", func() {
 					Expect(injector.InjectorPodName).Should(Equal("chaos-pod-2"))
-					Expect(injector.DisruptionKindName).Should(Equal(chaostypes.DisruptionKindNetworkDisruption))
 				})
 			})
 
@@ -176,7 +190,7 @@ var _ = Describe("TargetInjectorList", func() {
 
 		Context("without injection", func() {
 			BeforeEach(func() {
-				targetInjectorList = TargetInjectorList{}
+				targetInjectorMap = TargetInjectorMap{}
 			})
 
 			It("should return nil", func() {

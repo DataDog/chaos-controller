@@ -198,8 +198,7 @@ func (dd DisruptionDuration) Duration() time.Duration {
 }
 
 type TargetInjection struct {
-	InjectorPodName    string `json:"injectorPodName,omitempty"`
-	DisruptionKindName string `json:"disruptionKindName,omitempty"`
+	InjectorPodName string `json:"injectorPodName,omitempty"`
 	// +kubebuilder:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
 	// +ddmark:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
 	InjectionStatus chaostypes.DisruptionTargetInjectionStatus `json:"injectionStatus,omitempty"`
@@ -207,25 +206,21 @@ type TargetInjection struct {
 	Since metav1.Time `json:"since,omitempty"`
 }
 
-type TargetInjectorList []TargetInjection
+type TargetInjectorMap map[chaostypes.DisruptionKindName]TargetInjection
 
 // TargetInjections map of target injection
-type TargetInjections map[string]TargetInjectorList
+type TargetInjections map[string]TargetInjectorMap
 
-// GetInjectionWithDisruptionKind searches for a TargetInjection in the list with a specific DisruptionKindName.
+// GetInjectionWithDisruptionKind retrieves a TargetInjection associated with a specific DisruptionKindName from the map.
 //
 // Parameters:
-//   - kindName: The DisruptionKindName to search for in the list.
+//   - kindName: The DisruptionKindName to search for in the map.
 //
 // Returns:
 //   - *TargetInjection: A pointer to the TargetInjection with the matching DisruptionKindName, or nil if not found.
-func (l TargetInjectorList) GetInjectionWithDisruptionKind(kindName chaostypes.DisruptionKindName) *TargetInjection {
-	for _, injector := range l {
-		if injector.DisruptionKindName != kindName.String() {
-			continue
-		}
-
-		return &injector
+func (m TargetInjectorMap) GetInjectionWithDisruptionKind(kindName chaostypes.DisruptionKindName) *TargetInjection {
+	if targetInjection, isExist := m[kindName]; isExist {
+		return &targetInjection
 	}
 
 	return nil

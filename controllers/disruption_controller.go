@@ -712,17 +712,7 @@ func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta
 	targetInjection.InjectionStatus = status
 	targetInjection.Since = since
 
-	for i, ti := range targetInjections {
-		if ti.DisruptionKindName != disruptionKindName.String() {
-			continue
-		}
-
-		targetInjections[i] = *targetInjection
-
-		return
-	}
-
-	instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]] = targetInjections
+	instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]][disruptionKindName] = *targetInjection
 }
 
 // selectTargets will select min(count, all matching targets) random targets (pods or nodes depending on the disruption level)
@@ -1097,16 +1087,17 @@ NB: you can specify "spec.allowDisruptedTargets: true" to allow a new disruption
 			}
 		}
 
+		eligibleTargets[target] = make(chaosv1beta1.TargetInjectorMap)
+
 		// add target if eligible for each disruption kind of the disruption
 		for _, disKind := range chaostypes.DisruptionKindNames {
 			if subspec := instance.Spec.DisruptionKindPicker(disKind); reflect.ValueOf(subspec).IsNil() {
 				continue
 			}
 
-			eligibleTargets[target] = append(eligibleTargets[target], chaosv1beta1.TargetInjection{
-				InjectionStatus:    chaostypes.DisruptionTargetInjectionStatusNotInjected,
-				DisruptionKindName: disKind.String(),
-			})
+			eligibleTargets[target][disKind] = chaosv1beta1.TargetInjection{
+				InjectionStatus: chaostypes.DisruptionTargetInjectionStatusNotInjected,
+			}
 		}
 	}
 

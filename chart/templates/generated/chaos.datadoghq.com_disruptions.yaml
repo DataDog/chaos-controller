@@ -610,10 +610,8 @@ spec:
                   type: integer
                 targetInjections:
                   additionalProperties:
-                    items:
+                    additionalProperties:
                       properties:
-                        disruptionKindName:
-                          type: string
                         injectionStatus:
                           description: DisruptionTargetInjectionStatus represents the injection status of the target of a disruption
                           enum:
@@ -628,7 +626,7 @@ spec:
                           format: date-time
                           type: string
                       type: object
-                    type: array
+                    type: object
                   description: TargetInjections map of target injection
                   nullable: true
                   type: object

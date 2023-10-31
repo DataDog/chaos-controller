@@ -10,10 +10,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/DataDog/chaos-controller/types"
-
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-
+	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -115,26 +113,36 @@ var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
 
 func makeValidTargetInjections() v1beta1.TargetInjections {
 	return v1beta1.TargetInjections{
-		"target-1": {v1beta1.TargetInjection{
-			InjectorPodName: "pod-1",
-			InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-		}},
-		"target-2": {v1beta1.TargetInjection{
-			InjectorPodName: "pod-2",
-			InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-		}},
-		"target-3": {v1beta1.TargetInjection{
-			InjectorPodName: "pod-3",
-			InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-		}},
-		"target-4": {v1beta1.TargetInjection{
-			InjectorPodName: "pod-4",
-			InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-		}},
-		"target-5": {v1beta1.TargetInjection{
-			InjectorPodName: "pod-6",
-			InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-		}},
+		"target-1": {
+			types.DisruptionKindNetworkDisruption: {
+				InjectorPodName: "pod-1",
+				InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
+			},
+		},
+		"target-2": {
+			types.DisruptionKindNetworkDisruption: {
+				InjectorPodName: "pod-2",
+				InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
+			},
+		},
+		"target-3": {
+			types.DisruptionKindNetworkDisruption: {
+				InjectorPodName: "pod-3",
+				InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
+			},
+		},
+		"target-4": {
+			types.DisruptionKindNetworkDisruption: {
+				InjectorPodName: "pod-4",
+				InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
+			},
+		},
+		"target-5": {
+			types.DisruptionKindNetworkDisruption: {
+				InjectorPodName: "pod-6",
+				InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
+			},
+		},
 	}
 }
 
@@ -170,26 +178,36 @@ var _ = Describe("DisruptionStatus.AddTargets Test", func() {
 		When("eligibleTargets 5 new targets", func() {
 			BeforeEach(func() {
 				eligibleTargets = v1beta1.TargetInjections{
-					"target-6": {v1beta1.TargetInjection{
-						InjectorPodName: "pod-6",
-						InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-					}},
-					"target-7": {v1beta1.TargetInjection{
-						InjectorPodName: "pod-7",
-						InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-					}},
-					"target-8": {v1beta1.TargetInjection{
-						InjectorPodName: "pod-8",
-						InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-					}},
-					"target-9": {v1beta1.TargetInjection{
-						InjectorPodName: "pod-9",
-						InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-					}},
-					"target-10": {v1beta1.TargetInjection{
-						InjectorPodName: "pod-10",
-						InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
-					}},
+					"target-6": {
+						types.DisruptionKindNetworkDisruption: {
+							InjectorPodName: "pod-6",
+							InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
+						},
+					},
+					"target-7": {
+						types.DisruptionKindNetworkDisruption: {
+							InjectorPodName: "pod-7",
+							InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
+						},
+					},
+					"target-8": {
+						types.DisruptionKindNetworkDisruption: {
+							InjectorPodName: "pod-8",
+							InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
+						},
+					},
+					"target-9": {
+						types.DisruptionKindNetworkDisruption: {
+							InjectorPodName: "pod-9",
+							InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
+						},
+					},
+					"target-10": {
+						types.DisruptionKindNetworkDisruption: {
+							InjectorPodName: "pod-10",
+							InjectionStatus: types.DisruptionTargetInjectionStatusNotInjected,
+						},
+					},
 				}
 			})
 
