@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/ebpf"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
 	"github.com/DataDog/chaos-controller/types"
@@ -61,6 +62,7 @@ type NetworkDisruptionInjectorConfig struct {
 	NetlinkAdapter      network.NetlinkAdapter
 	DNSClient           network.DNSClient
 	HostResolveInterval time.Duration
+	BPFConfigInformer   ebpf.ConfigInformer
 }
 
 // tcServiceFilter describes a tc filter, representing the service filtered and its priority
@@ -143,6 +145,13 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 		config.DNSClient = network.NewDNSClient()
 	}
 
+	if spec.HasHTTPFilters() && config.BPFConfigInformer == nil {
+		config.BPFConfigInformer, err = ebpf.NewConfigInformer(config.Log, config.Disruption.DryRun, nil, nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("could not create the eBPF config informer instance for the network disruption: %w", err)
+		}
+	}
+
 	return &networkDisruptionInjector{
 		spec:       spec,
 		config:     config,
@@ -160,6 +169,16 @@ func (i *networkDisruptionInjector) TargetName() string {
 
 // Inject injects the given network disruption into the given container
 func (i *networkDisruptionInjector) Inject() error {
+	if i.spec.HasHTTPFilters() {
+		if err := i.config.BPFConfigInformer.ValidateRequiredSystemConfig(); err != nil {
+			return err
+		}
+
+		if !i.config.BPFConfigInformer.GetMapTypes().HaveArrayMapType {
+			return fmt.Errorf("the http network failure needs the array map type, but the kernel does not support this type of map")
+		}
+	}
+
 	// enter target network namespace
 	if err := i.config.Netns.Enter(); err != nil {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)

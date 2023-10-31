@@ -272,6 +272,11 @@ func (b *ChaosPodBuilder) WithChaosSpec(targetNodeName string, terminationGraceP
 								MountPath: "/mnt/host",
 								ReadOnly:  true,
 							},
+							{
+								Name:      "boot",
+								MountPath: "/boot",
+								ReadOnly:  true,
+							},
 						},
 					},
 				},
@@ -326,6 +331,15 @@ func (b *ChaosPodBuilder) WithChaosSpec(targetNodeName string, terminationGraceP
 						VolumeSource: v1.VolumeSource{
 							HostPath: &v1.HostPathVolumeSource{
 								Path: "/",
+								Type: &hostPathDirectory,
+							},
+						},
+					},
+					{
+						Name: "boot",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{
+								Path: "/boot",
 								Type: &hostPathDirectory,
 							},
 						},

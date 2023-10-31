@@ -17,6 +17,11 @@ packages:
       RoundTripper:
         config:
           mockname: RoundTripperMock
+  io/fs:
+    interfaces:
+      StatFS:
+        config:
+          mockname: StatFSMock
   sigs.k8s.io/controller-runtime/pkg/controller:
     interfaces:
       Controller:
