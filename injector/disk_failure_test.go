@@ -6,6 +6,7 @@
 package injector_test
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/command"
 	"github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/ebpf"
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo/v2"
@@ -22,13 +24,15 @@ import (
 
 var _ = Describe("Disk Failure", func() {
 	var (
-		config         DiskFailureInjectorConfig
-		level          types.DisruptionLevel
-		proc           *os.Process
-		inj            Injector
-		spec           v1beta1.DiskFailureSpec
-		cmdFactoryMock *command.FactoryMock
-		containerMock  *container.ContainerMock
+		config                DiskFailureInjectorConfig
+		err                   error
+		level                 types.DisruptionLevel
+		proc                  *os.Process
+		inj                   Injector
+		spec                  v1beta1.DiskFailureSpec
+		cmdFactoryMock        *command.FactoryMock
+		containerMock         *container.ContainerMock
+		BPFConfigInformerMock *ebpf.ConfigInformerMock
 	)
 
 	const PID = 1
@@ -38,15 +42,22 @@ var _ = Describe("Disk Failure", func() {
 
 		containerMock = container.NewContainerMock(GinkgoT())
 
+		BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
+		BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(nil).Maybe()
+		BPFConfigInformerMock.EXPECT().GetMapTypes().Return(ebpf.MapTypes{HavePerfEventArrayMapType: true}).Maybe()
+
 		cmd := command.NewCmdMock(GinkgoT())
 		cmd.EXPECT().DryRun().Return(false).Maybe()
 		cmd.EXPECT().Start().Return(nil).Maybe()
 		cmd.EXPECT().Wait().Return(nil).Maybe()
 		cmd.EXPECT().PID().Return(41).Maybe()
+
 		cmdFactoryMock = command.NewFactoryMock(GinkgoT())
 		cmdFactoryMock.EXPECT().NewCmd(mock.Anything, mock.Anything, mock.Anything).Return(cmd).Maybe()
 
 		config = DiskFailureInjectorConfig{
+			BPFConfigInformer: BPFConfigInformerMock,
+			CmdFactory:        cmdFactoryMock,
 			Config: Config{
 				Log:         log,
 				MetricsSink: ms,
@@ -55,7 +66,6 @@ var _ = Describe("Disk Failure", func() {
 				},
 				TargetContainer: containerMock,
 			},
-			CmdFactory: cmdFactoryMock,
 		}
 
 		spec = v1beta1.DiskFailureSpec{
@@ -67,131 +77,200 @@ var _ = Describe("Disk Failure", func() {
 	Describe("injection", func() {
 		JustBeforeEach(func() {
 			// instantiate lately so config can be updated in BeforeEach
-			var err error
 			inj, err = NewDiskFailureInjector(spec, config)
-
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(inj.Inject()).To(Succeed())
+			err = inj.Inject()
 		})
 
-		Context("with a pod level", func() {
-			BeforeEach(func() {
-				config.Disruption.Level = types.DisruptionLevelPod
-
-				containerMock.EXPECT().PID().Return(PID).Once()
-			})
-
-			It("should start the eBPF Disk failure program", func() {
-				cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-					"-process", strconv.Itoa(proc.Pid),
-					"-path", "/",
-					"-probability", "100",
-				})
-			})
-
-			Context("with multiple valid paths", func() {
+		Describe("error cases", func() {
+			When("the ValidateRequiredSystemConfig method of the eBPF config informer return an error", func() {
 				BeforeEach(func() {
-					spec.Paths = []string{"/test", "/toto"}
+					BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
+					BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(fmt.Errorf("error happened")).Once()
+					config.BPFConfigInformer = BPFConfigInformerMock
 				})
 
-				It("should run two eBPF program per paths", func() {
-					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-process", strconv.Itoa(proc.Pid),
-						"-path", "/test",
-						"-probability", "100",
-					})
-					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-process", strconv.Itoa(proc.Pid),
-						"-path", "/toto",
-						"-probability", "100",
-					})
+				It("should return an error", func() {
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError("the disk failure needs a kernel supporting eBPF programs: error happened"))
 				})
 			})
 
-			Context("with custom OpenatSyscall exit code", func() {
+			When("the bpf map type perf event array is not supported", func() {
 				BeforeEach(func() {
-					spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{ExitCode: "EACCES"}
-				})
-
-				It("should start with a valid exit code", func() {
-					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-process", strconv.Itoa(proc.Pid),
-						"-path", "/",
-						"-exit-code", "13",
-						"-probability", "100",
+					BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
+					BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(nil).Once()
+					BPFConfigInformerMock.EXPECT().GetMapTypes().Return(ebpf.MapTypes{
+						HaveHashMapType:                true,
+						HaveArrayMapType:               true,
+						HaveProgArrayMapType:           true,
+						HavePerfEventArrayMapType:      false,
+						HavePercpuHashMapType:          true,
+						HavePercpuArrayMapType:         true,
+						HaveStackTraceMapType:          true,
+						HaveCgroupArrayMapType:         true,
+						HaveLruHashMapType:             true,
+						HaveLruPercpuHashMapType:       true,
+						HaveLpmTrieMapType:             true,
+						HaveArrayOfMapsMapType:         true,
+						HaveHashOfMapsMapType:          true,
+						HaveDevmapMapType:              true,
+						HaveSockmapMapType:             true,
+						HaveCpumapMapType:              true,
+						HaveXskmapMapType:              true,
+						HaveSockhashMapType:            true,
+						HaveCgroupStorageMapType:       true,
+						HaveReuseportSockarrayMapType:  true,
+						HavePercpuCgroupStorageMapType: true,
+						HaveQueueMapType:               true,
+						HaveStackMapType:               true,
 					})
-				})
-			})
-
-			Context("with an empty custom OpenatSyscall exit code", func() {
-				BeforeEach(func() {
-					spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{}
+					config.BPFConfigInformer = BPFConfigInformerMock
 				})
 
-				It("should start with a valid exit code", func() {
-					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-process", strconv.Itoa(proc.Pid),
-						"-path", "/",
-						"-probability", "100",
-					})
-				})
-			})
-
-			Context("with a custom probability", func() {
-				BeforeEach(func() {
-					spec.Probability = "50%"
-				})
-
-				It("should start with a 50 probability", func() {
-					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-process", strconv.Itoa(proc.Pid),
-						"-path", "/",
-						"-probability", "50",
-					})
+				It("should return an error", func() {
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError("the disk failure needs the perf event array map type, but the current kernel does not support this type of map"))
 				})
 			})
 		})
 
-		Context("with a node level", func() {
-			BeforeEach(func() {
-				config.Disruption.Level = types.DisruptionLevelNode
-			})
-
-			It("should start the eBPF Disk failure program", func() {
-				containerMock.AssertNumberOfCalls(GinkgoT(), "PID", 0)
-				cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-					"-process", strconv.Itoa(0),
-					"-path", "/",
-					"-probability", "100",
-				})
-			})
-
-			Context("with custom OpenatSyscall exit code", func() {
+		Describe("success cases", func() {
+			Context("with a pod level", func() {
 				BeforeEach(func() {
-					spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{ExitCode: "EEXIST"}
+					config.Disruption.Level = types.DisruptionLevelPod
+
+					containerMock.EXPECT().PID().Return(PID).Once()
 				})
 
-				It("should start with a valid exit code", func() {
+				It("should start the eBPF Disk failure program", func() {
+					Expect(err).ShouldNot(HaveOccurred())
+
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-process", strconv.Itoa(0),
+						"-process", strconv.Itoa(proc.Pid),
 						"-path", "/",
-						"-exit-code", "17",
 						"-probability", "100",
+					})
+				})
+
+				Context("with multiple valid paths", func() {
+					BeforeEach(func() {
+						spec.Paths = []string{"/test", "/toto"}
+					})
+
+					It("should run two eBPF program per paths", func() {
+						Expect(err).ShouldNot(HaveOccurred())
+
+						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+							"-process", strconv.Itoa(proc.Pid),
+							"-path", "/test",
+							"-probability", "100",
+						})
+						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+							"-process", strconv.Itoa(proc.Pid),
+							"-path", "/toto",
+							"-probability", "100",
+						})
+					})
+				})
+
+				Context("with custom OpenatSyscall exit code", func() {
+					BeforeEach(func() {
+						spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{ExitCode: "EACCES"}
+					})
+
+					It("should start with a valid exit code", func() {
+						Expect(err).ShouldNot(HaveOccurred())
+
+						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+							"-process", strconv.Itoa(proc.Pid),
+							"-path", "/",
+							"-exit-code", "13",
+							"-probability", "100",
+						})
+					})
+				})
+
+				Context("with an empty custom OpenatSyscall exit code", func() {
+					BeforeEach(func() {
+						spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{}
+					})
+
+					It("should start with a valid exit code", func() {
+						Expect(err).ShouldNot(HaveOccurred())
+
+						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+							"-process", strconv.Itoa(proc.Pid),
+							"-path", "/",
+							"-probability", "100",
+						})
+					})
+				})
+
+				Context("with a custom probability", func() {
+					BeforeEach(func() {
+						spec.Probability = "50%"
+					})
+
+					It("should start with a 50 probability", func() {
+						Expect(err).ShouldNot(HaveOccurred())
+
+						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+							"-process", strconv.Itoa(proc.Pid),
+							"-path", "/",
+							"-probability", "50",
+						})
 					})
 				})
 			})
 
-			Context("with an empty custom OpenatSyscall exit code", func() {
+			Context("with a node level", func() {
 				BeforeEach(func() {
-					spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{}
+					config.Disruption.Level = types.DisruptionLevelNode
 				})
 
-				It("should start with a valid exit code", func() {
+				It("should start the eBPF Disk failure program", func() {
+					Expect(err).ShouldNot(HaveOccurred())
+
+					containerMock.AssertNumberOfCalls(GinkgoT(), "PID", 0)
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
 						"-process", strconv.Itoa(0),
 						"-path", "/",
 						"-probability", "100",
+					})
+				})
+
+				Context("with custom OpenatSyscall exit code", func() {
+					BeforeEach(func() {
+						spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{ExitCode: "EEXIST"}
+					})
+
+					It("should start with a valid exit code", func() {
+						Expect(err).ShouldNot(HaveOccurred())
+
+						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+							"-process", strconv.Itoa(0),
+							"-path", "/",
+							"-exit-code", "17",
+							"-probability", "100",
+						})
+					})
+				})
+
+				Context("with an empty custom OpenatSyscall exit code", func() {
+					BeforeEach(func() {
+						spec.OpenatSyscall = &v1beta1.OpenatSyscallSpec{}
+					})
+
+					It("should start with a valid exit code", func() {
+						Expect(err).ShouldNot(HaveOccurred())
+
+						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+							"-process", strconv.Itoa(0),
+							"-path", "/",
+							"-probability", "100",
+						})
 					})
 				})
 			})
