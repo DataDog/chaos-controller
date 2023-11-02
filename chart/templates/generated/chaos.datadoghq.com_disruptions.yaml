@@ -627,7 +627,7 @@ spec:
                           type: string
                       type: object
                     type: object
-                  description: TargetInjections map of target injection
+                  description: TargetInjections is a map of target names to injectors
                   nullable: true
                   type: object
               required:

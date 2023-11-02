@@ -208,7 +208,7 @@ type TargetInjection struct {
 
 type TargetInjectorMap map[chaostypes.DisruptionKindName]TargetInjection
 
-// TargetInjections map of target injection
+// TargetInjections is a map of target names to injectors
 type TargetInjections map[string]TargetInjectorMap
 
 // GetInjectionWithDisruptionKind retrieves a TargetInjection associated with a specific DisruptionKindName from the map.
@@ -219,7 +219,7 @@ type TargetInjections map[string]TargetInjectorMap
 // Returns:
 //   - *TargetInjection: A pointer to the TargetInjection with the matching DisruptionKindName, or nil if not found.
 func (m TargetInjectorMap) GetInjectionWithDisruptionKind(kindName chaostypes.DisruptionKindName) *TargetInjection {
-	if targetInjection, isExist := m[kindName]; isExist {
+	if targetInjection, exists := m[kindName]; exists {
 		return &targetInjection
 	}
 

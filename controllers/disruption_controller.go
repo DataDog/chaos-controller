@@ -79,6 +79,8 @@ type CtxTuple struct {
 	DisruptionNamespacedName types.NamespacedName
 }
 
+const TargetsCountLogLimit = 50
+
 func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	instance := &chaosv1beta1.Disruption{}
 
@@ -1034,7 +1036,27 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 // it skips ignored targets and targets being already targeted by another disruption
 func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance *chaosv1beta1.Disruption, potentialTargets []string) (eligibleTargets chaosv1beta1.TargetInjections, err error) {
 	defer func() {
-		r.log.Debugw("getting eligible targets for disruption injection", "potentialTargets", potentialTargets, "eligibleTargets", eligibleTargets, "error", err)
+		var args []interface{}
+
+		potentialTargetsCount := len(potentialTargets)
+
+		args = append(args, "potentialTargetsCount", potentialTargetsCount)
+
+		if potentialTargetsCount <= TargetsCountLogLimit {
+			args = append(args, "potentialTargets", potentialTargets)
+		}
+
+		eligibleTargetsCount := len(eligibleTargets)
+
+		args = append(args, "eligibleTargetsCount", eligibleTargetsCount)
+
+		if eligibleTargetsCount <= TargetsCountLogLimit {
+			args = append(args, "eligibleTargets", eligibleTargets)
+		}
+
+		args = append(args, "error", err)
+
+		r.log.Debugw("getting eligible targets for disruption injection", args...)
 	}()
 
 	eligibleTargets = make(chaosv1beta1.TargetInjections)
