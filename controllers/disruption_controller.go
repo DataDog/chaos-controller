@@ -705,27 +705,13 @@ func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, in
 }
 
 func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod, status chaostypes.DisruptionTargetInjectionStatus, since metav1.Time) {
-	targetInjections := instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]]
-
 	disruptionKindName := chaostypes.DisruptionKindName(chaosPod.Labels[chaostypes.DisruptionKindLabel])
 
-	targetInjection := targetInjections.GetInjectionWithDisruptionKind(disruptionKindName)
-
-	if targetInjection == nil {
-		instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]][disruptionKindName] = chaosv1beta1.TargetInjection{
-			InjectorPodName: chaosPod.Name,
-			InjectionStatus: status,
-			Since:           since,
-		}
-
-		return
+	instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]][disruptionKindName] = chaosv1beta1.TargetInjection{
+		InjectorPodName: chaosPod.Name,
+		InjectionStatus: status,
+		Since:           since,
 	}
-
-	targetInjection.InjectorPodName = chaosPod.Name
-	targetInjection.InjectionStatus = status
-	targetInjection.Since = since
-
-	instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]][disruptionKindName] = *targetInjection
 }
 
 // selectTargets will select min(count, all matching targets) random targets (pods or nodes depending on the disruption level)
