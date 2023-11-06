@@ -711,9 +711,12 @@ func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta
 
 	targetInjection := targetInjections.GetInjectionWithDisruptionKind(disruptionKindName)
 
-	// If the targetInjection does not exist anymore, no needs to update it.
 	if targetInjection == nil {
-		r.log.Debugw("the target injection does not exists", "target", chaosPod.Labels[chaostypes.TargetLabel], "disruptionKind", chaosPod.Labels[chaostypes.DisruptionKindLabel], "chaosPod", chaosPod.Name)
+		instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]][disruptionKindName] = chaosv1beta1.TargetInjection{
+			InjectorPodName: chaosPod.Name,
+			InjectionStatus: status,
+			Since:           since,
+		}
 
 		return
 	}
