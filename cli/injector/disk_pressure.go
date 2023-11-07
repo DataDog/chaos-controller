@@ -8,6 +8,7 @@ package main
 import (
 	"errors"
 	"os"
+	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
@@ -46,8 +47,10 @@ var diskPressureCmd = &cobra.Command{
 		for _, config := range configs {
 			inj, err := injector.NewDiskPressureInjector(spec, injector.DiskPressureInjectorConfig{Config: config})
 			if err != nil {
-				if errors.Is(errors.Unwrap(err), os.ErrNotExist) {
+				if errors.Is(errors.Unwrap(err), os.ErrNotExist) || strings.Contains(err.Error(), "No such file or directory") {
 					log.Errorw("error initializing the disk pressure injector because the given path does not exist", "error", err)
+				} else if errors.Is(errors.Unwrap(err), os.ErrPermission) {
+					log.Errorw("error initializing the disk pressure injector because the given path is not accessible", "error", err)
 				} else {
 					log.Fatalw("error initializing the disk pressure injector", "error", err)
 				}
