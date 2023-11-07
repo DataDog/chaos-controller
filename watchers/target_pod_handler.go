@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -451,7 +452,7 @@ func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newN
 		case corev1.NodeRunning:
 			eventsToSend[v1beta1.EventTargetNodeRecoveredState] = true
 		case corev1.NodePending, corev1.NodeTerminated:
-			if oldNode.Status.Phase == corev1.NodeRunning {
+			if oldNode.Status.Phase == corev1.NodeRunning && d.disruption.Spec.Level != types.DisruptionLevelNode {
 				eventsToSend[v1beta1.EventTargetNodeWarningState] = true
 			}
 		}
