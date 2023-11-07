@@ -25,6 +25,7 @@ import (
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
 	"github.com/DataDog/chaos-controller/safemode"
@@ -70,6 +71,7 @@ type DisruptionReconciler struct {
 	CacheContextStore          map[string]CtxTuple
 	DisruptionsWatchersManager watchers.DisruptionsWatchersManager
 	ChaosPodService            services.ChaosPodService
+	CloudService               cloudservice.CloudServicesProvidersManager
 	DisruptionsDeletionTimeout time.Duration
 }
 
@@ -484,8 +486,13 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 		r.log.Infow("starting targets injection", "targets", instance.Status.TargetInjections)
 	}
 
-	// keep track of cloud hosts
-	injectionHasCloudHosts := false
+	// on cloud disruption, update hosts
+	subspec := instance.Spec.DisruptionKindPicker(chaostypes.DisruptionKindNetworkDisruption)
+	if reflect.ValueOf(subspec).IsValid() {
+		if err = instance.Spec.Network.UpdateHostsOnCloudDisruption(r.CloudService); err != nil {
+			return err
+		}
+	}
 
 	// iterate through target + existing disruption kind -- to ensure all chaos pods exist
 	for targetName, injections := range instance.Status.TargetInjections {
@@ -509,7 +516,7 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 				continue
 			}
 
-			if err = r.createChaosPods(ctx, instance, targetName, &injectionHasCloudHosts); err != nil {
+			if err = r.createChaosPods(ctx, instance, targetName); err != nil {
 				if !apierrors.IsNotFound(err) {
 					return fmt.Errorf("error creating chaos pods: %w", err)
 				}
@@ -525,7 +532,7 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 }
 
 // createChaosPods attempts to create all the chaos pods for a given target. If a given chaos pod already exists, it is not recreated.
-func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *chaosv1beta1.Disruption, target string, injectionHasCloudHosts *bool) error {
+func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *chaosv1beta1.Disruption, target string) error {
 	var err error
 
 	targetNodeName := ""
@@ -560,7 +567,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 	}
 
 	// generate injection pods specs
-	targetChaosPods, err := r.ChaosPodService.GenerateChaosPodsOfDisruption(instance, target, targetNodeName, targetContainers, targetPodIP, injectionHasCloudHosts)
+	targetChaosPods, err := r.ChaosPodService.GenerateChaosPodsOfDisruption(instance, target, targetNodeName, targetContainers, targetPodIP)
 	if err != nil {
 		return fmt.Errorf("error generating chaos pods: %w", err)
 	}

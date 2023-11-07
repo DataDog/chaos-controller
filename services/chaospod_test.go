@@ -92,7 +92,6 @@ var _ = Describe("Chaos Pod Service", func() {
 		chaosPodServiceConfig.ChaosNamespace = DefaultChaosNamespace
 		chaosPodServiceConfig.MetricsSink = metricsSinkMock
 		chaosPodServiceConfig.TargetSelector = targetSelectorMock
-		chaosPodServiceConfig.CloudServicesProvidersManager = cloudServicesProvidersManagerMock
 		if chaosPodServiceConfig.Client == nil {
 			chaosPodServiceConfig.Client = k8sClientMock
 		}
@@ -735,7 +734,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			expectedArgs = append(expectedArgs, "--deadline", time.Now().Add(chaostypes.InjectorPadDuration).Add(disruption.RemainingDuration()).Format(time.RFC3339))
 
 			// Action
-			chaosPods, err = chaosPodService.GenerateChaosPodsOfDisruption(&disruption, DefaultTargetName, DefaultTargetNodeName, targetContainers, DefaultTargetPodIp, &DefaultHasCloudHosts)
+			chaosPods, err = chaosPodService.GenerateChaosPodsOfDisruption(&disruption, DefaultTargetName, DefaultTargetNodeName, targetContainers, DefaultTargetPodIp)
 		})
 
 		Describe("success cases", func() {
@@ -748,7 +747,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 
 				// Action
-				chaosPods, err := chaosPodService.GenerateChaosPodsOfDisruption(&disruption, DefaultTargetName, DefaultTargetNodeName, targetContainers, DefaultTargetPodIp, &DefaultHasCloudHosts)
+				chaosPods, err := chaosPodService.GenerateChaosPodsOfDisruption(&disruption, DefaultTargetName, DefaultTargetNodeName, targetContainers, DefaultTargetPodIp)
 
 				// Assert
 				By("not return an error")

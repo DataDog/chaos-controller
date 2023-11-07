@@ -14,7 +14,6 @@ import (
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/targetselector"
@@ -47,7 +46,7 @@ type ChaosPodService interface {
 	GenerateChaosPodOfDisruption(disruption *chaosv1beta1.Disruption, targetName, targetNodeName string, args []string, kind chaostypes.DisruptionKindName) corev1.Pod
 
 	// GenerateChaosPodsOfDisruption generates a list of chaos pods for the disruption.
-	GenerateChaosPodsOfDisruption(instance *chaosv1beta1.Disruption, targetName, targetNodeName string, targetContainers map[string]string, targetPodIP string, injectionHasCloudHosts *bool) ([]corev1.Pod, error)
+	GenerateChaosPodsOfDisruption(instance *chaosv1beta1.Disruption, targetName, targetNodeName string, targetContainers map[string]string, targetPodIP string) ([]corev1.Pod, error)
 
 	// GetPodInjectorArgs retrieves arguments to inject into a pod.
 	GetPodInjectorArgs(pod corev1.Pod) []string
@@ -75,14 +74,13 @@ type ChaosPodServiceInjectorConfig struct {
 
 // ChaosPodServiceConfig contains configuration options for the chaosPodService.
 type ChaosPodServiceConfig struct {
-	Client                        client.Client                              // Kubernetes client for interacting with the API server.
-	Log                           *zap.SugaredLogger                         // Logger for logging.
-	ChaosNamespace                string                                     // Namespace where chaos-related resources are located.
-	TargetSelector                targetselector.TargetSelector              // Target selector for selecting target pods.
-	Injector                      ChaosPodServiceInjectorConfig              // Configuration options for the injector.
-	ImagePullSecrets              string                                     // Image pull secrets for the chaosPodService.
-	MetricsSink                   metrics.Sink                               // Sink for exporting metrics.
-	CloudServicesProvidersManager cloudservice.CloudServicesProvidersManager // Manager for cloud service providers.
+	Client           client.Client                 // Kubernetes client for interacting with the API server.
+	Log              *zap.SugaredLogger            // Logger for logging.
+	ChaosNamespace   string                        // Namespace where chaos-related resources are located.
+	TargetSelector   targetselector.TargetSelector // Target selector for selecting target pods.
+	Injector         ChaosPodServiceInjectorConfig // Configuration options for the injector.
+	ImagePullSecrets string                        // Image pull secrets for the chaosPodService.
+	MetricsSink      metrics.Sink                  // Sink for exporting metrics.
 }
 
 type chaosPodService struct {
@@ -225,7 +223,7 @@ func (m *chaosPodService) DeletePod(ctx context.Context, pod corev1.Pod) bool {
 
 // GenerateChaosPodsOfDisruption generates a list of chaos pods for the given disruption instance,
 // target information, and other configuration parameters.
-func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, targetContainers map[string]string, targetPodIP string, injectionHasCloudHosts *bool) ([]corev1.Pod, error) {
+func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.Disruption, targetName string, targetNodeName string, targetContainers map[string]string, targetPodIP string) ([]corev1.Pod, error) {
 	pods := []corev1.Pod{}
 
 	// generate chaos pods for each possible disruptions
@@ -244,22 +242,6 @@ func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.D
 
 		notInjectedBefore := instance.TimeToInject()
 		allowedHosts := m.config.Injector.NetworkDisruptionAllowedHosts
-
-		// get the ip ranges of cloud provider services
-		if instance.Spec.Network != nil && !*injectionHasCloudHosts {
-			err := instance.Spec.Network.UpdateHostsOnCloudDisruption(m.config.CloudServicesProvidersManager)
-			if err != nil {
-				return nil, err
-			}
-
-			hasCloudHosts := true
-			injectionHasCloudHosts = &hasCloudHosts
-
-			// remove default allowed hosts if disabled
-			if instance.Spec.Network.DisableDefaultAllowedHosts {
-				allowedHosts = make([]string, 0)
-			}
-		}
 
 		xargs := chaosapi.DisruptionArgs{
 			Level:                instance.Spec.Level,
