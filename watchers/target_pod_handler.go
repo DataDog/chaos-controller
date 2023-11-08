@@ -284,7 +284,7 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.D
 				delete(eventsToSend, v1beta1.EventTargetContainerWarningState)
 			}
 		case "Node":
-			if event.Type == corev1.EventTypeWarning && d.disruption.Spec.NodeFailure == nil {
+			if event.Type == corev1.EventTypeWarning {
 				eventsToSend[v1beta1.EventTargetNodeWarningState] = true
 
 				d.log.Debugw("warning event detected on target",
@@ -403,13 +403,13 @@ func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newN
 					"timestamp", newCondition.LastTransitionTime.Unix())
 			}
 
-			if newCondition.Status == corev1.ConditionUnknown && oldCondition.Status != corev1.ConditionUnknown && d.disruption.Spec.NodeFailure == nil {
+			if newCondition.Status == corev1.ConditionUnknown && oldCondition.Status != corev1.ConditionUnknown {
 				eventsToSend[v1beta1.EventTargetNodeWarningState] = true
 			}
 
 			switch newCondition.Type {
 			case corev1.NodeReady:
-				if newCondition.Status == corev1.ConditionFalse && oldCondition.Status == corev1.ConditionTrue && d.disruption.Spec.NodeFailure == nil {
+				if newCondition.Status == corev1.ConditionFalse && oldCondition.Status == corev1.ConditionTrue {
 					eventsToSend[v1beta1.EventTargetNodeWarningState] = true
 				} else if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
 					if recoverTimestamp == nil {
@@ -423,7 +423,7 @@ func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newN
 					eventsToSend[v1beta1.EventTargetNodeDiskPressureState] = true
 				}
 			case corev1.NodePIDPressure:
-				if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse && d.disruption.Spec.NodeFailure == nil {
+				if newCondition.Status == corev1.ConditionTrue && oldCondition.Status == corev1.ConditionFalse {
 					eventsToSend[v1beta1.EventTargetNodeWarningState] = true
 				}
 			case corev1.NodeMemoryPressure:
@@ -451,7 +451,7 @@ func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newN
 		case corev1.NodeRunning:
 			eventsToSend[v1beta1.EventTargetNodeRecoveredState] = true
 		case corev1.NodePending, corev1.NodeTerminated:
-			if oldNode.Status.Phase == corev1.NodeRunning && d.disruption.Spec.NodeFailure == nil {
+			if oldNode.Status.Phase == corev1.NodeRunning {
 				eventsToSend[v1beta1.EventTargetNodeWarningState] = true
 			}
 		}
@@ -468,6 +468,11 @@ func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newN
 	// if other warning events have been detected, the target hasn't recovered
 	if cannotRecoverYet || (eventsToSend[v1beta1.EventTargetNodeRecoveredState] && len(eventsToSend) > 1) {
 		eventsToSend[v1beta1.EventTargetNodeRecoveredState] = false
+	}
+
+	// Omit warning event if the disruption is a node failure
+	if d.disruption.Spec.NodeFailure != nil {
+		delete(eventsToSend, v1beta1.EventTargetNodeWarningState)
 	}
 
 	return eventsToSend
