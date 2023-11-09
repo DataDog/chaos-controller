@@ -470,6 +470,12 @@ func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newN
 		eventsToSend[v1beta1.EventTargetNodeRecoveredState] = false
 	}
 
+	// Omit target warning events if the disruption is a node failure.
+	// This prevents sending "node failure" notifications when they are expected.
+	if d.disruption.Spec.NodeFailure != nil {
+		delete(eventsToSend, v1beta1.EventTargetNodeWarningState)
+	}
+
 	return eventsToSend
 }
 
