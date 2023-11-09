@@ -714,7 +714,10 @@ func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager clouds
 		return nil
 	}
 
-	hosts := []NetworkDisruptionHostSpec{}
+	if s.Hosts == nil {
+		s.Hosts = []NetworkDisruptionHostSpec{}
+	}
+
 	clouds := s.Cloud.TransformToCloudMap()
 
 	for cloudName, serviceList := range clouds {
@@ -731,20 +734,16 @@ func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager clouds
 
 		for _, serviceSpec := range serviceList {
 			for _, ipRange := range ipRangesPerService[serviceSpec.ServiceName] {
-				hosts = append(hosts, NetworkDisruptionHostSpec{
+				host := NetworkDisruptionHostSpec{
 					Host:      ipRange,
 					Protocol:  serviceSpec.Protocol,
 					Flow:      serviceSpec.Flow,
 					ConnState: serviceSpec.ConnState,
-				})
+				}
+
+				s.Hosts = append(s.Hosts, host)
 			}
 		}
-	}
-
-	if s.Hosts == nil {
-		s.Hosts = hosts
-	} else {
-		s.Hosts = append(s.Hosts, hosts...)
 	}
 
 	return nil
