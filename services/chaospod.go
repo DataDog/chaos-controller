@@ -243,6 +243,11 @@ func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.D
 		notInjectedBefore := instance.TimeToInject()
 		allowedHosts := m.config.Injector.NetworkDisruptionAllowedHosts
 
+		// remove default allowed hosts if disabled
+		if instance.Spec.Network != nil && instance.Spec.Network.DisableDefaultAllowedHosts {
+			allowedHosts = make([]string, 0)
+		}
+
 		xargs := chaosapi.DisruptionArgs{
 			Level:                instance.Spec.Level,
 			Kind:                 kind,
@@ -517,11 +522,6 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 						MountPath: "/mnt/host",
 						ReadOnly:  true,
 					},
-					{
-						Name:      "boot",
-						MountPath: "/boot",
-						ReadOnly:  true,
-					},
 				},
 			},
 		},
@@ -576,15 +576,6 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
 						Path: "/",
-						Type: &hostPathDirectory,
-					},
-				},
-			},
-			{
-				Name: "boot",
-				VolumeSource: corev1.VolumeSource{
-					HostPath: &corev1.HostPathVolumeSource{
-						Path: "/boot",
 						Type: &hostPathDirectory,
 					},
 				},
