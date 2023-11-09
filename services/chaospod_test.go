@@ -52,10 +52,6 @@ const (
 	DefaultMetricsSinkName                = "name"
 )
 
-var (
-	DefaultHasCloudHosts bool = false
-)
-
 var _ = Describe("Chaos Pod Service", func() {
 
 	var (
