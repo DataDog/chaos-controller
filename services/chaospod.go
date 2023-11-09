@@ -522,6 +522,11 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 						MountPath: "/mnt/host",
 						ReadOnly:  true,
 					},
+					{
+						Name:      "boot",
+						MountPath: "/boot",
+						ReadOnly:  true,
+					},
 				},
 			},
 		},
@@ -576,6 +581,15 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
 						Path: "/",
+						Type: &hostPathDirectory,
+					},
+				},
+			},
+			{
+				Name: "boot",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/boot",
 						Type: &hostPathDirectory,
 					},
 				},
