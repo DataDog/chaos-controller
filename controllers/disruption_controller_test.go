@@ -513,6 +513,7 @@ var _ = Describe("Disruption Controller", func() {
 
 	Context("Cloud disruption is a host disruption disguised", func() {
 		BeforeEach(func() {
+			skipSecondPod = false
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				DryRun: false,
 				Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 2},
@@ -573,38 +574,6 @@ var _ = Describe("Disruption Controller", func() {
 							return fmt.Errorf("should have the same list of hosts for all chaos pods")
 						}
 					}
-				}
-
-				return nil
-			}).WithContext(ctx).ProbeEvery(disruptionPotentialChangesEvery).Within(calcDisruptionGoneTimeout(disruption)).Should(Succeed())
-		})
-
-		It("should have the same list of hosts for multiple targets", func(ctx SpecContext) {
-			By("Ensuring that the chaos pod have been created")
-			ExpectChaosPods(ctx, disruption, 1)
-
-			By("Ensuring that the chaos pod has the list of AWS hosts")
-			Eventually(func(ctx SpecContext) error {
-				hosts := 0
-
-				// get chaos pods
-				l, err := listChaosPods(ctx, disruption)
-				if err != nil {
-					return err
-				}
-
-				// sum up injectors
-				for _, p := range l.Items {
-					args := p.Spec.Containers[0].Args
-					for _, arg := range args {
-						if arg == "--hosts" {
-							hosts++
-						}
-					}
-				}
-
-				if hosts == 0 {
-					return fmt.Errorf("should have multiple hosts parameters.")
 				}
 
 				return nil
