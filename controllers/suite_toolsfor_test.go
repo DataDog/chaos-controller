@@ -249,15 +249,17 @@ func ExpectDisruptionStatus(ctx SpecContext, disruption chaosv1beta1.Disruption,
 				AddReportEntry(fmt.Sprintf("checking chaos pods have status %s", targetInjectionStatus))
 
 				// check targets injection
-				for targetName, target := range disruption.Status.TargetInjections {
-					// check status
-					if target.InjectionStatus != targetInjectionStatus {
-						return fmt.Errorf("target injection %s is not injected, current status is %s", targetName, target.InjectionStatus)
-					}
+				for targetName, targets := range disruption.Status.TargetInjections {
+					for _, target := range targets {
+						// check status
+						if target.InjectionStatus != targetInjectionStatus {
+							return fmt.Errorf("target injection %s is not injected, current status is %s", targetName, target.InjectionStatus)
+						}
 
-					// check if the chaos pod is defined
-					if target.InjectorPodName == "" {
-						return fmt.Errorf("the %s target pod does not have an injector pod ", targetName)
+						// check if the chaos pod is defined
+						if target.InjectorPodName == "" {
+							return fmt.Errorf("the %s target pod does not have an injector pod ", targetName)
+						}
 					}
 				}
 			}

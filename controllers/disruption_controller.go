@@ -79,6 +79,8 @@ type CtxTuple struct {
 	DisruptionNamespacedName types.NamespacedName
 }
 
+const TargetsCountLogLimit = 50
+
 func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	instance := &chaosv1beta1.Disruption{}
 
@@ -428,7 +430,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instan
 		}
 
 		// consider the disruption as fully injected when all pods are ready and match desired targets count
-		if instance.Status.DesiredTargetsCount == len(injectorTargetsCount) {
+		if instance.Status.DesiredTargetsCount == len(injectorTargetsCount) && !instance.Status.TargetInjections.NotFullyInjected() {
 			status = chaostypes.DisruptionInjectionStatusInjected
 		} else {
 			r.log.Debugf("not injected yet because not all pods are ready %d/%d", len(injectorTargetsCount), instance.Status.DesiredTargetsCount)
@@ -483,7 +485,7 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 	}
 
 	// iterate through target + existing disruption kind -- to ensure all chaos pods exist
-	for targetName, injection := range instance.Status.TargetInjections {
+	for targetName, injections := range instance.Status.TargetInjections {
 		for _, disKind := range chaostypes.DisruptionKindNames {
 			if subspec := instance.Spec.DisruptionKindPicker(disKind); reflect.ValueOf(subspec).IsNil() {
 				continue
@@ -493,8 +495,14 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 				continue
 			}
 
-			if chaosv1beta1.ShouldSkipNodeFailureInjection(disKind, instance, injection) {
-				r.log.Debugw("skipping over injection, seems to be a re-injected node failure", "targetName", targetName, "injectionStatus", injection)
+			injection := injections.GetInjectionWithDisruptionKind(disKind)
+
+			if injection == nil {
+				return fmt.Errorf("the injection status from the target injections with this %s kind of disruption does not exist", disKind)
+			}
+
+			if chaosv1beta1.ShouldSkipNodeFailureInjection(disKind, instance, *injection) {
+				r.log.Debugw("skipping over injection, seems to be a re-injected node failure", "targetName", targetName, "injectionStatus", injections)
 				continue
 			}
 
@@ -697,11 +705,13 @@ func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, in
 }
 
 func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod, status chaostypes.DisruptionTargetInjectionStatus, since metav1.Time) {
-	targetInjection := instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]]
-	targetInjection.InjectionStatus = status
-	targetInjection.Since = since
-	targetInjection.InjectorPodName = chaosPod.Name
-	instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]] = targetInjection
+	disruptionKindName := chaostypes.DisruptionKindName(chaosPod.Labels[chaostypes.DisruptionKindLabel])
+
+	instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]][disruptionKindName] = chaosv1beta1.TargetInjection{
+		InjectorPodName: chaosPod.Name,
+		InjectionStatus: status,
+		Since:           since,
+	}
 }
 
 // selectTargets will select min(count, all matching targets) random targets (pods or nodes depending on the disruption level)
@@ -1023,7 +1033,27 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 // it skips ignored targets and targets being already targeted by another disruption
 func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance *chaosv1beta1.Disruption, potentialTargets []string) (eligibleTargets chaosv1beta1.TargetInjections, err error) {
 	defer func() {
-		r.log.Debugw("getting eligible targets for disruption injection", "potentialTargets", potentialTargets, "eligibleTargets", eligibleTargets, "error", err)
+		var args []interface{}
+
+		potentialTargetsCount := len(potentialTargets)
+
+		args = append(args, "potentialTargetsCount", potentialTargetsCount)
+
+		if potentialTargetsCount <= TargetsCountLogLimit {
+			args = append(args, "potentialTargets", potentialTargets)
+		}
+
+		eligibleTargetsCount := len(eligibleTargets)
+
+		args = append(args, "eligibleTargetsCount", eligibleTargetsCount)
+
+		if eligibleTargetsCount <= TargetsCountLogLimit {
+			args = append(args, "eligibleTargets", eligibleTargets)
+		}
+
+		args = append(args, "error", err)
+
+		r.log.Debugw("getting eligible targets for disruption injection", args...)
 	}()
 
 	eligibleTargets = make(chaosv1beta1.TargetInjections)
@@ -1076,9 +1106,17 @@ NB: you can specify "spec.allowDisruptedTargets: true" to allow a new disruption
 			}
 		}
 
-		// add target if eligible
-		eligibleTargets[target] = chaosv1beta1.TargetInjection{
-			InjectionStatus: chaostypes.DisruptionTargetInjectionStatusNotInjected,
+		eligibleTargets[target] = make(chaosv1beta1.TargetInjectorMap)
+
+		// add target if eligible for each disruption kind of the disruption
+		for _, disKind := range chaostypes.DisruptionKindNames {
+			if subspec := instance.Spec.DisruptionKindPicker(disKind); reflect.ValueOf(subspec).IsNil() {
+				continue
+			}
+
+			eligibleTargets[target][disKind] = chaosv1beta1.TargetInjection{
+				InjectionStatus: chaostypes.DisruptionTargetInjectionStatusNotInjected,
+			}
 		}
 	}
 

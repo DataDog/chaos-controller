@@ -206,8 +206,25 @@ type TargetInjection struct {
 	Since metav1.Time `json:"since,omitempty"`
 }
 
-// TargetInjections map of target injection
-type TargetInjections map[string]TargetInjection
+type TargetInjectorMap map[chaostypes.DisruptionKindName]TargetInjection
+
+// TargetInjections is a map of target names to injectors
+type TargetInjections map[string]TargetInjectorMap
+
+// GetInjectionWithDisruptionKind retrieves a TargetInjection associated with a specific DisruptionKindName from the map.
+//
+// Parameters:
+//   - kindName: The DisruptionKindName to search for in the map.
+//
+// Returns:
+//   - *TargetInjection: A pointer to the TargetInjection with the matching DisruptionKindName, or nil if not found.
+func (m TargetInjectorMap) GetInjectionWithDisruptionKind(kindName chaostypes.DisruptionKindName) *TargetInjection {
+	if targetInjection, exists := m[kindName]; exists {
+		return &targetInjection
+	}
+
+	return nil
+}
 
 // GetTargetNames return the name of targets
 func (in TargetInjections) GetTargetNames() []string {
@@ -218,6 +235,26 @@ func (in TargetInjections) GetTargetNames() []string {
 	}
 
 	return names
+}
+
+// NotFullyInjected checks if any of the TargetInjections in the list are not fully injected.
+//
+// Returns:
+//   - bool: true if any TargetInjection is not fully injected, false if all are fully injected or the list is empty.
+func (in TargetInjections) NotFullyInjected() bool {
+	if len(in) == 0 {
+		return true
+	}
+
+	for _, injectors := range in {
+		for _, i := range injectors {
+			if i.InjectionStatus != chaostypes.DisruptionTargetInjectionStatusInjected {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // DisruptionStatus defines the observed state of Disruption

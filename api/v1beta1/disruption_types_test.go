@@ -21,7 +21,7 @@ import (
 )
 
 var _ = Describe("TargetInjections", func() {
-	Describe("GetTargetNames", func() {
+	Describe("`GetTargetNames` method is called", func() {
 		var targetInjections TargetInjections
 
 		Context("with three targets", func() {
@@ -43,6 +43,158 @@ var _ = Describe("TargetInjections", func() {
 
 			It("should return the list of targets name", func() {
 				Expect(targetInjections.GetTargetNames()).Should(BeEquivalentTo([]string{}))
+			})
+		})
+	})
+
+	Describe("`NotFullyInjected` method is called", func() {
+		var (
+			targetInjections   TargetInjections
+			isNotFullyInjected bool
+		)
+
+		JustBeforeEach(func() {
+			isNotFullyInjected = targetInjections.NotFullyInjected()
+		})
+
+		Context("with three targets fully injected", func() {
+			BeforeEach(func() {
+				targetInjections = TargetInjections{
+					"target-1": {
+						chaostypes.DisruptionKindDiskFailure: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+					},
+					"target-2": {
+						chaostypes.DisruptionKindNetworkDisruption: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+					},
+					"target-3": {
+						chaostypes.DisruptionKindCPUPressure: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+					},
+				}
+			})
+
+			It("should return false", func() {
+				Expect(isNotFullyInjected).To(BeFalse())
+			})
+		})
+
+		Context("with two targets injected and one not injected", func() {
+			BeforeEach(func() {
+				targetInjections = TargetInjections{
+					"target-1": {
+						chaostypes.DisruptionKindDiskFailure: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+					},
+					"target-2": {
+						chaostypes.DisruptionKindNetworkDisruption: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusNotInjected,
+						},
+					},
+					"target-3": {
+						chaostypes.DisruptionKindCPUPressure: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+					},
+				}
+			})
+
+			It("should return true", func() {
+				Expect(isNotFullyInjected).To(BeTrue())
+			})
+		})
+
+		Context("with a single targets with one chaos pod injected and one not injected", func() {
+			BeforeEach(func() {
+				targetInjections = TargetInjections{
+					"target-1": {
+						chaostypes.DisruptionKindDiskFailure: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+						},
+						chaostypes.DisruptionKindNetworkDisruption: {
+							InjectionStatus: chaostypes.DisruptionTargetInjectionStatusNotInjected,
+						},
+					},
+				}
+			})
+
+			It("should return true", func() {
+				Expect(isNotFullyInjected).To(BeTrue())
+			})
+		})
+
+		Context("without targets", func() {
+			BeforeEach(func() {
+				targetInjections = TargetInjections{}
+			})
+
+			It("should return false", func() {
+				Expect(isNotFullyInjected).Should(BeTrue())
+			})
+		})
+	})
+})
+
+var _ = Describe("TargetInjectorMap", func() {
+	Describe("GetInjectionWithDisruptionKind", func() {
+		var (
+			targetInjectorMap TargetInjectorMap
+			expectedKind      chaostypes.DisruptionKindName
+			injector          *TargetInjection
+		)
+
+		JustBeforeEach(func() {
+			injector = targetInjectorMap.GetInjectionWithDisruptionKind(expectedKind)
+		})
+
+		Context("with two injectors", func() {
+			BeforeEach(func() {
+				targetInjectorMap = TargetInjectorMap{
+					chaostypes.DisruptionKindDiskFailure: {
+						InjectorPodName: "chaos-pod-1",
+						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+					},
+					chaostypes.DisruptionKindNetworkDisruption: {
+						InjectorPodName: "chaos-pod-2",
+						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusInjected,
+					},
+				}
+			})
+
+			When("the disruption kind match", func() {
+				BeforeEach(func() {
+					expectedKind = chaostypes.DisruptionKindNetworkDisruption
+				})
+
+				It("should return the chaos-pod-2", func() {
+					Expect(injector.InjectorPodName).Should(Equal("chaos-pod-2"))
+				})
+			})
+
+			When("the disruption kind does not match", func() {
+				BeforeEach(func() {
+					expectedKind = chaostypes.DisruptionKindCPUPressure
+				})
+
+				It("should return nil", func() {
+					Expect(injector).To(BeNil())
+				})
+			})
+
+		})
+
+		Context("without injection", func() {
+			BeforeEach(func() {
+				targetInjectorMap = TargetInjectorMap{}
+			})
+
+			It("should return nil", func() {
+				Expect(injector).Should(BeNil())
 			})
 		})
 	})

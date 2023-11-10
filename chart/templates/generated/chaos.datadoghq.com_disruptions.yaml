@@ -610,22 +610,24 @@ spec:
                   type: integer
                 targetInjections:
                   additionalProperties:
-                    properties:
-                      injectionStatus:
-                        description: DisruptionTargetInjectionStatus represents the injection status of the target of a disruption
-                        enum:
-                          - NotInjected
-                          - Injected
-                          - IsStuckOnRemoval
-                        type: string
-                      injectorPodName:
-                        type: string
-                      since:
-                        description: since when this status is in place
-                        format: date-time
-                        type: string
+                    additionalProperties:
+                      properties:
+                        injectionStatus:
+                          description: DisruptionTargetInjectionStatus represents the injection status of the target of a disruption
+                          enum:
+                            - NotInjected
+                            - Injected
+                            - IsStuckOnRemoval
+                          type: string
+                        injectorPodName:
+                          type: string
+                        since:
+                          description: since when this status is in place
+                          format: date-time
+                          type: string
+                      type: object
                     type: object
-                  description: TargetInjections map of target injection
+                  description: TargetInjections is a map of target names to injectors
                   nullable: true
                   type: object
               required:
