@@ -708,7 +708,7 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 	return goodPorts, notFoundPorts
 }
 
-// UpdateHostsOnCloudDisruption from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
+// UpdateHostsOnCloudDisruption from a cloud spec disruption, get all ip ranges of services provided and appends them into the s.Hosts slice
 func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager cloudservice.CloudServicesProvidersManager) error {
 	if s.Cloud == nil {
 		return nil
