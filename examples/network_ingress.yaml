@@ -8,8 +8,6 @@ kind: Disruption
 metadata:
   name: network-ingress
   namespace: chaos-demo
-  annotations:
-    chaos.datadoghq.com/environment: "lima"
 spec:
   level: pod
   selector:

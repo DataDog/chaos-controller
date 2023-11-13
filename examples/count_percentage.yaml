@@ -8,8 +8,6 @@ kind: Disruption
 metadata:
   name: count-percentage
   namespace: chaos-demo
-  annotations:
-    chaos.datadoghq.com/environment: "lima"
 spec:
   level: pod
   selector:

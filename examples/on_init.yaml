@@ -7,8 +7,6 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: on-init
-  annotations:
-    chaos.datadoghq.com/environment: "lima"
 spec:
   onInit: true # apply the disruption on pod initialization (it requires the pod to target to be redeployed with the chaos.datadoghq.com/disrupt-on-init label to be held in the pending state)
   level: pod
