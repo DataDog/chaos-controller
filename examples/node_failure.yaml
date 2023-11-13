@@ -8,8 +8,6 @@ kind: Disruption
 metadata:
   name: node-failure
   namespace: chaos-demo
-  annotations:
-    chaos.datadoghq.com/environment: "lima"
 spec:
   level: node # selector targets nodes instead of pods. Targeting a pod will impact the node hosting given pod.
   selector:

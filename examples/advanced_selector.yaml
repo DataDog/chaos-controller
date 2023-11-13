@@ -8,8 +8,6 @@ kind: Disruption
 metadata:
   name: advanced-selector
   namespace: chaos-demo
-  annotations:
-    chaos.datadoghq.com/environment: "lima"
 spec:
   level: pod
   advancedSelector: # advanced selectors can select targets on something else than an exact key/value match

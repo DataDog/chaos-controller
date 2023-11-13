@@ -8,8 +8,6 @@ kind: Disruption
 metadata:
   name: reporting-network-drop
   namespace: chaos-demo
-  annotations:
-    chaos.datadoghq.com/environment: "lima"
 spec:
   reporting: # optional, add custom notification for this disruption
     slackChannel: team-slack-channel # required, custom slack channel to send notifications to (can be a name or slack channel ID)

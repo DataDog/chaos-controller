@@ -8,8 +8,6 @@ kind: DisruptionRollout
 metadata:
   name: network-drop
   namespace: chaos-demo
-  annotations:
-    chaos.datadoghq.com/environment: "lima"
 spec:
   targetResource:
     kind: deployment

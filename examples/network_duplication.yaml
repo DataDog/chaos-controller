@@ -8,8 +8,6 @@ kind: Disruption
 metadata:
   name: network-duplication
   namespace: chaos-demo
-  annotations:
-    chaos.datadoghq.com/environment: "lima"
 spec:
   selector:
     app: demo-curl
