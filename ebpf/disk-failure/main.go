@@ -39,6 +39,21 @@ func main() {
 	logger, err = log.NewZapLogger()
 	must(err)
 
+	bpf.SetLoggerCbs(bpf.Callbacks{
+		Log: func(level int, msg string) {
+			switch level {
+			case bpf.LibbpfDebugLevel:
+				logger.Debug(msg)
+			case bpf.LibbpfInfoLevel:
+				logger.Info(msg)
+			case bpf.LibbpfWarnLevel:
+				logger.Warn(msg)
+			default:
+				logger.Error(msg)
+			}
+		},
+	})
+
 	// Create the bpf module
 	bpfModule, err := bpf.NewModuleFromFile("/usr/local/bin/bpf-disk-failure.bpf.o")
 	must(err)
