@@ -705,6 +705,14 @@ func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, in
 }
 
 func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod, status chaostypes.DisruptionTargetInjectionStatus, since metav1.Time) {
+	if instance.Status.TargetInjections == nil {
+		instance.Status.TargetInjections = make(chaosv1beta1.TargetInjections)
+	}
+
+	if instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]] == nil {
+		instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]] = make(chaosv1beta1.TargetInjectorMap)
+	}
+
 	disruptionKindName := chaostypes.DisruptionKindName(chaosPod.Labels[chaostypes.DisruptionKindLabel])
 
 	instance.Status.TargetInjections[chaosPod.Labels[chaostypes.TargetLabel]][disruptionKindName] = chaosv1beta1.TargetInjection{
