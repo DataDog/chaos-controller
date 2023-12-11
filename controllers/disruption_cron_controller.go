@@ -8,6 +8,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -20,17 +21,30 @@ import (
 )
 
 type DisruptionCronReconciler struct {
-	Client  client.Client
-	Scheme  *runtime.Scheme
-	BaseLog *zap.SugaredLogger
-	log     *zap.SugaredLogger
+	Client      client.Client
+	Scheme      *runtime.Scheme
+	BaseLog     *zap.SugaredLogger
+	log         *zap.SugaredLogger
+	MetricsSink metrics.Sink
 }
 
 func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	r.log = r.BaseLog.With("disruptionCronNamespace", req.Namespace, "disruptionCronName", req.Name)
 	r.log.Info("Reconciling DisruptionCron")
 
+	// reconcile metrics
+	r.handleMetricSinkError(r.MetricsSink.MetricReconcile([]string{"controller", r.MetricsSink.GetSinkName()}))
+
 	instance := &chaosv1beta1.DisruptionCron{}
+
+	defer func(tsStart time.Time) {
+		tags := []string{}
+		if instance.Name != "" {
+			tags = append(tags, "cronName:"+instance.Name, "namespace:"+instance.Namespace)
+		}
+
+		r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
+	}(time.Now())
 
 	// Fetch DisruptionCron instance
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
@@ -108,6 +122,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if tooLate {
+		// TODO: Add MetricTooLate
+		r.handleMetricSinkError(r.MetricsSink.MetricTooLate([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
 		r.log.Infow(fmt.Sprintf("missed schedule to start a disruption at %s, scheduling next check in %s", missedRun, requeueTime))
 		return scheduledResult, nil
 	}
@@ -127,7 +143,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		r.log.Warnw("unable to create Disruption for DisruptionCron", "disruption", disruption, "err", err)
 		return ctrl.Result{}, err
 	}
-
+	// TODO: Add MetricDisruptionScheduled
+	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name, "disruptionName:", disruption.Name}))
 	r.log.Infow("created Disruption for DisruptionCron run", "disruptionName", disruption.Name)
 
 	// ------------------------------------------------------------------ //
@@ -177,7 +194,8 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 
 		if instance.Status.TargetResourcePreviouslyMissing == nil {
 			r.log.Warnw("target is missing for the first time, updating status")
-
+			// TODO: Add MetricTargetMissing
+			r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(0, []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
 			return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
 
@@ -186,12 +204,14 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
 
 			disruptionCronDeleted = true
-
+			// TODO: Add MetricTargetMissing with a day as the time
+			r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(time.Since(instance.Status.TargetResourcePreviouslyMissing.Time), []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
 			return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceMissingPastExpiration(ctx, instance)
 		}
 	} else if instance.Status.TargetResourcePreviouslyMissing != nil {
 		r.log.Infow("target was previously missing, but now present. updating the status accordingly")
-
+		// TODO: Add MetricTargetFound
+		r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetFound([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", "targetName:", instance.Spec.TargetResource.Name}))
 		return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceNowPresent(ctx, instance)
 	}
 
@@ -270,7 +290,8 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 			return time.Time{}, time.Time{}, fmt.Errorf("too many missed start times (> 100)")
 		}
 	}
-
+	// TODO: Add MetricNextScheduledTime
+	r.handleMetricSinkError(r.MetricsSink.MetricNextScheduledTime(time.Until(sched.Next(now)), []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
 	return lastMissed, sched.Next(now), nil
 }
 
@@ -279,4 +300,11 @@ func (r *DisruptionCronReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.DisruptionCron{}).
 		Complete(r)
+}
+
+// handleMetricSinkError logs the given metric sink error if it is not nil
+func (r *DisruptionCronReconciler) handleMetricSinkError(err error) {
+	if err != nil {
+		r.log.Errorw("error sending a metric", "error", err)
+	}
 }

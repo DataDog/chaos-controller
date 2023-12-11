@@ -94,7 +94,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	r.log = r.BaseLog.With("disruptionName", req.Name, "disruptionNamespace", req.Namespace)
 
 	// reconcile metrics
-	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
+	r.handleMetricSinkError(r.MetricsSink.MetricReconcile([]string{"controller", r.MetricsSink.GetSinkName()}))
 
 	defer func(tsStart time.Time) {
 		tags := []string{}

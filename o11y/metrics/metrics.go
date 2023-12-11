@@ -27,7 +27,7 @@ type Sink interface {
 	MetricInjected(succeed bool, kind string, tags []string) error
 	MetricReinjected(succeed bool, kind string, tags []string) error
 	MetricPodsCreated(target, instanceName, namespace string, succeed bool) error
-	MetricReconcile() error
+	MetricReconcile(tags []string) error
 	MetricReconcileDuration(duration time.Duration, tags []string) error
 	MetricDisruptionCompletedDuration(duration time.Duration, tags []string) error
 	MetricDisruptionOngoingDuration(duration time.Duration, tags []string) error
@@ -45,6 +45,11 @@ type Sink interface {
 	MetricValidationDeleted(tags []string) error
 	MetricInformed(tags []string) error
 	MetricOrphanFound(tags []string) error
+	MetricTooLate(tags []string) error
+	MetricTargetMissing(duration time.Duration, tags []string) error
+	MetricMissingTargetFound(tags []string) error
+	MetricNextScheduledTime(time time.Duration, tags []string) error
+	MetricDisruptionScheduled(tags []string) error
 }
 
 // GetSink returns an initiated sink

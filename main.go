@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 	"os"
 	"time"
 
@@ -99,20 +100,7 @@ func main() {
 		logger.Errorw("error(s) while creating notifiers", "error", err)
 	}
 
-	metricsSink, err := metrics.GetSink(logger, metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
-	if err != nil {
-		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
-
-		metricsSink, _ = metrics.GetSink(logger, metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
-	}
-	// handle metrics sink client close on exit
-	defer func() {
-		logger.Infow("closing metrics sink client before exiting", "sink", metricsSink.GetSinkName())
-
-		if err := metricsSink.Close(); err != nil {
-			logger.Errorw("error closing metrics sink client", "sink", metricsSink.GetSinkName(), "error", err)
-		}
-	}()
+	metricsSink := initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppController)
 
 	profilerSink, err := profiler.GetSink(logger, profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
 	if err != nil {
@@ -289,9 +277,10 @@ func main() {
 
 		// create disruption rollout reconciler
 		disruptionRolloutReconciler := &controllers.DisruptionRolloutReconciler{
-			Client:  mgr.GetClient(),
-			BaseLog: logger,
-			Scheme:  mgr.GetScheme(),
+			Client:      mgr.GetClient(),
+			BaseLog:     logger,
+			Scheme:      mgr.GetScheme(),
+			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppRolloutController),
 		}
 
 		if err := disruptionRolloutReconciler.SetupWithManager(mgr); err != nil {
@@ -314,11 +303,13 @@ func main() {
 	}
 
 	if cfg.Controller.DisruptionCronEnabled {
+		// new metrics sink for cron controller
 		// create disruption cron reconciler
 		disruptionCronReconciler := &controllers.DisruptionCronReconciler{
-			Client:  mgr.GetClient(),
-			BaseLog: logger,
-			Scheme:  mgr.GetScheme(),
+			Client:      mgr.GetClient(),
+			BaseLog:     logger,
+			Scheme:      mgr.GetScheme(),
+			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
 		}
 
 		if err := disruptionCronReconciler.SetupWithManager(mgr); err != nil {
@@ -401,4 +392,23 @@ func main() {
 
 		logger.Fatalw("problem running manager", "error", err)
 	}
+}
+
+// initialize metrics sink
+func initMetricsSink(MetricSink string, logger *zap.SugaredLogger, app metricstypes.SinkApp) metrics.Sink {
+	metricsSink, err := metrics.GetSink(logger, metricstypes.SinkDriver(MetricSink), metricstypes.SinkAppController)
+	if err != nil {
+		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
+
+		metricsSink, _ = metrics.GetSink(logger, metricstypes.SinkDriverNoop, app)
+	}
+	// handle metrics sink client close on exit
+	defer func() {
+		logger.Infow("closing metrics sink client before exiting", "sink", metricsSink.GetSinkName())
+
+		if err := metricsSink.Close(); err != nil {
+			logger.Errorw("error closing metrics sink client", "sink", metricsSink.GetSinkName(), "error", err)
+		}
+	}()
+	return metricsSink
 }

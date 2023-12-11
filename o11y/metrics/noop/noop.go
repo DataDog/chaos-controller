@@ -93,8 +93,8 @@ func (n Sink) MetricDisruptionOngoingDuration(duration time.Duration, tags []str
 }
 
 // MetricReconcile increment reconcile metric
-func (n Sink) MetricReconcile() error {
-	fmt.Println("NOOP: MetricReconcile +1")
+func (n Sink) MetricReconcile(tags []string) error {
+	n.log.Debugf("NOOP: MetricReconcile +1 %s\n", tags)
 
 	return nil
 }
@@ -201,6 +201,44 @@ func (n Sink) MetricWatcherCalls(tags []string) error {
 // MetricSelectorCacheGauge reports how many caches are still in the cache array to prevent leaks
 func (n Sink) MetricSelectorCacheGauge(gauge float64) error {
 	n.log.Debugf("NOOP: MetricSelectorCacheGauge %f\n", gauge)
+
+	return nil
+}
+
+// MetricTooLate reports when a scheduled disruption misses its aloted time to be scheduled
+// specific to cron and rollout controllers
+func (n Sink) MetricTooLate(tags []string) error {
+	n.log.Debugf("NOOP: MetricTooLate %s\n", tags)
+
+	return nil
+}
+
+// MetricTargetMissing reports when a scheduled Disruption can not find its specific target
+// either for the first time or multiple times. A deletion occurs on the final alert
+func (n Sink) MetricTargetMissing(duration time.Duration, tags []string) error {
+	n.log.Debugf("NOOP: MetricTargetMissing %v,%s\n", duration, tags)
+
+	return nil
+}
+
+// MetricMissingTargetFound reports when a scheduled Disruption which had initially been deemed missing
+// is "found" and running in the kubernetes namespace
+func (n Sink) MetricMissingTargetFound(tags []string) error {
+	n.log.Debugf("NOOP: MetricMissingTargetFound %s\n", tags)
+
+	return nil
+}
+
+// MetricNextScheduledTime reports the duration until the next scheduled disruption will run
+func (n Sink) MetricNextScheduledTime(duration time.Duration, tags []string) error {
+	n.log.Debugf("NOOP: MetricNextScheduledRun %v, s%s\n", duration, tags)
+
+	return nil
+}
+
+// MetricDisruptionScheduled reports when a new disruption is scheduled
+func (n Sink) MetricDisruptionScheduled(tags []string) error {
+	n.log.Debugf("NOOP: MetricDisruptionScheduled %s\n", tags)
 
 	return nil
 }

@@ -207,7 +207,6 @@ func GetMostRecentScheduleTime(log *zap.SugaredLogger, disruptions *chaosv1beta1
 			}
 		}
 	}
-
 	return mostRecentScheduleTime
 }
 
