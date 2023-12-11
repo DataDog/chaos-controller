@@ -39,6 +39,10 @@ func (_m *RuntimeControllerMock) EXPECT() *RuntimeControllerMock_Expecter {
 func (_m *RuntimeControllerMock) GetLogger() logr.Logger {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetLogger")
+	}
+
 	var r0 logr.Logger
 	if rf, ok := ret.Get(0).(func() logr.Logger); ok {
 		r0 = rf()
@@ -79,6 +83,10 @@ func (_c *RuntimeControllerMock_GetLogger_Call) RunAndReturn(run func() logr.Log
 // Reconcile provides a mock function with given fields: _a0, _a1
 func (_m *RuntimeControllerMock) Reconcile(_a0 context.Context, _a1 reconcile.Request) (reconcile.Result, error) {
 	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Reconcile")
+	}
 
 	var r0 reconcile.Result
 	var r1 error
@@ -133,6 +141,10 @@ func (_c *RuntimeControllerMock_Reconcile_Call) RunAndReturn(run func(context.Co
 func (_m *RuntimeControllerMock) Start(ctx context.Context) error {
 	ret := _m.Called(ctx)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Start")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
 		r0 = rf(ctx)
@@ -182,6 +194,10 @@ func (_m *RuntimeControllerMock) Watch(src source.Source, eventhandler handler.E
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Watch")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(source.Source, handler.EventHandler, ...predicate.Predicate) error); ok {
 		r0 = rf(src, eventhandler, predicates...)
@@ -229,13 +245,12 @@ func (_c *RuntimeControllerMock_Watch_Call) RunAndReturn(run func(source.Source,
 	return _c
 }
 
-type mockConstructorTestingTNewRuntimeControllerMock interface {
+// NewRuntimeControllerMock creates a new instance of RuntimeControllerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewRuntimeControllerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewRuntimeControllerMock creates a new instance of RuntimeControllerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewRuntimeControllerMock(t mockConstructorTestingTNewRuntimeControllerMock) *RuntimeControllerMock {
+}) *RuntimeControllerMock {
 	mock := &RuntimeControllerMock{}
 	mock.Mock.Test(t)
 

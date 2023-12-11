@@ -25,6 +25,10 @@ func (_m *ManagerMock) EXPECT() *ManagerMock_Expecter {
 func (_m *ManagerMock) Enter() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Enter")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -66,6 +70,10 @@ func (_c *ManagerMock_Enter_Call) RunAndReturn(run func() error) *ManagerMock_En
 func (_m *ManagerMock) Exit() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Exit")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -103,13 +111,12 @@ func (_c *ManagerMock_Exit_Call) RunAndReturn(run func() error) *ManagerMock_Exi
 	return _c
 }
 
-type mockConstructorTestingTNewManagerMock interface {
+// NewManagerMock creates a new instance of ManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewManagerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewManagerMock creates a new instance of ManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewManagerMock(t mockConstructorTestingTNewManagerMock) *ManagerMock {
+}) *ManagerMock {
 	mock := &ManagerMock{}
 	mock.Mock.Test(t)
 

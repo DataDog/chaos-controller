@@ -25,6 +25,10 @@ func (_m *linkOperationMock) EXPECT() *linkOperationMock_Expecter {
 func (_m *linkOperationMock) Execute(_a0 []string, _a1 string, _a2 string) error {
 	ret := _m.Called(_a0, _a1, _a2)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Execute")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string, string, string) error); ok {
 		r0 = rf(_a0, _a1, _a2)
@@ -65,13 +69,12 @@ func (_c *linkOperationMock_Execute_Call) RunAndReturn(run func([]string, string
 	return _c
 }
 
-type mockConstructorTestingTnewLinkOperationMock interface {
+// newLinkOperationMock creates a new instance of linkOperationMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func newLinkOperationMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// newLinkOperationMock creates a new instance of linkOperationMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newLinkOperationMock(t mockConstructorTestingTnewLinkOperationMock) *linkOperationMock {
+}) *linkOperationMock {
 	mock := &linkOperationMock{}
 	mock.Mock.Test(t)
 

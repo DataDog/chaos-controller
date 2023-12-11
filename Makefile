@@ -69,7 +69,7 @@ GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") |
 CONTROLLER_GEN_VERSION = v0.12.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
 
-MOCKERY_VERSION = 2.28.2
+MOCKERY_VERSION = 2.38.0
 MOCKERY_INSTALLED_VERSION = $(shell mockery --version --quiet --config="" 2>/dev/null || echo "")
 
 # Additional args to provide to test runner (ginkgo)

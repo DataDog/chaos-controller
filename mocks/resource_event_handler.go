@@ -121,13 +121,12 @@ func (_c *ResourceEventHandlerMock_OnUpdate_Call) RunAndReturn(run func(interfac
 	return _c
 }
 
-type mockConstructorTestingTNewResourceEventHandlerMock interface {
+// NewResourceEventHandlerMock creates a new instance of ResourceEventHandlerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewResourceEventHandlerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewResourceEventHandlerMock creates a new instance of ResourceEventHandlerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewResourceEventHandlerMock(t mockConstructorTestingTNewResourceEventHandlerMock) *ResourceEventHandlerMock {
+}) *ResourceEventHandlerMock {
 	mock := &ResourceEventHandlerMock{}
 	mock.Mock.Test(t)
 

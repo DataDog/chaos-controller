@@ -25,6 +25,10 @@ func (_m *BackgroundCmdMock) EXPECT() *BackgroundCmdMock_Expecter {
 func (_m *BackgroundCmdMock) DryRun() bool {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for DryRun")
+	}
+
 	var r0 bool
 	if rf, ok := ret.Get(0).(func() bool); ok {
 		r0 = rf()
@@ -98,6 +102,10 @@ func (_c *BackgroundCmdMock_KeepAlive_Call) RunAndReturn(run func()) *Background
 func (_m *BackgroundCmdMock) Start() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Start")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -139,6 +147,10 @@ func (_c *BackgroundCmdMock_Start_Call) RunAndReturn(run func() error) *Backgrou
 func (_m *BackgroundCmdMock) Stop() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Stop")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -176,13 +188,12 @@ func (_c *BackgroundCmdMock_Stop_Call) RunAndReturn(run func() error) *Backgroun
 	return _c
 }
 
-type mockConstructorTestingTNewBackgroundCmdMock interface {
+// NewBackgroundCmdMock creates a new instance of BackgroundCmdMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewBackgroundCmdMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewBackgroundCmdMock creates a new instance of BackgroundCmdMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewBackgroundCmdMock(t mockConstructorTestingTNewBackgroundCmdMock) *BackgroundCmdMock {
+}) *BackgroundCmdMock {
 	mock := &BackgroundCmdMock{}
 	mock.Mock.Test(t)
 

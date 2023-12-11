@@ -44,6 +44,10 @@ func (_m *K8SClientMock) Create(ctx context.Context, obj client.Object, opts ...
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Create")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, client.Object, ...client.CreateOption) error); ok {
 		r0 = rf(ctx, obj, opts...)
@@ -101,6 +105,10 @@ func (_m *K8SClientMock) Delete(ctx context.Context, obj client.Object, opts ...
 	_ca = append(_ca, ctx, obj)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Delete")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, client.Object, ...client.DeleteOption) error); ok {
@@ -160,6 +168,10 @@ func (_m *K8SClientMock) DeleteAllOf(ctx context.Context, obj client.Object, opt
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteAllOf")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, client.Object, ...client.DeleteAllOfOption) error); ok {
 		r0 = rf(ctx, obj, opts...)
@@ -217,6 +229,10 @@ func (_m *K8SClientMock) Get(ctx context.Context, key types.NamespacedName, obj 
 	_ca = append(_ca, ctx, key, obj)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Get")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, types.NamespacedName, client.Object, ...client.GetOption) error); ok {
@@ -277,6 +293,10 @@ func (_m *K8SClientMock) List(ctx context.Context, list client.ObjectList, opts 
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for List")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, client.ObjectList, ...client.ListOption) error); ok {
 		r0 = rf(ctx, list, opts...)
@@ -335,6 +355,10 @@ func (_m *K8SClientMock) Patch(ctx context.Context, obj client.Object, patch cli
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Patch")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, client.Object, client.Patch, ...client.PatchOption) error); ok {
 		r0 = rf(ctx, obj, patch, opts...)
@@ -387,6 +411,10 @@ func (_c *K8SClientMock_Patch_Call) RunAndReturn(run func(context.Context, clien
 func (_m *K8SClientMock) RESTMapper() meta.RESTMapper {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for RESTMapper")
+	}
+
 	var r0 meta.RESTMapper
 	if rf, ok := ret.Get(0).(func() meta.RESTMapper); ok {
 		r0 = rf()
@@ -429,6 +457,10 @@ func (_c *K8SClientMock_RESTMapper_Call) RunAndReturn(run func() meta.RESTMapper
 // Scheme provides a mock function with given fields:
 func (_m *K8SClientMock) Scheme() *runtime.Scheme {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Scheme")
+	}
 
 	var r0 *runtime.Scheme
 	if rf, ok := ret.Get(0).(func() *runtime.Scheme); ok {
@@ -473,6 +505,10 @@ func (_c *K8SClientMock_Scheme_Call) RunAndReturn(run func() *runtime.Scheme) *K
 func (_m *K8SClientMock) Status() client.SubResourceWriter {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Status")
+	}
+
 	var r0 client.SubResourceWriter
 	if rf, ok := ret.Get(0).(func() client.SubResourceWriter); ok {
 		r0 = rf()
@@ -515,6 +551,10 @@ func (_c *K8SClientMock_Status_Call) RunAndReturn(run func() client.SubResourceW
 // SubResource provides a mock function with given fields: subResource
 func (_m *K8SClientMock) SubResource(subResource string) client.SubResourceClient {
 	ret := _m.Called(subResource)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SubResource")
+	}
 
 	var r0 client.SubResourceClient
 	if rf, ok := ret.Get(0).(func(string) client.SubResourceClient); ok {
@@ -567,6 +607,10 @@ func (_m *K8SClientMock) Update(ctx context.Context, obj client.Object, opts ...
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Update")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, client.Object, ...client.UpdateOption) error); ok {
 		r0 = rf(ctx, obj, opts...)
@@ -614,13 +658,12 @@ func (_c *K8SClientMock_Update_Call) RunAndReturn(run func(context.Context, clie
 	return _c
 }
 
-type mockConstructorTestingTNewK8SClientMock interface {
+// NewK8SClientMock creates a new instance of K8SClientMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewK8SClientMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewK8SClientMock creates a new instance of K8SClientMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewK8SClientMock(t mockConstructorTestingTNewK8SClientMock) *K8SClientMock {
+}) *K8SClientMock {
 	mock := &K8SClientMock{}
 	mock.Mock.Test(t)
 

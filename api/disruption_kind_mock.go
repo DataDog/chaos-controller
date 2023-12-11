@@ -25,6 +25,10 @@ func (_m *DisruptionKindMock) EXPECT() *DisruptionKindMock_Expecter {
 func (_m *DisruptionKindMock) GenerateArgs() []string {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GenerateArgs")
+	}
+
 	var r0 []string
 	if rf, ok := ret.Get(0).(func() []string); ok {
 		r0 = rf()
@@ -68,6 +72,10 @@ func (_c *DisruptionKindMock_GenerateArgs_Call) RunAndReturn(run func() []string
 func (_m *DisruptionKindMock) Validate() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Validate")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -105,13 +113,12 @@ func (_c *DisruptionKindMock_Validate_Call) RunAndReturn(run func() error) *Disr
 	return _c
 }
 
-type mockConstructorTestingTNewDisruptionKindMock interface {
+// NewDisruptionKindMock creates a new instance of DisruptionKindMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewDisruptionKindMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewDisruptionKindMock creates a new instance of DisruptionKindMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewDisruptionKindMock(t mockConstructorTestingTNewDisruptionKindMock) *DisruptionKindMock {
+}) *DisruptionKindMock {
 	mock := &DisruptionKindMock{}
 	mock.Mock.Test(t)
 

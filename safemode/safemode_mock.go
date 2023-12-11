@@ -60,13 +60,12 @@ func (_c *SafemodeMock_Init_Call) RunAndReturn(run func(v1beta1.Disruption, clie
 	return _c
 }
 
-type mockConstructorTestingTNewSafemodeMock interface {
+// NewSafemodeMock creates a new instance of SafemodeMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewSafemodeMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewSafemodeMock creates a new instance of SafemodeMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewSafemodeMock(t mockConstructorTestingTNewSafemodeMock) *SafemodeMock {
+}) *SafemodeMock {
 	mock := &SafemodeMock{}
 	mock.Mock.Test(t)
 

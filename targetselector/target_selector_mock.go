@@ -32,6 +32,10 @@ func (_m *TargetSelectorMock) EXPECT() *TargetSelectorMock_Expecter {
 func (_m *TargetSelectorMock) GetMatchingNodesOverTotalNodes(c client.Client, instance *v1beta1.Disruption) (*v1.NodeList, int, error) {
 	ret := _m.Called(c, instance)
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetMatchingNodesOverTotalNodes")
+	}
+
 	var r0 *v1.NodeList
 	var r1 int
 	var r2 error
@@ -93,6 +97,10 @@ func (_c *TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call) RunAndReturn(r
 // GetMatchingPodsOverTotalPods provides a mock function with given fields: c, instance
 func (_m *TargetSelectorMock) GetMatchingPodsOverTotalPods(c client.Client, instance *v1beta1.Disruption) (*v1.PodList, int, error) {
 	ret := _m.Called(c, instance)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMatchingPodsOverTotalPods")
+	}
 
 	var r0 *v1.PodList
 	var r1 int
@@ -156,6 +164,10 @@ func (_c *TargetSelectorMock_GetMatchingPodsOverTotalPods_Call) RunAndReturn(run
 func (_m *TargetSelectorMock) TargetIsHealthy(target string, c client.Client, instance *v1beta1.Disruption) error {
 	ret := _m.Called(target, c, instance)
 
+	if len(ret) == 0 {
+		panic("no return value specified for TargetIsHealthy")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, client.Client, *v1beta1.Disruption) error); ok {
 		r0 = rf(target, c, instance)
@@ -196,13 +208,12 @@ func (_c *TargetSelectorMock_TargetIsHealthy_Call) RunAndReturn(run func(string,
 	return _c
 }
 
-type mockConstructorTestingTNewTargetSelectorMock interface {
+// NewTargetSelectorMock creates a new instance of TargetSelectorMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewTargetSelectorMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewTargetSelectorMock creates a new instance of TargetSelectorMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewTargetSelectorMock(t mockConstructorTestingTNewTargetSelectorMock) *TargetSelectorMock {
+}) *TargetSelectorMock {
 	mock := &TargetSelectorMock{}
 	mock.Mock.Test(t)
 

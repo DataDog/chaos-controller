@@ -25,6 +25,10 @@ func (_m *SinkMock) EXPECT() *SinkMock_Expecter {
 func (_m *SinkMock) GetSinkName() string {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetSinkName")
+	}
+
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {
 		r0 = rf()
@@ -94,13 +98,12 @@ func (_c *SinkMock_Stop_Call) RunAndReturn(run func()) *SinkMock_Stop_Call {
 	return _c
 }
 
-type mockConstructorTestingTNewSinkMock interface {
+// NewSinkMock creates a new instance of SinkMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewSinkMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewSinkMock creates a new instance of SinkMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewSinkMock(t mockConstructorTestingTNewSinkMock) *SinkMock {
+}) *SinkMock {
 	mock := &SinkMock{}
 	mock.Mock.Test(t)
 

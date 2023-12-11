@@ -29,6 +29,10 @@ func (_m *RoundTripperMock) EXPECT() *RoundTripperMock_Expecter {
 func (_m *RoundTripperMock) RoundTrip(_a0 *http.Request) (*http.Response, error) {
 	ret := _m.Called(_a0)
 
+	if len(ret) == 0 {
+		panic("no return value specified for RoundTrip")
+	}
+
 	var r0 *http.Response
 	var r1 error
 	if rf, ok := ret.Get(0).(func(*http.Request) (*http.Response, error)); ok {
@@ -79,13 +83,12 @@ func (_c *RoundTripperMock_RoundTrip_Call) RunAndReturn(run func(*http.Request) 
 	return _c
 }
 
-type mockConstructorTestingTNewRoundTripperMock interface {
+// NewRoundTripperMock creates a new instance of RoundTripperMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewRoundTripperMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewRoundTripperMock creates a new instance of RoundTripperMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewRoundTripperMock(t mockConstructorTestingTNewRoundTripperMock) *RoundTripperMock {
+}) *RoundTripperMock {
 	mock := &RoundTripperMock{}
 	mock.Mock.Test(t)
 

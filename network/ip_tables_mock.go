@@ -25,6 +25,10 @@ func (_m *IPTablesMock) EXPECT() *IPTablesMock_Expecter {
 func (_m *IPTablesMock) Clear() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Clear")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -65,6 +69,10 @@ func (_c *IPTablesMock_Clear_Call) RunAndReturn(run func() error) *IPTablesMock_
 // Intercept provides a mock function with given fields: protocol, port, cgroupPath, cgroupClassID, injectorPodIP
 func (_m *IPTablesMock) Intercept(protocol string, port string, cgroupPath string, cgroupClassID string, injectorPodIP string) error {
 	ret := _m.Called(protocol, port, cgroupPath, cgroupClassID, injectorPodIP)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Intercept")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string, string, string, string) error); ok {
@@ -112,6 +120,10 @@ func (_c *IPTablesMock_Intercept_Call) RunAndReturn(run func(string, string, str
 func (_m *IPTablesMock) LogConntrack() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for LogConntrack")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -152,6 +164,10 @@ func (_c *IPTablesMock_LogConntrack_Call) RunAndReturn(run func() error) *IPTabl
 // MarkCgroupPath provides a mock function with given fields: cgroupPath, mark
 func (_m *IPTablesMock) MarkCgroupPath(cgroupPath string, mark string) error {
 	ret := _m.Called(cgroupPath, mark)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkCgroupPath")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string) error); ok {
@@ -196,6 +212,10 @@ func (_c *IPTablesMock_MarkCgroupPath_Call) RunAndReturn(run func(string, string
 func (_m *IPTablesMock) MarkClassID(classid string, mark string) error {
 	ret := _m.Called(classid, mark)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MarkClassID")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string) error); ok {
 		r0 = rf(classid, mark)
@@ -239,6 +259,10 @@ func (_c *IPTablesMock_MarkClassID_Call) RunAndReturn(run func(string, string) e
 func (_m *IPTablesMock) RedirectTo(protocol string, port string, destinationIP string) error {
 	ret := _m.Called(protocol, port, destinationIP)
 
+	if len(ret) == 0 {
+		panic("no return value specified for RedirectTo")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
 		r0 = rf(protocol, port, destinationIP)
@@ -279,13 +303,12 @@ func (_c *IPTablesMock_RedirectTo_Call) RunAndReturn(run func(string, string, st
 	return _c
 }
 
-type mockConstructorTestingTNewIPTablesMock interface {
+// NewIPTablesMock creates a new instance of IPTablesMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewIPTablesMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewIPTablesMock creates a new instance of IPTablesMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewIPTablesMock(t mockConstructorTestingTNewIPTablesMock) *IPTablesMock {
+}) *IPTablesMock {
 	mock := &IPTablesMock{}
 	mock.Mock.Test(t)
 

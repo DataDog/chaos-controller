@@ -28,6 +28,10 @@ func (_m *NetlinkAdapterMock) EXPECT() *NetlinkAdapterMock_Expecter {
 func (_m *NetlinkAdapterMock) DefaultRoutes() ([]NetlinkRoute, error) {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for DefaultRoutes")
+	}
+
 	var r0 []NetlinkRoute
 	var r1 error
 	if rf, ok := ret.Get(0).(func() ([]NetlinkRoute, error)); ok {
@@ -80,6 +84,10 @@ func (_c *NetlinkAdapterMock_DefaultRoutes_Call) RunAndReturn(run func() ([]Netl
 // LinkByIndex provides a mock function with given fields: index
 func (_m *NetlinkAdapterMock) LinkByIndex(index int) (NetlinkLink, error) {
 	ret := _m.Called(index)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LinkByIndex")
+	}
 
 	var r0 NetlinkLink
 	var r1 error
@@ -135,6 +143,10 @@ func (_c *NetlinkAdapterMock_LinkByIndex_Call) RunAndReturn(run func(int) (Netli
 func (_m *NetlinkAdapterMock) LinkByName(name string) (NetlinkLink, error) {
 	ret := _m.Called(name)
 
+	if len(ret) == 0 {
+		panic("no return value specified for LinkByName")
+	}
+
 	var r0 NetlinkLink
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (NetlinkLink, error)); ok {
@@ -189,6 +201,10 @@ func (_c *NetlinkAdapterMock_LinkByName_Call) RunAndReturn(run func(string) (Net
 func (_m *NetlinkAdapterMock) LinkList(useLocalhost bool, log *zap.SugaredLogger) ([]NetlinkLink, error) {
 	ret := _m.Called(useLocalhost, log)
 
+	if len(ret) == 0 {
+		panic("no return value specified for LinkList")
+	}
+
 	var r0 []NetlinkLink
 	var r1 error
 	if rf, ok := ret.Get(0).(func(bool, *zap.SugaredLogger) ([]NetlinkLink, error)); ok {
@@ -240,13 +256,12 @@ func (_c *NetlinkAdapterMock_LinkList_Call) RunAndReturn(run func(bool, *zap.Sug
 	return _c
 }
 
-type mockConstructorTestingTNewNetlinkAdapterMock interface {
+// NewNetlinkAdapterMock creates a new instance of NetlinkAdapterMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewNetlinkAdapterMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewNetlinkAdapterMock creates a new instance of NetlinkAdapterMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewNetlinkAdapterMock(t mockConstructorTestingTNewNetlinkAdapterMock) *NetlinkAdapterMock {
+}) *NetlinkAdapterMock {
 	mock := &NetlinkAdapterMock{}
 	mock.Mock.Test(t)
 

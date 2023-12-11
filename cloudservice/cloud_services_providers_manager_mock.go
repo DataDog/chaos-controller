@@ -28,6 +28,10 @@ func (_m *CloudServicesProvidersManagerMock) EXPECT() *CloudServicesProvidersMan
 func (_m *CloudServicesProvidersManagerMock) GetProviderByName(name types.CloudProviderName) *CloudServicesProvider {
 	ret := _m.Called(name)
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetProviderByName")
+	}
+
 	var r0 *CloudServicesProvider
 	if rf, ok := ret.Get(0).(func(types.CloudProviderName) *CloudServicesProvider); ok {
 		r0 = rf(name)
@@ -72,6 +76,10 @@ func (_c *CloudServicesProvidersManagerMock_GetProviderByName_Call) RunAndReturn
 func (_m *CloudServicesProvidersManagerMock) GetServiceList(cloudProviderName types.CloudProviderName) []string {
 	ret := _m.Called(cloudProviderName)
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetServiceList")
+	}
+
 	var r0 []string
 	if rf, ok := ret.Get(0).(func(types.CloudProviderName) []string); ok {
 		r0 = rf(cloudProviderName)
@@ -115,6 +123,10 @@ func (_c *CloudServicesProvidersManagerMock_GetServiceList_Call) RunAndReturn(ru
 // GetServicesIPRanges provides a mock function with given fields: cloudProviderName, serviceNames
 func (_m *CloudServicesProvidersManagerMock) GetServicesIPRanges(cloudProviderName types.CloudProviderName, serviceNames []string) (map[string][]string, error) {
 	ret := _m.Called(cloudProviderName, serviceNames)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetServicesIPRanges")
+	}
 
 	var r0 map[string][]string
 	var r1 error
@@ -170,6 +182,10 @@ func (_c *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call) RunAndRetu
 // PullIPRanges provides a mock function with given fields:
 func (_m *CloudServicesProvidersManagerMock) PullIPRanges() error {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for PullIPRanges")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
@@ -272,13 +288,12 @@ func (_c *CloudServicesProvidersManagerMock_StopPeriodicPull_Call) RunAndReturn(
 	return _c
 }
 
-type mockConstructorTestingTNewCloudServicesProvidersManagerMock interface {
+// NewCloudServicesProvidersManagerMock creates a new instance of CloudServicesProvidersManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewCloudServicesProvidersManagerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewCloudServicesProvidersManagerMock creates a new instance of CloudServicesProvidersManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewCloudServicesProvidersManagerMock(t mockConstructorTestingTNewCloudServicesProvidersManagerMock) *CloudServicesProvidersManagerMock {
+}) *CloudServicesProvidersManagerMock {
 	mock := &CloudServicesProvidersManagerMock{}
 	mock.Mock.Test(t)
 

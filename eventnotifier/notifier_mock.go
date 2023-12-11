@@ -31,6 +31,10 @@ func (_m *NotifierMock) EXPECT() *NotifierMock_Expecter {
 func (_m *NotifierMock) GetNotifierName() string {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetNotifierName")
+	}
+
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {
 		r0 = rf()
@@ -72,6 +76,10 @@ func (_c *NotifierMock_GetNotifierName_Call) RunAndReturn(run func() string) *No
 func (_m *NotifierMock) Notify(_a0 v1beta1.Disruption, _a1 v1.Event, _a2 types.NotificationType) error {
 	ret := _m.Called(_a0, _a1, _a2)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Notify")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(v1beta1.Disruption, v1.Event, types.NotificationType) error); ok {
 		r0 = rf(_a0, _a1, _a2)
@@ -112,13 +120,12 @@ func (_c *NotifierMock_Notify_Call) RunAndReturn(run func(v1beta1.Disruption, v1
 	return _c
 }
 
-type mockConstructorTestingTNewNotifierMock interface {
+// NewNotifierMock creates a new instance of NotifierMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewNotifierMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewNotifierMock creates a new instance of NotifierMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewNotifierMock(t mockConstructorTestingTNewNotifierMock) *NotifierMock {
+}) *NotifierMock {
 	mock := &NotifierMock{}
 	mock.Mock.Test(t)
 

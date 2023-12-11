@@ -39,6 +39,10 @@ func (_m *DisruptionListenerClientMock) Disrupt(ctx context.Context, in *Disrupt
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Disrupt")
+	}
+
 	var r0 *emptypb.Empty
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, *DisruptionSpec, ...grpc.CallOption) (*emptypb.Empty, error)); ok {
@@ -109,6 +113,10 @@ func (_m *DisruptionListenerClientMock) ResetDisruptions(ctx context.Context, in
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for ResetDisruptions")
+	}
+
 	var r0 *emptypb.Empty
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, *emptypb.Empty, ...grpc.CallOption) (*emptypb.Empty, error)); ok {
@@ -168,13 +176,12 @@ func (_c *DisruptionListenerClientMock_ResetDisruptions_Call) RunAndReturn(run f
 	return _c
 }
 
-type mockConstructorTestingTNewDisruptionListenerClientMock interface {
+// NewDisruptionListenerClientMock creates a new instance of DisruptionListenerClientMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewDisruptionListenerClientMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewDisruptionListenerClientMock creates a new instance of DisruptionListenerClientMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewDisruptionListenerClientMock(t mockConstructorTestingTNewDisruptionListenerClientMock) *DisruptionListenerClientMock {
+}) *DisruptionListenerClientMock {
 	mock := &DisruptionListenerClientMock{}
 	mock.Mock.Test(t)
 

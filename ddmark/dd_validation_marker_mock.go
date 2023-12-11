@@ -29,6 +29,10 @@ func (_m *DDValidationMarkerMock) EXPECT() *DDValidationMarkerMock_Expecter {
 func (_m *DDValidationMarkerMock) ApplyRule(_a0 reflect.Value) error {
 	ret := _m.Called(_a0)
 
+	if len(ret) == 0 {
+		panic("no return value specified for ApplyRule")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(reflect.Value) error); ok {
 		r0 = rf(_a0)
@@ -70,6 +74,10 @@ func (_c *DDValidationMarkerMock_ApplyRule_Call) RunAndReturn(run func(reflect.V
 // TypeCheckError provides a mock function with given fields: _a0
 func (_m *DDValidationMarkerMock) TypeCheckError(_a0 reflect.Value) error {
 	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TypeCheckError")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(reflect.Value) error); ok {
@@ -113,6 +121,10 @@ func (_c *DDValidationMarkerMock_TypeCheckError_Call) RunAndReturn(run func(refl
 func (_m *DDValidationMarkerMock) ValueCheckError() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for ValueCheckError")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -150,13 +162,12 @@ func (_c *DDValidationMarkerMock_ValueCheckError_Call) RunAndReturn(run func() e
 	return _c
 }
 
-type mockConstructorTestingTNewDDValidationMarkerMock interface {
+// NewDDValidationMarkerMock creates a new instance of DDValidationMarkerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewDDValidationMarkerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewDDValidationMarkerMock creates a new instance of DDValidationMarkerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewDDValidationMarkerMock(t mockConstructorTestingTNewDDValidationMarkerMock) *DDValidationMarkerMock {
+}) *DDValidationMarkerMock {
 	mock := &DDValidationMarkerMock{}
 	mock.Mock.Test(t)
 
