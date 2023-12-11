@@ -8,9 +8,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"os"
 	"time"
+
+	"go.uber.org/zap"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
@@ -395,8 +396,8 @@ func main() {
 }
 
 // initialize metrics sink
-func initMetricsSink(MetricSink string, logger *zap.SugaredLogger, app metricstypes.SinkApp) metrics.Sink {
-	metricsSink, err := metrics.GetSink(logger, metricstypes.SinkDriver(MetricSink), metricstypes.SinkAppController)
+func initMetricsSink(sink string, logger *zap.SugaredLogger, app metricstypes.SinkApp) metrics.Sink {
+	metricsSink, err := metrics.GetSink(logger, metricstypes.SinkDriver(sink), metricstypes.SinkAppController)
 	if err != nil {
 		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
 
@@ -410,5 +411,6 @@ func initMetricsSink(MetricSink string, logger *zap.SugaredLogger, app metricsty
 			logger.Errorw("error closing metrics sink client", "sink", metricsSink.GetSinkName(), "error", err)
 		}
 	}()
+
 	return metricsSink
 }

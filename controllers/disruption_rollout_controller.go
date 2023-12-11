@@ -7,9 +7,10 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"math/rand"
 	"time"
+
+	"github.com/DataDog/chaos-controller/o11y/metrics"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
@@ -121,7 +122,6 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	if tooLate {
-		// TODO: Add MetricTooLate
 		r.handleMetricSinkError(r.MetricsSink.MetricTooLate([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
 		r.log.Infow("missed schedule to start a disruption, sleeping",
 			"LastContainerChangeTime", instance.Status.LastContainerChangeTime,
@@ -143,8 +143,9 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		r.log.Warnw("unable to create Disruption for DisruptionRollout", "disruption", disruption, "err", err)
 		return ctrl.Result{}, err
 	}
-	// TODO: Add MetricDisruptionScheduled here
+
 	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name, "disruptionName:", disruption.Name}))
+
 	r.log.Infow("created Disruption for DisruptionRollout run", "disruptionName", disruption.Name)
 
 	// ------------------------------------------------------------------ //
@@ -193,8 +194,8 @@ func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx 
 
 		if instance.Status.TargetResourcePreviouslyMissing == nil {
 			r.log.Warnw("target is missing for the first time, updating status")
-			// TODO: Add MetricTargetMissing here
 			r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(0, []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
+
 			return targetResourceExists, disruptionRolloutDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
 
@@ -203,14 +204,15 @@ func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx 
 				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
 
 			disruptionRolloutDeleted = true
-			// TODO: Add MetricTargetMissing here with time ^
+
 			r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(time.Since(instance.Status.TargetResourcePreviouslyMissing.Time), []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
+
 			return targetResourceExists, disruptionRolloutDeleted, r.handleTargetResourceMissingPastExpiration(ctx, instance)
 		}
 	} else if instance.Status.TargetResourcePreviouslyMissing != nil {
 		r.log.Infow("target was previously missing, but now present. updating the status accordingly")
-		// TODO: Add MetricTargetFound here
 		r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetFound([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
+
 		return targetResourceExists, disruptionRolloutDeleted, r.handleTargetResourceNowPresent(ctx, instance)
 	}
 

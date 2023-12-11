@@ -8,8 +8,9 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"time"
+
+	"github.com/DataDog/chaos-controller/o11y/metrics"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/robfig/cron"
@@ -122,9 +123,9 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if tooLate {
-		// TODO: Add MetricTooLate
 		r.handleMetricSinkError(r.MetricsSink.MetricTooLate([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
 		r.log.Infow(fmt.Sprintf("missed schedule to start a disruption at %s, scheduling next check in %s", missedRun, requeueTime))
+
 		return scheduledResult, nil
 	}
 
@@ -143,8 +144,9 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		r.log.Warnw("unable to create Disruption for DisruptionCron", "disruption", disruption, "err", err)
 		return ctrl.Result{}, err
 	}
-	// TODO: Add MetricDisruptionScheduled
+
 	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name, "disruptionName:", disruption.Name}))
+
 	r.log.Infow("created Disruption for DisruptionCron run", "disruptionName", disruption.Name)
 
 	// ------------------------------------------------------------------ //
@@ -194,8 +196,8 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 
 		if instance.Status.TargetResourcePreviouslyMissing == nil {
 			r.log.Warnw("target is missing for the first time, updating status")
-			// TODO: Add MetricTargetMissing
 			r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(0, []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
+
 			return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
 
@@ -204,14 +206,15 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
 
 			disruptionCronDeleted = true
-			// TODO: Add MetricTargetMissing with a day as the time
+
 			r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(time.Since(instance.Status.TargetResourcePreviouslyMissing.Time), []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
+
 			return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceMissingPastExpiration(ctx, instance)
 		}
 	} else if instance.Status.TargetResourcePreviouslyMissing != nil {
 		r.log.Infow("target was previously missing, but now present. updating the status accordingly")
-		// TODO: Add MetricTargetFound
 		r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetFound([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", "targetName:", instance.Spec.TargetResource.Name}))
+
 		return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceNowPresent(ctx, instance)
 	}
 
@@ -290,8 +293,8 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 			return time.Time{}, time.Time{}, fmt.Errorf("too many missed start times (> 100)")
 		}
 	}
-	// TODO: Add MetricNextScheduledTime
 	r.handleMetricSinkError(r.MetricsSink.MetricNextScheduledTime(time.Until(sched.Next(now)), []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
+
 	return lastMissed, sched.Next(now), nil
 }
 
