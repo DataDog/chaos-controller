@@ -103,6 +103,8 @@ func main() {
 
 	metricsSink := initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppController)
 
+	defer closeMetricsSink(logger, metricsSink)
+
 	profilerSink, err := profiler.GetSink(logger, profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
 	if err != nil {
 		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
@@ -284,6 +286,8 @@ func main() {
 			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppRolloutController),
 		}
 
+		defer closeMetricsSink(logger, disruptionRolloutReconciler.MetricsSink)
+
 		if err := disruptionRolloutReconciler.SetupWithManager(mgr); err != nil {
 			logger.Errorw("unable to create controller", "controller", "DisruptionRollout", "error", err)
 			os.Exit(1) //nolint:gocritic
@@ -312,6 +316,8 @@ func main() {
 			Scheme:      mgr.GetScheme(),
 			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
 		}
+
+		defer closeMetricsSink(logger, disruptionCronReconciler.MetricsSink)
 
 		if err := disruptionCronReconciler.SetupWithManager(mgr); err != nil {
 			logger.Errorw("unable to create controller", "controller", "DisruptionCron", "error", err)
@@ -403,14 +409,15 @@ func initMetricsSink(sink string, logger *zap.SugaredLogger, app metricstypes.Si
 
 		metricsSink, _ = metrics.GetSink(logger, metricstypes.SinkDriverNoop, app)
 	}
-	// handle metrics sink client close on exit
-	defer func() {
-		logger.Infow("closing metrics sink client before exiting", "sink", metricsSink.GetSinkName())
-
-		if err := metricsSink.Close(); err != nil {
-			logger.Errorw("error closing metrics sink client", "sink", metricsSink.GetSinkName(), "error", err)
-		}
-	}()
 
 	return metricsSink
+}
+
+// handle metrics sink cleint close on exit
+func closeMetricsSink(logger *zap.SugaredLogger, metricsSink metrics.Sink) {
+	logger.Infow("closing metrics sink client before exiting", "sink", metricsSink.GetSinkName())
+
+	if err := metricsSink.Close(); err != nil {
+		logger.Errorw("error closing metrics sink client", "sink", metricsSink.GetSinkName(), "error", err)
+	}
 }

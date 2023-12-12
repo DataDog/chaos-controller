@@ -36,8 +36,6 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// reconcile metrics
 	r.handleMetricSinkError(r.MetricsSink.MetricReconcile([]string{"controller", r.MetricsSink.GetSinkName()}))
 
-	r.log.Infow("prefix check", "prefix", r.MetricsSink.GetPrefix())
-
 	instance := &chaosv1beta1.DisruptionCron{}
 
 	defer func(tsStart time.Time) {
