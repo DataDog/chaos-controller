@@ -37,14 +37,14 @@ func New(app types.SinkApp) (Sink, error) {
 		return Sink{}, err
 	}
 
-	prefix, err := GetPrefixFromApp(app)
+	prefixFromApp, err := GetPrefixFromApp(app)
 	if err != nil {
 		return Sink{}, err
 	}
 
 	return Sink{
 		client: instance,
-		prefix: prefix,
+		prefix: prefixFromApp,
 	}, nil
 }
 
@@ -72,6 +72,11 @@ func (d Sink) Close() error {
 // GetSinkName returns the name of the sink
 func (d Sink) GetSinkName() string {
 	return string(types.SinkDriverDatadog)
+}
+
+// GetPrefix returns the prefix used when sending metrics to datadog
+func (d Sink) GetPrefix() string {
+	return d.prefix
 }
 
 // MetricInjected increments the injected metric

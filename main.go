@@ -397,7 +397,7 @@ func main() {
 
 // initialize metrics sink
 func initMetricsSink(sink string, logger *zap.SugaredLogger, app metricstypes.SinkApp) metrics.Sink {
-	metricsSink, err := metrics.GetSink(logger, metricstypes.SinkDriver(sink), metricstypes.SinkAppController)
+	metricsSink, err := metrics.GetSink(logger, metricstypes.SinkDriver(sink), app)
 	if err != nil {
 		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
 

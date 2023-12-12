@@ -68,6 +68,47 @@ func (_c *SinkMock_Close_Call) RunAndReturn(run func() error) *SinkMock_Close_Ca
 	return _c
 }
 
+// GetPrefix provides a mock function with given fields:
+func (_m *SinkMock) GetPrefix() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// SinkMock_GetPrefix_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPrefix'
+type SinkMock_GetPrefix_Call struct {
+	*mock.Call
+}
+
+// GetPrefix is a helper method to define mock.On call
+func (_e *SinkMock_Expecter) GetPrefix() *SinkMock_GetPrefix_Call {
+	return &SinkMock_GetPrefix_Call{Call: _e.mock.On("GetPrefix")}
+}
+
+func (_c *SinkMock_GetPrefix_Call) Run(run func()) *SinkMock_GetPrefix_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SinkMock_GetPrefix_Call) Return(_a0 string) *SinkMock_GetPrefix_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_GetPrefix_Call) RunAndReturn(run func() string) *SinkMock_GetPrefix_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSinkName provides a mock function with given fields:
 func (_m *SinkMock) GetSinkName() string {
 	ret := _m.Called()

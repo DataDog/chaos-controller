@@ -20,6 +20,7 @@ import (
 type Sink interface {
 	Close() error
 	GetSinkName() string
+	GetPrefix() string
 	MetricCleaned(succeed bool, kind string, tags []string) error
 	MetricCleanedForReinjection(succeed bool, kind string, tags []string) error
 	MetricCleanupDuration(duration time.Duration, tags []string) error

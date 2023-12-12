@@ -36,6 +36,11 @@ func (n Sink) GetSinkName() string {
 	return string(types.SinkDriverNoop)
 }
 
+// GetPrefix returns the prefix used when sending metrics to datadog
+func (n Sink) GetPrefix() string {
+	return "noop"
+}
+
 // MetricInjected increments the injected metric
 func (n Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	n.log.Debugf("NOOP: MetricInjected %v\n", succeed)
