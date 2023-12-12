@@ -96,7 +96,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// reconcile metrics
 	r.handleMetricSinkError(r.MetricsSink.MetricReconcile([]string{"controller", r.MetricsSink.GetSinkName()}))
 
-	r.log.Infow("prefix", r.MetricsSink.GetPrefix())
+	r.log.Infow("prefix check", "prefix", r.MetricsSink.GetPrefix())
 
 	defer func(tsStart time.Time) {
 		tags := []string{}
