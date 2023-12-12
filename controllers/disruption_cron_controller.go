@@ -196,7 +196,6 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 
 		if instance.Status.TargetResourcePreviouslyMissing == nil {
 			r.log.Warnw("target is missing for the first time, updating status")
-			r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(0, []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
 
 			return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
@@ -207,10 +206,10 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 
 			disruptionCronDeleted = true
 
-			r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(time.Since(instance.Status.TargetResourcePreviouslyMissing.Time), []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
-
 			return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceMissingPastExpiration(ctx, instance)
 		}
+
+		r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(time.Since(instance.Status.TargetResourcePreviouslyMissing.Time), []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
 	} else if instance.Status.TargetResourcePreviouslyMissing != nil {
 		r.log.Infow("target was previously missing, but now present. updating the status accordingly")
 		r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetFound([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", "targetName:", instance.Spec.TargetResource.Name}))
