@@ -20,6 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var DisruptionRolloutTags = []string{}
+
 type DisruptionRolloutReconciler struct {
 	Client      client.Client
 	Scheme      *runtime.Scheme
@@ -36,7 +38,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// reconcile metrics
-	r.handleMetricSinkError(r.MetricsSink.MetricReconcile([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace}))
+	r.handleMetricSinkError(r.MetricsSink.MetricReconcile([]string{"controller", r.MetricsSink.GetSinkName()}))
 
 	defer func(tsStart time.Time) {
 		tags := []string{}
@@ -51,6 +53,8 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
+	DisruptionRolloutTags = []string{"disruptionRolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}
 
 	if !instance.DeletionTimestamp.IsZero() {
 		// Add finalizer here if required
@@ -122,7 +126,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	if tooLate {
-		r.handleMetricSinkError(r.MetricsSink.MetricTooLate([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
+		r.handleMetricSinkError(r.MetricsSink.MetricTooLate(DisruptionRolloutTags))
 		r.log.Infow("missed schedule to start a disruption, sleeping",
 			"LastContainerChangeTime", instance.Status.LastContainerChangeTime,
 			"DelayedStartTolerance", instance.Spec.DelayedStartTolerance)
@@ -144,7 +148,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name, "disruptionName:", disruption.Name}))
+	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled(append(DisruptionRolloutTags, "disruptionName:"+disruption.Name)))
 
 	r.log.Infow("created Disruption for DisruptionRollout run", "disruptionName", disruption.Name)
 
@@ -207,10 +211,10 @@ func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx 
 			return targetResourceExists, disruptionRolloutDeleted, r.handleTargetResourceMissingPastExpiration(ctx, instance)
 		}
 
-		r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(time.Since(instance.Status.TargetResourcePreviouslyMissing.Time), []string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
+		r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(time.Since(instance.Status.TargetResourcePreviouslyMissing.Time), DisruptionRolloutTags))
 	} else if instance.Status.TargetResourcePreviouslyMissing != nil {
 		r.log.Infow("target was previously missing, but now present. updating the status accordingly")
-		r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetFound([]string{"rolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}))
+		r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetFound(DisruptionRolloutTags))
 
 		return targetResourceExists, disruptionRolloutDeleted, r.handleTargetResourceNowPresent(ctx, instance)
 	}

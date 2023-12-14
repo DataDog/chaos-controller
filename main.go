@@ -280,9 +280,10 @@ func main() {
 
 		// create disruption rollout reconciler
 		disruptionRolloutReconciler := &controllers.DisruptionRolloutReconciler{
-			Client:      mgr.GetClient(),
-			BaseLog:     logger,
-			Scheme:      mgr.GetScheme(),
+			Client:  mgr.GetClient(),
+			BaseLog: logger,
+			Scheme:  mgr.GetScheme(),
+			// new metrics sink for rollout controller
 			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppRolloutController),
 		}
 
@@ -308,12 +309,12 @@ func main() {
 	}
 
 	if cfg.Controller.DisruptionCronEnabled {
-		// new metrics sink for cron controller
 		// create disruption cron reconciler
 		disruptionCronReconciler := &controllers.DisruptionCronReconciler{
-			Client:      mgr.GetClient(),
-			BaseLog:     logger,
-			Scheme:      mgr.GetScheme(),
+			Client:  mgr.GetClient(),
+			BaseLog: logger,
+			Scheme:  mgr.GetScheme(),
+			// new metrics sink for cron controller
 			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
 		}
 
@@ -413,7 +414,7 @@ func initMetricsSink(sink string, logger *zap.SugaredLogger, app metricstypes.Si
 	return metricsSink
 }
 
-// handle metrics sink cleint close on exit
+// handle metrics sink client close on exit
 func closeMetricsSink(logger *zap.SugaredLogger, metricsSink metrics.Sink) {
 	logger.Infow("closing metrics sink client before exiting", "sink", metricsSink.GetSinkName())
 

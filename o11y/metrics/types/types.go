@@ -26,7 +26,7 @@ const (
 	// SinkAppRolloutController is the rollout controller
 	SinkAppRolloutController SinkApp = "chaos-rollout-controller"
 
-	// SinkAppCronController is the cront controller
+	// SinkAppCronController is the cron controller
 	SinkAppCronController SinkApp = "chaos-cron-controller"
 
 	// SinkAppInjector is the chaos injector
