@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"time"
 
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 
-	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,14 +36,14 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	r.log.Info("Reconciling DisruptionCron")
 
 	// reconcile metrics
-	r.handleMetricSinkError(r.MetricsSink.MetricReconcile([]string{"controller", r.MetricsSink.GetSinkName()}))
+	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
 
 	instance := &chaosv1beta1.DisruptionCron{}
 
 	defer func(tsStart time.Time) {
 		tags := []string{}
 		if instance.Name != "" {
-			tags = append(tags, "disruptionCronName:"+instance.Name, "namespace:"+instance.Namespace)
+			tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
 		}
 
 		r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
@@ -54,7 +54,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	DisruptionCronTags = []string{"disruptionCronName:" + instance.Name, "namespace:" + instance.Namespace, "targetName:" + instance.Spec.TargetResource.Name}
+	DisruptionCronTags = []string{"name:" + instance.Name, "namespace:" + instance.Namespace, "targetName:" + instance.Spec.TargetResource.Name}
 
 	if !instance.DeletionTimestamp.IsZero() {
 		// Add finalizer here if required

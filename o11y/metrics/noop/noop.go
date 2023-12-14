@@ -98,8 +98,8 @@ func (n Sink) MetricDisruptionOngoingDuration(duration time.Duration, tags []str
 }
 
 // MetricReconcile increment reconcile metric
-func (n Sink) MetricReconcile(tags []string) error {
-	n.log.Debugf("NOOP: MetricReconcile +1 %s\n", tags)
+func (n Sink) MetricReconcile() error {
+	n.log.Debugf("NOOP: MetricReconcile +1")
 
 	return nil
 }

@@ -116,8 +116,8 @@ func (d Sink) MetricCleaned(succeed bool, kind string, tags []string) error {
 }
 
 // MetricReconcile increment reconcile metric
-func (d Sink) MetricReconcile(tags []string) error {
-	return d.metricWithStatus(d.prefix+"reconcile", tags)
+func (d Sink) MetricReconcile() error {
+	return d.metricWithStatus(d.prefix+"reconcile", []string{})
 }
 
 // MetricReconcileDuration send timing metric for reconcile loop

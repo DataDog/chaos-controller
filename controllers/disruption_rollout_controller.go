@@ -38,12 +38,12 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// reconcile metrics
-	r.handleMetricSinkError(r.MetricsSink.MetricReconcile([]string{"controller", r.MetricsSink.GetSinkName()}))
+	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
 
 	defer func(tsStart time.Time) {
 		tags := []string{}
 		if instance.Name != "" {
-			tags = append(tags, "rolloutName:"+instance.Name, "namespace:"+instance.Namespace)
+			tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
 		}
 
 		r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
@@ -54,7 +54,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	DisruptionRolloutTags = []string{"disruptionRolloutName:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}
+	DisruptionRolloutTags = []string{"name:" + instance.Name, "namespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}
 
 	if !instance.DeletionTimestamp.IsZero() {
 		// Add finalizer here if required

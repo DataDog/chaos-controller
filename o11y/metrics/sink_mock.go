@@ -837,13 +837,13 @@ func (_c *SinkMock_MetricPodsGauge_Call) RunAndReturn(run func(float64) error) *
 	return _c
 }
 
-// MetricReconcile provides a mock function with given fields: tags
-func (_m *SinkMock) MetricReconcile(tags []string) error {
-	ret := _m.Called(tags)
+// MetricReconcile provides a mock function with given fields:
+func (_m *SinkMock) MetricReconcile() error {
+	ret := _m.Called()
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func([]string) error); ok {
-		r0 = rf(tags)
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -857,14 +857,13 @@ type SinkMock_MetricReconcile_Call struct {
 }
 
 // MetricReconcile is a helper method to define mock.On call
-//   - tags []string
-func (_e *SinkMock_Expecter) MetricReconcile(tags interface{}) *SinkMock_MetricReconcile_Call {
-	return &SinkMock_MetricReconcile_Call{Call: _e.mock.On("MetricReconcile", tags)}
+func (_e *SinkMock_Expecter) MetricReconcile() *SinkMock_MetricReconcile_Call {
+	return &SinkMock_MetricReconcile_Call{Call: _e.mock.On("MetricReconcile")}
 }
 
-func (_c *SinkMock_MetricReconcile_Call) Run(run func(tags []string)) *SinkMock_MetricReconcile_Call {
+func (_c *SinkMock_MetricReconcile_Call) Run(run func()) *SinkMock_MetricReconcile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]string))
+		run()
 	})
 	return _c
 }
@@ -874,7 +873,7 @@ func (_c *SinkMock_MetricReconcile_Call) Return(_a0 error) *SinkMock_MetricRecon
 	return _c
 }
 
-func (_c *SinkMock_MetricReconcile_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricReconcile_Call {
+func (_c *SinkMock_MetricReconcile_Call) RunAndReturn(run func() error) *SinkMock_MetricReconcile_Call {
 	_c.Call.Return(run)
 	return _c
 }
