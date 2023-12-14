@@ -43,7 +43,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	defer func(tsStart time.Time) {
 		tags := []string{}
 		if instance.Name != "" {
-			tags = append(tags, "name:"+instance.Name, "namespace:"+instance.Namespace)
+			tags = append(tags, "disruptionCronName:"+instance.Name, "namespace:"+instance.Namespace)
 		}
 
 		r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
@@ -54,7 +54,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	DisruptionCronTags = []string{"name:" + instance.Name, "namespace:" + instance.Namespace, "targetName:" + instance.Spec.TargetResource.Name}
+	DisruptionCronTags = []string{"disruptionCronName:" + instance.Name, "namespace:" + instance.Namespace, "targetName:" + instance.Spec.TargetResource.Name}
 
 	if !instance.DeletionTimestamp.IsZero() {
 		// Add finalizer here if required
