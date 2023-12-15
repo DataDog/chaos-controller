@@ -20,6 +20,7 @@ import (
 type Sink interface {
 	Close() error
 	GetSinkName() string
+	GetPrefix() string
 	MetricCleaned(succeed bool, kind string, tags []string) error
 	MetricCleanedForReinjection(succeed bool, kind string, tags []string) error
 	MetricCleanupDuration(duration time.Duration, tags []string) error
@@ -45,6 +46,11 @@ type Sink interface {
 	MetricValidationDeleted(tags []string) error
 	MetricInformed(tags []string) error
 	MetricOrphanFound(tags []string) error
+	MetricTooLate(tags []string) error
+	MetricTargetMissing(duration time.Duration, tags []string) error
+	MetricMissingTargetFound(tags []string) error
+	MetricNextScheduledTime(time time.Duration, tags []string) error
+	MetricDisruptionScheduled(tags []string) error
 }
 
 // GetSink returns an initiated sink
