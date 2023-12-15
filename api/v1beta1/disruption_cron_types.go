@@ -21,6 +21,7 @@ type DisruptionCron struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              DisruptionCronSpec   `json:"spec,omitempty"`
 	Status            DisruptionCronStatus `json:"status,omitempty"`
+	//chaosv1beta1.Disruption
 }
 
 // +kubebuilder:object:root=true

@@ -151,8 +151,8 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 // based on the most recent schedule time among the given disruptions.
 func (r *DisruptionRolloutReconciler) updateLastScheduleTime(ctx context.Context, instance *chaosv1beta1.DisruptionRollout, disruptions *chaosv1beta1.DisruptionList) error {
 	mostRecentScheduleTime := GetMostRecentScheduleTime(r.log, disruptions) // find the last run so we can update the status
-	if mostRecentScheduleTime != nil {
-		instance.Status.LastScheduleTime = &metav1.Time{Time: *mostRecentScheduleTime}
+	if !mostRecentScheduleTime.IsZero() {
+		instance.Status.LastScheduleTime = &metav1.Time{Time: mostRecentScheduleTime}
 		return r.Client.Status().Update(ctx, instance)
 	}
 
