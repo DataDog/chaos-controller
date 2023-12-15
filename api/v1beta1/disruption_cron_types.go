@@ -17,11 +17,11 @@ func init() {
 // +kubebuilder:resource:shortName=dicron
 // +kubebuilder:subresource:status
 type DisruptionCron struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              DisruptionCronSpec   `json:"spec,omitempty"`
-	Status            DisruptionCronStatus `json:"status,omitempty"`
-	//chaosv1beta1.Disruption
+	metav1.TypeMeta               `json:",inline"`
+	metav1.ObjectMeta             `json:"metadata,omitempty"`
+	Spec                          DisruptionCronSpec   `json:"spec,omitempty"`
+	Status                        DisruptionCronStatus `json:"status,omitempty"`
+	MostRecentScheduleDisruptions []Disruption         `json:"mostRecentScheduleDisruptions,omitempty"`
 }
 
 // +kubebuilder:object:root=true

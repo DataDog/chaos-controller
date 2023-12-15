@@ -37,6 +37,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	r.log.Infow("fetched last known instance", "instance", instance)
+
 	if !instance.DeletionTimestamp.IsZero() {
 		// Add finalizer here if required
 		return ctrl.Result{}, nil
@@ -129,7 +131,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	r.log.Infow("created Disruption for DisruptionCron run", "disruptionName", disruption.Name)
-	//disruption.Spec
+
 	// ------------------------------------------------------------------ //
 	// If this process restarts at this point (after posting a disruption, but
 	// before updating the status), we might try to start the disruption again
@@ -138,6 +140,9 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Add the start time of the just initiated disruption to the status
 	instance.Status.LastScheduleTime = &metav1.Time{Time: missedRun}
+	instance.MostRecentScheduleDisruptions = append(instance.MostRecentScheduleDisruptions, *disruption)
+	r.log.Debugw("updating instance Status lastScheduleTime and mostRecentScheduleDisruptions",
+		"lastScheduleTime", instance.Status.LastScheduleTime, "mostRecentScheduleDisruptions", instance.MostRecentScheduleDisruptions)
 
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		r.log.Warnw("unable to update LastScheduleTime of DisruptionCron status", "err", err)
@@ -153,6 +158,9 @@ func (r *DisruptionCronReconciler) updateLastScheduleTime(ctx context.Context, i
 	mostRecentScheduleTime := GetMostRecentScheduleTime(r.log, disruptions) // find the last run so we can update the status
 	if !mostRecentScheduleTime.IsZero() {
 		instance.Status.LastScheduleTime = &metav1.Time{Time: mostRecentScheduleTime}
+		//instance.MostRecentScheduleDisruptions = disruptions.Items
+		//r.log.Debugw("updating instance Status lastScheduleTime and mostRecentScheduleDisruptions", "lastScheduleTime", instance.Status.LastScheduleTime, "mostRecentScheduleDisruptions", instance.MostRecentScheduleDisruptions)
+
 		return r.Client.Status().Update(ctx, instance)
 	}
 
