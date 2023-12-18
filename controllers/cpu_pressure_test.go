@@ -78,7 +78,7 @@ var _ = Describe("CPU Pressure", func() {
 			func(ctx SpecContext) {
 				Consistently(func(ctx SpecContext) {
 					ExpectDisruptionStatus(ctx, cpuStress, chaostypes.DisruptionInjectionStatusInjected, chaostypes.DisruptionInjectionStatusPausedInjected, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
-				}).WithContext(ctx).Within(calcDisruptionGoneTimeout(cpuStress)).ProbeEvery(disruptionPotentialChangesEvery)
+				}).WithContext(ctx).Within(calcDisruptionGoneTimeout(cpuStress)).ProbeEvery(disruptionPotentialChangesEvery).Should(Succeed())
 			},
 			func(ctx SpecContext) {
 				GinkgoHelper()
