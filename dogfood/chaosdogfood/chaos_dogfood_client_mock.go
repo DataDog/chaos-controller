@@ -39,6 +39,10 @@ func (_m *ChaosDogfoodClientMock) GetCatalog(ctx context.Context, in *emptypb.Em
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetCatalog")
+	}
+
 	var r0 *CatalogReply
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, *emptypb.Empty, ...grpc.CallOption) (*CatalogReply, error)); ok {
@@ -109,6 +113,10 @@ func (_m *ChaosDogfoodClientMock) Order(ctx context.Context, in *FoodRequest, op
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Order")
+	}
+
 	var r0 *FoodReply
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, *FoodRequest, ...grpc.CallOption) (*FoodReply, error)); ok {
@@ -168,13 +176,12 @@ func (_c *ChaosDogfoodClientMock_Order_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-type mockConstructorTestingTNewChaosDogfoodClientMock interface {
+// NewChaosDogfoodClientMock creates a new instance of ChaosDogfoodClientMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewChaosDogfoodClientMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewChaosDogfoodClientMock creates a new instance of ChaosDogfoodClientMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewChaosDogfoodClientMock(t mockConstructorTestingTNewChaosDogfoodClientMock) *ChaosDogfoodClientMock {
+}) *ChaosDogfoodClientMock {
 	mock := &ChaosDogfoodClientMock{}
 	mock.Mock.Test(t)
 

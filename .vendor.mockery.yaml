@@ -1,5 +1,4 @@
 all: False
-case: underscore
 disable-version-string: True
 filename: "{{.InterfaceNameSnake}}.go"
 mockname: "{{.InterfaceName}}Mock"

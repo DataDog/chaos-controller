@@ -25,6 +25,10 @@ func (_m *CmdMock) EXPECT() *CmdMock_Expecter {
 func (_m *CmdMock) DryRun() bool {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for DryRun")
+	}
+
 	var r0 bool
 	if rf, ok := ret.Get(0).(func() bool); ok {
 		r0 = rf()
@@ -65,6 +69,10 @@ func (_c *CmdMock_DryRun_Call) RunAndReturn(run func() bool) *CmdMock_DryRun_Cal
 // ExitCode provides a mock function with given fields:
 func (_m *CmdMock) ExitCode() int {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ExitCode")
+	}
 
 	var r0 int
 	if rf, ok := ret.Get(0).(func() int); ok {
@@ -107,6 +115,10 @@ func (_c *CmdMock_ExitCode_Call) RunAndReturn(run func() int) *CmdMock_ExitCode_
 func (_m *CmdMock) PID() int {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for PID")
+	}
+
 	var r0 int
 	if rf, ok := ret.Get(0).(func() int); ok {
 		r0 = rf()
@@ -147,6 +159,10 @@ func (_c *CmdMock_PID_Call) RunAndReturn(run func() int) *CmdMock_PID_Call {
 // Start provides a mock function with given fields:
 func (_m *CmdMock) Start() error {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Start")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
@@ -189,6 +205,10 @@ func (_c *CmdMock_Start_Call) RunAndReturn(run func() error) *CmdMock_Start_Call
 func (_m *CmdMock) String() string {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for String")
+	}
+
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {
 		r0 = rf()
@@ -230,6 +250,10 @@ func (_c *CmdMock_String_Call) RunAndReturn(run func() string) *CmdMock_String_C
 func (_m *CmdMock) Wait() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Wait")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -267,13 +291,12 @@ func (_c *CmdMock_Wait_Call) RunAndReturn(run func() error) *CmdMock_Wait_Call {
 	return _c
 }
 
-type mockConstructorTestingTNewCmdMock interface {
+// NewCmdMock creates a new instance of CmdMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewCmdMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewCmdMock creates a new instance of CmdMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewCmdMock(t mockConstructorTestingTNewCmdMock) *CmdMock {
+}) *CmdMock {
 	mock := &CmdMock{}
 	mock.Mock.Test(t)
 

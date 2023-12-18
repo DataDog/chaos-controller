@@ -30,6 +30,10 @@ func (_m *DisruptionsWatchersManagerMock) EXPECT() *DisruptionsWatchersManagerMo
 func (_m *DisruptionsWatchersManagerMock) CreateAllWatchers(disruption *v1beta1.Disruption, watcherManagerMock Manager, cacheMock cache.Cache) error {
 	ret := _m.Called(disruption, watcherManagerMock, cacheMock)
 
+	if len(ret) == 0 {
+		panic("no return value specified for CreateAllWatchers")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*v1beta1.Disruption, Manager, cache.Cache) error); ok {
 		r0 = rf(disruption, watcherManagerMock, cacheMock)
@@ -106,6 +110,10 @@ func (_c *DisruptionsWatchersManagerMock_RemoveAllExpiredWatchers_Call) RunAndRe
 func (_m *DisruptionsWatchersManagerMock) RemoveAllOrphanWatchers() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveAllOrphanWatchers")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -176,13 +184,12 @@ func (_c *DisruptionsWatchersManagerMock_RemoveAllWatchers_Call) RunAndReturn(ru
 	return _c
 }
 
-type mockConstructorTestingTNewDisruptionsWatchersManagerMock interface {
+// NewDisruptionsWatchersManagerMock creates a new instance of DisruptionsWatchersManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewDisruptionsWatchersManagerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewDisruptionsWatchersManagerMock creates a new instance of DisruptionsWatchersManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewDisruptionsWatchersManagerMock(t mockConstructorTestingTNewDisruptionsWatchersManagerMock) *DisruptionsWatchersManagerMock {
+}) *DisruptionsWatchersManagerMock {
 	mock := &DisruptionsWatchersManagerMock{}
 	mock.Mock.Test(t)
 

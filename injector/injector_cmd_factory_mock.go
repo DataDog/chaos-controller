@@ -34,6 +34,10 @@ func (_m *InjectorCmdFactoryMock) EXPECT() *InjectorCmdFactoryMock_Expecter {
 func (_m *InjectorCmdFactoryMock) NewInjectorBackgroundCmd(deadline time.Time, disruptionArgs api.DisruptionArgs, target string, args []string) (command.BackgroundCmd, context.CancelFunc, error) {
 	ret := _m.Called(deadline, disruptionArgs, target, args)
 
+	if len(ret) == 0 {
+		panic("no return value specified for NewInjectorBackgroundCmd")
+	}
+
 	var r0 command.BackgroundCmd
 	var r1 context.CancelFunc
 	var r2 error
@@ -96,13 +100,12 @@ func (_c *InjectorCmdFactoryMock_NewInjectorBackgroundCmd_Call) RunAndReturn(run
 	return _c
 }
 
-type mockConstructorTestingTNewInjectorCmdFactoryMock interface {
+// NewInjectorCmdFactoryMock creates a new instance of InjectorCmdFactoryMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewInjectorCmdFactoryMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewInjectorCmdFactoryMock creates a new instance of InjectorCmdFactoryMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewInjectorCmdFactoryMock(t mockConstructorTestingTNewInjectorCmdFactoryMock) *InjectorCmdFactoryMock {
+}) *InjectorCmdFactoryMock {
 	mock := &InjectorCmdFactoryMock{}
 	mock.Mock.Test(t)
 

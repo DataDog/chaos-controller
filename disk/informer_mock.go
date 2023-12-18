@@ -25,6 +25,10 @@ func (_m *InformerMock) EXPECT() *InformerMock_Expecter {
 func (_m *InformerMock) Major() int {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Major")
+	}
+
 	var r0 int
 	if rf, ok := ret.Get(0).(func() int); ok {
 		r0 = rf()
@@ -66,6 +70,10 @@ func (_c *InformerMock_Major_Call) RunAndReturn(run func() int) *InformerMock_Ma
 func (_m *InformerMock) Source() string {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Source")
+	}
+
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {
 		r0 = rf()
@@ -103,13 +111,12 @@ func (_c *InformerMock_Source_Call) RunAndReturn(run func() string) *InformerMoc
 	return _c
 }
 
-type mockConstructorTestingTNewInformerMock interface {
+// NewInformerMock creates a new instance of InformerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewInformerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewInformerMock creates a new instance of InformerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewInformerMock(t mockConstructorTestingTNewInformerMock) *InformerMock {
+}) *InformerMock {
 	mock := &InformerMock{}
 	mock.Mock.Test(t)
 

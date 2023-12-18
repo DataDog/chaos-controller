@@ -31,6 +31,10 @@ func (_m *TrafficControllerMock) EXPECT() *TrafficControllerMock_Expecter {
 func (_m *TrafficControllerMock) AddBPFFilter(ifaces []string, parent string, obj string, flowid string, section string) error {
 	ret := _m.Called(ifaces, parent, obj, flowid, section)
 
+	if len(ret) == 0 {
+		panic("no return value specified for AddBPFFilter")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string, string, string, string, string) error); ok {
 		r0 = rf(ifaces, parent, obj, flowid, section)
@@ -76,6 +80,10 @@ func (_c *TrafficControllerMock_AddBPFFilter_Call) RunAndReturn(run func([]strin
 // AddFilter provides a mock function with given fields: ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, prot, state, flowid
 func (_m *TrafficControllerMock) AddFilter(ifaces []string, parent string, handle string, srcIP *net.IPNet, dstIP *net.IPNet, srcPort int, dstPort int, prot protocol, state connState, flowid string) (uint32, error) {
 	ret := _m.Called(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, prot, state, flowid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddFilter")
+	}
 
 	var r0 uint32
 	var r1 error
@@ -138,6 +146,10 @@ func (_c *TrafficControllerMock_AddFilter_Call) RunAndReturn(run func([]string, 
 func (_m *TrafficControllerMock) AddFwFilter(ifaces []string, parent string, handle string, flowid string) error {
 	ret := _m.Called(ifaces, parent, handle, flowid)
 
+	if len(ret) == 0 {
+		panic("no return value specified for AddFwFilter")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string, string, string, string) error); ok {
 		r0 = rf(ifaces, parent, handle, flowid)
@@ -182,6 +194,10 @@ func (_c *TrafficControllerMock_AddFwFilter_Call) RunAndReturn(run func([]string
 // AddNetem provides a mock function with given fields: ifaces, parent, handle, delay, delayJitter, drop, corrupt, duplicate
 func (_m *TrafficControllerMock) AddNetem(ifaces []string, parent string, handle string, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
 	ret := _m.Called(ifaces, parent, handle, delay, delayJitter, drop, corrupt, duplicate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddNetem")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string, string, string, time.Duration, time.Duration, int, int, int) error); ok {
@@ -232,6 +248,10 @@ func (_c *TrafficControllerMock_AddNetem_Call) RunAndReturn(run func([]string, s
 func (_m *TrafficControllerMock) AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error {
 	ret := _m.Called(ifaces, parent, handle, bytesPerSec)
 
+	if len(ret) == 0 {
+		panic("no return value specified for AddOutputLimit")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string, string, string, uint) error); ok {
 		r0 = rf(ifaces, parent, handle, bytesPerSec)
@@ -276,6 +296,10 @@ func (_c *TrafficControllerMock_AddOutputLimit_Call) RunAndReturn(run func([]str
 // AddPrio provides a mock function with given fields: ifaces, parent, handle, bands, priomap
 func (_m *TrafficControllerMock) AddPrio(ifaces []string, parent string, handle string, bands uint32, priomap [16]uint32) error {
 	ret := _m.Called(ifaces, parent, handle, bands, priomap)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddPrio")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string, string, string, uint32, [16]uint32) error); ok {
@@ -322,6 +346,10 @@ func (_c *TrafficControllerMock_AddPrio_Call) RunAndReturn(run func([]string, st
 // ClearQdisc provides a mock function with given fields: ifaces
 func (_m *TrafficControllerMock) ClearQdisc(ifaces []string) error {
 	ret := _m.Called(ifaces)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ClearQdisc")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string) error); ok {
@@ -371,6 +399,10 @@ func (_m *TrafficControllerMock) ConfigBPFFilter(cmd executor, args ...string) e
 	_ca = append(_ca, cmd)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ConfigBPFFilter")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(executor, ...string) error); ok {
@@ -422,6 +454,10 @@ func (_c *TrafficControllerMock_ConfigBPFFilter_Call) RunAndReturn(run func(exec
 func (_m *TrafficControllerMock) DeleteFilter(iface string, priority uint32) error {
 	ret := _m.Called(iface, priority)
 
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteFilter")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, uint32) error); ok {
 		r0 = rf(iface, priority)
@@ -461,13 +497,12 @@ func (_c *TrafficControllerMock_DeleteFilter_Call) RunAndReturn(run func(string,
 	return _c
 }
 
-type mockConstructorTestingTNewTrafficControllerMock interface {
+// NewTrafficControllerMock creates a new instance of TrafficControllerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewTrafficControllerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewTrafficControllerMock creates a new instance of TrafficControllerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewTrafficControllerMock(t mockConstructorTestingTNewTrafficControllerMock) *TrafficControllerMock {
+}) *TrafficControllerMock {
 	mock := &TrafficControllerMock{}
 	mock.Mock.Test(t)
 

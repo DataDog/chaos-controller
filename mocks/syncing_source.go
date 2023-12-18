@@ -41,6 +41,10 @@ func (_m *SyncingSourceMock) Start(_a0 context.Context, _a1 handler.EventHandler
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Start")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, handler.EventHandler, workqueue.RateLimitingInterface, ...predicate.Predicate) error); ok {
 		r0 = rf(_a0, _a1, _a2, _a3...)
@@ -93,6 +97,10 @@ func (_c *SyncingSourceMock_Start_Call) RunAndReturn(run func(context.Context, h
 func (_m *SyncingSourceMock) WaitForSync(ctx context.Context) error {
 	ret := _m.Called(ctx)
 
+	if len(ret) == 0 {
+		panic("no return value specified for WaitForSync")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
 		r0 = rf(ctx)
@@ -131,13 +139,12 @@ func (_c *SyncingSourceMock_WaitForSync_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-type mockConstructorTestingTNewSyncingSourceMock interface {
+// NewSyncingSourceMock creates a new instance of SyncingSourceMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewSyncingSourceMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewSyncingSourceMock creates a new instance of SyncingSourceMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewSyncingSourceMock(t mockConstructorTestingTNewSyncingSourceMock) *SyncingSourceMock {
+}) *SyncingSourceMock {
 	mock := &SyncingSourceMock{}
 	mock.Mock.Test(t)
 

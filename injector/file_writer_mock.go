@@ -29,6 +29,10 @@ func (_m *FileWriterMock) EXPECT() *FileWriterMock_Expecter {
 func (_m *FileWriterMock) Write(path string, mode fs.FileMode, data string) error {
 	ret := _m.Called(path, mode, data)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Write")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, fs.FileMode, string) error); ok {
 		r0 = rf(path, mode, data)
@@ -69,13 +73,12 @@ func (_c *FileWriterMock_Write_Call) RunAndReturn(run func(string, fs.FileMode, 
 	return _c
 }
 
-type mockConstructorTestingTNewFileWriterMock interface {
+// NewFileWriterMock creates a new instance of FileWriterMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewFileWriterMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewFileWriterMock creates a new instance of FileWriterMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewFileWriterMock(t mockConstructorTestingTNewFileWriterMock) *FileWriterMock {
+}) *FileWriterMock {
 	mock := &FileWriterMock{}
 	mock.Mock.Test(t)
 

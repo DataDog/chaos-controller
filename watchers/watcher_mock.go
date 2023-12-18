@@ -60,6 +60,10 @@ func (_c *WatcherMock_Clean_Call) RunAndReturn(run func()) *WatcherMock_Clean_Ca
 func (_m *WatcherMock) GetCacheSource() (source.SyncingSource, error) {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetCacheSource")
+	}
+
 	var r0 source.SyncingSource
 	var r1 error
 	if rf, ok := ret.Get(0).(func() (source.SyncingSource, error)); ok {
@@ -113,6 +117,10 @@ func (_c *WatcherMock_GetCacheSource_Call) RunAndReturn(run func() (source.Synci
 func (_m *WatcherMock) GetConfig() WatcherConfig {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetConfig")
+	}
+
 	var r0 WatcherConfig
 	if rf, ok := ret.Get(0).(func() WatcherConfig); ok {
 		r0 = rf()
@@ -153,6 +161,10 @@ func (_c *WatcherMock_GetConfig_Call) RunAndReturn(run func() WatcherConfig) *Wa
 // GetContextTuple provides a mock function with given fields:
 func (_m *WatcherMock) GetContextTuple() (CtxTuple, error) {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetContextTuple")
+	}
 
 	var r0 CtxTuple
 	var r1 error
@@ -205,6 +217,10 @@ func (_c *WatcherMock_GetContextTuple_Call) RunAndReturn(run func() (CtxTuple, e
 func (_m *WatcherMock) GetName() string {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetName")
+	}
+
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {
 		r0 = rf()
@@ -245,6 +261,10 @@ func (_c *WatcherMock_GetName_Call) RunAndReturn(run func() string) *WatcherMock
 // IsExpired provides a mock function with given fields:
 func (_m *WatcherMock) IsExpired() bool {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsExpired")
+	}
 
 	var r0 bool
 	if rf, ok := ret.Get(0).(func() bool); ok {
@@ -287,6 +307,10 @@ func (_c *WatcherMock_IsExpired_Call) RunAndReturn(run func() bool) *WatcherMock
 func (_m *WatcherMock) Start() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Start")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -324,13 +348,12 @@ func (_c *WatcherMock_Start_Call) RunAndReturn(run func() error) *WatcherMock_St
 	return _c
 }
 
-type mockConstructorTestingTNewWatcherMock interface {
+// NewWatcherMock creates a new instance of WatcherMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewWatcherMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewWatcherMock creates a new instance of WatcherMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewWatcherMock(t mockConstructorTestingTNewWatcherMock) *WatcherMock {
+}) *WatcherMock {
 	mock := &WatcherMock{}
 	mock.Mock.Test(t)
 

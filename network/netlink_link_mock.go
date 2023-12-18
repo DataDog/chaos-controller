@@ -25,6 +25,10 @@ func (_m *NetlinkLinkMock) EXPECT() *NetlinkLinkMock_Expecter {
 func (_m *NetlinkLinkMock) Name() string {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Name")
+	}
+
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {
 		r0 = rf()
@@ -65,6 +69,10 @@ func (_c *NetlinkLinkMock_Name_Call) RunAndReturn(run func() string) *NetlinkLin
 // SetTxQLen provides a mock function with given fields: qlen
 func (_m *NetlinkLinkMock) SetTxQLen(qlen int) error {
 	ret := _m.Called(qlen)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetTxQLen")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(int) error); ok {
@@ -108,6 +116,10 @@ func (_c *NetlinkLinkMock_SetTxQLen_Call) RunAndReturn(run func(int) error) *Net
 func (_m *NetlinkLinkMock) TxQLen() int {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for TxQLen")
+	}
+
 	var r0 int
 	if rf, ok := ret.Get(0).(func() int); ok {
 		r0 = rf()
@@ -145,13 +157,12 @@ func (_c *NetlinkLinkMock_TxQLen_Call) RunAndReturn(run func() int) *NetlinkLink
 	return _c
 }
 
-type mockConstructorTestingTNewNetlinkLinkMock interface {
+// NewNetlinkLinkMock creates a new instance of NetlinkLinkMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewNetlinkLinkMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewNetlinkLinkMock creates a new instance of NetlinkLinkMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewNetlinkLinkMock(t mockConstructorTestingTNewNetlinkLinkMock) *NetlinkLinkMock {
+}) *NetlinkLinkMock {
 	mock := &NetlinkLinkMock{}
 	mock.Mock.Test(t)
 

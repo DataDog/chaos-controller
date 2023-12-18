@@ -25,6 +25,10 @@ func (_m *ConfigInformerMock) EXPECT() *ConfigInformerMock_Expecter {
 func (_m *ConfigInformerMock) GetKernelFeatures() (Features, error) {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetKernelFeatures")
+	}
+
 	var r0 Features
 	var r1 error
 	if rf, ok := ret.Get(0).(func() (Features, error)); ok {
@@ -76,6 +80,10 @@ func (_c *ConfigInformerMock_GetKernelFeatures_Call) RunAndReturn(run func() (Fe
 func (_m *ConfigInformerMock) GetMapTypes() MapTypes {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetMapTypes")
+	}
+
 	var r0 MapTypes
 	if rf, ok := ret.Get(0).(func() MapTypes); ok {
 		r0 = rf()
@@ -116,6 +124,10 @@ func (_c *ConfigInformerMock_GetMapTypes_Call) RunAndReturn(run func() MapTypes)
 // GetRequiredSystemConfig provides a mock function with given fields:
 func (_m *ConfigInformerMock) GetRequiredSystemConfig() KernelParams {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRequiredSystemConfig")
+	}
 
 	var r0 KernelParams
 	if rf, ok := ret.Get(0).(func() KernelParams); ok {
@@ -160,6 +172,10 @@ func (_c *ConfigInformerMock_GetRequiredSystemConfig_Call) RunAndReturn(run func
 func (_m *ConfigInformerMock) IsKernelConfigAvailable() bool {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for IsKernelConfigAvailable")
+	}
+
 	var r0 bool
 	if rf, ok := ret.Get(0).(func() bool); ok {
 		r0 = rf()
@@ -201,6 +217,10 @@ func (_c *ConfigInformerMock_IsKernelConfigAvailable_Call) RunAndReturn(run func
 func (_m *ConfigInformerMock) ValidateRequiredSystemConfig() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for ValidateRequiredSystemConfig")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -238,13 +258,12 @@ func (_c *ConfigInformerMock_ValidateRequiredSystemConfig_Call) RunAndReturn(run
 	return _c
 }
 
-type mockConstructorTestingTNewConfigInformerMock interface {
+// NewConfigInformerMock creates a new instance of ConfigInformerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewConfigInformerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewConfigInformerMock creates a new instance of ConfigInformerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewConfigInformerMock(t mockConstructorTestingTNewConfigInformerMock) *ConfigInformerMock {
+}) *ConfigInformerMock {
 	mock := &ConfigInformerMock{}
 	mock.Mock.Test(t)
 

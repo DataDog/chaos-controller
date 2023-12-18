@@ -28,6 +28,10 @@ func (_m *slackNotifierMock) EXPECT() *slackNotifierMock_Expecter {
 func (_m *slackNotifierMock) GetUserByEmail(email string) (*slack_goslack.User, error) {
 	ret := _m.Called(email)
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserByEmail")
+	}
+
 	var r0 *slack_goslack.User
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (*slack_goslack.User, error)); ok {
@@ -88,6 +92,10 @@ func (_m *slackNotifierMock) PostMessage(channelID string, options ...slack_gosl
 	_ca = append(_ca, channelID)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PostMessage")
+	}
 
 	var r0 string
 	var r1 string
@@ -152,13 +160,12 @@ func (_c *slackNotifierMock_PostMessage_Call) RunAndReturn(run func(string, ...s
 	return _c
 }
 
-type mockConstructorTestingTnewSlackNotifierMock interface {
+// newSlackNotifierMock creates a new instance of slackNotifierMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func newSlackNotifierMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// newSlackNotifierMock creates a new instance of slackNotifierMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newSlackNotifierMock(t mockConstructorTestingTnewSlackNotifierMock) *slackNotifierMock {
+}) *slackNotifierMock {
 	mock := &slackNotifierMock{}
 	mock.Mock.Test(t)
 

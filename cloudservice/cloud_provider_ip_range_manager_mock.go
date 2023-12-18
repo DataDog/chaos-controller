@@ -28,6 +28,10 @@ func (_m *CloudProviderIPRangeManagerMock) EXPECT() *CloudProviderIPRangeManager
 func (_m *CloudProviderIPRangeManagerMock) ConvertToGenericIPRanges(ipRangeData []byte) (*types.CloudProviderIPRangeInfo, error) {
 	ret := _m.Called(ipRangeData)
 
+	if len(ret) == 0 {
+		panic("no return value specified for ConvertToGenericIPRanges")
+	}
+
 	var r0 *types.CloudProviderIPRangeInfo
 	var r1 error
 	if rf, ok := ret.Get(0).(func([]byte) (*types.CloudProviderIPRangeInfo, error)); ok {
@@ -82,6 +86,10 @@ func (_c *CloudProviderIPRangeManagerMock_ConvertToGenericIPRanges_Call) RunAndR
 func (_m *CloudProviderIPRangeManagerMock) IsNewVersion(ipRangeData []byte, version string) (bool, error) {
 	ret := _m.Called(ipRangeData, version)
 
+	if len(ret) == 0 {
+		panic("no return value specified for IsNewVersion")
+	}
+
 	var r0 bool
 	var r1 error
 	if rf, ok := ret.Get(0).(func([]byte, string) (bool, error)); ok {
@@ -131,13 +139,12 @@ func (_c *CloudProviderIPRangeManagerMock_IsNewVersion_Call) RunAndReturn(run fu
 	return _c
 }
 
-type mockConstructorTestingTNewCloudProviderIPRangeManagerMock interface {
+// NewCloudProviderIPRangeManagerMock creates a new instance of CloudProviderIPRangeManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewCloudProviderIPRangeManagerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewCloudProviderIPRangeManagerMock creates a new instance of CloudProviderIPRangeManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewCloudProviderIPRangeManagerMock(t mockConstructorTestingTNewCloudProviderIPRangeManagerMock) *CloudProviderIPRangeManagerMock {
+}) *CloudProviderIPRangeManagerMock {
 	mock := &CloudProviderIPRangeManagerMock{}
 	mock.Mock.Test(t)
 

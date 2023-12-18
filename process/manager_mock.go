@@ -29,6 +29,10 @@ func (_m *ManagerMock) EXPECT() *ManagerMock_Expecter {
 func (_m *ManagerMock) Exists(pid int) (bool, error) {
 	ret := _m.Called(pid)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Exists")
+	}
+
 	var r0 bool
 	var r1 error
 	if rf, ok := ret.Get(0).(func(int) (bool, error)); ok {
@@ -80,6 +84,10 @@ func (_c *ManagerMock_Exists_Call) RunAndReturn(run func(int) (bool, error)) *Ma
 // Find provides a mock function with given fields: pid
 func (_m *ManagerMock) Find(pid int) (*os.Process, error) {
 	ret := _m.Called(pid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Find")
+	}
 
 	var r0 *os.Process
 	var r1 error
@@ -135,6 +143,10 @@ func (_c *ManagerMock_Find_Call) RunAndReturn(run func(int) (*os.Process, error)
 func (_m *ManagerMock) Prioritize() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Prioritize")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -175,6 +187,10 @@ func (_c *ManagerMock_Prioritize_Call) RunAndReturn(run func() error) *ManagerMo
 // ProcessID provides a mock function with given fields:
 func (_m *ManagerMock) ProcessID() int {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ProcessID")
+	}
 
 	var r0 int
 	if rf, ok := ret.Get(0).(func() int); ok {
@@ -217,6 +233,10 @@ func (_c *ManagerMock_ProcessID_Call) RunAndReturn(run func() int) *ManagerMock_
 func (_m *ManagerMock) SetAffinity(_a0 []int) error {
 	ret := _m.Called(_a0)
 
+	if len(ret) == 0 {
+		panic("no return value specified for SetAffinity")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]int) error); ok {
 		r0 = rf(_a0)
@@ -258,6 +278,10 @@ func (_c *ManagerMock_SetAffinity_Call) RunAndReturn(run func([]int) error) *Man
 // Signal provides a mock function with given fields: process, signal
 func (_m *ManagerMock) Signal(process *os.Process, signal os.Signal) error {
 	ret := _m.Called(process, signal)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Signal")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*os.Process, os.Signal) error); ok {
@@ -302,6 +326,10 @@ func (_c *ManagerMock_Signal_Call) RunAndReturn(run func(*os.Process, os.Signal)
 func (_m *ManagerMock) ThreadID() int {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for ThreadID")
+	}
+
 	var r0 int
 	if rf, ok := ret.Get(0).(func() int); ok {
 		r0 = rf()
@@ -339,13 +367,12 @@ func (_c *ManagerMock_ThreadID_Call) RunAndReturn(run func() int) *ManagerMock_T
 	return _c
 }
 
-type mockConstructorTestingTNewManagerMock interface {
+// NewManagerMock creates a new instance of ManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewManagerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewManagerMock creates a new instance of ManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewManagerMock(t mockConstructorTestingTNewManagerMock) *ManagerMock {
+}) *ManagerMock {
 	mock := &ManagerMock{}
 	mock.Mock.Test(t)
 

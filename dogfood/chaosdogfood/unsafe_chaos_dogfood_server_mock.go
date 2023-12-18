@@ -53,13 +53,12 @@ func (_c *UnsafeChaosDogfoodServerMock_mustEmbedUnimplementedChaosDogfoodServer_
 	return _c
 }
 
-type mockConstructorTestingTNewUnsafeChaosDogfoodServerMock interface {
+// NewUnsafeChaosDogfoodServerMock creates a new instance of UnsafeChaosDogfoodServerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewUnsafeChaosDogfoodServerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewUnsafeChaosDogfoodServerMock creates a new instance of UnsafeChaosDogfoodServerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewUnsafeChaosDogfoodServerMock(t mockConstructorTestingTNewUnsafeChaosDogfoodServerMock) *UnsafeChaosDogfoodServerMock {
+}) *UnsafeChaosDogfoodServerMock {
 	mock := &UnsafeChaosDogfoodServerMock{}
 	mock.Mock.Test(t)
 

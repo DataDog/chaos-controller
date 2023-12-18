@@ -25,6 +25,10 @@ func (_m *ExecutorMock) EXPECT() *ExecutorMock_Expecter {
 func (_m *ExecutorMock) Run(args []string) (int, string, error) {
 	ret := _m.Called(args)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Run")
+	}
+
 	var r0 int
 	var r1 string
 	var r2 error
@@ -80,13 +84,12 @@ func (_c *ExecutorMock_Run_Call) RunAndReturn(run func([]string) (int, string, e
 	return _c
 }
 
-type mockConstructorTestingTNewExecutorMock interface {
+// NewExecutorMock creates a new instance of ExecutorMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewExecutorMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewExecutorMock creates a new instance of ExecutorMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewExecutorMock(t mockConstructorTestingTNewExecutorMock) *ExecutorMock {
+}) *ExecutorMock {
 	mock := &ExecutorMock{}
 	mock.Mock.Test(t)
 

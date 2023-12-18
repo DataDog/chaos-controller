@@ -28,6 +28,10 @@ func (_m *InjectorMock) EXPECT() *InjectorMock_Expecter {
 func (_m *InjectorMock) Clean() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Clean")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -68,6 +72,10 @@ func (_c *InjectorMock_Clean_Call) RunAndReturn(run func() error) *InjectorMock_
 // GetDisruptionKind provides a mock function with given fields:
 func (_m *InjectorMock) GetDisruptionKind() types.DisruptionKindName {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDisruptionKind")
+	}
 
 	var r0 types.DisruptionKindName
 	if rf, ok := ret.Get(0).(func() types.DisruptionKindName); ok {
@@ -110,6 +118,10 @@ func (_c *InjectorMock_GetDisruptionKind_Call) RunAndReturn(run func() types.Dis
 func (_m *InjectorMock) Inject() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Inject")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -150,6 +162,10 @@ func (_c *InjectorMock_Inject_Call) RunAndReturn(run func() error) *InjectorMock
 // TargetName provides a mock function with given fields:
 func (_m *InjectorMock) TargetName() string {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for TargetName")
+	}
 
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {
@@ -221,13 +237,12 @@ func (_c *InjectorMock_UpdateConfig_Call) RunAndReturn(run func(Config)) *Inject
 	return _c
 }
 
-type mockConstructorTestingTNewInjectorMock interface {
+// NewInjectorMock creates a new instance of InjectorMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewInjectorMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewInjectorMock creates a new instance of InjectorMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewInjectorMock(t mockConstructorTestingTNewInjectorMock) *InjectorMock {
+}) *InjectorMock {
 	mock := &InjectorMock{}
 	mock.Mock.Test(t)
 

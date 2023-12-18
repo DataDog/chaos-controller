@@ -35,6 +35,10 @@ func (_m *DisruptionInterfaceMock) EXPECT() *DisruptionInterfaceMock_Expecter {
 func (_m *DisruptionInterfaceMock) Create(ctx context.Context, disruption *apiv1beta1.Disruption) (*apiv1beta1.Disruption, error) {
 	ret := _m.Called(ctx, disruption)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Create")
+	}
+
 	var r0 *apiv1beta1.Disruption
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, *apiv1beta1.Disruption) (*apiv1beta1.Disruption, error)); ok {
@@ -90,6 +94,10 @@ func (_c *DisruptionInterfaceMock_Create_Call) RunAndReturn(run func(context.Con
 func (_m *DisruptionInterfaceMock) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	ret := _m.Called(ctx, name, opts)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Delete")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, string, v1.DeleteOptions) error); ok {
 		r0 = rf(ctx, name, opts)
@@ -133,6 +141,10 @@ func (_c *DisruptionInterfaceMock_Delete_Call) RunAndReturn(run func(context.Con
 // Get provides a mock function with given fields: ctx, name, opts
 func (_m *DisruptionInterfaceMock) Get(ctx context.Context, name string, opts v1.GetOptions) (*apiv1beta1.Disruption, error) {
 	ret := _m.Called(ctx, name, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Get")
+	}
 
 	var r0 *apiv1beta1.Disruption
 	var r1 error
@@ -190,6 +202,10 @@ func (_c *DisruptionInterfaceMock_Get_Call) RunAndReturn(run func(context.Contex
 func (_m *DisruptionInterfaceMock) List(ctx context.Context, opts v1.ListOptions) (*apiv1beta1.DisruptionList, error) {
 	ret := _m.Called(ctx, opts)
 
+	if len(ret) == 0 {
+		panic("no return value specified for List")
+	}
+
 	var r0 *apiv1beta1.DisruptionList
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (*apiv1beta1.DisruptionList, error)); ok {
@@ -245,6 +261,10 @@ func (_c *DisruptionInterfaceMock_List_Call) RunAndReturn(run func(context.Conte
 func (_m *DisruptionInterfaceMock) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	ret := _m.Called(ctx, opts)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Watch")
+	}
+
 	var r0 watch.Interface
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (watch.Interface, error)); ok {
@@ -296,13 +316,12 @@ func (_c *DisruptionInterfaceMock_Watch_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-type mockConstructorTestingTNewDisruptionInterfaceMock interface {
+// NewDisruptionInterfaceMock creates a new instance of DisruptionInterfaceMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewDisruptionInterfaceMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewDisruptionInterfaceMock creates a new instance of DisruptionInterfaceMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewDisruptionInterfaceMock(t mockConstructorTestingTNewDisruptionInterfaceMock) *DisruptionInterfaceMock {
+}) *DisruptionInterfaceMock {
 	mock := &DisruptionInterfaceMock{}
 	mock.Mock.Test(t)
 

@@ -30,6 +30,10 @@ func (_m *DisruptionListenerServerMock) EXPECT() *DisruptionListenerServerMock_E
 func (_m *DisruptionListenerServerMock) Disrupt(_a0 context.Context, _a1 *DisruptionSpec) (*emptypb.Empty, error) {
 	ret := _m.Called(_a0, _a1)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Disrupt")
+	}
+
 	var r0 *emptypb.Empty
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, *DisruptionSpec) (*emptypb.Empty, error)); ok {
@@ -84,6 +88,10 @@ func (_c *DisruptionListenerServerMock_Disrupt_Call) RunAndReturn(run func(conte
 // ResetDisruptions provides a mock function with given fields: _a0, _a1
 func (_m *DisruptionListenerServerMock) ResetDisruptions(_a0 context.Context, _a1 *emptypb.Empty) (*emptypb.Empty, error) {
 	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResetDisruptions")
+	}
 
 	var r0 *emptypb.Empty
 	var r1 error
@@ -168,13 +176,12 @@ func (_c *DisruptionListenerServerMock_mustEmbedUnimplementedDisruptionListenerS
 	return _c
 }
 
-type mockConstructorTestingTNewDisruptionListenerServerMock interface {
+// NewDisruptionListenerServerMock creates a new instance of DisruptionListenerServerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewDisruptionListenerServerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewDisruptionListenerServerMock creates a new instance of DisruptionListenerServerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewDisruptionListenerServerMock(t mockConstructorTestingTNewDisruptionListenerServerMock) *DisruptionListenerServerMock {
+}) *DisruptionListenerServerMock {
 	mock := &DisruptionListenerServerMock{}
 	mock.Mock.Test(t)
 

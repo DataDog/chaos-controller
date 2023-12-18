@@ -30,6 +30,10 @@ func (_m *CacheWatcherMock) EXPECT() *CacheWatcherMock_Expecter {
 func (_m *CacheWatcherMock) Watch(options v1.ListOptions) (watch.Interface, error) {
 	ret := _m.Called(options)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Watch")
+	}
+
 	var r0 watch.Interface
 	var r1 error
 	if rf, ok := ret.Get(0).(func(v1.ListOptions) (watch.Interface, error)); ok {
@@ -80,13 +84,12 @@ func (_c *CacheWatcherMock_Watch_Call) RunAndReturn(run func(v1.ListOptions) (wa
 	return _c
 }
 
-type mockConstructorTestingTNewCacheWatcherMock interface {
+// NewCacheWatcherMock creates a new instance of CacheWatcherMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewCacheWatcherMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewCacheWatcherMock creates a new instance of CacheWatcherMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewCacheWatcherMock(t mockConstructorTestingTNewCacheWatcherMock) *CacheWatcherMock {
+}) *CacheWatcherMock {
 	mock := &CacheWatcherMock{}
 	mock.Mock.Test(t)
 

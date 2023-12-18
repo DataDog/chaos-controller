@@ -28,6 +28,10 @@ func (_m *ClientMock) EXPECT() *ClientMock_Expecter {
 func (_m *ClientMock) CleanupLibraries() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for CleanupLibraries")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -68,6 +72,10 @@ func (_c *ClientMock_CleanupLibraries_Call) RunAndReturn(run func() error) *Clie
 // ValidateStruct provides a mock function with given fields: marshalledStruct, filePath
 func (_m *ClientMock) ValidateStruct(marshalledStruct interface{}, filePath string) []error {
 	ret := _m.Called(marshalledStruct, filePath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ValidateStruct")
+	}
 
 	var r0 []error
 	if rf, ok := ret.Get(0).(func(interface{}, string) []error); ok {
@@ -114,6 +122,10 @@ func (_c *ClientMock_ValidateStruct_Call) RunAndReturn(run func(interface{}, str
 func (_m *ClientMock) ValidateStructMultierror(marshalledStruct interface{}, filePath string) *multierror.Error {
 	ret := _m.Called(marshalledStruct, filePath)
 
+	if len(ret) == 0 {
+		panic("no return value specified for ValidateStructMultierror")
+	}
+
 	var r0 *multierror.Error
 	if rf, ok := ret.Get(0).(func(interface{}, string) *multierror.Error); ok {
 		r0 = rf(marshalledStruct, filePath)
@@ -155,13 +167,12 @@ func (_c *ClientMock_ValidateStructMultierror_Call) RunAndReturn(run func(interf
 	return _c
 }
 
-type mockConstructorTestingTNewClientMock interface {
+// NewClientMock creates a new instance of ClientMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewClientMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewClientMock creates a new instance of ClientMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewClientMock(t mockConstructorTestingTNewClientMock) *ClientMock {
+}) *ClientMock {
 	mock := &ClientMock{}
 	mock.Mock.Test(t)
 

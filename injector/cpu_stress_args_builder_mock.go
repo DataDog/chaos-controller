@@ -25,6 +25,10 @@ func (_m *CPUStressArgsBuilderMock) EXPECT() *CPUStressArgsBuilderMock_Expecter 
 func (_m *CPUStressArgsBuilderMock) GenerateArgs(_a0 int) []string {
 	ret := _m.Called(_a0)
 
+	if len(ret) == 0 {
+		panic("no return value specified for GenerateArgs")
+	}
+
 	var r0 []string
 	if rf, ok := ret.Get(0).(func(int) []string); ok {
 		r0 = rf(_a0)
@@ -65,13 +69,12 @@ func (_c *CPUStressArgsBuilderMock_GenerateArgs_Call) RunAndReturn(run func(int)
 	return _c
 }
 
-type mockConstructorTestingTNewCPUStressArgsBuilderMock interface {
+// NewCPUStressArgsBuilderMock creates a new instance of CPUStressArgsBuilderMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewCPUStressArgsBuilderMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewCPUStressArgsBuilderMock creates a new instance of CPUStressArgsBuilderMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewCPUStressArgsBuilderMock(t mockConstructorTestingTNewCPUStressArgsBuilderMock) *CPUStressArgsBuilderMock {
+}) *CPUStressArgsBuilderMock {
 	mock := &CPUStressArgsBuilderMock{}
 	mock.Mock.Test(t)
 

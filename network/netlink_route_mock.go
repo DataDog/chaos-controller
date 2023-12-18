@@ -29,6 +29,10 @@ func (_m *NetlinkRouteMock) EXPECT() *NetlinkRouteMock_Expecter {
 func (_m *NetlinkRouteMock) Gateway() net.IP {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Gateway")
+	}
+
 	var r0 net.IP
 	if rf, ok := ret.Get(0).(func() net.IP); ok {
 		r0 = rf()
@@ -72,6 +76,10 @@ func (_c *NetlinkRouteMock_Gateway_Call) RunAndReturn(run func() net.IP) *Netlin
 func (_m *NetlinkRouteMock) Link() NetlinkLink {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Link")
+	}
+
 	var r0 NetlinkLink
 	if rf, ok := ret.Get(0).(func() NetlinkLink); ok {
 		r0 = rf()
@@ -111,13 +119,12 @@ func (_c *NetlinkRouteMock_Link_Call) RunAndReturn(run func() NetlinkLink) *Netl
 	return _c
 }
 
-type mockConstructorTestingTNewNetlinkRouteMock interface {
+// NewNetlinkRouteMock creates a new instance of NetlinkRouteMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewNetlinkRouteMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewNetlinkRouteMock creates a new instance of NetlinkRouteMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewNetlinkRouteMock(t mockConstructorTestingTNewNetlinkRouteMock) *NetlinkRouteMock {
+}) *NetlinkRouteMock {
 	mock := &NetlinkRouteMock{}
 	mock.Mock.Test(t)
 

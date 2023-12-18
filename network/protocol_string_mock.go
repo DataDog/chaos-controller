@@ -21,13 +21,12 @@ func (_m *protocolStringMock) EXPECT() *protocolStringMock_Expecter {
 	return &protocolStringMock_Expecter{mock: &_m.Mock}
 }
 
-type mockConstructorTestingTnewProtocolStringMock interface {
+// newProtocolStringMock creates a new instance of protocolStringMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func newProtocolStringMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// newProtocolStringMock creates a new instance of protocolStringMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newProtocolStringMock(t mockConstructorTestingTnewProtocolStringMock) *protocolStringMock {
+}) *protocolStringMock {
 	mock := &protocolStringMock{}
 	mock.Mock.Test(t)
 

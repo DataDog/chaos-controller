@@ -25,6 +25,10 @@ func (_m *ManagerMock) EXPECT() *ManagerMock_Expecter {
 func (_m *ManagerMock) AddWatcher(watcher Watcher) error {
 	ret := _m.Called(watcher)
 
+	if len(ret) == 0 {
+		panic("no return value specified for AddWatcher")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(Watcher) error); ok {
 		r0 = rf(watcher)
@@ -66,6 +70,10 @@ func (_c *ManagerMock_AddWatcher_Call) RunAndReturn(run func(Watcher) error) *Ma
 // GetWatcher provides a mock function with given fields: name
 func (_m *ManagerMock) GetWatcher(name string) Watcher {
 	ret := _m.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetWatcher")
+	}
 
 	var r0 Watcher
 	if rf, ok := ret.Get(0).(func(string) Watcher); ok {
@@ -207,6 +215,10 @@ func (_c *ManagerMock_RemoveOrphanWatchers_Call) RunAndReturn(run func()) *Manag
 func (_m *ManagerMock) RemoveWatcher(watcher Watcher) error {
 	ret := _m.Called(watcher)
 
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveWatcher")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(Watcher) error); ok {
 		r0 = rf(watcher)
@@ -245,13 +257,12 @@ func (_c *ManagerMock_RemoveWatcher_Call) RunAndReturn(run func(Watcher) error) 
 	return _c
 }
 
-type mockConstructorTestingTNewManagerMock interface {
+// NewManagerMock creates a new instance of ManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewManagerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewManagerMock creates a new instance of ManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewManagerMock(t mockConstructorTestingTNewManagerMock) *ManagerMock {
+}) *ManagerMock {
 	mock := &ManagerMock{}
 	mock.Mock.Test(t)
 

@@ -25,6 +25,10 @@ func (_m *ContainerMock) EXPECT() *ContainerMock_Expecter {
 func (_m *ContainerMock) ID() string {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for ID")
+	}
+
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {
 		r0 = rf()
@@ -65,6 +69,10 @@ func (_c *ContainerMock_ID_Call) RunAndReturn(run func() string) *ContainerMock_
 // Name provides a mock function with given fields:
 func (_m *ContainerMock) Name() string {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Name")
+	}
 
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {
@@ -107,6 +115,10 @@ func (_c *ContainerMock_Name_Call) RunAndReturn(run func() string) *ContainerMoc
 func (_m *ContainerMock) PID() uint32 {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for PID")
+	}
+
 	var r0 uint32
 	if rf, ok := ret.Get(0).(func() uint32); ok {
 		r0 = rf()
@@ -148,6 +160,10 @@ func (_c *ContainerMock_PID_Call) RunAndReturn(run func() uint32) *ContainerMock
 func (_m *ContainerMock) Runtime() Runtime {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Runtime")
+	}
+
 	var r0 Runtime
 	if rf, ok := ret.Get(0).(func() Runtime); ok {
 		r0 = rf()
@@ -187,13 +203,12 @@ func (_c *ContainerMock_Runtime_Call) RunAndReturn(run func() Runtime) *Containe
 	return _c
 }
 
-type mockConstructorTestingTNewContainerMock interface {
+// NewContainerMock creates a new instance of ContainerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewContainerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewContainerMock creates a new instance of ContainerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewContainerMock(t mockConstructorTestingTNewContainerMock) *ContainerMock {
+}) *ContainerMock {
 	mock := &ContainerMock{}
 	mock.Mock.Test(t)
 
