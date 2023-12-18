@@ -72,6 +72,47 @@ func (_c *SinkMock_Close_Call) RunAndReturn(run func() error) *SinkMock_Close_Ca
 	return _c
 }
 
+// GetPrefix provides a mock function with given fields:
+func (_m *SinkMock) GetPrefix() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// SinkMock_GetPrefix_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPrefix'
+type SinkMock_GetPrefix_Call struct {
+	*mock.Call
+}
+
+// GetPrefix is a helper method to define mock.On call
+func (_e *SinkMock_Expecter) GetPrefix() *SinkMock_GetPrefix_Call {
+	return &SinkMock_GetPrefix_Call{Call: _e.mock.On("GetPrefix")}
+}
+
+func (_c *SinkMock_GetPrefix_Call) Run(run func()) *SinkMock_GetPrefix_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SinkMock_GetPrefix_Call) Return(_a0 string) *SinkMock_GetPrefix_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_GetPrefix_Call) RunAndReturn(run func() string) *SinkMock_GetPrefix_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSinkName provides a mock function with given fields:
 func (_m *SinkMock) GetSinkName() string {
 	ret := _m.Called()
@@ -354,6 +395,48 @@ func (_c *SinkMock_MetricDisruptionOngoingDuration_Call) RunAndReturn(run func(t
 	return _c
 }
 
+// MetricDisruptionScheduled provides a mock function with given fields: tags
+func (_m *SinkMock) MetricDisruptionScheduled(tags []string) error {
+	ret := _m.Called(tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricDisruptionScheduled_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricDisruptionScheduled'
+type SinkMock_MetricDisruptionScheduled_Call struct {
+	*mock.Call
+}
+
+// MetricDisruptionScheduled is a helper method to define mock.On call
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricDisruptionScheduled(tags interface{}) *SinkMock_MetricDisruptionScheduled_Call {
+	return &SinkMock_MetricDisruptionScheduled_Call{Call: _e.mock.On("MetricDisruptionScheduled", tags)}
+}
+
+func (_c *SinkMock_MetricDisruptionScheduled_Call) Run(run func(tags []string)) *SinkMock_MetricDisruptionScheduled_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricDisruptionScheduled_Call) Return(_a0 error) *SinkMock_MetricDisruptionScheduled_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricDisruptionScheduled_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricDisruptionScheduled_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MetricDisruptionsCount provides a mock function with given fields: kind, tags
 func (_m *SinkMock) MetricDisruptionsCount(kind types.DisruptionKindName, tags []string) error {
 	ret := _m.Called(kind, tags)
@@ -584,6 +667,91 @@ func (_c *SinkMock_MetricInjected_Call) Return(_a0 error) *SinkMock_MetricInject
 }
 
 func (_c *SinkMock_MetricInjected_Call) RunAndReturn(run func(bool, string, []string) error) *SinkMock_MetricInjected_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MetricMissingTargetFound provides a mock function with given fields: tags
+func (_m *SinkMock) MetricMissingTargetFound(tags []string) error {
+	ret := _m.Called(tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricMissingTargetFound_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricMissingTargetFound'
+type SinkMock_MetricMissingTargetFound_Call struct {
+	*mock.Call
+}
+
+// MetricMissingTargetFound is a helper method to define mock.On call
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricMissingTargetFound(tags interface{}) *SinkMock_MetricMissingTargetFound_Call {
+	return &SinkMock_MetricMissingTargetFound_Call{Call: _e.mock.On("MetricMissingTargetFound", tags)}
+}
+
+func (_c *SinkMock_MetricMissingTargetFound_Call) Run(run func(tags []string)) *SinkMock_MetricMissingTargetFound_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricMissingTargetFound_Call) Return(_a0 error) *SinkMock_MetricMissingTargetFound_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricMissingTargetFound_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricMissingTargetFound_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MetricNextScheduledTime provides a mock function with given fields: _a0, tags
+func (_m *SinkMock) MetricNextScheduledTime(_a0 time.Duration, tags []string) error {
+	ret := _m.Called(_a0, tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(time.Duration, []string) error); ok {
+		r0 = rf(_a0, tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricNextScheduledTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricNextScheduledTime'
+type SinkMock_MetricNextScheduledTime_Call struct {
+	*mock.Call
+}
+
+// MetricNextScheduledTime is a helper method to define mock.On call
+//   - _a0 time.Duration
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricNextScheduledTime(_a0 interface{}, tags interface{}) *SinkMock_MetricNextScheduledTime_Call {
+	return &SinkMock_MetricNextScheduledTime_Call{Call: _e.mock.On("MetricNextScheduledTime", _a0, tags)}
+}
+
+func (_c *SinkMock_MetricNextScheduledTime_Call) Run(run func(_a0 time.Duration, tags []string)) *SinkMock_MetricNextScheduledTime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricNextScheduledTime_Call) Return(_a0 error) *SinkMock_MetricNextScheduledTime_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricNextScheduledTime_Call) RunAndReturn(run func(time.Duration, []string) error) *SinkMock_MetricNextScheduledTime_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1048,6 +1216,91 @@ func (_c *SinkMock_MetricStuckOnRemovalGauge_Call) Return(_a0 error) *SinkMock_M
 }
 
 func (_c *SinkMock_MetricStuckOnRemovalGauge_Call) RunAndReturn(run func(float64) error) *SinkMock_MetricStuckOnRemovalGauge_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MetricTargetMissing provides a mock function with given fields: duration, tags
+func (_m *SinkMock) MetricTargetMissing(duration time.Duration, tags []string) error {
+	ret := _m.Called(duration, tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(time.Duration, []string) error); ok {
+		r0 = rf(duration, tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricTargetMissing_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricTargetMissing'
+type SinkMock_MetricTargetMissing_Call struct {
+	*mock.Call
+}
+
+// MetricTargetMissing is a helper method to define mock.On call
+//   - duration time.Duration
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricTargetMissing(duration interface{}, tags interface{}) *SinkMock_MetricTargetMissing_Call {
+	return &SinkMock_MetricTargetMissing_Call{Call: _e.mock.On("MetricTargetMissing", duration, tags)}
+}
+
+func (_c *SinkMock_MetricTargetMissing_Call) Run(run func(duration time.Duration, tags []string)) *SinkMock_MetricTargetMissing_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricTargetMissing_Call) Return(_a0 error) *SinkMock_MetricTargetMissing_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricTargetMissing_Call) RunAndReturn(run func(time.Duration, []string) error) *SinkMock_MetricTargetMissing_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MetricTooLate provides a mock function with given fields: tags
+func (_m *SinkMock) MetricTooLate(tags []string) error {
+	ret := _m.Called(tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricTooLate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricTooLate'
+type SinkMock_MetricTooLate_Call struct {
+	*mock.Call
+}
+
+// MetricTooLate is a helper method to define mock.On call
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricTooLate(tags interface{}) *SinkMock_MetricTooLate_Call {
+	return &SinkMock_MetricTooLate_Call{Call: _e.mock.On("MetricTooLate", tags)}
+}
+
+func (_c *SinkMock_MetricTooLate_Call) Run(run func(tags []string)) *SinkMock_MetricTooLate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricTooLate_Call) Return(_a0 error) *SinkMock_MetricTooLate_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricTooLate_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricTooLate_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -11,6 +11,8 @@ import (
 	"os"
 	"time"
 
+	"go.uber.org/zap"
+
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/config"
@@ -99,20 +101,9 @@ func main() {
 		logger.Errorw("error(s) while creating notifiers", "error", err)
 	}
 
-	metricsSink, err := metrics.GetSink(logger, metricstypes.SinkDriver(cfg.Controller.MetricsSink), metricstypes.SinkAppController)
-	if err != nil {
-		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
+	metricsSink := initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppController)
 
-		metricsSink, _ = metrics.GetSink(logger, metricstypes.SinkDriverNoop, metricstypes.SinkAppController)
-	}
-	// handle metrics sink client close on exit
-	defer func() {
-		logger.Infow("closing metrics sink client before exiting", "sink", metricsSink.GetSinkName())
-
-		if err := metricsSink.Close(); err != nil {
-			logger.Errorw("error closing metrics sink client", "sink", metricsSink.GetSinkName(), "error", err)
-		}
-	}()
+	defer closeMetricsSink(logger, metricsSink)
 
 	profilerSink, err := profiler.GetSink(logger, profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
 	if err != nil {
@@ -292,7 +283,11 @@ func main() {
 			Client:  mgr.GetClient(),
 			BaseLog: logger,
 			Scheme:  mgr.GetScheme(),
+			// new metrics sink for rollout controller
+			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppRolloutController),
 		}
+
+		defer closeMetricsSink(logger, disruptionRolloutReconciler.MetricsSink)
 
 		if err := disruptionRolloutReconciler.SetupWithManager(mgr); err != nil {
 			logger.Errorw("unable to create controller", "controller", "DisruptionRollout", "error", err)
@@ -319,7 +314,11 @@ func main() {
 			Client:  mgr.GetClient(),
 			BaseLog: logger,
 			Scheme:  mgr.GetScheme(),
+			// new metrics sink for cron controller
+			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
 		}
+
+		defer closeMetricsSink(logger, disruptionCronReconciler.MetricsSink)
 
 		if err := disruptionCronReconciler.SetupWithManager(mgr); err != nil {
 			logger.Errorw("unable to create controller", "controller", "DisruptionCron", "error", err)
@@ -400,5 +399,26 @@ func main() {
 		stopCh <- struct{}{} // stop the informer
 
 		logger.Fatalw("problem running manager", "error", err)
+	}
+}
+
+// initialize metrics sink
+func initMetricsSink(sink string, logger *zap.SugaredLogger, app metricstypes.SinkApp) metrics.Sink {
+	metricsSink, err := metrics.GetSink(logger, metricstypes.SinkDriver(sink), app)
+	if err != nil {
+		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
+
+		metricsSink, _ = metrics.GetSink(logger, metricstypes.SinkDriverNoop, app)
+	}
+
+	return metricsSink
+}
+
+// handle metrics sink client close on exit
+func closeMetricsSink(logger *zap.SugaredLogger, metricsSink metrics.Sink) {
+	logger.Infow("closing metrics sink client before exiting", "sink", metricsSink.GetSinkName())
+
+	if err := metricsSink.Close(); err != nil {
+		logger.Errorw("error closing metrics sink client", "sink", metricsSink.GetSinkName(), "error", err)
 	}
 }

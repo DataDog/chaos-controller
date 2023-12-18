@@ -11,6 +11,8 @@ import (
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,23 +21,40 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var DisruptionCronTags = []string{}
+
 type DisruptionCronReconciler struct {
-	Client  client.Client
-	Scheme  *runtime.Scheme
-	BaseLog *zap.SugaredLogger
-	log     *zap.SugaredLogger
+	Client      client.Client
+	Scheme      *runtime.Scheme
+	BaseLog     *zap.SugaredLogger
+	log         *zap.SugaredLogger
+	MetricsSink metrics.Sink
 }
 
 func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	r.log = r.BaseLog.With("disruptionCronNamespace", req.Namespace, "disruptionCronName", req.Name)
 	r.log.Info("Reconciling DisruptionCron")
 
+	// reconcile metrics
+	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
+
 	instance := &chaosv1beta1.DisruptionCron{}
+
+	defer func(tsStart time.Time) {
+		tags := []string{}
+		if instance.Name != "" {
+			tags = append(tags, "disruptionCronName:"+instance.Name, "disruptionCronNamespace:"+instance.Namespace)
+		}
+
+		r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
+	}(time.Now())
 
 	// Fetch DisruptionCron instance
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
+	DisruptionCronTags = []string{"disruptionCronName:" + instance.Name, "disruptionCronNamespace:" + instance.Namespace, "targetName:" + instance.Spec.TargetResource.Name}
 
 	if !instance.DeletionTimestamp.IsZero() {
 		// Add finalizer here if required
@@ -108,7 +127,9 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if tooLate {
+		r.handleMetricSinkError(r.MetricsSink.MetricTooLate(DisruptionCronTags))
 		r.log.Infow(fmt.Sprintf("missed schedule to start a disruption at %s, scheduling next check in %s", missedRun, requeueTime))
+
 		return scheduledResult, nil
 	}
 
@@ -127,6 +148,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		r.log.Warnw("unable to create Disruption for DisruptionCron", "disruption", disruption, "err", err)
 		return ctrl.Result{}, err
 	}
+
+	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled(append(DisruptionCronTags, "disruptionName:"+disruption.Name)))
 
 	r.log.Infow("created Disruption for DisruptionCron run", "disruptionName", disruption.Name)
 
@@ -189,8 +212,11 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 
 			return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceMissingPastExpiration(ctx, instance)
 		}
+
+		r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(time.Since(instance.Status.TargetResourcePreviouslyMissing.Time), DisruptionCronTags))
 	} else if instance.Status.TargetResourcePreviouslyMissing != nil {
 		r.log.Infow("target was previously missing, but now present. updating the status accordingly")
+		r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetFound(DisruptionCronTags))
 
 		return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceNowPresent(ctx, instance)
 	}
@@ -270,6 +296,7 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 			return time.Time{}, time.Time{}, fmt.Errorf("too many missed start times (> 100)")
 		}
 	}
+	r.handleMetricSinkError(r.MetricsSink.MetricNextScheduledTime(time.Until(sched.Next(now)), DisruptionCronTags))
 
 	return lastMissed, sched.Next(now), nil
 }
@@ -279,4 +306,11 @@ func (r *DisruptionCronReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.DisruptionCron{}).
 		Complete(r)
+}
+
+// handleMetricSinkError logs the given metric sink error if it is not nil
+func (r *DisruptionCronReconciler) handleMetricSinkError(err error) {
+	if err != nil {
+		r.log.Errorw("error sending a metric", "error", err)
+	}
 }
