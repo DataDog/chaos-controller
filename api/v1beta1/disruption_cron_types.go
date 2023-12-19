@@ -17,11 +17,10 @@ func init() {
 // +kubebuilder:resource:shortName=dicron
 // +kubebuilder:subresource:status
 type DisruptionCron struct {
-	metav1.TypeMeta               `json:",inline"`
-	metav1.ObjectMeta             `json:"metadata,omitempty"`
-	Spec                          DisruptionCronSpec   `json:"spec,omitempty"`
-	Status                        DisruptionCronStatus `json:"status,omitempty"`
-	MostRecentScheduleDisruptions []Disruption         `json:"mostRecentScheduleDisruptions,omitempty"`
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              DisruptionCronSpec   `json:"spec,omitempty"`
+	Status            DisruptionCronStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -84,4 +83,12 @@ type DisruptionCronStatus struct {
 	// Time when the target resource was previously missing.
 	// +nullable
 	TargetResourcePreviouslyMissing *metav1.Time `json:"targetResourcePreviouslyMissing,omitempty"`
+
+	History []DisruptionRun `json:"history,omitempty"`
+}
+
+type DisruptionRun struct {
+	Name      string      `json:"name,omitempty"`
+	Kind      string      `json:"kind,omitempty"`
+	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
