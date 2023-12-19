@@ -36,6 +36,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
 	r.log.Infow("fetched last known history", "history", instance.Status.History)
 
 	if !instance.DeletionTimestamp.IsZero() {
@@ -144,6 +145,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		Kind:      instance.TypeMeta.Kind,
 		CreatedAt: *instance.Status.LastScheduleTime,
 	})
+
 	if len(instance.Status.History) > chaosv1beta1.MaxHistoryLen {
 		instance.Status.History = instance.Status.History[1:]
 	}
