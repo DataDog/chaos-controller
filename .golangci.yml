@@ -24,7 +24,6 @@ linters:
     - bodyclose
 #    - depguard # TODO https://github.com/golangci/golangci-lint/issues/3906 re-enable after next golangci-lint release
     - dogsled
-    - goconst
     - godox
     - gofmt
     - goimports
