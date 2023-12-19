@@ -87,6 +87,8 @@ type DisruptionCronStatus struct {
 	History []DisruptionRun `json:"history,omitempty"`
 }
 
+const MaxHistoryLen = 5
+
 type DisruptionRun struct {
 	Name      string      `json:"name,omitempty"`
 	Kind      string      `json:"kind,omitempty"`

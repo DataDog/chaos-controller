@@ -144,6 +144,9 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		Kind:      instance.TypeMeta.Kind,
 		CreatedAt: *instance.Status.LastScheduleTime,
 	})
+	if len(instance.Status.History) > chaosv1beta1.MaxHistoryLen {
+		instance.Status.History = instance.Status.History[1:]
+	}
 
 	r.log.Debugw("updating instance Status lastScheduleTime and history",
 		"lastScheduleTime", instance.Status.LastScheduleTime, "history", instance.Status.History)
