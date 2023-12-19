@@ -338,11 +338,13 @@ func WithDigest(name Named, digest digest.Digest) (Canonical, error) {
 
 // TrimNamed removes any tag or digest from the named reference.
 func TrimNamed(ref Named) Named {
-	domain, path := SplitHostname(ref)
-	return repository{
-		domain: domain,
-		path:   path,
+	repo := repository{}
+	if r, ok := ref.(namedRepository); ok {
+		repo.domain, repo.path = r.Domain(), r.Path()
+	} else {
+		repo.domain, repo.path = splitDomain(ref.Name())
 	}
+	return repo
 }
 
 func getBestReferenceType(ref reference) Reference {
@@ -681,7 +683,7 @@ func splitDockerDomain(name string) (domain, remainder string) {
 }
 
 // familiarizeName returns a shortened version of the name familiar
-// to to the Docker UI. Familiar names have the default domain
+// to the Docker UI. Familiar names have the default domain
 // "docker.io" and "library/" repository prefix removed.
 // For example, "docker.io/library/redis" will have the familiar
 // name "redis" and "docker.io/dmcgowan/myapp" will be "dmcgowan/myapp".
