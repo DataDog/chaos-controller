@@ -76,8 +76,8 @@ var _ = Describe("CPU Pressure", func() {
 
 		Concurrently{
 			func(ctx SpecContext) {
-				Consistently(func(ctx SpecContext) {
-					ExpectDisruptionStatus(ctx, cpuStress, chaostypes.DisruptionInjectionStatusInjected, chaostypes.DisruptionInjectionStatusPausedInjected, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
+				Consistently(func(ctx SpecContext) bool {
+					return ExpectDisruptionStatus(ctx, cpuStress, chaostypes.DisruptionInjectionStatusInjected, chaostypes.DisruptionInjectionStatusPausedInjected, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
 				}).WithContext(ctx).Within(calcDisruptionGoneTimeout(cpuStress)).ProbeEvery(disruptionPotentialChangesEvery).Should(Succeed())
 			},
 			func(ctx SpecContext) {
