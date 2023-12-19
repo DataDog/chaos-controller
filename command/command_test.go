@@ -201,9 +201,9 @@ var _ = Describe("BackgroundCmd", func() {
 								g.Expect(logEntries).To(HaveLen(1))
 
 								logEntry := logEntries[0]
-								g.Expect(logEntry.Level).To(Equal(zapcore.ErrorLevel))
+								g.Expect(logEntry.Level).To(Equal(zapcore.WarnLevel))
 								g.Expect(logEntry.Message).To(Equal("background command exited with an error"))
-								g.Expect(logEntry.ContextMap()["err"]).To(Equal("wait fails"))
+								g.Expect(logEntry.ContextMap()["error"]).To(Equal("wait fails"))
 							}).Within(cmdAfterBootstrapDuration * 2).ProbeEvery(cmdBootstrapAllowedDuration / 10).Should(Succeed())
 						})
 					})
