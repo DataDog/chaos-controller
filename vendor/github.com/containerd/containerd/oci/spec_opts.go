@@ -20,8 +20,8 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -37,8 +37,7 @@ import (
 	"github.com/containerd/continuity/fs"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/runc/libcontainer/user"
-	specs "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 // SpecOpts sets spec specific information to a newly generated OCI spec
@@ -77,7 +76,6 @@ func setLinux(s *Spec) {
 	}
 }
 
-// nolint
 func setResources(s *Spec) {
 	if s.Linux != nil {
 		if s.Linux.Resources == nil {
@@ -91,7 +89,7 @@ func setResources(s *Spec) {
 	}
 }
 
-// nolint
+//nolint:nolintlint,unused // not used on all platforms
 func setCPU(s *Spec) {
 	setResources(s)
 	if s.Linux != nil {
@@ -150,7 +148,7 @@ func WithSpecFromBytes(p []byte) SpecOpts {
 	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
 		*s = Spec{} // make sure spec is cleared.
 		if err := json.Unmarshal(p, s); err != nil {
-			return errors.Wrapf(err, "decoding spec config file failed, current supported OCI runtime-spec : v%s", specs.Version)
+			return fmt.Errorf("decoding spec config file failed, current supported OCI runtime-spec : v%s: %w", specs.Version, err)
 		}
 		return nil
 	}
@@ -159,9 +157,9 @@ func WithSpecFromBytes(p []byte) SpecOpts {
 // WithSpecFromFile loads the specification from the provided filename.
 func WithSpecFromFile(filename string) SpecOpts {
 	return func(ctx context.Context, c Client, container *containers.Container, s *Spec) error {
-		p, err := ioutil.ReadFile(filename)
+		p, err := os.ReadFile(filename)
 		if err != nil {
-			return errors.Wrap(err, "cannot load spec config file")
+			return fmt.Errorf("cannot load spec config file: %w", err)
 		}
 		return WithSpecFromBytes(p)(ctx, c, container, s)
 	}
@@ -176,13 +174,6 @@ func WithEnv(environmentVariables []string) SpecOpts {
 		}
 		return nil
 	}
-}
-
-// WithDefaultPathEnv sets the $PATH environment variable to the
-// default PATH defined in this package.
-func WithDefaultPathEnv(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
-	s.Process.Env = replaceOrAppendEnvValues(s.Process.Env, defaultUnixEnv)
-	return nil
 }
 
 // replaceOrAppendEnvValues returns the defaults with the overrides either
@@ -230,6 +221,7 @@ func WithProcessArgs(args ...string) SpecOpts {
 	return func(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
 		setProcess(s)
 		s.Process.Args = args
+		s.Process.CommandLine = ""
 		return nil
 	}
 }
@@ -359,17 +351,19 @@ func WithImageConfigArgs(image Image, args []string) SpecOpts {
 			return err
 		}
 		var (
-			ociimage v1.Image
-			config   v1.ImageConfig
+			imageConfigBytes []byte
+			ociimage         v1.Image
+			config           v1.ImageConfig
 		)
 		switch ic.MediaType {
 		case v1.MediaTypeImageConfig, images.MediaTypeDockerSchema2Config:
-			p, err := content.ReadBlob(ctx, image.ContentStore(), ic)
+			var err error
+			imageConfigBytes, err = content.ReadBlob(ctx, image.ContentStore(), ic)
 			if err != nil {
 				return err
 			}
 
-			if err := json.Unmarshal(p, &ociimage); err != nil {
+			if err := json.Unmarshal(imageConfigBytes, &ociimage); err != nil {
 				return err
 			}
 			config = ociimage.Config
@@ -406,11 +400,55 @@ func WithImageConfigArgs(image Image, args []string) SpecOpts {
 			return WithAdditionalGIDs("root")(ctx, client, c, s)
 		} else if s.Windows != nil {
 			s.Process.Env = replaceOrAppendEnvValues(config.Env, s.Process.Env)
+
+			// To support Docker ArgsEscaped on Windows we need to combine the
+			// image Entrypoint & (Cmd Or User Args) while taking into account
+			// if Docker has already escaped them in the image config. When
+			// Docker sets `ArgsEscaped==true` in the config it has pre-escaped
+			// either Entrypoint or Cmd or both. Cmd should always be treated as
+			// arguments appended to Entrypoint unless:
+			//
+			// 1. Entrypoint does not exist, in which case Cmd[0] is the
+			// executable.
+			//
+			// 2. The user overrides the Cmd with User Args when activating the
+			// container in which case those args should be appended to the
+			// Entrypoint if it exists.
+			//
+			// To effectively do this we need to know if the arguments came from
+			// the user or if the arguments came from the image config when
+			// ArgsEscaped==true. In this case we only want to escape the
+			// additional user args when forming the complete CommandLine. This
+			// is safe in both cases of Entrypoint or Cmd being set because
+			// Docker will always escape them to an array of length one. Thus in
+			// both cases it is the "executable" portion of the command.
+			//
+			// In the case ArgsEscaped==false, Entrypoint or Cmd will contain
+			// any number of entries that are all unescaped and can simply be
+			// combined (potentially overwriting Cmd with User Args if present)
+			// and forwarded the container start as an Args array.
 			cmd := config.Cmd
+			cmdFromImage := true
 			if len(args) > 0 {
 				cmd = args
+				cmdFromImage = false
 			}
-			s.Process.Args = append(config.Entrypoint, cmd...)
+
+			cmd = append(config.Entrypoint, cmd...)
+			if len(cmd) == 0 {
+				return errors.New("no arguments specified")
+			}
+
+			if config.ArgsEscaped && (len(config.Entrypoint) > 0 || cmdFromImage) {
+				s.Process.Args = nil
+				s.Process.CommandLine = cmd[0]
+				if len(cmd) > 1 {
+					s.Process.CommandLine += " " + escapeAndCombineArgs(cmd[1:])
+				}
+			} else {
+				s.Process.Args = cmd
+				s.Process.CommandLine = ""
+			}
 
 			s.Process.Cwd = config.WorkingDir
 			s.Process.User = specs.User{
@@ -537,6 +575,18 @@ func WithUser(userstr string) SpecOpts {
 		defer ensureAdditionalGids(s)
 		setProcess(s)
 		s.Process.User.AdditionalGids = nil
+
+		// For LCOW it's a bit harder to confirm that the user actually exists on the host as a rootfs isn't
+		// mounted on the host and shared into the guest, but rather the rootfs is constructed entirely in the
+		// guest itself. To accommodate this, a spot to place the user string provided by a client as-is is needed.
+		// The `Username` field on the runtime spec is marked by Platform as only for Windows, and in this case it
+		// *is* being set on a Windows host at least, but will be used as a temporary holding spot until the guest
+		// can use the string to perform these same operations to grab the uid:gid inside.
+		if s.Windows != nil && s.Linux != nil {
+			s.Process.User.Username = userstr
+			return nil
+		}
+
 		parts := strings.Split(userstr, ":")
 		switch len(parts) {
 		case 1:
@@ -606,8 +656,11 @@ func WithUser(userstr string) SpecOpts {
 				return err
 			}
 
-			mounts = tryReadonlyMounts(mounts)
-			return mount.WithTempMount(ctx, mounts, f)
+			// Use a read-only mount when trying to get user/group information
+			// from the container's rootfs. Since the option does read operation
+			// only, we append ReadOnly mount option to prevent the Linux kernel
+			// from syncing whole filesystem in umount syscall.
+			return mount.WithReadonlyTempMount(ctx, mounts, f)
 		default:
 			return fmt.Errorf("invalid USER value %s", userstr)
 		}
@@ -656,10 +709,10 @@ func WithUserID(uid uint32) SpecOpts {
 			return setUser(s.Root.Path)
 		}
 		if c.Snapshotter == "" {
-			return errors.Errorf("no snapshotter set for container")
+			return errors.New("no snapshotter set for container")
 		}
 		if c.SnapshotKey == "" {
-			return errors.Errorf("rootfs snapshot not created for container")
+			return errors.New("rootfs snapshot not created for container")
 		}
 		snapshotter := client.SnapshotService(c.Snapshotter)
 		mounts, err := snapshotter.Mounts(ctx, c.SnapshotKey)
@@ -667,15 +720,20 @@ func WithUserID(uid uint32) SpecOpts {
 			return err
 		}
 
-		mounts = tryReadonlyMounts(mounts)
-		return mount.WithTempMount(ctx, mounts, setUser)
+		// Use a read-only mount when trying to get user/group information
+		// from the container's rootfs. Since the option does read operation
+		// only, we append ReadOnly mount option to prevent the Linux kernel
+		// from syncing whole filesystem in umount syscall.
+		return mount.WithReadonlyTempMount(ctx, mounts, setUser)
 	}
 }
 
 // WithUsername sets the correct UID and GID for the container
 // based on the image's /etc/passwd contents. If /etc/passwd
 // does not exist, or the username is not found in /etc/passwd,
-// it returns error.
+// it returns error. On Windows this sets the username as provided,
+// the operating system will validate the user when going to run
+// the container.
 func WithUsername(username string) SpecOpts {
 	return func(ctx context.Context, client Client, c *containers.Container, s *Spec) (err error) {
 		defer ensureAdditionalGids(s)
@@ -699,10 +757,10 @@ func WithUsername(username string) SpecOpts {
 				return setUser(s.Root.Path)
 			}
 			if c.Snapshotter == "" {
-				return errors.Errorf("no snapshotter set for container")
+				return errors.New("no snapshotter set for container")
 			}
 			if c.SnapshotKey == "" {
-				return errors.Errorf("rootfs snapshot not created for container")
+				return errors.New("rootfs snapshot not created for container")
 			}
 			snapshotter := client.SnapshotService(c.Snapshotter)
 			mounts, err := snapshotter.Mounts(ctx, c.SnapshotKey)
@@ -710,8 +768,11 @@ func WithUsername(username string) SpecOpts {
 				return err
 			}
 
-			mounts = tryReadonlyMounts(mounts)
-			return mount.WithTempMount(ctx, mounts, setUser)
+			// Use a read-only mount when trying to get user/group information
+			// from the container's rootfs. Since the option does read operation
+			// only, we append ReadOnly mount option to prevent the Linux kernel
+			// from syncing whole filesystem in umount syscall.
+			return mount.WithReadonlyTempMount(ctx, mounts, setUser)
 		} else if s.Windows != nil {
 			s.Process.User.Username = username
 		} else {
@@ -726,8 +787,8 @@ func WithUsername(username string) SpecOpts {
 // The passed in user can be either a uid or a username.
 func WithAdditionalGIDs(userstr string) SpecOpts {
 	return func(ctx context.Context, client Client, c *containers.Container, s *Spec) (err error) {
-		// For LCOW additional GID's not supported
-		if s.Windows != nil {
+		// For LCOW or on Darwin additional GID's not supported
+		if s.Windows != nil || runtime.GOOS == "darwin" {
 			return nil
 		}
 		setProcess(s)
@@ -773,15 +834,15 @@ func WithAdditionalGIDs(userstr string) SpecOpts {
 		}
 		if c.Snapshotter == "" && c.SnapshotKey == "" {
 			if !isRootfsAbs(s.Root.Path) {
-				return errors.Errorf("rootfs absolute path is required")
+				return errors.New("rootfs absolute path is required")
 			}
 			return setAdditionalGids(s.Root.Path)
 		}
 		if c.Snapshotter == "" {
-			return errors.Errorf("no snapshotter set for container")
+			return errors.New("no snapshotter set for container")
 		}
 		if c.SnapshotKey == "" {
-			return errors.Errorf("rootfs snapshot not created for container")
+			return errors.New("rootfs snapshot not created for container")
 		}
 		snapshotter := client.SnapshotService(c.Snapshotter)
 		mounts, err := snapshotter.Mounts(ctx, c.SnapshotKey)
@@ -789,8 +850,11 @@ func WithAdditionalGIDs(userstr string) SpecOpts {
 			return err
 		}
 
-		mounts = tryReadonlyMounts(mounts)
-		return mount.WithTempMount(ctx, mounts, setAdditionalGids)
+		// Use a read-only mount when trying to get user/group information
+		// from the container's rootfs. Since the option does read operation
+		// only, we append ReadOnly mount option to prevent the Linux kernel
+		// from syncing whole filesystem in umount syscall.
+		return mount.WithReadonlyTempMount(ctx, mounts, setAdditionalGids)
 	}
 }
 
@@ -851,8 +915,11 @@ func WithAppendAdditionalGroups(groups ...string) SpecOpts {
 			return err
 		}
 
-		mounts = tryReadonlyMounts(mounts)
-		return mount.WithTempMount(ctx, mounts, setAdditionalGids)
+		// Use a read-only mount when trying to get user/group information
+		// from the container's rootfs. Since the option does read operation
+		// only, we append ReadOnly mount option to prevent the Linux kernel
+		// from syncing whole filesystem in umount syscall.
+		return mount.WithReadonlyTempMount(ctx, mounts, setAdditionalGids)
 	}
 }
 
@@ -1266,7 +1333,7 @@ func WithLinuxDevice(path, permissions string) SpecOpts {
 		setLinux(s)
 		setResources(s)
 
-		dev, err := deviceFromPath(path)
+		dev, err := DeviceFromPath(path)
 		if err != nil {
 			return err
 		}
@@ -1314,37 +1381,19 @@ var ErrNoShmMount = errors.New("no /dev/shm mount specified")
 //
 // The size value is specified in kb, kilobytes.
 func WithDevShmSize(kb int64) SpecOpts {
-	return func(ctx context.Context, _ Client, c *containers.Container, s *Spec) error {
-		for _, m := range s.Mounts {
-			if m.Source == "shm" && m.Type == "tmpfs" {
-				for i, o := range m.Options {
-					if strings.HasPrefix(o, "size=") {
-						m.Options[i] = fmt.Sprintf("size=%dk", kb)
-						return nil
+	return func(ctx context.Context, _ Client, _ *containers.Container, s *Spec) error {
+		for i, m := range s.Mounts {
+			if filepath.Clean(m.Destination) == "/dev/shm" && m.Source == "shm" && m.Type == "tmpfs" {
+				for i := 0; i < len(m.Options); i++ {
+					if strings.HasPrefix(m.Options[i], "size=") {
+						m.Options = append(m.Options[:i], m.Options[i+1:]...)
+						i--
 					}
 				}
-				m.Options = append(m.Options, fmt.Sprintf("size=%dk", kb))
+				s.Mounts[i].Options = append(m.Options, fmt.Sprintf("size=%dk", kb))
 				return nil
 			}
 		}
 		return ErrNoShmMount
 	}
-}
-
-// tryReadonlyMounts is used by the options which are trying to get user/group
-// information from container's rootfs. Since the option does read operation
-// only, this helper will append ReadOnly mount option to prevent linux kernel
-// from syncing whole filesystem in umount syscall.
-//
-// TODO(fuweid):
-//
-// Currently, it only works for overlayfs. I think we can apply it to other
-// kinds of filesystem. Maybe we can return `ro` option by `snapshotter.Mount`
-// API, when the caller passes that experimental annotation
-// `containerd.io/snapshot/readonly.mount` something like that.
-func tryReadonlyMounts(mounts []mount.Mount) []mount.Mount {
-	if len(mounts) == 1 && mounts[0].Type == "overlay" {
-		mounts[0].Options = append(mounts[0].Options, "ro")
-	}
-	return mounts
 }
