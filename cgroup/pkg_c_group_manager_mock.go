@@ -25,6 +25,10 @@ func (_m *pkgCGroupManagerMock) EXPECT() *pkgCGroupManagerMock_Expecter {
 func (_m *pkgCGroupManagerMock) EnterPid(cgroupPaths map[string]string, pid int) error {
 	ret := _m.Called(cgroupPaths, pid)
 
+	if len(ret) == 0 {
+		panic("no return value specified for EnterPid")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(map[string]string, int) error); ok {
 		r0 = rf(cgroupPaths, pid)
@@ -68,6 +72,10 @@ func (_c *pkgCGroupManagerMock_EnterPid_Call) RunAndReturn(run func(map[string]s
 func (_m *pkgCGroupManagerMock) PathExists(path string) bool {
 	ret := _m.Called(path)
 
+	if len(ret) == 0 {
+		panic("no return value specified for PathExists")
+	}
+
 	var r0 bool
 	if rf, ok := ret.Get(0).(func(string) bool); ok {
 		r0 = rf(path)
@@ -109,6 +117,10 @@ func (_c *pkgCGroupManagerMock_PathExists_Call) RunAndReturn(run func(string) bo
 // ReadFile provides a mock function with given fields: dir, file
 func (_m *pkgCGroupManagerMock) ReadFile(dir string, file string) (string, error) {
 	ret := _m.Called(dir, file)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadFile")
+	}
 
 	var r0 string
 	var r1 error
@@ -163,6 +175,10 @@ func (_c *pkgCGroupManagerMock_ReadFile_Call) RunAndReturn(run func(string, stri
 func (_m *pkgCGroupManagerMock) WriteFile(dir string, file string, data string) error {
 	ret := _m.Called(dir, file, data)
 
+	if len(ret) == 0 {
+		panic("no return value specified for WriteFile")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
 		r0 = rf(dir, file, data)
@@ -203,13 +219,12 @@ func (_c *pkgCGroupManagerMock_WriteFile_Call) RunAndReturn(run func(string, str
 	return _c
 }
 
-type mockConstructorTestingTnewPkgCGroupManagerMock interface {
+// newPkgCGroupManagerMock creates a new instance of pkgCGroupManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func newPkgCGroupManagerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// newPkgCGroupManagerMock creates a new instance of pkgCGroupManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newPkgCGroupManagerMock(t mockConstructorTestingTnewPkgCGroupManagerMock) *pkgCGroupManagerMock {
+}) *pkgCGroupManagerMock {
 	mock := &pkgCGroupManagerMock{}
 	mock.Mock.Test(t)
 

@@ -29,6 +29,10 @@ func (_m *CacheContextFuncMock) EXPECT() *CacheContextFuncMock_Expecter {
 func (_m *CacheContextFuncMock) Execute() (context.Context, context.CancelFunc) {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Execute")
+	}
+
 	var r0 context.Context
 	var r1 context.CancelFunc
 	if rf, ok := ret.Get(0).(func() (context.Context, context.CancelFunc)); ok {
@@ -80,13 +84,12 @@ func (_c *CacheContextFuncMock_Execute_Call) RunAndReturn(run func() (context.Co
 	return _c
 }
 
-type mockConstructorTestingTNewCacheContextFuncMock interface {
+// NewCacheContextFuncMock creates a new instance of CacheContextFuncMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewCacheContextFuncMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewCacheContextFuncMock creates a new instance of CacheContextFuncMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewCacheContextFuncMock(t mockConstructorTestingTNewCacheContextFuncMock) *CacheContextFuncMock {
+}) *CacheContextFuncMock {
 	mock := &CacheContextFuncMock{}
 	mock.Mock.Test(t)
 

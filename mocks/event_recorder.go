@@ -156,13 +156,12 @@ func (_c *EventRecorderMock_Eventf_Call) RunAndReturn(run func(runtime.Object, s
 	return _c
 }
 
-type mockConstructorTestingTNewEventRecorderMock interface {
+// NewEventRecorderMock creates a new instance of EventRecorderMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewEventRecorderMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewEventRecorderMock creates a new instance of EventRecorderMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewEventRecorderMock(t mockConstructorTestingTNewEventRecorderMock) *EventRecorderMock {
+}) *EventRecorderMock {
 	mock := &EventRecorderMock{}
 	mock.Mock.Test(t)
 

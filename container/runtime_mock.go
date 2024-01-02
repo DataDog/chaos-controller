@@ -25,6 +25,10 @@ func (_m *RuntimeMock) EXPECT() *RuntimeMock_Expecter {
 func (_m *RuntimeMock) HostPath(id string, path string) (string, error) {
 	ret := _m.Called(id, path)
 
+	if len(ret) == 0 {
+		panic("no return value specified for HostPath")
+	}
+
 	var r0 string
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string, string) (string, error)); ok {
@@ -78,6 +82,10 @@ func (_c *RuntimeMock_HostPath_Call) RunAndReturn(run func(string, string) (stri
 func (_m *RuntimeMock) PID(id string) (uint32, error) {
 	ret := _m.Called(id)
 
+	if len(ret) == 0 {
+		panic("no return value specified for PID")
+	}
+
 	var r0 uint32
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (uint32, error)); ok {
@@ -126,13 +134,12 @@ func (_c *RuntimeMock_PID_Call) RunAndReturn(run func(string) (uint32, error)) *
 	return _c
 }
 
-type mockConstructorTestingTNewRuntimeMock interface {
+// NewRuntimeMock creates a new instance of RuntimeMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewRuntimeMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewRuntimeMock creates a new instance of RuntimeMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewRuntimeMock(t mockConstructorTestingTNewRuntimeMock) *RuntimeMock {
+}) *RuntimeMock {
 	mock := &RuntimeMock{}
 	mock.Mock.Test(t)
 

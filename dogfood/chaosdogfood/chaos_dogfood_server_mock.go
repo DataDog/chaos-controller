@@ -30,6 +30,10 @@ func (_m *ChaosDogfoodServerMock) EXPECT() *ChaosDogfoodServerMock_Expecter {
 func (_m *ChaosDogfoodServerMock) GetCatalog(_a0 context.Context, _a1 *emptypb.Empty) (*CatalogReply, error) {
 	ret := _m.Called(_a0, _a1)
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetCatalog")
+	}
+
 	var r0 *CatalogReply
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, *emptypb.Empty) (*CatalogReply, error)); ok {
@@ -84,6 +88,10 @@ func (_c *ChaosDogfoodServerMock_GetCatalog_Call) RunAndReturn(run func(context.
 // Order provides a mock function with given fields: _a0, _a1
 func (_m *ChaosDogfoodServerMock) Order(_a0 context.Context, _a1 *FoodRequest) (*FoodReply, error) {
 	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Order")
+	}
 
 	var r0 *FoodReply
 	var r1 error
@@ -168,13 +176,12 @@ func (_c *ChaosDogfoodServerMock_mustEmbedUnimplementedChaosDogfoodServer_Call) 
 	return _c
 }
 
-type mockConstructorTestingTNewChaosDogfoodServerMock interface {
+// NewChaosDogfoodServerMock creates a new instance of ChaosDogfoodServerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewChaosDogfoodServerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewChaosDogfoodServerMock creates a new instance of ChaosDogfoodServerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewChaosDogfoodServerMock(t mockConstructorTestingTNewChaosDogfoodServerMock) *ChaosDogfoodServerMock {
+}) *ChaosDogfoodServerMock {
 	mock := &ChaosDogfoodServerMock{}
 	mock.Mock.Test(t)
 

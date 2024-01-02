@@ -29,6 +29,10 @@ func (_m *FactoryMock) EXPECT() *FactoryMock_Expecter {
 func (_m *FactoryMock) NewCmd(ctx context.Context, name string, args []string) Cmd {
 	ret := _m.Called(ctx, name, args)
 
+	if len(ret) == 0 {
+		panic("no return value specified for NewCmd")
+	}
+
 	var r0 Cmd
 	if rf, ok := ret.Get(0).(func(context.Context, string, []string) Cmd); ok {
 		r0 = rf(ctx, name, args)
@@ -71,13 +75,12 @@ func (_c *FactoryMock_NewCmd_Call) RunAndReturn(run func(context.Context, string
 	return _c
 }
 
-type mockConstructorTestingTNewFactoryMock interface {
+// NewFactoryMock creates a new instance of FactoryMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewFactoryMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewFactoryMock creates a new instance of FactoryMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewFactoryMock(t mockConstructorTestingTNewFactoryMock) *FactoryMock {
+}) *FactoryMock {
 	mock := &FactoryMock{}
 	mock.Mock.Test(t)
 

@@ -1,5 +1,4 @@
-//go:build linux || solaris
-// +build linux solaris
+//go:build !windows
 
 /*
    Copyright The containerd Authors.
@@ -17,29 +16,17 @@
    limitations under the License.
 */
 
-package sys
+package oci
 
 import (
-	"syscall"
-	"time"
+	"context"
+
+	"github.com/containerd/containerd/containers"
 )
 
-// StatAtime returns the Atim
-func StatAtime(st *syscall.Stat_t) syscall.Timespec {
-	return st.Atim
-}
-
-// StatCtime returns the Ctim
-func StatCtime(st *syscall.Stat_t) syscall.Timespec {
-	return st.Ctim
-}
-
-// StatMtime returns the Mtim
-func StatMtime(st *syscall.Stat_t) syscall.Timespec {
-	return st.Mtim
-}
-
-// StatATimeAsTime returns st.Atim as a time.Time
-func StatATimeAsTime(st *syscall.Stat_t) time.Time {
-	return time.Unix(int64(st.Atim.Sec), int64(st.Atim.Nsec)) // nolint: unconvert
+// WithDefaultPathEnv sets the $PATH environment variable to the
+// default PATH defined in this package.
+func WithDefaultPathEnv(_ context.Context, _ Client, _ *containers.Container, s *Spec) error {
+	s.Process.Env = replaceOrAppendEnvValues(s.Process.Env, defaultUnixEnv)
+	return nil
 }

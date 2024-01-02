@@ -1,5 +1,4 @@
 all: True
-case: underscore
 dir: "{{.InterfaceDir}}"
 inpackage: True
 disable-version-string: True

@@ -25,6 +25,10 @@ func (_m *instCGroupManagerMock) EXPECT() *instCGroupManagerMock_Expecter {
 func (_m *instCGroupManagerMock) GetPaths() map[string]string {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetPaths")
+	}
+
 	var r0 map[string]string
 	if rf, ok := ret.Get(0).(func() map[string]string); ok {
 		r0 = rf()
@@ -68,6 +72,10 @@ func (_c *instCGroupManagerMock_GetPaths_Call) RunAndReturn(run func() map[strin
 func (_m *instCGroupManagerMock) Path(_a0 string) string {
 	ret := _m.Called(_a0)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Path")
+	}
+
 	var r0 string
 	if rf, ok := ret.Get(0).(func(string) string); ok {
 		r0 = rf(_a0)
@@ -106,13 +114,12 @@ func (_c *instCGroupManagerMock_Path_Call) RunAndReturn(run func(string) string)
 	return _c
 }
 
-type mockConstructorTestingTnewInstCGroupManagerMock interface {
+// newInstCGroupManagerMock creates a new instance of instCGroupManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func newInstCGroupManagerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// newInstCGroupManagerMock creates a new instance of instCGroupManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newInstCGroupManagerMock(t mockConstructorTestingTnewInstCGroupManagerMock) *instCGroupManagerMock {
+}) *instCGroupManagerMock {
 	mock := &instCGroupManagerMock{}
 	mock.Mock.Test(t)
 

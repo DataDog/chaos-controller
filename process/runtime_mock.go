@@ -25,6 +25,10 @@ func (_m *RuntimeMock) EXPECT() *RuntimeMock_Expecter {
 func (_m *RuntimeMock) GOMAXPROCS(_a0 int) int {
 	ret := _m.Called(_a0)
 
+	if len(ret) == 0 {
+		panic("no return value specified for GOMAXPROCS")
+	}
+
 	var r0 int
 	if rf, ok := ret.Get(0).(func(int) int); ok {
 		r0 = rf(_a0)
@@ -127,13 +131,12 @@ func (_c *RuntimeMock_UnlockOSThread_Call) RunAndReturn(run func()) *RuntimeMock
 	return _c
 }
 
-type mockConstructorTestingTNewRuntimeMock interface {
+// NewRuntimeMock creates a new instance of RuntimeMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewRuntimeMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewRuntimeMock creates a new instance of RuntimeMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewRuntimeMock(t mockConstructorTestingTNewRuntimeMock) *RuntimeMock {
+}) *RuntimeMock {
 	mock := &RuntimeMock{}
 	mock.Mock.Test(t)
 

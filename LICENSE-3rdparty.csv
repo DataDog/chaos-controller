@@ -46,11 +46,13 @@ github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/hcs/schema2,M
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/hcserror,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/hns,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/interop,MIT
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/jobobject,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/log,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/logfields,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/longpath,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/mergemaps,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/oc,MIT
+github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/queue,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/safefile,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/timeout,MIT
 github.com/Microsoft/hcsshim,github.com/Microsoft/hcsshim/internal/vmcompute,MIT
@@ -89,6 +91,7 @@ github.com/containerd/containerd,github.com/containerd/containerd/api/types,Apac
 github.com/containerd/containerd,github.com/containerd/containerd/api/types/task,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/archive,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/archive/compression,Apache-2.0
+github.com/containerd/containerd,github.com/containerd/containerd/archive/tarheader,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/cio,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/containers,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/content,Apache-2.0
@@ -110,7 +113,10 @@ github.com/containerd/containerd,github.com/containerd/containerd/mount,Apache-2
 github.com/containerd/containerd,github.com/containerd/containerd/namespaces,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/oci,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/pkg/cap,Apache-2.0
+github.com/containerd/containerd,github.com/containerd/containerd/pkg/deprecation,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/pkg/dialer,Apache-2.0
+github.com/containerd/containerd,github.com/containerd/containerd/pkg/kmutex,Apache-2.0
+github.com/containerd/containerd,github.com/containerd/containerd/pkg/randutil,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/pkg/userns,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/platforms,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/plugin,Apache-2.0
@@ -126,6 +132,7 @@ github.com/containerd/containerd,github.com/containerd/containerd/runtime/linux/
 github.com/containerd/containerd,github.com/containerd/containerd/runtime/v2/runc/options,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/services,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/services/introspection,Apache-2.0
+github.com/containerd/containerd,github.com/containerd/containerd/services/warning,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/snapshots,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/snapshots/proxy,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/sys,Apache-2.0
@@ -133,6 +140,7 @@ github.com/containerd/containerd,github.com/containerd/containerd/version,Apache
 github.com/containerd/continuity,github.com/containerd/continuity/fs,Apache-2.0
 github.com/containerd/continuity,github.com/containerd/continuity/sysx,Apache-2.0
 github.com/containerd/fifo,github.com/containerd/fifo,Apache-2.0
+github.com/containerd/log,github.com/containerd/log,Apache-2.0
 github.com/containerd/ttrpc,github.com/containerd/ttrpc,Apache-2.0
 github.com/containerd/typeurl,github.com/containerd/typeurl,Apache-2.0
 github.com/coreos/go-iptables,github.com/coreos/go-iptables/iptables,Apache-2.0
@@ -247,6 +255,7 @@ github.com/moby/locker,github.com/moby/locker,Apache-2.0
 github.com/moby/spdystream,github.com/moby/spdystream,Apache-2.0
 github.com/moby/spdystream,github.com/moby/spdystream/spdy,Apache-2.0
 github.com/moby/sys/mountinfo,github.com/moby/sys/mountinfo,Apache-2.0
+github.com/moby/sys/signal,github.com/moby/sys/signal,Apache-2.0
 github.com/modern-go/concurrent,github.com/modern-go/concurrent,Apache-2.0
 github.com/modern-go/reflect2,github.com/modern-go/reflect2,Apache-2.0
 github.com/munnerz/goautoneg,github.com/munnerz/goautoneg,BSD-3-Clause
@@ -468,7 +477,7 @@ google.golang.org/appengine,google.golang.org/appengine/internal/log,Apache-2.0
 google.golang.org/appengine,google.golang.org/appengine/internal/remote_api,Apache-2.0
 google.golang.org/appengine,google.golang.org/appengine/internal/urlfetch,Apache-2.0
 google.golang.org/appengine,google.golang.org/appengine/urlfetch,Apache-2.0
-google.golang.org/genproto,google.golang.org/genproto/googleapis/rpc/status,Apache-2.0
+google.golang.org/genproto/googleapis/rpc,google.golang.org/genproto/googleapis/rpc/status,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/attributes,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/backoff,Apache-2.0
@@ -499,6 +508,7 @@ google.golang.org/grpc,google.golang.org/grpc/internal/grpclog,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/grpcrand,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/grpcsync,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/grpcutil,Apache-2.0
+google.golang.org/grpc,google.golang.org/grpc/internal/idle,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/metadata,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/pretty,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/resolver,Apache-2.0

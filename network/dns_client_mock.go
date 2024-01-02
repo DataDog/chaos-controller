@@ -29,6 +29,10 @@ func (_m *DNSClientMock) EXPECT() *DNSClientMock_Expecter {
 func (_m *DNSClientMock) Resolve(host string) ([]net.IP, error) {
 	ret := _m.Called(host)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Resolve")
+	}
+
 	var r0 []net.IP
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) ([]net.IP, error)); ok {
@@ -79,13 +83,12 @@ func (_c *DNSClientMock_Resolve_Call) RunAndReturn(run func(string) ([]net.IP, e
 	return _c
 }
 
-type mockConstructorTestingTNewDNSClientMock interface {
+// NewDNSClientMock creates a new instance of DNSClientMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewDNSClientMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewDNSClientMock creates a new instance of DNSClientMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewDNSClientMock(t mockConstructorTestingTNewDNSClientMock) *DNSClientMock {
+}) *DNSClientMock {
 	mock := &DNSClientMock{}
 	mock.Mock.Test(t)
 

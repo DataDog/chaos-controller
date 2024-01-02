@@ -1,6 +1,3 @@
-//go:build linux
-// +build linux
-
 /*
    Copyright The containerd Authors.
 
@@ -134,7 +131,7 @@ var WithAllCurrentCapabilities = func(ctx context.Context, client Client, c *con
 	return WithCapabilities(caps)(ctx, client, c, s)
 }
 
-// WithAllKnownCapabilities sets all the the known linux capabilities for the container process
+// WithAllKnownCapabilities sets all the known linux capabilities for the container process
 var WithAllKnownCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
 	caps := cap.Known()
 	return WithCapabilities(caps)(ctx, client, c, s)
@@ -143,4 +140,20 @@ var WithAllKnownCapabilities = func(ctx context.Context, client Client, c *conta
 // WithoutRunMount removes the `/run` inside the spec
 func WithoutRunMount(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
 	return WithoutMounts("/run")(ctx, client, c, s)
+}
+
+// WithRdt sets the container's RDT parameters
+func WithRdt(closID, l3CacheSchema, memBwSchema string) SpecOpts {
+	return func(ctx context.Context, _ Client, c *containers.Container, s *Spec) error {
+		s.Linux.IntelRdt = &specs.LinuxIntelRdt{
+			ClosID:        closID,
+			L3CacheSchema: l3CacheSchema,
+			MemBwSchema:   memBwSchema,
+		}
+		return nil
+	}
+}
+
+func escapeAndCombineArgs(args []string) string {
+	panic("not supported")
 }

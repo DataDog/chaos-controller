@@ -65,13 +65,12 @@ func (_c *WatcherMetricsAdapterMock_OnChange_Call) RunAndReturn(run func(*v1beta
 	return _c
 }
 
-type mockConstructorTestingTNewWatcherMetricsAdapterMock interface {
+// NewWatcherMetricsAdapterMock creates a new instance of WatcherMetricsAdapterMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewWatcherMetricsAdapterMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewWatcherMetricsAdapterMock creates a new instance of WatcherMetricsAdapterMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewWatcherMetricsAdapterMock(t mockConstructorTestingTNewWatcherMetricsAdapterMock) *WatcherMetricsAdapterMock {
+}) *WatcherMetricsAdapterMock {
 	mock := &WatcherMetricsAdapterMock{}
 	mock.Mock.Test(t)
 

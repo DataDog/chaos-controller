@@ -25,6 +25,10 @@ func (_m *DisruptionV1Beta1InterfaceMock) EXPECT() *DisruptionV1Beta1InterfaceMo
 func (_m *DisruptionV1Beta1InterfaceMock) Disruptions(namespace string) DisruptionInterface {
 	ret := _m.Called(namespace)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Disruptions")
+	}
+
 	var r0 DisruptionInterface
 	if rf, ok := ret.Get(0).(func(string) DisruptionInterface); ok {
 		r0 = rf(namespace)
@@ -65,13 +69,12 @@ func (_c *DisruptionV1Beta1InterfaceMock_Disruptions_Call) RunAndReturn(run func
 	return _c
 }
 
-type mockConstructorTestingTNewDisruptionV1Beta1InterfaceMock interface {
+// NewDisruptionV1Beta1InterfaceMock creates a new instance of DisruptionV1Beta1InterfaceMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewDisruptionV1Beta1InterfaceMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewDisruptionV1Beta1InterfaceMock creates a new instance of DisruptionV1Beta1InterfaceMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewDisruptionV1Beta1InterfaceMock(t mockConstructorTestingTNewDisruptionV1Beta1InterfaceMock) *DisruptionV1Beta1InterfaceMock {
+}) *DisruptionV1Beta1InterfaceMock {
 	mock := &DisruptionV1Beta1InterfaceMock{}
 	mock.Mock.Test(t)
 

@@ -30,6 +30,10 @@ func (_m *CacheInformerMock) EXPECT() *CacheInformerMock_Expecter {
 func (_m *CacheInformerMock) AddEventHandler(handler cache.ResourceEventHandler) (cache.ResourceEventHandlerRegistration, error) {
 	ret := _m.Called(handler)
 
+	if len(ret) == 0 {
+		panic("no return value specified for AddEventHandler")
+	}
+
 	var r0 cache.ResourceEventHandlerRegistration
 	var r1 error
 	if rf, ok := ret.Get(0).(func(cache.ResourceEventHandler) (cache.ResourceEventHandlerRegistration, error)); ok {
@@ -83,6 +87,10 @@ func (_c *CacheInformerMock_AddEventHandler_Call) RunAndReturn(run func(cache.Re
 // AddEventHandlerWithResyncPeriod provides a mock function with given fields: handler, resyncPeriod
 func (_m *CacheInformerMock) AddEventHandlerWithResyncPeriod(handler cache.ResourceEventHandler, resyncPeriod time.Duration) (cache.ResourceEventHandlerRegistration, error) {
 	ret := _m.Called(handler, resyncPeriod)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddEventHandlerWithResyncPeriod")
+	}
 
 	var r0 cache.ResourceEventHandlerRegistration
 	var r1 error
@@ -139,6 +147,10 @@ func (_c *CacheInformerMock_AddEventHandlerWithResyncPeriod_Call) RunAndReturn(r
 func (_m *CacheInformerMock) AddIndexers(indexers cache.Indexers) error {
 	ret := _m.Called(indexers)
 
+	if len(ret) == 0 {
+		panic("no return value specified for AddIndexers")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(cache.Indexers) error); ok {
 		r0 = rf(indexers)
@@ -181,6 +193,10 @@ func (_c *CacheInformerMock_AddIndexers_Call) RunAndReturn(run func(cache.Indexe
 func (_m *CacheInformerMock) HasSynced() bool {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for HasSynced")
+	}
+
 	var r0 bool
 	if rf, ok := ret.Get(0).(func() bool); ok {
 		r0 = rf()
@@ -222,6 +238,10 @@ func (_c *CacheInformerMock_HasSynced_Call) RunAndReturn(run func() bool) *Cache
 func (_m *CacheInformerMock) RemoveEventHandler(handle cache.ResourceEventHandlerRegistration) error {
 	ret := _m.Called(handle)
 
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveEventHandler")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(cache.ResourceEventHandlerRegistration) error); ok {
 		r0 = rf(handle)
@@ -260,13 +280,12 @@ func (_c *CacheInformerMock_RemoveEventHandler_Call) RunAndReturn(run func(cache
 	return _c
 }
 
-type mockConstructorTestingTNewCacheInformerMock interface {
+// NewCacheInformerMock creates a new instance of CacheInformerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewCacheInformerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewCacheInformerMock creates a new instance of CacheInformerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewCacheInformerMock(t mockConstructorTestingTNewCacheInformerMock) *CacheInformerMock {
+}) *CacheInformerMock {
 	mock := &CacheInformerMock{}
 	mock.Mock.Test(t)
 

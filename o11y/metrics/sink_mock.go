@@ -31,6 +31,10 @@ func (_m *SinkMock) EXPECT() *SinkMock_Expecter {
 func (_m *SinkMock) Close() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Close")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -68,9 +72,54 @@ func (_c *SinkMock_Close_Call) RunAndReturn(run func() error) *SinkMock_Close_Ca
 	return _c
 }
 
+// GetPrefix provides a mock function with given fields:
+func (_m *SinkMock) GetPrefix() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// SinkMock_GetPrefix_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPrefix'
+type SinkMock_GetPrefix_Call struct {
+	*mock.Call
+}
+
+// GetPrefix is a helper method to define mock.On call
+func (_e *SinkMock_Expecter) GetPrefix() *SinkMock_GetPrefix_Call {
+	return &SinkMock_GetPrefix_Call{Call: _e.mock.On("GetPrefix")}
+}
+
+func (_c *SinkMock_GetPrefix_Call) Run(run func()) *SinkMock_GetPrefix_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SinkMock_GetPrefix_Call) Return(_a0 string) *SinkMock_GetPrefix_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_GetPrefix_Call) RunAndReturn(run func() string) *SinkMock_GetPrefix_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSinkName provides a mock function with given fields:
 func (_m *SinkMock) GetSinkName() string {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSinkName")
+	}
 
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {
@@ -112,6 +161,10 @@ func (_c *SinkMock_GetSinkName_Call) RunAndReturn(run func() string) *SinkMock_G
 // MetricCleaned provides a mock function with given fields: succeed, kind, tags
 func (_m *SinkMock) MetricCleaned(succeed bool, kind string, tags []string) error {
 	ret := _m.Called(succeed, kind, tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricCleaned")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(bool, string, []string) error); ok {
@@ -157,6 +210,10 @@ func (_c *SinkMock_MetricCleaned_Call) RunAndReturn(run func(bool, string, []str
 func (_m *SinkMock) MetricCleanedForReinjection(succeed bool, kind string, tags []string) error {
 	ret := _m.Called(succeed, kind, tags)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricCleanedForReinjection")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(bool, string, []string) error); ok {
 		r0 = rf(succeed, kind, tags)
@@ -201,6 +258,10 @@ func (_c *SinkMock_MetricCleanedForReinjection_Call) RunAndReturn(run func(bool,
 func (_m *SinkMock) MetricCleanupDuration(duration time.Duration, tags []string) error {
 	ret := _m.Called(duration, tags)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricCleanupDuration")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(time.Duration, []string) error); ok {
 		r0 = rf(duration, tags)
@@ -243,6 +304,10 @@ func (_c *SinkMock_MetricCleanupDuration_Call) RunAndReturn(run func(time.Durati
 // MetricDisruptionCompletedDuration provides a mock function with given fields: duration, tags
 func (_m *SinkMock) MetricDisruptionCompletedDuration(duration time.Duration, tags []string) error {
 	ret := _m.Called(duration, tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricDisruptionCompletedDuration")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(time.Duration, []string) error); ok {
@@ -287,6 +352,10 @@ func (_c *SinkMock_MetricDisruptionCompletedDuration_Call) RunAndReturn(run func
 func (_m *SinkMock) MetricDisruptionOngoingDuration(duration time.Duration, tags []string) error {
 	ret := _m.Called(duration, tags)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricDisruptionOngoingDuration")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(time.Duration, []string) error); ok {
 		r0 = rf(duration, tags)
@@ -326,9 +395,55 @@ func (_c *SinkMock_MetricDisruptionOngoingDuration_Call) RunAndReturn(run func(t
 	return _c
 }
 
+// MetricDisruptionScheduled provides a mock function with given fields: tags
+func (_m *SinkMock) MetricDisruptionScheduled(tags []string) error {
+	ret := _m.Called(tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricDisruptionScheduled_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricDisruptionScheduled'
+type SinkMock_MetricDisruptionScheduled_Call struct {
+	*mock.Call
+}
+
+// MetricDisruptionScheduled is a helper method to define mock.On call
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricDisruptionScheduled(tags interface{}) *SinkMock_MetricDisruptionScheduled_Call {
+	return &SinkMock_MetricDisruptionScheduled_Call{Call: _e.mock.On("MetricDisruptionScheduled", tags)}
+}
+
+func (_c *SinkMock_MetricDisruptionScheduled_Call) Run(run func(tags []string)) *SinkMock_MetricDisruptionScheduled_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricDisruptionScheduled_Call) Return(_a0 error) *SinkMock_MetricDisruptionScheduled_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricDisruptionScheduled_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricDisruptionScheduled_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MetricDisruptionsCount provides a mock function with given fields: kind, tags
 func (_m *SinkMock) MetricDisruptionsCount(kind types.DisruptionKindName, tags []string) error {
 	ret := _m.Called(kind, tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricDisruptionsCount")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(types.DisruptionKindName, []string) error); ok {
@@ -373,6 +488,10 @@ func (_c *SinkMock_MetricDisruptionsCount_Call) RunAndReturn(run func(types.Disr
 func (_m *SinkMock) MetricDisruptionsGauge(gauge float64) error {
 	ret := _m.Called(gauge)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricDisruptionsGauge")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(float64) error); ok {
 		r0 = rf(gauge)
@@ -415,6 +534,10 @@ func (_c *SinkMock_MetricDisruptionsGauge_Call) RunAndReturn(run func(float64) e
 func (_m *SinkMock) MetricInformed(tags []string) error {
 	ret := _m.Called(tags)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricInformed")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string) error); ok {
 		r0 = rf(tags)
@@ -456,6 +579,10 @@ func (_c *SinkMock_MetricInformed_Call) RunAndReturn(run func([]string) error) *
 // MetricInjectDuration provides a mock function with given fields: duration, tags
 func (_m *SinkMock) MetricInjectDuration(duration time.Duration, tags []string) error {
 	ret := _m.Called(duration, tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricInjectDuration")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(time.Duration, []string) error); ok {
@@ -500,6 +627,10 @@ func (_c *SinkMock_MetricInjectDuration_Call) RunAndReturn(run func(time.Duratio
 func (_m *SinkMock) MetricInjected(succeed bool, kind string, tags []string) error {
 	ret := _m.Called(succeed, kind, tags)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricInjected")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(bool, string, []string) error); ok {
 		r0 = rf(succeed, kind, tags)
@@ -540,9 +671,98 @@ func (_c *SinkMock_MetricInjected_Call) RunAndReturn(run func(bool, string, []st
 	return _c
 }
 
+// MetricMissingTargetFound provides a mock function with given fields: tags
+func (_m *SinkMock) MetricMissingTargetFound(tags []string) error {
+	ret := _m.Called(tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricMissingTargetFound_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricMissingTargetFound'
+type SinkMock_MetricMissingTargetFound_Call struct {
+	*mock.Call
+}
+
+// MetricMissingTargetFound is a helper method to define mock.On call
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricMissingTargetFound(tags interface{}) *SinkMock_MetricMissingTargetFound_Call {
+	return &SinkMock_MetricMissingTargetFound_Call{Call: _e.mock.On("MetricMissingTargetFound", tags)}
+}
+
+func (_c *SinkMock_MetricMissingTargetFound_Call) Run(run func(tags []string)) *SinkMock_MetricMissingTargetFound_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricMissingTargetFound_Call) Return(_a0 error) *SinkMock_MetricMissingTargetFound_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricMissingTargetFound_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricMissingTargetFound_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MetricNextScheduledTime provides a mock function with given fields: _a0, tags
+func (_m *SinkMock) MetricNextScheduledTime(_a0 time.Duration, tags []string) error {
+	ret := _m.Called(_a0, tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(time.Duration, []string) error); ok {
+		r0 = rf(_a0, tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricNextScheduledTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricNextScheduledTime'
+type SinkMock_MetricNextScheduledTime_Call struct {
+	*mock.Call
+}
+
+// MetricNextScheduledTime is a helper method to define mock.On call
+//   - _a0 time.Duration
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricNextScheduledTime(_a0 interface{}, tags interface{}) *SinkMock_MetricNextScheduledTime_Call {
+	return &SinkMock_MetricNextScheduledTime_Call{Call: _e.mock.On("MetricNextScheduledTime", _a0, tags)}
+}
+
+func (_c *SinkMock_MetricNextScheduledTime_Call) Run(run func(_a0 time.Duration, tags []string)) *SinkMock_MetricNextScheduledTime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricNextScheduledTime_Call) Return(_a0 error) *SinkMock_MetricNextScheduledTime_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricNextScheduledTime_Call) RunAndReturn(run func(time.Duration, []string) error) *SinkMock_MetricNextScheduledTime_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MetricOrphanFound provides a mock function with given fields: tags
 func (_m *SinkMock) MetricOrphanFound(tags []string) error {
 	ret := _m.Called(tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricOrphanFound")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string) error); ok {
@@ -585,6 +805,10 @@ func (_c *SinkMock_MetricOrphanFound_Call) RunAndReturn(run func([]string) error
 // MetricPodsCreated provides a mock function with given fields: target, instanceName, namespace, succeed
 func (_m *SinkMock) MetricPodsCreated(target string, instanceName string, namespace string, succeed bool) error {
 	ret := _m.Called(target, instanceName, namespace, succeed)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricPodsCreated")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string, string, bool) error); ok {
@@ -631,6 +855,10 @@ func (_c *SinkMock_MetricPodsCreated_Call) RunAndReturn(run func(string, string,
 func (_m *SinkMock) MetricPodsGauge(gauge float64) error {
 	ret := _m.Called(gauge)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricPodsGauge")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(float64) error); ok {
 		r0 = rf(gauge)
@@ -673,6 +901,10 @@ func (_c *SinkMock_MetricPodsGauge_Call) RunAndReturn(run func(float64) error) *
 func (_m *SinkMock) MetricReconcile() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricReconcile")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -713,6 +945,10 @@ func (_c *SinkMock_MetricReconcile_Call) RunAndReturn(run func() error) *SinkMoc
 // MetricReconcileDuration provides a mock function with given fields: duration, tags
 func (_m *SinkMock) MetricReconcileDuration(duration time.Duration, tags []string) error {
 	ret := _m.Called(duration, tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricReconcileDuration")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(time.Duration, []string) error); ok {
@@ -756,6 +992,10 @@ func (_c *SinkMock_MetricReconcileDuration_Call) RunAndReturn(run func(time.Dura
 // MetricReinjected provides a mock function with given fields: succeed, kind, tags
 func (_m *SinkMock) MetricReinjected(succeed bool, kind string, tags []string) error {
 	ret := _m.Called(succeed, kind, tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricReinjected")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(bool, string, []string) error); ok {
@@ -801,6 +1041,10 @@ func (_c *SinkMock_MetricReinjected_Call) RunAndReturn(run func(bool, string, []
 func (_m *SinkMock) MetricRestart() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricRestart")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -841,6 +1085,10 @@ func (_c *SinkMock_MetricRestart_Call) RunAndReturn(run func() error) *SinkMock_
 // MetricSelectorCacheGauge provides a mock function with given fields: gauge
 func (_m *SinkMock) MetricSelectorCacheGauge(gauge float64) error {
 	ret := _m.Called(gauge)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricSelectorCacheGauge")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(float64) error); ok {
@@ -884,6 +1132,10 @@ func (_c *SinkMock_MetricSelectorCacheGauge_Call) RunAndReturn(run func(float64)
 func (_m *SinkMock) MetricStuckOnRemoval(tags []string) error {
 	ret := _m.Called(tags)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricStuckOnRemoval")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string) error); ok {
 		r0 = rf(tags)
@@ -926,6 +1178,10 @@ func (_c *SinkMock_MetricStuckOnRemoval_Call) RunAndReturn(run func([]string) er
 func (_m *SinkMock) MetricStuckOnRemovalGauge(gauge float64) error {
 	ret := _m.Called(gauge)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricStuckOnRemovalGauge")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(float64) error); ok {
 		r0 = rf(gauge)
@@ -964,9 +1220,98 @@ func (_c *SinkMock_MetricStuckOnRemovalGauge_Call) RunAndReturn(run func(float64
 	return _c
 }
 
+// MetricTargetMissing provides a mock function with given fields: duration, tags
+func (_m *SinkMock) MetricTargetMissing(duration time.Duration, tags []string) error {
+	ret := _m.Called(duration, tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(time.Duration, []string) error); ok {
+		r0 = rf(duration, tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricTargetMissing_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricTargetMissing'
+type SinkMock_MetricTargetMissing_Call struct {
+	*mock.Call
+}
+
+// MetricTargetMissing is a helper method to define mock.On call
+//   - duration time.Duration
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricTargetMissing(duration interface{}, tags interface{}) *SinkMock_MetricTargetMissing_Call {
+	return &SinkMock_MetricTargetMissing_Call{Call: _e.mock.On("MetricTargetMissing", duration, tags)}
+}
+
+func (_c *SinkMock_MetricTargetMissing_Call) Run(run func(duration time.Duration, tags []string)) *SinkMock_MetricTargetMissing_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricTargetMissing_Call) Return(_a0 error) *SinkMock_MetricTargetMissing_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricTargetMissing_Call) RunAndReturn(run func(time.Duration, []string) error) *SinkMock_MetricTargetMissing_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MetricTooLate provides a mock function with given fields: tags
+func (_m *SinkMock) MetricTooLate(tags []string) error {
+	ret := _m.Called(tags)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricTooLate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricTooLate'
+type SinkMock_MetricTooLate_Call struct {
+	*mock.Call
+}
+
+// MetricTooLate is a helper method to define mock.On call
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricTooLate(tags interface{}) *SinkMock_MetricTooLate_Call {
+	return &SinkMock_MetricTooLate_Call{Call: _e.mock.On("MetricTooLate", tags)}
+}
+
+func (_c *SinkMock_MetricTooLate_Call) Run(run func(tags []string)) *SinkMock_MetricTooLate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricTooLate_Call) Return(_a0 error) *SinkMock_MetricTooLate_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricTooLate_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricTooLate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MetricValidationCreated provides a mock function with given fields: tags
 func (_m *SinkMock) MetricValidationCreated(tags []string) error {
 	ret := _m.Called(tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricValidationCreated")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string) error); ok {
@@ -1010,6 +1355,10 @@ func (_c *SinkMock_MetricValidationCreated_Call) RunAndReturn(run func([]string)
 func (_m *SinkMock) MetricValidationDeleted(tags []string) error {
 	ret := _m.Called(tags)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricValidationDeleted")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string) error); ok {
 		r0 = rf(tags)
@@ -1051,6 +1400,10 @@ func (_c *SinkMock_MetricValidationDeleted_Call) RunAndReturn(run func([]string)
 // MetricValidationFailed provides a mock function with given fields: tags
 func (_m *SinkMock) MetricValidationFailed(tags []string) error {
 	ret := _m.Called(tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricValidationFailed")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string) error); ok {
@@ -1094,6 +1447,10 @@ func (_c *SinkMock_MetricValidationFailed_Call) RunAndReturn(run func([]string) 
 func (_m *SinkMock) MetricValidationUpdated(tags []string) error {
 	ret := _m.Called(tags)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricValidationUpdated")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string) error); ok {
 		r0 = rf(tags)
@@ -1136,6 +1493,10 @@ func (_c *SinkMock_MetricValidationUpdated_Call) RunAndReturn(run func([]string)
 func (_m *SinkMock) MetricWatcherCalls(tags []string) error {
 	ret := _m.Called(tags)
 
+	if len(ret) == 0 {
+		panic("no return value specified for MetricWatcherCalls")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string) error); ok {
 		r0 = rf(tags)
@@ -1174,13 +1535,12 @@ func (_c *SinkMock_MetricWatcherCalls_Call) RunAndReturn(run func([]string) erro
 	return _c
 }
 
-type mockConstructorTestingTNewSinkMock interface {
+// NewSinkMock creates a new instance of SinkMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewSinkMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewSinkMock creates a new instance of SinkMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewSinkMock(t mockConstructorTestingTNewSinkMock) *SinkMock {
+}) *SinkMock {
 	mock := &SinkMock{}
 	mock.Mock.Test(t)
 

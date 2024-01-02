@@ -28,6 +28,10 @@ func (_m *ManagerMock) EXPECT() *ManagerMock_Expecter {
 func (_m *ManagerMock) IsCgroupV2() bool {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for IsCgroupV2")
+	}
+
 	var r0 bool
 	if rf, ok := ret.Get(0).(func() bool); ok {
 		r0 = rf()
@@ -68,6 +72,10 @@ func (_c *ManagerMock_IsCgroupV2_Call) RunAndReturn(run func() bool) *ManagerMoc
 // Join provides a mock function with given fields: pid
 func (_m *ManagerMock) Join(pid int) error {
 	ret := _m.Called(pid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Join")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(int) error); ok {
@@ -110,6 +118,10 @@ func (_c *ManagerMock_Join_Call) RunAndReturn(run func(int) error) *ManagerMock_
 // Read provides a mock function with given fields: controller, file
 func (_m *ManagerMock) Read(controller string, file string) (string, error) {
 	ret := _m.Called(controller, file)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Read")
+	}
 
 	var r0 string
 	var r1 error
@@ -164,6 +176,10 @@ func (_c *ManagerMock_Read_Call) RunAndReturn(run func(string, string) (string, 
 func (_m *ManagerMock) ReadCPUSet() (cpuset.CPUSet, error) {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for ReadCPUSet")
+	}
+
 	var r0 cpuset.CPUSet
 	var r1 error
 	if rf, ok := ret.Get(0).(func() (cpuset.CPUSet, error)); ok {
@@ -215,6 +231,10 @@ func (_c *ManagerMock_ReadCPUSet_Call) RunAndReturn(run func() (cpuset.CPUSet, e
 func (_m *ManagerMock) RelativePath(controller string) string {
 	ret := _m.Called(controller)
 
+	if len(ret) == 0 {
+		panic("no return value specified for RelativePath")
+	}
+
 	var r0 string
 	if rf, ok := ret.Get(0).(func(string) string); ok {
 		r0 = rf(controller)
@@ -257,6 +277,10 @@ func (_c *ManagerMock_RelativePath_Call) RunAndReturn(run func(string) string) *
 func (_m *ManagerMock) Write(controller string, file string, data string) error {
 	ret := _m.Called(controller, file, data)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Write")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
 		r0 = rf(controller, file, data)
@@ -297,13 +321,12 @@ func (_c *ManagerMock_Write_Call) RunAndReturn(run func(string, string, string) 
 	return _c
 }
 
-type mockConstructorTestingTNewManagerMock interface {
+// NewManagerMock creates a new instance of ManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewManagerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewManagerMock creates a new instance of ManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewManagerMock(t mockConstructorTestingTNewManagerMock) *ManagerMock {
+}) *ManagerMock {
 	mock := &ManagerMock{}
 	mock.Mock.Test(t)
 

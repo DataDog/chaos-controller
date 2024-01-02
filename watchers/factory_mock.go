@@ -30,6 +30,10 @@ func (_m *FactoryMock) EXPECT() *FactoryMock_Expecter {
 func (_m *FactoryMock) NewChaosPodWatcher(name string, disruption *v1beta1.Disruption, cacheMock cache.Cache) (Watcher, error) {
 	ret := _m.Called(name, disruption, cacheMock)
 
+	if len(ret) == 0 {
+		panic("no return value specified for NewChaosPodWatcher")
+	}
+
 	var r0 Watcher
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string, *v1beta1.Disruption, cache.Cache) (Watcher, error)); ok {
@@ -86,6 +90,10 @@ func (_c *FactoryMock_NewChaosPodWatcher_Call) RunAndReturn(run func(string, *v1
 func (_m *FactoryMock) NewDisruptionTargetWatcher(name string, enableObserver bool, disruption *v1beta1.Disruption, cacheMock cache.Cache) (Watcher, error) {
 	ret := _m.Called(name, enableObserver, disruption, cacheMock)
 
+	if len(ret) == 0 {
+		panic("no return value specified for NewDisruptionTargetWatcher")
+	}
+
 	var r0 Watcher
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string, bool, *v1beta1.Disruption, cache.Cache) (Watcher, error)); ok {
@@ -139,13 +147,12 @@ func (_c *FactoryMock_NewDisruptionTargetWatcher_Call) RunAndReturn(run func(str
 	return _c
 }
 
-type mockConstructorTestingTNewFactoryMock interface {
+// NewFactoryMock creates a new instance of FactoryMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewFactoryMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewFactoryMock creates a new instance of FactoryMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewFactoryMock(t mockConstructorTestingTNewFactoryMock) *FactoryMock {
+}) *FactoryMock {
 	mock := &FactoryMock{}
 	mock.Mock.Test(t)
 

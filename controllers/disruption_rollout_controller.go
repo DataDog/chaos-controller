@@ -10,6 +10,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,11 +20,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var DisruptionRolloutTags = []string{}
+
 type DisruptionRolloutReconciler struct {
-	Client  client.Client
-	Scheme  *runtime.Scheme
-	BaseLog *zap.SugaredLogger
-	log     *zap.SugaredLogger
+	Client      client.Client
+	Scheme      *runtime.Scheme
+	BaseLog     *zap.SugaredLogger
+	log         *zap.SugaredLogger
+	MetricsSink metrics.Sink
 }
 
 func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
@@ -32,10 +37,24 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	instance := &chaosv1beta1.DisruptionRollout{}
 	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
 
+	// reconcile metrics
+	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
+
+	defer func(tsStart time.Time) {
+		tags := []string{}
+		if instance.Name != "" {
+			tags = append(tags, "disruptionRolloutName:"+instance.Name, "disruptionRolloutNamespace:"+instance.Namespace)
+		}
+
+		r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
+	}(time.Now())
+
 	// Fetch DisruptionRollout instance
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
+	DisruptionRolloutTags = []string{"disruptionRolloutName:" + instance.Name, "disruptionRolloutNamespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}
 
 	if !instance.DeletionTimestamp.IsZero() {
 		// Add finalizer here if required
@@ -107,6 +126,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	if tooLate {
+		r.handleMetricSinkError(r.MetricsSink.MetricTooLate(DisruptionRolloutTags))
 		r.log.Infow("missed schedule to start a disruption, sleeping",
 			"LastContainerChangeTime", instance.Status.LastContainerChangeTime,
 			"DelayedStartTolerance", instance.Spec.DelayedStartTolerance)
@@ -128,6 +148,8 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
+	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled(append(DisruptionRolloutTags, "disruptionName:"+disruption.Name)))
+
 	r.log.Infow("created Disruption for DisruptionRollout run", "disruptionName", disruption.Name)
 
 	// ------------------------------------------------------------------ //
@@ -138,7 +160,6 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Add the start time of the just initiated disruption to the status
 	instance.Status.LastScheduleTime = &metav1.Time{Time: scheduledTime}
-
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		r.log.Warnw("unable to update LastScheduleTime of DisruptionCron status", "err", err)
 		return ctrl.Result{}, err
@@ -189,8 +210,11 @@ func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx 
 
 			return targetResourceExists, disruptionRolloutDeleted, r.handleTargetResourceMissingPastExpiration(ctx, instance)
 		}
+
+		r.handleMetricSinkError(r.MetricsSink.MetricTargetMissing(time.Since(instance.Status.TargetResourcePreviouslyMissing.Time), DisruptionRolloutTags))
 	} else if instance.Status.TargetResourcePreviouslyMissing != nil {
 		r.log.Infow("target was previously missing, but now present. updating the status accordingly")
+		r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetFound(DisruptionRolloutTags))
 
 		return targetResourceExists, disruptionRolloutDeleted, r.handleTargetResourceNowPresent(ctx, instance)
 	}
@@ -228,6 +252,13 @@ func (r *DisruptionRolloutReconciler) handleTargetResourceNowPresent(ctx context
 	}
 
 	return nil
+}
+
+// handleMetricSinkError logs the given metric sink error if it is not nil
+func (r *DisruptionRolloutReconciler) handleMetricSinkError(err error) {
+	if err != nil {
+		r.log.Errorw("error sending a metric", "error", err)
+	}
 }
 
 // targetResourceUpdated checks whether the target resource has been updated or not.

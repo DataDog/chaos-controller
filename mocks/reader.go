@@ -40,6 +40,10 @@ func (_m *ReaderMock) Get(ctx context.Context, key types.NamespacedName, obj cli
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Get")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, types.NamespacedName, client.Object, ...client.GetOption) error); ok {
 		r0 = rf(ctx, key, obj, opts...)
@@ -99,6 +103,10 @@ func (_m *ReaderMock) List(ctx context.Context, list client.ObjectList, opts ...
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
+	if len(ret) == 0 {
+		panic("no return value specified for List")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, client.ObjectList, ...client.ListOption) error); ok {
 		r0 = rf(ctx, list, opts...)
@@ -146,13 +154,12 @@ func (_c *ReaderMock_List_Call) RunAndReturn(run func(context.Context, client.Ob
 	return _c
 }
 
-type mockConstructorTestingTNewReaderMock interface {
+// NewReaderMock creates a new instance of ReaderMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewReaderMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewReaderMock creates a new instance of ReaderMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewReaderMock(t mockConstructorTestingTNewReaderMock) *ReaderMock {
+}) *ReaderMock {
 	mock := &ReaderMock{}
 	mock.Mock.Test(t)
 

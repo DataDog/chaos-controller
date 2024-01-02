@@ -29,6 +29,10 @@ func (_m *StatFSMock) EXPECT() *StatFSMock_Expecter {
 func (_m *StatFSMock) Open(name string) (fs.File, error) {
 	ret := _m.Called(name)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Open")
+	}
+
 	var r0 fs.File
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (fs.File, error)); ok {
@@ -83,6 +87,10 @@ func (_c *StatFSMock_Open_Call) RunAndReturn(run func(string) (fs.File, error)) 
 func (_m *StatFSMock) Stat(name string) (fs.FileInfo, error) {
 	ret := _m.Called(name)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Stat")
+	}
+
 	var r0 fs.FileInfo
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (fs.FileInfo, error)); ok {
@@ -133,13 +141,12 @@ func (_c *StatFSMock_Stat_Call) RunAndReturn(run func(string) (fs.FileInfo, erro
 	return _c
 }
 
-type mockConstructorTestingTNewStatFSMock interface {
+// NewStatFSMock creates a new instance of StatFSMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewStatFSMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewStatFSMock creates a new instance of StatFSMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewStatFSMock(t mockConstructorTestingTNewStatFSMock) *StatFSMock {
+}) *StatFSMock {
 	mock := &StatFSMock{}
 	mock.Mock.Test(t)
 

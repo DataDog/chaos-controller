@@ -25,6 +25,10 @@ func (_m *allCGroupManagerMock) EXPECT() *allCGroupManagerMock_Expecter {
 func (_m *allCGroupManagerMock) EnterPid(cgroupPaths map[string]string, pid int) error {
 	ret := _m.Called(cgroupPaths, pid)
 
+	if len(ret) == 0 {
+		panic("no return value specified for EnterPid")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(map[string]string, int) error); ok {
 		r0 = rf(cgroupPaths, pid)
@@ -67,6 +71,10 @@ func (_c *allCGroupManagerMock_EnterPid_Call) RunAndReturn(run func(map[string]s
 // GetPaths provides a mock function with given fields:
 func (_m *allCGroupManagerMock) GetPaths() map[string]string {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPaths")
+	}
 
 	var r0 map[string]string
 	if rf, ok := ret.Get(0).(func() map[string]string); ok {
@@ -111,6 +119,10 @@ func (_c *allCGroupManagerMock_GetPaths_Call) RunAndReturn(run func() map[string
 func (_m *allCGroupManagerMock) Path(_a0 string) string {
 	ret := _m.Called(_a0)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Path")
+	}
+
 	var r0 string
 	if rf, ok := ret.Get(0).(func(string) string); ok {
 		r0 = rf(_a0)
@@ -153,6 +165,10 @@ func (_c *allCGroupManagerMock_Path_Call) RunAndReturn(run func(string) string) 
 func (_m *allCGroupManagerMock) PathExists(path string) bool {
 	ret := _m.Called(path)
 
+	if len(ret) == 0 {
+		panic("no return value specified for PathExists")
+	}
+
 	var r0 bool
 	if rf, ok := ret.Get(0).(func(string) bool); ok {
 		r0 = rf(path)
@@ -194,6 +210,10 @@ func (_c *allCGroupManagerMock_PathExists_Call) RunAndReturn(run func(string) bo
 // ReadFile provides a mock function with given fields: dir, file
 func (_m *allCGroupManagerMock) ReadFile(dir string, file string) (string, error) {
 	ret := _m.Called(dir, file)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadFile")
+	}
 
 	var r0 string
 	var r1 error
@@ -248,6 +268,10 @@ func (_c *allCGroupManagerMock_ReadFile_Call) RunAndReturn(run func(string, stri
 func (_m *allCGroupManagerMock) WriteFile(dir string, file string, data string) error {
 	ret := _m.Called(dir, file, data)
 
+	if len(ret) == 0 {
+		panic("no return value specified for WriteFile")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
 		r0 = rf(dir, file, data)
@@ -288,13 +312,12 @@ func (_c *allCGroupManagerMock_WriteFile_Call) RunAndReturn(run func(string, str
 	return _c
 }
 
-type mockConstructorTestingTnewAllCGroupManagerMock interface {
+// newAllCGroupManagerMock creates a new instance of allCGroupManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func newAllCGroupManagerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// newAllCGroupManagerMock creates a new instance of allCGroupManagerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func newAllCGroupManagerMock(t mockConstructorTestingTnewAllCGroupManagerMock) *allCGroupManagerMock {
+}) *allCGroupManagerMock {
 	mock := &allCGroupManagerMock{}
 	mock.Mock.Test(t)
 

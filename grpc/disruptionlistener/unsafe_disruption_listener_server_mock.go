@@ -53,13 +53,12 @@ func (_c *UnsafeDisruptionListenerServerMock_mustEmbedUnimplementedDisruptionLis
 	return _c
 }
 
-type mockConstructorTestingTNewUnsafeDisruptionListenerServerMock interface {
+// NewUnsafeDisruptionListenerServerMock creates a new instance of UnsafeDisruptionListenerServerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewUnsafeDisruptionListenerServerMock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}
-
-// NewUnsafeDisruptionListenerServerMock creates a new instance of UnsafeDisruptionListenerServerMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewUnsafeDisruptionListenerServerMock(t mockConstructorTestingTNewUnsafeDisruptionListenerServerMock) *UnsafeDisruptionListenerServerMock {
+}) *UnsafeDisruptionListenerServerMock {
 	mock := &UnsafeDisruptionListenerServerMock{}
 	mock.Mock.Test(t)
 
