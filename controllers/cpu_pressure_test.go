@@ -50,7 +50,7 @@ var _ = Describe("CPU Pressure", func() {
 	})
 
 	JustBeforeEach(func(ctx SpecContext) {
-		Skip("See CHAOS-XXX: Data Race in test")
+		Skip("See CHAOSPLT-212: Data Race in test")
 		cpuStress, targetPod, _ = InjectPodsAndDisruption(ctx, cpuStress, true)
 	})
 
