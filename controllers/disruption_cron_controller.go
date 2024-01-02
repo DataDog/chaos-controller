@@ -162,7 +162,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Add the start time of the just initiated disruption to the status
 	instance.Status.LastScheduleTime = &metav1.Time{Time: missedRun}
-	instance.Status.History = append(instance.Status.History, chaosv1beta1.DisruptionRun{
+	instance.Status.History = append(instance.Status.History, chaosv1beta1.DisruptionCronTrigger{
 		Name:      instance.ObjectMeta.Name,
 		Kind:      instance.TypeMeta.Kind,
 		CreatedAt: *instance.Status.LastScheduleTime,
