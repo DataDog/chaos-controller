@@ -183,7 +183,7 @@ func getScheduledTimeForDisruption(log *zap.SugaredLogger, disruption *chaosv1be
 
 	timeParsed, err := time.Parse(time.RFC3339, timeRaw)
 	if err != nil {
-		log.Errorw("unable to parse schedule time for child disruption", "err", err, "disruption", disruption.Name)
+		log.Errorw("unable to parse schedule time for child disruption", "err", err, "disruptionName", disruption.Name)
 		return time.Time{}
 	}
 
