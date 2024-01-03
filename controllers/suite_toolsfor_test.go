@@ -220,12 +220,12 @@ func CreateDisruption(ctx SpecContext, disruption chaosv1beta1.Disruption, targe
 // ExpectDisruptionStatus wait until provided disruption has provided status
 // if skipTargetStatus is provided, it will NOT check that injection target has the provided status
 // most useful case to call this method is to expect a disruption (and all targeted containers) is Injected
-func ExpectDisruptionStatus(ctx SpecContext, disruption chaosv1beta1.Disruption, statuses ...chaostypes.DisruptionInjectionStatus) {
+func ExpectDisruptionStatus(ctx SpecContext, disruption chaosv1beta1.Disruption, statuses ...chaostypes.DisruptionInjectionStatus) bool {
 	GinkgoHelper()
 
 	AddReportEntry("Waiting for disruption to have one of statuses", statuses)
 
-	Eventually(func(ctx SpecContext) error {
+	return Eventually(func(ctx SpecContext) error {
 		// retrieve the previously created disruption
 		if err := k8sClient.Get(ctx, types.NamespacedName{
 			Namespace: disruption.Namespace,

@@ -185,7 +185,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				Expect(chaosPods).Should(HaveLen(2))
 
 				for _, chaosPod := range chaosPods {
-					Expect(chaosPod).ToNot(Equal(nonChaosPodName))
+					Expect(chaosPod.Name).ToNot(Equal(nonChaosPodName))
 					Expect(chaosPod.Namespace).Should(Equal(DefaultChaosNamespace))
 					Expect(chaosPod.Labels[chaostypes.DisruptionNameLabel]).Should(Equal(DefaultDisruptionName))
 					Expect(chaosPod.Labels[chaostypes.DisruptionNamespaceLabel]).Should(Equal(DefaultNamespace))

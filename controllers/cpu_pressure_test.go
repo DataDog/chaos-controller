@@ -50,6 +50,7 @@ var _ = Describe("CPU Pressure", func() {
 	})
 
 	JustBeforeEach(func(ctx SpecContext) {
+		Skip("See CHAOSPLT-212: Data Race in test")
 		cpuStress, targetPod, _ = InjectPodsAndDisruption(ctx, cpuStress, true)
 	})
 
@@ -76,9 +77,9 @@ var _ = Describe("CPU Pressure", func() {
 
 		Concurrently{
 			func(ctx SpecContext) {
-				Consistently(func(ctx SpecContext) {
-					ExpectDisruptionStatus(ctx, cpuStress, chaostypes.DisruptionInjectionStatusInjected, chaostypes.DisruptionInjectionStatusPausedInjected, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
-				}).WithContext(ctx).Within(calcDisruptionGoneTimeout(cpuStress)).ProbeEvery(disruptionPotentialChangesEvery)
+				Consistently(func(ctx SpecContext) bool {
+					return ExpectDisruptionStatus(ctx, cpuStress, chaostypes.DisruptionInjectionStatusInjected, chaostypes.DisruptionInjectionStatusPausedInjected, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
+				}).WithContext(ctx).Within(calcDisruptionGoneTimeout(cpuStress)).ProbeEvery(disruptionPotentialChangesEvery).Should(BeTrue())
 			},
 			func(ctx SpecContext) {
 				GinkgoHelper()

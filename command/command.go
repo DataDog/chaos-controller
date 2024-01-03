@@ -163,7 +163,7 @@ func (w *backgroundCmd) Start() error {
 		w.log.Debug("new process created, monitoring newly created process exit status")
 
 		if err := <-w.chErr; err != nil {
-			w.log.Warn("background command exited with an error", "error", err)
+			w.log.Warnw("background command exited with an error", "error", err)
 		} else {
 			w.log.Info("background command exited successfully")
 		}
