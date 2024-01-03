@@ -190,7 +190,7 @@ func getScheduledTimeForDisruption(log *zap.SugaredLogger, disruption *chaosv1be
 	return timeParsed
 }
 
-// getMostRecentScheduleTime returns the most recent scheduled time from a list of disruptions.
+// GetMostRecentScheduleTime returns the most recent scheduled time from a list of disruptions.
 func GetMostRecentScheduleTime(log *zap.SugaredLogger, disruptions *chaosv1beta1.DisruptionList) time.Time {
 	length := len(disruptions.Items)
 	if length == 0 {

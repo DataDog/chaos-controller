@@ -162,6 +162,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Add the start time of the just initiated disruption to the status
 	instance.Status.LastScheduleTime = &metav1.Time{Time: missedRun}
+
+	// Add to history, then ensure only the last MaxHistoryLen items are kept
 	instance.Status.History = append(instance.Status.History, chaosv1beta1.DisruptionCronTrigger{
 		Name:      instance.ObjectMeta.Name,
 		Kind:      instance.TypeMeta.Kind,
@@ -169,7 +171,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	})
 
 	if len(instance.Status.History) > chaosv1beta1.MaxHistoryLen {
-		instance.Status.History = instance.Status.History[1:]
+		instance.Status.History = instance.Status.History[len(instance.Status.History)-chaosv1beta1.MaxHistoryLen:]
 	}
 
 	r.log.Debugw("updating instance Status lastScheduleTime and history",
