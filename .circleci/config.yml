@@ -201,9 +201,7 @@ jobs:
           no_output_timeout: 15m
       - run:
           name: Save logs
-          command: |
-            mkdir /tmp/logs
-            minikube kubectl -- -n chaos-engineering logs -lapp=chaos-controller -c manager --tail=-1
+          command: mkdir -p /tmp/logs && minikube kubectl -- -n chaos-engineering logs -lapp=chaos-controller -c manager --tail=-1
       - store_test_results:
           path: report-e2e-test.xml
       - store_artifacts:
