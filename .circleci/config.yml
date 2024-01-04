@@ -198,9 +198,13 @@ jobs:
           command: |
             export PATH="/home/circleci/go/bin:${PATH}"
             make e2e-test GOBIN=/home/circleci/go/bin KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube"
+            mkdir /tmp/logs
+            minikube kubectl -- -n chaos-engineering logs -lapp=chaos-controller -c manager --tail=-1
           no_output_timeout: 15m
       - store_test_results:
           path: report-e2e-test.xml
+      - store_artifacts:
+          path: /tmp/logs
   python-check:
     executor: python
     parameters:
