@@ -476,7 +476,7 @@ var _ = Describe("Disruption Controller", func() {
 		})
 	})
 
-	FContext("don't reinject a static node disruption", func() {
+	Context("don't reinject a static node disruption", func() {
 		BeforeEach(func() {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				DryRun:   true,
@@ -485,7 +485,6 @@ var _ = Describe("Disruption Controller", func() {
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
 				},
-				Selector:        labels.Set{"foo": "bar"},
 				StaticTargeting: true,
 				Level:           chaostypes.DisruptionLevelPod,
 				NodeFailure:     &chaosv1beta1.NodeFailureSpec{Shutdown: false},
