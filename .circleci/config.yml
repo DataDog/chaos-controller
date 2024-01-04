@@ -202,7 +202,7 @@ jobs:
       - run:
           name: Save logs
           when: on_fail
-          command: mkdir -p /tmp/logs && minikube kubectl -- -n chaos-engineering logs -lapp=chaos-controller -c manager --tail=-1
+          command: mkdir -p /tmp/logs && minikube kubectl -- -n chaos-engineering logs -lapp=chaos-controller -c manager --tail=-1 > /tmp/logs/e2e.txt
       - store_test_results:
           path: report-e2e-test.xml
       - store_artifacts:
