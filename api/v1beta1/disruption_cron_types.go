@@ -83,4 +83,14 @@ type DisruptionCronStatus struct {
 	// Time when the target resource was previously missing.
 	// +nullable
 	TargetResourcePreviouslyMissing *metav1.Time `json:"targetResourcePreviouslyMissing,omitempty"`
+
+	History []DisruptionCronTrigger `json:"history,omitempty"`
+}
+
+const MaxHistoryLen = 5
+
+type DisruptionCronTrigger struct {
+	Name      string      `json:"name,omitempty"`
+	Kind      string      `json:"kind,omitempty"`
+	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }

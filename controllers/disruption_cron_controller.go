@@ -54,6 +54,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	r.log.Infow("fetched last known history", "history", instance.Status.History)
 	DisruptionCronTags = []string{"disruptionCronName:" + instance.Name, "disruptionCronNamespace:" + instance.Namespace, "targetName:" + instance.Spec.TargetResource.Name}
 
 	if !instance.DeletionTimestamp.IsZero() {
@@ -162,6 +163,20 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Add the start time of the just initiated disruption to the status
 	instance.Status.LastScheduleTime = &metav1.Time{Time: missedRun}
 
+	// Add to history, then ensure only the last MaxHistoryLen items are kept
+	instance.Status.History = append(instance.Status.History, chaosv1beta1.DisruptionCronTrigger{
+		Name:      instance.ObjectMeta.Name,
+		Kind:      instance.TypeMeta.Kind,
+		CreatedAt: *instance.Status.LastScheduleTime,
+	})
+
+	if len(instance.Status.History) > chaosv1beta1.MaxHistoryLen {
+		instance.Status.History = instance.Status.History[len(instance.Status.History)-chaosv1beta1.MaxHistoryLen:]
+	}
+
+	r.log.Debugw("updating instance Status lastScheduleTime and history",
+		"lastScheduleTime", instance.Status.LastScheduleTime, "history", instance.Status.History)
+
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		r.log.Warnw("unable to update LastScheduleTime of DisruptionCron status", "err", err)
 		return ctrl.Result{}, err
@@ -174,8 +189,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 // based on the most recent schedule time among the given disruptions.
 func (r *DisruptionCronReconciler) updateLastScheduleTime(ctx context.Context, instance *chaosv1beta1.DisruptionCron, disruptions *chaosv1beta1.DisruptionList) error {
 	mostRecentScheduleTime := GetMostRecentScheduleTime(r.log, disruptions) // find the last run so we can update the status
-	if mostRecentScheduleTime != nil {
-		instance.Status.LastScheduleTime = &metav1.Time{Time: *mostRecentScheduleTime}
+	if !mostRecentScheduleTime.IsZero() {
+		instance.Status.LastScheduleTime = &metav1.Time{Time: mostRecentScheduleTime}
 		return r.Client.Status().Update(ctx, instance)
 	}
 

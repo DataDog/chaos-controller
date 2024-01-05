@@ -611,6 +611,18 @@ spec:
             status:
               description: DisruptionCronStatus defines the observed state of DisruptionCron
               properties:
+                history:
+                  items:
+                    properties:
+                      createdAt:
+                        format: date-time
+                        type: string
+                      kind:
+                        type: string
+                      name:
+                        type: string
+                    type: object
+                  type: array
                 lastScheduleTime:
                   description: The last time when the disruption was last successfully scheduled.
                   format: date-time
