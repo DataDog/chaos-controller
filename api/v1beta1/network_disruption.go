@@ -710,7 +710,7 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 
 // UpdateHostsOnCloudDisruption from a cloud spec disruption, get all ip ranges of services provided and appends them into the s.Hosts slice
 func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager cloudservice.CloudServicesProvidersManager) error {
-	if s.Cloud == nil {
+	if s == nil || s.Cloud == nil {
 		return nil
 	}
 
