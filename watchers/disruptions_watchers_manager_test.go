@@ -7,6 +7,8 @@ package watchers_test
 
 import (
 	"fmt"
+	"net/http"
+
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/DataDog/chaos-controller/watchers"
@@ -15,7 +17,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
 )
 
 var _ = Describe("Disruptions watchers manager", func() {
@@ -343,7 +344,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 			})
 
 			It("should do nothing", func() {
-				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers())
+				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers()).Should(Succeed())
 			})
 		})
 
@@ -365,7 +366,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 			})
 
 			It("should do nothing", func() {
-				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers())
+				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers()).Should(Succeed())
 			})
 
 			When("the function RemoveAllOrphanWatchers is recalled", func() {

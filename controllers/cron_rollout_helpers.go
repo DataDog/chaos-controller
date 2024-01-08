@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -174,41 +175,36 @@ func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme 
 }
 
 // getScheduledTimeForDisruption returns the scheduled time for a particular disruption.
-func getScheduledTimeForDisruption(disruption *chaosv1beta1.Disruption) (*time.Time, error) {
+func getScheduledTimeForDisruption(log *zap.SugaredLogger, disruption *chaosv1beta1.Disruption) time.Time {
 	timeRaw := disruption.Annotations[ScheduledAtAnnotation]
 	if len(timeRaw) == 0 {
-		return nil, nil
+		return time.Time{}
 	}
 
 	timeParsed, err := time.Parse(time.RFC3339, timeRaw)
 	if err != nil {
-		return nil, err
+		log.Errorw("unable to parse schedule time for child disruption", "err", err, "disruptionName", disruption.Name)
+		return time.Time{}
 	}
 
-	return &timeParsed, nil
+	return timeParsed
 }
 
-// getMostRecentScheduleTime returns the most recent scheduled time from a list of disruptions.
-func GetMostRecentScheduleTime(log *zap.SugaredLogger, disruptions *chaosv1beta1.DisruptionList) *time.Time {
-	var mostRecentScheduleTime *time.Time
-
-	for _, disruption := range disruptions.Items {
-		scheduledTimeForDisruption, err := getScheduledTimeForDisruption(&disruption)
-		if err != nil {
-			log.Errorw("unable to parse schedule time for child disruption", "err", err, "disruption", disruption.Name)
-			continue
-		}
-
-		if scheduledTimeForDisruption != nil {
-			if mostRecentScheduleTime == nil {
-				mostRecentScheduleTime = scheduledTimeForDisruption
-			} else if mostRecentScheduleTime.Before(*scheduledTimeForDisruption) {
-				mostRecentScheduleTime = scheduledTimeForDisruption
-			}
-		}
+// GetMostRecentScheduleTime returns the most recent scheduled time from a list of disruptions.
+func GetMostRecentScheduleTime(log *zap.SugaredLogger, disruptions *chaosv1beta1.DisruptionList) time.Time {
+	length := len(disruptions.Items)
+	if length == 0 {
+		return time.Time{}
 	}
 
-	return mostRecentScheduleTime
+	sort.Slice(disruptions.Items, func(i, j int) bool {
+		scheduleTime1 := getScheduledTimeForDisruption(log, &disruptions.Items[i])
+		scheduleTime2 := getScheduledTimeForDisruption(log, &disruptions.Items[j])
+
+		return scheduleTime1.Before(scheduleTime2)
+	})
+
+	return getScheduledTimeForDisruption(log, &disruptions.Items[length-1])
 }
 
 // generateDisruptionName produces a disruption name based on the specific CR controller, that's invoking it.

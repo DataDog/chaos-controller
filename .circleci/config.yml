@@ -80,7 +80,7 @@ executors:
     docker:
       # This is circle ci images, provides default tool installed (like docker) to ease step definition and avoid apt-get/update things
       # https://circleci.com/docs/circleci-images/#next-gen-language-images
-      - image: cimg/go:1.20.5
+      - image: cimg/go:1.21.5
     resource_class: 2xlarge
   python:
     <<: *working_directory
@@ -199,8 +199,14 @@ jobs:
             export PATH="/home/circleci/go/bin:${PATH}"
             make e2e-test GOBIN=/home/circleci/go/bin KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube"
           no_output_timeout: 15m
+      - run:
+          name: Save logs
+          when: on_fail
+          command: mkdir -p /tmp/logs && minikube kubectl -- -n chaos-engineering logs -lapp=chaos-controller -c manager --tail=-1 > /tmp/logs/e2e.txt
       - store_test_results:
           path: report-e2e-test.xml
+      - store_artifacts:
+          path: /tmp/logs
   python-check:
     executor: python
     parameters:
