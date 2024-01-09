@@ -14,7 +14,6 @@ import (
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/targetselector"
@@ -75,14 +74,13 @@ type ChaosPodServiceInjectorConfig struct {
 
 // ChaosPodServiceConfig contains configuration options for the chaosPodService.
 type ChaosPodServiceConfig struct {
-	Client                        client.Client                              // Kubernetes client for interacting with the API server.
-	Log                           *zap.SugaredLogger                         // Logger for logging.
-	ChaosNamespace                string                                     // Namespace where chaos-related resources are located.
-	TargetSelector                targetselector.TargetSelector              // Target selector for selecting target pods.
-	Injector                      ChaosPodServiceInjectorConfig              // Configuration options for the injector.
-	ImagePullSecrets              string                                     // Image pull secrets for the chaosPodService.
-	MetricsSink                   metrics.Sink                               // Sink for exporting metrics.
-	CloudServicesProvidersManager cloudservice.CloudServicesProvidersManager // Manager for cloud service providers.
+	Client           client.Client                 // Kubernetes client for interacting with the API server.
+	Log              *zap.SugaredLogger            // Logger for logging.
+	ChaosNamespace   string                        // Namespace where chaos-related resources are located.
+	TargetSelector   targetselector.TargetSelector // Target selector for selecting target pods.
+	Injector         ChaosPodServiceInjectorConfig // Configuration options for the injector.
+	ImagePullSecrets string                        // Image pull secrets for the chaosPodService.
+	MetricsSink      metrics.Sink                  // Sink for exporting metrics.
 }
 
 type chaosPodService struct {
@@ -243,24 +241,11 @@ func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.D
 		}
 
 		notInjectedBefore := instance.TimeToInject()
-
 		allowedHosts := m.config.Injector.NetworkDisruptionAllowedHosts
 
-		// get the ip ranges of cloud provider services
-		if instance.Spec.Network != nil {
-			if instance.Spec.Network.Cloud != nil {
-				hosts, err := chaosv1beta1.TransformCloudSpecToHostsSpec(m.config.CloudServicesProvidersManager, instance.Spec.Network.Cloud)
-				if err != nil {
-					return nil, err
-				}
-
-				instance.Spec.Network.Hosts = append(instance.Spec.Network.Hosts, hosts...)
-			}
-
-			// remove default allowed hosts if disabled
-			if instance.Spec.Network.DisableDefaultAllowedHosts {
-				allowedHosts = make([]string, 0)
-			}
+		// remove default allowed hosts if disabled
+		if instance.Spec.Network != nil && instance.Spec.Network.DisableDefaultAllowedHosts {
+			allowedHosts = make([]string, 0)
 		}
 
 		xargs := chaosapi.DisruptionArgs{

@@ -708,11 +708,17 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 	return goodPorts, notFoundPorts
 }
 
-// TransformCloudSpecToHostsSpec from a cloud spec disruption, get all ip ranges of services provided and transform them into a list of hosts spec
-func TransformCloudSpecToHostsSpec(cloudManager cloudservice.CloudServicesProvidersManager, cloudSpec *NetworkDisruptionCloudSpec) ([]NetworkDisruptionHostSpec, error) {
-	var hosts []NetworkDisruptionHostSpec
+// UpdateHostsOnCloudDisruption from a cloud spec disruption, get all ip ranges of services provided and appends them into the s.Hosts slice
+func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager cloudservice.CloudServicesProvidersManager) error {
+	if s == nil || s.Cloud == nil {
+		return nil
+	}
 
-	clouds := cloudSpec.TransformToCloudMap()
+	if s.Hosts == nil {
+		s.Hosts = []NetworkDisruptionHostSpec{}
+	}
+
+	clouds := s.Cloud.TransformToCloudMap()
 
 	for cloudName, serviceList := range clouds {
 		var serviceListNames []string
@@ -723,20 +729,22 @@ func TransformCloudSpecToHostsSpec(cloudManager cloudservice.CloudServicesProvid
 
 		ipRangesPerService, err := cloudManager.GetServicesIPRanges(types.CloudProviderName(cloudName), serviceListNames)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		for _, serviceSpec := range serviceList {
 			for _, ipRange := range ipRangesPerService[serviceSpec.ServiceName] {
-				hosts = append(hosts, NetworkDisruptionHostSpec{
+				host := NetworkDisruptionHostSpec{
 					Host:      ipRange,
 					Protocol:  serviceSpec.Protocol,
 					Flow:      serviceSpec.Flow,
 					ConnState: serviceSpec.ConnState,
-				})
+				}
+
+				s.Hosts = append(s.Hosts, host)
 			}
 		}
 	}
 
-	return hosts, nil
+	return nil
 }

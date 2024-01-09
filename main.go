@@ -171,9 +171,8 @@ func main() {
 			DNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 			ImagePullSecrets:              cfg.Injector.ImagePullSecrets,
 		},
-		ImagePullSecrets:              cfg.Injector.ImagePullSecrets,
-		MetricsSink:                   metricsSink,
-		CloudServicesProvidersManager: cloudProviderManager,
+		ImagePullSecrets: cfg.Injector.ImagePullSecrets,
+		MetricsSink:      metricsSink,
 	})
 
 	if err != nil {
@@ -192,6 +191,7 @@ func main() {
 		ExpiredDisruptionGCDelay:   gcPtr,
 		CacheContextStore:          make(map[string]controllers.CtxTuple),
 		ChaosPodService:            chaosPodService,
+		CloudService:               cloudProviderManager,
 		DisruptionsDeletionTimeout: cfg.Controller.DisruptionDeletionTimeout,
 	}
 

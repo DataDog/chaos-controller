@@ -512,10 +512,47 @@ var _ = Describe("Disruption Controller", func() {
 	})
 
 	Context("Cloud disruption is a host disruption disguised", func() {
+		VerifyHosts := func(ctx SpecContext) (error, int) {
+			// get chaos pods
+			l, err := listChaosPods(ctx, disruption)
+			if err != nil {
+				return err, 0
+			}
+
+			hosts := make([]int, len(l.Items))
+
+			// sum up injectors
+			for i, p := range l.Items {
+				hosts[i] = 0
+				args := p.Spec.Containers[0].Args
+				for _, arg := range args {
+					if arg == "--hosts" {
+						hosts[i]++
+					}
+				}
+			}
+
+			for i, hostsForItem := range hosts {
+				if hostsForItem == 0 {
+					return fmt.Errorf("should have multiple hosts parameters."), 0
+				}
+
+				// verify that all chaos pods have the same list of hosts
+				if i > 0 {
+					if hosts[i] != hosts[i-1] {
+						return fmt.Errorf("should have the same list of hosts for all chaos pods"), hosts[i]
+					}
+				}
+			}
+
+			return nil, hosts[0]
+		}
+
 		BeforeEach(func() {
+			skipSecondPod = false
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				DryRun: false,
-				Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+				Count:  &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
 				},
@@ -538,32 +575,64 @@ var _ = Describe("Disruption Controller", func() {
 		})
 
 		It("should create a cloud disruption but apply a host disruption with the list of cloud managed service ip ranges", func(ctx SpecContext) {
+			totalNbOfHosts := 0
 			By("Ensuring that the chaos pod have been created")
-			ExpectChaosPods(ctx, disruption, 1)
+			ExpectChaosPods(ctx, disruption, 2)
 
-			By("Ensuring that the chaos pod has the list of AWS hosts")
+			By("Ensuring that the chaos pods have the list of AWS hosts")
 			Eventually(func(ctx SpecContext) error {
-				hosts := 0
-
-				// get chaos pods
-				l, err := listChaosPods(ctx, disruption)
+				err, nbOfHosts := VerifyHosts(ctx)
 				if err != nil {
 					return err
 				}
 
-				// sum up injectors
-				for _, p := range l.Items {
-					args := p.Spec.Containers[0].Args
-					for _, arg := range args {
-						if arg == "--hosts" {
-							hosts++
-						}
-					}
+				if totalNbOfHosts != 0 && totalNbOfHosts != nbOfHosts {
+					return fmt.Errorf("should have the same number of hosts for all chaos pods in all iterations")
 				}
 
-				if hosts == 0 {
-					return fmt.Errorf("should have multiple hosts parameters.")
+				totalNbOfHosts = nbOfHosts
+
+				return nil
+			}).WithContext(ctx).ProbeEvery(disruptionPotentialChangesEvery).Within(calcDisruptionGoneTimeout(disruption)).Should(Succeed())
+
+			By("Ensuring adding another chaos pod will result in the same number of hosts")
+			By("creating extra target one")
+			extraOneCreated := CreateRunningPod(ctx, *targetPod.DeepCopy())
+
+			By("waiting extra targets to be created and running")
+			extraTargetPod := <-extraOneCreated
+			ExpectChaosPods(ctx, disruption, 3)
+
+			By("Ensuring that the chaos pods have the same nb of AWS hosts")
+			Eventually(func(ctx SpecContext) error {
+				err, nbOfHosts := VerifyHosts(ctx)
+				if err != nil {
+					return err
 				}
+
+				if totalNbOfHosts != 0 && totalNbOfHosts != nbOfHosts {
+					return fmt.Errorf("should have the same number of hosts for all chaos pods in all iterations")
+				}
+
+				totalNbOfHosts = nbOfHosts
+
+				return nil
+			}).WithContext(ctx).ProbeEvery(disruptionPotentialChangesEvery).Within(calcDisruptionGoneTimeout(disruption)).Should(Succeed())
+
+			By("Deleting extra target and ensuring the number of hosts is the same")
+			DeleteRunningPod(ctx, extraTargetPod)
+			ExpectChaosPods(ctx, disruption, 2)
+			Eventually(func(ctx SpecContext) error {
+				err, nbOfHosts := VerifyHosts(ctx)
+				if err != nil {
+					return err
+				}
+
+				if totalNbOfHosts != 0 && totalNbOfHosts != nbOfHosts {
+					return fmt.Errorf("should have the same number of hosts for all chaos pods in all iterations")
+				}
+
+				totalNbOfHosts = nbOfHosts
 
 				return nil
 			}).WithContext(ctx).ProbeEvery(disruptionPotentialChangesEvery).Within(calcDisruptionGoneTimeout(disruption)).Should(Succeed())

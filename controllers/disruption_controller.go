@@ -25,6 +25,7 @@ import (
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
 	"github.com/DataDog/chaos-controller/safemode"
@@ -70,6 +71,7 @@ type DisruptionReconciler struct {
 	CacheContextStore          map[string]CtxTuple
 	DisruptionsWatchersManager watchers.DisruptionsWatchersManager
 	ChaosPodService            services.ChaosPodService
+	CloudService               cloudservice.CloudServicesProvidersManager
 	DisruptionsDeletionTimeout time.Duration
 }
 
@@ -482,6 +484,14 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 
 	if len(instance.Status.TargetInjections) > 0 && (len(instance.Status.TargetInjections) != len(chaosPodsMap)) {
 		r.log.Infow("starting targets injection", "targets", instance.Status.TargetInjections)
+	}
+
+	// on cloud disruption, update hosts
+	subspec := instance.Spec.DisruptionKindPicker(chaostypes.DisruptionKindNetworkDisruption)
+	if reflect.ValueOf(subspec).IsValid() && !reflect.ValueOf(subspec).IsNil() {
+		if err = instance.Spec.Network.UpdateHostsOnCloudDisruption(r.CloudService); err != nil {
+			return err
+		}
 	}
 
 	// iterate through target + existing disruption kind -- to ensure all chaos pods exist

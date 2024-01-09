@@ -14,8 +14,6 @@ import (
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	builderstest "github.com/DataDog/chaos-controller/builderstest"
-	"github.com/DataDog/chaos-controller/cloudservice"
-	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/services"
@@ -55,16 +53,15 @@ const (
 var _ = Describe("Chaos Pod Service", func() {
 
 	var (
-		chaosPod                          v1.Pod
-		disruption                        *chaosv1beta1.Disruption
-		k8sClientMock                     *mocks.K8SClientMock
-		metricsSinkMock                   *metrics.SinkMock
-		cloudServicesProvidersManagerMock *cloudservice.CloudServicesProvidersManagerMock
-		targetSelectorMock                *targetselector.TargetSelectorMock
-		chaosPodServiceConfig             services.ChaosPodServiceConfig
-		chaosPodService                   services.ChaosPodService
-		err                               error
-		chaosPods                         []v1.Pod
+		chaosPod              v1.Pod
+		disruption            *chaosv1beta1.Disruption
+		k8sClientMock         *mocks.K8SClientMock
+		metricsSinkMock       *metrics.SinkMock
+		targetSelectorMock    *targetselector.TargetSelectorMock
+		chaosPodServiceConfig services.ChaosPodServiceConfig
+		chaosPodService       services.ChaosPodService
+		err                   error
+		chaosPods             []v1.Pod
 	)
 
 	BeforeEach(func() {
@@ -72,7 +69,6 @@ var _ = Describe("Chaos Pod Service", func() {
 		k8sClientMock = mocks.NewK8SClientMock(GinkgoT())
 		targetSelectorMock = targetselector.NewTargetSelectorMock(GinkgoT())
 		metricsSinkMock = metrics.NewSinkMock(GinkgoT())
-		cloudServicesProvidersManagerMock = cloudservice.NewCloudServicesProvidersManagerMock(GinkgoT())
 		disruption = &chaosv1beta1.Disruption{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      DefaultDisruptionName,
@@ -88,7 +84,6 @@ var _ = Describe("Chaos Pod Service", func() {
 		chaosPodServiceConfig.ChaosNamespace = DefaultChaosNamespace
 		chaosPodServiceConfig.MetricsSink = metricsSinkMock
 		chaosPodServiceConfig.TargetSelector = targetSelectorMock
-		chaosPodServiceConfig.CloudServicesProvidersManager = cloudServicesProvidersManagerMock
 		if chaosPodServiceConfig.Client == nil {
 			chaosPodServiceConfig.Client = k8sClientMock
 		}
@@ -809,70 +804,6 @@ var _ = Describe("Chaos Pod Service", func() {
 
 					By("having the correct container arguments")
 					Expect(chaosPods[0].Spec.Containers[0].Args).Should(Equal(expectedArgs))
-				})
-
-				Context("with a network cloud spec", func() {
-
-					var serviceName string
-
-					BeforeEach(func() {
-						// Arrange
-						serviceName = "GCP"
-
-						cloudSpec := &chaosv1beta1.NetworkDisruptionCloudSpec{
-							GCPServiceList: &[]chaosv1beta1.NetworkDisruptionCloudServiceSpec{
-								{
-									ServiceName: serviceName,
-									Protocol:    "TCP",
-									Flow:        "ingress",
-									ConnState:   "open",
-								},
-							},
-						}
-
-						dBuilder.WithNetworkDisruptionCloudSpec(cloudSpec)
-					})
-
-					Context("nominal cases", func() {
-
-						BeforeEach(func() {
-							// Arrange
-							cloudServicesProvidersManagerMock.EXPECT().GetServicesIPRanges(
-								cloudtypes.CloudProviderName(serviceName),
-								[]string{serviceName},
-							).Return(map[string][]string{
-								serviceName: {
-									"10.0.0.0-10.10.10.10",
-								},
-							}, nil).Once()
-						})
-
-						It("should succeed", func() {
-							// Assert
-							By("not return an error")
-							Expect(err).ShouldNot(HaveOccurred())
-
-							By("return only one pod")
-							Expect(chaosPods).To(HaveLen(1))
-
-							By("having the correct service cloud args")
-							Expect(chaosPods[0].Spec.Containers[0].Args).Should(ContainElements("--hosts", "10.0.0.0-10.10.10.10;0;TCP;ingress;open"))
-						})
-					})
-
-					When("the cloud manager return an error during the fetching of services ip ranges", func() {
-						BeforeEach(func() {
-							// Arrange
-							cloudServicesProvidersManagerMock.EXPECT().GetServicesIPRanges(
-								mock.Anything,
-								mock.Anything,
-							).Return(nil, fmt.Errorf("an error happened"))
-						})
-
-						It("should propagate the error", func() {
-							Expect(err).Should(HaveOccurred())
-						})
-					})
 				})
 
 				Context("with a Pulse Spec", func() {
