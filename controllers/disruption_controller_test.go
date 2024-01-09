@@ -512,11 +512,47 @@ var _ = Describe("Disruption Controller", func() {
 	})
 
 	Context("Cloud disruption is a host disruption disguised", func() {
+		VerifyHosts := func(ctx SpecContext) error {
+			// get chaos pods
+			l, err := listChaosPods(ctx, disruption)
+			if err != nil {
+				return err
+			}
+
+			hosts := make([]int, len(l.Items))
+
+			// sum up injectors
+			for i, p := range l.Items {
+				hosts[i] = 0
+				args := p.Spec.Containers[0].Args
+				for _, arg := range args {
+					if arg == "--hosts" {
+						hosts[i]++
+					}
+				}
+			}
+
+			for i, hostsForItem := range hosts {
+				if hostsForItem == 0 {
+					return fmt.Errorf("should have multiple hosts parameters.")
+				}
+
+				// verify that all chaos pods have the same list of hosts
+				if i > 0 {
+					if hosts[i] != hosts[i-1] {
+						return fmt.Errorf("should have the same list of hosts for all chaos pods")
+					}
+				}
+			}
+
+			return nil
+		}
+
 		BeforeEach(func() {
 			skipSecondPod = false
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				DryRun: false,
-				Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 2},
+				Count:  &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
 				},
@@ -539,6 +575,26 @@ var _ = Describe("Disruption Controller", func() {
 		})
 
 		It("should create a cloud disruption but apply a host disruption with the list of cloud managed service ip ranges", func(ctx SpecContext) {
+			By("Ensuring that the chaos pod have been created")
+			ExpectChaosPods(ctx, disruption, 2)
+
+			By("Ensuring that the chaos pods have the list of AWS hosts")
+			Eventually(VerifyHosts).WithContext(ctx).ProbeEvery(disruptionPotentialChangesEvery).Within(calcDisruptionGoneTimeout(disruption)).Should(Succeed())
+
+			By("Ensuring adding another chaos pod will result in the same number of hosts")
+			By("creating extra target one")
+			extraOneCreated := CreateRunningPod(ctx, *targetPod.DeepCopy())
+
+			By("waiting extra targets to be created and running")
+			<-extraOneCreated
+			ExpectChaosPods(ctx, disruption, 3)
+
+			By("Ensuring that the chaos pods have the same nb of AWS hosts")
+			Eventually(VerifyHosts).WithContext(ctx).ProbeEvery(disruptionPotentialChangesEvery).Within(calcDisruptionGoneTimeout(disruption)).Should(Succeed())
+
+		})
+
+		It("should keep the same number of hosts between all targets (including by deleting and re-creating targets)", func(ctx SpecContext) {
 			By("Ensuring that the chaos pod have been created")
 			ExpectChaosPods(ctx, disruption, 2)
 
