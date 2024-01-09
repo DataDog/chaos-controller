@@ -488,7 +488,7 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 
 	// on cloud disruption, update hosts
 	subspec := instance.Spec.DisruptionKindPicker(chaostypes.DisruptionKindNetworkDisruption)
-	if reflect.ValueOf(subspec).IsValid() {
+	if reflect.ValueOf(subspec).IsValid() && !reflect.ValueOf(subspec).IsNil() {
 		if err = instance.Spec.Network.UpdateHostsOnCloudDisruption(r.CloudService); err != nil {
 			return err
 		}
