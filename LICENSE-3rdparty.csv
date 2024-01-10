@@ -1059,6 +1059,7 @@ sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/client,Apache-
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/client/apiutil,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/client/config,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/client/fake,Apache-2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/client/interceptor,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/cluster,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/config,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/config/v1alpha1,Apache-2.0
@@ -1075,6 +1076,7 @@ sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/internal/https
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/internal/log,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/internal/objectutil,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/internal/recorder,Apache-2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/internal/source,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/leaderelection,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/log,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/manager,Apache-2.0
@@ -1084,10 +1086,8 @@ sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/predicate,Apac
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/ratelimiter,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/reconcile,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/recorder,Apache-2.0
-sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/runtime/inject,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/scheme,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/source,Apache-2.0
-sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/source/internal,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/admission,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/conversion,Apache-2.0
