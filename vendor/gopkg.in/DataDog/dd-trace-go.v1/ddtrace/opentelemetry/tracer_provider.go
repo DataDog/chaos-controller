@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2024 Datadog, Inc.
+// Copyright 2023 Datadog, Inc.
 
 // Package opentelemetry provides a wrapper on top of the Datadog tracer that can be used with OpenTelemetry.
 // This feature is currently in beta.
