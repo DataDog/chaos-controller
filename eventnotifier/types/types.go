@@ -29,16 +29,17 @@ const (
 // In order of importance it's Info, Success, Warning, Error
 // Default level is considered Success, meaning all info will be ignored
 // +kubebuilder:default=Success
-// +kubebuilder:validation:Enum=Info;Success;Warning;Error
-// +ddmark:validation:Enum=Info;Success;Warning;Error
+// +kubebuilder:validation:Enum=Info;Success;Completion;Warning;Error
+// +ddmark:validation:Enum=Info;Success;Completion;Warning;Error
 type NotificationType string
 
 const (
-	NotificationUnknown NotificationType = ""
-	NotificationInfo    NotificationType = "Info"
-	NotificationSuccess NotificationType = "Success"
-	NotificationWarning NotificationType = "Warning"
-	NotificationError   NotificationType = "Error"
+	NotificationUnknown    NotificationType = ""
+	NotificationInfo       NotificationType = "Info"
+	NotificationSuccess    NotificationType = "Success"
+	NotificationCompletion NotificationType = "Completion"
+	NotificationWarning    NotificationType = "Warning"
+	NotificationError      NotificationType = "Error"
 )
 
 // Allows determines if provided notif is above or equal to checked notificationType
@@ -46,7 +47,7 @@ const (
 // Hence, Success will allow Success and above (Warning, Error)...
 func (n NotificationType) Allows(notif NotificationType) bool {
 	switch n {
-	case NotificationSuccess, NotificationUnknown:
+	case NotificationSuccess, NotificationCompletion, NotificationUnknown:
 		return notif != NotificationInfo
 	case NotificationWarning:
 		return notif == NotificationWarning || notif == NotificationError

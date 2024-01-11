@@ -93,7 +93,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 	eventType := statsd.Warning
 
 	switch notifType {
-	case types.NotificationInfo:
+	case types.NotificationInfo, types.NotificationCompletion:
 		eventType = statsd.Info
 	case types.NotificationSuccess:
 		eventType = statsd.Success
