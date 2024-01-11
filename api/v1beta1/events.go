@@ -277,6 +277,10 @@ func IsRecoveryEvent(event corev1.Event) bool {
 	return EventTargetNodeRecoveredState.MatchEventReason(event) || EventTargetPodRecoveredState.MatchEventReason(event)
 }
 
+func IsCompletionEvent(event corev1.Event) bool {
+	return EventDisruptionFinished.MatchEventReason(event) || EventDisruptionDurationOver.MatchEventReason(event) || EventDisruptionGCOver.MatchEventReason(event)
+}
+
 func IsTargetEvent(event corev1.Event) bool {
 	targetEvent, ok := Events[DisruptionEventReason(event.Reason)]
 	if !ok {
