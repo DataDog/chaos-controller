@@ -500,6 +500,7 @@ spec:
                           enum:
                             - Info
                             - Success
+                            - Completion
                             - Warning
                             - Error
                           type: string
