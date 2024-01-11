@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2023 Datadog, Inc.
+// Copyright 2024 Datadog, Inc.
 
 // Package namingschema provides functionality to create naming schemas used by integrations to set different
 // service and span/operation names based on the value of the DD_TRACE_SPAN_ATTRIBUTE_SCHEMA environment variable.
