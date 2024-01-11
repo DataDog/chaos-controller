@@ -92,11 +92,12 @@ func (s *NotifierSink) parseEventToNotifier(event *corev1.Event, dis v1beta1.Dis
 		err = s.notifier.Notify(dis, *event, notifTypes.NotificationWarning)
 	case corev1.EventTypeNormal:
 		if v1beta1.IsNotifiableEvent(*event) {
-			if v1beta1.IsRecoveryEvent(*event) {
+			switch {
+			case v1beta1.IsRecoveryEvent(*event):
 				err = s.notifier.Notify(dis, *event, notifTypes.NotificationSuccess)
-			} else if v1beta1.IsCompletionEvent(*event) {
+			case v1beta1.IsCompletionEvent(*event):
 				err = s.notifier.Notify(dis, *event, notifTypes.NotificationCompletion)
-			} else {
+			default:
 				err = s.notifier.Notify(dis, *event, notifTypes.NotificationInfo)
 			}
 		} else {
