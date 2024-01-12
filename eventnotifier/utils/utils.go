@@ -22,10 +22,12 @@ func BuildBodyMessageFromDisruptionEvent(dis v1beta1.Disruption, event corev1.Ev
 // BuildHeaderMessageFromDisruptionEvent Templated header text to send to notifiers
 func BuildHeaderMessageFromDisruptionEvent(dis v1beta1.Disruption, notifType types.NotificationType) string {
 	switch notifType {
-	case types.NotificationInfo:
-		return "Disruption '" + dis.Name + "' received a notification."
+	case types.NotificationCompletion:
+		return "Disruption '" + dis.Name + "' is finished or terminating."
 	case types.NotificationSuccess:
 		return "Disruption '" + dis.Name + "' received a recovery notification."
+	case types.NotificationInfo:
+		return "Disruption '" + dis.Name + "' received a notification."
 	default:
 		return "Disruption '" + dis.Name + "' encountered an issue."
 	}
