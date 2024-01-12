@@ -1,7 +1,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2023 Datadog, Inc.
+# Copyright 2024 Datadog, Inc.
 
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
@@ -16,7 +16,7 @@ spec:
   network:
     drop: 100 # percentage of outgoing packets to drop
     http: # http filters
-      methods: 
+      methods:
         - GET # http method to filter on
       paths:
         - / # requested path to filter on

@@ -63,7 +63,8 @@ HELM_VALUES ?= dev.yaml
 HELM_VERSION = v3.11.3
 HELM_INSTALLED_VERSION = $(shell (helm version --template="{{ .Version }}" || echo "") | awk '{ print $$1 }')
 
-GOLANGCI_LINT_VERSION = 1.55.2 # TODO: reenable depguard in .golangci.yml after upgrading this next
+# TODO: reenable depguard in .golangci.yml after upgrading golangci-lint again
+GOLANGCI_LINT_VERSION = 1.55.2
 GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
 
 CONTROLLER_GEN_VERSION = v0.12.0
@@ -452,7 +453,7 @@ install-protobuf:
 
 install-golangci-lint:
 ifneq ($(GOLANGCI_LINT_VERSION),$(GOLANGCI_LINT_INSTALLED_VERSION))
-	$(info golangci-lint version $(GOLANGCI_LINT_VERSION) is not installed or version differ (v$(GOLANGCI_LINT_VERSION) != $(GOLANGCI_LINT_INSTALLED_VERSION)))
+	$(info golangci-lint version $(GOLANGCI_LINT_VERSION) is not installed or version differ ($(GOLANGCI_LINT_VERSION) != $(GOLANGCI_LINT_INSTALLED_VERSION)))
 	$(info installing golangci-lint v$(GOLANGCI_LINT_VERSION)...)
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOBIN) v$(GOLANGCI_LINT_VERSION)
 endif
