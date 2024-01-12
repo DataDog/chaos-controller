@@ -22,28 +22,28 @@ Keep in mind that all safety nets are turned on by default.
 
 ## Configuring Safety Nets
 
-Because each situation will differ for each user, further configuration can be done on each safety net. One example is the safety net `Large Scope Targeting`. 
+Because each situation will differ for each user, further configuration can be done on each safety net. One example is the safety net `Large Scope Targeting`.
 This safety net has two parameters it checks to determine if the scope of a disruption exceeds acceptable parameters. Those two parameters are the namespace threshold and the cluster threshold.
 If the percentage of targets exceeds any of those thresholds, the safety net is caught and the disruption is halted. A user can use the further configuration in order to change these thresholds to what ever percentage makes the most sense to them.
 For an example of how to use these configuration, please take a look at the example towards the end of the doc. The following list are configurations currently available for the safety nets:
+
 ```yaml
-...
+
+---
 unsafeMode:
   config:
     countTooLarge:
       namespaceThreshold: 60 # an integer between 0 - 100 representing a percentage threshold that is acceptable for namespace size percentage
       clusterThreshold: 90 # an integer between 0 - 100 representing a percentage threshold that is acceptable for cluster size percentage
-...
 ```
 
 ### Safety Nets
 
 | Safety Net                    | Type         | Description                                                                                                                                     | IgnoreName                |
-|-------------------------------|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|
+| ----------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
 | Large Scope Targeting         | Generic      | Running any disruption with generic label selectors that select a majority of pods/nodes in a namespace as a target to inject a disruption into | DisableCountTooLarge      |
 | No Port and No Host Specified | Network      | Running a network disruption without specifying a port and a host                                                                               | DisableNeitherHostNorPort |
 | Wrong path specified          | Disk Failure | Running a disk failure disruption without specifying a path or '/' value.                                                                       | AllowRootDiskFailure      |
-
 
 #### Example of Disabling Specific Safety Net
 
@@ -74,7 +74,7 @@ spec:
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2023 Datadog, Inc.
+# Copyright 2024 Datadog, Inc.
 
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
@@ -100,5 +100,6 @@ spec:
 ## FAQ
 
 ### Why is the namespace/cluster threshold not equal to what I specified in my Disruption?
+
 It may be the case that 0 was used as namespace/cluster threshold. Because 0 has no value as a threshold, it is simply
 ignored as if it was omitted. And if omitted, the ConfigMaps `Unsafemode` default values kick in.

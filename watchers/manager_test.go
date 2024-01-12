@@ -1,12 +1,14 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2023 Datadog, Inc.
+// Copyright 2024 Datadog, Inc.
 
 package watchers_test
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/mocks"
 	. "github.com/DataDog/chaos-controller/watchers"
@@ -16,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"net/http"
 )
 
 var _ = Describe("Manager of watchers", func() {
