@@ -855,6 +855,10 @@ func TargetedContainers(pod corev1.Pod, containerNames []string) (map[string]str
 			}
 		}
 
+		if len(allContainers) < 1 {
+			return nil, fmt.Errorf("couldn't find any running containers for pod '%s'", pod.Name)
+		}
+
 		return allContainers, nil
 	}
 
