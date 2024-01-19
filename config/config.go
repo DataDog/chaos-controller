@@ -28,7 +28,7 @@ type controllerConfig struct {
 	MetricsBindAddr           string                          `json:"metricsBindAddr"`
 	MetricsSink               string                          `json:"metricsSink"`
 	ExpiredDisruptionGCDelay  time.Duration                   `json:"expiredDisruptionGCDelay"`
-	MaxDuration               time.Duration                   `json:"maxDuration"`
+	MaxDuration               time.Duration                   `json:"maxDuration,omitempty"`
 	DefaultDuration           time.Duration                   `json:"defaultDuration"`
 	DeleteOnly                bool                            `json:"deleteOnly"`
 	EnableSafeguards          bool                            `json:"enableSafeguards"`
@@ -146,7 +146,7 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
-	mainFS.DurationVar(&cfg.Controller.MaxDuration, "max-duration", time.Hour, "Max duration for a disruption to timeout")
+	mainFS.DurationVar(&cfg.Controller.MaxDuration, "max-duration", 0, "Max duration for a disruption to timeout")
 
 	if err := viper.BindPFlag("controller.maxDuration", mainFS.Lookup("max-duration")); err != nil {
 		return cfg, err

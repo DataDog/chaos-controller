@@ -191,7 +191,7 @@ func (r *Disruption) ValidateCreate() error {
 		return err
 	}
 
-	if r.Spec.Duration.Duration() > maxDuration {
+	if maxDuration > 0 && r.Spec.Duration.Duration() > maxDuration {
 		return fmt.Errorf("the maximum duration allowed is %s, please specify a duration lower or equal than this value", maxDuration)
 	}
 
