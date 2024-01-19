@@ -46,6 +46,7 @@ var (
 	defaultNamespaceThreshold     float64
 	defaultClusterThreshold       float64
 	handlerEnabled                bool
+	maxDuration                   time.Duration
 	defaultDuration               time.Duration
 	cloudServicesProvidersManager cloudservice.CloudServicesProvidersManager
 	chaosNamespace                string
@@ -75,6 +76,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	defaultClusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
 	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
+	maxDuration = setupWebhookConfig.MaxDurationFlag
 	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 	chaosNamespace = setupWebhookConfig.ChaosNamespace
 	safemodeEnvironment = setupWebhookConfig.Environment
@@ -187,6 +189,10 @@ func (r *Disruption) ValidateCreate() error {
 		}
 
 		return err
+	}
+
+	if r.Spec.Duration.Duration() > maxDuration {
+		return fmt.Errorf("the maximum duration allowed is %s, please specify a duration lower or equal than this value", maxDuration)
 	}
 
 	multiErr := ddmarkClient.ValidateStructMultierror(r.Spec, "validation_webhook")

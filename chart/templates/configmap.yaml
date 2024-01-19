@@ -47,6 +47,9 @@ data:
           ipRangesURL: {{ .Values.controller.cloudProviders.datadog.ipRangesURL }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       defaultDuration: {{ .Values.controller.defaultDuration }}
+      {{- if .Values.controller.maxDuration }}
+      maxDuration: {{ .Values.controller.maxDuration }}
+      {{- end }}
       expiredDisruptionGCDelay: {{ .Values.controller.expiredDisruptionGCDelay }}
       userInfoHook: {{ .Values.controller.userInfoHook }}
       webhook:

@@ -35,6 +35,11 @@ var _ = Describe("Config", func() {
 				_, err := config.New(logger, []string{"--config", "testdata/invalid.yaml"})
 				Expect(err).Should(MatchError(ContainSubstring("error loading configuration file: While parsing config: yaml: unmarshal errors:")))
 			})
+
+			It("fails with a defaultDuration greater than the maxDuration", func() {
+				_, err := config.New(logger, []string{"--config", "testdata/default-duration-too-big.yaml"})
+				Expect(err).Should(MatchError("defaultDuration must be less than or equal to maxDuration"))
+			})
 		})
 
 		Context("without configuration", func() {

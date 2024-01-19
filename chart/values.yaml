@@ -56,6 +56,7 @@ controller:
       enabled: true # enable the provider
       ipRangesURL: "https://ip-ranges.datadoghq.com/" # URL to the IP ranges file (format must be the expected one, defaults is the public file provided by the cloud provider)
   defaultDuration: 1h # default spec.duration for a disruption with none specified
+  maxDuration: # maximum spec.duration for a disruption (example: 1h)
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true
   webhook: # admission webhook configuration

@@ -294,6 +294,33 @@ var _ = Describe("Disruption", func() {
 				})
 			})
 
+			When("disruption spec duration is greater than the max default duration", func() {
+				var originalMaxDefaultDuration time.Duration
+
+				BeforeEach(func() {
+					originalMaxDefaultDuration = maxDuration
+				})
+
+				It("should return an error", func() {
+					// Arrange
+					invalidDisruption := newDisruption.DeepCopy()
+					maxDuration = time.Hour * 1
+					invalidDisruption.Spec.Duration = "2h"
+
+					// Action
+					err := invalidDisruption.ValidateCreate()
+
+					// Assert
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError("the maximum duration allowed is 1h0m0s, please specify a duration lower or equal than this value"))
+					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
+				})
+
+				AfterEach(func() {
+					maxDuration = originalMaxDefaultDuration
+				})
+			})
+
 			When("disruption selectors are invalid", func() {
 				It("should return an error", func() {
 					invalidDisruption := newDisruption.DeepCopy()
