@@ -891,6 +891,8 @@ func (r *DisruptionReconciler) sendWarnings(instance *chaosv1beta1.Disruption) e
 	value, isPercent, err := chaosv1beta1.GetIntOrPercentValueSafely(instance.Spec.Count)
 	if err == nil && !isPercent && value == 100 {
 		r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, "disruption count was set to the integer 100, but you likely intended it to be the string \"100%\"", "")
+	} else if err != nil {
+		return err
 	}
 
 	return nil
