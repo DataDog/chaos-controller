@@ -168,7 +168,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, fmt.Errorf("error handling chaos pods termination: %w", err)
 	}
 
-	if err := r.sendWarnings(instance); err != nil {
+	if err := r.sendWarningsOnDisruptionSpec(instance); err != nil {
 		r.log.Errorw("unable to send user warnings", "err", err)
 	}
 
