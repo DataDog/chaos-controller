@@ -885,7 +885,7 @@ func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Di
 	}
 }
 
-// sendWarnings is used to send users warnings about their disruption spec that we're unable to detect or warn about in the validation webhook
+// sendWarningsOnDisruptionSpec is used to send users warnings about their disruption spec that we're unable to detect or warn about in the validation webhook
 func (r *DisruptionReconciler) sendWarningsOnDisruptionSpec(instance *chaosv1beta1.Disruption) error {
 	// warn users who have set their count to 100. this is almost always accidental, and causes unexpected behaviors with the injection status
 	value, isPercent, err := chaosv1beta1.GetIntOrPercentValueSafely(instance.Spec.Count)
