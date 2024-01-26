@@ -168,6 +168,10 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, fmt.Errorf("error handling chaos pods termination: %w", err)
 	}
 
+	if err := r.sendWarningsOnDisruptionSpec(instance); err != nil {
+		r.log.Errorw("unable to send user warnings", "err", err)
+	}
+
 	// check whether the object is being deleted or not
 	if !instance.DeletionTimestamp.IsZero() {
 		// the instance is being deleted, clean it if the finalizer is still present
@@ -879,6 +883,19 @@ func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Di
 	} else {
 		r.Recorder.Event(instance, disEvent.Type, string(disEvent.Reason), message)
 	}
+}
+
+// sendWarningsOnDisruptionSpec is used to send users warnings about their disruption spec that we're unable to detect or warn about in the validation webhook
+func (r *DisruptionReconciler) sendWarningsOnDisruptionSpec(instance *chaosv1beta1.Disruption) error {
+	// warn users who have set their count to 100. this is almost always accidental, and causes unexpected behaviors with the injection status
+	value, isPercent, err := chaosv1beta1.GetIntOrPercentValueSafely(instance.Spec.Count)
+	if err == nil && !isPercent && value == 100 {
+		r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, "disruption count was set to the integer 100, but you likely intended it to be the string \"100%\"", "")
+	} else if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disruption) {
