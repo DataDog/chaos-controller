@@ -461,7 +461,7 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	}
 
 	if cfg.Controller.DefaultDuration > 0 && cfg.Controller.MaxDuration > 0 && cfg.Controller.DefaultDuration > cfg.Controller.MaxDuration {
-		return cfg, fmt.Errorf("defaultDuration must be less than or equal to maxDuration")
+		return cfg, fmt.Errorf("defaultDuration of %s, must be less than or equal to the maxDuration %s", cfg.Controller.DefaultDuration, cfg.Controller.MaxDuration)
 	}
 
 	return cfg, nil

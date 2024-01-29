@@ -312,7 +312,7 @@ var _ = Describe("Disruption", func() {
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
-					Expect(err).To(MatchError("the maximum duration allowed is 1h0m0s, please specify a duration lower or equal than this value"))
+					Expect(err).To(MatchError("you have specified a duration of 2h0m0s, but the maximum duration allowed is 1h0m0s, please specify a duration lower or equal than this value"))
 					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
 				})
 

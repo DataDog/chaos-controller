@@ -192,7 +192,7 @@ func (r *Disruption) ValidateCreate() error {
 	}
 
 	if maxDuration > 0 && r.Spec.Duration.Duration() > maxDuration {
-		return fmt.Errorf("the maximum duration allowed is %s, please specify a duration lower or equal than this value", maxDuration)
+		return fmt.Errorf("you have specified a duration of %s, but the maximum duration allowed is %s, please specify a duration lower or equal than this value", r.Spec.Duration.Duration(), maxDuration)
 	}
 
 	multiErr := ddmarkClient.ValidateStructMultierror(r.Spec, "validation_webhook")
