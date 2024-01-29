@@ -19,9 +19,9 @@ To get started, we need to have the following software installed:
 - [golangci-lint](https://github.com/golangci/golangci-lint)
 - [Kubebuilder Prerequisites](https://book.kubebuilder.io/quick-start.html#prerequisites) (go, docker, kubectl, kubebuilder, controller-gen)
 - [helm](https://helm.sh/docs/intro/quickstart/)
-- [envtest](#Installing-envtest)
+- [yamlfmt](https://github.com/google/yamlfmt/)
 
-## Installing Envtest
+### Installing Envtest
 
 In order to run `make test` to run the unit tests, you'll need to install envtest with the following commands:
 
