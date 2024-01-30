@@ -1,0 +1,65 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2024 Datadog, Inc.
+controller:
+  deleteOnly: true
+  defaultDuration: 3m
+  maxDuration: 2m
+  enableSafeguards: false
+  enableObserver: false
+  expiredDisruptionGCDelay: 10m
+  metricsBindAddr: 127.0.0.1:8080
+  leaderElection: true
+  metricsSink: datadog
+  profilerSink: notdatadog
+  userInfoHook: true
+  notifiers:
+    common:
+      clusterName: some-cluster-name
+    noop:
+      enabled: true
+    slack:
+      enabled: true
+      mirrorSlackChannelId: WOPIEQQET
+      tokenFilepath: /random-file-path
+    http:
+      enabled: true
+      headers: [a, b, c]
+      headersFilepath: /header-file-path/below/me
+      url: https://example.com/webhook
+    datadog:
+      enabled: true
+  cloudProviders:
+    disableAll: true
+    pullInterval: 15m
+    aws:
+      enabled: false
+      ipRangesURL: https://example.com/aws-ip-ranges-url
+    gcp:
+      enabled: false
+      ipRangesURL: https://example.com/gcp-ip-ranges-url
+    datadog:
+      enabled: false
+      ipRangesURL: https://example.com/datadog-ip-ranges-url
+  safeMode:
+    enable: false
+    environment: my-safe-env-value
+    namespaceThreshold: 79
+    clusterThreshold: 61
+  webhook:
+    certDir: /var/data/cert/cert.pem
+    host: another-host
+    port: 7443
+injector:
+  image: datadog.io/chaos-injector:not-latest
+  imagePullSecrets: some-pull-secret
+  serviceAccount: chaos-injector-custom-sa
+  chaosNamespace: chaos-engineering-custom-ns
+  dnsDisruption:
+    dnsServer: ""
+    kubeDns: "all"
+handler:
+  enabled: true
+  image: other.io/chaos-handler:not-latest-again
+  timeout: 1m30s

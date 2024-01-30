@@ -5,6 +5,7 @@
 package config_test
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/DataDog/chaos-controller/config"
@@ -34,6 +35,11 @@ var _ = Describe("Config", func() {
 			It("fails with an invalid config file", func() {
 				_, err := config.New(logger, []string{"--config", "testdata/invalid.yaml"})
 				Expect(err).Should(MatchError(ContainSubstring("error loading configuration file: While parsing config: yaml: unmarshal errors:")))
+			})
+
+			It("fails with a defaultDuration greater than the maxDuration", func() {
+				_, err := config.New(logger, []string{"--config", "testdata/default-duration-too-big.yaml"})
+				Expect(err).Should(MatchError(fmt.Sprintf("defaultDuration of %s, must be less than or equal to the maxDuration %s", "3m0s", "2m0s")))
 			})
 		})
 

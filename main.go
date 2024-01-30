@@ -339,6 +339,7 @@ func main() {
 		DeleteOnlyFlag:                cfg.Controller.DeleteOnly,
 		HandlerEnabledFlag:            cfg.Handler.Enabled,
 		DefaultDurationFlag:           cfg.Controller.DefaultDuration,
+		MaxDurationFlag:               cfg.Controller.MaxDuration,
 		ChaosNamespace:                cfg.Injector.ChaosNamespace,
 		CloudServicesProvidersManager: cloudProviderManager,
 		Environment:                   cfg.Controller.SafeMode.Environment,

@@ -28,6 +28,7 @@ type controllerConfig struct {
 	MetricsBindAddr           string                          `json:"metricsBindAddr"`
 	MetricsSink               string                          `json:"metricsSink"`
 	ExpiredDisruptionGCDelay  time.Duration                   `json:"expiredDisruptionGCDelay"`
+	MaxDuration               time.Duration                   `json:"maxDuration,omitempty"`
 	DefaultDuration           time.Duration                   `json:"defaultDuration"`
 	DeleteOnly                bool                            `json:"deleteOnly"`
 	EnableSafeguards          bool                            `json:"enableSafeguards"`
@@ -142,6 +143,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.DurationVar(&cfg.Controller.DefaultDuration, "default-duration", time.Hour, "Default duration for a disruption with none specified")
 
 	if err := viper.BindPFlag("controller.defaultDuration", mainFS.Lookup("default-duration")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.DurationVar(&cfg.Controller.MaxDuration, "max-duration", 0, "Max duration for a disruption to timeout")
+
+	if err := viper.BindPFlag("controller.maxDuration", mainFS.Lookup("max-duration")); err != nil {
 		return cfg, err
 	}
 
@@ -451,6 +458,10 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 
 	if !cfg.Controller.UserInfoHook && cfg.Controller.Notifiers.Slack.Enabled {
 		return cfg, fmt.Errorf("cannot enable slack notifier without enabling the user info webhook")
+	}
+
+	if cfg.Controller.DefaultDuration > 0 && cfg.Controller.MaxDuration > 0 && cfg.Controller.DefaultDuration > cfg.Controller.MaxDuration {
+		return cfg, fmt.Errorf("defaultDuration of %s, must be less than or equal to the maxDuration %s", cfg.Controller.DefaultDuration, cfg.Controller.MaxDuration)
 	}
 
 	return cfg, nil

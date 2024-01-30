@@ -51,6 +51,7 @@ type SetupWebhookWithManagerConfig struct {
 	DeleteOnlyFlag                bool
 	HandlerEnabledFlag            bool
 	DefaultDurationFlag           time.Duration
+	MaxDurationFlag               time.Duration
 	ChaosNamespace                string
 	CloudServicesProvidersManager cloudservice.CloudServicesProvidersManager
 	Environment                   string
