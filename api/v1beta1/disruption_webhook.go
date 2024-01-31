@@ -233,7 +233,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 
 	oldDisruption := old.(*Disruption)
 
-	if err := r.validateUserInfo(oldDisruption); err != nil {
+	if err := r.validateUserInfoImmutable(oldDisruption); err != nil {
 		return err
 	}
 
@@ -316,7 +316,8 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 	return nil
 }
 
-func (r *Disruption) validateUserInfo(oldDisruption *Disruption) error {
+// validateUserInfoImmutable checks that no changes have been made to the oldDisruption's UserInfo in the latest update
+func (r *Disruption) validateUserInfoImmutable(oldDisruption *Disruption) error {
 	oldUserInfo, err := oldDisruption.UserInfo()
 	if err != nil {
 		return nil
