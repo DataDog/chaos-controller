@@ -36,23 +36,24 @@ import (
 )
 
 var (
-	logger                        *zap.SugaredLogger
-	k8sClient                     client.Client
-	metricsSink                   metrics.Sink
-	tracerSink                    tracer.Sink
-	recorder                      record.EventRecorder
-	deleteOnly                    bool
-	enableSafemode                bool
-	defaultNamespaceThreshold     float64
-	defaultClusterThreshold       float64
-	handlerEnabled                bool
-	maxDuration                   time.Duration
-	defaultDuration               time.Duration
-	cloudServicesProvidersManager cloudservice.CloudServicesProvidersManager
-	chaosNamespace                string
-	ddmarkClient                  ddmark.Client
-	safemodeEnvironment           string
-	permittedUserGroups           map[string]struct{}
+	logger                          *zap.SugaredLogger
+	k8sClient                       client.Client
+	metricsSink                     metrics.Sink
+	tracerSink                      tracer.Sink
+	recorder                        record.EventRecorder
+	deleteOnly                      bool
+	enableSafemode                  bool
+	defaultNamespaceThreshold       float64
+	defaultClusterThreshold         float64
+	handlerEnabled                  bool
+	maxDuration                     time.Duration
+	defaultDuration                 time.Duration
+	cloudServicesProvidersManager   cloudservice.CloudServicesProvidersManager
+	chaosNamespace                  string
+	ddmarkClient                    ddmark.Client
+	safemodeEnvironment             string
+	permittedUserGroups             map[string]struct{}
+	permittedUserGroupWarningString string
 )
 
 const SafemodeEnvironmentAnnotation = GroupName + "/environment"
@@ -85,6 +86,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	for _, group := range setupWebhookConfig.PermittedUserGroups {
 		permittedUserGroups[group] = struct{}{}
 	}
+	permittedUserGroupWarningString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
@@ -123,6 +125,10 @@ func (r *Disruption) ValidateCreate() error {
 	// delete-only mode, reject everything trying to be created
 	if deleteOnly {
 		return errors.New("the controller is currently in delete-only mode, you can't create new disruptions for now")
+	}
+
+	if err = r.validateUserInfoGroup(); err != nil {
+		return err
 	}
 
 	// reject disruptions with a name which would not be a valid label value
@@ -341,8 +347,8 @@ func (r *Disruption) validateUserInfoGroup() error {
 	}
 
 	if !validGroupFound {
-		logger.Errorw("rejecting user from creating this disruption", "permittedUserGroups", permittedUserGroups, "userGroups", userInfo.Groups)
-		return fmt.Errorf("lackng sufficient authorization to create disruptions. you must be in one of the following groups: %s", permittedUserGroups)
+		logger.Warnw("rejecting user from creating this disruption", "permittedUserGroups", permittedUserGroups, "userGroups", userInfo.Groups)
+		return fmt.Errorf("lackng sufficient authorization to create disruptions. your user groups are %s, but you must be in one of the following groups: %s", userInfo.Groups, permittedUserGroupWarningString)
 	}
 
 	return nil

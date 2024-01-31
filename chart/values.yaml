@@ -67,7 +67,7 @@ controller:
   safeMode:
     environment: ""
     permittedUserGroups:
-      - system:serviceaccounts
+      - system:authenticated
     enable: false
     namespaceThreshold: 80
     clusterThreshold: 66
