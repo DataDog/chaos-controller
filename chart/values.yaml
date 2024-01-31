@@ -66,6 +66,8 @@ controller:
     port: 9443 # port to use to serve requests
   safeMode:
     environment: ""
+    permittedUserGroups:
+      - system:serviceaccounts
     enable: false
     namespaceThreshold: 80
     clusterThreshold: 66

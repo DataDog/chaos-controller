@@ -55,4 +55,5 @@ type SetupWebhookWithManagerConfig struct {
 	ChaosNamespace                string
 	CloudServicesProvidersManager cloudservice.CloudServicesProvidersManager
 	Environment                   string
+	PermittedUserGroups           []string
 }

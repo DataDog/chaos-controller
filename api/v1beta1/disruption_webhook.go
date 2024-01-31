@@ -52,6 +52,7 @@ var (
 	chaosNamespace                string
 	ddmarkClient                  ddmark.Client
 	safemodeEnvironment           string
+	permittedUserGroups           map[string]struct{}
 )
 
 const SafemodeEnvironmentAnnotation = GroupName + "/environment"
@@ -80,6 +81,10 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 	chaosNamespace = setupWebhookConfig.ChaosNamespace
 	safemodeEnvironment = setupWebhookConfig.Environment
+	permittedUserGroups = map[string]struct{}{}
+	for _, group := range setupWebhookConfig.PermittedUserGroups {
+		permittedUserGroups[group] = struct{}{}
+	}
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
@@ -311,6 +316,33 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 	// send validation metric
 	if err := metricsSink.MetricValidationUpdated(r.getMetricsTags()); err != nil {
 		logger.Errorw("error sending a metric", "error", err)
+	}
+
+	return nil
+}
+
+func (r *Disruption) validateUserInfoGroup() error {
+	if len(permittedUserGroups) == 0 {
+		return nil
+	}
+
+	userInfo, err := r.UserInfo()
+	if err != nil {
+		return err
+	}
+
+	validGroupFound := false
+
+	for _, group := range userInfo.Groups {
+		_, ok := permittedUserGroups[group]
+		if ok {
+			validGroupFound = true
+		}
+	}
+
+	if !validGroupFound {
+		logger.Errorw("rejecting user from creating this disruption", "permittedUserGroups", permittedUserGroups, "userGroups", userInfo.Groups)
+		return fmt.Errorf("lackng sufficient authorization to create disruptions. you must be in one of the following groups: %s", permittedUserGroups)
 	}
 
 	return nil

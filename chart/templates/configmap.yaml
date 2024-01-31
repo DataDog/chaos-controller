@@ -56,6 +56,10 @@ data:
         port: {{ .Values.controller.webhook.port }}
       safeMode:
         enable: {{ .Values.controller.safeMode.enable }}
+        permittedUserGroups:
+          {{- range $index, $group := .Values.controller.safeMode.permittedUserGroups }}
+          - {{ $group | quote }}
+          {{- end }}
         environment: {{ tpl .Values.controller.safeMode.environment . }}
         namespaceThreshold: {{ .Values.controller.safeMode.namespaceThreshold }}
         clusterThreshold: {{ .Values.controller.safeMode.clusterThreshold }}
