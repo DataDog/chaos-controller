@@ -83,9 +83,11 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	chaosNamespace = setupWebhookConfig.ChaosNamespace
 	safemodeEnvironment = setupWebhookConfig.Environment
 	permittedUserGroups = map[string]struct{}{}
+
 	for _, group := range setupWebhookConfig.PermittedUserGroups {
 		permittedUserGroups[group] = struct{}{}
 	}
+
 	permittedUserGroupWarningString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
@@ -343,6 +345,8 @@ func (r *Disruption) validateUserInfoGroup() error {
 		_, ok := permittedUserGroups[group]
 		if ok {
 			validGroupFound = true
+
+			logger.Debugw("permitting user disruption creation, due to group membership", "group", group)
 		}
 	}
 
