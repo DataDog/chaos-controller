@@ -399,6 +399,7 @@ var _ = Describe("Disruption", func() {
 				})
 
 				It("should not return an error if they are within a permitted group", func() {
+					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 					permittedUserGroups = map[string]struct{}{}
 					permittedUserGroups["some"] = struct{}{}
 					permittedUserGroupWarningString = "some"
@@ -406,6 +407,7 @@ var _ = Describe("Disruption", func() {
 					err := newDisruption.ValidateCreate()
 
 					Expect(err).ShouldNot(HaveOccurred())
+					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 1)).To(BeTrue())
 				})
 			})
 		})
