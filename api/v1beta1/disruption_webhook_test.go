@@ -402,7 +402,8 @@ var _ = Describe("Disruption", func() {
 					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 					permittedUserGroups = map[string]struct{}{}
 					permittedUserGroups["some"] = struct{}{}
-					permittedUserGroupWarningString = "some"
+					permittedUserGroups["any"] = struct{}{}
+					permittedUserGroupWarningString = "some, any"
 
 					err := newDisruption.ValidateCreate()
 
