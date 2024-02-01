@@ -329,6 +329,9 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 	return nil
 }
 
+// validateUserInfoGroup checks that if permittedUserGroups is set, which is controlled in controller.safeMode.permittedUserGroups in the configmap,
+// then we will return an error if the user in r.UserInfo does not belong to any groups. If permittedUserGroups is unset, or if the user belongs to one of those
+// groups, then we will return nil
 func (r *Disruption) validateUserInfoGroup() error {
 	if len(permittedUserGroups) == 0 {
 		return nil
