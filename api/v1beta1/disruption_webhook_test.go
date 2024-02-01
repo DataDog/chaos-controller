@@ -219,6 +219,7 @@ var _ = Describe("Disruption", func() {
 		Describe("general errors expectations", func() {
 			BeforeEach(func() {
 				k8sClient = makek8sClientWithDisruptionPod()
+				recorder = record.NewFakeRecorder(1)
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
 			})
