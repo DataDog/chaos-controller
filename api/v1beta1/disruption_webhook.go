@@ -352,7 +352,7 @@ func (r *Disruption) validateUserInfoGroup() error {
 
 	if !validGroupFound {
 		logger.Warnw("rejecting user from creating this disruption", "permittedUserGroups", permittedUserGroups, "userGroups", userInfo.Groups)
-		return fmt.Errorf("lackng sufficient authorization to create disruptions. your user groups are %s, but you must be in one of the following groups: %s", userInfo.Groups, permittedUserGroupWarningString)
+		return fmt.Errorf("lacking sufficient authorization to create disruptions. your user groups are %s, but you must be in one of the following groups: %s", userInfo.Groups, permittedUserGroupWarningString)
 	}
 
 	return nil

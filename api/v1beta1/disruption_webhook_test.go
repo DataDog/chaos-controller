@@ -384,6 +384,29 @@ var _ = Describe("Disruption", func() {
 					Expect(newDisruption.ValidateCreate().Error()).Should(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified"))
 				})
 			})
+
+			When("user group membership is invalid", func() {
+				It("should return an error if they lack membership", func() {
+					permittedUserGroups = map[string]struct{}{}
+					permittedUserGroups["system:nobody"] = struct{}{}
+					permittedUserGroupWarningString = "system:nobody"
+
+					err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("lacking sufficient authorization to create disruptions. your user groups are [some], but you must be in one of the following groups: system:nobody"))
+				})
+
+				It("should not return an error if they are within a permitted group", func() {
+					permittedUserGroups = map[string]struct{}{}
+					permittedUserGroups["some"] = struct{}{}
+					permittedUserGroupWarningString = "some"
+
+					err := newDisruption.ValidateCreate()
+
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
 		})
 
 		Describe("expectations with a disk failure disruption", func() {
