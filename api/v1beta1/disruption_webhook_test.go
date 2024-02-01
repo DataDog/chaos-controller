@@ -528,7 +528,7 @@ func makeValidNetworkDisruption() *Disruption {
 				IntVal: 1,
 			},
 			Network: &NetworkDisruptionSpec{
-				Drop: 100,
+				Hosts: []NetworkDisruptionHostSpec{{Port: 80}},
 			},
 			Selector: labels.Set{
 				"name":      "random",
