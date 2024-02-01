@@ -231,6 +231,7 @@ var _ = Describe("Disruption", func() {
 			AfterEach(func() {
 				k8sClient = nil
 				newDisruption = nil
+				permittedUserGroups = map[string]struct{}{}
 			})
 
 			When("disruption has delete-only mode enable", func() {
