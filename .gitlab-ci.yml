@@ -9,6 +9,7 @@ variables:
   CONTROLLER_IMAGE_NAME: chaos-controller
   INJECTOR_IMAGE_NAME: chaos-injector
   HANDLER_IMAGE_NAME: chaos-handler
+  SLACK_NOTIFIER_IMAGE: "registry.ddbuild.io/slack-notifier:v27627802-caa0581-sdm-gbi-focal@sha256:0b8ace5ad00b7be5e8430c5685c2a9b657a6e32f92c826102557146f0095adf5"
 
 stages:
   - build
@@ -161,7 +162,7 @@ release-docker-hub-tag:
 # Slack Notify
 .slack-notifier-base:
   tags: ["runner:main", "size:large"]
-  image: registry.ddbuild.io/slack-notifier:latest
+  image: $SLACK_NOTIFIER_IMAGE
   allow_failure: true
   when: on_failure
   script:
@@ -179,7 +180,7 @@ slack-notifier-build.on-failure:
     - tags
 
 .slack-notifier-release-staging: &slack-notifier-release-staging
-  image: registry.ddbuild.io/slack-notifier:sdm
+  image: $SLACK_NOTIFIER_IMAGE
   tags: ["runner:main"]
   stage: notify
   only:
