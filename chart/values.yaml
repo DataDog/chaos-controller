@@ -66,7 +66,7 @@ controller:
     port: 9443 # port to use to serve requests
   safeMode:
     environment: ""
-    permittedUserGroups:
+    permittedUserGroups: # (optional) specify a list of strings which represent user info groups. if set, a user must belong to at least one in order to create a Disruption
       - system:authenticated
     enable: false
     namespaceThreshold: 80
