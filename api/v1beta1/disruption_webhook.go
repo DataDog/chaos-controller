@@ -346,16 +346,13 @@ func (r *Disruption) validateUserInfoGroup() error {
 		_, ok := permittedUserGroups[group]
 		if ok {
 			logger.Debugw("permitting user disruption creation, due to group membership", "group", group)
-			
+
 			return nil
 		}
 	}
 
 	logger.Warnw("rejecting user from creating this disruption", "permittedUserGroups", permittedUserGroups, "userGroups", userInfo.Groups)
 	return fmt.Errorf("lacking sufficient authorization to create disruptions. your user groups are %s, but you must be in one of the following groups: %s", userInfo.Groups, permittedUserGroupWarningString)
-	}
-
-	return nil
 }
 
 // validateUserInfoImmutable checks that no changes have been made to the oldDisruption's UserInfo in the latest update
