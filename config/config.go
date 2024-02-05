@@ -53,10 +53,11 @@ type controllerWebhookConfig struct {
 }
 
 type safeModeConfig struct {
-	Environment        string `json:"environment"`
-	Enable             bool   `json:"enable"`
-	NamespaceThreshold int    `json:"namespaceThreshold"`
-	ClusterThreshold   int    `json:"clusterThreshold"`
+	Environment         string   `json:"environment"`
+	PermittedUserGroups []string `json:"permittedUserGroups"`
+	Enable              bool     `json:"enable"`
+	NamespaceThreshold  int      `json:"namespaceThreshold"`
+	ClusterThreshold    int      `json:"clusterThreshold"`
 }
 
 type injectorConfig struct {
@@ -317,6 +318,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.StringVar(&cfg.Controller.SafeMode.Environment, "safemode-environment", "", "Specify the 'location' this controller is run in. All disruptions must have an annotation of chaos.datadoghq.com/environment configured with this location to be allowed to create")
 
 	if err := viper.BindPFlag("controller.safeMode.environment", mainFS.Lookup("safemode-environment")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringSliceVar(&cfg.Controller.SafeMode.PermittedUserGroups, "permitted-user-groups", []string{}, "Set of user groups which, if set, a user must belong to at least one in order to create a disruption")
+
+	if err := viper.BindPFlag("controller.safeMode.permittedUserGroups", mainFS.Lookup("permitted-user-groups")); err != nil {
 		return cfg, err
 	}
 

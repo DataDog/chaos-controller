@@ -36,22 +36,24 @@ import (
 )
 
 var (
-	logger                        *zap.SugaredLogger
-	k8sClient                     client.Client
-	metricsSink                   metrics.Sink
-	tracerSink                    tracer.Sink
-	recorder                      record.EventRecorder
-	deleteOnly                    bool
-	enableSafemode                bool
-	defaultNamespaceThreshold     float64
-	defaultClusterThreshold       float64
-	handlerEnabled                bool
-	maxDuration                   time.Duration
-	defaultDuration               time.Duration
-	cloudServicesProvidersManager cloudservice.CloudServicesProvidersManager
-	chaosNamespace                string
-	ddmarkClient                  ddmark.Client
-	safemodeEnvironment           string
+	logger                          *zap.SugaredLogger
+	k8sClient                       client.Client
+	metricsSink                     metrics.Sink
+	tracerSink                      tracer.Sink
+	recorder                        record.EventRecorder
+	deleteOnly                      bool
+	enableSafemode                  bool
+	defaultNamespaceThreshold       float64
+	defaultClusterThreshold         float64
+	handlerEnabled                  bool
+	maxDuration                     time.Duration
+	defaultDuration                 time.Duration
+	cloudServicesProvidersManager   cloudservice.CloudServicesProvidersManager
+	chaosNamespace                  string
+	ddmarkClient                    ddmark.Client
+	safemodeEnvironment             string
+	permittedUserGroups             map[string]struct{}
+	permittedUserGroupWarningString string
 )
 
 const SafemodeEnvironmentAnnotation = GroupName + "/environment"
@@ -80,6 +82,13 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 	chaosNamespace = setupWebhookConfig.ChaosNamespace
 	safemodeEnvironment = setupWebhookConfig.Environment
+	permittedUserGroups = map[string]struct{}{}
+
+	for _, group := range setupWebhookConfig.PermittedUserGroups {
+		permittedUserGroups[group] = struct{}{}
+	}
+
+	permittedUserGroupWarningString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
@@ -118,6 +127,10 @@ func (r *Disruption) ValidateCreate() error {
 	// delete-only mode, reject everything trying to be created
 	if deleteOnly {
 		return errors.New("the controller is currently in delete-only mode, you can't create new disruptions for now")
+	}
+
+	if err = r.validateUserInfoGroup(); err != nil {
+		return err
 	}
 
 	// reject disruptions with a name which would not be a valid label value
@@ -233,7 +246,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 
 	oldDisruption := old.(*Disruption)
 
-	if err := r.validateUserInfo(oldDisruption); err != nil {
+	if err := r.validateUserInfoImmutable(oldDisruption); err != nil {
 		return err
 	}
 
@@ -316,7 +329,35 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 	return nil
 }
 
-func (r *Disruption) validateUserInfo(oldDisruption *Disruption) error {
+// validateUserInfoGroup checks that if permittedUserGroups is set, which is controlled in controller.safeMode.permittedUserGroups in the configmap,
+// then we will return an error if the user in r.UserInfo does not belong to any groups. If permittedUserGroups is unset, or if the user belongs to one of those
+// groups, then we will return nil
+func (r *Disruption) validateUserInfoGroup() error {
+	if len(permittedUserGroups) == 0 {
+		return nil
+	}
+
+	userInfo, err := r.UserInfo()
+	if err != nil {
+		return err
+	}
+
+	for _, group := range userInfo.Groups {
+		_, ok := permittedUserGroups[group]
+		if ok {
+			logger.Debugw("permitting user disruption creation, due to group membership", "group", group)
+
+			return nil
+		}
+	}
+
+	logger.Warnw("rejecting user from creating this disruption", "permittedUserGroups", permittedUserGroups, "userGroups", userInfo.Groups)
+
+	return fmt.Errorf("lacking sufficient authorization to create disruptions. your user groups are %s, but you must be in one of the following groups: %s", userInfo.Groups, permittedUserGroupWarningString)
+}
+
+// validateUserInfoImmutable checks that no changes have been made to the oldDisruption's UserInfo in the latest update
+func (r *Disruption) validateUserInfoImmutable(oldDisruption *Disruption) error {
 	oldUserInfo, err := oldDisruption.UserInfo()
 	if err != nil {
 		return nil

@@ -219,6 +219,7 @@ var _ = Describe("Disruption", func() {
 		Describe("general errors expectations", func() {
 			BeforeEach(func() {
 				k8sClient = makek8sClientWithDisruptionPod()
+				recorder = record.NewFakeRecorder(1)
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
 			})
@@ -231,6 +232,7 @@ var _ = Describe("Disruption", func() {
 			AfterEach(func() {
 				k8sClient = nil
 				newDisruption = nil
+				permittedUserGroups = map[string]struct{}{}
 			})
 
 			When("disruption has delete-only mode enable", func() {
@@ -384,6 +386,32 @@ var _ = Describe("Disruption", func() {
 					Expect(newDisruption.ValidateCreate().Error()).Should(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified"))
 				})
 			})
+
+			When("user group membership is invalid", func() {
+				It("should return an error if they lack membership", func() {
+					permittedUserGroups = map[string]struct{}{}
+					permittedUserGroups["system:nobody"] = struct{}{}
+					permittedUserGroupWarningString = "system:nobody"
+
+					err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("lacking sufficient authorization to create disruptions. your user groups are [some], but you must be in one of the following groups: system:nobody"))
+				})
+
+				It("should not return an error if they are within a permitted group", func() {
+					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+					permittedUserGroups = map[string]struct{}{}
+					permittedUserGroups["some"] = struct{}{}
+					permittedUserGroups["any"] = struct{}{}
+					permittedUserGroupWarningString = "some, any"
+
+					err := newDisruption.ValidateCreate()
+
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 1)).To(BeTrue())
+				})
+			})
 		})
 
 		Describe("expectations with a disk failure disruption", func() {
@@ -502,7 +530,8 @@ func makeValidNetworkDisruption() *Disruption {
 				IntVal: 1,
 			},
 			Network: &NetworkDisruptionSpec{
-				Drop: 100,
+				Drop:  100,
+				Hosts: []NetworkDisruptionHostSpec{{Port: 80}},
 			},
 			Selector: labels.Set{
 				"name":      "random",
