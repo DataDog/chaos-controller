@@ -659,7 +659,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		noParentSignalTimer = time.NewTimer(getDuration(deadline) + 1*time.Minute)
 	}
 
-	log.Warn("waiting for system signals...")
+	log.Info("waiting for system signals...")
 
 	for {
 		select {
