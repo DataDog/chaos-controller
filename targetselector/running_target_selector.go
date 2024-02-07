@@ -57,6 +57,7 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 
 	runningPods := &corev1.PodList{}
 
+podLoop:
 	for _, pod := range pods.Items {
 		// check the pod is already a disruption target
 		isAlreadyATarget := false
@@ -82,7 +83,7 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 			for k, v := range instance.Spec.Filter.Annotations {
 				podAnno, ok := pod.Annotations[k]
 				if !ok || podAnno != v {
-					continue
+					continue podLoop
 				}
 			}
 		}
@@ -137,6 +138,7 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 
 	runningNodes := &corev1.NodeList{}
 
+nodeLoop:
 	for _, node := range nodes.Items {
 		// apply controller safeguards if enabled
 		if r.controllerEnableSafeguards {
@@ -160,7 +162,7 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 			for k, v := range instance.Spec.Filter.Annotations {
 				nodeAnno, ok := node.Annotations[k]
 				if !ok || nodeAnno != v {
-					continue
+					continue nodeLoop
 				}
 			}
 		}
