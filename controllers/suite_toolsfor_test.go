@@ -153,6 +153,17 @@ func ExpectChaosPods(ctx SpecContext, disruption chaosv1beta1.Disruption, count 
 		Should(Succeed())
 }
 
+// DontExpectChaosPods not only check for chaos pod existence
+// but also for their "needed" fields existence
+func DontExpectChaosPods(ctx SpecContext, disruption chaosv1beta1.Disruption, count int) {
+	GinkgoHelper()
+
+	Eventually(expectChaosPod).
+		WithContext(ctx).WithArguments(disruption, count).
+		Within(calcDisruptionGoneTimeout(disruption)).ProbeEvery(disruptionPotentialChangesEvery).
+		ShouldNot(Succeed())
+}
+
 // InjectPodsAndDisruption create 2 pods and a disruption targeting them
 // it will also delete those pods and disruption on test cleanup
 func InjectPodsAndDisruption(ctx SpecContext, wantDisruption chaosv1beta1.Disruption, skipSecondPod bool) (disruption chaosv1beta1.Disruption, targetPod, anotherTargetPod corev1.Pod) {
@@ -166,6 +177,7 @@ func InjectPodsAndDisruption(ctx SpecContext, wantDisruption chaosv1beta1.Disrup
 		anotherTargetPod = *targetPod.DeepCopy()
 		// we want some small differences from the previous pod, a single container, and other annotation value for foo
 		anotherTargetPod.Annotations["foo"] = "qux"
+		anotherTargetPod.Labels["second"] = "true"
 		anotherTargetPod.Spec.Containers = anotherTargetPod.Spec.Containers[0:1]
 		anotherTargetPod.Spec.Volumes = anotherTargetPod.Spec.Volumes[0:1] // second volume is used by second container, hence not needed as we removed it
 		anotherTargetPodCreated = CreateRunningPod(ctx, anotherTargetPod)
@@ -440,6 +452,7 @@ func uniquePod() corev1.Pod {
 			},
 			Annotations: map[string]string{
 				"foo": "baz",
+				"fob": "baf",
 				"uid": uuid,
 			},
 		},
