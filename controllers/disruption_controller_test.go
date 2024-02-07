@@ -95,7 +95,7 @@ var _ = Describe("Disruption Controller", func() {
 	Context("annotation filters should limit selected targets", func() {
 		BeforeEach(func() {
 			disruption.Spec.Filter = &chaosv1beta1.DisruptionFilter{
-				Annotations: targetPod.Annotations,
+				Annotations: map[string]string{"foo": "baz"},
 			}
 		})
 

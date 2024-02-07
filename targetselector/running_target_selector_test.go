@@ -14,6 +14,7 @@ import (
 	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -137,7 +138,7 @@ var _ = Describe("Helpers", func() {
 	var targetSelector TargetSelector
 
 	BeforeEach(func() {
-		targetSelector = NewRunningTargetSelector(false, "foo")
+		targetSelector = NewRunningTargetSelector(false, "foo", zaptest.NewLogger(GinkgoT()).Sugar())
 
 		c = fakeClient{}
 
@@ -375,7 +376,7 @@ var _ = Describe("Helpers", func() {
 
 		Context("with controller safeguards enabled", func() {
 			BeforeEach(func() {
-				targetSelector = NewRunningTargetSelector(true, "runningNode")
+				targetSelector = NewRunningTargetSelector(true, "runningNode", zaptest.NewLogger(GinkgoT()).Sugar())
 			})
 
 			It("should exclude the pods running on the same node as the controller from targets", func() {
@@ -440,7 +441,7 @@ var _ = Describe("Helpers", func() {
 
 		Context("with controller safeguards enabled", func() {
 			BeforeEach(func() {
-				targetSelector = NewRunningTargetSelector(true, "runningNode")
+				targetSelector = NewRunningTargetSelector(true, "runningNode", zaptest.NewLogger(GinkgoT()).Sugar())
 			})
 
 			It("should exclude the controller node from targets", func() {

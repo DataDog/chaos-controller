@@ -141,7 +141,7 @@ func main() {
 	}
 
 	// target selector
-	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName)
+	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName, logger)
 
 	var gcPtr *time.Duration
 	if cfg.Controller.ExpiredDisruptionGCDelay >= 0 {

@@ -12,6 +12,7 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -23,12 +24,14 @@ import (
 type runningTargetSelector struct {
 	controllerEnableSafeguards bool
 	controllerNodeName         string
+	logger                     *zap.SugaredLogger
 }
 
-func NewRunningTargetSelector(controllerEnableSafeguards bool, controllerNodeName string) TargetSelector {
+func NewRunningTargetSelector(controllerEnableSafeguards bool, controllerNodeName string, logger *zap.SugaredLogger) TargetSelector {
 	return runningTargetSelector{
 		controllerEnableSafeguards: controllerEnableSafeguards,
 		controllerNodeName:         controllerNodeName,
+		logger:                     logger,
 	}
 }
 
@@ -75,6 +78,7 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 		}
 
 		if instance.Spec.Filter != nil {
+			r.logger.Debugw("Checking annotations", "pod", pod.Name, "pod.Annotations", pod.Annotations, "spec.Filter", instance.Spec.Filter.Annotations)
 			for k, v := range instance.Spec.Filter.Annotations {
 				podAnno, ok := pod.Annotations[k]
 				if !ok || podAnno != v {
