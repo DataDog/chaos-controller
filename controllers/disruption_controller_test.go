@@ -95,8 +95,23 @@ var _ = Describe("Disruption Controller", func() {
 	Context("annotation filters should limit selected targets", func() {
 		BeforeEach(func() {
 			disruption.Spec.Filter = &chaosv1beta1.DisruptionFilter{
-				Annotations: targetPod.Annotations,
+				Annotations: map[string]string{"foo": "baz"},
 			}
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+		})
+
+		It("should only select half of all pods", func(ctx SpecContext) {
+			ExpectChaosPods(ctx, disruption, 4)
+		})
+	})
+
+	Context("annotation filters should limit selected targets", func() {
+		BeforeEach(func() {
+			disruption.Spec.Filter = &chaosv1beta1.DisruptionFilter{
+				Annotations: map[string]string{"fob": "baf"},
+			}
+			disruption.Spec.Selector = map[string]string{"second": "true"}
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
 		})
 
 		It("should only select half of all pods", func(ctx SpecContext) {

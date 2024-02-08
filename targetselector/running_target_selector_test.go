@@ -137,7 +137,7 @@ var _ = Describe("Helpers", func() {
 	var targetSelector TargetSelector
 
 	BeforeEach(func() {
-		targetSelector = NewRunningTargetSelector(false, "foo")
+		targetSelector = NewRunningTargetSelector(false, "foo", logger)
 
 		c = fakeClient{}
 
@@ -375,7 +375,7 @@ var _ = Describe("Helpers", func() {
 
 		Context("with controller safeguards enabled", func() {
 			BeforeEach(func() {
-				targetSelector = NewRunningTargetSelector(true, "runningNode")
+				targetSelector = NewRunningTargetSelector(true, "runningNode", logger)
 			})
 
 			It("should exclude the pods running on the same node as the controller from targets", func() {
@@ -440,7 +440,7 @@ var _ = Describe("Helpers", func() {
 
 		Context("with controller safeguards enabled", func() {
 			BeforeEach(func() {
-				targetSelector = NewRunningTargetSelector(true, "runningNode")
+				targetSelector = NewRunningTargetSelector(true, "runningNode", logger)
 			})
 
 			It("should exclude the controller node from targets", func() {

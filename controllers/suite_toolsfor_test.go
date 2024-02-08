@@ -166,6 +166,7 @@ func InjectPodsAndDisruption(ctx SpecContext, wantDisruption chaosv1beta1.Disrup
 		anotherTargetPod = *targetPod.DeepCopy()
 		// we want some small differences from the previous pod, a single container, and other annotation value for foo
 		anotherTargetPod.Annotations["foo"] = "qux"
+		anotherTargetPod.Labels["second"] = "true"
 		anotherTargetPod.Spec.Containers = anotherTargetPod.Spec.Containers[0:1]
 		anotherTargetPod.Spec.Volumes = anotherTargetPod.Spec.Volumes[0:1] // second volume is used by second container, hence not needed as we removed it
 		anotherTargetPodCreated = CreateRunningPod(ctx, anotherTargetPod)
@@ -440,6 +441,7 @@ func uniquePod() corev1.Pod {
 			},
 			Annotations: map[string]string{
 				"foo": "baz",
+				"fob": "baf",
 				"uid": uuid,
 			},
 		},

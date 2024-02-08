@@ -12,6 +12,7 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -23,12 +24,14 @@ import (
 type runningTargetSelector struct {
 	controllerEnableSafeguards bool
 	controllerNodeName         string
+	logger                     *zap.SugaredLogger
 }
 
-func NewRunningTargetSelector(controllerEnableSafeguards bool, controllerNodeName string) TargetSelector {
+func NewRunningTargetSelector(controllerEnableSafeguards bool, controllerNodeName string, logger *zap.SugaredLogger) TargetSelector {
 	return runningTargetSelector{
 		controllerEnableSafeguards: controllerEnableSafeguards,
 		controllerNodeName:         controllerNodeName,
+		logger:                     logger,
 	}
 }
 
@@ -54,6 +57,7 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 
 	runningPods := &corev1.PodList{}
 
+podLoop:
 	for _, pod := range pods.Items {
 		// check the pod is already a disruption target
 		isAlreadyATarget := false
@@ -75,10 +79,12 @@ func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, ins
 		}
 
 		if instance.Spec.Filter != nil {
+			r.logger.Debugw("checking if pod has filtered annotations", "pod", pod.Name, "pod.Annotations", pod.Annotations, "spec.Filter", instance.Spec.Filter.Annotations)
 			for k, v := range instance.Spec.Filter.Annotations {
 				podAnno, ok := pod.Annotations[k]
 				if !ok || podAnno != v {
-					continue
+					// This pod doesn't have the annotation specified in our filter, we don't want to include it as a target
+					continue podLoop
 				}
 			}
 		}
@@ -133,6 +139,7 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 
 	runningNodes := &corev1.NodeList{}
 
+nodeLoop:
 	for _, node := range nodes.Items {
 		// apply controller safeguards if enabled
 		if r.controllerEnableSafeguards {
@@ -153,10 +160,12 @@ func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, i
 		}
 
 		if instance.Spec.Filter != nil {
+			r.logger.Debugw("checking if node has filtered annotations", "node", node.Name, "node.Annotations", node.Annotations, "spec.Filter", instance.Spec.Filter.Annotations)
 			for k, v := range instance.Spec.Filter.Annotations {
 				nodeAnno, ok := node.Annotations[k]
 				if !ok || nodeAnno != v {
-					continue
+					// This node doesn't have the annotation specified in our filter, we don't want to include it as a target
+					continue nodeLoop
 				}
 			}
 		}
