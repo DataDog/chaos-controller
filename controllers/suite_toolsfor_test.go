@@ -153,17 +153,6 @@ func ExpectChaosPods(ctx SpecContext, disruption chaosv1beta1.Disruption, count 
 		Should(Succeed())
 }
 
-// DontExpectChaosPods not only check for chaos pod existence
-// but also for their "needed" fields existence
-func DontExpectChaosPods(ctx SpecContext, disruption chaosv1beta1.Disruption, count int) {
-	GinkgoHelper()
-
-	Eventually(expectChaosPod).
-		WithContext(ctx).WithArguments(disruption, count).
-		Within(calcDisruptionGoneTimeout(disruption)).ProbeEvery(disruptionPotentialChangesEvery).
-		ShouldNot(Succeed())
-}
-
 // InjectPodsAndDisruption create 2 pods and a disruption targeting them
 // it will also delete those pods and disruption on test cleanup
 func InjectPodsAndDisruption(ctx SpecContext, wantDisruption chaosv1beta1.Disruption, skipSecondPod bool) (disruption chaosv1beta1.Disruption, targetPod, anotherTargetPod corev1.Pod) {

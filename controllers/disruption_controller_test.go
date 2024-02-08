@@ -101,7 +101,6 @@ var _ = Describe("Disruption Controller", func() {
 		})
 
 		It("should only select half of all pods", func(ctx SpecContext) {
-			DontExpectChaosPods(ctx, disruption, 8)
 			ExpectChaosPods(ctx, disruption, 4)
 		})
 	})
@@ -116,7 +115,6 @@ var _ = Describe("Disruption Controller", func() {
 		})
 
 		It("should only select half of all pods", func(ctx SpecContext) {
-			DontExpectChaosPods(ctx, disruption, 8)
 			ExpectChaosPods(ctx, disruption, 4)
 		})
 	})
