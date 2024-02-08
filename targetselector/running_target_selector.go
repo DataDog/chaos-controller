@@ -79,10 +79,11 @@ podLoop:
 		}
 
 		if instance.Spec.Filter != nil {
-			r.logger.Debugw("Checking annotations", "pod", pod.Name, "pod.Annotations", pod.Annotations, "spec.Filter", instance.Spec.Filter.Annotations)
+			r.logger.Debugw("checking if pod has filtered annotations", "pod", pod.Name, "pod.Annotations", pod.Annotations, "spec.Filter", instance.Spec.Filter.Annotations)
 			for k, v := range instance.Spec.Filter.Annotations {
 				podAnno, ok := pod.Annotations[k]
 				if !ok || podAnno != v {
+					// This pod doesn't have the annotation specified in our filter, we don't want to include it as a target
 					continue podLoop
 				}
 			}
@@ -159,9 +160,11 @@ nodeLoop:
 		}
 
 		if instance.Spec.Filter != nil {
+			r.logger.Debugw("checking if node has filtered annotations", "node", node.Name, "node.Annotations", node.Annotations, "spec.Filter", instance.Spec.Filter.Annotations)
 			for k, v := range instance.Spec.Filter.Annotations {
 				nodeAnno, ok := node.Annotations[k]
 				if !ok || nodeAnno != v {
+					// This node doesn't have the annotation specified in our filter, we don't want to include it as a target
 					continue nodeLoop
 				}
 			}
