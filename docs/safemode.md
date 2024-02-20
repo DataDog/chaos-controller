@@ -14,6 +14,17 @@ The chaos-controller operates within the boundaries of a single kubernetes clust
 intended for a given cluster cannot be accidentally run anywhere else, especially across the dev/prod boundary. Operators of the chaos-controller can optionally set the
 `controller.safeMode.specifiedEnvironment` field in the config map to a string of their choice. Disruptions will then be rejected if they do not have a `chaos.datadoghq.com/environment` annotation set to an identical string.
 
+For example, if your controller's specifiedEnvironment field was set to `production`, Disruptions would need their environment annotation to match:
+```yaml
+metadata:
+  annotations:
+    chaos.datadoghq.com/environment: "production"
+```
+
+Any disruptions lacking this annotation, or using a different value, such as `dev`, would be rejected at admission.
+
+[See an example.](../examples/safemode_environment.yaml)
+
 ## Ignoring Safety Nets
 
 Because the list of safety nets to be implemented will grow in the future, there will surely be overlap with safety nets which will make it difficult for a user who is confident a specific safety net is not necessary but unsure if others will be.
