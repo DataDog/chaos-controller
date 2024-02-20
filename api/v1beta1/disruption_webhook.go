@@ -147,22 +147,23 @@ func (r *Disruption) ValidateCreate() error {
 
 	if safemodeEnvironment != "" {
 		disruptionEnv, ok := r.Annotations[SafemodeEnvironmentAnnotation]
+
 		if !ok {
-			return fmt.Errorf("your disruption does not specify the environment it expects to run in, but this controller requires it to do. Set an annotation on this disruption with the key `%s` and the value `\"%s\"` to run in this kubernetes cluster. Be sure that you intend to run this disruption in %s %s",
+			return fmt.Errorf("your disruption does not specify the environment it expects to run in, but this controller requires it to do. Set an annotation on this disruption with the key `%s` and the value `\"%s\"` to run in this kubernetes cluster. Be sure that you intend to run this disruption in %s. %s",
 				SafemodeEnvironmentAnnotation,
 				safemodeEnvironment,
 				safemodeEnvironment,
-				customErrors["safemodeEnvironment"],
+				customErrors["safemodeenvironment"],
 			)
 		}
 
 		if disruptionEnv != safemodeEnvironment {
-			return fmt.Errorf("disruption is configured to run in \"%s\" but has been applied in \"%s\".  Set an annotation on this disruption with the key `%s` and the value `\"%s\"` to run in this kubernetes cluster, and double check your kubecontext is what you expect %s",
+			return fmt.Errorf("disruption is configured to run in \"%s\" but has been applied in \"%s\".  Set an annotation on this disruption with the key `%s` and the value `\"%s\"` to run in this kubernetes cluster, and double check your kubecontext is what you expect. %s",
 				disruptionEnv,
 				safemodeEnvironment,
 				SafemodeEnvironmentAnnotation,
 				safemodeEnvironment,
-				customErrors["safemodeEnvironment"],
+				customErrors["safemodeenvironment"],
 			)
 		}
 	}
