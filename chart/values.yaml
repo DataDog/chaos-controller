@@ -78,8 +78,8 @@ controller:
   disruptionCronEnabled: true
   disruptionRolloutEnabled: false
   disruptionDeletionTimeout: 15m # The duration after which a disruption will be marked as "stuck on removal" if its removal process exceeds this duration.
-  customErrors: # these keys must be lowercased
-    safemodeenvironment: "Check out https://github.com/DataDog/chaos-controller/blob/f6adf086c559854790994acaa097a7b76d6624d3/docs/safemode.md#explicit-disruption-environments for more info"
+  customErrors:
+    safemodeEnvironment: "Check out https://github.com/DataDog/chaos-controller/blob/f6adf086c559854790994acaa097a7b76d6624d3/docs/safemode.md#explicit-disruption-environments for more info"
 
 injector:
   image:

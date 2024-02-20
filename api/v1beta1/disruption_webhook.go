@@ -54,7 +54,7 @@ var (
 	safemodeEnvironment             string
 	permittedUserGroups             map[string]struct{}
 	permittedUserGroupWarningString string
-	customErrors                    map[string]string
+	customErrors                    utils.CustomErrors
 )
 
 const SafemodeEnvironmentAnnotation = GroupName + "/environment"
@@ -83,12 +83,8 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 	chaosNamespace = setupWebhookConfig.ChaosNamespace
 	safemodeEnvironment = setupWebhookConfig.Environment
-	customErrors = map[string]string{}
+	customErrors = setupWebhookConfig.CustomErrors
 	permittedUserGroups = map[string]struct{}{}
-
-	for k, v := range setupWebhookConfig.CustomErrors {
-		customErrors[k] = v
-	}
 
 	for _, group := range setupWebhookConfig.PermittedUserGroups {
 		permittedUserGroups[group] = struct{}{}
@@ -153,7 +149,7 @@ func (r *Disruption) ValidateCreate() error {
 				SafemodeEnvironmentAnnotation,
 				safemodeEnvironment,
 				safemodeEnvironment,
-				customErrors["safemodeenvironment"],
+				customErrors.SafemodeEnvironment,
 			)
 		}
 
@@ -163,7 +159,7 @@ func (r *Disruption) ValidateCreate() error {
 				safemodeEnvironment,
 				SafemodeEnvironmentAnnotation,
 				safemodeEnvironment,
-				customErrors["safemodeenvironment"],
+				customErrors.SafemodeEnvironment,
 			)
 		}
 	}

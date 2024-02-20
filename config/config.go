@@ -11,6 +11,7 @@ import (
 
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/eventnotifier"
+	"github.com/DataDog/chaos-controller/utils"
 	"go.uber.org/zap"
 
 	"github.com/fsnotify/fsnotify"
@@ -44,7 +45,7 @@ type controllerConfig struct {
 	DisruptionCronEnabled     bool                            `json:"disruptionCronEnabled"`
 	DisruptionRolloutEnabled  bool                            `json:"disruptionRolloutEnabled"`
 	DisruptionDeletionTimeout time.Duration                   `json:"disruptionDeletionTimeout"`
-	CustomErrors              map[string]string               `json:"customErrors"`
+	CustomErrors              utils.CustomErrors              `json:"customErrors"`
 }
 
 type controllerWebhookConfig struct {
@@ -433,9 +434,9 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
-	mainFS.StringToStringVar(&cfg.Controller.CustomErrors, "custom-errors", map[string]string{}, "Allows you to specify custom error messages")
+	mainFS.StringVar(&cfg.Controller.CustomErrors.SafemodeEnvironment, "custom-errors-safemode-environment", "", "Allows you to specify custom error messages")
 
-	if err := viper.BindPFlag("controller.customErrors", mainFS.Lookup("custom-errors")); err != nil {
+	if err := viper.BindPFlag("controller.customErrors.safemodeEnvironment", mainFS.Lookup("custom-errors-safemode-environment")); err != nil {
 		return cfg, err
 	}
 

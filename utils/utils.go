@@ -39,6 +39,10 @@ func Contains(s []string, str string) bool {
 	return false
 }
 
+type CustomErrors struct {
+	SafemodeEnvironment string `json:"safemodeEnvironment"`
+}
+
 type SetupWebhookWithManagerConfig struct {
 	Manager                       ctrl.Manager
 	Logger                        *zap.SugaredLogger
@@ -56,5 +60,5 @@ type SetupWebhookWithManagerConfig struct {
 	CloudServicesProvidersManager cloudservice.CloudServicesProvidersManager
 	Environment                   string
 	PermittedUserGroups           []string
-	CustomErrors                  map[string]string
+	CustomErrors                  CustomErrors
 }
