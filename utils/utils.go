@@ -56,4 +56,5 @@ type SetupWebhookWithManagerConfig struct {
 	CloudServicesProvidersManager cloudservice.CloudServicesProvidersManager
 	Environment                   string
 	PermittedUserGroups           []string
+	CustomErrors                  map[string]string
 }

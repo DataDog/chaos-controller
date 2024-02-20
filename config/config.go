@@ -44,6 +44,7 @@ type controllerConfig struct {
 	DisruptionCronEnabled     bool                            `json:"disruptionCronEnabled"`
 	DisruptionRolloutEnabled  bool                            `json:"disruptionRolloutEnabled"`
 	DisruptionDeletionTimeout time.Duration                   `json:"disruptionDeletionTimeout"`
+	CustomErrors              map[string]string               `json:"customErrors"`
 }
 
 type controllerWebhookConfig struct {
@@ -429,6 +430,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.DurationVar(&cfg.Controller.DisruptionDeletionTimeout, "disruption-deletion-timeout", DefaultDisruptionDeletionTimeout, "If the deletion time of the disruption is greater than the delete timeout, the disruption is marked as stuck on removal")
 
 	if err := viper.BindPFlag("controller.disruptionDeletionTimeout", mainFS.Lookup("disruption-deletion-timeout")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringToStringVar(&cfg.Controller.CustomErrors, "custom-errors", map[string]string{}, "Allows you to specify custom error messages")
+
+	if err := viper.BindPFlag("controller.customErrors", mainFS.Lookup("custom-errors")); err != nil {
 		return cfg, err
 	}
 

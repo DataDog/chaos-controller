@@ -66,6 +66,12 @@ data:
       disruptionCronEnabled: {{ .Values.controller.disruptionCronEnabled }}
       disruptionRolloutEnabled: {{ .Values.controller.disruptionRolloutEnabled }}
       disruptionDeletionTimeout: {{ .Values.controller.disruptionDeletionTimeout }}
+      {{- if .Values.controller.customErrors }}
+      customErrors:
+        {{- range $key, $val := .Values.controller.customErrors }}
+        {{ $key }}: {{ $val | quote }}
+        {{- end }}
+      {{- end }}
     injector:
       image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.injector.image }}
       imagePullSecrets: {{ .Values.injector.image.pullSecrets }}

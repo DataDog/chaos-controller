@@ -344,6 +344,7 @@ func main() {
 		CloudServicesProvidersManager: cloudProviderManager,
 		Environment:                   cfg.Controller.SafeMode.Environment,
 		PermittedUserGroups:           cfg.Controller.SafeMode.PermittedUserGroups,
+		CustomErrors:                  cfg.Controller.CustomErrors,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		logger.Fatalw("unable to create webhook", "webhook", chaosv1beta1.DisruptionKind, "error", err)
