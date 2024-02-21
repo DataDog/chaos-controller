@@ -405,7 +405,7 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 
-					Expect(newDisruption.ValidateCreate().Error()).ShouldNot(HaveOccurred())
+					Expect(newDisruption.ValidateCreate()).ShouldNot(HaveOccurred())
 				})
 			})
 
