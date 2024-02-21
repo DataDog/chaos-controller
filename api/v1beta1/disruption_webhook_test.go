@@ -397,6 +397,7 @@ var _ = Describe("Disruption", func() {
 
 			When("triggers.*.notBefore is in the future", func() {
 				It("should not return an error", func() {
+					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 					newDisruption.Spec.Duration = "30m"
 					newDisruption.Spec.Triggers = DisruptionTriggers{
 						Inject: DisruptionTrigger{
