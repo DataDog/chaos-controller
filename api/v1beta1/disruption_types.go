@@ -621,7 +621,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 		}
 
 		if !s.Triggers.CreatePods.IsZero() && !s.Triggers.CreatePods.NotBefore.IsZero() && s.Triggers.CreatePods.NotBefore.Before(&now) {
-			retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.createPods.notBefore is %s. only values in the future are accepted", s.Triggers.CreatePods.NotBefore))
+			retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.createPods.notBefore is %s, which is in the past. only values in the future are accepted", s.Triggers.CreatePods.NotBefore))
 		}
 	}
 
