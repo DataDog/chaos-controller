@@ -61,11 +61,11 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 	}
 
 	handlerTimeout := m.Timeout.String()
-	succeedOnTimeout := "false"
+	succeedOnTimeout := ""
 
 	timeoutLabel, ok := pod.Labels["chaos.datadoghq.com/disrupt-on-init-timeout"]
 	if ok {
-		if timeoutOverride, err := time.ParseDuration(timeoutLabel); err != nil {
+		if timeoutOverride, err := time.ParseDuration(timeoutLabel); err == nil {
 			if timeoutOverride > m.MaxTimeout {
 				m.Log.Warnw("pod was rejected due to handler timeout set too high", "timeout", timeoutOverride.String(), "maxTimeout", m.MaxTimeout.String())
 				err = fmt.Errorf("you have requested a handler timeout of %s but the maximum allowed timeout is %s", timeoutOverride.String(), m.MaxTimeout.String())
@@ -79,7 +79,7 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 
 	_, ok = pod.Labels["chaos.datadoghq.com/disrupt-on-init-succeed-on-timeout"]
 	if ok {
-		succeedOnTimeout = "true"
+		succeedOnTimeout = "--succeed-on-timeout"
 	}
 
 	m.Log.Infow("injecting chaos handler init container into targeted pod", "pod", podName, "namespace", req.Namespace)
@@ -92,7 +92,6 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 		Args: []string{
 			"--timeout",
 			handlerTimeout,
-			"--succeed-on-timeout",
 			succeedOnTimeout,
 		},
 	}
