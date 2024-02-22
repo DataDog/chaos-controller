@@ -380,7 +380,7 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 
-					Expect(newDisruption.ValidateCreate().Error()).Should(ContainSubstring("only values in the future are accepted"))
+					Expect(newDisruption.ValidateCreate()).Should(MatchError(ContainSubstring("only values in the future are accepted")))
 				})
 
 				It("triggers.createPods should return an error", func() {
@@ -391,7 +391,7 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 
-					Expect(newDisruption.ValidateCreate().Error()).Should(ContainSubstring("only values in the future are accepted"))
+					Expect(newDisruption.ValidateCreate()).Should(MatchError(ContainSubstring("only values in the future are accepted")))
 				})
 			})
 
@@ -421,7 +421,7 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 
-					Expect(newDisruption.ValidateCreate().Error()).Should(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified"))
+					Expect(newDisruption.ValidateCreate()).Should(MatchError(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified")))
 				})
 			})
 
