@@ -40,7 +40,7 @@ var (
 				os.Exit(0)
 			case <-timer.C:
 				logger.Info("timed out, SIGUSR1 was never received, exiting")
-				os.Exit(1)
+				os.Exit(0)
 			}
 		},
 	}
