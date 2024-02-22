@@ -58,6 +58,17 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 		podName = pod.ObjectMeta.GenerateName
 	}
 
+	value, ok := pod.Labels["chaos.datadoghq.com/disrupt-on-init"]
+	handlerTimeout := m.Timeout.String()
+	if !ok {
+		m.Log.Errorw("error finding the disrupt-on-init label for pod", "error", err, "pod", pod.Name, "namespace", pod.Namespace, "pod.Labels", pod.Labels)
+
+		return admission.Errored(http.StatusBadRequest, err)
+	}
+	if timeoutOverride, err := time.ParseDuration(value); err != nil {
+		handlerTimeout = timeoutOverride.String()
+	}
+
 	m.Log.Infow("injecting chaos handler init container into targeted pod", "pod", podName, "namespace", req.Namespace)
 
 	// build chaos handler init container
@@ -67,7 +78,7 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Args: []string{
 			"--timeout",
-			m.Timeout.String(),
+			handlerTimeout,
 		},
 	}
 
