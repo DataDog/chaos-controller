@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	logger  *zap.SugaredLogger
-	timeout time.Duration
+	logger           *zap.SugaredLogger
+	timeout          time.Duration
+	succeedOnTimeout bool
 
 	rootCmd = &cobra.Command{
 		Use:   "chaos-handler",
@@ -40,7 +41,11 @@ var (
 				os.Exit(0)
 			case <-timer.C:
 				logger.Info("timed out, SIGUSR1 was never received, exiting")
-				os.Exit(0)
+				if succeedOnTimeout {
+					os.Exit(0)
+				} else {
+					os.Exit(1)
+				}
 			}
 		},
 	}
@@ -48,6 +53,7 @@ var (
 
 func init() {
 	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", time.Minute, "Time to wait for the signal before the handler exits by itself")
+	rootCmd.PersistentFlags().BoolVar(&succeedOnTimeout, "succeed-on-timeout", false, "If set to true, this container will exit 0 after a timeout, otherwise will exit 1")
 }
 
 func main() {

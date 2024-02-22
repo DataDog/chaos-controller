@@ -59,12 +59,18 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 	}
 
 	handlerTimeout := m.Timeout.String()
+	succeedOnTimeout := "false"
 
 	timeoutLabel, ok := pod.Labels["chaos.datadoghq.com/disrupt-on-init-timeout"]
 	if ok {
 		if timeoutOverride, err := time.ParseDuration(timeoutLabel); err != nil {
 			handlerTimeout = timeoutOverride.String()
 		}
+	}
+
+	_, ok = pod.Labels["chaos.datadoghq.com/disrupt-on-init-succeed-on-timeout"]
+	if ok {
+		succeedOnTimeout = "true"
 	}
 
 	m.Log.Infow("injecting chaos handler init container into targeted pod", "pod", podName, "namespace", req.Namespace)
@@ -77,6 +83,8 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 		Args: []string{
 			"--timeout",
 			handlerTimeout,
+			"--succeed-on-timeout",
+			succeedOnTimeout,
 		},
 	}
 
