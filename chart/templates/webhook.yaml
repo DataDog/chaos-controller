@@ -104,10 +104,6 @@ webhooks:
     matchExpressions:
       - key: "chaos.datadoghq.com/disrupt-on-init"
         operator: Exists
-      - key: "chaos.datadoghq.com/disrupt-on-init-timeout"
-        operator: Exists
-      - key: "chaos.datadoghq.com/disrupt-on-init-succeed-on-timeout"
-        operator: Exists
   rules:
   - apiGroups:
     - ""
