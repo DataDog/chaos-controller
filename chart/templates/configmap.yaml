@@ -99,3 +99,4 @@ data:
       image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.handler.image }}
       enabled: {{ .Values.handler.enabled }}
       timeout: {{ .Values.handler.timeout | quote }}
+      maxTimeout: {{ .Values.handler.maxTimeout | quote }}

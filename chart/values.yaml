@@ -111,6 +111,7 @@ handler:
     repo: chaos-handler
   enabled: true # enable the chaos handler (required to use the onInit disruption feature)
   timeout: 1m # time the handler init container will wait before exiting if no signal is received
+  maxTimeout: 2h # maximum amount of time to allow users to configure for their handler timeout
 
 proxy:
   image:
