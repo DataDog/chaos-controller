@@ -74,8 +74,10 @@ spec:
     metadata:
       annotations:
         app.kubernetes.io/component: client
+        chaos.datadoghq.com/disrupt-on-init-timeout: 5m
       labels:
         app: demo-curl
+        chaos.datadoghq.com/disrupt-on-init: yesplease
     spec:
       containers:
         - name: cpu-stress # jump into pod and run `kill -s TERM 7` to confirm re-start apply cpu reinjection
