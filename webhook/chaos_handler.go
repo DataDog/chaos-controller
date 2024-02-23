@@ -63,7 +63,7 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 	handlerTimeout := m.Timeout.String()
 	succeedOnTimeout := ""
 
-	timeoutLabel, ok := pod.Labels["chaos.datadoghq.com/disrupt-on-init-timeout"]
+	timeoutLabel, ok := pod.Annotations["chaos.datadoghq.com/disrupt-on-init-timeout"]
 	if ok {
 		if timeoutOverride, err := time.ParseDuration(timeoutLabel); err == nil {
 			if timeoutOverride > m.MaxTimeout {
@@ -77,7 +77,7 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 		}
 	}
 
-	_, ok = pod.Labels["chaos.datadoghq.com/disrupt-on-init-succeed-on-timeout"]
+	_, ok = pod.Annotations["chaos.datadoghq.com/disrupt-on-init-succeed-on-timeout"]
 	if ok {
 		succeedOnTimeout = "--succeed-on-timeout"
 	}
