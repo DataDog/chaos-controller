@@ -371,6 +371,44 @@ var _ = Describe("Disruption", func() {
 				})
 			})
 
+			When("triggers.*.notBefore is in the past", func() {
+				It("triggers.inject should return an error", func() {
+					newDisruption.Spec.Duration = "30m"
+					newDisruption.Spec.Triggers = DisruptionTriggers{
+						Inject: DisruptionTrigger{
+							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5 * -1)),
+						},
+					}
+
+					Expect(newDisruption.ValidateCreate()).Should(MatchError(ContainSubstring("only values in the future are accepted")))
+				})
+
+				It("triggers.createPods should return an error", func() {
+					newDisruption.Spec.Duration = "30m"
+					newDisruption.Spec.Triggers = DisruptionTriggers{
+						CreatePods: DisruptionTrigger{
+							NotBefore: metav1.NewTime(time.Now().Add(time.Hour * -1)),
+						},
+					}
+
+					Expect(newDisruption.ValidateCreate()).Should(MatchError(ContainSubstring("only values in the future are accepted")))
+				})
+			})
+
+			When("triggers.*.notBefore is in the future", func() {
+				It("should not return an error", func() {
+					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+					newDisruption.Spec.Duration = "30m"
+					newDisruption.Spec.Triggers = DisruptionTriggers{
+						Inject: DisruptionTrigger{
+							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5)),
+						},
+					}
+
+					Expect(newDisruption.ValidateCreate()).ShouldNot(HaveOccurred())
+				})
+			})
+
 			When("triggers.inject.notBefore is before triggers.createPods.notBefore", func() {
 				It("should return an error", func() {
 					newDisruption.Spec.Duration = "30m"
@@ -383,7 +421,7 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 
-					Expect(newDisruption.ValidateCreate().Error()).Should(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified"))
+					Expect(newDisruption.ValidateCreate()).Should(MatchError(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified")))
 				})
 			})
 
