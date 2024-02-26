@@ -74,11 +74,6 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 			}
 
 			handlerTimeout = timeoutOverride.String()
-		} else if err != nil {
-			userErr := fmt.Errorf("could not decode chaos.datadoghq.com/disrupt-on-init-timeout annotation on your pod, only duration strings are valid values: %w", err)
-			m.Log.Errorw("could not decode pod's disrupt-on-init-timeout annotation", "error", err, "pod", pod.Name, "namespace", pod.Namespace)
-
-			return admission.Errored(http.StatusBadRequest, userErr)
 		}
 	}
 
