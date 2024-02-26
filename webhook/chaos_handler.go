@@ -74,6 +74,8 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 			}
 
 			handlerTimeout = timeoutOverride.String()
+		} else if err != nil {
+			m.Log.Warnw("could not parse user's disrupt-on-init-timeout annotation", "err", err, "pod", podName, "namespace", req.Namespace)
 		}
 	}
 
