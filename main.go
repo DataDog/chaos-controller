@@ -353,10 +353,11 @@ func main() {
 		// register chaos handler init container mutating webhook
 		mgr.GetWebhookServer().Register("/mutate-v1-pod-chaos-handler-init-container", &webhook.Admission{
 			Handler: &chaoswebhook.ChaosHandlerMutator{
-				Client:  mgr.GetClient(),
-				Log:     logger,
-				Image:   cfg.Handler.Image,
-				Timeout: cfg.Handler.Timeout,
+				Client:     mgr.GetClient(),
+				Log:        logger,
+				Image:      cfg.Handler.Image,
+				Timeout:    cfg.Handler.Timeout,
+				MaxTimeout: cfg.Handler.MaxTimeout,
 			},
 		})
 	}

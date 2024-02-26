@@ -8,6 +8,7 @@ package webhook
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -18,11 +19,12 @@ import (
 )
 
 type ChaosHandlerMutator struct {
-	Client  client.Client
-	Log     *zap.SugaredLogger
-	Image   string
-	Timeout time.Duration
-	decoder *admission.Decoder
+	Client     client.Client
+	Log        *zap.SugaredLogger
+	Image      string
+	Timeout    time.Duration
+	MaxTimeout time.Duration
+	decoder    *admission.Decoder
 }
 
 func (m *ChaosHandlerMutator) InjectDecoder(d *admission.Decoder) error {
@@ -58,6 +60,30 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 		podName = pod.ObjectMeta.GenerateName
 	}
 
+	handlerTimeout := m.Timeout.String()
+	succeedOnTimeout := ""
+
+	timeoutLabel, ok := pod.Annotations["chaos.datadoghq.com/disrupt-on-init-timeout"]
+	if ok {
+		if timeoutOverride, err := time.ParseDuration(timeoutLabel); err == nil {
+			if timeoutOverride > m.MaxTimeout {
+				m.Log.Warnw("pod was rejected due to handler timeout set too high", "timeout", timeoutOverride.String(), "maxTimeout", m.MaxTimeout.String())
+				err = fmt.Errorf("you have requested a handler timeout of %s but the maximum allowed timeout is %s", timeoutOverride.String(), m.MaxTimeout.String())
+
+				return admission.Errored(http.StatusBadRequest, err)
+			}
+
+			handlerTimeout = timeoutOverride.String()
+		} else if err != nil {
+			m.Log.Warnw("could not parse user's disrupt-on-init-timeout annotation", "err", err, "pod", podName, "namespace", req.Namespace)
+		}
+	}
+
+	_, ok = pod.Annotations["chaos.datadoghq.com/disrupt-on-init-succeed-on-timeout"]
+	if ok {
+		succeedOnTimeout = "--succeed-on-timeout"
+	}
+
 	m.Log.Infow("injecting chaos handler init container into targeted pod", "pod", podName, "namespace", req.Namespace)
 
 	// build chaos handler init container
@@ -67,7 +93,8 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Args: []string{
 			"--timeout",
-			m.Timeout.String(),
+			handlerTimeout,
+			succeedOnTimeout,
 		},
 	}
 

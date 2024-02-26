@@ -82,9 +82,10 @@ type injectorNetworkDisruptionConfig struct {
 }
 
 type handlerConfig struct {
-	Enabled bool          `json:"enabled"`
-	Image   string        `json:"image"`
-	Timeout time.Duration `json:"timeout"`
+	Enabled    bool          `json:"enabled"`
+	Image      string        `json:"image"`
+	Timeout    time.Duration `json:"timeout"`
+	MaxTimeout time.Duration `json:"maxTimeout"`
 }
 
 const DefaultDisruptionDeletionTimeout = time.Minute * 15
@@ -288,6 +289,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.DurationVar(&cfg.Handler.Timeout, "handler-timeout", time.Minute, "Handler init container timeout")
 
 	if err := viper.BindPFlag("handler.timeout", mainFS.Lookup("handler-timeout")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.DurationVar(&cfg.Handler.MaxTimeout, "handler-max-timeout", time.Hour, "Handler init container maximum timeout")
+
+	if err := viper.BindPFlag("handler.maxTimeout", mainFS.Lookup("handler-max-timeout")); err != nil {
 		return cfg, err
 	}
 

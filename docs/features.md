@@ -100,10 +100,13 @@ It can be handy to disrupt packets on pod initialization, meaning before contain
   - the chaos-controller will inject an init containers name `chaos-handler` as the first init container in your pod
   - this init container is lightweight and does nothing but waiting for a `SIGUSR1` signal to complete successfully
     - thus, until a disruption targets the pod with the init container, it will do nothing but wait until it times out. The init container has no k8s api access, and does no proactive searching for existing disruption resources.
+  - you can configure how long the init container will wait for the `SIGUSR1` signal by setting an annotation with the key `chaos.datadoghq.com/disrupt-on-init-timeout` on your pod. The value should be a duration string, which we'll use to set the timeout for the init container. The default timeout is 10m.
+  - the `chaos-handler` init container will automatically exit and fail if no signal is received
+    - If you want the container to exit 0 on timeout, set an annotation with the key `chaos.datadoghq.com/disrupt-on-init-succeed-on-timeout` on your pod.
 - apply your disruption [with the init mode on](../examples/on_init.yaml)
   - the chaos pod will inject the disruption and unstuck your pod from the pending state
 
-Note that in this mode, only pending pods with a running `chaos-handler` init container and matching your labels + the special label specified above will be targeted. The `chaos-handler` init container will automatically exit and fail if no signal is received within the specified timeout (default is 1 minute).
+Note that in this mode, only pending pods with a running `chaos-handler` init container and matching your labels + the special label specified above will be targeted.
 
 ## Notifier
 
