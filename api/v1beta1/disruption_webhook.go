@@ -204,6 +204,18 @@ func (r *Disruption) ValidateCreate() error {
 		return err
 	}
 
+	if !r.Spec.Triggers.IsZero() {
+		now := metav1.Now()
+
+		if !r.Spec.Triggers.Inject.IsZero() && !r.Spec.Triggers.Inject.NotBefore.IsZero() && r.Spec.Triggers.Inject.NotBefore.Before(&now) {
+			return fmt.Errorf("spec.trigger.inject.notBefore is %s, which is in the past. only values in the future are accepted", r.Spec.Triggers.Inject.NotBefore)
+		}
+
+		if !r.Spec.Triggers.CreatePods.IsZero() && !r.Spec.Triggers.CreatePods.NotBefore.IsZero() && r.Spec.Triggers.CreatePods.NotBefore.Before(&now) {
+			return fmt.Errorf("spec.trigger.createPods.notBefore is %s, which is in the past. only values in the future are accepted", r.Spec.Triggers.CreatePods.NotBefore)
+		}
+	}
+
 	if maxDuration > 0 && r.Spec.Duration.Duration() > maxDuration {
 		return fmt.Errorf("you have specified a duration of %s, but the maximum duration allowed is %s, please specify a duration lower or equal than this value", r.Spec.Duration.Duration(), maxDuration)
 	}

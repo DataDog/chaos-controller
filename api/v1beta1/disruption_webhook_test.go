@@ -100,6 +100,43 @@ var _ = Describe("Disruption", func() {
 			})
 		})
 
+		Describe("ValidateCreate-only invariants shouldn't affect Update", func() {
+			When("triggers.*.notBefore is in the past", func() {
+				It("triggers.inject should not return an error", func() {
+					triggers := DisruptionTriggers{
+						Inject: DisruptionTrigger{
+							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5 * -1)),
+						},
+					}
+
+					newDisruption.Spec.Duration = "30m"
+					newDisruption.Spec.Triggers = triggers
+
+					oldDisruption.Spec.Duration = "30m"
+					oldDisruption.Spec.Triggers = triggers
+
+					err := newDisruption.ValidateUpdate(oldDisruption)
+					Expect(err).Should(Succeed())
+				})
+
+				It("triggers.createPods should not return an error", func() {
+					triggers := DisruptionTriggers{
+						CreatePods: DisruptionTrigger{
+							NotBefore: metav1.NewTime(time.Now().Add(time.Hour * -1)),
+						},
+					}
+					newDisruption.Spec.Duration = "30m"
+					newDisruption.Spec.Triggers = triggers
+
+					oldDisruption.Spec.Duration = "30m"
+					oldDisruption.Spec.Triggers = triggers
+
+					err := newDisruption.ValidateUpdate(oldDisruption)
+					Expect(err).Should(Succeed())
+				})
+			})
+		})
+
 		Describe("hash changes expectations", func() {
 			When("nothing is updated", func() {
 				It("should succeed", func() {
