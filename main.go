@@ -33,6 +33,7 @@ import (
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/go-logr/zapr"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -87,6 +88,7 @@ func main() {
 		Host:               cfg.Controller.Webhook.Host,
 		Port:               cfg.Controller.Webhook.Port,
 		CertDir:            cfg.Controller.Webhook.CertDir,
+		Logger:             zapr.NewLogger(logger.Desugar()),
 	})
 
 	if err != nil {
