@@ -16,7 +16,6 @@ import (
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/utils"
-	"github.com/go-logr/zapr"
 	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -90,8 +89,6 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	}
 
 	permittedUserGroupWarningString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
-
-	ctrl.SetLogger(zapr.NewLogger(logger.Desugar()))
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).

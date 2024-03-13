@@ -69,6 +69,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctrl.SetLogger(zapr.NewLogger(logger.Desugar()))
+
 	// get controller node name
 	controllerNodeName, exists := os.LookupEnv("CONTROLLER_NODE_NAME")
 	if !exists {
