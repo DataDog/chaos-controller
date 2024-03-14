@@ -34,7 +34,7 @@ type Sink interface {
 	MetricDisruptionOngoingDuration(duration time.Duration, tags []string) error
 	MetricStuckOnRemoval(tags []string) error
 	MetricStuckOnRemovalGauge(gauge float64) error
-	MetricDisruptionsGauge(gauge float64) error
+	MetricDisruptionsGauge(gauge float64, tags []string) error
 	MetricDisruptionsCount(kind chaostypes.DisruptionKindName, tags []string) error
 	MetricSelectorCacheGauge(gauge float64) error
 	MetricWatcherCalls(tags []string) error

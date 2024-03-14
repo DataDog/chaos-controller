@@ -133,7 +133,7 @@ func (n Sink) MetricStuckOnRemovalGauge(gauge float64) error {
 }
 
 // MetricDisruptionsGauge sends disruptions.gauge metric
-func (n Sink) MetricDisruptionsGauge(gauge float64) error {
+func (n Sink) MetricDisruptionsGauge(gauge float64, tags []string) error {
 	n.log.Debugf("NOOP: MetricDisruptionsGauge %f\n", gauge)
 
 	return nil
