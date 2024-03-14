@@ -1046,7 +1046,7 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 
 			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionOngoingDuration(time.Since(d.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + d.Name, "namespace:" + d.Namespace}))
 
-			namespaces[d.Namespace] += 1
+			namespaces[d.Namespace]++
 		}
 
 		// send metrics
