@@ -1025,6 +1025,8 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 			continue
 		}
 
+		namespaces := map[string]int{}
+
 		// check for stuck durations, count chaos pods, and track ongoing disruption duration
 		for _, d := range l.Items {
 			if d.Status.IsStuckOnRemoval {
@@ -1043,6 +1045,8 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 			chaosPodsCount += len(chaosPods)
 
 			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionOngoingDuration(time.Since(d.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + d.Name, "namespace:" + d.Namespace}))
+
+			namespaces[d.Namespace]++
 		}
 
 		// send metrics
@@ -1050,8 +1054,16 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 			r.BaseLog.Errorw("error sending stuck_on_removal_total metric", "error", err)
 		}
 
-		if err := r.MetricsSink.MetricDisruptionsGauge(float64(len(l.Items))); err != nil {
-			r.BaseLog.Errorw("error sending disruptions.gauge metric", "error", err)
+		if len(namespaces) > 0 {
+			for namespace, count := range namespaces {
+				if err := r.MetricsSink.MetricDisruptionsGauge(float64(count), []string{fmt.Sprintf("namespace:%s", namespace)}); err != nil {
+					r.BaseLog.Errorw("error sending disruptions.gauge metric", "error", err)
+				}
+			}
+		} else {
+			if err := r.MetricsSink.MetricDisruptionsGauge(float64(len(l.Items)), []string{}); err != nil {
+				r.BaseLog.Errorw("error sending disruptions.gauge metric", "error", err)
+			}
 		}
 
 		if err := r.MetricsSink.MetricPodsGauge(float64(chaosPodsCount)); err != nil {

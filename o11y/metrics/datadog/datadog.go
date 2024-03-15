@@ -164,8 +164,8 @@ func (d Sink) MetricStuckOnRemovalGauge(gauge float64) error {
 }
 
 // MetricDisruptionsGauge sends the disruptions.gauge metric counting ongoing disruptions
-func (d Sink) MetricDisruptionsGauge(gauge float64) error {
-	return d.client.Gauge(d.prefix+"disruptions.gauge", gauge, []string{}, 1)
+func (d Sink) MetricDisruptionsGauge(gauge float64, tags []string) error {
+	return d.client.Gauge(d.prefix+"disruptions.gauge", gauge, tags, 1)
 }
 
 // MetricDisruptionsCount counts finished disruptions, and tags the disruption kind
