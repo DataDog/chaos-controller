@@ -142,7 +142,8 @@ var _ = Describe("Disruption", func() {
 		Describe("hash changes expectations", func() {
 			When("nothing is updated", func() {
 				It("should succeed", func() {
-					Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+					_, err := newDisruption.ValidateUpdate(oldDisruption)
+					Expect(err).Should(Succeed())
 				})
 			})
 
@@ -183,7 +184,8 @@ var _ = Describe("Disruption", func() {
 							Expect(newDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem"})).Should(Succeed())
 
 							// Action
-							Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+							_, err := newDisruption.ValidateUpdate(oldDisruption)
+							Expect(err).Should(Succeed())
 						})
 					})
 				})
@@ -214,7 +216,8 @@ var _ = Describe("Disruption", func() {
 
 				Context("DynamicTargeting (StaticTargeting=false)", func() {
 					It("should succeed", func() {
-						Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+						_, err := newDisruption.ValidateUpdate(oldDisruption)
+						Expect(err).Should(Succeed())
 					})
 				})
 
@@ -223,7 +226,8 @@ var _ = Describe("Disruption", func() {
 						oldDisruption.Spec.StaticTargeting = true
 						newDisruption.Spec.StaticTargeting = true
 
-						Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(HaveOccurred())
+						_, err := newDisruption.ValidateUpdate(oldDisruption)
+						Expect(err).Should(HaveOccurred())
 					})
 				})
 			})
@@ -236,7 +240,8 @@ var _ = Describe("Disruption", func() {
 					})
 
 					It("should fail", func() {
-						Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(HaveOccurred())
+						_, err := newDisruption.ValidateUpdate(oldDisruption)
+						Expect(err).Should(HaveOccurred())
 					})
 				})
 
@@ -247,7 +252,8 @@ var _ = Describe("Disruption", func() {
 					})
 
 					It("should fail", func() {
-						Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(HaveOccurred())
+						_, err := newDisruption.ValidateUpdate(oldDisruption)
+						Expect(err).Should(HaveOccurred())
 					})
 				})
 			})
