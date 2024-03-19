@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -106,6 +107,15 @@ func (f fakeClient) RESTMapper() meta.RESTMapper {
 
 func (f fakeClient) SubResource(subResource string) client.SubResourceClient {
 	return nil
+}
+
+func (f fakeClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return schema.GroupVersionKind{}, nil
+}
+
+func (f fakeClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	// this client is used for both fake pods and fake nodes. only the former is namespaced, but we don't rely on this function so we always return true
+	return true, nil
 }
 
 var (
