@@ -15,12 +15,10 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/record"
 	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -85,12 +83,12 @@ var _ = Describe("Watcher factory", func() {
 			})
 
 			It("should have a valid k8s cache options", func() {
-				expectedObjectSelector := map[client.Object]k8scache.ByObject{&corev1.Pod{}: {
-					Namespaces: map[string]k8scache.Config{chaosNamespace: k8scache.Config{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{
+				expectedObjectSelector := k8scache.ByObject{
+					Namespaces: map[string]k8scache.Config{chaosNamespace: {LabelSelector: labels.SelectorFromValidatedSet(map[string]string{
 						chaostypes.DisruptionNameLabel:      disruption.Name,
 						chaostypes.DisruptionNamespaceLabel: disruption.Namespace,
 					})}},
-				}}
+				}
 
 				By("having the same object selector")
 				for _, selectorByObject := range watcher.GetConfig().CacheOptions.ByObject {
