@@ -14,6 +14,7 @@ require (
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/zapr v1.3.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/miekg/dns v1.1.54

@@ -33,6 +33,7 @@ import (
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/go-logr/zapr"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -69,6 +70,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	desugaredLogger := zapr.NewLogger(logger.Desugar())
+
+	ctrl.SetLogger(desugaredLogger)
+
 	// get controller node name
 	controllerNodeName, exists := os.LookupEnv("CONTROLLER_NODE_NAME")
 	if !exists {
@@ -87,6 +92,7 @@ func main() {
 		},
 		LeaderElection:   cfg.Controller.LeaderElection,
 		LeaderElectionID: "75ec2fa4.datadoghq.com",
+		Logger:           desugaredLogger,
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Host:    cfg.Controller.Webhook.Host,
 			Port:    cfg.Controller.Webhook.Port,
