@@ -28,7 +28,7 @@ func NewDeploymentHandler(client client.Client, logger *zap.SugaredLogger) Deplo
 }
 
 // OnAdd is a handler function for the add of a deployment
-func (h DeploymentHandler) OnAdd(obj interface{}, _ bool) {
+func (h DeploymentHandler) OnAdd(obj interface{}) {
 	deployment, ok := obj.(*appsv1.Deployment)
 
 	// If the object is not a deployment, do nothing
