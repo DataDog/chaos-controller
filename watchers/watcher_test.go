@@ -260,7 +260,7 @@ var _ = Describe("watcher", func() {
 				handlerMock = mocks.NewResourceEventHandlerMock(GinkgoT())
 				informerMock = mocks.NewCacheInformerMock(GinkgoT())
 				cacheMock = CacheMock{}
-				informerMock.EXPECT().AddEventHandler(handlerMock).Return(mock.Anything, nil)
+				informerMock.EXPECT().AddEventHandler(handlerMock).Return(informerMock, nil)
 				cacheMock.On("GetInformer", mock.Anything, mock.Anything).Return(informerMock, nil)
 				cacheMock.On("Start", mock.Anything).Return(nil)
 			})
@@ -323,7 +323,7 @@ var _ = Describe("watcher", func() {
 				handlerMock = mocks.NewResourceEventHandlerMock(GinkgoT())
 				informerMock = mocks.NewCacheInformerMock(GinkgoT())
 				cacheMock = CacheMock{}
-				informerMock.EXPECT().AddEventHandler(handlerMock).Return(mock.Anything, nil)
+				informerMock.EXPECT().AddEventHandler(handlerMock).Return(informerMock, nil)
 				cacheMock.On("GetInformer", mock.Anything, mock.Anything).Return(informerMock, nil)
 				cacheMock.On("Start", mock.Anything).Return(nil)
 			})
