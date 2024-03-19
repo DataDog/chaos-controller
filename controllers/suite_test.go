@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"gopkg.in/yaml.v3"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -92,8 +93,10 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	// we expect only list/watch instead of get
 	// this will be more effective than polling CI k8s API server regularly
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme.Scheme,
-		MetricsBindAddress: "0",
+		Scheme: scheme.Scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: "0",
+		},
 	})
 	Expect(err).ToNot(HaveOccurred())
 
