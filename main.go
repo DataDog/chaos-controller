@@ -42,6 +42,7 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	// +kubebuilder:scaffold:imports
@@ -80,13 +81,17 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: cfg.Controller.MetricsBindAddr,
-		LeaderElection:     cfg.Controller.LeaderElection,
-		LeaderElectionID:   "75ec2fa4.datadoghq.com",
-		Host:               cfg.Controller.Webhook.Host,
-		Port:               cfg.Controller.Webhook.Port,
-		CertDir:            cfg.Controller.Webhook.CertDir,
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: cfg.Controller.MetricsBindAddr,
+		},
+		LeaderElection:   cfg.Controller.LeaderElection,
+		LeaderElectionID: "75ec2fa4.datadoghq.com",
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Host:    cfg.Controller.Webhook.Host,
+			Port:    cfg.Controller.Webhook.Port,
+			CertDir: cfg.Controller.Webhook.CertDir,
+		}),
 	})
 
 	if err != nil {
