@@ -21,9 +21,9 @@ func (_m *ResourceEventHandlerMock) EXPECT() *ResourceEventHandlerMock_Expecter 
 	return &ResourceEventHandlerMock_Expecter{mock: &_m.Mock}
 }
 
-// OnAdd provides a mock function with given fields: obj
-func (_m *ResourceEventHandlerMock) OnAdd(obj interface{}) {
-	_m.Called(obj)
+// OnAdd provides a mock function with given fields: obj, isInInitialList
+func (_m *ResourceEventHandlerMock) OnAdd(obj interface{}, isInInitialList bool) {
+	_m.Called(obj, isInInitialList)
 }
 
 // ResourceEventHandlerMock_OnAdd_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OnAdd'
@@ -33,13 +33,14 @@ type ResourceEventHandlerMock_OnAdd_Call struct {
 
 // OnAdd is a helper method to define mock.On call
 //   - obj interface{}
-func (_e *ResourceEventHandlerMock_Expecter) OnAdd(obj interface{}) *ResourceEventHandlerMock_OnAdd_Call {
-	return &ResourceEventHandlerMock_OnAdd_Call{Call: _e.mock.On("OnAdd", obj)}
+//   - isInInitialList bool
+func (_e *ResourceEventHandlerMock_Expecter) OnAdd(obj interface{}, isInInitialList interface{}) *ResourceEventHandlerMock_OnAdd_Call {
+	return &ResourceEventHandlerMock_OnAdd_Call{Call: _e.mock.On("OnAdd", obj, isInInitialList)}
 }
 
-func (_c *ResourceEventHandlerMock_OnAdd_Call) Run(run func(obj interface{})) *ResourceEventHandlerMock_OnAdd_Call {
+func (_c *ResourceEventHandlerMock_OnAdd_Call) Run(run func(obj interface{}, isInInitialList bool)) *ResourceEventHandlerMock_OnAdd_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(interface{}))
+		run(args[0].(interface{}), args[1].(bool))
 	})
 	return _c
 }
@@ -49,7 +50,7 @@ func (_c *ResourceEventHandlerMock_OnAdd_Call) Return() *ResourceEventHandlerMoc
 	return _c
 }
 
-func (_c *ResourceEventHandlerMock_OnAdd_Call) RunAndReturn(run func(interface{})) *ResourceEventHandlerMock_OnAdd_Call {
+func (_c *ResourceEventHandlerMock_OnAdd_Call) RunAndReturn(run func(interface{}, bool)) *ResourceEventHandlerMock_OnAdd_Call {
 	_c.Call.Return(run)
 	return _c
 }
