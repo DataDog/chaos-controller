@@ -52,7 +52,7 @@ var _ = Describe("Chaos Pod watcher", func() {
 
 			JustBeforeEach(func() {
 				// Action
-				chaosPodHandler.OnAdd(&newPod)
+				chaosPodHandler.OnAdd(&newPod, false)
 			})
 
 			It("should do nothing", func() {})
