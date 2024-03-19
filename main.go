@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
@@ -360,6 +361,8 @@ func main() {
 		logger.Fatalw("unable to create webhook", "webhook", chaosv1beta1.DisruptionKind, "error", err)
 	}
 
+	webhookDecoder := admission.NewDecoder(scheme)
+
 	if cfg.Handler.Enabled {
 		// register chaos handler init container mutating webhook
 		mgr.GetWebhookServer().Register("/mutate-v1-pod-chaos-handler-init-container", &webhook.Admission{
@@ -369,6 +372,7 @@ func main() {
 				Image:      cfg.Handler.Image,
 				Timeout:    cfg.Handler.Timeout,
 				MaxTimeout: cfg.Handler.MaxTimeout,
+				Decoder:    webhookDecoder,
 			},
 		})
 	}
@@ -377,16 +381,18 @@ func main() {
 		// register user info mutating webhook
 		mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info", &webhook.Admission{
 			Handler: &chaoswebhook.UserInfoMutator{
-				Client: mgr.GetClient(),
-				Log:    logger,
+				Client:  mgr.GetClient(),
+				Log:     logger,
+				Decoder: webhookDecoder,
 			},
 		})
 	}
 
 	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-span-context", &webhook.Admission{
 		Handler: &chaoswebhook.SpanContextMutator{
-			Client: mgr.GetClient(),
-			Log:    logger,
+			Client:  mgr.GetClient(),
+			Log:     logger,
+			Decoder: webhookDecoder,
 		},
 	})
 

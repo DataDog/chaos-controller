@@ -20,27 +20,21 @@ import (
 type UserInfoMutator struct {
 	Client  client.Client
 	Log     *zap.SugaredLogger
-	decoder *admission.Decoder
-}
-
-func (m *UserInfoMutator) InjectDecoder(d *admission.Decoder) error {
-	m.decoder = d
-
-	return nil
+	Decoder *admission.Decoder
 }
 
 func (m *UserInfoMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	dis := &v1beta1.Disruption{}
 
-	// ensure decoder is set
-	if m.decoder == nil {
-		m.Log.Errorw("webhook decoder seems to be nil while it should not, aborting")
+	// ensure Decoder is set
+	if m.Decoder == nil {
+		m.Log.Errorw("webhook Decoder seems to be nil while it should not, aborting")
 
 		return admission.Errored(http.StatusInternalServerError, nil)
 	}
 
 	// decode object
-	if err := m.decoder.Decode(req, dis); err != nil {
+	if err := m.Decoder.Decode(req, dis); err != nil {
 		m.Log.Errorw("error decoding disruption object", "error", err, "disruptionName", req.Name, "disruptionNamespace", req.Namespace)
 
 		return admission.Errored(http.StatusBadRequest, err)

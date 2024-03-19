@@ -24,27 +24,21 @@ type ChaosHandlerMutator struct {
 	Image      string
 	Timeout    time.Duration
 	MaxTimeout time.Duration
-	decoder    *admission.Decoder
-}
-
-func (m *ChaosHandlerMutator) InjectDecoder(d *admission.Decoder) error {
-	m.decoder = d
-
-	return nil
+	Decoder    *admission.Decoder
 }
 
 func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	pod := &corev1.Pod{}
 
-	// ensure decoder is set
-	if m.decoder == nil {
-		m.Log.Errorw("webhook decoder seems to be nil while it should not, aborting")
+	// ensure Decoder is set
+	if m.Decoder == nil {
+		m.Log.Errorw("webhook Decoder seems to be nil while it should not, aborting")
 
 		return admission.Errored(http.StatusInternalServerError, nil)
 	}
 
 	// decode pod object
-	err := m.decoder.Decode(req, pod)
+	err := m.Decoder.Decode(req, pod)
 	if err != nil {
 		m.Log.Errorw("error decoding pod object", "error", err, "pod", pod.Name, "namespace", pod.Namespace)
 
