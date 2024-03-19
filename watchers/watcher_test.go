@@ -50,14 +50,19 @@ func (c *CacheMock) List(ctx context.Context, list client.ObjectList, opts ...cl
 	return args.Error(0)
 }
 
-func (c *CacheMock) GetInformer(ctx context.Context, obj client.Object) (k8scache.Informer, error) {
-	args := c.Called(ctx, obj)
+func (c *CacheMock) GetInformer(ctx context.Context, obj client.Object, opts ...k8scache.InformerGetOption) (k8scache.Informer, error) {
+	args := c.Called(ctx, obj, opts)
 	return args.Get(0).(k8scache.Informer), args.Error(1)
 }
 
-func (c *CacheMock) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind) (k8scache.Informer, error) {
-	args := c.Called(ctx, gvk)
+func (c *CacheMock) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind, opts ...k8scache.InformerGetOption) (k8scache.Informer, error) {
+	args := c.Called(ctx, gvk, opts)
 	return args.Get(0).(k8scache.Informer), args.Error(1)
+}
+
+func (c *CacheMock) RemoveInformer(ctx context.Context, obj client.Object) error {
+	args := c.Called(ctx, obj)
+	return args.Error(0)
 }
 
 func (c *CacheMock) Start(ctx context.Context) error {
@@ -272,7 +277,7 @@ var _ = Describe("watcher", func() {
 			})
 
 			It("should return the expected SyncingSource object", func() {
-				expectedResult := source.NewKindWithCache(targetObjectType, &cacheMock)
+				expectedResult := source.Kind(&cacheMock, targetObjectType)
 				Expect(result).Should(BeEquivalentTo(expectedResult))
 			})
 		})
