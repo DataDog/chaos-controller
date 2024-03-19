@@ -5,7 +5,7 @@
 package watchers
 
 import (
-	context "context"
+	"context"
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -28,7 +28,7 @@ func NewDeploymentHandler(client client.Client, logger *zap.SugaredLogger) Deplo
 }
 
 // OnAdd is a handler function for the add of a deployment
-func (h DeploymentHandler) OnAdd(obj interface{}) {
+func (h DeploymentHandler) OnAdd(obj interface{}, _ bool) {
 	deployment, ok := obj.(*appsv1.Deployment)
 
 	// If the object is not a deployment, do nothing
