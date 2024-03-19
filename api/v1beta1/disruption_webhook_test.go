@@ -68,13 +68,15 @@ var _ = Describe("Disruption", func() {
 						Time: time.Now(),
 					}
 
-					Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+					_, err := newDisruption.ValidateUpdate(oldDisruption)
+					Expect(err).Should(Succeed())
 				})
 			})
 
 			When("disruption is running and has pods", func() {
 				It("should fail to remove finalizer", func() {
-					Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(HaveOccurred())
+					_, err := newDisruption.ValidateUpdate(oldDisruption)
+					Expect(err).Should(HaveOccurred())
 				})
 			})
 
