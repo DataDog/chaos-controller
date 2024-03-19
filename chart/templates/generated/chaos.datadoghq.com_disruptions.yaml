@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.0
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: disruptions.chaos.datadoghq.com
 spec:
   group: chaos.datadoghq.com
@@ -21,10 +21,19 @@ spec:
           description: Disruption is the Schema for the disruptions API
           properties:
             apiVersion:
-              description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
               type: string
             kind:
-              description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
               type: string
             metadata:
               type: object
@@ -33,16 +42,24 @@ spec:
               properties:
                 advancedSelector:
                   items:
-                    description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                    description: |-
+                      A label selector requirement is a selector that contains values, a key, and an operator that
+                      relates the key and values.
                     properties:
                       key:
                         description: key is the label key that the selector applies to.
                         type: string
                       operator:
-                        description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                        description: |-
+                          operator represents a key's relationship to a set of values.
+                          Valid operators are In, NotIn, Exists and DoesNotExist.
                         type: string
                       values:
-                        description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                        description: |-
+                          values is an array of string values. If the operator is In or NotIn,
+                          the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                          the values array must be empty. This array is replaced during a strategic
+                          merge patch.
                         items:
                           type: string
                         type: array
@@ -53,7 +70,11 @@ spec:
                   nullable: true
                   type: array
                 allowDisruptedTargets:
-                  description: 'AllowDisruptedTargets allow pods with one or several other active disruptions, with disruption kinds that does not intersect with this disruption kinds, to be returned as part of eligible targets for this disruption - e.g. apply a CPU pressure and later, apply a container failure for a short duration NB: it''s ALWAYS forbidden to apply the same disruption kind to the same target to avoid unreliable effects due to competing interactions'
+                  description: |-
+                    AllowDisruptedTargets allow pods with one or several other active disruptions, with disruption kinds that does not intersect
+                    with this disruption kinds, to be returned as part of eligible targets for this disruption
+                    - e.g. apply a CPU pressure and later, apply a container failure for a short duration
+                    NB: it's ALWAYS forbidden to apply the same disruption kind to the same target to avoid unreliable effects due to competing interactions
                   type: boolean
                 containerFailure:
                   description: ContainerFailureSpec represents a container failure injection
@@ -79,7 +100,10 @@ spec:
                       anyOf:
                         - type: integer
                         - type: string
-                      description: Count represents the number of cores to target either an integer form or a percentage form appended with a % if empty, it will be considered to be 100%
+                      description: |-
+                        Count represents the number of cores to target
+                        either an integer form or a percentage form appended with a %
+                        if empty, it will be considered to be 100%
                       x-kubernetes-int-or-string: true
                   type: object
                 diskFailure:
@@ -485,11 +509,17 @@ spec:
                       type: string
                   type: object
                 reporting:
-                  description: Reporting provides additional reporting options in order to send a message to a custom slack channel it expects the main controller to have the slack notifier enabled it expects a slack bot to be added to the defined slack channel
+                  description: |-
+                    Reporting provides additional reporting options in order to send a message to a custom slack channel
+                    it expects the main controller to have the slack notifier enabled
+                    it expects a slack bot to be added to the defined slack channel
                   nullable: true
                   properties:
                     minNotificationType:
-                      description: MinNotificationType is the minimal notification type we want to receive informations for In order of importance it's Info, Success, Warning, Error Default level is considered Success, meaning all info will be ignored
+                      description: |-
+                        MinNotificationType is the minimal notification type we want to receive informations for
+                        In order of importance it's Info, Success, Warning, Error
+                        Default level is considered Success, meaning all info will be ignored
                       enum:
                         - Info
                         - Success
@@ -498,11 +528,15 @@ spec:
                         - Error
                       type: string
                     purpose:
-                      description: Purpose determines contextual informations about the disruption a brief context to determines disruption goal
+                      description: |-
+                        Purpose determines contextual informations about the disruption
+                        a brief context to determines disruption goal
                       minLength: 10
                       type: string
                     slackChannel:
-                      description: SlackChannel is the destination slack channel to send reporting informations to. It's expected to follow slack naming conventions https://api.slack.com/methods/conversations.create#naming or slack channel ID format
+                      description: |-
+                        SlackChannel is the destination slack channel to send reporting informations to.
+                        It's expected to follow slack naming conventions https://api.slack.com/methods/conversations.create#naming or slack channel ID format
                       maxLength: 80
                       pattern: (^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
                       type: string
@@ -522,30 +556,40 @@ spec:
                     createPods:
                       properties:
                         notBefore:
-                          description: 'inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore'
+                          description: |-
+                            inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
+                            createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
                           format: date-time
                           nullable: true
                           type: string
                         offset:
-                          description: 'inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time'
+                          description: |-
+                            inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
+                            pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
                           nullable: true
                           type: string
                       type: object
                     inject:
                       properties:
                         notBefore:
-                          description: 'inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore'
+                          description: |-
+                            inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
+                            createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
                           format: date-time
                           nullable: true
                           type: string
                         offset:
-                          description: 'inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time'
+                          description: |-
+                            inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
+                            pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
                           nullable: true
                           type: string
                       type: object
                   type: object
                 unsafeMode:
-                  description: UnsafemodeSpec represents a spec with parameters to turn off specific safety nets designed to catch common traps or issues running a disruption All of these are turned off by default, so disabling safety nets requires manually changing these booleans to true
+                  description: |-
+                    UnsafemodeSpec represents a spec with parameters to turn off specific safety nets designed to catch common traps or issues running a disruption
+                    All of these are turned off by default, so disabling safety nets requires manually changing these booleans to true
                   properties:
                     allowRootDiskFailure:
                       type: boolean
