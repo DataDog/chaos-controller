@@ -118,6 +118,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		if chaosv1beta1.IsUpdateConflictError(err) {
 			r.log.Infow("a retryable error occurred in reconcile loop", "error", err)
+			err = nil
 		} else {
 			r.log.Errorw("an error occurred in reconcile loop", "error", err)
 		}
