@@ -74,6 +74,7 @@ func main() {
 
 	desugaredLogger := zapr.NewLogger(logger.Desugar())
 
+	// Set any singleton loggers of underlying libraries to use our zap logger
 	ctrl.SetLogger(desugaredLogger)
 	klog.SetLogger(desugaredLogger)
 
