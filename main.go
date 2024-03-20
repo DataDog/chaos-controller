@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -74,6 +75,7 @@ func main() {
 	desugaredLogger := zapr.NewLogger(logger.Desugar())
 
 	ctrl.SetLogger(desugaredLogger)
+	klog.SetLogger(desugaredLogger)
 
 	// get controller node name
 	controllerNodeName, exists := os.LookupEnv("CONTROLLER_NODE_NAME")
