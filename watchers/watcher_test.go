@@ -50,14 +50,29 @@ func (c *CacheMock) List(ctx context.Context, list client.ObjectList, opts ...cl
 	return args.Error(0)
 }
 
-func (c *CacheMock) GetInformer(ctx context.Context, obj client.Object) (k8scache.Informer, error) {
+func (c *CacheMock) GetInformer(ctx context.Context, obj client.Object, opts ...k8scache.InformerGetOption) (k8scache.Informer, error) {
+	if opts != nil {
+		args := c.Called(ctx, obj, opts)
+		return args.Get(0).(k8scache.Informer), args.Error(1)
+	}
+
 	args := c.Called(ctx, obj)
 	return args.Get(0).(k8scache.Informer), args.Error(1)
 }
 
-func (c *CacheMock) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind) (k8scache.Informer, error) {
+func (c *CacheMock) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind, opts ...k8scache.InformerGetOption) (k8scache.Informer, error) {
+	if opts != nil {
+		args := c.Called(ctx, gvk, opts)
+		return args.Get(0).(k8scache.Informer), args.Error(1)
+	}
+
 	args := c.Called(ctx, gvk)
 	return args.Get(0).(k8scache.Informer), args.Error(1)
+}
+
+func (c *CacheMock) RemoveInformer(ctx context.Context, obj client.Object) error {
+	args := c.Called(ctx, obj)
+	return args.Error(0)
 }
 
 func (c *CacheMock) Start(ctx context.Context) error {
@@ -255,7 +270,7 @@ var _ = Describe("watcher", func() {
 				handlerMock = mocks.NewResourceEventHandlerMock(GinkgoT())
 				informerMock = mocks.NewCacheInformerMock(GinkgoT())
 				cacheMock = CacheMock{}
-				informerMock.EXPECT().AddEventHandler(handlerMock).Return(mock.Anything, nil)
+				informerMock.EXPECT().AddEventHandler(handlerMock).Return(informerMock, nil)
 				cacheMock.On("GetInformer", mock.Anything, mock.Anything).Return(informerMock, nil)
 				cacheMock.On("Start", mock.Anything).Return(nil)
 			})
@@ -272,7 +287,7 @@ var _ = Describe("watcher", func() {
 			})
 
 			It("should return the expected SyncingSource object", func() {
-				expectedResult := source.NewKindWithCache(targetObjectType, &cacheMock)
+				expectedResult := source.Kind(&cacheMock, targetObjectType)
 				Expect(result).Should(BeEquivalentTo(expectedResult))
 			})
 		})
@@ -318,7 +333,7 @@ var _ = Describe("watcher", func() {
 				handlerMock = mocks.NewResourceEventHandlerMock(GinkgoT())
 				informerMock = mocks.NewCacheInformerMock(GinkgoT())
 				cacheMock = CacheMock{}
-				informerMock.EXPECT().AddEventHandler(handlerMock).Return(mock.Anything, nil)
+				informerMock.EXPECT().AddEventHandler(handlerMock).Return(informerMock, nil)
 				cacheMock.On("GetInformer", mock.Anything, mock.Anything).Return(informerMock, nil)
 				cacheMock.On("Start", mock.Anything).Return(nil)
 			})

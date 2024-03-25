@@ -68,13 +68,15 @@ var _ = Describe("Disruption", func() {
 						Time: time.Now(),
 					}
 
-					Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+					_, err := newDisruption.ValidateUpdate(oldDisruption)
+					Expect(err).Should(Succeed())
 				})
 			})
 
 			When("disruption is running and has pods", func() {
 				It("should fail to remove finalizer", func() {
-					Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(HaveOccurred())
+					_, err := newDisruption.ValidateUpdate(oldDisruption)
+					Expect(err).Should(HaveOccurred())
 				})
 			})
 
@@ -84,7 +86,7 @@ var _ = Describe("Disruption", func() {
 						Time: time.Now(),
 					}
 
-					err := newDisruption.ValidateUpdate(oldDisruption)
+					_, err := newDisruption.ValidateUpdate(oldDisruption)
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(HavePrefix("unable to remove disruption finalizer"))
 				})
@@ -94,7 +96,7 @@ var _ = Describe("Disruption", func() {
 				It("should be OK to stays without finalizer", func() {
 					oldDisruption.Finalizers = nil
 
-					err := newDisruption.ValidateUpdate(oldDisruption)
+					_, err := newDisruption.ValidateUpdate(oldDisruption)
 					Expect(err).Should(Succeed())
 				})
 			})
@@ -115,7 +117,7 @@ var _ = Describe("Disruption", func() {
 					oldDisruption.Spec.Duration = "30m"
 					oldDisruption.Spec.Triggers = triggers
 
-					err := newDisruption.ValidateUpdate(oldDisruption)
+					_, err := newDisruption.ValidateUpdate(oldDisruption)
 					Expect(err).Should(Succeed())
 				})
 
@@ -131,7 +133,7 @@ var _ = Describe("Disruption", func() {
 					oldDisruption.Spec.Duration = "30m"
 					oldDisruption.Spec.Triggers = triggers
 
-					err := newDisruption.ValidateUpdate(oldDisruption)
+					_, err := newDisruption.ValidateUpdate(oldDisruption)
 					Expect(err).Should(Succeed())
 				})
 			})
@@ -140,7 +142,8 @@ var _ = Describe("Disruption", func() {
 		Describe("hash changes expectations", func() {
 			When("nothing is updated", func() {
 				It("should succeed", func() {
-					Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+					_, err := newDisruption.ValidateUpdate(oldDisruption)
+					Expect(err).Should(Succeed())
 				})
 			})
 
@@ -151,7 +154,7 @@ var _ = Describe("Disruption", func() {
 						delete(oldDisruption.Annotations, annotationUserInfoKey)
 
 						// Action
-						err := newDisruption.ValidateUpdate(oldDisruption)
+						_, err := newDisruption.ValidateUpdate(oldDisruption)
 
 						// Assert
 						By("not return an error")
@@ -166,7 +169,7 @@ var _ = Describe("Disruption", func() {
 							Expect(newDisruption.SetUserInfo(authv1.UserInfo{})).Should(Succeed())
 
 							// Action
-							err := newDisruption.ValidateUpdate(oldDisruption)
+							_, err := newDisruption.ValidateUpdate(oldDisruption)
 
 							// Assert
 							By("return an error")
@@ -181,7 +184,8 @@ var _ = Describe("Disruption", func() {
 							Expect(newDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem"})).Should(Succeed())
 
 							// Action
-							Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+							_, err := newDisruption.ValidateUpdate(oldDisruption)
+							Expect(err).Should(Succeed())
 						})
 					})
 				})
@@ -194,7 +198,7 @@ var _ = Describe("Disruption", func() {
 							Expect(newDisruption.SetUserInfo(authv1.UserInfo{Username: "ipsum"})).Should(Succeed())
 
 							// Action
-							err := newDisruption.ValidateUpdate(oldDisruption)
+							_, err := newDisruption.ValidateUpdate(oldDisruption)
 
 							// Assert
 							By("return an error")
@@ -212,7 +216,8 @@ var _ = Describe("Disruption", func() {
 
 				Context("DynamicTargeting (StaticTargeting=false)", func() {
 					It("should succeed", func() {
-						Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(Succeed())
+						_, err := newDisruption.ValidateUpdate(oldDisruption)
+						Expect(err).Should(Succeed())
 					})
 				})
 
@@ -221,7 +226,8 @@ var _ = Describe("Disruption", func() {
 						oldDisruption.Spec.StaticTargeting = true
 						newDisruption.Spec.StaticTargeting = true
 
-						Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(HaveOccurred())
+						_, err := newDisruption.ValidateUpdate(oldDisruption)
+						Expect(err).Should(HaveOccurred())
 					})
 				})
 			})
@@ -234,7 +240,8 @@ var _ = Describe("Disruption", func() {
 					})
 
 					It("should fail", func() {
-						Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(HaveOccurred())
+						_, err := newDisruption.ValidateUpdate(oldDisruption)
+						Expect(err).Should(HaveOccurred())
 					})
 				})
 
@@ -245,7 +252,8 @@ var _ = Describe("Disruption", func() {
 					})
 
 					It("should fail", func() {
-						Expect(newDisruption.ValidateUpdate(oldDisruption)).Should(HaveOccurred())
+						_, err := newDisruption.ValidateUpdate(oldDisruption)
+						Expect(err).Should(HaveOccurred())
 					})
 				})
 			})
@@ -278,7 +286,7 @@ var _ = Describe("Disruption", func() {
 					deleteOnly = true
 
 					// Action
-					err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate()
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -293,7 +301,7 @@ var _ = Describe("Disruption", func() {
 					newDisruption.Name = "invalid-name!"
 
 					// Action
-					err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate()
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -308,7 +316,7 @@ var _ = Describe("Disruption", func() {
 					newDisruption.Spec.OnInit = true
 
 					// Action
-					err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate()
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -324,7 +332,7 @@ var _ = Describe("Disruption", func() {
 					invalidDisruption.Spec.Selector = nil
 
 					// Action
-					err := invalidDisruption.ValidateCreate()
+					_, err := invalidDisruption.ValidateCreate()
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -347,7 +355,7 @@ var _ = Describe("Disruption", func() {
 					invalidDisruption.Spec.Duration = "2h"
 
 					// Action
-					err := invalidDisruption.ValidateCreate()
+					_, err := invalidDisruption.ValidateCreate()
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -365,7 +373,7 @@ var _ = Describe("Disruption", func() {
 					invalidDisruption := newDisruption.DeepCopy()
 					invalidDisruption.Spec.Selector = map[string]string{"app": "demo-{nginx}"}
 
-					err := invalidDisruption.ValidateCreate()
+					_, err := invalidDisruption.ValidateCreate()
 
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError("1 error occurred:\n\t* Spec: unable to parse requirement: values[0][app]: Invalid value: \"demo-{nginx}\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
@@ -382,7 +390,7 @@ var _ = Describe("Disruption", func() {
 						Values:   []string{"*nginx"},
 					}}
 
-					err := invalidDisruption.ValidateCreate()
+					_, err := invalidDisruption.ValidateCreate()
 
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError("1 error occurred:\n\t* Spec: error parsing given advanced selector to requirements: values[0][app]: Invalid value: \"*nginx\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
@@ -400,7 +408,7 @@ var _ = Describe("Disruption", func() {
 					})
 
 					// Action
-					err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate()
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -417,7 +425,8 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 
-					Expect(newDisruption.ValidateCreate()).Should(MatchError(ContainSubstring("only values in the future are accepted")))
+					_, err := newDisruption.ValidateCreate()
+					Expect(err).Should(MatchError(ContainSubstring("only values in the future are accepted")))
 				})
 
 				It("triggers.createPods should return an error", func() {
@@ -428,7 +437,8 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 
-					Expect(newDisruption.ValidateCreate()).Should(MatchError(ContainSubstring("only values in the future are accepted")))
+					_, err := newDisruption.ValidateCreate()
+					Expect(err).Should(MatchError(ContainSubstring("only values in the future are accepted")))
 				})
 			})
 
@@ -442,7 +452,8 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 
-					Expect(newDisruption.ValidateCreate()).ShouldNot(HaveOccurred())
+					_, err := newDisruption.ValidateCreate()
+					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
 
@@ -458,7 +469,8 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 
-					Expect(newDisruption.ValidateCreate()).Should(MatchError(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified")))
+					_, err := newDisruption.ValidateCreate()
+					Expect(err).Should(MatchError(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified")))
 				})
 			})
 
@@ -468,7 +480,7 @@ var _ = Describe("Disruption", func() {
 					permittedUserGroups["system:nobody"] = struct{}{}
 					permittedUserGroupWarningString = "system:nobody"
 
-					err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate()
 
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(ContainSubstring("lacking sufficient authorization to create disruptions. your user groups are [some], but you must be in one of the following groups: system:nobody"))
@@ -481,7 +493,7 @@ var _ = Describe("Disruption", func() {
 					permittedUserGroups["any"] = struct{}{}
 					permittedUserGroupWarningString = "some, any"
 
-					err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate()
 
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 1)).To(BeTrue())
@@ -520,7 +532,7 @@ var _ = Describe("Disruption", func() {
 						newDisruption.Spec.DiskFailure.Paths = []string{"/test", "/"}
 
 						// Action
-						err := newDisruption.ValidateCreate()
+						_, err := newDisruption.ValidateCreate()
 
 						// Assert
 						Expect(err).Should(HaveOccurred())
@@ -534,7 +546,7 @@ var _ = Describe("Disruption", func() {
 						newDisruption.Spec.DiskFailure.Paths = []string{"/test", "   /   "}
 
 						// Action
-						err := newDisruption.ValidateCreate()
+						_, err := newDisruption.ValidateCreate()
 
 						// Assert
 						Expect(err).Should(HaveOccurred())
@@ -550,7 +562,7 @@ var _ = Describe("Disruption", func() {
 						}
 
 						// Action
-						err := newDisruption.ValidateCreate()
+						_, err := newDisruption.ValidateCreate()
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -568,7 +580,7 @@ var _ = Describe("Disruption", func() {
 						newDisruption.Spec.DiskFailure.Paths = []string{"/test", "/"}
 
 						// Action
-						err := newDisruption.ValidateCreate()
+						_, err := newDisruption.ValidateCreate()
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -582,7 +594,7 @@ var _ = Describe("Disruption", func() {
 						}
 
 						// Action
-						err := newDisruption.ValidateCreate()
+						_, err := newDisruption.ValidateCreate()
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())

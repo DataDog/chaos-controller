@@ -8,7 +8,7 @@ GOARCH = $(shell go env GOARCH)
 
 # change also circleci go build version "cimb/go:" if you change the version below
 # https://github.com/DataDog/chaos-controller/blob/main/.circleci/config.yml#L85
-BUILDGOVERSION = 1.20.5
+BUILDGOVERSION = 1.22.1
 
 # GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
 GOBIN ?= $(shell go env GOBIN)
@@ -67,7 +67,7 @@ HELM_INSTALLED_VERSION = $(shell (helm version --template="{{ .Version }}" || ec
 GOLANGCI_LINT_VERSION = 1.55.2
 GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
 
-CONTROLLER_GEN_VERSION = v0.12.0
+CONTROLLER_GEN_VERSION = v0.14.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
 
 MOCKERY_VERSION = 2.38.0

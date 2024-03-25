@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
@@ -33,6 +35,7 @@ import (
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/go-logr/zapr"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -42,6 +45,7 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	// +kubebuilder:scaffold:imports
@@ -68,6 +72,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	desugaredLogger := zapr.NewLogger(logger.Desugar())
+
+	// Set any singleton loggers of underlying libraries to use our zap logger
+	ctrl.SetLogger(desugaredLogger)
+	klog.SetLogger(desugaredLogger)
+
 	// get controller node name
 	controllerNodeName, exists := os.LookupEnv("CONTROLLER_NODE_NAME")
 	if !exists {
@@ -80,13 +90,18 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: cfg.Controller.MetricsBindAddr,
-		LeaderElection:     cfg.Controller.LeaderElection,
-		LeaderElectionID:   "75ec2fa4.datadoghq.com",
-		Host:               cfg.Controller.Webhook.Host,
-		Port:               cfg.Controller.Webhook.Port,
-		CertDir:            cfg.Controller.Webhook.CertDir,
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: cfg.Controller.MetricsBindAddr,
+		},
+		LeaderElection:   cfg.Controller.LeaderElection,
+		LeaderElectionID: "75ec2fa4.datadoghq.com",
+		Logger:           desugaredLogger,
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Host:    cfg.Controller.Webhook.Host,
+			Port:    cfg.Controller.Webhook.Port,
+			CertDir: cfg.Controller.Webhook.CertDir,
+		}),
 	})
 
 	if err != nil {
@@ -349,6 +364,8 @@ func main() {
 		logger.Fatalw("unable to create webhook", "webhook", chaosv1beta1.DisruptionKind, "error", err)
 	}
 
+	webhookDecoder := admission.NewDecoder(scheme)
+
 	if cfg.Handler.Enabled {
 		// register chaos handler init container mutating webhook
 		mgr.GetWebhookServer().Register("/mutate-v1-pod-chaos-handler-init-container", &webhook.Admission{
@@ -358,6 +375,7 @@ func main() {
 				Image:      cfg.Handler.Image,
 				Timeout:    cfg.Handler.Timeout,
 				MaxTimeout: cfg.Handler.MaxTimeout,
+				Decoder:    webhookDecoder,
 			},
 		})
 	}
@@ -366,16 +384,18 @@ func main() {
 		// register user info mutating webhook
 		mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info", &webhook.Admission{
 			Handler: &chaoswebhook.UserInfoMutator{
-				Client: mgr.GetClient(),
-				Log:    logger,
+				Client:  mgr.GetClient(),
+				Log:     logger,
+				Decoder: webhookDecoder,
 			},
 		})
 	}
 
 	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-span-context", &webhook.Admission{
 		Handler: &chaoswebhook.SpanContextMutator{
-			Client: mgr.GetClient(),
-			Log:    logger,
+			Client:  mgr.GetClient(),
+			Log:     logger,
+			Decoder: webhookDecoder,
 		},
 	})
 

@@ -18,6 +18,7 @@ import (
 	"github.com/DataDog/chaos-controller/utils"
 	"go.opentelemetry.io/otel/trace"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
@@ -112,7 +113,7 @@ func (r *Disruption) Default() {
 var _ webhook.Validator = &Disruption{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *Disruption) ValidateCreate() error {
+func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 	logger := logger.With("disruptionName", r.Name, "disruptionNamespace", r.Namespace)
 
 	ctx, err := r.SpanContext(context.Background())
@@ -126,23 +127,23 @@ func (r *Disruption) ValidateCreate() error {
 
 	// delete-only mode, reject everything trying to be created
 	if deleteOnly {
-		return errors.New("the controller is currently in delete-only mode, you can't create new disruptions for now")
+		return nil, errors.New("the controller is currently in delete-only mode, you can't create new disruptions for now")
 	}
 
 	if err = r.validateUserInfoGroup(); err != nil {
-		return err
+		return nil, err
 	}
 
 	// reject disruptions with a name which would not be a valid label value
 	// according to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 	if _, err := labels.Parse(fmt.Sprintf("name=%s", r.Name)); err != nil {
-		return fmt.Errorf("invalid disruption name: %w", err)
+		return nil, fmt.Errorf("invalid disruption name: %w", err)
 	}
 
 	if safemodeEnvironment != "" {
 		disruptionEnv, ok := r.Annotations[SafemodeEnvironmentAnnotation]
 		if !ok {
-			return fmt.Errorf("your disruption does not specify the environment it expects to run in, but this controller requires it to do. Set an annotation on this disruption with the key `%s` and the value `\"%s\"` to run in this kubernetes cluster. Be sure that you intend to run this disruption in %s",
+			return nil, fmt.Errorf("your disruption does not specify the environment it expects to run in, but this controller requires it to do. Set an annotation on this disruption with the key `%s` and the value `\"%s\"` to run in this kubernetes cluster. Be sure that you intend to run this disruption in %s",
 				SafemodeEnvironmentAnnotation,
 				safemodeEnvironment,
 				safemodeEnvironment,
@@ -150,7 +151,7 @@ func (r *Disruption) ValidateCreate() error {
 		}
 
 		if disruptionEnv != safemodeEnvironment {
-			return fmt.Errorf("disruption is configured to run in \"%s\" but has been applied in \"%s\".  Set an annotation on this disruption with the key `%s` and the value `\"%s\"` to run in this kubernetes cluster, and double check your kubecontext is what you expect",
+			return nil, fmt.Errorf("disruption is configured to run in \"%s\" but has been applied in \"%s\".  Set an annotation on this disruption with the key `%s` and the value `\"%s\"` to run in this kubernetes cluster, and double check your kubecontext is what you expect",
 				disruptionEnv,
 				safemodeEnvironment,
 				SafemodeEnvironmentAnnotation,
@@ -161,7 +162,7 @@ func (r *Disruption) ValidateCreate() error {
 
 	// handle a disruption using the onInit feature without the handler being enabled
 	if !handlerEnabled && r.Spec.OnInit {
-		return errors.New("the chaos handler is disabled but the disruption onInit field is set to true, please enable the handler by specifying the --handler-enabled flag to the controller if you want to use the onInit feature (requires Kubernetes >= 1.15)")
+		return nil, errors.New("the chaos handler is disabled but the disruption onInit field is set to true, please enable the handler by specifying the --handler-enabled flag to the controller if you want to use the onInit feature (requires Kubernetes >= 1.15)")
 	}
 
 	if r.Spec.Network != nil {
@@ -182,7 +183,7 @@ func (r *Disruption) ValidateCreate() error {
 
 				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(cloudtypes.CloudProviderName(cloudName), serviceListNames)
 				if err != nil {
-					return err
+					return nil, err
 				}
 
 				for _, ipRanges := range ipRangesPerService {
@@ -192,7 +193,7 @@ func (r *Disruption) ValidateCreate() error {
 		}
 
 		if estimatedTcFiltersNb > MaximumTCFilters {
-			return fmt.Errorf("the number of resources (ips, ip ranges, single port) to filter is too high (%d). Please remove some hosts, services or cloud managed services to be affected in the disruption. Maximum resources (ips, ip ranges, single port) filterable is %d", estimatedTcFiltersNb, MaximumTCFilters)
+			return nil, fmt.Errorf("the number of resources (ips, ip ranges, single port) to filter is too high (%d). Please remove some hosts, services or cloud managed services to be affected in the disruption. Maximum resources (ips, ip ranges, single port) filterable is %d", estimatedTcFiltersNb, MaximumTCFilters)
 		}
 	}
 
@@ -201,40 +202,40 @@ func (r *Disruption) ValidateCreate() error {
 			logger.Errorw("error sending a metric", "error", mErr)
 		}
 
-		return err
+		return nil, err
 	}
 
 	if !r.Spec.Triggers.IsZero() {
 		now := metav1.Now()
 
 		if !r.Spec.Triggers.Inject.IsZero() && !r.Spec.Triggers.Inject.NotBefore.IsZero() && r.Spec.Triggers.Inject.NotBefore.Before(&now) {
-			return fmt.Errorf("spec.trigger.inject.notBefore is %s, which is in the past. only values in the future are accepted", r.Spec.Triggers.Inject.NotBefore)
+			return nil, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is in the past. only values in the future are accepted", r.Spec.Triggers.Inject.NotBefore)
 		}
 
 		if !r.Spec.Triggers.CreatePods.IsZero() && !r.Spec.Triggers.CreatePods.NotBefore.IsZero() && r.Spec.Triggers.CreatePods.NotBefore.Before(&now) {
-			return fmt.Errorf("spec.trigger.createPods.notBefore is %s, which is in the past. only values in the future are accepted", r.Spec.Triggers.CreatePods.NotBefore)
+			return nil, fmt.Errorf("spec.trigger.createPods.notBefore is %s, which is in the past. only values in the future are accepted", r.Spec.Triggers.CreatePods.NotBefore)
 		}
 	}
 
 	if maxDuration > 0 && r.Spec.Duration.Duration() > maxDuration {
-		return fmt.Errorf("you have specified a duration of %s, but the maximum duration allowed is %s, please specify a duration lower or equal than this value", r.Spec.Duration.Duration(), maxDuration)
+		return nil, fmt.Errorf("you have specified a duration of %s, but the maximum duration allowed is %s, please specify a duration lower or equal than this value", r.Spec.Duration.Duration(), maxDuration)
 	}
 
 	multiErr := ddmarkClient.ValidateStructMultierror(r.Spec, "validation_webhook")
 	if multiErr.ErrorOrNil() != nil {
-		return multierror.Prefix(multiErr, "ddmark: ")
+		return nil, multierror.Prefix(multiErr, "ddmark: ")
 	}
 
 	// handle initial safety nets
 	if enableSafemode {
 		if responses, err := r.initialSafetyNets(); err != nil {
-			return err
+			return nil, err
 		} else if len(responses) > 0 {
 			retErr := errors.New("at least one of the initial safety nets caught an issue")
 			for _, response := range responses {
 				retErr = multierror.Append(retErr, errors.New(response))
 			}
-			return retErr
+			return nil, retErr
 		}
 	}
 
@@ -246,11 +247,11 @@ func (r *Disruption) ValidateCreate() error {
 	// send informative event to disruption to broadcast
 	recorder.Event(r, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *Disruption) ValidateUpdate(old runtime.Object) error {
+func (r *Disruption) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	logger := logger.With("disruptionName", r.Name, "disruptionNamespace", r.Namespace)
 	logger.Debugw("validating updated disruption", "spec", r.Spec)
 
@@ -259,7 +260,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	oldDisruption := old.(*Disruption)
 
 	if err := r.validateUserInfoImmutable(oldDisruption); err != nil {
-		return err
+		return nil, err
 	}
 
 	// ensure finalizer removal is only allowed if no related chaos pods exists
@@ -268,7 +269,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 	if controllerutil.ContainsFinalizer(oldDisruption, chaostypes.DisruptionFinalizer) && !controllerutil.ContainsFinalizer(r, chaostypes.DisruptionFinalizer) {
 		oldPods, err := GetChaosPods(context.Background(), logger, chaosNamespace, k8sClient, oldDisruption, nil)
 		if err != nil {
-			return fmt.Errorf("error getting disruption pods: %w", err)
+			return nil, fmt.Errorf("error getting disruption pods: %w", err)
 		}
 
 		if len(oldPods) != 0 {
@@ -282,7 +283,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) error {
 				logger.Errorw("error sending a metric", "error", mErr)
 			}
 
-			return fmt.Errorf(`unable to remove disruption finalizer, disruption '%s/%s' still has associated pods:
+			return nil, fmt.Errorf(`unable to remove disruption finalizer, disruption '%s/%s' still has associated pods:
 - %s
 You first need to remove those chaos pods (and potentially their finalizers) to be able to remove disruption finalizer`, oldDisruption.Namespace, oldDisruption.Name, strings.Join(oldPodsInfos, "\n- "))
 		}
@@ -294,22 +295,22 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 	if oldDisruption.Spec.StaticTargeting {
 		oldHash, err = oldDisruption.Spec.Hash()
 		if err != nil {
-			return fmt.Errorf("error getting old disruption hash: %w", err)
+			return nil, fmt.Errorf("error getting old disruption hash: %w", err)
 		}
 
 		newHash, err = r.Spec.Hash()
 
 		if err != nil {
-			return fmt.Errorf("error getting new disruption hash: %w", err)
+			return nil, fmt.Errorf("error getting new disruption hash: %w", err)
 		}
 	} else {
 		oldHash, err = oldDisruption.Spec.HashNoCount()
 		if err != nil {
-			return fmt.Errorf("error getting old disruption hash: %w", err)
+			return nil, fmt.Errorf("error getting old disruption hash: %w", err)
 		}
 		newHash, err = r.Spec.HashNoCount()
 		if err != nil {
-			return fmt.Errorf("error getting new disruption hash: %w", err)
+			return nil, fmt.Errorf("error getting new disruption hash: %w", err)
 		}
 	}
 
@@ -319,10 +320,10 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		logger.Errorw("error when comparing disruption spec hashes", "oldHash", oldHash, "newHash", newHash)
 
 		if oldDisruption.Spec.StaticTargeting {
-			return fmt.Errorf("[StaticTargeting: true] a disruption spec cannot be updated, please delete and recreate it if needed")
+			return nil, fmt.Errorf("[StaticTargeting: true] a disruption spec cannot be updated, please delete and recreate it if needed")
 		}
 
-		return fmt.Errorf("[StaticTargeting: false] only a disruption spec's Count field can be updated, please delete and recreate it if needed")
+		return nil, fmt.Errorf("[StaticTargeting: false] only a disruption spec's Count field can be updated, please delete and recreate it if needed")
 	}
 
 	if err := r.Spec.Validate(); err != nil {
@@ -330,7 +331,7 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 			logger.Errorw("error sending a metric", "error", mErr)
 		}
 
-		return err
+		return nil, err
 	}
 
 	// send validation metric
@@ -338,7 +339,7 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		logger.Errorw("error sending a metric", "error", err)
 	}
 
-	return nil
+	return nil, nil
 }
 
 // validateUserInfoGroup checks that if permittedUserGroups is set, which is controlled in controller.safeMode.permittedUserGroups in the configmap,
@@ -393,13 +394,13 @@ func (r *Disruption) validateUserInfoImmutable(oldDisruption *Disruption) error 
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *Disruption) ValidateDelete() error {
+func (r *Disruption) ValidateDelete() (admission.Warnings, error) {
 	// send validation metric
 	if err := metricsSink.MetricValidationDeleted(r.getMetricsTags()); err != nil {
 		logger.Errorw("error sending a metric", "error", err)
 	}
 
-	return nil
+	return nil, nil
 }
 
 // getMetricsTags parses the disruption to generate metrics tags

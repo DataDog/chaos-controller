@@ -17,6 +17,8 @@ import (
 
 	runtime "k8s.io/apimachinery/pkg/runtime"
 
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
+
 	types "k8s.io/apimachinery/pkg/types"
 )
 
@@ -278,6 +280,118 @@ func (_c *K8SClientMock_Get_Call) Return(_a0 error) *K8SClientMock_Get_Call {
 }
 
 func (_c *K8SClientMock_Get_Call) RunAndReturn(run func(context.Context, types.NamespacedName, client.Object, ...client.GetOption) error) *K8SClientMock_Get_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GroupVersionKindFor provides a mock function with given fields: obj
+func (_m *K8SClientMock) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	ret := _m.Called(obj)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GroupVersionKindFor")
+	}
+
+	var r0 schema.GroupVersionKind
+	var r1 error
+	if rf, ok := ret.Get(0).(func(runtime.Object) (schema.GroupVersionKind, error)); ok {
+		return rf(obj)
+	}
+	if rf, ok := ret.Get(0).(func(runtime.Object) schema.GroupVersionKind); ok {
+		r0 = rf(obj)
+	} else {
+		r0 = ret.Get(0).(schema.GroupVersionKind)
+	}
+
+	if rf, ok := ret.Get(1).(func(runtime.Object) error); ok {
+		r1 = rf(obj)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// K8SClientMock_GroupVersionKindFor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GroupVersionKindFor'
+type K8SClientMock_GroupVersionKindFor_Call struct {
+	*mock.Call
+}
+
+// GroupVersionKindFor is a helper method to define mock.On call
+//   - obj runtime.Object
+func (_e *K8SClientMock_Expecter) GroupVersionKindFor(obj interface{}) *K8SClientMock_GroupVersionKindFor_Call {
+	return &K8SClientMock_GroupVersionKindFor_Call{Call: _e.mock.On("GroupVersionKindFor", obj)}
+}
+
+func (_c *K8SClientMock_GroupVersionKindFor_Call) Run(run func(obj runtime.Object)) *K8SClientMock_GroupVersionKindFor_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(runtime.Object))
+	})
+	return _c
+}
+
+func (_c *K8SClientMock_GroupVersionKindFor_Call) Return(_a0 schema.GroupVersionKind, _a1 error) *K8SClientMock_GroupVersionKindFor_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *K8SClientMock_GroupVersionKindFor_Call) RunAndReturn(run func(runtime.Object) (schema.GroupVersionKind, error)) *K8SClientMock_GroupVersionKindFor_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsObjectNamespaced provides a mock function with given fields: obj
+func (_m *K8SClientMock) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	ret := _m.Called(obj)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsObjectNamespaced")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(runtime.Object) (bool, error)); ok {
+		return rf(obj)
+	}
+	if rf, ok := ret.Get(0).(func(runtime.Object) bool); ok {
+		r0 = rf(obj)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(runtime.Object) error); ok {
+		r1 = rf(obj)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// K8SClientMock_IsObjectNamespaced_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsObjectNamespaced'
+type K8SClientMock_IsObjectNamespaced_Call struct {
+	*mock.Call
+}
+
+// IsObjectNamespaced is a helper method to define mock.On call
+//   - obj runtime.Object
+func (_e *K8SClientMock_Expecter) IsObjectNamespaced(obj interface{}) *K8SClientMock_IsObjectNamespaced_Call {
+	return &K8SClientMock_IsObjectNamespaced_Call{Call: _e.mock.On("IsObjectNamespaced", obj)}
+}
+
+func (_c *K8SClientMock_IsObjectNamespaced_Call) Run(run func(obj runtime.Object)) *K8SClientMock_IsObjectNamespaced_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(runtime.Object))
+	})
+	return _c
+}
+
+func (_c *K8SClientMock_IsObjectNamespaced_Call) Return(_a0 bool, _a1 error) *K8SClientMock_IsObjectNamespaced_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *K8SClientMock_IsObjectNamespaced_Call) RunAndReturn(run func(runtime.Object) (bool, error)) *K8SClientMock_IsObjectNamespaced_Call {
 	_c.Call.Return(run)
 	return _c
 }

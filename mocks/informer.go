@@ -234,6 +234,51 @@ func (_c *CacheInformerMock_HasSynced_Call) RunAndReturn(run func() bool) *Cache
 	return _c
 }
 
+// IsStopped provides a mock function with given fields:
+func (_m *CacheInformerMock) IsStopped() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsStopped")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// CacheInformerMock_IsStopped_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsStopped'
+type CacheInformerMock_IsStopped_Call struct {
+	*mock.Call
+}
+
+// IsStopped is a helper method to define mock.On call
+func (_e *CacheInformerMock_Expecter) IsStopped() *CacheInformerMock_IsStopped_Call {
+	return &CacheInformerMock_IsStopped_Call{Call: _e.mock.On("IsStopped")}
+}
+
+func (_c *CacheInformerMock_IsStopped_Call) Run(run func()) *CacheInformerMock_IsStopped_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *CacheInformerMock_IsStopped_Call) Return(_a0 bool) *CacheInformerMock_IsStopped_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *CacheInformerMock_IsStopped_Call) RunAndReturn(run func() bool) *CacheInformerMock_IsStopped_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RemoveEventHandler provides a mock function with given fields: handle
 func (_m *CacheInformerMock) RemoveEventHandler(handle cache.ResourceEventHandlerRegistration) error {
 	ret := _m.Called(handle)

@@ -6,6 +6,7 @@
 package watchers
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -95,7 +96,7 @@ func (m manager) AddWatcher(w Watcher) error {
 	return m.controller.Watch(
 		cacheSource,
 		handler.EnqueueRequestsFromMapFunc(
-			func(c client.Object) []reconcile.Request {
+			func(ctx context.Context, c client.Object) []reconcile.Request {
 				return []reconcile.Request{{NamespacedName: ctxTuple.DisruptionNamespacedName}}
 			},
 		),
