@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"os"
 	"time"
@@ -66,6 +67,10 @@ func init() {
 }
 
 func main() {
+	Main(nil)
+}
+
+func Main(tlsConfig *tls.Config) {
 	logger, err := log.NewZapLogger()
 	if err != nil {
 		ctrl.Log.WithName("setup").Error(err, "error creating controller logger")
@@ -89,6 +94,21 @@ func main() {
 		logger.Fatalw("unable to create a valid configuration", "error", err)
 	}
 
+	webhookOpts := webhook.Options{
+		Host:    cfg.Controller.Webhook.Host,
+		Port:    cfg.Controller.Webhook.Port,
+		CertDir: cfg.Controller.Webhook.CertDir,
+	}
+
+	if tlsConfig != nil {
+		tlsFunc := func(c *tls.Config) {
+			c = tlsConfig
+		}
+
+		tlsOpts := []func(*tls.Config){tlsFunc}
+		webhookOpts.TLSOpts = tlsOpts
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
@@ -97,11 +117,7 @@ func main() {
 		LeaderElection:   cfg.Controller.LeaderElection,
 		LeaderElectionID: "75ec2fa4.datadoghq.com",
 		Logger:           desugaredLogger,
-		WebhookServer: webhook.NewServer(webhook.Options{
-			Host:    cfg.Controller.Webhook.Host,
-			Port:    cfg.Controller.Webhook.Port,
-			CertDir: cfg.Controller.Webhook.CertDir,
-		}),
+		WebhookServer:    webhook.NewServer(webhookOpts),
 	})
 
 	if err != nil {
