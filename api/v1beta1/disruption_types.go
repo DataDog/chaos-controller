@@ -281,11 +281,14 @@ type DisruptionFilter struct {
 	Annotations labels.Set `json:"annotations,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // Disruption is the Schema for the disruptions API
 // +kubebuilder:resource:shortName=dis
 // +kubebuilder:subresource:status
+// +genclient
+// +genclient:noStatus
+// +genclient:onlyVerbs=create,get,list,delete,watch
 type Disruption struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

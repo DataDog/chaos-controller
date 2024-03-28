@@ -11,11 +11,14 @@ func init() {
 	SchemeBuilder.Register(&DisruptionCron{}, &DisruptionCronList{})
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // DisruptionCron is the Schema for the disruptioncron API
 // +kubebuilder:resource:shortName=dicron
 // +kubebuilder:subresource:status
+// +genclient
+// +genclient:noStatus
+// +genclient:onlyVerbs=create,get,list,delete,watch
 type DisruptionCron struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
