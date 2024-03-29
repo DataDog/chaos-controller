@@ -36,7 +36,7 @@ type disruptions struct {
 }
 
 // newDisruptions returns a Disruptions
-func newDisruptions(c *V1beta1Client, namespace string) *disruptions {
+func newDisruptions(c *ChaosClient, namespace string) *disruptions {
 	return &disruptions{
 		client: c.RESTClient(),
 		ns:     namespace,

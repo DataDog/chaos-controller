@@ -5,7 +5,7 @@ package v1beta1
 import (
 	"fmt"
 	"net/http"
-	v1beta1internalversion "v1beta1/v1beta1/typed/v1beta1/internalversion"
+	chaosinternalversion "v1beta1/v1beta1/typed/v1beta1/internalversion"
 
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
@@ -14,18 +14,18 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	V1beta1() v1beta1internalversion.V1beta1Interface
+	Chaos() chaosinternalversion.ChaosInterface
 }
 
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	v1beta1 *v1beta1internalversion.V1beta1Client
+	chaos *chaosinternalversion.ChaosClient
 }
 
-// V1beta1 retrieves the V1beta1Client
-func (c *Clientset) V1beta1() v1beta1internalversion.V1beta1Interface {
-	return c.v1beta1
+// Chaos retrieves the ChaosClient
+func (c *Clientset) Chaos() chaosinternalversion.ChaosInterface {
+	return c.chaos
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -72,7 +72,7 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 
 	var cs Clientset
 	var err error
-	cs.v1beta1, err = v1beta1internalversion.NewForConfigAndClient(&configShallowCopy, httpClient)
+	cs.chaos, err = chaosinternalversion.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.v1beta1 = v1beta1internalversion.New(c)
+	cs.chaos = chaosinternalversion.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

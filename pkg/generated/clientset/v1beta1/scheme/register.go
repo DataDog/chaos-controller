@@ -3,7 +3,7 @@
 package scheme
 
 import (
-	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1/install"
+	chaos "github.com/DataDog/chaos-controller/api/v1beta1/install"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -21,5 +21,5 @@ func init() {
 
 // Install registers the API group and adds types to a scheme
 func Install(scheme *runtime.Scheme) {
-	v1beta1.Install(scheme)
+	chaos.Install(scheme)
 }

@@ -9,29 +9,29 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-type V1beta1Interface interface {
+type ChaosInterface interface {
 	RESTClient() rest.Interface
 	DisruptionsGetter
 	DisruptionCronsGetter
 }
 
-// V1beta1Client is used to interact with features provided by the v1beta1 group.
-type V1beta1Client struct {
+// ChaosClient is used to interact with features provided by the chaos.datadoghq.com group.
+type ChaosClient struct {
 	restClient rest.Interface
 }
 
-func (c *V1beta1Client) Disruptions(namespace string) DisruptionInterface {
+func (c *ChaosClient) Disruptions(namespace string) DisruptionInterface {
 	return newDisruptions(c, namespace)
 }
 
-func (c *V1beta1Client) DisruptionCrons(namespace string) DisruptionCronInterface {
+func (c *ChaosClient) DisruptionCrons(namespace string) DisruptionCronInterface {
 	return newDisruptionCrons(c, namespace)
 }
 
-// NewForConfig creates a new V1beta1Client for the given config.
+// NewForConfig creates a new ChaosClient for the given config.
 // NewForConfig is equivalent to NewForConfigAndClient(c, httpClient),
 // where httpClient was generated with rest.HTTPClientFor(c).
-func NewForConfig(c *rest.Config) (*V1beta1Client, error) {
+func NewForConfig(c *rest.Config) (*ChaosClient, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -43,9 +43,9 @@ func NewForConfig(c *rest.Config) (*V1beta1Client, error) {
 	return NewForConfigAndClient(&config, httpClient)
 }
 
-// NewForConfigAndClient creates a new V1beta1Client for the given config and http client.
+// NewForConfigAndClient creates a new ChaosClient for the given config and http client.
 // Note the http client provided takes precedence over the configured transport values.
-func NewForConfigAndClient(c *rest.Config, h *http.Client) (*V1beta1Client, error) {
+func NewForConfigAndClient(c *rest.Config, h *http.Client) (*ChaosClient, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -54,12 +54,12 @@ func NewForConfigAndClient(c *rest.Config, h *http.Client) (*V1beta1Client, erro
 	if err != nil {
 		return nil, err
 	}
-	return &V1beta1Client{client}, nil
+	return &ChaosClient{client}, nil
 }
 
-// NewForConfigOrDie creates a new V1beta1Client for the given config and
+// NewForConfigOrDie creates a new ChaosClient for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *V1beta1Client {
+func NewForConfigOrDie(c *rest.Config) *ChaosClient {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -67,9 +67,9 @@ func NewForConfigOrDie(c *rest.Config) *V1beta1Client {
 	return client
 }
 
-// New creates a new V1beta1Client for the given RESTClient.
-func New(c rest.Interface) *V1beta1Client {
-	return &V1beta1Client{c}
+// New creates a new ChaosClient for the given RESTClient.
+func New(c rest.Interface) *ChaosClient {
+	return &ChaosClient{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -77,8 +77,8 @@ func setConfigDefaults(config *rest.Config) error {
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()
 	}
-	if config.GroupVersion == nil || config.GroupVersion.Group != scheme.Scheme.PrioritizedVersionsForGroup("v1beta1")[0].Group {
-		gv := scheme.Scheme.PrioritizedVersionsForGroup("v1beta1")[0]
+	if config.GroupVersion == nil || config.GroupVersion.Group != scheme.Scheme.PrioritizedVersionsForGroup("chaos.datadoghq.com")[0].Group {
+		gv := scheme.Scheme.PrioritizedVersionsForGroup("chaos.datadoghq.com")[0]
 		config.GroupVersion = &gv
 	}
 	config.NegotiatedSerializer = scheme.Codecs
@@ -95,7 +95,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *V1beta1Client) RESTClient() rest.Interface {
+func (c *ChaosClient) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

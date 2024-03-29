@@ -36,7 +36,7 @@ type disruptionCrons struct {
 }
 
 // newDisruptionCrons returns a DisruptionCrons
-func newDisruptionCrons(c *V1beta1Client, namespace string) *disruptionCrons {
+func newDisruptionCrons(c *ChaosClient, namespace string) *disruptionCrons {
 	return &disruptionCrons{
 		client: c.RESTClient(),
 		ns:     namespace,
