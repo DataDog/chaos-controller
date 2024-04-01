@@ -9,9 +9,6 @@ package types
 type SinkDriver string
 
 const (
-	// SinkDriverDatadog is the Datadog driver
-	SinkDriverDatadog SinkDriver = "datadog"
-
 	// SinkDriverNoop is a noop driver mainly used for testing
 	SinkDriverNoop SinkDriver = "noop"
 )

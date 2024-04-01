@@ -8,7 +8,6 @@ package tracer
 import (
 	"fmt"
 
-	"github.com/DataDog/chaos-controller/o11y/tracer/datadog"
 	"github.com/DataDog/chaos-controller/o11y/tracer/noop"
 	"github.com/DataDog/chaos-controller/o11y/tracer/types"
 	"go.opentelemetry.io/otel/trace"
@@ -30,8 +29,6 @@ type Sink interface {
 // GetSink returns a new initiated tracer sink from the given SinkDriver provider
 func GetSink(log *zap.SugaredLogger, driver types.SinkDriver) (Sink, error) {
 	switch driver {
-	case types.SinkDriverDatadog:
-		return datadog.New(), nil
 	case types.SinkDriverNoop:
 		return noop.New(log), nil
 	default:
