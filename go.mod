@@ -42,7 +42,7 @@ require (
 	k8s.io/cli-runtime v0.26.1
 	k8s.io/client-go v0.29.3
 	k8s.io/klog/v2 v2.120.1
-	sigs.k8s.io/controller-runtime v0.17.2
+	sigs.k8s.io/controller-runtime v0.16.5
 	sigs.k8s.io/controller-tools v0.14.0
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -127,7 +127,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.19.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
-	github.com/prometheus/common v0.50.0 // indirect
+	github.com/prometheus/common v0.51.1 // indirect
 	github.com/prometheus/procfs v0.13.0 // indirect
 	github.com/richardartoul/molecule v1.0.1-0.20221107223329-32cfee06a052 // indirect
 	github.com/robfig/cron v1.2.0

@@ -500,7 +500,7 @@ github.com/prometheus/client_golang/prometheus/promhttp
 # github.com/prometheus/client_model v0.6.0
 ## explicit; go 1.19
 github.com/prometheus/client_model/go
-# github.com/prometheus/common v0.50.0
+# github.com/prometheus/common v0.51.1
 ## explicit; go 1.21
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
@@ -1337,8 +1337,8 @@ k8s.io/utils/pointer
 k8s.io/utils/ptr
 k8s.io/utils/strings/slices
 k8s.io/utils/trace
-# sigs.k8s.io/controller-runtime v0.17.2
-## explicit; go 1.21
+# sigs.k8s.io/controller-runtime v0.16.5
+## explicit; go 1.20
 sigs.k8s.io/controller-runtime
 sigs.k8s.io/controller-runtime/pkg/builder
 sigs.k8s.io/controller-runtime/pkg/cache
@@ -1367,7 +1367,6 @@ sigs.k8s.io/controller-runtime/pkg/internal/log
 sigs.k8s.io/controller-runtime/pkg/internal/objectutil
 sigs.k8s.io/controller-runtime/pkg/internal/recorder
 sigs.k8s.io/controller-runtime/pkg/internal/source
-sigs.k8s.io/controller-runtime/pkg/internal/syncs
 sigs.k8s.io/controller-runtime/pkg/leaderelection
 sigs.k8s.io/controller-runtime/pkg/log
 sigs.k8s.io/controller-runtime/pkg/manager
