@@ -38,6 +38,7 @@ SIGN_IMAGE ?= false
 MANAGER_IMAGE ?= ${CONTAINER_REGISTRY}/chaos-controller
 INJECTOR_IMAGE ?= ${CONTAINER_REGISTRY}/chaos-injector
 HANDLER_IMAGE ?= ${CONTAINER_REGISTRY}/chaos-handler
+CLIENTSETTEST_IMAGE ?= ${CONTAINER_REGISTRY}/chaos-clientsettest
 
 LIMA_PROFILE ?= lima
 LIMA_CONFIG ?= lima
@@ -70,6 +71,10 @@ GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") |
 CONTROLLER_GEN_VERSION = v0.14.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
 
+# Specify the expected client-gen version
+CLIENT_GEN_VERSION := v0.31.0
+CLIENT_GEN_INSTALLED_VERSION := $(shell client-gen --version 2>/dev/null)
+
 MOCKERY_VERSION = 2.38.0
 MOCKERY_INSTALLED_VERSION = $(shell mockery --version --quiet --config="" 2>/dev/null || echo "")
 
@@ -94,10 +99,12 @@ endif
 # we define target specific variables values https://www.gnu.org/software/make/manual/html_node/Target_002dspecific.html
 injector handler: BINARY_PATH=./cli/$(BINARY_NAME)
 manager: BINARY_PATH=.
+clientsettest: BINARY_PATH=./clientsettest
 
 docker-build-injector docker-build-only-injector: CONTAINER_NAME=$(INJECTOR_IMAGE)
 docker-build-handler docker-build-only-handler: CONTAINER_NAME=$(HANDLER_IMAGE)
 docker-build-manager docker-build-only-manager: CONTAINER_NAME=$(MANAGER_IMAGE)
+docker-build-clientsettest docker-build-only-clientsettest: CONTAINER_NAME=$(CLIENTSETTEST_IMAGE)
 
 docker-build-ebpf:
 	docker buildx build --platform linux/$(GOARCH) --build-arg BUILDGOVERSION=$(BUILDGOVERSION) -t ebpf-builder-$(GOARCH) -f bin/ebpf-builder/Dockerfile .
@@ -122,6 +129,7 @@ lima-push-injector lima-push-handler lima-push-manager: FAKE_FOR=COMPLETION
 _injector:;
 _handler:;
 _manager: generate
+_clientsettest:;
 
 _docker-build-injector:
 ifneq (true,$(SKIP_EBPF))
@@ -129,6 +137,7 @@ ifneq (true,$(SKIP_EBPF))
 endif
 _docker-build-handler:;
 _docker-build-manager:;
+_docker-build-clientsettest:;
 
 # we define the template we expect for each target
 # $(1) is the target name: injector|handler|manager
@@ -171,7 +180,7 @@ minikube-load-$(1):
 endef
 
 # we define the targers we want to generate make target for
-TARGETS = injector handler manager
+TARGETS = injector handler manager clientsettest
 
 # we generate the exact same rules as for target specific variables, hence completion works and no duplication 😎
 $(foreach tgt,$(TARGETS),$(eval $(call TARGET_template,$(tgt))))
