@@ -23,6 +23,34 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: clientsettest
+  namespace: chaos-demo
+  labels:
+    app: clientsettest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clientsettest
+  template:
+    metadata:
+      labels:
+        app: clientsettest
+    spec:
+      containers:
+        - name: test
+          image: k8s.io/chaos-clientsettest:latest
+          resources:
+            limits:
+              memory: 32Mi
+              cpu: 10m
+            requests:
+              memory: 32Mi
+              cpu: 10m
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
   name: demo-nginx
   namespace: chaos-demo
   labels:
