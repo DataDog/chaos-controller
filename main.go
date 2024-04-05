@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	clientset "github.com/DataDog/chaos-controller/clientset/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/config"
 	"github.com/DataDog/chaos-controller/controllers"
@@ -36,12 +38,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/go-logr/zapr"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/clientcmd"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -414,6 +419,50 @@ func main() {
 		}
 	}()
 
+	go func() {
+		logger.Info("Starting goroutine to periodically list Disruptions")
+
+		// Build Kubernetes configuration.
+		config, err := BuildKubeConfig()
+		if err != nil {
+			logger.Fatalw("Failed to build kubeconfig", "error", err)
+		}
+
+		// Create a new Clientset for the given config.
+		cs, err := clientset.NewForConfig(config)
+		if err != nil {
+			logger.Fatalw("Failed to create clientset", "error", err)
+		}
+
+		// Define the namespace to watch for Disruptions. Use "" for all namespaces.
+		watchNamespace := "chaos-demo"
+
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				// List disruptions in the specified namespace (or all namespaces if empty).
+				disruptions, err := cs.Chaos().Disruptions(watchNamespace).List(context.TODO(), v1.ListOptions{})
+				if err != nil {
+					logger.Errorw("Failed to list disruptions", "namespace", watchNamespace, "error", err)
+					continue
+				}
+
+				// Log the disruptions found.
+				logger.Infof("Found %d Disruptions in namespace '%s'", len(disruptions.Items), watchNamespace)
+				for _, d := range disruptions.Items {
+					logger.Infof("- %s", d.Name)
+				}
+
+			case <-stopCh: // Assuming stopCh is the channel you use to signal shutdown.
+				logger.Info("Stopping disruption watch goroutine")
+				return
+			}
+		}
+	}()
+
 	// +kubebuilder:scaffold:builder
 
 	logger.Infow("starting chaos-controller")
@@ -444,4 +493,27 @@ func closeMetricsSink(logger *zap.SugaredLogger, metricsSink metrics.Sink) {
 	if err := metricsSink.Close(); err != nil {
 		logger.Errorw("error closing metrics sink client", "sink", metricsSink.GetSinkName(), "error", err)
 	}
+}
+
+func BuildKubeConfig() (*rest.Config, error) {
+	restConfig, err := rest.InClusterConfig()
+	if err != nil {
+		if errors.Is(err, rest.ErrNotInCluster) {
+			// Specifying "colima" as the current context for local development
+			currentContext := "colima"
+
+			restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+				clientcmd.NewDefaultClientConfigLoadingRules(),
+				&clientcmd.ConfigOverrides{
+					CurrentContext: currentContext,
+				}).ClientConfig()
+			if err != nil {
+				return nil, fmt.Errorf("unable to build out-of-cluster configuration: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("unable to build in-cluster configuration: %w", err)
+		}
+	}
+
+	return restConfig, nil
 }
