@@ -31,6 +31,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(GroupVersion,
 		&Disruption{},
 		&DisruptionList{},
+		&DisruptionCron{},
+		&DisruptionCronList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, GroupVersion)
