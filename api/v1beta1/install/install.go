@@ -4,7 +4,7 @@
 // Copyright 2024 Datadog, Inc.
 // Package install installs the experimental API group, making it available as
 // an option to all of the API encoding/decoding machinery.
-package v1beta1
+package install
 
 import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
