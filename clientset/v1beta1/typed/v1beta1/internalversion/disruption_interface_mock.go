@@ -4,16 +4,15 @@
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2024 Datadog, Inc.
-package v1beta1
+package internalversion
 
 import (
 	context "context"
 
-	apiv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-
 	mock "github.com/stretchr/testify/mock"
-
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 
 	watch "k8s.io/apimachinery/pkg/watch"
 )
@@ -31,29 +30,29 @@ func (_m *DisruptionInterfaceMock) EXPECT() *DisruptionInterfaceMock_Expecter {
 	return &DisruptionInterfaceMock_Expecter{mock: &_m.Mock}
 }
 
-// Create provides a mock function with given fields: ctx, disruption
-func (_m *DisruptionInterfaceMock) Create(ctx context.Context, disruption *apiv1beta1.Disruption) (*apiv1beta1.Disruption, error) {
-	ret := _m.Called(ctx, disruption)
+// Create provides a mock function with given fields: ctx, disruption, opts
+func (_m *DisruptionInterfaceMock) Create(ctx context.Context, disruption *v1beta1.Disruption, opts v1.CreateOptions) (*v1beta1.Disruption, error) {
+	ret := _m.Called(ctx, disruption, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
 	}
 
-	var r0 *apiv1beta1.Disruption
+	var r0 *v1beta1.Disruption
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *apiv1beta1.Disruption) (*apiv1beta1.Disruption, error)); ok {
-		return rf(ctx, disruption)
+	if rf, ok := ret.Get(0).(func(context.Context, *v1beta1.Disruption, v1.CreateOptions) (*v1beta1.Disruption, error)); ok {
+		return rf(ctx, disruption, opts)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *apiv1beta1.Disruption) *apiv1beta1.Disruption); ok {
-		r0 = rf(ctx, disruption)
+	if rf, ok := ret.Get(0).(func(context.Context, *v1beta1.Disruption, v1.CreateOptions) *v1beta1.Disruption); ok {
+		r0 = rf(ctx, disruption, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*apiv1beta1.Disruption)
+			r0 = ret.Get(0).(*v1beta1.Disruption)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *apiv1beta1.Disruption) error); ok {
-		r1 = rf(ctx, disruption)
+	if rf, ok := ret.Get(1).(func(context.Context, *v1beta1.Disruption, v1.CreateOptions) error); ok {
+		r1 = rf(ctx, disruption, opts)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -68,24 +67,25 @@ type DisruptionInterfaceMock_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
-//   - disruption *apiv1beta1.Disruption
-func (_e *DisruptionInterfaceMock_Expecter) Create(ctx interface{}, disruption interface{}) *DisruptionInterfaceMock_Create_Call {
-	return &DisruptionInterfaceMock_Create_Call{Call: _e.mock.On("Create", ctx, disruption)}
+//   - disruption *v1beta1.Disruption
+//   - opts v1.CreateOptions
+func (_e *DisruptionInterfaceMock_Expecter) Create(ctx interface{}, disruption interface{}, opts interface{}) *DisruptionInterfaceMock_Create_Call {
+	return &DisruptionInterfaceMock_Create_Call{Call: _e.mock.On("Create", ctx, disruption, opts)}
 }
 
-func (_c *DisruptionInterfaceMock_Create_Call) Run(run func(ctx context.Context, disruption *apiv1beta1.Disruption)) *DisruptionInterfaceMock_Create_Call {
+func (_c *DisruptionInterfaceMock_Create_Call) Run(run func(ctx context.Context, disruption *v1beta1.Disruption, opts v1.CreateOptions)) *DisruptionInterfaceMock_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*apiv1beta1.Disruption))
+		run(args[0].(context.Context), args[1].(*v1beta1.Disruption), args[2].(v1.CreateOptions))
 	})
 	return _c
 }
 
-func (_c *DisruptionInterfaceMock_Create_Call) Return(_a0 *apiv1beta1.Disruption, _a1 error) *DisruptionInterfaceMock_Create_Call {
+func (_c *DisruptionInterfaceMock_Create_Call) Return(_a0 *v1beta1.Disruption, _a1 error) *DisruptionInterfaceMock_Create_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *DisruptionInterfaceMock_Create_Call) RunAndReturn(run func(context.Context, *apiv1beta1.Disruption) (*apiv1beta1.Disruption, error)) *DisruptionInterfaceMock_Create_Call {
+func (_c *DisruptionInterfaceMock_Create_Call) RunAndReturn(run func(context.Context, *v1beta1.Disruption, v1.CreateOptions) (*v1beta1.Disruption, error)) *DisruptionInterfaceMock_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -139,23 +139,23 @@ func (_c *DisruptionInterfaceMock_Delete_Call) RunAndReturn(run func(context.Con
 }
 
 // Get provides a mock function with given fields: ctx, name, opts
-func (_m *DisruptionInterfaceMock) Get(ctx context.Context, name string, opts v1.GetOptions) (*apiv1beta1.Disruption, error) {
+func (_m *DisruptionInterfaceMock) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.Disruption, error) {
 	ret := _m.Called(ctx, name, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 *apiv1beta1.Disruption
+	var r0 *v1beta1.Disruption
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*apiv1beta1.Disruption, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*v1beta1.Disruption, error)); ok {
 		return rf(ctx, name, opts)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *apiv1beta1.Disruption); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *v1beta1.Disruption); ok {
 		r0 = rf(ctx, name, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*apiv1beta1.Disruption)
+			r0 = ret.Get(0).(*v1beta1.Disruption)
 		}
 	}
 
@@ -188,34 +188,34 @@ func (_c *DisruptionInterfaceMock_Get_Call) Run(run func(ctx context.Context, na
 	return _c
 }
 
-func (_c *DisruptionInterfaceMock_Get_Call) Return(_a0 *apiv1beta1.Disruption, _a1 error) *DisruptionInterfaceMock_Get_Call {
+func (_c *DisruptionInterfaceMock_Get_Call) Return(_a0 *v1beta1.Disruption, _a1 error) *DisruptionInterfaceMock_Get_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *DisruptionInterfaceMock_Get_Call) RunAndReturn(run func(context.Context, string, v1.GetOptions) (*apiv1beta1.Disruption, error)) *DisruptionInterfaceMock_Get_Call {
+func (_c *DisruptionInterfaceMock_Get_Call) RunAndReturn(run func(context.Context, string, v1.GetOptions) (*v1beta1.Disruption, error)) *DisruptionInterfaceMock_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function with given fields: ctx, opts
-func (_m *DisruptionInterfaceMock) List(ctx context.Context, opts v1.ListOptions) (*apiv1beta1.DisruptionList, error) {
+func (_m *DisruptionInterfaceMock) List(ctx context.Context, opts v1.ListOptions) (*v1beta1.DisruptionList, error) {
 	ret := _m.Called(ctx, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
 	}
 
-	var r0 *apiv1beta1.DisruptionList
+	var r0 *v1beta1.DisruptionList
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (*apiv1beta1.DisruptionList, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (*v1beta1.DisruptionList, error)); ok {
 		return rf(ctx, opts)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, v1.ListOptions) *apiv1beta1.DisruptionList); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, v1.ListOptions) *v1beta1.DisruptionList); ok {
 		r0 = rf(ctx, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*apiv1beta1.DisruptionList)
+			r0 = ret.Get(0).(*v1beta1.DisruptionList)
 		}
 	}
 
@@ -247,12 +247,12 @@ func (_c *DisruptionInterfaceMock_List_Call) Run(run func(ctx context.Context, o
 	return _c
 }
 
-func (_c *DisruptionInterfaceMock_List_Call) Return(_a0 *apiv1beta1.DisruptionList, _a1 error) *DisruptionInterfaceMock_List_Call {
+func (_c *DisruptionInterfaceMock_List_Call) Return(_a0 *v1beta1.DisruptionList, _a1 error) *DisruptionInterfaceMock_List_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *DisruptionInterfaceMock_List_Call) RunAndReturn(run func(context.Context, v1.ListOptions) (*apiv1beta1.DisruptionList, error)) *DisruptionInterfaceMock_List_Call {
+func (_c *DisruptionInterfaceMock_List_Call) RunAndReturn(run func(context.Context, v1.ListOptions) (*v1beta1.DisruptionList, error)) *DisruptionInterfaceMock_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
