@@ -8,7 +8,7 @@ This folder contains the detailed documentation of most parts of the project.
 - [Configuration Guide](configuration.md)
 - [Features Guide](features.md)
 - [Development Guide](development.md)
-- [Clientset Guide](clientset_usage.md)
+- [Clientset Guide](clientset/README.md)
 - [Targeting Specificities](targeting.md)
 - [Disruption Examples](examples.md)
 - [Metrics](metrics_events.md)

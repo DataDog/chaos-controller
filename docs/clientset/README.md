@@ -4,7 +4,7 @@ The Chaos Controller clientset is a structured interface that simplifies interac
 
 ## Clientset Generation
 
-The client is created with `client-gen`, a Kubernetes tool that automatically builds client libraries for working with Kubernetes API resources. For more detailed information about client-gen, including its flags and other usage details, you can visit the [official Kubernetes documentation on generating clientsets](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-api-machinery/generating-clientset.md).
+The client is created with `client-gen`, a Kubernetes tool that automatically builds client libraries for working with Kubernetes API resources. For more detailed information about client-gen, including its flags and other usage details, you can visit the [official Kubernetes documentation on generating clientsets](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-api-machinery/generating-clientset.md). For a step-by-step guide on generating the clientset, refer to the [Generate Clientset Guide](generate_clientset.md).
 
 ## Clientset Architecture
 
