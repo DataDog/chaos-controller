@@ -131,6 +131,11 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 			WithArguments(types.NamespacedName{
 				Name: nsName.Name,
 			}, &nsName).
-			Should(WithTransform(apierrors.IsNotFound, BeTrue()))
+			Should(WithTransform(logIsNotFound, BeTrue()))
 	}, namespace)
 }, NodeTimeout(time.Minute))
+
+func logIsNotFound(err error) bool {
+	log.Infow("LOGGING CLEANUP ERROR", "err", err)
+	return apierrors.IsNotFound(err)
+}
