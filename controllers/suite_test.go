@@ -123,12 +123,8 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	}
 	Eventually(k8sClient.Create).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).WithArguments(&namespace).Should(WithTransform(client.IgnoreAlreadyExists, Succeed()))
 	DeferCleanup(func(ctx SpecContext, nsName corev1.Namespace) {
-		var gracePeriodSeconds int64
-		gracePeriodSeconds = 0
-
-		propagationPolicy := metav1.DeletePropagationForeground
 		// We do not only DELETE the namespace
-		Eventually(k8sClient.Delete).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).WithArguments(&nsName, client.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds, PropagationPolicy: &propagationPolicy}).Should(WithTransform(client.IgnoreNotFound, Succeed()))
+		Eventually(k8sClient.Delete).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).WithArguments(&nsName, client.GracePeriodSeconds(0), client.PropagationPolicy(metav1.DeletePropagationForeground)).Should(WithTransform(client.IgnoreNotFound, Succeed()))
 
 		// But we also WAIT for it's completed deletion to ensure repetitive tests (--until-it-fails) do not face terminated namespace errors
 		Eventually(k8sClient.Get).WithContext(ctx).Within(k8sAPIServerResponseTimeout*20).ProbeEvery(k8sAPIPotentialChangesEvery).
