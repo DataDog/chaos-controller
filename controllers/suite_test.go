@@ -137,5 +137,13 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 
 func logIsNotFound(err error) bool {
 	log.Infow("LOGGING CLEANUP ERROR", "err", err)
+	ns := corev1.NamespaceList{}
+	errTwo := k8sClient.List(context.Background(), &ns)
+	if errTwo != nil {
+		log.Errorw("DEBUG LIST ERR", "err", errTwo)
+	}
+	for _, n := range ns.Items {
+		log.Infow("NAMESPACE FOUND DURING DEBUGGING", "ns", n.Name)
+	}
 	return apierrors.IsNotFound(err)
 }
