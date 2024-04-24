@@ -127,7 +127,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		Eventually(k8sClient.Delete).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).WithArguments(&nsName).Should(WithTransform(client.IgnoreNotFound, Succeed()))
 
 		// But we also WAIT for it's completed deletion to ensure repetitive tests (--until-it-fails) do not face terminated namespace errors
-		Eventually(k8sClient.Get).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).
+		Eventually(k8sClient.Get).WithContext(ctx).Within(k8sAPIServerResponseTimeout*4).ProbeEvery(k8sAPIPotentialChangesEvery).
 			WithArguments(types.NamespacedName{
 				Name: nsName.Name,
 			}, &nsName).
