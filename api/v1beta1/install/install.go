@@ -17,4 +17,5 @@ import (
 func Install(scheme *runtime.Scheme) {
 	utilruntime.Must(chaosv1beta1.AddToScheme(scheme))
 	utilruntime.Must(scheme.SetVersionPriority(v1beta1.SchemeGroupVersion))
+	utilruntime.Must(chaosv1beta1.ClientSchemeBuilder.AddToScheme(scheme))
 }
