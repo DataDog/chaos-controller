@@ -177,20 +177,34 @@ var _ = Describe("Disruption Client", func() {
 				Expect(err).NotTo(HaveOccurred(), "Failed to start watching disruptions")
 
 				// Assert
-				Eventually(func() watch.Event {
-					select {
-					case event := <-watcher.ResultChan():
-						if event.Type == eventType {
-							return event
+				// Function to get the event from the watcher
+				getEventFromWatcher := func() watch.Event {
+					for {
+						select {
+						case event, ok := <-watcher.ResultChan():
+							if !ok {
+								log.Infow("Watcher channel closed", "OK", ok)
+								return watch.Event{} // Return empty if channel is closed
+							}
+							log.Infow("Event received", "Type", event.Type, "Object", event.Object, "OK", ok)
+							if event.Type == eventType {
+								return event
+							}
+						default:
+							log.Infow("No relevant event received, continuing to watch...")
+							return watch.Event{} // Return empty if no relevant event
 						}
-					default:
-						return watch.Event{} // Return empty if no relevant event
 					}
-					return watch.Event{}
-				}, k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(func(e watch.Event) bool {
+				}
+
+				// Function to check if the event is the expected one
+				isExpectedEvent := func(e watch.Event) bool {
 					d, ok := e.Object.(*v1beta1.Disruption)
 					return ok && d.Name == disruptionName && e.Type == eventType
-				}, BeTrue()), "Expected to receive specific event type with correct disruption name")
+				}
+
+				// Use the named functions in the Eventually function
+				Eventually(getEventFromWatcher, k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(isExpectedEvent, BeTrue()), "Expected to receive specific event type with correct disruption name")
 
 			},
 			Entry("when a disruption is added", watch.Added, "test-disruption-watch-add", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionName string) {
