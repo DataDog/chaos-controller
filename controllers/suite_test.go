@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"gopkg.in/yaml.v3"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -75,7 +76,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 
 	// We use ginkgo process identifier to shard our tests among namespaces
 	// it enables us to speed up things
-	namespace = fmt.Sprintf("e2e-test-%d", GinkgoParallelProcess())
+	namespace = fmt.Sprintf("e2e-test-%d-%s", GinkgoParallelProcess(), uuid.NewUUID())
 
 	// +kubebuilder:scaffold:scheme
 	Expect(chaosv1beta1.AddToScheme(scheme.Scheme)).To(Succeed())
