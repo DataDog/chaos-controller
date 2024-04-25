@@ -126,6 +126,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		// We do not only DELETE the namespace
 		Eventually(k8sClient.Delete).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).WithArguments(&nsName, client.GracePeriodSeconds(0), client.PropagationPolicy(metav1.DeletePropagationForeground)).Should(WithTransform(client.IgnoreNotFound, Succeed()))
 
+		strongCleanup(ctx, nsName)
 		// But we also WAIT for it's completed deletion to ensure repetitive tests (--until-it-fails) do not face terminated namespace errors
 		Eventually(k8sClient.Get).WithContext(ctx).Within(k8sAPIServerResponseTimeout*20).ProbeEvery(k8sAPIPotentialChangesEvery).
 			WithArguments(types.NamespacedName{
@@ -134,6 +135,33 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 			Should(WithTransform(logIsNotFound, BeTrue()))
 	}, namespace)
 }, NodeTimeout(time.Minute))
+
+func strongCleanup(ctx SpecContext, nsName corev1.Namespace) {
+	log.Infow("Cleaning up namespace", "namespace", namespace)
+	err := k8sClient.Delete(ctx, &nsName, client.PropagationPolicy(metav1.DeletePropagationForeground), client.GracePeriodSeconds(0))
+	if err != nil {
+		log.Infow("error on namespace delete", "err", err)
+	}
+
+	ns := corev1.NamespaceList{}
+	errTwo := k8sClient.List(ctx, &ns)
+	if errTwo != nil {
+		log.Errorw("DEBUG LIST ERR", "err", errTwo)
+	}
+	for _, n := range ns.Items {
+		log.Infow("NAMESPACES FOUND DURING DEBUGGING", "ns", n.Name)
+		if n.Name == nsName.Name {
+			ps := corev1.PodList{}
+			err = k8sClient.List(ctx, &ps, client.InNamespace(nsName.Name))
+			if err != nil {
+				log.Infow("error on namespace list", "err", err)
+			}
+			for _, pod := range ps.Items {
+				log.Infow("PODS FOUND IN NAMESPACE", "pod", pod.Name)
+			}
+		}
+	}
+}
 
 func logIsNotFound(err error) bool {
 	log.Infow("LOGGING CLEANUP ERROR", "err", err)
