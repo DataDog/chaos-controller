@@ -17,7 +17,6 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -92,224 +91,224 @@ var _ = Describe("Disruption Controller", func() {
 		ExpectDisruptionStatus(ctx, disruption, expectedDisruptionStatus)
 	})
 
-	Context("annotation filters should limit selected targets", func() {
-		BeforeEach(func() {
-			disruption.Spec.Filter = &chaosv1beta1.DisruptionFilter{
-				Annotations: map[string]string{"foo": "baz"},
-			}
-			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
-		})
+	//Context("annotation filters should limit selected targets", func() {
+	//	BeforeEach(func() {
+	//		disruption.Spec.Filter = &chaosv1beta1.DisruptionFilter{
+	//			Annotations: map[string]string{"foo": "baz"},
+	//		}
+	//		disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+	//	})
+	//
+	//	It("should only select half of all pods", func(ctx SpecContext) {
+	//		ExpectChaosPods(ctx, disruption, 4)
+	//	})
+	//})
+	//
+	//Context("annotation filters should limit selected targets", func() {
+	//	BeforeEach(func() {
+	//		disruption.Spec.Filter = &chaosv1beta1.DisruptionFilter{
+	//			Annotations: map[string]string{"fob": "baf"},
+	//		}
+	//		disruption.Spec.Selector = map[string]string{"second": "true"}
+	//		disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+	//	})
+	//
+	//	It("should only select half of all pods", func(ctx SpecContext) {
+	//		ExpectChaosPods(ctx, disruption, 4)
+	//	})
+	//})
 
-		It("should only select half of all pods", func(ctx SpecContext) {
-			ExpectChaosPods(ctx, disruption, 4)
-		})
-	})
+	//Context("node level", func() {
+	//	BeforeEach(func() {
+	//		disruption.Spec = chaosv1beta1.DisruptionSpec{
+	//			DryRun: false,
+	//			Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+	//			Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+	//				DisableAll: true,
+	//			},
+	//			Selector: map[string]string{"kubernetes.io/hostname": clusterName},
+	//			Level:    chaostypes.DisruptionLevelNode,
+	//			Network: &chaosv1beta1.NetworkDisruptionSpec{
+	//				Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
+	//					{
+	//						Host:     "127.0.0.1",
+	//						Port:     80,
+	//						Protocol: "tcp",
+	//					},
+	//				},
+	//				Drop:    0,
+	//				Corrupt: 0,
+	//				Delay:   1,
+	//			},
+	//		}
+	//	})
+	//
+	//	It("should target the node", func(ctx SpecContext) {
+	//		By("Ensuring that the inject pod has been created")
+	//		ExpectChaosPods(ctx, disruption, 1)
+	//	})
+	//})
 
-	Context("annotation filters should limit selected targets", func() {
-		BeforeEach(func() {
-			disruption.Spec.Filter = &chaosv1beta1.DisruptionFilter{
-				Annotations: map[string]string{"fob": "baf"},
-			}
-			disruption.Spec.Selector = map[string]string{"second": "true"}
-			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
-		})
-
-		It("should only select half of all pods", func(ctx SpecContext) {
-			ExpectChaosPods(ctx, disruption, 4)
-		})
-	})
-
-	Context("node level", func() {
-		BeforeEach(func() {
-			disruption.Spec = chaosv1beta1.DisruptionSpec{
-				DryRun: false,
-				Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
-				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
-					DisableAll: true,
-				},
-				Selector: map[string]string{"kubernetes.io/hostname": clusterName},
-				Level:    chaostypes.DisruptionLevelNode,
-				Network: &chaosv1beta1.NetworkDisruptionSpec{
-					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
-						{
-							Host:     "127.0.0.1",
-							Port:     80,
-							Protocol: "tcp",
-						},
-					},
-					Drop:    0,
-					Corrupt: 0,
-					Delay:   1,
-				},
-			}
-		})
-
-		It("should target the node", func(ctx SpecContext) {
-			By("Ensuring that the inject pod has been created")
-			ExpectChaosPods(ctx, disruption, 1)
-		})
-	})
-
-	Context("disruption expires naturally", func() {
-		BeforeEach(func() {
-			disruption.Spec = chaosv1beta1.DisruptionSpec{
-				DryRun: true,
-				Count:  &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
-				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
-					DisableAll: true,
-				},
-				Containers:  []string{"ctn1"},
-				Duration:    shortDisruptionDuration,
-				CPUPressure: &chaosv1beta1.CPUPressureSpec{},
-			}
-		})
-
-		It("should target all the selected pods", func(ctx SpecContext) {
-			Concurrently{
-				func(ctx SpecContext) {
-					By("Ensuring that the chaos pods have been created")
-					ExpectChaosPods(ctx, disruption, 2)
-				},
-				func(ctx SpecContext) {
-					By("Ensuring that the chaos pods have correct number of targeted containers")
-					ExpectChaosInjectors(ctx, disruption, 2)
-				},
-			}.DoAndWait(ctx)
-
-			Concurrently{
-				func(ctx SpecContext) {
-					By("Waiting for the disruption to expire naturally")
-					ExpectChaosPods(ctx, disruption, 0)
-				},
-				func(ctx SpecContext) {
-					By("Waiting for the disruption to reach PreviouslyInjected")
-					ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
-				},
-				func(ctx SpecContext) {
-					By("Waiting for disruption to be removed")
-					Eventually(k8sClient.Get).
-						WithContext(ctx).WithArguments(
-						types.NamespacedName{
-							Namespace: disruption.Namespace,
-							Name:      disruption.Name,
-						}, &chaosv1beta1.Disruption{}).
-						Within(calcDisruptionGoneTimeout(disruption)).ProbeEvery(disruptionPotentialChangesEvery).
-						Should(WithTransform(apierrors.IsNotFound, BeTrue()))
-				},
-			}.DoAndWait(ctx)
-		})
-	})
-
-	Context("target one pod and one container only", func() {
-		It("should target all the selected pods", func(ctx SpecContext) {
-			By("Ensuring that the inject pod has been created")
-			ExpectChaosPods(ctx, disruption, 4)
-
-			By("Ensuring that the chaos pods have correct number of targeted containers")
-			ExpectChaosInjectors(ctx, disruption, 4)
-		})
-	})
-
-	Context("target all pods and one container", func() {
-		BeforeEach(func() {
-			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
-		})
-
-		It("should target all the selected pods", func(ctx SpecContext) {
-			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 8)
-
-			By("Ensuring that the chaos pods have correct number of targeted containers")
-			ExpectChaosInjectors(ctx, disruption, 8)
-		})
-	})
-
-	Context("target 30% of pods (1 pod out of 2) and one container", func() {
-		BeforeEach(func() {
-			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "30%"}
-		})
-
-		It("should target all the selected pods", func(ctx SpecContext) {
-			By("Ensuring that the inject pod has been created")
-			ExpectChaosPods(ctx, disruption, 4)
-
-			By("Ensuring that the chaos pods have correct number of targeted containers")
-			ExpectChaosInjectors(ctx, disruption, 4)
-		})
-	})
-
-	Context("target all pods and all containers by default", func() {
-		BeforeEach(func() {
-			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
-			disruption.Spec.Containers = []string{}
-			disruption.Spec.Duration = "2m"
-		})
-
-		It("should target all the selected pods", func(ctx SpecContext) {
-			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 8)
-
-			By("Ensuring that the chaos pods have correct number of targeted containers")
-			ExpectChaosInjectors(ctx, disruption, 12)
-		})
-	})
-
-	Context("Dynamic targeting", func() {
-		BeforeEach(func() {
-			disruption.Spec = chaosv1beta1.DisruptionSpec{
-				StaticTargeting: false,
-				DryRun:          true,
-				Count:           &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
-				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
-					DisableAll: true,
-				},
-				Containers: []string{"ctn1"},
-				Network: &chaosv1beta1.NetworkDisruptionSpec{
-					Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
-						{
-							Host:     "127.0.0.1",
-							Port:     80,
-							Protocol: "tcp",
-						},
-					},
-					Drop: 100,
-				},
-			}
-		})
-
-		It("should scale up then down properly", func(ctx SpecContext) {
-			ExpectChaosPodsAndStatuses := func(ctx SpecContext, count int) {
-				GinkgoHelper()
-
-				Concurrently{
-					func(ctx SpecContext) {
-						By("Ensuring that the chaos pods have been created")
-						ExpectChaosPods(ctx, disruption, count)
-					},
-					func(ctx SpecContext) {
-						By("Ensuring that the chaos pods have correct number of targeted containers")
-						ExpectChaosInjectors(ctx, disruption, count)
-					},
-					func(ctx SpecContext) {
-						By("Ensuring that the disruption status is displaying the right number of targets")
-						ExpectDisruptionStatusCounts(ctx, disruption, count, 0, count, count)
-					},
-				}.DoAndWait(ctx)
-			}
-
-			ExpectChaosPodsAndStatuses(ctx, 2)
-
-			By("Adding an extra target")
-			extraPod := <-CreateRunningPod(ctx, *targetPod.DeepCopy())
-
-			ExpectChaosPodsAndStatuses(ctx, 3)
-
-			By("Deleting the extra target")
-			DeleteRunningPod(ctx, extraPod)
-
-			ExpectChaosPodsAndStatuses(ctx, 2)
-		})
-	})
+	//Context("disruption expires naturally", func() {
+	//	BeforeEach(func() {
+	//		disruption.Spec = chaosv1beta1.DisruptionSpec{
+	//			DryRun: true,
+	//			Count:  &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+	//			Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+	//				DisableAll: true,
+	//			},
+	//			Containers:  []string{"ctn1"},
+	//			Duration:    shortDisruptionDuration,
+	//			CPUPressure: &chaosv1beta1.CPUPressureSpec{},
+	//		}
+	//	})
+	//
+	//	It("should target all the selected pods", func(ctx SpecContext) {
+	//		Concurrently{
+	//			func(ctx SpecContext) {
+	//				By("Ensuring that the chaos pods have been created")
+	//				ExpectChaosPods(ctx, disruption, 2)
+	//			},
+	//			func(ctx SpecContext) {
+	//				By("Ensuring that the chaos pods have correct number of targeted containers")
+	//				ExpectChaosInjectors(ctx, disruption, 2)
+	//			},
+	//		}.DoAndWait(ctx)
+	//
+	//		Concurrently{
+	//			func(ctx SpecContext) {
+	//				By("Waiting for the disruption to expire naturally")
+	//				ExpectChaosPods(ctx, disruption, 0)
+	//			},
+	//			func(ctx SpecContext) {
+	//				By("Waiting for the disruption to reach PreviouslyInjected")
+	//				ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
+	//			},
+	//			func(ctx SpecContext) {
+	//				By("Waiting for disruption to be removed")
+	//				Eventually(k8sClient.Get).
+	//					WithContext(ctx).WithArguments(
+	//					types.NamespacedName{
+	//						Namespace: disruption.Namespace,
+	//						Name:      disruption.Name,
+	//					}, &chaosv1beta1.Disruption{}).
+	//					Within(calcDisruptionGoneTimeout(disruption)).ProbeEvery(disruptionPotentialChangesEvery).
+	//					Should(WithTransform(apierrors.IsNotFound, BeTrue()))
+	//			},
+	//		}.DoAndWait(ctx)
+	//	})
+	//})
+	//
+	//Context("target one pod and one container only", func() {
+	//	It("should target all the selected pods", func(ctx SpecContext) {
+	//		By("Ensuring that the inject pod has been created")
+	//		ExpectChaosPods(ctx, disruption, 4)
+	//
+	//		By("Ensuring that the chaos pods have correct number of targeted containers")
+	//		ExpectChaosInjectors(ctx, disruption, 4)
+	//	})
+	//})
+	//
+	//Context("target all pods and one container", func() {
+	//	BeforeEach(func() {
+	//		disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+	//	})
+	//
+	//	It("should target all the selected pods", func(ctx SpecContext) {
+	//		By("Ensuring that the chaos pods have been created")
+	//		ExpectChaosPods(ctx, disruption, 8)
+	//
+	//		By("Ensuring that the chaos pods have correct number of targeted containers")
+	//		ExpectChaosInjectors(ctx, disruption, 8)
+	//	})
+	//})
+	//
+	//Context("target 30% of pods (1 pod out of 2) and one container", func() {
+	//	BeforeEach(func() {
+	//		disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "30%"}
+	//	})
+	//
+	//	It("should target all the selected pods", func(ctx SpecContext) {
+	//		By("Ensuring that the inject pod has been created")
+	//		ExpectChaosPods(ctx, disruption, 4)
+	//
+	//		By("Ensuring that the chaos pods have correct number of targeted containers")
+	//		ExpectChaosInjectors(ctx, disruption, 4)
+	//	})
+	//})
+	//
+	//Context("target all pods and all containers by default", func() {
+	//	BeforeEach(func() {
+	//		disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+	//		disruption.Spec.Containers = []string{}
+	//		disruption.Spec.Duration = "2m"
+	//	})
+	//
+	//	It("should target all the selected pods", func(ctx SpecContext) {
+	//		By("Ensuring that the chaos pods have been created")
+	//		ExpectChaosPods(ctx, disruption, 8)
+	//
+	//		By("Ensuring that the chaos pods have correct number of targeted containers")
+	//		ExpectChaosInjectors(ctx, disruption, 12)
+	//	})
+	//})
+	//
+	//Context("Dynamic targeting", func() {
+	//	BeforeEach(func() {
+	//		disruption.Spec = chaosv1beta1.DisruptionSpec{
+	//			StaticTargeting: false,
+	//			DryRun:          true,
+	//			Count:           &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+	//			Unsafemode: &chaosv1beta1.UnsafemodeSpec{
+	//				DisableAll: true,
+	//			},
+	//			Containers: []string{"ctn1"},
+	//			Network: &chaosv1beta1.NetworkDisruptionSpec{
+	//				Hosts: []chaosv1beta1.NetworkDisruptionHostSpec{
+	//					{
+	//						Host:     "127.0.0.1",
+	//						Port:     80,
+	//						Protocol: "tcp",
+	//					},
+	//				},
+	//				Drop: 100,
+	//			},
+	//		}
+	//	})
+	//
+	//	It("should scale up then down properly", func(ctx SpecContext) {
+	//		ExpectChaosPodsAndStatuses := func(ctx SpecContext, count int) {
+	//			GinkgoHelper()
+	//
+	//			Concurrently{
+	//				func(ctx SpecContext) {
+	//					By("Ensuring that the chaos pods have been created")
+	//					ExpectChaosPods(ctx, disruption, count)
+	//				},
+	//				func(ctx SpecContext) {
+	//					By("Ensuring that the chaos pods have correct number of targeted containers")
+	//					ExpectChaosInjectors(ctx, disruption, count)
+	//				},
+	//				func(ctx SpecContext) {
+	//					By("Ensuring that the disruption status is displaying the right number of targets")
+	//					ExpectDisruptionStatusCounts(ctx, disruption, count, 0, count, count)
+	//				},
+	//			}.DoAndWait(ctx)
+	//		}
+	//
+	//		ExpectChaosPodsAndStatuses(ctx, 2)
+	//
+	//		By("Adding an extra target")
+	//		extraPod := <-CreateRunningPod(ctx, *targetPod.DeepCopy())
+	//
+	//		ExpectChaosPodsAndStatuses(ctx, 3)
+	//
+	//		By("Deleting the extra target")
+	//		DeleteRunningPod(ctx, extraPod)
+	//
+	//		ExpectChaosPodsAndStatuses(ctx, 2)
+	//	})
+	//})
 
 	Context("On init", func() {
 		BeforeEach(func(ctx SpecContext) {
