@@ -138,7 +138,12 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 
 func strongCleanup(ctx SpecContext, nsName corev1.Namespace) {
 	log.Infow("Cleaning up namespace", "namespace", namespace, "nsName", nsName.Name)
-	err := k8sClient.Delete(ctx, &nsName, client.PropagationPolicy(metav1.DeletePropagationForeground), client.GracePeriodSeconds(0))
+	err := k8sClient.Get(ctx, types.NamespacedName{Name: namespace}, &nsName)
+	if err != nil {
+		log.Infow("error on namespace get", "err", err)
+	}
+	log.Infow("Namespace Info", "namespace", nsName, "metadata", nsName.ObjectMeta, "finalizers", nsName.GetObjectMeta().GetFinalizers())
+	err = k8sClient.Delete(ctx, &nsName, client.PropagationPolicy(metav1.DeletePropagationForeground), client.GracePeriodSeconds(0))
 	if err != nil {
 		log.Infow("error on namespace delete", "err", err)
 	}
