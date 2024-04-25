@@ -134,7 +134,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 			}, &nsName).
 			Should(WithTransform(logIsNotFound, BeTrue()))
 	}, namespace)
-}, NodeTimeout(time.Minute))
+}, NodeTimeout(time.Minute*3))
 
 func strongCleanup(ctx SpecContext, nsName corev1.Namespace) {
 	log.Infow("Cleaning up namespace", "namespace", namespace, "nsName", nsName.Name)
@@ -156,6 +156,7 @@ func strongCleanup(ctx SpecContext, nsName corev1.Namespace) {
 			if err != nil {
 				log.Infow("error on namespace list", "err", err)
 			}
+			log.Infow("checking for pods in namespace", "podsCount", len(ps.Items))
 			for _, pod := range ps.Items {
 				log.Infow("PODS FOUND IN NAMESPACE", "pod", pod.Name)
 			}

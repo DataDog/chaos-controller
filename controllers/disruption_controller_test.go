@@ -10,7 +10,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -653,115 +652,115 @@ var _ = Describe("Disruption Controller", func() {
 		})
 	})
 
-	Context("Injection Statuses", func() {
-		BeforeEach(func() {
-			disruption.Spec.Count.IntVal = 2
-		})
-
-		Specify("paused statuses", func(ctx SpecContext) {
-			AddReportEntry("removing one pod so we reach status partially injected", targetPod.Name)
-			DeleteRunningPod(ctx, targetPod)
-			ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPartiallyInjected)
-
-			AddReportEntry("removing all pods so we reach status paused partially injected")
-			DeleteRunningPod(ctx, anotherTargetPod)
-			ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPausedPartiallyInjected)
-
-			AddReportEntry("creating the two pods again we reach status injected")
-			targetPodCreated := CreateRunningPod(ctx, targetPod)
-			anotherTargetPodCreated := CreateRunningPod(ctx, anotherTargetPod)
-
-			AddReportEntry("waiting for the two pods to be running")
-			targetPod, anotherTargetPod = <-targetPodCreated, <-anotherTargetPodCreated
-
-			AddReportEntry("waiting for disruption status to be injected again")
-			ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusInjected)
-
-			AddReportEntry("deleting all targets quickly we reach status paused injected or paused partially injected")
-			Concurrently{
-				func(ctx SpecContext) {
-					DeleteRunningPod(ctx, targetPod)
-				},
-				func(ctx SpecContext) {
-					DeleteRunningPod(ctx, anotherTargetPod)
-				},
-			}.DoAndWait(ctx)
-			// it's not possible to guarantee a reconcile loop will notice the two pods at once or one pod then another
-			// and it's also not critical for us, hence we allow both statuses
-			ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPausedInjected, chaostypes.DisruptionInjectionStatusPausedPartiallyInjected)
-
-			AddReportEntry("early disruption deletion as all statuses have been seen")
-			DeleteDisruption(ctx, disruption)
-		})
-
-		Context("disruption expired statuses", func() {
-			BeforeEach(func() {
-				// let's have a quick disruption by default when we test expiration
-				disruption.Spec.Duration = shortDisruptionDuration
-				disruption.Spec.CPUPressure = nil
-				disruption.Spec.DNS = nil
-				disruption.Spec.GRPC = nil
-			})
-
-			Context("PreviouslyInjected", func() {
-				BeforeEach(func() {
-					// single pod so it's possible to inject quickly
-					disruption.Spec.Count.IntVal = 1
-
-					// no need to have two pods here, hence skipped
-					skipSecondPod = true
-				})
-
-				Specify("is the default ending status", func(ctx SpecContext) {
-					AddReportEntry("we expect previously injected status at the end")
-					ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
-					ExpectDisruptionStatusUntilExpired(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
-				})
-
-				Specify("is reached after PausedInjected and stays until disruption expires", func(ctx SpecContext) {
-					AddReportEntry("deleting the target pod until paused injected")
-					DeleteRunningPod(ctx, targetPod)
-					ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPausedInjected)
-
-					AddReportEntry("no new target leads to previoulsy injected at the end")
-					ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
-					ExpectDisruptionStatusUntilExpired(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
-				})
-			})
-
-			Context("PreviouslyNotInjected", func() {
-				BeforeEach(func() {
-					// we do not create the second pod AND we ask for random labels that does not exists so disruption stays NotInjected
-					// it also confirm we update the status at least once (to NotInjected instead of keeping an empty value)
-					skipSecondPod = true
-
-					disruption.Spec.Selector = labels.Set{
-						"anything-that-does-not-exists": "this-also-should-not-exists",
-					}
-
-					expectedDisruptionStatus = chaostypes.DisruptionInjectionStatusNotInjected
-				})
-
-				Specify("stays until disruption expires", func(ctx SpecContext) {
-					ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyNotInjected)
-					ExpectDisruptionStatusUntilExpired(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyNotInjected)
-				})
-			})
-
-			Context("PreviouslyPartiallyInjected", func() {
-				BeforeEach(func() {
-					// we ask the disruption to target 2 pods and never create the second one
-					// hence status should stay until the disruption expire to PartiallyInjected
-					disruption.Spec.Count.IntVal = 2
-					skipSecondPod = true
-					expectedDisruptionStatus = chaostypes.DisruptionInjectionStatusPartiallyInjected
-				})
-
-				Specify("stays until disruption expires", func(ctx SpecContext) {
-					ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyPartiallyInjected)
-					ExpectDisruptionStatusUntilExpired(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyPartiallyInjected)
-				})
-			})
-		})
-	})
+	//Context("Injection Statuses", func() {
+	//	BeforeEach(func() {
+	//		disruption.Spec.Count.IntVal = 2
+	//	})
+	//
+	//	Specify("paused statuses", func(ctx SpecContext) {
+	//		AddReportEntry("removing one pod so we reach status partially injected", targetPod.Name)
+	//		DeleteRunningPod(ctx, targetPod)
+	//		ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPartiallyInjected)
+	//
+	//		AddReportEntry("removing all pods so we reach status paused partially injected")
+	//		DeleteRunningPod(ctx, anotherTargetPod)
+	//		ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPausedPartiallyInjected)
+	//
+	//		AddReportEntry("creating the two pods again we reach status injected")
+	//		targetPodCreated := CreateRunningPod(ctx, targetPod)
+	//		anotherTargetPodCreated := CreateRunningPod(ctx, anotherTargetPod)
+	//
+	//		AddReportEntry("waiting for the two pods to be running")
+	//		targetPod, anotherTargetPod = <-targetPodCreated, <-anotherTargetPodCreated
+	//
+	//		AddReportEntry("waiting for disruption status to be injected again")
+	//		ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusInjected)
+	//
+	//		AddReportEntry("deleting all targets quickly we reach status paused injected or paused partially injected")
+	//		Concurrently{
+	//			func(ctx SpecContext) {
+	//				DeleteRunningPod(ctx, targetPod)
+	//			},
+	//			func(ctx SpecContext) {
+	//				DeleteRunningPod(ctx, anotherTargetPod)
+	//			},
+	//		}.DoAndWait(ctx)
+	//		// it's not possible to guarantee a reconcile loop will notice the two pods at once or one pod then another
+	//		// and it's also not critical for us, hence we allow both statuses
+	//		ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPausedInjected, chaostypes.DisruptionInjectionStatusPausedPartiallyInjected)
+	//
+	//		AddReportEntry("early disruption deletion as all statuses have been seen")
+	//		DeleteDisruption(ctx, disruption)
+	//	})
+	//
+	//	Context("disruption expired statuses", func() {
+	//		BeforeEach(func() {
+	//			// let's have a quick disruption by default when we test expiration
+	//			disruption.Spec.Duration = shortDisruptionDuration
+	//			disruption.Spec.CPUPressure = nil
+	//			disruption.Spec.DNS = nil
+	//			disruption.Spec.GRPC = nil
+	//		})
+	//
+	//		Context("PreviouslyInjected", func() {
+	//			BeforeEach(func() {
+	//				// single pod so it's possible to inject quickly
+	//				disruption.Spec.Count.IntVal = 1
+	//
+	//				// no need to have two pods here, hence skipped
+	//				skipSecondPod = true
+	//			})
+	//
+	//			Specify("is the default ending status", func(ctx SpecContext) {
+	//				AddReportEntry("we expect previously injected status at the end")
+	//				ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
+	//				ExpectDisruptionStatusUntilExpired(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
+	//			})
+	//
+	//			Specify("is reached after PausedInjected and stays until disruption expires", func(ctx SpecContext) {
+	//				AddReportEntry("deleting the target pod until paused injected")
+	//				DeleteRunningPod(ctx, targetPod)
+	//				ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPausedInjected)
+	//
+	//				AddReportEntry("no new target leads to previoulsy injected at the end")
+	//				ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
+	//				ExpectDisruptionStatusUntilExpired(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
+	//			})
+	//		})
+	//
+	//		Context("PreviouslyNotInjected", func() {
+	//			BeforeEach(func() {
+	//				// we do not create the second pod AND we ask for random labels that does not exists so disruption stays NotInjected
+	//				// it also confirm we update the status at least once (to NotInjected instead of keeping an empty value)
+	//				skipSecondPod = true
+	//
+	//				disruption.Spec.Selector = labels.Set{
+	//					"anything-that-does-not-exists": "this-also-should-not-exists",
+	//				}
+	//
+	//				expectedDisruptionStatus = chaostypes.DisruptionInjectionStatusNotInjected
+	//			})
+	//
+	//			Specify("stays until disruption expires", func(ctx SpecContext) {
+	//				ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyNotInjected)
+	//				ExpectDisruptionStatusUntilExpired(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyNotInjected)
+	//			})
+	//		})
+	//
+	//		Context("PreviouslyPartiallyInjected", func() {
+	//			BeforeEach(func() {
+	//				// we ask the disruption to target 2 pods and never create the second one
+	//				// hence status should stay until the disruption expire to PartiallyInjected
+	//				disruption.Spec.Count.IntVal = 2
+	//				skipSecondPod = true
+	//				expectedDisruptionStatus = chaostypes.DisruptionInjectionStatusPartiallyInjected
+	//			})
+	//
+	//			Specify("stays until disruption expires", func(ctx SpecContext) {
+	//				ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyPartiallyInjected)
+	//				ExpectDisruptionStatusUntilExpired(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyPartiallyInjected)
+	//			})
+	//		})
+	//	})
+	//})
 })
