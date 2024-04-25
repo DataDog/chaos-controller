@@ -197,6 +197,19 @@ var _ = Describe("Disruption Client", func() {
 
 				Eventually(k8sClient.Delete).WithContext(ctx).WithArguments(&disruption).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(client.IgnoreNotFound, Succeed()), "Failed to delete Disruption")
 			}),
+			Entry("when a disruption is updated", watch.Modified, "test-disruption-watch-modify", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionName string) {
+				_ = createDisruption(ctx, namespace, disruptionName)
+
+				// Fetch the most up to date disruption
+				var latestDisruption v1beta1.Disruption
+				Eventually(k8sClient.Get).WithContext(ctx).WithArguments(types.NamespacedName{Name: disruptionName, Namespace: namespace}, &latestDisruption).Should(Succeed(), "Failed to fetch Disruption")
+
+				// Update the disruption
+				latestDisruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "30%"}
+
+				// Update the disruption
+				Eventually(k8sClient.Update).WithContext(ctx).WithArguments(&latestDisruption).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(Succeed(), "Failed to update Disruption")
+			}),
 		)
 	})
 
