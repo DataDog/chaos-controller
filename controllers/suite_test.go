@@ -137,7 +137,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 }, NodeTimeout(time.Minute))
 
 func strongCleanup(ctx SpecContext, nsName corev1.Namespace) {
-	log.Infow("Cleaning up namespace", "namespace", namespace)
+	log.Infow("Cleaning up namespace", "namespace", namespace, "nsName", nsName.Name)
 	err := k8sClient.Delete(ctx, &nsName, client.PropagationPolicy(metav1.DeletePropagationForeground), client.GracePeriodSeconds(0))
 	if err != nil {
 		log.Infow("error on namespace delete", "err", err)
@@ -150,7 +150,7 @@ func strongCleanup(ctx SpecContext, nsName corev1.Namespace) {
 	}
 	for _, n := range ns.Items {
 		log.Infow("NAMESPACES FOUND DURING DEBUGGING", "ns", n.Name)
-		if n.Name == nsName.Name {
+		if n.Name == nsName.Name || n.Name == namespace {
 			ps := corev1.PodList{}
 			err = k8sClient.List(ctx, &ps, client.InNamespace(nsName.Name))
 			if err != nil {
