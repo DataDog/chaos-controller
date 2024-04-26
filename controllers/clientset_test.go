@@ -186,7 +186,9 @@ var _ = Describe("Disruption Client", func() {
 				// Assert
 				Eventually(func() watch.Event {
 					event := <-watcher.ResultChan()
+					log.Debugw("received event from watcher", "type", event.Type, "object", event.Object)
 					if event.Type == eventType {
+						log.Debugw("received event matches expected event type", "expected", eventType, "received", event.Type, "object", event.Object)
 						return event
 					}
 					return watch.Event{}
