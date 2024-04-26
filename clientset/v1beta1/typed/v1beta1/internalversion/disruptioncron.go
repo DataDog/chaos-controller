@@ -26,6 +26,7 @@ type DisruptionCronsGetter interface {
 // DisruptionCronInterface has methods to work with DisruptionCron resources.
 type DisruptionCronInterface interface {
 	Create(ctx context.Context, disruptionCron *v1beta1.DisruptionCron, opts v1.CreateOptions) (*v1beta1.DisruptionCron, error)
+	Update(ctx context.Context, disruptionCron *v1beta1.DisruptionCron, opts v1.UpdateOptions) (*v1beta1.DisruptionCron, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.DisruptionCron, error)
 	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.DisruptionCronList, error)
@@ -98,6 +99,20 @@ func (c *disruptionCrons) Create(ctx context.Context, disruptionCron *v1beta1.Di
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("disruptioncrons").
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(disruptionCron).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// Update takes the representation of a disruptionCron and updates it. Returns the server's representation of the disruptionCron, and an error, if there is any.
+func (c *disruptionCrons) Update(ctx context.Context, disruptionCron *v1beta1.DisruptionCron, opts v1.UpdateOptions) (result *v1beta1.DisruptionCron, err error) {
+	result = &v1beta1.DisruptionCron{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("disruptioncrons").
+		Name(disruptionCron.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(disruptionCron).
 		Do(ctx).

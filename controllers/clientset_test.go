@@ -47,6 +47,37 @@ func setupDisruption(disruptionName, namespaceName string) v1beta1.Disruption {
 	}
 }
 
+func setupDisruptionCron(disruptionCronName, namespaceName string) v1beta1.DisruptionCron {
+	return v1beta1.DisruptionCron{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        disruptionCronName,
+			Namespace:   namespaceName,
+			Annotations: map[string]string{v1beta1.SafemodeEnvironmentAnnotation: "lima"},
+		},
+		Spec: v1beta1.DisruptionCronSpec{
+			Schedule: "*/15 * * * *",
+			TargetResource: v1beta1.TargetResourceSpec{
+				Kind: "deployment",
+				Name: "test",
+			},
+			DisruptionTemplate: v1beta1.DisruptionSpec{
+				DryRun: false,
+				Count:  &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
+				Unsafemode: &v1beta1.UnsafemodeSpec{
+					DisableAll: true,
+				},
+				StaticTargeting: false,
+				Level:           chaostypes.DisruptionLevelPod,
+				Network: &v1beta1.NetworkDisruptionSpec{
+					Drop:    0,
+					Corrupt: 0,
+					Delay:   100,
+				},
+			},
+		},
+	}
+}
+
 func createDisruption(ctx SpecContext, nsName string, dsName string) v1beta1.Disruption {
 	disruption := setupDisruption(dsName, nsName)
 
@@ -56,6 +87,26 @@ func createDisruption(ctx SpecContext, nsName string, dsName string) v1beta1.Dis
 	DeferCleanup(DeleteDisruption, disruptionResult)
 
 	return disruptionResult
+}
+
+func createDisruptionCron(ctx SpecContext, nsName string, dcName string) v1beta1.DisruptionCron {
+	disruptionCron := setupDisruptionCron(dcName, nsName)
+
+	Eventually(func(ctx SpecContext) error {
+		return StopTryingNotRetryableKubernetesError(k8sClient.Create(ctx, &disruptionCron), true, false)
+	}).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(Succeed(), "Failed to create DisruptionCron")
+
+	AddReportEntry(fmt.Sprintf("disruptioncron %s created at %v", disruptionCron.Name, disruptionCron.CreationTimestamp.Time), disruptionCron)
+
+	DeferCleanup(func(ctx SpecContext, disruptionCron v1beta1.DisruptionCron) {
+		Eventually(k8sClient.Delete).WithContext(ctx).WithArguments(&disruptionCron).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(client.IgnoreNotFound, Succeed()), "Failed to delete DisruptionCron")
+		Eventually(k8sClient.Get).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).WithArguments(types.NamespacedName{
+			Namespace: disruptionCron.Namespace,
+			Name:      disruptionCron.Name,
+		}, &v1beta1.DisruptionCron{}).Should(WithTransform(errors.IsNotFound, BeTrue()), "DisruptionCron should be deleted")
+	}, disruptionCron)
+
+	return disruptionCron
 }
 
 var _ = Describe("Disruption Client", func() {
@@ -222,4 +273,164 @@ var _ = Describe("Disruption Client", func() {
 		)
 	})
 
+})
+
+var _ = Describe("DisruptionCron Client", func() {
+	var (
+		clientset *clientsetv1beta1.Clientset
+	)
+
+	JustBeforeEach(func() {
+		// Initialize the clientset before each test
+		var err error
+		clientset, err = clientsetv1beta1.NewForConfig(restConfig)
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
+	Describe("List Method", func() {
+		DescribeTable("should list disruptioncrons correctly", func(ctx SpecContext, expectedDisruptionCronsCount int) {
+			// Arrange
+			namePrefix := "test-disruptioncron-list"
+			for i := 1; i <= expectedDisruptionCronsCount; i++ {
+				disruptionCronName := fmt.Sprintf("%s%d", namePrefix, i)
+				_ = createDisruptionCron(ctx, namespace, disruptionCronName)
+			}
+
+			// Action
+			dcs, err := clientset.Chaos().DisruptionCrons(namespace).List(ctx, metav1.ListOptions{})
+
+			// Assert
+			Expect(err).ShouldNot(HaveOccurred(), "Error occurred while listing disruptioncrons")
+
+			var count int
+			for _, item := range dcs.Items {
+				if strings.HasPrefix(item.Name, namePrefix) {
+					count++
+				}
+			}
+			Expect(count).To(Equal(expectedDisruptionCronsCount), "Mismatch in the number of expected disruptions")
+		},
+			Entry("when there are no disruptioncrons in the cluster", 0, NodeTimeout(k8sAPIServerResponseTimeout)),
+			Entry("when there is a single disruptioncron in the cluster", 1, NodeTimeout(k8sAPIServerResponseTimeout)),
+			Entry("when there are multiple disruptioncrons in the cluster", 3, NodeTimeout(k8sAPIServerResponseTimeout)),
+		)
+	})
+
+	Describe("Get Method", func() {
+		DescribeTable("should retrieve a specific disruptioncron successfully", func(ctx SpecContext, disruptionCronName string) {
+			// Arrange
+			_ = createDisruptionCron(ctx, namespace, disruptionCronName)
+
+			// Action
+			dc, err := clientset.Chaos().DisruptionCrons(namespace).Get(ctx, disruptionCronName, metav1.GetOptions{})
+
+			// Assert
+			Expect(err).ShouldNot(HaveOccurred(), "Error occurred while retrieving the disruptioncron")
+			Expect(dc.Name).To(Equal(disruptionCronName), "Mismatch in the name of the retrieved disruptioncron")
+
+		},
+			Entry("when a disruptioncron exists in the cluster", "test-disruptioncron-get", NodeTimeout(k8sAPIServerResponseTimeout)),
+		)
+	})
+
+	Describe("Create Method", func() {
+		DescribeTable("should successfully create disruptioncrons", func(ctx SpecContext, disruptionCronName string) {
+			// Arrange
+			disruptionCron := setupDisruptionCron(disruptionCronName, namespace)
+
+			// Action
+			dc, err := clientset.Chaos().DisruptionCrons(namespace).Create(ctx, &disruptionCron, metav1.CreateOptions{})
+
+			// Assert
+			Expect(err).ShouldNot(HaveOccurred(), "Error occurred while creating the disruptioncron")
+			Expect(dc.Name).To(Equal(disruptionCronName), "Mismatch in the name of the created disruptioncron")
+
+			var fetchedDisruptionCron v1beta1.DisruptionCron
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{Name: disruptionCronName, Namespace: namespace}, &fetchedDisruptionCron)
+			}, k8sAPIServerResponseTimeout, k8sAPIPotentialChangesEvery).Should(Succeed(), "Should eventually be able to retrieve the created disruptionCron")
+
+			Expect(fetchedDisruptionCron.Name).To(Equal(disruptionCronName), "Mismatch in the name of the fetched disruptionCron")
+
+		},
+			Entry("when creating a new disruptioncron", "test-disruptioncron-create", NodeTimeout(k8sAPIServerResponseTimeout)),
+		)
+	})
+
+	Describe("Delete Method", func() {
+		DescribeTable("should successfully delete disruptioncrons", func(ctx SpecContext, disruptionCronName string) {
+			// Arrange
+			_ = createDisruptionCron(ctx, namespace, disruptionCronName)
+
+			// Action
+			err := clientset.Chaos().DisruptionCrons(namespace).Delete(ctx, disruptionCronName, metav1.DeleteOptions{})
+
+			// Assert
+			Expect(err).ShouldNot(HaveOccurred(), "Error occurred while deleting the disruptioncron")
+
+			Eventually(func() bool {
+				var dc v1beta1.DisruptionCron
+				err := k8sClient.Get(ctx, types.NamespacedName{Name: disruptionCronName, Namespace: namespace}, &dc)
+				return errors.IsNotFound(err)
+			}, k8sAPIServerResponseTimeout, k8sAPIPotentialChangesEvery).Should(BeTrue(), "DisruptionCron should be deleted from the cluster")
+		},
+			Entry("when deleting an existing disruptioncron", "test-disruptioncron-delete", NodeTimeout(k8sAPIServerResponseTimeout)),
+		)
+	})
+
+	Describe("Watch Method", func() {
+		var watcher watch.Interface
+
+		JustBeforeEach(func() {
+			// Create watcher for DisruptionCrons
+			var err error
+			watcher, err = clientset.Chaos().DisruptionCrons(namespace).Watch(suiteCtx, metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Failed to start watching disruptioncrons")
+
+			DeferCleanup(watcher.Stop)
+		})
+
+		DescribeTable("should successfully capture events related to disruptioncrons",
+			func(ctx SpecContext, eventType watch.EventType, disruptionCronName string, configureDisruptionCron func(ctx SpecContext, disruptionCronName string)) {
+				// Arrange
+				configureDisruptionCron(ctx, disruptionCronName)
+
+				// Assert
+				Eventually(func() watch.Event {
+					event := <-watcher.ResultChan()
+					log.Debugw("received event from watcher", "type", event.Type, "object", event.Object)
+					if event.Type == eventType {
+						log.Debugw("received event matches expected event type", "expected", eventType, "received", event.Type, "object", event.Object)
+						return event
+					}
+					return watch.Event{}
+				}, k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(func(e watch.Event) bool {
+					dc, ok := e.Object.(*v1beta1.DisruptionCron)
+					return ok && dc.Name == disruptionCronName && e.Type == eventType
+				}, BeTrue()), "Expected to receive specific event type with correct disruptioncron name")
+
+			},
+			Entry("when a disruptioncron is added", watch.Added, "test-disruptioncron-watch-add", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionCronName string) {
+				_ = createDisruptionCron(ctx, namespace, disruptionCronName)
+			}),
+			Entry("when a disruptioncron is deleted", watch.Deleted, "test-disruptioncron-watch-delete", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionCronName string) {
+				disruptionCron := createDisruptionCron(ctx, namespace, disruptionCronName)
+
+				Eventually(k8sClient.Delete).WithContext(ctx).WithArguments(&disruptionCron).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(client.IgnoreNotFound, Succeed()), "Failed to delete DisruptionCron")
+			}),
+			Entry("when a disruptiocron is updated", watch.Modified, "test-disruptioncron-watch-modify", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionCronName string) {
+				_ = createDisruptionCron(ctx, namespace, disruptionCronName)
+
+				// Fetch the most up to date disruptioncron
+				var latestDisruptionCron v1beta1.DisruptionCron
+				Eventually(k8sClient.Get).WithContext(ctx).WithArguments(types.NamespacedName{Name: disruptionCronName, Namespace: namespace}, &latestDisruptionCron).Should(Succeed(), "Failed to fetch DisruptionCrib")
+
+				// Update the disruptioncron
+				latestDisruptionCron.Spec.DisruptionTemplate.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "30%"}
+
+				// Update the disruptioncron
+				Eventually(k8sClient.Update).WithContext(ctx).WithArguments(&latestDisruptionCron).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(Succeed(), "Failed to update DisruptionCron")
+			}),
+		)
+	})
 })
