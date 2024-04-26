@@ -7,7 +7,6 @@ package controllers
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	clientsetv1beta1 "github.com/DataDog/chaos-controller/clientset/v1beta1"
@@ -168,62 +167,35 @@ var _ = Describe("Disruption Client", func() {
 		)
 	})
 	Describe("Watch Method", func() {
+		var watcher watch.Interface
+
+		JustBeforeEach(func() {
+			// Create watcher for Disruptions
+			var err error
+			watcher, err = clientset.Chaos().Disruptions(namespace).Watch(suiteCtx, metav1.ListOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Failed to start watching disruptions")
+
+			DeferCleanup(watcher.Stop)
+		})
+
 		DescribeTable("should successfully capture events related to disruptions",
 			func(ctx SpecContext, eventType watch.EventType, disruptionName string, configureDisruption func(ctx SpecContext, disruptionName string)) {
 				// Arrange
 				configureDisruption(ctx, disruptionName)
 
-				getEventFromWatcher := func() watch.Event {
-					var watcher watch.Interface
-					var err error
-
-					createWatcher := func() error {
-						watcher, err = clientset.Chaos().Disruptions(namespace).Watch(ctx, metav1.ListOptions{})
-						return err
-					}
-
-					// Initially create the watcher outside the loop
-					err = createWatcher()
-					if err != nil {
-						log.Errorw("Failed to create watcher initially", "error", err)
-						return watch.Event{} // Consider how to handle initial failure appropriately
-					}
-
-					for {
-						select {
-						case event, ok := <-watcher.ResultChan():
-							if !ok {
-								log.Errorw("Watcher channel closed, attempting to reconnect...")
-								// Reattempt to create the watcher with a simple retry mechanism
-								for i := 0; i < 3; i++ { // Retry 3 times, you can adjust this number
-									err = createWatcher()
-									if err == nil {
-										break
-									}
-									log.Errorw("Failed to recreate the watcher", "attempt", i+1, "error", err)
-									time.Sleep(5 * time.Second) // Backoff before retrying
-								}
-								if err != nil {
-									log.Errorw("Failed to recreate the watcher after several attempts", "error", err)
-									return watch.Event{} // Consider how to handle continuous failure appropriately
-								}
-								continue
-							}
-							log.Infow("Event received", "Type", event.Type, "Object", event.Object)
-							if event.Type == eventType {
-								return event
-							}
+				// Assert
+				Eventually(func() watch.Event {
+					select {
+					case event := <-watcher.ResultChan():
+						if event.Type == eventType {
+							return event
 						}
 					}
-				}
-
-				isExpectedEvent := func(e watch.Event) bool {
+					return watch.Event{}
+				}, k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(func(e watch.Event) bool {
 					d, ok := e.Object.(*v1beta1.Disruption)
 					return ok && d.Name == disruptionName && e.Type == eventType
-				}
-
-				// Use the named functions in the Eventually function
-				Eventually(getEventFromWatcher, k8sAPIServerResponseTimeout).WithPolling(k8sAPIPotentialChangesEvery).Should(WithTransform(isExpectedEvent, BeTrue()), "Expected to receive specific event type with correct disruption name")
+				}, BeTrue()), "Expected to receive specific event type with correct disruption name")
 
 			},
 			Entry("when a disruption is added", watch.Added, "test-disruption-watch-add", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionName string) {
