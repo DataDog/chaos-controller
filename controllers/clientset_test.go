@@ -84,8 +84,6 @@ func createDisruption(ctx SpecContext, nsName string, dsName string) v1beta1.Dis
 	disruptionResult, _, _ := InjectPodsAndDisruption(ctx, disruption, true)
 	ExpectDisruptionStatus(ctx, disruptionResult, chaostypes.DisruptionInjectionStatusInjected)
 
-	DeferCleanup(DeleteDisruption, disruptionResult)
-
 	return disruptionResult
 }
 
