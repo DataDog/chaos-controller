@@ -185,11 +185,11 @@ var _ = Describe("Disruption Client", func() {
 
 				// Assert
 				Eventually(func() watch.Event {
-					select {
-					case event := <-watcher.ResultChan():
-						if event.Type == eventType {
-							return event
-						}
+					event := <-watcher.ResultChan()
+					log.Infow("Event received", "Type", event.Type, "Object", event.Object)
+					if event.Type == eventType {
+						log.Infow("Event matched", "Type", event.Type, "Expected", eventType, "Object", event.Object)
+						return event
 					}
 					return watch.Event{}
 				}, k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(func(e watch.Event) bool {
