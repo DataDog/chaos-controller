@@ -288,7 +288,7 @@ type DisruptionFilter struct {
 // +kubebuilder:subresource:status
 // +genclient
 // +genclient:noStatus
-// +genclient:onlyVerbs=create,get,list,delete,watch
+// +genclient:onlyVerbs=create,get,list,delete,watch,update
 type Disruption struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

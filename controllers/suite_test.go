@@ -44,6 +44,7 @@ var (
 	restConfig *rest.Config
 	namespace  string
 	lightCfg   lightConfig
+	suiteCtx   context.Context
 )
 
 var (
@@ -99,18 +100,19 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	bgCtx, cancel := context.WithCancel(context.Background())
+	var cancel context.CancelFunc
+	suiteCtx, cancel = context.WithCancel(context.Background())
 	go func() {
 		defer GinkgoRecover()
 		GinkgoHelper()
 
-		if err := mgr.Start(bgCtx); err != nil {
+		if err := mgr.Start(suiteCtx); err != nil {
 			Fail(fmt.Sprintf("unable to start manager, test can't be ran: %v", err))
 		}
 	}()
 	DeferCleanup(cancel)
 
-	Eventually(mgr.GetCache().WaitForCacheSync).WithContext(ctx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(BeTrue())
+	Eventually(mgr.GetCache().WaitForCacheSync).WithContext(suiteCtx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(BeTrue())
 
 	k8sClient = mgr.GetClient()
 
