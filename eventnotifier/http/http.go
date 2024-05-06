@@ -20,6 +20,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
+	"github.com/google/jsonapi"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -41,16 +42,18 @@ type Notifier struct {
 }
 
 type HTTPNotifierEvent struct {
-	NotificationTitle  string                 `json:"notification-title"`
-	NotificationType   types.NotificationType `json:"notification-type"`
-	EventMessage       string                 `json:"event-message"`
-	InvolvedObjectKind string                 `json:"involved-object-kind"`
-	DisruptionName     string                 `json:"disruption-name"`
-	Cluster            string                 `json:"cluster"`
-	Namespace          string                 `json:"namespace"`
-	TargetsCount       int                    `json:"targets-count"`
-	Username           string                 `json:"username,omitempty"`
-	UserEmail          string                 `json:"user-email,omitempty"`
+	ID                 string                 `jsonapi:"primary,http_notifier_events"`
+	NotificationTitle  string                 `jsonapi:"attr,notification_title"`
+	NotificationType   types.NotificationType `jsonapi:"attr,notification_type"`
+	EventMessage       string                 `jsonapi:"attr,event_message"`
+	InvolvedObjectKind string                 `jsonapi:"attr,involved_object_kind"`
+	DisruptionName     string                 `jsonapi:"attr,disruption_name"`
+	Disruption         string                 `jsonapi:"attr,disruption"`
+	Cluster            string                 `jsonapi:"attr,cluster"`
+	Namespace          string                 `jsonapi:"attr,namespace"`
+	TargetsCount       int                    `jsonapi:"attr,targets_count"`
+	Username           string                 `jsonapi:"attr,username,omitempty"`
+	UserEmail          string                 `jsonapi:"attr,user_email,omitempty"`
 }
 
 // New HTTP Notifier
@@ -112,7 +115,7 @@ func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverHTTP)
 }
 
-// NotifyWarning generates a notification for generic k8s Warning events
+// Notify generates a notification for generic k8s Warning events
 func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
 	emailAddr := &mail.Address{}
 
@@ -126,12 +129,19 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		}
 	}
 
+	disruptionJSON, err := json.Marshal(dis)
+	if err != nil {
+		return fmt.Errorf("http notifier: couldn't marshal disruption: %s", err)
+	}
+
 	notif := HTTPNotifierEvent{
+		ID:                 string(dis.UID),
 		NotificationTitle:  utils.BuildHeaderMessageFromDisruptionEvent(dis, notifType),
 		NotificationType:   notifType,
 		EventMessage:       utils.BuildBodyMessageFromDisruptionEvent(dis, event, false),
 		InvolvedObjectKind: dis.Kind,
 		DisruptionName:     dis.Name,
+		Disruption:         string(disruptionJSON),
 		Cluster:            n.common.ClusterName,
 		Namespace:          dis.Namespace,
 		TargetsCount:       len(dis.Status.TargetInjections),
@@ -139,14 +149,14 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		UserEmail:          emailAddr.Address,
 	}
 
-	body, err := json.Marshal(notif)
-	if err != nil {
-		return fmt.Errorf("http notifier: couldn't send notification: %s", err.Error())
+	body := bytes.NewBuffer(nil)
+	if err := jsonapi.MarshalOnePayloadEmbedded(body, &notif); err != nil {
+		return fmt.Errorf("http notifier: couldn't send notification: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, n.url, bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, n.url, body)
 	if err != nil {
-		return fmt.Errorf("http notifier: couldn't send notification: %s", err.Error())
+		return fmt.Errorf("http notifier: couldn't send notification: %w", err)
 	}
 
 	for headerKey, headerValue := range n.headers {
@@ -156,7 +166,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 	res, err := n.client.Do(req)
 
 	if err != nil {
-		return fmt.Errorf("http notifier: error when sending notification: %s", err.Error())
+		return fmt.Errorf("http notifier: error when sending notification: %w", err)
 	}
 
 	n.logger.Debugw("notifier: sending notifier event to http", "disruption", dis.Name, "eventType", event.Type, "message", notif.EventMessage)
@@ -166,7 +176,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 	}
 
 	if err = res.Body.Close(); err != nil {
-		return fmt.Errorf("http notifier: error when sending notification: %s", err.Error())
+		return fmt.Errorf("http notifier: error when sending notification: %w", err)
 	}
 
 	return nil
