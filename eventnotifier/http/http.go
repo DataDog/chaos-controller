@@ -155,7 +155,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 
 	body := bytes.NewBuffer(nil)
 	if err := jsonapi.MarshalOnePayloadEmbedded(body, &notif); err != nil {
-		return fmt.Errorf("http notifier: couldn't send notification: %w", err)
+		return fmt.Errorf("http notifier: couldn't marshal notification: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, n.url, body)
