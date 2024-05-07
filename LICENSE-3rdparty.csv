@@ -214,6 +214,7 @@ github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/function,BSD-3-Cl
 github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/value,BSD-3-Clause
 github.com/google/gofuzz,github.com/google/gofuzz,Apache-2.0
 github.com/google/gofuzz,github.com/google/gofuzz/bytesource,Apache-2.0
+github.com/google/jsonapi,github.com/google/jsonapi,MIT
 github.com/google/pprof,github.com/google/pprof/profile,Apache-2.0
 github.com/google/uuid,github.com/google/uuid,BSD-3-Clause
 github.com/gorilla/websocket,github.com/gorilla/websocket,BSD-2-Clause
