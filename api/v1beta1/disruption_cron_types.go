@@ -18,7 +18,7 @@ func init() {
 // +kubebuilder:subresource:status
 // +genclient
 // +genclient:noStatus
-// +genclient:onlyVerbs=create,get,list,delete,watch
+// +genclient:onlyVerbs=create,get,list,delete,watch,update
 type DisruptionCron struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
