@@ -11,6 +11,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	clientsetv1beta1 "github.com/DataDog/chaos-controller/clientset/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/google/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -122,9 +123,9 @@ var _ = Describe("Disruption Client", func() {
 	Describe("List Method", func() {
 		DescribeTable("should list disruptions correctly", func(ctx SpecContext, expectedDisruptionsCount int) {
 			// Arrange
-			namePrefix := "test-disruption-list"
+			namePrefix := "ds-list"
 			for i := 1; i <= expectedDisruptionsCount; i++ {
-				disruptionName := fmt.Sprintf("%s%d", namePrefix, i)
+				disruptionName := fmt.Sprintf("%s-%s", namePrefix, uuid.New().String())
 				_ = createDisruption(ctx, namespace, disruptionName)
 			}
 
@@ -150,8 +151,9 @@ var _ = Describe("Disruption Client", func() {
 	})
 
 	Describe("Get Method", func() {
-		DescribeTable("should retrieve a specific disruption successfully", func(ctx SpecContext, disruptionName string) {
+		DescribeTable("should retrieve a specific disruption successfully", func(ctx SpecContext, namePrefix string) {
 			// Arrange
+			disruptionName := fmt.Sprintf("%s-%s", namePrefix, uuid.New().String())
 			_ = createDisruption(ctx, namespace, disruptionName)
 
 			// Action
@@ -161,17 +163,18 @@ var _ = Describe("Disruption Client", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Error occurred while retrieving the disruption")
 			Expect(d.Name).To(Equal(disruptionName), "Mismatch in the name of the retrieved disruption")
 		},
-			Entry("when a disruption exists in the cluster", "test-disruption-get", NodeTimeout(k8sAPIServerResponseTimeout)),
+			Entry("when a disruption exists in the cluster", "ds-get", NodeTimeout(k8sAPIServerResponseTimeout)),
 		)
 	})
 
 	Describe("Create Method", func() {
-		DescribeTable("should successfully create disruptions", func(ctx SpecContext, disruptionName string) {
+		DescribeTable("should successfully create disruptions", func(ctx SpecContext, namePrefix string) {
 			var (
 				disruptionResult *v1beta1.Disruption
 				err              error
 			)
 			// Arrange
+			disruptionName := fmt.Sprintf("%s-%s", namePrefix, uuid.New().String())
 			disruption := setupDisruption(disruptionName, namespace)
 			disruption.Spec.Selector = map[string]string{"foo-foo": "bar-bar"}
 			disruption.Spec.Duration = v1beta1.DisruptionDuration(lightCfg.Controller.DefaultDuration.String())
@@ -190,13 +193,14 @@ var _ = Describe("Disruption Client", func() {
 				return k8sClient.Get(ctx, types.NamespacedName{Name: disruptionName, Namespace: namespace}, &fetchedDisruption)
 			}, k8sAPIServerResponseTimeout, k8sAPIPotentialChangesEvery).Should(Succeed(), "Should eventually be able to retrieve the created disruption")
 		},
-			Entry("when creating a new disruption", "test-disruption-create", NodeTimeout(k8sAPIServerResponseTimeout)),
+			Entry("when creating a new disruption", "ds-create", NodeTimeout(k8sAPIServerResponseTimeout)),
 		)
 	})
 
 	Describe("Delete Method", func() {
-		DescribeTable("should successfully delete disruptions", func(ctx SpecContext, disruptionName string) {
+		DescribeTable("should successfully delete disruptions", func(ctx SpecContext, namePrefix string) {
 			// Arrange
+			disruptionName := fmt.Sprintf("%s-%s", namePrefix, uuid.New().String())
 			_ = createDisruption(ctx, namespace, disruptionName)
 
 			// Action
@@ -212,7 +216,7 @@ var _ = Describe("Disruption Client", func() {
 			}, k8sAPIServerResponseTimeout, k8sAPIPotentialChangesEvery).Should(BeTrue(), "Disruption should be deleted from the cluster")
 
 		},
-			Entry("when deleting an existing disruption", "test-disruption-delete", NodeTimeout(k8sAPIServerResponseTimeout)),
+			Entry("when deleting an existing disruption", "ds-delete", NodeTimeout(k8sAPIServerResponseTimeout)),
 		)
 	})
 	Describe("Watch Method", func() {
@@ -228,8 +232,9 @@ var _ = Describe("Disruption Client", func() {
 		})
 
 		DescribeTable("should successfully capture events related to disruptions",
-			func(ctx SpecContext, eventType watch.EventType, disruptionName string, configureDisruption func(ctx SpecContext, disruptionName string)) {
+			func(ctx SpecContext, eventType watch.EventType, namePrefix string, configureDisruption func(ctx SpecContext, disruptionName string)) {
 				// Arrange
+				disruptionName := fmt.Sprintf("%s-%s", namePrefix, uuid.New().String())
 				configureDisruption(ctx, disruptionName)
 
 				// Assert
@@ -247,15 +252,15 @@ var _ = Describe("Disruption Client", func() {
 				}, BeTrue()), "Expected to receive specific event type with correct disruption name")
 
 			},
-			Entry("when a disruption is added", watch.Added, "test-disruption-watch-add", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionName string) {
+			Entry("when a disruption is added", watch.Added, "ds-watch-add", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionName string) {
 				_ = createDisruption(ctx, namespace, disruptionName)
 			}),
-			Entry("when a disruption is deleted", watch.Deleted, "test-disruption-watch-delete", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionName string) {
+			Entry("when a disruption is deleted", watch.Deleted, "ds-watch-delete", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionName string) {
 				disruption := createDisruption(ctx, namespace, disruptionName)
 
 				Eventually(k8sClient.Delete).WithContext(ctx).WithArguments(&disruption).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(client.IgnoreNotFound, Succeed()), "Failed to delete Disruption")
 			}),
-			Entry("when a disruption is updated", watch.Modified, "test-disruption-watch-modify", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionName string) {
+			Entry("when a disruption is updated", watch.Modified, "ds-watch-modify", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionName string) {
 				_ = createDisruption(ctx, namespace, disruptionName)
 
 				// Fetch the most up to date disruption
@@ -288,9 +293,9 @@ var _ = Describe("DisruptionCron Client", func() {
 	Describe("List Method", func() {
 		DescribeTable("should list disruptioncrons correctly", func(ctx SpecContext, expectedDisruptionCronsCount int) {
 			// Arrange
-			namePrefix := "test-disruptioncron-list"
+			namePrefix := "dscron-list"
 			for i := 1; i <= expectedDisruptionCronsCount; i++ {
-				disruptionCronName := fmt.Sprintf("%s%d", namePrefix, i)
+				disruptionCronName := fmt.Sprintf("%s-%s", namePrefix, uuid.New().String())
 				_ = createDisruptionCron(ctx, namespace, disruptionCronName)
 			}
 
@@ -315,8 +320,9 @@ var _ = Describe("DisruptionCron Client", func() {
 	})
 
 	Describe("Get Method", func() {
-		DescribeTable("should retrieve a specific disruptioncron successfully", func(ctx SpecContext, disruptionCronName string) {
+		DescribeTable("should retrieve a specific disruptioncron successfully", func(ctx SpecContext, namePrefix string) {
 			// Arrange
+			disruptionCronName := fmt.Sprintf("%s-%s", namePrefix, uuid.New().String())
 			_ = createDisruptionCron(ctx, namespace, disruptionCronName)
 
 			// Action
@@ -327,13 +333,14 @@ var _ = Describe("DisruptionCron Client", func() {
 			Expect(dc.Name).To(Equal(disruptionCronName), "Mismatch in the name of the retrieved disruptioncron")
 
 		},
-			Entry("when a disruptioncron exists in the cluster", "test-disruptioncron-get", NodeTimeout(k8sAPIServerResponseTimeout)),
+			Entry("when a disruptioncron exists in the cluster", "dscron-get", NodeTimeout(k8sAPIServerResponseTimeout)),
 		)
 	})
 
 	Describe("Create Method", func() {
-		DescribeTable("should successfully create disruptioncrons", func(ctx SpecContext, disruptionCronName string) {
+		DescribeTable("should successfully create disruptioncrons", func(ctx SpecContext, namePrefix string) {
 			// Arrange
+			disruptionCronName := fmt.Sprintf("%s-%s", namePrefix, uuid.New().String())
 			disruptionCron := setupDisruptionCron(disruptionCronName, namespace)
 
 			// Action
@@ -351,13 +358,14 @@ var _ = Describe("DisruptionCron Client", func() {
 			Expect(fetchedDisruptionCron.Name).To(Equal(disruptionCronName), "Mismatch in the name of the fetched disruptionCron")
 
 		},
-			Entry("when creating a new disruptioncron", "test-disruptioncron-create", NodeTimeout(k8sAPIServerResponseTimeout)),
+			Entry("when creating a new disruptioncron", "dscron-create", NodeTimeout(k8sAPIServerResponseTimeout)),
 		)
 	})
 
 	Describe("Delete Method", func() {
-		DescribeTable("should successfully delete disruptioncrons", func(ctx SpecContext, disruptionCronName string) {
+		DescribeTable("should successfully delete disruptioncrons", func(ctx SpecContext, namePrefix string) {
 			// Arrange
+			disruptionCronName := fmt.Sprintf("%s-%s", namePrefix, uuid.New().String())
 			_ = createDisruptionCron(ctx, namespace, disruptionCronName)
 
 			// Action
@@ -389,8 +397,9 @@ var _ = Describe("DisruptionCron Client", func() {
 		})
 
 		DescribeTable("should successfully capture events related to disruptioncrons",
-			func(ctx SpecContext, eventType watch.EventType, disruptionCronName string, configureDisruptionCron func(ctx SpecContext, disruptionCronName string)) {
+			func(ctx SpecContext, eventType watch.EventType, namePrefix string, configureDisruptionCron func(ctx SpecContext, disruptionCronName string)) {
 				// Arrange
+				disruptionCronName := fmt.Sprintf("%s-%s", namePrefix, uuid.New().String())
 				configureDisruptionCron(ctx, disruptionCronName)
 
 				// Assert
@@ -408,15 +417,15 @@ var _ = Describe("DisruptionCron Client", func() {
 				}, BeTrue()), "Expected to receive specific event type with correct disruptioncron name")
 
 			},
-			Entry("when a disruptioncron is added", watch.Added, "test-disruptioncron-watch-add", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionCronName string) {
+			Entry("when a disruptioncron is added", watch.Added, "dscron-watch-add", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionCronName string) {
 				_ = createDisruptionCron(ctx, namespace, disruptionCronName)
 			}),
-			Entry("when a disruptioncron is deleted", watch.Deleted, "test-disruptioncron-watch-delete", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionCronName string) {
+			Entry("when a disruptioncron is deleted", watch.Deleted, "dscron-watch-delete", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionCronName string) {
 				disruptionCron := createDisruptionCron(ctx, namespace, disruptionCronName)
 
 				Eventually(k8sClient.Delete).WithContext(ctx).WithArguments(&disruptionCron).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(client.IgnoreNotFound, Succeed()), "Failed to delete DisruptionCron")
 			}),
-			Entry("when a disruptiocron is updated", watch.Modified, "test-disruptioncron-watch-modify", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionCronName string) {
+			Entry("when a disruptiocron is updated", watch.Modified, "dscron-watch-modify", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionCronName string) {
 				_ = createDisruptionCron(ctx, namespace, disruptionCronName)
 
 				// Fetch the most up to date disruptioncron
