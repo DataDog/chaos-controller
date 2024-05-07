@@ -11,6 +11,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	clientsetv1beta1 "github.com/DataDog/chaos-controller/clientset/v1beta1"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/google/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -79,7 +80,7 @@ func setupDisruptionCron(disruptionCronName, namespaceName string) v1beta1.Disru
 }
 
 func createDisruption(ctx SpecContext, nsName string, dsName string) v1beta1.Disruption {
-	disruption := setupDisruption(dsName, nsName)
+	disruption := setupDisruption(fmt.Sprintf("%s-%s", dsName, uuid.New().String()), nsName)
 
 	disruptionResult, _, _ := InjectPodsAndDisruption(ctx, disruption, true)
 	ExpectDisruptionStatus(ctx, disruptionResult, chaostypes.DisruptionInjectionStatusInjected)
@@ -88,7 +89,7 @@ func createDisruption(ctx SpecContext, nsName string, dsName string) v1beta1.Dis
 }
 
 func createDisruptionCron(ctx SpecContext, nsName string, dcName string) v1beta1.DisruptionCron {
-	disruptionCron := setupDisruptionCron(dcName, nsName)
+	disruptionCron := setupDisruptionCron(fmt.Sprintf("%s-%s", dcName, uuid.New().String()), nsName)
 
 	Eventually(func(ctx SpecContext) error {
 		return StopTryingNotRetryableKubernetesError(k8sClient.Create(ctx, &disruptionCron), true, false)
