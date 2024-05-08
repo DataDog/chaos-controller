@@ -55,6 +55,8 @@ func (b bearerAuthTokenProvider) AuthToken(ctx context.Context) (string, error) 
 		req.Header.Add(headerKey, headerValue)
 	}
 
+	b.Logger.Debugw("sending request to get token", "req", fmt.Sprintf("%+v", req))
+
 	res, err := b.Client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("unable to do http request to get token: %w", err)
