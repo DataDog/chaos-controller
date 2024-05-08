@@ -26,6 +26,7 @@ type DisruptionsGetter interface {
 // DisruptionInterface has methods to work with Disruption resources.
 type DisruptionInterface interface {
 	Create(ctx context.Context, disruption *v1beta1.Disruption, opts v1.CreateOptions) (*v1beta1.Disruption, error)
+	Update(ctx context.Context, disruption *v1beta1.Disruption, opts v1.UpdateOptions) (*v1beta1.Disruption, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.Disruption, error)
 	List(ctx context.Context, opts v1.ListOptions) (*v1beta1.DisruptionList, error)
@@ -98,6 +99,20 @@ func (c *disruptions) Create(ctx context.Context, disruption *v1beta1.Disruption
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("disruptions").
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(disruption).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// Update takes the representation of a disruption and updates it. Returns the server's representation of the disruption, and an error, if there is any.
+func (c *disruptions) Update(ctx context.Context, disruption *v1beta1.Disruption, opts v1.UpdateOptions) (result *v1beta1.Disruption, err error) {
+	result = &v1beta1.Disruption{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("disruptions").
+		Name(disruption.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(disruption).
 		Do(ctx).

@@ -20,6 +20,7 @@ package v1beta1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 var (
@@ -29,6 +30,13 @@ var (
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(GroupVersion,
+		&Disruption{},
+		&DisruptionList{},
+		&DisruptionCron{},
+		&DisruptionCronList{},
+	)
+
+	scheme.AddKnownTypes(schema.GroupVersion{Group: GroupName, Version: runtime.APIVersionInternal},
 		&Disruption{},
 		&DisruptionList{},
 		&DisruptionCron{},
