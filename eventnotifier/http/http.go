@@ -189,7 +189,8 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		return fmt.Errorf("http notifier: error when sending notification: %w", err)
 	}
 
-	n.logger.Debugw("notifier: sending notifier event to http", "disruption", dis.Name, "eventType", event.Type, "message", notif.EventMessage)
+	n.logger.Debugw("http notifier: sending notifier event to http", "disruption", dis.Name, "eventType", event.Type, "message", notif.EventMessage)
+	n.logger.Debugw("http notifier: sending request to get token", "req", fmt.Sprintf("%+v", req))
 
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
 		return fmt.Errorf("http notifier: receiving %d status code from sent notification", res.StatusCode)
