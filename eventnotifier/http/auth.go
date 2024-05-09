@@ -77,8 +77,6 @@ func (b bearerAuthTokenProvider) AuthToken(ctx context.Context) (string, error) 
 		return "", fmt.Errorf("error when reading token: %w", err)
 	}
 
-	b.Logger.Debugw("successfully retrieved token", "tokenBytes", string(tokenBytes))
-
 	if b.TokenPath == "" {
 		return string(tokenBytes), nil
 	}
