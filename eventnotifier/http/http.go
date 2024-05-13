@@ -153,12 +153,12 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		InvolvedObjectKind: dis.Kind,
 		DisruptionName:     dis.Name,
 		Disruption:         string(disruptionStr),
+		Timestamp:          now.UnixNano(),
 		Cluster:            n.common.ClusterName,
 		Namespace:          dis.Namespace,
 		TargetsCount:       len(dis.Status.TargetInjections),
 		Username:           emailAddr.Name,
 		UserEmail:          emailAddr.Address,
-		Timestamp:          now.UnixNano(),
 	}
 
 	body := bytes.NewBuffer(nil)
