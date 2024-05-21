@@ -140,7 +140,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 
 	disruptionStr, err := json.Marshal(dis)
 	if err != nil {
-		return fmt.Errorf("http notifier: couldn't send notification: %w", err)
+		return fmt.Errorf("http notifier: couldn't marshal disruption: %w", err)
 	}
 
 	now := time.Now()
