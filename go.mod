@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/DataDog/datadog-go v4.8.3+incompatible
+	github.com/DataDog/jsonapi v0.8.6
 	github.com/aquasecurity/libbpfgo v0.5.1-libbpf-1.2
 	github.com/aquasecurity/libbpfgo/helpers v0.4.5
 	github.com/avast/retry-go v3.0.0+incompatible
@@ -15,7 +16,6 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-logr/logr v1.4.1
 	github.com/go-logr/zapr v1.3.0
-	github.com/google/jsonapi v1.0.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/miekg/dns v1.1.54
