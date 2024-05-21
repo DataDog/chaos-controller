@@ -181,7 +181,7 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 // getUserDetails retrieves the user details associated with a given disruption.
 // It returns the username, the email address, and a JSON string of user groups.
 // On error, it logs a warning and returns empty values for the fields.
-func (n *Notifier) getUserDetails(dis v1beta1.Disruption) (username, emailAddr string, userGroups string) {
+func (n *Notifier) getUserDetails(dis v1beta1.Disruption) (username, emailAddr, userGroups string) {
 	userInfo, err := dis.UserInfo()
 	if err != nil {
 		n.logger.Warnw("http notifier: no user info in disruption", "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace, "error", err)
