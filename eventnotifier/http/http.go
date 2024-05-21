@@ -20,7 +20,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
-	"github.com/google/jsonapi"
+	"github.com/DataDog/jsonapi"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -43,18 +43,18 @@ type Notifier struct {
 
 type HTTPNotifierEvent struct {
 	ID                 string                 `jsonapi:"primary,http_notifier_events"`
-	NotificationTitle  string                 `jsonapi:"attr,notification_title"`
-	NotificationType   types.NotificationType `jsonapi:"attr,notification_type"`
-	EventMessage       string                 `jsonapi:"attr,event_message"`
-	InvolvedObjectKind string                 `jsonapi:"attr,involved_object_kind"`
-	DisruptionName     string                 `jsonapi:"attr,disruption_name"`
-	Disruption         string                 `jsonapi:"attr,disruption"`
-	Timestamp          int64                  `jsonapi:"attr,timestamp"`
-	Cluster            string                 `jsonapi:"attr,cluster"`
-	Namespace          string                 `jsonapi:"attr,namespace"`
-	TargetsCount       int                    `jsonapi:"attr,targets_count"`
-	Username           string                 `jsonapi:"attr,username,omitempty"`
-	UserEmail          string                 `jsonapi:"attr,user_email,omitempty"`
+	NotificationTitle  string                 `jsonapi:"attribute" json:"notification_title"`
+	NotificationType   types.NotificationType `jsonapi:"attribute" json:"notification_type"`
+	EventMessage       string                 `jsonapi:"attribute" json:"event_message"`
+	InvolvedObjectKind string                 `jsonapi:"attribute" json:"involved_object_kind"`
+	DisruptionName     string                 `jsonapi:"attribute" json:"disruption_name"`
+	Disruption         string                 `jsonapi:"attribute" json:"disruption"`
+	Timestamp          int64                  `jsonapi:"attribute" json:"timestamp"`
+	Cluster            string                 `jsonapi:"attribute" json:"cluster"`
+	Namespace          string                 `jsonapi:"attribute" json:"namespace"`
+	TargetsCount       int                    `jsonapi:"attribute" json:"targets_count"`
+	Username           string                 `jsonapi:"attribute" json:"username,omitempty"`
+	UserEmail          string                 `jsonapi:"attribute" json:"user_email,omitempty"`
 }
 
 // New HTTP Notifier
@@ -145,20 +145,20 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		InvolvedObjectKind: dis.Kind,
 		DisruptionName:     dis.Name,
 		Disruption:         string(disruptionStr),
+		Timestamp:          now.UnixNano(),
 		Cluster:            n.common.ClusterName,
 		Namespace:          dis.Namespace,
 		TargetsCount:       len(dis.Status.TargetInjections),
 		Username:           emailAddr.Name,
 		UserEmail:          emailAddr.Address,
-		Timestamp:          now.UnixNano(),
 	}
 
-	body := bytes.NewBuffer(nil)
-	if err := jsonapi.MarshalOnePayloadEmbedded(body, &notif); err != nil {
+	jsonNotif, err := jsonapi.Marshal(&notif)
+	if err != nil {
 		return fmt.Errorf("http notifier: couldn't marshal notification: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, n.url, body)
+	req, err := http.NewRequest(http.MethodPost, n.url, bytes.NewBuffer(jsonNotif))
 	if err != nil {
 		return fmt.Errorf("http notifier: couldn't send notification: %w", err)
 	}
