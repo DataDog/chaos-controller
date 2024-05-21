@@ -184,12 +184,13 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 	}
 
+	n.logger.Debugw("http notifier: sending notifier event to http", "disruption", dis.Name, "eventType", event.Type, "message", notif.EventMessage)
+
 	res, err := n.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("http notifier: error when sending notification: %w", err)
 	}
 
-	n.logger.Debugw("http notifier: sending notifier event to http", "disruption", dis.Name, "eventType", event.Type, "message", notif.EventMessage)
 	n.logger.Debugw("http notifier: received response from http", "status", res.StatusCode)
 
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
