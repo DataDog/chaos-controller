@@ -34,7 +34,7 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 	client := mgr.GetClient()
 
 	if notifiersConfig.Common.Client == nil {
-		notifiersConfig.Common.Client = client
+		notifiersConfig.Common.Client = &client
 	}
 
 	notifiers, err := eventnotifier.GetNotifiers(notifiersConfig, logger)

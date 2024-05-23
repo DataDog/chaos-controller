@@ -209,8 +209,11 @@ func splitHeaders(headers []string) (map[string]string, error) {
 		}
 
 		splittedHeader := strings.Split(header, ":")
+
 		if len(splittedHeader) == 2 {
-			parsedHeaders[splittedHeader[0]] = splittedHeader[1]
+			key := splittedHeader[0]
+			val := splittedHeader[1]
+			parsedHeaders[key] = val
 		} else {
 			return nil, fmt.Errorf("invalid headers: Must be in the format: key:value, found %s", header)
 		}
