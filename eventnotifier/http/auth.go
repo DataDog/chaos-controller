@@ -16,13 +16,16 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// BearerAuthTokenProvider defines an interface for retrieving authentication tokens.
 type BearerAuthTokenProvider interface {
 	AuthToken(ctx context.Context) (string, error)
 }
 
-// quickly detect if underlying type does not implement interface
+// ensure bearerAuthTokenProvider implements BearerAuthTokenProvider interface.
 var _ BearerAuthTokenProvider = bearerAuthTokenProvider{}
 
+// bearerAuthTokenProvider implements the BearerAuthTokenProvider interface for
+// retrieving bearer tokens from a specified URL using HTTP GET request.
 type bearerAuthTokenProvider struct {
 	Logger    *zap.SugaredLogger
 	URL       string
@@ -31,6 +34,7 @@ type bearerAuthTokenProvider struct {
 	TokenPath string
 }
 
+// NewBearerAuthTokenProvider creates a new BearerAuthTokenProvider.
 func NewBearerAuthTokenProvider(logger *zap.SugaredLogger, client *http.Client, url string, headers map[string]string, tokenPath string) BearerAuthTokenProvider {
 	return bearerAuthTokenProvider{
 		logger,
@@ -41,6 +45,7 @@ func NewBearerAuthTokenProvider(logger *zap.SugaredLogger, client *http.Client, 
 	}
 }
 
+// AuthToken retrieves an authentication token from a remote server using an HTTP GET request.
 func (b bearerAuthTokenProvider) AuthToken(ctx context.Context) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, b.URL, nil)
 	if err != nil {
