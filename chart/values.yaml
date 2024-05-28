@@ -44,7 +44,7 @@ controller:
       headersFilepath: ""
       headers: []
       authURL: ""
-      authHeaders: ""
+      authHeaders: []
       authTokenPath: ""
   cloudProviders: # cloud providers specific disruptions configuration
     disableAll: false # disable all cloud providers disruption, it overrides per cloud provider configuration (you can't disable all + enable one)
