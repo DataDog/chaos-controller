@@ -33,10 +33,6 @@ type NotifierSink struct {
 func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, notifiersConfig eventnotifier.NotifiersConfig, logger *zap.SugaredLogger) (err error) {
 	client := mgr.GetClient()
 
-	if notifiersConfig.Common.Client == nil {
-		notifiersConfig.Common.Client = &client
-	}
-
 	notifiers, err := eventnotifier.GetNotifiers(notifiersConfig, logger)
 
 	for _, notifier := range notifiers {
