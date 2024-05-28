@@ -214,6 +214,24 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
+	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.AuthURL, "notifiers-http-auth-url", "", "WARNING/ALPHA: First perform an HTTP request to dynamically retrieve auth information before sending http notification")
+
+	if err := viper.BindPFlag("controller.notifiers.http.authURL", mainFS.Lookup("notifiers-http-auth-url")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringSliceVar(&cfg.Controller.Notifiers.HTTP.AuthHeaders, "notifiers-http-auth-headers", []string{}, "WARNING/ALPHA: HTTP headers to provide to auth request")
+
+	if err := viper.BindPFlag("controller.notifiers.http.authHeaders", mainFS.Lookup("notifiers-http-auth-headers")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.AuthTokenPath, "notifiers-http-auth-token-path", "", "WARNING/ALPHA: Extract bearer token from provided JSON path (using GJSON)")
+
+	if err := viper.BindPFlag("controller.notifiers.http.authTokenPath", mainFS.Lookup("notifiers-http-auth-token-path")); err != nil {
+		return cfg, err
+	}
+
 	mainFS.StringToStringVar(&cfg.Injector.Annotations, "injector-annotations", map[string]string{}, "Annotations added to the generated injector pods")
 
 	if err := viper.BindPFlag("injector.annotations", mainFS.Lookup("injector-annotations")); err != nil {

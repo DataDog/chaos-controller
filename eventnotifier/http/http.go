@@ -3,10 +3,11 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2024 Datadog, Inc.
 
-package datadog
+package http
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -30,15 +31,19 @@ type NotifierHTTPConfig struct {
 	URL             string
 	Headers         []string
 	HeadersFilepath string
+	AuthURL         string
+	AuthHeaders     []string
+	AuthTokenPath   string
 }
 
 // Notifier describes a HTTP notifier
 type Notifier struct {
-	common  types.NotifiersCommonConfig
-	client  *http.Client
-	url     string
-	headers map[string]string
-	logger  *zap.SugaredLogger
+	common            types.NotifiersCommonConfig
+	client            *http.Client
+	url               string
+	headers           map[string]string
+	logger            *zap.SugaredLogger
+	authTokenProvider BearerAuthTokenProvider
 }
 
 type HTTPNotifierEvent struct {
@@ -60,7 +65,6 @@ type HTTPNotifierEvent struct {
 
 // New HTTP Notifier
 func New(commonConfig types.NotifiersCommonConfig, httpConfig NotifierHTTPConfig, logger *zap.SugaredLogger) (*Notifier, error) {
-	parsedHeaders := make(map[string]string)
 	headers := []string{}
 
 	client := &http.Client{
@@ -90,25 +94,29 @@ func New(commonConfig types.NotifiersCommonConfig, httpConfig NotifierHTTPConfig
 
 	headers = append(headers, httpConfig.Headers...)
 
-	for _, header := range headers {
-		if header == "" {
-			continue
+	parsedHeaders, err := splitHeaders(headers)
+	if err != nil {
+		return nil, fmt.Errorf("notifier http: invalid headers in headers file: %w", err)
+	}
+
+	var authTokenProvider BearerAuthTokenProvider
+
+	if httpConfig.AuthURL != "" {
+		authHeaders, err := splitHeaders(httpConfig.AuthHeaders)
+		if err != nil {
+			return nil, fmt.Errorf("notifier http: invalid headers for auth: %w", err)
 		}
 
-		splittedHeader := strings.Split(header, ":")
-		if len(splittedHeader) == 2 {
-			parsedHeaders[splittedHeader[0]] = splittedHeader[1]
-		} else {
-			return nil, fmt.Errorf("notifier http: invalid headers in headers file. Must be of format: key:value")
-		}
+		authTokenProvider = NewBearerAuthTokenProvider(logger, client, httpConfig.AuthURL, authHeaders, httpConfig.AuthTokenPath)
 	}
 
 	return &Notifier{
-		common:  commonConfig,
-		client:  client,
-		url:     httpConfig.URL,
-		headers: parsedHeaders,
-		logger:  logger,
+		common:            commonConfig,
+		client:            client,
+		url:               httpConfig.URL,
+		headers:           parsedHeaders,
+		logger:            logger,
+		authTokenProvider: authTokenProvider,
 	}, nil
 }
 
@@ -159,23 +167,59 @@ func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType 
 		req.Header.Add(headerKey, headerValue)
 	}
 
-	res, err := n.client.Do(req)
+	if n.authTokenProvider != nil {
+		token, err := n.authTokenProvider.AuthToken(context.Background())
+		if err != nil {
+			return fmt.Errorf("http notifier: unable to retrieve auth token through helper: %w", err)
+		}
 
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	}
+
+	n.logger.Debugw("http notifier: sending notifier event to http", "disruption", dis.Name, "eventType", event.Type, "message", notif.EventMessage)
+
+	res, err := n.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("http notifier: error when sending notification: %w", err)
 	}
 
-	n.logger.Debugw("notifier: sending notifier event to http", "disruption", dis.Name, "eventType", event.Type, "message", notif.EventMessage)
+	n.logger.Debugw("http notifier: received response from http", "status", res.StatusCode)
 
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
 		return fmt.Errorf("http notifier: receiving %d status code from sent notification", res.StatusCode)
 	}
 
-	if err = res.Body.Close(); err != nil {
-		return fmt.Errorf("http notifier: error when sending notification: %w", err)
-	}
+	defer func() {
+		if err = res.Body.Close(); err != nil {
+			n.logger.Warnw("http notifier: error closing body", "error", err)
+		}
+	}()
 
 	return nil
+}
+
+// splitHeaders parses the headers from a slice of strings in the format key:value.
+// It returns a map of headers or an error if the headers are not in the correct format.
+func splitHeaders(headers []string) (map[string]string, error) {
+	parsedHeaders := make(map[string]string)
+
+	for _, header := range headers {
+		if header == "" {
+			continue
+		}
+
+		splittedHeader := strings.Split(header, ":")
+
+		if len(splittedHeader) == 2 {
+			key := splittedHeader[0]
+			val := splittedHeader[1]
+			parsedHeaders[key] = val
+		} else {
+			return nil, fmt.Errorf("invalid headers: Must be in the format: key:value, found %s", header)
+		}
+	}
+
+	return parsedHeaders, nil
 }
 
 // getUserDetails retrieves the user details associated with a given disruption.

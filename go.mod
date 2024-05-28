@@ -28,6 +28,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.9.0
+	github.com/tidwall/gjson v1.12.1
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20230420174744-55c8b9515a01
 	github.com/vishvananda/netns v0.0.5-0.20230405050519-16c2fa0b2f57
 	go.opentelemetry.io/otel v1.19.0
@@ -53,6 +54,8 @@ require (
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/moby/sys/signal v0.6.0 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	golang.org/x/exp v0.0.0-20240318143956-a85f2c67cd81 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
 )

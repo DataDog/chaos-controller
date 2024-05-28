@@ -132,7 +132,7 @@ The `datadog` notifier requires the `STATSD_URL` environment variable to be set 
 
 The `http` notifier requires a `URL` to send the POST request to and optionally ask for either the list of headers in the configmap or the filepath of a file containing the list of headers to add to the request if needed. It will send a json body containing the notification information.
 
-_Note that the list of headers from the configmap will take prevalence over the list of headers found in the file: if there are conflicting headers in both of those lists, the one from the configmap will be kept._
+:warning: **Note** that the list of headers from the configmap will take prevalence over the list of headers found in the file: if there are conflicting headers in both of those lists, the one from the configmap will be kept.
 
 The list is of format:
 
@@ -141,7 +141,7 @@ key1:value1
 key2:value2
 ```
 
-### Configuration
+#### Configuration
 
 Please setup the following fields to `chart/templates/configmap.yaml - data - config.yaml - controller` pre-controller installation:
 
@@ -160,10 +160,35 @@ notifiers:
     enabled: true/false # enables the http notifier
     url: <url>
     headers: # optional, list of headers to add to the http POST request we send
-      - "Authorization:Bearer token"
+      - "Content-Type: application/json"
     headersFilepath: <headers file path> # optional, path to a file containing the list of headers to add to the http POST request we send for the http notifier
-
+    authURL: <url>  #optional, URL to dynamically fetch an authentication token
+    authHeaders:  # optional, headers for the authentication request
+      - "Content-Type: application/json"
+    authTokenPath: "token"  # optional, JSON path to extract the token from the auth response
 ```
+
+#### Authentication Options
+
+The HTTP notifier supports two primary methods of authentication: static and dynamic.
+
+1. **Static Authentication**: Directly specify the `Authorization` header with a static token in the `headers` configuration.
+
+   ```yaml
+   headers:
+     - "Authorization: Bearer your_token_here"
+   ```
+
+2. **Dynamic Authentication**: Retrieve the authentication token dynamically using the `authURL`, `authHeaders`, and `authTokenPath`.
+
+   :warning: **Note** that this feature only supports authentication through a bearer token with an Authorization header. For other types of authentication methods, consider using the static method.
+
+   ```yaml
+   authURL: <url>
+   authHeaders:
+     - "Content-Type: application/json"
+   authTokenPath: "token"
+   ```
 
 ### Disruption reporting
 
