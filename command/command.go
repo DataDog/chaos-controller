@@ -84,6 +84,7 @@ type backgroundCmd struct {
 	processManager process.Manager
 	ticker         *time.Ticker
 	chErr          chan error
+	chQuit         chan int
 	pid            int
 }
 
@@ -115,6 +116,7 @@ func NewBackgroundCmd(cmd Cmd, log *zap.SugaredLogger, processManager process.Ma
 		sync.Mutex{},
 		log,
 		processManager,
+		nil,
 		nil,
 		nil,
 		process.NotFoundProcessPID,
@@ -175,12 +177,12 @@ func (w *backgroundCmd) Start() error {
 // KeepAlive will create a goroutine to send regular SIGCONT signal to associated command
 // a single goroutine will be launched no matter how many calls are done to KeepAlive
 func (w *backgroundCmd) KeepAlive() {
+	w.Lock()
+	defer w.Unlock()
+
 	if w.DryRun() {
 		return
 	}
-
-	w.Lock()
-	defer w.Unlock()
 
 	if w.ticker != nil {
 		return
@@ -188,57 +190,71 @@ func (w *backgroundCmd) KeepAlive() {
 
 	w.ticker = time.NewTicker(cmdKeepAliveTickDuration)
 
+	w.chQuit = make(chan int)
+
 	w.log.Debug("monitoring sending SIGCONT signal to process every 1s")
 
 	go func() {
 		for {
-			if w.ticker == nil {
-				return
-			}
-
-			<-w.safeTicker().C
-
-			proc, err := w.processManager.Find(w.pid)
-			if err != nil {
-				w.log.Errorw("an error occurred when trying to Find process, stopping to monitor background process, ticker removed", "error", err)
-
-				w.resetTicker()
-
-				return
-			}
-
-			if err := w.processManager.Signal(proc, syscall.SIGCONT); err != nil {
-				if errors.Is(err, os.ErrProcessDone) {
-					w.log.Infof("process is already finished, skipping sending SIGCONT from now on")
-				} else {
-					w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
-				}
-
-				w.resetTicker()
-
+			if err := w.sendSIGCONTSignal(); err != nil {
 				return
 			}
 		}
 	}()
 }
 
-func (w *backgroundCmd) safeTicker() *time.Ticker {
+func (w *backgroundCmd) sendSIGCONTSignal() error {
 	w.Lock()
 	defer w.Unlock()
 
-	return w.ticker
+	if w.ticker == nil {
+		return fmt.Errorf("ticker is nil")
+	}
+
+	select {
+	case <-w.chQuit:
+		close(w.chQuit)
+		w.log.Debug("background process exited, stopping to monitor background process, ticker removed")
+		return fmt.Errorf("background process exited")
+	case <-w.ticker.C:
+		// continue
+	}
+
+	proc, err := w.processManager.Find(w.pid)
+	if err != nil {
+		w.log.Errorw("an error occurred when trying to Find process, stopping to monitor background process, ticker removed", "error", err)
+
+		w.resetTicker()
+
+		return err
+	}
+
+	if err := w.processManager.Signal(proc, syscall.SIGCONT); err != nil {
+		if errors.Is(err, os.ErrProcessDone) {
+			w.log.Infof("process is already finished, skipping sending SIGCONT from now on")
+		} else {
+			w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
+		}
+
+		w.resetTicker()
+
+		return err
+	}
+
+	return nil
 }
 
 func (w *backgroundCmd) resetTicker() {
-	w.Lock()
-	defer w.Unlock()
-
 	if w.ticker == nil {
 		return
 	}
 
 	w.ticker.Stop()
 	w.ticker = nil
+
+	if w.chQuit != nil {
+		w.chQuit <- 0
+	}
 }
 
 // Stop will send a SIGTERM signal to associated command
@@ -247,6 +263,9 @@ func (w *backgroundCmd) Stop() error {
 	if w.DryRun() {
 		return nil
 	}
+
+	w.Lock()
+	defer w.Unlock()
 
 	w.resetTicker()
 

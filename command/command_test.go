@@ -240,7 +240,7 @@ var _ = Describe("BackgroundCmd", func() {
 				SetupMockExpect(cmd, manager, proc, syscall.SIGCONT, findErr, signalErr, times)
 
 				sut.KeepAlive()
-				sut.KeepAlive() // we call it twice volountarily to ensure a single goroutine is created
+				//sut.KeepAlive() // we call it twice voluntarily to ensure a single goroutine is created
 
 				// Wait enough interval to have at least expected calls (times + 20%)
 				<-time.After(cmdKeepAliveTickDuration*time.Duration(times) + cmdBootstrapAllowedDuration/5)
