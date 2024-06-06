@@ -348,6 +348,13 @@ func initPodWatch(resourceVersion string) (<-chan watch.Event, error) {
 		ResourceVersion:     resourceVersion,
 		AllowWatchBookmarks: true,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	if podWatcher == nil {
+		return nil, fmt.Errorf("unable to watch pod %s in namespace %s", disruptionArgs.TargetName, disruptionArgs.DisruptionNamespace)
+	}
 
 	return podWatcher.ResultChan(), err
 }
