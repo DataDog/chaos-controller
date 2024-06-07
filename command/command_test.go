@@ -251,7 +251,7 @@ var _ = Describe("BackgroundCmd", func() {
 					Expect(underSut).ToNot(BeNil())
 
 					// Stop timer ASAP to have realistic amount of calls
-					underSut.chQuit <- 0
+					underSut.chKeepAliveQuit <- 0
 				},
 				Entry("Send a signal two times", 2),
 				Entry("Send a signal three times", 3),

@@ -80,12 +80,12 @@ type backgroundCmd struct {
 	Cmd
 	sync.Mutex
 
-	log            *zap.SugaredLogger
-	processManager process.Manager
-	ticker         *time.Ticker
-	chErr          chan error
-	chQuit         chan int
-	pid            int
+	log             *zap.SugaredLogger
+	processManager  process.Manager // Manager to interact with process
+	ticker          *time.Ticker    // Used to send regular SIGCONT signal to process
+	chErr           chan error      // Used to monitor the exit of the command
+	chKeepAliveQuit chan int        // Used to kill the keepAlive goroutine
+	pid             int             // PID of the process
 }
 
 type factory struct {
@@ -190,7 +190,7 @@ func (w *backgroundCmd) KeepAlive() {
 
 	w.ticker = time.NewTicker(cmdKeepAliveTickDuration)
 
-	w.chQuit = make(chan int)
+	w.chKeepAliveQuit = make(chan int)
 
 	w.log.Debug("monitoring sending SIGCONT signal to process every 1s")
 
@@ -218,8 +218,8 @@ func (w *backgroundCmd) sendSIGCONTSignal() (exit bool, err error) {
 	}
 
 	select {
-	case <-w.chQuit:
-		close(w.chQuit)
+	case <-w.chKeepAliveQuit:
+		close(w.chKeepAliveQuit)
 		w.log.Debug("background process exited, stopping to monitor background process, ticker removed")
 
 		return true, nil
@@ -260,8 +260,8 @@ func (w *backgroundCmd) resetTicker() {
 	w.ticker.Stop()
 	w.ticker = nil
 
-	if w.chQuit != nil {
-		w.chQuit <- 0
+	if w.chKeepAliveQuit != nil {
+		w.chKeepAliveQuit <- 0
 	}
 }
 
