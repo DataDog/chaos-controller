@@ -196,26 +196,32 @@ func (w *backgroundCmd) KeepAlive() {
 
 	go func() {
 		for {
-			if err := w.sendSIGCONTSignal(); err != nil {
+			exit, err := w.sendSIGCONTSignal()
+			if err != nil {
+				w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
+				return
+			}
+
+			if exit {
 				return
 			}
 		}
 	}()
 }
 
-func (w *backgroundCmd) sendSIGCONTSignal() error {
+func (w *backgroundCmd) sendSIGCONTSignal() (exit bool, err error) {
 	w.Lock()
 	defer w.Unlock()
 
 	if w.ticker == nil {
-		return fmt.Errorf("ticker is nil")
+		return true, nil
 	}
 
 	select {
 	case <-w.chQuit:
 		close(w.chQuit)
 		w.log.Debug("background process exited, stopping to monitor background process, ticker removed")
-		return fmt.Errorf("background process exited")
+		return true, nil
 	case <-w.ticker.C:
 		// continue
 	}
@@ -226,22 +232,24 @@ func (w *backgroundCmd) sendSIGCONTSignal() error {
 
 		w.resetTicker()
 
-		return err
+		return false, err
 	}
 
 	if err := w.processManager.Signal(proc, syscall.SIGCONT); err != nil {
-		if errors.Is(err, os.ErrProcessDone) {
-			w.log.Infof("process is already finished, skipping sending SIGCONT from now on")
-		} else {
-			w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
-		}
-
 		w.resetTicker()
 
-		return err
+		if errors.Is(err, os.ErrProcessDone) {
+			w.log.Infof("process is already finished, skipping sending SIGCONT from now on")
+
+			return true, nil
+		}
+
+		w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
+
+		return false, err
 	}
 
-	return nil
+	return false, nil
 }
 
 func (w *backgroundCmd) resetTicker() {
