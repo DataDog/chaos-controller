@@ -255,7 +255,7 @@ var _ = Describe("BackgroundCmd", func() {
 				},
 				Entry("Send a signal two times", 2),
 				Entry("Send a signal three times", 3),
-				Entry("Send a signal three times", 1),
+				Entry("Send a signal one times", 1),
 				Entry("Send a signal four times", 4),
 			)
 
