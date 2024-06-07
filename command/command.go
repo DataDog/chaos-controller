@@ -80,12 +80,12 @@ type backgroundCmd struct {
 	Cmd
 	sync.Mutex
 
-	log             *zap.SugaredLogger
-	processManager  process.Manager // Manager to interact with process
-	ticker          *time.Ticker    // Used to send regular SIGCONT signal to process
-	chErr           chan error      // Used to monitor the exit of the command
-	chKeepAliveQuit chan int        // Used to kill the keepAlive goroutine
-	pid             int             // PID of the process
+	log            *zap.SugaredLogger
+	processManager process.Manager // Manager to interact with process
+	ticker         *time.Ticker    // Used to send regular SIGCONT signal to process
+	err            chan error      // Used to monitor the exit of the command
+	keepAliveQuit  chan int        // Used to kill the keepAlive goroutine
+	pid            int             // PID of the process
 }
 
 type factory struct {
@@ -157,14 +157,14 @@ func (w *backgroundCmd) Start() error {
 		return fmt.Errorf("no process created, processState exit code is %v", w.Cmd.ExitCode())
 	}
 
-	w.chErr = chErr
+	w.err = chErr
 	w.log = w.log.With("pid", w.pid)
 
 	// Monitoring launched process in background to at least give visibility of exit
 	go func() {
 		w.log.Debug("new process created, monitoring newly created process exit status")
 
-		if err := <-w.chErr; err != nil {
+		if err := <-w.err; err != nil {
 			w.log.Warnw("background command exited with an error", "error", err)
 		} else {
 			w.log.Info("background command exited successfully")
@@ -190,7 +190,7 @@ func (w *backgroundCmd) KeepAlive() {
 
 	w.ticker = time.NewTicker(cmdKeepAliveTickDuration)
 
-	w.chKeepAliveQuit = make(chan int)
+	w.keepAliveQuit = make(chan int)
 
 	w.log.Debug("monitoring sending SIGCONT signal to process every 1s")
 
@@ -218,8 +218,8 @@ func (w *backgroundCmd) sendSIGCONTSignal() (exit bool, err error) {
 	}
 
 	select {
-	case <-w.chKeepAliveQuit:
-		close(w.chKeepAliveQuit)
+	case <-w.keepAliveQuit:
+		close(w.keepAliveQuit)
 		w.log.Debug("background process exited, stopping to monitor background process, ticker removed")
 
 		return true, nil
@@ -260,8 +260,8 @@ func (w *backgroundCmd) resetTicker() {
 	w.ticker.Stop()
 	w.ticker = nil
 
-	if w.chKeepAliveQuit != nil {
-		w.chKeepAliveQuit <- 0
+	if w.keepAliveQuit != nil {
+		w.keepAliveQuit <- 0
 	}
 }
 
