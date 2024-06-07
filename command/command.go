@@ -221,9 +221,9 @@ func (w *backgroundCmd) sendSIGCONTSignal() (exit bool, err error) {
 	case <-w.chQuit:
 		close(w.chQuit)
 		w.log.Debug("background process exited, stopping to monitor background process, ticker removed")
+
 		return true, nil
 	case <-w.ticker.C:
-		// continue
 	}
 
 	proc, err := w.processManager.Find(w.pid)
