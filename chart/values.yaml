@@ -81,6 +81,7 @@ controller:
   disruptionCronEnabled: true
   disruptionRolloutEnabled: false
   disruptionDeletionTimeout: 15m # The duration after which a disruption will be marked as "stuck on removal" if its removal process exceeds this duration.
+  aggregateToClusterRole: false
 
 injector:
   image:
