@@ -190,7 +190,7 @@ func (w *backgroundCmd) KeepAlive() {
 
 	w.ticker = time.NewTicker(cmdKeepAliveTickDuration)
 
-	w.keepAliveQuit = make(chan int)
+	w.keepAliveQuit = make(chan int, 1) // we need a buffered channel so the sender doesn't block
 
 	w.log.Debug("monitoring sending SIGCONT signal to process every 1s")
 
