@@ -1,0 +1,32 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2024 Datadog, Inc.
+{{- if .Values.controller.aggregateToClusterRole }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: chaos-controller-view
+  namespace: "{{ .Values.chaosNamespace }}"
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+rules:
+  - apiGroups: ["chaos.datadoghq.com"]
+    resources: ["disruptions", "disruptioncrons", "disruptionrollouts"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: chaos-controller-edit
+  namespace: "{{ .Values.chaosNamespace }}"
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+rules:
+  - apiGroups: ["chaos.datadoghq.com"]
+    resources: ["disruptions", "disruptioncrons", "disruptionrollouts"]
+    verbs: ["create", "delete", "deletecollection", "patch", "update"]
+{{- end }}
