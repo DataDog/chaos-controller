@@ -271,8 +271,7 @@ type Disruption struct {
 	Status DisruptionStatus `json:"status,omitempty"`
 }
 
-// TimeToInject calculates the time at which the disruption should be injected based on its own creationTimestamp.
-// It considers the specified triggers for injection timing in the disruption's specification.
+// TimeToInject calculates the time at which the disruption should be injected based on its own creationTimestamp and spec.injectTime
 func (r *Disruption) TimeToInject() time.Time {
 	if r.Spec.InjectTime == nil || r.Spec.InjectTime.IsZero() {
 		return r.CreationTimestamp.Time

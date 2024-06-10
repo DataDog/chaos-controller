@@ -209,7 +209,7 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 		now := metav1.Now()
 
 		if r.Spec.InjectTime.Before(&now) {
-			return nil, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is in the past. only values in the future are accepted", r.Spec.InjectTime)
+			return nil, fmt.Errorf("spec.injectTime is %s, which is in the past. only values in the future are accepted", r.Spec.InjectTime)
 		}
 	}
 
