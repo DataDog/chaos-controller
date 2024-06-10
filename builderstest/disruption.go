@@ -33,12 +33,12 @@ func NewDisruptionBuilder() *DisruptionBuilder {
 	}).WithCreationDuration(30 * time.Second)
 }
 
-// WithDisruptionTriggers sets the specified triggers of disruption.
-func (b *DisruptionBuilder) WithDisruptionTriggers(triggers v1beta1.DisruptionTriggers) *DisruptionBuilder {
+// WithDisruptionInjectTime sets the specified InjectTime for the disruption
+func (b *DisruptionBuilder) WithDisruptionInjectTime(injectTime v1.Time) *DisruptionBuilder {
 	b.modifiers = append(
 		b.modifiers,
 		func() {
-			b.Spec.Triggers = triggers
+			b.Spec.InjectTime = &injectTime
 		})
 
 	return b

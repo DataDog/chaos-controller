@@ -103,35 +103,15 @@ var _ = Describe("Disruption", func() {
 		})
 
 		Describe("ValidateCreate-only invariants shouldn't affect Update", func() {
-			When("triggers.*.notBefore is in the past", func() {
-				It("triggers.inject should not return an error", func() {
-					triggers := DisruptionTriggers{
-						Inject: DisruptionTrigger{
-							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5 * -1)),
-						},
-					}
+			When("spec.InjectTime is in the past", func() {
+				It("spec.InjectTime should not return an error", func() {
+					injectTime := metav1.NewTime(time.Now().Add(time.Minute * 5 * -1))
 
 					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = triggers
+					newDisruption.Spec.InjectTime = &injectTime
 
 					oldDisruption.Spec.Duration = "30m"
-					oldDisruption.Spec.Triggers = triggers
-
-					_, err := newDisruption.ValidateUpdate(oldDisruption)
-					Expect(err).Should(Succeed())
-				})
-
-				It("triggers.createPods should not return an error", func() {
-					triggers := DisruptionTriggers{
-						CreatePods: DisruptionTrigger{
-							NotBefore: metav1.NewTime(time.Now().Add(time.Hour * -1)),
-						},
-					}
-					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = triggers
-
-					oldDisruption.Spec.Duration = "30m"
-					oldDisruption.Spec.Triggers = triggers
+					oldDisruption.Spec.InjectTime = &injectTime
 
 					_, err := newDisruption.ValidateUpdate(oldDisruption)
 					Expect(err).Should(Succeed())
@@ -416,26 +396,11 @@ var _ = Describe("Disruption", func() {
 				})
 			})
 
-			When("triggers.*.notBefore is in the past", func() {
-				It("triggers.inject should return an error", func() {
+			When("spec.InjectTime is in the past", func() {
+				It("spec.InjectTime should return an error", func() {
 					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = DisruptionTriggers{
-						Inject: DisruptionTrigger{
-							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5 * -1)),
-						},
-					}
-
-					_, err := newDisruption.ValidateCreate()
-					Expect(err).Should(MatchError(ContainSubstring("only values in the future are accepted")))
-				})
-
-				It("triggers.createPods should return an error", func() {
-					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = DisruptionTriggers{
-						CreatePods: DisruptionTrigger{
-							NotBefore: metav1.NewTime(time.Now().Add(time.Hour * -1)),
-						},
-					}
+					injectTime := metav1.NewTime(time.Now().Add(time.Minute * 5 * -1))
+					newDisruption.Spec.InjectTime = &injectTime
 
 					_, err := newDisruption.ValidateCreate()
 					Expect(err).Should(MatchError(ContainSubstring("only values in the future are accepted")))
@@ -446,31 +411,11 @@ var _ = Describe("Disruption", func() {
 				It("should not return an error", func() {
 					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = DisruptionTriggers{
-						Inject: DisruptionTrigger{
-							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5)),
-						},
-					}
+					injectTime := metav1.NewTime(time.Now().Add(time.Minute * 5))
+					newDisruption.Spec.InjectTime = &injectTime
 
 					_, err := newDisruption.ValidateCreate()
 					Expect(err).ShouldNot(HaveOccurred())
-				})
-			})
-
-			When("triggers.inject.notBefore is before triggers.createPods.notBefore", func() {
-				It("should return an error", func() {
-					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = DisruptionTriggers{
-						Inject: DisruptionTrigger{
-							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5)),
-						},
-						CreatePods: DisruptionTrigger{
-							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 15)),
-						},
-					}
-
-					_, err := newDisruption.ValidateCreate()
-					Expect(err).Should(MatchError(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified")))
 				})
 			})
 

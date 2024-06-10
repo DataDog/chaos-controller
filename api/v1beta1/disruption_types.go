@@ -58,7 +58,7 @@ type DisruptionSpec struct {
 	Unsafemode      *UnsafemodeSpec   `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
 	StaticTargeting bool              `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
 	// +nullable
-	Triggers DisruptionTriggers `json:"triggers,omitempty"` // alter the pre-injection lifecycle
+	InjectTime *metav1.Time `json:"injectTime,omitempty"` // an optional timestamp. injector pods will wait until InjectTime before injecting
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
@@ -88,12 +88,6 @@ type DisruptionSpec struct {
 	Reporting *Reporting `json:"reporting,omitempty"`
 }
 
-// DisruptionTriggers holds the options for changing when injector pods are created, and the timing of when the injection occurs
-type DisruptionTriggers struct {
-	Inject     DisruptionTrigger `json:"inject,omitempty"`
-	CreatePods DisruptionTrigger `json:"createPods,omitempty"`
-}
-
 type TerminationStatus uint8
 
 const (
@@ -101,26 +95,6 @@ const (
 	TSTemporarilyTerminated
 	TSDefinitivelyTerminated
 )
-
-func (dt DisruptionTriggers) IsZero() bool {
-	return dt.Inject.IsZero() && dt.CreatePods.IsZero()
-}
-
-// +ddmark:validation:ExclusiveFields={NotBefore,Offset}
-type DisruptionTrigger struct {
-	// inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
-	// createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
-	// +nullable
-	NotBefore metav1.Time `json:"notBefore,omitempty"`
-	// inject.offset: Identical to NotBefore, but specified as an offset from max(CreationTimestamp, NoPodsBefore) instead of as a metav1.Time
-	// pods.offset: Identical to NotBefore, but specified as an offset from CreationTimestamp instead of as a metav1.Time
-	// +nullable
-	Offset DisruptionDuration `json:"offset,omitempty"`
-}
-
-func (dt DisruptionTrigger) IsZero() bool {
-	return dt.NotBefore.IsZero() && dt.Offset.Duration() == 0
-}
 
 // Reporting provides additional reporting options in order to send a message to a custom slack channel
 // it expects the main controller to have the slack notifier enabled
@@ -300,64 +274,15 @@ type Disruption struct {
 // TimeToInject calculates the time at which the disruption should be injected based on its own creationTimestamp.
 // It considers the specified triggers for injection timing in the disruption's specification.
 func (r *Disruption) TimeToInject() time.Time {
-	triggers := r.Spec.Triggers
-
-	if triggers.IsZero() {
+	if r.Spec.InjectTime == nil || r.Spec.InjectTime.IsZero() {
 		return r.CreationTimestamp.Time
 	}
 
-	if triggers.Inject.IsZero() {
-		return r.TimeToCreatePods()
-	}
-
-	var notInjectedBefore time.Time
-
-	// validation should have already prevented a situation where both Offset and NotBefore are set
-	if !triggers.Inject.NotBefore.IsZero() {
-		notInjectedBefore = triggers.Inject.NotBefore.Time
-	}
-
-	if triggers.Inject.Offset.Duration() > 0 {
-		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.createPods
-		notInjectedBefore = r.TimeToCreatePods().Add(triggers.Inject.Offset.Duration())
-	}
-
-	if r.CreationTimestamp.Time.After(notInjectedBefore) {
+	if r.CreationTimestamp.Time.After(r.Spec.InjectTime.Time) {
 		return r.CreationTimestamp.Time
 	}
 
-	return notInjectedBefore
-}
-
-// TimeToCreatePods takes the DisruptionTriggers field from a Disruption spec, along with the time.Time at which that disruption was created
-// It returns the earliest time.Time at which the chaos-controller should begin creating chaos pods, given the specified DisruptionTriggers
-func (r *Disruption) TimeToCreatePods() time.Time {
-	triggers := r.Spec.Triggers
-
-	if triggers.IsZero() {
-		return r.CreationTimestamp.Time
-	}
-
-	if triggers.CreatePods.IsZero() {
-		return r.CreationTimestamp.Time
-	}
-
-	var noPodsBefore time.Time
-
-	// validation should have already prevented a situation where both Offset and NotBefore are set
-	if !triggers.CreatePods.NotBefore.IsZero() {
-		noPodsBefore = triggers.CreatePods.NotBefore.Time
-	}
-
-	if triggers.CreatePods.Offset.Duration() > 0 {
-		noPodsBefore = r.CreationTimestamp.Add(triggers.CreatePods.Offset.Duration())
-	}
-
-	if r.CreationTimestamp.After(noPodsBefore) {
-		return r.CreationTimestamp.Time
-	}
-
-	return noPodsBefore
+	return r.Spec.InjectTime.Time
 }
 
 // RemainingDuration return the remaining duration of the disruption.
@@ -607,15 +532,6 @@ func (s DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 	// Rule: No specificity of containers on a disk disruption
 	if len(s.Containers) != 0 && s.DiskPressure != nil {
 		retErr = multierror.Append(retErr, errors.New("disk pressure disruptions apply to all containers, specifying certain containers does not isolate the disruption"))
-	}
-
-	// Rule: DisruptionTrigger
-	if !s.Triggers.IsZero() {
-		if !s.Triggers.Inject.IsZero() && !s.Triggers.CreatePods.IsZero() {
-			if !s.Triggers.Inject.NotBefore.IsZero() && !s.Triggers.CreatePods.NotBefore.IsZero() && s.Triggers.Inject.NotBefore.Before(&s.Triggers.CreatePods.NotBefore) {
-				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.createPods.notBefore of %s. inject.notBefore must come after createPods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
-			}
-		}
 	}
 
 	// Rule: pulse compatibility

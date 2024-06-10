@@ -205,15 +205,11 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 		return nil, err
 	}
 
-	if !r.Spec.Triggers.IsZero() {
+	if r.Spec.InjectTime != nil && !r.Spec.InjectTime.IsZero() {
 		now := metav1.Now()
 
-		if !r.Spec.Triggers.Inject.IsZero() && !r.Spec.Triggers.Inject.NotBefore.IsZero() && r.Spec.Triggers.Inject.NotBefore.Before(&now) {
-			return nil, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is in the past. only values in the future are accepted", r.Spec.Triggers.Inject.NotBefore)
-		}
-
-		if !r.Spec.Triggers.CreatePods.IsZero() && !r.Spec.Triggers.CreatePods.NotBefore.IsZero() && r.Spec.Triggers.CreatePods.NotBefore.Before(&now) {
-			return nil, fmt.Errorf("spec.trigger.createPods.notBefore is %s, which is in the past. only values in the future are accepted", r.Spec.Triggers.CreatePods.NotBefore)
+		if r.Spec.InjectTime.Before(&now) {
+			return nil, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is in the past. only values in the future are accepted", r.Spec.InjectTime)
 		}
 	}
 
