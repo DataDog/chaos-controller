@@ -81,10 +81,11 @@ type backgroundCmd struct {
 	sync.Mutex
 
 	log            *zap.SugaredLogger
-	processManager process.Manager
-	ticker         *time.Ticker
-	chErr          chan error
-	pid            int
+	processManager process.Manager // Manager to interact with process
+	ticker         *time.Ticker    // Used to send regular SIGCONT signal to process
+	err            chan error      // Used to monitor the exit of the command
+	keepAliveQuit  chan int        // Used to kill the keepAlive goroutine
+	pid            int             // PID of the process
 }
 
 type factory struct {
@@ -115,6 +116,7 @@ func NewBackgroundCmd(cmd Cmd, log *zap.SugaredLogger, processManager process.Ma
 		sync.Mutex{},
 		log,
 		processManager,
+		nil,
 		nil,
 		nil,
 		process.NotFoundProcessPID,
@@ -155,14 +157,14 @@ func (w *backgroundCmd) Start() error {
 		return fmt.Errorf("no process created, processState exit code is %v", w.Cmd.ExitCode())
 	}
 
-	w.chErr = chErr
+	w.err = chErr
 	w.log = w.log.With("pid", w.pid)
 
 	// Monitoring launched process in background to at least give visibility of exit
 	go func() {
 		w.log.Debug("new process created, monitoring newly created process exit status")
 
-		if err := <-w.chErr; err != nil {
+		if err := <-w.err; err != nil {
 			w.log.Warnw("background command exited with an error", "error", err)
 		} else {
 			w.log.Info("background command exited successfully")
@@ -175,12 +177,12 @@ func (w *backgroundCmd) Start() error {
 // KeepAlive will create a goroutine to send regular SIGCONT signal to associated command
 // a single goroutine will be launched no matter how many calls are done to KeepAlive
 func (w *backgroundCmd) KeepAlive() {
+	w.Lock()
+	defer w.Unlock()
+
 	if w.DryRun() {
 		return
 	}
-
-	w.Lock()
-	defer w.Unlock()
 
 	if w.ticker != nil {
 		return
@@ -188,57 +190,79 @@ func (w *backgroundCmd) KeepAlive() {
 
 	w.ticker = time.NewTicker(cmdKeepAliveTickDuration)
 
+	w.keepAliveQuit = make(chan int, 1) // we need a buffered channel so the sender doesn't block
+
 	w.log.Debug("monitoring sending SIGCONT signal to process every 1s")
 
 	go func() {
 		for {
-			if w.ticker == nil {
-				return
-			}
-
-			<-w.safeTicker().C
-
-			proc, err := w.processManager.Find(w.pid)
+			exit, err := w.sendSIGCONTSignal()
 			if err != nil {
-				w.log.Errorw("an error occurred when trying to Find process, stopping to monitor background process, ticker removed", "error", err)
-
-				w.resetTicker()
-
+				w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
 				return
 			}
 
-			if err := w.processManager.Signal(proc, syscall.SIGCONT); err != nil {
-				if errors.Is(err, os.ErrProcessDone) {
-					w.log.Infof("process is already finished, skipping sending SIGCONT from now on")
-				} else {
-					w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
-				}
-
-				w.resetTicker()
-
+			if exit {
 				return
 			}
 		}
 	}()
 }
 
-func (w *backgroundCmd) safeTicker() *time.Ticker {
+func (w *backgroundCmd) sendSIGCONTSignal() (exit bool, err error) {
 	w.Lock()
 	defer w.Unlock()
 
-	return w.ticker
+	if w.ticker == nil {
+		return true, nil
+	}
+
+	select {
+	case <-w.keepAliveQuit:
+		close(w.keepAliveQuit)
+		w.log.Debug("background process exited, stopping to monitor background process, ticker removed")
+
+		return true, nil
+	case <-w.ticker.C:
+	}
+
+	proc, err := w.processManager.Find(w.pid)
+	if err != nil {
+		w.log.Errorw("an error occurred when trying to Find process, stopping to monitor background process, ticker removed", "error", err)
+
+		w.resetTicker()
+
+		return false, err
+	}
+
+	if err := w.processManager.Signal(proc, syscall.SIGCONT); err != nil {
+		w.resetTicker()
+
+		if errors.Is(err, os.ErrProcessDone) {
+			w.log.Infof("process is already finished, skipping sending SIGCONT from now on")
+
+			return true, nil
+		}
+
+		w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
+
+		return false, err
+	}
+
+	return false, nil
 }
 
 func (w *backgroundCmd) resetTicker() {
-	w.Lock()
-	defer w.Unlock()
-
 	if w.ticker == nil {
 		return
 	}
 
 	w.ticker.Stop()
 	w.ticker = nil
+
+	if w.keepAliveQuit != nil {
+		w.keepAliveQuit <- 0
+	}
 }
 
 // Stop will send a SIGTERM signal to associated command
@@ -247,6 +271,9 @@ func (w *backgroundCmd) Stop() error {
 	if w.DryRun() {
 		return nil
 	}
+
+	w.Lock()
+	defer w.Unlock()
 
 	w.resetTicker()
 
