@@ -31,33 +31,25 @@ If a `duration` is not specified, then a disruption will receive the default dur
 After a disruption's duration expires, the disruption resource will live in k8s for a default of 10 minutes. This can be configured by altering
 `controller.expiredDisruptionGCDelay` in the controller's config map.
 
-If any of the options in `spec.triggers` are set, the `duration` will not "begin" until _after_ the injection starts. See [below for details.](#Triggers-aka-controlling-the-timing-of-chaos-pod-creation-and-injection)
+If `spec.injectTime` is set, the `duration` will not "begin" until _after_ the injection starts. See [below for details.](#Triggers-aka-controlling-the-timing-of-chaos-pod-creation-and-injection)
 
-## Triggers, aka, Controlling the timing of chaos pod creation and injection
+## Controlling the timing of chaos pod injection
 
-The `Disruption` spec has a `triggers` field, with two subfields: `createPods` and `inject`. These have identical subfields of their own: `notBefore` and `offset`. `spec.triggers` as well as all of its subfields, are strictly optional.
-These fields allow you to have more fine-grained control over when chaos pods are created, and when they inject the disruption. After creating a new `Disruption` without setting `spec.triggers`, the chaos-controller will begin creating chaos pods for eligible targets almost immediately, and
+The `Disruption` spec has an `injectTime` field; this field is strictly optional. `spec.injectTime` allows you to have more fine-grained control over when chaos pods inject the disruption. 
+After creating a new `Disruption` without setting `spec.injectTime`, the chaos-controller will begin creating chaos pods for eligible targets almost immediately, and
 those chaos pods, once started, will immediately being injecting the disruption.
 
-Sometimes you don't want the injected failure to occur immediately after the `Disruption` object is created.
+Sometimes you don't want the injected failure to occur immediately after the `Disruption` object is created. A common reason is if you need to disrupt 100+ targets. It can take several minutes for that 
+many injector pods to be created, and the initial pods will begin injecting the failure before the final pods are Running.
 
-`spec.triggers.createPods` controls the timing of chaos pod creation. When set, the chaos-controller will still continue to reconcile your `Disruption` object, but
-will not select any targets or create any chaos pods until after the specified time.
-
-`spec.triggers.inject` controls the timing of chaos pod injection. When chaos pods startup, they will first check if the `Disruption` has `spec.triggers.inject` has been set. If yes, they will wait
+`spec.injectTime` controls the timing of chaos pod injection. When chaos pods startup, they will first check if the `Disruption` has `spec.injectTime` has been set. If yes, they will wait
 until the specified timestamp before injecting the failure. However, they will still be responsive to os signals, so the chaos pods or the entire `Disruption` can be deleted. This can allow you to see _exactly_ which chaos pods will be created for which targets, and leave yourself plenty of time
 to delete the `Disruption` before any failure injection occurs. This also helps us to, but does not guarantee, deliver simultaneous injection of failure across all targets. The chaos pods do not directly synchronize with each other or with the chaos-controller, so clock skew can be an issue here.
 
-As mentioned above, both options under `spec.triggers`: `spec.triggers.createPods` and `spec.triggers.inject` themselves have two mutually exclusive options:
+`spec.injectTime` takes an RFC3339 formatted timestamp string, eg., "2023-05-09T11:10:08-04:00". This is an absolute value, that must be _after_ the creationTimestamp of the `Disruption`.
 
-- `notBefore` takes an RFC3339 formatted timestamp string, eg., "2023-05-09T11:10:08-04:00". This is an absolute value, that must be _after_ the creationTimestamp of the `Disruption`.
-- `offset` which takes a golang time.Duration [string, e.g., "45s", "15m30s", "4h30m".](https://pkg.go.dev/time#ParseDuration). This is a relative value, and thus is more convenient when re-using a `Disruption` yaml.
-
-When `spec.triggers.createPods.offset` is set, the `offset` is measured from the creationTimestamp of the `Disruption`. This allows you to say `spec.triggers.createPods.offset: 5m`, and the chaos pods won't be created until 5 minutes after the Disruption was created.
-When `spec.triggers.inject.offset` is set, the `offset` is measured from the timestamp of `spec.triggers.createPods` if defined, and if not, it will be measured from the creationTimestamp of the `Disruption`.
-
-Though the name `notBefore` hopefully implies it, we do need to be explicit that these timestamps are the _earliest_ possible time we may create pods or inject failures. Due to the asynchronous nature of kubernetes controllers, it is probable that pod creation
-and thus also injection, could occur after the `notBefore` timestamp.
+We do need to be explicit that the `spec.injectTime` timestamp is the _earliest_ possible time we may inject the failure. Due to the asynchronous nature of kubernetes controllers, it is probable that pod creation
+and thus also injection, could occur after the `spec.injectTime` timestamp.
 
 ## Pulse
 
