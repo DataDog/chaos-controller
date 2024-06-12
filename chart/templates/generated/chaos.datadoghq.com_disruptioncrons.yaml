@@ -265,6 +265,7 @@ spec:
                         - port
                       type: object
                     injectTime:
+                      description: InjectTime is an optional RFC3339 formatted timestamp string, eg., "2023-05-09T11:10:08-04:00". Injector pods will wait until InjectTime before injecting the disruption failure
                       format: date-time
                       nullable: true
                       type: string

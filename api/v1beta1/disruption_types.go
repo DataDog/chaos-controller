@@ -57,8 +57,9 @@ type DisruptionSpec struct {
 	OnInit          bool              `json:"onInit,omitempty"`          // enable disruption on init
 	Unsafemode      *UnsafemodeSpec   `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
 	StaticTargeting bool              `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
+	// InjectTime is an optional RFC3339 formatted timestamp string, eg., "2023-05-09T11:10:08-04:00". Injector pods will wait until InjectTime before injecting the disruption failure
 	// +nullable
-	InjectTime *metav1.Time `json:"injectTime,omitempty"` // an optional timestamp. injector pods will wait until InjectTime before injecting
+	InjectTime *metav1.Time `json:"injectTime,omitempty"`
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
