@@ -114,7 +114,7 @@ var _ = Describe("Disruption", func() {
 					oldDisruption.Spec.InjectTime = &injectTime
 
 					_, err := newDisruption.ValidateUpdate(oldDisruption)
-					Expect(err).ShouldNot(HaveOccured())
+					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
 		})
