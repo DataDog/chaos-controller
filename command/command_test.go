@@ -234,28 +234,50 @@ var _ = Describe("BackgroundCmd", func() {
 			}
 		}
 
-		DescribeTable(
-			"KeepAlive",
-			func(proc *os.Process, findErr, signalErr error, times int) {
-				SetupMockExpect(cmd, manager, proc, syscall.SIGCONT, findErr, signalErr, times)
+		Describe("KeepAlive", func() {
+			DescribeTable(
+				"success cases",
+				func(times int) {
+					SetupMockExpect(cmd, manager, &os.Process{}, syscall.SIGCONT, nil, nil, times)
 
-				sut.KeepAlive()
-				sut.KeepAlive() // we call it twice volountarily to ensure a single goroutine is created
+					sut.KeepAlive()
+					sut.KeepAlive() // we call it twice voluntarily to test the invariant that only a single goroutine is created
 
-				// Wait enough interval to have at least expected calls (times + 20%)
-				<-time.After(cmdKeepAliveTickDuration*time.Duration(times) + cmdBootstrapAllowedDuration/5)
+					// Wait enough interval to have at least expected calls (times + 20%)
+					<-time.After(cmdKeepAliveTickDuration*time.Duration(times) + cmdBootstrapAllowedDuration/5)
 
-				underSut, ok := sut.(*backgroundCmd)
-				Expect(ok).To(BeTrue())
-				Expect(underSut).ToNot(BeNil())
+					underSut, ok := sut.(*backgroundCmd)
+					Expect(ok).To(BeTrue())
+					Expect(underSut).ToNot(BeNil())
 
-				// Stop timer ASAP to have realistic amount of calls
-				underSut.resetTicker()
-			},
-			Entry("Send a signal several times", &os.Process{}, nil, nil, 2),
-			Entry("Find fails once", nil, errors.New("find fails"), nil, 1),
-			Entry("Signal fails once", &os.Process{}, nil, errors.New("signal fails"), 1),
-		)
+					// Stop timer ASAP to have realistic amount of calls
+					underSut.keepAliveQuit <- 0
+				},
+				Entry("Send a signal two times", 2),
+				Entry("Send a signal three times", 3),
+				Entry("Send a signal one times", 1),
+				Entry("Send a signal four times", 4),
+			)
+
+			DescribeTable(
+				"Error cases",
+				func(proc *os.Process, findErr, signalErr error, times int) {
+					SetupMockExpect(cmd, manager, proc, syscall.SIGCONT, findErr, signalErr, times)
+
+					sut.KeepAlive()
+					sut.KeepAlive() // we call it twice voluntarily to test the invariant that only a single goroutine is created
+
+					// Wait enough interval to have at least expected calls (times + 20%)
+					<-time.After(cmdKeepAliveTickDuration*time.Duration(times) + cmdBootstrapAllowedDuration/5)
+
+					underSut, ok := sut.(*backgroundCmd)
+					Expect(ok).To(BeTrue())
+					Expect(underSut).ToNot(BeNil())
+				},
+				Entry("Find fails once", nil, errors.New("find fails"), nil, 1),
+				Entry("Signal fails once", &os.Process{}, nil, errors.New("signal fails"), 1),
+			)
+		})
 
 		DescribeTable(
 			"Stop",
