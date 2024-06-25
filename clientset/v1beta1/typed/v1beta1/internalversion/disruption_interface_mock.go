@@ -257,6 +257,66 @@ func (_c *DisruptionInterfaceMock_List_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// Update provides a mock function with given fields: ctx, disruption, opts
+func (_m *DisruptionInterfaceMock) Update(ctx context.Context, disruption *v1beta1.Disruption, opts v1.UpdateOptions) (*v1beta1.Disruption, error) {
+	ret := _m.Called(ctx, disruption, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Update")
+	}
+
+	var r0 *v1beta1.Disruption
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1beta1.Disruption, v1.UpdateOptions) (*v1beta1.Disruption, error)); ok {
+		return rf(ctx, disruption, opts)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1beta1.Disruption, v1.UpdateOptions) *v1beta1.Disruption); ok {
+		r0 = rf(ctx, disruption, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1beta1.Disruption)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1beta1.Disruption, v1.UpdateOptions) error); ok {
+		r1 = rf(ctx, disruption, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DisruptionInterfaceMock_Update_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Update'
+type DisruptionInterfaceMock_Update_Call struct {
+	*mock.Call
+}
+
+// Update is a helper method to define mock.On call
+//   - ctx context.Context
+//   - disruption *v1beta1.Disruption
+//   - opts v1.UpdateOptions
+func (_e *DisruptionInterfaceMock_Expecter) Update(ctx interface{}, disruption interface{}, opts interface{}) *DisruptionInterfaceMock_Update_Call {
+	return &DisruptionInterfaceMock_Update_Call{Call: _e.mock.On("Update", ctx, disruption, opts)}
+}
+
+func (_c *DisruptionInterfaceMock_Update_Call) Run(run func(ctx context.Context, disruption *v1beta1.Disruption, opts v1.UpdateOptions)) *DisruptionInterfaceMock_Update_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*v1beta1.Disruption), args[2].(v1.UpdateOptions))
+	})
+	return _c
+}
+
+func (_c *DisruptionInterfaceMock_Update_Call) Return(_a0 *v1beta1.Disruption, _a1 error) *DisruptionInterfaceMock_Update_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *DisruptionInterfaceMock_Update_Call) RunAndReturn(run func(context.Context, *v1beta1.Disruption, v1.UpdateOptions) (*v1beta1.Disruption, error)) *DisruptionInterfaceMock_Update_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Watch provides a mock function with given fields: ctx, opts
 func (_m *DisruptionInterfaceMock) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	ret := _m.Called(ctx, opts)
