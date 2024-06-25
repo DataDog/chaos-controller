@@ -205,7 +205,7 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 		return nil, err
 	}
 
-	if !r.Spec.Triggers.IsZero() {
+	if r.Spec.Triggers != nil && !r.Spec.Triggers.IsZero() {
 		now := metav1.Now()
 
 		if !r.Spec.Triggers.Inject.IsZero() && !r.Spec.Triggers.Inject.NotBefore.IsZero() && r.Spec.Triggers.Inject.NotBefore.Before(&now) {
