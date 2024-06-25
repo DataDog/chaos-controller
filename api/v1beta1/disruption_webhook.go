@@ -509,7 +509,8 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	}
 
 	if r.Spec.Level == chaostypes.DisruptionLevelPod {
-		pods := &corev1.PodList{}
+		pods := &metav1.PartialObjectMetadataList{}
+		pods.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("PodList"))
 		listOptions := &client.ListOptions{
 			Namespace: r.ObjectMeta.Namespace,
 			// In an effort not to fill up memory on huge list calls, limiting to 1000 objects per call
@@ -572,7 +573,8 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 
 		totalCount = len(pods.Items)
 	} else {
-		nodes := &corev1.NodeList{}
+		nodes := &metav1.PartialObjectMetadataList{}
+		nodes.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("NodeList"))
 
 		err := k8sClient.List(context.Background(), nodes,
 			client.Limit(1000))
