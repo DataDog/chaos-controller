@@ -257,6 +257,66 @@ func (_c *DisruptionCronInterfaceMock_List_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// Update provides a mock function with given fields: ctx, disruptionCron, opts
+func (_m *DisruptionCronInterfaceMock) Update(ctx context.Context, disruptionCron *v1beta1.DisruptionCron, opts v1.UpdateOptions) (*v1beta1.DisruptionCron, error) {
+	ret := _m.Called(ctx, disruptionCron, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Update")
+	}
+
+	var r0 *v1beta1.DisruptionCron
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1beta1.DisruptionCron, v1.UpdateOptions) (*v1beta1.DisruptionCron, error)); ok {
+		return rf(ctx, disruptionCron, opts)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1beta1.DisruptionCron, v1.UpdateOptions) *v1beta1.DisruptionCron); ok {
+		r0 = rf(ctx, disruptionCron, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1beta1.DisruptionCron)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1beta1.DisruptionCron, v1.UpdateOptions) error); ok {
+		r1 = rf(ctx, disruptionCron, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DisruptionCronInterfaceMock_Update_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Update'
+type DisruptionCronInterfaceMock_Update_Call struct {
+	*mock.Call
+}
+
+// Update is a helper method to define mock.On call
+//   - ctx context.Context
+//   - disruptionCron *v1beta1.DisruptionCron
+//   - opts v1.UpdateOptions
+func (_e *DisruptionCronInterfaceMock_Expecter) Update(ctx interface{}, disruptionCron interface{}, opts interface{}) *DisruptionCronInterfaceMock_Update_Call {
+	return &DisruptionCronInterfaceMock_Update_Call{Call: _e.mock.On("Update", ctx, disruptionCron, opts)}
+}
+
+func (_c *DisruptionCronInterfaceMock_Update_Call) Run(run func(ctx context.Context, disruptionCron *v1beta1.DisruptionCron, opts v1.UpdateOptions)) *DisruptionCronInterfaceMock_Update_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*v1beta1.DisruptionCron), args[2].(v1.UpdateOptions))
+	})
+	return _c
+}
+
+func (_c *DisruptionCronInterfaceMock_Update_Call) Return(_a0 *v1beta1.DisruptionCron, _a1 error) *DisruptionCronInterfaceMock_Update_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *DisruptionCronInterfaceMock_Update_Call) RunAndReturn(run func(context.Context, *v1beta1.DisruptionCron, v1.UpdateOptions) (*v1beta1.DisruptionCron, error)) *DisruptionCronInterfaceMock_Update_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Watch provides a mock function with given fields: ctx, opts
 func (_m *DisruptionCronInterfaceMock) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	ret := _m.Called(ctx, opts)
