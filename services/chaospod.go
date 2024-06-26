@@ -14,6 +14,7 @@ import (
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/config"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/targetselector"
@@ -63,13 +64,14 @@ type ChaosPodService interface {
 
 // ChaosPodServiceInjectorConfig contains configuration options for the injector.
 type ChaosPodServiceInjectorConfig struct {
-	ServiceAccount                string            // Service account to be used by the injector.
-	Image                         string            // Image to be used for the injector.
-	Annotations, Labels           map[string]string // Annotations and labels to be applied to injected pods.
-	NetworkDisruptionAllowedHosts []string          // List of hosts allowed during network disruption.
-	DNSDisruptionDNSServer        string            // DNS server to be used for DNS disruption.
-	DNSDisruptionKubeDNS          string            // KubeDNS server to be used for DNS disruption.
-	ImagePullSecrets              string            // Image pull secrets for the injector.
+	ServiceAccount                string              // Service account to be used by the injector.
+	Image                         string              // Image to be used for the injector.
+	Annotations, Labels           map[string]string   // Annotations and labels to be applied to injected pods.
+	NetworkDisruptionAllowedHosts []string            // List of hosts allowed during network disruption.
+	DNSDisruptionDNSServer        string              // DNS server to be used for DNS disruption.
+	DNSDisruptionKubeDNS          string              // KubeDNS server to be used for DNS disruption.
+	ImagePullSecrets              string              // Image pull secrets for the injector.
+	Tolerations                   []config.Toleration // Tolerations to be applied to injected pods.
 }
 
 // ChaosPodServiceConfig contains configuration options for the chaosPodService.
@@ -403,6 +405,20 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 	return nil
 }
 
+func (m *chaosPodService) convertTolerations(tolerations []config.Toleration) []corev1.Toleration {
+	var coreTolerations []corev1.Toleration
+	for _, t := range tolerations {
+		coreTolerations = append(coreTolerations, corev1.Toleration{
+			Key:               t.Key,
+			Operator:          corev1.TolerationOperator(t.Operator),
+			Value:             t.Value,
+			Effect:            corev1.TaintEffect(t.Effect),
+			TolerationSeconds: t.TolerationSeconds,
+		})
+	}
+	return coreTolerations
+}
+
 func (m *chaosPodService) generateLabels(disruption *chaosv1beta1.Disruption, targetName string, kind chaostypes.DisruptionKindName) map[string]string {
 	podLabels := make(map[string]string)
 
@@ -426,6 +442,7 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 		ServiceAccountName:            m.config.Injector.ServiceAccount, // service account to use
 		TerminationGracePeriodSeconds: &terminationGracePeriod,
 		ActiveDeadlineSeconds:         &activeDeadlineSeconds,
+		Tolerations:                   m.convertTolerations(m.config.Injector.Tolerations),
 		Containers: []corev1.Container{
 			{
 				Name:            "injector",              // container name

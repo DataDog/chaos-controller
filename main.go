@@ -181,6 +181,7 @@ func main() {
 			Image:                         cfg.Injector.Image,
 			Annotations:                   cfg.Injector.Annotations,
 			Labels:                        cfg.Injector.Labels,
+			Tolerations:                   cfg.Injector.Tolerations,
 			NetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 			DNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
 			DNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,

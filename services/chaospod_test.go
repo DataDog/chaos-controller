@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1003,6 +1004,41 @@ var _ = Describe("Chaos Pod Service", func() {
 					})
 				})
 
+			})
+		})
+	})
+
+	Describe("CreatePod with tolerations", func() {
+		var tolerations []corev1.Toleration
+
+		BeforeEach(func() {
+			// Arrange
+			tolerations = []corev1.Toleration{
+				{
+					Key:      "key",
+					Operator: corev1.TolerationOpEqual,
+					Value:    "value",
+					Effect:   corev1.TaintEffectNoSchedule,
+				},
+			}
+			chaosPod = builderstest.NewPodBuilder("test-1", DefaultNamespace).WithTolerations(tolerations).Build()
+		})
+
+		JustBeforeEach(func() {
+			// Action
+			err = chaosPodService.CreatePod(context.Background(), &chaosPod)
+		})
+
+		Describe("success case", func() {
+			BeforeEach(func() {
+				// Arrange
+				By("create the chaos pod with the ks8 client")
+				k8sClientMock.EXPECT().Create(mock.Anything, &chaosPod).Return(nil)
+			})
+
+			It("should not return an error", func() {
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
 			})
 		})
 	})
