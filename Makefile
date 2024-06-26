@@ -46,7 +46,7 @@ LIMA_INSTANCE ?= $(shell whoami | tr "." "-")
 
 # cluster name is used by e2e-test to target the node with a disruption
 # CI need to be able to override this value
-E2E_TEST_CLUSTER_NAME ?= $(LIMA_INSTANCE)
+E2E_TEST_CLUSTER_NAME ?= lima-$(LIMA_INSTANCE)
 E2E_TEST_KUBECTL_CONTEXT ?= lima
 
 KUBECTL ?= limactl shell $(LIMA_INSTANCE) sudo kubectl
