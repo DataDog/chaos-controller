@@ -406,7 +406,7 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 }
 
 func (m *chaosPodService) convertTolerations(tolerations []config.Toleration) []corev1.Toleration {
-	var coreTolerations []corev1.Toleration
+	var coreTolerations []corev1.Toleration //nolint:prealloc
 	for _, t := range tolerations {
 		coreTolerations = append(coreTolerations, corev1.Toleration{
 			Key:               t.Key,
@@ -416,6 +416,7 @@ func (m *chaosPodService) convertTolerations(tolerations []config.Toleration) []
 			TolerationSeconds: t.TolerationSeconds,
 		})
 	}
+
 	return coreTolerations
 }
 
