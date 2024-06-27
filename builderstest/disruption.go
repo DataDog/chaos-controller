@@ -34,7 +34,7 @@ func NewDisruptionBuilder() *DisruptionBuilder {
 }
 
 // WithDisruptionTriggers sets the specified triggers of disruption.
-func (b *DisruptionBuilder) WithDisruptionTriggers(triggers v1beta1.DisruptionTriggers) *DisruptionBuilder {
+func (b *DisruptionBuilder) WithDisruptionTriggers(triggers *v1beta1.DisruptionTriggers) *DisruptionBuilder {
 	b.modifiers = append(
 		b.modifiers,
 		func() {
