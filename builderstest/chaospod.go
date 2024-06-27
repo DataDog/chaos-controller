@@ -96,6 +96,17 @@ func (b *ChaosPodBuilder) WithChaosPodLabels(name, namespace, target, kind strin
 	return b
 }
 
+// WithTolerations sets tolerations to the spec.
+func (b *ChaosPodBuilder) WithTolerations(tolerations []v1.Toleration) *ChaosPodBuilder {
+	b.modifiers = append(
+		b.modifiers,
+		func() {
+			b.Spec.Tolerations = tolerations
+		})
+
+	return b
+}
+
 // WithLabels sets custom labels.
 func (b *ChaosPodBuilder) WithLabels(labels map[string]string) *ChaosPodBuilder {
 	b.modifiers = append(
