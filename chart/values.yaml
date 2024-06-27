@@ -88,6 +88,17 @@ injector:
   annotations: {} # extra annotations passed to the chaos injector pods
   labels: {} # extra labels passed to the chaos injector pods
   tolerations: [] # extra tolerations passed to the chaos injector pods
+  # (here's the expected format, key/effect are required, all other fields are optional)
+    # tolerations:
+    #   - key: "key1"
+    #     operator: "Equal"
+    #     value: "value1"
+    #     effect: "NoExecute"
+    #     tolerationSeconds: 3600
+    #   - key: "key1"
+    #     operator: "Equal"
+    #     value: "value1"
+    #     effect: "NoExecute"
   serviceAccount: chaos-injector # service account to use for the chaos injector pods
   dnsDisruption: # dns disruption configuration
     dnsServer: "" # IP address of the upstream dns server

@@ -84,21 +84,23 @@ data:
         {{ $key }}: {{ $val | quote }}
         {{- end }}
       {{- end }}
+      {{- if .Values.injector.resources }}
       tolerations:
-      {{- range .Values.injector.tolerations }}
-        - key: {{ .key | quote }}
-          {{- if .operator }}
-          operator: {{ .operator | default "Equal" | quote }}
-          {{- end }}
-          {{- if .value }}
-          value: {{ .value | quote }}
-          {{- end }}
-          {{- if .effect }}
-          effect: {{ .effect | quote }}
-          {{- end }}
-          {{- if .tolerationSeconds }}
-          tolerationSeconds: {{ .tolerationSeconds }}
-          {{- end }}
+        {{- range .Values.injector.tolerations }}
+          - key: {{ .key | quote }}
+            {{- if .operator }}
+            operator: {{ .operator | default "Equal" | quote }}
+            {{- end }}
+            {{- if .value }}
+            value: {{ .value | quote }}
+            {{- end }}
+            {{- if .effect }}
+            effect: {{ .effect | quote }}
+            {{- end }}
+            {{- if .tolerationSeconds }}
+            tolerationSeconds: {{ .tolerationSeconds }}
+            {{- end }}
+        {{- end }}
       {{- end }}
       serviceAccount: {{ .Values.injector.serviceAccount | quote }}
       chaosNamespace: {{ .Values.chaosNamespace | quote }}
