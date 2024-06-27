@@ -84,7 +84,7 @@ data:
         {{ $key }}: {{ $val | quote }}
         {{- end }}
       {{- end }}
-      {{- if .Values.injector.resources }}
+      {{- if .Values.injector.tolerations }}
       tolerations:
         {{- range .Values.injector.tolerations }}
           - key: {{ .key | quote }}
