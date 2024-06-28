@@ -69,6 +69,15 @@ type injectorConfig struct {
 	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
 	ImagePullSecrets  string                          `json:"imagePullSecrets"`
+	Tolerations       []Toleration                    `json:"tolerations"`
+}
+
+type Toleration struct {
+	Key               string `json:"key"`
+	Operator          string `json:"operator"`
+	Value             string `json:"value"`
+	Effect            string `json:"effect"`
+	TolerationSeconds *int64 `json:"tolerationSeconds,omitempty"`
 }
 
 type injectorDNSDisruptionConfig struct {

@@ -112,10 +112,10 @@ var _ = Describe("Disruption", func() {
 					}
 
 					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = triggers
+					newDisruption.Spec.Triggers = &triggers
 
 					oldDisruption.Spec.Duration = "30m"
-					oldDisruption.Spec.Triggers = triggers
+					oldDisruption.Spec.Triggers = &triggers
 
 					_, err := newDisruption.ValidateUpdate(oldDisruption)
 					Expect(err).Should(Succeed())
@@ -128,10 +128,10 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = triggers
+					newDisruption.Spec.Triggers = &triggers
 
 					oldDisruption.Spec.Duration = "30m"
-					oldDisruption.Spec.Triggers = triggers
+					oldDisruption.Spec.Triggers = &triggers
 
 					_, err := newDisruption.ValidateUpdate(oldDisruption)
 					Expect(err).Should(Succeed())
@@ -419,7 +419,7 @@ var _ = Describe("Disruption", func() {
 			When("triggers.*.notBefore is in the past", func() {
 				It("triggers.inject should return an error", func() {
 					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = DisruptionTriggers{
+					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						Inject: DisruptionTrigger{
 							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5 * -1)),
 						},
@@ -431,7 +431,7 @@ var _ = Describe("Disruption", func() {
 
 				It("triggers.createPods should return an error", func() {
 					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = DisruptionTriggers{
+					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						CreatePods: DisruptionTrigger{
 							NotBefore: metav1.NewTime(time.Now().Add(time.Hour * -1)),
 						},
@@ -446,7 +446,7 @@ var _ = Describe("Disruption", func() {
 				It("should not return an error", func() {
 					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = DisruptionTriggers{
+					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						Inject: DisruptionTrigger{
 							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5)),
 						},
@@ -460,7 +460,7 @@ var _ = Describe("Disruption", func() {
 			When("triggers.inject.notBefore is before triggers.createPods.notBefore", func() {
 				It("should return an error", func() {
 					newDisruption.Spec.Duration = "30m"
-					newDisruption.Spec.Triggers = DisruptionTriggers{
+					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						Inject: DisruptionTrigger{
 							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5)),
 						},

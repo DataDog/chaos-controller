@@ -58,7 +58,7 @@ type DisruptionSpec struct {
 	Unsafemode      *UnsafemodeSpec   `json:"unsafeMode,omitempty"`      // unsafemode spec used to turn off safemode safety nets
 	StaticTargeting bool              `json:"staticTargeting,omitempty"` // enable dynamic targeting and cluster observation
 	// +nullable
-	Triggers DisruptionTriggers `json:"triggers,omitempty"` // alter the pre-injection lifecycle
+	Triggers *DisruptionTriggers `json:"triggers,omitempty"` // alter the pre-injection lifecycle
 	// +nullable
 	Pulse    *DisruptionPulse   `json:"pulse,omitempty"`    // enable pulsing diruptions and specify the duration of the active state and the dormant state of the pulsing duration
 	Duration DisruptionDuration `json:"duration,omitempty"` // time from disruption creation until chaos pods are deleted and no more are created
@@ -302,7 +302,7 @@ type Disruption struct {
 func (r *Disruption) TimeToInject() time.Time {
 	triggers := r.Spec.Triggers
 
-	if triggers.IsZero() {
+	if triggers == nil || triggers.IsZero() {
 		return r.CreationTimestamp.Time
 	}
 
@@ -334,7 +334,7 @@ func (r *Disruption) TimeToInject() time.Time {
 func (r *Disruption) TimeToCreatePods() time.Time {
 	triggers := r.Spec.Triggers
 
-	if triggers.IsZero() {
+	if triggers == nil || triggers.IsZero() {
 		return r.CreationTimestamp.Time
 	}
 
@@ -610,7 +610,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
 	}
 
 	// Rule: DisruptionTrigger
-	if !s.Triggers.IsZero() {
+	if s.Triggers != nil && !s.Triggers.IsZero() {
 		if !s.Triggers.Inject.IsZero() && !s.Triggers.CreatePods.IsZero() {
 			if !s.Triggers.Inject.NotBefore.IsZero() && !s.Triggers.CreatePods.NotBefore.IsZero() && s.Triggers.Inject.NotBefore.Before(&s.Triggers.CreatePods.NotBefore) {
 				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.createPods.notBefore of %s. inject.notBefore must come after createPods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
