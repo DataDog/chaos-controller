@@ -274,6 +274,11 @@ workflows:
           diff-fails: true
           requires: [prepare-env]
       - go-make:
+          name: mocks
+          target: generate-mocks
+          diff-fails: true
+          requires: [prepare-env]
+      - go-make:
           name: vet
           target: vet
           requires: [prepare-env]
