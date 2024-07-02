@@ -71,6 +71,10 @@ CONTROLLER_GEN_VERSION = v0.14.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
 
 MOCKERY_VERSION = 2.38.0
+MOCKERY_ARCH = $(GOARCH)
+ifeq (amd64,$(GOARCH))
+MOCKERY_ARCH = x86_64
+endif
 MOCKERY_INSTALLED_VERSION = $(shell mockery --version --quiet --config="" 2>/dev/null || echo "")
 
 # Additional args to provide to test runner (ginkgo)
@@ -499,7 +503,7 @@ install-mockery:
 ifneq ($(MOCKERY_INSTALLED_VERSION),v$(MOCKERY_VERSION))
 	$(info mockery version $(MOCKERY_VERSION) is not installed or version differ (v$(MOCKERY_VERSION) != $(MOCKERY_INSTALLED_VERSION)))
 	$(info installing mockery v$(MOCKERY_VERSION)...)
-	curl -sSLo /tmp/mockery.tar.gz https://github.com/vektra/mockery/releases/download/v$(MOCKERY_VERSION)/mockery_$(MOCKERY_VERSION)_$(GOOS)_$(GOARCH).tar.gz
+	curl -sSLo /tmp/mockery.tar.gz https://github.com/vektra/mockery/releases/download/v$(MOCKERY_VERSION)/mockery_$(MOCKERY_VERSION)_$(GOOS)_$(MOCKERY_ARCH).tar.gz
 	tar -xvzf /tmp/mockery.tar.gz --directory=$(GOBIN) mockery
 	rm /tmp/mockery.tar.gz
 endif
