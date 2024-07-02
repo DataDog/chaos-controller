@@ -107,7 +107,7 @@ jobs:
       - checkout
       - run:
           name: Install binaries
-          command: make -j6 install-golangci-lint install-kubebuilder install-helm install-controller-gen install-datadog-ci install-yamlfmt
+          command: make -j6 install-golangci-lint install-kubebuilder install-helm install-controller-gen install-datadog-ci install-yamlfmt install-mockery
       - run:
           name: Install protoc
           command: make install-protobuf PROTOC_OS=linux
