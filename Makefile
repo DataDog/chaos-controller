@@ -414,7 +414,7 @@ generate-chaosdogfood-protobuf:
 	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
 
 clean-mocks:
-	find . -type file -name "*mock*.go" -not -path "./vendor/*" -exec rm {} \;
+	find . -type f -name "*mock*.go" -not -path "./vendor/*" -exec rm {} \;
 	rm -rf mocks/
 
 generate-mocks: clean-mocks install-mockery
