@@ -386,10 +386,10 @@ lima-install-longhorn:
 
 venv:
 	test -d .venv || python3 -m venv .venv
-	source .venv/bin/activate; pip install -qr tasks/requirements.txt
+	. .venv/bin/activate; pip install -qr tasks/requirements.txt
 
 header: venv
-	source .venv/bin/activate; inv header-check
+	. .venv/bin/activate; inv header-check
 
 header-fix:
 # First re-generate header, it should complain as just (re)generated mocks does not contains them
@@ -398,7 +398,7 @@ header-fix:
 	$(MAKE) header
 
 license: venv
-	source .venv/bin/activate; inv license-check
+	. .venv/bin/activate; inv license-check
 
 godeps:
 	go mod tidy; go mod vendor
