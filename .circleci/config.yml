@@ -274,7 +274,6 @@ workflows:
           diff-fails: true
           requires: [prepare-env]
       - go-make:
-          executor: ubuntu
           name: verify-mocks
           target: generate-mocks
           diff-fails: true
