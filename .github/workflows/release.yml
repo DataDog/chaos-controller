@@ -27,9 +27,10 @@ jobs:
           --set global.oci.registry=datadog --set global.chaos.defaultImage.tag=${GITHUB_REF_NAME}
           > ./chart/install.yaml
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v1
+        uses: goreleaser/goreleaser-action@v6
         with:
-          version: latest
-          args: release --rm-dist --skip-sign
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --skip=sign
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

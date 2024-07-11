@@ -46,7 +46,7 @@ LIMA_INSTANCE ?= $(shell whoami | tr "." "-")
 
 # cluster name is used by e2e-test to target the node with a disruption
 # CI need to be able to override this value
-E2E_TEST_CLUSTER_NAME ?= $(LIMA_INSTANCE)
+E2E_TEST_CLUSTER_NAME ?= lima-$(LIMA_INSTANCE)
 E2E_TEST_KUBECTL_CONTEXT ?= lima
 
 KUBECTL ?= limactl shell $(LIMA_INSTANCE) sudo kubectl
@@ -219,6 +219,7 @@ endif
 # Tests & CI
 ## Run unit tests
 test: generate manifests
+	$(if $(GOPATH),,$(error GOPATH is not set. Please set GOPATH before running make test))
 	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
 		GINKGO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
 
