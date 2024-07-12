@@ -199,18 +199,6 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
-	mainFS.BoolVar(&cfg.Controller.Notifiers.HTTP.Enabled, "notifiers-http-enabled", false, "Enabler toggle for the HTTP notifier (defaulted to false)")
-
-	if err := viper.BindPFlag("controller.notifiers.http.enabled", mainFS.Lookup("notifiers-http-enabled")); err != nil {
-		return cfg, err
-	}
-
-	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.URL, "notifiers-http-url", "", "URL to send the notification using the HTTP notifier(defaulted to \"\")")
-
-	if err := viper.BindPFlag("controller.notifiers.http.url", mainFS.Lookup("notifiers-http-url")); err != nil {
-		return cfg, err
-	}
-
 	mainFS.StringArrayVar(&cfg.Controller.Notifiers.HTTP.Headers, "notifiers-http-headers", []string{}, "Additional headers to add to the request when sending the notification (defaulted to empty list)")
 
 	if err := viper.BindPFlag("controller.notifiers.http.headers", mainFS.Lookup("notifiers-http-headers")); err != nil {
@@ -238,6 +226,30 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.AuthTokenPath, "notifiers-http-auth-token-path", "", "WARNING/ALPHA: Extract bearer token from provided JSON path (using GJSON)")
 
 	if err := viper.BindPFlag("controller.notifiers.http.authTokenPath", mainFS.Lookup("notifiers-http-auth-token-path")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.Notifiers.HTTP.Disruption.Enabled, "notifiers-http-disruption-enabled", false, "Enabler toggle to send disruption notifications using the HTTP notifier (defaulted to false)")
+
+	if err := viper.BindPFlag("controller.notifiers.http.disruption.enabled", mainFS.Lookup("notifiers-http-disruption-enabled")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.Disruption.URL, "notifiers-http-disruption-url", "", "URL to send disruption notifications using the HTTP notifier(defaulted to \"\")")
+
+	if err := viper.BindPFlag("controller.notifiers.http.disruption.url", mainFS.Lookup("notifiers-http-disruption-url")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.Notifiers.HTTP.DisruptionCron.Enabled, "notifiers-http-disruptioncron-enabled", false, "Enabler toggle to send disruption cron notifications using the HTTP notifier (defaulted to false)")
+
+	if err := viper.BindPFlag("controller.notifiers.http.disruptioncron.enabled", mainFS.Lookup("notifiers-http-disruptioncron-enabled")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.Disruption.URL, "notifiers-http-disruptioncron-url", "", "URL to send disruption cron notifications using the HTTP notifier(defaulted to \"\")")
+
+	if err := viper.BindPFlag("controller.notifiers.http.disruptioncron.url", mainFS.Lookup("notifiers-http-disruptioncron-url")); err != nil {
 		return cfg, err
 	}
 

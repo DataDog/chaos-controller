@@ -17,13 +17,13 @@ import (
 )
 
 // +kubebuilder:webhook:webhookVersions={v1},path=/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info,mutating=true,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptions;disruptions/status,verbs=create,versions=v1beta1,,name=mdisruption.kb.io,admissionReviewVersions={v1,v1beta1}
-type UserInfoMutator struct {
+type DisruptionUserInfoMutator struct {
 	Client  client.Client
 	Log     *zap.SugaredLogger
 	Decoder *admission.Decoder
 }
 
-func (m *UserInfoMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
+func (m *DisruptionUserInfoMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	dis := &v1beta1.Disruption{}
 
 	// ensure Decoder is set

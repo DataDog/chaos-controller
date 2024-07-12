@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/config"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/DataDog/chaos-controller/eventnotifier/http"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var logger *zap.SugaredLogger
@@ -63,7 +65,7 @@ var _ = Describe("Config", func() {
 				Expect(v.Controller.Notifiers.Common.ClusterName).To(BeEmpty())
 				Expect(v.Controller.Notifiers.Noop.Enabled).To(BeFalse())
 				Expect(v.Controller.Notifiers.Slack.Enabled).To(BeFalse())
-				Expect(v.Controller.Notifiers.HTTP.Enabled).To(BeFalse())
+				Expect(v.Controller.Notifiers.HTTP.Disruption.Enabled).To(BeFalse())
 				Expect(v.Controller.Notifiers.Datadog.Enabled).To(BeFalse())
 
 				By("overriding controller notifier slack values")
@@ -73,7 +75,8 @@ var _ = Describe("Config", func() {
 				By("overriding controller notifier http values")
 				Expect(v.Controller.Notifiers.HTTP.Headers).To(BeEmpty())
 				Expect(v.Controller.Notifiers.HTTP.HeadersFilepath).To(BeEmpty())
-				Expect(v.Controller.Notifiers.HTTP.URL).To(BeEmpty())
+				Expect(v.Controller.Notifiers.HTTP.Disruption).To(Equal(http.DisruptionConfig{}))
+				Expect(v.Controller.Notifiers.HTTP.DisruptionCron).To(Equal(http.DisruptionCronConfig{}))
 
 				By("overriding controller cloudProvider values")
 				Expect(v.Controller.CloudProviders.DisableAll).To(BeFalse())
@@ -129,7 +132,6 @@ var _ = Describe("Config", func() {
 				Expect(v.Controller.Notifiers.Common.ClusterName).To(Equal("some-cluster-name"))
 				Expect(v.Controller.Notifiers.Noop.Enabled).To(BeTrue())
 				Expect(v.Controller.Notifiers.Slack.Enabled).To(BeTrue())
-				Expect(v.Controller.Notifiers.HTTP.Enabled).To(BeTrue())
 				Expect(v.Controller.Notifiers.Datadog.Enabled).To(BeTrue())
 
 				By("overriding controller notifier slack values")
@@ -139,7 +141,10 @@ var _ = Describe("Config", func() {
 				By("overriding controller notifier http values")
 				Expect(v.Controller.Notifiers.HTTP.Headers).To(Equal([]string{"a", "b", "c"}))
 				Expect(v.Controller.Notifiers.HTTP.HeadersFilepath).To(Equal("/header-file-path/below/me"))
-				Expect(v.Controller.Notifiers.HTTP.URL).To(Equal("https://example.com/webhook"))
+				Expect(v.Controller.Notifiers.HTTP.Disruption.Enabled).To(BeTrue())
+				Expect(v.Controller.Notifiers.HTTP.Disruption.URL).To(Equal("https://example.com/webhook/disruption"))
+				Expect(v.Controller.Notifiers.HTTP.DisruptionCron.Enabled).To(BeTrue())
+				Expect(v.Controller.Notifiers.HTTP.DisruptionCron.URL).To(Equal("https://example.com/webhook/disruptioncron"))
 
 				By("overriding controller cloudProvider values")
 				Expect(v.Controller.CloudProviders.DisableAll).To(BeTrue())

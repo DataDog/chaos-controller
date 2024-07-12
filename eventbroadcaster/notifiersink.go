@@ -13,13 +13,12 @@ import (
 	"github.com/DataDog/chaos-controller/eventnotifier"
 	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 	"go.uber.org/zap"
-
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -29,34 +28,98 @@ type NotifierSink struct {
 	logger   *zap.SugaredLogger
 }
 
-// RegisterNotifierSinks builds notifiers sinks and registers them on the given broadcaster
-func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, notifiersConfig eventnotifier.NotifiersConfig, logger *zap.SugaredLogger) (err error) {
-	client := mgr.GetClient()
-
-	notifiers, err := eventnotifier.GetNotifiers(notifiersConfig, logger)
-
+// RegisterNotifierSinks registers notifiers sinks on the given broadcaster
+func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster, notifiers []eventnotifier.Notifier, logger *zap.SugaredLogger) {
 	for _, notifier := range notifiers {
 		logger.Infof("notifier %s enabled", notifier.GetNotifierName())
 
-		broadcaster.StartRecordingToSink(&NotifierSink{client: client, notifier: notifier, logger: logger})
+		broadcaster.StartRecordingToSink(&NotifierSink{client: mgr.GetClient(), notifier: notifier, logger: logger})
 	}
 
 	corev1Client, _ := corev1client.NewForConfig(mgr.GetConfig())
 
 	broadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: corev1Client.Events("")})
-
-	return
 }
 
 func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
-	dis, err := s.getDisruption(event)
-	if err != nil {
+	s.logger.Debugw("CREATE event received:", "event", event)
+
+	var obj client.Object
+
+	switch event.InvolvedObject.Kind {
+	case v1beta1.DisruptionKind:
+		disruption, err := s.getDisruption(event)
+		if err != nil {
+			s.logger.Warn(err)
+
+			disruption = v1beta1.Disruption{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       event.InvolvedObject.Kind,
+					APIVersion: event.InvolvedObject.APIVersion,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:                       event.InvolvedObject.Name,
+					GenerateName:               event.GetGenerateName(),
+					Namespace:                  event.InvolvedObject.Namespace,
+					UID:                        event.InvolvedObject.UID,
+					ResourceVersion:            event.InvolvedObject.ResourceVersion,
+					Generation:                 event.GetGeneration(),
+					CreationTimestamp:          event.GetCreationTimestamp(),
+					DeletionTimestamp:          event.GetDeletionTimestamp(),
+					DeletionGracePeriodSeconds: event.GetDeletionGracePeriodSeconds(),
+					Labels:                     event.GetLabels(),
+					Annotations:                event.GetAnnotations(),
+					OwnerReferences:            event.GetOwnerReferences(),
+					Finalizers:                 event.GetFinalizers(),
+					ManagedFields:              event.GetManagedFields(),
+				},
+			}
+		}
+
+		obj = &disruption
+	case v1beta1.DisruptionCronKind:
+		disruptionCron, err := s.getDisruptionCron(event)
+		if err != nil {
+			s.logger.Warn(err)
+
+			disruptionCron = v1beta1.DisruptionCron{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       event.InvolvedObject.Kind,
+					APIVersion: event.InvolvedObject.APIVersion,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:                       event.InvolvedObject.Name,
+					GenerateName:               event.GetGenerateName(),
+					Namespace:                  event.InvolvedObject.Namespace,
+					UID:                        event.InvolvedObject.UID,
+					ResourceVersion:            event.InvolvedObject.ResourceVersion,
+					Generation:                 event.GetGeneration(),
+					CreationTimestamp:          event.GetCreationTimestamp(),
+					DeletionTimestamp:          event.GetDeletionTimestamp(),
+					DeletionGracePeriodSeconds: event.GetDeletionGracePeriodSeconds(),
+					Labels:                     event.GetLabels(),
+					Annotations:                event.GetAnnotations(),
+					OwnerReferences:            event.GetOwnerReferences(),
+					Finalizers:                 event.GetFinalizers(),
+					ManagedFields:              event.GetManagedFields(),
+				},
+			}
+		}
+
+		obj = &disruptionCron
+	default:
+		s.logger.Warnf("eventnotifier: not a disruption/disruptioncron event: kind %s", event.InvolvedObject.Kind)
 		return event, nil
 	}
 
-	if err = s.parseEventToNotifier(event, dis); err != nil {
-		s.logger.Error(err)
+	notificationType, err := s.getNotificationType(event)
+	if err != nil {
+		s.logger.Warnw("notifier: not a notifiable event")
 		return event, nil
+	}
+
+	if err := s.notifier.Notify(obj, *event, notificationType); err != nil {
+		return event, fmt.Errorf("notifier: failed to notify: %w", err)
 	}
 
 	return event, nil
@@ -74,10 +137,6 @@ func (s *NotifierSink) Patch(oldEvent *corev1.Event, data []byte) (*corev1.Event
 func (s *NotifierSink) getDisruption(event *corev1.Event) (v1beta1.Disruption, error) {
 	dis := v1beta1.Disruption{}
 
-	if event.InvolvedObject.Kind != v1beta1.DisruptionKind {
-		return v1beta1.Disruption{}, fmt.Errorf("eventnotifier: not a disruption")
-	}
-
 	if err := s.client.Get(context.Background(), types.NamespacedName{Namespace: event.InvolvedObject.Namespace, Name: event.InvolvedObject.Name}, &dis); err != nil {
 		return v1beta1.Disruption{}, err
 	}
@@ -85,27 +144,33 @@ func (s *NotifierSink) getDisruption(event *corev1.Event) (v1beta1.Disruption, e
 	return dis, nil
 }
 
-// parseEventToNotifier contains the event parsing and notification logic
-func (s *NotifierSink) parseEventToNotifier(event *corev1.Event, dis v1beta1.Disruption) (err error) {
+// getDisruptionCron fetches the disruption cron object of the event from the controller-runtime client
+func (s *NotifierSink) getDisruptionCron(event *corev1.Event) (v1beta1.DisruptionCron, error) {
+	disruptionCron := v1beta1.DisruptionCron{}
+
+	if err := s.client.Get(context.Background(), types.NamespacedName{Namespace: event.InvolvedObject.Namespace, Name: event.InvolvedObject.Name}, &disruptionCron); err != nil {
+		return v1beta1.DisruptionCron{}, err
+	}
+
+	return disruptionCron, nil
+}
+
+func (s *NotifierSink) getNotificationType(event *corev1.Event) (notifTypes.NotificationType, error) {
 	switch event.Type {
 	case corev1.EventTypeWarning:
-		err = s.notifier.Notify(dis, *event, notifTypes.NotificationWarning)
+		return notifTypes.NotificationWarning, nil
 	case corev1.EventTypeNormal:
 		if v1beta1.IsNotifiableEvent(*event) {
 			switch {
 			case v1beta1.IsRecoveryEvent(*event):
-				err = s.notifier.Notify(dis, *event, notifTypes.NotificationSuccess)
-			case v1beta1.IsCompletionEvent(*event):
-				err = s.notifier.Notify(dis, *event, notifTypes.NotificationCompletion)
+				return notifTypes.NotificationSuccess, nil
+			case v1beta1.IsDisruptionCompletionEvent(*event):
+				return notifTypes.NotificationCompletion, nil
 			default:
-				err = s.notifier.Notify(dis, *event, notifTypes.NotificationInfo)
+				return notifTypes.NotificationInfo, nil
 			}
-		} else {
-			err = nil
 		}
-	default:
-		err = fmt.Errorf("notifier: not a notifiable event")
 	}
 
-	return
+	return "", fmt.Errorf("notifier: not a notifiable event")
 }

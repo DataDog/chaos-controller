@@ -20,7 +20,10 @@ controller:
     slack:
       enabled: false
     http:
-      enabled: false
+      disruption:
+        enabled: false
+      disruptioncron:
+        enabled: false
   cloudProviders:
     disableAll: false
     pullInterval: 24h
