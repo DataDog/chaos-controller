@@ -103,7 +103,7 @@ func (d DisruptionTargetHandler) OnChangeHandleMetricsSink(pod *corev1.Pod, node
 func (d DisruptionTargetHandler) OnChangeHandleNotifierSink(oldPod, newPod *corev1.Pod, oldNode, newNode *corev1.Node, okOldPod, okNewPod, okOldNode, okNewNode bool) {
 	var objectToNotify runtime.Object
 
-	eventsToSend := make(map[v1beta1.DisruptionEventReason]bool)
+	eventsToSend := make(map[v1beta1.EventReason]bool)
 	name := ""
 
 	switch {
@@ -212,7 +212,7 @@ func getContainerState(containerStatus corev1.ContainerStatus) (string, string) 
 
 // https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/events/event.go
 // In case of new events sent from kubelet, we can determine any error event in the node to propagate it
-func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.DisruptionEventReason]bool, eventsFromTarget []corev1.Event, recoverTimestamp *time.Time, targetName string) (map[v1beta1.DisruptionEventReason]bool, bool) {
+func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.EventReason]bool, eventsFromTarget []corev1.Event, recoverTimestamp *time.Time, targetName string) (map[v1beta1.EventReason]bool, bool) {
 	cannotRecoverYet := true
 
 	for _, event := range eventsFromTarget {
@@ -313,10 +313,10 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.D
 	return eventsToSend, cannotRecoverYet
 }
 
-func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod corev1.Pod, disruptionEvents []corev1.Event) map[v1beta1.DisruptionEventReason]bool {
+func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod corev1.Pod, disruptionEvents []corev1.Event) map[v1beta1.EventReason]bool {
 	var recoverTimestamp *time.Time // keep track of the timestamp of a recovering event / state
 
-	eventsToSend := make(map[v1beta1.DisruptionEventReason]bool)
+	eventsToSend := make(map[v1beta1.EventReason]bool)
 	runningState := "Running"
 
 	// compare statuses between old and new pod to detect changes
@@ -382,10 +382,10 @@ func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod 
 	return eventsToSend
 }
 
-func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newNode corev1.Node, targetEvents []corev1.Event) map[v1beta1.DisruptionEventReason]bool {
+func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newNode corev1.Node, targetEvents []corev1.Event) map[v1beta1.EventReason]bool {
 	var recoverTimestamp *time.Time // keep track of the timestamp of a recovering event / condition / phase
 
-	eventsToSend := make(map[v1beta1.DisruptionEventReason]bool)
+	eventsToSend := make(map[v1beta1.EventReason]bool)
 
 	// Evaluate the need to send a warning event on node condition changes
 	for _, newCondition := range newNode.Status.Conditions {

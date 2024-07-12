@@ -12,6 +12,7 @@ import (
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type NotifierNoopConfig struct {
@@ -35,9 +36,15 @@ func (n Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverNoop)
 }
 
-// NotifyWarning generates a notification for generiv k8s Warning events
-func (n Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
-	n.log.Debugf("NOOP: %s for disruption %s\n", fmt.Sprintf("Notifier %s: %s - %s", string(notifType), event.Reason, event.Message), dis.Name)
+// Notify generates a notification for generic k8s events
+func (n Notifier) Notify(obj client.Object, event corev1.Event, notifType types.NotificationType) error {
+	switch d := obj.(type) {
+	case *v1beta1.Disruption:
+		n.log.Debugf("NOOP: %s for disruption %s\n", fmt.Sprintf("Notifier %s: %s - %s", string(notifType), event.Reason, event.Message), d.Name)
+	case *v1beta1.DisruptionCron:
+		n.log.Debugf("NOOP: %s for disruption cron %s\n", fmt.Sprintf("Notifier %s: %s - %s", string(notifType), event.Reason, event.Message), d.Name)
+	default:
+	}
 
 	return nil
 }

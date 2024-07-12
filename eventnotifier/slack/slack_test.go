@@ -244,7 +244,7 @@ func TestNotifier_Notify(t *testing.T) {
 				tt.setup(t, slackClient, tt.callContext)
 			}
 
-			if err := n.Notify(d, e, tt.callContext.notifType); (err != nil) || tt.wantErr != "" {
+			if err := n.Notify(&d, e, tt.callContext.notifType); (err != nil) || tt.wantErr != "" {
 				require.EqualError(err, tt.wantErr)
 			}
 		})

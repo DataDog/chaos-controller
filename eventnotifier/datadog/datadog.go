@@ -15,6 +15,7 @@ import (
 	"github.com/DataDog/datadog-go/statsd"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type NotifierDatadogConfig struct {
@@ -29,7 +30,7 @@ type Notifier struct {
 }
 
 // New Datadog Notifier
-func New(commonConfig types.NotifiersCommonConfig, datadogConfig NotifierDatadogConfig, logger *zap.SugaredLogger) (*Notifier, error) {
+func New(commonConfig types.NotifiersCommonConfig, _ NotifierDatadogConfig, logger *zap.SugaredLogger) (*Notifier, error) {
 	not := &Notifier{
 		common: commonConfig,
 		logger: logger,
@@ -51,6 +52,35 @@ func New(commonConfig types.NotifiersCommonConfig, datadogConfig NotifierDatadog
 // GetNotifierName returns the driver's name
 func (n *Notifier) GetNotifierName() string {
 	return string(types.NotifierDriverDatadog)
+}
+
+// Notify generates a notification for generic k8s events
+func (n *Notifier) Notify(obj client.Object, event corev1.Event, notifType types.NotificationType) error {
+	dis, ok := obj.(*v1beta1.Disruption)
+	if !ok {
+		return nil
+	}
+
+	eventType := statsd.Warning
+
+	switch notifType {
+	case types.NotificationInfo, types.NotificationCompletion:
+		eventType = statsd.Info
+	case types.NotificationSuccess:
+		eventType = statsd.Success
+	case types.NotificationWarning:
+		eventType = statsd.Warning
+	case types.NotificationError:
+		eventType = statsd.Error
+	}
+
+	headerText := utils.BuildHeaderMessageFromObjectEvent(dis, event, notifType)
+	bodyText := utils.BuildBodyMessageFromObjectEvent(dis, event, false)
+	additionalTags := n.buildDatadogEventTags(*dis, event)
+
+	n.logger.Debugw("notifier: sending notifier event to datadog", "disruptionName", dis.Name, "eventType", event.Type, "message", bodyText, "datadogTags", strings.Join(additionalTags, ", "))
+
+	return n.sendEvent(headerText, bodyText, eventType, additionalTags)
 }
 
 func (n *Notifier) buildDatadogEventTags(dis v1beta1.Disruption, event corev1.Event) []string {
@@ -86,28 +116,4 @@ func (n *Notifier) sendEvent(headerText, bodyText string, alertType statsd.Event
 	}
 
 	return n.client.Event(&event)
-}
-
-// Notify generates a notification for generic k8s events
-func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
-	eventType := statsd.Warning
-
-	switch notifType {
-	case types.NotificationInfo, types.NotificationCompletion:
-		eventType = statsd.Info
-	case types.NotificationSuccess:
-		eventType = statsd.Success
-	case types.NotificationWarning:
-		eventType = statsd.Warning
-	case types.NotificationError:
-		eventType = statsd.Error
-	}
-
-	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, notifType)
-	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, false)
-	additionalTags := n.buildDatadogEventTags(dis, event)
-
-	n.logger.Debugw("notifier: sending notifier event to datadog", "disruptionName", dis.Name, "eventType", event.Type, "message", bodyText, "datadogTags", strings.Join(additionalTags, ", "))
-
-	return n.sendEvent(headerText, bodyText, eventType, additionalTags)
 }

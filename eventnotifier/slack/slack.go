@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -110,12 +111,17 @@ func (n *Notifier) buildSlackBlocks(dis v1beta1.Disruption, notifType types.Noti
 }
 
 // Notify generates a notification for generic k8s events
-func (n *Notifier) Notify(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
-	headerText := utils.BuildHeaderMessageFromDisruptionEvent(dis, notifType)
+func (n *Notifier) Notify(obj client.Object, event corev1.Event, notifType types.NotificationType) error {
+	dis, ok := obj.(*v1beta1.Disruption)
+	if !ok {
+		return nil
+	}
+
+	headerText := utils.BuildHeaderMessageFromObjectEvent(dis, event, notifType)
 	headerBlock := slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, false, false))
-	bodyText := utils.BuildBodyMessageFromDisruptionEvent(dis, event, true)
+	bodyText := utils.BuildBodyMessageFromObjectEvent(dis, event, true)
 	bodyBlock := slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn", bodyText, false, false), nil, nil)
-	disruptionBlocks := n.buildSlackBlocks(dis, notifType)
+	disruptionBlocks := n.buildSlackBlocks(*dis, notifType)
 
 	userInfo, err := dis.UserInfo()
 	if err != nil {
