@@ -41,7 +41,7 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 }
 
 func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
-	s.logger.Infof("CREATE event received: %s", event.Message)
+	s.logger.Debugf("CREATE event received: %s", event.Message)
 
 	var obj client.Object
 

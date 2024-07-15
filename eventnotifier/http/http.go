@@ -48,20 +48,30 @@ type Notifier struct {
 	authTokenProvider BearerAuthTokenProvider
 }
 
+// NotifierEvent represents a notification event
 type NotifierEvent struct {
-	ID                  string                 `jsonapi:"primary,http_notifier_events"`
-	NotificationTitle   string                 `jsonapi:"attribute" json:"notification_title"`
-	NotificationType    types.NotificationType `jsonapi:"attribute" json:"notification_type"`
-	EventMessage        string                 `jsonapi:"attribute" json:"event_message"`
-	InvolvedObjectKind  string                 `jsonapi:"attribute" json:"involved_object_kind"`
-	Timestamp           int64                  `jsonapi:"attribute" json:"timestamp"`
-	Cluster             string                 `jsonapi:"attribute" json:"cluster"`
-	Namespace           string                 `jsonapi:"attribute" json:"namespace"`
-	Username            string                 `jsonapi:"attribute" json:"username,omitempty"`
-	UserEmail           string                 `jsonapi:"attribute" json:"user_email,omitempty"`
-	UserGroups          string                 `jsonapi:"attribute" json:"user_groups,omitempty"`
-	DisruptionEvent     *DisruptionEvent       `jsonapi:"attribute" json:"disruption,omitempty"`
-	DisruptionCronEvent *DisruptionCronEvent   `jsonapi:"attribute" json:"disruption_cron,omitempty"`
+	ID                 string                 `jsonapi:"primary,http_notifier_events"`
+	NotificationTitle  string                 `jsonapi:"attribute" json:"notification_title"`
+	NotificationType   types.NotificationType `jsonapi:"attribute" json:"notification_type"`
+	EventMessage       string                 `jsonapi:"attribute" json:"event_message"`
+	InvolvedObjectKind string                 `jsonapi:"attribute" json:"involved_object_kind"`
+	// Deprecated: DisruptionName exists for historical compatibility
+	// and should not be used. Use DisruptionEvent.DisruptionName instead.
+	DisruptionName string `jsonapi:"attribute" json:"disruption_name"`
+	// Deprecated: Disruption exists for historical compatibility
+	// and should not be used. Use DisruptionEvent.Disruption instead.
+	Disruption string `jsonapi:"attribute" json:"disruption"`
+	// Deprecated: TargetsCount exists for historical compatibility
+	// and should not be used. Use DisruptionEvent.TargetsCount instead.
+	TargetsCount        int                  `jsonapi:"attribute" json:"targets_count"`
+	Timestamp           int64                `jsonapi:"attribute" json:"timestamp"`
+	Cluster             string               `jsonapi:"attribute" json:"cluster"`
+	Namespace           string               `jsonapi:"attribute" json:"namespace"`
+	Username            string               `jsonapi:"attribute" json:"username,omitempty"`
+	UserEmail           string               `jsonapi:"attribute" json:"user_email,omitempty"`
+	UserGroups          string               `jsonapi:"attribute" json:"user_groups,omitempty"`
+	DisruptionEvent     *DisruptionEvent     `jsonapi:"attribute" json:"disruption_event,omitempty"`
+	DisruptionCronEvent *DisruptionCronEvent `jsonapi:"attribute" json:"disruption_cron_event,omitempty"`
 }
 
 type DisruptionEvent struct {
@@ -234,6 +244,11 @@ func (n *Notifier) notifyDisruption(dis v1beta1.Disruption, event corev1.Event, 
 		DisruptionName: dis.Name,
 		Disruption:     string(disruptionStr),
 	}
+
+	// Deprecated fields
+	notifierEvent.DisruptionName = dis.Name
+	notifierEvent.Disruption = string(disruptionStr)
+	notifierEvent.TargetsCount = len(dis.Status.TargetInjections)
 
 	jsonNotif, err := jsonapi.Marshal(&notifierEvent)
 	if err != nil {

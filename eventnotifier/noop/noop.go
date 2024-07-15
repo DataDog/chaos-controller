@@ -38,12 +38,13 @@ func (n Notifier) GetNotifierName() string {
 
 // Notify generates a notification for generic k8s events
 func (n Notifier) Notify(obj client.Object, event corev1.Event, notifType types.NotificationType) error {
+	notifierMessage := fmt.Sprintf("Notifier %s: %s - %s", string(notifType), event.Reason, event.Message)
+
 	switch d := obj.(type) {
 	case *v1beta1.Disruption:
-		n.log.Debugf("NOOP: %s for disruption %s\n", fmt.Sprintf("Notifier %s: %s - %s", string(notifType), event.Reason, event.Message), d.Name)
+		n.log.Debugf("NOOP: %s for disruption %s\n", notifierMessage, d.Name)
 	case *v1beta1.DisruptionCron:
-		n.log.Debugf("NOOP: %s for disruption cron %s\n", fmt.Sprintf("Notifier %s: %s - %s", string(notifType), event.Reason, event.Message), d.Name)
-	default:
+		n.log.Debugf("NOOP: %s for disruption cron %s\n", notifierMessage, d.Name)
 	}
 
 	return nil

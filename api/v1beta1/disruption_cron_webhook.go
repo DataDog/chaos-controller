@@ -26,7 +26,10 @@ var (
 func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	disruptionCronWebhookRecorder = setupWebhookConfig.Recorder
 	disruptionCronWebhookDeleteOnly = setupWebhookConfig.DeleteOnlyFlag
-	disruptionCronWebhookLogger = setupWebhookConfig.Logger.With("source", "admission-controller")
+	disruptionCronWebhookLogger = setupWebhookConfig.Logger.With(
+		"source", "admission-controller",
+		"admission-controller", "disruption-cron-webhook",
+	)
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(d).
@@ -41,7 +44,7 @@ var _ webhook.Validator = &DisruptionCron{}
 func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 	log := disruptionCronWebhookLogger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
 
-	log.Debugw("validating created disruption cron", "spec", d.Spec)
+	log.Infow("validating created disruption cron", "spec", d.Spec)
 
 	// delete-only mode, reject everything trying to be created
 	if disruptionCronWebhookDeleteOnly {
@@ -57,7 +60,7 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 func (d *DisruptionCron) ValidateUpdate(_ runtime.Object) (warnings admission.Warnings, err error) {
 	log := logger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
 
-	log.Debugw("validating updated disruption cron", "spec", d.Spec)
+	log.Infow("validating updated disruption cron", "spec", d.Spec)
 
 	// delete-only mode, reject everything trying to be created
 	if disruptionCronWebhookDeleteOnly {
@@ -73,7 +76,7 @@ func (d *DisruptionCron) ValidateUpdate(_ runtime.Object) (warnings admission.Wa
 func (d *DisruptionCron) ValidateDelete() (warnings admission.Warnings, err error) {
 	log := disruptionCronWebhookLogger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
 
-	log.Debugw("validating deleted disruption cron", "spec", d.Spec)
+	log.Infow("validating deleted disruption cron", "spec", d.Spec)
 
 	// send informative event to disruption cron to broadcast
 	disruptionCronWebhookRecorder.Event(d, Events[EventDisruptionCronDeleted].Type, string(EventDisruptionCronDeleted), Events[EventDisruptionCronDeleted].OnDisruptionTemplateMessage)

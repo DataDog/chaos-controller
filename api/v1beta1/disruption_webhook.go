@@ -68,7 +68,10 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	}
 
 	logger = &zap.SugaredLogger{}
-	*logger = *setupWebhookConfig.Logger.With("source", "admission-controller")
+	*logger = *setupWebhookConfig.Logger.With(
+		"source", "admission-controller",
+		"admission-controller", "disruption-webhook",
+	)
 	k8sClient = setupWebhookConfig.Manager.GetClient()
 	metricsSink = setupWebhookConfig.MetricsSink
 	tracerSink = setupWebhookConfig.TracerSink

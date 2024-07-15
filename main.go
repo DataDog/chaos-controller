@@ -371,10 +371,12 @@ func main() {
 		logger.Fatalw("unable to create webhook for disruption", "webhook", chaosv1beta1.DisruptionKind, "error", err)
 	}
 
-	logger.Debug("setup webhook for disruption cron")
+	if cfg.Controller.DisruptionCronEnabled {
+		logger.Debug("setup webhook for disruption cron")
 
-	if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
-		logger.Fatalw("unable to create webhook for disruption cron", "webhook", chaosv1beta1.DisruptionCronKind, "error", err)
+		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
+			logger.Fatalw("unable to create webhook for disruption cron", "webhook", chaosv1beta1.DisruptionCronKind, "error", err)
+		}
 	}
 
 	webhookDecoder := admission.NewDecoder(scheme)

@@ -20,8 +20,8 @@ type EventCategory string
 const (
 	// TargetEvent only attached to a target
 	TargetEvent EventCategory = "TargetEvent"
-	// DisruptEvent only attached to the disruption
-	DisruptEvent EventCategory = "Event"
+	// DisruptionEvent only attached to the disruption
+	DisruptionEvent EventCategory = "DisruptionEvent"
 	// DisruptionCronEvent only attached to the disruption cron
 	DisruptionCronEvent EventCategory = "DisruptionCronEvent"
 	// ChaosPodEvent only attached to a chaos pod
@@ -39,7 +39,7 @@ func (r EventReason) MatchEventReason(e corev1.Event) bool {
 type Event struct {
 	Type                           string        // Warning or Normal
 	Reason                         EventReason   // Short description of the event
-	OnTargetTemplateMessage        string        // Template message to attach to the target resource (pod or node). Empty if the event should not be sent to a target (DisruptEvent only)
+	OnTargetTemplateMessage        string        // Template message to attach to the target resource (pod or node). Empty if the event should not be sent to a target (DisruptionEvent only)
 	OnDisruptionTemplateMessage    string        // We want to separate the aggregated message from the single message to include more info in the single message
 	OnDisruptionTemplateAggMessage string        // Template message to attach to the disruption. Empty if the event should not be sent on a disruption
 	Category                       EventCategory // Either TargetEvent, Event or ChaosPodEvent
@@ -193,97 +193,97 @@ var Events = map[EventReason]Event{
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionDurationOver,
 		OnDisruptionTemplateMessage: "The disruption has lived longer than its specified duration, and will be deleted in %s.",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionGCOver: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionGCOver,
 		OnDisruptionTemplateMessage: "The disruption has lived %s longer than its specified duration, and will now be deleted.",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventEmptyDisruption: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventEmptyDisruption,
 		OnDisruptionTemplateMessage: "No disruption recognized for \"%s\" therefore no disruption applied.",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionCreationFailed: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventDisruptionCreationFailed,
 		OnDisruptionTemplateMessage: "Injection pod for disruption \"%s\" failed to be created",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionStuckOnRemoval: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventDisruptionStuckOnRemoval,
 		OnDisruptionTemplateMessage: "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer. https://github.com/DataDog/chaos-controller/blob/main/docs/faq.md",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventInvalidDisruptionLabelSelector: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventInvalidDisruptionLabelSelector,
 		OnDisruptionTemplateMessage: "%s. No targets will be selected.",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionNoMoreValidTargets: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionNoMoreValidTargets,
 		OnDisruptionTemplateMessage: "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionNoTargetsFound: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventDisruptionNoTargetsFound,
 		OnDisruptionTemplateMessage: "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventInvalidSpecDisruption: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventInvalidSpecDisruption,
 		OnDisruptionTemplateMessage: "%s",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionChaosPodCreated: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionChaosPodCreated,
 		OnDisruptionTemplateMessage: "Created disruption injection pod for \"%s\"",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionCreated: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionCreated,
-		OnDisruptionTemplateMessage: "Disruption created",
-		Category:                    DisruptEvent,
+		OnDisruptionTemplateMessage: "DisruptionEvent created",
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionCronCreated: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionCronCreated,
-		OnDisruptionTemplateMessage: "Disruption cron created",
+		OnDisruptionTemplateMessage: "DisruptionEvent cron created",
 		Category:                    DisruptionCronEvent,
 	},
 	EventDisruptionCronUpdated: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionCronUpdated,
-		OnDisruptionTemplateMessage: "Disruption cron updated",
+		OnDisruptionTemplateMessage: "DisruptionEvent cron updated",
 		Category:                    DisruptionCronEvent,
 	},
 	EventDisruptionCronDeleted: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionCronDeleted,
-		OnDisruptionTemplateMessage: "Disruption cron deleted",
+		OnDisruptionTemplateMessage: "DisruptionEvent cron deleted",
 		Category:                    DisruptionCronEvent,
 	},
 	EventDisruptionFinished: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionFinished,
-		OnDisruptionTemplateMessage: "Disruption finished",
-		Category:                    DisruptEvent,
+		OnDisruptionTemplateMessage: "DisruptionEvent finished",
+		Category:                    DisruptionEvent,
 	},
 	EventDisrupted: {
 		Type:                    corev1.EventTypeNormal,
 		Reason:                  EventDisrupted,
 		OnTargetTemplateMessage: "Pod %s from disruption %s targeted this resource for injection",
-		Category:                DisruptEvent,
+		Category:                DisruptionEvent,
 	},
 	EventChaosPodFailedState: {
 		Type:                           corev1.EventTypeWarning,

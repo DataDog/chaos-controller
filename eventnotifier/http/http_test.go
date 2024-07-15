@@ -31,7 +31,9 @@ import (
 
 var _ = Describe("Notifier", func() {
 	var (
-		logger *zap.SugaredLogger
+		logger                    *zap.SugaredLogger
+		defaultDisruptionName     = "disruption-name"
+		defaultDisruptionCronName = "disruption-cron-name"
 	)
 
 	BeforeEach(func() {
@@ -83,14 +85,14 @@ var _ = Describe("Notifier", func() {
 					obj = &v1beta1.Disruption{
 						ObjectMeta: metav1.ObjectMeta{
 							UID:  apimachineryTypes.UID(expectedUID),
-							Name: "disruption-name",
+							Name: defaultDisruptionName,
 						},
 					}
 				case v1beta1.DisruptionCronKind:
 					obj = &v1beta1.DisruptionCron{
 						ObjectMeta: metav1.ObjectMeta{
 							UID:  apimachineryTypes.UID(expectedUID),
-							Name: "disruption-cron-name",
+							Name: defaultDisruptionCronName,
 						},
 					}
 				}
@@ -117,9 +119,14 @@ var _ = Describe("Notifier", func() {
 
 						expectedNotifierEvent.DisruptionEvent = &DisruptionEvent{
 							TargetsCount:   0,
-							DisruptionName: "disruption-name",
+							DisruptionName: defaultDisruptionName,
 							Disruption:     string(expectedDisruptionStr),
 						}
+
+						By("supporting deprecated disruption fields")
+						expectedNotifierEvent.Disruption = string(expectedDisruptionStr)
+						expectedNotifierEvent.DisruptionName = defaultDisruptionName
+						expectedNotifierEvent.TargetsCount = 0
 
 						var notifierEvent NotifierEvent
 
@@ -136,7 +143,7 @@ var _ = Describe("Notifier", func() {
 						Expect(err).ToNot(HaveOccurred())
 
 						expectedNotifierEvent.DisruptionCronEvent = &DisruptionCronEvent{
-							DisruptionCronName: "disruption-cron-name",
+							DisruptionCronName: defaultDisruptionCronName,
 							DisruptionCron:     string(expectedDisruptionCronStr),
 						}
 
@@ -277,14 +284,14 @@ var _ = Describe("Notifier", func() {
 						obj = &v1beta1.Disruption{
 							ObjectMeta: metav1.ObjectMeta{
 								UID:  apimachineryTypes.UID(expectedUID),
-								Name: "disruption-name",
+								Name: defaultDisruptionName,
 							},
 						}
 					case v1beta1.DisruptionCronKind:
 						obj = &v1beta1.DisruptionCron{
 							ObjectMeta: metav1.ObjectMeta{
 								UID:  apimachineryTypes.UID(expectedUID),
-								Name: "disruption-cron-name",
+								Name: defaultDisruptionCronName,
 							},
 						}
 					}
