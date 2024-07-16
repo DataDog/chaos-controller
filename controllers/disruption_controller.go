@@ -424,7 +424,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instan
 						podReady = true
 						readyPodsCount++
 
-						r.updateTargetInjectionStatus(instance, chaosPod, chaostypes.DisruptionTargetInjectionStatusInjected, cond.LastTransitionTime)
+						r.updateTargetInjectionStatusFromPod(instance, chaosPod, chaostypes.DisruptionTargetInjectionStatusInjected, cond.LastTransitionTime)
 
 						break
 					}
@@ -470,7 +470,7 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 	// chaosPodsMap is used to check if a target's chaos pods already exist or not
 	chaosPodsMap := make(map[string]map[string]bool, len(instance.Status.TargetInjections))
 
-	chaosPods, err := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
+	chaosPods, err := r.ChaosPodService.GetChaosPodMetasOfDisruption(ctx, instance, nil)
 	if err != nil {
 		return fmt.Errorf("error getting chaos pods: %w", err)
 	}
@@ -646,7 +646,7 @@ func (r *DisruptionReconciler) cleanDisruption(ctx context.Context, instance *ch
 	cleaned := true
 
 	// get already existing chaos pods for the given disruption
-	chaosPods, err := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
+	chaosPods, err := r.ChaosPodService.GetChaosPodMetasOfDisruption(ctx, instance, nil)
 	if err != nil {
 		return false, err
 	}
@@ -677,7 +677,7 @@ func (r *DisruptionReconciler) cleanDisruption(ctx context.Context, instance *ch
 // the pod target will be moved to ignored targets, so it is not picked up by the next reconcile loop
 func (r *DisruptionReconciler) handleChaosPodsTermination(ctx context.Context, instance *chaosv1beta1.Disruption) error {
 	// get already existing chaos pods for the given disruption
-	chaosPods, err := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
+	chaosPods, err := r.ChaosPodService.GetChaosPodMetasOfDisruption(ctx, instance, nil)
 	if err != nil {
 		return err
 	}
@@ -693,7 +693,7 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(ctx context.Context, i
 	return r.Client.Status().Update(ctx, instance)
 }
 
-func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) {
+func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, instance *chaosv1beta1.Disruption, chaosPod metav1.PartialObjectMetadata) {
 	// ignore chaos pods not being deleted
 	if chaosPod.DeletionTimestamp.IsZero() {
 		return
@@ -720,7 +720,7 @@ func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, in
 	}
 }
 
-func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod, status chaostypes.DisruptionTargetInjectionStatus, since metav1.Time) {
+func (r *DisruptionReconciler) updateTargetInjectionStatusFromPod(instance *chaosv1beta1.Disruption, chaosPod corev1.Pod, status chaostypes.DisruptionTargetInjectionStatus, since metav1.Time) {
 	if instance.Status.TargetInjections == nil {
 		instance.Status.TargetInjections = make(chaosv1beta1.TargetInjections)
 	}
@@ -736,6 +736,14 @@ func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta
 		InjectionStatus: status,
 		Since:           since,
 	}
+}
+
+func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta1.Disruption, chaosPodMeta metav1.PartialObjectMetadata, status chaostypes.DisruptionTargetInjectionStatus, since metav1.Time) {
+	chaosPod := corev1.Pod{
+		ObjectMeta: chaosPodMeta.ObjectMeta,
+		TypeMeta:   chaosPodMeta.TypeMeta,
+	}
+	r.updateTargetInjectionStatusFromPod(instance, chaosPod, status, since)
 }
 
 // selectTargets will select min(count, all matching targets) random targets (pods or nodes depending on the disruption level)
@@ -855,10 +863,10 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 }
 
 // deleteChaosPods deletes a chaos pod using the client
-func (r *DisruptionReconciler) deleteChaosPod(ctx context.Context, instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) {
+func (r *DisruptionReconciler) deleteChaosPod(ctx context.Context, instance *chaosv1beta1.Disruption, chaosPod metav1.PartialObjectMetadata) {
 	// delete the chaos pod only if it has not been deleted already
 	if chaosPod.DeletionTimestamp.IsZero() {
-		r.ChaosPodService.DeletePod(ctx, chaosPod)
+		r.ChaosPodService.DeletePodByMeta(ctx, chaosPod)
 		r.handleChaosPodTermination(ctx, instance, chaosPod)
 	}
 }

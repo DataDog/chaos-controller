@@ -37,11 +37,17 @@ type ChaosPodService interface {
 	// GetChaosPodsOfDisruption retrieves a list chaos pods of a disruption for the given labels.
 	GetChaosPodsOfDisruption(ctx context.Context, instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error)
 
+	// GetChaosPodMetasOfDisruption retrieves a list chaos pods of a disruption for the given labels.
+	GetChaosPodMetasOfDisruption(ctx context.Context, instance *chaosv1beta1.Disruption, ls labels.Set) ([]metav1.PartialObjectMetadata, error)
+
 	// HandleChaosPodTermination handles the termination of a chaos pod during a disruption event.
-	HandleChaosPodTermination(ctx context.Context, disruption *chaosv1beta1.Disruption, pod *corev1.Pod) (stuckOnRemoval bool, err error)
+	HandleChaosPodTermination(ctx context.Context, disruption *chaosv1beta1.Disruption, pod *metav1.PartialObjectMetadata) (stuckOnRemoval bool, err error)
 
 	// DeletePod deletes a pod from the Kubernetes cluster.
 	DeletePod(ctx context.Context, pod corev1.Pod) bool
+
+	// DeletePodByMeta deletes a pod from the Kubernetes cluster.
+	DeletePodByMeta(ctx context.Context, pod metav1.PartialObjectMetadata) bool
 
 	// GenerateChaosPodOfDisruption generates a pod for the disruption.
 	GenerateChaosPodOfDisruption(disruption *chaosv1beta1.Disruption, targetName, targetNodeName string, args []string, kind chaostypes.DisruptionKindName) corev1.Pod
@@ -118,6 +124,12 @@ func (m *chaosPodService) CreatePod(ctx context.Context, pod *corev1.Pod) error 
 	return m.config.Client.Create(ctx, pod)
 }
 
+// GetChaosPodMetasOfDisruption retrieves a list of chaos-related pods affected by a disruption event,
+// filtered by the provided labels.
+func (m *chaosPodService) GetChaosPodMetasOfDisruption(ctx context.Context, instance *chaosv1beta1.Disruption, ls labels.Set) ([]metav1.PartialObjectMetadata, error) {
+	return chaosv1beta1.GetChaosPodMetas(ctx, m.config.Log, m.config.ChaosNamespace, m.config.Client, instance, ls)
+}
+
 // GetChaosPodsOfDisruption retrieves a list of chaos-related pods affected by a disruption event,
 // filtered by the provided labels.
 func (m *chaosPodService) GetChaosPodsOfDisruption(ctx context.Context, instance *chaosv1beta1.Disruption, ls labels.Set) ([]corev1.Pod, error) {
@@ -125,15 +137,21 @@ func (m *chaosPodService) GetChaosPodsOfDisruption(ctx context.Context, instance
 }
 
 // HandleChaosPodTermination handles the termination of a chaos-related pod during a disruption event.
-func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disruption *chaosv1beta1.Disruption, chaosPod *corev1.Pod) (stuckOnRemoval bool, err error) {
+func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disruption *chaosv1beta1.Disruption, chaosPodMeta *metav1.PartialObjectMetadata) (stuckOnRemoval bool, err error) {
 	// Ignore chaos pods not having the finalizer anymore
-	if !controllerutil.ContainsFinalizer(chaosPod, chaostypes.ChaosPodFinalizer) {
+	if !controllerutil.ContainsFinalizer(chaosPodMeta, chaostypes.ChaosPodFinalizer) {
 		return false, nil
 	}
 
 	// Ignore chaos pods that are not being deleted
-	if chaosPod.DeletionTimestamp.IsZero() {
+	if chaosPodMeta.DeletionTimestamp.IsZero() {
 		return false, nil
+	}
+
+	chaosPod := corev1.Pod{}
+
+	if err = m.config.Client.Get(ctx, types.NamespacedName{Namespace: chaosPodMeta.Namespace, Name: chaosPodMeta.Name}, &chaosPod); err != nil {
+		return false, fmt.Errorf("could not fetch chaos pod to handle termination: %w", err)
 	}
 
 	target := chaosPod.Labels[chaostypes.TargetLabel]
@@ -149,7 +167,7 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 		m.config.Log.Infow("Target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", "target", target)
 
 		// Remove the finalizer for the chaos pod since cleanup won't be fully reliable.
-		err = m.removeFinalizerForChaosPod(ctx, chaosPod)
+		err = m.removeFinalizerForChaosPod(ctx, &chaosPod)
 
 		return false, err
 	}
@@ -157,7 +175,7 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 	// It is always safe to remove some chaos pods. It is usually hard to tell if these chaos pods have
 	// succeeded or not, but they have no possibility of leaving side effects, so we choose to always remove the finalizer.
 	if chaosv1beta1.DisruptionHasNoSideEffects(chaosPod.Labels[chaostypes.DisruptionKindLabel]) {
-		err = m.removeFinalizerForChaosPod(ctx, chaosPod)
+		err = m.removeFinalizerForChaosPod(ctx, &chaosPod)
 		return false, err
 	}
 
@@ -202,7 +220,7 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 
 	if shouldRemoveFinalizer {
 		// Remove the finalizer for the chaos pod since cleanup was successful.
-		err = m.removeFinalizerForChaosPod(ctx, chaosPod)
+		err = m.removeFinalizerForChaosPod(ctx, &chaosPod)
 		return false, err
 	}
 
@@ -221,6 +239,19 @@ func (m *chaosPodService) DeletePod(ctx context.Context, pod corev1.Pod) bool {
 	}
 
 	return true
+}
+
+// DeletePodByMeta attempts to delete the specified pod from the Kubernetes cluster.
+// Returns true if deletion was successful, otherwise returns false.
+func (m *chaosPodService) DeletePodByMeta(ctx context.Context, pod metav1.PartialObjectMetadata) bool {
+	p := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pod.Name,
+			Namespace: pod.Namespace,
+		},
+	}
+
+	return m.DeletePod(ctx, p)
 }
 
 // GenerateChaosPodsOfDisruption generates a list of chaos pods for the given disruption instance,
@@ -369,23 +400,29 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 	ls[chaostypes.DisruptionNamespaceLabel] = req.Namespace
 
 	// Retrieve chaos pods matching the specified labels.
-	pods, err := m.GetChaosPodsOfDisruption(ctx, nil, ls)
+	podMetas, err := m.GetChaosPodMetasOfDisruption(ctx, nil, ls)
 	if err != nil {
 		return err
 	}
 
-	for _, pod := range pods {
-		m.handleMetricSinkError(m.config.MetricsSink.MetricOrphanFound([]string{"disruption:" + req.Name, "chaosPod:" + pod.Name, "namespace:" + req.Namespace}))
+	for _, podMeta := range podMetas {
+		m.handleMetricSinkError(m.config.MetricsSink.MetricOrphanFound([]string{"disruption:" + req.Name, "chaosPod:" + podMeta.Name, "namespace:" + req.Namespace}))
 
-		target := pod.Labels[chaostypes.TargetLabel]
+		target := podMeta.Labels[chaostypes.TargetLabel]
 
 		var p corev1.Pod
+		var pod corev1.Pod
 
-		m.config.Log.Infow("checking if we can clean up orphaned chaos pod", "chaosPod", pod.Name, "target", target)
+		if err = m.config.Client.Get(ctx, types.NamespacedName{Namespace: podMeta.Namespace, Name: podMeta.Name}, &pod); err != nil {
+			m.config.Log.Warnw("found chaos pod metadata but could not get chaos pod", "error", err, "chaosPod", podMeta.Name, "chaosPodNamespace", podMeta.Namespace)
+			continue
+		}
+
+		m.config.Log.Infow("checking if we can clean up orphaned chaos pod", "chaosPod", podMeta.Name, "target", target)
 
 		// if target doesn't exist, we can try to clean up the chaos pod
 		if err = m.config.Client.Get(ctx, types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); apierrors.IsNotFound(err) {
-			m.config.Log.Warnw("orphaned chaos pod detected, will attempt to delete", "chaosPod", pod.Name)
+			m.config.Log.Warnw("orphaned chaos pod detected, will attempt to delete", "chaosPod", podMeta.Name)
 
 			if err = m.removeFinalizerForChaosPod(ctx, &pod); err != nil {
 				continue
@@ -394,9 +431,9 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 			// if the chaos pod still exists after having its finalizer removed, delete it
 			if err = m.deletePod(ctx, pod); err != nil {
 				if chaosv1beta1.IsUpdateConflictError(err) {
-					m.config.Log.Infow("retryable error deleting orphaned chaos pod", "error", err, "chaosPod", pod.Name)
+					m.config.Log.Infow("retryable error deleting orphaned chaos pod", "error", err, "chaosPod", podMeta.Name)
 				} else {
-					m.config.Log.Errorw("error deleting orphaned chaos pod", "error", err, "chaosPod", pod.Name)
+					m.config.Log.Errorw("error deleting orphaned chaos pod", "error", err, "chaosPod", podMeta.Name)
 				}
 			}
 		}
@@ -656,4 +693,15 @@ func (m *chaosPodService) deletePod(ctx context.Context, pod corev1.Pod) error {
 	}
 
 	return nil
+}
+
+func (m *chaosPodService) deletePodByMeta(ctx context.Context, pod metav1.PartialObjectMetadata) error {
+	p := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pod.Name,
+			Namespace: pod.Namespace,
+		},
+	}
+
+	return m.deletePod(ctx, p)
 }

@@ -125,7 +125,7 @@ var _ = Describe("Chaos Pod Service", func() {
 		})
 	})
 
-	Describe("GetChaosPodsOfDisruption", func() {
+	Describe("GetChaosPodMetasOfDisruption", func() {
 
 		var (
 			labelSets labels.Set
@@ -1414,7 +1414,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 		Describe("error cases", func() {
 
-			When("GetChaosPodsOfDisruption return an error", func() {
+			When("GetChaosPodMetasOfDisruption return an error", func() {
 
 				BeforeEach(func() {
 					// Arrange
