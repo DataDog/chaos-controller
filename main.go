@@ -212,9 +212,9 @@ func main() {
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Hour*24, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
+	//kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Hour*24, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
 
-	cont, err := disruptionReconciler.SetupWithManager(mgr, kubeInformerFactory)
+	cont, err := disruptionReconciler.SetupWithManager(mgr)
 	if err != nil {
 		logger.Fatalw("unable to create controller", "controller", chaosv1beta1.DisruptionKind, "error", err)
 	}
@@ -251,7 +251,7 @@ func main() {
 	defer cancel()
 
 	stopCh := make(chan struct{})
-	kubeInformerFactory.Start(stopCh)
+	//kubeInformerFactory.Start(stopCh)
 
 	go disruptionReconciler.ReportMetrics(ctx)
 

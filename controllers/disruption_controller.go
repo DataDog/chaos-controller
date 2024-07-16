@@ -42,7 +42,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -54,7 +53,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // DisruptionReconciler reconciles a Disruption object
@@ -954,7 +952,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance
 }
 
 // SetupWithManager setups the current reconciler with the given manager
-func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) (controller.Controller, error) {
+func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager) (controller.Controller, error) {
 	podToDisruption := func(_ context.Context, c client.Object) []reconcile.Request {
 		// podtoDisruption is a function that maps pods to disruptions. it is meant to be used as an event handler on a pod informer
 		// this function should safely return an empty list of requests to reconcile if the object we receive is not actually a chaos pod
@@ -972,12 +970,10 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 		return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}}}
 	}
 
-	informer := kubeInformerFactory.Core().V1().Pods().Informer()
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
 		WithOptions(controller.Options{RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Second, time.Hour)}).
-		WatchesRawSource(&source.Informer{Informer: informer}, handler.EnqueueRequestsFromMapFunc(podToDisruption), builder.OnlyMetadata).
+		WatchesMetadata(&corev1.Pod{}, handler.EnqueueRequestsFromMapFunc(podToDisruption), builder.OnlyMetadata).
 		WithEventFilter(chaosEventsPredicate()).
 		Build(r)
 }
