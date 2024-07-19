@@ -1,6 +1,6 @@
 ARG BUILDGOVERSION
 FROM golang:${BUILDGOVERSION} as go
-FROM gcr.io/distroless/base-debian11:nonroot
+FROM gcr.io/distroless/base-debian12:nonroot
 
 ARG TARGETARCH
 COPY manager_${TARGETARCH} /usr/local/bin/manager
@@ -13,7 +13,7 @@ ENTRYPOINT ["/usr/local/bin/manager"]
 
 LABEL baseimage.os="debian"
 LABEL baseimage.isgbi="custom"
-LABEL baseimage.name="gcr.io/distroless/base-debian11:nonroot"
+LABEL baseimage.name="gcr.io/distroless/base-debian12:nonroot"
 
 ARG BUILDSTAMP
 LABEL baseimage.buildstamp="${BUILDSTAMP}"
