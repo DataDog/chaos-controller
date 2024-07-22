@@ -508,6 +508,11 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		}
 	}
 
+	if namespaceThreshold >= 1 && clusterThreshold >= 1 {
+		// Don't waste time or memory counting, if we allow 100% of resources to be targeted
+		return false, "", nil
+	}
+
 	if r.Spec.Level == chaostypes.DisruptionLevelPod {
 		pods := &corev1.PodList{}
 		listOptions := &client.ListOptions{
