@@ -587,6 +587,7 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		}
 
 		for nodes.Continue != "" {
+			logger.Warnw("counting nodes.Items", "nodes", len(nodes.Items))
 			totalCount += len(nodes.Items)
 
 			err = k8sClient.List(context.Background(), nodes, client.Limit(1000), client.Continue(nodes.Continue))
@@ -595,7 +596,8 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 			}
 		}
 
-		totalCount = len(nodes.Items)
+		totalCount += len(nodes.Items)
+		logger.Warnw("totalling nodes.Items", "totalCount", totalCount, "nodes", len(nodes.Items))
 	}
 
 	userCountVal := 0.0
@@ -614,6 +616,19 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	} else {
 		userCountVal = float64(userCountInt)
 	}
+
+	logger.Warnw("This is a stumper,",
+		"userCountInt", userCountInt,
+		"userCountVal", userCountVal,
+		"isPercent", isPercent,
+		"userCount", userCount,
+		"targetCount", targetCount,
+		"totalCount", totalCount,
+		"namespaceCount", namespaceCount,
+		"namespaceThreshold", namespaceThreshold,
+		"clusterThreshold", clusterThreshold,
+		"userTotalPercent", userCountVal/float64(totalCount),
+	)
 
 	// we check to see if the count represents > namespaceThreshold (default 80) percent of all pods in the existing namespace
 	// or if the count represents > clusterThreshold (default 66) percent of all pods|nodes in the cluster
