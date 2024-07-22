@@ -611,7 +611,7 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	}
 
 	// we check to see if the count represents > namespaceThreshold (default 80) percent of all pods in the existing namespace
-	// or if the count represents > clusterThreshold (default 66) percent of all pods in the cluster
+	// or if the count represents > clusterThreshold (default 66) percent of all pods|nodes in the cluster
 	if r.Spec.Level != chaostypes.DisruptionLevelNode {
 		if userNamespacePercent := userCountVal / float64(namespaceCount); userNamespacePercent > namespaceThreshold {
 			response := fmt.Sprintf("target selection represents %.2f %% of the total pods in the namespace while the threshold is %.2f %%", userNamespacePercent*100, namespaceThreshold*100)
