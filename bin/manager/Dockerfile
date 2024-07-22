@@ -1,5 +1,5 @@
 ARG BUILDGOVERSION
-FROM golang:${BUILDGOVERSION} as go
+FROM golang:${BUILDGOVERSION} AS go
 FROM gcr.io/distroless/base-debian12:nonroot
 
 ARG TARGETARCH

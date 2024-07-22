@@ -1,4 +1,4 @@
-FROM ubuntu:23.10 as binaries
+FROM ubuntu:23.10 AS binaries
 
 RUN apt-get update && \
     # iproute2 => tc
