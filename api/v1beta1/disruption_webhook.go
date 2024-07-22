@@ -468,7 +468,7 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 		}
 
 		if r.Spec.DiskFailure != nil {
-			if caught, response := safetyNetAllowRootDiskFailure(r); caught {
+			if caught, response := safetyNetPreventNodeRootDiskFailure(r); caught {
 				logger.Debugw("the specified disruption contains an invalid path.", "SafetyNet Catch", "DiskFailure")
 
 				responses = append(responses, response)
@@ -650,8 +650,8 @@ func safetyNetRequireNetworkFilters(r Disruption) bool {
 	return true
 }
 
-// safetyNetAllowRootDiskFailure is the safety net regarding missing path or invalid path values for a disk failure disruption.
-func safetyNetAllowRootDiskFailure(r *Disruption) (bool, string) {
+// safetyNetPreventNodeRootDiskFailure is the safety net regarding missing path or invalid path values for a disk failure disruption.
+func safetyNetPreventNodeRootDiskFailure(r *Disruption) (bool, string) {
 	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowRootDiskFailure {
 		return false, ""
 	}
