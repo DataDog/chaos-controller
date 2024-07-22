@@ -531,7 +531,7 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 			}
 		}
 
-		namespaceCount = len(pods.Items)
+		namespaceCount += len(pods.Items)
 
 		listOptions = &client.ListOptions{
 			Namespace:     r.ObjectMeta.Namespace,
@@ -553,7 +553,7 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 			}
 		}
 
-		targetCount = len(pods.Items)
+		targetCount += len(pods.Items)
 
 		// we grab the number of pods in the entire cluster
 		err = k8sClient.List(context.Background(), pods,
@@ -571,7 +571,7 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 			}
 		}
 
-		totalCount = len(pods.Items)
+		totalCount += len(pods.Items)
 	} else {
 		nodes := &corev1.NodeList{}
 
