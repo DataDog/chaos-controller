@@ -534,6 +534,7 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		namespaceCount = len(pods.Items)
 
 		listOptions = &client.ListOptions{
+			Namespace:     r.ObjectMeta.Namespace,
 			LabelSelector: labels.SelectorFromValidatedSet(r.Spec.Selector),
 		}
 		// we grab the number of targets in the specified namespace
