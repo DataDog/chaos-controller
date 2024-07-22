@@ -460,7 +460,7 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 		}
 
 		if r.Spec.Network != nil {
-			if caught := safetyNetNeitherHostNorPort(*r); caught {
+			if caught := safetyNetRequireNetworkFilters(*r); caught {
 				logger.Debugw("the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.", "SafetyNet Catch", "Network")
 
 				responses = append(responses, "the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.")
@@ -626,26 +626,28 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	return false, "", nil
 }
 
-// safetyNetNeitherHostNorPort is the safety net regarding missing host and port values.
-// it will check against all defined hosts in the network disruption spec to see if any of them have a host and a
-// port missing. The more generic a hosts tuple is (Omitting fields such as port), the bigger the blast radius.
-func safetyNetNeitherHostNorPort(r Disruption) bool {
+// safetyNetRequireNetworkFilters is the safety net regarding missing host, service, or port filters.
+// it will check if any filters have been placed to limit which network traffic is disrupted
+func safetyNetRequireNetworkFilters(r Disruption) bool {
 	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableNeitherHostNorPort {
 		return false
 	}
 
+	if r.Spec.Network == nil {
+		return false
+	}
+
+	if len(r.Spec.Network.Services) > 0 {
+		return false
+	}
+
 	// if hosts are not defined, this also falls into the safety net
-	if r.Spec.Network.Hosts == nil || len(r.Spec.Network.Hosts) == 0 {
-		return true
+	if len(r.Spec.Network.Hosts) > 0 {
+		return false
 	}
 
-	for _, host := range r.Spec.Network.Hosts {
-		if host.Port == 0 && host.Host == "" {
-			return true
-		}
-	}
-
-	return false
+	// If we are disrupting network traffic, but we have set NO services, and NO hosts, there are no filters
+	return true
 }
 
 // safetyNetAllowRootDiskFailure is the safety net regarding missing path or invalid path values for a disk failure disruption.
