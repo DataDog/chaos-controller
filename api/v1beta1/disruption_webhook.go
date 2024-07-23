@@ -460,7 +460,7 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 		}
 
 		if r.Spec.Network != nil {
-			if caught := safetyNetRequireNetworkFilters(*r); caught {
+			if caught := safetyNetMissingNetworkFilters(*r); caught {
 				logger.Debugw("the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.", "SafetyNet Catch", "Network")
 
 				responses = append(responses, "the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.")
@@ -644,9 +644,9 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	return false, "", nil
 }
 
-// safetyNetRequireNetworkFilters is the safety net regarding missing host, service, or port filters.
+// safetyNetMissingNetworkFilters is the safety net regarding missing host, service, or port filters.
 // it will check if any filters have been placed to limit which network traffic is disrupted
-func safetyNetRequireNetworkFilters(r Disruption) bool {
+func safetyNetMissingNetworkFilters(r Disruption) bool {
 	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableNeitherHostNorPort {
 		return false
 	}
