@@ -468,10 +468,10 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 		}
 
 		if r.Spec.DiskFailure != nil {
-			if caught, response := safetyNetPreventNodeRootDiskFailure(r); caught {
+			if caught := safetyNetAttemptsNodeRootDiskFailure(r); caught {
 				logger.Debugw("the specified disruption contains an invalid path.", "SafetyNet Catch", "DiskFailure")
 
-				responses = append(responses, response)
+				responses = append(responses, "the specified path for the disk failure disruption targeting a node must not be \"/\"")
 			}
 		}
 	}
@@ -668,21 +668,21 @@ func safetyNetMissingNetworkFilters(r Disruption) bool {
 	return true
 }
 
-// safetyNetPreventNodeRootDiskFailure is the safety net regarding missing path or invalid path values for a disk failure disruption.
-func safetyNetPreventNodeRootDiskFailure(r *Disruption) (bool, string) {
+// safetyNetAttemptsNodeRootDiskFailure is the safety net regarding node-level disk failure disruption that target the entire fs.
+func safetyNetAttemptsNodeRootDiskFailure(r *Disruption) bool {
 	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowRootDiskFailure {
-		return false, ""
+		return false
 	}
 
 	if r.Spec.Level != chaostypes.DisruptionLevelNode {
-		return false, ""
+		return false
 	}
 
 	for _, path := range r.Spec.DiskFailure.Paths {
 		if strings.TrimSpace(path) == "/" {
-			return true, "the specified path for the disk failure disruption targeting a node must not be \"/\"."
+			return true
 		}
 	}
 
-	return false, ""
+	return false
 }
