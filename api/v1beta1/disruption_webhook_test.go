@@ -536,7 +536,7 @@ var _ = Describe("Disruption", func() {
 						// Assert
 						Expect(err).Should(HaveOccurred())
 						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\"."))
+						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\""))
 					})
 				})
 				Context("with the '  /  ' path", func() {
@@ -550,7 +550,7 @@ var _ = Describe("Disruption", func() {
 						// Assert
 						Expect(err).Should(HaveOccurred())
 						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\"."))
+						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\""))
 					})
 				})
 				Context("safe-mode disabled", func() {
