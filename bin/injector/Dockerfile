@@ -1,4 +1,4 @@
-FROM ubuntu:23.10 as binaries
+FROM ubuntu:23.10 AS binaries
 
 RUN apt-get update && \
     # iproute2 => tc
@@ -20,7 +20,7 @@ RUN apt-get update && \
     mv bpftool /usr/bin/bpftool-amd64
 
 
-FROM gcr.io/distroless/python3-debian11:latest
+FROM gcr.io/distroless/python3-debian12:latest
 
 ARG TARGETARCH
 
@@ -51,7 +51,7 @@ ENTRYPOINT ["/usr/local/bin/chaos-injector"]
 
 LABEL baseimage.os="debian"
 LABEL baseimage.isgbi="custom"
-LABEL baseimage.name="gcr.io/distroless/python3-debian11:latest"
+LABEL baseimage.name="gcr.io/distroless/python3-debian12:latest"
 
 ARG BUILDSTAMP
 LABEL baseimage.buildstamp="${BUILDSTAMP}"
