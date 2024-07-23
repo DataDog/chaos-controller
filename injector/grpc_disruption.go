@@ -17,7 +17,9 @@ import (
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	"github.com/DataDog/chaos-controller/types"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 // Five Seconds timeout before aborting the attempt to connect to server
@@ -81,6 +83,17 @@ func (i *GRPCDisruptionInjector) Inject() error {
 	err = chaos_grpc.SendGrpcDisruption(pb.NewDisruptionListenerClient(conn), i.spec)
 
 	if err != nil {
+		if s, ok := status.FromError(err); ok {
+			if s.Code() == codes.Unimplemented {
+				// error must have been --> code = Unimplemented desc = unknown service disruptionlistener.DisruptionListener
+				// We dialed a grpc server, but it does not have the chaos-interceptor, no disruption is possible
+				i.config.State = Created
+				i.config.Log.Warnw("disruption attempted on grpc server without the chaos-interceptor", "spec", i.spec)
+
+				return conn.Close()
+			}
+		}
+
 		i.config.Log.Error("Received an error: %v", err)
 	}
 
