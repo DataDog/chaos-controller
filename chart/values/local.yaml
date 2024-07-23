@@ -22,8 +22,10 @@ controller:
     http:
       disruption:
         enabled: false
+        url: ""
       disruptioncron:
         enabled: false
+        url: ""
   cloudProviders:
     disableAll: false
     pullInterval: 24h

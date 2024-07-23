@@ -41,8 +41,10 @@ controller:
     http:
       disruption:
         enabled: false
+        url: "http://localhost:8082/disruptions"
       disruptioncron:
         enabled: false
+        url: "http://localhost:8082/disruptioncrons"
       headersFilepath: ""
       headers: []
       authURL: ""
