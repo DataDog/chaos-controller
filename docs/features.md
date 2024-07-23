@@ -110,7 +110,7 @@ Note that in this mode, only pending pods with a running `chaos-handler` init co
 
 ## Notifier
 
-When creating a disruption or scheduling one through a disruption cron, you may wish to be alerted of important lifecycle warnings (e.g., disruption found no target, chaos pod is stuck on removal, target is failing, target is recovering, etc.) through the Notifier module of the chaos-controller. On each occurrence, these events will be propagated through the different set up notifiers (currently `noop/console`, `slack`, and `datadog` are implemented).
+When creating a disruption or a disruption cron, you may wish to be alerted of important lifecycle warnings (e.g., disruption found no target, chaos pod is stuck on removal, target is failing, target is recovering, etc.) through the Notifier module of the chaos-controller. On each occurrence, these events will be propagated through the different set up notifiers (currently `noop/console`, `slack`, and `datadog` are implemented).
 
 You can find the complete list of the events sent out by the controller [here](/api/v1beta1/events.go#L97).
 
