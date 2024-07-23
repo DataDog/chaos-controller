@@ -461,9 +461,9 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 
 		if r.Spec.Network != nil {
 			if caught := safetyNetMissingNetworkFilters(*r); caught {
-				logger.Debugw("the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.", "SafetyNet Catch", "Network")
+				logger.Debugw("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected.", "SafetyNet Catch", "Network")
 
-				responses = append(responses, "the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.")
+				responses = append(responses, "the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected.")
 			}
 		}
 
