@@ -617,17 +617,16 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		userCountVal = float64(userCountInt)
 	}
 
-	logger.Warnw("This is a stumper,",
-		"userCountInt", userCountInt,
-		"userCountVal", userCountVal,
-		"isPercent", isPercent,
-		"userCount", userCount,
-		"targetCount", targetCount,
-		"totalCount", totalCount,
-		"namespaceCount", namespaceCount,
+	logger.Debugw("comparing estimated target count to total existing targets",
+		"disruptionName", r.Name,
+		"disruptionNamespace", r.Namespace,
 		"namespaceThreshold", namespaceThreshold,
 		"clusterThreshold", clusterThreshold,
-		"userTotalPercent", userCountVal/float64(totalCount),
+		"estimatedEligibleTargetsCount", targetCount,
+		"namespaceCount", namespaceCount,
+		"totalCount", totalCount,
+		"calculatedPercentOfTotal", userCountVal/float64(totalCount),
+		"estimatedTargetCount", userCountVal,
 	)
 
 	// we check to see if the count represents > namespaceThreshold (default 80) percent of all pods in the existing namespace
