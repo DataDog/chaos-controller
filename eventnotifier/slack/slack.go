@@ -144,8 +144,6 @@ func (n *Notifier) notifyForDisruption(dis *v1beta1.Disruption, event corev1.Eve
 	}
 
 	if err := n.sendMessageToUserChannel(dis, slackMsg, logger); err != nil {
-		logger.Warnw("slack notifier: couldn't send a message to the user", "error", err)
-
 		return fmt.Errorf("slack notifier: %w", err)
 	}
 
@@ -172,8 +170,6 @@ func (n *Notifier) notifyForDisruptionCron(disruptionCron *v1beta1.DisruptionCro
 	}
 
 	if err := n.sendMessageToUserChannel(disruptionCron, slackMsg, logger); err != nil {
-		logger.Warnw("slack notifier: couldn't send a message to the user", "error", err)
-
 		return fmt.Errorf("slack notifier: %w", err)
 	}
 

@@ -15,11 +15,11 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
-	zaplog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/jsonapi"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryTypes "k8s.io/apimachinery/pkg/types"
@@ -37,9 +37,7 @@ var _ = Describe("Notifier", func() {
 	)
 
 	BeforeEach(func() {
-		var err error
-		logger, err = zaplog.NewZapLogger()
-		Expect(err).ShouldNot(HaveOccurred())
+		logger = zaptest.NewLogger(GinkgoT()).Sugar()
 	})
 
 	Describe("New", func() {

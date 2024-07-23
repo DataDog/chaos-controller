@@ -8,21 +8,23 @@ package eventbroadcaster
 import (
 	"context"
 	"fmt"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier"
 	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
-	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/google/uuid"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("NotifierSink", func() {
@@ -39,9 +41,7 @@ var _ = Describe("NotifierSink", func() {
 		mockManager = mocks.NewManagerMock(GinkgoT())
 		mockBroadcaster = mocks.NewEventBroadcasterMock(GinkgoT())
 
-		var err error
-		logger, err = log.NewZapLogger()
-		Expect(err).ShouldNot(HaveOccurred())
+		logger = zaptest.NewLogger(GinkgoT()).Sugar()
 	})
 
 	Describe("RegisterNotifierSinks", func() {

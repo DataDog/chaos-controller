@@ -44,71 +44,10 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 	s.logger.Debugw("CREATE event received:", "event", event)
 
-	var obj client.Object
+	obj, err := s.getObject(event)
+	if err != nil {
+		s.logger.Warn(err)
 
-	switch event.InvolvedObject.Kind {
-	case v1beta1.DisruptionKind:
-		disruption, err := s.getDisruption(event)
-		if err != nil {
-			s.logger.Warn(err)
-
-			disruption = v1beta1.Disruption{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       event.InvolvedObject.Kind,
-					APIVersion: event.InvolvedObject.APIVersion,
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:                       event.InvolvedObject.Name,
-					GenerateName:               event.GetGenerateName(),
-					Namespace:                  event.InvolvedObject.Namespace,
-					UID:                        event.InvolvedObject.UID,
-					ResourceVersion:            event.InvolvedObject.ResourceVersion,
-					Generation:                 event.GetGeneration(),
-					CreationTimestamp:          event.GetCreationTimestamp(),
-					DeletionTimestamp:          event.GetDeletionTimestamp(),
-					DeletionGracePeriodSeconds: event.GetDeletionGracePeriodSeconds(),
-					Labels:                     event.GetLabels(),
-					Annotations:                event.GetAnnotations(),
-					OwnerReferences:            event.GetOwnerReferences(),
-					Finalizers:                 event.GetFinalizers(),
-					ManagedFields:              event.GetManagedFields(),
-				},
-			}
-		}
-
-		obj = &disruption
-	case v1beta1.DisruptionCronKind:
-		disruptionCron, err := s.getDisruptionCron(event)
-		if err != nil {
-			s.logger.Warn(err)
-
-			disruptionCron = v1beta1.DisruptionCron{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       event.InvolvedObject.Kind,
-					APIVersion: event.InvolvedObject.APIVersion,
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:                       event.InvolvedObject.Name,
-					GenerateName:               event.GetGenerateName(),
-					Namespace:                  event.InvolvedObject.Namespace,
-					UID:                        event.InvolvedObject.UID,
-					ResourceVersion:            event.InvolvedObject.ResourceVersion,
-					Generation:                 event.GetGeneration(),
-					CreationTimestamp:          event.GetCreationTimestamp(),
-					DeletionTimestamp:          event.GetDeletionTimestamp(),
-					DeletionGracePeriodSeconds: event.GetDeletionGracePeriodSeconds(),
-					Labels:                     event.GetLabels(),
-					Annotations:                event.GetAnnotations(),
-					OwnerReferences:            event.GetOwnerReferences(),
-					Finalizers:                 event.GetFinalizers(),
-					ManagedFields:              event.GetManagedFields(),
-				},
-			}
-		}
-
-		obj = &disruptionCron
-	default:
-		s.logger.Warnf("eventnotifier: not a disruption/disruptioncron event: kind %s", event.InvolvedObject.Kind)
 		return event, nil
 	}
 
@@ -123,6 +62,59 @@ func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 	}
 
 	return event, nil
+}
+
+func (s *NotifierSink) getObject(event *corev1.Event) (client.Object, error) {
+	var obj client.Object
+
+	switch event.InvolvedObject.Kind {
+	case v1beta1.DisruptionKind:
+		disruption, err := s.getDisruption(event)
+		if err != nil {
+			s.logger.Warn(err)
+
+			// Unable to fetch the latest version of the disruption from the k8s api, we'll construct what we can from the event
+			disruption = v1beta1.Disruption{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       event.InvolvedObject.Kind,
+					APIVersion: event.InvolvedObject.APIVersion,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            event.InvolvedObject.Name,
+					Namespace:       event.InvolvedObject.Namespace,
+					UID:             event.InvolvedObject.UID,
+					ResourceVersion: event.InvolvedObject.ResourceVersion,
+				},
+			}
+		}
+
+		obj = &disruption
+	case v1beta1.DisruptionCronKind:
+		disruptionCron, err := s.getDisruptionCron(event)
+		if err != nil {
+			s.logger.Warn(err)
+
+			// Unable to fetch the latest version of the disruptionCron from the k8s api, we'll construct what we can from the event
+			disruptionCron = v1beta1.DisruptionCron{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       event.InvolvedObject.Kind,
+					APIVersion: event.InvolvedObject.APIVersion,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            event.InvolvedObject.Name,
+					Namespace:       event.InvolvedObject.Namespace,
+					UID:             event.InvolvedObject.UID,
+					ResourceVersion: event.InvolvedObject.ResourceVersion,
+				},
+			}
+		}
+
+		obj = &disruptionCron
+	default:
+		return obj, fmt.Errorf("eventnotifier: not a disruption/disruptioncron event: kind %s", event.InvolvedObject.Kind)
+	}
+
+	return obj, nil
 }
 
 func (s *NotifierSink) Update(event *corev1.Event) (*corev1.Event, error) {

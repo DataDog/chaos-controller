@@ -6,9 +6,9 @@
 package v1beta1
 
 import (
-	zaplog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap/zaptest"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -17,9 +17,7 @@ import (
 var _ = Describe("DisruptionCron Webhook", func() {
 
 	BeforeEach(func() {
-		var err error
-		disruptionCronWebhookLogger, err = zaplog.NewZapLogger()
-		Expect(err).ShouldNot(HaveOccurred())
+		disruptionCronWebhookLogger = zaptest.NewLogger(GinkgoT()).Sugar()
 	})
 
 	AfterEach(func() {

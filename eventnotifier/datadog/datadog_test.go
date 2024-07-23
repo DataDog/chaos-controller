@@ -16,6 +16,7 @@ import (
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,7 +31,7 @@ var _ = Describe("Datadog", func() {
 	)
 
 	BeforeEach(func() {
-		logger = zap.NewNop().Sugar()
+		logger = zaptest.NewLogger(GinkgoT()).Sugar()
 	})
 
 	Describe("New", func() {

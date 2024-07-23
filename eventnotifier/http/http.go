@@ -23,7 +23,7 @@ import (
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 	"github.com/DataDog/jsonapi"
 	"go.uber.org/zap"
-	v1 "k8s.io/api/authentication/v1"
+	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -209,7 +209,7 @@ func splitHeaders(headers []string) (map[string]string, error) {
 // getUserDetails retrieves the user details associated with a given disruption.
 // It returns the username, the email address, and a JSON string of user groups.
 // On error, it logs a warning and returns empty values for the fields.
-func (n *Notifier) getUserDetails(uInfo v1.UserInfo, logger *zap.SugaredLogger) (username, emailAddr, userGroups string) {
+func (n *Notifier) getUserDetails(uInfo authv1.UserInfo, logger *zap.SugaredLogger) (username, emailAddr, userGroups string) {
 	username = uInfo.Username
 	emailAddr, err := n.extractEmail(username)
 
@@ -328,7 +328,7 @@ func (n *Notifier) notifyDisruptionCron(disruptionCron v1beta1.DisruptionCron, e
 	return n.emitEvent(n.disruptionCronConfig.URL, jsonNotification, logger)
 }
 
-func (n *Notifier) buildEvent(obj client.Object, uInfo v1.UserInfo, event corev1.Event, notifType types.NotificationType, logger *zap.SugaredLogger) NotifierEvent {
+func (n *Notifier) buildEvent(obj client.Object, uInfo authv1.UserInfo, event corev1.Event, notifType types.NotificationType, logger *zap.SugaredLogger) NotifierEvent {
 	username, userEmail, userGroups := n.getUserDetails(uInfo, logger)
 
 	return NotifierEvent{

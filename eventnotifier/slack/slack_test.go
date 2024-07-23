@@ -10,11 +10,11 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
-	zaplog "github.com/DataDog/chaos-controller/log"
 	"github.com/google/uuid"
 	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,9 +30,7 @@ var _ = Describe("Slack Notifier", func() {
 	)
 
 	BeforeEach(func() {
-		var err error
-		logger, err = zaplog.NewZapLogger()
-		Expect(err).ShouldNot(HaveOccurred())
+		logger = zaptest.NewLogger(GinkgoT()).Sugar()
 	})
 
 	Describe("Notify", func() {

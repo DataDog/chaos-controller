@@ -110,13 +110,15 @@ Note that in this mode, only pending pods with a running `chaos-handler` init co
 
 ## Notifier
 
-When creating a disruption or a disruption cron, you may wish to be alerted of important lifecycle warnings (e.g., disruption found no target, chaos pod is stuck on removal, target is failing, target is recovering, etc.) through the Notifier module of the chaos-controller. On each occurrence, these events will be propagated through the different set up notifiers (currently `noop/console`, `slack`, and `datadog` are implemented).
+When creating a disruption or a disruption cron, you may wish to be alerted of important lifecycle warnings (e.g., disruption found no target, chaos pod is stuck on removal, target is failing, target is recovering, etc.) through the Notifier module of the chaos-controller. On each occurrence, these events will be propagated through the different set up notifiers (currently `noop/console`, `slack`, `http`,  and `datadog` are implemented).
 
 You can find the complete list of the events sent out by the controller [here](/api/v1beta1/events.go#L97).
 
 Any setup/config error will be logged at controller startup.
 
 ### Slack
+
+The `slack` notifier requires a slack API Token to connect to your org's slack workspace.
 
 It will use the disruption's or disruption cron's creator username in Kubernetes (based on your authentication method) as the email address of the person to send a DM on slack. The DM will come from the slack username 'Disruption Status Bot'. **The email address used to authenticate on the Kubernetes cluster and create the disruption or disruption cron needs to be the same used on the slack workspace** or the notification will be ignored.
 
