@@ -587,7 +587,6 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		}
 
 		for nodes.Continue != "" {
-			logger.Warnw("counting nodes.Items", "nodes", len(nodes.Items))
 			totalCount += len(nodes.Items)
 
 			err = k8sClient.List(context.Background(), nodes, client.Limit(1000), client.Continue(nodes.Continue))
@@ -597,7 +596,6 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		}
 
 		totalCount += len(nodes.Items)
-		logger.Warnw("totalling nodes.Items", "totalCount", totalCount, "nodes", len(nodes.Items))
 	}
 
 	userCountVal := 0.0
