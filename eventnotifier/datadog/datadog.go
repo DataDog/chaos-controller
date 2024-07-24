@@ -86,7 +86,7 @@ func (n *Notifier) notifyDisruption(d *v1beta1.Disruption, event corev1.Event, n
 }
 
 func (n *Notifier) notifyDisruptionCron(d *v1beta1.DisruptionCron, event corev1.Event, notifType types.NotificationType) error {
-	n.logger.With("disruptionCronName", d.Name)
+	n.logger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
 
 	eventType := n.getEventAlertType(notifType)
 

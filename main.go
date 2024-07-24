@@ -397,23 +397,13 @@ func main() {
 
 	if cfg.Controller.UserInfoHook {
 		// register user info mutating webhook
-		mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info", &webhook.Admission{
-			Handler: &chaoswebhook.DisruptionUserInfoMutator{
+		mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-user-info", &webhook.Admission{
+			Handler: &chaoswebhook.UserInfoMutator{
 				Client:  mgr.GetClient(),
 				Log:     logger,
 				Decoder: webhookDecoder,
 			},
 		})
-
-		if cfg.Controller.DisruptionCronEnabled {
-			mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruptioncron-user-info", &webhook.Admission{
-				Handler: &chaoswebhook.DisruptionCronUserInfoMutator{
-					Client:  mgr.GetClient(),
-					Log:     logger,
-					Decoder: webhookDecoder,
-				},
-			})
-		}
 	}
 
 	mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-span-context", &webhook.Admission{

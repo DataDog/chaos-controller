@@ -251,7 +251,6 @@ func (n *Notifier) notifyDisruption(dis v1beta1.Disruption, event corev1.Event, 
 	logger.With("disruptionName", dis.Name, "disruptionNamespace", dis.Namespace)
 
 	if !n.disruptionConfig.Enabled {
-		logger.Debug("http notifier: disruption notifications are disabled")
 		return nil
 	}
 
@@ -296,7 +295,6 @@ func (n *Notifier) notifyDisruptionCron(disruptionCron v1beta1.DisruptionCron, e
 	logger.With("disruptionCronName", disruptionCron.Name, "disruptionCronNamespace", disruptionCron.Namespace)
 
 	if !n.disruptionCronConfig.Enabled {
-		logger.Debug("http notifier: disruption cron notifications are disabled")
 		return nil
 	}
 
@@ -367,14 +365,10 @@ func (n *Notifier) emitEvent(url string, jsonNotif []byte, logger *zap.SugaredLo
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 	}
 
-	logger.Debug("http notifier: sending notifier event to http")
-
 	res, err := n.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("http notifier: error when sending notification: %w", err)
 	}
-
-	logger.Debugw("http notifier: received response from http", "status", res.StatusCode)
 
 	if res.StatusCode >= http.StatusMultipleChoices || res.StatusCode < http.StatusOK {
 		return fmt.Errorf("http notifier: receiving %d status code from sent notification", res.StatusCode)

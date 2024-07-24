@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/DataDog/chaos-controller/utils"
 	"go.uber.org/zap"
@@ -18,9 +19,11 @@ import (
 )
 
 var (
-	disruptionCronWebhookLogger     *zap.SugaredLogger
-	disruptionCronWebhookRecorder   record.EventRecorder
-	disruptionCronWebhookDeleteOnly bool
+	disruptionCronWebhookLogger            *zap.SugaredLogger
+	disruptionCronWebhookRecorder          record.EventRecorder
+	disruptionCronWebhookDeleteOnly        bool
+	disruptionCronPermittedUserGroups      map[string]struct{}
+	disruptionCronPermittedUserGroupString string
 )
 
 func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
@@ -30,6 +33,14 @@ func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupW
 		"source", "admission-controller",
 		"admission-controller", "disruption-cron-webhook",
 	)
+
+	disruptionCronPermittedUserGroups = map[string]struct{}{}
+
+	for _, group := range setupWebhookConfig.PermittedUserGroups {
+		disruptionCronPermittedUserGroups[group] = struct{}{}
+	}
+
+	disruptionCronPermittedUserGroupString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(d).
@@ -51,16 +62,24 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 		return nil, errors.New("the controller is currently in delete-only mode, you can't create new disruption cron for now")
 	}
 
+	if err := validateUserInfoGroup(d, disruptionCronPermittedUserGroups, disruptionCronPermittedUserGroupString); err != nil {
+		return nil, err
+	}
+
 	// send informative event to disruption cron to broadcast
 	disruptionCronWebhookRecorder.Event(d, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage)
 
 	return nil, nil
 }
 
-func (d *DisruptionCron) ValidateUpdate(_ runtime.Object) (warnings admission.Warnings, err error) {
+func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (warnings admission.Warnings, err error) {
 	log := logger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
 
 	log.Infow("validating updated disruption cron", "spec", d.Spec)
+
+	if err := validateUserInfoImmutable(oldObject.(*DisruptionCron), d); err != nil {
+		return nil, err
+	}
 
 	// send informative event to disruption cron to broadcast
 	disruptionCronWebhookRecorder.Event(d, Events[EventDisruptionCronUpdated].Type, string(EventDisruptionCronUpdated), Events[EventDisruptionCronUpdated].OnDisruptionTemplateMessage)

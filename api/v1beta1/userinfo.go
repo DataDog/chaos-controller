@@ -8,6 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"k8s.io/api/authentication/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
+
 	authV1 "k8s.io/api/authentication/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -71,4 +75,81 @@ func setUserInfo(userInfo authV1.UserInfo, obj metaV1.Object) error {
 	obj.SetAnnotations(annotations)
 
 	return nil
+}
+
+func filterUserGroupsByPermitted(userInfo authV1.UserInfo, permittedGroups map[string]struct{}) []string {
+	var filteredGroups []string
+	for _, group := range userInfo.Groups {
+		if _, ok := permittedGroups[group]; ok {
+			filteredGroups = append(filteredGroups, group)
+		}
+	}
+
+	return filteredGroups
+}
+
+func getUserInfoFromObject(object metaV1.Object) (authV1.UserInfo, error) {
+	switch d := object.(type) {
+	case *Disruption:
+		return d.UserInfo()
+	case *DisruptionCron:
+		return d.UserInfo()
+	}
+
+	return authV1.UserInfo{}, fmt.Errorf("unable to extract user info from object")
+}
+
+// validateUserInfoImmutable checks that no changes have been made to the oldDisruption's UserInfo in the latest update
+func validateUserInfoImmutable(oldObject, newObject client.Object) error {
+	oldUserInfo, err := getUserInfoFromObject(oldObject)
+	if err != nil {
+		return nil
+	}
+
+	emptyUserInfo := fmt.Sprintf("%v", v1beta1.UserInfo{})
+	if fmt.Sprintf("%v", oldUserInfo) == emptyUserInfo {
+		return nil
+	}
+
+	userInfo, err := getUserInfoFromObject(newObject)
+	if err != nil {
+		return err
+	}
+
+	if fmt.Sprintf("%v", userInfo) != fmt.Sprintf("%v", oldUserInfo) {
+		return fmt.Errorf("the user info annotation is immutable")
+	}
+
+	return nil
+}
+
+// validateUserInfoGroup checks that if permittedUserGroups is set, which is controlled in controller.safeMode.permittedUserGroups in the configmap,
+// then we will return an error if the user in r.UserInfo does not belong to any groups. If permittedUserGroups is unset, or if the user belongs to one of those
+// groups, then we will return nil
+func validateUserInfoGroup(object client.Object, permittedGroups map[string]struct{}, permittedGroupsString string) error {
+	if len(permittedGroups) == 0 {
+		return nil
+	}
+
+	userInfo, err := getUserInfoFromObject(object)
+	if err != nil {
+		return err
+	}
+
+	objectKind := object.GetObjectKind().GroupVersionKind().Kind
+
+	if allowedGroups := filterUserGroupsByPermitted(userInfo, permittedGroups); len(allowedGroups) > 0 {
+		logger.Debugw(fmt.Sprintf("permitting user %s creation, due to group membership", objectKind), "groups", strings.Join(allowedGroups, ", "))
+
+		return nil
+	}
+
+	logger.Warnw(fmt.Sprintf("rejecting user from creating this %s", objectKind), "permittedUserGroups", permittedUserGroups, "userGroups", userInfo.Groups)
+
+	return fmt.Errorf(
+		"lacking sufficient authorization to create %s. your user groups are %s, but you must be in one of the following groups: %s",
+		objectKind,
+		strings.Join(userInfo.Groups, ", "),
+		permittedGroupsString,
+	)
 }
