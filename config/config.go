@@ -38,7 +38,7 @@ type controllerConfig struct {
 	Notifiers                 eventnotifier.NotifiersConfig   `json:"notifiersConfig"`
 	CloudProviders            cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
 	UserInfoHook              bool                            `json:"userInfoHook"`
-	SafeMode                  safeModeConfig                  `json:"safeMode"`
+	SafeMode                  SafeModeConfig                  `json:"safeMode"`
 	ProfilerSink              string                          `json:"profilerSink"`
 	TracerSink                string                          `json:"tracerSink"`
 	DisruptionCronEnabled     bool                            `json:"disruptionCronEnabled"`
@@ -52,7 +52,7 @@ type controllerWebhookConfig struct {
 	Port    int    `json:"port"`
 }
 
-type safeModeConfig struct {
+type SafeModeConfig struct {
 	Environment         string   `json:"environment"`
 	PermittedUserGroups []string `json:"permittedUserGroups"`
 	Enable              bool     `json:"enable"`

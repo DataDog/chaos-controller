@@ -349,17 +349,13 @@ func main() {
 		MetricsSink:                   metricsSink,
 		TracerSink:                    tracerSink,
 		Recorder:                      disruptionReconciler.Recorder,
-		NamespaceThresholdFlag:        cfg.Controller.SafeMode.NamespaceThreshold,
-		ClusterThresholdFlag:          cfg.Controller.SafeMode.ClusterThreshold,
-		EnableSafemodeFlag:            cfg.Controller.SafeMode.Enable,
+		SafeMode:                      cfg.Controller.SafeMode,
 		DeleteOnlyFlag:                cfg.Controller.DeleteOnly,
 		HandlerEnabledFlag:            cfg.Handler.Enabled,
 		DefaultDurationFlag:           cfg.Controller.DefaultDuration,
 		MaxDurationFlag:               cfg.Controller.MaxDuration,
 		ChaosNamespace:                cfg.Injector.ChaosNamespace,
 		CloudServicesProvidersManager: cloudProviderManager,
-		Environment:                   cfg.Controller.SafeMode.Environment,
-		PermittedUserGroups:           cfg.Controller.SafeMode.PermittedUserGroups,
 	}
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 		logger.Fatalw("unable to create webhook", "webhook", chaosv1beta1.DisruptionKind, "error", err)
