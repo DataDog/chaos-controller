@@ -41,6 +41,8 @@ var _ = Describe("Disruption", func() {
 	BeforeEach(func() {
 		ddmarkMock = ddmark.NewClientMock(GinkgoT())
 		ddmarkClient = ddmarkMock
+		allowNodeLevel = true
+		allowNodeFailure = true
 	})
 
 	Context("ValidateUpdate", func() {
