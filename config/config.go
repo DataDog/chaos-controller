@@ -58,6 +58,8 @@ type safeModeConfig struct {
 	Enable              bool     `json:"enable"`
 	NamespaceThreshold  int      `json:"namespaceThreshold"`
 	ClusterThreshold    int      `json:"clusterThreshold"`
+	AllowNodeFailure    bool     `json:"allowNodeFailure"`
+	AllowNodeLevel      bool     `json:"allowNodeLevel"`
 }
 
 type injectorConfig struct {
@@ -379,6 +381,18 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
 
 	if err := viper.BindPFlag("controller.safeMode.clusterThreshold", mainFS.Lookup("safemode-cluster-threshold")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.SafeMode.AllowNodeFailure, "safemode-allow-node-failure", true, "Boolean to determine if validation should prevent disruptions with node failure from being created. Relies on safemode-enable to be true.")
+
+	if err := viper.BindPFlag("controller.safeMode.allowNodeFailure", mainFS.Lookup("safemode-allow-node-failure")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.SafeMode.AllowNodeLevel, "safemode-allow-node-level", true, "Boolean to determine if validation should prevent disruptions with at the node level from being created. Relies on safemode-enable to be true.")
+
+	if err := viper.BindPFlag("controller.safeMode.allowNodeLevel", mainFS.Lookup("safemode-allow-node-level")); err != nil {
 		return cfg, err
 	}
 

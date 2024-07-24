@@ -74,6 +74,8 @@ controller:
     enable: false
     namespaceThreshold: 80
     clusterThreshold: 66
+    allowNodeFailure: true # if set to false, will prevent the creation of any disruption that applies a nodeFailure, but only if safeMode.enable is true
+    allowNodeLevel: true # if set to false, will prevent the creation of any disruption at the node level, but only if safeMode.enable is true
   resources: # resources assigned to the controller pod. may need to be increased when deploying to larger scale clusters
     cpu: 100m
     memory: 300Mi
