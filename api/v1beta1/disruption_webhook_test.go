@@ -623,7 +623,7 @@ var _ = Describe("Disruption", func() {
 			})
 
 			When("only services are defined", func() {
-				Context("", func() {
+				Context("testing ValidateCreate", func() {
 					It("should pass validation", func() {
 						newDisruption.Spec.Network.Hosts = nil
 						newDisruption.Spec.Network.Services = []NetworkDisruptionServiceSpec{{Name: "foo", Namespace: chaosNamespace}}
@@ -636,44 +636,23 @@ var _ = Describe("Disruption", func() {
 			})
 
 			When("various host filters are defined", func() {
-				Context("should pass validation", func() {
-					It("with just a port filter", func() {
-						newDisruption.Spec.Network.Hosts = []NetworkDisruptionHostSpec{{Port: 80}}
+				DescribeTable("should pass validation", func(hosts []NetworkDisruptionHostSpec) {
+					newDisruption.Spec.Network.Hosts = hosts
 
-						_, err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate()
 
-						Expect(err).ShouldNot(HaveOccurred())
-					})
-
-					It("with just a protocol filter", func() {
-						newDisruption.Spec.Network.Hosts = []NetworkDisruptionHostSpec{{Protocol: "tcp"}}
-
-						_, err := newDisruption.ValidateCreate()
-
-						Expect(err).ShouldNot(HaveOccurred())
-					})
-
-					It("with just a hostname filter", func() {
-						newDisruption.Spec.Network.Hosts = []NetworkDisruptionHostSpec{{Host: "localhost"}}
-
-						_, err := newDisruption.ValidateCreate()
-
-						Expect(err).ShouldNot(HaveOccurred())
-					})
-
-					It("with all possible host filters together", func() {
-						newDisruption.Spec.Network.Hosts = []NetworkDisruptionHostSpec{{Host: "localhost", Port: 443, Protocol: "udp"}}
-
-						_, err := newDisruption.ValidateCreate()
-
-						Expect(err).ShouldNot(HaveOccurred())
-					})
-				})
+					Expect(err).ShouldNot(HaveOccurred())
+				},
+					Entry("with just a port filter", []NetworkDisruptionHostSpec{{Port: 80}}),
+					Entry("with just a protocol filter", []NetworkDisruptionHostSpec{{Protocol: "tcp"}}),
+					Entry("with just a hostname filter", []NetworkDisruptionHostSpec{{Host: "localhost"}}),
+					Entry("with all possible host filters together", []NetworkDisruptionHostSpec{{Host: "localhost", Port: 443, Protocol: "udp"}}),
+				)
 			})
 
 			When("no filters are defined", func() {
-				Context("", func() {
-					It("should be rejected during ValidateCreate", func() {
+				Context("testing ValidateCreate", func() {
+					It("should be rejected", func() {
 						newDisruption.Spec.Network.Hosts = nil
 
 						_, err := newDisruption.ValidateCreate()
@@ -681,6 +660,15 @@ var _ = Describe("Disruption", func() {
 						Expect(err).Should(HaveOccurred())
 						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
 						Expect(err.Error()).Should(ContainSubstring("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected"))
+					})
+
+					It("should be allowed with DisableNeitherHostNorPort", func() {
+						newDisruption.Spec.Network.Hosts = nil
+						newDisruption.Spec.Unsafemode = &UnsafemodeSpec{DisableNeitherHostNorPort: true}
+
+						_, err := newDisruption.ValidateCreate()
+
+						Expect(err).ShouldNot(HaveOccurred())
 					})
 				})
 			})
