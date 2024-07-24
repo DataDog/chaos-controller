@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/cloudservice"
-	"github.com/DataDog/chaos-controller/config"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
 	"go.uber.org/zap"
@@ -46,11 +45,17 @@ type SetupWebhookWithManagerConfig struct {
 	MetricsSink                   metrics.Sink
 	TracerSink                    tracer.Sink
 	Recorder                      record.EventRecorder
-	SafeMode                      config.SafeModeConfig
+	NamespaceThresholdFlag        int
+	ClusterThresholdFlag          int
+	EnableSafemodeFlag            bool
+	AllowNodeLevel                bool
+	AllowNodeFailure              bool
 	DeleteOnlyFlag                bool
 	HandlerEnabledFlag            bool
 	DefaultDurationFlag           time.Duration
 	MaxDurationFlag               time.Duration
 	ChaosNamespace                string
 	CloudServicesProvidersManager cloudservice.CloudServicesProvidersManager
+	Environment                   string
+	PermittedUserGroups           []string
 }

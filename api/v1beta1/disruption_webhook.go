@@ -76,24 +76,24 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	tracerSink = setupWebhookConfig.TracerSink
 	recorder = setupWebhookConfig.Recorder
 	deleteOnly = setupWebhookConfig.DeleteOnlyFlag
-	enableSafemode = setupWebhookConfig.SafeMode.Enable
-	defaultNamespaceThreshold = float64(setupWebhookConfig.SafeMode.NamespaceThreshold) / 100.0
-	defaultClusterThreshold = float64(setupWebhookConfig.SafeMode.ClusterThreshold) / 100.0
-	allowNodeFailure = setupWebhookConfig.SafeMode.AllowNodeFailure
-	allowNodeLevel = setupWebhookConfig.SafeMode.AllowNodeLevel
+	allowNodeFailure = setupWebhookConfig.AllowNodeFailure
+	allowNodeLevel = setupWebhookConfig.AllowNodeLevel
+	enableSafemode = setupWebhookConfig.EnableSafemodeFlag
+	defaultNamespaceThreshold = float64(setupWebhookConfig.NamespaceThresholdFlag) / 100.0
+	defaultClusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
 	handlerEnabled = setupWebhookConfig.HandlerEnabledFlag
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 	maxDuration = setupWebhookConfig.MaxDurationFlag
 	cloudServicesProvidersManager = setupWebhookConfig.CloudServicesProvidersManager
 	chaosNamespace = setupWebhookConfig.ChaosNamespace
-	safemodeEnvironment = setupWebhookConfig.SafeMode.Environment
+	safemodeEnvironment = setupWebhookConfig.Environment
 	permittedUserGroups = map[string]struct{}{}
 
-	for _, group := range setupWebhookConfig.SafeMode.PermittedUserGroups {
+	for _, group := range setupWebhookConfig.PermittedUserGroups {
 		permittedUserGroups[group] = struct{}{}
 	}
 
-	permittedUserGroupWarningString = strings.Join(setupWebhookConfig.SafeMode.PermittedUserGroups, ",")
+	permittedUserGroupWarningString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(r).
