@@ -58,7 +58,6 @@ func (m UserInfoMutator) Handle(ctx context.Context, request admission.Request) 
 	}
 
 	return admission.PatchResponseFromRaw(request.Object.Raw, marshaled)
-
 }
 
 func (m UserInfoMutator) getObject(request admission.Request) (client.Object, error) {

@@ -7,10 +7,10 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"k8s.io/api/authentication/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
 
 	authV1 "k8s.io/api/authentication/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,6 +79,7 @@ func setUserInfo(userInfo authV1.UserInfo, obj metaV1.Object) error {
 
 func filterUserGroupsByPermitted(userInfo authV1.UserInfo, permittedGroups map[string]struct{}) []string {
 	var filteredGroups []string
+
 	for _, group := range userInfo.Groups {
 		if _, ok := permittedGroups[group]; ok {
 			filteredGroups = append(filteredGroups, group)
