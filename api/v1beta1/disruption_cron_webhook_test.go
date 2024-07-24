@@ -125,6 +125,7 @@ var _ = Describe("DisruptionCron Webhook", func() {
 
 				BeforeEach(func() {
 					disruptionCronPermittedUserGroups = defaultUserGroups
+					disruptionCronPermittedUserGroupString = defaultUserGroupsStr
 				})
 
 				When("the userinfo is not present", func() {
