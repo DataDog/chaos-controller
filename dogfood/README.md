@@ -15,7 +15,7 @@ From the root directory, make sure you have already setup Colima:
 
 Go into the `dogfood` directory to use its `Makefile`, and build the two images:
 `chaos-controller >> cd dogfood`
-`chaos-controller/dogfood >> make colima-build-dogfood`
+`chaos-controller/dogfood >> make lima-push-dogfood`
 
 They will be pushed your local docker repository as `k8s.io/chaos-dogfood-client` & `k8s.io/chaos-dogfood-server`.
 
