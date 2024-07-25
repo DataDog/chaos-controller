@@ -503,6 +503,77 @@ var _ = Describe("Disruption", func() {
 			})
 		})
 
+		Describe("expectations with node disruptions", func() {
+			BeforeEach(func() {
+				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+				k8sClient = makek8sClientWithDisruptionPod()
+				recorder = record.NewFakeRecorder(1)
+				metricsSink = metricsnoop.New(logger)
+				tracerSink = tracernoop.New(logger)
+				deleteOnly = false
+				enableSafemode = true
+				allowNodeFailure = true
+				allowNodeLevel = true
+			})
+
+			JustBeforeEach(func() {
+				newDisruption = makeValidNetworkDisruption()
+			})
+
+			AfterEach(func() {
+				k8sClient = nil
+				newDisruption = nil
+			})
+
+			Context("allowNodeFailure is false", func() {
+				JustBeforeEach(func() {
+					newDisruption.Spec.NodeFailure = &NodeFailureSpec{}
+				})
+
+				It("should reject the disruption at node level", func() {
+					allowNodeFailure = false
+					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err.Error()).Should(ContainSubstring("node failure disruptions are not allowed in this cluster"))
+
+				})
+
+				It("should reject the disruption at pod level", func() {
+					allowNodeFailure = false
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err.Error()).Should(ContainSubstring("node failure disruptions are not allowed in this cluster"))
+
+				})
+			})
+
+			Context("allowNodeLevel is false", func() {
+				It("should reject the disruption at node level", func() {
+					allowNodeLevel = false
+					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err.Error()).Should(ContainSubstring("node level disruptions are not allowed in this cluster"))
+				})
+
+				It("should allow the disruption at pod level", func() {
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
+		})
+
 		Describe("expectations with a disk failure disruption", func() {
 			BeforeEach(func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
