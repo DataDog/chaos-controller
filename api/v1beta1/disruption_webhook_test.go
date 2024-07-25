@@ -539,6 +539,15 @@ var _ = Describe("Disruption", func() {
 						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\""))
 					})
 				})
+				Context("with the '/test' path", func() {
+					It("should allow the usage", func() {
+						newDisruption.Spec.DiskFailure.Paths = []string{"/test"}
+
+						_, err := newDisruption.ValidateCreate()
+
+						Expect(err).ShouldNot(HaveOccurred())
+					})
+				})
 				Context("with the '  /  ' path", func() {
 					It("should deny the usage of '   /   ' path", func() {
 						// Arrange
