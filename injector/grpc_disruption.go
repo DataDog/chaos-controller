@@ -90,7 +90,14 @@ func (i *GRPCDisruptionInjector) Inject() error {
 				i.config.State = Created
 				i.config.Log.Warnw("disruption attempted on grpc server without the chaos-interceptor", "spec", i.spec)
 
-				return conn.Close()
+				logConnClose := func() {
+					connErr := conn.Close()
+					i.config.Log.Errorw("could not close grpc connection", "error", connErr)
+				}
+
+				defer logConnClose()
+
+				return err
 			}
 		}
 
