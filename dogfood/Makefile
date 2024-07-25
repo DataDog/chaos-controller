@@ -59,7 +59,6 @@ docker-build-dogfood-server: build-server
 	docker save $(SERVER_IMAGE) -o ./bin/server/server.tar.gz
 
 lima-push-dogfood-server: docker-build-dogfood-server
-	#nerdctl build --namespace k8s.io --build-arg TARGETARCH=${OS_ARCH} -t ${SERVER_IMAGE} -f server/Dockerfile ./bin/
 	limactl copy ./bin/server/server.tar.gz $(LIMA_INSTANCE):/tmp/
 	limactl shell $(LIMA_INSTANCE) -- sudo k3s ctr i import /tmp/server.tar.gz
 # INSTALL
