@@ -2,13 +2,13 @@
 
 Run `brew install protobuf` or `make install-protobuf`
 
-## Running the chaos dogfood server & client locally using Colima
+## Running the chaos dogfood server & client locally using Lima
 
 ### Setup
 
-#### (0) Ensure Colima is running
+#### (0) Ensure Lima is running
 
-From the root directory, make sure you have already setup Colima:
+From the root directory, make sure you have already setup Lima:
 `chaos-controller >> make lima-start`
 
 #### (1) Build the gRPC client and server images
@@ -19,7 +19,7 @@ Go into the `dogfood` directory to use its `Makefile`, and build the two images:
 
 They will be pushed your local docker repository as `k8s.io/chaos-dogfood-client` & `k8s.io/chaos-dogfood-server`.
 
-#### (2) Deploy a gRPC client and server to Colima
+#### (2) Deploy a gRPC client and server to Lima
 
 Create the `chaos-demo` namespace (if necessary) and `kubectl apply` both Helm charts with this target:
 `chaos-controller/dogfood >> make install`
