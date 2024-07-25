@@ -125,7 +125,7 @@ func validateUserInfoImmutable(oldObject, newObject client.Object) error {
 }
 
 // validateUserInfoGroup checks that if permittedUserGroups is set, which is controlled in controller.safeMode.permittedUserGroups in the configmap,
-// then we will return an error if the user in r.UserInfo does not belong to any groups. If permittedUserGroups is unset, or if the user belongs to one of those
+// then we will return an error if the user in r.UserInfo does not belong to any of the permitted. If permittedUserGroups is unset, or if the user belongs to one of those
 // groups, then we will return nil
 func validateUserInfoGroup(object client.Object, permittedGroups map[string]struct{}, permittedGroupsString string) error {
 	if len(permittedGroups) == 0 {
