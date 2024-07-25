@@ -9,7 +9,7 @@ Run `brew install protobuf` or `make install-protobuf`
 #### (0) Ensure Colima is running
 
 From the root directory, make sure you have already setup Colima:
-`chaos-controller >> make colima-start`
+`chaos-controller >> make lima-start`
 
 #### (1) Build the gRPC client and server images
 
