@@ -572,6 +572,19 @@ var _ = Describe("Disruption", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
+
+			Context("allowNodeFailure and allowNodeLevel are true", func() {
+				It("should allow a node level node failure disruption", func() {
+					allowNodeFailure = true
+					allowNodeLevel = true
+					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
+					newDisruption.Spec.NodeFailure = &NodeFailureSpec{}
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
 		})
 
 		Describe("expectations with a disk failure disruption", func() {
