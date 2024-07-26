@@ -355,6 +355,8 @@ func main() {
 		NamespaceThresholdFlag:        cfg.Controller.SafeMode.NamespaceThreshold,
 		ClusterThresholdFlag:          cfg.Controller.SafeMode.ClusterThreshold,
 		EnableSafemodeFlag:            cfg.Controller.SafeMode.Enable,
+		AllowNodeFailure:              cfg.Controller.SafeMode.AllowNodeFailure,
+		AllowNodeLevel:                cfg.Controller.SafeMode.AllowNodeLevel,
 		DeleteOnlyFlag:                cfg.Controller.DeleteOnly,
 		HandlerEnabledFlag:            cfg.Handler.Enabled,
 		DefaultDurationFlag:           cfg.Controller.DefaultDuration,

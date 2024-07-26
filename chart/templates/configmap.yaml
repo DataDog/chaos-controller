@@ -70,6 +70,8 @@ data:
         environment: {{ tpl .Values.controller.safeMode.environment . }}
         namespaceThreshold: {{ .Values.controller.safeMode.namespaceThreshold }}
         clusterThreshold: {{ .Values.controller.safeMode.clusterThreshold }}
+        allowNodeLevel: {{ .Values.controller.safeMode.allowNodeLevel }}
+        allowNodeFailure: {{ .Values.controller.safeMode.allowNodeFailure }}
       disruptionCronEnabled: {{ .Values.controller.disruptionCronEnabled }}
       disruptionRolloutEnabled: {{ .Values.controller.disruptionRolloutEnabled }}
       disruptionDeletionTimeout: {{ .Values.controller.disruptionDeletionTimeout }}
