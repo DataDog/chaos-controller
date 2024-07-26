@@ -41,6 +41,8 @@ var _ = Describe("Disruption Webhook", func() {
 	BeforeEach(func() {
 		ddmarkMock = ddmark.NewClientMock(GinkgoT())
 		ddmarkClient = ddmarkMock
+		allowNodeLevel = true
+		allowNodeFailure = true
 	})
 
 	Context("ValidateUpdate", func() {
@@ -497,6 +499,90 @@ var _ = Describe("Disruption Webhook", func() {
 
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 1)).To(BeTrue())
+				})
+			})
+		})
+
+		Describe("expectations with node disruptions", func() {
+			BeforeEach(func() {
+				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+				k8sClient = makek8sClientWithDisruptionPod()
+				recorder = record.NewFakeRecorder(1)
+				metricsSink = metricsnoop.New(logger)
+				tracerSink = tracernoop.New(logger)
+				deleteOnly = false
+				enableSafemode = true
+				allowNodeFailure = true
+				allowNodeLevel = true
+			})
+
+			JustBeforeEach(func() {
+				newDisruption = makeValidNetworkDisruption()
+			})
+
+			AfterEach(func() {
+				k8sClient = nil
+				newDisruption = nil
+			})
+
+			Context("allowNodeFailure is false", func() {
+				JustBeforeEach(func() {
+					newDisruption.Spec.NodeFailure = &NodeFailureSpec{}
+				})
+
+				It("should reject the disruption at node level", func() {
+					allowNodeFailure = false
+					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err.Error()).Should(ContainSubstring("node failure disruptions are not allowed in this cluster"))
+
+				})
+
+				It("should reject the disruption at pod level", func() {
+					allowNodeFailure = false
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err.Error()).Should(ContainSubstring("node failure disruptions are not allowed in this cluster"))
+
+				})
+			})
+
+			Context("allowNodeLevel is false", func() {
+				It("should reject the disruption at node level", func() {
+					allowNodeLevel = false
+					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err.Error()).Should(ContainSubstring("node level disruptions are not allowed in this cluster"))
+				})
+
+				It("should allow the disruption at pod level", func() {
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
+
+			Context("allowNodeFailure and allowNodeLevel are true", func() {
+				It("should allow a node level node failure disruption", func() {
+					allowNodeFailure = true
+					allowNodeLevel = true
+					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
+					newDisruption.Spec.NodeFailure = &NodeFailureSpec{}
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
 		})

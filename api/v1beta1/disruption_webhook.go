@@ -44,6 +44,8 @@ var (
 	enableSafemode                  bool
 	defaultNamespaceThreshold       float64
 	defaultClusterThreshold         float64
+	allowNodeLevel                  bool
+	allowNodeFailure                bool
 	handlerEnabled                  bool
 	maxDuration                     time.Duration
 	defaultDuration                 time.Duration
@@ -75,6 +77,8 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	tracerSink = setupWebhookConfig.TracerSink
 	recorder = setupWebhookConfig.Recorder
 	deleteOnly = setupWebhookConfig.DeleteOnlyFlag
+	allowNodeFailure = setupWebhookConfig.AllowNodeFailure
+	allowNodeLevel = setupWebhookConfig.AllowNodeLevel
 	enableSafemode = setupWebhookConfig.EnableSafemodeFlag
 	defaultNamespaceThreshold = float64(setupWebhookConfig.NamespaceThresholdFlag) / 100.0
 	defaultClusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
@@ -424,6 +428,18 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 				responses = append(responses, "the specified path for the disk failure disruption targeting a node must not be \"/\"")
 			}
 		}
+	}
+
+	if !allowNodeFailure && r.Spec.NodeFailure != nil {
+		logger.Debugw("the specified disruption is attempting a node failure and will be rejected")
+
+		responses = append(responses, "node failure disruptions are not allowed in this cluster, please use a disruption type or test elsewhere")
+	}
+
+	if !allowNodeLevel && r.Spec.Level == chaostypes.DisruptionLevelNode {
+		logger.Debugw("the specified disruption is applied at the node level and will be rejected")
+
+		responses = append(responses, "node level disruptions are not allowed in this cluster, please apply at the pod level or test elsewhere")
 	}
 
 	return responses, nil

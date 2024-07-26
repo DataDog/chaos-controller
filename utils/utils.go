@@ -48,6 +48,8 @@ type SetupWebhookWithManagerConfig struct {
 	NamespaceThresholdFlag        int
 	ClusterThresholdFlag          int
 	EnableSafemodeFlag            bool
+	AllowNodeLevel                bool
+	AllowNodeFailure              bool
 	DeleteOnlyFlag                bool
 	HandlerEnabledFlag            bool
 	DefaultDurationFlag           time.Duration
