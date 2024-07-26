@@ -632,15 +632,13 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("only services are defined", func() {
-				Context("testing ValidateCreate", func() {
-					It("should pass validation", func() {
-						newDisruption.Spec.Network.Hosts = nil
-						newDisruption.Spec.Network.Services = []NetworkDisruptionServiceSpec{{Name: "foo", Namespace: chaosNamespace}}
+				It("should pass validation", func() {
+					newDisruption.Spec.Network.Hosts = nil
+					newDisruption.Spec.Network.Services = []NetworkDisruptionServiceSpec{{Name: "foo", Namespace: chaosNamespace}}
 
-						_, err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate()
 
-						Expect(err).ShouldNot(HaveOccurred())
-					})
+					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
 
@@ -660,25 +658,23 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("no filters are defined", func() {
-				Context("testing ValidateCreate", func() {
-					It("should be rejected", func() {
-						newDisruption.Spec.Network.Hosts = nil
+				It("should be rejected", func() {
+					newDisruption.Spec.Network.Hosts = nil
 
-						_, err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate()
 
-						Expect(err).Should(HaveOccurred())
-						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected"))
-					})
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err.Error()).Should(ContainSubstring("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected"))
+				})
 
-					It("should be allowed with DisableNeitherHostNorPort", func() {
-						newDisruption.Spec.Network.Hosts = nil
-						newDisruption.Spec.Unsafemode = &UnsafemodeSpec{DisableNeitherHostNorPort: true}
+				It("should be allowed with DisableNeitherHostNorPort", func() {
+					newDisruption.Spec.Network.Hosts = nil
+					newDisruption.Spec.Unsafemode = &UnsafemodeSpec{DisableNeitherHostNorPort: true}
 
-						_, err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate()
 
-						Expect(err).ShouldNot(HaveOccurred())
-					})
+					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
 
