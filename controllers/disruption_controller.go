@@ -870,7 +870,7 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 	}
 }
 
-func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Disruption, eventReason chaosv1beta1.DisruptionEventReason, optionalMessage string, targetName string) {
+func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Disruption, eventReason chaosv1beta1.EventReason, optionalMessage string, targetName string) {
 	disEvent := chaosv1beta1.Events[eventReason]
 	message := disEvent.OnDisruptionTemplateMessage
 
@@ -918,7 +918,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 }
 
 // recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
-func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance *chaosv1beta1.Disruption, target string, disruptionEventReason chaosv1beta1.DisruptionEventReason, chaosPod, optionalMessage string) {
+func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance *chaosv1beta1.Disruption, target string, disruptionEventReason chaosv1beta1.EventReason, chaosPod, optionalMessage string) {
 	var o runtime.Object
 
 	switch instance.Spec.Level {
