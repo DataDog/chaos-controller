@@ -27,8 +27,12 @@ data:
           tokenFilepath: {{ .Values.controller.notifiers.slack.tokenFilepath | quote }}
           mirrorSlackChannelId: {{ .Values.controller.notifiers.slack.mirrorSlackChannelId | quote }}
         http:
-          enabled: {{ .Values.controller.notifiers.http.enabled }}
-          url: {{ .Values.controller.notifiers.http.url | quote }}
+          disruption:
+            enabled: {{ .Values.controller.notifiers.http.disruption.enabled }}
+            url: {{ .Values.controller.notifiers.http.disruption.url | quote }}
+          disruptioncron:
+            enabled: {{ .Values.controller.notifiers.http.disruptioncron.enabled }}
+            url: {{ .Values.controller.notifiers.http.disruptioncron.url | quote }}
           headers: {{ .Values.controller.notifiers.http.headers | toJson }}
           headersFilepath: {{ .Values.controller.notifiers.http.headersFilepath | quote }}
           authURL: {{ .Values.controller.notifiers.http.authURL | quote }}

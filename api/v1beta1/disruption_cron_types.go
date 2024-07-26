@@ -58,6 +58,9 @@ type DisruptionCronSpec struct {
 	// +ddmark:validation:Required=true
 	// Specifies the Disruption that will be created when executing a disruptioncron.
 	DisruptionTemplate DisruptionSpec `json:"disruptionTemplate"`
+
+	// +nullable
+	Reporting *Reporting `json:"reporting,omitempty"`
 }
 
 // TargetResource specifies the long-lived resource to be targeted for disruptions.

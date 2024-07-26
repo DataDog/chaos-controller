@@ -35,7 +35,7 @@ const (
 
 var oldDisruption, newDisruption *Disruption
 
-var _ = Describe("Disruption", func() {
+var _ = Describe("Disruption Webhook", func() {
 	var ddmarkMock *ddmark.ClientMock
 
 	BeforeEach(func() {
@@ -485,7 +485,7 @@ var _ = Describe("Disruption", func() {
 					_, err := newDisruption.ValidateCreate()
 
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(ContainSubstring("lacking sufficient authorization to create disruptions. your user groups are [some], but you must be in one of the following groups: system:nobody"))
+					Expect(err.Error()).Should(ContainSubstring("lacking sufficient authorization to create Disruption. your user groups are some, but you must be in one of the following groups: system:nobody"))
 				})
 
 				It("should not return an error if they are within a permitted group", func() {
@@ -694,6 +694,9 @@ var _ = Describe("Disruption", func() {
 // makeValidNetworkDisruption is a helper that constructs a valid Disruption suited for basic webhook validation testing
 func makeValidNetworkDisruption() *Disruption {
 	disruption := Disruption{
+		TypeMeta: metav1.TypeMeta{
+			Kind: DisruptionKind,
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testDisruptionName,
 			Namespace: chaosNamespace,
