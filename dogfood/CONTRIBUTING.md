@@ -5,10 +5,10 @@ This tutorial assumes you are in the [dogfood/](/dogfood) directory.
 
 ## Testing code changes
 
-- `make colima-build-dogfood` to rebuild both client and server images.
+- `make lima-build-dogfood` to rebuild both client and server images.
 
-  - `make colima-build-dogfood-client` to just build client.
-  - `make colima-build-dogfood-server` to just build server.
+  - `make lima-build-dogfood-client` to just build client.
+  - `make lima-build-dogfood-server` to just build server.
 
 - `make install` to apply recent code changes or Helm chart changes.
 - `make restart` to pick up changes by recreating the pods.
