@@ -15,18 +15,15 @@ import (
 	"github.com/DataDog/chaos-controller/cloudservice"
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/ddmark"
-	"github.com/DataDog/chaos-controller/utils"
-	"go.opentelemetry.io/otel/trace"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/utils"
 	"github.com/hashicorp/go-multierror"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
-	"k8s.io/api/authentication/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -34,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 var (
@@ -68,7 +66,10 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	}
 
 	logger = &zap.SugaredLogger{}
-	*logger = *setupWebhookConfig.Logger.With("source", "admission-controller")
+	*logger = *setupWebhookConfig.Logger.With(
+		"source", "admission-controller",
+		"admission-controller", "disruption-webhook",
+	)
 	k8sClient = setupWebhookConfig.Manager.GetClient()
 	metricsSink = setupWebhookConfig.MetricsSink
 	tracerSink = setupWebhookConfig.TracerSink
@@ -130,7 +131,7 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 		return nil, errors.New("the controller is currently in delete-only mode, you can't create new disruptions for now")
 	}
 
-	if err = r.validateUserInfoGroup(); err != nil {
+	if err = validateUserInfoGroup(r, permittedUserGroups, permittedUserGroupWarningString); err != nil {
 		return nil, err
 	}
 
@@ -259,7 +260,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) (admission.Warnings, err
 
 	oldDisruption := old.(*Disruption)
 
-	if err := r.validateUserInfoImmutable(oldDisruption); err != nil {
+	if err := validateUserInfoImmutable(oldDisruption, r); err != nil {
 		return nil, err
 	}
 
@@ -340,57 +341,6 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 	}
 
 	return nil, nil
-}
-
-// validateUserInfoGroup checks that if permittedUserGroups is set, which is controlled in controller.safeMode.permittedUserGroups in the configmap,
-// then we will return an error if the user in r.UserInfo does not belong to any groups. If permittedUserGroups is unset, or if the user belongs to one of those
-// groups, then we will return nil
-func (r *Disruption) validateUserInfoGroup() error {
-	if len(permittedUserGroups) == 0 {
-		return nil
-	}
-
-	userInfo, err := r.UserInfo()
-	if err != nil {
-		return err
-	}
-
-	for _, group := range userInfo.Groups {
-		_, ok := permittedUserGroups[group]
-		if ok {
-			logger.Debugw("permitting user disruption creation, due to group membership", "group", group)
-
-			return nil
-		}
-	}
-
-	logger.Warnw("rejecting user from creating this disruption", "permittedUserGroups", permittedUserGroups, "userGroups", userInfo.Groups)
-
-	return fmt.Errorf("lacking sufficient authorization to create disruptions. your user groups are %s, but you must be in one of the following groups: %s", userInfo.Groups, permittedUserGroupWarningString)
-}
-
-// validateUserInfoImmutable checks that no changes have been made to the oldDisruption's UserInfo in the latest update
-func (r *Disruption) validateUserInfoImmutable(oldDisruption *Disruption) error {
-	oldUserInfo, err := oldDisruption.UserInfo()
-	if err != nil {
-		return nil
-	}
-
-	emptyUserInfo := fmt.Sprintf("%v", v1beta1.UserInfo{})
-	if fmt.Sprintf("%v", oldUserInfo) == emptyUserInfo {
-		return nil
-	}
-
-	userInfo, err := r.UserInfo()
-	if err != nil {
-		return err
-	}
-
-	if fmt.Sprintf("%v", userInfo) != fmt.Sprintf("%v", oldUserInfo) {
-		return fmt.Errorf("the user info annotation is immutable")
-	}
-
-	return nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
