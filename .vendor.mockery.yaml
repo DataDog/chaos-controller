@@ -34,19 +34,6 @@ packages:
       Client:
         config:
           mockname: K8SClientMock
-  k8s.io/client-go/tools/record:
-    interfaces:
-      EventRecorder:
-        config:
-          mockname: EventRecorderMock
-  k8s.io/client-go/tools/cache:
-    interfaces:
-      ResourceEventHandler:
-        config:
-          mockname: ResourceEventHandlerMock
-      Watcher:
-        config:
-          mockname: CacheWatcherMock
   sigs.k8s.io/controller-runtime/pkg/cache:
     interfaces:
       Informer:
@@ -57,3 +44,30 @@ packages:
       SyncingSource:
         config:
           mockname: SyncingSourceMock
+  sigs.k8s.io/controller-runtime/pkg/manager:
+    interfaces:
+      Manager:
+        config:
+          mockname: ManagerMock
+  k8s.io/client-go/tools/record:
+    interfaces:
+      EventRecorder:
+        config:
+          mockname: EventRecorderMock
+      EventBroadcaster:
+        config:
+          mockname: EventBroadcasterMock
+  k8s.io/client-go/tools/cache:
+    interfaces:
+      ResourceEventHandler:
+        config:
+          mockname: ResourceEventHandlerMock
+      Watcher:
+        config:
+          mockname: CacheWatcherMock
+  github.com/DataDog/datadog-go/statsd:
+    interfaces:
+      ClientInterface:
+        config:
+          mockname: ClientStatsdMock
+

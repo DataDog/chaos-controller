@@ -110,9 +110,9 @@ Note that in this mode, only pending pods with a running `chaos-handler` init co
 
 ## Notifier
 
-When creating a disruption, you may wish to be alerted of important lifecycle warnings (disruption found no target, chaos pod is stuck on removal, target is failing, target is recovering, etc.) through the Notifier module of the chaos-controller. On each occurrence, these events will be propagated through the different set up notifiers (currently `noop/console`, `slack` and `datadog` are implemented).
+When creating a disruption or a disruption cron, you may wish to be alerted of important lifecycle warnings (e.g., disruption found no target, chaos pod is stuck on removal, target is failing, target is recovering, etc.) through the Notifier module of the chaos-controller. On each occurrence, these events will be propagated through the different set up notifiers (currently `noop/console`, `slack`, `http`,  and `datadog` are implemented).
 
-You can find the complete list of the events sent out by the controller [here](/api/v1beta1/events.go#L24).
+You can find the complete list of the events sent out by the controller [here](/api/v1beta1/events.go#L97).
 
 Any setup/config error will be logged at controller startup.
 
@@ -120,9 +120,9 @@ Any setup/config error will be logged at controller startup.
 
 The `slack` notifier requires a slack API Token to connect to your org's slack workspace.
 
-It will use the disruption's creator username in kubernetes (based on your authentication method) as the email address of the person to send a DM on slack. The DM will come from the slack username 'Disruption Status Bot'. **The email address used to authentify on the kubernetes cluster and create the disruption needs to be the same used on the slack workspace** or the notification will be ignored.
+It will use the disruption's or disruption cron's creator username in Kubernetes (based on your authentication method) as the email address of the person to send a DM on slack. The DM will come from the slack username 'Disruption Status Bot'. **The email address used to authenticate on the Kubernetes cluster and create the disruption or disruption cron needs to be the same used on the slack workspace** or the notification will be ignored.
 
-In addition to that, you can receive notifications on the disruption itself by filling the `reporting` field (See the [disruption reporting section](#disruption-reporting)).
+In addition to that, you can receive notifications on the disruption or disruption cron itself by filling the `reporting` field (See the [reporting section](#disruption-and-disruption-cron-reporting)).
 
 ### Datadog
 
@@ -130,7 +130,8 @@ The `datadog` notifier requires the `STATSD_URL` environment variable to be set 
 
 ### HTTP
 
-The `http` notifier requires a `URL` to send the POST request to and optionally ask for either the list of headers in the configmap or the filepath of a file containing the list of headers to add to the request if needed. It will send a json body containing the notification information.
+The HTTP Notifier allows you to send notifications via HTTP POST requests to a specified `URL`. 
+This can be useful for integrating with custom APIs, webhooks, or other HTTP-based notification systems.
 
 :warning: **Note** that the list of headers from the configmap will take prevalence over the list of headers found in the file: if there are conflicting headers in both of those lists, the one from the configmap will be kept.
 
@@ -157,8 +158,12 @@ notifiers:
   datadog:
     enabled: true/false # enables the datadog notifier
   http:
-    enabled: true/false # enables the http notifier
-    url: <url>
+    disruption:
+      enabled: true/false # enables the http notifier for disruptions
+      url: <url> # URL to which the POST request will be sent for disruptions
+    disruptioncron:
+      enabled: true/false # enables the http notifier for disruption crons
+      url: <url> # URL to which the POST request will be sent for disruption crons
     headers: # optional, list of headers to add to the http POST request we send
       - "Content-Type: application/json"
     headersFilepath: <headers file path> # optional, path to a file containing the list of headers to add to the http POST request we send for the http notifier
@@ -190,18 +195,18 @@ The HTTP notifier supports two primary methods of authentication: static and dyn
    authTokenPath: "token"
    ```
 
-### Disruption reporting
+### Disruption and Disruption Cron Reporting
 
-On top of global notifiers configuration sent to user privately and potentially mirrored to a common slack channel, you may want to send notifications to a dedicated channel on a per disruption basis, to enable your team to be notified of an on-going disruption as an example.
+In addition to the global notifiers configuration, which is sent to users privately and potentially mirrored to a common Slack channel, you may want to send notifications to a dedicated channel on a per-disruption or per-disruption-cron basis. This enables your team to be notified of ongoing disruptions or scheduled disruption crons as examples.
 
-#### How to activate per disruption slack
+#### How to Activate Reporting per Disruptions and/or Disruption Crons
 
 In order to activate such capability, you will need to:
 
-1. provide the `reporting` field on a disruption spec
-2. add the slack bot to your slack workspace
-3. [add the slack bot](https://slack.com/help/articles/201980108-Add-people-to-a-channel) to the expected channel(s)
-4. configure `chaos-controller` slack notifier with a slack token and enable it
+1. Provide the `reporting` field in the spec of a disruption or a disruption cron.
+2. Add the Slack bot to your Slack workspace.
+3. [Add the slack bot](https://slack.com/help/articles/201980108-Add-people-to-a-channel) to the expected channel(s)
+4. Configure `chaos-controller` slack notifier with a slack token and enable it
 
 #### Reporting spec example
 
@@ -213,3 +218,7 @@ reporting: # optional, add custom notification for this disruption
     *full network drop*: _aims to validate retry capabilities of demo-curl_. Contact #team-test for more informations.
   minNotificationType: Info # optional, minimal notification type to be notified, default is Success, available options are Info, Success, Warning, Error
 ```
+
+[Disruption Reporting Example](../examples/reporting_network_drop.yaml#L33)
+
+[Disruption Cron Reporting Example](../examples/disruption_crons/reporting_network_drop.yaml)

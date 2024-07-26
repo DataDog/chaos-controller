@@ -42,6 +42,43 @@ webhooks:
     - DELETE
     resources:
     - disruptions
+{{- if .Values.controller.disruptionCronEnabled }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+  {{- if not .Values.controller.webhook.generateCert }}
+    cert-manager.io/inject-ca-from: {{ .Values.chaosNamespace }}/chaos-controller-serving-cert
+  {{- end }}
+  name: chaos-controller-disruptioncrons
+webhooks:
+- clientConfig:
+  {{- if not .Values.controller.webhook.generateCert }}
+    caBundle: Cg==
+  {{- else }}
+    caBundle: {{ b64enc $ca.Cert }}
+  {{- end }}
+    service:
+      name: chaos-controller-webhook-service
+      namespace: {{ .Values.chaosNamespace }}
+      path: /validate-chaos-datadoghq-com-v1beta1-disruptioncron
+  failurePolicy: Fail
+  name: chaos-controller-webhook-service.{{ .Values.chaosNamespace }}.svc
+  sideEffects: NoneOnDryRun
+  admissionReviewVersions: ["v1", "v1beta1"]
+  rules:
+  - apiGroups:
+    - chaos.datadoghq.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - disruptioncrons
+{{- end }}
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
@@ -114,8 +151,8 @@ webhooks:
     resources:
     - pods
 {{- end }}
----
 {{- if .Values.controller.userInfoHook }}
+---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
@@ -123,7 +160,7 @@ metadata:
   {{- if not .Values.controller.webhook.generateCert }}
     cert-manager.io/inject-ca-from: {{ .Values.chaosNamespace }}/chaos-controller-serving-cert
   {{- end }}
-  name: chaos-controller-disruption-user-info
+  name: chaos-controller-user-info
 webhooks:
 - clientConfig:
   {{- if not .Values.controller.webhook.generateCert }}
@@ -134,7 +171,7 @@ webhooks:
     service:
       name: chaos-controller-webhook-service
       namespace: {{ .Values.chaosNamespace }}
-      path: /mutate-chaos-datadoghq-com-v1beta1-disruption-user-info
+      path: /mutate-chaos-datadoghq-com-v1beta1-user-info
   failurePolicy: Fail
   name: chaos-controller-admission-webhook.{{ .Values.chaosNamespace }}.svc
   sideEffects: NoneOnDryRun
@@ -150,6 +187,11 @@ webhooks:
     resources:
     - disruptions
     - disruptions/status
+    {{- if .Values.controller.disruptionCronEnabled }}
+    - disruptioncrons
+    - disruptioncrons/status
+    {{- end }}
+
 {{- end }}
 ---
 apiVersion: admissionregistration.k8s.io/v1

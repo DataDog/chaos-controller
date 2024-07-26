@@ -25,6 +25,9 @@ const APIVersion = "v1beta1"
 // DisruptionKind is the disruption kind
 const DisruptionKind = "Disruption"
 
+// DisruptionCronKind is the disruption cron kind
+const DisruptionCronKind = "DisruptionCron"
+
 var (
 	// GroupVersion is group version used to register these objects
 	GroupVersion = schema.GroupVersion{Group: GroupName, Version: APIVersion}

@@ -113,7 +113,7 @@ func allNamespaceEvents(ctx SpecContext) []corev1.Event {
 	return items
 }
 
-func findEvent(eventKey v1beta1.DisruptionEventReason, events []corev1.Event, involvedObjectName string) corev1.Event {
+func findEvent(eventKey v1beta1.EventReason, events []corev1.Event, involvedObjectName string) corev1.Event {
 	toFind := v1beta1.Events[eventKey]
 
 	for _, event := range events {
