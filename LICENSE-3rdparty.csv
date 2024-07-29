@@ -284,6 +284,8 @@ github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/reporters,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/types,MIT
 github.com/onsi/gomega,github.com/onsi/gomega,MIT
 github.com/onsi/gomega,github.com/onsi/gomega/format,MIT
+github.com/onsi/gomega,github.com/onsi/gomega/gstruct,MIT
+github.com/onsi/gomega,github.com/onsi/gomega/gstruct/errors,MIT
 github.com/onsi/gomega,github.com/onsi/gomega/internal,MIT
 github.com/onsi/gomega,github.com/onsi/gomega/internal/gutil,MIT
 github.com/onsi/gomega,github.com/onsi/gomega/matchers,MIT
