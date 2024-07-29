@@ -414,18 +414,18 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 		}
 
 		if r.Spec.Network != nil {
-			if caught := safetyNetNeitherHostNorPort(*r); caught {
-				logger.Debugw("the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.", "SafetyNet Catch", "Network")
+			if caught := safetyNetMissingNetworkFilters(*r); caught {
+				logger.Debugw("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected.", "SafetyNet Catch", "Network")
 
-				responses = append(responses, "the specified disruption either contains no Hosts or contains a Host which has neither a port nor a host. The more ambiguous, the larger the blast radius.")
+				responses = append(responses, "the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected.")
 			}
 		}
 
 		if r.Spec.DiskFailure != nil {
-			if caught, response := safetyNetAllowRootDiskFailure(r); caught {
+			if caught := safetyNetAttemptsNodeRootDiskFailure(r); caught {
 				logger.Debugw("the specified disruption contains an invalid path.", "SafetyNet Catch", "DiskFailure")
 
-				responses = append(responses, response)
+				responses = append(responses, "the specified path for the disk failure disruption targeting a node must not be \"/\"")
 			}
 		}
 	}
@@ -474,6 +474,11 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		}
 	}
 
+	if namespaceThreshold >= MaxNamespaceThreshold && clusterThreshold >= MaxClusterThreshold {
+		// Don't waste time or memory counting, if we allow 100% of resources to be targeted
+		return false, "", nil
+	}
+
 	if r.Spec.Level == chaostypes.DisruptionLevelPod {
 		pods := &corev1.PodList{}
 		listOptions := &client.ListOptions{
@@ -497,9 +502,10 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 			}
 		}
 
-		namespaceCount = len(pods.Items)
+		namespaceCount += len(pods.Items)
 
 		listOptions = &client.ListOptions{
+			Namespace:     r.ObjectMeta.Namespace,
 			LabelSelector: labels.SelectorFromValidatedSet(r.Spec.Selector),
 		}
 		// we grab the number of targets in the specified namespace
@@ -518,7 +524,7 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 			}
 		}
 
-		targetCount = len(pods.Items)
+		targetCount += len(pods.Items)
 
 		// we grab the number of pods in the entire cluster
 		err = k8sClient.List(context.Background(), pods,
@@ -536,7 +542,7 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 			}
 		}
 
-		totalCount = len(pods.Items)
+		totalCount += len(pods.Items)
 	} else {
 		nodes := &corev1.NodeList{}
 
@@ -555,7 +561,7 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 			}
 		}
 
-		totalCount = len(nodes.Items)
+		totalCount += len(nodes.Items)
 	}
 
 	userCountVal := 0.0
@@ -575,8 +581,20 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		userCountVal = float64(userCountInt)
 	}
 
+	logger.Debugw("comparing estimated target count to total existing targets",
+		"disruptionName", r.Name,
+		"disruptionNamespace", r.Namespace,
+		"namespaceThreshold", namespaceThreshold,
+		"clusterThreshold", clusterThreshold,
+		"estimatedEligibleTargetsCount", targetCount,
+		"namespaceCount", namespaceCount,
+		"totalCount", totalCount,
+		"calculatedPercentOfTotal", userCountVal/float64(totalCount),
+		"estimatedTargetCount", userCountVal,
+	)
+
 	// we check to see if the count represents > namespaceThreshold (default 80) percent of all pods in the existing namespace
-	// or if the count represents > clusterThreshold (default 66) percent of all pods in the cluster
+	// or if the count represents > clusterThreshold (default 66) percent of all pods|nodes in the cluster
 	if r.Spec.Level != chaostypes.DisruptionLevelNode {
 		if userNamespacePercent := userCountVal / float64(namespaceCount); userNamespacePercent > namespaceThreshold {
 			response := fmt.Sprintf("target selection represents %.2f %% of the total pods in the namespace while the threshold is %.2f %%", userNamespacePercent*100, namespaceThreshold*100)
@@ -592,43 +610,45 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	return false, "", nil
 }
 
-// safetyNetNeitherHostNorPort is the safety net regarding missing host and port values.
-// it will check against all defined hosts in the network disruption spec to see if any of them have a host and a
-// port missing. The more generic a hosts tuple is (Omitting fields such as port), the bigger the blast radius.
-func safetyNetNeitherHostNorPort(r Disruption) bool {
+// safetyNetMissingNetworkFilters is the safety net regarding missing host, service, or port filters.
+// it will check if any filters have been placed to limit which network traffic is disrupted
+func safetyNetMissingNetworkFilters(r Disruption) bool {
 	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableNeitherHostNorPort {
 		return false
 	}
 
-	// if hosts are not defined, this also falls into the safety net
-	if r.Spec.Network.Hosts == nil || len(r.Spec.Network.Hosts) == 0 {
-		return true
+	if r.Spec.Network == nil {
+		return false
 	}
 
-	for _, host := range r.Spec.Network.Hosts {
-		if host.Port == 0 && host.Host == "" {
+	if len(r.Spec.Network.Services) > 0 {
+		return false
+	}
+
+	// if hosts are not defined, this also falls into the safety net
+	if len(r.Spec.Network.Hosts) > 0 {
+		return false
+	}
+
+	// If we are disrupting network traffic, but we have set NO services, and NO hosts, there are no filters
+	return true
+}
+
+// safetyNetAttemptsNodeRootDiskFailure is the safety net regarding node-level disk failure disruption that target the entire fs.
+func safetyNetAttemptsNodeRootDiskFailure(r *Disruption) bool {
+	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowRootDiskFailure {
+		return false
+	}
+
+	if r.Spec.Level != chaostypes.DisruptionLevelNode {
+		return false
+	}
+
+	for _, path := range r.Spec.DiskFailure.Paths {
+		if strings.TrimSpace(path) == "/" {
 			return true
 		}
 	}
 
 	return false
-}
-
-// safetyNetAllowRootDiskFailure is the safety net regarding missing path or invalid path values for a disk failure disruption.
-func safetyNetAllowRootDiskFailure(r *Disruption) (bool, string) {
-	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowRootDiskFailure {
-		return false, ""
-	}
-
-	if r.Spec.Level != chaostypes.DisruptionLevelNode {
-		return false, ""
-	}
-
-	for _, path := range r.Spec.DiskFailure.Paths {
-		if strings.TrimSpace(path) == "/" {
-			return true, "the specified path for the disk failure disruption targeting a node must not be \"/\"."
-		}
-	}
-
-	return false, ""
 }
