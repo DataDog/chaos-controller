@@ -537,7 +537,7 @@ var _ = Describe("Disruption Webhook", func() {
 					_, err := newDisruption.ValidateCreate()
 
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err).Should(MatchError(ContainSubstring("at least one of the initial safety nets caught an issue")))
 					Expect(err.Error()).Should(ContainSubstring("node failure disruptions are not allowed in this cluster"))
 
 				})
